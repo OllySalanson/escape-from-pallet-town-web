@@ -92,6 +92,14 @@ Mill Square: the boardwalks, the punt out to Duck Island and back, in and out of
 inns, the strand, Bridge End and the moor, photographing each. It takes about three
 minutes against a test-mode build.
 
+`walkableVillage.mjs <test-mode build url> <dir> [--port=N]` lands where a new
+game lands and walks every main route out of Millbrook the way a player presses:
+straight down the street toward the next corner, the long way first, a tile a
+press. Each time the next tile is taken - a prop, a figure on its beat, a tree -
+is a snag, written to `<dir>/snags.json` with what was in the way, and the walk
+steps round it and carries on. Run it against a build from before a change and
+after (`docs/screens/walkable-millbrook/`).
+
 `millbrook.mjs <url> <dir> [--port=N]` plays the vale's front door as a new game
 meets it: landing on Mill Square, the village moving and calling out round a
 player who stands still, the brook's frames turning over, in at the mill and out

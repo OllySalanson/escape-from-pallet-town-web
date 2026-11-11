@@ -1,0 +1,844 @@
+{
+  "routes": [
+    {
+      "name": "north, up the drove road to High Moor",
+      "reached": true,
+      "steps": 35,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            30,
+            31
+          ],
+          "heading": "up",
+          "blocked": [
+            30,
+            30
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: north, up the drove road to High Moor",
+      "reached": true,
+      "steps": 35,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            30,
+            26
+          ],
+          "heading": "down",
+          "blocked": [
+            30,
+            27
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "west, out along the Westward Road",
+      "reached": true,
+      "steps": 33,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            26,
+            31
+          ],
+          "heading": "left",
+          "blocked": [
+            25,
+            31
+          ],
+          "by": "npc pidgey"
+        }
+      ]
+    },
+    {
+      "name": "back from: west, out along the Westward Road",
+      "reached": true,
+      "steps": 33,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            25,
+            31
+          ],
+          "heading": "right",
+          "blocked": [
+            26,
+            31
+          ],
+          "by": "npc pidgey"
+        },
+        {
+          "leg": 1,
+          "at": [
+            28,
+            30
+          ],
+          "heading": "right",
+          "blocked": [
+            29,
+            30
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "east, over the brook to The Crossing",
+      "reached": true,
+      "steps": 33,
+      "snags": []
+    },
+    {
+      "name": "back from: east, over the brook to The Crossing",
+      "reached": true,
+      "steps": 33,
+      "snags": []
+    },
+    {
+      "name": "south, down the lane to Reedmere",
+      "reached": true,
+      "steps": 48,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            30,
+            32
+          ],
+          "heading": "down",
+          "blocked": [
+            30,
+            33
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 0,
+          "at": [
+            32,
+            33
+          ],
+          "heading": "down",
+          "blocked": [
+            32,
+            34
+          ],
+          "by": "npc greystone-vale/person-1"
+        },
+        {
+          "leg": 0,
+          "at": [
+            32,
+            35
+          ],
+          "heading": "left",
+          "blocked": [
+            31,
+            35
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 4,
+          "at": [
+            40,
+            53
+          ],
+          "heading": "down",
+          "blocked": [
+            40,
+            54
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: south, down the lane to Reedmere",
+      "reached": true,
+      "steps": 48,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            40,
+            58
+          ],
+          "heading": "up",
+          "blocked": [
+            40,
+            57
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 0,
+          "at": [
+            39,
+            48
+          ],
+          "heading": "up",
+          "blocked": [
+            39,
+            47
+          ],
+          "by": "sign greystone-vale/sign-3"
+        },
+        {
+          "leg": 4,
+          "at": [
+            30,
+            36
+          ],
+          "heading": "up",
+          "blocked": [
+            30,
+            35
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 4,
+          "at": [
+            32,
+            35
+          ],
+          "heading": "up",
+          "blocked": [
+            32,
+            34
+          ],
+          "by": "npc greystone-vale/person-1"
+        },
+        {
+          "leg": 4,
+          "at": [
+            32,
+            33
+          ],
+          "heading": "left",
+          "blocked": [
+            31,
+            33
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "to the Pokemon Center door",
+      "reached": true,
+      "steps": 12,
+      "snags": []
+    },
+    {
+      "name": "back from: to the Pokemon Center door",
+      "reached": true,
+      "steps": 12,
+      "snags": []
+    },
+    {
+      "name": "to the Mart door",
+      "reached": true,
+      "steps": 34,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            30,
+            32
+          ],
+          "heading": "down",
+          "blocked": [
+            30,
+            33
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 0,
+          "at": [
+            32,
+            33
+          ],
+          "heading": "down",
+          "blocked": [
+            32,
+            34
+          ],
+          "by": "npc greystone-vale/person-1"
+        },
+        {
+          "leg": 0,
+          "at": [
+            32,
+            35
+          ],
+          "heading": "left",
+          "blocked": [
+            31,
+            35
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: to the Mart door",
+      "reached": true,
+      "steps": 34,
+      "snags": [
+        {
+          "leg": 4,
+          "at": [
+            30,
+            36
+          ],
+          "heading": "up",
+          "blocked": [
+            30,
+            35
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 4,
+          "at": [
+            32,
+            35
+          ],
+          "heading": "up",
+          "blocked": [
+            32,
+            34
+          ],
+          "by": "npc greystone-vale/person-1"
+        },
+        {
+          "leg": 4,
+          "at": [
+            32,
+            33
+          ],
+          "heading": "left",
+          "blocked": [
+            31,
+            33
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "to the mill door",
+      "reached": true,
+      "steps": 47,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            30,
+            31
+          ],
+          "heading": "up",
+          "blocked": [
+            30,
+            30
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: to the mill door",
+      "reached": true,
+      "steps": 35,
+      "snags": [
+        {
+          "leg": 2,
+          "at": [
+            30,
+            26
+          ],
+          "heading": "down",
+          "blocked": [
+            30,
+            27
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 2,
+          "at": [
+            28,
+            25
+          ],
+          "heading": "down",
+          "blocked": [
+            28,
+            26
+          ],
+          "by": "sign greystone-vale/sign-5"
+        },
+        {
+          "leg": 2,
+          "at": [
+            28,
+            30
+          ],
+          "heading": "right",
+          "blocked": [
+            29,
+            30
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "to Ott’s cottage door on Old Row",
+      "reached": true,
+      "steps": 40,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            27,
+            31
+          ],
+          "heading": "left",
+          "blocked": [
+            26,
+            31
+          ],
+          "by": "npc pidgey"
+        }
+      ]
+    },
+    {
+      "name": "back from: to Ott’s cottage door on Old Row",
+      "reached": true,
+      "steps": 40,
+      "snags": [
+        {
+          "leg": 2,
+          "at": [
+            25,
+            31
+          ],
+          "heading": "right",
+          "blocked": [
+            26,
+            31
+          ],
+          "by": "npc pidgey"
+        },
+        {
+          "leg": 2,
+          "at": [
+            28,
+            30
+          ],
+          "heading": "right",
+          "blocked": [
+            29,
+            30
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "into the allotments, to the tool shed",
+      "reached": true,
+      "steps": 38,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            30,
+            31
+          ],
+          "heading": "up",
+          "blocked": [
+            30,
+            30
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 0,
+          "at": [
+            28,
+            29
+          ],
+          "heading": "up",
+          "blocked": [
+            28,
+            28
+          ],
+          "by": "npc greystone-vale/person-2"
+        },
+        {
+          "leg": 0,
+          "at": [
+            27,
+            25
+          ],
+          "heading": "up",
+          "blocked": [
+            27,
+            24
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: into the allotments, to the tool shed",
+      "reached": true,
+      "steps": 54,
+      "snags": [
+        {
+          "leg": 3,
+          "at": [
+            30,
+            26
+          ],
+          "heading": "down",
+          "blocked": [
+            30,
+            27
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "to the gatekeeper’s door",
+      "reached": false,
+      "steps": 28,
+      "snags": [
+        {
+          "leg": 2,
+          "at": [
+            55,
+            29
+          ],
+          "heading": "up",
+          "blocked": [
+            55,
+            28
+          ],
+          "by": "npc greystone-vale/person-19"
+        }
+      ]
+    },
+    {
+      "name": "back from: to the gatekeeper’s door",
+      "reached": true,
+      "steps": 30,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            36,
+            31
+          ],
+          "heading": "left",
+          "blocked": [
+            35,
+            31
+          ],
+          "by": "npc pidgey"
+        },
+        {
+          "leg": 1,
+          "at": [
+            32,
+            30
+          ],
+          "heading": "left",
+          "blocked": [
+            31,
+            30
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "to Mrs Lark’s door",
+      "reached": true,
+      "steps": 30,
+      "snags": []
+    },
+    {
+      "name": "back from: to Mrs Lark’s door",
+      "reached": true,
+      "steps": 30,
+      "snags": []
+    },
+    {
+      "name": "into the orchard",
+      "reached": true,
+      "steps": 44,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            30,
+            32
+          ],
+          "heading": "down",
+          "blocked": [
+            30,
+            33
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 0,
+          "at": [
+            32,
+            33
+          ],
+          "heading": "down",
+          "blocked": [
+            32,
+            34
+          ],
+          "by": "npc greystone-vale/person-1"
+        },
+        {
+          "leg": 0,
+          "at": [
+            32,
+            35
+          ],
+          "heading": "left",
+          "blocked": [
+            31,
+            35
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: into the orchard",
+      "reached": true,
+      "steps": 44,
+      "snags": [
+        {
+          "leg": 5,
+          "at": [
+            30,
+            36
+          ],
+          "heading": "up",
+          "blocked": [
+            30,
+            35
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 5,
+          "at": [
+            32,
+            35
+          ],
+          "heading": "up",
+          "blocked": [
+            32,
+            34
+          ],
+          "by": "npc greystone-vale/person-1"
+        },
+        {
+          "leg": 5,
+          "at": [
+            32,
+            33
+          ],
+          "heading": "left",
+          "blocked": [
+            31,
+            33
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "to the woodshed in the glade",
+      "reached": false,
+      "steps": 71,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            30,
+            32
+          ],
+          "heading": "down",
+          "blocked": [
+            30,
+            33
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 0,
+          "at": [
+            32,
+            33
+          ],
+          "heading": "down",
+          "blocked": [
+            32,
+            34
+          ],
+          "by": "npc greystone-vale/person-1"
+        },
+        {
+          "leg": 0,
+          "at": [
+            32,
+            35
+          ],
+          "heading": "left",
+          "blocked": [
+            31,
+            35
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 4,
+          "at": [
+            40,
+            53
+          ],
+          "heading": "down",
+          "blocked": [
+            40,
+            54
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 5,
+          "at": [
+            34,
+            53
+          ],
+          "heading": "left",
+          "blocked": [
+            33,
+            53
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: to the woodshed in the glade",
+      "reached": false,
+      "steps": 61,
+      "snags": [
+        {
+          "leg": 2,
+          "at": [
+            37,
+            56
+          ],
+          "heading": "right",
+          "blocked": [
+            38,
+            56
+          ],
+          "by": "npc greystone-vale/person-17"
+        },
+        {
+          "leg": 3,
+          "at": [
+            37,
+            51
+          ],
+          "heading": "up",
+          "blocked": [
+            37,
+            50
+          ],
+          "by": "npc psyduck"
+        },
+        {
+          "leg": 3,
+          "at": [
+            38,
+            46
+          ],
+          "heading": "up",
+          "blocked": [
+            38,
+            45
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 7,
+          "at": [
+            30,
+            36
+          ],
+          "heading": "up",
+          "blocked": [
+            30,
+            35
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 7,
+          "at": [
+            32,
+            35
+          ],
+          "heading": "up",
+          "blocked": [
+            32,
+            34
+          ],
+          "by": "npc greystone-vale/person-1"
+        },
+        {
+          "leg": 7,
+          "at": [
+            32,
+            33
+          ],
+          "heading": "left",
+          "blocked": [
+            31,
+            33
+          ],
+          "by": "solid"
+        }
+      ]
+    }
+  ],
+  "total": 51
+}

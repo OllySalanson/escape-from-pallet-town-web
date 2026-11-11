@@ -235,7 +235,12 @@ try {
   const tree = await readAll();
   console.log('     the small tree says:', JSON.stringify(tree).slice(0, 140));
   await page.screenshot(`${out}/08-the-cut-tree.png`);
-  check(await page.evaluate(`${WORLD}.collisionData[${at(16, 56).y}][${at(16, 56).x}]`), 'the Cut tree stands in the gap');
+  // This is the explorer run, which opens every door (`sealedQuarters.ts`), the Cut
+  // tree's with them: shut, it is held by `millbrook.test.ts` ('keeps Hazel's garden
+  // behind the Cut tree'), and asked here only of a run that has not opened it.
+  const cutOpen = await page.evaluate(`${WORLD}.openedDoorKeys().includes('greystone-vale/door-1')`);
+  if (cutOpen) console.log('     the explorer run has the Cut tree open, as it has every door');
+  else check(await page.evaluate(`${WORLD}.collisionData[${at(16, 56).y}][${at(16, 56).x}]`), 'the Cut tree stands in the gap');
 } finally {
   await browser.close();
 }
