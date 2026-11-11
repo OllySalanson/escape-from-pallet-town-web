@@ -119,7 +119,8 @@ try {
 
   // Choosing the Seel, which knows four moves, marks it and asks.
   await page.evaluate(`document.querySelector('[data-pupil="3"]').click()`);
-  await wait(300);
+  // TEACH answers nothing within RELEASE_ARMING_MS (500ms) of the card being chosen.
+  await wait(600);
   console.log(`after choosing: cursor on ${await focused()}, bar says: ${await page.evaluate(`document.querySelector('.teach-bar strong')?.textContent`)}`);
   await shot('4-chosen');
   await page.evaluate(`document.querySelector('[data-teach]').click()`);

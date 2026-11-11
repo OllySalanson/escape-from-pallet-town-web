@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRunTrainerEncounters } from './trainers';
+import { bossEncounters, bossesBeatenOnRaid, createRunTrainerEncounters } from './trainers';
 import { BULBASAUR, CHARMANDER, SQUIRTLE } from '../pokemon/species';
 import { PokemonType } from '../pokemon/PokemonType';
 import { getTypeEffectiveness } from '../pokemon/battle/typeChart';
@@ -80,5 +80,20 @@ describe('every authored trainer Pokemon', () => {
         .map((pokemon) => `${trainer.name}: ${pokemon.base.name} ${pokemon.level}`),
     );
     expect(harmless).toEqual([]);
+  });
+});
+
+describe('the keepers a raid has beaten', () => {
+  const trainers = createRunTrainerEncounters();
+  const [first, second] = bossEncounters(trainers);
+
+  it('are the bosses whose fights it won, and no ordinary trainer', () => {
+    const ordinary = trainers.find((trainer) => trainer.bossId === undefined)!;
+    expect(bossesBeatenOnRaid(trainers, new Set([first.trainer.id, ordinary.trainer.id]), [])).toEqual([first.bossId]);
+  });
+
+  it('leaves out a boss the raid deployed already past', () => {
+    const beaten = new Set([first.trainer.id, second.trainer.id]);
+    expect(bossesBeatenOnRaid(trainers, beaten, [first.bossId])).toEqual([second.bossId]);
   });
 });

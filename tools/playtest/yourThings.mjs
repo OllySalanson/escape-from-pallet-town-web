@@ -5,8 +5,9 @@
 //   - B in the yard opens the panel, every pocket shows, nothing can be dropped,
 //     and B closes it onto the harbour again;
 //   - TM40 is read to the partner at home, and the disc is gone from storage;
-//   - a Thunder Stone is used on the Pikachu, which evolves on a moment of its
-//     own that a key ends, and is a Raichu at home;
+//   - two quick ENTERs on a Thunder Stone open the list of who it is for and
+//     evolve nobody; then it is used on the Pikachu, which evolves on a moment
+//     of its own that a key ends, and is a Raichu at home;
 //   - B opens it in every room of the harbour, and in THE RAID ARENA's hall,
 //     where it shows the pack the rack has out.
 //
@@ -134,6 +135,9 @@ try {
   await click('[data-thing="tm40-aerial-ace"]');
   await shoot('03-teach-at-home');
   await click('[data-pupil="0"]');
+  // A press within RELEASE_ARMING_MS (500ms) of the question appearing is the
+  // second half of a double-tap, and answers nothing (`BagScene`, `ThingsScene`).
+  await wait(400);
   await click('[data-teach]');
   await wait(300);
   await shoot('04-taught');
@@ -143,9 +147,24 @@ try {
   if (!/Aerial Ace/i.test(moves)) fail('TM40 was not learned');
   if ((taught.stash.items['tm40-aerial-ace'] ?? 0) !== 0) fail('TM40 is still in storage');
 
-  // A stone used at home.
-  await click('[data-thing="thunder-stone"]');
+  // A stone used at home. Two quick ENTERs on its row open the list of who it
+  // is for and evolve nobody: the second is the double-tap's, and it lands on
+  // the first able Pokémon on a list nobody has seen (playtest of PRs 490-508).
+  await page.evaluate(`document.querySelector('#screens .things-menu [data-thing="thunder-stone"]').focus()`);
+  await press('Enter');
+  await press('Enter');
+  await wait(100);
+  if (!(await page.evaluate(`Boolean(document.querySelector('#screens .things-menu [data-target]'))`))) {
+    fail('a double ENTER on the stone did not leave the list of who it is for');
+  }
+  if (await page.evaluate(`Boolean(document.querySelector('#screens [data-evolve-moment]'))`)) {
+    fail('a double ENTER on the stone evolved somebody');
+  }
+  const unspent = await saved();
+  if ((unspent.stash.items['thunder-stone'] ?? 0) !== 1) fail('a double ENTER on the stone spent it');
+  console.log('a double ENTER on the stone opens who it is for and spends nothing');
   await shoot('05-stone-targets');
+  await wait(400);
   await click('[data-target="0"]');
   await wait(600);
   await shoot('06-evolved');

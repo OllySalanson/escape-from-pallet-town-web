@@ -100,7 +100,8 @@ try {
   );
   await wait(200);
   await clickFirst('[data-pupil]:not([aria-disabled])', 'somebody who can read TM11');
-  await wait(200);
+  // TEACH answers nothing within RELEASE_ARMING_MS (500ms) of the card being chosen.
+  await wait(600);
   await page.screenshot(`${outDir}/2-teach-sunny-day.png`);
   await clickFirst('[data-teach]:not([aria-disabled])', 'the TEACH button');
   await wait(400);

@@ -8,6 +8,7 @@ import { Stash } from '../stash/Stash';
 import { anyoneFitToRaid } from '../hub/recovery';
 import type { ItemId } from '../items/items';
 import { ERRANDS } from '../hub/errands';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../world/valeQuarters';
 
 /**
  * Every Pokemon in this file is a starter or a Pidgey, and FireRed puts all
@@ -564,6 +565,57 @@ describe('extraction report after a lost raid', () => {
       ['Pidgey', 6, true],
       ['Pidgey', 4, false],
     ]);
+  });
+
+  /**
+   * The playtest of PRs 490-508 (11 Nov 2026): after a wipe the GEAR line read
+   * "Charizard's Charcoal came home in the secure slot." Charizard was the
+   * partner, home in its own place; the secure slot held Haunter.
+   */
+  it('says gear on the partner came home in the partner\'s place, and gear in the container in the secure slot', () => {
+    const partner = new Pokemon(CHARMELEON, 16);
+    const secured = new Pokemon(PIDGEY, 6);
+    partner.giveHeldItem('charcoal');
+    secured.giveHeldItem('quick-claw');
+    const report = (secure: SecureSlot, party: readonly Pokemon[]) => {
+      const manager = startedRun({ party, items: [], secure });
+      const result = manager.resolveWipe();
+      return buildExtractionReport({
+        outcome: 'WIPED',
+        cause: 'defeated',
+        snapshot: manager.snapshot(),
+        durationMs: RAID_DURATION_MS,
+        lost: { pokemon: result.lostPokemon, items: result.lostItems },
+        saved: true,
+      }).gearSummary;
+    };
+
+    expect(report({ partner }, [partner])).toBe("Charmeleon's Charcoal came home with your partner, in its own place.");
+    expect(report({ pokemon: [secured] }, [secured])).toBe("Pidgey's Quick Claw came home in the secure slot.");
+    expect(report({ pokemon: [secured], partner }, [partner, secured])).toBe(
+      "Charmeleon's Charcoal came home with your partner, in its own place. Pidgey's Quick Claw came home in the secure slot.",
+    );
+  });
+
+  it('names gear that came home beside gear that went down', () => {
+    const partner = new Pokemon(CHARMELEON, 16);
+    const exposed = new Pokemon(PIDGEY, 4);
+    partner.giveHeldItem('charcoal');
+    exposed.giveHeldItem('life-orb');
+    const manager = startedRun({ party: [partner, exposed], items: [], secure: { partner } });
+    const result = manager.resolveWipe();
+    const report = buildExtractionReport({
+      outcome: 'WIPED',
+      cause: 'defeated',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      lost: { pokemon: result.lostPokemon, items: result.lostItems },
+      saved: true,
+    });
+
+    expect(report.gearSummary).toBe(
+      "Pidgey's Life Orb went down with the raid. Gear is carried by the trainers holding the gates, and each of them has it once. Charmeleon's Charcoal came home with your partner, in its own place.",
+    );
   });
 
   it('says the partner came home even when the container went out empty', () => {
@@ -1359,5 +1411,47 @@ describe('what the raid had at stake', () => {
     expect(report.summary).toBe(
       "The extraction window closed on you. You lost Bulbasaur and Bulbasaur's Leftovers. Nothing was protected.",
     );
+  });
+});
+
+/**
+ * The playtest of PRs 490-508 (11 Nov 2026): a raid that won the SOUL BADGE
+ * ended on "1 trainer beaten" and nothing else. Beating a gym leader is the
+ * biggest thing a raid can do, so the screen that sums the raid up names it.
+ */
+describe('a badge won on the raid', () => {
+  const ended = (outcome: 'ESCAPED' | 'WIPED', bossesBeaten?: readonly string[]) => {
+    const manager = startedRun({ party: [new Pokemon(CHARMANDER, 5)], items: [] });
+    manager.registerTrainerDefeat();
+    if (outcome === 'ESCAPED') {
+      manager.resolveEscape();
+    } else {
+      manager.resolveWipe();
+    }
+    return buildExtractionReport({
+      outcome,
+      ...(outcome === 'WIPED' ? { cause: 'defeated' as const } : {}),
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      ...(bossesBeaten ? { bossesBeaten } : {}),
+      saved: true,
+    });
+  };
+
+  it('is named, with what its keeper no longer holds', () => {
+    expect(ended('ESCAPED', [KOGA_BOSS_ID]).badgesWon).toEqual([
+      'You won the SOUL BADGE! Koga no longer holds every road into the Marsh.',
+    ]);
+  });
+
+  it('is named on a lost raid too, because the badge was won when the leader fell', () => {
+    expect(ended('WIPED', [MISTY_BOSS_ID]).badgesWon).toEqual([
+      'You won the CASCADE BADGE! Misty no longer holds the jetty and the reed trail into the Coast.',
+    ]);
+  });
+
+  it('says nothing about badges on a raid that won none', () => {
+    expect(ended('ESCAPED').badgesWon).toBeUndefined();
+    expect(ended('ESCAPED', []).badgesWon).toBeUndefined();
   });
 });

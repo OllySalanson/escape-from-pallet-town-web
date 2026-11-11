@@ -141,6 +141,8 @@ try {
     await until(`${sceneIs('things')} && !!document.querySelector('[data-thing="thunder-stone"]')`, 'YOUR THINGS');
     await page.evaluate(`document.querySelector('[data-thing="thunder-stone"]').click()`);
     await until(`!!document.querySelector('[data-target="0"]')`, 'who it goes to');
+    // A press within RELEASE_ARMING_MS (500ms) of the list appearing evolves nobody.
+    await wait(600);
     await page.evaluate(`document.querySelector('[data-target="0"]').click()`);
     // Mid-flicker, and then once it has settled on the one it became.
     await wait(500);

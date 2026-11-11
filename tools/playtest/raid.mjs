@@ -389,7 +389,9 @@ try {
       `(() => { const card = document.querySelector('[data-pupil]:not([aria-disabled])'); if (!card) return false; card.click(); return true; })()`,
       `somebody who can read ${itemId}`,
     );
-    await wait(150);
+    // TEACH answers nothing within RELEASE_ARMING_MS (500ms) of the card being
+    // chosen: that is the second half of a double-tap (`BagScene.askedAt`).
+    await wait(600);
     await until(
       `(() => { const b = document.querySelector('[data-teach]:not([aria-disabled])'); if (!b) return false; b.click(); return true; })()`,
       'the TEACH button',

@@ -25,6 +25,7 @@ import { pixelScreen } from '../ui/pixelUi';
 import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
 import { canChoosePupil, pupilOutcome, pupilVerdict, teachBody } from '../ui/teachScreen';
 import { EVOLVE_MOMENT_ARMING_MS, evolveMomentBody, type EvolveMomentView } from '../ui/evolveMoment';
+import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
 import { homeUseOf, pocketJump, stoneTargetsBody, thingsBody, whereItIsUsed } from '../ui/thingsView';
 
 export interface ThingsSceneData {
@@ -72,6 +73,13 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
    * the list says afterwards is its `said`.
    */
   private moment: (EvolveMomentView & { readonly itemId: string; readonly openedAt: number }) | undefined;
+  /**
+   * When the question that spends something for good last appeared: the list
+   * of who a stone is for, or TEACH once a pupil is chosen. Each is drawn with
+   * the cursor already on an answer, so the second press of the double-tap
+   * that opened it must not be what answers it (`RELEASE_ARMING_MS`).
+   */
+  private askedAt = Number.NEGATIVE_INFINITY;
   private readonly saveManager = new SaveManager();
 
   public constructor() {
@@ -86,6 +94,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     this.using = null;
     this.status = undefined;
     this.moment = undefined;
+    this.askedAt = Number.NEGATIVE_INFINITY;
     this.reload();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.overlay?.destroy();
@@ -362,6 +371,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     }
     audioManager.play('select');
     this.using = use === 'teach' ? { kind: 'teach', itemId, chosen: null } : { kind: 'evolve', itemId };
+    this.askedAt = this.time.now;
     this.render();
   }
 
@@ -394,6 +404,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     }
     audioManager.play('select');
     this.using = { kind: 'teach', itemId: item.id, chosen: index };
+    this.askedAt = this.time.now;
     this.render(['[data-teach]']);
     requestAnimationFrame(() => this.overlay?.root.querySelector('.teach-pupil.is-selected')?.scrollIntoView({ block: 'nearest' }));
   }
@@ -413,6 +424,9 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
    * opens, and only a move actually forgotten writes anything.
    */
   private teach(): void {
+    if (this.askedTooRecently()) {
+      return;
+    }
     const using = this.using;
     const item = using?.kind === 'teach' ? getItemById(using.itemId) : undefined;
     const machine = item ? machineForItem(item) : undefined;
@@ -463,6 +477,9 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
 
   /** A stone on one of the player's Pokémon: it evolves, with the fanfare and the new cry, or nothing is spent. */
   private useStoneOn(index: number): void {
+    if (this.askedTooRecently()) {
+      return;
+    }
     const using = this.using;
     const item = using?.kind === 'evolve' ? getItemById(using.itemId) : undefined;
     const target = item ? this.stoneTargets(item)[index] : undefined;
@@ -518,6 +535,11 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     }
     this.status = message;
     this.render([`[data-thing="${item.id}"]`]);
+  }
+
+  /** Whether a press is the second half of the double-tap that asked the question it would answer. */
+  private askedTooRecently(): boolean {
+    return this.time.now - this.askedAt < RELEASE_ARMING_MS;
   }
 
   /** Back to the list from the evolution moment, with its line said there. */

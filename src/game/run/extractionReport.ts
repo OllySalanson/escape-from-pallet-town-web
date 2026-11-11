@@ -17,6 +17,7 @@ import { hunterFleePenaltyMs } from './fleePenalty';
 import { survivingSecureItems } from './raidSettlement';
 import { formatElapsedClock, formatRaidClock } from './raidClock';
 import { errandForItem } from '../hub/errands';
+import { BADGES } from '../base/badgeCase';
 
 /**
  * The one description of how a raid ended, shared by every way it can end.
@@ -115,6 +116,11 @@ export interface ReportGear {
   /** Who carried it out of the raid, or who it went down with. */
   readonly holder: string;
   readonly fate: 'kept' | 'lost' | 'found';
+  /**
+   * Held by the partner when a lost raid ended, so it came home in the
+   * partner's own place rather than in the secure container. Absent otherwise.
+   */
+  readonly onPartner?: true;
 }
 
 /**
@@ -224,6 +230,13 @@ export interface ExtractionReport {
    */
   readonly beatenBy?: string;
   /**
+   * A line for every keeper's badge the raid won, in the badge case's order:
+   * the badge, and what its keeper no longer holds. Beating one is the biggest
+   * thing a raid can do, and it is won when they fall, so a raid lost
+   * afterwards has still won it. Absent when the raid won none.
+   */
+  readonly badgesWon?: readonly string[];
+  /**
    * The secure container went in as the autofill left it, so what it held was
    * not a call the player made. Absent reads as chosen.
    */
@@ -298,6 +311,12 @@ export interface ExtractionReportInput {
    */
   readonly fitToRaid?: boolean;
   readonly saved: boolean;
+  /**
+   * The keepers (`trainers.ts`' `bossId`) this raid beat, whose badges it won.
+   * The raid's own plan never stands up a keeper already beaten, so every one
+   * is new.
+   */
+  readonly bossesBeaten?: readonly string[];
   /** See `ExtractionReport.settledElsewhere`. */
   readonly settledElsewhere?: boolean;
 }
@@ -462,6 +481,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     ...(input.cause === 'defeated' ? { fallen: fallenParty(snapshot, input.lastStand) } : {}),
     ...(input.cause === 'defeated' && input.lostTo ? { lostTo: input.lostTo } : {}),
     ...(input.cause === 'defeated' && input.beatenBy ? { beatenBy: input.beatenBy } : {}),
+    ...badgeLines(input.bossesBeaten ?? []),
     ...(snapshot.secureFilledForYou ? { secureFilledForYou: true } : {}),
     baseNote: escaped ? null : wipedBaseNote(input.fitToRaid ?? true),
     saved: input.saved,
@@ -763,6 +783,7 @@ function partyGear(snapshot: RunSnapshot, escaped: boolean): ReportGear[] {
         : snapshot.deployedHeldItems[index] === member.heldItemId
           ? ('kept' as const)
           : ('found' as const),
+      ...(!escaped && member === snapshot.secureSlot.partner ? { onPartner: true as const } : {}),
     }];
   });
 }
@@ -804,15 +825,33 @@ function gearSummary(gear: readonly ReportGear[], escaped: boolean): string | nu
   }
   const lost = gear.filter((piece) => piece.fate === 'lost');
   const found = gear.filter((piece) => piece.fate === 'found');
-  if (lost.length > 0) {
-    return `${listNames(lost)} went down with the raid. Gear is carried by the trainers holding the gates, and each of them has it once.`;
-  }
   if (!escaped) {
-    return `${listNames(gear)} came home in the secure slot.`;
+    // A lost raid brings gear home two ways, and they are two places: on the
+    // partner, in its own place, and on whoever was in the container.
+    const kept = gear.filter((piece) => piece.fate !== 'lost');
+    const onPartner = kept.filter((piece) => piece.onPartner);
+    const secured = kept.filter((piece) => !piece.onPartner);
+    return [
+      lost.length > 0
+        ? `${listNames(lost)} went down with the raid. Gear is carried by the trainers holding the gates, and each of them has it once.`
+        : '',
+      onPartner.length > 0 ? `${listNames(onPartner)} came home with your partner, in its own place.` : '',
+      secured.length > 0 ? `${listNames(secured)} came home in the secure slot.` : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
   }
   return found.length > 0
     ? `${listNames(found)} came out of the field with you.`
     : `${listNames(gear)} came home still held.`;
+}
+
+/** The badges `bossesBeaten` won, in the case's order, as the verdict window says them. */
+function badgeLines(bossesBeaten: readonly string[]): { readonly badgesWon?: readonly string[] } {
+  const won = BADGES.filter((badge) => bossesBeaten.includes(badge.bossId));
+  return won.length === 0
+    ? {}
+    : { badgesWon: won.map((badge) => `You won the ${badge.name}! ${badge.keeper} no longer holds ${badge.held}.`) };
 }
 
 function listNames(gear: readonly ReportGear[]): string {

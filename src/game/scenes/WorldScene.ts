@@ -288,6 +288,7 @@ import type { RaidCarriage } from '../run/raidCarriage';
 import type { BattleSceneData } from './BattleScene';
 import {
   bossEncounters,
+  bossesBeatenOnRaid,
   bossGearDropped,
   createRunTrainerEncounters,
   withoutDefeatedBosses,
@@ -1414,6 +1415,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // interruption so the key already held walks the player at the door.
       this.interrupt(openedGates);
     }
+  }
+
+  /** The keepers this raid has beaten, for the result screen to name their badges. */
+  private bossesBeatenThisRaid(): readonly string[] {
+    return bossesBeatenOnRaid(this.trainerEncounters, this.defeatedTrainerIds, this.runSession?.plan?.defeatedBosses ?? []);
   }
 
   /**
@@ -7985,6 +7991,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         exitLabel: point.label,
         ...(closeCall ? { closeCall } : {}),
         leftBehind: this.prizesLeftBehindNow(),
+        bossesBeaten: this.bossesBeatenThisRaid(),
         // The contract's payout is granted by the save rather than by the run,
         // so the report is handed exactly what the stash received. Field loot
         // arrives as the settlement's own positive delta rather than as the
@@ -8624,6 +8631,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         snapshot,
         durationMs: snapshot.durationMs,
         leftBehind: this.prizesLeftBehindNow(),
+        bossesBeaten: this.bossesBeatenThisRaid(),
         lost: { pokemon: result.lostPokemon, items: wipe.destroyedItems },
         carriedOut,
         fitToRaid: anyoneFitToRaid(new SaveManager().load()?.stash),

@@ -102,6 +102,21 @@ export const bossEncounters = (
   );
 
 /**
+ * The keepers a raid has beaten, whose badges it won: every boss among its
+ * trainers whose fight it won, less any it deployed already past. The result
+ * screen names their badges; the gates read the same fact off `WorldScene`.
+ */
+export function bossesBeatenOnRaid(
+  trainers: readonly RunTrainerEncounter[],
+  defeatedTrainerIds: ReadonlySet<string>,
+  beatenBefore: readonly string[],
+): readonly string[] {
+  return bossEncounters(trainers)
+    .filter((boss) => defeatedTrainerIds.has(boss.trainer.id) && !beatenBefore.includes(boss.bossId))
+    .map((boss) => boss.bossId);
+}
+
+/**
  * A raid's trainers as this save meets them: without the bosses already
  * beaten, and without a boss who will not fight it yet. A boss is beaten once,
  * for good: what is left where they stood is the open gate, which the map
