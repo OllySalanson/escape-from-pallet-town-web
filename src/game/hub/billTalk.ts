@@ -27,9 +27,10 @@ import {
  * own voice, with the rules `trader.ts` already holds him to. Nothing is worked
  * out here that `trader.ts` does not decide; this is only how he says it.
  *
- * A Potion for money is an ordinary purchase, already rationed, so YES is under
- * the cursor. A barter and a berth are spent for good, so they open on NOT NOW,
- * as `HubScene.armedDeal`'s do.
+ * Every deal opens on NOT NOW, as `HubScene.armedDeal`'s do: found goods, money
+ * and the trip's ration are all spent for good, and the key that read his last
+ * line away is still under the finger. A Potion opened on YES, so a double
+ * press on his price bought it (the midgame bug hunt of 11 Nov 2026).
  */
 
 /** Something on his shelves: a deal `trader.ts` knows. */
@@ -114,6 +115,7 @@ function stockQuote(counter: TraderCounter, itemId: string): BillQuote {
       return {
         lines: [what, `${price}, and ${rationLeft(counter)} left for you this trip.`],
         question: `Buy one for ${price}?`,
+        spendsForGood: true,
       };
   }
 }

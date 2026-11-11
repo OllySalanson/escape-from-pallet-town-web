@@ -294,6 +294,15 @@ const WALL_CARD_GAP = 4;
 /** What `traderArmed` holds for the berth, which is the one deal with no id. */
 const BERTH_DEAL = 'berth';
 
+/**
+ * What `traderArmed` holds for a shelf row: the item under a prefix of its
+ * own, because an item id and a barter id are two namespaces and the one
+ * armed field must never read one as the other.
+ */
+function stockDeal(itemId: string): string {
+  return `stock:${itemId}`;
+}
+
 /** How often a held raid room is asked who is in it while the player gets ready. */
 const ROOM_TICK_MS = 250;
 
@@ -358,10 +367,12 @@ export class HubScene extends Phaser.Scene {
    */
   private workshopArmed: string | undefined;
   /**
-   * The deal on the boat asked but not yet struck: a barter id, or `BERTH_DEAL`.
+   * The deal on the boat asked but not yet struck: a barter id, `BERTH_DEAL`,
+   * or a shelf row's `stockDeal`.
    *
-   * Found goods and a berth are spent for good, so neither goes through on one
-   * press. It is one at a time, because arming a second disarms the first.
+   * Found goods, money and the trip's ration are all spent for good, so nothing
+   * at his counter goes through on one press. It is one at a time, because
+   * arming a second disarms the first.
    */
   private traderArmed: string | undefined;
   /**
@@ -1083,6 +1094,31 @@ export class HubScene extends Phaser.Scene {
     this.render();
   }
 
+  /**
+   * Answers the asked deal with KEEP THEM: nothing is spent, and the cursor goes
+   * back to the row that asked rather than to the top of the list, because the
+   * player was choosing that one and may only have changed the count.
+   */
+  private putDealDown(): void {
+    const traded = this.traderArmed;
+    const row =
+      this.workshopArmed !== undefined
+        ? `[data-outfit="${this.workshopArmed}"]`
+        : traded === undefined
+          ? undefined
+          : traded === BERTH_DEAL
+            ? '[data-berth]'
+            : traded.startsWith(stockDeal(''))
+              ? `[data-buy="${traded.slice(stockDeal('').length)}"]`
+              : `[data-barter="${traded}"]`;
+    this.workshopArmed = undefined;
+    this.traderArmed = undefined;
+    this.render();
+    if (row) {
+      this.overlay.focus(row);
+    }
+  }
+
   private buildUpgrade(upgradeId: string): void {
     this.workshopArmed = undefined;
     const result = this.saveManager.buildWorkshopUpgrade(upgradeId);
@@ -1421,9 +1457,7 @@ export class HubScene extends Phaser.Scene {
       event.preventDefault();
       audioManager.play('cancel');
       this.swapArmed = false;
-      this.workshopArmed = undefined;
-      this.traderArmed = undefined;
-      this.render();
+      this.putDealDown();
       return;
     }
     // Every room has a way out now, Oak's Lab included, and `goBack` knows
@@ -1699,16 +1733,24 @@ export class HubScene extends Phaser.Scene {
     on('[data-outfit-confirm]', (button, event) => {
       if (!this.clickedTooSoon(event, '[data-deal-cancel]')) this.buildUpgrade(button.dataset.outfitConfirm!);
     });
-    on('[data-buy]', (button) => {
-      const count = this.counterCounts.get(`buy:${button.dataset.buy}`) ?? 1;
-      this.counterCounts.delete(`buy:${button.dataset.buy}`);
-      this.dealAtCounter(() => this.saveManager.buyTraderStock(button.dataset.buy!, count));
+    // Money and the trip's ration are spent for good too, so a shelf row asks
+    // before it buys, as the barters below do: a double ENTER on a Potion
+    // bought two and spent a TRUSTED save's whole ration while the status line
+    // said "Bought one" (the midgame bug hunt of 11 Nov 2026).
+    on('[data-buy]', (button) => rerender(() => { this.traderArmed = stockDeal(button.dataset.buy!); this.armRelease(); }));
+    on('[data-buy-confirm]', (button, event) => {
+      if (this.clickedTooSoon(event, '[data-deal-cancel]')) return;
+      const itemId = button.dataset.buyConfirm!;
+      const count = this.counterCounts.get(`buy:${itemId}`) ?? 1;
+      this.counterCounts.delete(`buy:${itemId}`);
+      this.traderArmed = undefined;
+      this.dealAtCounter(() => this.saveManager.buyTraderStock(itemId, count));
     });
     // Found goods are gone for good, so the row asks before it takes them: the
     // first press arms the deal and the second is a different button, with the
     // cursor on the one that keeps them (`armedDeal`).
     on('[data-barter]', (button) => rerender(() => { this.traderArmed = button.dataset.barter; this.armRelease(); }));
-    on('[data-deal-cancel]', () => rerender(() => { this.traderArmed = undefined; this.workshopArmed = undefined; }));
+    on('[data-deal-cancel]', () => this.putDealDown());
     on('[data-barter-confirm]', (button, event) => {
       if (this.clickedTooSoon(event, '[data-deal-cancel]')) return;
       const barterId = button.dataset.barterConfirm!;
@@ -3312,8 +3354,21 @@ export class HubScene extends Phaser.Scene {
             short: offer.refusal === 'money-short' || moneyHeld(this.stash) < offer.item.price * count,
           },
         ]);
+        if (open && this.traderArmed === stockDeal(offer.item.itemId)) {
+          const total = formatMoney(offer.item.price * count);
+          return this.armedDeal({
+            id: offer.item.itemId,
+            icon: itemIcon(offer.item.itemId, name),
+            name: count > 1 ? `${name} ×${count}` : name,
+            question: `Pay ${total} for ${count === 1 ? withArticle(name) : `${count} ${name}s`}?${count === left ? ' It is the rest of this trip.' : ''}`,
+            confirm: `data-buy-confirm="${offer.item.itemId}"`,
+            confirmLabel: 'Buy',
+            confirmHelp: `Spends ${total} of your ${formatMoney(moneyHeld(this.stash))}.`,
+            tone: 'primary',
+          });
+        }
         if (open) {
-          const help = `Buy ${count} ${name} for ${formatMoney(offer.item.price * count)}. ${limit === 1 ? 'That is all this trip allows' : `Up to ${limit} this trip`}.`;
+          const help = `Buy ${count} ${name} for ${formatMoney(offer.item.price * count)}. ${limit === 1 ? 'That is all this trip allows' : `Up to ${limit} this trip`}. He asks again.`;
           // The row is a pair, because a quantity is a control of its own: the
           // row still buys, and the selector beside it says how many. What the
           // thing *does* is the row's own line either way - a shelf that only
@@ -3533,8 +3588,11 @@ export class HubScene extends Phaser.Scene {
    * own: the row becomes the question and two buttons, with the cursor on the
    * one that changes nothing - because the key that armed the deal is still
    * under the player's finger, which is why `trainerChallengePrompt` opens on
-   * BACK AWAY. Nothing about the shelf is armed: a Potion for Pokedollars is an ordinary
-   * purchase, already rationed, and asking twice for one would be friction.
+   * BACK AWAY. The shelf asks too: a Potion for Pokedollars is an ordinary
+   * purchase, but the money and the trip's ration are spent for good, and a
+   * shelf that bought on the press bought twice on a double ENTER. Its BUY is
+   * the plain primary button, because spending money is not a loss the way
+   * handing over found goods is.
    */
   private armedDeal(deal: {
     readonly id: string;
@@ -3544,8 +3602,9 @@ export class HubScene extends Phaser.Scene {
     readonly confirm: string;
     readonly confirmLabel: string;
     readonly confirmHelp: string;
+    readonly tone?: 'danger' | 'primary';
   }): string {
-    return `<div class="px-pair px-arming" data-shows="${deal.id}"><div class="px-row has-icon px-tall">${deal.icon}<span class="px-row-main"><strong class="px-name">${deal.name}</strong><small class="px-wrap px-warning">${deal.question}</small></span></div><div class="px-bar-actions"><button class="px-window px-button" data-deal-cancel data-cursor-start data-shows="${deal.id}" data-help="Nothing changes.">Keep them</button><button class="px-window px-button is-danger" ${deal.confirm} data-shows="${deal.id}" data-help="${deal.confirmHelp}">${deal.confirmLabel}</button></div></div>`;
+    return `<div class="px-pair px-arming" data-shows="${deal.id}"><div class="px-row has-icon px-tall">${deal.icon}<span class="px-row-main"><strong class="px-name">${deal.name}</strong><small class="px-wrap px-warning">${deal.question}</small></span></div><div class="px-bar-actions"><button class="px-window px-button" data-deal-cancel data-cursor-start data-shows="${deal.id}" data-help="Nothing changes.">Keep them</button><button class="px-window px-button is-${deal.tone ?? 'danger'}" ${deal.confirm} data-shows="${deal.id}" data-help="${deal.confirmHelp}">${deal.confirmLabel}</button></div></div>`;
   }
 
   /**

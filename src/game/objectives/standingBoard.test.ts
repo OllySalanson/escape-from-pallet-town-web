@@ -6,7 +6,7 @@ import { placedAreaAt } from '../world/mapAreas';
 import { evolutionFamily } from '../pokemon';
 import { STARTER_SPECIES } from '../stash/Stash';
 import { generateRunPlan, frontDoorFor, insertionsOn } from '../run/runGeneration';
-import { extractionPointsOn } from '../world/extractionPoints';
+import { EXTRACTION_UNLOCK_DELAY_MS, extractionPointsOn, isExtractionAvailable } from '../world/extractionPoints';
 import { gateBossIds, gatesForMap } from '../world/gates';
 import { HUNTER_TIERS } from '../world/hunter';
 import { stepDistances } from '../world/mapStructure';
@@ -137,6 +137,23 @@ describe("a save's first jobs", () => {
             expect(steps[marker.position.y][marker.position.x], contract.id).toBeGreaterThanOrEqual(NEAR_JOB_LEAST_WALK);
             expect(map.areas ? placedAreaAt(map.areas, marker.position)?.id : undefined, contract.id).toBeUndefined();
           }
+        }
+      }
+    }
+  });
+
+  /**
+   * The midgame bug hunt of 11 Nov 2026: dropped in at FARMHOUSE, the briefing
+   * said the cache was "326 steps from Greystone Vale" - the front door, where
+   * the player was not. A board is dealt before the landing is chosen, so no
+   * briefing line counts steps; the field guide measures from where they stand.
+   */
+  it('counts no steps in a briefing, because it is dealt before the landing is chosen', () => {
+    for (const seed of SEEDS.slice(0, 40)) {
+      for (const banked of [0, NEAR_JOBS, 7]) {
+        for (const contract of standingOffers(seed, progressWith({ standingContractsBanked: banked }))) {
+          // A walk measured from the case to its exit is the same wherever the raid lands.
+          expect(contract.briefing.join(' '), contract.id).not.toMatch(/\d+ steps? from (?!the case)/);
         }
       }
     }
@@ -290,6 +307,33 @@ describe('every standing contract', () => {
       expect(exit, contract.id).toBeDefined();
       const bosses = contract.sealedBehind ? EVERY_BOSS : defeatedBosses;
       expect(reaches(walkFromFrontDoor(contract.mapId, bosses), exit!.position), contract.id).toBe(true);
+    }
+  });
+
+  /**
+   * The midgame bug hunt of 11 Nov 2026: a dispatch named SMUGGLERS' BOAT,
+   * which opens at 2:30 on a clock healing debt can cut to 2:30, and LINESMEN'S
+   * TRACK, sealed until the RELAY MAST is worked, a stop the job never asked
+   * for. An exit a job names opens for anybody, by its own rule, no later than
+   * the wait every outer exit has - on the boards the game deals the vale, and
+   * on every board drawn here.
+   */
+  it('names only an exit that opens on its own, early: no landmark, no late hour', () => {
+    const vale = (bosses: readonly string[], banked: number): StandingBoardProgress => ({
+      ...progressWith({ defeatedBosses: bosses, standingContractsBanked: banked }),
+      completedContracts: [],
+      unlockedInsertions: [],
+    });
+    const valeBoards = [[], ['vale-gym-misty'], ['vale-gym-misty', 'vale-gym-koga']].flatMap((bosses) =>
+      Array.from({ length: 60 }, (_, banked) => standingBoard(vale(bosses, banked))).flat(),
+    );
+    const named = [...valeBoards, ...everyBoard().map(({ contract }) => contract)].filter(
+      (contract) => contract.requiredExitLabel !== undefined,
+    );
+    expect(named.some((contract) => contract.mapId === 'greystone-vale')).toBe(true);
+    for (const contract of named) {
+      const exit = extractionPointsOn(contract.mapId).find((point) => point.label === contract.requiredExitLabel)!;
+      expect(isExtractionAvailable(exit, EXTRACTION_UNLOCK_DELAY_MS, new Set()), `${contract.id} ${exit.label}`).toBe(true);
     }
   });
 

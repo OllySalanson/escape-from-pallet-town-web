@@ -201,7 +201,10 @@ to the tally on his wall, which is the whole ladder, for `bills-cottage` to his 
 which is the whole list, and for `oaks-lab` it stops on the mat with nothing said
 (`openFriendRoom` is Oak's question from there). `inRoomTalk.mjs` plays all of that
 talk, and the radio, as a player meets it; `workshopBill.mjs` plays Brock's chalk
-and Bill's shelves, by keys and by mouse.
+and Bill's shelves, by keys and by mouse; `billShelf.mjs <url> <dir> [--port=N]
+[--before]` presses twice, three frames apart, at both of Bill's shelves - his
+cottage's Potion and his whole list - and fails on anything bought by the double
+press (`docs/screens/midgame-hunt-fixes/`).
 
     await walkIntoBase(page, 'pokemon-centre');   // brocks-workshop | bills-cottage | raid-arena
 

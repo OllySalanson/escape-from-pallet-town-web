@@ -279,7 +279,12 @@ function locationHint(
   }
 
   const heading = context.towards?.(nextStop) ?? nextStop;
-  return `${worldMapName(contract.mapId)}. The next stop is ${directionTo(context.currentPosition, heading)}`;
+  const direction = directionTo(context.currentPosition, heading);
+  // Measured from here, by the walk: a job is dealt before the landing is
+  // chosen, so the briefing cannot say how far it is from wherever this is.
+  const steps = context.stepsTo?.(nextStop);
+  const away = steps === undefined || steps === 0 ? '' : `, ${steps} ${steps === 1 ? 'step' : 'steps'} away`;
+  return `${worldMapName(contract.mapId)}. The next stop is ${direction}${away}`;
 }
 
 function directionTo(from: GridPosition, to: GridPosition): string {

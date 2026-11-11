@@ -278,7 +278,8 @@ try {
   }, 'bills-cottage');
   await shot('12-partner-goods');
 
-  // A Potion: YES under the cursor, and he can sell another at once.
+  // A Potion: NOT NOW under the cursor, as every deal of his is (a double
+  // press on his price used to buy it), and he can sell another at once.
   const potion = await thing(`(each) => each.good?.itemId === 'potion'`);
   await standFacing({ x: potion.tiles[0].x, y: potion.tiles[0].y + 1 }, potion.tiles[0]);
   expect('the hint names it', (await base('b.hintShown')) === '[SPACE] POTION', await base('b.hintShown'));
@@ -287,8 +288,9 @@ try {
   console.log(`  potion: ${await said()}`);
   await shot('13-bill-names-a-potion');
   await readOn();
-  expect('a purchase starts on YES', (await asked()) && (await answer()) === 0);
+  expect('a purchase starts on NOT NOW', (await asked()) && (await answer()) === 1);
   await shot('14-bill-asks');
+  await press('ArrowLeft', 200);
   await press('Space', 400);
   console.log(`  bought: ${await said()}`);
   expect('it is bought', (await saved('save.stash.items.money')) === money - 120);

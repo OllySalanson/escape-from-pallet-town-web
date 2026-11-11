@@ -107,6 +107,33 @@ describe('objective field guide', () => {
     expect(laterGuide.hints).toHaveLength(2);
   });
 
+  it('says how far the next stop is by the walk from where the player stands, not from the front door', () => {
+    const session = createFirstContractSession();
+    const map = getWorldMap('floodplain-relay', []);
+    const stop = session.plan!.contract!.markers[0].position;
+    const hintFrom = (position: { x: number; y: number }) =>
+      buildObjectiveGuide(session, {
+        currentMapId: 'floodplain-relay',
+        currentPosition: position,
+        activatedPoiIds: new Set(),
+        stepsTo: walkingStepsFrom(position, map.collision, map.links),
+      }).hints[0];
+
+    const door = RUN_INSERTIONS['floodplain-relay'].position;
+    const fromDoor = walkingStepsFrom(door, map.collision, map.links)(stop)!;
+    expect(hintFrom(door)).toMatch(new RegExp(`The next stop is to the \\w+, ${fromDoor} steps away\\.$`));
+    // A tile further along the walk is that much nearer, and says so.
+    const nearer = { x: stop.x, y: stop.y + 1 };
+    const fromNearer = walkingStepsFrom(nearer, map.collision, map.links)(stop);
+    if (fromNearer !== undefined && fromNearer > 0) {
+      expect(hintFrom(nearer)).toContain(`${fromNearer} ${fromNearer === 1 ? 'step' : 'steps'} away`);
+    }
+    // Unmeasured, it says only the heading, as it always has.
+    expect(
+      buildObjectiveGuide(session, { currentMapId: 'floodplain-relay', currentPosition: door, activatedPoiIds: new Set() }).hints[0],
+    ).not.toContain('away');
+  });
+
   it('offers both routes to the field kit before it is recovered, then only the extraction', () => {
     const session = createFirstContractSession();
     // Asked at the front door, and then standing on the kit - both read from the
