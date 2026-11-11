@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { blocksFor, BASE_SECURE_GRID, gridCells, packGridFor, RAID_BAG_GRID, stackSizeOf } from '../items';
-import { CHARMANDER, CHARMELEON, IVYSAUR, Pokemon, SPECIES_BY_ID, SQUIRTLE } from '../pokemon';
+import { CHARIZARD, CHARMANDER, CHARMELEON, IVYSAUR, Pokemon, SPECIES_BY_ID, SQUIRTLE } from '../pokemon';
 import { createStartingStash, Stash } from '../stash';
-import { DeploymentFlow, MEDICINE_PREPACK_SHARE, BALLS_PREPACKED } from './deploymentFlow';
+import { secureGrid } from '../objectives/contracts';
+import { RETIRED_MAPS, retireMapsForTests } from '../world/mapRoster';
+import { secureGrowthLeft } from './secureGrowth';
+import { BASE_LOADOUT_CAPACITY, DeploymentFlow, MEDICINE_PREPACK_SHARE, BALLS_PREPACKED } from './deploymentFlow';
 
 function seedFlow(): { flow: DeploymentFlow; stash: Stash } {
   const stash = createStartingStash();
@@ -313,6 +316,7 @@ describe('deployment flow', () => {
     // nothing else - which is its own test, below.
     const flow = new DeploymentFlow(stash, 'floodplain-relay', {
       pokemon: 1,
+      secureGrowth: BASE_LOADOUT_CAPACITY.secureGrowth,
       secureGrid: { width: 3, height: 2 },
     });
 
@@ -401,7 +405,7 @@ describe('deployment flow', () => {
     const flow = new DeploymentFlow(
       stash,
       'floodplain-relay',
-      { pokemon: 1, secureGrid: { width: 3, height: 2 } },
+      { pokemon: 1, secureGrowth: BASE_LOADOUT_CAPACITY.secureGrowth, secureGrid: { width: 3, height: 2 } },
       undefined,
       undefined,
       'charmander',
@@ -477,10 +481,98 @@ describe('deployment flow', () => {
 
     const grown = new DeploymentFlow(stash, 'floodplain-relay', {
       pokemon: 1,
+      secureGrowth: BASE_LOADOUT_CAPACITY.secureGrowth,
       secureGrid: { width: 3, height: 2 },
     });
     grown.togglePokemon('ivysaur-1');
     expect(grown.securedPokemon.map(({ id }) => id)).toEqual(['ivysaur-1']);
+  });
+
+  describe('never advises what the player cannot do (characters bug hunt, 11 Nov 2026)', () => {
+    // Every rung built, the ledger banked and the berth paid: the biggest
+    // container a save can have, 6x2, and still two squares tall.
+    const everyRung = (pokemon = 2) => ({
+      pokemon,
+      secureGrowth: secureGrowthLeft(['cordon-ledger'], ['secure-locker-1', 'secure-locker-2'], true),
+      secureGrid: secureGrid(['cordon-ledger'], ['secure-locker-1', 'secure-locker-2'], true),
+    });
+
+    it('tells a fully evolved Pokemon no container will ever hold it, even with every locker built and nothing in it', () => {
+      const stash = createStartingStash();
+      stash.addPokemon(new Pokemon(CHARIZARD, 36), 'charizard-1');
+      const flow = emptied(new DeploymentFlow(stash, 'floodplain-relay', everyRung()));
+      flow.togglePokemon('charizard-1');
+
+      expect(flow.secureFit('charizard-1')).toBe('never');
+      const refusal = flow.toggleSecurePokemon('charizard-1');
+      expect(refusal).toMatch(/CHARIZARD is too big for any secure container/);
+      expect(refusal).toMatch(/A wipe will take it/);
+      expect(refusal).not.toMatch(/Take something out|grow the container|Brock|berth/);
+    });
+
+    it('does not tell a third stage to take something out of a small container either', () => {
+      const stash = createStartingStash();
+      stash.addPokemon(new Pokemon(CHARIZARD, 36), 'charizard-1');
+      const flow = new DeploymentFlow(stash);
+      flow.togglePokemon('charizard-1');
+
+      const refusal = flow.toggleSecurePokemon('charizard-1');
+      expect(refusal).toMatch(/too big for any secure container/);
+      expect(refusal).not.toMatch(/Take something out|grow the container|Brock|berth/);
+    });
+
+    it('names the way to grow the container when growing it is what would seat the Pokemon', () => {
+      const stash = createStartingStash();
+      stash.addPokemon(new Pokemon(CHARMELEON, 16), 'charmeleon-1');
+      const flow = emptied(
+        new DeploymentFlow(stash, 'floodplain-relay', {
+          pokemon: 1,
+          secureGrowth: secureGrowthLeft([], [], false),
+          secureGrid: BASE_SECURE_GRID,
+        }),
+      );
+      flow.togglePokemon('charmeleon-1');
+
+      expect(flow.secureFit('charmeleon-1')).toBe('grow');
+      const refusal = flow.toggleSecurePokemon('charmeleon-1');
+      expect(refusal).toMatch(/CHARMELEON needs 6 squares - the container is only 2x2/);
+      expect(refusal).toMatch(/build Secure locker I at Brock's Workshop, or rent a berth in Bill's hold/);
+      // Emptying a 2x2 cannot seat a 3x2, so it is not offered.
+      expect(refusal).not.toMatch(/Take something out/);
+    });
+
+    it('stops offering to grow a container that is as big as it can be', () => {
+      const stash = createStartingStash();
+      stash.addPokemon(new Pokemon(CHARMELEON, 16), 'charmeleon-1');
+      stash.addItem('potion', 12);
+      const flow = emptied(new DeploymentFlow(stash, 'floodplain-relay', everyRung(1)));
+      flow.togglePokemon('charmeleon-1');
+      // The autofill seats it; the player takes it out and fills every square
+      // of the 6x2 with Potions instead.
+      flow.toggleSecurePokemon('charmeleon-1');
+      flow.setItemQuantity('potion', 12);
+      flow.setSecureSquares('potion', 12);
+      expect(flow.secureCells).toEqual({ used: 12, total: 12 });
+
+      expect(flow.secureFit('charmeleon-1')).toBe('fits');
+      const refusal = flow.toggleSecurePokemon('charmeleon-1');
+      expect(refusal).toBe('CHARMELEON needs 6 squares - the container is full. Take something out.');
+    });
+
+    it('lists only the routes still open: built rungs, a paid berth and retired contracts are gone', () => {
+      expect(secureGrowthLeft(['cordon-ledger'], ['secure-locker-1', 'secure-locker-2'], true)).toEqual([]);
+      expect(secureGrowthLeft([], ['secure-locker-1'], true)).toEqual([
+        { kind: 'workshop', name: 'Secure locker II' },
+        { kind: 'contract', name: 'Cordon ledger' },
+      ]);
+      retireMapsForTests(RETIRED_MAPS);
+      try {
+        // The cordon ledger stands on Pallet Town, which is put away.
+        expect(secureGrowthLeft([], ['secure-locker-1'], true)).toEqual([{ kind: 'workshop', name: 'Secure locker II' }]);
+      } finally {
+        retireMapsForTests([]);
+      }
+    });
   });
 
   it('starts the next raid from what the container held last time', () => {
@@ -488,7 +580,7 @@ describe('deployment flow', () => {
     const flow = new DeploymentFlow(
       stash,
       'floodplain-relay',
-      { pokemon: 1, secureGrid: { width: 3, height: 2 } },
+      { pokemon: 1, secureGrowth: BASE_LOADOUT_CAPACITY.secureGrowth, secureGrid: { width: 3, height: 2 } },
       { pokemon: true, items: [{ itemId: 'potion', quantity: 2 }] },
     );
 
@@ -508,7 +600,7 @@ describe('deployment flow', () => {
     stash.addPokemon(new Pokemon(CHARMELEON, 17), 'charmeleon-1');
     stash.addItem('potion', 5);
     const flow = emptied(
-      new DeploymentFlow(stash, 'floodplain-relay', { pokemon: 1, secureGrid: BASE_SECURE_GRID }),
+      new DeploymentFlow(stash, 'floodplain-relay', { pokemon: 1, secureGrowth: BASE_LOADOUT_CAPACITY.secureGrowth, secureGrid: BASE_SECURE_GRID }),
     );
     flow.togglePokemon('ivysaur-1');
     flow.togglePokemon('charmeleon-1');
@@ -527,7 +619,7 @@ describe('deployment flow', () => {
     const remembered = new DeploymentFlow(
       createStartingStash(),
       'floodplain-relay',
-      { pokemon: 1, secureGrid: BASE_SECURE_GRID },
+      { pokemon: 1, secureGrowth: BASE_LOADOUT_CAPACITY.secureGrowth, secureGrid: BASE_SECURE_GRID },
       { pokemon: true, items: [{ itemId: 'potion', quantity: 4 }] },
     );
 
@@ -548,6 +640,7 @@ describe('deployment flow', () => {
     // the caps under test are the caps rather than the squares.
     const flow = new DeploymentFlow(stash, 'floodplain-relay', {
       pokemon: 1,
+      secureGrowth: BASE_LOADOUT_CAPACITY.secureGrowth,
       secureGrid: { width: 4, height: 2 },
     });
 
@@ -602,6 +695,7 @@ describe('deployment flow', () => {
     const { stash } = seedFlow();
     const flow = new DeploymentFlow(stash, 'floodplain-relay', {
       pokemon: 1,
+      secureGrowth: BASE_LOADOUT_CAPACITY.secureGrowth,
       secureGrid: { width: 3, height: 2 },
     });
 
@@ -677,7 +771,7 @@ describe('deployment flow', () => {
     stash.addPokemon(new Pokemon(SQUIRTLE, 6), 'squirtle-1');
     // Two Pokemon are eight squares, so the two-slot locker needs the columns
     // to go with it: 4x2 is the smallest container that can use both.
-    const flow = new DeploymentFlow(stash, 'floodplain-relay', { pokemon: 2, secureGrid: { width: 4, height: 2 } });
+    const flow = new DeploymentFlow(stash, 'floodplain-relay', { pokemon: 2, secureGrowth: BASE_LOADOUT_CAPACITY.secureGrowth, secureGrid: { width: 4, height: 2 } });
     for (const id of ['bulbasaur-1', 'charmander-1', 'squirtle-1']) {
       flow.togglePokemon(id);
     }

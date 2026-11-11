@@ -35,6 +35,12 @@ import {
   type SecurePreference,
 } from './secureAutofill';
 import { BASE_SECURE_POKEMON } from '../objectives/contracts';
+import {
+  grownSecureGrid,
+  secureGrowthAdvice,
+  secureGrowthLeft,
+  type SecureGrowthRoute,
+} from './secureGrowth';
 import type { ItemStack, SecureSlot as RunSecureSlot } from '../run';
 import type { RunInsertionId } from '../run/runGeneration';
 import type { SecureSlot as StashSecureSlot, Stash, StashedPokemon } from '../stash';
@@ -82,12 +88,38 @@ export const faintedRefusal = (name: string, only = false): string =>
 export interface LoadoutCapacity {
   readonly pokemon: number;
   readonly secureGrid: GridSize;
+  /**
+   * The ways this save can still grow the container (`./secureGrowth`), so a
+   * refusal advises only what the player can do: a container fully built
+   * cannot be told to grow, and a Pokemon three squares tall fits none.
+   */
+  readonly secureGrowth: readonly SecureGrowthRoute[];
 }
 
 export const BASE_LOADOUT_CAPACITY: LoadoutCapacity = {
   pokemon: BASE_SECURE_POKEMON,
   secureGrid: BASE_SECURE_GRID,
+  secureGrowth: secureGrowthLeft([], [], false),
 };
+
+/**
+ * Whether a Pokemon could go into the secure container: `fits` when it fits the
+ * container as built once nothing else is in it, `grow` when only a bigger one
+ * holds it and this save can still build that, `never` when no container it
+ * can ever have would.
+ */
+export type SecureFit = 'fits' | 'grow' | 'never';
+
+/**
+ * Why a Pokemon fits no container, as the middle of a sentence. It is nearly
+ * always its height: a third stage is three squares tall and the container is
+ * two however many columns it grows (`../objectives/contracts`'s `secureGrid`).
+ */
+export function secureNeverReason(piece: { readonly width: number; readonly height: number }, grid: GridSize): string {
+  return Math.min(piece.width, piece.height) > grid.height
+    ? `it is ${piece.width}x${piece.height}, and the container only ever grows sideways from ${grid.height} squares tall`
+    : `it is ${piece.width}x${piece.height}, and no container this base can build is that wide`;
+}
 
 /** One pack the vault holds, as the loadout lists it. */
 export interface PackChoice {
@@ -151,6 +183,8 @@ export class DeploymentFlow {
   private currentStep: DeploymentStep = 'loadout';
   /** The squares the secure container has. */
   public readonly secureGrid: GridSize;
+  /** What is left to grow the container by, as the save stands. */
+  public readonly secureGrowth: readonly SecureGrowthRoute[];
   /**
    * The pack being worn this raid, or undefined for a vault with none.
    *
@@ -219,6 +253,7 @@ export class DeploymentFlow {
     );
     this.insertion = insertionId;
     this.secureGrid = capacity.secureGrid;
+    this.secureGrowth = capacity.secureGrowth;
     this.securePokemonSlots = capacity.pokemon;
     this.preference = preference;
     this.packItemIdValue = bestPackIn(stash.listItems());
@@ -897,23 +932,65 @@ export class DeploymentFlow {
     return this.noRoomForPokemonMessage(id);
   }
 
-  /** Why one named Pokemon will not go into the container, in the player's terms. */
+  /**
+   * Whether a Pokemon in the party could be secured at all (`SecureFit`).
+   *
+   * Asked of the packer rather than worked out from widths and heights, because
+   * a piece may lie on its side and the packer is what decides a seat.
+   */
+  public secureFit(id: string): SecureFit {
+    const stored = this.stash.listPokemon().find((member) => member.id === id);
+    if (!stored) {
+      return 'never';
+    }
+    const piece = [pokemonCargo(stored.id, stored.pokemon)];
+    if (fitsInGrid({}, this.secureGrid, piece)) {
+      return 'fits';
+    }
+    return fitsInGrid({}, grownSecureGrid(this.secureGrid, this.secureGrowth), piece) ? 'grow' : 'never';
+  }
+
+  /**
+   * How to grow the container, as the end of a sentence, or empty when it is as
+   * big as this save can make it.
+   */
+  public get secureGrowthAdvice(): string {
+    return secureGrowthAdvice(this.secureGrowth);
+  }
+
+  /**
+   * Why one named Pokemon will not go into the container, in the player's terms.
+   *
+   * A refusal is a doorway, never an instruction the player cannot follow: it
+   * says "take something out" only when emptying the container would seat it,
+   * names a way to grow it only when one is left, and says plainly when no
+   * container ever will - the characters bug hunt (11 Nov 2026) found a
+   * Charizard told to do both with an empty locker and every rung built.
+   */
   private noRoomForPokemonMessage(id: string): string {
     const stored = this.party.find((member) => member.id === id);
     if (!stored) {
       return 'The secure container is full. Take something out of it first.';
     }
+    const name = stored.pokemon.name.toUpperCase();
     const piece = pokemonCargo(stored.id, stored.pokemon);
     const squares = cargoSquaresLabel(cargoCells(piece));
+    const shape = `${this.secureGrid.width}x${this.secureGrid.height}`;
+    const fit = this.secureFit(id);
+    if (fit === 'never') {
+      return `${name} is too big for any secure container: ${secureNeverReason(piece, this.secureGrid)}. A wipe will take it.`;
+    }
+    const grow = this.secureGrowthAdvice;
+    if (fit === 'grow') {
+      return `${name} needs ${squares} - the container is only ${shape}. To secure it, ${grow}.`;
+    }
     const total = gridCells(this.secureGrid);
     const free = total - this.secureLayout().cellsUsed;
     const room =
       free === 0
         ? 'the container is full'
-        : free === total
-          ? `the container is only ${this.secureGrid.width}x${this.secureGrid.height}`
-          : `only ${cargoSquaresLabel(free)} of it ${free === 1 ? 'is' : 'are'} free`;
-    return `${stored.pokemon.name.toUpperCase()} needs ${squares} - ${room}. Take something out, or grow the container.`;
+        : `only ${cargoSquaresLabel(free)} of it ${free === 1 ? 'is' : 'are'} free`;
+    return `${name} needs ${squares} - ${room}. Take something out${grow ? ', or grow the container' : ''}.`;
   }
 
   /**

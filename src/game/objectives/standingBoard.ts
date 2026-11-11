@@ -142,6 +142,7 @@ const boards = new Map<string, readonly RaidContract[]>();
 /** Drops every remembered board, so a test can prove one is redrawn the same rather than recalled. */
 export function forgetStandingBoards(): void {
   boards.clear();
+  jobWalks.clear();
 }
 
 /**
@@ -235,6 +236,100 @@ export function boardContractForMap(
   return boardContracts(progress).find((contract) => contract.mapId === mapId);
 }
 
+const jobWalks = new Map<string, number | undefined>();
+
+/**
+ * The fewest steps that finish a standing contract from this landing: through
+ * every stop in the best order, then out by a way that banks it, on the map as
+ * this player has it (a sealed job's door open, as it must be to finish it).
+ * Undefined for an authored contract, and for one that cannot be walked.
+ *
+ * The rim says it as time against the raid clock, because a step count means
+ * nothing beside 5:00 and walking is what the clock is spent on (fights are
+ * free): the characters bug hunt (11 Nov 2026) found a dispatch that was 900
+ * steps - 2:15 of a 5:00 raid - which a player could only discover by running
+ * out of clock. It is measured when asked rather than when the board is dealt,
+ * because a board is dealt for hundreds of seeds and shown for one.
+ */
+export function standingJobWalk(
+  contract: RaidContract,
+  from: GridPosition,
+  progress: StandingBoardProgress,
+): number | undefined {
+  if (standingRoundOf(contract.id) === undefined || contract.markers.length === 0) {
+    return undefined;
+  }
+  const opened = openedDoors(progress);
+  const key = JSON.stringify([
+    contract.id,
+    contract.mapId,
+    from,
+    contract.markers.map((marker) => marker.position),
+    contract.requiredExitLabel ?? null,
+    gateStateKey(gatesForMap(contract.mapId), opened),
+  ]);
+  if (!jobWalks.has(key)) {
+    jobWalks.set(key, measureJobWalk(contract, from, progress.defeatedBosses, opened));
+  }
+  return jobWalks.get(key);
+}
+
+function measureJobWalk(
+  contract: RaidContract,
+  from: GridPosition,
+  defeatedBosses: readonly string[],
+  opened: readonly string[],
+): number | undefined {
+  const ground = surveyGround(contract.mapId, defeatedBosses, opened);
+  if (!ground) {
+    return undefined;
+  }
+  // Still shut, the door's district is its own measured map; opened since the
+  // board was dealt, it is part of the ground like anywhere else.
+  const district = contract.sealedBehind
+    ? ground.districts.find((candidate) => candidate.gate.label === contract.sealedBehind?.gateLabel)
+    : undefined;
+  const map = district?.map ?? ground.map;
+  const exits = [...ground.exits, ...(district?.exits ?? [])]
+    .filter((exit) => contract.requiredExitLabel === undefined || exit.label === contract.requiredExitLabel)
+    .map((exit) => exit.position);
+  const landing = ground.landing.position;
+  const fromLanding =
+    from.x === landing.x && from.y === landing.y
+      ? (district?.steps ?? ground.steps)
+      : stepDistances(map.collision, from, undefined, map.links);
+  const stops = contract.markers.map((marker) => marker.position);
+  const fromStop = stops.map((stop) => stepDistances(map.collision, stop, undefined, map.links));
+  const at = (grid: readonly Int32Array[], tile: GridPosition): number => grid[tile.y]?.[tile.x] ?? -1;
+  let best: number | undefined;
+  // A job has at most three stops, so every order is tried.
+  for (const order of orderings(stops.length)) {
+    let total = at(fromLanding, stops[order[0]]);
+    for (let leg = 1; leg < order.length && total >= 0; leg += 1) {
+      const step = at(fromStop[order[leg - 1]], stops[order[leg]]);
+      total = step < 0 ? -1 : total + step;
+    }
+    const out = exits
+      .map((exit) => at(fromStop[order[order.length - 1]], exit))
+      .filter((walk) => walk >= 0);
+    if (total >= 0 && out.length > 0) {
+      const walk = total + Math.min(...out);
+      best = best === undefined ? walk : Math.min(best, walk);
+    }
+  }
+  return best;
+}
+
+/** Every order of `count` stops, as lists of their indices. */
+function orderings(count: number): readonly (readonly number[])[] {
+  if (count <= 1) {
+    return count === 1 ? [[0]] : [];
+  }
+  return orderings(count - 1).flatMap((order) =>
+    Array.from({ length: count }, (_, at) => [...order.slice(0, at), count - 1, ...order.slice(at)]),
+  );
+}
+
 /** The Pokemon a reward pays in, as the vault receives them. */
 export function rewardPokemon(reward: ContractReward): readonly Pokemon[] {
   return (reward.pokemon ?? []).flatMap(({ speciesId, level }) => {
@@ -250,6 +345,8 @@ export function rewardPokemon(reward: ContractReward): readonly Pokemon[] {
 interface SealedDistrict {
   readonly gate: MapGate;
   readonly bossName: string;
+  /** The map with this door open, walked empty-handed, which `steps` was measured on. */
+  readonly map: WorldMapDefinition;
   /** Walking steps from the landing with this door open - the only map its distances mean anything on. */
   readonly steps: readonly Int32Array[];
   readonly tiles: readonly GridPosition[];
@@ -347,6 +444,7 @@ function measureGround(
             {
               gate,
               bossName: boss.trainer.name,
+              map: sealedOff,
               steps: beyond,
               tiles,
               exits: mapExits.filter((exit) => newlyWalkable(exit.position)),

@@ -2031,6 +2031,35 @@ describe('a catch the pack has no room for', () => {
     expect(panel.some((text) => text.includes('KEEP THE PACK'))).toBe(true);
   });
 
+  it('opens on KEEP THE PACK, so a press made through the refusal never puts anything down', () => {
+    // The characters bug hunt (11 Nov 2026): the SPACE that read the refusal
+    // opened the panel and the next one dropped whatever the cursor stood on.
+    const bag = fullPack();
+    const { scene, press, renderedTexts } = open(bag);
+    const internals = scene as unknown as {
+      mode: string;
+      commandTexts: { text: string }[];
+      selectedCommand: number;
+      makeRoomPage: number;
+      onMessagesComplete(): void;
+      confirm(): void;
+    };
+    const before = renderedTexts.length;
+
+    press('BALL x1');
+    internals.onMessagesComplete();
+    expect(internals.mode).toBe('make-room');
+    expect(internals.commandTexts[internals.selectedCommand - internals.makeRoomPage * 6]?.text).toContain('KEEP THE PACK');
+    // And the prompt above the rows answers that row, not a Potion's.
+    expect(read(renderedTexts).slice(before).map(({ text }) => text)).toContain('Keep everything. The catch is off.');
+
+    internals.confirm();
+
+    expect(bag.count('potion')).toBe(17);
+    expect(bag.count('poke-ball')).toBe(1);
+    expect(internals.mode).not.toBe('make-room');
+  });
+
   it('keeps every row inside the panel, a disc with a long name included', () => {
     const bag = new Bag({
       'poke-ball': 3,
@@ -2060,21 +2089,35 @@ describe('a catch the pack has no room for', () => {
     press('BALL x3');
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     expect((scene as unknown as { mode: string }).mode).toBe('make-room');
+    // Seven rows are two pages - KEEP THE PACK and five kinds, then the disc -
+    // and each page is fitted on its own, so each is asked on its own.
+    const cursor = scene as unknown as { selectedCommand: number; showCommands(): void };
+    const kinds = ['POKé BALL', 'SUPER POTION', 'PARTS CRATE', 'MOORING ROPE', 'THUNDER STONE', 'TM09'];
+    const pageRows = (from: number, to = renderedTexts.length) =>
+      renderedTexts.slice(from, to).filter(({ text }) => kinds.some((name) => text.startsWith(name)));
+    const firstPage = pageRows(before);
+    const secondFrom = renderedTexts.length;
+    cursor.selectedCommand = 6;
+    cursor.showCommands();
+    const secondPage = pageRows(secondFrom);
+    expect(firstPage).toHaveLength(5);
+    expect(secondPage).toHaveLength(1);
+    const shown = [...firstPage, ...secondPage].map(({ text }) => text);
+    expect(kinds.every((name) => shown.some((text) => text.startsWith(name)))).toBe(true);
+    expect(shown.some((text) => text.startsWith('TM09 BULLET SEED'))).toBe(true);
 
-    const rows = renderedTexts
-      .slice(before)
-      .filter(({ text }) => ['SUPER POTION', 'PARTS CRATE', 'MOORING ROPE', 'THUNDER STONE', 'TM09'].some((name) => text.startsWith(name)));
-    expect(rows.some(({ text }) => text.startsWith('TM09 BULLET SEED'))).toBe(true);
-    // The panel's inner edge: its frame at 8 + 304, less the 10 its text keeps in.
-    rows.forEach((row) => expect(row.x + row.width, row.text).toBeLessThanOrEqual(302));
-    // The left column stops short of where the right column's cursor stands.
-    const right = Math.max(...rows.map(({ x }) => x));
-    rows
-      .filter(({ x }) => x < right)
-      .forEach((row) => expect(row.x + row.width, row.text).toBeLessThan(right - CURSOR_GUTTER));
-    // Still says how many of each, in one form for the whole page.
-    expect(rows.every(({ text }) => / x\d/.test(text))).toBe(true);
-    expect(rows.every(({ text }) => text.endsWith('sq')) || rows.every(({ text }) => !text.endsWith('sq'))).toBe(true);
+    for (const rows of [firstPage, secondPage]) {
+      // The panel's inner edge: its frame at 8 + 304, less the 10 its text keeps in.
+      rows.forEach((row) => expect(row.x + row.width, row.text).toBeLessThanOrEqual(302));
+      // The left column stops short of where the right column's cursor stands.
+      const right = Math.max(...rows.map(({ x }) => x));
+      rows
+        .filter(({ x }) => x < right)
+        .forEach((row) => expect(row.x + row.width, row.text).toBeLessThan(right - CURSOR_GUTTER));
+      // Still says how many of each, in one form for the whole page.
+      expect(rows.every(({ text }) => / x\d/.test(text))).toBe(true);
+      expect(rows.every(({ text }) => text.endsWith('sq')) || rows.every(({ text }) => !text.endsWith('sq'))).toBe(true);
+    }
   });
 
   it('says there is no ball before asking for room, so nothing is put down for a throw that cannot happen', () => {

@@ -41,6 +41,7 @@ import {
   TEACH_MOMENT_MS,
   type TeachMomentView,
 } from '../ui/teachScreen';
+import { EVOLVE_MOMENT_ARMING_MS, evolveMomentBody, type EvolveMomentView } from '../ui/evolveMoment';
 import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
 import {
   CLOCK_STOPPED,
@@ -233,6 +234,12 @@ export class BagScene extends Phaser.Scene {
    */
   private moment?: TeachMomentView & { readonly said: string; readonly openedAt: number };
   private momentTimers: Phaser.Time.TimerEvent[] = [];
+  /**
+   * The moment a stone has just evolved a Pokemon in the party
+   * (`evolveMomentBody`), held until it has been seen and a key ends it, so the
+   * press after the one that used the stone cannot wipe it unseen.
+   */
+  private evolving?: EvolveMomentView & { readonly itemId: string; readonly openedAt: number };
   private menuOverlay?: MenuOverlay;
   /**
    * The pack is the player's to lay out here too: a coil of rope found in a
@@ -277,6 +284,7 @@ export class BagScene extends Phaser.Scene {
     this.status = undefined;
     this.moment = undefined;
     this.momentTimers = [];
+    this.evolving = undefined;
     this.arranging.release();
   }
 
@@ -319,6 +327,13 @@ export class BagScene extends Phaser.Scene {
       event.preventDefault();
       if (!event.repeat && this.time.now - this.moment.openedAt >= MOMENT_ARMING_MS) {
         this.endMoment();
+      }
+      return;
+    }
+    if (this.evolving) {
+      event.preventDefault();
+      if (!event.repeat && this.time.now - this.evolving.openedAt >= EVOLVE_MOMENT_ARMING_MS) {
+        this.endEvolving();
       }
       return;
     }
@@ -378,6 +393,17 @@ export class BagScene extends Phaser.Scene {
         hints: 'Any key · back to the pack',
       });
       root.querySelector<HTMLButtonElement>('[data-moment-done]')!.onclick = () => this.endMoment();
+      this.menuOverlay!.refocus('[data-moment-done]');
+      return;
+    }
+    if (this.evolving) {
+      root.innerHTML = pixelScreen({
+        title: 'Raid pack',
+        aside: CLOCK_STOPPED,
+        body: evolveMomentBody(this.evolving, 'Back to the pack.'),
+        hints: 'Any key · back to the pack',
+      });
+      root.querySelector<HTMLButtonElement>('[data-moment-done]')!.onclick = () => this.endEvolving();
       this.menuOverlay!.refocus('[data-moment-done]');
       return;
     }
@@ -741,6 +767,7 @@ export class BagScene extends Phaser.Scene {
     if (!target || !item) {
       return;
     }
+    const before = { dexId: target.base.dexId, name: target.base.name };
     const result = useFieldItem(item, target);
     if (result.used && item.effect.type === 'evolution-stone') {
       // An evolution sounds as it does in a fight (`BattleScene.finishEvolution`):
@@ -756,8 +783,33 @@ export class BagScene extends Phaser.Scene {
       this.spend(item);
     }
     this.usingItemId = undefined;
+    if (result.used && item.effect.type === 'evolution-stone') {
+      this.evolving = {
+        fromDexId: before.dexId,
+        fromName: before.name,
+        toDexId: target.base.dexId,
+        toName: target.base.name,
+        shiny: target.shiny,
+        said: result.message,
+        itemId: item.id,
+        openedAt: this.time.now,
+      };
+      this.render();
+      return;
+    }
     this.status = result.message;
     this.render([`[data-item="${item.id}"]`]);
+  }
+
+  /** Back to the pack from the evolution moment, with its line said there. */
+  private endEvolving(): void {
+    const evolving = this.evolving;
+    if (!evolving) {
+      return;
+    }
+    this.evolving = undefined;
+    this.status = evolving.said;
+    this.render(this.bag.count(evolving.itemId) > 0 ? [`[data-item="${evolving.itemId}"]`] : []);
   }
 
   /**

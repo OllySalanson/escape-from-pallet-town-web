@@ -1,5 +1,6 @@
 import { DeploymentFlow } from '../hub/deploymentFlow';
 import { DEFAULT_SECURE_PREFERENCE } from '../hub/secureAutofill';
+import { secureGrowthLeft } from '../hub/secureGrowth';
 import { EMPTY_ARRANGEMENT } from '../items';
 import { availableContracts, FIRST_CONTRACT_ID, secureGrid, securePokemonLimit } from '../objectives';
 import { FIRST_CONTRACT, availableInsertionIds, runInsertions, type RunInsertion, type RunInsertionId } from '../run/runGeneration';
@@ -60,6 +61,11 @@ export function flowForGame(game: RestoredGame): DeploymentFlow {
     {
       pokemon: securePokemonLimit(game.raidProgress.workshopUpgrades),
       secureGrid: secureGrid(game.raidProgress.completedContracts, game.raidProgress.workshopUpgrades, game.traderBerthPaid),
+      secureGrowth: secureGrowthLeft(
+        game.raidProgress.completedContracts,
+        game.raidProgress.workshopUpgrades,
+        game.traderBerthPaid,
+      ),
     },
     // The container fills itself from what it held last raid, so a player
     // deploying again and again is not re-picking from scratch.

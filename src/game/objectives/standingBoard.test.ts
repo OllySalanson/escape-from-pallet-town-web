@@ -26,6 +26,7 @@ import {
   STANDING_BANKS_PER_PRESSURE,
   standingBoard,
   standingBoardSeed,
+  standingJobWalk,
   standingOffers,
   NEAR_JOBS,
   NEAR_JOB_LEAST_WALK,
@@ -546,5 +547,54 @@ describe('boardContractForMap', () => {
     const standing = boardContractForMap('route-1', progressWith({ standingContractsBanked: 2 }));
     expect(standing?.id).toBe('standing-2-route-1');
     expect(standing?.mapId).toBe('route-1');
+  });
+});
+
+/**
+ * The characters bug hunt (11 Nov 2026): a sealed dispatch was 900 steps, 2:15
+ * of a 5:00 clock, and nothing said so before the clock ran out. The rim says
+ * it now, from `standingJobWalk`.
+ */
+describe('how far a standing job is walked', () => {
+  const contractsOn = (seeds: readonly number[]): RaidContract[] =>
+    // Past the first, near jobs, so every template is dealt.
+    seeds.flatMap((seed) => standingOffers(seed, progressWith({ standingContractsBanked: NEAR_JOBS })));
+
+  it('is the walk to the case and out through the one exit that takes it, for a dispatch', () => {
+    const dispatches = contractsOn(SEEDS.slice(0, 40)).filter(
+      (contract) => contract.requiredExitLabel !== undefined && contract.sealedBehind === undefined && contract.markers.length === 1,
+    );
+    expect(dispatches.length).toBeGreaterThan(0);
+    for (const contract of dispatches.slice(0, 6)) {
+      const landing = frontDoorFor(contract.mapId)!.position;
+      const [stop] = contract.markers.map((marker) => marker.position);
+      const toCase = walkFromFrontDoor(contract.mapId, [])[stop.y][stop.x];
+      const map = getWorldMap(contract.mapId, []);
+      const fixed = new Set(
+        map.entities.filter((entity) => entity.boulder || entity.barrier).map((entity) => `${entity.position.x},${entity.position.y}`),
+      );
+      const collision = map.collision.map((row, y) => row.map((solid, x) => solid || fixed.has(`${x},${y}`)));
+      const exit = extractionPointsOn(contract.mapId).find((point) => point.label === contract.requiredExitLabel)!;
+      const out = stepDistances(collision, stop, undefined, map.links)[exit.position.y][exit.position.x];
+      expect(standingJobWalk(contract, landing, progressWith()), contract.id).toBe(toCase + out);
+    }
+  });
+
+  it('is never shorter than the farthest stop, and is there for every standing job', () => {
+    for (const contract of contractsOn(SEEDS.slice(0, 12))) {
+      const landing = frontDoorFor(contract.mapId)!.position;
+      const walk = standingJobWalk(contract, landing, progressWith());
+      expect(walk, contract.id).toBeDefined();
+      if (contract.sealedBehind === undefined) {
+        const steps = walkFromFrontDoor(contract.mapId, []);
+        const farthest = Math.max(...contract.markers.map(({ position }) => steps[position.y][position.x]));
+        expect(walk!, contract.id).toBeGreaterThanOrEqual(farthest);
+      }
+    }
+  });
+
+  it('says nothing of an authored contract', () => {
+    const authored = RAID_CONTRACTS[0];
+    expect(standingJobWalk(authored, frontDoorFor(authored.mapId)!.position, progressWith())).toBeUndefined();
   });
 });

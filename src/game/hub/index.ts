@@ -20,10 +20,19 @@ export {
   DeploymentFlow,
   faintedRefusal,
   MAX_RUN_PARTY,
+  secureNeverReason,
   type Deployment,
   type DeploymentStep,
   type LoadoutCapacity,
+  type SecureFit,
 } from './deploymentFlow';
+
+export {
+  grownSecureGrid,
+  secureGrowthAdvice,
+  secureGrowthLeft,
+  type SecureGrowthRoute,
+} from './secureGrowth';
 
 export {
   applyRecovery,
