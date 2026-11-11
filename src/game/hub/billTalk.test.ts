@@ -66,11 +66,11 @@ describe("everything Bill deals in stands on his shelves", () => {
 });
 
 describe('Bill on a thing on his shelves', () => {
-  it('names a shelf price, and YES is under the cursor: a Potion for money is ordinary', () => {
+  it('names a shelf price, and opens on NOT NOW: a double press on his price must not buy', () => {
     const quote = billQuote(counter({ money: 500 }, REGULAR), potion);
     expect(quote.lines[1]).toBe('₽120, and 1 left for you this trip.');
     expect(quote.question).toBe('Buy one for ₽120?');
-    expect(quote.spendsForGood).toBeUndefined();
+    expect(quote.spendsForGood).toBe(true);
   });
 
   it('says so when the purse is short, or the ration spent, and asks nothing', () => {

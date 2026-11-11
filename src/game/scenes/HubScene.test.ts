@@ -2344,6 +2344,87 @@ describe('HubScene - Bill', () => {
     expect(asking).not.toMatch(/data-berth(?![-\w])/);
   });
 
+  /**
+   * The midgame bug hunt of 11 Nov 2026: a double ENTER on POTION bought two,
+   * spent a TRUSTED save's whole ration and said "Bought one". The shelf asks
+   * as the barters do, so a press arms the row and the second lands on KEEP.
+   */
+  it('asks before it buys off the shelf, so a double ENTER on a row buys nothing', () => {
+    const { hub } = createTraderHub();
+    const buttons = new Map<string, { dataset: Record<string, string>; onclick?: (event: { detail: number }) => void }>();
+    const internals = hub as unknown as {
+      traderArmed: string | undefined;
+      overlay: { root: { querySelectorAll(selector: string): unknown[] }; focus: ReturnType<typeof vi.fn> };
+    };
+    const datasets: Record<string, Record<string, string>> = {
+      '[data-buy]': { buy: 'potion' },
+      '[data-buy-confirm]': { buyConfirm: 'potion' },
+      '[data-deal-cancel]': {},
+    };
+    internals.overlay.root.querySelectorAll = (selector: string) => {
+      const dataset = datasets[selector];
+      if (!dataset) return [];
+      const button = buttons.get(selector) ?? { dataset };
+      buttons.set(selector, button);
+      return [button];
+    };
+    const press = (selector: string, detail = 0): void => buttons.get(selector)!.onclick!({ detail });
+    const money = (): number => hub.stash.itemCount('money');
+    const potions = hub.stash.itemCount('potion');
+    let now = 1_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    hub.setView('trader');
+    hub.render();
+    expect(markupOf(hub)).toMatch(/of 2 left this trip/);
+
+    // ENTER twice on the row: the first asks, the second asks again, and
+    // nothing is spent either time.
+    press('[data-buy]');
+    press('[data-buy]');
+    expect(money()).toBe(1_000);
+    expect(hub.stash.itemCount('potion')).toBe(potions);
+    const asking = markupOf(hub);
+    expect(asking).toContain('Pay ₽120 for a Potion?');
+    expect(asking).toMatch(/data-deal-cancel[^>]*data-cursor-start/);
+    expect(asking.indexOf('data-deal-cancel')).toBeLessThan(asking.indexOf('data-buy-confirm'));
+    expect(asking).not.toMatch(/data-buy="potion"/);
+
+    // The second ENTER of a real double press lands on KEEP THEM: nothing is
+    // spent, and the cursor goes back to the Potion rather than the top of the shelf.
+    press('[data-deal-cancel]');
+    expect(internals.traderArmed).toBeUndefined();
+    expect(money()).toBe(1_000);
+    expect(internals.overlay.focus).toHaveBeenLastCalledWith('[data-buy="potion"]');
+    press('[data-buy]');
+
+    // The second half of a double-click that armed it lands on BUY and is swallowed.
+    now += 120;
+    press('[data-buy-confirm]', 2);
+    expect(money()).toBe(1_000);
+    expect(internals.overlay.focus).toHaveBeenLastCalledWith('[data-deal-cancel]');
+
+    // A deliberate BUY buys exactly one, and says so.
+    press('[data-buy-confirm]');
+    expect(money()).toBe(880);
+    expect(hub.stash.itemCount('potion')).toBe(potions + 1);
+    expect(internals.traderArmed).toBeUndefined();
+    const after = markupOf(hub);
+    expect(after).toContain('Bought one for ₽120.');
+    expect(after).toMatch(/1 of 2 left this trip/);
+    vi.restoreAllMocks();
+  });
+
+  it('says on the question when it spends the rest of the trip', () => {
+    const { hub } = createTraderHub();
+    const internals = hub as unknown as { traderArmed: string | undefined; counterCounts: Map<string, number> };
+    hub.setView('trader');
+    internals.counterCounts.set('buy:potion', 2);
+    internals.traderArmed = 'stock:potion';
+    const asking = markupOf(hub);
+    expect(asking).toContain('Pay ₽240 for 2 Potions? It is the rest of this trip.');
+    expect(asking).toContain('data-buy-confirm="potion"');
+  });
+
   it('forgets a deal it had asked about the moment the screen changes', () => {
     const { hub } = createTraderHub();
     const armed = hub as unknown as { traderArmed: string | undefined };
