@@ -170,7 +170,7 @@ export function dayCareRefusal(
     return `Your ${stored.find((entry) => entry.id === pokemonId)!.pokemon.name} is out on a raid in your other window. Bring it to me once it’s home.`;
   }
   if (stored.length === 1) {
-    return 'Oh? You only have one Pokémon.';
+    return ONLY_ONE_LINE;
   }
   const chosen = stored.find((entry) => entry.id === pokemonId)!.pokemon;
   if (chosen.isFainted) {
@@ -205,6 +205,26 @@ export const DAY_CARE_OFFER_LINES: readonly string[] = [
   'I run the DAY-CARE service. Would you like me to raise one of your Pokémon?',
   'It’s safe here from any wipe, and it grows half a level with every raid you go on.',
 ];
+
+/** His refusal when there is nobody else at base to battle with. */
+const ONLY_ONE_LINE = 'Oh? You only have one Pokémon.';
+
+/**
+ * What he says at the fence to a save he could take nothing from, or
+ * undefined when he could take somebody. With one Pokémon at base the answer
+ * is the save's rather than any one Pokémon's, so he says it in the yard, as
+ * FireRed's Day-Care checks the party before it asks, instead of offering a
+ * list whose only row refuses.
+ */
+export function dayCareTurnedAway(stash: Stash): readonly string[] | undefined {
+  if (stash.dayCare() !== null || stash.listPokemon().length !== 1) {
+    return undefined;
+  }
+  return [
+    'I run the DAY-CARE service. It’s safe here from any wipe, and a Pokémon grows half a level with every raid you go on.',
+    `${ONLY_ONE_LINE} If I took it, what would you battle with? Come back when you have another.`,
+  ];
+}
 
 /** What he asks once he has said how it has grown. */
 export function takeBackQuestion(name: string): string {

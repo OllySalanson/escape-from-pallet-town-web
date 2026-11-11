@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { Bag } from '../items';
 import {
   CHARMANDER,
+  IVYSAUR,
   PIDGEY,
+  PIKACHU,
+  RAICHU,
+  VENUSAUR,
   Pokemon,
   PokemonParty,
   experienceAwardForDefeat,
@@ -178,6 +182,63 @@ describe('extraction loop integration', () => {
    * level-7 typed move the whole early curve is built around, so the hunter and
    * RAIDER MAYA were unreachable by construction.
    */
+  /**
+   * FireRed registers a kind the moment it is caught. Here a catch is owned
+   * once it is walked out, and the Pokédex used to be read only off what the
+   * vault held at that moment - so a Pikachu caught and given a Thunder Stone
+   * in the same raid banked as a Raichu, and the kind actually caught was
+   * never counted (PC and Day-Care hunt, finding 1).
+   */
+  it('registers in the Pokédex a kind caught and evolved in the same raid, as well as what it became', () => {
+    const saves = seedNewPlayer(new MemoryStorage());
+    const starter = saves.load()!.stash.listPokemon()[0];
+    const manager = new RunManager();
+    manager.startRun({ party: [starter.pokemon], items: [] }, RUN_CONFIG, {});
+    const session = createActiveRunSession(manager, {}, {}, [starter.id], []);
+
+    const caught = new Pokemon(PIKACHU, 12);
+    session.manager.registerCaughtPokemon(caught);
+    expect(caught.evolveInto(RAICHU)).not.toBeNull();
+    session.manager.resolveEscape();
+    const resolved = session.manager.snapshot();
+    expect(
+      saves.bankRun(
+        { pokemon: resolved.caughtPokemon, items: [] },
+        buildRaidSettlement(session.broughtPokemonIds, resolved, {}),
+      ),
+    ).toBe(true);
+
+    expect(saves.load()!.raidProgress.pokedexOwned).toEqual(
+      expect.arrayContaining([PIKACHU.dexId, RAICHU.dexId]),
+    );
+  });
+
+  it('registers every stage a deployed Pokémon passed through in one raid, not only the last', () => {
+    const saves = seedNewPlayer(new MemoryStorage());
+    const starter = saves.load()!.stash.listPokemon()[0];
+    const manager = new RunManager();
+    manager.startRun({ party: [starter.pokemon], items: [] }, RUN_CONFIG, {});
+    const session = createActiveRunSession(manager, {}, {}, [starter.id], []);
+
+    // Two evolutions in the field; the vault only ever sees the Bulbasaur go
+    // out and the Venusaur come back.
+    starter.pokemon.gainExperience(experienceForLevel(32, STARTER_CURVE) - starter.pokemon.experience);
+    expect(starter.pokemon.base).toBe(VENUSAUR);
+    session.manager.resolveEscape();
+    expect(
+      saves.bankRun(
+        { pokemon: [], items: [] },
+        buildRaidSettlement(session.broughtPokemonIds, session.manager.snapshot(), {}),
+      ),
+    ).toBe(true);
+
+    const game = saves.load()!;
+    expect(game.stash.listPokemon()[0].pokemon.base).toBe(VENUSAUR);
+    expect(game.raidProgress.pokedexOwned).toEqual(
+      expect.arrayContaining([IVYSAUR.dexId, VENUSAUR.dexId]),
+    );
+  });
+
   it('carries experience earned in a raid home through an extraction', () => {
     const saves = seedNewPlayer(new MemoryStorage());
     const starter = saves.load()!.stash.listPokemon()[0];

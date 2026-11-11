@@ -48,6 +48,8 @@ describe('raid settlement', () => {
         experience: experienceForLevel(5, STARTER_CURVE) + 30,
         // And what it became, for the evolution that spends no experience.
         speciesId: 'bulbasaur',
+        // And every kind it was on the way, for the Pokédex.
+        kindsBeen: [1],
         // Gear was never in the pack, so the condition is the only way home for
         // it - and the only reason a wipe can take it.
         heldItemId: 'leftovers',
@@ -64,6 +66,7 @@ describe('raid settlement', () => {
         // all is the wipe's decision, not this one's.
         experience: experienceForLevel(7, STARTER_CURVE),
         speciesId: 'charmander',
+        kindsBeen: [4],
         heldItemId: null,
         moves: partner.moves.map((move) => move.base.name),
         pendingMoves: [],
@@ -83,6 +86,7 @@ describe('raid settlement', () => {
         primaryStatus: null,
         experience: experienceForLevel(5, STARTER_CURVE),
         speciesId: 'bulbasaur',
+        kindsBeen: [1],
         heldItemId: null,
         moves: starter.moves.map((move) => move.base.name),
         pendingMoves: [],
@@ -142,6 +146,7 @@ describe('raid settlement', () => {
           primaryStatus: null,
           experience: experienceForLevel(5, STARTER_CURVE),
           speciesId: 'bulbasaur',
+          kindsBeen: [1],
           heldItemId: null,
           moves: starter.moves.map((move) => move.base.name),
           pendingMoves: [],

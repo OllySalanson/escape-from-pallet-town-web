@@ -5,7 +5,8 @@
 //   - B in the yard opens the panel, every pocket shows, nothing can be dropped,
 //     and B closes it onto the harbour again;
 //   - TM40 is read to the partner at home, and the disc is gone from storage;
-//   - a Thunder Stone is used on the Pikachu, which comes home a Raichu;
+//   - a Thunder Stone is used on the Pikachu, which evolves on a moment of its
+//     own that a key ends, and is a Raichu at home;
 //   - B opens it in every room of the harbour, and in THE RAID ARENA's hall,
 //     where it shows the pack the rack has out.
 //
@@ -151,6 +152,17 @@ try {
   const evolved = await saved();
   if (!JSON.stringify(evolved.stash.pokemon).includes('raichu')) fail('the Pikachu did not evolve');
   if ((evolved.stash.items['thunder-stone'] ?? 0) !== 0) fail('the Thunder Stone is still in storage');
+  // The evolution is a moment of its own (`ui/evolveMoment.ts`): it ignores
+  // keys until it has been seen, then any key ends it, back on the list - so
+  // the B that closes the panel comes after that key, not instead of it.
+  if (!(await page.evaluate(`Boolean(document.querySelector('#screens [data-evolve-moment]'))`))) {
+    fail('the evolution was not shown as a moment');
+  }
+  await wait(1200);
+  await press('Enter');
+  await until(`!document.querySelector('#screens [data-evolve-moment]') && ${thingsUp}`, 'the list again after the evolution');
+  const after = await page.evaluate(`document.querySelector('#screens .things-menu .px-status-line')?.textContent ?? ''`);
+  if (!/Raichu/.test(after)) fail(`the list says "${after}" after the evolution`);
   await closeThings('the yard');
 
   // Every room.
