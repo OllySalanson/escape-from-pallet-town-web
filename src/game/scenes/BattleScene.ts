@@ -1,6 +1,7 @@
 import type { GridPosition } from '../movement/gridMovement';
 import type { HunterRivalId } from '../world/hunters';
 import { fellLine } from '../world/raidMemory';
+import { bossesBeatenOnRaid } from '../world/trainers';
 import Phaser from 'phaser';
 import { MUTE_KEY } from '../input/keyBindings';
 import { setFightForShow } from '../dev/playtestMode';
@@ -4335,6 +4336,12 @@ export class BattleScene extends Phaser.Scene {
       ),
       lost: { pokemon: result.lostPokemon, items: wipe.destroyedItems },
       carriedOut,
+      // A keeper beaten earlier in the raid stays beaten, and their badge won.
+      bossesBeaten: bossesBeatenOnRaid(
+        this.runSession?.plan?.trainers ?? [],
+        this.defeatedTrainerIds,
+        this.runSession?.plan?.defeatedBosses ?? [],
+      ),
       // The one that was out when the party ran out. The result screen's defeat
       // sequence names it, and it cannot be recovered afterwards: by then every
       // member of the party is at 0 HP and indistinguishable from every other.

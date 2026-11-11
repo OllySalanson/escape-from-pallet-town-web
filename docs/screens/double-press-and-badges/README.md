@@ -1,0 +1,8 @@
+# A double press answers nothing, and the result names a badge
+
+The two findings of the playtest of PRs 490-508 (11 Nov 2026), before and after. All four were taken at the 3x window (1200x768) against a test-mode build (`?testmode=pixels`). The "before" pictures are the playtest's own, taken on `main` at `cd5483ff`.
+
+- `stone-double-enter-before.png`: two quick ENTERs on THUNDER STONE in YOUR THINGS. The first opened USE THUNDER STONE ON with the cursor on Eevee, the second landed on it, and Eevee became Jolteon. The list was never seen.
+- `stone-double-enter-after.png`: the same two ENTERs, made by `tools/playtest/yourThings.mjs`. The list is up, the cursor is on the first able Pokémon, and nothing is spent. A press within `RELEASE_ARMING_MS` of the list appearing answers nothing (`ThingsScene.askedAt`, and `BagScene` the same for the raid pack and TEACH).
+- `result-before.png`: a raid lost to the clock, with the partner Charizard holding Charcoal and Haunter in the secure slot. GEAR said the Charcoal "came home in the secure slot". The raid had beaten Koga, and the footer said only "3 trainers beaten".
+- `result-after.png`: the same raid. GEAR says the Charcoal came home with the partner, in its own place, and the verdict says "YOU WON THE SOUL BADGE! KOGA NO LONGER HOLDS EVERY ROAD INTO THE MARSH." This report was built with `buildExtractionReport` from a raid made to match the playtest's: a wipe on the clock, the partner holding Charcoal, Haunter secured and Koga beaten. It was then handed to the `extraction` scene in the build. The playtest's raid also left two Super Potions on the ground and escaped the hunter once. This one did neither, so its footer is shorter.

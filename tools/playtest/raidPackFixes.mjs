@@ -183,7 +183,8 @@ try {
     `[...document.querySelectorAll('[data-pupil]')].find((card) => /GEODUDE/.test(card.innerText))?.dataset.pupil`,
   );
   await page.evaluate(`document.querySelector('[data-pupil="${geodude}"]').click()`);
-  await wait(300);
+  // TEACH answers nothing within RELEASE_ARMING_MS (500ms) of the card being chosen.
+  await wait(600);
   await page.evaluate(`document.querySelector('[data-teach]').click()`);
   await until(`Boolean(document.querySelector('.teach-moment')) || Boolean(document.querySelector('[data-forget]'))`, 'the moment or the chooser');
   if (await page.evaluate(`Boolean(document.querySelector('[data-forget]'))`)) {

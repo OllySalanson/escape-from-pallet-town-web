@@ -31,6 +31,7 @@ import {
   settledScrollTop,
 } from '../ui/MenuOverlay';
 import { pokemonDossier } from '../ui/pokemonDossier';
+import { KOGA_BOSS_ID } from '../world/valeQuarters';
 import { ExtractionScene } from './ExtractionScene';
 
 /**
@@ -598,5 +599,33 @@ describe('the result screen of a map maker try', () => {
     const html = gamble('ESCAPED');
     expect(html).toContain('The gamble');
     expect(html).toContain('A wipe would have cost you Charizard');
+  });
+});
+
+/**
+ * The playtest of PRs 490-508 (11 Nov 2026): a raid that won the SOUL BADGE
+ * said only "1 trainer beaten". The badge is said in the verdict, under the
+ * headline, where the raid is summed up.
+ */
+describe('the result screen of a raid that won a badge', () => {
+  it('names the badge in the verdict', async () => {
+    const { buildExtractionReport } = await import('../run/extractionReport');
+    const { RunManager } = await import('../run/RunManager');
+    const { RAID_DURATION_MS } = await import('../run/raidClock');
+    const run = new RunManager();
+    run.startRun({ party: [new Pokemon(CHARMANDER, 5)], items: [] }, { mapId: 'greystone-vale', durationMs: RAID_DURATION_MS });
+    run.registerTrainerDefeat();
+    run.resolveEscape();
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: run.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      bossesBeaten: [KOGA_BOSS_ID],
+      saved: true,
+    });
+    const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
+    Object.assign(scene as object, { report });
+    const verdict = (scene as unknown as { markup(): string }).markup().split('extraction-verdict')[1]?.split('</section>')[0] ?? '';
+    expect(verdict).toContain('You won the SOUL BADGE! Koga no longer holds every road into the Marsh.');
   });
 });

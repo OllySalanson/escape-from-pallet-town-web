@@ -232,6 +232,13 @@ export class BagScene extends Phaser.Scene {
    * pressed. Choosing is not teaching: the card is marked and the bar asks.
    */
   private pupilIndex?: number;
+  /**
+   * When the question that gives something away last appeared: the list of who
+   * an item is for, or TEACH once a pupil is chosen. Each is drawn with the
+   * cursor already on an answer, so the second press of the double-tap that
+   * opened it must not be what answers it (`RELEASE_ARMING_MS`).
+   */
+  private askedAt = Number.NEGATIVE_INFINITY;
   /** Said once, over the help bar, about what just happened. */
   private status?: string;
   /**
@@ -289,6 +296,7 @@ export class BagScene extends Phaser.Scene {
     this.partner = data.partner;
     this.usingItemId = undefined;
     this.pupilIndex = undefined;
+    this.askedAt = Number.NEGATIVE_INFINITY;
     this.status = undefined;
     this.moment = undefined;
     this.momentTimers = [];
@@ -721,6 +729,7 @@ export class BagScene extends Phaser.Scene {
       return;
     }
     this.usingItemId = itemId;
+    this.askedAt = this.time.now;
     this.status = undefined;
     this.render();
   }
@@ -745,6 +754,7 @@ export class BagScene extends Phaser.Scene {
     }
     audioManager.play('select');
     this.pupilIndex = index;
+    this.askedAt = this.time.now;
     this.render();
     // The next thing to press is TEACH, so the cursor goes there; the card
     // stays marked and in view, and the bar says who and what.
@@ -767,6 +777,9 @@ export class BagScene extends Phaser.Scene {
 
   /** TEACH: the one press that reads the disc. */
   private teachPupil(): void {
+    if (this.askedTooRecently()) {
+      return;
+    }
     const item = this.usingItem;
     const target = this.pupilIndex === undefined ? undefined : this.party.pokemon[this.pupilIndex];
     if (!item || !target) {
@@ -785,6 +798,9 @@ export class BagScene extends Phaser.Scene {
   }
 
   private giveTo(index: number): void {
+    if (this.askedTooRecently()) {
+      return;
+    }
     const target = this.party.pokemon[index];
     const item = this.usingItem;
     if (!target || !item) {
@@ -822,6 +838,11 @@ export class BagScene extends Phaser.Scene {
     }
     this.status = result.message;
     this.render([`[data-item="${item.id}"]`]);
+  }
+
+  /** Whether a press is the second half of the double-tap that asked the question it would answer. */
+  private askedTooRecently(): boolean {
+    return this.time.now - this.askedAt < RELEASE_ARMING_MS;
   }
 
   /** Back to the pack from the evolution moment, with its line said there. */
