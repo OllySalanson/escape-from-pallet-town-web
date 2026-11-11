@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { MARSH_WILDLIFE } from '../pokemon/encounters';
 import { EVOLUTIONS } from '../pokemon/evolution';
+import { requireInsertion } from '../run/runGeneration';
 import { getWorldMap } from '../worldMap';
 import { districtAt, districtsForMap, weatherAt } from './districts';
 import { measureTable } from './encounterMeasure';
+import { extractionPointsOn } from './extractionPoints';
 import { gatesForMap } from './gates';
 import { MAP_FILE_HABITATS } from './mapFile';
+import { stepDistances } from './mapStructure';
 import { builtInFileMap } from './playerMaps';
 import { createRunTrainerEncounters } from './trainers';
 import { KOGA_BOSS_ID, MISTY_BOSS_ID, quarterOfPlace, VALE_QUARTERS } from './valeQuarters';
@@ -63,6 +66,40 @@ describe('THE MARSH, past Koga', () => {
 
   it.each(['bulbasaur', 'charmander', 'squirtle'])('keeps a level-20 %s on its feet', (starter) => {
     expect(measureTable(MARSH_WILDLIFE, starter, 20, 80).winRate).toBeGreaterThanOrEqual(0.45);
+  });
+
+  /**
+   * Off the road, as the Coast's are past Misty: with every trainer in the
+   * Marsh standing where they stand, no walk from either of its landings to any
+   * of its ways out is a step longer than with the ground clear, so a team
+   * that would rather not pay walks round them.
+   */
+  it('stands its trainers off the road, playing his combo, two on two', () => {
+    const map = getWorldMap(VALE, [MISTY_BOSS_ID, KOGA_BOSS_ID]);
+    const inMarsh = (tile: { x: number; y: number }) => {
+      const place = districtAt(VALE, tile);
+      return place !== undefined && quarterOfPlace(place, places()) === MARSH;
+    };
+    const trainers = createRunTrainerEncounters().filter(
+      (one) => one.mapId === VALE && one.bossId === undefined && inMarsh(one.position),
+    );
+    expect(trainers.length).toBeGreaterThanOrEqual(4);
+    for (const { position, trainer, sightRange } of trainers) {
+      expect(map.collision[position.y][position.x], trainer.name).toBe(false);
+      expect(`${trainer.name} ${trainer.ai} ${trainer.unitCount} ${sightRange ?? 0}`).toBe(`${trainer.name} gym 2 0`);
+    }
+    const blocked = new Set(trainers.map(({ position }) => `${position.x},${position.y}`));
+    const exits = extractionPointsOn(VALE).filter((exit) => inMarsh(exit.position));
+    expect(exits.length).toBeGreaterThan(0);
+    for (const landing of MARSH.landings) {
+      const from = requireInsertion(landing as Parameters<typeof requireInsertion>[0]).position;
+      const clear = stepDistances(map.collision, from, new Set(), map.links);
+      const stood = stepDistances(map.collision, from, blocked, map.links);
+      for (const exit of exits) {
+        const { x, y } = exit.position;
+        expect(`${landing} to ${exit.label}: ${stood[y][x]}`).toBe(`${landing} to ${exit.label}: ${clear[y][x]}`);
+      }
+    }
   });
 
   /**

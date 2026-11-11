@@ -11841,7 +11841,8 @@
    "facing": "up",
    "lines": [
     "Up from the hold on the morning tide, sorted by noon, sold by two.",
-    "The launch for the islands puts in at the pier a while in. Do not ask what it carries back."
+    "The Ice Run puts in below the pier a while in, for the islands. The launch at the end only goes home.",
+    "Do not ask what either of them carries back."
    ],
    "beat": {
     "everyMs": 2700,
@@ -14202,8 +14203,9 @@
    "y": 231,
    "lines": [
     "THE ICE RUN",
-    "The launch runs out to Frostreef on the flood tide.",
-    "It sails while your clock reads from 3:00 down to 1:00."
+    "The ferry to Frostreef ties up below the pier on the flood tide. Board it from the pier, facing the sea.",
+    "It sails while your clock reads from 3:00 down to 1:00.",
+    "The SALVAGE LAUNCH at the pier's end goes home, not to the islands."
    ]
   },
   {
@@ -14331,7 +14333,8 @@
    "y": 312,
    "lines": [
     "LOW WATER",
-    "Stair to the sea, a minute and a half after the tide turns. Do not wait for the second turn."
+    "Stair to the sea, from when your clock reads 3:30.",
+    "Once the tide is out it stays out, to the end of the raid."
    ]
   },
   {
@@ -15682,9 +15685,9 @@
   },
   {
    "name": "THE DROWNED TOWN",
-   "x": 138,
+   "x": 140,
    "y": 287,
-   "width": 54,
+   "width": 52,
    "height": 33,
    "wildlife": "coast",
    "rain": true
@@ -16291,115 +16294,6 @@
    ]
   },
   {
-   "x": 288,
-   "y": 168,
-   "name": "Poacher Vince",
-   "team": "collier",
-   "look": "rocker",
-   "facing": "left",
-   "sight": 0,
-   "lines": [
-    "Never seen that Scyther before in my life. Whose sack is this? Yours, is it? It had better be."
-   ]
-  },
-  {
-   "x": 296,
-   "y": 161,
-   "name": "Ranger Moss",
-   "team": "scout",
-   "look": "camper",
-   "facing": "left",
-   "sight": 3,
-   "lines": [
-    "The ranger's track is mine to keep. Show me what you caught!"
-   ]
-  },
-  {
-   "x": 286,
-   "y": 238,
-   "name": "Salvager Ned",
-   "team": "raider",
-   "look": "worker",
-   "facing": "left",
-   "sight": 0,
-   "lines": [
-    "This camp has first pick of the wreck!",
-    "You want a share, you earn it."
-   ]
-  },
-  {
-   "x": 264,
-   "y": 218,
-   "name": "Wrecker Bess",
-   "team": "netter",
-   "look": "worker-woman",
-   "facing": "right",
-   "sight": 3,
-   "lines": [
-    "A lantern? On a cliff? I have no idea what you mean. Give me that."
-   ]
-  },
-  {
-   "x": 158,
-   "y": 304,
-   "name": "Diver Coral",
-   "team": "netter",
-   "look": "swimmer-woman",
-   "facing": "up",
-   "sight": 3,
-   "lines": [
-    "I dive the mansion cellars. Finders keepers!"
-   ]
-  },
-  {
-   "x": 138,
-   "y": 277,
-   "name": "Rates Man Odd",
-   "team": "lengthsman",
-   "look": "clerk",
-   "facing": "right",
-   "sight": 0,
-   "lines": [
-    "I have a bill here for every house on this street, and one for you. Settle up!"
-   ]
-  },
-  {
-   "x": 79,
-   "y": 301,
-   "name": "Grunt",
-   "team": "raider",
-   "look": "rocket-grunt",
-   "facing": "up",
-   "sight": 2,
-   "lines": [
-    "Hey! That cargo is spoken for!"
-   ]
-  },
-  {
-   "x": 120,
-   "y": 299,
-   "name": "Carter Mags",
-   "team": "drover",
-   "look": "rocket-grunt-woman",
-   "facing": "up",
-   "sight": 0,
-   "lines": [
-    "You never saw this cart. You never saw me. You are about to not see my Pokémon!"
-   ]
-  },
-  {
-   "x": 102,
-   "y": 298,
-   "name": "Wrecker Tobin",
-   "team": "netter",
-   "look": "rocker",
-   "facing": "left",
-   "sight": 0,
-   "lines": [
-    "That light on the headland? That is to help the ships. Help them onto the rocks!"
-   ]
-  },
-  {
    "x": 158,
    "y": 41,
    "name": "Hiker Brann",
@@ -16473,7 +16367,7 @@
    "kind": "boss",
    "keeper": "vale-gym-koga",
    "name": "Safari Road",
-   "x": 257,
+   "x": 256,
    "y": 168,
    "width": 1,
    "height": 2
@@ -16483,7 +16377,7 @@
    "keeper": "vale-gym-koga",
    "name": "Pylon Path",
    "x": 286,
-   "y": 130,
+   "y": 128,
    "width": 2,
    "height": 1
   },
@@ -16491,7 +16385,7 @@
    "kind": "boss",
    "keeper": "vale-gym-koga",
    "name": "Cliff Road",
-   "x": 257,
+   "x": 256,
    "y": 222,
    "width": 1,
    "height": 2
@@ -16501,7 +16395,7 @@
    "keeper": "vale-gym-misty",
    "name": "Coast Jetty",
    "x": 172,
-   "y": 258,
+   "y": 256,
    "width": 2,
    "height": 1
   },
@@ -16528,7 +16422,7 @@
    "keeper": "vale-gym-misty",
    "name": "Reed Trail",
    "x": 84,
-   "y": 258,
+   "y": 256,
    "width": 2,
    "height": 1
   },
@@ -18872,31 +18766,31 @@
    "x": 305,
    "y": 148,
    "species": "kangaskhan",
-   "level": 14
+   "level": 17
   },
   {
    "x": 299,
    "y": 180,
    "species": "chansey",
-   "level": 14
+   "level": 17
   },
   {
    "x": 287,
    "y": 175,
    "species": "pinsir",
-   "level": 14
+   "level": 17
   },
   {
    "x": 274,
    "y": 150,
    "species": "nidorino",
-   "level": 13
+   "level": 16
   },
   {
    "x": 274,
    "y": 181,
    "species": "nidoran-f",
-   "level": 10
+   "level": 15
   },
   {
    "x": 260,
@@ -18916,7 +18810,7 @@
    "x": 268,
    "y": 171,
    "species": "venonat",
-   "level": 11
+   "level": 15
   },
   {
    "x": 289,
@@ -18978,13 +18872,13 @@
    "x": 307,
    "y": 140,
    "species": "poliwhirl",
-   "level": 13
+   "level": 16
   },
   {
    "x": 285,
    "y": 150,
    "species": "exeggcute",
-   "level": 12
+   "level": 15
   },
   {
    "x": 285,
@@ -19028,13 +18922,13 @@
    "x": 290,
    "y": 132,
    "species": "paras",
-   "level": 12
+   "level": 15
   },
   {
    "x": 302,
    "y": 166,
    "species": "slowpoke",
-   "level": 13
+   "level": 16
   },
   {
    "x": 295,
@@ -19045,13 +18939,13 @@
    "x": 296,
    "y": 166,
    "species": "nidorina",
-   "level": 13
+   "level": 16
   },
   {
    "x": 284,
    "y": 178,
    "species": "rhyhorn",
-   "level": 14
+   "level": 16
   },
   {
    "x": 282,
@@ -19071,7 +18965,7 @@
    "x": 296,
    "y": 159,
    "species": "tauros",
-   "level": 14
+   "level": 17
   },
   {
    "x": 300,
@@ -19091,7 +18985,7 @@
    "x": 305,
    "y": 163,
    "species": "scyther",
-   "level": 14
+   "level": 17
   },
   {
    "x": 310,
@@ -19135,7 +19029,7 @@
    "x": 300,
    "y": 214,
    "species": "fearow",
-   "level": 13
+   "level": 17
   },
   {
    "x": 267,
@@ -19155,7 +19049,7 @@
    "x": 263,
    "y": 213,
    "species": "spearow",
-   "level": 11
+   "level": 15
   },
   {
    "x": 269,
@@ -19189,7 +19083,7 @@
    "x": 282,
    "y": 238,
    "species": "staryu",
-   "level": 11
+   "level": 15
   },
   {
    "x": 286,
@@ -19223,7 +19117,7 @@
    "x": 276,
    "y": 233,
    "species": "krabby",
-   "level": 11,
+   "level": 15,
    "beat": {
     "everyMs": 1400,
     "roam": [
@@ -19238,7 +19132,7 @@
    "x": 265,
    "y": 230,
    "species": "shellder",
-   "level": 12
+   "level": 15
   },
   {
    "x": 289,
@@ -19258,7 +19152,7 @@
    "x": 285,
    "y": 246,
    "species": "slowpoke",
-   "level": 12
+   "level": 16
   },
   {
    "x": 274,
@@ -19269,7 +19163,7 @@
    "x": 269,
    "y": 235,
    "species": "tentacool",
-   "level": 11
+   "level": 15
   },
   {
    "x": 278,
@@ -19308,13 +19202,13 @@
    "x": 298,
    "y": 218,
    "species": "pidgeotto",
-   "level": 12
+   "level": 17
   },
   {
    "x": 306,
    "y": 220,
    "species": "rattata",
-   "level": 11,
+   "level": 15,
    "beat": {
     "everyMs": 1500,
     "roam": [
@@ -19334,7 +19228,7 @@
    "x": 7,
    "y": 4,
    "species": "meowth",
-   "level": 12,
+   "level": 16,
    "area": "wreck-the-forward-hold"
   },
   {
@@ -19396,13 +19290,13 @@
    "x": 172,
    "y": 276,
    "species": "pidgey",
-   "level": 7
+   "level": 11
   },
   {
    "x": 176,
    "y": 284,
    "species": "krabby",
-   "level": 9
+   "level": 11
   },
   {
    "x": 162,
@@ -19525,7 +19419,7 @@
    "x": 102,
    "y": 292,
    "species": "krabby",
-   "level": 9
+   "level": 11
   },
   {
    "x": 87,
@@ -19592,7 +19486,7 @@
    "x": 88,
    "y": 268,
    "species": "slowpoke",
-   "level": 10
+   "level": 11
   },
   {
    "x": 121,
@@ -19603,7 +19497,7 @@
    "x": 111,
    "y": 295,
    "species": "rattata",
-   "level": 9
+   "level": 11
   },
   {
    "x": 156,

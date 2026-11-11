@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { beatSpots } from '../../../../src/game/world/mapFile';
 import { stepDistances } from '../../../../src/game/world/mapStructure';
 import { getWorldMap } from '../../../../src/game/worldMap';
+import { createRunTrainerEncounters } from '../../../../src/game/world/trainers';
 import { MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
+import { districtRect } from '../../worldPlan';
+import { GREYSTONE_VALE } from './plan';
 import { greystonePeaks } from './greystonePeaks';
 import { orchardTerraces } from './orchardTerraces';
 import { pineHollow } from './pineHollow';
@@ -18,9 +21,25 @@ import { tanglewood } from './tanglewood';
 const SCREEN = { width: 25, height: 16 };
 const OUTDOORS = (spot: { readonly area?: string }) => spot.area === undefined;
 
+/**
+ * The trainers `trainers.ts` stands outdoors in a district, in its own tiles:
+ * a quarter's are there rather than in the file, because a file trainer can
+ * only field a toll team, and they are on its screens all the same.
+ */
+function valeTrainersIn(id: string): readonly { readonly x: number; readonly y: number }[] {
+  const rect = districtRect(GREYSTONE_VALE, id);
+  return createRunTrainerEncounters()
+    .filter((one) => one.mapId === 'greystone-vale')
+    .map(({ position }) => ({ x: position.x - rect.x, y: position.y - rect.y }))
+    .filter(({ x, y }) => x >= 0 && y >= 0 && x < rect.width && y < rect.height);
+}
+
 /** How many figures a screen holds on average round every tile of a district, and the screens with nobody on them. */
-function screensOf(file: ReturnType<typeof tanglewood>['file']) {
-  const figures = [...(file.people ?? []), ...(file.pokemon ?? []), ...(file.trainers ?? [])].filter(OUTDOORS);
+function screensOf(id: string, file: ReturnType<typeof tanglewood>['file']) {
+  const figures = [
+    ...[...(file.people ?? []), ...(file.pokemon ?? []), ...(file.trainers ?? [])].filter(OUTDOORS),
+    ...valeTrainersIn(id),
+  ];
   let total = 0;
   let screens = 0;
   const empty: string[] = [];
@@ -49,9 +68,17 @@ describe('the third ring out from Mill Square', () => {
     'the sunken quarter': sunkenQuarter().file,
     'pine hollow': pineHollow().file,
   };
+  const ids: Record<keyof typeof districts, string> = {
+    tanglewood: 'tanglewood',
+    "smugglers' cove": 'smugglers-cove',
+    'greystone peaks': 'greystone-peaks',
+    'orchard terraces': 'orchard-terraces',
+    'the sunken quarter': 'sunken-quarter',
+    'pine hollow': 'pine-hollow',
+  };
 
-  it.each(Object.entries(districts))('has somebody on every screen of %s', (_name, file) => {
-    const { mean, empty } = screensOf(file);
+  it.each(Object.entries(districts))('has somebody on every screen of %s', (name, file) => {
+    const { mean, empty } = screensOf(ids[name as keyof typeof districts], file);
     expect(empty).toEqual([]);
     // The harbour shows 4.9 at a time; this ring showed 1.7 before it was filled.
     expect(mean).toBeGreaterThan(4);

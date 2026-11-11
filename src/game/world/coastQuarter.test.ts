@@ -14,7 +14,7 @@ import { MISTY_BOSS_ID, quarterOfPlace, VALE_QUARTERS } from './valeQuarters';
 /**
  * THE COAST fights like Misty (the gyms plan's step 3): the quarter her gym
  * holds is wet and fast everywhere, not only in her hall. Its places are in the
- * rain and roll the Coast's own swimmers; two trainers fight her way past her
+ * rain and roll the Coast's own swimmers; its trainers fight her way past her
  * doors; the keeper inside sits above her (`quarterPuzzle.test.ts` measures
  * all three); and each of her two doors has a guard and a notice that say so
  * before it costs anything.
@@ -22,9 +22,15 @@ import { MISTY_BOSS_ID, quarterOfPlace, VALE_QUARTERS } from './valeQuarters';
 
 const VALE = 'greystone-vale' as const;
 const COAST = VALE_QUARTERS.find((quarter) => quarter.gym?.bossId === MISTY_BOSS_ID)!;
-const COAST_TRAINERS = ['vale-coast-fisherman-hal', 'vale-coast-swimmer-nell'];
-
 const places = () => districtsForMap(VALE);
+/** Everybody past her doors who is not a keeper: two from the start, five more since the coast hunt. */
+const COAST_TRAINERS = createRunTrainerEncounters()
+  .filter((one) => one.mapId === VALE && one.bossId === undefined)
+  .filter((one) => {
+    const place = districtAt(VALE, one.position);
+    return place !== undefined && quarterOfPlace(place, places()) === COAST;
+  })
+  .map((one) => one.trainer.id);
 /** The outdoor places of the vale and whether each lies in the Coast. */
 const outdoorPlaces = () =>
   places()
@@ -70,11 +76,12 @@ describe('THE COAST, past Misty', () => {
   });
 
   /**
-   * Off the road, so a wrong team walks round them: with both of them standing
+   * Off the road, so a wrong team walks round them: with all of them standing
    * where they stand, no walk from either of the Coast's landings to any of its
    * ways out is a step longer than with the ground clear.
    */
-  it('stands its two trainers off the road, playing her combo, two on two', () => {
+  it('stands its trainers off the road, playing her combo, two on two', () => {
+    expect(COAST_TRAINERS.length).toBeGreaterThanOrEqual(7);
     const map = getWorldMap(VALE, [MISTY_BOSS_ID]);
     const blocked = new Set(COAST_TRAINERS.map((id) => `${encounter(id).position.x},${encounter(id).position.y}`));
     for (const id of COAST_TRAINERS) {

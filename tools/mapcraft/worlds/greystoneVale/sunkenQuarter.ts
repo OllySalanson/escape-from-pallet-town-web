@@ -216,7 +216,7 @@ export function sunkenQuarter(): MapcraftResult {
       // what is only found there (`BUILT_IN_FILE_PRIZES`) behind the
       // barricades rather than anywhere on the quay.
       districts: [
-        { name: 'THE DROWNED TOWN', x: 10, y: 31, width: 54, height: 33, wildlife: 'coast', rain: true },
+        { name: 'THE DROWNED TOWN', x: 12, y: 31, width: 52, height: 33, wildlife: 'coast', rain: true },
         { name: 'THE OLD QUAY', x: 14, y: 12, width: 40, height: 4, wildlife: 'coast', rain: true },
         { name: 'THE BOATYARD', x: 48, y: 24, width: 6, height: 7, wildlife: 'coast', rain: true },
       ],
@@ -227,7 +227,9 @@ export function sunkenQuarter(): MapcraftResult {
         { x: 16, y: 23, lines: ['UPPER STREET', 'Formerly Middle Street. Before that, Hill Street. The sea has been very good for the view.'] },
         { x: 47, y: 25, lines: ['THE BOATYARD', 'Repairs to anything that floats. Everything else we can only sympathise with.'] },
         { x: 32, y: 47, lines: ['MARKET STREET', 'Market on Thursdays. Bring a boat.'] },
-        { x: 28, y: 56, lines: ['LOW WATER', 'Stair to the sea, a minute and a half after the tide turns. Do not wait for the second turn.'] },
+        // The stair opens once and stays open (`plan.ts`, `Low Water Stair`), so
+        // the sign gives the clock it opens at and says it stays.
+        { x: 28, y: 56, lines: ['LOW WATER', 'Stair to the sea, from when your clock reads 3:30.', 'Once the tide is out it stays out, to the end of the raid.'] },
         // The drowned bell (`src/game/world/secrets.ts`): the old church went
         // down with the lower town, and its bell rope comes up out of the sea
         // and is tied off to a bollard at Market Street's edge. Pulled at low
@@ -242,8 +244,8 @@ export function sunkenQuarter(): MapcraftResult {
         { x: 31, y: 14, species: 'meowth', beat: { everyMs: 1900, roam: [[1, 0]] } },
         { x: 38, y: 15, species: 'pidgey', beat: { everyMs: 1400, roam: [[1, 0]] } },
         { x: 26, y: 19, species: 'rattata' },
-        { x: 44, y: 20, species: 'pidgey', level: 7 },
-        { x: 48, y: 28, species: 'krabby', level: 9 },
+        { x: 44, y: 20, species: 'pidgey', level: 11 },
+        { x: 48, y: 28, species: 'krabby', level: 11 },
         { x: 34, y: 40, species: 'krabby', level: 12 },
         { x: 28, y: 39, species: 'slowpoke', level: 14 },
         { x: 28, y: 41, species: 'shellder', level: 12 },
@@ -284,23 +286,12 @@ export function sunkenQuarter(): MapcraftResult {
         // where it comes in over the quarter's edge, so the Old Quay, the
         // Fishers' Boat and everything past them are the Coast
         // (`world/valeQuarters.ts`).
-        { kind: 'boss', keeper: MISTY_BOSS_ID, name: 'Coast Jetty', x: 44, y: 2, width: 2, height: 1 },
+        { kind: 'boss', keeper: MISTY_BOSS_ID, name: 'Coast Jetty', x: 44, y: 0, width: 2, height: 1 },
         { kind: 'boss', keeper: KEEPER, name: 'Street Barricade', x: 30, y: 30, width: 2, height: 1 },
         { kind: 'boss', keeper: KEEPER, name: 'Shingle Barricade', x: 11, y: 46, width: 1, height: 2 },
       ],
-      trainers: [
-        {
-          x: 30,
-          y: 48,
-          name: 'Diver Coral',
-          team: 'netter',
-          look: 'swimmer-woman',
-          facing: 'up',
-          sight: 3,
-          lines: ['I dive the mansion cellars. Finders keepers!'],
-        },
-        { x: 10, y: 21, name: 'Rates Man Odd', team: 'lengthsman', look: 'clerk', facing: 'right', sight: 0, lines: ['I have a bill here for every house on this street, and one for you. Settle up!'] },
-      ],
+      // Its trainers are in `src/game/world/trainers.ts`, measured to the Coast's band
+      // (`quarterPuzzle.test.ts`): a file trainer can only field a toll team.
     },
   });
   return { file: withInsides(file), notes: p.notes, limits: planLimits(GREYSTONE_VALE) };

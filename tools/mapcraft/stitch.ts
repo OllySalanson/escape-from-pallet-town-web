@@ -67,10 +67,17 @@ export function districtFile(
     card && !(details.exits ?? []).some((exit) => exit.opens.when === 'key')
       ? wayToward(plan, id, card.lock)
       : undefined;
-  // A river is nobody's way out: its opening is water.
+  // A river is nobody's way out: its opening is water. Nor is a way a keeper
+  // holds, from the district behind it: that district draws the keeper's door
+  // on the seam itself, so that every tile of it is behind the door and its
+  // caption never names it from outside (the coast hunt of 11 Nov 2026), and
+  // a stand-in way out there would stand on the door.
+  const doors = details.extra?.doors ?? [];
+  const underDoor = ([x, y]: readonly [number, number]) =>
+    doors.some((door) => x >= door.x && x < door.x + door.width && y >= door.y && y < door.y + door.height);
   const exits: MapFileExit[] = uniqueNames(
     openingsOf(plan, id)
-      .filter((opening) => opening.kind !== 'river')
+      .filter((opening) => opening.kind !== 'river' && !underDoor(exitTile(plan.districtSize, opening)))
       .map((opening) => {
         const [x, y] = exitTile(plan.districtSize, opening);
         const name =
