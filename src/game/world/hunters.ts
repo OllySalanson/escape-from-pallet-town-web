@@ -1,4 +1,6 @@
+import type { PlacedArea } from './areaLayout';
 import type { CastCharacterDesignId } from './characterDesigns';
+import type { Rect } from './interiors';
 import { valeGyms } from './valeQuarters';
 
 /**
@@ -275,4 +277,24 @@ export function rivalsStoodDown(beatenThisRaid: Iterable<string>): HunterRivalId
   return valeGyms()
     .filter((gym) => beaten.has(gym.bossId))
     .flatMap((gym) => HUNTER_RIVALS.filter((rival) => rival.id === gym.rival).map((rival) => rival.id));
+}
+
+/**
+ * The room each gym leader who hunts keeps out of as a hunter: their own gym
+ * (the area the map names after `ValeGym.building`), where they stand at its
+ * head as the leader waiting for the challenge. The hunter KOGA chased a player
+ * through Fuchsia Gym's door and fought them under the gym leader KOGA's nose,
+ * with a different team and a win line that sounded like the badge (the second
+ * characters hunt of 11 Nov 2026, finding 2). Anybody else still follows you in.
+ */
+export function ownGymRooms(areas: readonly PlacedArea[] | undefined): ReadonlyMap<HunterRivalId, Rect> {
+  const rooms = new Map<HunterRivalId, Rect>();
+  for (const gym of valeGyms()) {
+    const rival = HUNTER_RIVALS.find((each) => each.id === gym.rival);
+    const room = areas?.find((area) => area.kind === 'inside' && area.name === gym.building);
+    if (rival && room) {
+      rooms.set(rival.id, room.rect);
+    }
+  }
+  return rooms;
 }

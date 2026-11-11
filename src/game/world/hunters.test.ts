@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getCharacterDesign } from './characterDesigns';
-import { FIRST_HUNTER_RIVAL, HUNTER_RIVALS, hunterRival, rivalForRaid, rivalsStoodDown } from './hunters';
+import { FIRST_HUNTER_RIVAL, HUNTER_RIVALS, hunterRival, ownGymRooms, rivalForRaid, rivalsStoodDown } from './hunters';
+import { getWorldMap } from '../worldMap';
 import { KOGA_BOSS_ID, MISTY_BOSS_ID, valeGyms } from './valeQuarters';
 
 describe('the five hunters', () => {
@@ -81,5 +82,22 @@ describe('a gym leader beaten in the raid', () => {
     expect(rivalsStoodDown(['vale-coast-fisherman-hal'])).toEqual([]);
     expect(rivalsStoodDown([KOGA_BOSS_ID])).toEqual(['koga']);
     expect(rivalsStoodDown(new Set([MISTY_BOSS_ID, KOGA_BOSS_ID]))).toEqual(['misty', 'koga']);
+  });
+});
+
+describe('a gym leader hunting', () => {
+  it('keeps out of their own gym room, found by the name the vale gives it, for every gym', () => {
+    const vale = getWorldMap('greystone-vale');
+    const rooms = ownGymRooms(vale.areas);
+    expect([...rooms.keys()]).toEqual(valeGyms().map((gym) => gym.rival));
+    for (const gym of valeGyms()) {
+      const room = vale.areas!.find((area) => area.name === gym.building)!;
+      expect(rooms.get(gym.rival as (typeof HUNTER_RIVALS)[number]['id']), gym.building).toEqual(room.rect);
+    }
+  });
+
+  it('keeps nobody out of anywhere on a map without the gyms', () => {
+    expect(ownGymRooms(undefined).size).toBe(0);
+    expect(ownGymRooms(getWorldMap('route-1').areas).size).toBe(0);
   });
 });

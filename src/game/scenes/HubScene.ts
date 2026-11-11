@@ -123,7 +123,7 @@ import {
   type RaidContract,
 } from '../objectives';
 import { deferPendingMoves, nextPendingMoveOffer } from '../hub/pendingMoves';
-import { railWarning, type RailWarning } from '../hub/railWarning';
+import { benchRailWarning, rimOpensOnNotYet, type RailWarning } from '../hub/railWarning';
 import { raidsDeployed, raidsLost, SaveManager, spareAtBase, traderProgressOf, type RestoredGame } from '../save/SaveManager';
 import {
   searchPokemon,
@@ -1483,12 +1483,20 @@ export class HubScene extends Phaser.Scene {
         return;
       }
     }
-    // On the rim the arrows point at the map, and the cursor stays on JUMP IN.
+    // On the rim the arrows point at the map: each goes to the way in that lies
+    // that way. One that points at none is the cursor's, so a rim with one way
+    // in still moves between NOT YET and JUMP IN; and Right from NOT YET is
+    // always JUMP IN beside it, because NOT YET is where the card opens for a
+    // hurt team or a player just home, and only TAB - said nowhere - left it
+    // (the second characters hunt of 11 Nov 2026, finding 1).
     if (this.view === 'rim') {
       const way = RIM_ARROWS[event.key];
       if (way) {
         event.preventDefault();
-        this.stepToWayIn(way);
+        const onNotYet = (document.activeElement as HTMLElement | null)?.matches('[data-back]') === true;
+        if ((onNotYet && event.key === 'ArrowRight') || !this.stepToWayIn(way)) {
+          this.moveRimCursor(event.key);
+        }
         return;
       }
     }
@@ -2715,10 +2723,9 @@ export class HubScene extends Phaser.Scene {
     const chosen = this.flow.insertionId;
     const refusal = this.flow.notReady;
     const warning = refusal ?? this.packWarning();
-    const hurt = this.railHurt();
     const ways = this.waysFromHere().length;
     const nextMap = this.nextMapWayIn();
-    const stay = Boolean(refusal) || hurt?.stops === true || this.justHome;
+    const stay = rimOpensOnNotYet(this.flow, this.justHome);
     return `<main class="px-body rim-layout">${pixelCommitBar({
       title: `<span data-rim-title>${this.rimTitle(chosen)}</span>`,
       lines: [
@@ -2745,17 +2752,7 @@ export class HubScene extends Phaser.Scene {
 
   /** What the rail says of a hurt team (`hub/railWarning.ts`). A team that cannot lose has nothing to be told. */
   private railHurt(): RailWarning | null {
-    return isPlaytestRun()
-      ? null
-      : railWarning(
-          this.flow.party.map(({ pokemon }) => ({
-            name: pokemon.name,
-            currentHp: pokemon.currentHp,
-            maxHp: pokemon.maxHp,
-            primaryStatus: pokemon.primaryStatus,
-          })),
-          this.flow.packsMedicine,
-        );
+    return benchRailWarning(this.flow);
   }
 
   /** Every way in on offer, while a room is held only those on its map. */
@@ -2783,13 +2780,22 @@ export class HubScene extends Phaser.Scene {
     return this.offeredWays.find(([, insertion]) => insertion.mapId === next)?.[1] ?? null;
   }
 
-  /** An arrow key on the rim: to the way in that lies that way on the map, if one does. */
-  private stepToWayIn(way: { readonly x: number; readonly y: number }): void {
+  /** An arrow key on the rim: to the way in that lies that way on the map, if one does, and whether one did. */
+  private stepToWayIn(way: { readonly x: number; readonly y: number }): boolean {
     const next = wayInToward(this.waysFromHere(), this.flow.insertionId, way);
-    if (next) {
-      audioManager.play('select');
-      this.pointAtLanding(next.id);
-    } else {
+    if (!next) {
+      return false;
+    }
+    audioManager.play('select');
+    this.pointAtLanding(next.id);
+    return true;
+  }
+
+  /** An arrow on the rim that is the cursor's: to the button that way, or a bump where there is none. */
+  private moveRimCursor(key: string): void {
+    const before = document.activeElement;
+    this.overlay.moveCursor(key);
+    if (document.activeElement === before) {
       audioManager.play('bump');
     }
   }

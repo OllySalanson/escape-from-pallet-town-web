@@ -1778,6 +1778,86 @@ describe('what the base screen leads with', () => {
     expect(rim).not.toMatch(/data-start data-cursor-start/);
   });
 
+  /**
+   * Presses `key` on the rim with the cursor on the button `on` names, and
+   * answers which button the cursor is on afterwards. The overlay's own cursor
+   * moves between the card's two buttons, NOT YET on the left.
+   */
+  function pressOnTheRim(hub: HubInternals, on: 'back' | 'start', key: string): 'back' | 'start' {
+    const button = (which: 'back' | 'start') => ({ matches: (selector: string) => selector === `[data-${which}]`, closest: () => null });
+    const buttons = { back: button('back'), start: button('start') };
+    const document = { activeElement: buttons[on] as unknown };
+    const moveCursor = vi.fn((pressed: string) => {
+      if (pressed === 'ArrowRight' && document.activeElement === buttons.back) {
+        document.activeElement = buttons.start;
+      } else if (pressed === 'ArrowLeft' && document.activeElement === buttons.start) {
+        document.activeElement = buttons.back;
+      }
+      return true;
+    });
+    Object.assign((hub as unknown as { overlay: object }).overlay, { moveCursor });
+    vi.stubGlobal('document', document);
+    try {
+      (hub as unknown as { handleKey(event: KeyboardEvent): void }).handleKey({ key, preventDefault: () => undefined } as KeyboardEvent);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    return document.activeElement === buttons.start ? 'start' : 'back';
+  }
+
+  // The second characters hunt of 11 Nov 2026, finding 1: a hurt team's card
+  // opened on NOT YET, every arrow went to the map and bumped, and only TAB -
+  // said nowhere - reached JUMP IN. Nothing stops the player, keyboard or not.
+  it('lets a hurt team reach JUMP IN from NOT YET with Right, and choose nothing on the map by it', () => {
+    const { hub } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    const { pokemon } = hub.flow.party[0];
+    pokemon.takeDamage(pokemon.currentHp - 1);
+    hub.setView('rim');
+    readyToDeploy(hub);
+    expect(markupOf(hub)).toMatch(/data-back data-cursor-start/);
+    const landing = hub.flow.insertionId;
+    expect(pressOnTheRim(hub, 'back', 'ArrowRight')).toBe('start');
+    expect(hub.flow.insertionId).toBe(landing);
+  });
+
+  it('starts a player just home on NOT YET, and Right still reaches JUMP IN', () => {
+    const { hub } = createHub();
+    const savedGame = (hub as unknown as { savedGame: RestoredGame }).savedGame;
+    hub.init({ view: 'rim', justHome: true, savedGame });
+    hub.flow.togglePokemon('charmander-1');
+    readyToDeploy(hub);
+    expect(pressOnTheRim(hub, 'back', 'ArrowRight')).toBe('start');
+  });
+
+  it('moves between the buttons with an arrow that points at no other way in', () => {
+    const { hub } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('rim');
+    readyToDeploy(hub);
+    expect((hub as unknown as { waysFromHere(): readonly unknown[] }).waysFromHere()).toHaveLength(1);
+    expect(pressOnTheRim(hub, 'start', 'ArrowLeft')).toBe('back');
+    expect(pressOnTheRim(hub, 'back', 'ArrowRight')).toBe('start');
+  });
+
+  it('keeps the arrows on the map where another way in lies that way', () => {
+    const { hub } = createHub({
+      ...DEFAULT_RAID_PROGRESS,
+      firstContractExtracted: true,
+      completedContracts: [FIRST_CONTRACT_ID],
+      unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+      defeatedBosses: ['overlook-warden'],
+      reachedInsertions: ['route-1-overlook'],
+    });
+    (hub as unknown as { kit: Partial<ArenaKit> }).kit = { aim: () => undefined };
+    hub.setView('rim');
+    hub.flow.togglePokemon('charmander-1');
+    hub.flow.chooseInsertion('route-1');
+    const toward = RUN_INSERTIONS['route-1-overlook'].position.x > RUN_INSERTIONS['route-1'].position.x ? 'ArrowRight' : 'ArrowLeft';
+    expect(pressOnTheRim(hub, 'start', toward)).toBe('start');
+    expect(hub.flow.insertionId).toBe('route-1-overlook');
+  });
+
   it('keeps the cursor on JUMP IN for a team that is fit', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');

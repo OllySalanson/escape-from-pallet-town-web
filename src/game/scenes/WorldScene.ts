@@ -405,13 +405,12 @@ import {
   type HunterState,
   hunterIntelFor,
 } from '../world/hunter';
-import { FIRST_HUNTER_RIVAL, hunterRival, rivalsStoodDown, type HunterRival } from '../world/hunters';
+import { FIRST_HUNTER_RIVAL, hunterRival, ownGymRooms, rivalsStoodDown, type HunterRival, type HunterRivalId } from '../world/hunters';
 import {
   HunterPack,
   createHunterPack,
   drawnAt,
   inGround,
-  HUNTER_TAIL_STEPS,
   isAbroad,
   rivalsForGrounds,
   type PackEvent,
@@ -4757,14 +4756,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
   }
 
-  /** The name of a hunter right behind the player as they get out, if there is one. */
+  /** The name of a hunter right behind the player as they get out, in sight of them (`HunterPack.onTail`), if there is one. */
   private hunterOnTail(): string | null {
-    const here = this.currentTile;
-    const tail = this.hunterPackHere()?.hunters.find(
-      (hunter) =>
-        (hunter.mode === 'chase' || hunter.enraged) &&
-        Math.abs(hunter.position.x - here.x) + Math.abs(hunter.position.y - here.y) <= HUNTER_TAIL_STEPS,
-    );
+    const tail = this.hunterPackHere()?.onTail(this.packWorld());
     return tail ? hunterRival(tail.rivalId).name : null;
   }
 
@@ -9193,6 +9187,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const areas = map.areas;
     const placeOf = (tile: GridPosition): PlacedArea | null =>
       areas ? placedAreaAt(areas, tile) ?? areas[0] : null;
+    const gymRooms = ownGymRooms(areas);
     const world: PackWorld = {
       width,
       height: map.height,
@@ -9212,6 +9207,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       playerHidden: this.playerIsHidden() || this.runSession?.shoreLeftBehind?.mapId === map.id,
       samePlace: (a, b) => placeOf(a) === placeOf(b),
       enraged: this.runSession?.manager.isEnraged === true,
+      // A gym leader's hunter half stops at their own gym's door.
+      ...(gymRooms.size > 0
+        ? {
+            keptOut: (rival: HunterRivalId, index: number) => {
+              const room = gymRooms.get(rival);
+              return room !== undefined && isInsideRect(room, { x: index % width, y: (index / width) | 0 });
+            },
+          }
+        : {}),
     };
     this.packWorldCache = { frame, world };
     return world;
@@ -9343,6 +9347,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const keeper = pack.hunters.find((hunter) => inGround(hunter.ground, this.currentTile));
     if (!keeper || keeper.mode !== 'beaten') {
       pack.enrageAnswered = true;
+      return;
+    }
+    // Not into their own gym: asked again once the player is out of it.
+    if (world.keptOut?.(keeper.rivalId, this.currentTile.y * world.width + this.currentTile.x)) {
       return;
     }
     const tile = this.findHunterSpawnTile();
