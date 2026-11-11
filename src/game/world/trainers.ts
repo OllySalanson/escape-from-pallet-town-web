@@ -1283,7 +1283,10 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
           gymPokemon('horsea', 14, ['Bubble', 'Smokescreen']),
           gymPokemon('starmie', 13, ['Swift', 'Rapid Spin', 'Recover']),
         ],
-        'Wow! You are too much. Here is the CASCADE BADGE. The jetty and the reed trail are open - go and see the Coast.',
+        // Open, not offered: a landing in the Coast goes on the rim once a raid
+        // has reached it (`availableInsertionIds`), so the line says so (the midgame bug hunt of 11 Nov
+        // 2026 found the rim unchanged after a badge and nothing saying why).
+        'Wow! You are too much. Here is the CASCADE BADGE. The jetty and the reed trail are open. Reach a drop-in point past them, and you can start a raid from it.',
         2,
       ),
       ai: 'gym',
@@ -1382,7 +1385,8 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
           gymPokemon('grimer', 19, ['Sludge', 'Minimize', 'Poison Gas', 'Pound']),
           gymPokemon('venonat', 18, ['Super Sonic', 'Tackle', 'Poison Powder', 'Leech Life']),
         ],
-        'Humph! You have proven your worth! Here is the SOUL BADGE. The ways into the Marsh are open to you.',
+        // Open, not offered, as Misty says of the Coast.
+        'Humph! You have proven your worth! Here is the SOUL BADGE. The ways into the Marsh are open to you. Reach a drop-in point in it, and you may start a raid from there.',
         2,
       ),
       ai: 'gym',
