@@ -255,15 +255,15 @@ export function smugglersCove(): MapcraftResult {
         { x: 29, y: 32, species: 'staryu' },
         { x: 31, y: 42, species: 'krabby', beat: { everyMs: 1400, roam: [[0, -1]] } },
         { x: 35, y: 46, species: 'shellder', level: 11 },
-        { x: 38, y: 36, species: 'krabby', level: 9 },
+        { x: 38, y: 36, species: 'krabby', level: 11 },
         { x: 23, y: 34, species: 'slowpoke' },
         { x: 33, y: 42, species: 'meowth', beat: { everyMs: 2400, roam: [[1, 0]] } },
         { x: 33, y: 22, species: 'spearow', beat: { everyMs: 1300, roam: [[1, 0]] } },
         { x: 55, y: 19, species: 'pidgey', beat: { everyMs: 1500, roam: [[0, 1]] } },
         { x: 8, y: 12, species: 'poliwag', beat: { everyMs: 2000, roam: [[0, 1]] } },
-        { x: 24, y: 12, species: 'slowpoke', level: 10 },
+        { x: 24, y: 12, species: 'slowpoke', level: 11 },
         { x: 57, y: 45, species: 'rattata' },
-        { x: 47, y: 39, species: 'rattata', level: 9 },
+        { x: 47, y: 39, species: 'rattata', level: 11 },
       ],
       berryTrees: [
         { x: 31, y: 18, berry: 'oran' },
@@ -293,12 +293,9 @@ export function smugglersCove(): MapcraftResult {
       // Misty's second door: the deer path down from Reedmere, sandbagged
       // where it comes in over the cove's edge, above the eel pool
       // (`world/valeQuarters.ts`).
-      doors: [{ kind: 'boss', keeper: MISTY_BOSS_ID, name: 'Reed Trail', x: 20, y: 2, width: 2, height: 1 }],
-      trainers: [
-        { x: 15, y: 45, name: 'Grunt', team: 'raider', look: 'rocket-grunt', facing: 'up', sight: 2, lines: ['Hey! That cargo is spoken for!'] },
-        { x: 56, y: 43, name: 'Carter Mags', team: 'drover', look: 'rocket-grunt-woman', facing: 'up', sight: 0, lines: ['You never saw this cart. You never saw me. You are about to not see my Pokémon!'] },
-        { x: 38, y: 42, name: 'Wrecker Tobin', team: 'netter', look: 'rocker', facing: 'left', sight: 0, lines: ['That light on the headland? That is to help the ships. Help them onto the rocks!'] },
-      ],
+      doors: [{ kind: 'boss', keeper: MISTY_BOSS_ID, name: 'Reed Trail', x: 20, y: 0, width: 2, height: 1 }],
+      // Its trainers are in `src/game/world/trainers.ts`, measured to the Coast's band
+      // (`quarterPuzzle.test.ts`): a file trainer can only field a toll team.
     },
   });
   return { file: withInsides(file), notes: p.notes, limits: planLimits(GREYSTONE_VALE) };

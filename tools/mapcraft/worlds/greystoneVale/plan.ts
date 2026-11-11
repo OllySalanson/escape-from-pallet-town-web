@@ -271,7 +271,7 @@ export const GREYSTONE_VALE: WorldPlan = {
       idea: "An island of ice on the outer reef, by boat on the tide from the wreck's pier: a frozen lagoon, and a cave of sliding ice.",
       reach: {
         wayIn:
-          "Only by sea. The salvage launch that puts in at the Wreck's pier two minutes into a raid runs out to the reef on the flood tide - The Ice Run, two cells of open sea - and back, from 2:00 until 4:00 on the raid clock and never otherwise.",
+          "Only by sea. The Ice Run, the ferry that ties up below the Wreck's pier two minutes into a raid, runs out to the reef on the flood tide - two cells of open sea - and back, from 2:00 until 4:00 on the raid clock and never otherwise.",
         hard:
           "Miss the tide and the reef is out of reach that raid, and the voyage costs clock both ways. The island's best ground is through Berg Cave, whose floor is FireRed's sliding ice (Icefall Cave): a step on it carries on until something stops it, so crossing is a puzzle of where to stop.",
         onlyHere:

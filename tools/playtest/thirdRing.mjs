@@ -3,21 +3,25 @@
 // shore, along to the Sunken Quarter, round by the Cut to Smugglers' Cove, and up
 // the pass to the quarry, the tarn and Pine Hollow.
 //
-//   node tools/playtest/thirdRing.mjs <test-mode build url> <out dir> [--port=N]
+//   node tools/playtest/thirdRing.mjs <test-mode build url> <out dir> [--port=N] [--no-shots]
 //
 // It fails if a place cannot be walked to on foot or a door will not open
-// (`docs/screens/third-ring/`).
+// (`docs/screens/third-ring/`). `--no-shots` is the smoke check: the same walk
+// on `?testmode=1` in the small logic window, with no pictures taken.
 import { mkdirSync, readFileSync } from 'node:fs';
-import { attachBrowser, launchBrowser, PIXEL_WINDOW } from './browser.mjs';
+import { attachBrowser, launchBrowser, LOGIC_WINDOW, PIXEL_WINDOW } from './browser.mjs';
 import { GAME, deploy, sceneIs } from './deploy.mjs';
+import { routeTo } from './route.mjs';
 
 const args = process.argv.slice(2);
 const [base, out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
 const port = args.find((arg) => arg.startsWith('--port='))?.slice('--port='.length);
-if (!base) throw new Error('usage: thirdRing.mjs <url> <out dir> [--port=N]');
+const pictures = !args.includes('--no-shots');
+if (!base) throw new Error('usage: thirdRing.mjs <url> <out dir> [--port=N] [--no-shots]');
 mkdirSync(out, { recursive: true });
 const url = new URL(base);
-url.searchParams.set('testmode', 'pixels');
+url.searchParams.set('testmode', pictures ? 'pixels' : '1');
+const browserWindow = pictures ? PIXEL_WINDOW : LOGIC_WINDOW;
 const FRAME_MS = 1000 / 60;
 const WORLD = `${GAME}.scene.getScene('world')`;
 const BATTLE = `${GAME}.scene.getScene('battle')`;
@@ -46,7 +50,7 @@ const doorOf = (name) => {
   const { x, y } = ends.find((end) => end.area === undefined);
   return { x, y };
 };
-const browser = port ? attachBrowser(Number(port), { window: PIXEL_WINDOW }) : await launchBrowser({ window: PIXEL_WINDOW });
+const browser = port ? attachBrowser(Number(port), { window: browserWindow }) : await launchBrowser({ window: browserWindow });
 const page = await browser.openPage('about:blank');
 // By day: a night raid swaps what is out, and it is the day's village being checked.
 let offset = (12 - new Date().getUTCHours() + 24) % 24;
@@ -106,21 +110,7 @@ try {
     await wait(600);
     await readAll();
   };
-  const nextKey = (target) =>
-    page.evaluate(`(() => { const w = ${WORLD}; const c = w.collisionData, H = c.length, W = c[0].length;
-      const goal = ${JSON.stringify(target)}; const id = (x, y) => y * W + x; const s = w.currentTile;
-      if (s.x === goal.x && s.y === goal.y) return null;
-      const first = new Map([[id(s.x, s.y), null]]); const queue = [[s.x, s.y]];
-      for (let head = 0; head < queue.length; head += 1) { const [x, y] = queue[head]; const here = first.get(id(x, y));
-        for (const [dx, dy, key] of [[0, -1, 'ArrowUp'], [0, 1, 'ArrowDown'], [-1, 0, 'ArrowLeft'], [1, 0, 'ArrowRight']]) {
-          const nx = x + dx, ny = y + dy;
-          if (nx < 0 || ny < 0 || nx >= W || ny >= H || first.has(id(nx, ny))) continue;
-          if (w.isBlocked({ x: nx, y: ny }) && !(nx === goal.x && ny === goal.y)) continue;
-          first.set(id(nx, ny), here ?? key);
-          if (nx === goal.x && ny === goal.y) return here ?? key;
-          queue.push([nx, ny]);
-        } }
-      return 'unreachable'; })()`);
+  const tile = () => page.evaluate(`${WORLD}.currentTile`);
   /** Walks there as a player does; a press is released as soon as the tile changes, one tile a press. */
   const walk = async (wanted, what) => {
     // A waypoint on a wall or a figure means the nearest tile that is ground.
@@ -131,12 +121,23 @@ try {
           if (c[n.y]?.[n.x] !== undefined && !seen.has(k)) { seen.add(k); queue.push(n); } } }
       return start; })()`);
     let shut = 0;
+    // The route is searched once and walked; a step that does not land (a
+    // figure on its beat, a hunter in the lane) or a fight or a line on the
+    // way asks for it again from wherever the player is then.
+    let route = [];
     for (let guard = 0; guard < 400; guard += 1) {
-      if (await page.evaluate(sceneIs('battle'))) await fight();
-      if ((await line()) !== null) await readAll();
-      const key = await nextKey(target);
-      if (key === null) return true;
-      if (key === 'unreachable') {
+      if (await page.evaluate(sceneIs('battle'))) {
+        await fight();
+        route = [];
+      }
+      if ((await line()) !== null) {
+        await readAll();
+        route = [];
+      }
+      if (route.length === 0) route = await page.evaluate(routeTo(WORLD, target));
+      if (route?.length === 0) return true;
+      if (route === null) {
+        route = [];
         // A hunter or somebody on a beat can stand in a lane for a moment: only
         // ground that stays shut is a fault.
         shut += 1;
@@ -148,6 +149,8 @@ try {
         return false;
       }
       shut = 0;
+      const key = route.shift();
+      const before = await tile();
       // One tile a press, on 60fps frames: a test-mode frame is 100ms, and a walk
       // that starts its next step in the frame the last one ended overshoots a
       // tile and then walks back over it for ever.
@@ -155,13 +158,14 @@ try {
       await page.evaluate(`${GAME}.stepFrames(2, ${FRAME_MS})`);
       await page.keyUp(key);
       for (let i = 0; i < 16 && (await page.evaluate(`Boolean(${WORLD}.targetTile)`)); i += 1) await page.evaluate(`${GAME}.stepFrames(1, ${FRAME_MS})`);
+      const after = await tile();
+      if (after.x === before.x && after.y === before.y) route = [];
     }
-    console.log('     stuck at', await page.evaluate(`(() => { const w = ${WORLD}; return JSON.stringify({ tile: w.currentTile, scene: ${GAME}.scene.getScenes(true).map((s) => s.scene.key), dialog: w.dialogBox?.visible, prompt: Boolean(w.trainerPrompt), warping: w.isWarping, cutscene: Boolean(w.cutscene), riding: w.riding, facing: w.facing, target: w.targetTile, near: (w.hunterPackHere?.()?.hunters ?? []).filter((h) => Math.abs(h.position.x - w.currentTile.x) < 8).map((h) => [h.id, h.position, h.mode]) }); })()`), await nextKey(target));
-    await page.screenshot(`${out}/stuck.png`);
+    console.log('     stuck at', await page.evaluate(`(() => { const w = ${WORLD}; return JSON.stringify({ tile: w.currentTile, scene: ${GAME}.scene.getScenes(true).map((s) => s.scene.key), dialog: w.dialogBox?.visible, prompt: Boolean(w.trainerPrompt), warping: w.isWarping, cutscene: Boolean(w.cutscene), riding: w.riding, facing: w.facing, target: w.targetTile, near: (w.hunterPackHere?.()?.hunters ?? []).filter((h) => Math.abs(h.position.x - w.currentTile.x) < 8).map((h) => [h.id, h.position, h.mode]) }); })()`), JSON.stringify(await page.evaluate(routeTo(WORLD, target))));
+    if (pictures) await page.screenshot(`${out}/stuck.png`);
     check(false, `${what} is reached in the time`);
     return false;
   };
-  const tile = () => page.evaluate(`${WORLD}.currentTile`);
 
   await page.send('Page.navigate', { url: url.href });
   await page.waitFor(`document.readyState === 'complete' && location.href.startsWith(${JSON.stringify(url.origin)})`, { timeout: 90_000 });
@@ -175,8 +179,11 @@ try {
   await wait(600);
   await readAll();
   const place = () => page.evaluate(`${WORLD}.placePlate?.text ?? ${WORLD}.currentDistrictName?.() ?? null`);
-  const shot = (name) => page.screenshot(`${out}/${name}.png`);
+  const shot = async (name) => {
+    if (pictures) await page.screenshot(`${out}/${name}.png`);
+  };
   const along = async (points, what) => {
+    console.log(`     walking to ${what}`);
     for (const point of points) {
       if (!(await walk(point, what))) return false;
     }

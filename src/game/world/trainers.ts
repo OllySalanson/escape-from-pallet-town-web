@@ -225,6 +225,15 @@ export const TOLL_BAND = {
     'vale-coast-swimmer-nell',
     'vale-gym-koga-nate',
     'vale-gym-koga-phil',
+    'vale-coast-diver-coral',
+    'vale-coast-rates-man-odd',
+    'vale-coast-cove-grunt',
+    'vale-coast-carter-mags',
+    'vale-coast-wrecker-tobin',
+    'vale-marsh-poacher-vince',
+    'vale-marsh-ranger-moss',
+    'vale-marsh-salvager-ned',
+    'vale-marsh-wrecker-bess',
   ] as readonly string[],
 } as const;
 
@@ -274,6 +283,35 @@ export const KOGA_GYM_SPOTS = {
 /** A spot in Koga's hall, as a tile of the vale's played grid. */
 const inKogasHall = (spot: { readonly x: number; readonly y: number }) =>
   builtInSpot('greystone-vale', { area: KOGA_GYM_HALL, ...spot });
+
+/**
+ * A trainer standing in a gym's quarter, off its roads (`coastQuarter.test.ts`,
+ * `marshQuarter.test.ts`): two on two, playing a combo the way the quarter's
+ * gym does (`ai: 'gym'`), and spoken to rather than watching, so a team that
+ * would rather not pay walks round. Measured against the quarter's own
+ * reference teams, never the toll band (`quarterPuzzle.test.ts`). The coast
+ * hunt of 11 Nov 2026 found seven of them, and the Safari Marsh two more,
+ * still fielding first-raid toll teams of levels 5 to 8 behind gyms of 15 and
+ * 20, every one going down to a single hit.
+ */
+const quarterTrainer = (
+  id: string,
+  name: string,
+  position: GridPosition,
+  facing: Direction,
+  design: CastCharacterDesignId,
+  introLines: readonly string[],
+  party: readonly Pokemon[],
+  defeatText: string,
+): RunTrainerEncounter => ({
+  mapId: 'greystone-vale',
+  position,
+  facing,
+  fixedPosition: true,
+  design,
+  introLines,
+  trainer: { ...createTrainer(id, name, party, defeatText, 2), ai: 'gym' },
+});
 
 /**
  * These encounters are created for each WorldScene so defeated trainers and
@@ -1237,6 +1275,65 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     },
   },
 
+  // -- THE COAST, its streets and its cove: the trainers who stood there with toll teams -------------
+  // The drowned town's cellar diver: a Poliwag's Hypnosis, then a Shellder's spears.
+  quarterTrainer(
+    'vale-coast-diver-coral',
+    'DIVER CORAL',
+    { x: 158, y: 304 },
+    'up',
+    'swimmer-woman',
+    ['I dive the mansion cellars. Finders keepers!'],
+    [gymPokemon('poliwag', 14, ['Hypnosis', 'Water Gun', 'Bubble']), gymPokemon('shellder', 14, ['Icicle Spear', 'Super Sonic', 'Withdraw'])],
+    'Keep it, then. The cellars go deeper than the town does.',
+  ),
+  // The rates man on the high street: a Slowpoke that will not be hurried beside a quick Staryu.
+  // Neither carries a Water move: one in the Coast's rain against Fire and Rock
+  // is a wall at any level (Misty's lesson), and these are a toll, not a wall.
+  quarterTrainer(
+    'vale-coast-rates-man-odd',
+    'RATES MAN ODD',
+    { x: 138, y: 277 },
+    'right',
+    'clerk',
+    ['I have a bill here for every house on this street, and one for you. Settle up!'],
+    [gymPokemon('slowpoke', 14, ['Confusion', 'Tackle', 'Growl']), gymPokemon('staryu', 14, ['Swift', 'Rapid Spin', 'Harden'])],
+    'Paid in full. I shall have to write that down somewhere.',
+  ),
+  // The smugglers' grunt on the cargo: a Zubat's Supersonic, then a Krabby while the head spins.
+  quarterTrainer(
+    'vale-coast-cove-grunt',
+    'GRUNT',
+    { x: 79, y: 301 },
+    'up',
+    'rocket-grunt',
+    ['Hey! That cargo is spoken for!'],
+    [gymPokemon('zubat', 14, ['Super Sonic', 'Leech Life', 'Bite']), gymPokemon('krabby', 14, ['Vise Grip', 'Bubble', 'Leer'])],
+    'Fine! Take a crate! They are all full of sand anyway!',
+  ),
+  // The carter with the cart nobody saw: an Ekans that bites, and a Goldeen that swims first in the rain.
+  quarterTrainer(
+    'vale-coast-carter-mags',
+    'CARTER MAGS',
+    { x: 120, y: 299 },
+    'up',
+    'rocket-grunt-woman',
+    ['You never saw this cart. You never saw me. You are about to not see my Pokémon!'],
+    [gymPokemon('ekans', 14, ['Leer', 'Poison Sting', 'Bite']), gymPokemon('goldeen', 14, ['Horn Attack', 'Super Sonic', 'Peck'])],
+    'Right. You saw all of it. Now forget all of it.',
+  ),
+  // The wrecker with the false light: a Voltorb to be the lamp, and a Staryu to follow it in, dry as the rates man's.
+  quarterTrainer(
+    'vale-coast-wrecker-tobin',
+    'WRECKER TOBIN',
+    { x: 102, y: 298 },
+    'left',
+    'rocker',
+    ['That light on the headland? That is to help the ships. Help them onto the rocks!'],
+    [gymPokemon('voltorb', 14, ['Spark', 'Screech', 'Tackle']), gymPokemon('staryu', 14, ['Swift', 'Rapid Spin', 'Harden'])],
+    'You saw through the light. Most ships do not.',
+  ),
+
   // -- Cerulean Gym, Gull Strand: Misty holds THE COAST --------------------------------
   {
     // The leader of Cerulean Gym on Gull Strand, who holds the two ways into
@@ -1439,4 +1536,50 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       ai: 'gym',
     },
   },
+
+  // -- THE MARSH, the reserve and the wreck's cape: the trainers who stood there with toll teams ------------
+  // The poacher with the Scyther that is not his: a Paras's Stun Spore, then a Nidorino's horn.
+  quarterTrainer(
+    'vale-marsh-poacher-vince',
+    'POACHER VINCE',
+    { x: 288, y: 168 },
+    'left',
+    'rocker',
+    ['Never seen that Scyther before in my life. Whose sack is this? Yours, is it? It had better be.'],
+    [gymPokemon('paras', 18, ['Stun Spore', 'Leech Life', 'Scratch']), gymPokemon('nidorino', 18, ['Horn Attack', 'Double Kick', 'Poison Sting'])],
+    'Not my sack, not my Scyther, not my day.',
+  ),
+  // The ranger on the ranger's track: a Venonat's Poison Powder, and a Nidorina whose Poison Point bites back.
+  quarterTrainer(
+    'vale-marsh-ranger-moss',
+    'RANGER MOSS',
+    { x: 296, y: 161 },
+    'left',
+    'camper',
+    ["The ranger's track is mine to keep. Show me what you caught!"],
+    [gymPokemon('venonat', 18, ['Poison Powder', 'Confusion', 'Tackle']), gymPokemon('nidorina', 18, ['Bite', 'Double Kick', 'Poison Sting'])],
+    'You caught well. Mind the ones that poison you back.',
+  ),
+  // The salvager at the camp: a Grimer that Minimizes, and a Machop to work round it.
+  quarterTrainer(
+    'vale-marsh-salvager-ned',
+    'SALVAGER NED',
+    { x: 286, y: 238 },
+    'left',
+    'worker',
+    ['This camp has first pick of the wreck!', 'You want a share, you earn it.'],
+    [gymPokemon('grimer', 18, ['Minimize', 'Sludge', 'Pound']), gymPokemon('machop', 18, ['Karate Chop', 'Rock Smash', 'Leer'])],
+    'Share earned. Mind, the camp still has first pick.',
+  ),
+  // The wrecker with the lantern on the cliff: a Koffing's Smokescreen, then a Tentacool's sting.
+  quarterTrainer(
+    'vale-marsh-wrecker-bess',
+    'WRECKER BESS',
+    { x: 264, y: 218 },
+    'right',
+    'worker-woman',
+    ['A lantern? On a cliff? I have no idea what you mean. Give me that.'],
+    [gymPokemon('koffing', 18, ['Smokescreen', 'Smog', 'Tackle']), gymPokemon('tentacool', 18, ['Poison Sting', 'Acid', 'Super Sonic'])],
+    'Keep the lantern. There is always another cliff.',
+  ),
 ];

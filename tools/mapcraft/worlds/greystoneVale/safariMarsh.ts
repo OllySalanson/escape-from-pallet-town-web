@@ -254,36 +254,36 @@ export function safariMarsh(): MapcraftResult {
       // Chansey by the south pond, a Pinsir in the east beds, Nidoran and
       // Nidorino in the reeds.
       pokemon: [
-        { x: 49, y: 20, species: 'kangaskhan', level: 14 },
-        { x: 43, y: 52, species: 'chansey', level: 14 },
-        { x: 31, y: 47, species: 'pinsir', level: 14 },
-        { x: 18, y: 22, species: 'nidorino', level: 13 },
-        { x: 18, y: 53, species: 'nidoran-f', level: 10 },
+        { x: 49, y: 20, species: 'kangaskhan', level: 17 },
+        { x: 43, y: 52, species: 'chansey', level: 17 },
+        { x: 31, y: 47, species: 'pinsir', level: 17 },
+        { x: 18, y: 22, species: 'nidorino', level: 16 },
+        { x: 18, y: 53, species: 'nidoran-f', level: 15 },
         { x: 4, y: 46, species: 'rattata', beat: { everyMs: 1400, roam: [[1, 0]] } },
-        { x: 12, y: 43, species: 'venonat', level: 11 },
+        { x: 12, y: 43, species: 'venonat', level: 15 },
         { x: 33, y: 34, species: 'doduo', beat: { everyMs: 1500, roam: [[1, 0]] } },
         // The nursery: two mothers, and the Chansey who has taken charge of them.
         { x: 48, y: 23, species: 'kangaskhan', beat: { everyMs: 2400, roam: [[1, 0]] } },
         { x: 51, y: 24, species: 'cubone', beat: { everyMs: 1300, roam: [[0, -1]] } },
         { x: 50, y: 19, species: 'chansey', beat: { everyMs: 2100, roam: [[0, 1]] } },
-        { x: 51, y: 12, species: 'poliwhirl', level: 13 },
+        { x: 51, y: 12, species: 'poliwhirl', level: 16 },
         // The egg bank.
-        { x: 29, y: 22, species: 'exeggcute', level: 12 },
+        { x: 29, y: 22, species: 'exeggcute', level: 15 },
         { x: 29, y: 21, species: 'exeggcute' },
         { x: 28, y: 22, species: 'exeggcute' },
         // What the hide is trying to see, from the shore it cannot be seen from.
         { x: 16, y: 16, species: 'psyduck', beat: { everyMs: 2300, roam: [[0, 1]] } },
         { x: 29, y: 11, species: 'venonat', beat: { everyMs: 1200, roam: [[0, 1]] } },
-        { x: 34, y: 4, species: 'paras', level: 12 },
+        { x: 34, y: 4, species: 'paras', level: 15 },
         // The great pool, the wallow and the reeds round them.
-        { x: 46, y: 38, species: 'slowpoke', level: 13 },
+        { x: 46, y: 38, species: 'slowpoke', level: 16 },
         { x: 39, y: 42, species: 'psyduck' },
-        { x: 40, y: 38, species: 'nidorina', level: 13 },
-        { x: 28, y: 50, species: 'rhyhorn', level: 14 },
+        { x: 40, y: 38, species: 'nidorina', level: 16 },
+        { x: 28, y: 50, species: 'rhyhorn', level: 16 },
         { x: 26, y: 52, species: 'rhyhorn', beat: { everyMs: 3100, roam: [[1, 0]] } },
-        { x: 40, y: 31, species: 'tauros', level: 14 },
+        { x: 40, y: 31, species: 'tauros', level: 17 },
         { x: 44, y: 30, species: 'tauros', beat: { everyMs: 2800, roam: [[1, 0]] } },
-        { x: 49, y: 35, species: 'scyther', level: 14 },
+        { x: 49, y: 35, species: 'scyther', level: 17 },
         { x: 54, y: 27, species: 'nidoran-m', beat: { everyMs: 1500, roam: [[-1, 0]] } },
         { x: 21, y: 32, species: 'venonat' },
         { x: 18, y: 47, species: 'paras', beat: { everyMs: 1800, roam: [[0, 1]] } },
@@ -326,22 +326,11 @@ export function safariMarsh(): MapcraftResult {
       // reserve's edge, and the road down from the Power Station, barred the
       // same way (`world/valeQuarters.ts`).
       doors: [
-        { kind: 'boss', keeper: KOGA_BOSS_ID, name: 'Safari Road', x: 1, y: 40, width: 1, height: 2 },
-        { kind: 'boss', keeper: KOGA_BOSS_ID, name: 'Pylon Path', x: 30, y: 2, width: 2, height: 1 },
+        { kind: 'boss', keeper: KOGA_BOSS_ID, name: 'Safari Road', x: 0, y: 40, width: 1, height: 2 },
+        { kind: 'boss', keeper: KOGA_BOSS_ID, name: 'Pylon Path', x: 30, y: 0, width: 2, height: 1 },
       ],
-      trainers: [
-        { x: 32, y: 40, name: 'Poacher Vince', team: 'collier', look: 'rocker', facing: 'left', sight: 0, lines: ['Never seen that Scyther before in my life. Whose sack is this? Yours, is it? It had better be.'] },
-        {
-          x: 40,
-          y: 33,
-          name: 'Ranger Moss',
-          team: 'scout',
-          look: 'camper',
-          facing: 'left',
-          sight: 3,
-          lines: ["The ranger's track is mine to keep. Show me what you caught!"],
-        },
-      ],
+      // Its trainers are in `src/game/world/trainers.ts`, measured to the Marsh's band
+      // (`quarterPuzzle.test.ts`): a file trainer can only field a toll team.
     },
   });
   const rested = withInside(file, 'safari', 'warden-house', 27, 26, 'The Rest House', [

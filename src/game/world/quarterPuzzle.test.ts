@@ -89,6 +89,17 @@ const COAST_PARTIES: readonly MeasuredParty[] = [BEST, ...STARTERS, wrong(3), wr
 const meanRate = (trainer: TrainerBattle, weather: WeatherId | null): number =>
   COAST_PARTIES.reduce((total, party) => total + rate(party, trainer, weather), 0) / COAST_PARTIES.length;
 
+/** The trainers past Misty's doors (`coastQuarter.test.ts` stands them off its roads, `quarterEdges.test.ts` finds no other). */
+const COAST_QUARTER_TRAINERS = [
+  'vale-coast-fisherman-hal',
+  'vale-coast-swimmer-nell',
+  'vale-coast-diver-coral',
+  'vale-coast-rates-man-odd',
+  'vale-coast-cove-grunt',
+  'vale-coast-carter-mags',
+  'vale-coast-wrecker-tobin',
+] as const;
+
 describe('THE COAST: Misty, two on two in the rain', () => {
   it('fields two at once and plays her combo', () => {
     const trainer = misty();
@@ -143,17 +154,18 @@ describe('THE COAST: Misty, two on two in the rain', () => {
 
   /**
    * Past her doors the quarter fights the way her gym does (the plan's step
-   * 3). Two trainers stand off its roads (`coastQuarter.test.ts`), each a pair
+   * 3). Its trainers stand off its roads (`coastQuarter.test.ts`), each a pair
    * that plays a combo in the rain THE COAST is always in: a Tentacool's
    * Supersonic and a Goldeen swimming first, a Horsea's Smokescreen and a
-   * Krabby behind it. They are its tolls, held to the quarter's band rather
+   * Krabby behind it, and the five who stood on the drowned streets and in
+   * the cove with toll teams until the coast hunt of 11 Nov 2026. They are its tolls, held to the quarter's band rather
    * than the toll band (`TOLL_BAND.heldElsewhere`): every starter with the two
    * catches that suit the Coast pays them, no starter is more than the toll
    * band's spread behind another, the best team walks through, and the wrong
    * team finds them easier than Misty - the lesson again, never a second wall.
    */
   it('has two trainers past her doors who fight her way and are a toll at its band', () => {
-    for (const id of ['vale-coast-fisherman-hal', 'vale-coast-swimmer-nell']) {
+    for (const id of COAST_QUARTER_TRAINERS) {
       const trainer = trainerOf(id);
       expect(`${trainer.name} ${trainer.ai} ${trainer.unitCount}`).toBe(`${trainer.name} gym 2`);
       expect(rate(BEST, trainer, WeatherId.Rain)).toBeGreaterThanOrEqual(0.9);
@@ -233,6 +245,14 @@ const MARSH_STARTERS: readonly MeasuredParty[] = [
 const kogaRate = (party: MeasuredParty, trainer: TrainerBattle = koga()): number =>
   trainerWinRate(party, trainer, TRIALS, 0x51ede, null, POTIONS);
 
+/** The trainers past Koga's doors (`marshQuarter.test.ts` stands them off its roads, `quarterEdges.test.ts` finds no other). */
+const MARSH_QUARTER_TRAINERS = [
+  'vale-marsh-poacher-vince',
+  'vale-marsh-ranger-moss',
+  'vale-marsh-salvager-ned',
+  'vale-marsh-wrecker-bess',
+] as const;
+
 describe('THE MARSH: Koga, two on two in the poison', () => {
   it('fields two at once and plays his combo: smoke, poison, and a Koffing that floats and blows up', () => {
     const trainer = koga();
@@ -286,6 +306,26 @@ describe('THE MARSH: Koga, two on two in the poison', () => {
       const trainer = trainerOf(id);
       expect(`${trainer.name} ${trainer.ai} ${trainer.unitCount}`).toBe(`${trainer.name} gym 2`);
       expect(kogaRate(MARSH_BEST, trainer)).toBeGreaterThanOrEqual(0.9);
+      expect(kogaRate(marshWrong(3), trainer)).toBeGreaterThan(kogaRate(marshWrong(3)));
+    }
+  });
+
+  /**
+   * Past his doors the quarter fights the way his gym does, as the Coast does
+   * past Misty's: a pair each that plays a combo - stun or poison and a hit,
+   * smoke and a sting, a Grimer that Minimizes - held to the Marsh's band
+   * (`TOLL_BAND.heldElsewhere`): every starter with its Gastly and its hitter
+   * pays them, none more than the toll band's spread behind another, the best
+   * team walks through, and the wrong team finds them easier than Koga.
+   */
+  it('has trainers past his doors who fight his way and are a toll at its band', () => {
+    for (const id of MARSH_QUARTER_TRAINERS) {
+      const trainer = trainerOf(id);
+      expect(`${trainer.name} ${trainer.ai} ${trainer.unitCount}`).toBe(`${trainer.name} gym 2`);
+      expect(kogaRate(MARSH_BEST, trainer)).toBeGreaterThanOrEqual(0.9);
+      const starters = MARSH_STARTERS.map((party) => kogaRate(party, trainer));
+      expect(Math.min(...starters), trainer.name).toBeGreaterThanOrEqual(0.6);
+      expect(Math.max(...starters) - Math.min(...starters), trainer.name).toBeLessThanOrEqual(0.35);
       expect(kogaRate(marshWrong(3), trainer)).toBeGreaterThan(kogaRate(marshWrong(3)));
     }
   });

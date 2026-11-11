@@ -87,6 +87,21 @@ check on arrival times cannot see one.
 a dressed one, a walk, empty-handed, a change at the rack, the dive, the raid and
 the Bicycle, failing if the figure is ever drawn from the wrong sheet.
 
+A driver that walks the overworld a tile a press searches once per walk, not once
+per step: `route.mjs`'s `routeTo(world, goal)` reads what stands in the way once
+(the collision grid, every figure's held tiles, trainers, hunters, barred exits)
+and hands back the whole route, and the driver asks again only when a step does
+not land. A search that asks `WorldScene.isBlocked` for every tile reads every
+figure on the map for every tile, and on the 384x384 vale one step cost millions
+of reads: `thirdRing.mjs` went four minutes without a line until it moved over
+(the coast hunt of 11 Nov 2026). `raid.mjs`, `secondRing.mjs`, `fourthRing.mjs`,
+`millbrook.mjs`, `stormcrown.mjs`, `packFull.mjs` and `veteranLoop.mjs` still
+search per step and are the ones to move next.
+
+`thirdRing.mjs <url> <dir> [--port=N] [--no-shots]` walks the third ring from
+Mill Square, photographing each place on `?testmode=pixels`; `--no-shots` is its
+smoke check, the same walk on `?testmode=1` in the logic window.
+
 `secondRing.mjs <url> <dir> [--port=N]` walks the vale's second ring on foot from
 Mill Square: the boardwalks, the punt out to Duck Island and back, in and out of the
 inns, the strand, Bridge End and the moor, photographing each. It takes about three

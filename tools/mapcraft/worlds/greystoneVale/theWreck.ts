@@ -141,9 +141,9 @@ export function theWreck(): MapcraftResult {
   p.draw(15, 42, [' WW', 'WWW', ' WW']);
   p.draw(41, 42, ['  WW', ' WWWW', '  WW']);
 
-  // -- The pier the salvage launch puts in at: on the flood tide it runs out to
-  // Frostreef from the pier's end (The Ice Run, `plan.ts`), and the game draws
-  // it moored there while it sails, so nothing stands in its water.
+  // -- The pier: on the flood tide The Ice Run ties up below it and runs out to
+  // Frostreef (`plan.ts`), and the game draws it moored there while it sails,
+  // so nothing stands in its water. The SALVAGE LAUNCH at its end is an exit.
   p.block(50, 40, 14, 2, 'M');
 
   // -- The reef: a bar of sand out to the wreck, the cargo thrown up along it ---
@@ -264,7 +264,7 @@ export function theWreck(): MapcraftResult {
     extra: {
       // Koga's second door: the cliff road in from Orchard Terraces, barred
       // just inside the cape (`world/valeQuarters.ts`).
-      doors: [{ kind: 'boss', keeper: KOGA_BOSS_ID, name: 'Cliff Road', x: 1, y: 30, width: 1, height: 2 }],
+      doors: [{ kind: 'boss', keeper: KOGA_BOSS_ID, name: 'Cliff Road', x: 0, y: 30, width: 1, height: 2 }],
       districts: [
         { name: 'THE CAPE ROAD', x: 12, y: 21, width: 11, height: 7, wildlife: 'poison-marsh' },
         { name: 'THE VIEWPOINT', x: 32, y: 26, width: 13, height: 6, wildlife: 'poison-marsh' },
@@ -278,7 +278,10 @@ export function theWreck(): MapcraftResult {
       signs: [
         { x: 26, y: 30, lines: ['THE WRECK', 'The liner went onto the reef in the last storm. The camp is below the cliff.'] },
         { x: 46, y: 29, lines: ['THE CAPE', 'The wreck is out on the reef, past the camp. The pier is east.'] },
-        { x: 54, y: 39, lines: ['THE ICE RUN', 'The launch runs out to Frostreef on the flood tide.', 'It sails while your clock reads from 3:00 down to 1:00.'] },
+        // Two boats lie at this pier from 2:00, so the words never call The Ice
+        // Run "the launch": the SALVAGE LAUNCH at the pier's end is a way home
+        // and ends the raid (the coast hunt of 11 Nov 2026).
+        { x: 54, y: 39, lines: ['THE ICE RUN', 'The ferry to Frostreef ties up below the pier on the flood tide. Board it from the pier, facing the sea.', 'It sails while your clock reads from 3:00 down to 1:00.', "The SALVAGE LAUNCH at the pier's end goes home, not to the islands."] },
         { x: 42, y: 40, lines: ['LOTS 1-40', 'Sold as seen. Some of it has been seen by the sea for some time.'] },
         { x: 38, y: 41, lines: ['LOT 41', 'Deck chairs, nine. Sea damage. Some of the sea is still in them.'] },
         { x: 30, y: 44, lines: ['THE BAR', 'Dry at low water. It has been low water for some weeks. Nobody trusts it.'] },
@@ -293,7 +296,7 @@ export function theWreck(): MapcraftResult {
         { x: 39, y: 40, name: 'Auctioneer', look: 'gentleman', facing: 'down', lines: ['Lot forty-two, a lifeboat, one careful owner. Who will start me at something?', 'Everything must go. It has mostly gone once already.'], beat: { everyMs: 2600, glances: ['down', 'left', 'right'] }, calls: ['Who will start me?', 'Sold, to the man in the sea!'] },
         { x: 35, y: 41, name: 'Bidder', look: 'bald-man', facing: 'up', lines: ['I came for a porthole. I have bought nine, and something I was told was a chair.', 'I have no boat. I have a shed with very good views of the shed.'], beat: { everyMs: 3100, glances: ['up', 'right'] }, calls: ['Mine! Is that mine?'] },
         { x: 41, y: 41, name: 'Dealer', look: 'rich-boy', facing: 'left', lines: ['Silver, if you can find any. That is all that is worth the walk.', 'The sea took the plate. The camp took the spoons. I have a very good price on some forks.'], beat: { everyMs: 2900, glances: ['left', 'up'] } },
-        { x: 48, y: 41, name: 'Salvage Hand', look: 'worker', facing: 'up', lines: ['Up from the hold on the morning tide, sorted by noon, sold by two.', 'The launch for the islands puts in at the pier a while in. Do not ask what it carries back.'], beat: { everyMs: 2700, roam: [[1, 0]], glances: ['up'] }, calls: ['Mind your backs!'] },
+        { x: 48, y: 41, name: 'Salvage Hand', look: 'worker', facing: 'up', lines: ['Up from the hold on the morning tide, sorted by noon, sold by two.', 'The Ice Run puts in below the pier a while in, for the islands. The launch at the end only goes home.', 'Do not ask what either of them carries back.'], beat: { everyMs: 2700, roam: [[1, 0]], glances: ['up'] }, calls: ['Mind your backs!'] },
         { x: 52, y: 39, name: 'Tallyman', look: 'clerk', facing: 'up', lines: ['Everything off the wreck is written down in this book. It is a very honest book.', 'I keep the other one at home.'], beat: { everyMs: 3500, glances: ['up', 'left'] } },
         { x: 21, y: 39, name: 'Lady Pemberton', look: 'beauty', facing: 'down', lines: ['We were told dinner would be at eight. It is the principle of the thing.', 'One does not simply leave a ship because it has stopped working.'], beat: { everyMs: 3700, glances: ['down', 'right'] }, calls: ['Steward!'] },
         { x: 25, y: 40, name: 'Colonel Tate', look: 'gentleman', facing: 'left', lines: ['We paid until Tuesday, and I intend to have until Tuesday.', 'Splendid air. Bit of a list on the dining room.'], beat: { everyMs: 4100, glances: ['left', 'down'] }, calls: ['First sitting, is it?'] },
@@ -313,10 +316,8 @@ export function theWreck(): MapcraftResult {
         { x: 8, y: 22, name: 'Spearow Man', look: 'bug-catcher', facing: 'up', lines: ['Sixty pairs on these rocks, every year. I count them. They come over and count me.', 'Do not wear a hat up here. Do not bring a sandwich. Do not look as though you might.'], beat: { everyMs: 2400, glances: ['up', 'right'] }, calls: ['Do not look at them!'] },
         { x: 19, y: 27, name: 'Landlady', look: 'old-woman', facing: 'left', lines: ['We did nicely out of that storm. I will not say we are pleased. I will say the roof is new.', 'The cook is off the ship. The chairs are off the ship. Do not ask about the bell.'], beat: { everyMs: 3200, glances: ['left', 'down'] }, calls: ['Rooms! Sea views!'] },
       ],
-      trainers: [
-        { x: 30, y: 46, name: 'Salvager Ned', team: 'raider', look: 'worker', facing: 'left', sight: 0, lines: ['This camp has first pick of the wreck!', 'You want a share, you earn it.'] },
-        { x: 8, y: 26, name: 'Wrecker Bess', team: 'netter', look: 'worker-woman', facing: 'right', sight: 3, lines: ['A lantern? On a cliff? I have no idea what you mean. Give me that.'] },
-      ],
+      // Its trainers are in `src/game/world/trainers.ts`, measured to the Marsh's band
+      // (`quarterPuzzle.test.ts`): a file trainer can only field a toll team.
       landmarks: [
         { x: 56, y: 39, name: 'Salvage Pier', kind: 'jetty' },
       ],
@@ -324,25 +325,25 @@ export function theWreck(): MapcraftResult {
       // The cape's own: the Spearow on their rocks, a Fearow over them all, the
       // crabs that have taken to first class, and what got out of the wreck.
       pokemon: [
-        { x: 44, y: 22, species: 'fearow', level: 13 },
+        { x: 44, y: 22, species: 'fearow', level: 17 },
         { x: 11, y: 18, species: 'spearow', beat: { everyMs: 1100, roam: [[1, 0]] } },
-        { x: 7, y: 21, species: 'spearow', level: 11 },
+        { x: 7, y: 21, species: 'spearow', level: 15 },
         { x: 13, y: 20, species: 'spearow', beat: { everyMs: 1300, roam: [[0, 1]] } },
         { x: 10, y: 21, species: 'spearow', beat: { everyMs: 900, roam: [[-1, 0]] } },
-        { x: 26, y: 46, species: 'staryu', level: 11 },
+        { x: 26, y: 46, species: 'staryu', level: 15 },
         { x: 30, y: 37, species: 'meowth', beat: { everyMs: 2100, roam: [[1, 0]] } },
         { x: 38, y: 43, species: 'krabby', beat: { everyMs: 1200, roam: [[1, 0]] } },
-        { x: 20, y: 41, species: 'krabby', level: 11, beat: { everyMs: 1400, roam: [[1, 0]] } },
-        { x: 9, y: 38, species: 'shellder', level: 12 },
+        { x: 20, y: 41, species: 'krabby', level: 15, beat: { everyMs: 1400, roam: [[1, 0]] } },
+        { x: 9, y: 38, species: 'shellder', level: 15 },
         { x: 33, y: 45, species: 'krabby', beat: { everyMs: 1300, roam: [[-1, 0]] } },
-        { x: 29, y: 54, species: 'slowpoke', level: 12 },
+        { x: 29, y: 54, species: 'slowpoke', level: 16 },
         { x: 18, y: 42, species: 'psyduck' },
-        { x: 13, y: 43, species: 'tentacool', level: 11 },
+        { x: 13, y: 43, species: 'tentacool', level: 15 },
         { x: 22, y: 7, species: 'rattata', beat: { everyMs: 1500, roam: [[1, 0]] } },
         { x: 27, y: 20, species: 'pidgey', beat: { everyMs: 1700, roam: [[1, 0]] } },
         { x: 45, y: 20, species: 'bellsprout' },
-        { x: 42, y: 26, species: 'pidgeotto', level: 12 },
-        { x: 50, y: 28, species: 'rattata', level: 11, beat: { everyMs: 1500, roam: [[0, 1]] } },
+        { x: 42, y: 26, species: 'pidgeotto', level: 17 },
+        { x: 50, y: 28, species: 'rattata', level: 15, beat: { everyMs: 1500, roam: [[0, 1]] } },
         { x: 11, y: 28, species: 'oddish' },
       ],
     },
@@ -355,7 +356,7 @@ function withInsides(file: MapFile): MapFile {
   let next = withInside(file, 'wreck', 'ss-anne', 24, 48, 'The Forward Hold', [
     { x: 8, y: 9, name: 'Purser', look: 'clerk', facing: 'down', lines: ['Tickets, please. All tickets to be shown. I am aware of the situation.', 'If you have no ticket you may pay the difference, and the difference is the whole ship.'] },
     { x: 13, y: 5, name: 'Stowaway', look: 'youngster', facing: 'left', lines: ['You have not seen me. I got on at the last port for a free ride to the islands.', 'It is the longest anyone has ever got away with it. I am never going home.'] },
-  ], { room: HOLD, itemSpots: [{ x: 1, y: 5 }, { x: 16, y: 7, hidden: true }, { x: 9, y: 3 }], pokemon: [{ x: 7, y: 4, species: 'meowth', level: 12 }, { x: 2, y: 7, species: 'rattata' }, { x: 13, y: 9, species: 'tentacool' }] });
+  ], { room: HOLD, itemSpots: [{ x: 1, y: 5 }, { x: 16, y: 7, hidden: true }, { x: 9, y: 3 }], pokemon: [{ x: 7, y: 4, species: 'meowth', level: 16 }, { x: 2, y: 7, species: 'rattata' }, { x: 13, y: 9, species: 'tentacool' }] });
   next = withInside(next, 'wreck', 'house', 15, 22, 'The Ship Inn', [
     { x: 4, y: 2, name: 'Ship’s Cook', look: 'chef', facing: 'down', lines: ['I do fourteen courses or I do nothing. Tonight it is nothing, with a light sauce.'] },
     { x: 6, y: 7, name: 'Regular', look: 'old-man', facing: 'left', lines: ['This used to be a decent pub. Now it has got a chandelier and I cannot see the darts.', 'I sit in a first-class chair and I have never been so uncomfortable.'] },
