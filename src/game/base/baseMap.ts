@@ -89,13 +89,16 @@ export const NOTICE_BOARD: BaseSign = {
 };
 
 /**
- * The sign in THE BOLTHOLE's front garden, beside the path up to the step, and
+ * The sign at THE BOLTHOLE's front, against the west side of the house, and
  * the way to knock on another player's door: everybody's house is behind this
- * one door, so this one sign is outside every door in the harbour.
+ * one door, so this one sign is outside every door in the harbour. It is read
+ * from KEEPERS' ROW below it, and stands off it: on the row it narrowed the
+ * street everybody walks to one tile. (East of the house is the garden, which
+ * needs every tile it has for six Pokémon.)
  */
 export const HOME_SIGN: BaseSign = {
-  x: 38,
-  y: 12,
+  x: 35,
+  y: 11,
   lines: ['THE BOLTHOLE', 'Home. Nobody hunts you here.'],
   knocks: true,
 };
@@ -106,14 +109,18 @@ export const HOME_SIGN: BaseSign = {
  * stand about that is nobody's door.
  */
 export const GREEN_SIGN: BaseSign = {
-  x: 54,
-  y: 12,
+  x: 53,
+  y: 11,
   lines: ['THE GREEN', 'Everybody in Pallet Town comes home to this harbour. Stand about - somebody always turns up.'],
 };
 
-/** The Raid Arena's own sign, beside the way up to its door. */
+/**
+ * The Raid Arena's own sign, on its forecourt under its colours. It stood in the
+ * gap between the forecourt and the yard, which made the way to the one door
+ * every raid goes through a single tile wide.
+ */
 export const ARENA_SIGN: BaseSign = {
-  x: 12,
+  x: 3,
   y: 14,
   lines: ['THE RAID ARENA', 'Every raid starts here. Walk in, kit up, drop in.'],
 };
@@ -154,10 +161,13 @@ export const BREAKWATER_SIGN: BaseSign = {
   ],
 };
 
-/** At the west end of THE PROMENADE, where it leaves THE GREEN. */
+/**
+ * At the west end of THE PROMENADE, on THE GREEN's edge below where the stone
+ * walk starts: it stood at the foot of the way up to THE GREAT LIBRARY.
+ */
 export const PROMENADE_SIGN: BaseSign = {
-  x: 60,
-  y: 11,
+  x: 58,
+  y: 15,
   lines: [
     'THE PROMENADE',
     'The front: the GAME CORNER, the DERBY, the FIELD-MOVE COURSE, the DIG on the beach and the FISHING DERBY off the PLEASURE PIER. Walk it at dusk when the lamps come on.',
@@ -174,9 +184,9 @@ export const GAME_CORNER_SIGN: BaseSign = {
   ],
 };
 
-/** At the head of the pleasure pier, on the boardwalk. */
+/** At the head of the pleasure pier, in the boardwalk's railing beside the way on. */
 export const PLEASURE_PIER_SIGN: BaseSign = {
-  x: 78,
+  x: 83,
   y: 16,
   lines: ['THE PLEASURE PIER', 'Out over the sea. Mind the gulls.'],
 };
@@ -256,7 +266,7 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT.....TtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTtTTtTTtTTtTTtTTtTTtT............TtTTtTTtTTtTTtTTtTTtTTtTT.....TtTTtTTtTTtTTtTTtTTtTTtTTT',
     'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTT....TTTTTTTTT..........TTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTT....TTTTTTTTT..........TTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TtTTTTtTTTTtTTTTTtTTTT............TTTtTTT....TTTTtTTTT..........TTtTTTTtT..........TTTtTTT',
@@ -265,8 +275,8 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
     'TtTMMMMMMMMMMM................................F.....F..................................TtT',
     'TTTMMMMMMMMMMM................................F.....F..................................TTT',
     'TTTMMMMMMMMMMM................................F.....F..................................TTT',
-    'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.F.....F..................................TtT',
-    'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.FFFFFFF........MMMMMMMMMMMMMMMMMMMMMMMMMMTTT',
+    'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.FFFFFFF..................................TtT',
+    'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,................MMMMMMMMMMMMMMMMMMMMMMMMMMTTT',
     'TTTMMMMMMMMMMM,,,,....MMMMMMMMMMMMM..........................MMMMMMMMMMMMMMMMMMMMMMMMMMTTT',
     'TtTMMMMMMMMMMM,,,,....MMMMMMMMMMMMM..........................__________________________TTT',
     'TTTMMMMMMMMMMM,,,,....MMMMMMMMMMMMM..........................__________________________TtT',
@@ -302,20 +312,24 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   // planks rather than as something a boat ties up to.
   map.plant(11, 19, 'jetty');
   map.plant(13, 19, 'jetty');
-  map.plant(30, 17, 'crateStack');
 
   // The waterfront (`landmarks.ts`): the ferry a raid goes out on, tied up
   // beside the jetty; the warehouses along the east quay; Vermilion's long
   // pier running out to the S.S. Anne.
   map.plant(26, 20, 'shipPier');
-  // The working quay: posts along the edge to tie up to, and what came off
-  // the boats stacked outside the warehouses.
-  for (const x of [23, 35, 44]) {
+  // The working quay: posts along the edge to tie up to either side of the
+  // pier's foot, and what came off the boats stacked outside the warehouses.
+  // Everything on it stands off the two ways along it - KEEPERS' ROW's way down
+  // to the boat, and the waterfront from the jetty to THE COVE - which were a
+  // single tile wide between barrels, cellar doors and posts.
+  for (const x of [24, 25, 33]) {
     map.plant(x, 21, 'mooringPost');
   }
+  map.plant(22, 19, 'mooringPost');
+  map.plant(22, 21, 'barrelPair');
   map.plant(46, 17, 'crateStack');
   map.plant(33, 17, 'sack');
-  map.plant(34, 17, 'barrelPair');
+  map.plant(34, 16, 'barrelPair');
   // THE COVE, past the warehouses: a strip of beach under THE GREEN, with a
   // jetty to fish off and rocks out in the water.
   map.plant(54, 21, 'jetty');
@@ -330,12 +344,13 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
     }
   }
   map.plant(NOTICE_BOARD.x, NOTICE_BOARD.y, 'noticeBoard');
-  map.plant(19, 17, 'barrelPair');
-  map.plant(21, 17, 'mooringPost');
 
   // Crates on the corner of the quay, off the boats and waiting for the
-  // warehouses (`harbourLife.ts` has the porter minding them).
+  // warehouses (`harbourLife.ts` has the porter minding them), and Bill's own
+  // against his cottage's west wall. The quay below them is where a raid's
+  // haul is stood out (`haulOnTheQuay.ts`).
   map.plant(3, 16, 'crateStack');
+  map.plant(11, 15, 'crateStack');
 
   // THE RAID ARENA's forecourt: a pair of statues on the way up from the
   // quay, as every Gym in Kanto has, with the forecourt in front of the door
@@ -366,12 +381,13 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   map.plant(27, 14, 'stoneFountain');
   map.plant(SQUARE_MAP.x, SQUARE_MAP.y, 'townMap');
 
-  // THE GREEN, past the Day-Care: a fountain to meet at, a bench, flowers and
-  // its sign.
-  // A row up from where it first stood, so the lawn under it is a straight way
-  // on to THE PROMENADE whoever is sitting about on the bench.
+  // THE GREEN, past the Day-Care: a fountain to meet at, flowers and its sign,
+  // with a way up either side of the fountain to THE HARBOUR BOUTIQUE and THE
+  // GREAT LIBRARY. The lawn under them is the straight way from KEEPERS' ROW to
+  // THE PROMENADE's stone, and nothing stands on it: the bench stood across it,
+  // and is on the lawn's edge above THE COVE now, looking out over the water.
   map.plant(56, 8, 'roundFountain');
-  map.plant(56, 13, 'bench');
+  map.plant(46, 15, 'bench');
   map.plant(GREEN_SIGN.x, GREEN_SIGN.y, 'homeSign');
   for (const [x, y] of [[54, 8], [60, 8], [54, 9], [60, 9]] as const) {
     map.plant(x, y, 'gardenFlowers');
@@ -402,48 +418,65 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
  */
 function plantPromenade(map: MapSketch<BasePropName>): void {
   // THE BATTLE ARENA stands on its lot (`doors.ts`), planted with the doors.
-  // A bench where the walk leaves THE GREEN, under the first lamp.
   map.plant(PROMENADE_SIGN.x, PROMENADE_SIGN.y, 'homeSign');
   map.plant(GAME_CORNER_SIGN.x, GAME_CORNER_SIGN.y, 'homeSign');
   map.plant(PLEASURE_PIER_SIGN.x, PLEASURE_PIER_SIGN.y, 'homeSign');
-  // Flower troughs either side of the arcade's plaza; past it THE FIELD-MOVE
-  // COURSE's gate and its TIME BOARD stand with the landmarks (`landmarks.ts`).
+  // Flower troughs either side of the arcade's plaza, against its walls; past
+  // it THE FIELD-MOVE COURSE's gate and its TIME BOARD stand with the landmarks
+  // (`landmarks.ts`), with the way up to the gate's front left open.
   map.plant(70, 11, 'troughPink');
-  map.plant(83, 11, 'troughYellow');
-  map.plant(85, 11, 'pennantYellow');
-  // The boardwalk's seaward edge: railings, a lamp every six tiles, and gaps
-  // where steps go down to the sand.
-  const lamps = [63, 69, 75, 84];
-  const steps = [66, 67, 72, 73, 78, 79, 80, 81, 82];
+  map.plant(78, 11, 'troughYellow');
+  map.plant(86, 11, 'pennantYellow');
+  // The boardwalk's seaward edge, read from the west: the railing, a lamp
+  // where it starts, the beach huts backed onto it two by two with steps
+  // down to the sand between them, a lamp by the second steps, the pleasure
+  // pier, and the railing again past it. A lamp stands in the railing on its
+  // post, its head over the boardwalk behind it (`promenadePost`), so the
+  // boardwalk and the stone walk above it are three tiles wide the whole way
+  // along with nothing on them.
+  const HUTS: readonly (readonly [number, BasePropName])[] = [
+    [62, 'hutRed'],
+    [64, 'hutYellow'],
+    [68, 'hutBlue'],
+    [70, 'hutGreen'],
+    [75, 'hutPink'],
+    [77, 'hutTeal'],
+  ];
+  const lamps = [61, 72, 84, 86];
+  const open = new Set([
+    // The steps, and the pleasure pier's foot.
+    66, 67, 73, 74, 79, 80, 81, 82,
+    ...HUTS.flatMap(([x]) => [x, x + 1]),
+    PLEASURE_PIER_SIGN.x,
+  ]);
   for (let x = 61; x <= 86; x += 1) {
     if (lamps.includes(x)) {
-      map.plant(x, 15, 'promenadeLamp');
-    } else if (!steps.includes(x)) {
+      map.plant(x, 16, 'promenadeLamp');
+    } else if (!open.has(x)) {
       map.plant(x, 16, 'railing');
     }
   }
-  // The beach huts, a row of them along the back of the sand, two by two
-  // with the steps between.
-  map.plant(61, 17, 'hutRed');
-  map.plant(63, 17, 'hutYellow');
-  map.plant(68, 17, 'hutBlue');
-  map.plant(70, 17, 'hutGreen');
-  map.plant(74, 17, 'hutPink');
-  map.plant(76, 17, 'hutTeal');
-  // Parasols and deckchairs out on the sand, and an ice-cream cart.
-  map.plant(62, 20, 'parasolRed');
-  map.plant(64, 21, 'deckchairRed');
-  map.plant(65, 21, 'deckchairBlue');
-  map.plant(69, 20, 'parasolBlue');
-  map.plant(71, 21, 'deckchairYellow');
-  map.plant(74, 20, 'parasolYellow');
+  for (const [x, hut] of HUTS) {
+    map.plant(x, 16, hut);
+  }
+  // Out on the sand in front of the huts, and never in front of the steps:
+  // parasols with deckchairs in their shade, and THE DIG's sign
+  // (`landmarks.ts`). The two rows along the water are the beach's way along,
+  // from THE COVE to the pier, and are left clear; the ice-cream cart is past
+  // the pier.
+  map.plant(62, 19, 'parasolRed');
+  map.plant(64, 20, 'deckchairRed');
+  map.plant(65, 20, 'deckchairBlue');
+  map.plant(70, 19, 'parasolBlue');
+  map.plant(75, 19, 'parasolYellow');
+  map.plant(77, 20, 'deckchairYellow');
   map.plant(83, 19, 'iceCart');
   map.plant(85, 21, 'wetRock');
   map.plant(70, 25, 'wetRock');
   // THE PLEASURE PIER's head: pennants at its corners, a lifebuoy and a lamp.
   map.plant(84, 28, 'pennantRed');
   map.plant(84, 29, 'lifebuoy');
-  map.plant(83, 28, 'promenadeLamp');
+  map.plant(83, 29, 'promenadeLamp');
   for (const x of [76, 77, 78, 82, 83, 84]) {
     map.plant(x, 30, 'railing');
   }

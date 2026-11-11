@@ -113,9 +113,11 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     kind: 'person',
     name: 'GYM GUIDE',
     design: 'gym-guide',
-    position: at(6, 13),
+    // Under the Arena's colours on the west of its forecourt, off the way
+    // across it to the door.
+    position: at(4, 13),
     facing: 'right',
-    idle: { roam: [at(5, 13)], glances: ['down', 'up'], beatMs: 4700 },
+    idle: { roam: [at(3, 13)], glances: ['down', 'up'], beatMs: 4700 },
     // Spoken to, he says the day's work: the board's job and the favours in
     // hand (`gymGuide.ts`). These are his words with nothing to report.
     lines: [
@@ -140,9 +142,10 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     kind: 'person',
     name: 'DOCK WORKER',
     design: 'worker',
-    position: at(39, 21),
+    // Along the warehouse wall, off the way along the quay below him.
+    position: at(39, 20),
     facing: 'up',
-    idle: { roam: [at(38, 21), at(40, 21), at(41, 21)], glances: ['left', 'right'], beatMs: 3900 },
+    idle: { roam: [at(38, 20), at(40, 20), at(41, 20)], glances: ['left', 'right'], beatMs: 3900 },
     lines: [
       'Mind your feet! Crates off the boats go in the warehouses.',
       'What\'s in them? Ask BILL. Half of it\'s his, and he won\'t say what the other half is.',
@@ -164,10 +167,11 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     kind: 'person',
     name: 'LITTLE GIRL',
     design: 'little-girl',
-    position: at(52, 19),
+    // Paddling at the water's edge, below the way along the sand.
+    position: at(51, 20),
     facing: 'down',
     byDayOnly: true,
-    idle: { roam: [at(51, 19), at(53, 19), at(52, 18)], glances: ['left', 'right'], beatMs: 2900 },
+    idle: { roam: [at(50, 20), at(52, 20)], glances: ['left', 'right'], beatMs: 2900 },
     lines: ['The KRABBY pinched me! I\'m not crying. It\'s the sea in my eyes.'],
   },
   {
@@ -254,10 +258,12 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     kind: 'person',
     name: 'YOUNGSTER',
     design: 'youngster',
-    position: at(84, 12),
-    facing: 'left',
+    // Against THE GAME CORNER's west wall, beside its sign: off the walk and
+    // out of the way up to THE FIELD-MOVE COURSE's gate.
+    position: at(74, 11),
+    facing: 'down',
     byDayOnly: true,
-    idle: { glances: ['up', 'left'], beatMs: 4300 },
+    idle: { glances: ['up', 'right'], beatMs: 4300 },
     lines: [
       'My RATTATA jumps that vine like it\'s nothing! Small and quick, that\'s the trick.',
       'I\'m saving my TICKETS for the CUTE TV. Ninety-eight more games to go.',
@@ -293,10 +299,11 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     kind: 'pokemon',
     species: 'pidgey',
     name: 'PIDGEY',
-    position: at(60, 12),
+    // Under the fountain, between the ways up either side of it.
+    position: at(57, 12),
     facing: 'left',
     byDayOnly: true,
-    idle: { roam: [at(61, 12), at(61, 13)], glances: ['right', 'down'], beatMs: 1900 },
+    idle: { roam: [at(56, 12), at(58, 12)], glances: ['right', 'down'], beatMs: 1900 },
     lines: ['PIDGEY is pecking at crumbs somebody dropped on the green.'],
   },
   {
@@ -304,9 +311,10 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     kind: 'pokemon',
     species: 'meowth',
     name: 'MEOWTH',
-    position: at(47, 21),
+    // On the sand beside the crates, at the back of the beach.
+    position: at(48, 17),
     facing: 'left',
-    idle: { roam: [at(47, 22)], glances: ['down', 'up'], beatMs: 3700 },
+    idle: { glances: ['down', 'up'], beatMs: 3700 },
     lines: ['MEOWTH is eyeing the crates. Something in there smells of fish.'],
   },
   {
@@ -314,9 +322,9 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     kind: 'pokemon',
     species: 'machop',
     name: 'MACHOP',
-    position: at(42, 21),
+    position: at(42, 20),
     facing: 'left',
-    idle: { roam: [at(43, 21)], glances: ['up'], beatMs: 3300 },
+    idle: { roam: [at(43, 20)], glances: ['up'], beatMs: 3300 },
     lines: ['MACHOP is carrying a crate on one finger. Showing off.'],
   },
   {
@@ -324,7 +332,8 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     kind: 'pokemon',
     species: 'growlithe',
     name: 'GROWLITHE',
-    position: at(20, 15),
+    // At the policeman's heel, off the lawn's way down to the quay.
+    position: at(21, 16),
     facing: 'down',
     idle: { glances: ['right', 'left'], beatMs: 2700 },
     lines: ['GROWLITHE is on duty. It sniffs your pack, then wags.'],
@@ -334,9 +343,10 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     kind: 'pokemon',
     species: 'krabby',
     name: 'KRABBY',
+    // At the water's edge east of the jetty, clear of the way out along it.
     position: at(56, 20),
     facing: 'left',
-    idle: { roam: [at(55, 20), at(57, 20)], glances: ['right', 'down'], beatMs: 2300 },
+    idle: { roam: [at(57, 20)], glances: ['right', 'down'], beatMs: 2300 },
     lines: ['KRABBY waves a pincer at you. It means it.'],
   },
   {
@@ -344,9 +354,11 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     kind: 'pokemon',
     species: 'psyduck',
     name: 'PSYDUCK',
-    position: at(59, 19),
+    // At the water's edge beside the girl, west of the jetty: it stood where
+    // the sand narrows on to the breakwater and THE PROMENADE's beach.
+    position: at(53, 20),
     facing: 'down',
-    idle: { roam: [at(59, 18)], glances: ['left'], beatMs: 6700 },
+    idle: { glances: ['left', 'right'], beatMs: 6700 },
     lines: ['PSYDUCK is holding its head. The sea is too loud for it today.'],
   },
   {
@@ -398,9 +410,11 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     kind: 'pokemon',
     species: 'krabby',
     name: 'KRABBY',
-    position: at(73, 21),
+    // Beside the yellow parasol, off the sand along the water and the foot of
+    // the steps.
+    position: at(78, 19),
     facing: 'down',
-    idle: { roam: [at(72, 21), at(72, 22), at(73, 22)], glances: ['left', 'right'], beatMs: 2300 },
+    idle: { roam: [at(78, 20), at(77, 19)], glances: ['left', 'right'], beatMs: 2300 },
     lines: ['KRABBY is digging in the sand. It does not want to be watched.'],
   },
   {

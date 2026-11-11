@@ -37,8 +37,12 @@ export const DAY_CARE_KEEPER: DayCareKeeper = {
   facing: 'left',
 };
 
-/** The grass inside the fence: where the Pokémon he is raising may stand. */
-export const DAY_CARE_PEN = { x: 47, y: 9, width: 5, height: 4 } as const;
+/**
+ * The grass inside the fence: where the Pokémon he is raising may stand. Three
+ * rows deep: at four its fence stood across the straight way east from KEEPERS'
+ * ROW to THE PROMENADE, and a player walking it met the fence.
+ */
+export const DAY_CARE_PEN = { x: 47, y: 9, width: 5, height: 3 } as const;
 
 /** Every tile inside the fence, row by row. */
 export function penTiles(): readonly GridPosition[] {
@@ -49,7 +53,7 @@ export function penTiles(): readonly GridPosition[] {
 }
 
 /** Where the Pokémon stands when the yard is first drawn: the middle of the pen. */
-export const PEN_HOME: GridPosition = { x: DAY_CARE_PEN.x + 2, y: DAY_CARE_PEN.y + 2 };
+export const PEN_HOME: GridPosition = { x: DAY_CARE_PEN.x + 2, y: DAY_CARE_PEN.y + 1 };
 
 /**
  * Where it wanders next: one step to a neighbouring tile of the pen, chosen by

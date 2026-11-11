@@ -1,0 +1,1325 @@
+{
+  "routes": [
+    {
+      "name": "to the Raid Arena door",
+      "reached": true,
+      "steps": 8,
+      "snags": []
+    },
+    {
+      "name": "back from: to the Raid Arena door",
+      "reached": true,
+      "steps": 11,
+      "snags": []
+    },
+    {
+      "name": "to the Pokemon Center door",
+      "reached": true,
+      "steps": 4,
+      "snags": []
+    },
+    {
+      "name": "back from: to the Pokemon Center door",
+      "reached": true,
+      "steps": 7,
+      "snags": []
+    },
+    {
+      "name": "to Oak’s Lab door",
+      "reached": true,
+      "steps": 10,
+      "snags": []
+    },
+    {
+      "name": "back from: to Oak’s Lab door",
+      "reached": true,
+      "steps": 13,
+      "snags": []
+    },
+    {
+      "name": "to Brock’s Workshop door",
+      "reached": true,
+      "steps": 16,
+      "snags": []
+    },
+    {
+      "name": "back from: to Brock’s Workshop door",
+      "reached": true,
+      "steps": 19,
+      "snags": []
+    },
+    {
+      "name": "to the Bolthole step",
+      "reached": true,
+      "steps": 23,
+      "snags": []
+    },
+    {
+      "name": "back from: to the Bolthole step",
+      "reached": true,
+      "steps": 26,
+      "snags": []
+    },
+    {
+      "name": "down the lawn to Bill’s door",
+      "reached": true,
+      "steps": 21,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            19,
+            16
+          ],
+          "heading": "down",
+          "blocked": [
+            19,
+            17
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: down the lawn to Bill’s door",
+      "reached": true,
+      "steps": 24,
+      "snags": [
+        {
+          "leg": 2,
+          "at": [
+            19,
+            19
+          ],
+          "heading": "up",
+          "blocked": [
+            19,
+            18
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 2,
+          "at": [
+            22,
+            17
+          ],
+          "heading": "up",
+          "blocked": [
+            22,
+            16
+          ],
+          "by": "person harbour-policeman"
+        },
+        {
+          "leg": 2,
+          "at": [
+            21,
+            15
+          ],
+          "heading": "left",
+          "blocked": [
+            20,
+            15
+          ],
+          "by": "pokemon police-growlithe"
+        }
+      ]
+    },
+    {
+      "name": "east from the gravel to the end of the stone",
+      "reached": true,
+      "steps": 74,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            45,
+            13
+          ],
+          "heading": "right",
+          "blocked": [
+            46,
+            13
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: east from the gravel to the end of the stone",
+      "reached": true,
+      "steps": 77,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            59,
+            13
+          ],
+          "heading": "left",
+          "blocked": [
+            58,
+            13
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "up THE GREEN to the Boutique door",
+      "reached": true,
+      "steps": 48,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            45,
+            13
+          ],
+          "heading": "right",
+          "blocked": [
+            46,
+            13
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 1,
+          "at": [
+            54,
+            13
+          ],
+          "heading": "up",
+          "blocked": [
+            54,
+            12
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: up THE GREEN to the Boutique door",
+      "reached": true,
+      "steps": 51,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            54,
+            11
+          ],
+          "heading": "down",
+          "blocked": [
+            54,
+            12
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 2,
+          "at": [
+            53,
+            13
+          ],
+          "heading": "left",
+          "blocked": [
+            52,
+            13
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "up THE GREEN to the Great Library door",
+      "reached": true,
+      "steps": 60,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            45,
+            13
+          ],
+          "heading": "right",
+          "blocked": [
+            46,
+            13
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 0,
+          "at": [
+            59,
+            12
+          ],
+          "heading": "right",
+          "blocked": [
+            60,
+            12
+          ],
+          "by": "pokemon quay-pidgey"
+        },
+        {
+          "leg": 1,
+          "at": [
+            60,
+            13
+          ],
+          "heading": "up",
+          "blocked": [
+            60,
+            12
+          ],
+          "by": "person"
+        },
+        {
+          "leg": 1,
+          "at": [
+            60,
+            12
+          ],
+          "heading": "up",
+          "blocked": [
+            60,
+            11
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: up THE GREEN to the Great Library door",
+      "reached": true,
+      "steps": 60,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            60,
+            10
+          ],
+          "heading": "down",
+          "blocked": [
+            60,
+            11
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 2,
+          "at": [
+            59,
+            13
+          ],
+          "heading": "left",
+          "blocked": [
+            58,
+            13
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "along THE PROMENADE to the Battle Arena door",
+      "reached": true,
+      "steps": 57,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            45,
+            13
+          ],
+          "heading": "right",
+          "blocked": [
+            46,
+            13
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 0,
+          "at": [
+            60,
+            12
+          ],
+          "heading": "right",
+          "blocked": [
+            61,
+            12
+          ],
+          "by": "pokemon quay-pidgey"
+        },
+        {
+          "leg": 0,
+          "at": [
+            60,
+            13
+          ],
+          "heading": "right",
+          "blocked": [
+            61,
+            13
+          ],
+          "by": "person"
+        }
+      ]
+    },
+    {
+      "name": "back from: along THE PROMENADE to the Battle Arena door",
+      "reached": true,
+      "steps": 55,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            62,
+            13
+          ],
+          "heading": "left",
+          "blocked": [
+            61,
+            13
+          ],
+          "by": "person"
+        },
+        {
+          "leg": 0,
+          "at": [
+            59,
+            14
+          ],
+          "heading": "left",
+          "blocked": [
+            58,
+            14
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "along THE PROMENADE to the Game Corner door",
+      "reached": true,
+      "steps": 66,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            45,
+            13
+          ],
+          "heading": "right",
+          "blocked": [
+            46,
+            13
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 0,
+          "at": [
+            59,
+            12
+          ],
+          "heading": "right",
+          "blocked": [
+            60,
+            12
+          ],
+          "by": "pokemon quay-pidgey"
+        }
+      ]
+    },
+    {
+      "name": "back from: along THE PROMENADE to the Game Corner door",
+      "reached": true,
+      "steps": 69,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            59,
+            13
+          ],
+          "heading": "left",
+          "blocked": [
+            58,
+            13
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "along THE PROMENADE to the Field-Move Course gate",
+      "reached": true,
+      "steps": 85,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            45,
+            13
+          ],
+          "heading": "right",
+          "blocked": [
+            46,
+            13
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 0,
+          "at": [
+            60,
+            12
+          ],
+          "heading": "right",
+          "blocked": [
+            61,
+            12
+          ],
+          "by": "pokemon quay-pidgey"
+        },
+        {
+          "leg": 1,
+          "at": [
+            85,
+            13
+          ],
+          "heading": "up",
+          "blocked": [
+            85,
+            12
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 1,
+          "at": [
+            84,
+            13
+          ],
+          "heading": "up",
+          "blocked": [
+            84,
+            12
+          ],
+          "by": "person arcade-boy"
+        },
+        {
+          "leg": 1,
+          "at": [
+            82,
+            11
+          ],
+          "heading": "right",
+          "blocked": [
+            83,
+            11
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: along THE PROMENADE to the Field-Move Course gate",
+      "reached": true,
+      "steps": 88,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            85,
+            10
+          ],
+          "heading": "down",
+          "blocked": [
+            85,
+            11
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 0,
+          "at": [
+            83,
+            12
+          ],
+          "heading": "right",
+          "blocked": [
+            84,
+            12
+          ],
+          "by": "person arcade-boy"
+        },
+        {
+          "leg": 1,
+          "at": [
+            62,
+            13
+          ],
+          "heading": "left",
+          "blocked": [
+            61,
+            13
+          ],
+          "by": "pokemon quay-pidgey"
+        },
+        {
+          "leg": 1,
+          "at": [
+            55,
+            12
+          ],
+          "heading": "left",
+          "blocked": [
+            54,
+            12
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "along the boardwalk",
+      "reached": true,
+      "steps": 78,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            45,
+            13
+          ],
+          "heading": "right",
+          "blocked": [
+            46,
+            13
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 2,
+          "at": [
+            62,
+            15
+          ],
+          "heading": "right",
+          "blocked": [
+            63,
+            15
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: along the boardwalk",
+      "reached": true,
+      "steps": 81,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            85,
+            15
+          ],
+          "heading": "left",
+          "blocked": [
+            84,
+            15
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 2,
+          "at": [
+            59,
+            13
+          ],
+          "heading": "left",
+          "blocked": [
+            58,
+            13
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "down the steps and along the beach to THE COVE",
+      "reached": true,
+      "steps": 171,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            45,
+            13
+          ],
+          "heading": "right",
+          "blocked": [
+            46,
+            13
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 0,
+          "at": [
+            60,
+            12
+          ],
+          "heading": "right",
+          "blocked": [
+            61,
+            12
+          ],
+          "by": "pokemon quay-pidgey"
+        },
+        {
+          "leg": 1,
+          "at": [
+            67,
+            19
+          ],
+          "heading": "down",
+          "blocked": [
+            67,
+            20
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 4,
+          "at": [
+            60,
+            19
+          ],
+          "heading": "left",
+          "blocked": [
+            59,
+            19
+          ],
+          "by": "pokemon beach-psyduck"
+        },
+        {
+          "leg": 4,
+          "at": [
+            53,
+            18
+          ],
+          "heading": "left",
+          "blocked": [
+            52,
+            18
+          ],
+          "by": "person beach-girl"
+        }
+      ]
+    },
+    {
+      "name": "back from: down the steps and along the beach to THE COVE",
+      "reached": true,
+      "steps": 108,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            58,
+            19
+          ],
+          "heading": "right",
+          "blocked": [
+            59,
+            19
+          ],
+          "by": "person"
+        },
+        {
+          "leg": 0,
+          "at": [
+            59,
+            17
+          ],
+          "heading": "down",
+          "blocked": [
+            59,
+            18
+          ],
+          "by": "pokemon beach-psyduck"
+        },
+        {
+          "leg": 3,
+          "at": [
+            67,
+            22
+          ],
+          "heading": "up",
+          "blocked": [
+            67,
+            21
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 4,
+          "at": [
+            59,
+            13
+          ],
+          "heading": "left",
+          "blocked": [
+            58,
+            13
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "down the steps and along the beach to the pleasure pier head",
+      "reached": true,
+      "steps": 119,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            45,
+            13
+          ],
+          "heading": "right",
+          "blocked": [
+            46,
+            13
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 0,
+          "at": [
+            59,
+            12
+          ],
+          "heading": "right",
+          "blocked": [
+            60,
+            12
+          ],
+          "by": "pokemon quay-pidgey"
+        },
+        {
+          "leg": 1,
+          "at": [
+            67,
+            19
+          ],
+          "heading": "down",
+          "blocked": [
+            67,
+            20
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: down the steps and along the beach to the pleasure pier head",
+      "reached": true,
+      "steps": 121,
+      "snags": [
+        {
+          "leg": 2,
+          "at": [
+            67,
+            22
+          ],
+          "heading": "up",
+          "blocked": [
+            67,
+            21
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 3,
+          "at": [
+            62,
+            13
+          ],
+          "heading": "left",
+          "blocked": [
+            61,
+            13
+          ],
+          "by": "pokemon quay-pidgey"
+        },
+        {
+          "leg": 3,
+          "at": [
+            55,
+            12
+          ],
+          "heading": "left",
+          "blocked": [
+            54,
+            12
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "off the pleasure pier and along the sand to THE COVE",
+      "reached": true,
+      "steps": 153,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            45,
+            13
+          ],
+          "heading": "right",
+          "blocked": [
+            46,
+            13
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 0,
+          "at": [
+            59,
+            12
+          ],
+          "heading": "right",
+          "blocked": [
+            60,
+            12
+          ],
+          "by": "pokemon quay-pidgey"
+        },
+        {
+          "leg": 2,
+          "at": [
+            76,
+            21
+          ],
+          "heading": "left",
+          "blocked": [
+            75,
+            21
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 2,
+          "at": [
+            73,
+            22
+          ],
+          "heading": "left",
+          "blocked": [
+            72,
+            22
+          ],
+          "by": "pokemon beach-krabby"
+        },
+        {
+          "leg": 2,
+          "at": [
+            72,
+            21
+          ],
+          "heading": "left",
+          "blocked": [
+            71,
+            21
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 4,
+          "at": [
+            52,
+            19
+          ],
+          "heading": "left",
+          "blocked": [
+            51,
+            19
+          ],
+          "by": "person beach-girl"
+        }
+      ]
+    },
+    {
+      "name": "back from: off the pleasure pier and along the sand to THE COVE",
+      "reached": true,
+      "steps": 140,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            50,
+            19
+          ],
+          "heading": "right",
+          "blocked": [
+            51,
+            19
+          ],
+          "by": "person beach-girl"
+        },
+        {
+          "leg": 2,
+          "at": [
+            61,
+            21
+          ],
+          "heading": "right",
+          "blocked": [
+            62,
+            21
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 4,
+          "at": [
+            59,
+            13
+          ],
+          "heading": "left",
+          "blocked": [
+            58,
+            13
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "down to the jetty in THE COVE",
+      "reached": true,
+      "steps": 51,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            45,
+            13
+          ],
+          "heading": "right",
+          "blocked": [
+            46,
+            13
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: down to the jetty in THE COVE",
+      "reached": true,
+      "steps": 51,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            53,
+            13
+          ],
+          "heading": "left",
+          "blocked": [
+            52,
+            13
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "from the boat to Bill’s door",
+      "reached": true,
+      "steps": 3,
+      "snags": []
+    },
+    {
+      "name": "back from: from the boat to Bill’s door",
+      "reached": true,
+      "steps": 6,
+      "snags": []
+    },
+    {
+      "name": "from the boat to the Raid Arena door",
+      "reached": true,
+      "steps": 10,
+      "snags": []
+    },
+    {
+      "name": "back from: from the boat to the Raid Arena door",
+      "reached": true,
+      "steps": 13,
+      "snags": []
+    },
+    {
+      "name": "from the boat up to the Pokemon Center door",
+      "reached": true,
+      "steps": 20,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            19,
+            19
+          ],
+          "heading": "up",
+          "blocked": [
+            19,
+            18
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 1,
+          "at": [
+            22,
+            16
+          ],
+          "heading": "up",
+          "blocked": [
+            22,
+            15
+          ],
+          "by": "person harbour-policeman"
+        }
+      ]
+    },
+    {
+      "name": "back from: from the boat up to the Pokemon Center door",
+      "reached": true,
+      "steps": 23,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            19,
+            16
+          ],
+          "heading": "down",
+          "blocked": [
+            19,
+            17
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "from the boat along the quay to the S.S. Anne",
+      "reached": true,
+      "steps": 23,
+      "snags": []
+    },
+    {
+      "name": "back from: from the boat along the quay to the S.S. Anne",
+      "reached": true,
+      "steps": 26,
+      "snags": []
+    },
+    {
+      "name": "from the boat along the waterfront to THE COVE",
+      "reached": true,
+      "steps": 74,
+      "snags": [
+        {
+          "leg": 3,
+          "at": [
+            38,
+            21
+          ],
+          "heading": "right",
+          "blocked": [
+            39,
+            21
+          ],
+          "by": "person dock-worker"
+        },
+        {
+          "leg": 3,
+          "at": [
+            35,
+            20
+          ],
+          "heading": "right",
+          "blocked": [
+            36,
+            20
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: from the boat along the waterfront to THE COVE",
+      "reached": true,
+      "steps": 47,
+      "snags": [
+        {
+          "leg": 2,
+          "at": [
+            43,
+            21
+          ],
+          "heading": "left",
+          "blocked": [
+            42,
+            21
+          ],
+          "by": "pokemon dock-machop"
+        },
+        {
+          "leg": 2,
+          "at": [
+            36,
+            22
+          ],
+          "heading": "left",
+          "blocked": [
+            35,
+            22
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "from the boat out along the breakwater to the harbour light",
+      "reached": true,
+      "steps": 87,
+      "snags": [
+        {
+          "leg": 3,
+          "at": [
+            39,
+            21
+          ],
+          "heading": "right",
+          "blocked": [
+            40,
+            21
+          ],
+          "by": "person dock-worker"
+        },
+        {
+          "leg": 3,
+          "at": [
+            43,
+            22
+          ],
+          "heading": "right",
+          "blocked": [
+            44,
+            22
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 5,
+          "at": [
+            51,
+            19
+          ],
+          "heading": "right",
+          "blocked": [
+            52,
+            19
+          ],
+          "by": "person beach-girl"
+        },
+        {
+          "leg": 5,
+          "at": [
+            58,
+            18
+          ],
+          "heading": "right",
+          "blocked": [
+            59,
+            18
+          ],
+          "by": "person"
+        }
+      ]
+    },
+    {
+      "name": "back from: from the boat out along the breakwater to the harbour light",
+      "reached": true,
+      "steps": 116,
+      "snags": [
+        {
+          "leg": 3,
+          "at": [
+            60,
+            19
+          ],
+          "heading": "left",
+          "blocked": [
+            59,
+            19
+          ],
+          "by": "pokemon beach-psyduck"
+        },
+        {
+          "leg": 3,
+          "at": [
+            48,
+            18
+          ],
+          "heading": "left",
+          "blocked": [
+            47,
+            18
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 5,
+          "at": [
+            44,
+            21
+          ],
+          "heading": "left",
+          "blocked": [
+            43,
+            21
+          ],
+          "by": "pokemon dock-machop"
+        },
+        {
+          "leg": 5,
+          "at": [
+            46,
+            20
+          ],
+          "heading": "left",
+          "blocked": [
+            45,
+            20
+          ],
+          "by": "solid"
+        }
+      ]
+    }
+  ],
+  "total": 78
+}

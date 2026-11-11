@@ -194,14 +194,17 @@ describe('the base map', () => {
    * written down. It is read by facing it, so it has to be solid with ground in
    * front - the same rule every fixture is held to below.
    */
-  it("stands THE BOLTHOLE's sign in its garden, readable from the path to its door", () => {
+  it("stands THE BOLTHOLE's sign in its garden beside the house, off KEEPERS' ROW and read from it", () => {
     const map = fullyBuilt();
     expect(map.collision[HOME_SIGN.y][HOME_SIGN.x]).toBe(true);
-    const door = BASE_DOORS.find((candidate) => candidate.id === 'bolthole')!;
-    // Beside the path up to the step: the tile in front of the step is next to it.
-    const path = { x: door.returnTo.x, y: door.returnTo.y + 1 };
-    expect(map.collision[path.y][path.x]).toBe(false);
-    expect(Math.abs(path.x - HOME_SIGN.x) + Math.abs(path.y - HOME_SIGN.y)).toBe(1);
+    const house = BASE_DOORS.find((candidate) => candidate.id === 'bolthole')!.building;
+    // Against the house's west side, and above the row rather than on it: on
+    // the row it narrowed the street everybody walks to a single tile.
+    expect(HOME_SIGN.x).toBe(house.x - 1);
+    expect(map.terrain[HOME_SIGN.y][HOME_SIGN.x]).not.toBe('earth');
+    const below = { x: HOME_SIGN.x, y: HOME_SIGN.y + 1 };
+    expect(map.terrain[below.y][below.x]).toBe('earth');
+    expect(map.collision[below.y][below.x]).toBe(false);
     expect(HOME_SIGN.lines[0]).toBe('THE BOLTHOLE');
   });
 

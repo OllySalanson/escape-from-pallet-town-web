@@ -26,7 +26,10 @@
  * and `--survey=path.json` (a save's `raidProgress.surveyed`) are what the
  * wall map in Oak's Lab draws: the keepers' signs, and the ground a raid has
  * walked. `--marks` names the doors, the mat, the keeper and every fixture,
- * `--collision` hatches what is solid, which is what says whether something
+ * `--collision` hatches what is solid, `--beats` hatches in blue every tile a
+ * person or Pokémon in the yard may stand on (`harbourLife.ts`, by day) and the
+ * Day-Care Man's, which together are what a player walking it meets
+ * (`harbourWalkable.test.ts`), which is what says whether something
  * built has quietly walled a corner off, and `--walks` prints the one number
  * the base is designed against: how many steps each keeper is from where the
  * player is put down (`src/game/base/baseWalks.ts`). In THE BOLTHOLE,
@@ -67,6 +70,8 @@ import { FURNITURE_PIECES } from '../../src/game/home/generated/furniturePieces'
 import { POKEMON_ICON_SHEET } from '../../src/game/pokemon/generated/pokemonIcons';
 import { pokemonIconFrames, pokemonSoleDrop } from '../../src/game/world/pokemonFigures';
 import { CHART_PIECES } from '../../src/game/treasure/treasureMap';
+import { harbourBeatTiles, harbourLifeAt, onLand } from '../../src/game/base/harbourLife';
+import { DAY_CARE_KEEPER } from '../../src/game/base/dayCarePen';
 
 const args = process.argv.slice(2).filter((value) => value !== '--');
 const flags = new Set(args.filter((value) => value.startsWith('--')));
@@ -352,6 +357,18 @@ if (flags.has('--collision')) {
           if ((px + py) % 6 !== 0) continue;
           plot(image, x * TILE_SIZE + px, y * TILE_SIZE + py, [255, 80, 80], 150);
         }
+      }
+    }
+  }
+}
+
+if (flags.has('--beats') && !room) {
+  const beats = [...harbourLifeAt('day').filter(onLand).flatMap((figure) => harbourBeatTiles(figure)), DAY_CARE_KEEPER.position];
+  for (const { x, y } of beats) {
+    for (let py = 0; py < TILE_SIZE; py += 1) {
+      for (let px = 0; px < TILE_SIZE; px += 1) {
+        if ((px + TILE_SIZE - py) % 6 !== 0) continue;
+        plot(image, x * TILE_SIZE + px, y * TILE_SIZE + py, [70, 130, 255], 200);
       }
     }
   }

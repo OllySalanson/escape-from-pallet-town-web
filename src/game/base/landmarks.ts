@@ -70,10 +70,13 @@ const LANDMARKS: readonly HarbourLandmark[] = [
     id: 'warehouses',
     name: 'THE WAREHOUSES',
     note: 'What the boats bring in waits here',
-    props: [{ name: 'warehouses', x: 36, y: 17 }],
-    at: { x: 44, y: 20 },
+    // A row back from the water, so the quay along their front is three tiles
+    // deep: the dock worker and his Machop work the row against the wall and
+    // the two along the water are the way to THE COVE.
+    props: [{ name: 'warehouses', x: 36, y: 16 }],
+    at: { x: 44, y: 19 },
     // Named all along their front, which is where the quay is walked.
-    near: Array.from({ length: 10 }, (_, index) => ({ x: 36 + index, y: 21 })),
+    near: Array.from({ length: 10 }, (_, index) => ({ x: 36 + index, y: 20 })),
   },
   // THE PROMENADE's east end: THE FIELD-MOVE COURSE's gate, COURSE painted
   // over it with the four field moves it asks for, and the chalk board its
@@ -119,14 +122,15 @@ export const OUTDOOR_GAME_LANDMARKS: readonly HarbourLandmark[] = [
     faced: [61, 62, 63].map((x) => ({ x, y: 11 })),
   },
   {
-    // On the sand between the huts, under the steps down from the boardwalk.
+    // On the sand in front of the blue and green huts, beside the first steps
+    // down from the boardwalk rather than at their foot.
     id: 'dig',
     name: 'THE DIG',
     note: 'Ten digs: what is buried is yours',
-    props: [{ name: 'digSign', x: 66, y: 20 }],
-    at: { x: 66, y: 20 },
-    near: [66, 67].flatMap((x) => [{ x, y: 19 }, { x, y: 22 }]),
-    faced: [66, 67].flatMap((x) => [{ x, y: 20 }, { x, y: 21 }]),
+    props: [{ name: 'digSign', x: 68, y: 19 }],
+    at: { x: 68, y: 19 },
+    near: [{ x: 67, y: 19 }, { x: 67, y: 20 }, { x: 68, y: 21 }, { x: 69, y: 21 }],
+    faced: [68, 69].flatMap((x) => [{ x, y: 19 }, { x, y: 20 }]),
   },
   {
     // At the pier head, where the deep water is.
