@@ -1,5 +1,6 @@
-// Millbrook - or THE HARBOUR, with --area=harbour - walked the way a player
-// walks it, to count what gets in the way.
+// Millbrook - or THE HARBOUR, with --area=harbour, or TANGLEWOOD, with
+// --area=tanglewood - walked the way a player walks it, to count what gets in
+// the way.
 //
 // The captain, 11 Nov 2026: "when you're walking around, there's just often
 // things in your way, and it's quite fiddly to get through places". So this
@@ -11,11 +12,11 @@
 // a snag, written down with what was in the way, and the walk steps round it
 // over the scene's own collision and carries on.
 //
-//   node tools/playtest/walkableVillage.mjs <test-mode build url> <out dir> [--area=harbour] [--port=N]
+//   node tools/playtest/walkableVillage.mjs <test-mode build url> <out dir> [--area=harbour|tanglewood] [--port=N]
 //
 // It writes `<out>/snags.json` and a picture at each route's end. Run it against
 // a build from before a change and after it to compare (`docs/screens/walkable-millbrook/`,
-// `docs/screens/walkable-harbour/`).
+// `docs/screens/walkable-harbour/`, `docs/screens/walkable-tanglewood/`).
 //
 // --area=harbour walks THE HARBOUR instead (the captain's bench on the way east
 // and the parasols on the beach were the two things he named): a new game is
@@ -23,6 +24,15 @@
 // from where a raid comes home (the jetty), each to a corner the old harbour
 // and the new one both leave open, and back. A route ends on a door's step,
 // never its doorway, so nobody walks into a room.
+//
+// --area=tanglewood walks TANGLEWOOD, the wood east of The Crossing with
+// Mislaid, the shrine, the cavers' camp and Fuchsia Gym in it. It has no landing
+// of its own, so the explorer run is deployed on the vale and the walker stood a
+// step in on the road from The Crossing, and every route starts and ends there.
+//
+// --at=name:x:y,... (Millbrook or Tanglewood) walks nothing: it stands at each
+// tile, in the district's own tiles, and photographs it as `<out>/<name>.png`,
+// so the same view is taken of a build before a change and after it.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { attachBrowser, launchBrowser, PIXEL_WINDOW } from './browser.mjs';
 import { GAME, deploy, sceneIs } from './deploy.mjs';
@@ -31,8 +41,18 @@ const args = process.argv.slice(2);
 const [base, out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
 const port = args.find((arg) => arg.startsWith('--port='))?.slice('--port='.length);
 const area = args.find((arg) => arg.startsWith('--area='))?.slice('--area='.length) ?? 'millbrook';
-if (!base || !['millbrook', 'harbour'].includes(area)) throw new Error('usage: walkableVillage.mjs <url> <out dir> [--area=millbrook|harbour] [--port=N]');
+const shots = (args.find((arg) => arg.startsWith('--at='))?.slice('--at='.length) ?? '')
+  .split(',')
+  .filter(Boolean)
+  .map((shot) => {
+    const [name, x, y] = shot.split(':');
+    return { name, at: [Number(x), Number(y)] };
+  });
+if (!base || !['millbrook', 'harbour', 'tanglewood'].includes(area)) {
+  throw new Error('usage: walkableVillage.mjs <url> <out dir> [--area=millbrook|harbour|tanglewood] [--port=N]');
+}
 const HARBOUR = area === 'harbour';
+const TANGLEWOOD = area === 'tanglewood';
 mkdirSync(out, { recursive: true });
 const url = new URL(base);
 url.searchParams.set('testmode', 'pixels');
@@ -40,9 +60,10 @@ const FRAME_MS = 1000 / 60;
 // The scene walked: the raid's world, or the harbour's base.
 const WORLD = `${GAME}.scene.getScene('${HARBOUR ? 'base' : 'world'}')`;
 const BATTLE = `${GAME}.scene.getScene('battle')`;
-// Local to the district: Millbrook is the plan's cell [0, 1]. The harbour is its own map.
-const ORIGIN = HARBOUR ? { x: 0, y: 0 } : { x: 64, y: 128 };
-const LANDING = [30, 32];
+// Local to the district: Millbrook is the plan's cell [0, 1], Tanglewood [2, 1]. The harbour is its own map.
+const ORIGIN = HARBOUR ? { x: 0, y: 0 } : TANGLEWOOD ? { x: 192, y: 128 } : { x: 64, y: 128 };
+// Where the walks start: Millbrook's landing, or a step into Tanglewood on the road from The Crossing.
+const LANDING = TANGLEWOOD ? [1, 33] : [30, 32];
 // THE HARBOUR's two starts (`BASE_SPAWN`, `BASE_LANDING` in `base/baseMap.ts`).
 const SPAWN = [16, 13];
 const JETTY = [12, 19];
@@ -95,6 +116,33 @@ const HARBOUR_ROUTES = [
   { from: JETTY, name: 'from the boat along the quay to the S.S. Anne', corners: [[29, 19], [29, 25]] },
   { from: JETTY, name: 'from the boat along the waterfront to THE COVE', corners: [[30, 19], [34, 19], [35, 21], [46, 21], [47, 19], [50, 19]] },
   { from: JETTY, name: 'from the boat out along the breakwater to the harbour light', corners: [[30, 19], [34, 19], [35, 21], [46, 21], [47, 19], [60, 19], [60, 21], [60, 30], [42, 30]] },
+];
+
+// TANGLEWOOD's main routes from the road in from The Crossing: the road
+// through to the Safari Marsh and every lane off it that goes somewhere - each
+// way out, the doors of Mislaid, the shrine, the cavers' camp, the gym, the
+// hermit, the club and the lodge, and the glades. The road runs on its lower
+// row and turns where it turns; every corner is open ground before and after.
+const TANGLEWOOD_ROUTES = [
+  { name: 'east along the road to the Safari Marsh', corners: [[11, 33], [11, 38], [25, 38], [25, 34], [43, 34], [43, 40], [62, 40]] },
+  { name: 'out by the Deer Gap', corners: [[6, 33], [6, 31]] },
+  { name: 'down the woodmen’s stand to the shed door', corners: [[7, 33], [7, 42], [3, 42]] },
+  { name: 'north up the lane to the picnic ground', corners: [[11, 33], [11, 38], [16, 38], [16, 27], [14, 27], [14, 25]] },
+  { name: 'through the picnic ground to the mushroom ring hut', corners: [[11, 33], [11, 38], [16, 38], [16, 27], [9, 27], [9, 7], [5, 7]] },
+  { name: 'up the deer path to Pine Hollow', corners: [[11, 33], [11, 38], [16, 38], [16, 27], [9, 27], [9, 7], [18, 7], [18, 1]] },
+  { name: 'into Mislaid to The Way Out', corners: [[11, 33], [11, 38], [24, 38], [24, 29], [30, 29], [30, 13], [34, 13], [34, 11]] },
+  { name: 'through Mislaid to the yard behind the cottage', corners: [[11, 33], [11, 38], [24, 38], [24, 29], [30, 29], [30, 13], [44, 13], [44, 7], [41, 7]] },
+  { name: 'up the spur to the Ruined Shrine', corners: [[11, 33], [11, 38], [25, 38], [25, 34], [40, 34], [40, 25]] },
+  { name: 'past the shrine to the Wood Mouth', corners: [[11, 33], [11, 38], [25, 38], [25, 34], [40, 34], [40, 25], [46, 25], [46, 19], [51, 19], [51, 18]] },
+  { name: 'through the cavers’ camp to its hut door', corners: [[11, 33], [11, 38], [25, 38], [25, 34], [40, 34], [40, 25], [46, 25], [46, 19], [56, 19], [56, 24], [54, 24], [54, 23]] },
+  { name: 'to the Fuchsia Gym door', corners: [[11, 33], [11, 38], [25, 38], [25, 34], [43, 34], [43, 40], [52, 40], [52, 39]] },
+  { name: 'past the broken cart to the Old Oak', corners: [[11, 33], [11, 38], [25, 38], [25, 34], [43, 34], [43, 40], [50, 40], [50, 52], [52, 52]] },
+  { name: 'from the Old Oak along to the windfalls', corners: [[11, 33], [11, 38], [25, 38], [25, 34], [43, 34], [43, 40], [50, 40], [50, 56], [37, 56], [37, 58]] },
+  { name: 'by the halfway stone to the hermit’s door', corners: [[11, 33], [11, 38], [25, 38], [25, 34], [32, 34], [32, 44], [27, 44]] },
+  { name: 'down the lane to the Bug Club door', corners: [[11, 33], [11, 38], [18, 38], [18, 53], [16, 53]] },
+  { name: 'along the butterfly ride and south to the Orchard Terraces', corners: [[11, 33], [11, 38], [18, 38], [18, 49], [36, 49], [36, 62]] },
+  { name: 'west from the ride to the Crossing trail', corners: [[11, 33], [11, 38], [18, 38], [18, 49], [8, 49], [8, 52], [1, 52]] },
+  { name: 'down past the lodge to its door', corners: [[11, 33], [11, 38], [18, 38], [18, 49], [8, 49], [8, 53], [7, 53], [7, 59], [11, 59]] },
 ];
 
 const browser = port ? attachBrowser(Number(port), { window: PIXEL_WINDOW }) : await launchBrowser({ window: PIXEL_WINDOW });
@@ -282,10 +330,26 @@ try {
     await until(sceneIs('world'), 'the raid');
     await wait(600);
     await readAll();
+    // Stood on a tile of the district, as `exitRides.mjs` stands a walker.
+    const standAt = async ([localX, localY]) => {
+      const [x, y] = [ORIGIN.x + localX, ORIGIN.y + localY];
+      await page.evaluate(`(() => { const w = ${WORLD}; const off = w.player.y - w.currentTile.y * 16;
+        w.currentTile = { x: ${x}, y: ${y} }; w.setPlayerPosition(${x} * 16, ${y} * 16 + off);
+        w.configureCamera(); w.cameras.main.centerOn(w.player.x, w.player.y); })()`);
+      await wait(600);
+      await readAll();
+    };
+    // Tanglewood's walks start a step into the wood on the road from The Crossing.
+    if (TANGLEWOOD) await standAt(LANDING);
     const landed = await tile();
-    console.log(`landed at ${landed} (Mill Square is ${LANDING})`);
+    console.log(`landed at ${landed} (the start is ${LANDING})`);
     await page.screenshot(`${out}/00-landing.png`);
-    for (const [k, route] of ROUTES.entries()) {
+    for (const shot of shots) {
+      await standAt(shot.at);
+      await page.screenshot(`${out}/${shot.name}.png`);
+      console.log(`shot ${shot.name} at ${shot.at}`);
+    }
+    for (const [k, route] of (shots.length > 0 ? [] : TANGLEWOOD ? TANGLEWOOD_ROUTES : ROUTES).entries()) {
       await walkRoute(route.name, route.corners, `${String(k + 1).padStart(2, '0')}-${route.name.split(/[ ,]+/).slice(0, 4).join('-').toLowerCase().replace(/[^a-z-]/g, '')}`);
       // Back to the landing the way the route came, which is a walk too.
       await walkRoute(`back from: ${route.name}`, [...route.corners.slice(0, -1).reverse(), LANDING]);

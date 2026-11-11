@@ -1,0 +1,1377 @@
+{
+  "routes": [
+    {
+      "name": "east along the road to the Safari Marsh",
+      "reached": true,
+      "steps": 76,
+      "snags": []
+    },
+    {
+      "name": "back from: east along the road to the Safari Marsh",
+      "reached": true,
+      "steps": 76,
+      "snags": []
+    },
+    {
+      "name": "out by the Deer Gap",
+      "reached": true,
+      "steps": 7,
+      "snags": []
+    },
+    {
+      "name": "back from: out by the Deer Gap",
+      "reached": true,
+      "steps": 7,
+      "snags": []
+    },
+    {
+      "name": "down the woodmen’s stand to the shed door",
+      "reached": false,
+      "steps": 25,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            7,
+            33
+          ],
+          "heading": "down",
+          "blocked": [
+            7,
+            34
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 2,
+          "at": [
+            7,
+            33
+          ],
+          "heading": "down",
+          "blocked": [
+            7,
+            34
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 2,
+          "at": [
+            5,
+            36
+          ],
+          "heading": "down",
+          "blocked": [
+            5,
+            37
+          ],
+          "by": "npc greystone-vale/person-105"
+        },
+        {
+          "leg": 2,
+          "at": [
+            6,
+            39
+          ],
+          "heading": "left",
+          "blocked": [
+            5,
+            39
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: down the woodmen’s stand to the shed door",
+      "reached": false,
+      "steps": 25,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            6,
+            42
+          ],
+          "heading": "right",
+          "blocked": [
+            7,
+            42
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 1,
+          "at": [
+            6,
+            38
+          ],
+          "heading": "up",
+          "blocked": [
+            6,
+            37
+          ],
+          "by": "npc greystone-vale/person-105"
+        },
+        {
+          "leg": 1,
+          "at": [
+            7,
+            37
+          ],
+          "heading": "up",
+          "blocked": [
+            7,
+            36
+          ],
+          "by": "sign greystone-vale/sign-47"
+        },
+        {
+          "leg": 1,
+          "at": [
+            8,
+            36
+          ],
+          "heading": "up",
+          "blocked": [
+            8,
+            35
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "north up the lane to the picnic ground",
+      "reached": true,
+      "steps": 35,
+      "snags": []
+    },
+    {
+      "name": "back from: north up the lane to the picnic ground",
+      "reached": true,
+      "steps": 35,
+      "snags": []
+    },
+    {
+      "name": "through the picnic ground to the mushroom ring hut",
+      "reached": true,
+      "steps": 64,
+      "snags": [
+        {
+          "leg": 5,
+          "at": [
+            9,
+            21
+          ],
+          "heading": "up",
+          "blocked": [
+            9,
+            20
+          ],
+          "by": "npc greystone-vale/person-109"
+        }
+      ]
+    },
+    {
+      "name": "back from: through the picnic ground to the mushroom ring hut",
+      "reached": true,
+      "steps": 76,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            9,
+            8
+          ],
+          "heading": "down",
+          "blocked": [
+            9,
+            9
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 1,
+          "at": [
+            8,
+            23
+          ],
+          "heading": "down",
+          "blocked": [
+            8,
+            24
+          ],
+          "by": "sign greystone-vale/sign-48"
+        }
+      ]
+    },
+    {
+      "name": "up the deer path to Pine Hollow",
+      "reached": true,
+      "steps": 89,
+      "snags": [
+        {
+          "leg": 5,
+          "at": [
+            9,
+            23
+          ],
+          "heading": "up",
+          "blocked": [
+            9,
+            22
+          ],
+          "by": "npc caterpie"
+        },
+        {
+          "leg": 6,
+          "at": [
+            10,
+            7
+          ],
+          "heading": "right",
+          "blocked": [
+            11,
+            7
+          ],
+          "by": "npc paras"
+        }
+      ]
+    },
+    {
+      "name": "back from: up the deer path to Pine Hollow",
+      "reached": true,
+      "steps": 89,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            12,
+            7
+          ],
+          "heading": "left",
+          "blocked": [
+            11,
+            7
+          ],
+          "by": "npc paras"
+        },
+        {
+          "leg": 2,
+          "at": [
+            9,
+            8
+          ],
+          "heading": "down",
+          "blocked": [
+            9,
+            9
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 2,
+          "at": [
+            8,
+            23
+          ],
+          "heading": "down",
+          "blocked": [
+            8,
+            24
+          ],
+          "by": "sign greystone-vale/sign-48"
+        }
+      ]
+    },
+    {
+      "name": "into Mislaid to The Way Out",
+      "reached": false,
+      "steps": 92,
+      "snags": [
+        {
+          "leg": 5,
+          "at": [
+            30,
+            15
+          ],
+          "heading": "up",
+          "blocked": [
+            30,
+            14
+          ],
+          "by": "sign greystone-vale/sign-51"
+        },
+        {
+          "leg": 5,
+          "at": [
+            31,
+            17
+          ],
+          "heading": "up",
+          "blocked": [
+            31,
+            16
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 7,
+          "at": [
+            34,
+            12
+          ],
+          "heading": "up",
+          "blocked": [
+            34,
+            11
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: into Mislaid to The Way Out",
+      "reached": true,
+      "steps": 76,
+      "snags": [
+        {
+          "leg": 2,
+          "at": [
+            30,
+            13
+          ],
+          "heading": "down",
+          "blocked": [
+            30,
+            14
+          ],
+          "by": "sign greystone-vale/sign-51"
+        },
+        {
+          "leg": 2,
+          "at": [
+            31,
+            13
+          ],
+          "heading": "down",
+          "blocked": [
+            31,
+            14
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "through Mislaid to the yard behind the cottage",
+      "reached": false,
+      "steps": 138,
+      "snags": [
+        {
+          "leg": 5,
+          "at": [
+            30,
+            15
+          ],
+          "heading": "up",
+          "blocked": [
+            30,
+            14
+          ],
+          "by": "sign greystone-vale/sign-51"
+        },
+        {
+          "leg": 5,
+          "at": [
+            31,
+            17
+          ],
+          "heading": "up",
+          "blocked": [
+            31,
+            16
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 7,
+          "at": [
+            44,
+            12
+          ],
+          "heading": "up",
+          "blocked": [
+            44,
+            11
+          ],
+          "by": "npc greystone-vale/person-116"
+        },
+        {
+          "leg": 8,
+          "at": [
+            44,
+            12
+          ],
+          "heading": "up",
+          "blocked": [
+            44,
+            11
+          ],
+          "by": "npc greystone-vale/person-116"
+        },
+        {
+          "leg": 8,
+          "at": [
+            43,
+            12
+          ],
+          "heading": "up",
+          "blocked": [
+            43,
+            11
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 8,
+          "at": [
+            38,
+            12
+          ],
+          "heading": "up",
+          "blocked": [
+            38,
+            11
+          ],
+          "by": "sign greystone-vale/sign-50"
+        },
+        {
+          "leg": 8,
+          "at": [
+            37,
+            12
+          ],
+          "heading": "up",
+          "blocked": [
+            37,
+            11
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: through Mislaid to the yard behind the cottage",
+      "reached": false,
+      "steps": 128,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            42,
+            7
+          ],
+          "heading": "right",
+          "blocked": [
+            43,
+            7
+          ],
+          "by": "npc greystone-vale/person-115"
+        },
+        {
+          "leg": 1,
+          "at": [
+            42,
+            7
+          ],
+          "heading": "down",
+          "blocked": [
+            42,
+            8
+          ],
+          "by": "npc meowth"
+        },
+        {
+          "leg": 1,
+          "at": [
+            41,
+            8
+          ],
+          "heading": "down",
+          "blocked": [
+            41,
+            9
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 1,
+          "at": [
+            40,
+            7
+          ],
+          "heading": "down",
+          "blocked": [
+            40,
+            8
+          ],
+          "by": "npc greystone-vale/person-118"
+        },
+        {
+          "leg": 1,
+          "at": [
+            39,
+            7
+          ],
+          "heading": "down",
+          "blocked": [
+            39,
+            8
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 3,
+          "at": [
+            30,
+            13
+          ],
+          "heading": "down",
+          "blocked": [
+            30,
+            14
+          ],
+          "by": "sign greystone-vale/sign-51"
+        },
+        {
+          "leg": 3,
+          "at": [
+            31,
+            13
+          ],
+          "heading": "down",
+          "blocked": [
+            31,
+            14
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "up the spur to the Ruined Shrine",
+      "reached": true,
+      "steps": 75,
+      "snags": []
+    },
+    {
+      "name": "back from: up the spur to the Ruined Shrine",
+      "reached": true,
+      "steps": 57,
+      "snags": []
+    },
+    {
+      "name": "past the shrine to the Wood Mouth",
+      "reached": true,
+      "steps": 77,
+      "snags": [
+        {
+          "leg": 7,
+          "at": [
+            46,
+            25
+          ],
+          "heading": "up",
+          "blocked": [
+            46,
+            24
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: past the shrine to the Wood Mouth",
+      "reached": true,
+      "steps": 95,
+      "snags": [
+        {
+          "leg": 2,
+          "at": [
+            46,
+            21
+          ],
+          "heading": "down",
+          "blocked": [
+            46,
+            22
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "through the cavers’ camp to its hut door",
+      "reached": false,
+      "steps": 137,
+      "snags": [
+        {
+          "leg": 7,
+          "at": [
+            46,
+            25
+          ],
+          "heading": "up",
+          "blocked": [
+            46,
+            24
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 9,
+          "at": [
+            56,
+            19
+          ],
+          "heading": "down",
+          "blocked": [
+            56,
+            20
+          ],
+          "by": "npc greystone-vale/person-123"
+        },
+        {
+          "leg": 10,
+          "at": [
+            56,
+            19
+          ],
+          "heading": "down",
+          "blocked": [
+            56,
+            20
+          ],
+          "by": "npc greystone-vale/person-123"
+        },
+        {
+          "leg": 10,
+          "at": [
+            55,
+            19
+          ],
+          "heading": "down",
+          "blocked": [
+            55,
+            20
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 10,
+          "at": [
+            56,
+            19
+          ],
+          "heading": "down",
+          "blocked": [
+            56,
+            20
+          ],
+          "by": "npc greystone-vale/person-123"
+        },
+        {
+          "leg": 10,
+          "at": [
+            56,
+            22
+          ],
+          "heading": "left",
+          "blocked": [
+            55,
+            22
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: through the cavers’ camp to its hut door",
+      "reached": false,
+      "steps": 109,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            55,
+            24
+          ],
+          "heading": "right",
+          "blocked": [
+            56,
+            24
+          ],
+          "by": "npc geodude"
+        },
+        {
+          "leg": 2,
+          "at": [
+            55,
+            23
+          ],
+          "heading": "up",
+          "blocked": [
+            55,
+            22
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 2,
+          "at": [
+            56,
+            21
+          ],
+          "heading": "up",
+          "blocked": [
+            56,
+            20
+          ],
+          "by": "npc greystone-vale/person-123"
+        },
+        {
+          "leg": 4,
+          "at": [
+            46,
+            21
+          ],
+          "heading": "down",
+          "blocked": [
+            46,
+            22
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "to the Fuchsia Gym door",
+      "reached": true,
+      "steps": 67,
+      "snags": []
+    },
+    {
+      "name": "back from: to the Fuchsia Gym door",
+      "reached": true,
+      "steps": 67,
+      "snags": []
+    },
+    {
+      "name": "past the broken cart to the Old Oak",
+      "reached": false,
+      "steps": 101,
+      "snags": [
+        {
+          "leg": 7,
+          "at": [
+            50,
+            41
+          ],
+          "heading": "down",
+          "blocked": [
+            50,
+            42
+          ],
+          "by": "sign greystone-vale/sign-56"
+        },
+        {
+          "leg": 8,
+          "at": [
+            50,
+            41
+          ],
+          "heading": "down",
+          "blocked": [
+            50,
+            42
+          ],
+          "by": "sign greystone-vale/sign-56"
+        }
+      ]
+    },
+    {
+      "name": "back from: past the broken cart to the Old Oak",
+      "reached": false,
+      "steps": 83,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            50,
+            41
+          ],
+          "heading": "down",
+          "blocked": [
+            50,
+            42
+          ],
+          "by": "sign greystone-vale/sign-56"
+        }
+      ]
+    },
+    {
+      "name": "from the Old Oak along to the windfalls",
+      "reached": false,
+      "steps": 179,
+      "snags": [
+        {
+          "leg": 7,
+          "at": [
+            50,
+            41
+          ],
+          "heading": "down",
+          "blocked": [
+            50,
+            42
+          ],
+          "by": "sign greystone-vale/sign-56"
+        },
+        {
+          "leg": 8,
+          "at": [
+            50,
+            41
+          ],
+          "heading": "down",
+          "blocked": [
+            50,
+            42
+          ],
+          "by": "sign greystone-vale/sign-56"
+        },
+        {
+          "leg": 8,
+          "at": [
+            49,
+            41
+          ],
+          "heading": "down",
+          "blocked": [
+            49,
+            42
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 8,
+          "at": [
+            39,
+            36
+          ],
+          "heading": "down",
+          "blocked": [
+            39,
+            37
+          ],
+          "by": "npc greystone-vale/person-124"
+        },
+        {
+          "leg": 8,
+          "at": [
+            38,
+            35
+          ],
+          "heading": "down",
+          "blocked": [
+            38,
+            36
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 8,
+          "at": [
+            36,
+            35
+          ],
+          "heading": "down",
+          "blocked": [
+            36,
+            36
+          ],
+          "by": "sign greystone-vale/sign-54"
+        },
+        {
+          "leg": 8,
+          "at": [
+            35,
+            36
+          ],
+          "heading": "down",
+          "blocked": [
+            35,
+            37
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: from the Old Oak along to the windfalls",
+      "reached": false,
+      "steps": 304,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            43,
+            56
+          ],
+          "heading": "right",
+          "blocked": [
+            44,
+            56
+          ],
+          "by": "npc pidgeotto"
+        },
+        {
+          "leg": 2,
+          "at": [
+            43,
+            50
+          ],
+          "heading": "up",
+          "blocked": [
+            43,
+            49
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 2,
+          "at": [
+            31,
+            48
+          ],
+          "heading": "right",
+          "blocked": [
+            32,
+            48
+          ],
+          "by": "npc metapod"
+        },
+        {
+          "leg": 2,
+          "at": [
+            37,
+            48
+          ],
+          "heading": "right",
+          "blocked": [
+            38,
+            48
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 2,
+          "at": [
+            31,
+            48
+          ],
+          "heading": "right",
+          "blocked": [
+            32,
+            48
+          ],
+          "by": "npc metapod"
+        },
+        {
+          "leg": 2,
+          "at": [
+            19,
+            47
+          ],
+          "heading": "right",
+          "blocked": [
+            20,
+            47
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "by the halfway stone to the hermit’s door",
+      "reached": false,
+      "steps": 59,
+      "snags": [
+        {
+          "leg": 5,
+          "at": [
+            32,
+            39
+          ],
+          "heading": "down",
+          "blocked": [
+            32,
+            40
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 6,
+          "at": [
+            32,
+            39
+          ],
+          "heading": "left",
+          "blocked": [
+            31,
+            39
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 6,
+          "at": [
+            31,
+            41
+          ],
+          "heading": "left",
+          "blocked": [
+            30,
+            41
+          ],
+          "by": "sign greystone-vale/sign-55"
+        },
+        {
+          "leg": 6,
+          "at": [
+            29,
+            42
+          ],
+          "heading": "left",
+          "blocked": [
+            28,
+            42
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 6,
+          "at": [
+            30,
+            43
+          ],
+          "heading": "left",
+          "blocked": [
+            29,
+            43
+          ],
+          "by": "npc greystone-vale/person-125"
+        }
+      ]
+    },
+    {
+      "name": "back from: by the halfway stone to the hermit’s door",
+      "reached": true,
+      "steps": 77,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            32,
+            44
+          ],
+          "heading": "up",
+          "blocked": [
+            32,
+            43
+          ],
+          "by": "npc venonat"
+        }
+      ]
+    },
+    {
+      "name": "down the lane to the Bug Club door",
+      "reached": true,
+      "steps": 41,
+      "snags": [
+        {
+          "leg": 3,
+          "at": [
+            18,
+            49
+          ],
+          "heading": "down",
+          "blocked": [
+            18,
+            50
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: down the lane to the Bug Club door",
+      "reached": true,
+      "steps": 41,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            18,
+            53
+          ],
+          "heading": "up",
+          "blocked": [
+            18,
+            52
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "along the butterfly ride and south to the Orchard Terraces",
+      "reached": true,
+      "steps": 82,
+      "snags": [
+        {
+          "leg": 4,
+          "at": [
+            22,
+            49
+          ],
+          "heading": "right",
+          "blocked": [
+            23,
+            49
+          ],
+          "by": "npc butterfree"
+        },
+        {
+          "leg": 4,
+          "at": [
+            31,
+            48
+          ],
+          "heading": "right",
+          "blocked": [
+            32,
+            48
+          ],
+          "by": "npc metapod"
+        },
+        {
+          "leg": 5,
+          "at": [
+            36,
+            49
+          ],
+          "heading": "down",
+          "blocked": [
+            36,
+            50
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 5,
+          "at": [
+            36,
+            58
+          ],
+          "heading": "down",
+          "blocked": [
+            36,
+            59
+          ],
+          "by": "npc greystone-vale/person-135"
+        },
+        {
+          "leg": 5,
+          "at": [
+            35,
+            60
+          ],
+          "heading": "down",
+          "blocked": [
+            35,
+            61
+          ],
+          "by": "sign greystone-vale/sign-62"
+        }
+      ]
+    },
+    {
+      "name": "back from: along the butterfly ride and south to the Orchard Terraces",
+      "reached": true,
+      "steps": 82,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            36,
+            60
+          ],
+          "heading": "up",
+          "blocked": [
+            36,
+            59
+          ],
+          "by": "npc greystone-vale/person-135"
+        },
+        {
+          "leg": 0,
+          "at": [
+            35,
+            56
+          ],
+          "heading": "up",
+          "blocked": [
+            35,
+            55
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 1,
+          "at": [
+            27,
+            49
+          ],
+          "heading": "left",
+          "blocked": [
+            26,
+            49
+          ],
+          "by": "sign greystone-vale/sign-59"
+        }
+      ]
+    },
+    {
+      "name": "west from the ride to the Crossing trail",
+      "reached": true,
+      "steps": 65,
+      "snags": []
+    },
+    {
+      "name": "back from: west from the ride to the Crossing trail",
+      "reached": true,
+      "steps": 59,
+      "snags": []
+    },
+    {
+      "name": "down past the lodge to its door",
+      "reached": true,
+      "steps": 96,
+      "snags": [
+        {
+          "leg": 7,
+          "at": [
+            7,
+            53
+          ],
+          "heading": "down",
+          "blocked": [
+            7,
+            54
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 7,
+          "at": [
+            5,
+            52
+          ],
+          "heading": "down",
+          "blocked": [
+            5,
+            53
+          ],
+          "by": "npc rattata"
+        },
+        {
+          "leg": 7,
+          "at": [
+            4,
+            54
+          ],
+          "heading": "down",
+          "blocked": [
+            4,
+            55
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 7,
+          "at": [
+            5,
+            57
+          ],
+          "heading": "right",
+          "blocked": [
+            6,
+            57
+          ],
+          "by": "npc nidoran-f"
+        }
+      ]
+    },
+    {
+      "name": "back from: down past the lodge to its door",
+      "reached": true,
+      "steps": 72,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            7,
+            57
+          ],
+          "heading": "up",
+          "blocked": [
+            7,
+            56
+          ],
+          "by": "npc greystone-vale/person-134"
+        },
+        {
+          "leg": 1,
+          "at": [
+            6,
+            56
+          ],
+          "heading": "up",
+          "blocked": [
+            6,
+            55
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 1,
+          "at": [
+            4,
+            53
+          ],
+          "heading": "right",
+          "blocked": [
+            5,
+            53
+          ],
+          "by": "npc rattata"
+        }
+      ]
+    }
+  ],
+  "total": 86
+}
