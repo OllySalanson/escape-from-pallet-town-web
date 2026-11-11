@@ -7,7 +7,7 @@ import { getSpeciesById } from '../pokemon/species';
 import { STARTER_SPECIES } from '../stash/Stash';
 import { createSeededRng, type SeededRng } from '../run/rng';
 import { availableInsertionIds, frontDoorFor, insertionsOn, requireInsertion } from '../run/runGeneration';
-import { extractionPointsOn, isBarredExit, type ExtractionPoint } from '../world/extractionPoints';
+import { EXTRACTION_UNLOCK_DELAY_MS, extractionPointsOn, isBarredExit, type ExtractionPoint } from '../world/extractionPoints';
 import { trainersOn } from '../world/mapTrainers';
 import {
   gateBossIds,
@@ -355,12 +355,24 @@ interface SealedDistrict {
 
 interface Ground {
   readonly map: WorldMapDefinition;
+  /** The map's front door, which every distance on this ground is measured from. */
   readonly landing: { readonly label: string; readonly position: GridPosition };
-  /** Walking steps from the landing, as the gates stand for this player. */
+  /**
+   * Walking steps from the map's front door, as the gates stand for this
+   * player. It places stops and never goes into a briefing: the board is dealt
+   * before a landing is chosen, so "326 steps from Greystone Vale" was wrong
+   * for whoever dropped in at FARMHOUSE (the midgame bug hunt of 11 Nov 2026).
+   * The field guide says the walk from where the player stands instead.
+   */
   readonly steps: readonly Int32Array[];
   readonly longestWalk: number;
   /** Tiles a stop may stand on that the player can walk to today. */
   readonly open: readonly GridPosition[];
+  /**
+   * Every way out that needs nothing carried to open it. A job that banks at
+   * any exit can use any of these; one that names its exit names one that
+   * `jobMayNameExit` allows.
+   */
   readonly exits: readonly ExtractionPoint[];
   readonly districts: readonly SealedDistrict[];
 }
@@ -463,6 +475,28 @@ function measureGround(
     exits: mapExits.filter((exit) => reached(steps, exit.position)),
     districts,
   };
+}
+
+/**
+ * Whether a job may name this exit as the one that banks it: one that opens
+ * for anybody by its own rule, no later than the wait every outer exit has.
+ *
+ * A barred exit opens only to a raid that brought its Pickaxe or its key. One
+ * a landmark opens waits on a stop the job never asked for, and its pickup line
+ * said only "Only LINESMEN'S TRACK will take it" with the RELAY MAST unworked.
+ * One that opens late can be past the end of a raid that healing debt has cut
+ * short: SMUGGLERS' BOAT opens at 2:30, and a clock can be cut to 2:30 (the
+ * midgame bug hunt of 11 Nov 2026).
+ */
+function jobMayNameExit(exit: ExtractionPoint): boolean {
+  const requirement = exit.requirement;
+  if (requirement === undefined) {
+    return exit.unlockAtMs <= EXTRACTION_UNLOCK_DELAY_MS;
+  }
+  return (
+    requirement.kind === 'always' ||
+    (requirement.kind === 'elapsed' && requirement.unlockAtMs <= EXTRACTION_UNLOCK_DELAY_MS)
+  );
 }
 
 /** The ground a save's first jobs are set on: outdoors and a short walk off. All of it, on a map too small to have any. */
@@ -733,7 +767,7 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
       })),
       briefing: [
         `${SURVEY_STAKES} stakes, in any order: ${regions(ground.map, stakes)}.`,
-        `The nearest is ${walk(ground, stakes)} steps from ${ground.landing.label} and no two are close, so the raid is a circuit rather than an errand.`,
+        'No two are close, so the raid is a circuit rather than an errand.',
         'Any exit banks it, once all of them are read.',
       ],
       deploymentBriefing: `${SURVEY_STAKES} survey stakes ${where}: ${regions(ground.map, stakes)}.`,
@@ -751,7 +785,11 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
       (a, b) => fromCase[a.position.y][a.position.x] - fromCase[b.position.y][b.position.x],
     );
     const [nearest, ...others] = byWalk;
-    const exit = rng.pick(others);
+    const nameable = others.filter(jobMayNameExit);
+    if (nameable.length === 0) {
+      return undefined;
+    }
+    const exit = rng.pick(nameable);
     const exitWalk = fromCase[exit.position.y][exit.position.x];
     const nearestWalk = fromCase[nearest.position.y][nearest.position.x];
     const where = mapPhrase(ground.map.id);
@@ -770,7 +808,7 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
         },
       ],
       briefing: [
-        `The case is in ${regions(ground.map, [position])}, ${walk(ground, [position])} steps from ${ground.landing.label}.`,
+        `The case is in ${regions(ground.map, [position])}.`,
         `Only ${exit.label} banks it, and that is ${exitWalk} steps from the case. ${nearest.label} is ${nearestWalk}.`,
         `${nearest.label} will still take you home. It will not take the case.`,
       ],
@@ -805,7 +843,7 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
       ],
       briefing: [
         `Pack ${asked} at base. They are handed over at the cache and do not come back.`,
-        `The cache is in ${regions(ground.map, [position])}, ${walk(ground, [position])} steps from ${ground.landing.label} - and whatever you spend getting there, you cannot spend those.`,
+        `The cache is in ${regions(ground.map, [position])} - and whatever you spend getting there, you cannot spend those.`,
         'Any exit banks it, once the drop is made.',
       ],
       deploymentBriefing: `${asked} to the outpost cache, in ${regions(ground.map, [position])}.`,
@@ -820,8 +858,8 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
    */
   sealed(rng, ground) {
     const district = rng.pick(ground.districts);
-    const exit = district.exits.length > 0 ? rng.pick(district.exits) : undefined;
-    const beyond = district.steps;
+    const nameable = district.exits.filter(jobMayNameExit);
+    const exit = nameable.length > 0 ? rng.pick(nameable) : undefined;
     const deepest = deepestFirst(district);
     // The far half of the district, so the stop is never the tile behind the door.
     const deep = deepest.slice(0, Math.max(1, Math.ceil(deepest.length / 2)));
@@ -852,7 +890,6 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
       })),
       briefing: [
         `The cache is behind the ${gate}, and ${district.bossName} holds it shut. Nobody walks round: beat them and the gate opens, in this raid and every one after.`,
-        `It is ${beyond[stops[0].y][stops[0].x]} steps from ${ground.landing.label} once the door is open.`,
         exit
           ? `Only ${exit.label} banks it - the way out on the far side of the gate.`
           : 'Both caches are past the gate. Any exit banks it, once both are recovered.',
@@ -1042,11 +1079,6 @@ function roomLine(map: WorldMapDefinition, tile: GridPosition): string {
 function insidePlace(map: WorldMapDefinition, tile: GridPosition): string | undefined {
   const place = map.areas ? placedAreaAt(map.areas, tile) : undefined;
   return place && place.id !== undefined ? place.name : undefined;
-}
-
-/** Walking steps from the landing to the nearest of these tiles. */
-function walk(ground: Ground, tiles: readonly GridPosition[]): number {
-  return Math.min(...tiles.map((tile) => ground.steps[tile.y][tile.x]));
 }
 
 function titleCase(label: string): string {
