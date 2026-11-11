@@ -84,6 +84,13 @@ describe('what the secure container fills itself with', () => {
     expect(fill.items).toEqual([{ itemId: 'potion', quantity: 4 }]);
   });
 
+  it('protects the packed medicine when the only Pokemon going is the partner, which has its own place', () => {
+    const fill = autofillSecureSlot([], DEFAULT_SECURE_PREFERENCE, BASE_SECURE_GRID, 1, (itemId) => (itemId === 'potion' ? 3 : 0), [
+      'potion',
+    ]);
+    expect(fill).toEqual({ pokemonIds: [], items: [{ itemId: 'potion', quantity: 3 }] });
+  });
+
   it('never trades a Pokemon that fits for medicine, and never secures what was not packed', () => {
     const potions = (itemId: string): number => (itemId === 'potion' ? 8 : 0);
     expect(

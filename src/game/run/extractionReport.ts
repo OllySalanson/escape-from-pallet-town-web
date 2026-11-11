@@ -166,6 +166,12 @@ export interface ExtractionReport {
   readonly ledgerHeading: string;
   readonly ledgerEmptyText: string;
   readonly contract?: ReportContract;
+  /**
+   * The partner, when it came on the raid: it comes home whatever happens, in a
+   * place of its own beside the secure slot rather than in it, so it is said
+   * apart from `secured` and never counted as at risk.
+   */
+  readonly partner?: ReportPokemon;
   readonly secured: ReportGroup;
   /**
    * What the secure-slot panel says when `secured` is empty. A slot that was
@@ -333,6 +339,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     pokemon: securedPokemon(snapshot).map(toReportPokemon),
     items: toReportItems(securedItems),
   };
+  const partner = snapshot.secureSlot.partner === undefined ? undefined : toReportPokemon(snapshot.secureSlot.partner);
   // What rode out unprotected. A lost raid's answer is the ledger itself - what
   // actually failed to come home - rather than the loadout minus the secure
   // slot, which counts a drunk Potion as one the raid was still carrying and
@@ -343,7 +350,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
   const risked: ReportGroup = escaped
     ? {
       pokemon: (snapshot.loadout?.party ?? [])
-        .filter((member) => !securedPokemon(snapshot).includes(member))
+        .filter((member) => !protectedPokemon(snapshot).includes(member))
         .map(toReportPokemon),
       items: toReportItems(
         subtractStacks(
@@ -381,7 +388,9 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     eyebrow: escaped
       ? `Extracted${input.exitLabel ? ` · ${input.exitLabel}` : ''}`
       : 'Raid lost',
-    headline: escaped ? (relicHeadline(ledgerFound) ?? escapeHeadline(haulTier)) : wipeHeadline(input.cause, secured),
+    headline: escaped
+      ? (relicHeadline(ledgerFound) ?? escapeHeadline(haulTier))
+      : wipeHeadline(input.cause, secured, partner),
     summary: escaped
       ? escapeSummary(
         ledgerFound,
@@ -391,7 +400,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
         gear,
         pack,
       )
-      : wipeSummary(input.cause, stakes, secured),
+      : wipeSummary(input.cause, stakes, secured, partner),
     haulTier,
     clockLabel: `${formatElapsedClock(snapshot.elapsedMs)} of ${formatRaidClock(input.durationMs)}`,
     elapsedMs: snapshot.elapsedMs,
@@ -416,6 +425,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
         ? `Only your ${lostPack.name}, below, went down outside the secure slot.`
         : 'Nothing outside the secure slot was at stake.',
     ...(contract ? { contract } : {}),
+    ...(partner === undefined ? {} : { partner }),
     secured,
     securedEmptyText:
       declaredSecureItems.length > 0 || securedPokemon(snapshot).length > 0
@@ -426,7 +436,10 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
           // slot may only mean the raid never turned one up.
           ? 'None of what you protected turned up in the raid.'
           : 'Everything you protected was used up in the field.'
-        : 'You protected nothing.',
+        : partner === undefined
+          ? 'You protected nothing.'
+          // The partner's place is not the container, and the row above it says so.
+          : 'You put nothing in the container.',
     risked,
     gambleVerdict: gambleVerdict(escaped, secured, stakes),
     ...(spent === undefined ? {} : { spent }),
@@ -480,14 +493,20 @@ function fallenParty(snapshot: RunSnapshot, lastStand: Pokemon | undefined): Fal
   const standing = party.includes(lastStand as Pokemon) ? lastStand : deployed[deployed.length - 1];
   return party.map((member) => ({
     ...toReportPokemon(member),
-    secured: securedPokemon(snapshot).includes(member),
+    secured: protectedPokemon(snapshot).includes(member),
     lastStand: member === standing,
   }));
 }
 
-/** Every Pokemon the raid's secure slot protected. */
+/** Every Pokemon the raid's secure container protected. The partner is not one: it has its own place. */
 function securedPokemon(snapshot: RunSnapshot): readonly Pokemon[] {
   return snapshot.secureSlot.pokemon ?? [];
+}
+
+/** Every Pokemon a wipe could not take: the partner, and whoever was in the container. */
+function protectedPokemon(snapshot: RunSnapshot): readonly Pokemon[] {
+  const partner = snapshot.secureSlot.partner;
+  return partner === undefined ? securedPokemon(snapshot) : [partner, ...securedPokemon(snapshot)];
 }
 
 /**
@@ -527,11 +546,11 @@ function escapeHeadline(tier: HaulTier): string {
   }
 }
 
-function wipeHeadline(cause: WipeCause | undefined, secured: ReportGroup): string {
+function wipeHeadline(cause: WipeCause | undefined, secured: ReportGroup, partner: ReportPokemon | undefined): string {
   if (cause === 'timer') {
     return 'The clock ran out with you still inside.';
   }
-  return isEmptyGroup(secured) ? 'You went down with everything on you.' : 'You went down.';
+  return isEmptyGroup(secured) && partner === undefined ? 'You went down with everything on you.' : 'You went down.';
 }
 
 /** `fieldHaul` is the ledger less whatever the contract paid. */
@@ -572,16 +591,22 @@ function wipeSummary(
   cause: WipeCause | undefined,
   gone: string | null,
   secured: ReportGroup,
+  partner: ReportPokemon | undefined,
 ): string {
   const opening =
     cause === 'timer'
       ? 'The extraction window closed on you.'
       : 'The raid ended where you fell.';
+  // Said whichever way the rest went, because it is the one thing a FireRed
+  // player fears for and the one thing no wipe can touch.
+  const home = partner === undefined ? '' : ` ${partner.name}, your partner, came home with you.`;
   if (gone === null) {
-    return `${opening} Nothing was taken from you.`;
+    return `${opening} Nothing was taken from you.${home}`;
   }
   const kept = describeGroup(secured);
-  return `${opening} You lost ${gone}.${kept === null ? ' Nothing was protected.' : ` The secure slot held ${kept}.`}`;
+  return `${opening} You lost ${gone}.${home}${
+    kept === null ? (partner === undefined ? ' Nothing was protected.' : '') : ` The secure slot held ${kept}.`
+  }`;
 }
 
 /**
@@ -728,7 +753,7 @@ function partyGear(snapshot: RunSnapshot, escaped: boolean): ReportGear[] {
     if (member.heldItemId === null || label === undefined) {
       return [];
     }
-    const kept = escaped || securedPokemon(snapshot).includes(member);
+    const kept = escaped || protectedPokemon(snapshot).includes(member);
     return [{
       itemId: member.heldItemId,
       label,
@@ -804,7 +829,7 @@ function partyProgress(snapshot: RunSnapshot, escaped: boolean): ReportProgress[
     .filter(({ member, before }) =>
       before !== undefined &&
       member.experience > before &&
-      (escaped || securedPokemon(snapshot).includes(member)))
+      (escaped || protectedPokemon(snapshot).includes(member)))
     .map(({ member, before }) => ({
       name: member.name,
       dexId: member.base.dexId,
@@ -989,10 +1014,10 @@ function exposedGroup(
   };
 }
 
-/** The gear on every deployed Pokemon the secure slot was not protecting. */
+/** The gear on every deployed Pokemon neither the partner's place nor the secure slot was protecting. */
 function exposedGear(snapshot: RunSnapshot): ReportGear[] {
   return (snapshot.loadout?.party ?? [])
-    .filter((member) => !securedPokemon(snapshot).includes(member))
+    .filter((member) => !protectedPokemon(snapshot).includes(member))
     .flatMap((member) => {
       const label = heldItemName(member.heldItemId);
       return member.heldItemId === null || label === undefined

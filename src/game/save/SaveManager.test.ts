@@ -6,14 +6,17 @@ import {
   Pokemon,
   PokemonParty,
   CHARMANDER,
+  CHARMELEON,
   BULBASAUR,
   PIDGEY,
   PIKACHU,
   SQUIRTLE,
+  SPECIES_BY_ID,
   experienceForLevel,
 } from '../pokemon';
+import { BASE_LOADOUT_CAPACITY, DeploymentFlow } from '../hub/deploymentFlow';
 import { PrimaryStatus } from '../pokemon/battle/status';
-import { Bag, STARTING_PACK_ID } from '../items';
+import { Bag, EMPTY_ARRANGEMENT, STARTING_PACK_ID } from '../items';
 import { DEFAULT_RAID_PROGRESS, SAVE_KEY, SaveManager } from './SaveManager';
 import { TICKET_PRIZES } from '../minigames/tickets';
 import { ownedFurniture } from '../home/arrangement';
@@ -3061,5 +3064,87 @@ describe('gym leaders met', () => {
     raw.raidProgress.gymsMet = ['vale-gym-misty', 'vale-quay-keeper', 7, 'vale-gym-misty'];
     storage.setItem(storage.keys()[0], JSON.stringify(raw));
     expect(new SaveManager(storage).load()!.raidProgress.gymsMet).toEqual(['vale-gym-misty']);
+  });
+});
+
+/**
+ * A save written before the partner had a place of its own (11 Nov 2026,
+ * option B). Its container may have been laid out with the partner in it: the
+ * seat is taken out on load, the partner is protected in its own place, and
+ * the container goes to whoever else is going - nothing is lost by the move.
+ */
+describe('a save whose secure container held the partner', () => {
+  /** A save the game wrote, with the container laid out as it used to be: the partner seated in it. */
+  const partnerInTheContainer = (): string => {
+    const storage = new MemoryStorage();
+    const stash = new Stash({ items: { potion: 3, 'raid-pack': 1 } });
+    stash.adoptPartner(stash.addPokemon(new Pokemon(CHARMELEON, 16), 'charmander-1'));
+    stash.addPokemon(new Pokemon(SPECIES_BY_ID.rattata, 6), 'rattata-1');
+    new SaveManager(storage).save({
+      party: new PokemonParty([]),
+      mapId: 'pallet-town',
+      position: { x: 1, y: 1 },
+      bag: new Bag(),
+      stash,
+      starterSpeciesId: 'charmander',
+    });
+    const written = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress?: Record<string, unknown> };
+    written.raidProgress = {
+      ...written.raidProgress,
+      securePreference: { pokemon: true, items: [] },
+      secureArrangement: {
+        items: [{ itemId: 'potion', x: 1, y: 1, rotated: false }],
+        cargo: [{ cargoId: 'charmander-1', x: 0, y: 0, rotated: false }],
+      },
+    };
+    return JSON.stringify(written);
+  };
+
+  it('moves the partner out of the container\'s layout on load, keeping the rest of it', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(SAVE_KEY, partnerInTheContainer());
+    const game = new SaveManager(storage).load()!;
+
+    expect(game.stash.partnerId()).toBe('charmander-1');
+    expect(game.stash.partner()?.pokemon.base.id).toBe('charmeleon');
+    expect(game.raidProgress.secureArrangement).toEqual({
+      items: [{ itemId: 'potion', x: 1, y: 1, rotated: false }],
+      cargo: [],
+    });
+  });
+
+  it('then deploys the partner in its own place and brings it home from a wipe', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(SAVE_KEY, partnerInTheContainer());
+    const saves = new SaveManager(storage);
+    const game = saves.load()!;
+    // As the hall builds it (`base/arenaKit.flowForGame`), with no locker built.
+    const flow = new DeploymentFlow(
+      game.stash,
+      undefined,
+      BASE_LOADOUT_CAPACITY,
+      game.raidProgress.securePreference,
+      { bag: EMPTY_ARRANGEMENT, secure: game.raidProgress.secureArrangement ?? EMPTY_ARRANGEMENT },
+      game.starterSpeciesId,
+    );
+    flow.togglePokemon('charmander-1');
+    flow.togglePokemon('rattata-1');
+    flow.advance();
+    flow.advance();
+    const deployment = flow.deploy();
+
+    expect(deployment.secureSlot.partner).toBe(game.stash.partner()?.pokemon);
+    expect(deployment.stashSecureSlot.pokemonIds).toEqual(['rattata-1']);
+
+    expect(
+      saves.applyWipeLoss(
+        deployment.party.map(({ id }) => id),
+        deployment.items,
+        deployment.stashSecureSlot,
+      ),
+    ).toBe(true);
+    const after = saves.load()!;
+    expect(after.stash.listPokemon().map(({ id }) => id)).toEqual(['charmander-1', 'rattata-1']);
+    expect(after.stash.partnerId()).toBe('charmander-1');
   });
 });

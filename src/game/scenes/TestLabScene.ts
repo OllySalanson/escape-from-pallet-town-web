@@ -255,10 +255,12 @@ export class TestLabScene extends Phaser.Scene {
   private launchFixedRun(game: RestoredGame, insertion: RunInsertionId): void {
     const stored = game.stash.listPokemon()[0];
     const party = [stored.pokemon];
+    // The partner's own place, as a raid from base gives it.
+    const secureSlot = stored.id === game.stash.partnerId() ? { partner: stored.pokemon } : {};
     activeRunManager.startRun(
       { party, items: [] },
       { mapId: requireInsertion(insertion).mapId, durationMs: 18 * 60 * 1000 },
-      {},
+      secureSlot,
     );
     const contract = contractForMap(
       requireInsertion(insertion).mapId,
@@ -267,7 +269,7 @@ export class TestLabScene extends Phaser.Scene {
     const plan = generateRunPlan(0x5eed1234, undefined, insertion, contract, hunterThreatFor(party));
     const runSession = createActiveRunSession(
       activeRunManager,
-      {},
+      secureSlot,
       {},
       [stored.id],
       [],

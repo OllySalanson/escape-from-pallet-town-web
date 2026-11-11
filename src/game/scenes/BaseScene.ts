@@ -2236,16 +2236,18 @@ export class BaseScene extends Phaser.Scene {
       return null;
     }
     const packId = flow.packItemId;
-    const partnerId = this.savedGame.stash.partner()?.id;
+    const partner = flow.partnerOnRaid;
     const stack = ({ itemId, quantity }: { readonly itemId: ItemId; readonly quantity: number }): string => `${getItemById(itemId)?.displayName ?? itemId} ${itemCountTag(itemId, quantity)}`;
     return {
-      pokemon: flow.riskedPokemon.map(({ id, pokemon }) => ({ name: pokemon.name, level: pokemon.level, partner: id === partnerId })),
+      // Never the partner: it has a place of its own beside the container.
+      pokemon: flow.riskedPokemon.map(({ pokemon }) => ({ name: pokemon.name, level: pokemon.level })),
       // Nobody is ever left without a Satchel, so it is no stake.
       pack: packId === undefined || packId === FALLBACK_PACK_ID ? null : flow.packName,
       packIsBetter: packId !== undefined && packSquares(packId) > packSquares(STARTING_PACK_ID),
       items: flow.riskedItems.map(stack),
       // Room kept for what might be found is not a thing that is safe yet.
       safe: [
+        ...(partner === undefined ? [] : [`${partner.pokemon.name} (your partner)`]),
         ...flow.securedPokemon.map(({ pokemon }) => pokemon.name),
         ...flow.securedItems.filter(({ itemId }) => !isFoundOnly(itemId)).map(stack),
       ],

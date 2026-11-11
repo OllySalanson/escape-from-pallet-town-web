@@ -194,6 +194,12 @@ interface BagSceneData {
   readonly bike?: BagBike;
   /** The world beside the panel, told what the panel covers. */
   readonly view?: SidePanelView;
+  /**
+   * The partner, when it came on this raid. It has a place of its own that no
+   * wipe can touch, and the pack is where a player looks to see what the raid
+   * is risking, so it is said here beside the squares it takes none of.
+   */
+  readonly partner?: Pokemon;
 }
 
 /**
@@ -218,6 +224,7 @@ export class BagScene extends Phaser.Scene {
   private onItemDropped?: (itemId: string, quantity: number) => void;
   private bike?: BagBike;
   private view?: SidePanelView;
+  private partner?: Pokemon;
   /** The item whose recipient list is open, if one is. */
   private usingItemId?: string;
   /**
@@ -279,6 +286,7 @@ export class BagScene extends Phaser.Scene {
     this.onItemDropped = data.onItemDropped;
     this.bike = data.bike;
     this.view = data.view;
+    this.partner = data.partner;
     this.usingItemId = undefined;
     this.pupilIndex = undefined;
     this.status = undefined;
@@ -487,7 +495,22 @@ export class BagScene extends Phaser.Scene {
       }</div>${details}`,
       { className: 'raid-pockets', heading: 'Carried', note: `${this.kinds} ${this.kinds === 1 ? 'kind' : 'kinds'}` },
     );
-    return `<main class="px-body raid-bag-layout">${carried}<div class="raid-bag-side">${this.packWindow()}</div></main>`;
+    return `<main class="px-body raid-bag-layout">${carried}<div class="raid-bag-side">${this.packWindow()}${this.partnerWindow()}</div></main>`;
+  }
+
+  /**
+   * The partner's own place, under the squares it takes none of: whatever
+   * happens to the pack, it comes home.
+   */
+  private partnerWindow(): string {
+    const partner = this.partner;
+    if (!partner || !this.party.pokemon.includes(partner)) {
+      return '';
+    }
+    return pixelWindow(
+      `<div class="px-list"><div class="px-row is-secured is-partner-place"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(partner)}</span><small class="px-wrap">Your partner. A wipe never takes it.</small></span>${pixelTag('Safe', 'secure', true)}</div></div>`,
+      { className: 'partner-place-window', heading: 'Partner', note: 'comes home' },
+    );
   }
 
   private itemRow(item: ItemDefinition): string {

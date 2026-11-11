@@ -3470,12 +3470,17 @@ export class MapMakerScene extends Phaser.Scene {
       { itemId: 'poke-ball', quantity: 5 },
     ] as const;
     const packItemId = 'raid-pack';
+    // The try team's partner has its own place, as a real raid's does, so the
+    // try's result says what a real one would.
+    const partner = team.find((stored) => stored.id === stash.partnerId());
+    const secureSlot = partner === undefined ? {} : { partner: partner.pokemon };
     activeRunManager.startRun(
       { party, items: [...items], packItemId },
       {
         mapId: insertion.mapId,
         durationMs: rules === 'walk' ? PLAYTEST_RAID_DURATION_MS : RAID_DURATION_MS,
       },
+      secureSlot,
     );
     const seed = crypto.getRandomValues(new Uint32Array(1))[0];
     const plan = generateRunPlan(
@@ -3493,7 +3498,7 @@ export class MapMakerScene extends Phaser.Scene {
     );
     const runSession = createActiveRunSession(
       activeRunManager,
-      {},
+      secureSlot,
       {},
       team.map((stored) => stored.id),
       [...items],

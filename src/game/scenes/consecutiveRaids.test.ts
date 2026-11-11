@@ -90,7 +90,26 @@ vi.mock('../ui/DialogBox', () => ({
 }));
 
 import { Bag } from '../items';
-import { BULBASAUR, Pokemon, PokemonParty, experienceForLevel } from '../pokemon';
+import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, PokemonParty, experienceForLevel } from '../pokemon';
+import { SaveManager, type StorageLike } from '../save/SaveManager';
+import { Stash } from '../stash';
+import type { ExtractionReport } from '../run/extractionReport';
+
+class MemoryStorage implements StorageLike {
+  private readonly values = new Map<string, string>();
+
+  public getItem(key: string): string | null {
+    return this.values.get(key) ?? null;
+  }
+
+  public setItem(key: string, value: string): void {
+    this.values.set(key, value);
+  }
+
+  public removeItem(key: string): void {
+    this.values.delete(key);
+  }
+}
 import { RunManager, RunPhase } from '../run/RunManager';
 import { createActiveRunSession, type ActiveRunSession } from '../run/RunSession';
 import { ENRAGE_GRACE_MS } from '../run/RunManager';
@@ -412,6 +431,74 @@ describe('two raids in a row on one WorldScene instance', () => {
     const started = (scene as unknown as { scene: { start: ReturnType<typeof vi.fn> } }).scene
       .start;
     expect(started).toHaveBeenCalledWith('extraction', expect.anything());
+  });
+
+  /**
+   * The hunt of 11 Nov 2026, finding 1, through the real world and the real
+   * save: the partner evolves on the way, the clock runs out, and the raid is
+   * lost. The partner has a place of its own beside the container (option B),
+   * so it comes home as what it became and the rest of the party does not.
+   */
+  it('brings the partner home from a raid lost to the clock after it evolved on the way', () => {
+    const storage = new MemoryStorage();
+    vi.stubGlobal('window', { localStorage: storage });
+    try {
+      const stash = new Stash();
+      stash.adoptPartner(stash.addPokemon(new Pokemon(CHARMANDER, 15), 'charmander-1'));
+      stash.addPokemon(new Pokemon(PIDGEY, 5), 'pidgey-1');
+      new SaveManager(storage).save({
+        party: new PokemonParty([]),
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: new Bag(),
+        stash,
+      });
+      const game = new SaveManager(storage).load()!;
+      const partner = game.stash.partner()!.pokemon;
+      const pidgey = game.stash.listPokemon().find(({ id }) => id === 'pidgey-1')!.pokemon;
+
+      const controls = makeControls();
+      const scene = new WorldScene();
+      attachSceneStubs(scene, controls);
+      const manager = new RunManager();
+      const party = new PokemonParty([partner, pidgey]);
+      // The container went out empty: only the partner's own place protects anybody.
+      const slot = { partner };
+      manager.startRun(
+        { party: party.pokemon, items: [] },
+        { mapId: requireInsertion('floodplain-relay').mapId, durationMs: RAID_DURATION_MS },
+        slot,
+      );
+      const plan = generateRunPlan(1, undefined, 'floodplain-relay', FIRST_CONTRACT);
+      const runSession = createActiveRunSession(
+        manager, slot, {}, ['charmander-1', 'pidgey-1'], [], [], plan, [], undefined, partner,
+      );
+      scene.create({ party, bag: new Bag(), runSession });
+
+      partner.gainExperience(experienceForLevel(16, partner.base.growthRate) - partner.experience);
+      expect(partner.base.id).toBe('charmeleon');
+
+      const internals = scene as unknown as {
+        dialogBox: { visible: boolean };
+        advanceRunClock(deltaMs: number): void;
+      };
+      internals.dialogBox.visible = false;
+      internals.advanceRunClock(RAID_DURATION_MS);
+      internals.advanceRunClock(ENRAGE_GRACE_MS);
+
+      expect(manager.phase).toBe(RunPhase.Wiped);
+      const after = new SaveManager(storage).load()!;
+      expect(after.stash.listPokemon().map(({ id }) => id)).toEqual(['charmander-1']);
+      expect(after.stash.partnerId()).toBe('charmander-1');
+      expect(after.stash.partner()?.pokemon.level).toBe(16);
+      const start = (scene as unknown as { scene: { start: ReturnType<typeof vi.fn> } }).scene.start;
+      const payload = start.mock.calls.find(([key]) => key === 'extraction')?.[1] as { report: ExtractionReport } | undefined;
+      const report = payload!.report;
+      expect(report.partner?.name).toBe('Charmeleon');
+      expect(report.ledger.pokemon.map(({ name }) => name)).toEqual(['Pidgey']);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   /**

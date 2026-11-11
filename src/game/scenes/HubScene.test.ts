@@ -1626,6 +1626,20 @@ describe('what the base screen leads with', () => {
     expect(markup).not.toContain('cordon ledger');
   });
 
+  it('never tells a fully evolved partner a wipe will take it: it has its own place (11 Nov 2026, option B)', () => {
+    const { hub } = createHub();
+    hub.stash.addPokemon(new Pokemon(CHARIZARD, 36), 'charizard-1');
+    (hub as unknown as { stash: { adoptPartner(id: string): void } }).stash.adoptPartner('charizard-1');
+    hub.flow.togglePokemon('charizard-1');
+    hub.setView('locker');
+    const markup = markupOf(hub);
+    const row = /<button class="px-row is-secured is-partner-place"[^]*?<\/button>/.exec(markup)?.[0] ?? '';
+    expect(row).toContain('PARTNER');
+    expect(row).toContain('a wipe never takes your partner');
+    expect(markup).not.toContain('A wipe will take');
+    expect(markup).not.toContain('data-secure-pokemon="charizard-1"');
+  });
+
   it('names what to build when a bigger container is what an evolved Pokemon needs', () => {
     const { hub } = createHub();
     hub.stash.addPokemon(new Pokemon(CHARMELEON, 16), 'charmeleon-1');
@@ -1660,12 +1674,12 @@ describe('what the base screen leads with', () => {
     hub.setView('rim');
     readyToDeploy(hub);
     const rim = markupOf(hub);
-    // The pack and three Potions go; the partner filled the locker.
+    // The pack and three Potions go; the Charmander filled the locker.
     expect(rim).toMatch(/<dt>At risk<\/dt><dd[^>]*>the Raid pack, Potion/);
     expect(rim).toMatch(/<dt>Safe<\/dt><dd[^>]*>Charmander/);
   });
 
-  it('says at the rim who a wipe would lose for good, and whether that is the partner', () => {
+  it('says at the rim who a wipe would lose for good, and never the partner, which is always safe', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');
     hub.setView('rim');
@@ -1675,10 +1689,14 @@ describe('what the base screen leads with', () => {
     hub.setView('rim');
     readyToDeploy(hub);
     expect(markupOf(hub)).toMatch(/<dt>A wipe<\/dt><dd[^>]*>Charmander: lost for good/);
+    // The partner has a place of its own beside the container (11 Nov 2026,
+    // option B), so marking the Charmander as the partner moves it from the
+    // losses to what is safe - the hunt's "(your partner): lost for good" is gone.
     (hub as unknown as { stash: { adoptPartner(id: string): void } }).stash.adoptPartner('charmander-1');
     hub.setView('rim');
     readyToDeploy(hub);
-    expect(markupOf(hub)).toMatch(/<dt>A wipe<\/dt><dd[^>]*>Charmander \(your partner\): lost for good/);
+    expect(markupOf(hub)).not.toContain('lost for good');
+    expect(markupOf(hub)).toMatch(/<dt>Safe<\/dt><dd[^>]*>Charmander \(your partner\)/);
   });
 
   it('warns on the card of a badly hurt team, with the cursor on NOT YET', () => {
@@ -1994,18 +2012,22 @@ describe('Brock', () => {
     for (const stored of [...hub.flow.securedPokemon]) {
       hub.flow.toggleSecurePokemon(stored.id);
     }
-    hub.flow.toggleSecurePokemon('charmander-1');
+    // The Charmander is the partner, in its own place, so both slots go to
+    // the Pidgey and the partner takes none of the eight squares.
+    hub.flow.toggleSecurePokemon('pidgey-1');
     hub.flow.toggleSecurePokemon('pidgey-2');
     hub.setView('locker');
     expect(markupOf(hub)).toContain('8/8 squares');
+    expect(markupOf(hub)).toMatch(/data-partner-place[^>]*>.*Charmander.*PARTNER/);
     hub.setView('rim');
     readyToDeploy(hub);
 
     deploy(hub, start);
 
     const { runSession } = start.mock.calls[0][1] as WorldSceneData;
-    expect(runSession.stashSecureSlot.pokemonIds).toEqual(['charmander-1', 'pidgey-2']);
+    expect(runSession.stashSecureSlot.pokemonIds).toEqual(['pidgey-1', 'pidgey-2']);
     expect(runSession.secureSlot.pokemon).toHaveLength(2);
+    expect(runSession.secureSlot.partner?.base.id).toBe('charmander');
     expect(runSession.workshopUpgrades).toContain('radio-mast');
     expect(runSession.plan?.extractionPoints.filter((point) => point.label === 'BEACON')).toMatchObject([
       { mapId: 'floodplain-relay', unlockAtMs: RAID_DURATION_MS / 2 },

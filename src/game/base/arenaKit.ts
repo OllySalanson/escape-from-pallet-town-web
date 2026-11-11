@@ -76,7 +76,8 @@ export function flowForGame(game: RestoredGame): DeploymentFlow {
       bag: game.raidProgress.packArrangement ?? EMPTY_ARRANGEMENT,
       secure: game.raidProgress.secureArrangement ?? EMPTY_ARRANGEMENT,
     },
-    // The partner wins a level tie for the container's protection.
+    // The partner has its own place; the starter's line leads the container
+    // only for a save whose partner was lost before that place existed.
     game.starterSpeciesId,
     // Whoever went down last raid is back on the bench.
     game.raidProgress.lastBench,

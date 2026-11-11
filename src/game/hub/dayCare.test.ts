@@ -100,16 +100,17 @@ describe('what the Day-Care pays', () => {
 
 describe('leaving a Pokémon with him', () => {
   it('takes it out of the vault, so no raid, payment or wipe can reach it', () => {
-    const { stash, pidgey } = vault();
+    const { stash, partner, pidgey } = vault();
     expect(stash.leaveAtDayCare(pidgey, 3)).toBe(true);
     expect(stash.listPokemon().map((stored) => stored.id)).not.toContain(pidgey);
     expect(stash.listBoxes().flatMap((box) => box.pokemonIds)).not.toContain(pidgey);
-    // A wipe of everything that was at base still leaves it with him.
+    // A wipe of everything that was at base still leaves it with him. Only the
+    // partner, which no wipe takes, is left at base.
     stash.applyWipeLoss(
       stash.listPokemon().map((stored) => stored.id).concat(pidgey),
       [],
     );
-    expect(stash.listPokemon()).toEqual([]);
+    expect(stash.listPokemon().map((stored) => stored.id)).toEqual([partner]);
     expect(stash.dayCare()?.id).toBe(pidgey);
     expect(stash.dayCare()?.leftAfterRaids).toBe(3);
   });
@@ -170,10 +171,12 @@ describe('leaving a Pokémon with him', () => {
     expect(stash.partner()?.id).toBe(partner);
   });
 
-  it('does not count towards a playable vault: a wipe of the rest still re-issues a starter', () => {
+  it('does not count towards a playable vault: losing the rest still re-issues a starter', () => {
     const { stash, pidgey } = vault();
     stash.leaveAtDayCare(pidgey, 0);
-    stash.applyWipeLoss(stash.listPokemon().map((stored) => stored.id), []);
+    for (const { id } of stash.listPokemon()) {
+      stash.removePokemon(id);
+    }
     expect(stash.ensurePlayable(CHARMANDER)).toBe(true);
     expect(stash.listPokemon()).toHaveLength(1);
     expect(stash.listPokemon()[0].id).not.toBe(pidgey);

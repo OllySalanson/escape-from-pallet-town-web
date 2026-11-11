@@ -343,13 +343,15 @@ describe('deployment flow', () => {
       { itemId: 'potion', quantity: 2 },
       { itemId: 'poke-ball', quantity: 1 },
     ]);
-    // The starting Bulbasaur is the partner, so the container leads with it.
+    // The starting Bulbasaur is the partner, so it has its own place and the
+    // container leads with the Charmander.
     expect(deployment.secureSlot).toEqual({
-      pokemon: [stash.listPokemon().find(({ id }) => id === 'bulbasaur-1')?.pokemon],
+      pokemon: [stash.listPokemon().find(({ id }) => id === 'charmander-1')?.pokemon],
       items: [{ itemId: 'potion', quantity: 2 }],
+      partner: stash.listPokemon().find(({ id }) => id === 'bulbasaur-1')?.pokemon,
     });
     expect(deployment.stashSecureSlot).toEqual({
-      pokemonIds: ['bulbasaur-1'],
+      pokemonIds: ['charmander-1'],
       items: [{ itemId: 'potion', quantity: 2 }],
     });
   });
@@ -365,11 +367,12 @@ describe('deployment flow', () => {
    * followed deleted the starter. A tie goes to the partner.
    */
   /**
-   * And since 7 Nov 2026 (the overnight plan's call on the locker) the partner
-   * goes in first whatever its level: a higher catch is the cheaper loss.
+   * Since 11 Nov 2026 (the captain's call, option B) the partner is never in
+   * the container: it has a place of its own, so the container leads with
+   * whoever else is going, by level - a higher catch first, as ever.
    */
-  it('secures the partner ahead of a fresh catch, tied or higher', () => {
-    const secured = (caterpieLevel: number, marked: boolean): readonly string[] => {
+  it('keeps the partner out of the container, in its own place, so a catch can have the container', () => {
+    const placed = (caterpieLevel: number, marked: boolean) => {
       const stash = createStartingStash();
       stash.addPokemon(new Pokemon(CHARMANDER, 5), 'charmander-1');
       stash.addPokemon(new Pokemon(SPECIES_BY_ID.caterpie, caterpieLevel), 'caterpie-1');
@@ -377,16 +380,21 @@ describe('deployment flow', () => {
       const flow = new DeploymentFlow(stash, undefined, undefined, undefined, undefined, 'charmander');
       flow.togglePokemon('charmander-1');
       flow.togglePokemon('caterpie-1');
-      return flow.securedPokemon.map(({ id }) => id);
+      return {
+        partner: flow.partnerOnRaid?.id,
+        secured: flow.securedPokemon.map(({ id }) => id),
+        risked: flow.riskedPokemon.map(({ id }) => id),
+      };
     };
 
-    expect(secured(5, true)).toEqual(['charmander-1']);
-    expect(secured(30, true)).toEqual(['charmander-1']);
-    // With the partner lost, the starter a wipe hands back stands in for it.
-    expect(secured(30, false)).toEqual(['charmander-1']);
+    expect(placed(5, true)).toEqual({ partner: 'charmander-1', secured: ['caterpie-1'], risked: [] });
+    expect(placed(30, true)).toEqual({ partner: 'charmander-1', secured: ['caterpie-1'], risked: [] });
+    // A save whose partner was lost before the partner had a place: nobody is
+    // marked, so the starter a wipe handed back leads the container instead.
+    expect(placed(30, false)).toEqual({ partner: undefined, secured: ['charmander-1'], risked: ['caterpie-1'] });
   });
 
-  it('leads with the partner by its stash id, so a second of the starter\'s kind is just a catch', () => {
+  it('knows the partner by its stash id, so a second of the starter\'s kind is just a catch', () => {
     const stash = createStartingStash();
     stash.addPokemon(new Pokemon(CHARMANDER, 5), 'charmander-1');
     stash.addPokemon(new Pokemon(CHARMANDER, 20), 'charmander-2');
@@ -395,13 +403,50 @@ describe('deployment flow', () => {
     flow.togglePokemon('charmander-2');
     flow.togglePokemon('charmander-1');
 
-    expect(flow.securedPokemon.map(({ id }) => id)).toEqual(['charmander-1']);
+    expect(flow.partnerOnRaid?.id).toBe('charmander-1');
+    expect(flow.securedPokemon.map(({ id }) => id)).toEqual(['charmander-2']);
+  });
+
+  /**
+   * The hunt of 11 Nov 2026, finding 1: a Charmeleon partner was six squares
+   * against a 2x2 container, the container took a level-6 Rattata, and a wipe
+   * deleted the partner. A Charizard is nine squares and no container is ever
+   * three tall. The partner's place costs no squares at all.
+   */
+  it('protects an evolved partner, at every stage, with no locker built and none of the container used', () => {
+    for (const species of [CHARMELEON, SPECIES_BY_ID.charizard]) {
+      const stash = createStartingStash();
+      stash.addPokemon(new Pokemon(species, 36), 'charmander-1');
+      stash.addPokemon(new Pokemon(SPECIES_BY_ID.rattata, 6), 'rattata-1');
+      stash.adoptPartner('charmander-1');
+      const flow = new DeploymentFlow(stash, 'floodplain-relay', { ...BASE_LOADOUT_CAPACITY, secureGrid: BASE_SECURE_GRID });
+      flow.togglePokemon('charmander-1');
+      flow.togglePokemon('rattata-1');
+
+      expect(flow.partnerOnRaid?.id).toBe('charmander-1');
+      expect(flow.securedPokemon.map(({ id }) => id)).toEqual(['rattata-1']);
+      expect(flow.riskedPokemon).toEqual([]);
+      expect(flow.secureCells).toEqual({ used: 4, total: 4 });
+      // Pressing the partner's row is an answer, never a refusal to obey.
+      expect(flow.toggleSecurePokemon('charmander-1')).toMatch(/is your partner, so it has a place of its own: a wipe never takes your partner/);
+      expect(flow.securedPokemon.map(({ id }) => id)).toEqual(['rattata-1']);
+      expect(flow.deploy.bind(flow)).toThrow();
+      flow.advance();
+      flow.advance();
+      const deployment = flow.deploy();
+      expect(deployment.secureSlot.partner).toBe(stash.partner()?.pokemon);
+      expect(deployment.secureSlot.pokemon).toEqual([stash.listPokemon().find(({ id }) => id === 'rattata-1')?.pokemon]);
+      expect(deployment.stashSecureSlot.pokemonIds).toEqual(['rattata-1']);
+      // Pressing the partner is not touching the container: it still filled itself.
+      expect(deployment.secureFilledForYou).toBe(true);
+    }
   });
 
   it('knows the partner after it has evolved', () => {
     const stash = createStartingStash();
     stash.addPokemon(new Pokemon(CHARMELEON, 16), 'charmander-1');
-    stash.addPokemon(new Pokemon(SPECIES_BY_ID.butterfree, 16), 'butterfree-1');
+    stash.addPokemon(new Pokemon(SPECIES_BY_ID.pidgeotto, 18), 'pidgeotto-1');
+    stash.adoptPartner('charmander-1');
     const flow = new DeploymentFlow(
       stash,
       'floodplain-relay',
@@ -410,10 +455,11 @@ describe('deployment flow', () => {
       undefined,
       'charmander',
     );
-    flow.togglePokemon('butterfree-1');
+    flow.togglePokemon('pidgeotto-1');
     flow.togglePokemon('charmander-1');
 
-    expect(flow.securedPokemon.map(({ id }) => id)).toEqual(['charmander-1']);
+    expect(flow.partnerOnRaid?.id).toBe('charmander-1');
+    expect(flow.securedPokemon.map(({ id }) => id)).toEqual(['pidgeotto-1']);
   });
 
   it('fills itself with the partner, then the highest level, when the player never opens the secure slot', () => {
@@ -424,13 +470,13 @@ describe('deployment flow', () => {
     flow.advance();
     flow.advance();
 
-    // Charmander is level 7 against Bulbasaur's 5, but the Bulbasaur is the
-    // partner, and four squares fill the base container, so it is the one and
-    // only thing protected.
+    // The Bulbasaur is the partner, in its own place, so the container fills
+    // itself with the Charmander, and its four squares fill the base container.
     expect(flow.deploy().stashSecureSlot).toEqual({
-      pokemonIds: ['bulbasaur-1'],
+      pokemonIds: ['charmander-1'],
       items: [],
     });
+    expect(flow.partnerOnRaid?.id).toBe('bulbasaur-1');
     expect(flow.secureCells).toEqual({ used: 4, total: 4 });
     expect(flow.securePreference).toEqual({ pokemon: true, items: [] });
     // And the raid is told the autofill chose, so a lost raid does not call
@@ -615,19 +661,32 @@ describe('deployment flow', () => {
   });
 
   it('never lets a remembered supply keep a Pokemon out', () => {
-    const { flow } = seedFlow();
+    const { flow, stash } = seedFlow();
     const remembered = new DeploymentFlow(
-      createStartingStash(),
+      stash,
       'floodplain-relay',
       { pokemon: 1, secureGrowth: BASE_LOADOUT_CAPACITY.secureGrowth, secureGrid: BASE_SECURE_GRID },
       { pokemon: true, items: [{ itemId: 'potion', quantity: 4 }] },
     );
 
+    remembered.togglePokemon('charmander-1');
     remembered.adjustItem('potion', 3);
 
-    expect(remembered.securedPokemon.map(({ id }) => id)).toEqual(['bulbasaur-1']);
+    expect(remembered.securedPokemon.map(({ id }) => id)).toEqual(['charmander-1']);
     expect(remembered.securedItems).toEqual([]);
     expect(flow.securedItems).toEqual([]);
+  });
+
+  it('fills the container with the packed medicine when the partner, in its own place, is the only one going', () => {
+    const flow = new DeploymentFlow(createStartingStash());
+
+    // A new save's lone partner is put on the bench and the medicine is packed for it.
+    expect(flow.partnerOnRaid?.id).toBe('bulbasaur-1');
+    expect(flow.securedPokemon).toEqual([]);
+    expect(flow.securedItems.length).toBeGreaterThan(0);
+    expect(flow.securedItems.every(({ itemId }) => flow.isPrepacked(itemId))).toBe(true);
+    // And it is the default, not a remembered choice to carry no Pokemon.
+    expect(flow.securePreference).toEqual({ pokemon: true, items: [] });
   });
 
   it('caps the party at six and the secure slot at one Pokemon and two stacks', () => {
@@ -652,9 +711,14 @@ describe('deployment flow', () => {
 
     flow.adjustItem('potion', 3);
     flow.adjustItem('poke-ball', 5);
-    flow.toggleSecurePokemon(ids[0]);
+    for (const stored of [...flow.securedPokemon]) {
+      flow.toggleSecurePokemon(stored.id);
+    }
+    // The partner is never one of the container's Pokemon, so it takes no slot.
+    expect(flow.toggleSecurePokemon(ids[0])).toMatch(/your partner/);
     flow.toggleSecurePokemon(ids[1]);
-    expect(flow.securedPokemon.map(({ id }) => id)).toEqual([ids[1]]);
+    flow.toggleSecurePokemon(ids[2]);
+    expect(flow.securedPokemon.map(({ id }) => id)).toEqual([ids[2]]);
     expect(flow.adjustSecureItem('potion', 1)).toBeUndefined();
     expect(flow.adjustSecureItem('poke-ball', 1)).toBeUndefined();
     expect(flow.securedItems).toHaveLength(2);
@@ -759,20 +823,26 @@ describe('deployment flow', () => {
   });
 
   it('moves a single protected slot, and holds two once the second locker is built', () => {
-    const single = seedFlow().flow;
-    single.togglePokemon('bulbasaur-1');
-    single.togglePokemon('charmander-1');
-    single.toggleSecurePokemon('bulbasaur-1');
+    const { flow: single, stash: singleStash } = seedFlow();
+    singleStash.addPokemon(new Pokemon(SQUIRTLE, 6), 'squirtle-1');
+    for (const id of ['bulbasaur-1', 'charmander-1', 'squirtle-1']) {
+      single.togglePokemon(id);
+    }
+    for (const stored of [...single.securedPokemon]) {
+      single.toggleSecurePokemon(stored.id);
+    }
     single.toggleSecurePokemon('charmander-1');
-    expect(single.securedPokemon.map(({ id }) => id)).toEqual(['charmander-1']);
+    single.toggleSecurePokemon('squirtle-1');
+    expect(single.securedPokemon.map(({ id }) => id)).toEqual(['squirtle-1']);
 
     const stash = createStartingStash();
     stash.addPokemon(new Pokemon(CHARMANDER, 7), 'charmander-1');
     stash.addPokemon(new Pokemon(SQUIRTLE, 6), 'squirtle-1');
+    stash.addPokemon(new Pokemon(SPECIES_BY_ID.pidgey, 6), 'pidgey-1');
     // Two Pokemon are eight squares, so the two-slot locker needs the columns
     // to go with it: 4x2 is the smallest container that can use both.
     const flow = new DeploymentFlow(stash, 'floodplain-relay', { pokemon: 2, secureGrowth: BASE_LOADOUT_CAPACITY.secureGrowth, secureGrid: { width: 4, height: 2 } });
-    for (const id of ['bulbasaur-1', 'charmander-1', 'squirtle-1']) {
+    for (const id of ['bulbasaur-1', 'pidgey-1', 'charmander-1', 'squirtle-1']) {
       flow.togglePokemon(id);
     }
     // The container filled itself; this test is about the slot moving under
@@ -780,11 +850,13 @@ describe('deployment flow', () => {
     for (const stored of [...flow.securedPokemon]) {
       flow.toggleSecurePokemon(stored.id);
     }
-    for (const id of ['bulbasaur-1', 'charmander-1', 'squirtle-1']) {
+    for (const id of ['pidgey-1', 'charmander-1', 'squirtle-1']) {
       flow.toggleSecurePokemon(id);
     }
     // A third pick lets go of the first rather than refusing the click.
     expect(flow.securedPokemon.map(({ id }) => id)).toEqual(['charmander-1', 'squirtle-1']);
+    // And the partner is in its own place throughout, taking no slot of the two.
+    expect(flow.partnerOnRaid?.id).toBe('bulbasaur-1');
 
     flow.advance();
     flow.advance();

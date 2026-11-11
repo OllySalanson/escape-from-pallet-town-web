@@ -22,13 +22,17 @@ import {
  * 1. **It fills itself.** The raid pack has packed itself since the grid
  *    arrived; a container the player has to remember to fill is a way to lose a
  *    Pokemon to forgetfulness rather than to a decision.
- * 2. **Pokemon go in first: the partner, then highest level first.** This is
- *    the half that earns its keep: nobody should ever deploy with their best
- *    Pokemon unprotected because they did not open a screen. It outranks the
+ * 2. **Pokemon go in first, highest level first.** This is the half that
+ *    earns its keep: nobody should ever deploy with their best Pokemon
+ *    unprotected because they did not open a screen. It outranks the
  *    remembered choice - a remembered Potion never keeps a Pokemon out. The
- *    partner leads whatever its level (the overnight plan's call on
- *    `eptw-locker-partner`, 7 Nov 2026): a wipe should never take the starter
- *    nobody chose to risk, and a level-30 catch is cheaper to lose than it.
+ *    partner is never one of them: a wipe should never take the starter nobody
+ *    chose to risk (the overnight plan's call of 7 Nov 2026), and since an
+ *    evolved one is too tall for a container that only grows columns, it has a
+ *    protected place of its own beside the container instead (the captain's
+ *    call of 11 Nov 2026; `DeploymentFlow.partnerOnRaid`). A candidate marked
+ *    `partner` is the starter's line standing in for a partner that was lost
+ *    before that place existed, and it leads whatever its level.
  * 3. **Last raid is the starting point for the next**, so a player running raid
  *    after raid is not re-picking from scratch.
  *
@@ -66,8 +70,10 @@ export interface SecureCandidate {
   readonly level: number;
   readonly cargo: GridCargo;
   /**
-   * Whether this is the save's partner. It goes in before anybody else whatever
-   * its level, so long as it fits; the rest follow highest level first.
+   * Whether this stands in for the partner: the starter's line, on a save whose
+   * partner was lost before it had a place of its own (the partner itself is
+   * never a candidate). It goes in before anybody else whatever its level, so
+   * long as it fits; the rest follow highest level first.
    */
   readonly partner?: boolean;
 }
@@ -91,7 +97,9 @@ export interface SecureFill {
  *
  * `fallback` is what the container protects when it was told to lead with
  * Pokemon and not one of them fits - a party of second stages against a 2x2
- * container is the common case. Left there, it went out empty while every
+ * container is the common case, and a bench of nobody but the partner, who has
+ * a place of its own and is never a candidate, is the other. The caller hands
+ * no fallback for a bench with nobody on it at all. Left there, it went out empty while every
  * Potion rode at risk (playtest 32 #8), which is the forgetfulness rule 1
  * exists to prevent. So the squares no Pokemon could take are filled with what
  * the loadout packed of these kinds, in the order given, around whatever the
@@ -142,7 +150,7 @@ export function autofillSecureSlot(
     }
   }
 
-  if (preference.pokemon && candidates.length > 0 && pokemonIds.length === 0) {
+  if (preference.pokemon && pokemonIds.length === 0) {
     for (const itemId of fallback) {
       const already = contents[itemId] ?? 0;
       let quantity = heldQuantity(itemId);

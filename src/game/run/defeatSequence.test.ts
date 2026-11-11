@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { Bag } from '../items';
-import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, SQUIRTLE } from '../pokemon';
+import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, SPECIES_BY_ID, SQUIRTLE } from '../pokemon';
 import { RunManager, type ItemStack } from './RunManager';
 import { buildDefeatSequence, createBeatGate } from './defeatSequence';
 import { buildExtractionReport, type ExtractionReport } from './extractionReport';
@@ -11,6 +11,8 @@ const DURATION_MS = 300_000;
 
 interface WipeOptions {
   readonly secureIndex?: number;
+  /** Which of the party is the partner, in its own place beside the container. */
+  readonly partnerIndex?: number;
   readonly securedItems?: readonly ItemStack[];
   readonly lastStandIndex?: number;
   readonly cause?: 'defeated' | 'timer';
@@ -35,6 +37,7 @@ function wipedReport(
   const secureSlot = {
     ...(options.secureIndex === undefined ? {} : { pokemon: [party[options.secureIndex]] }),
     ...(options.securedItems ? { items: options.securedItems } : {}),
+    ...(options.partnerIndex === undefined ? {} : { partner: party[options.partnerIndex] }),
   };
   manager.startRun(
     { party, items },
@@ -170,6 +173,31 @@ describe('the defeat sequence a lost raid opens on', () => {
     expect(held(true)).toBe('Charmander came home with you. The container filled itself before you deployed.');
     expect(held(true)).not.toContain('call you made');
     expect(held(false)).toBe('Charmander came home with you. That was the call you made before you deployed.');
+  });
+
+  /**
+   * The partner has a place of its own (11 Nov 2026, option B), so the last
+   * beat says it came home whether or not the container held anything, and the
+   * partner stands back up in the line-up with whatever the container held.
+   */
+  it('says the partner came home, with the container or without it', () => {
+    const lone = [new Pokemon(SPECIES_BY_ID.charmeleon, 16), new Pokemon(PIDGEY, 4)];
+    const empty = buildDefeatSequence(wipedReport(lone, [], { partnerIndex: 0, lastStandIndex: 1 }));
+    expect(empty?.beats[2].headline).toBe('YOUR PARTNER CAME HOME.');
+    expect(empty?.beats[2].detail).toBe('Charmeleon is your partner, and a wipe never takes your partner. The secure slot was empty.');
+    expect(empty?.figures.filter((figure) => figure.kind === 'pokemon').map(({ label, fate }) => [label, fate])).toEqual([
+      ['Charmeleon', 'held'],
+      ['Pidgey', 'taken'],
+    ]);
+
+    const party = [new Pokemon(SPECIES_BY_ID.charmeleon, 16), new Pokemon(SQUIRTLE, 11)];
+    const both = buildDefeatSequence(
+      wipedReport(party, [], { partnerIndex: 0, secureIndex: 1, lastStandIndex: 1, secureFilledForYou: true }),
+    );
+    expect(both?.beats[2].headline).toBe('THE SECURE SLOT HELD.');
+    expect(both?.beats[2].detail).toBe(
+      'Squirtle came home with you. The container filled itself before you deployed. Charmeleon is your partner, and a wipe never takes your partner.',
+    );
   });
 
   /**
