@@ -1,0 +1,161 @@
+{
+  "routes": [
+    {
+      "name": "along the trail, down into the hollow and out east to the Power Station",
+      "reached": true,
+      "steps": 111,
+      "snags": []
+    },
+    {
+      "name": "back from: along the trail, down into the hollow and out east to the Power Station",
+      "reached": true,
+      "steps": 111,
+      "snags": []
+    },
+    {
+      "name": "out by the Charcoal Track",
+      "reached": true,
+      "steps": 19,
+      "snags": []
+    },
+    {
+      "name": "back from: out by the Charcoal Track",
+      "reached": true,
+      "steps": 19,
+      "snags": []
+    },
+    {
+      "name": "to Old Wren’s door",
+      "reached": true,
+      "steps": 19,
+      "snags": []
+    },
+    {
+      "name": "back from: to Old Wren’s door",
+      "reached": true,
+      "steps": 19,
+      "snags": []
+    },
+    {
+      "name": "along the spring to the Cold Spring",
+      "reached": true,
+      "steps": 32,
+      "snags": []
+    },
+    {
+      "name": "back from: along the spring to the Cold Spring",
+      "reached": true,
+      "steps": 32,
+      "snags": []
+    },
+    {
+      "name": "up past the spring to its far bank",
+      "reached": true,
+      "steps": 46,
+      "snags": []
+    },
+    {
+      "name": "back from: up past the spring to its far bank",
+      "reached": true,
+      "steps": 46,
+      "snags": []
+    },
+    {
+      "name": "through the walker’s rest on the col",
+      "reached": true,
+      "steps": 29,
+      "snags": []
+    },
+    {
+      "name": "back from: through the walker’s rest on the col",
+      "reached": true,
+      "steps": 29,
+      "snags": []
+    },
+    {
+      "name": "into the tappers’ camp to the lean-to door",
+      "reached": true,
+      "steps": 70,
+      "snags": []
+    },
+    {
+      "name": "back from: into the tappers’ camp to the lean-to door",
+      "reached": true,
+      "steps": 88,
+      "snags": []
+    },
+    {
+      "name": "down the deer path to Tanglewood",
+      "reached": true,
+      "steps": 151,
+      "snags": []
+    },
+    {
+      "name": "back from: down the deer path to Tanglewood",
+      "reached": true,
+      "steps": 169,
+      "snags": []
+    },
+    {
+      "name": "down the lane into the bee wood, to the sleeper",
+      "reached": true,
+      "steps": 100,
+      "snags": []
+    },
+    {
+      "name": "back from: down the lane into the bee wood, to the sleeper",
+      "reached": true,
+      "steps": 100,
+      "snags": []
+    },
+    {
+      "name": "through the bee wood to the fox earth",
+      "reached": true,
+      "steps": 107,
+      "snags": []
+    },
+    {
+      "name": "back from: through the bee wood to the fox earth",
+      "reached": true,
+      "steps": 107,
+      "snags": []
+    },
+    {
+      "name": "through the Pikachu glade and out by the Fox Run",
+      "reached": true,
+      "steps": 94,
+      "snags": []
+    },
+    {
+      "name": "back from: through the Pikachu glade and out by the Fox Run",
+      "reached": true,
+      "steps": 94,
+      "snags": []
+    },
+    {
+      "name": "up past the oak to where the card was dropped",
+      "reached": true,
+      "steps": 108,
+      "snags": []
+    },
+    {
+      "name": "back from: up past the oak to where the card was dropped",
+      "reached": true,
+      "steps": 108,
+      "snags": []
+    },
+    {
+      "name": "up from the road to the pecha tree under the oak",
+      "reached": true,
+      "steps": 101,
+      "snags": []
+    },
+    {
+      "name": "back from: up from the road to the pecha tree under the oak",
+      "reached": true,
+      "steps": 101,
+      "snags": []
+    }
+  ],
+  "total": 0
+}
