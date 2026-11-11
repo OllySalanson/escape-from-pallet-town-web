@@ -499,13 +499,24 @@ function jobMayNameExit(exit: ExtractionPoint): boolean {
   );
 }
 
-/** The ground a save's first jobs are set on: outdoors and a short walk off. All of it, on a map too small to have any. */
+/**
+ * The ground a save's first jobs are set on: outdoors and a short walk off. All of it, on a map too small to have any.
+ * Kept beside the ground it was cut from, like `farTiles`, because it is the same for every board dealt on it.
+ */
+const nearGrounds = new WeakMap<Ground, Ground>();
+
 function nearGround(ground: Ground): Ground {
+  const known = nearGrounds.get(ground);
+  if (known) {
+    return known;
+  }
   const open = ground.open.filter((tile) => {
     const walkTo = ground.steps[tile.y][tile.x];
     return walkTo >= NEAR_JOB_LEAST_WALK && walkTo <= NEAR_JOB_MOST_WALK && insidePlace(ground.map, tile) === undefined;
   });
-  return open.length === 0 ? ground : { ...ground, open, longestWalk: NEAR_JOB_MOST_WALK };
+  const near = open.length === 0 ? ground : { ...ground, open, longestWalk: NEAR_JOB_MOST_WALK };
+  nearGrounds.set(ground, near);
+  return near;
 }
 
 /**
@@ -917,17 +928,32 @@ function deepestFirst(district: SealedDistrict): readonly GridPosition[] {
   return deepest;
 }
 
+/** The far share of a ground's open tiles, cut once per ground rather than once per board. */
+const farByGround = new WeakMap<Ground, readonly GridPosition[]>();
+
 function farTiles(ground: Ground): readonly GridPosition[] {
+  const known = farByGround.get(ground);
+  if (known) {
+    return known;
+  }
   const far = ground.open.filter(
     (tile) => ground.steps[tile.y][tile.x] >= ground.longestWalk * FAR_SHARE,
   );
-  return far.length > 0 ? far : ground.open;
+  const tiles = far.length > 0 ? far : ground.open;
+  farByGround.set(ground, tiles);
+  return tiles;
 }
 
 /**
  * Up to `count` tiles, each at least a share of the map's longest walk from
  * every other in walking steps. The share is relaxed only when the ground
  * cannot hold it, so a cramped map gets closer stakes rather than fewer.
+ *
+ * A walk from a chosen tile is searched only when a later tile is held to it,
+ * and once for the whole call: on Greystone Vale one search is a few
+ * milliseconds, and searching from every tile as it was chosen - the last
+ * one too, whose walk nothing reads, and again on every relaxed round - made
+ * drawing a board most of its cost and the board sweeps a minute long.
  */
 function spreadTiles(
   rng: SeededRng,
@@ -936,18 +962,27 @@ function spreadTiles(
   count: number,
 ): readonly GridPosition[] {
   const shuffled = rng.shuffle(candidates);
+  const walks = new Map<GridPosition, readonly Int32Array[]>();
+  const walkFrom = (tile: GridPosition): readonly Int32Array[] => {
+    let walk = walks.get(tile);
+    if (walk === undefined) {
+      walk = stepDistances(ground.map.collision, tile, undefined, ground.map.links);
+      walks.set(tile, walk);
+    }
+    return walk;
+  };
   for (let spread = ground.longestWalk * SPREAD_SHARE; ; spread *= 0.75) {
-    const chosen: { readonly tile: GridPosition; readonly from: readonly Int32Array[] }[] = [];
+    const chosen: GridPosition[] = [];
     for (const tile of shuffled) {
       if (chosen.length === count) {
         break;
       }
-      if (chosen.every(({ from }) => (from[tile.y]?.[tile.x] ?? -1) >= spread)) {
-        chosen.push({ tile, from: stepDistances(ground.map.collision, tile, undefined, ground.map.links) });
+      if (chosen.every((other) => (walkFrom(other)[tile.y]?.[tile.x] ?? -1) >= spread)) {
+        chosen.push(tile);
       }
     }
     if (chosen.length === count || spread < 1) {
-      return chosen.map(({ tile }) => tile);
+      return chosen;
     }
   }
 }

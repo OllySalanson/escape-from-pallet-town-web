@@ -188,6 +188,12 @@ export function openGround(collision: CollisionGrid, clearance = 3): OpenGroundS
  * hot loop of every rule a map is held to: the structure suite alone runs it
  * a few hundred thousand times over a 128x128 map, and a typed row clears in
  * one memset where an array of numbers clears a cell at a time.
+ *
+ * The grid is read once into a flat mask of open tiles, and the doorways into
+ * a mask of the tiles that have one, so the loop asks an array where it asked
+ * a row, a closure and four `links` lookups for every tile it reached. On
+ * Greystone Vale (547x384, 144 doorways) that halved a search, and the
+ * standing board draws a few for every board it deals.
  */
 export function stepDistances(
   collision: CollisionGrid,
@@ -205,49 +211,85 @@ export function stepDistances(
   for (let y = 0; y < height; y += 1) {
     distances.push(field.subarray(y * width, (y + 1) * width));
   }
-  // The extra walls are read once into a mask rather than asked as a string
-  // per neighbour: building `"x,y"` four times a tile was the most expensive
-  // thing this loop did.
-  const extra = blockedMask(extraBlocked, width, height);
-  const passable = (x: number, y: number): boolean =>
-    !isBlockedAt(collision, x, y) && (extra === null || extra[y * width + x] === 0);
-  if (!passable(from.x, from.y)) {
+  if (from.x < 0 || from.y < 0 || from.x >= width || from.y >= height) {
     return distances;
   }
+  // 1 where a step may land: open in `collision` (a short row is blocked past
+  // its end, as `isBlockedAt` reads it) and not one of the extra walls, which
+  // are read once rather than asked as a string per neighbour - building
+  // `"x,y"` four times a tile was once the most expensive thing this loop did.
+  const open = new Uint8Array(width * height);
+  for (let y = 0; y < height; y += 1) {
+    const row = collision[y];
+    const reach = Math.min(width, row.length);
+    for (let x = 0; x < reach; x += 1) {
+      if (!row[x]) {
+        open[y * width + x] = 1;
+      }
+    }
+  }
+  if (extraBlocked.size > 0) {
+    const extra = blockedMask(extraBlocked, width, height)!;
+    for (let index = 0; index < open.length; index += 1) {
+      if (extra[index] === 1) {
+        open[index] = 0;
+      }
+    }
+  }
+  const start = from.y * width + from.x;
+  if (open[start] === 0) {
+    return distances;
+  }
+  // The tiles a doorway leaves from, so the four lookups are made only there.
+  let linked: Uint8Array | null = null;
+  if (links !== undefined && links.size > 0) {
+    linked = new Uint8Array(width * height);
+    for (const key of links.keys()) {
+      const index = Math.floor(key / 4);
+      if (index >= 0 && index < linked.length) {
+        linked[index] = 1;
+      }
+    }
+  }
 
-  field[from.y * width + from.x] = 0;
+  field[start] = 0;
   const queue = new Int32Array(width * height);
-  queue[0] = from.y * width + from.x;
+  queue[0] = start;
   let head = 0;
   let tail = 1;
+  const last = width * height;
   while (head < tail) {
     const here = queue[head];
     head += 1;
     const x = here % width;
-    const y = (here - x) / width;
     const next = field[here] + 1;
-    for (const [dx, dy] of ORTHOGONAL) {
-      const nx = x + dx;
-      const ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= width || ny >= height) {
-        continue;
-      }
-      const index = ny * width + nx;
-      if (field[index] !== -1 || !passable(nx, ny)) {
-        continue;
-      }
-      field[index] = next;
-      queue[tail] = index;
+    // North, south, west, east: the order every search numbers them.
+    const up = here - width;
+    if (up >= 0 && field[up] === -1 && open[up] === 1) {
+      field[up] = next;
+      queue[tail] = up;
       tail += 1;
     }
-    if (links !== undefined && links.size > 0) {
+    const down = here + width;
+    if (down < last && field[down] === -1 && open[down] === 1) {
+      field[down] = next;
+      queue[tail] = down;
+      tail += 1;
+    }
+    if (x > 0 && field[here - 1] === -1 && open[here - 1] === 1) {
+      field[here - 1] = next;
+      queue[tail] = here - 1;
+      tail += 1;
+    }
+    if (x < width - 1 && field[here + 1] === -1 && open[here + 1] === 1) {
+      field[here + 1] = next;
+      queue[tail] = here + 1;
+      tail += 1;
+    }
+    if (linked !== null && linked[here] === 1) {
       for (let direction = 0; direction < 4; direction += 1) {
-        const index = links.get(linkKey(here, direction));
-        if (index === undefined || field[index] !== -1) {
-          continue;
-        }
-        const tx = index % width;
-        if (!passable(tx, (index - tx) / width)) {
+        const index = links!.get(linkKey(here, direction));
+        if (index === undefined || index < 0 || index >= last || field[index] !== -1 || open[index] === 0) {
           continue;
         }
         field[index] = next;
@@ -259,7 +301,6 @@ export function stepDistances(
   return distances;
 }
 
-/** A set of `"x,y"` keys as a mask over the grid, or null when it holds nothing on it. */
 function blockedMask(keys: ReadonlySet<string>, width: number, height: number): Uint8Array | null {
   if (keys.size === 0) {
     return null;
