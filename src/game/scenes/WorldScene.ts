@@ -404,7 +404,7 @@ import {
   type HunterState,
   hunterIntelFor,
 } from '../world/hunter';
-import { FIRST_HUNTER_RIVAL, hunterRival, type HunterRival } from '../world/hunters';
+import { FIRST_HUNTER_RIVAL, hunterRival, rivalsStoodDown, type HunterRival } from '../world/hunters';
 import {
   HunterPack,
   createHunterPack,
@@ -8756,7 +8756,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         lost ??
         this.packShouter ??
         pack.hunters.find((hunter) => hunter.mode === 'stunned');
-      return hunterRival(who?.rivalId ?? this.runSession?.plan?.hunter.rivalId ?? FIRST_HUNTER_RIVAL);
+      // With nobody after you the chip names the raid's own rival, unless they
+      // are a leader beaten at the gym this raid: then whoever took over the
+      // district the raid landed in.
+      const plan = this.runSession?.plan;
+      const raidRival = plan?.hunter.rivalId ?? FIRST_HUNTER_RIVAL;
+      const standIn =
+        plan && rivalsStoodDown(this.defeatedTrainerIds).includes(raidRival)
+          ? (pack.hunters.find(
+              (hunter) => plan.insertion.mapId === this.currentMap.id && inGround(hunter.ground, plan.insertion.position),
+            ) ?? pack.hunters[0])?.rivalId
+          : undefined;
+      return hunterRival(who?.rivalId ?? standIn ?? raidRival);
     }
     // In a room the hunter is everybody's, so it is whoever the room first
     // heard hunting: one face, one set of lines, one lead (`groupHunter.ts`).
@@ -9106,22 +9117,29 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /**
    * Builds this map's pack the first time a raid alone is on it: a hunter to
    * every big district, each the rival `rivalsForGrounds` gives it, the raid's
-   * own rival keeping the district the raid lands in.
+   * own rival keeping the district the raid lands in. And, every time the world
+   * is built, stands down any gym leader beaten at their gym in this raid
+   * (`rivalsStoodDown`), so the leader who has just handed over a badge is not
+   * waiting outside the door: the world is rebuilt from the gym fight, so this
+   * is the first moment after it that the pack is asked about.
    */
   private ensureHunterPack(): void {
     const session = this.runSession;
     const plan = session?.plan;
-    if (!session || !plan || friendRoom()?.room || session.hunterPacks?.has(this.currentMap.id)) {
+    if (!session || !plan || friendRoom()?.room) {
       return;
     }
     const map = this.currentMap;
-    const grounds = huntingGroundsOn(map);
-    const landing = plan.insertion.mapId === map.id ? plan.insertion.position : this.currentTile;
-    session.hunterPacks ??= new Map();
-    session.hunterPacks.set(
-      map.id,
-      new HunterPack(createHunterPack(grounds, rivalsForGrounds(grounds, plan.hunter.rivalId, landing))),
-    );
+    if (!session.hunterPacks?.has(map.id)) {
+      const grounds = huntingGroundsOn(map);
+      const landing = plan.insertion.mapId === map.id ? plan.insertion.position : this.currentTile;
+      session.hunterPacks ??= new Map();
+      session.hunterPacks.set(
+        map.id,
+        new HunterPack(createHunterPack(grounds, rivalsForGrounds(grounds, plan.hunter.rivalId, landing))),
+      );
+    }
+    session.hunterPacks?.get(map.id)?.standDown(rivalsStoodDown(this.defeatedTrainerIds));
   }
 
   /**
