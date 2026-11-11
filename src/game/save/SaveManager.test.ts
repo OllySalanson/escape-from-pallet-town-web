@@ -2605,6 +2605,47 @@ describe('SaveManager', () => {
       ]);
     });
 
+    it('keeps a stored Pokemon of a kind it cannot read, rather than writing over it (characters bug hunt, 11 Nov 2026)', () => {
+      // A Pichu is not one of the 151. The save loads without it - nothing can
+      // play a kind the game does not know - but writing the game back must not
+      // destroy it, or the day the kind is known (or renamed back) it is gone.
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      const game = saves.load()!;
+      game.stash.addPokemon(new Pokemon(PIDGEY, 3), 'pidgey-1');
+      saves.save(game);
+      const stored = JSON.parse(storage.getItem(SAVE_KEY)!) as { stash: { pokemon: { id: string; pokemon: Record<string, unknown> }[] } };
+      const pichu = { id: 'pichu-1', pokemon: { ...stored.stash.pokemon[0].pokemon, speciesId: 'pichu' } };
+      stored.stash.pokemon.push(pichu);
+      storage.setItem(SAVE_KEY, JSON.stringify(stored));
+
+      const loaded = saves.load()!;
+      expect(loaded.stash.listPokemon().map(({ id }) => id)).toEqual(['pidgey-1']);
+      expect(saves.save(loaded)).toBe(true);
+
+      const written = JSON.parse(storage.getItem(SAVE_KEY)!) as typeof stored;
+      expect(written.stash.pokemon.find(({ id }) => id === 'pichu-1')).toEqual(pichu);
+      // And it is kept, not multiplied, however often the game is written.
+      saves.save(saves.load()!);
+      const again = JSON.parse(storage.getItem(SAVE_KEY)!) as typeof stored;
+      expect(again.stash.pokemon.filter(({ id }) => id === 'pichu-1')).toHaveLength(1);
+      expect(saves.load()!.stash.listPokemon().map(({ id }) => id)).toEqual(['pidgey-1']);
+    });
+
+    it('keeps nothing unread once the game is started again from the title', () => {
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      const stored = JSON.parse(storage.getItem(SAVE_KEY)!) as { stash: { pokemon: unknown[] } };
+      stored.stash.pokemon.push({ id: 'pichu-1', pokemon: { speciesId: 'pichu', level: 5 } });
+      storage.setItem(SAVE_KEY, JSON.stringify(stored));
+
+      saves.clear();
+      freshSave(storage);
+
+      const written = JSON.parse(storage.getItem(SAVE_KEY)!) as { stash: { pokemon: { id: string }[] } };
+      expect(written.stash.pokemon.some(({ id }) => id === 'pichu-1')).toBe(false);
+    });
+
     it('banks a raid into a new box once every box is full', () => {
       const storage = new MemoryStorage();
       const saves = new SaveManager(storage);

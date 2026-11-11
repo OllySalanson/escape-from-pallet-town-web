@@ -9,6 +9,7 @@ import type { SoundEffectName } from '../audio/soundEffects';
 import type {
   DeploymentFlow} from '../hub';
 import {
+  secureNeverReason,
   applyRecovery,
   beaconUnlockAtMs,
   checkBerth,
@@ -193,7 +194,8 @@ import { caughtLegends } from '../world/legends';
 import { awayOnRaid, createRaidInFlight, outOnRaidLine, PACKED_FOR_RAID_LINE, raidHeartbeat } from '../run/raidInFlight';
 import { isFirstRaid } from '../hub/firstRaid';
 import { hasRaidStake } from '../world/raidStake';
-import { rewardLine } from '../objectives/standingBoard';
+import { rewardLine, standingJobWalk } from '../objectives/standingBoard';
+import { STEP_DURATION_MS } from '../movement/stepClock';
 import { recoveryTermsFor } from '../hub/centerCounter';
 import { dayCareRefusal, leftLines, raidsCompleted } from '../hub/dayCare';
 import { friendRoom, friendRoomsOffered, raidName } from '../raidRoom/friendRoom';
@@ -2776,10 +2778,18 @@ export class HubScene extends Phaser.Scene {
     const line = (label: string, body: string, warn = false): string =>
       `<div><dt>${label}</dt><dd class="px-wrap${warn ? ' px-warning' : ''}">${body}</dd></div>`;
     // What the job on the board asks and pays, because a job nobody reads the price of is a job imposed.
+    // And how much of the clock it is just walking, because a step count means
+    // nothing beside 5:00 and a job across the vale leaves little room for
+    // anything else (the characters bug hunt, 11 Nov 2026). Fights are free.
+    const walk = contract ? standingJobWalk(contract, requireInsertion(insertionId).position, this.savedGame.raidProgress) : undefined;
+    const walking =
+      walk === undefined
+        ? ''
+        : ` Walked straight, it takes ${formatRecoveryClock(walk * STEP_DURATION_MS)}${isPlaytestRun() ? ' of walking' : ` of your ${formatRecoveryClock(this.raidClockMs)}`}.`;
     const job = contract
       ? short.length > 0
         ? `${contract.name} needs ${itemAmountsFor(required)}. Still short: ${itemAmountsFor(short)}`
-        : `${contract.name}: ${required.length > 0 ? `hand over ${itemAmountsFor(required)}, ` : ''}pays ${rewardLine(contract.reward)}`
+        : `${contract.name}: ${required.length > 0 ? `hand over ${itemAmountsFor(required)}, ` : ''}pays ${rewardLine(contract.reward)}.${walking}`
       : undefined;
     return `<dl class="dropin-facts rim-stakes">${hurt ? line('Hurt', hurt.line, true) : ''}${line('At risk', lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', '))}${goneForGood.length === 0 ? '' : line('A wipe', `${goneForGood.join(', ')}: lost for good`, true)}${line('Safe', kept.length === 0 ? 'nothing: a wipe costs you everything' : kept.join(', '), kept.length === 0)}${
       job === undefined ? '' : line('Job', job, short.length > 0)
@@ -3075,10 +3085,19 @@ export class HubScene extends Phaser.Scene {
     const pokemonRows = party
       .map((stored) => {
         const secured = this.flow.securesPokemon(stored.id);
-        const squares = cargoSquaresLabel(cargoCells(pokemonCargo(stored.id, stored.pokemon)));
+        const piece = pokemonCargo(stored.id, stored.pokemon);
+        const squares = cargoSquaresLabel(cargoCells(piece));
+        // The row never offers what the press would refuse: a Pokemon too big
+        // for this container says what would make room, and one too big for
+        // any says so, rather than inviting a press that cannot work.
+        const fit = secured ? 'fits' : this.flow.secureFit(stored.id);
         const help = secured
           ? `Secured: it comes home even if you wipe. It is taking ${squares} of the container.`
-          : `Secure this Pokémon so a wipe cannot take it. It needs ${squares} of the container.`;
+          : fit === 'never'
+            ? `Too big for any secure container: ${secureNeverReason(piece, this.flow.secureGrid)}. A wipe will take it.`
+            : fit === 'grow'
+              ? `It needs ${squares}, more than the ${this.flow.secureGrid.width}x${this.flow.secureGrid.height} container. To secure it, ${this.flow.secureGrowthAdvice}.`
+              : `Secure this Pokémon so a wipe cannot take it. It needs ${squares} of the container.`;
         // The price is on the row whether or not it is paid: a secured Pokemon
         // still says what it is taking, because the next question the screen is
         // asked is what would fit if it came out.
@@ -3182,20 +3201,29 @@ export class HubScene extends Phaser.Scene {
   private secureRoomNote(): string {
     const cargo = this.flow.securedCargo;
     const free = gridCells(this.flow.secureGrid) - this.flow.secureCells.used;
+    const grow = this.flow.secureGrowthAdvice;
+    const shape = `${this.flow.secureGrid.width}x${this.flow.secureGrid.height}`;
     if (cargo.length === 0) {
       // Nothing is protected. That is only worth a line when it is because
       // nothing *can* be - an all-evolved party against a container that has
       // not grown - because otherwise the player put the Pokemon out on purpose.
+      const fits = this.flow.party.map((stored) => this.flow.secureFit(stored.id));
+      if (fits.length === 0 || fits.includes('fits')) {
+        return '';
+      }
+      // Only grown advice it can follow: a party nobody can ever secure is told
+      // so, and a container with nothing left to build is not told to grow.
+      if (!fits.includes('grow')) {
+        return `<p class="px-note px-wrap">Nothing in this party fits any secure container: it only ever grows sideways from ${this.flow.secureGrid.height} squares tall. A wipe will take ${fits.length === 1 ? 'it' : 'them'}.</p>`;
+      }
       const smallest = this.flow.party
         .map((stored) => cargoCells(pokemonCargo(stored.id, stored.pokemon)))
         .sort((a, b) => a - b)[0];
-      return smallest !== undefined && smallest > free
-        ? `<p class="px-note px-wrap">Nothing in this party fits: the container is ${this.flow.secureGrid.width}x${this.flow.secureGrid.height} and the smallest here needs ${cargoSquaresLabel(smallest)}. Grow it at Brock's Workshop, or bank a cordon ledger.</p>`
-        : '';
+      return `<p class="px-note px-wrap">Nothing in this party fits: the container is ${shape} and the smallest here needs ${cargoSquaresLabel(smallest)}. To make room, ${grow}.</p>`;
     }
     const names = cargo.map((piece) => piece.name.toUpperCase()).join(' and ');
     return free === 0
-      ? `<p class="px-note px-wrap">${names} ${cargo.length === 1 ? 'fills' : 'fill'} the container - there is no room left for supplies. Let ${cargo.length === 1 ? 'it' : 'them'} go to carry gear instead, or grow the container.</p>`
+      ? `<p class="px-note px-wrap">${names} ${cargo.length === 1 ? 'fills' : 'fill'} the container - there is no room left for supplies. Let ${cargo.length === 1 ? 'it' : 'them'} go to carry gear instead${grow ? ', or grow the container' : ''}.</p>`
       : `<p class="px-note px-wrap">${names} ${cargo.length === 1 ? 'leaves' : 'leave'} ${cargoSquaresLabel(free)} for supplies.</p>`;
   }
 

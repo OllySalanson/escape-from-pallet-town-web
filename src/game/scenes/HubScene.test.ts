@@ -11,7 +11,9 @@ vi.mock('phaser', () => ({
 import { Bag, ITEM_DEFINITIONS } from '../items';
 import {
   BULBASAUR,
+  CHARIZARD,
   CHARMANDER,
+  CHARMELEON,
   PIDGEY,
   Pokemon,
   PokemonParty,
@@ -24,6 +26,9 @@ import { RAID_DURATION_MS } from '../run/raidClock';
 import { flowForGame, type ArenaKit } from '../base/arenaKit';
 import type { RestoredGame } from '../save/SaveManager';
 import { frontDoorFor, RUN_INSERTIONS } from '../run/runGeneration';
+import { standingJobWalk } from '../objectives/standingBoard';
+import { formatRecoveryClock } from '../hub/recovery';
+import { STEP_DURATION_MS } from '../movement/stepClock';
 import type { ActiveRunSession } from '../run/RunSession';
 import { createStartingStash, Stash, type StashedPokemon } from '../stash';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
@@ -1325,6 +1330,24 @@ describe('the standing board in the lobby', () => {
       expect(runSession.plan?.hunter.teamTierOffset).toBe(tier - 1);
     },
   );
+
+  it('says how much of the clock the job on the board is just walking (characters bug hunt, 11 Nov 2026)', () => {
+    // A dispatch 900 steps long is 2:15 of a 5:00 raid, and a player used to
+    // find that out only by running out of clock.
+    const progress = chainBanked(2);
+    const contract = standingBoard(progress)[0];
+    const insertion = frontDoorFor(contract.mapId)!;
+    const walk = standingJobWalk(contract, insertion.position, progress)!;
+    expect(walk).toBeGreaterThan(0);
+    const { hub } = createHub(progress);
+    hub.flow.togglePokemon('bulbasaur-1');
+    hub.flow.chooseInsertion(insertion.id);
+    hub.setView('rim');
+
+    expect(markupOf(hub)).toContain(
+      `Walked straight, it takes ${formatRecoveryClock(walk * STEP_DURATION_MS)} of your 5:00.`,
+    );
+  });
 });
 
 describe('what the base screen leads with', () => {
@@ -1583,6 +1606,34 @@ describe('what the base screen leads with', () => {
     expect(row.match(/class="px-tag /g)).toHaveLength(1);
     expect(row).toContain('px-tag-secure has-tick');
     expect(row).toContain('4 SQUARES');
+  });
+
+  it('never invites a press on a locker row that the press would refuse (characters bug hunt, 11 Nov 2026)', () => {
+    const { hub } = createHub({
+      ...DEFAULT_RAID_PROGRESS,
+      workshopUpgrades: ['secure-locker-1', 'secure-locker-2'],
+    });
+    hub.stash.addPokemon(new Pokemon(CHARIZARD, 36), 'charizard-1');
+    hub.flow.togglePokemon('charizard-1');
+    hub.setView('locker');
+    const markup = markupOf(hub);
+    const row = /<button class="px-row" data-secure-pokemon="charizard-1"[^>]*>/.exec(markup)?.[0] ?? '';
+    expect(row).toContain('Too big for any secure container: it is 3x3');
+    expect(row).toContain('A wipe will take it.');
+    expect(row).not.toContain('Secure this Pokémon');
+    // Nobody here can go in, and nothing built would change that.
+    expect(markup).toContain('Nothing in this party fits any secure container');
+    expect(markup).not.toContain('cordon ledger');
+  });
+
+  it('names what to build when a bigger container is what an evolved Pokemon needs', () => {
+    const { hub } = createHub();
+    hub.stash.addPokemon(new Pokemon(CHARMELEON, 16), 'charmeleon-1');
+    hub.flow.togglePokemon('charmeleon-1');
+    hub.setView('locker');
+    const markup = markupOf(hub);
+    const row = /<button class="px-row" data-secure-pokemon="charmeleon-1"[^>]*>/.exec(markup)?.[0] ?? '';
+    expect(row).toContain('It needs 6 squares, more than the 2x2 container. To secure it, build Secure locker I at Brock');
   });
 
   it('says on the bench who is coming, and on the rack what is packed', () => {

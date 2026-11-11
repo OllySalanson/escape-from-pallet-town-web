@@ -990,8 +990,9 @@ export class SaveManager {
     }
 
     try {
-      const data = serializeGame(state);
-      if (raidHoldRefusal(this.storedData(), data) !== undefined) {
+      const stored = this.storedData();
+      const data = keepUnreadPokemon(serializeGame(state), stored);
+      if (raidHoldRefusal(stored, data) !== undefined) {
         return false;
       }
       this.storage.setItem(this.key, JSON.stringify(data));
@@ -3199,6 +3200,38 @@ function inferPartnerId(stash: Stash, starterSpeciesId: StarterSpeciesId | null)
     undefined,
   );
   return strongest?.id ?? null;
+}
+
+/**
+ * The stored game's Pokémon of a kind this game cannot read, carried into the
+ * game being written exactly as they were stored.
+ *
+ * A save is wire format, and accepting one is a promise to honour everything in
+ * it: a species the game does not know (one renamed, or one from a build with
+ * more of the roster) cannot be loaded, but writing the game back over it used
+ * to destroy it without a word (the characters bug hunt, 11 Nov 2026). It
+ * waits in the file instead, out of every box and every raid - nothing can
+ * deploy, trade or lose a kind it cannot play - for a build that knows it.
+ * Only a well-formed entry of an unknown species is kept, never one the game
+ * being written already holds by id, and a new game from the title clears the
+ * file first, so it starts clean.
+ */
+function keepUnreadPokemon(data: SaveData, stored: unknown): SaveData {
+  if (!isRecord(stored) || !isRecord(stored.stash) || !Array.isArray(stored.stash.pokemon)) {
+    return data;
+  }
+  const written = new Set(data.stash.pokemon.map(({ id }) => id));
+  const unread = stored.stash.pokemon.filter(
+    (entry): entry is SavedStashedPokemon =>
+      isRecord(entry) &&
+      typeof entry.id === 'string' &&
+      entry.id.length > 0 &&
+      !written.has(entry.id) &&
+      isRecord(entry.pokemon) &&
+      typeof entry.pokemon.speciesId === 'string' &&
+      getSpeciesById(entry.pokemon.speciesId) === undefined,
+  );
+  return unread.length === 0 ? data : { ...data, stash: { ...data.stash, pokemon: [...data.stash.pokemon, ...unread] } };
 }
 
 function deserializeStashedPokemon(

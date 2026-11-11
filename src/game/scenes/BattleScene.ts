@@ -1757,9 +1757,12 @@ export class BattleScene extends Phaser.Scene {
    * What is in the pack and what each piece stands on, so the player can buy
    * the squares a catch needs without leaving the fight.
    *
-   * The last row is always KEEP THE PACK: declining has to be as visible as
-   * dropping, because it is the right answer for anyone who would rather keep
-   * the Potion. Only the page the cursor is on is drawn - six kinds fit the
+   * The first row is always KEEP THE PACK, and the cursor opens on it:
+   * declining has to be as visible as dropping, because it is the right answer
+   * for anyone who would rather keep the Potion, and a press made through the
+   * refusal must not put anything down. First rather than last, because a pack
+   * of more than five kinds is two pages, and opening on the last would have
+   * shown the way out alone. Only the page the cursor is on is drawn - six kinds fit the
    * panel and a pack can hold more - and the prompt above answers the row the
    * cursor is on, the way the party list's own prompt does.
    */
@@ -1814,12 +1817,12 @@ export class BattleScene extends Phaser.Scene {
   }
 
   /**
-   * The pack's kinds, then the way out. Undefined is KEEP THE PACK, which is a
+   * The way out, then the pack's kinds. Undefined is KEEP THE PACK, which is a
    * row rather than a hint so that a mouse can reach it and the cursor can
    * explain it.
    */
   private makeRoomRows(): readonly (PackRoomChoice | undefined)[] {
-    return [...this.makeRoomChoices(this.heldBallId), undefined];
+    return [undefined, ...this.makeRoomChoices(this.heldBallId)];
   }
 
   /** What the pack could put down, keeping the ball the throw is waiting on. */
@@ -3459,6 +3462,10 @@ export class BattleScene extends Phaser.Scene {
     if (this.pendingMakeRoom) {
       this.pendingMakeRoom = false;
       this.mode = 'make-room';
+      // The cursor opens on KEEP THE PACK, the first row: the press that read
+      // the refusal is often followed by another, and a drop is for good, so
+      // nothing is put down until the player moves to it (the characters bug
+      // hunt, 11 Nov 2026: two quick presses dropped whatever led the list).
       this.selectedCommand = 0;
       this.makeRoomPage = 0;
       this.showCommands();

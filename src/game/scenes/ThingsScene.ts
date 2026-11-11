@@ -24,6 +24,7 @@ import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { pixelScreen } from '../ui/pixelUi';
 import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
 import { canChoosePupil, pupilOutcome, pupilVerdict, teachBody } from '../ui/teachScreen';
+import { EVOLVE_MOMENT_ARMING_MS, evolveMomentBody, type EvolveMomentView } from '../ui/evolveMoment';
 import { homeUseOf, pocketJump, stoneTargetsBody, thingsBody, whereItIsUsed } from '../ui/thingsView';
 
 export interface ThingsSceneData {
@@ -65,6 +66,12 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   private flow: DeploymentFlow | undefined;
   private using: Using | null = null;
   private status: string | undefined;
+  /**
+   * The moment a stone has just evolved one of the player's Pokémon
+   * (`evolveMomentBody`), held until it has been seen and a key ends it. What
+   * the list says afterwards is its `said`.
+   */
+  private moment: (EvolveMomentView & { readonly itemId: string; readonly openedAt: number }) | undefined;
   private readonly saveManager = new SaveManager();
 
   public constructor() {
@@ -78,6 +85,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     this.view = data.view;
     this.using = null;
     this.status = undefined;
+    this.moment = undefined;
     this.reload();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.overlay?.destroy();
@@ -172,6 +180,16 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     if (!overlay) {
       return;
     }
+    if (this.moment) {
+      overlay.root.innerHTML = pixelScreen({
+        title: 'Your things',
+        body: evolveMomentBody(this.moment, 'Back to your things.'),
+        hints: 'Any key · back to your things',
+      });
+      overlay.root.querySelector<HTMLButtonElement>('[data-moment-done]')?.addEventListener('click', () => this.endMoment());
+      overlay.refocus('[data-moment-done]');
+      return;
+    }
     const status = this.status;
     this.status = undefined;
     const item = this.using ? getItemById(this.using.itemId) : undefined;
@@ -242,6 +260,16 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   }
 
   private onKey(event: KeyboardEvent): void {
+    // Any key ends the evolution moment once it has been seen - but not the
+    // ENTER that used the stone, still held or repeating, nor the one pressed
+    // straight after it, or the moment would never be seen at all.
+    if (this.moment) {
+      event.preventDefault();
+      if (!event.repeat && this.time.now - this.moment.openedAt >= EVOLVE_MOMENT_ARMING_MS) {
+        this.endMoment();
+      }
+      return;
+    }
     // The B that opened it, still held, repeats: it must not close it again.
     if (event.repeat && event.key.toLowerCase() === 'b') {
       event.preventDefault();
@@ -450,10 +478,14 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     }
     let message = '';
     let species: number | undefined;
+    let before: { readonly dexId: number; readonly name: string } | undefined;
+    let after: { readonly name: string; readonly shiny: boolean } | undefined;
     const written = this.saveManager.useAtHome(item.id, target.id, (stored) => {
+      before = { dexId: stored.base.dexId, name: stored.base.name };
       const result = useFieldItem(item, stored);
       message = result.message;
       species = stored.base.dexId;
+      after = { name: stored.base.name, shiny: stored.shiny };
       return { changed: result.used, spent: result.used };
     });
     if (!written) {
@@ -470,8 +502,33 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     recordAction(`Used ${item.displayName} at home`);
     this.reload();
     this.using = null;
+    if (before && after && species !== undefined) {
+      this.moment = {
+        fromDexId: before.dexId,
+        fromName: before.name,
+        toDexId: species,
+        toName: after.name,
+        shiny: after.shiny,
+        said: message,
+        itemId: item.id,
+        openedAt: this.time.now,
+      };
+      this.render();
+      return;
+    }
     this.status = message;
     this.render([`[data-thing="${item.id}"]`]);
+  }
+
+  /** Back to the list from the evolution moment, with its line said there. */
+  private endMoment(): void {
+    const moment = this.moment;
+    if (!moment) {
+      return;
+    }
+    this.moment = undefined;
+    this.status = moment.said;
+    this.render([`[data-thing="${moment.itemId}"]`]);
   }
 
   private settle(item: ItemDefinition, learned: boolean, message: string): void {
