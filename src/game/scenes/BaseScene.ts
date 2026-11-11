@@ -219,6 +219,7 @@ import { DAY_CARE_KEEPER, PEN_HOME, nextPenTile } from '../base/dayCarePen';
 import {
   checkOnLines,
   DAY_CARE_OFFER_LINES,
+  dayCareTurnedAway,
   dayCareReport,
   dayCareStatusLine,
   NOT_TAKEN_BACK_LINE,
@@ -6892,14 +6893,21 @@ export class BaseScene extends Phaser.Scene {
 
   /**
    * The Day-Care Man at his fence (`hub/dayCare.ts`): somebody with nobody in
-   * his care is asked in his own words and then chooses who from a short list;
-   * somebody he is raising a Pokémon for is told how it has grown, and asked.
+   * his care is asked in his own words and then chooses who from a short list,
+   * unless there is only one Pokémon at base, when he says so in the yard
+   * (`dayCareTurnedAway`); somebody he is raising a Pokémon for is told how it
+   * has grown, and asked.
    */
   private speakToDayCareMan(at: GridPosition): void {
     this.player.stop();
     this.player.setFrame(getIdleFrame(this.facing));
     const game = this.savedGame;
     const stay = game.stash.dayCare();
+    const turnedAway = dayCareTurnedAway(game.stash);
+    if (turnedAway) {
+      this.say(turnedAway, [at]);
+      return;
+    }
     if (!stay) {
       this.say(DAY_CARE_OFFER_LINES, [at], () =>
         this.openHub({ savedGame: this.savedGame, view: 'daycare', at: { ...this.currentTile } }),

@@ -162,6 +162,12 @@ export interface RaidCondition {
    */
   readonly speciesId?: string;
   /**
+   * Every kind it was on the raid, by dex number (`Pokemon.kindsBeen`), so
+   * the Pokédex registers a stage it passed through on the way to
+   * `speciesId`. Optional, as `speciesId` is: an older settlement says nothing.
+   */
+  readonly kindsBeen?: readonly number[];
+  /**
    * The Pokemon's total experience at the end of the raid, absolute rather than
    * a delta so applying a settlement twice cannot pay a win out twice.
    *
@@ -525,6 +531,7 @@ export class Stash {
       if (species) {
         stored.pokemon.evolveInto(species);
       }
+      stored.pokemon.rememberKinds(entry.kindsBeen ?? []);
       // The replay above re-derives what the level-up offered; what the player
       // decided about it in the raid is the truth, so it overrides. After any
       // evolution, so the moves resolve against the line it now belongs to.

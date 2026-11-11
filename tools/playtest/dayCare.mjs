@@ -5,7 +5,8 @@
 //
 //   node tools/playtest/dayCare.mjs <url> <out dir> [--raids=2] [--port=N] [--window=1200x768]
 //
-// A new game is started and a level-4 Pidgey put in its vault beside the
+// A new game is started and spoken to him with only its starter, which he
+// turns away in the yard; then a level-4 Pidgey is put in its vault beside the
 // starter, and a fainted Rattata he must refuse. `--raids` is how many raids are written into the save as having
 // gone out and come home while the Pidgey was away. --port=N drives a browser
 // already running on that CDP port. Photographs the man's screen both ways,
@@ -119,6 +120,27 @@ try {
   );
   await page.waitFor(sceneIs('base'));
   await page.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
+  // With only the starter, he says in the yard that he cannot take it, and no
+  // list opens with nothing on it to choose.
+  await editSave(`(save) => { save.raidProgress.keysLearned = ['walk', 'look']; }`);
+  const alone = await speakToHim();
+  if (!alone.includes('I run the DAY-CARE service')) throw new Error(`alone, he opens with ${JSON.stringify(alone)}`);
+  // A line too long for one box is cut where a reader would pause, so read on to it.
+  let refusal = alone;
+  for (let guard = 0; guard < 4 && !refusal.includes('only have one'); guard += 1) {
+    await press('Space');
+    refusal = await boxText();
+  }
+  if (!refusal.includes('Oh? You only have one Pokémon.')) throw new Error(`alone, he goes on ${JSON.stringify(refusal)}`);
+  await page.screenshot(`${out}/alone.png`);
+  console.log(`alone: ${refusal}`);
+  for (let guard = 0; guard < 4 && (await page.evaluate(`${BASE}.dialogBox.visible`)); guard += 1) {
+    await press('Space');
+    await sleep(300);
+  }
+  await sleep(1500);
+  if (await page.evaluate(sceneIs('hub'))) throw new Error('alone, his list opened anyway');
+  if (!(await page.evaluate(`${state()}.live && !${BASE}.dialogBox.visible`))) throw new Error('alone, the yard was not handed back');
   // A level-4 Pidgey beside the starter, so there is somebody to leave.
   await editSave(`(save) => {
     save.stash.pokemon.push({ id: 'pidgey-1', pokemon: { speciesId: 'pidgey', level: 4, currentHp: 17, xp: 96, moves: ['Tackle'], primaryStatus: null } });

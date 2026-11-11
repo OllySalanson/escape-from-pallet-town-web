@@ -12,8 +12,10 @@ import { withArticle } from '../ui/article';
  * received or evolved into. Here a raid's catch is not owned until it is walked
  * out - a wipe loses it, as it loses a gift (`world/gifts.ts`) - so a kind counts
  * once a Pokémon of it has been in the vault: banked from a raid, handed over
- * by a contract, or evolved there. `SaveManager` writes every save with the
- * vault's kinds added to `RaidProgress.pokedexOwned`, which is the one place a
+ * by a contract, or evolved there - and a kind a banked Pokémon was earlier in
+ * the same raid counts too, as its catch would have in FireRed. `SaveManager`
+ * writes every save with the vault's kinds added to
+ * `RaidProgress.pokedexOwned`, which is the one place a
  * kind is registered, so no banking path can forget to. The list only ever
  * grows: a Pokémon paid to Brock or lost to a wipe was still owned.
  *
@@ -131,12 +133,16 @@ export function tidyDexIds(value: readonly unknown[]): number[] {
   ].sort((a, b) => a - b);
 }
 
-/** Every kind the save has owned: what it has registered, and whatever the vault holds now. */
+/**
+ * Every kind the save has owned: what it has registered, and every kind each
+ * Pokémon in the vault has been since it was loaded (`Pokemon.kindsBeen`) -
+ * which is what counts the Pikachu a raid caught and then made a Raichu.
+ */
 export function pokedexOwned(
   registered: readonly number[] | undefined,
   stash: Stash | undefined,
 ): number[] {
-  const held = stash?.listPokemon().map((stored) => stored.pokemon.base.dexId) ?? [];
+  const held = stash?.listPokemon().flatMap((stored) => stored.pokemon.kindsBeen) ?? [];
   return tidyDexIds([...(registered ?? []), ...held]);
 }
 

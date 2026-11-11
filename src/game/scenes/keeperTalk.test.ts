@@ -372,12 +372,25 @@ describe('Bill, at his cottage', () => {
 
 describe('the Day-Care Man, at his fence', () => {
   it('says his piece in the yard, and only then opens the short list', () => {
-    const man = room(saved(NOTHING_NEW));
+    const man = room(saved(NOTHING_NEW, (stash) => stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1')));
     man.dayCare();
 
     expect(man.said[0]).toContain('I run the DAY-CARE service');
     expect(man.opened).toHaveLength(1);
     expect(man.opened[0]).toMatchObject({ view: 'daycare' });
+  });
+
+  it('turns a save with one Pokémon away in the yard, rather than offering a list with nothing on it', () => {
+    const manager = saved(NOTHING_NEW);
+    expect(manager.load()!.stash.listPokemon()).toHaveLength(1);
+    const man = room(manager);
+    man.dayCare();
+
+    expect(man.said.join(' ')).toContain('I run the DAY-CARE service');
+    expect(man.said.join(' ')).toContain('Oh? You only have one Pokémon.');
+    expect(man.said.join(' ')).not.toContain('Would you like me to raise one of your Pokémon?');
+    expect(man.opened).toEqual([]);
+    expect(manager.load()!.stash.dayCare()).toBeNull();
   });
 
   it('tells somebody he is raising one for how it has grown, and gives it back on YES', () => {

@@ -171,6 +171,17 @@ export class Pokemon {
    * about this one Pokemon prints, and `base.name` stays the species.
    */
   public nickname: string | null = null;
+  /**
+   * Every kind this Pokemon has been since it was made or loaded, by dex
+   * number, in the order it became them. Not saved: the Pokédex
+   * (`hub/pokedex.ts`) registers it on the next write, which is the only
+   * reader. It exists because a raid can change a species and the vault only
+   * sees the end of it - a Pikachu caught and given a Thunder Stone in the
+   * field banks as a Raichu, and a starter that evolves twice comes home two
+   * stages on - and FireRed counts each kind as owned the moment it is caught
+   * or evolved into.
+   */
+  private readonly kindsBeenValue: number[];
 
   public constructor(base: PokemonBase, level: number) {
     if (level < 1 || level > MAX_LEVEL) {
@@ -183,6 +194,24 @@ export class Pokemon {
     this.stats = computePokemonStats(base.baseStats, level);
     this.currentHp = this.stats.hp;
     this.moves = this.initializeMoves();
+    this.kindsBeenValue = [base.dexId];
+  }
+
+  /** See `kindsBeenValue`. */
+  public get kindsBeen(): readonly number[] {
+    return [...this.kindsBeenValue];
+  }
+
+  /**
+   * Adds kinds this Pokemon was elsewhere - the raid's copy of it, when a
+   * settlement carries the raid home onto the vault's reloaded one.
+   */
+  public rememberKinds(dexIds: readonly number[]): void {
+    for (const dexId of dexIds) {
+      if (!this.kindsBeenValue.includes(dexId)) {
+        this.kindsBeenValue.push(dexId);
+      }
+    }
   }
 
   /** What this Pokemon is called: its nickname, else its species' name. */
@@ -320,6 +349,7 @@ export class Pokemon {
     const from = this.base;
     const previousMaxHp = this.maxHp;
     this.base = species;
+    this.rememberKinds([species.dexId]);
     this.stats = computePokemonStats(species.baseStats, this.level);
     this.currentHp = this.isFainted
       ? 0
