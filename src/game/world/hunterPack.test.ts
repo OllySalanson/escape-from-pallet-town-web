@@ -22,6 +22,7 @@ import {
   inGround,
   isTouching,
   rivalsForGrounds,
+  withoutStoodDown,
   type HunterGround,
   type PackEvent,
   type PackHunter,
@@ -174,6 +175,46 @@ describe('where the hunters are', () => {
         }
       });
     });
+  });
+
+  it('hands a stood-down rival\'s patches to the others, keeping every other patch and as few neighbours alike as five less one allow', () => {
+    const at = (cx: number, cy: number): HunterGround =>
+      groundOf({ x: cx * 64, y: cy * 64, width: 64, height: 64 }, { x: cx * 64 + 32, y: cy * 64 + 32 });
+    const grounds = [0, 1, 2].flatMap((cy) => [0, 1, 2].map((cx) => at(cx, cy)));
+    const rivals = rivalsForGrounds(grounds, 'koga', { x: 64 + 10, y: 64 + 10 });
+    const after = withoutStoodDown(grounds, rivals, ['koga']);
+    expect(after).not.toContain('koga');
+    rivals.forEach((rival, index) => {
+      if (rival !== 'koga') {
+        expect(after[index]).toBe(rival);
+      }
+    });
+    // The middle patch touches all eight others, which hold all four faces
+    // left, so its stand-in shares a face with as few of them as any could.
+    const middle = 4;
+    const clashes = (rival: string) => after.filter((other, index) => index !== middle && other === rival).length;
+    const fewest = Math.min(...['blue', 'misty', 'lt-surge', 'sabrina'].map(clashes));
+    expect(clashes(after[middle])).toBe(fewest);
+    // Two stood down, and nobody stood down is nothing changed.
+    const both = withoutStoodDown(grounds, rivals, ['koga', 'misty']);
+    expect(both).not.toContain('koga');
+    expect(both).not.toContain('misty');
+    expect(withoutStoodDown(grounds, rivals, [])).toEqual(rivals);
+  });
+
+  it('stands a rival down mid-raid where each of their hunters is, in whatever state it is in', () => {
+    const grounds = [0, 1].map((cx) =>
+      groundOf({ x: cx * 64, y: 0, width: 64, height: 64 }, { x: cx * 64 + 32, y: 32 }),
+    );
+    const pack = new HunterPack(createHunterPack(grounds, ['koga', 'blue']));
+    Object.assign(pack.hunters[0], { mode: 'beaten', position: { x: 40, y: 40 } });
+    expect(pack.standDown(['koga'])).toBe(true);
+    // Not the neighbour's face, and of the three left, the next in turn after Koga.
+    expect(pack.hunters.map((hunter) => hunter.rivalId)).toEqual(['sabrina', 'blue']);
+    expect(pack.hunters[0].mode).toBe('beaten');
+    expect(pack.hunters[0].position).toEqual({ x: 40, y: 40 });
+    // Asked again, nothing is left to change.
+    expect(pack.standDown(['koga'])).toBe(false);
   });
 
   it('comes out of hiding never in sight of the player', () => {
