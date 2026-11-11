@@ -100,7 +100,8 @@ search per step and are the ones to move next.
 
 `thirdRing.mjs <url> <dir> [--port=N] [--no-shots]` walks the third ring from
 Mill Square, photographing each place on `?testmode=pixels`; `--no-shots` is its
-smoke check, the same walk on `?testmode=1` in the logic window.
+smoke check, the same walk on `?testmode=1` in the logic window: about six and a
+half minutes against a test-mode build (11 Nov 2026).
 
 `secondRing.mjs <url> <dir> [--port=N]` walks the vale's second ring on foot from
 Mill Square: the boardwalks, the punt out to Duck Island and back, in and out of the
