@@ -4,7 +4,7 @@ import { MoveCategory, MoveFlag } from '../pokemon/MoveBase';
 import { SPECIES_BY_ID } from '../pokemon/species';
 import { NO_GAME_CORNER } from '../minigames/tickets';
 import { readDojoRecord } from './dojoRecord';
-import { readDojoRun, runBout, settleRunBout } from './arenaRuns';
+import { readDojoRun, runBout, runFoe, settleRunBout, stampRun } from './arenaRuns';
 import {
   CUP_RUN_BOUTS,
   CUPS,
@@ -132,6 +132,26 @@ describe('a cup run', () => {
     expect(read?.cup).toEqual(settled.dojo.cup);
     expect(read?.classId).toBeUndefined();
     expect(read?.streak).toBeUndefined();
+  });
+
+  it('a bout begun on Sunday night is that week’s bout, and the run ends with the week (arenas hunt, finding 4)', () => {
+    const sunday = new Date(2026, 10, 8, 23, 58);
+    const monday = new Date(2026, 10, 9, 0, 1);
+    let dojo = undefined as ReturnType<typeof settleRunBout>['dojo'] | undefined;
+    for (let bout = 1; bout <= 4; bout += 1) {
+      dojo = settleRunBout(dojo, NO_GAME_CORNER, stampRun({ mode: 'cup' }, dojo, sunday), 'x', true, sunday).dojo;
+    }
+    const run = stampRun({ mode: 'cup' }, dojo, sunday);
+    const foe = cupFoe(cupOfTheWeek(sunday), 5, sunday);
+    expect(runFoe(run, dojo, monday)).toEqual(foe);
+    const won = settleRunBout(dojo, NO_GAME_CORNER, run, foe.id, true, monday);
+    expect(won.line).toBe(`You beat ${foe.name}! 5 of 7, but the week ended during the bout, so the run ends there. 50 tickets.`);
+    expect(won.carriesOn).toBe(false);
+    expect(won.dojo.cup).toMatchObject({ week: '2026-W45', run: 5 });
+    const lost = settleRunBout(dojo, NO_GAME_CORNER, run, foe.id, false, monday);
+    expect(lost.line).toBe(`${foe.name} took that one. Your ${cupOfTheWeek(sunday).name} run of 4 is over.`);
+    // The new week's cup starts at bout one.
+    expect(runFoe({ mode: 'cup' }, won.dojo, monday)).toEqual(cupFoe(cupOfTheWeek(monday), 1, monday));
   });
 
   it('puts copies on the mat at the cup level, under its weather', () => {

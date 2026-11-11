@@ -17,6 +17,8 @@ import {
   type DojoSettlement,
 } from './classes';
 import { DOJO_REGULARS } from './dojoCounter';
+import { rentalFoe, rentalTrainer } from './rentals';
+import { RUN_BOUTS } from './runRecords';
 import { readDojoRecord, type DojoRecord } from './dojoRecord';
 
 const NOW = new Date(2026, 10, 7, 12);
@@ -57,6 +59,31 @@ describe('the classes', () => {
         expect(foe.team, `${regular.bot.name} in ${cls.name}`).toHaveLength(3);
         expect(new Set(foe.team).size).toBe(3);
         expect(foeTrainer(foe, 3).ai).toBe('gym');
+      }
+    }
+  });
+});
+
+describe('every regular brings Pokémon that can attack (the arenas hunt, finding 5)', () => {
+  const attacks = (pokemon: { moves: readonly { base: { power: number } }[] }): boolean => pokemon.moves.some((move) => move.base.power > 0);
+
+  it('in every class: no Kakuna or Metapod that knows only Harden', () => {
+    for (const cls of DOJO_CLASSES) {
+      for (const regular of DOJO_REGULARS) {
+        for (const pokemon of foeParty(regularFoe(regular, cls.id))) {
+          expect(attacks(pokemon), `${regular.bot.name}'s ${pokemon.base.name} in ${cls.name}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('in every bout of the rental run, every day of a year, so nothing swapped in is a dud', () => {
+    for (let day = 0; day < 366; day += 1) {
+      const now = new Date(2026, 10, 11 + day, 12);
+      for (let bout = 1; bout <= RUN_BOUTS; bout += 1) {
+        for (const pokemon of rentalTrainer(rentalFoe(bout, now), 3).party) {
+          expect(attacks(pokemon), `bout ${bout} on ${now.toDateString()}: ${pokemon.base.name}`).toBe(true);
+        }
       }
     }
   });

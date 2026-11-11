@@ -5,7 +5,9 @@
 // the cup's level, under its weather), then borrows three of today's six, wins
 // or loses on the real battle screen, and - after a win - comes back to the
 // counter open on the run, takes one of the beaten team in a swap and fights
-// bout two. Every bout's result is read back out of the save.
+// bout two. Then, on a run four wins in, START AGAIN with the same three must
+// fight bout one of a new run, against the regular the page names. Every bout's
+// result is read back out of the save.
 //
 //   node tools/playtest/arenaCups.mjs <test-mode build url> <out-dir> [--port=N] [--window=1200x768]
 //
@@ -115,7 +117,7 @@ try {
     await click('.dojo-counter [data-fight]', 200);
     await until(sceneIs('battle'), 'the bout');
     await step(1200);
-    const bout = await page.evaluate(`(() => { const s = ${GAME}.scene.getScene('battle'); return { run: s.exhibition?.run, weather: s.state?.weather?.id ?? null, ours: s.state ? [s.state.player.pokemon.base.id, s.state.player.pokemon.level] : null, theirs: s.trainer.party.map((p) => p.base.id) }; })()`);
+    const bout = await page.evaluate(`(() => { const s = ${GAME}.scene.getScene('battle'); return { run: s.exhibition?.run, weather: s.state?.weather?.id ?? null, ours: s.state ? [s.state.player.pokemon.base.id, s.state.player.pokemon.level] : null, theirs: s.trainer.party.map((p) => p.base.id), trainer: s.trainer.name }; })()`);
     await shot(`${bout.run?.mode ?? 'class'}-bout`);
     // Space throws the first move; every few turns the next one, so a Flash Fire or an immunity never stalls the bout.
     for (let guard = 0; guard < 900 && !(await page.evaluate(sceneIs('base'))); guard += 1) {
@@ -220,6 +222,32 @@ try {
       await shot('05-the-swap');
     }
   }
+
+  // START AGAIN with the same three, on a run four wins in: bout one of a new run, against whoever the
+  // page names, and not bout five of the old one (the arenas hunt, finding 2).
+  for (let guard = 0; guard < 8 && !(await page.evaluate(sceneIs('dojo-counter'))) && (await base('Boolean(b.dialogBox?.visible)')); guard += 1) await press('Space', 400);
+  for (let guard = 0; guard < 4 && (await page.evaluate(sceneIs('dojo-counter'))); guard += 1) await press('Escape', 300);
+  await step(600);
+  await page.evaluate(`(() => { const k = ${JSON.stringify(PLAYTEST_SAVE_KEY)}; const s = JSON.parse(localStorage.getItem(k));
+    const d = new Date(); const two = (v) => String(v).padStart(2, '0'); const day = d.getFullYear() + '-' + two(d.getMonth() + 1) + '-' + two(d.getDate());
+    s.raidProgress.dojo = { ...(s.raidProgress.dojo ?? {}), rental: { run: { day, team: ${JSON.stringify(six.slice(0, 3))}, won: 4, scored: true }, scoredDay: day } };
+    localStorage.setItem(k, JSON.stringify(s)); return true; })()`);
+  await talkAtCounter();
+  await click('.dojo-counter [data-mode="rental"]');
+  const atFour = /Bout (\d) of 7: (\S+) brings/.exec(await page.evaluate(`document.querySelector('.dojo-counter').innerText`));
+  expect(`a run four wins in offers bout five (${atFour?.[0]})`, atFour?.[1] === '5');
+  expect('START AGAIN is offered', await click('.dojo-counter [data-new-run]', 300));
+  for (const species of six.slice(0, 3)) await click(`.dojo-counter [data-rental="${species}"]`, 300);
+  const shows = /Bout (\d) of 7: (\S+) brings/.exec(await page.evaluate(`document.querySelector('.dojo-counter').innerText`));
+  await shot('06-start-again-same-three');
+  expect(`START AGAIN with the same three says bout one (${shows?.[0]})`, shows?.[1] === '1');
+  const again = await fightAndCome();
+  expect(`and fights bout one against ${shows?.[2]} (${again.trainer}, bout ${again.run?.bout})`, again.run?.bout === 1 && again.trainer === shows?.[2]);
+  const after = (await raw()).raidProgress.dojo?.rental?.run;
+  const saidAfter = String(await base(`b.dialogBox?.visible ? b.dialogBox.textObject?.text : ''`)).replace(/\s+/g, ' ');
+  console.log(`     ${saidAfter} ${JSON.stringify(after)}`);
+  expect(`and its result is a run of its own, not the old one's fifth (${JSON.stringify(after)})`, !after || after.won === 1);
+  await shot('07-after-start-again');
 } finally {
   await browser.close();
 }

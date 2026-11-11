@@ -247,12 +247,14 @@ export function settleRentalBout(
   foe: RentalFoe,
   won: boolean,
   now: Date,
+  /** Whether this bout starts a run of its own, as the counter said it did; by default, whether its team does. */
+  startsRun?: boolean,
 ): RentalSettlement {
   const today = ticketDayKey(now);
   const live = liveRentalRun(record, now);
-  const fresh = startsNewRun(team, live);
-  const scored = fresh ? nextRunScored(record, now) : live!.scored;
-  const before = fresh ? 0 : live!.won;
+  const fresh = startsRun === true || !live || (startsRun === undefined && startsNewRun(team, live));
+  const scored = fresh ? nextRunScored(record, now) : live.scored;
+  const before = fresh ? 0 : live.won;
   const base: RentalRecord = {
     ...(fresh && scored ? { scoredDay: today } : record?.scoredDay ? { scoredDay: record.scoredDay } : {}),
     ...(record?.best ? { best: record.best } : {}),
@@ -261,7 +263,11 @@ export function settleRentalBout(
     return { record: base, gameCorner, tickets: 0, run: undefined, ended: before, complete: false, scored };
   }
   const reached = Math.min(RUN_BOUTS, before + 1);
-  const pay = scored ? payGame(gameCorner, 'rental-run', reached, now) : null;
+  // A bout settled for a day the ticket record has already left (one that ran
+  // past midnight in a tab the other one has played on since) pays nothing,
+  // rather than writing that day back over the new one.
+  const payable = !(gameCorner.day && gameCorner.day.day > today);
+  const pay = scored && payable ? payGame(gameCorner, 'rental-run', reached, now) : null;
   const best = scored ? Math.max(record?.best ?? 0, reached) : record?.best;
   const complete = reached >= RUN_BOUTS;
   const run: RentalRun | undefined = complete

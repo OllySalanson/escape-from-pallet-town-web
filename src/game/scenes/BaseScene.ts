@@ -71,7 +71,8 @@ import { dojoBag, dojoParty } from '../arena/boutRules';
 import { DOJO_RECEPTIONIST } from '../arena/dojoCounter';
 import { dojoFoe, foeTrainer, receptionLines, settlementLine } from '../arena/classes';
 import { classOf, shownClass } from '../arena/dojoRecord';
-import { readDojoRun, runBout, type DojoRun, type DojoRunMode } from '../arena/arenaRuns';
+import { readDojoRun, runBout, stampRun, type DojoRun, type DojoRunMode } from '../arena/arenaRuns';
+import { dojoYieldStake, hallYieldStake } from '../arena/yieldStake';
 import { attendantLines, courseKeeperLines, prizeClerkLines, timeBoardLines } from '../minigames/gameCornerTalk';
 import {
   HOME_KEY_LETTERS,
@@ -2644,12 +2645,13 @@ export class BaseScene extends Phaser.Scene {
     }
     const party = boutParty(kit.flow.party.map((stored) => stored.pokemon));
     const boutId = this.markBout((id) => ({ id, kind: 'hall', rival: rival.id }));
+    const stake = hallYieldStake(this.freshGame().raidProgress.bouts);
     const data: BattleSceneData = {
       party: new PokemonParty(party),
       bag: boutBag(kit.flow.packedContents),
       trainer: boutTrainer(rival, party),
       hunterBattle: true,
-      exhibition: { rival: rival.id, at: { ...this.currentTile }, ...(boutId ? { boutId } : {}) },
+      exhibition: { rival: rival.id, at: { ...this.currentTile }, ...(boutId ? { boutId } : {}), ...(stake ? { stake } : {}) },
     };
     // What has been got ready is the same when the player comes back: nothing was spent.
     flowAcrossABout = kit.flow;
@@ -7138,37 +7140,42 @@ export class BaseScene extends Phaser.Scene {
     if (choice.run) {
       // A cup or rental bout: the mat is the run's (`arena/arenaRuns.ts`).
       const record = this.freshGame().raidProgress.dojo;
-      const bout = runBout(choice.run, choice.team, record, new Date());
+      const now = new Date();
+      // Stamped with when it starts, and with the bout the counter said it was.
+      const run = stampRun(choice.run, record, now);
+      const bout = runBout(run, choice.team, record, now);
       if (!bout) {
         return;
       }
       this.leaving = true;
       audioManager.play('battleStart');
-      const run = choice.run;
       const boutId = this.markBout((id) => ({ id, kind: 'dojo', opponent: choice.opponent, run }));
+      const stake = dojoYieldStake(record, run, now);
       const data: BattleSceneData = {
         party: new PokemonParty(bout.party),
         bag: dojoBag(),
         trainer: bout.trainer,
         hunterBattle: true,
         weather: bout.weather,
-        exhibition: { dojo: choice.opponent, at: { ...this.currentTile }, run, ...(boutId ? { boutId } : {}) },
+        exhibition: { dojo: choice.opponent, at: { ...this.currentTile }, run, ...(boutId ? { boutId } : {}), ...(stake ? { stake } : {}) },
       };
       this.cameras.main.fadeOut(220, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('battle', data));
       return;
     }
-    const foe = dojoFoe(choice.opponent, classOf(this.freshGame().raidProgress.dojo));
+    const record = this.freshGame().raidProgress.dojo;
+    const foe = dojoFoe(choice.opponent, classOf(record));
     if (!foe || choice.team.length === 0) {
       return;
     }
     const boutId = this.markBout((id) => ({ id, kind: 'dojo', opponent: foe.id }));
+    const stake = dojoYieldStake(record, undefined, new Date());
     const data: BattleSceneData = {
       party: new PokemonParty(dojoParty(choice.team)),
       bag: dojoBag(),
       trainer: foeTrainer(foe, choice.team.length),
       hunterBattle: true,
-      exhibition: { dojo: foe.id, at: { ...this.currentTile }, ...(boutId ? { boutId } : {}) },
+      exhibition: { dojo: foe.id, at: { ...this.currentTile }, ...(boutId ? { boutId } : {}), ...(stake ? { stake } : {}) },
     };
     this.leaving = true;
     audioManager.play('battleStart');

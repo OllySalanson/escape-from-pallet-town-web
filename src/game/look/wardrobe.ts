@@ -101,6 +101,22 @@ export function billLine(bill: WearableBill): string {
   return parts.length === 0 ? 'nothing' : parts.join(' and ');
 }
 
+/**
+ * A whole look's price as its card says it: what can be bought, and any raid
+ * find it also needs, because a card that said a plain "₽140" for a look whose
+ * robe is never sold only told the truth once BUY was refused (the arenas
+ * hunt, finding 3).
+ */
+export function lookPriceLine(bill: WearableBill): string {
+  const found = bill.raidOnly.length;
+  if (found === 0) {
+    return billLine(bill);
+  }
+  const finds = found === 1 ? 'a raid find' : `${found} raid finds`;
+  const bought = billLine({ ...bill, raidOnly: [] });
+  return bought === 'nothing' ? `Needs ${finds}` : `${bought} + ${finds}`;
+}
+
 /** A piece's price as its card says it. */
 export function priceLine(piece: Wearable): string {
   if (piece.rarity === 'starter') return 'Yours already';
