@@ -1,0 +1,325 @@
+{
+  "routes": [
+    {
+      "name": "up the drove road to the Moor Gate",
+      "reached": true,
+      "steps": 85,
+      "snags": []
+    },
+    {
+      "name": "back from: up the drove road to the Moor Gate",
+      "reached": true,
+      "steps": 85,
+      "snags": []
+    },
+    {
+      "name": "to the toll house door",
+      "reached": true,
+      "steps": 85,
+      "snags": [
+        {
+          "leg": 11,
+          "at": [
+            27,
+            9
+          ],
+          "heading": "left",
+          "blocked": [
+            26,
+            9
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: to the toll house door",
+      "reached": true,
+      "steps": 85,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            25,
+            9
+          ],
+          "heading": "right",
+          "blocked": [
+            26,
+            9
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "past the tor to the Little Stones",
+      "reached": true,
+      "steps": 82,
+      "snags": [
+        {
+          "leg": 9,
+          "at": [
+            34,
+            11
+          ],
+          "heading": "right",
+          "blocked": [
+            35,
+            11
+          ],
+          "by": "npc clefairy"
+        },
+        {
+          "leg": 9,
+          "at": [
+            33,
+            10
+          ],
+          "heading": "right",
+          "blocked": [
+            34,
+            10
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 9,
+          "at": [
+            37,
+            10
+          ],
+          "heading": "right",
+          "blocked": [
+            38,
+            10
+          ],
+          "by": "npc clefairy"
+        }
+      ]
+    },
+    {
+      "name": "back from: past the tor to the Little Stones",
+      "reached": true,
+      "steps": 76,
+      "snags": []
+    },
+    {
+      "name": "east along the trail to Greystone Peaks",
+      "reached": true,
+      "steps": 86,
+      "snags": []
+    },
+    {
+      "name": "back from: east along the trail to Greystone Peaks",
+      "reached": true,
+      "steps": 68,
+      "snags": []
+    },
+    {
+      "name": "to the spring’s bath hut door",
+      "reached": false,
+      "steps": 81,
+      "snags": [
+        {
+          "leg": 6,
+          "at": [
+            56,
+            36
+          ],
+          "heading": "up",
+          "blocked": [
+            56,
+            35
+          ],
+          "by": "npc greystone-vale/person-41"
+        }
+      ]
+    },
+    {
+      "name": "back from: to the spring’s bath hut door",
+      "reached": true,
+      "steps": 63,
+      "snags": []
+    },
+    {
+      "name": "over the heather to the drovers’ camp hut",
+      "reached": false,
+      "steps": 82,
+      "snags": [
+        {
+          "leg": 8,
+          "at": [
+            37,
+            28
+          ],
+          "heading": "up",
+          "blocked": [
+            37,
+            27
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: over the heather to the drovers’ camp hut",
+      "reached": true,
+      "steps": 82,
+      "snags": []
+    },
+    {
+      "name": "into the drovers’ fold",
+      "reached": true,
+      "steps": 51,
+      "snags": [
+        {
+          "leg": 7,
+          "at": [
+            25,
+            29
+          ],
+          "heading": "left",
+          "blocked": [
+            24,
+            29
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: into the drovers’ fold",
+      "reached": true,
+      "steps": 51,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            23,
+            29
+          ],
+          "heading": "right",
+          "blocked": [
+            24,
+            29
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "west to the shepherd’s cottage door",
+      "reached": true,
+      "steps": 66,
+      "snags": []
+    },
+    {
+      "name": "back from: west to the shepherd’s cottage door",
+      "reached": true,
+      "steps": 84,
+      "snags": []
+    },
+    {
+      "name": "west to the pecha tree by the pen",
+      "reached": true,
+      "steps": 61,
+      "snags": []
+    },
+    {
+      "name": "back from: west to the pecha tree by the pen",
+      "reached": true,
+      "steps": 61,
+      "snags": []
+    },
+    {
+      "name": "out by the sheep track to the Moor Chapel",
+      "reached": true,
+      "steps": 81,
+      "snags": []
+    },
+    {
+      "name": "back from: out by the sheep track to the Moor Chapel",
+      "reached": true,
+      "steps": 81,
+      "snags": []
+    },
+    {
+      "name": "up to Moor Top",
+      "reached": true,
+      "steps": 34,
+      "snags": []
+    },
+    {
+      "name": "back from: up to Moor Top",
+      "reached": true,
+      "steps": 34,
+      "snags": []
+    },
+    {
+      "name": "out along the tarn’s boards",
+      "reached": true,
+      "steps": 48,
+      "snags": []
+    },
+    {
+      "name": "back from: out along the tarn’s boards",
+      "reached": true,
+      "steps": 30,
+      "snags": []
+    },
+    {
+      "name": "to Lina at the waystones",
+      "reached": true,
+      "steps": 11,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            29,
+            57
+          ],
+          "heading": "left",
+          "blocked": [
+            28,
+            57
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: to Lina at the waystones",
+      "reached": true,
+      "steps": 11,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            27,
+            57
+          ],
+          "heading": "right",
+          "blocked": [
+            28,
+            57
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "into the Moor Foot’s pen, to the Drover Boy",
+      "reached": true,
+      "steps": 7,
+      "snags": []
+    },
+    {
+      "name": "back from: into the Moor Foot’s pen, to the Drover Boy",
+      "reached": true,
+      "steps": 7,
+      "snags": []
+    }
+  ],
+  "total": 11
+}

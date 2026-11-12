@@ -50,7 +50,7 @@ export function highMoor(): MapcraftResult {
   p.road([[23, 8], [23, 9], [27, 9]]);
   p.flowers([26, 6], [26, 7]);
   stand('bench', 21, 9);
-  stand('barrel', 26, 9);
+  stand('barrel', 20, 9);
   stand('fence-post', 27, 5);
   stand('fence-post', 31, 5);
   p.bedRows([5, 33, 37], [6, 32, 38], [7, 32, 37]);
@@ -58,14 +58,18 @@ export function highMoor(): MapcraftResult {
 
   // The Little Stones: what the tor's own stones have been dropping for a thousand years.
   p.meadow(33, 8, 7, 5);
-  stand('strange-stone', 34, 9);
-  stand('strange-stone', 37, 8);
-  stand('strange-stone', 37, 11);
+  stand('strange-stone', 35, 8);
+  stand('strange-stone', 38, 8);
+  stand('strange-stone', 35, 12);
   p.flowers([36, 10], [39, 9], [33, 12]);
 
   // The Grey Stones: the tor, one clean mass on the west of the corridor.
   p.rock(20, 13, 10, 8);
   p.wood(20, 11, 4, 2).wood(20, 21, 4, 2); // the wood comes down to the tor's flanks
+  // A buttress of the tor out to the road, so the lawn under it is two bays off
+  // the road - the tor's sign and the drovers' wife in one, its clue and its
+  // Geodude in the other - rather than a lane two wide past them.
+  p.rock(30, 14, 2, 4);
   p.bedRows([14, 36, 39], [15, 35, 39], [16, 35, 39], [17, 36, 39], [18, 36, 39], [19, 37, 39]);
   stand('stump', 36, 20);
   stand('dead-stump', 38, 22);
@@ -78,18 +82,18 @@ export function highMoor(): MapcraftResult {
   stand('hut', 47, 8);
   stand('log', 44, 13);
   stand('sack', 50, 9);
-  stand('tree-2', 49, 12);
-  p.block(49, 12, 3, 1, '#');
+  stand('tree-2', 49, 13);
+  p.block(49, 13, 3, 1, '#');
   p.flowers([46, 11], [52, 11], [44, 10], [51, 9]);
 
   // The drovers' heather on the east, right up to the road.
   p.block(29, 24, 11, 8, 'g');
   // The drovers' fold, under the tor, and their camp in the heather across the road.
-  p.yard(20, 27, 5, 5, { gates: [[24, 28]], inner: '.' });
+  p.yard(20, 27, 5, 5, { gates: [[24, 28], [24, 29]], inner: '.' });
   stand('crate-pair', 21, 28);
   p.meadow(35, 24, 5, 4);
   stand('hut', 37, 24);
-  stand('log', 35, 27);
+  stand('log', 35, 23);
   stand('big-stump', 35, 25);
   p.flowers([39, 27]);
 
@@ -121,15 +125,15 @@ export function highMoor(): MapcraftResult {
   // fold the drovers rest the herd in on the east, and somebody at each.
   p.meadow(20, 56, 10, 6).meadow(33, 56, 8, 6);
   p.wood(20, 60, 2, 2).wood(40, 60, 2, 2);
-  p.building('strange-stone', 23, 58).building('strange-stone', 26, 59);
-  p.building('stump', 22, 57).building('stump', 28, 57);
+  p.building('strange-stone', 23, 58).building('strange-stone', 26, 58);
+  p.building('stump', 22, 57).building('stump', 20, 56);
   p.flowers([25, 57], [28, 60]);
-  p.yard(34, 57, 6, 5, { gates: [[34, 59]], inner: '.' });
+  p.yard(34, 57, 6, 5, { gates: [[34, 59], [34, 60]], inner: '.' });
   p.building('crate-pair', 37, 58);
   // A place to get your breath back halfway up.
   p.building('bench', 21, 46);
-  p.building('log', 28, 46);
-  p.building('stump', 27, 48);
+  p.building('log', 20, 48);
+  p.building('stump', 20, 49);
   p.flowers([28, 44], [21, 49]);
 
   // The road last, so nothing drawn round it cuts it.
@@ -206,9 +210,9 @@ export function highMoor(): MapcraftResult {
         { x: 31, y: 6, lines: ['THE MOOR GATE', 'The old toll road leaves the vale here.'] },
         { x: 39, y: 11, lines: ['THE LITTLE STONES', 'There are nine. There were seven. Do not ask. Please put back any you borrow.'] },
         { x: 39, y: 34 + 1, lines: ['MOOR SPRING', 'The waters cure gout, grief and the common cold. Results may vary. They have varied.'] },
-        { x: 13, y: 25, lines: ['THE SHEPHERD’S', 'Mind the flock. Nothing here is a sheep. We do not discuss it.'] },
-        { x: 28, y: 25, lines: ['THE DROVERS’ FOLD', 'Shut the gate. Count the herd. Count them again. Accept the second number.'] },
-        { x: 44, y: 11, lines: ['THE LOST FOLD', 'Nobody has brought a beast up here since the boulder came down. Everyone has meant to.'] },
+        { x: 13, y: 26, lines: ['THE SHEPHERD’S', 'Mind the flock. Nothing here is a sheep. We do not discuss it.'] },
+        { x: 24, y: 26, lines: ['THE DROVERS’ FOLD', 'Shut the gate. Count the herd. Count them again. Accept the second number.'] },
+        { x: 44, y: 10, lines: ['THE LOST FOLD', 'Nobody has brought a beast up here since the boulder came down. Everyone has meant to.'] },
         { x: 30, y: 13, lines: ['THE GREY STONES', 'The tor the vale is named for. The drovers touch it for luck.'] },
         { x: 29, y: 58, lines: ['THE WAYSTONES', 'They walked down from the tor one night. So the drovers say. Do not count them.'] },
         // The secrets' clues, each beside its nook.
@@ -221,63 +225,64 @@ export function highMoor(): MapcraftResult {
       pokemon: [
         { x: 38, y: 60, species: 'tauros', level: 7 },
         { x: 22, y: 59, species: 'clefairy', beat: { everyMs: 2300, roam: [[0, 1]] } },
-        { x: 22, y: 50, species: 'spearow', beat: { everyMs: 1700, roam: [[1, 0], [1, -1]] } },
+        { x: 20, y: 40, species: 'spearow', beat: { everyMs: 1700, roam: [[0, 1]] } },
         // The flock the Shepherd will not discuss, and the dog that does not believe it either.
         { x: 16, y: 16, species: 'nidoran-f', beat: { everyMs: 2500, roam: [[0, 1]] } },
         { x: 15, y: 18, species: 'nidoran-m', beat: { everyMs: 2100, roam: [[1, 0]] } },
         { x: 11, y: 28, species: 'growlithe', beat: { everyMs: 1500, roam: [[0, -1], [1, -1]] } },
         // The Clefairy that come to the Little Stones, whatever anybody says about the night.
-        { x: 35, y: 11, species: 'clefairy', beat: { everyMs: 2700, roam: [[0, 1]] } },
-        { x: 38, y: 10, species: 'clefairy', level: 9 },
+        { x: 37, y: 13, species: 'clefairy', beat: { everyMs: 2700, glances: ['up', 'right'] } },
+        { x: 37, y: 9, species: 'clefairy', level: 9 },
         // The eleventh stone: an Alakazam sitting inside the Little Stones with
         // its eyes shut, every raid until it is had, which opens them only for a
-        // raid gone on alone (`world/secrets.ts`). On the ring's east side, by
-        // the notice: in the gap at its north it shut the ground inside the ring
-        // off from everything, which a raid found and `secrets.test.ts` now holds.
-        { x: 38, y: 11, species: 'alakazam', level: 22, secret: 'the-eleventh-stone' },
+        // raid gone on alone (`world/secrets.ts`). In the ring's north-east corner,
+        // above the notice: out of the way across the ring to it and the cut to the
+        // Lost Fold under it. In the gap at the ring's north it shut the ground
+        // inside off from everything, which a raid found and `secrets.test.ts` holds.
+        { x: 39, y: 10, species: 'alakazam', level: 22, secret: 'the-eleventh-stone' },
         // The fold, and the Lost Fold's old bull, who has been on his own a long time.
         { x: 21, y: 30, species: 'tauros', beat: { everyMs: 2600, glances: ['right'] } },
         { x: 47, y: 13, species: 'tauros', level: 13, beat: { everyMs: 3100, roam: [[1, 0]] } },
         { x: 39, y: 25, species: 'rattata', beat: { everyMs: 1300, roam: [[0, -1]] } },
         // The toll's Pidgey, and the Geodude that gets counted with the Grey Stones.
         { x: 33, y: 8, species: 'pidgey', beat: { everyMs: 1500, roam: [[0, -1]] } },
-        { x: 31, y: 16, species: 'geodude', level: 8 },
+        { x: 31, y: 18, species: 'geodude', level: 8 },
         // Moor Spring.
         { x: 44, y: 38, species: 'poliwag', beat: { everyMs: 1900, roam: [[-1, 0]] } },
         { x: 53, y: 35, species: 'slowpoke' },
         // The tarn.
-        { x: 30, y: 43, species: 'psyduck', beat: { everyMs: 2300, roam: [[-1, 0]] } },
+        { x: 33, y: 49, species: 'psyduck', beat: { everyMs: 2300, roam: [[-1, 0]] } },
       ],
       people: [
         { x: 35, y: 58, name: 'Drover Boy', look: 'youngster', facing: 'down', lines: ['Grandad says they know the way home.', 'They do. They go there. All the time. Without me.'], beat: { everyMs: 3100, glances: ['right', 'down'] }, calls: ['Come back! Please!'] },
         { x: 24, y: 57, name: 'Lina', look: 'lass', facing: 'down', lines: ['I count them every time and get a different number.', 'I got six once. There were never six.'], beat: { everyMs: 3700, glances: ['left', 'right'] }, calls: ['One, two, three... wait.'] },
         { x: 36, y: 49, name: 'Tarn Fisher', look: 'fisherman', facing: 'up', lines: ['Up on the moor the water has nothing in it but sky.', 'I come for the quiet. Well. I did.'] },
         { x: 37, y: 38, name: 'Peak Walker', look: 'hiker', facing: 'left', lines: ['East is the quarry, and the caves under it. Mind who you meet in there.', 'I have been meaning to go. I have been meaning to go for years.'], beat: { everyMs: 3500, glances: ['up', 'right'] }, calls: ['Lovely day for it.'] },
-        { x: 27, y: 47, name: 'Walker', look: 'hiker', facing: 'left', lines: ['Going up? You will not get down the way you came, not by the ledges. They only go one way.', 'Quick, mind. Very quick.'], beat: { everyMs: 3300, glances: ['up', 'down'] }, calls: ['Mind the ledges!'] },
+        { x: 23, y: 48, name: 'Walker', look: 'hiker', facing: 'left', lines: ['Going up? You will not get down the way you came, not by the ledges. They only go one way.', 'Quick, mind. Very quick.'], beat: { everyMs: 3300, glances: ['up', 'down'] }, calls: ['Mind the ledges!'] },
         { x: 15, y: 26, name: 'Shepherd', look: 'old-man', facing: 'right', lines: ['The tarn never freezes, whatever the winter.', 'There was a sheep track west, under it, to the old chapel.', 'By day the fog turns you back. Go after dark, if you go.'], beat: { everyMs: 4200, glances: ['left', 'up'] }, calls: ['Good flock. Good... flock.'] },
         { x: 8, y: 24 + 1, name: 'Shepherd’s Lad', look: 'boy', facing: 'right', lines: ['Grandad says they are sheep. They have horns and they are poisonous.', 'I asked when we might get a sheep. He went very quiet.'], beat: { everyMs: 2600, glances: ['up', 'right'] }, calls: ['Here, sheep. Sheep?'] },
-        { x: 25, y: 11, name: 'Toll Clerk', look: 'clerk', facing: 'right', lines: ['Nobody has paid the toll in forty years, but I still have to write it down.', 'That is nobody, again. You are the fourth nobody today.'], beat: { everyMs: 3300, roam: [[1, 0]], glances: ['up'] }, calls: ['One nobody. Noted.'] },
+        { x: 24, y: 11, name: 'Toll Clerk', look: 'clerk', facing: 'right', lines: ['Nobody has paid the toll in forty years, but I still have to write it down.', 'That is nobody, again. You are the fourth nobody today.'], beat: { everyMs: 3300, roam: [[1, 0]], glances: ['up'] }, calls: ['One nobody. Noted.'] },
         // The secret's clue (`world/secrets.ts`, THE ELEVENTH STONE): she is the one who counts.
-        { x: 36, y: 12, name: 'Mother Stone', look: 'channeler', facing: 'up', secret: 'the-eleventh-stone', lines: ['They sing at night, the stones. Clefairy come up to hear it.', 'I have counted them twice tonight. Nine and eleven. It is a good sign, or the other thing.', 'One of them is no stone. It only opens its eyes for somebody who comes up here ALONE: one POKéMON, no more.'], beat: { everyMs: 4500, glances: ['left', 'right'] }, calls: ['Hush. They are listening.'] },
+        { x: 37, y: 12, name: 'Mother Stone', look: 'channeler', facing: 'up', secret: 'the-eleventh-stone', lines: ['They sing at night, the stones. Clefairy come up to hear it.', 'I have counted them twice tonight. Nine and eleven. It is a good sign, or the other thing.', 'One of them is no stone. It only opens its eyes for somebody who comes up here ALONE: one POKéMON, no more.'], beat: { everyMs: 4500, glances: ['left', 'right'] }, calls: ['Hush. They are listening.'] },
         { x: 31, y: 13, name: 'Drover’s Wife', look: 'woman', facing: 'left', lines: ['You touch the Grey Stones for luck, going up and coming down.', 'He touched them every time for thirty years. Then a Tauros sat on him. So.'], beat: { everyMs: 3800, glances: ['down'] }, calls: ['Touch it. For luck.'] },
         { x: 38, y: 27, name: 'Camp Cook', look: 'chef', facing: 'up', lines: ['It is stew. It has been stew since Tuesday. It will be stew until we reach the sea.', 'There is more in it now than there was. I do not ask.'], beat: { everyMs: 2900, glances: ['left'] }, calls: ['Stew! Who wants stew?'] },
-        { x: 28, y: 27, name: 'Herd Girl', look: 'lass', facing: 'down', lines: ['This fold holds sixty. We had sixty. I shut the gate myself.', 'There are fifty-nine, and one in Millbrook. I do not understand how he does it.'], beat: { everyMs: 3200, glances: ['right'] }, calls: ['Fifty-eight. Fifty-nine...'] },
+        { x: 21, y: 26, name: 'Herd Girl', look: 'lass', facing: 'down', lines: ['This fold holds sixty. We had sixty. I shut the gate myself.', 'There are fifty-nine, and one in Millbrook. I do not understand how he does it.'], beat: { everyMs: 3200, glances: ['right'] }, calls: ['Fifty-eight. Fifty-nine...'] },
         { x: 47, y: 35 + 3 - 3, name: 'Mrs Alder', look: 'beauty', facing: 'up', lines: ['Three weeks I have taken these waters, for my nerves.', 'They taste of egg. I am very nervous about it.'], beat: { everyMs: 3900, glances: ['right'] }, calls: ['Marvellous. Marvellous.'] },
-        { x: 56, y: 35, name: 'Attendant', look: 'gentleman', facing: 'left', lines: ['Three cups before breakfast, three after, and a brisk walk to the bench.', 'It has never cured anybody, but they do sit very nicely.'], beat: { everyMs: 3100, glances: ['left'] }, calls: ['Three cups, madam.'] },
+        { x: 57, y: 35, name: 'Attendant', look: 'gentleman', facing: 'left', lines: ['Three cups before breakfast, three after, and a brisk walk to the bench.', 'It has never cured anybody, but they do sit very nicely.'], beat: { everyMs: 3100, glances: ['left'] }, calls: ['Three cups, madam.'] },
         { x: 51, y: 35 + 3 + 1 + 0, name: 'Colonel', look: 'old-man', facing: 'left', lines: ['Bad leg. Other one is worse. Took the waters at Pewter in my day.', 'East of here is the quarry, and the caves. Do not. Well. I did. Look at my leg.'], beat: { everyMs: 4700, glances: ['up'] }, calls: ['In my day...'] },
         { x: 42, y: 34, name: 'Trail Boy', look: 'youngster', facing: 'right', lines: ['I carry water down to Millbrook for people who cannot come up.', 'It is mostly just water from the pump, by the time I get there. Do not tell them.'], beat: { everyMs: 2300, roam: [[0, -1]], glances: ['down'] }, calls: ['Water! Fresh water!'] },
         { x: 52, y: 13, name: 'Old Hob', look: 'camper', facing: 'left', lines: ['A boulder came down in my grandad’s day and the fold was shut and everybody forgot.', 'I did not forget. I just live here now. It is very quiet. Thank you for moving it.'] },
       ],
       trainers: [
-        { x: 28, y: 29, name: 'Drover Hale', team: 'drover', look: 'hiker', facing: 'left', sight: 0, lines: ['This road is for the herd!', 'Show me your Pokemon if you want to pass.'] },
+        { x: 31, y: 30, name: 'Drover Hale', team: 'drover', look: 'hiker', facing: 'left', sight: 0, lines: ['This road is for the herd!', 'Show me your Pokemon if you want to pass.'] },
       ],
       landmarks: [
-        { x: 50, y: 37, name: 'Moor Spring', kind: 'spring' },
+        { x: 50, y: 35, name: 'Moor Spring', kind: 'spring' },
         { x: 49, y: 10, name: 'Old Shieling', kind: 'hide' },
       ],
       berryTrees: [
         { x: 17, y: 22, berry: 'pecha' },
-        { x: 45, y: 11, berry: 'sitrus' },
+        { x: 45, y: 10, berry: 'sitrus' },
       ],
     },
   });
