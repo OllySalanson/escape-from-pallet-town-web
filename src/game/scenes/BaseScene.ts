@@ -1436,7 +1436,6 @@ export class BaseScene extends Phaser.Scene {
     this.noticePlace(deltaMs);
     this.watchThePit(deltaMs);
     this.askTheNameOnceHome();
-    this.tendTheWayMarks(deltaMs);
     if (!this.still) {
       this.boats?.update(deltaMs);
       this.night?.update(deltaMs);
@@ -1467,6 +1466,9 @@ export class BaseScene extends Phaser.Scene {
     // frame, a bubble it had just put up was a frame late into the seating and
     // a caption was drawn across it for that frame.
     this.containWorldLabels();
+    // And the chevron after them, against this frame's captions: placed
+    // before, it stood on a caption for the frame that caption arrived.
+    this.tendTheWayMarks(deltaMs);
   }
 
   private updateWalking(deltaMs: number): void {
@@ -5787,7 +5789,9 @@ export class BaseScene extends Phaser.Scene {
     }
     this.wayMarkMs += deltaMs;
     const reading = this.dialogBox.visible || this.boxQuestion !== null || this.leaving;
-    this.yardWayMark?.frame(this.wayMarkMs, { x: this.player.x + TILE_SIZE / 2, y: this.player.y }, reading);
+    // Clear of every caption on show, as the raid's is (`WorldScene.settleWayMark`).
+    const captions = this.yardWayMark ? [...this.worldLabels, ...(this.inspectLabel ? [this.inspectLabel] : [])].flatMap((label) => label.shown() ?? []) : [];
+    this.yardWayMark?.frame(this.wayMarkMs, { x: this.player.x + TILE_SIZE / 2, y: this.player.y }, reading, captions);
     this.runnerWayMarks?.frame(
       this.wayMarkMs,
       this.player.y - PLAYER_SPRITE_Y_OFFSET + TILE_SIZE / 2,
