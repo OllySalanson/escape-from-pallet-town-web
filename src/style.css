@@ -1267,6 +1267,32 @@ button {
   }
 }
 
+/* A Pokémon's party icon on a menu (`ui/monIcon.ts`): its two frames, held for
+   FireRed's ticks at its health's pace, and the bounce of the one under the
+   cursor - three pixels up on the second frame and one down on the first
+   (`SpriteCB_BouncePartyMonIcon`). `step-end` holds each frame whole. Kept out
+   of the Pixel UI block below because a keyframe's percentage is no selector. */
+@keyframes mon-flap {
+  0% {
+    background-position-x: calc(var(--u) * -32 * var(--icon-col));
+  }
+  50%,
+  100% {
+    background-position-x: calc(var(--u) * -32 * (var(--icon-col) + 1));
+  }
+}
+@keyframes mon-bounce {
+  0% {
+    background-position-x: calc(var(--u) * -32 * var(--icon-col));
+    transform: translateY(var(--u));
+  }
+  50%,
+  100% {
+    background-position-x: calc(var(--u) * -32 * (var(--icon-col) + 1));
+    transform: translateY(calc(var(--u) * -3));
+  }
+}
+
 /* ==========================================================================
    Pixel UI: the DOM screens drawn in the game's own visual language.
 
@@ -4678,4 +4704,277 @@ button {
 :where(.pixel-ui[data-layout='side']) .teach-moves {
   display: grid;
   gap: 0;
+}
+
+/* --- YOUR TEAM, drawn as FireRed's party and PC box (`ui/teamView.ts`) -----
+   Six slots two abreast over a grid of party icons, and one card at the foot
+   for the Pokémon under the cursor: the words are there for one at a time. */
+:where(.pixel-ui) .team-layout {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 4);
+  min-height: 0;
+  height: 100%;
+}
+:where(.pixel-ui) .team-layout > .px-window {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+/* The boxes give up room before anything else does, and scroll inside. */
+:where(.pixel-ui) .team-layout > .team-boxes {
+  flex: 0 1 auto;
+}
+:where(.pixel-ui) .team-boxes > * {
+  flex: none;
+}
+:where(.pixel-ui) .team-boxes > .team-box {
+  flex: 0 1 auto;
+  min-height: calc(var(--u) * 41);
+  display: grid;
+  /* Fixed tracks a whole number of pixels wide, FireRed's box six across in a
+     column and as many as fit in a sheet. */
+  grid-template-columns: repeat(auto-fill, calc(var(--u) * 36));
+  /* Rows as tall as the tiles, which carry their own height: a fixed track
+     would give the MORE strip (a generated box, a row of its own) a whole
+     tile's height under the last row. */
+  justify-content: center;
+  align-content: start;
+  /* The pane only ever rests on a row's top: a tile is a tall row, and resting
+     between two left one cut at each end, which the scroll cues then hid
+     whole - a blank band where the boxes were (YOUR TEAM after ENTER). */
+  scroll-snap-type: y mandatory;
+}
+:where(.pixel-ui) .team-box > .team-tile {
+  scroll-snap-align: start;
+}
+:where(.pixel-ui) .team-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, calc(var(--u) * 106));
+  gap: calc(var(--u) * 2);
+  justify-content: center;
+}
+
+/* The icon: one 32x32 frame of the sheet, at its pace. */
+:where(.pixel-ui) .px-mon-icon {
+  flex: none;
+  display: block;
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+  background-image: url('/assets/pokemon-icons.png');
+  background-size: calc(var(--u) * 512) calc(var(--u) * 608);
+  background-position: calc(var(--u) * -32 * var(--icon-col)) calc(var(--u) * -32 * var(--icon-row));
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  animation: mon-flap 0.2s step-end infinite;
+}
+:where(.pixel-ui) .px-mon-icon.is-green {
+  animation-duration: calc(16s / 60);
+}
+:where(.pixel-ui) .px-mon-icon.is-yellow {
+  animation-duration: calc(28s / 60);
+}
+:where(.pixel-ui) .px-mon-icon.is-red {
+  animation-duration: calc(44s / 60);
+}
+:where(.pixel-ui) .px-mon-icon.is-still {
+  animation: none;
+}
+:where(.pixel-ui) .px-mon-icon.is-missing {
+  display: grid;
+  place-items: center;
+  background: none;
+  animation: none;
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) :focus > .px-mon-icon:not(.is-still, .is-missing) {
+  animation-name: mon-bounce;
+}
+
+/* A slot: a small window, the icon at its left and the name over the level and bar. */
+.pixel-ui .team-slot {
+  --fill: var(--cream);
+  --edge: var(--frame);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  height: calc(var(--u) * 34);
+  padding: var(--u) calc(var(--u) * 2);
+  min-width: 0;
+  text-align: left;
+  background:
+    linear-gradient(var(--edge), var(--edge)) var(--u) 0 / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) var(--u) 100% / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) 0 var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) 100% var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat,
+    linear-gradient(var(--fill), var(--fill)) var(--u) var(--u) / calc(100% - var(--u) * 2)
+      calc(100% - var(--u) * 2) no-repeat;
+}
+.pixel-ui .team-slot.is-lead {
+  --fill: var(--gold-wash);
+}
+.pixel-ui .team-slot:focus {
+  --fill: var(--cream-lit);
+  --edge: var(--red);
+  outline: none;
+}
+.pixel-ui .team-slot.is-lead:focus {
+  --fill: #f8edbd;
+}
+.pixel-ui .team-slot.is-empty {
+  --fill: var(--cream-dim);
+  --edge: var(--ink-soft);
+  justify-content: center;
+}
+.pixel-ui .team-slot.is-empty > .item-icon {
+  filter: grayscale(1);
+  opacity: 0.35;
+}
+:where(.pixel-ui) .team-slot-words {
+  display: grid;
+  min-width: 0;
+}
+:where(.pixel-ui) .team-slot-words > .px-name {
+  overflow: hidden;
+  white-space: nowrap;
+}
+:where(.pixel-ui) .team-slot-line,
+:where(.pixel-ui) .team-tile-line {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--u) * 2);
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .team-tile-line {
+  justify-content: center;
+  gap: calc(var(--u) * 1);
+  /* Tucked three pixels up under the icon: a line's capitals start three and a
+     half pixels down it, so no ink meets the icon's, and two rows of the box
+     and the MORE strip fit the boxes' share of a 1280x800 window. */
+  margin-top: calc(var(--u) * -3);
+}
+
+/* A tile: the icon over its level and bar, framed only under the cursor. */
+.pixel-ui .team-tile {
+  --edge: transparent;
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  width: calc(var(--u) * 36);
+  height: calc(var(--u) * 41);
+  padding: 0;
+  background:
+    linear-gradient(var(--edge), var(--edge)) var(--u) 0 / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) var(--u) 100% / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) 0 var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) 100% var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat;
+}
+.pixel-ui .team-tile:focus {
+  --edge: var(--red);
+  outline: none;
+  background-color: var(--cream-lit);
+}
+.pixel-ui .team-tile[aria-disabled='true']:not(.is-fainted) > .px-mon-icon {
+  opacity: 0.55;
+}
+.pixel-ui .team-tile.is-fainted > .px-mon-icon,
+.pixel-ui .team-slot.is-fainted > .px-mon-icon {
+  filter: grayscale(1);
+}
+:where(.pixel-ui) .px-hp.is-short {
+  width: calc(var(--u) * (var(--bar) + 2));
+  height: calc(var(--u) * 4);
+  margin-top: calc(var(--u) * 4);
+}
+
+/* The card for the one under the cursor: the portrait beside its words. */
+:where(.pixel-ui) .team-card:not([hidden]) {
+  display: flex;
+  align-items: flex-end;
+  gap: calc(var(--u) * 4);
+  padding-top: var(--u);
+  border-top: var(--u) solid var(--frame);
+}
+:where(.pixel-ui) .team-card-words {
+  display: grid;
+  min-width: 0;
+  padding-bottom: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .team-card-words > .px-row-line {
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .team-card-level,
+:where(.pixel-ui) .team-card-where {
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .team-card-types {
+  gap: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .team-card-where .item-icon {
+  display: inline-block;
+  vertical-align: top;
+}
+/* A sheet (the panel as the whole screen, in a window with no room beside the
+   map) is wide and short: the card stands beside the boxes rather than under
+   them, or at 800x600 it took all but one cut row of them. */
+:where(.pixel-ui[data-layout='sheet']) .team-layout > .team-boxes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 150);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  column-gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui[data-layout='sheet']) .team-boxes > .px-heading,
+:where(.pixel-ui[data-layout='sheet']) .team-boxes > .picker-find {
+  grid-column: 1 / -1;
+}
+:where(.pixel-ui[data-layout='sheet']) .team-boxes > .team-box {
+  grid-column: 1;
+  grid-row: 3;
+}
+:where(.pixel-ui[data-layout='sheet']) .team-boxes > .team-card {
+  grid-column: 2;
+  grid-row: 3;
+  min-height: 0;
+}
+:where(.pixel-ui[data-layout='sheet']) .team-card:not([hidden]) {
+  /* The portrait with the type badges stacked beside it, and the words under
+     both: the column is narrow and short, and one under another they ran off
+     its foot. */
+  display: grid;
+  grid-template-columns: calc(var(--u) * 64) minmax(0, 1fr);
+  column-gap: calc(var(--u) * 4);
+  align-content: start;
+  padding: 0 0 0 calc(var(--u) * 4);
+  border-top: none;
+  border-left: var(--u) solid var(--frame);
+}
+:where(.pixel-ui[data-layout='sheet']) .team-card > .team-card-words {
+  display: contents;
+}
+:where(.pixel-ui[data-layout='sheet']) .team-card > .team-card-words > * {
+  grid-column: 1 / -1;
+}
+:where(.pixel-ui[data-layout='sheet']) .team-card > .team-card-words > .team-card-types {
+  grid-row: 1;
+  grid-column: 2;
+  flex-direction: column;
+  align-items: flex-start;
+  align-self: start;
+  margin-top: calc(var(--u) * 8);
+}
+/* And where it lives under the badges, in the same cell, so only the name and
+   the bar are under the portrait. */
+:where(.pixel-ui[data-layout='sheet']) .team-card > .team-card-words > .team-card-where {
+  grid-row: 1;
+  grid-column: 2;
+  align-self: end;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pixel-ui .px-mon-icon {
+    animation: none;
+  }
 }

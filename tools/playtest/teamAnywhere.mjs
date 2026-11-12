@@ -63,7 +63,7 @@ try {
   const saved = () => page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}'))`);
   const rows = (menu) =>
     page.evaluate(
-      `[...document.querySelectorAll('#screens ${menu} [data-find]')].filter((row) => !row.hidden).map((row) => row.querySelector('.px-name')?.textContent + ' | ' + row.dataset.boxName)`,
+      `[...document.querySelectorAll('#screens ${menu} [data-find]')].filter((row) => !row.hidden).map((row) => (row.querySelector('.px-name')?.textContent ?? row.getAttribute('aria-label')?.split(',')[0]) + ' | ' + row.dataset.boxName)`,
     );
   const find = async (menu, text) => {
     await page.evaluate(`(() => {
