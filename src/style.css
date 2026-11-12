@@ -4706,7 +4706,8 @@ button {
   gap: 0;
 }
 
-/* --- YOUR TEAM, drawn as FireRed's party and PC box (`ui/teamView.ts`) -----
+/* --- YOUR TEAM and the raid's PARTY, drawn as FireRed's party and PC box ----
+   (`ui/teamView.ts`, `scenes/PartyScene.ts`, the slot from `ui/monIcon.ts`).
    Six slots two abreast over a grid of party icons, and one card at the foot
    for the Pokémon under the cursor: the words are there for one at a time. */
 :where(.pixel-ui) .team-layout {
@@ -4749,7 +4750,7 @@ button {
 :where(.pixel-ui) .team-box > .team-tile {
   scroll-snap-align: start;
 }
-:where(.pixel-ui) .team-slots {
+:where(.pixel-ui) .px-party-slots {
   display: grid;
   grid-template-columns: repeat(auto-fill, calc(var(--u) * 106));
   gap: calc(var(--u) * 2);
@@ -4793,7 +4794,7 @@ button {
 }
 
 /* A slot: a small window, the icon at its left and the name over the level and bar. */
-.pixel-ui .team-slot {
+.pixel-ui .px-party-slot {
   --fill: var(--cream);
   --edge: var(--frame);
   position: relative;
@@ -4812,35 +4813,49 @@ button {
     linear-gradient(var(--fill), var(--fill)) var(--u) var(--u) / calc(100% - var(--u) * 2)
       calc(100% - var(--u) * 2) no-repeat;
 }
-.pixel-ui .team-slot.is-lead {
+.pixel-ui .px-party-slot.is-lead {
   --fill: var(--gold-wash);
 }
-.pixel-ui .team-slot:focus {
+.pixel-ui .px-party-slot:focus {
   --fill: var(--cream-lit);
   --edge: var(--red);
   outline: none;
 }
-.pixel-ui .team-slot.is-lead:focus {
+.pixel-ui .px-party-slot.is-lead:focus {
   --fill: #f8edbd;
 }
-.pixel-ui .team-slot.is-empty {
+.pixel-ui .px-party-slot.is-empty {
   --fill: var(--cream-dim);
   --edge: var(--ink-soft);
   justify-content: center;
 }
-.pixel-ui .team-slot.is-empty > .item-icon {
+.pixel-ui .px-party-slot.is-empty > .item-icon {
   filter: grayscale(1);
   opacity: 0.35;
 }
-:where(.pixel-ui) .team-slot-words {
+/* Picked up to be moved: FireRed lifts the slot out of line; here it turns the
+   colour of a thing in the hand. */
+.pixel-ui .px-party-slot.is-holding {
+  --fill: var(--red-wash);
+  --edge: var(--red);
+}
+/* What it is holding, on the icon's corner, as FireRed marks a held item in its
+   party - here the piece's own icon, so which piece is seen too. */
+:where(.pixel-ui) .px-slot-gear {
+  position: absolute;
+  left: calc(var(--u) * 22);
+  bottom: var(--u);
+  pointer-events: none;
+}
+:where(.pixel-ui) .px-party-slot-words {
   display: grid;
   min-width: 0;
 }
-:where(.pixel-ui) .team-slot-words > .px-name {
+:where(.pixel-ui) .px-party-slot-words > .px-name {
   overflow: hidden;
   white-space: nowrap;
 }
-:where(.pixel-ui) .team-slot-line,
+:where(.pixel-ui) .px-party-slot-line,
 :where(.pixel-ui) .team-tile-line {
   display: flex;
   align-items: flex-start;
@@ -4882,7 +4897,7 @@ button {
   opacity: 0.55;
 }
 .pixel-ui .team-tile.is-fainted > .px-mon-icon,
-.pixel-ui .team-slot.is-fainted > .px-mon-icon {
+.pixel-ui .px-party-slot.is-fainted > .px-mon-icon {
   filter: grayscale(1);
 }
 :where(.pixel-ui) .px-hp.is-short {
@@ -4917,6 +4932,57 @@ button {
 :where(.pixel-ui) .team-card-where .item-icon {
   display: inline-block;
   vertical-align: top;
+}
+/* The raid PARTY's dossier in its side column leads with the Pokémon itself -
+   the portrait, beside its name and health, its types under them - then what
+   can be done (its gear), then the numbers - in a side column, and in a sheet
+   with a tight room. Stacked as everywhere else in a tight room, the portrait
+   went last and below the fold, and the panel opened on a page of words. Placed by grid, so the shared dossier's markup is
+   untouched (`ui/pokemonDossier.ts`, which Bill's PC and the bench draw too). */
+:where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-body,
+:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-body {
+  display: grid;
+  grid-template-columns: calc(var(--u) * 64) minmax(0, 1fr);
+  column-gap: calc(var(--u) * 4);
+  row-gap: calc(var(--u) * 2);
+  align-items: start;
+}
+:where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-figure,
+:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-figure {
+  display: contents;
+}
+:where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-figure > .px-portrait,
+:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-figure > .px-portrait {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+:where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-vitals,
+:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-vitals {
+  grid-column: 2;
+  grid-row: 1;
+}
+:where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-figure > .summary-types,
+:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-figure > .summary-types {
+  grid-column: 2;
+  grid-row: 2;
+  grid-template-columns: repeat(2, max-content);
+  column-gap: calc(var(--u) * 2);
+  align-self: end;
+}
+:where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-deeds,
+:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-deeds {
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+:where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-growth,
+:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-growth {
+  grid-column: 1 / -1;
+  grid-row: 4;
+}
+:where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-moves,
+:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-moves {
+  grid-column: 1 / -1;
+  grid-row: 5;
 }
 /* A sheet (the panel as the whole screen, in a window with no room beside the
    map) is wide and short: the card stands beside the boxes rather than under

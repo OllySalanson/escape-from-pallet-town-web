@@ -462,6 +462,11 @@ scorecards are made of - words in view, Pokémon in view, how much of the panel 
 picture (`docs/screens/menu-overhaul/`); `--before` drives a build of `main` from
 before a redraw, which has no card.
 
+`partyShots.mjs <test-mode build url> <dir> [--window=WxH] [--before]` does the
+same for the raid's PARTY on a raid of five, a few hurt, one fainted and the lead
+holding gear: every slot by arrow key, ENTER and ENTER to swap the lead, TAB into
+the dossier to give and take gear, and ESC back to the raid.
+
 `menuShots.mjs <url> <dir> [--window=1920x950] [--raid] [--resize] [--scrollbars]`
 photographs every DOM screen at a real window size and prints, per scrolling
 pane, how many rows it holds and how many of them a player can actually see -

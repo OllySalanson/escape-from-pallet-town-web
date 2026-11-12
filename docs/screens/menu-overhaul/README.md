@@ -113,3 +113,49 @@ Against the benchmarks, out of 5:
 | Tarkov: laid across the room | 2 | 4 | one column; now six across in the panel, ten in a sheet, the card beside it |
 | Persona 5: motion and colour | 1 | 4 | still text; the icons flap, the chosen one bounces, type badges in colour |
 | Every key path | 5 | 5 | arrows reach all 24, ENTER takes and leaves, FIND "box 2" narrows, P closes (`teamShots.mjs`, `teamAnywhere.mjs`) |
+
+## The raid's PARTY (P in a raid)
+
+`scenes/PartyScene.ts`, its slot shared with YOUR TEAM (`pixelPartySlot` in
+`ui/monIcon.ts`). Pictures by `tools/playtest/partyShots.mjs <build> <dir>
+--window=WxH` (`--before` against `main`), on its raid: five deployed, Pidgeotto
+hurt, Nidorino in the red, Geodude fainted, Charmander leading with a Quick Claw
+and Leftovers in the pack.
+
+| | Before | After |
+|---|---|---|
+| 1280x800 | ![](raid-party/before-1280x800.png) | ![](raid-party/after-1280x800.png) |
+| 1920x950 | ![](raid-party/before-1920x950.png) | ![](raid-party/after-1920x950.png) |
+| 800x600 (a sheet) | ![](raid-party/before-800x600.png) | ![](raid-party/after-800x600.png) |
+
+Pidgeotto picked up (the slot in hand is red), put down on the lead, and the
+Leftovers given to Charmander from the pack - on its icon's corner at once:
+![](raid-party/after-in-hand.png) ![](raid-party/after-new-lead.png) ![](raid-party/after-gave-leftovers.png)
+
+What changed: the five rows are FireRed's six slots (the lead's gold, the sixth an
+empty Poké Ball, the icons at their health's pace, the Geodude still and grey);
+what a Pokémon holds is its own icon on the corner of its slot, as FireRed marks a
+held item; the slot in hand turns red; and the dossier under them leads with the
+portrait beside the name and health, its types under them, then the gear - in the
+side column and in a tight sheet, where it used to end on the portrait below the
+fold. The dossier's markup is shared with Bill's PC and is left for that menu's
+turn.
+
+### Scorecard
+
+| Measure | 1280x800 before | after | 1920x950 before | after | 800x600 before | after |
+|---|---|---|---|---|---|---|
+| Words in view | 85 | **68** | 95 | **75** | 57 | **44** |
+| Pokémon in view | 5 of 5 | 5 | 5 of 5 | 5 | 5 of 5 | 5 |
+| Panel that is picture | 0% | **11%** | 4% | **9%** | 0% | **9%** |
+
+Every Pokémon was already in view, so the gain is in what a glance gets from them:
+
+| Benchmark | Before | After | Why |
+|---|---|---|---|
+| FireRed party: who leads, who is hurt | 3 | 5 | a LEADS tag and bars on rows; now the gold slot, the flap pace, the still grey icon |
+| FireRed party: who holds what | 1 | 5 | "holding Quick Claw" in a row's small print; now the piece's icon on the slot |
+| HeartGold party: how many | 2 | 5 | "4 OF 5 STANDING"; now five slots and an empty sixth |
+| FireRed party: moving one | 3 | 5 | a HOLDING tag; now the slot in hand turns red |
+| Hades: the one pointed at, big | 2 | 4 | the portrait was below the fold; now it leads the dossier (the numbers stay below it) |
+| Every key path | 5 | 5 | arrows reach every slot, ENTER/ENTER swaps the lead, TAB gives and takes gear, ESC closes (`partyShots.mjs`) |

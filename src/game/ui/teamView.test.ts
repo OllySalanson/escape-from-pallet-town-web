@@ -38,17 +38,17 @@ describe('YOUR TEAM', () => {
     expect(html.match(/data-member="[^"]+"[^>]*data-box-name="Box 1"/g)).toHaveLength(2);
     expect(html).toMatch(/team-card-where">Box 1 · partner/);
     // The lead's slot is the gold one, and a fainted Pokémon's icon stands still.
-    expect(html).toMatch(/class="team-slot is-lead" data-member="rattata-0"/);
+    expect(html).toMatch(/class="px-party-slot is-lead" data-member="rattata-0"/);
     expect(html).toMatch(/data-member="pidgey-1"[^>]*>.*?px-mon-icon is-still/);
   });
 
   it('always draws six slots, an empty one a Poké Ball, so how many are going is seen', () => {
     const stash = stashOf(['rattata', 5], ['pidgey', 9]);
     const html = teamBody({ entries: pickerEntries(stash), team: ['rattata-0'] });
-    expect(html.match(/class="team-slot[" ]/g)).toHaveLength(6);
-    expect(html.match(/team-slot is-empty/g)).toHaveLength(5);
+    expect(html.match(/class="px-party-slot[" ]/g)).toHaveLength(6);
+    expect(html.match(/px-party-slot is-empty/g)).toHaveLength(5);
     // Only the boxes are found in: the team is six at most and always in view.
-    expect(html).not.toMatch(/class="team-slot[^"]*"[^>]*data-find/);
+    expect(html).not.toMatch(/class="px-party-slot[^"]*"[^>]*data-find/);
   });
 
   it('says the team is full rather than taking a seventh', () => {

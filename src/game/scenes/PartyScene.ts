@@ -5,19 +5,10 @@ import type { Pokemon, PokemonParty } from '../pokemon';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
-import { conditionLine } from '../ui/condition';
+import { MAX_RUN_PARTY } from '../hub/deploymentFlow';
+import { pixelEmptyPartySlot, pixelPartySlot } from '../ui/monIcon';
 import { pokemonDossier } from '../ui/pokemonDossier';
-import {
-  CLOCK_STOPPED,
-  COLUMN_MEASURES,
-  escapeAttribute,
-  pixelColumns,
-  pixelHpBar,
-  pixelScreen,
-  pixelTag,
-  pixelWindow,
-  pixelPokemonName,
-} from '../ui/pixelUi';
+import { CLOCK_STOPPED, escapeAttribute, pixelScreen, pixelWindow } from '../ui/pixelUi';
 
 interface PartySceneData {
   party: PokemonParty;
@@ -36,8 +27,9 @@ interface PartySceneData {
 /**
  * The raid party, in the game's own visual language.
  *
- * The same shape as the stash it will be settled back into: the list fills the
- * width it has, a row is the two lines that tell one Pokemon from another, and
+ * FireRed's party menu: six slots two abreast, the lead's in gold, an empty
+ * one a dim Poké Ball, each icon flapping at its health's pace with what it
+ * holds on its corner (`ui/monIcon.ts`, the slot YOUR TEAM uses), and
  * everything else about the one under the cursor - portrait, types, condition,
  * experience, stats, moves and what can be done to it - is the dossier under
  * the list (`ui/pokemonDossier.ts`, shared with the lobby so the two cannot
@@ -138,37 +130,43 @@ export class PartyScene extends Phaser.Scene {
   }
 
   private body(): string {
-    const rows = this.party.pokemon.map((pokemon, index) => this.memberRow(pokemon, index)).join('');
+    const slots = Array.from({ length: MAX_RUN_PARTY }, (_, index) => {
+      const pokemon = this.party.pokemon[index];
+      return pokemon ? this.memberSlot(pokemon, index) : pixelEmptyPartySlot();
+    }).join('');
     const details = this.party.pokemon
       .map((pokemon, index) => this.memberDossier(pokemon, index))
       .join('');
+    // FireRed's party: six slots, the lead's in gold, an empty one a dim Poké
+    // Ball, each icon flapping at its health's pace with what it holds on its
+    // corner (`pixelPartySlot`, the same slot as YOUR TEAM's). The dossier under
+    // them answers for the one under the cursor.
     return `<main class="px-body raid-party-layout">${pixelWindow(
-      // No ceiling on the columns, as the stash has none: a party of six is a
-      // collection like any other and fills the width it is given. Which one
-      // leads is said by the row's own tag rather than by where it sits, so
-      // the order survives being read across columns.
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${
-        rows || '<p class="px-empty">Nobody is deployed.</p>'
-      }</div>${details}`,
+      `${this.party.pokemon.length > 0 ? `<div class="px-party-slots">${slots}</div>` : '<p class="px-empty">Nobody is deployed.</p>'}${details}`,
       { className: 'raid-roster', heading: 'Deployed', note: this.partyLabel() },
     )}</main>`;
   }
 
-  /** Name, health and the order it is in; everything else is the pane below. */
-  private memberRow(pokemon: Pokemon, index: number): string {
+  /** One of the six: who, how they are, what they hold, and whether they lead or are in hand. */
+  private memberSlot(pokemon: Pokemon, index: number): string {
     const moving = this.movingIndex === index;
-    const held = getHeldItem(pokemon.heldItemId);
     const name = escapeAttribute(pokemon.name);
     const help =
       this.movingIndex === undefined
         ? this.canReorder()
-          ? `Pick ${name} up to move it. The first in the list is the one sent out first.`
+          ? index === 0
+            ? `${name} is sent out first. ENTER picks it up to move it.`
+            : `ENTER picks ${name} up to move it.`
           : `${name} is the only Pokémon deployed, so it is the one sent out.`
         : moving
           ? `Put ${name} back down where it was.`
           : `Put the Pokémon you are holding here, and ${name} where it was.`;
-    const tag = moving ? pixelTag('Holding', 'risk') : index === 0 ? pixelTag('Leads', 'good', true) : '';
-    return `<button class="px-row${moving ? ' is-selected' : ''}" data-member="${index}" data-shows="member-${index}" data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(pokemon)}${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${conditionLine(pokemon)}${held ? ` · holding ${held.displayName}` : ''}</small></span>${tag}</button>`;
+    const spoken = `${pokemon.name}, level ${pokemon.level}${index === 0 ? ', leads' : ''}${moving ? ', in hand' : ''}`;
+    return pixelPartySlot(pokemon, {
+      lead: index === 0,
+      holding: moving,
+      attributes: `data-member="${index}" data-shows="member-${index}" aria-label="${escapeAttribute(spoken)}" data-help="${escapeAttribute(help)}"`,
+    });
   }
 
   private memberDossier(pokemon: Pokemon, index: number): string {
