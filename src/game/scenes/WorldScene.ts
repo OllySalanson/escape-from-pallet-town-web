@@ -161,6 +161,7 @@ import {
 } from '../world/fishing';
 import { paintFloat } from '../world/fishingFloat';
 import { rollShiny } from '../pokemon/shiny';
+import { rollShimmerShiny } from '../world/shimmer';
 import { encounterTableAt, stepRolls } from '../world/localEncounters';
 import { areaFrame } from '../world/areaFrame';
 import { hasPlayerSetOff } from '../world/hunterArrival';
@@ -532,6 +533,23 @@ const landingRect = (tile: GridPosition): Rect => {
 const PRIZE_GLEAM_COLOUR = 0xfacc15;
 const PRIZE_GLEAM_REACH = 8;
 const PRIZE_GLEAM_PULSE_MS = 900;
+
+/**
+ * The shimmering grass (`world/shimmer.ts`): three small glints over one tile of
+ * tall grass, each coming up and going out in its turn, so the patch is never
+ * still and never all lit. Paler than a prize's gold and with nothing under it
+ * and no name beside it: a prize is a thing lying there, and this is something
+ * moving in the grass. In the canopy band for the reason a prize's light is -
+ * grass under a crown still glitters.
+ */
+const SHIMMER_COLOUR = 0xfff3b0;
+const SHIMMER_GLINT_MS = 420;
+const SHIMMER_REST_MS = 520;
+const SHIMMER_GLINTS: readonly { readonly dx: number; readonly dy: number; readonly delayMs: number }[] = [
+  { dx: -5, dy: -6, delayMs: 0 },
+  { dx: 4, dy: -2, delayMs: 310 },
+  { dx: -1, dy: 4, delayMs: 620 },
+];
 
 /**
  * Map captions share the raid HUD's window, in a darker weight: screen furniture
@@ -2985,6 +3003,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private createEntities(): void {
     this.createSwitchPlates();
     this.createLoot();
+    this.createShimmer();
     this.createPois();
     this.createContractMarkers();
 
@@ -3217,6 +3236,73 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.createPrizeGleam(loot, x, y);
       }
     }
+  }
+
+  /** This raid's patch of shimmering grass, while nothing has been through it (`world/shimmer.ts`). */
+  private shimmerHere(): { readonly x: number; readonly y: number } | undefined {
+    const session = this.runSession;
+    const shimmer = session?.plan?.shimmer;
+    return shimmer && !session?.shimmerMet && session?.plan?.insertion.mapId === this.currentMap.id
+      ? shimmer.position
+      : undefined;
+  }
+
+  /**
+   * The glitter over the shimmering grass: seen from the path, which is the
+   * whole of what says it is there.
+   */
+  private createShimmer(): void {
+    const tile = this.shimmerHere();
+    if (!tile) {
+      return;
+    }
+    const x = tile.x * TILE_SIZE + TILE_SIZE / 2;
+    const y = tile.y * TILE_SIZE + TILE_SIZE / 2;
+    for (const glint of SHIMMER_GLINTS) {
+      // A four-pointed twinkle five pixels across: two crossed bars, drawn as
+      // the prize's light is rather than loaded.
+      const twinkle = this.add
+        .graphics()
+        .setDepth(atRow(CANOPY_BAND, tile.y))
+        .fillStyle(SHIMMER_COLOUR, 1);
+      twinkle.fillRect(0, -2, 1, 5);
+      twinkle.fillRect(-2, 0, 5, 1);
+      twinkle.setPosition(x + glint.dx, y + glint.dy).setAlpha(0);
+      this.tweens.add({
+        targets: twinkle,
+        alpha: { from: 0, to: 1 },
+        scale: { from: 0.4, to: 1 },
+        duration: SHIMMER_GLINT_MS,
+        delay: glint.delayMs,
+        yoyo: true,
+        repeat: -1,
+        repeatDelay: SHIMMER_REST_MS,
+        ease: 'Sine.easeInOut',
+      });
+      this.mapObjects.push(twinkle);
+    }
+  }
+
+  /**
+   * Stepping into the shimmering grass: its place's rarest Pokemon, at once
+   * and with no roll about whether, and the one wild meeting with better than
+   * the wild's odds of a shiny (`world/shimmer.ts`). Met once: the session
+   * keeps that, because the world is rebuilt after the fight.
+   */
+  private tryShimmer(): boolean {
+    const session = this.runSession;
+    const shimmer = session?.plan?.shimmer;
+    const tile = this.shimmerHere();
+    if (!session || !shimmer || !tile || tile.x !== this.currentTile.x || tile.y !== this.currentTile.y) {
+      return false;
+    }
+    session.shimmerMet = true;
+    audioManager.play('encounter');
+    this.transitionToBattle({
+      wild: { speciesId: shimmer.speciesId, level: shimmer.level, shiny: rollShimmerShiny(session.shinyRng) },
+      teachingBattle: false,
+    });
+    return true;
   }
 
   /**
@@ -6663,6 +6749,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Ice carries a step on until something stops it (`slidingFloor.ts`), and
     // nothing rolls for a wild Pokemon until it has.
     if (this.trySlideOn()) {
+      return;
+    }
+
+    // The shimmering grass is a meeting the player walked to, so it comes
+    // before the grass's own roll and takes its place.
+    if (this.tryShimmer()) {
       return;
     }
 

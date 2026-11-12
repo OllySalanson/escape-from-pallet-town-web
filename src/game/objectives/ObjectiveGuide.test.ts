@@ -583,6 +583,37 @@ describe('a shiny in the field guide', () => {
   });
 });
 
+describe('the shimmering grass in the field guide', () => {
+  it('says where it glitters and which way, never what is in it, and nothing once something has been through it', () => {
+    const session = createUncontractedSession('greystone-vale');
+    const shimmer = session.plan!.shimmer!;
+    expect(shimmer).toBeDefined();
+    const hints = () =>
+      buildObjectiveGuide(session, {
+        currentMapId: 'greystone-vale',
+        currentPosition: { x: 94, y: 160 },
+        activatedPoiIds: new Set(),
+      }).hints.filter((hint) => hint.includes('tall grass'));
+
+    expect(hints()).toEqual([expect.stringMatching(/^Something rare is moving in the tall grass in [A-Z’' ]+, to the [a-z-]+\. Look for the glitter\.$/)]);
+    expect(hints()[0].toLowerCase()).not.toContain(shimmer.speciesId);
+
+    session.shimmerMet = true;
+    expect(hints()).toEqual([]);
+  });
+
+  it('says nothing on a raid with no patch', () => {
+    const session = createUncontractedSession('floodplain-relay');
+    expect(session.plan!.shimmer).toBeUndefined();
+    const hints = buildObjectiveGuide(session, {
+      currentMapId: 'floodplain-relay',
+      currentPosition: { x: 15, y: 3 },
+      activatedPoiIds: new Set(),
+    }).hints;
+    expect(hints.some((hint) => hint.includes('glitter'))).toBe(false);
+  });
+});
+
 describe('an errand in the field guide', () => {
   /** A Greystone Vale raid with Brock's crate laid in GREYSTONE PEAKS. */
   function createErrandSession() {
