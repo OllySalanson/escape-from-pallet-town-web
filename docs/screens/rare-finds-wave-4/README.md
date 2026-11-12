@@ -42,6 +42,6 @@ then again with `--team=caterpie:12 --lead=Caterpie --steps=walk:227:181,shot:ri
 | | |
 | --- | --- |
 | ![](06-the-ride-no-bug.png) | With a Bulbasaur in front: the east end of the ride as it always was, which is also how it looked before. Nell is the clue. She has always said hers "was a Butterfree and it left"; her new third line is "Ned says a pink one comes down the ride sometimes, to see its own kind. Walk in with a BUG in front and it might." |
-| ![](07-the-ride-with-a-bug.png) | With a Caterpie leading: a Butterfree stands at the end of the ride. |
+| ![](07-the-ride-with-a-bug.png) | With a Caterpie leading: a Butterfree stands at the end of the ride, by Nell, and it is pink. The map's figures are drawn from one sheet of icons in their ordinary colours, so it first stood there as blue as any other until the fight began; a secret met in its other colours now tints its standing figure (`Secret.figureTint`). |
 | ![](08-not-the-usual-colour.png) | "Something pink comes tumbling down the ride on the wind, round your Bug, and round again." |
 | ![](09-pink-butterfree-lv28.png) | A wild Butterfree, Lv 28, in its other colours. |
