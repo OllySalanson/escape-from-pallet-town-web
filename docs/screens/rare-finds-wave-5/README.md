@@ -1,13 +1,14 @@
 # Rare finds, wave 5: the coast and The Crossing
 
-The first two rare finds outside the vale's inland places, each hung on
-something somebody there was already saying, and each a new kind of thing to
-do for it. `src/game/world/secrets.ts` is the rule.
+The first three rare finds outside the vale's inland places, each hung on
+something somebody there was already saying. Two ask for a new kind of thing;
+the third is the easy one. `src/game/world/secrets.ts` is the rule.
 
 | Find | Where | What it waits for |
 | --- | --- | --- |
 | **THE HERON THAT IS NOT**: Dragonair, Lv 24 | THE WIDE WATER in The Crossing, at the end of the heron walk's boards | Standing still for twelve seconds: no step, no turn |
 | **THE LIGHT THAT ANSWERS**: Starmie, Lv 22 | THE OLD LIGHT on Gull Strand. It lies under the light every raid | A shiny Pokémon leading the party |
+| **THE KITE THIEF**: Kingler, Lv 20 | WRACKERS' SAND on Gull Strand, under the headland. It sits there every raid | A Flying type leading the party |
 
 ## The heron that is not
 
@@ -63,6 +64,23 @@ A raid can go and get a shiny to walk up to it: THE RED ONE in THE TARN and
 THE PINK ONE on THE BUTTERFLY RIDE are each always in their other colours, so
 this is the second link of a chain. Any shiny will do.
 
+## The kite thief
+
+The Kite Flyer on the headland has always said "That is four kites. There is a
+very well-off Krabby down there." There is, on the sand under the cliff, every
+raid: a Kingler with four kite strings wound round its claw.
+
+| Before | After |
+| --- | --- |
+| ![Wrackers' Sand under the headland](13-the-sand-before.png) | ![The same sand with a Kingler sitting by the crates](14-the-sand-after.png) |
+
+It grabs at anything the wind brings over the cliff, so it comes for a Flying
+type walking in front. A Pidgey will do, which makes this the wave's easy one.
+
+| What the Wracker says now | Nothing flying in front | A Pidgey in front | What it was |
+| --- | --- | --- | --- |
+| ![That big crab by the crates has four kites off the cliff. It grabs at anything FLYING](15-the-wracker.png) | ![A big crab sits in the sand with four kite strings wound round its claw](16-keeping-them.png) | ![It looks up at what is flying over its head, and it wants that as well](17-it-wants-that.png) | ![A wild Kingler, level 20](18-kingler-lv20.png) |
+
 ## How to find them
 
 - **The heron**: drop in at Stepping Stones, or walk east out of Millbrook
@@ -70,8 +88,11 @@ this is the second link of a chain. Any shiny will do.
   boards by the HERON WALK sign. At their end, face the notice and do nothing.
 - **The light**: drop in at The Strand and go west along the top of the beach
   to the round grey tower on the headland, with a shiny first on the bench.
-- In THE HARBOUR the angler talks about the heron and Bill about the light,
-  and Oak's cork board keeps what they said.
+- **The kite thief**: drop in at The Strand and go west along the beach to
+  the crates under the headland, with a Flying type first on the bench.
+- In THE HARBOUR the angler talks about the heron, Bill about the light and
+  the Seagallop's sailor about the kites, and Oak's cork board keeps what
+  they said.
 
 ## How these were made
 
@@ -88,6 +109,11 @@ node tools/playtest/raid.mjs <url> ...same... --insertion=greystone-vale-the-str
   --steps=walk:140:202,shot:light,read:140:204:left,read:140:201:left
 node tools/playtest/raid.mjs <url> ...same... --insertion=greystone-vale-the-strand --level=30 --avoid-watch \
   --team=butterfree:28::shiny --lead=Butterfree --steps=walk:140:202,shot:light,read:140:201:left
+# the kite thief: nothing flying, then a Pidgey in front
+node tools/playtest/raid.mjs <url> ...same... --insertion=greystone-vale-the-strand --level=30 --avoid-watch \
+  --steps=walk:133:229,shot:sand,read:140:230:right:3,read:134:228:right
+node tools/playtest/raid.mjs <url> ...same... --insertion=greystone-vale-the-strand --level=30 --avoid-watch \
+  --team=pidgey:12 --lead=Pidgey --steps=read:134:228:right
 # the clue lines themselves: read on to the notice's second line, and each person's third
 node tools/playtest/raid.mjs <url> ...same... --insertion=greystone-vale-stepping-stones --level=30 --avoid-watch \
   --steps=read:157:166:left:2,read:157:167:left:3
