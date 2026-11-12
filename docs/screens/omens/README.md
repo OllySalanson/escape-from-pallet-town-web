@@ -26,10 +26,10 @@ for less motion hears the cry and is told, with no shadow.
 A test-mode build (`VITE_EPTW_TEST_MODE=pixels`), `tools/playtest/raid.mjs
 --pixels --stepped --window=pixel --clock=day --insertion=greystone-vale
 --banked=2 --steps=omen,shot:shadow`, trying `--seed=` values until the raid
-dealt had an omen (the driver prints it). The "before" picture is the same raid
+dealt had an omen (the driver prints it; `--seed=10` was the fourth tried). The "before" picture is the same raid
 at the same second on a build of the commit before.
 
 | | |
 | --- | --- |
 | ![](01-before.png) | Before: Mill Square, the same raid at the same second. |
-| ![](02-the-shadow.png) | After: the shadow half way across the screen, with the bird's cry. |
+| ![](02-the-shadow.png) | After: 58 seconds in, a great shadow half way across the square, with Moltres's cry. It lies on the ground under everybody, as the vale's own bird's shadow does, and is the bird's own battle picture three times over. Oak's full list then reads: "A great shadow crossed the vale, heading south-west. That cry was MOLTRES. They say it roosts in THE CRATER on EMBER ISLE." |
