@@ -20,6 +20,10 @@ stands beside it with a third thing to say.
 | --- | --- |
 | ![The end of the heron walk, the Heron Man a tile back from it](01-the-boards-before.png) | ![The same boards with a notice at their end and the Heron Man beside it](02-the-boards-after.png) |
 
+What the Heron Man says now, after his two old lines:
+
+![That grey one never stirs while I watch. I shuffle, is my trouble. You have to stand as STILL as it does.](11-the-heron-man.png)
+
 Read the notice and it is a notice. Stand in front of it without a step or a
 turn until the game has counted twelve seconds, read it again, and what has
 been standing out among the lilies looks round.
@@ -43,6 +47,10 @@ red stone at its heart that flickers, stops, and flickers again.
 | Before | After |
 | --- | --- |
 | ![The Old Light and Bertie's cottage](06-old-light-before.png) | ![The same, with a Starmie lying at the foot of the light](07-old-light-after.png) |
+
+What Old Bertie says now, after his two old lines:
+
+![That star winks at her, not at me. It wants its answer in the wrong colours. Walk something SHINY up to it.](12-old-bertie.png)
 
 Speak to it with an ordinary Pokémon in front and it goes on signalling. Walk
 a shiny up to it and it answers.
@@ -80,8 +88,14 @@ node tools/playtest/raid.mjs <url> ...same... --insertion=greystone-vale-the-str
   --steps=walk:140:202,shot:light,read:140:204:left,read:140:201:left
 node tools/playtest/raid.mjs <url> ...same... --insertion=greystone-vale-the-strand --level=30 --avoid-watch \
   --team=butterfree:28::shiny --lead=Butterfree --steps=walk:140:202,shot:light,read:140:201:left
+# the clue lines themselves: read on to the notice's second line, and each person's third
+node tools/playtest/raid.mjs <url> ...same... --insertion=greystone-vale-stepping-stones --level=30 --avoid-watch \
+  --steps=read:157:166:left:2,read:157:167:left:3
+node tools/playtest/raid.mjs <url> ...same... --insertion=greystone-vale-the-strand --level=30 --avoid-watch \
+  --steps=read:140:204:left:3
 ```
 
-`still:S` is new: it stands, pressing nothing, until the game has counted S
-seconds of it. `--team=...::shiny` is new too: a team member caught in its
-other colours.
+Three things in the driver are new: `still:S` stands, pressing nothing, until
+the game has counted S seconds of it; `--team=...::shiny` is a team member
+caught in its other colours; and `read:x:y:Dir:N` reads on to a line's Nth
+box before its picture.
