@@ -10097,9 +10097,11 @@
    "name": "Wracker",
    "look": "hiker",
    "facing": "right",
+   "secret": "the-kite-thief",
    "lines": [
     "Three crates this week, and one of them full of dolls. What is it with that ship and dolls?",
-    "Something is under the sand by that log. I keep meaning to dig, but it might be somebody’s."
+    "Something is under the sand by that log. I keep meaning to dig, but it might be somebody’s.",
+    "That big crab by the rocks has four kites off the cliff. It grabs at anything FLYING. I walk round it."
    ],
    "beat": {
     "everyMs": 3000,
@@ -18120,6 +18122,13 @@
    "y": 234,
    "species": "krabby",
    "level": 9
+  },
+  {
+   "x": 135,
+   "y": 228,
+   "species": "kingler",
+   "level": 20,
+   "secret": "the-kite-thief"
   },
   {
    "x": 136,

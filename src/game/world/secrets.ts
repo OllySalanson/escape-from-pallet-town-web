@@ -598,6 +598,28 @@ export const SECRETS: readonly Secret[] = [
     ],
     wave: 5,
   },
+  {
+    // The Kite Flyer on the headland has lost four kites over the cliff and
+    // says there is "a very well-off Krabby down there". There is: a KINGLER
+    // on WRACKERS' SAND with four strings wound round its claw, every raid
+    // until it is had (`shutLines`). It grabs at anything the wind brings over
+    // the cliff, and comes for a Flying type walking in front - the commonest
+    // lead there is after a starter, so this is the wave's easy one, as the
+    // light is its hard one. FireRed keeps KINGLER on the Super Rod; a KRABBY
+    // turns into one at 28. Lv 20 is an earned fight before MISTY.
+    id: 'the-kite-thief',
+    name: 'THE KITE THIEF',
+    place: 'WRACKERS’ SAND',
+    nook: 'figure',
+    when: [{ kind: 'lead-type', type: 'Flying' }],
+    rewards: [{ kind: 'meet', speciesId: 'kingler', level: 20 }],
+    foundLine: 'It looks up at what is flying over its head, and it wants that as well. KINGLER drops the strings and comes for you, big claw first!',
+    shutLines: [
+      'A big crab sits in the sand with four kite strings wound round its claw. It is not flying them. It is keeping them.',
+      'It watches the sky over the cliff, and nothing of yours. You have brought nothing it wants.',
+    ],
+    wave: 5,
+  },
 ];
 
 export type SecretId = (typeof SECRETS)[number]['id'];

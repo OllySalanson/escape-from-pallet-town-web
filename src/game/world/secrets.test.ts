@@ -236,7 +236,7 @@ describe("the vale's secrets", () => {
     expect(openSecrets(base)).toEqual(waitsOnlyOnTheMoment);
     const everything: RaidConditions = {
       ...base,
-      leadTypes: ['Fighting', 'Ground', 'Psychic', 'Ghost', 'Bug'],
+      leadTypes: ['Fighting', 'Ground', 'Psychic', 'Ghost', 'Bug', 'Flying'],
       fieldMoves: ['rock-smash'],
       partySize: 1,
       leadShiny: true,
@@ -342,7 +342,7 @@ describe("the vale's secrets", () => {
         reward.kind === 'meet' ? [reward.speciesId] : reward.kind === 'gift' ? [reward.gift.speciesId] : [],
       ),
     );
-    expect(species.sort()).toEqual(['alakazam', 'butterfree', 'dragonair', 'gengar', 'golem', 'gyarados', 'hypno', 'kabutops', 'lickitung', 'machamp', 'mr-mime', 'snorlax', 'starmie']);
+    expect(species.sort()).toEqual(['alakazam', 'butterfree', 'dragonair', 'gengar', 'golem', 'gyarados', 'hypno', 'kabutops', 'kingler', 'lickitung', 'machamp', 'mr-mime', 'snorlax', 'starmie']);
   });
 
   describe('against the gyms', () => {
@@ -505,6 +505,7 @@ describe("the vale's secrets", () => {
     it.each([
       ['the-silent-picket', 'Psychic', 'mr-mime', 22],
       ['the-shadow-in-the-crypt', 'Ghost', 'gengar', 25],
+      ['the-kite-thief', 'Flying', 'kingler', 20],
     ] as const)('stands %s every raid until it is had, and stirs it only for a %s type in front', (id, type, speciesId, level) => {
       expect(plan(7, dusk).sleeping).toContain(id);
       expect(plan(7, dusk).secrets.map((secret) => secret.id)).not.toContain(id);

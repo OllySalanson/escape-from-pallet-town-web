@@ -356,3 +356,25 @@ describe('THE LIGHT THAT ANSWERS', () => {
     expect(internals.pendingWildBattle).toEqual({ speciesId: 'starmie', level: 22 });
   });
 });
+
+describe('THE KITE THIEF', () => {
+  const thief = secretById('the-kite-thief')!;
+
+  it('sits on its four kites for anybody with nothing flying in front, and says so, with no cry and no fight', () => {
+    const { internals, dialogBox } = beside(thief.id, 'pokemon', { conditions: CONDITIONS, secrets: [], sleeping: [thief.id] });
+    internals.tryInteract();
+    expect(dialogBox.shownMessages).toEqual([...thief.shutLines!]);
+    expect(internals.pendingWildBattle).toBeUndefined();
+    expect(internals.runSession.pokemonMet).toEqual([]);
+  });
+
+  it('comes for a Flying type walking in front', () => {
+    const { internals, dialogBox } = beside(thief.id, 'pokemon', {
+      conditions: { ...CONDITIONS, leadTypes: ['Normal', 'Flying'] },
+      secrets: [{ id: thief.id, reward: thief.rewards[0] }],
+    });
+    internals.tryInteract();
+    expect(dialogBox.shownMessages[0]).toBe(thief.foundLine);
+    expect(internals.pendingWildBattle).toEqual({ speciesId: 'kingler', level: 20 });
+  });
+});
