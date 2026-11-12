@@ -543,7 +543,7 @@ try {
   // AWAY, so the cursor is moved to the fight first: how a keeper with no
   // watch is fought, Greystone Vale's Boatswain Cragg among them),
   // `read:x:y:Dir` (walks to that tile, faces Dir and presses the interact
-  // key: a sign, a clue, a person), `tide:S` (stands still until the raid's
+  // key: a sign, a clue, a person; `read:x:y:Dir:N` reads on to its Nth line), `tide:S` (stands still until the raid's
   // tide reads S seconds, as a boat reads it), `clock:S` (until S seconds have
   // gone by on the raid's own clock, as a secret reads it), `still:S` (until
   // the player has stood S seconds with no step and no turn), `push:area:x:y:Dir` (walks behind the Strength boulder on that tile of an
@@ -620,6 +620,15 @@ try {
       // machine a second and a half is half a sentence.
       for (let guard = 0; guard < 40 && !(await page.evaluate(`Boolean(${GAME}.scene.getScene('world')?.dialogBox?.isCurrentMessageComplete)`).catch(() => true)); guard += 1) {
         await wait(250);
+      }
+      // `read:x:y:Dir:N` reads on to the Nth line before the picture: a notice's
+      // first line is its name, and what it says is under it.
+      for (let line = 1; line < Number(parts[3] ?? 1); line += 1) {
+        await press('Space');
+        await wait(600);
+        for (let guard = 0; guard < 40 && !(await page.evaluate(`Boolean(${GAME}.scene.getScene('world')?.dialogBox?.isCurrentMessageComplete)`).catch(() => true)); guard += 1) {
+          await wait(250);
+        }
       }
       // A tile read twice - a clue before its hour and after - keeps both pictures.
       const reads = (readsAt.get(`${parts[0]},${parts[1]}`) ?? 0) + 1;

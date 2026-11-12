@@ -9236,15 +9236,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
-   * The step a hunter takes on a player who is standing still, every
-   * `HUNTER_IDLE_STEP_MS` of raid clock (`hunterIdleSteps`). It is the same
-   * step a player's step pays for, so it moves as far, sounds as near and is
-   * as enraged. The catch it can make is asked by `update()` the first moment
-   * nothing is on screen to read: the hunter may walk up while a box is being
-   * read, because the clock is being charged for that box, but a fight never
-   * starts underneath one.
-   */
-  /**
    * How long the player has stood without a step or a turn, in raid clock: what
    * a secret that waits for stillness is asked against (`stood-still`,
    * `world/secrets.ts`). Reading a box is standing still, and is charged for.
@@ -9259,6 +9250,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.stoodStillMs += chargedMs;
   }
 
+  /**
+   * The step a hunter takes on a player who is standing still, every
+   * `HUNTER_IDLE_STEP_MS` of raid clock (`hunterIdleSteps`). It is the same
+   * step a player's step pays for, so it moves as far, sounds as near and is
+   * as enraged. The catch it can make is asked by `update()` the first moment
+   * nothing is on screen to read: the hunter may walk up while a box is being
+   * read, because the clock is being charged for that box, but a fight never
+   * starts underneath one.
+   */
   private advanceHunterWhileStill(chargedMs: number): void {
     if (this.huntRoleWas === 'follower') {
       this.hunterStillMs = 0;
