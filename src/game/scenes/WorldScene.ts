@@ -545,15 +545,20 @@ const PRIZE_GLEAM_PULSE_MS = 900;
 const SHIMMER_COLOUR = 0xffffff;
 const SHIMMER_CORE_COLOUR = 0xfff3b0;
 /** Half the length of a glint's bars: under a prize's eight, so the two are told apart at a glance. */
-const SHIMMER_GLINT_REACH = 5;
-const SHIMMER_GLINT_MS = 420;
-const SHIMMER_REST_MS = 520;
-/** As dim as a glint gets: seen on a first glance at a still frame, never gone. */
-const SHIMMER_GLINT_DIM = 0.2;
+const SHIMMER_GLINT_REACH = 6;
+const SHIMMER_GLINT_MS = 480;
+const SHIMMER_REST_MS = 160;
+/**
+ * As dim as a glint gets: all three are seen in any still frame, and with the
+ * turns a third of a cycle apart two of them are always most of the way lit.
+ * One bright cross at a time, which is what it first was, was found in a
+ * picture only by somebody who knew which tile to look at.
+ */
+const SHIMMER_GLINT_DIM = 0.45;
 const SHIMMER_GLINTS: readonly { readonly dx: number; readonly dy: number; readonly delayMs: number }[] = [
-  { dx: -5, dy: -8, delayMs: 0 },
-  { dx: 5, dy: -2, delayMs: 450 },
-  { dx: -2, dy: 5, delayMs: 900 },
+  { dx: -5, dy: -9, delayMs: 0 },
+  { dx: 6, dy: -3, delayMs: 370 },
+  { dx: -3, dy: 5, delayMs: 740 },
 ];
 
 /**
@@ -3281,7 +3286,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.tweens.add({
         targets: twinkle,
         alpha: { from: SHIMMER_GLINT_DIM, to: 1 },
-        scale: { from: 0.5, to: 1 },
+        scale: { from: 0.6, to: 1 },
         duration: SHIMMER_GLINT_MS,
         delay: glint.delayMs,
         yoyo: true,
