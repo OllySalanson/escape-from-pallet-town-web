@@ -5739,13 +5739,24 @@ button {
   gap: calc(var(--u) * 3);
   padding: var(--u);
 }
-/* A kind's own page: the sprite at twice its size beside its words. */
+/* A kind's own page: the sprite at twice its size beside its words, the two
+   set as one page in the middle of the window, so a big window frames it
+   rather than leaving its words in one corner. */
 :where(.pixel-ui) .dex-entry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  height: 100%;
+}
+:where(.pixel-ui) .dex-page {
   display: flex;
   align-items: stretch;
   gap: calc(var(--u) * 4);
+  min-width: 0;
+  max-width: 100%;
   min-height: 0;
-  height: 100%;
+  max-height: 100%;
 }
 .pixel-ui .px-window.dex-entry-figure {
   flex: none;
@@ -5766,6 +5777,14 @@ button {
 .pixel-ui .dex-entry-figure .px-portrait img {
   transform: scale(calc(var(--zoom, 2) * 2));
 }
+/* Three times its size where the window is wide enough to carry it. */
+.pixel-ui.pokedex-menu[data-room='wide'] .dex-entry-figure .px-portrait {
+  width: calc(var(--u) * 192);
+  height: calc(var(--u) * 192);
+}
+.pixel-ui.pokedex-menu[data-room='wide'] .dex-entry-figure .px-portrait img {
+  transform: scale(calc(var(--zoom, 2) * 3));
+}
 .pixel-ui:is([data-room='tight'], [data-short]) .px-window.dex-entry-figure {
   min-width: calc(var(--u) * 76);
   padding: calc(var(--u) * 4);
@@ -5777,8 +5796,9 @@ button {
 .pixel-ui:is([data-room='tight'], [data-short]) .dex-entry-figure .px-portrait img {
   transform: scale(var(--zoom, 2));
 }
+/* The words keep a measure a line can be read at, however wide the window. */
 :where(.pixel-ui) .dex-entry-side {
-  flex: 1 1 0;
+  flex: 0 1 calc(var(--u) * 400);
   display: flex;
   flex-direction: column;
   gap: calc(var(--u) * 4);

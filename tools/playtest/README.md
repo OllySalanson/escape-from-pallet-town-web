@@ -467,6 +467,19 @@ scorecards are made of - words in view, Pokémon in view, how much of the panel 
 picture (`docs/screens/menu-overhaul/`); `--before` drives a build of `main` from
 before a redraw, which has no card.
 
+`pokedexShots.mjs <test-mode build url> <dir> [--window=WxH] [--before]` photographs
+THE POKéDEX on a save 37 kinds in (21 more only met, two shinies, a legend), walks
+all 151 tiles by arrow key, opens a page by ENTER, turns it by LEFT and RIGHT, goes
+back by ESC and BACKSPACE, asks an empty ball for a page it does not have, closes
+by X and opens it again from Oak's PC, and prints the glance measure
+(`docs/screens/pokedex/`); `--before` drives a build of `main` from before it had a
+screen. It waits for the screen's own cursor to land before moving it: a screen
+places its cursor a frame after it is drawn, and a driver that focuses first is
+overruled. `pokedexMet.mjs <test-mode build url> <dir>` plays the save rule the
+pictures cannot show: a wild Snorlax appears on a raid, the save holds it as met
+before a move is chosen, and it is still met - its tile a shape - after the page is
+loaded again and the raid abandoned.
+
 `partyShots.mjs <test-mode build url> <dir> [--window=WxH] [--before]` does the
 same for the raid's PARTY on a raid of five, a few hurt, one fainted and the lead
 holding gear: every slot by arrow key, ENTER and ENTER to swap the lead, TAB into

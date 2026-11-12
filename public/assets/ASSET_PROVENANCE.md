@@ -1414,6 +1414,37 @@ Creatures / Game Freak, no licence from them.
   colour 0 clear, every other colour the palette's on the GBA's `<< 3`
   footing, nothing scaled or moved. The game draws the shadow translucent.
 
+### FireRed's Pokédex entries - words, not a file under `assets/`
+
+**TAKEN FROM A COMMERCIAL POKEMON GAME.** The Pokédex screen
+(`docs/screens/pokedex/`) prints each kind's page in FireRed's own words. They
+are recorded here although they ship as source rather than as an asset,
+because they are the same kind of thing as the cries below: Nintendo's,
+verbatim. The brief the screen was built to, on 2026-11-12, asked for
+"FireRed's own dex text"; they stand on the footing of the FireRed art
+accepted on 2026-09-19 and the cries on 2026-10-11 - a personal,
+non-commercial fan game, the repository public - and **that footing has not
+been ruled on for text by the owner in so many words**, so this entry is the
+place to settle it. Rights holders Nintendo / Creatures / Game Freak; no
+licence from them.
+
+- **Source.** pret/pokefirered (<https://github.com/pret/pokefirered>), pinned
+  at commit `c75f352304d529f6ba92d4f74b9cf8b5c3810788`, the commit the species
+  table is read at (`tools/species/verifyExperience.mjs`). Two files, fetched
+  2026-11-12: `src/data/pokemon/pokedex_entries.h` (the category, the height in
+  decimetres, the weight in hectograms) and `src/data/pokemon/pokedex_text_fr.h`
+  (the entries FireRed prints; LeafGreen's differ and are not taken).
+- **What was changed.** Nothing in the words. `tools/pokedex/harvest.mjs` is the
+  whole method and writes `tools/pokedex/frlg-pokedex.json`, 151 rows with the
+  cartridge's own line breaks; `tools/pokedex/generate.mjs` writes
+  `src/game/pokemon/generated/pokedexEntries.ts` from it, and
+  `pokedexEntries.test.ts` holds the two together. The screen runs an entry's
+  lines together for its own window to wrap, and prints sizes in metres and
+  kilograms from the same numbers.
+- **To remove them**, empty the `text` of each row and regenerate: the page
+  still stands on the game's own data - the sprite, the types, the line and
+  where a kind is found.
+
 ### `cries/<dexId>.wav` - every Pokemon's own cry, from FireRed/LeafGreen
 
 **RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly.** Playtest 28 put

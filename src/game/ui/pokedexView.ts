@@ -333,5 +333,5 @@ export function dexEntryBody(dex: Pokedex, dexId: number): string | undefined {
   const turn = (to: number, label: string): string =>
     `<button type="button" class="px-window px-button" data-dex-turn="${to}"${to === dexId ? ' aria-disabled="true"' : ''} data-help="${escapeAttribute(to === dexId ? 'No page that way yet.' : `${dexNumber(to)} ${kindAt(to)?.name.toUpperCase() ?? ''}`)}">${label}</button>`;
   const actions = `${turn(before, 'Back a page')}<button type="button" class="px-window px-button is-primary" data-dex-cry="${dexId}" data-cursor-start data-help="${escapeAttribute(`Hear ${kind.name.toUpperCase()}'s cry.`)}">Cry</button>${turn(after, 'On a page')}`;
-  return `<main class="px-body dex-entry" data-dex-page="${dexId}">${figure}<div class="dex-entry-side">${windows}<div class="dex-entry-actions">${actions}</div></div></main>`;
+  return `<main class="px-body dex-entry" data-dex-page="${dexId}"><div class="dex-page">${figure}<div class="dex-entry-side">${windows}<div class="dex-entry-actions">${actions}</div></div></div></main>`;
 }

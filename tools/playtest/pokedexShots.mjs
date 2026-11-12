@@ -16,8 +16,8 @@
 //   node tools/playtest/pokedexShots.mjs <test-mode build url> <out dir> [--window=WxH] [--before]
 //
 // `--before` drives a build from before the Pokédex had a screen: it shows that
-// X does nothing in the yard and photographs Oak's lab, whose computers say
-// nothing there.
+// X does nothing in the yard, photographs MY PC, whose title bar was the one
+// place the count was said, and Oak's lab, whose computers say nothing there.
 //
 // It steps a paused loop, so it wants a test-mode build (`?testmode=pixels`
 // for pictures worth judging; `tools/playtest/README.md`, "Memory").
@@ -108,6 +108,7 @@ try {
   })()`;
   const shoot = async (name) => page.screenshot(`${out}/${name}.png`);
   const here = () => page.evaluate(`document.activeElement?.dataset?.dex ?? document.activeElement?.tagName ?? ''`);
+  const onTile = (dexId) => `${dexUp} && ${DEX}.page === null && document.activeElement?.dataset?.dex === '${dexId}'`;
   const focusTile = (dexId) => page.evaluate(`document.querySelector('${PANEL} [data-dex="${dexId}"]')?.focus()`);
 
   await press('Space');
@@ -140,6 +141,18 @@ try {
     await wait(400);
     if (await page.evaluate(sceneIs('pokedex'))) fail('a build from before has a Pokédex');
     console.log('(before: X does nothing in the yard - there is no Pokédex to open)');
+    // The one place the count was said: a line in the title bar of MY PC, upstairs at home.
+    await page.evaluate(`void ${BASE}.scene.start('base', { room: 'bolthole-upstairs', at: { x: 0, y: 2 }, facing: 'up' })`);
+    await until(baseReady, 'upstairs at home');
+    await press('Escape');
+    await wait(300);
+    await press('Space');
+    await until(`${sceneIs('hub')} && Boolean(document.querySelector('#screens .px-title'))`, 'MY PC');
+    await wait(600);
+    await shoot('01-my-pc');
+    console.log(`MY PC's title bar: ${await page.evaluate(`document.querySelector('#screens .px-title').textContent`)}`);
+    await press('Escape');
+    await until(baseReady, 'home again');
   } else {
     await press('KeyX');
     await until(dexUp, 'THE POKéDEX');
@@ -214,8 +227,8 @@ try {
     await until(pageUp(25), "PIKACHU's page, a page back");
     await press('Escape');
     await until(`${dexUp} && ${DEX}.page === null`, 'the grid again');
-    await wait(200);
-    if ((await here()) !== '25') fail(`ESC came back to ${await here()}, not the tile it left`);
+    // The screen places its own cursor a frame after it is drawn: it must be let land.
+    await until(onTile(25), 'the cursor back on the tile ESC left');
 
     // A shiny owned shows both; a kind only met is its shape; a legend stands on gold.
     for (const [dexId, name] of [[129, '06-page-shiny'], [143, '07-page-only-met'], [145, '08-page-legend']]) {
@@ -225,7 +238,7 @@ try {
       await wait(600);
       await shoot(name);
       await press('Backspace');
-      await until(`${dexUp} && ${DEX}.page === null`, 'the grid again');
+      await until(onTile(dexId), `the grid again, the cursor back on ${dexId}`);
     }
     // The last page has nowhere on to go, and says so rather than turning.
     await focusTile(145);
