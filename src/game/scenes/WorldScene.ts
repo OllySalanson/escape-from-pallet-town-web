@@ -223,6 +223,7 @@ import { openNamingScreen } from '../ui/NamingScreenOverlay';
 import { placeCaptions, placeDialog, seatedOver, type CaptionPlacement, type Rect } from '../ui/labelPlacement';
 import { arrivalPlace } from '../base/partner';
 import { PartnerFigure, type PartnerHost } from '../base/partnerFigure';
+import { ShinyGlints, glintHeadStart } from '../base/shinyGlint';
 import { raidFollower, sameFollower, type RaidFollower } from '../world/raidFollower';
 import { advanceLookMs, isLooking } from '../ui/captionReveal';
 import { GAME_FONT } from '../ui/gameFont';
@@ -1140,6 +1141,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * a fight starts the count again: a battle is not standing still.
    */
   private hunterStillMs = 0;
+  /** The stars of every standing Pokemon about to be met shiny, with the figure they are round (`standsShiny`). */
+  private figureGlints: { readonly glints: ShinyGlints; readonly sprite: Phaser.GameObjects.Sprite; readonly species: FigureSpeciesId }[] = [];
   /** How long the player has stood without a step or a turn, and the tile and facing they have stood with (`countStandingStill`). */
   private stoodStillMs = 0;
   private stoodAs = '';
@@ -1639,6 +1642,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.settleWayMark(deltaMs);
     // Last, so it is drawn where this frame's step has put the player.
     this.updatePartner(deltaMs);
+    this.tendFigureGlints(deltaMs);
     this.updateFriend(deltaMs);
   }
 
@@ -1742,6 +1746,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Drawn here because nothing else in the world runs yet.
     this.partner?.setDropHeight(pose.partnerHeight);
     this.partner?.update(deltaMs);
+    this.tendFigureGlints(deltaMs);
     if (pose.partnerLanded && !arrival.partnerLanded) {
       arrival.partnerLanded = true;
       audioManager.play('ledgeHop');
@@ -3121,7 +3126,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       }
 
       if (entity.pokemon) {
-        this.createPokemonFigure(entity.id, entity.position, entity.pokemon, this.isAsleep(entity), this.otherColours(entity));
+        this.createPokemonFigure(
+          entity.id,
+          entity.position,
+          entity.pokemon,
+          this.isAsleep(entity),
+          this.otherColours(entity),
+          this.standsShiny(entity),
+        );
         continue;
       }
       if (entity.berry) {
@@ -4060,12 +4072,25 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     return reward?.kind === 'meet' && reward.shiny ? secretById(entity.secret!)?.figureTint : undefined;
   }
 
+  /**
+   * Whether a secret's figure is about to be met in its other colours: THE
+   * PINK ONE, while the raid is led by what it comes down the ride for. It
+   * gives off a shiny's stars where it stands (`base/shinyGlint.ts`), as one
+   * does in the garden at home, so it is seen for what it is from across the
+   * ride and not only by its tint.
+   */
+  private standsShiny(entity: WorldEntity): boolean {
+    const reward = this.openSecret(entity.secret)?.reward;
+    return reward?.kind === 'meet' && reward.shiny === true;
+  }
+
   private createPokemonFigure(
     id: string,
     position: GridPosition,
     species: FigureSpeciesId,
     asleep = false,
     tint?: number,
+    shiny = false,
   ): void {
     const [first, second] = pokemonIconFrames(species);
     const key = `pokemon-icon-${species}`;
@@ -4094,6 +4119,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     if (tint !== undefined) {
       sprite.setTint(tint);
+    }
+    if (shiny) {
+      // Each one out of step with the last, and with the follower (`glintHeadStart`).
+      this.figureGlints.push({ glints: new ShinyGlints(this, glintHeadStart(this.figureGlints.length + 1)), sprite, species });
     }
     this.npcSprites.set(id, sprite);
     this.pokemonSoles.set(id, pokemonSoleDrop(species));
@@ -4818,6 +4847,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * out of the way of anybody who steps onto its tile - the hunter, a
    * townsperson keeping their beat - by going after the player into theirs.
    */
+  /** The stars of the standing Pokemon about to be met shiny, a frame on (`standsShiny`). */
+  private tendFigureGlints(deltaMs: number): void {
+    for (const { glints, sprite, species } of this.figureGlints) {
+      glints.update(deltaMs);
+      if (sprite.visible) {
+        glints.placeOverIcon(sprite, species);
+      } else {
+        glints.hide();
+      }
+    }
+  }
+
   private updatePartner(deltaMs: number): void {
     if (this.boardedAtMs !== null) {
       return;
@@ -7273,6 +7314,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.worldLabels.forEach((label) => label.destroy());
     this.worldLabels = [];
     this.watchedGround = [];
+    this.figureGlints.forEach(({ glints }) => glints.destroy());
+    this.figureGlints = [];
     this.npcSprites.clear();
     this.npcAppearances.clear();
     this.idleFigures = [];

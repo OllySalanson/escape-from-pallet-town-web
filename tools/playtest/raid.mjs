@@ -545,7 +545,8 @@ try {
   // `read:x:y:Dir` (walks to that tile, faces Dir and presses the interact
   // key: a sign, a clue, a person; `read:x:y:Dir:N` reads on to its Nth line), `tide:S` (stands still until the raid's
   // tide reads S seconds, as a boat reads it), `clock:S` (until S seconds have
-  // gone by on the raid's own clock, as a secret reads it), `still:S` (until
+  // gone by on the raid's own clock, as a secret reads it), `glint` (until a
+  // standing Pokemon about to be met shiny has its stars out), `still:S` (until
   // the player has stood S seconds with no step and no turn), `push:area:x:y:Dir` (walks behind the Strength boulder on that tile of an
   // area and pushes it once - `WorldScene.tryPushBoulder`, a floor switch
   // under it thrown by the game), `grab:itemId` (every piece of it this raid
@@ -689,6 +690,24 @@ try {
           await clearInterruptions();
         }
         note(`omen: ${plan.omen.speciesId} crossing at ${Math.round((await page.evaluate(elapsed)) / 1000)}s, seen ${await page.evaluate(`${GAME}.scene.getScene('world').runSession.omenSeen === true`)}`);
+      }
+    } else if (kind === 'glint') {
+      // `glint` stands until a standing Pokemon about to be met shiny has all
+      // its stars out (`WorldScene.figureGlints`, `base/shinyGlint.ts`), which
+      // is when it is photographed (`shot:name` next). A raid with none, or a
+      // build from before the stars, says so and goes on.
+      const out = `(() => { const g = ${GAME}.scene.getScene('world').figureGlints; return g === undefined ? -1 : g.length === 0 ? 0 : Math.max(...g.map((each) => each.glints.lit.length)); })()`;
+      const first = await page.evaluate(out);
+      if (first < 0) {
+        note('glint: this build has no stars to wait for');
+        await wait(1500);
+      } else if (first === 0 && (await page.evaluate(`${GAME}.scene.getScene('world').figureGlints.length`)) === 0) {
+        note('glint: nothing on this raid stands shiny');
+      } else {
+        for (let guard = 0; guard < 600 && (await page.evaluate(out)) < 3; guard += 1) {
+          await wait(stepped ? 50 : 30);
+        }
+        note(`glint: ${await page.evaluate(out)} stars out`);
       }
     } else if (kind === 'still') {
       // `still:S` stands, with no step and no turn and nothing pressed, until
