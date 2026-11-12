@@ -245,3 +245,42 @@ twice their size with their counts, pocket after pocket.
 | HeartGold bag: the supplies, big | 2 | 5 | a list of names; now icons twice the size with their counts |
 | Hades: words only for the one pointed at | 2 | 4 | 174 words; 87, most of them the dossier's |
 | Every key path | 5 | 5 | the box bar, all 24 and all 13 by arrow key, the dossier follows, ENTER treats a hurt one (`stashShots.mjs`) |
+
+## The bench (the Raid Arena hall)
+
+`HubScene.benchView`, drawn as YOUR TEAM is: the same question, the same pieces.
+Pictures by `tools/playtest/menuShots.mjs <build> <dir> --window=WxH` (its
+`lobby`/`loadout` screen, Bulbasaur on the bench, 23 more at base).
+
+| | Before | After |
+|---|---|---|
+| 1280x800 | ![](bench/before-1280x800.png) | ![](bench/after-1280x800.png) |
+| 1920x950 | ![](bench/before-1920x950.png) | ![](bench/after-1920x950.png) |
+| 800x600 | ![](bench/before-800x600.png) | ![](bench/after-800x600.png) |
+
+What changed: the bench is six FireRed slots (the lead's gold, empty ones dim
+Poké Balls, held gear on the icon), everybody else at base is a grid of party
+icons under them, and the dossier with its treatment chips answers for the one
+under the cursor, led by its portrait. The bar at the foot no longer lists the
+names the slots show. In a window short of height (800x600, `data-short`) the
+six slots become one strip of six tiles, icon over bar, or two rows of named
+slots left no room for the box. The dossier's picture-first placement (the raid
+PARTY's, now the bench's too) keeps the figure one box, so the fold reads it as a
+row, and never gives way past the portrait and its MORE strip (80 pixels): below
+that the types were cut in half.
+
+### Scorecard
+
+| Measure | 1280x800 before | after | 1920x950 before | after | 800x600 before | after |
+|---|---|---|---|---|---|---|
+| Words in view | 97 | **47** | 233 | **80** | 58 | **35** |
+| Pokémon in view (of 24) | 7 | **19** | 16 | **24** | 3 | **9** |
+| Screen that is picture | 0% | **22%** | 2% | **12%** | 0% | **16%** |
+
+| Benchmark | Before | After | Why |
+|---|---|---|---|
+| HeartGold party: who is going | 2 | 5 | ticks on rows and names in the bar; now six slots |
+| FireRed PC box: who could go | 1 | 5 | a list of names; now the box as icons |
+| FireRed party: who is hurt | 3 | 5 | bars on rows; now the flap pace and the bar |
+| Hades: the one pointed at, big | 2 | 4 | the portrait was below the fold; now it leads the dossier |
+| Every key path | 5 | 5 | ENTER on a tile benches it, on a slot takes it off, TAB into the dossier's care, DONE back to the hall (`deploy.mjs` drives it on every raid) |

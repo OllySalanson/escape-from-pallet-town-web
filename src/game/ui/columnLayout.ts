@@ -116,6 +116,16 @@ export const TIGHT_MENU_HEIGHT = 300;
 
 export type MenuRoom = 'tight' | 'narrow' | 'wide';
 
+/**
+ * Whether a screen is short of height whatever its width: 800x600's menus are,
+ * and a side column at 1280x800 is not, though both are `tight`. A screen that
+ * stacks bands - the bench's six slots over its box over a dossier - needs to
+ * know it is the height that has run out, not the width (`data-short`).
+ */
+export function isShortRoom(gamePixelsHigh: number): boolean {
+  return gamePixelsHigh < TIGHT_MENU_HEIGHT;
+}
+
 export function roomFor(gamePixelsWide: number, gamePixelsHigh: number): MenuRoom {
   if (gamePixelsWide >= WIDE_MENU_WIDTH && gamePixelsHigh >= WIDE_MENU_HEIGHT) {
     return 'wide';

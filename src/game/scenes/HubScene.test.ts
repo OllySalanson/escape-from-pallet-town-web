@@ -1690,7 +1690,11 @@ describe('what the base screen leads with', () => {
     const bench = markupOf(hub);
     const bar = bench.slice(bench.indexOf('confirm-bar'));
     expect(bar).toContain('1/6 on the bench');
-    expect(bar).toContain('Charmander');
+    // Who is coming is the bench's six slots, FireRed's party: Charmander leads
+    // in the gold one and the other five are empty Poké Balls.
+    const slots = bench.slice(bench.indexOf('bench-slots'), bench.indexOf('px-mon-tiles'));
+    expect(slots).toMatch(/class="px-party-slot is-lead" data-pokemon="charmander-1"/);
+    expect(slots.match(/px-party-slot is-empty/g)).toHaveLength(5);
 
     hub.setView('rack');
     expect(markupOf(hub)).toContain('1 supply packed.');

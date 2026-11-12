@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
-import { columnTracks, planColumns, roomFor } from './columnLayout';
+import { columnTracks, isShortRoom, planColumns, roomFor } from './columnLayout';
 
 const GAP = 4;
 
@@ -128,5 +128,13 @@ describe('how much room a screen has', () => {
     );
     expect(narrow.length).toBeGreaterThan(4);
     expect(narrow.filter((selector) => !tight.includes(selector))).toEqual([]);
+  });
+});
+
+describe('a screen short of height', () => {
+  it('is 800x600 and not a side column at 1280x800, though both are tight', () => {
+    expect(isShortRoom(292)).toBe(true);
+    expect(isShortRoom(392)).toBe(false);
+    expect(roomFor(320, 392)).toBe('tight');
   });
 });

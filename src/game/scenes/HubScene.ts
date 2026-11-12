@@ -156,7 +156,7 @@ import { moveChoiceMessage } from '../ui/moveChooser';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { conditionLine } from '../ui/condition';
 import { pokemonDossier } from '../ui/pokemonDossier';
-import { pixelItemTile, pixelMonTile } from '../ui/monIcon';
+import { pixelEmptyPartySlot, pixelItemTile, pixelMonTile, pixelPartySlot } from '../ui/monIcon';
 import {
   COLUMN_MEASURES,
   escapeAttribute,
@@ -2577,24 +2577,35 @@ export class HubScene extends Phaser.Scene {
       : party.map((stored) => stored.pokemon.name).join(', ');
     // The rack and the rim say what is not packed; on the bench it is about nothing in view.
     const warning = this.packWarning({ balls: false });
-    // Each row names its box, as every other picker of your Pokémon does (`ui/boxPicker.ts`).
+    // FireRed's party and PC box, as YOUR TEAM draws the same question
+    // (`ui/teamView.ts`): the bench as six slots - the lead's gold, an empty one
+    // a dim Poké Ball - and everybody else at base as party icons under them,
+    // each tile's box said to a reader and on the help bar.
     const boxNames = this.stash.listBoxes().map((box) => box.name);
-    const pokemonRows = this.findablePokemon
+    const benchHelp = (stored: StashedPokemon): string => `Take ${escapeAttribute(stored.pokemon.name)} back off the bench.`;
+    const slots = Array.from({ length: MAX_RUN_PARTY }, (_, index) => {
+      const stored = party[index];
+      return stored
+        ? pixelPartySlot(stored.pokemon, {
+            lead: index === 0,
+            attributes: `data-pokemon="${stored.id}" data-shows="${stored.id}" aria-label="${escapeAttribute(`${stored.pokemon.name}, level ${stored.pokemon.level}${index === 0 ? ', leads' : ''}, ${boxNames[this.stash.boxIndexOf(stored.id)] ?? ''}`)}" data-help="${benchHelp(stored)}"`,
+          })
+        : pixelEmptyPartySlot();
+    }).join('');
+    const atBase = this.findablePokemon.filter((stored) => !this.flow.includesPokemon(stored.id));
+    const pokemonRows = atBase
       .map((stored, index) => {
-        const added = this.flow.includesPokemon(stored.id);
         const name = escapeAttribute(stored.pokemon.name);
         // The cursor starts on the first Pokemon, not on the sort chip above
         // the list: an Enter on arrival re-sorted the stash (playtest 44 #2).
-        // A fainted Pokemon is refused by the flow (`togglePokemon`), so its row
+        // A fainted Pokemon is refused by the flow (`togglePokemon`), so its tile
         // is a cursor stop that says why rather than an ADD that does nothing.
-        const fainted = !added && stored.pokemon.isFainted;
-        return `<button class="px-row${added ? ' is-selected' : ''}" data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''}${fainted ? ' aria-disabled="true"' : ''} data-help="${added ? `Take ${name} back off the bench.` : fainted ? faintedRefusal(name, single) : `Put ${name}${single ? ', your only Pokémon,' : ''} on the bench. Lost on a wipe unless it is in the locker.`}">${this.pokemonRowBody(
-          stored,
-          // A tick, as every chosen row on these screens is marked: a ten-letter
-          // name and its health bar leave no room for a word beside them.
-          added ? pixelTag('', 'good', true) : fainted ? pixelTag('Fainted', 'risk') : pixelTag('Add'),
-          boxNames[this.stash.boxIndexOf(stored.id)],
-        )}</button>`;
+        const fainted = stored.pokemon.isFainted;
+        const full = party.length >= MAX_RUN_PARTY;
+        const boxed = boxNames[this.stash.boxIndexOf(stored.id)] ?? '';
+        return pixelMonTile(stored.pokemon, {
+          attributes: `data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 && party.length === 0 ? ' data-cursor-start' : ''}${fainted || full ? ' aria-disabled="true"' : ''} data-box-name="${escapeAttribute(boxed)}" aria-label="${escapeAttribute(`${stored.pokemon.name}, level ${stored.pokemon.level}, ${boxed}`)}" data-help="${fainted ? faintedRefusal(name, single) : full ? `The bench is full (${MAX_RUN_PARTY}). Take somebody off first.` : `Put ${name}${single ? ', your only Pokémon,' : ''} on the bench. Lost on a wipe unless it is in the locker.`}"`,
+        });
       })
       .join('');
     const details = this.findablePokemon
@@ -2606,12 +2617,13 @@ export class HubScene extends Phaser.Scene {
       )
       .join('');
     return `<main class="px-body loadout-layout bench-layout">${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${this.browseBar(false)}${pokemonRows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>${details}`,
+      `<div class="px-party-slots bench-slots">${slots}</div><div class="px-mon-tiles px-scroll">${this.browseBar(false)}${pokemonRows || `<p class="px-empty">${this.findablePokemon.length > 0 ? 'Everybody is on the bench.' : 'No Pokémon answers that.'}</p>`}</div>${details}`,
       { className: 'loadout-stash', heading: 'At base', note: stashNote },
     )}${pixelCommitBar({
       title: `${party.length}/${MAX_RUN_PARTY} on the bench`,
+      // The slots say who; the bar says only what is wrong, when something is.
       lines: [
-        `<span class="px-wrap">${summary}</span>`,
+        ...(party.length === 0 ? [`<span class="px-wrap">${summary}</span>`] : []),
         ...(warning ? [`<small class="px-wrap px-warning">${warning}</small>`] : []),
       ],
       actions: `<button class="px-window px-button is-primary" data-back data-help="Back to the hall.">Done</button>`,
