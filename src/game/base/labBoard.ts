@@ -168,16 +168,20 @@ function slipsAcrossBoard(width: number): number {
 function cornerSeats(width: number, height: number, columns: number): readonly { readonly x: number; readonly y: number }[] {
   const left = BOARD_BORDER + SLIP_GAP + (slipsAcrossBoard(width) - columns) * (SLIP_WIDTH + SLIP_GAP);
   const room = width - BOARD_BORDER - left;
-  // A pixel spare across for every scrap to sit a pixel off its neighbours' line; the rows are
-  // stacked edge to edge, so the corner holds a row more - ten rumours want ten scraps, and
-  // with a gap between the rows Oak's board had nine (#488 and #489 together).
-  const across = Math.floor((room - 1 + SCRAP_GAP) / (SCRAP_WIDTH + SCRAP_GAP));
+  // The rows are stacked edge to edge, so the corner holds a row more - ten rumours want ten
+  // scraps, and with a gap between the rows Oak's board had nine (#488 and #489 together).
+  // Across, a scrap sits a pixel off its neighbours' line wherever there is a pixel to spare;
+  // where the row fills its room exactly the last scrap keeps the line, which is what lets two
+  // columns of slips hold twenty rumours rather than sixteen (the third wave of secrets made
+  // seventeen, and a third column would have left the notices two slips).
+  const across = Math.floor((room + SCRAP_GAP) / (SCRAP_WIDTH + SCRAP_GAP));
+  const spare = room - (across * SCRAP_WIDTH + (across - 1) * SCRAP_GAP);
   const down = Math.floor((height - BOARD_BORDER * 2 - SLIP_GAP) / SCRAP_HEIGHT);
   const seats: { x: number; y: number }[] = [];
   for (let row = 0; row < down; row += 1) {
     for (let column = 0; column < across; column += 1) {
       seats.push({
-        x: left + column * (SCRAP_WIDTH + SCRAP_GAP) + ((row * 2 + column) % 3 === 0 ? 1 : 0),
+        x: left + column * (SCRAP_WIDTH + SCRAP_GAP) + ((spare > 0 || column < across - 1) && (row * 2 + column) % 3 === 0 ? 1 : 0),
         y: BOARD_BORDER + SLIP_GAP + row * SCRAP_HEIGHT,
       });
     }

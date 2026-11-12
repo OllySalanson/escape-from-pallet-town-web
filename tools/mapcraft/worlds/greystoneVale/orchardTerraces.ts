@@ -236,7 +236,7 @@ export function orchardTerraces(): MapcraftResult {
         { name: 'THE COWMAN’S', x: 8, y: 25, width: 16, height: 7, wildlife: 'field' },
         { name: 'THE CORNFIELD', x: 12, y: 33, width: 14, height: 8, wildlife: 'field' },
         { name: 'THE LOWER ORCHARD', x: 38, y: 19, width: 10, height: 9, wildlife: 'field' },
-        { name: 'THE CIDER PRESS', x: 48, y: 19, width: 6, height: 10, wildlife: 'field' },
+        { name: 'THE CIDER PRESS', x: 48, y: 19, width: 8, height: 9, wildlife: 'field' },
         { name: 'THE HONESTY BOX', x: 54, y: 28, width: 10, height: 6, wildlife: 'field' },
         { name: 'THE DEW POND', x: 34, y: 37, width: 20, height: 13, wildlife: 'field' },
         { name: 'THE COCKLE BEDS', x: 2, y: 50, width: 22, height: 10, wildlife: 'shore' },
@@ -256,6 +256,10 @@ export function orchardTerraces(): MapcraftResult {
       // The farm's beasts: the Tauros the pasture is grazed by, one of them
       // ready to argue about it, and the yard's Doduo, who are hens to everybody here.
       pokemon: [
+        // What licks the press's barrels clean, in the gap between them and the
+        // wood: a Lickitung, the only one in the vale, there only on a raid that
+        // set out with a berry in the pack (`world/secrets.ts`, THE STICKY TONGUE).
+        { x: 55, y: 26, species: 'lickitung', level: 24, secret: 'the-sticky-tongue' },
         { x: 48, y: 38, species: 'tauros', level: 9 },
         { x: 32, y: 46, species: 'tauros' },
         { x: 37, y: 41, species: 'tauros', beat: { everyMs: 3100, roam: [[1, 0]] } },
@@ -309,7 +313,7 @@ export function orchardTerraces(): MapcraftResult {
         { x: 18, y: 36, name: 'Scarecrow', look: 'straw-hat', facing: 'down', lines: ['...', 'It does not answer. It is a scarecrow. It was facing the other way a minute ago.'] },
         { x: 11, y: 43, name: 'Shepherd', look: 'hiker', facing: 'right', lines: ['Rough grazing. We tried sheep, but something kept eating them. We tried something else.', 'It ate that as well. Hop the ledges down, it is quicker than walking.'], beat: { everyMs: 3700, glances: ['down', 'right'] } },
         { x: 44, y: 21, name: 'Apple Girl', look: 'lass', facing: 'left', lines: ['Pip says I am not to take any. Pip says that about everything.', 'I have told him it is not his orchard. It is not. It is just his apples.'], beat: { everyMs: 2300, roam: [[1, 0]], glances: ['left', 'down'] }, calls: ['Pip! They are ripe!'] },
-        { x: 53, y: 29, name: 'Cider Maker', look: 'bald-man', facing: 'up', lines: ['Everything goes in. Windfalls, wasps, the odd boot. It all comes out as cider.', 'It is very good for you. It is very good at something.'], beat: { everyMs: 3000, roam: [[1, 0]], glances: ['up'] }, calls: ['Second press! Who is next?'] },
+        { x: 53, y: 29, name: 'Cider Maker', look: 'bald-man', facing: 'up', secret: 'the-sticky-tongue', lines: ['Everything goes in. Windfalls, wasps, the odd boot. It all comes out as cider.', 'It is very good for you. It is very good at something.', 'Something behind my barrels licks them clean round the bung. It only comes out for a BERRY brought in a pack.'], beat: { everyMs: 3000, roam: [[1, 0]], glances: ['up'] }, calls: ['Second press! Who is next?'] },
         { x: 56, y: 29, name: 'Honest Tom', look: 'youngster', facing: 'right', lines: ['I am not watching the box. Nobody watches the box. That is the whole idea of it.', 'I just happen to sit here. All day. Looking at it.'], beat: { everyMs: 2500, glances: ['up', 'left'] }, calls: ['I saw nothing. I saw that.'] },
         { x: 40, y: 44, name: 'Herdsman', look: 'camper', facing: 'right', lines: ['That pond has not gone down in a dry year or come up in a wet one. Sit and watch it.', 'I have. The Tauros have. Nothing happens, and it is the best part of the day.'], beat: { everyMs: 4200, glances: ['right', 'down'] }, calls: ['Steady, you lot.'] },
         { x: 58, y: 51, name: 'Shell Digger', look: 'tuber-girl', facing: 'down', lines: ['The tide leaves the best shells right at the far end of the sands!', 'I found a whole boot once. Dad is wearing it.'], beat: { everyMs: 2000, roam: [[-1, 0]], glances: ['down'] }, calls: ['Got one! Got one!'] },

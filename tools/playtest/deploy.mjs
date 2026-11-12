@@ -272,6 +272,11 @@ export function deployOptions(args) {
     // --moves=Vine Whip|Tackle,.. - the moves the starter kept, with --level.
     moves: (option('moves') ?? '').split('|').filter(Boolean),
     starter: option('starter'),
+    // --lead=Name - which Pokemon is taken to the bench first and so walks in
+    // front: one of --team's, by the name on its row (`--team=slowpoke:20
+    // --lead=Slowpoke`). A secret that waits for a type to lead
+    // (`world/secrets.ts`) is reached no other way; the starter goes second.
+    lead: option('lead'),
     team: list('team'),
     stash: list('stash'),
     pack: list('pack'),
@@ -307,7 +312,7 @@ export async function startExplorerRun(page, { press, until }) {
  * that steps it, and so needs the `wait` that steps it (`walkIntoBase` refuses
  * a paused loop without one).
  */
-export async function deploy(page, url, { press, click, until, wait, paused = false, insertion, offered = false, explorer = false, beaten = [], opened = [], completed = [], banked, debt, hp, level, moves = [], starter = 'Bulbasaur', team = [], stash = [], pack = [], secure = [], errands = [], hunt = [], heard = [] }) {
+export async function deploy(page, url, { press, click, until, wait, paused = false, insertion, offered = false, explorer = false, beaten = [], opened = [], completed = [], banked, debt, hp, level, moves = [], starter = 'Bulbasaur', lead, team = [], stash = [], pack = [], secure = [], errands = [], hunt = [], heard = [] }) {
   const title = async () => { await page.waitFor(sceneIs('title')); if (paused) await page.evaluate(`${GAME}.pauseLoop()`); };
   await title();
   // --explorer is the explorer run (PLAYTEST on the title, beside MAKE A MAP):
@@ -401,14 +406,18 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
     await press('Space'); await until(sceneIs('base'));
     console.log(`continuing from a save with: ${JSON.stringify(await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress`))}`);
   }
-  return enterRaid(page, { press, click, until, wait, insertion, starter, team, pack, secure });
+  return enterRaid(page, { press, click, until, wait, insertion, starter, lead, team, pack, secure });
 }
 
 /** From the harbour into a raid: the Raid Arena, the bench, the rack, the locker, the rim. */
-async function enterRaid(page, { press, click, until, wait, insertion, starter, team, pack, secure }) {
+async function enterRaid(page, { press, click, until, wait, insertion, starter, lead, team, pack, secure }) {
   // The lobby is a town now, and everything before a raid is on the floor of
   // the Raid Arena: this walks through its door and up to the bench.
   await walkIntoBase(page, 'raid-arena', { press, until, wait });
+  // The first taken leads: --lead's, when one was asked for, with the starter after it.
+  if (lead) {
+    await until(takePokemon(lead), `${lead} leading the raid party`);
+  }
   await until(takePokemon(starter), `${starter} in the raid party`);
   // Everybody else the vault holds, so a `--team` deploys as a team. The rows
   // carry the stash id they are for, and one already in the raid is a bench

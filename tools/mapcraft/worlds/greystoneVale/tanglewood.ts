@@ -278,6 +278,7 @@ export function tanglewood(): MapcraftResult {
       districts: [
         { name: 'MISLAID', x: 30, y: 8, width: 16, height: 10, wildlife: 'woodland' },
         { name: 'THE MUSHROOM RING', x: 4, y: 4, width: 12, height: 8, wildlife: 'woodland' },
+        { name: 'THE LOST PICNIC', x: 22, y: 2, width: 10, height: 6, wildlife: 'woodland' },
         { name: 'THE PICNIC GROUND', x: 8, y: 18, width: 10, height: 12, wildlife: 'woodland' },
         { name: 'THE WOODMEN’S STAND', x: 0, y: 32, width: 12, height: 12, wildlife: 'woodland' },
         { name: 'THE SHRINE GLADE', x: 34, y: 22, width: 18, height: 10, wildlife: 'woodland' },
@@ -308,7 +309,9 @@ export function tanglewood(): MapcraftResult {
         // -- The mushroom ring ----------------------------------------------------------------
         { x: 7, y: 9, name: 'Mushroom Woman', look: 'old-woman', facing: 'right', lines: ['Every lane in this wood is the same lane. I have been picking along it for sixty years.', 'Do not stand in the ring. Paras lives there, and it thinks it owns the place. It does.'], beat: { everyMs: 3700, glances: ['left', 'right'] }, calls: ['Not that one. Not that one.'] },
         // -- The lost picnic ------------------------------------------------------------------
-        { x: 27, y: 4, name: 'Lost Picnicker', look: 'picnicker', facing: 'down', lines: ['I took one turn off the road for a picnic spot.', 'That was this morning.'], calls: ['Is it still today?'] },
+        // The secret's clue (`world/secrets.ts`, THE LOST PICNIC): what keeps him
+        // here comes and stands by his bench after dark.
+        { x: 27, y: 4, name: 'Lost Picnicker', look: 'picnicker', facing: 'down', secret: 'the-lost-picnic', lines: ['I took one turn off the road for a picnic spot.', 'That was this morning.', 'Something stands by the bench after DARK, swinging a weight on a string. I always nod off before I see it.'], calls: ['Is it still today?'] },
         // -- Mislaid -----------------------------------------------------------------------------
         { x: 37, y: 11, name: 'Old Founder', look: 'old-man', facing: 'down', lines: ['I took one turn off the road in the year of the big snow. So did she, and him.', 'We put up a hut for the night. That was the hut.', 'Mislaid. Population fourteen. Founded by accident, and nobody has apologised.'], beat: { everyMs: 4100, glances: ['down', 'left'] }, calls: ['Fourteen! No, fifteen. Hello.'] },
         { x: 40, y: 17, name: 'Mrs Turner', look: 'woman', facing: 'left', lines: ['We are leaving in the morning. We have got it all worked out this time.', 'I have said that for nineteen years, and I have got a very nice garden out of it.'], beat: { everyMs: 3300, glances: ['up', 'left'] }, calls: ['We leave in the morning!'] },
@@ -347,6 +350,12 @@ export function tanglewood(): MapcraftResult {
       ],
       pokemon: [
         { x: 22, y: 4, species: 'oddish' },
+        // The lost picnic: a Drowzee dozes by the bench all day, the only one in
+        // the vale, and after dark the Hypno it will be one day stands over it
+        // (`world/secrets.ts`, THE LOST PICNIC). Both in the glade's back row,
+        // off the way through to Mislaid.
+        { x: 28, y: 3, species: 'drowzee', level: 10 },
+        { x: 26, y: 2, species: 'hypno', level: 26, secret: 'the-lost-picnic' },
         { x: 2, y: 37, species: 'pidgey', beat: { everyMs: 1500, glances: ['right'] } },
         { x: 12, y: 24, species: 'caterpie', beat: { everyMs: 2300, roam: [[0, 1]] } },
         { x: 12, y: 10, species: 'paras', level: 8 },

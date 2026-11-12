@@ -135,6 +135,43 @@ export const RUMOURS: readonly Rumour[] = [
     ringsOver: 'THE SUNKEN QUARTER',
     line: "Ran a diver out to THE DROWNED TOWN once. Swore the old church bell answers a pull at LOW WATER - a minute in, and gone by two.",
   },
+  // The third wave: the Pokemon the vale has nowhere else (`secrets.ts`).
+  {
+    id: 'board-lost-picnic',
+    secret: 'the-lost-picnic',
+    source: 'board',
+    gives: ['where', 'when'],
+    names: 'THE LOST PICNIC',
+    ringsOver: 'TANGLEWOOD',
+    line: 'RUMOUR: Nobody who stops at THE LOST PICNIC in TANGLEWOOD after dark gets home the same day. They are found asleep on their feet.',
+  },
+  {
+    id: 'sailor-sticky-tongue',
+    secret: 'the-sticky-tongue',
+    source: 'sailor',
+    gives: ['where', 'bring'],
+    names: 'THE CIDER PRESS',
+    ringsOver: 'ORCHARD TERRACES',
+    line: 'Took on cider at THE CIDER PRESS in ORCHARD TERRACES. Every barrel licked clean round the bung! Whatever does it comes out for a BERRY in your pack.',
+  },
+  {
+    id: 'spyglass-silent-picket',
+    secret: 'the-silent-picket',
+    source: 'spyglass',
+    gives: ['where', 'bring'],
+    names: 'THE POWER STATION',
+    ringsOver: 'THE POWER STATION',
+    line: 'One picket outside THE POWER STATION has not shifted a foot in nine years. I have watched. They say he only stirs for a PSYCHIC type walking in front.',
+  },
+  {
+    id: 'bill-shadow-in-the-crypt',
+    secret: 'the-shadow-in-the-crypt',
+    source: 'bill',
+    gives: ['where', 'bring'],
+    names: 'The Crypt',
+    ringsOver: 'THE MOOR CHAPEL',
+    line: 'BILL: THE CRYPT under THE MOOR CHAPEL is the oldest room in the vale! A shadow on its wall belongs to nobody. Old books say it only follows a GHOST type.',
+  },
   // THE RUMOUR MILL's own slips: when and what to bring, where the harbour's
   // rumour about the same secret gives where and one of them. Two rumours from
   // two sources complete each other (the harbour arenas plan, section 4.3).

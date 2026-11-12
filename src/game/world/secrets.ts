@@ -200,9 +200,12 @@ export interface Secret {
   /**
    * Which wave of the plan it shipped in: the first needs no badge; the second
    * needs something bought or won first - the POKé FLUTE from THE GAME
-   * CORNER's prize window, or MISTY beaten and THE COAST behind her open.
+   * CORNER's prize window, or MISTY beaten and THE COAST behind her open. The
+   * third is the Pokemon the vale had nowhere at all, each met only here: until
+   * it shipped, fourteen of the 151 could not be had and Oak's last Pokedex
+   * milestone could not be reached.
    */
-  readonly wave: 1 | 2;
+  readonly wave: 1 | 2 | 3;
 }
 
 /**
@@ -235,6 +238,17 @@ export const NAVVIES_MACHAMP: PokemonGift = {
     'Look after MACHAMP. It liked the rails, mind.',
   ],
 };
+
+/** Every berry a pack can hold: what brings the sticky tongue out from behind the barrels. */
+export const BERRY_ITEM_IDS: readonly ItemId[] = [
+  'oran-berry',
+  'sitrus-berry',
+  'pecha-berry',
+  'cheri-berry',
+  'rawst-berry',
+  'chesto-berry',
+  'aspear-berry',
+];
 
 export const SECRETS: readonly Secret[] = [
   {
@@ -377,6 +391,80 @@ export const SECRETS: readonly Secret[] = [
     foundLine: 'You haul on the rope. Far below, the drowned bell tolls once... and something with scythes climbs up out of the belfry!',
     foundSound: 'bellToll',
     wave: 2,
+  },
+  {
+    // FireRed's own story, from the Pokedex and from Berry Forest on Three
+    // Island, where a HYPNO led a girl off into the trees: the picnicker in
+    // Tanglewood's north glade has been "here since this morning" for longer
+    // than he knows. After dark what keeps him there comes and stands by his
+    // bench. Lv 26 is the level a DROWZEE turns into one, and an earned fight
+    // before MISTY (`secrets.test.ts`); the DROWZEE dozing in the same glade by
+    // day and by night is an ordinary standing Pokemon, in the district's file.
+    id: 'the-lost-picnic',
+    name: 'THE LOST PICNIC',
+    place: 'THE LOST PICNIC',
+    nook: 'figure',
+    when: [{ kind: 'hour', hour: 'night' }],
+    rewards: [{ kind: 'meet', speciesId: 'hypno', level: 26 }],
+    foundLine: 'A little weight swings on its string, to and fro, to and fro... You shake your head clear. HYPNO was not expecting that!',
+    wave: 3,
+  },
+  {
+    // Something has licked every barrel behind the cider press clean round the
+    // bung. It keeps to the gap between the barrels and the wood, and comes out
+    // only for something sweeter than cider: a berry that was in the pack as
+    // the raid set out (one picked on the way is picked too late - the
+    // condition is read as the raid deploys). FireRed has LICKITUNG only by
+    // trade, on Route 18. Lv 24 is an earned fight before MISTY.
+    id: 'the-sticky-tongue',
+    name: 'THE STICKY TONGUE',
+    place: 'THE CIDER PRESS',
+    nook: 'figure',
+    when: [{ kind: 'carried', items: BERRY_ITEM_IDS }],
+    rewards: [{ kind: 'meet', speciesId: 'lickitung', level: 24 }],
+    foundLine: 'Something pink unrolls out of the gap behind the barrels, sniffing at your pack. LICKITUNG wants that berry!',
+    wave: 3,
+  },
+  {
+    // The Power Station's pickets have been out nine years, and the best of
+    // them has not said a word or shifted a foot in all of it, holding up a
+    // placard that is not there. He stands in the line every raid until he is
+    // had (`shutLines`), and breaks his silence only for a mind he can hear: a
+    // Psychic type walking in front. FireRed has MR. MIME only by trade, on
+    // Route 2. Lv 22 is an earned fight before MISTY.
+    id: 'the-silent-picket',
+    name: 'THE SILENT PICKET',
+    place: 'THE POWER STATION',
+    nook: 'figure',
+    when: [{ kind: 'lead-type', type: 'Psychic' }],
+    rewards: [{ kind: 'meet', speciesId: 'mr-mime', level: 22 }],
+    foundLine: 'The silent picket turns its head. It has heard something think. MR. MIME puts its placard down, very carefully, on nothing!',
+    shutLines: [
+      'This picket does not speak. It does not blink. It is holding up a placard that is not there.',
+      'It leans, very slightly, on a wall that is not there either.',
+    ],
+    wave: 3,
+  },
+  {
+    // A HAUNTER turns into a GENGAR only by trade, which this game does not
+    // have, so the one GENGAR in the vale is the shadow on the crypt wall under
+    // THE MOOR CHAPEL - a place only a night raid reaches. It lies along the
+    // wall behind the tomb every raid until it is had, with nothing in the room
+    // to cast it, and steps off the wall only for its own kind: a Ghost type
+    // walking in front, which the churchyard above is where to catch. Lv 25 is
+    // an earned fight before MISTY.
+    id: 'the-shadow-in-the-crypt',
+    name: 'THE SHADOW IN THE CRYPT',
+    place: 'The Crypt',
+    nook: 'figure',
+    when: [{ kind: 'lead-type', type: 'Ghost' }],
+    rewards: [{ kind: 'meet', speciesId: 'gengar', level: 25 }],
+    foundLine: 'Your Ghost drifts up to the wall, and the shadow on it turns round and grins. GENGAR steps off the stone!',
+    shutLines: [
+      'A shadow lies along the wall behind the tomb. There is nothing in the crypt to cast it.',
+      'It does not move when you do. You have the feeling it is being polite.',
+    ],
+    wave: 3,
   },
 ];
 

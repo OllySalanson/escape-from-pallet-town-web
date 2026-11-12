@@ -168,7 +168,7 @@ describe('VALE SECRETS, the golden book', () => {
     expect(page('the-drowned-bell')).toContain('WHEN: 1:00 to 2:00 into the raid');
     expect(page('the-drowned-bell')).toContain('BRING: the CASCADE BADGE won');
     expect(resolveBookText(page('the-sleeper-in-the-pines'))).toContain('BRING: a Poké Flute');
-    expect(page('the-sleeper-in-the-pines')).toContain('It lies there asleep, every raid.');
+    expect(page('the-sleeper-in-the-pines')).toContain('It waits there, every raid.');
   });
 
   it('writes notes only for secrets that exist', () => {
