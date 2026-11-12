@@ -298,7 +298,7 @@ export const RUN_INSERTIONS = {
     id: 'greystone-vale-stepping-stones',
     label: 'Stepping Stones',
     mapId: 'greystone-vale',
-    position: { x: 168, y: 184 },
+    position: { x: 169, y: 184 },
     description: 'By the heron hide at the foot of The Crossing, over the stepping stones from the west bank.',
   },
   'greystone-vale-the-strand': {

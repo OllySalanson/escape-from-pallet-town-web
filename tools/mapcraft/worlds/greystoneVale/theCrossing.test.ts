@@ -28,7 +28,7 @@ describe('THE CROSSING, walked two abreast', () => {
   // The road in from Millbrook, its first tile inside the valley.
   const ROAD_IN = { x: 0, y: 31 };
   // The landing at the foot of the valley.
-  const STEPPING_STONES = { x: 40, y: 56 };
+  const STEPPING_STONES = { x: 41, y: 56 };
   const opened = gatesForMap('greystone-vale').map(gateKey);
   const walked = walkDistrict(file, valeSolid(ORIGIN, opened), [ROAD_IN]);
 

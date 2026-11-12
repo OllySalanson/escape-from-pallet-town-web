@@ -205,7 +205,11 @@ export function theCrossing(): MapcraftResult {
   stand('crate-pair', 50, 55);
   stand('log', 52, 58);
   stand('log', 57, 58);
-  stand('log', 42, 54);
+  // The log lies across the clearing's east corner, its end over the landing:
+  // with the clearing opened to the road, every tile of it looks straight up
+  // the Wide Water road, and a held Up from the landing walked 27 tiles before
+  // anything answered it. The mouth beside it is three wide.
+  stand('log', 41, 54);
 
   // -- The West Bank: the road in from Millbrook comes out of the trees to a place ---
   // A carter's yard on the north of the road, a rest for the horses on the south,
@@ -233,7 +237,7 @@ export function theCrossing(): MapcraftResult {
   p.road([[50, 35], [50, 37]], { letter: ',' }); // the bee garden's
 
   const file = districtFile(GREYSTONE_VALE, 'the-crossing', p, {
-    dropIns: [{ x: 40, y: 56, name: 'Stepping Stones', description: 'By the heron hide at the foot of The Crossing, over the stepping stones from the west bank.' }],
+    dropIns: [{ x: 41, y: 56, name: 'Stepping Stones', description: 'By the heron hide at the foot of The Crossing, over the stepping stones from the west bank.' }],
     itemSpots: [
       { x: 34, y: 8 },
       { x: 41, y: 40 },
