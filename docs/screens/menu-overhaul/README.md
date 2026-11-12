@@ -326,3 +326,48 @@ unlocks is said nowhere else (playtest 47).
 | FireRed party: who | 2 | 4 | names on rows; now each with its icon |
 | Lost at a glance | 2 | 5 | GONE in red beside each row; now every lost thing greyed with a red cross |
 | Every key path | 5 | 5 | one control, BACK TO THE ARENA, on screen at every size (`resultShots.mjs`) |
+
+## Brock's Workshop
+
+`HubScene.workshopView`, its pictures by `ui/fixturePicture.ts`. Pictures by
+`tools/playtest/menuShots.mjs` (before, and after at 1920x950 and 800x600) and
+`tools/playtest/shopScreens.mjs` (after at 1280x800, its own save: parts for the
+first locker, little else), which walks every rung by arrow key, asks one, keeps
+it, and builds it.
+
+| | Before | After |
+|---|---|---|
+| 1280x800 | ![](workshop/before-1280x800.png) | ![](workshop/after-1280x800.png) |
+| 1920x950 | ![](workshop/before-1920x950.png) | ![](workshop/after-1920x950.png) |
+| 800x600 | ![](workshop/before-800x600.png) | ![](workshop/after-800x600.png) |
+
+Asked once more before anything is spent, in the card's own place, and built:
+![](workshop/after-asked.png) ![](workshop/after-built.png)
+
+What changed: every rung is a card standing on one line, the yard's skyline -
+the building it puts up, drawn tile for tile from the base's own sheets at its
+own size (the mast, the harbour light, the strongroom's doors, the healing
+canopy and hut, the ward with its colours), in colour once built and a grey
+blueprint before; its name; what it does (a shop says that bought or not); and
+its price as the salvage's own icons, counted, crossed and red where the vault
+is short. Built is gold, ready is framed in teal. Asking again happens in the
+card's own place, KEEP THEM over BUILD IT. Brock, the man the player walked in
+to talk to, is the heading: his own window took the room the cards needed. In a
+window short of height a card is its building, name and price, and the pane
+under the skyline says what it does for the one under the cursor; there the
+cards' feet sit under the MORE strip.
+
+### Scorecard
+
+| Measure | 1280x800 | 1920x950 | 800x600 |
+|---|---|---|---|
+| Rungs wholly in view (of 7) | 4 → **7** | 7 → 7 | 4 → **4** |
+| Words in view | 182 → **169** | 217 → **169** | - → 57 |
+| What each rung builds, shown | none → **all 7** | none → **all 7** | none → **4** |
+
+| Benchmark | Before | After | Why |
+|---|---|---|---|
+| Animal Crossing's town: progress you can see | 1 | 5 | a ladder of words; now the buildings themselves, coloured as they are built |
+| Hades' Mirror: every upgrade at once | 2 | 5 | four of seven rows above a fold; now all seven on one line |
+| A shop's price at a glance | 3 | 5 | "4× Parts crate" in words; now the crate's icon ×4, crossed in red when short |
+| Every key path | 5 | 5 | arrows reach all seven, ENTER asks, KEEP THEM keeps, BUILD IT builds (`shopScreens.mjs`) |

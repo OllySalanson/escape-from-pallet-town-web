@@ -60,13 +60,15 @@ const SEED = `(() => {
  */
 const READING = `(() => {
   const text = (node) => (node ? node.textContent.replace(/\\s+/g, ' ').trim() : null);
-  const focused = document.activeElement?.closest('.px-row, .px-button');
+  // A row of a shelf, a button, or one of Brock's cards (his rungs are a skyline
+  // of what they build since the menu overhaul).
+  const focused = document.activeElement?.closest('.px-row, .px-button, .px-card');
   const shows = document.activeElement?.closest('[data-shows]')?.dataset.shows;
   const panes = [...document.querySelectorAll('.shop-detail')].filter((pane) => !pane.hidden);
   return {
     on: text(focused?.querySelector('.px-name')) ?? text(focused),
-    does: text(focused?.querySelector('.px-row-main small')),
-    price: text(focused?.querySelector('.px-price')),
+    does: text(focused?.querySelector('.px-row-main small, .workshop-effect')),
+    price: text(focused?.querySelector('.px-price, .workshop-costs')),
     tag: text(focused?.querySelector('.px-tag'))?.toUpperCase() ?? null,
     help: text(document.querySelector('[data-help-text]')),
     // Anything drawn outside the screen, named well enough to find it again.
@@ -143,7 +145,7 @@ try {
   // arrows rather than down one lane: a rung the keyboard cannot reach is a
   // rung the pane can never answer for.
   const times = (key, count) => Array.from({ length: count }, () => key);
-  const walk = [...times('ArrowDown', 8), 'ArrowRight', ...times('ArrowUp', 8), ...times('ArrowDown', 8)];
+  const walk = [...times('ArrowLeft', 8), ...times('ArrowRight', 8), ...times('ArrowDown', 8), ...times('ArrowUp', 8), ...times('ArrowDown', 8)];
 
   console.log('Brock, one rung at a time:');
   await walkIntoBase(page, 'brocks-workshop');

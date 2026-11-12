@@ -157,6 +157,7 @@ import { MenuOverlay } from '../ui/MenuOverlay';
 import { conditionLine } from '../ui/condition';
 import { pokemonDossier } from '../ui/pokemonDossier';
 import { pixelEmptyPartySlot, pixelItemTile, pixelMonTile, pixelPartySlot } from '../ui/monIcon';
+import { drawFixture, fixtureArt } from '../ui/fixturePicture';
 import {
   COLUMN_MEASURES,
   escapeAttribute,
@@ -176,6 +177,7 @@ import {
   shopDetailPane,
   shopPaidColumn,
   shopPriceColumn,
+  SHORT_MARK,
   SHORT_MARK_LEGEND,
   type ShopPricePart,
 } from '../ui/shopDetail';
@@ -1689,6 +1691,16 @@ export class HubScene extends Phaser.Scene {
     } else {
       root.innerHTML = markup;
     }
+    // Brock's rungs are pictures of what they build, drawn from the base's own
+    // sheets, which the yard under this screen has already loaded.
+    root.querySelectorAll<HTMLCanvasElement>('canvas[data-fixture]').forEach((canvas) => {
+      const art = fixtureArt(canvas.dataset.fixture ?? '');
+      if (art) {
+        drawFixture(canvas, art, (key) =>
+          this.textures.exists(key) ? (this.textures.get(key).getSourceImage() as CanvasImageSource) : undefined,
+        );
+      }
+    });
     const on = (selector: string, handler: (button: HTMLButtonElement, event: MouseEvent) => void): void => {
       root.querySelectorAll<HTMLButtonElement>(selector).forEach((button) => {
         button.onclick = (event) => handler(button, event);
@@ -3769,11 +3781,18 @@ export class HubScene extends Phaser.Scene {
     const rows = ladder
       .map((offer) => {
         const { upgrade } = offer;
+        const art = fixtureArt(upgrade.id);
+        const picture = art
+          ? `<canvas class="px-fixture" data-fixture="${upgrade.id}" width="${art.width}" height="${art.height}" style="--w:${art.width};--h:${art.height}" role="img" aria-label="${escapeAttribute(upgrade.name)}"></canvas>`
+          : iconMarkup(upgrade.icon, upgrade.name);
         if (this.workshopArmed === upgrade.id) {
           const spent = itemAmountsFor(upgrade.cost.supplies);
+          // Asked in the card's own place on the skyline, the building over the
+          // question: a band across the skyline split it in two and put the two
+          // answers under the fold.
           return this.armedDeal({
             id: upgrade.id,
-            icon: iconMarkup(upgrade.icon, upgrade.name),
+            icon: `<span class="workshop-stage">${picture}</span>`,
             name: upgrade.name,
             question: `Spend ${spent} on it for good?`,
             confirm: `data-outfit-confirm="${upgrade.id}"`,
@@ -3787,48 +3806,54 @@ export class HubScene extends Phaser.Scene {
           : offer.affordable
             ? pixelTag('Build', 'good')
             : pixelTag(offer.state === 'locked' ? 'Locked' : 'Short');
-        // A locked rung says which door it is behind on the row as well as in
-        // the pane: "Locked" alone sends the player looking for the answer.
-        const gate =
-          offer.state === 'locked'
-            ? `<small class="px-wrap px-note">After ${offer.requires?.name ?? 'an earlier upgrade'}</small>`
-            : '';
-        const price = built
-          ? shopPaidColumn('Paid')
-          : shopPriceColumn(this.pricedAgainstVault(offer));
         // Not `disabled`: the cursor has to reach a rung to say what it does.
         const wiring = built
           ? `data-built="${upgrade.id}"`
           : `data-outfit="${upgrade.id}"${offer.affordable ? '' : ' aria-disabled="true"'}`;
         // One line of the help bar, which is 26 game pixels deep and clips: at
         // the smallest stage a second line hangs a pixel over its own bar. The
-        // price is on the row and the whole of it is in the pane, so the bar
+        // price is on the card and the whole of it is in the pane, so the bar
         // says what pressing this does and nothing else.
         const help = built
           ? `${upgrade.name} already stands at base.`
           : offer.affordable
             ? `Build ${upgrade.name}: you are asked once more before anything is spent.`
-            : this.shortfallLine(offer);
+            : offer.state === 'locked'
+              ? `Locked: built only after ${offer.requires?.name ?? 'an earlier upgrade'}.`
+              : this.shortfallLine(offer);
         // While a rung is asking, only its Keep may start the cursor.
         const start = offer === first && this.workshopArmed === undefined;
-        return `<button class="px-row has-icon px-tall px-priced${built ? ' is-secured' : ''}" ${wiring}${start ? ' data-cursor-start' : ''} data-shows="${upgrade.id}" data-help="${escapeAttribute(help)}">${iconMarkup(upgrade.icon, upgrade.name)}<span class="px-row-main"><strong class="px-name">${upgrade.name}</strong><small class="px-wrap">${upgrade.effect}</small>${gate}</span>${price}${tag}</button>`;
+        // The card is what the rung builds, as it stands in the yard
+        // (`ui/fixturePicture.ts`): in its colours once built, a grey blueprint
+        // before. Under it, what it does - a shop says that whether or not you
+        // have bought it (`ui/shopDetail.ts`) - and its price as the salvage's
+        // own icons, counted, crossed and red where the vault is short; the whole
+        // of it is in the pane under the skyline.
+        const parts = built ? this.priceAsPaid(upgrade) : this.pricedAgainstVault(offer);
+        const cost = parts
+          .map((part) => {
+            const count = /^(\d+)×/.exec(part.ask)?.[1];
+            // Short is a shape as well as a colour: the drawn cross the legend
+            // over the skyline names, as the shelves have it (`shopDetail.ts`).
+            return `<span class="workshop-cost${part.short ? ' is-short' : ''}">${part.short ? SHORT_MARK : ''}${part.icon ?? ''}<small>${count ? `×${count}` : part.ask}</small></span>`;
+          })
+          .join('');
+        const state = built ? 'is-built' : offer.affordable ? 'is-ready' : offer.state === 'locked' ? 'is-locked' : 'is-short';
+        return `<button class="px-window px-card workshop-card ${state}" ${wiring}${start ? ' data-cursor-start' : ''} data-shows="${upgrade.id}" data-help="${escapeAttribute(help)}"><span class="workshop-stage">${picture}</span><strong class="px-name">${upgrade.name.replace(/ ([IVX]+)$/, '\u00a0$1')}</strong><small class="px-wrap workshop-effect">${upgrade.effect}</small><span class="workshop-costs">${cost}</span>${tag}</button>`;
       })
       .join('');
     const shown = first ?? ladder[0];
     const details = ladder.map((offer) => this.workshopDetail(offer, offer === shown)).join('');
-    // Brock leads his own screen the way Bill leads his: the person, then what
-    // he will do for you. One line, because the ladder under it is the screen.
-    const brock = pixelWindow(
-      `<div class="px-lead">${pixelFigure('brock', 'Brock')}<p class="px-wrap">Bring him the right salvage and he builds it into the base. He builds; he does not deal.</p></div>`,
-      // The title bar has already said where this is, so the pane says who: the
-      // person, not the place again.
-      { className: 'trader-standing workshop-lead', heading: 'Brock', note: `${ladder.filter((offer) => offer.state === 'built').length}/${WORKSHOP_UPGRADES.length} built` },
-    );
-    return `<main class="px-body workshop-layout">${brock}${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.priced)}>${rows}</div>${details}`,
+    // Brock is the man the player walked into this room to talk to, so the
+    // screen is what he builds: the skyline is the whole of it, and his line
+    // is its heading. In a window of his own over the ladder he took the room
+    // the cards needed, and the last rung wrapped under the fold.
+    const builtCount = ladder.filter((offer) => offer.state === 'built').length;
+    return `<main class="px-body workshop-layout">${pixelWindow(
+      `<div class="workshop-skyline px-scroll">${rows}</div>${details}`,
       {
-        className: 'objectives-panel',
-        heading: 'What extraction buys',
+        className: 'objectives-panel workshop-ladder',
+        heading: `Brock builds it into the base · ${builtCount}/${WORKSHOP_UPGRADES.length}`,
         note: SHORT_MARK_LEGEND,
       },
     )}</main>`;

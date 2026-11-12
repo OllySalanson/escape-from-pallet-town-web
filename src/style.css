@@ -5259,3 +5259,125 @@ button {
 :where(.pixel-ui) .extraction-layout .px-row.has-icon > .px-mon-icon {
   margin: calc(var(--u) * -4) 0;
 }
+
+/* --- Brock's Workshop as the yard's skyline (`HubScene.workshopView`) -------
+   Every rung a card standing on one line: what it builds, drawn from the base's
+   own sheets at its own size (`ui/fixturePicture.ts`) on a stage as tall as the
+   mast, its name, and its price as the salvage's icons, counted. Built is gold
+   and in colour; not yet is a grey blueprint, a ready one framed in teal. */
+:where(.pixel-ui) .workshop-skyline {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, calc(var(--u) * 82));
+  justify-content: center;
+  gap: calc(var(--u) * 2);
+  padding-top: calc(var(--u) * 2);
+  /* Whole rows of the skyline or none: a card is taller than most panes. */
+  scroll-snap-type: y mandatory;
+}
+:where(.pixel-ui) .workshop-skyline > * {
+  scroll-snap-align: start;
+}
+/* In a window short of height (800x600) a card is the building, its name and
+   its price: what it does is the pane's first line, for the card under the
+   cursor, or no card fitted whole at all. */
+:where(.pixel-ui[data-short]) .workshop-card > .workshop-effect,
+:where(.pixel-ui[data-short]) .workshop-card > .px-tag {
+  display: none;
+}
+:where(.pixel-ui[data-short]) .workshop-skyline {
+  padding-top: 0;
+}
+:where(.pixel-ui[data-short]) .workshop-skyline > .workshop-card.px-card {
+  padding-top: 0;
+}
+:where(.pixel-ui[data-short]) .workshop-skyline .workshop-card > .px-name {
+  min-height: calc(var(--u) * 12);
+}
+/* The rung being asked about stays in its own place on the skyline: its
+   building over the question, and the two answers stacked under it, the one
+   that changes nothing first. */
+.pixel-ui .workshop-skyline > .px-arming {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  align-content: start;
+  row-gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 2) calc(var(--u) * 2) calc(var(--u) * 3);
+  text-align: center;
+  background: var(--red-wash);
+  box-shadow: inset 0 0 0 var(--u) var(--frame);
+}
+.pixel-ui .workshop-skyline > .px-arming > .px-row {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  row-gap: var(--u);
+  padding: 0;
+}
+.pixel-ui .workshop-skyline > .px-arming .px-bar-actions {
+  flex-direction: column;
+  align-items: stretch;
+  gap: calc(var(--u) * 2);
+}
+.pixel-ui .workshop-card {
+  --pad-top: 2;
+  justify-items: center;
+  align-content: start;
+  row-gap: var(--u);
+  min-height: auto;
+  padding: calc(var(--u) * 2) calc(var(--u) * 2) calc(var(--u) * 3);
+  text-align: center;
+}
+.pixel-ui .workshop-card > .px-name {
+  min-height: calc(var(--u) * 24);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .workshop-stage {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: calc(var(--u) * 112);
+}
+:where(.pixel-ui) .px-fixture {
+  display: block;
+  width: calc(var(--u) * var(--w));
+  height: calc(var(--u) * var(--h));
+  image-rendering: pixelated;
+}
+.pixel-ui .workshop-card.is-short .px-fixture,
+.pixel-ui .workshop-card.is-locked .px-fixture {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+.pixel-ui .workshop-card.is-locked .px-fixture {
+  opacity: 0.25;
+}
+.pixel-ui .workshop-card.is-built {
+  --fill: var(--gold-wash);
+}
+.pixel-ui .workshop-card.is-built:focus {
+  --fill: #f8edbd;
+}
+.pixel-ui .workshop-card.is-ready {
+  --edge: var(--teal-ink);
+}
+:where(.pixel-ui) .workshop-costs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: calc(var(--u) * 2);
+  min-height: calc(var(--u) * 16);
+}
+:where(.pixel-ui) .workshop-cost {
+  display: flex;
+  align-items: center;
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .workshop-cost.is-short {
+  color: var(--red);
+}
+:where(.pixel-ui) .workshop-cost > .cost-mark {
+  margin-right: var(--u);
+}
+.pixel-ui .workshop-card > .workshop-effect {
+  color: var(--ink-soft);
+}
