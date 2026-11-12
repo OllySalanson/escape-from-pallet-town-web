@@ -31,16 +31,25 @@ describe('the screens a raid opens over the world', () => {
   });
 
   it('fill the width they have, with the cursor and help bar every list uses', async () => {
+    // A collection takes as many columns as fit (`ui/columnLayout.ts`, the one
+    // rule PR #149 taught the lobby): a list of rows says the narrowest a column
+    // of it may be, and since the menu overhaul a collection of things is a
+    // grid of them in fixed whole-pixel tracks - the party's six slots, the
+    // pack's item tiles (`ui/monIcon.ts`, `docs/screens/menu-overhaul/`).
+    const across: Record<(typeof RAID_SCREENS)[number], string> = {
+      BagScene: 'class="pack-tile',
+      PartyScene: 'pixelPartySlot(',
+      ObjectivesScene: 'pixelColumns(COLUMN_MEASURES.',
+    };
     for (const scene of RAID_SCREENS) {
       const source = await read(`./${scene}.ts`);
-      // A collection says the narrowest a column of it may be and takes as many
-      // as fit (`ui/columnLayout.ts`); it is the one rule PR #149 taught the
-      // lobby and the half of this that matters most.
-      expect(source).toContain('pixelColumns(COLUMN_MEASURES.');
-      expect(source).toContain('px-list px-scroll');
+      expect(source).toContain(across[scene]);
       // The arrow keys move by where controls are, not round a ring of buttons.
       expect(source).toContain('moveCursor(event.key)');
     }
+    const style = await read('../../style.css');
+    expect(style).toMatch(/\.pack-tiles \{[^}]*grid-template-columns: repeat\(auto-fill, calc\(var\(--u\) \* 36\)\)/);
+    expect(style).toMatch(/\.px-party-slots \{[^}]*grid-template-columns: repeat\(auto-fill, calc\(var\(--u\) \* 106\)\)/);
   });
 
   it('leave the raid by the key that opened them, and by Escape', async () => {
@@ -60,9 +69,11 @@ describe('the pack', () => {
     const source = await read('./BagScene.ts');
     // A tab strip is a layer between the player and the Potion at the moment
     // they have least time for one, and the pack is eighteen squares: all of
-    // it fits on one screen with a band naming each pocket.
+    // it fits on one screen.
     expect(source).not.toContain('data-category');
-    expect(source).toContain('px-subheading');
+    // One grid, pocket after pocket in POCKETS' order: a band naming each pocket
+    // took a row of the grid for two tiles, so the pocket is named in the pane.
+    expect(source).toContain('POCKETS.flatMap((pocket) => this.bag.itemsInCategory(pocket)');
     for (const pocket of ['Medicine', 'PokeBall', 'Held', 'Misc']) {
       expect(source).toContain(`ItemCategory.${pocket}`);
     }
@@ -106,6 +117,9 @@ describe('the raid party', () => {
     // The canvas screen could and its DOM replacement quietly could not, while
     // its own footer still said `ENTER: MOVE`.
     expect(source).toContain('this.party.movePokemon(from, index)');
-    expect(source).toContain('pixelTag(\'Leads\'');
+    // The first slot is the lead's, gold as FireRed's lead slot stands apart,
+    // and the one picked up to move is red.
+    expect(source).toContain('lead: index === 0');
+    expect(source).toContain('holding: moving');
   });
 });
