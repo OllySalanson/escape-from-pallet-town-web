@@ -209,6 +209,14 @@ export interface Secret {
    */
   readonly shutLines?: readonly string[];
   /**
+   * For a `figure` met in its other colours: the tint its standing figure
+   * wears, so what is seen on the map is what the clue promised. The map's
+   * figures are drawn from one sheet of icons in their ordinary colours, and
+   * THE PINK ONE stood on its ride as blue as any Butterfree until the fight
+   * began. A multiply over the icon, as a place's weather tints its ground.
+   */
+  readonly figureTint?: number;
+  /**
    * Which wave of the plan it shipped in: the first needs no badge; the second
    * needs something bought or won first - the POKé FLUTE from THE GAME
    * CORNER's prize window, or MISTY beaten and THE COAST behind her open. The
@@ -492,6 +500,7 @@ export const SECRETS: readonly Secret[] = [
     nook: 'figure',
     when: [{ kind: 'lead-type', type: 'Bug' }],
     rewards: [{ kind: 'meet', speciesId: 'butterfree', level: 28, shiny: true }],
+    figureTint: 0xff9ecf,
     foundLine: 'Something pink comes tumbling down the ride on the wind, round your Bug, and round again. A BUTTERFREE, and not the usual colour!',
     wave: 4,
   },

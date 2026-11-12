@@ -290,6 +290,20 @@ describe("the vale's secrets", () => {
     expect(held).toEqual(['chart-piece-1', 'the-cracked-crag/golem']);
   });
 
+  it('stands a figure met in its other colours in them: a tint for every shiny that is seen before it is fought', () => {
+    const seen = SECRETS.filter(
+      (secret) => secret.nook === 'figure' && secret.rewards.some((reward) => reward.kind === 'meet' && reward.shiny),
+    );
+    expect(seen.map((secret) => secret.id)).toEqual(['the-pink-one']);
+    for (const secret of seen) {
+      expect(secret.figureTint, secret.name).toBeDefined();
+    }
+    // And only those: a tint on an ordinary figure would promise colours the fight does not keep.
+    for (const secret of SECRETS.filter((each) => !seen.includes(each))) {
+      expect(secret.figureTint, secret.name).toBeUndefined();
+    }
+  });
+
   it('rewards are things worth finding: found-only finds and Pokemon the vale has nowhere else', () => {
     for (const secret of SECRETS) {
       for (const reward of secret.rewards) {

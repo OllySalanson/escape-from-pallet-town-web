@@ -3000,7 +3000,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       }
 
       if (entity.pokemon) {
-        this.createPokemonFigure(entity.id, entity.position, entity.pokemon, this.isAsleep(entity));
+        this.createPokemonFigure(entity.id, entity.position, entity.pokemon, this.isAsleep(entity), this.otherColours(entity));
         continue;
       }
       if (entity.berry) {
@@ -3821,7 +3821,22 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * one facing. A sleeper (`isAsleep`) lies still on its first frame: it is the
    * bob that says a Pokemon is awake.
    */
-  private createPokemonFigure(id: string, position: GridPosition, species: FigureSpeciesId, asleep = false): void {
+  /**
+   * The tint a secret's figure wears while it stands: its other colours, where
+   * the Pokemon it is about to be is one in them (`Secret.figureTint`).
+   */
+  private otherColours(entity: WorldEntity): number | undefined {
+    const reward = this.openSecret(entity.secret)?.reward;
+    return reward?.kind === 'meet' && reward.shiny ? secretById(entity.secret!)?.figureTint : undefined;
+  }
+
+  private createPokemonFigure(
+    id: string,
+    position: GridPosition,
+    species: FigureSpeciesId,
+    asleep = false,
+    tint?: number,
+  ): void {
     const [first, second] = pokemonIconFrames(species);
     const key = `pokemon-icon-${species}`;
     if (!this.anims.exists(key)) {
@@ -3846,6 +3861,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       .setDepth(atRow(FIGURE_BAND, position.y));
     if (!asleep) {
       sprite.play(key);
+    }
+    if (tint !== undefined) {
+      sprite.setTint(tint);
     }
     this.npcSprites.set(id, sprite);
     this.pokemonSoles.set(id, pokemonSoleDrop(species));
