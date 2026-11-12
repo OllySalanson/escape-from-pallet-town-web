@@ -192,10 +192,12 @@ try {
     return { seed: p.seed, map: w.currentMap.id, start: w.currentTile, contract: p.contract?.name ?? null, markers: (p.contract?.markers ?? []).map((m) => m.position),
       exits: p.extractionPoints.filter((e) => e.mapId === w.currentMap.id).map((e) => ({ label: e.label, position: e.position, opens: e.requirement?.poiId ?? null, open: (e.requirement?.kind ?? (e.unlockAtMs === 0 ? 'always' : 'elapsed')) === 'always' })),
       loot: (p.loot[w.currentMap.id] ?? []).map((l) => ({ id: l.id, itemId: l.itemId, quantity: l.quantity, position: l.position })),
-      secrets: p.secrets ?? [], conditions: p.conditions ?? null }; })()`);
+      secrets: p.secrets ?? [], conditions: p.conditions ?? null, shimmer: p.shimmer ?? null }; })()`);
   note(`seed ${plan.seed}, ${plan.map} from ${plan.start.x},${plan.start.y}, contract ${plan.contract}, stops ${JSON.stringify(plan.markers)}`);
   // The vale's secrets this raid opened, and what it deployed under (`world/secrets.ts`).
   note(`conditions ${JSON.stringify(plan.conditions)}; secrets open ${JSON.stringify(plan.secrets)}`);
+  // This raid's patch of shimmering grass (`world/shimmer.ts`), if it has one.
+  note(`shimmer ${JSON.stringify(plan.shimmer)}`);
 
   // --avoid-watch plays the player the map is drawn for: one who reads the shaded
   // ground in front of a trainer and does not walk into it. Without it the driver
@@ -544,7 +546,8 @@ try {
   // gone by on the raid's own clock, as a secret reads it), `push:area:x:y:Dir` (walks behind the Strength boulder on that tile of an
   // area and pushes it once - `WorldScene.tryPushBoulder`, a floor switch
   // under it thrown by the game), `grab:itemId` (every piece of it this raid
-  // laid) and `shot:name` (a picture, with --shot). It is how the Lost Garden is
+  // laid), `shimmer` and `shimmer:in` (beside this raid's shimmering grass, and
+  // into it) and `shot:name` (a picture, with --shot). It is how the Lost Garden is
   // walked: in behind the falls, the Falls Cave's boulders onto their switches,
   // out under the garden's cliff, the Miracle Seed, and the Gardener's Gate.
   const keyFor = (dir) => `Arrow${dir[0].toUpperCase()}${dir.slice(1)}`;
@@ -636,6 +639,21 @@ try {
         await clearInterruptions();
       }
       note(`${kind} at ${Math.round((await page.evaluate(read)) / 1000)}s`);
+    } else if (kind === 'shimmer') {
+      // `shimmer` walks to open ground beside this raid's patch of shimmering
+      // grass (`world/shimmer.ts`), which is where it is photographed from;
+      // `shimmer:in` steps into it, which is its Pokemon at once - run from
+      // unless --fight, as every wild one is.
+      if (!plan.shimmer) throw new Error('this raid has no shimmering grass');
+      const { x, y } = plan.shimmer.position;
+      if (parts[0] === 'in') {
+        await walkTo({ x, y }, `the shimmering grass at ${x},${y}`);
+        note(`shimmer met: ${await page.evaluate(`${GAME}.scene.getScene('world')?.runSession?.shimmerMet === true || ${GAME}.scene.getScene('battle')?.runSession?.shimmerMet === true`)}`);
+      } else {
+        const beside = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); return [[0, 1], [1, 0], [-1, 0], [0, -1]].map(([dx, dy]) => ({ x: ${x} + dx, y: ${y} + dy })).find((tile) => !w.isBlocked(tile)) ?? null; })()`);
+        if (!beside) throw new Error('nowhere to stand beside the shimmering grass');
+        await walkTo(beside, `beside the shimmering grass at ${x},${y}`);
+      }
     } else if (kind === 'shot') {
       if (option('shot')) {
         await wait(300);
