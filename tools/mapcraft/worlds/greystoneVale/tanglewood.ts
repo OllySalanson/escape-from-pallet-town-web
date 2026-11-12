@@ -352,9 +352,12 @@ export function tanglewood(): MapcraftResult {
         { x: 22, y: 4, species: 'oddish' },
         // The lost picnic: a Drowzee dozes by the bench all day, the only one in
         // the vale, and after dark the Hypno it will be one day stands over it
-        // (`world/secrets.ts`, THE LOST PICNIC). Both in the glade's back row,
-        // off the way through to Mislaid.
-        { x: 28, y: 3, species: 'drowzee', level: 10 },
+        // (`world/secrets.ts`, THE LOST PICNIC). Both at the back of the glade,
+        // off the way through to Mislaid - and the Drowzee at its west end,
+        // because the back of the glade is reached by the one tile between the
+        // picnicker and the sack, and a Pokemon dozing in that walled the Hypno
+        // in (found by walking it, 12 Nov 2026; `secrets.test.ts` holds it now).
+        { x: 24, y: 3, species: 'drowzee', level: 10 },
         { x: 26, y: 2, species: 'hypno', level: 26, secret: 'the-lost-picnic' },
         { x: 2, y: 37, species: 'pidgey', beat: { everyMs: 1500, glances: ['right'] } },
         { x: 12, y: 24, species: 'caterpie', beat: { everyMs: 2300, roam: [[0, 1]] } },

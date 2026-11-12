@@ -149,6 +149,28 @@ describe("the vale's secrets", () => {
     }
   });
 
+  /**
+   * Walked up to with everybody standing where they stand. A figure is a
+   * wall, so a nook whose only way in has somebody standing in it is a nook
+   * nobody reaches: THE LOST PICNIC's Hypno stood behind the one tile its own
+   * Drowzee dozed on, which the collision alone called open ground and a raid
+   * called unreachable (12 Nov 2026). The ground beside a nook has to be part
+   * of somewhere - a room, a glade and the lane to it - never a pocket of a
+   * few tiles shut in by the people of the place.
+   */
+  it.each(SECRETS.filter((secret) => secret.nook !== 'line').map((secret) => [secret.name, secret] as const))(
+    '%s can be walked up to past everybody who stands near it',
+    (_name, secret) => {
+      const standing = new Set(entities.map((entity) => `${entity.position.x},${entity.position.y}`));
+      const open = nookTiles(secret).filter((tile) => !standing.has(`${tile.x},${tile.y}`));
+      const roomiest = Math.max(
+        0,
+        ...open.map((tile) => stepDistances(map.collision, tile, standing).reduce((sum, row) => sum + row.filter((steps) => steps >= 0).length, 0)),
+      );
+      expect(roomiest, `${secret.name}'s nook is shut in: ${roomiest} tiles of ground beside it`).toBeGreaterThanOrEqual(40);
+    },
+  );
+
   it.each(SECRETS.map((secret) => [secret.name, secret] as const))(
     '%s has a clue within ten steps that hints at what it waits for',
     (_name, secret) => {
