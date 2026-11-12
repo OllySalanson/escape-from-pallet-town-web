@@ -197,6 +197,10 @@ and say yes, you're let in to have a nose round. Six buildings, four of them kep
   HMs, fishing rods and, once he really trusts you, a Bicycle are bartered for things you found.
   It's all out on his shelves, under a dust sheet until he knows you: walk up to one and he names
   his price. Everything you trade him ends up on his shelves too.
+- **The Trader**, on the lawn behind the Raid Arena, makes FireRed's own nine in-game trades - a
+  Mr. Mime called MIMIEN for your Abra, a Lickitung called MARC for your Golduck, and the rest -
+  and sends a Kadabra, Machoke, Graveler or Haunter over to his game and straight back, which is
+  the only way an Alakazam or a Gengar ever happens. All 151 can be had. All 151. Oak is counting.
 - **The Harbour Boutique**, at the top of the Green, is where you stop looking like everybody else.
   Every player starts in the same clothes; in here are 209 things to wear, all of them off
   somebody in Kanto - a Youngster's cap, a Hiker's hat and beard, Erika's bob, Misty's side tail,

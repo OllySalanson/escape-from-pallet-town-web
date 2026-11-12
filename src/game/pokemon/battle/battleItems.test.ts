@@ -8,10 +8,20 @@ import {
   NO_REVIVE_IN_BATTLE_NOTE,
   applyBattleItem,
   battleItemCount,
+  bestBallIndex,
+  carriedBalls,
   usableBattleItems,
 } from './battleItems';
 
 const battle = (player: Pokemon) => createBattleState(player, new Pokemon(BULBASAUR, 5));
+
+describe('the best ball carried', () => {
+  it('is the one with the biggest catch multiplier, wherever it sits in the list', () => {
+    const balls = carriedBalls(new Bag({ 'poke-ball': 3, 'great-ball': 1 }));
+    expect(balls[bestBallIndex(balls)]?.id).toBe('great-ball');
+    expect(bestBallIndex(carriedBalls(new Bag({ 'poke-ball': 3 })))).toBe(0);
+  });
+});
 
 describe('what the ITEM command offers', () => {
   it('lists the medicine the raid bag is carrying and nothing else', () => {

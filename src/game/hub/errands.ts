@@ -113,6 +113,13 @@ export interface Errand {
    */
   readonly lost: readonly string[];
   readonly reward: ErrandReward;
+  /**
+   * The thing goes on being laid in its place once the favour is done, while
+   * the Pokédex lacks the kind it wakes into: Bill keeps the amber on his desk
+   * and PINE HOLLOW still weeps, and the next lump is a fossil for Oak's
+   * machine (`fossils.ts`) - FireRed's Old Amber, the one way to an Aerodactyl.
+   */
+  readonly afterwards?: { readonly whileUnowned: string };
 }
 
 /**
@@ -261,6 +268,7 @@ export const ERRANDS: readonly Errand[] = [
       received: 'You received an Eevee.',
       summary: 'An Eevee',
     },
+    afterwards: { whileUnowned: 'aerodactyl' },
   },
   {
     id: 'ships-log',
@@ -525,16 +533,30 @@ export function errandsInHand(progress: Pick<ErrandProgress, 'errands'>): readon
   return ERRANDS.filter((errand) => errandRecord(progress.errands, errand.id)?.status === 'started');
 }
 
+/** The ids of the favours in hand, which is what a raid's report asks of a thing it found (`extractionReport.ts`). */
+export function favoursInHand(progress: Pick<ErrandProgress, 'errands'> | undefined): readonly string[] {
+  return progress ? errandsInHand(progress).map((errand) => errand.id) : [];
+}
+
 /**
  * The errands whose thing goes on the ground this raid: asked, not done, and
  * not already sitting in the vault waiting to be handed over - there is one
- * parcel, not a parcel a raid.
+ * parcel, not a parcel a raid. And a thing that is laid `afterwards`, once its
+ * favour is done, while the save has a use for it and holds none: `held` counts
+ * one on Oak's machine as held, and `owns` is the Pokédex.
  */
 export function errandsToLay(
   progress: Pick<ErrandProgress, 'errands'>,
   held: (itemId: ItemId) => number,
+  owns: (speciesId: string) => boolean,
 ): readonly Errand[] {
-  return errandsInHand(progress).filter((errand) => held(errand.itemId) === 0);
+  const stillLaid = ERRANDS.filter(
+    (errand) =>
+      errand.afterwards !== undefined &&
+      errandRecord(progress.errands, errand.id)?.status === 'completed' &&
+      !owns(errand.afterwards.whileUnowned),
+  );
+  return [...errandsInHand(progress), ...stillLaid].filter((errand) => held(errand.itemId) === 0);
 }
 
 /** The loot row an errand's thing is laid as: a prize, seated in its place. */

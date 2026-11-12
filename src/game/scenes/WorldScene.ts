@@ -333,7 +333,7 @@ import {
 } from '../world/trainerEngagement';
 import { hasHunterIntel } from '../hub/workshop';
 import { anyoneFitToRaid } from '../hub/recovery';
-import { errandForItem } from '../hub/errands';
+import { errandForItem, favoursInHand } from '../hub/errands';
 import { BEACON_EXIT_LABEL } from '../run/runGeneration';
 import {
   getVisibleLoot,
@@ -7984,6 +7984,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         outcome: 'ESCAPED',
         snapshot,
         durationMs: snapshot.durationMs,
+        // A thing found for a favour that is done is nobody's errand (`favoursInHand`).
+        favoursInHand: favoursInHand(new SaveManager().load()?.raidProgress),
         exitLabel: point.label,
         ...(closeCall ? { closeCall } : {}),
         leftBehind: this.prizesLeftBehindNow(),
@@ -8626,6 +8628,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         ...(settledElsewhere ? { settledElsewhere } : {}),
         snapshot,
         durationMs: snapshot.durationMs,
+        // A thing found for a favour that is done is nobody's errand (`favoursInHand`).
+        favoursInHand: favoursInHand(new SaveManager().load()?.raidProgress),
         leftBehind: this.prizesLeftBehindNow(),
         bossesBeaten: this.bossesBeatenThisRaid(),
         lost: { pokemon: result.lostPokemon, items: wipe.destroyedItems },

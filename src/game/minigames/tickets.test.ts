@@ -8,6 +8,7 @@ import { partyOf, trainerWinRate } from '../world/trainerMeasure';
 import { createRunTrainerEncounters } from '../world/trainers';
 import { MISTY_BOSS_ID } from '../world/valeQuarters';
 import { DERBY_LEVELS, derbyScore } from './derby';
+import { prizeMovesNote } from './gameCornerView';
 import {
   BERRIES_A_DAY,
   buyPrize,
@@ -215,9 +216,21 @@ describe('the prize window', () => {
   it.each(TICKET_PRIZES.flatMap((prize) => (prize.gives.kind === 'pokemon' ? [[prize.id, prize.gives] as const] : [])))(
     '%s is FireRed’s, can fight from the day it is had, and is a partner against Misty, never the answer alone',
     (_id, gives) => {
-      // FireRed's Celadon prize room sells these two (pret/pokefirered,
+      // FireRed's Celadon prize room sells these (pret/pokefirered,
       // `CeladonCity_GameCorner_PrizeRoom/scripts.inc`).
-      expect(['dratini', 'porygon']).toContain(gives.speciesId);
+      expect(['abra', 'dratini', 'porygon']).toContain(gives.speciesId);
+      if (gives.speciesId === 'abra') {
+        // FireRed's Abra knows Teleport and nothing else, a move the engine
+        // leaves out: it Struggles (`BattleScene.struggleIfStuck`), the window
+        // says so (`prizeMovesNote`), and it hits with Confusion as a Kadabra.
+        expect(new Pokemon(getSpeciesById('abra')!, gives.level).moves).toHaveLength(0);
+        expect(prizeMovesNote('abra', gives.level)).toBe(
+          ' It knows no move yet and Struggles until it grows into KADABRA at Lv 16.',
+        );
+        expect(new Pokemon(getSpeciesById('kadabra')!, 16).moves.some((move) => move.base.power > 0)).toBe(true);
+        return;
+      }
+      expect(prizeMovesNote(gives.speciesId, gives.level)).toBe('');
       const pokemon = new Pokemon(getSpeciesById(gives.speciesId)!, gives.level);
       expect(pokemon.moves.some((move) => move.base.power > 0), `${gives.speciesId} has nothing to hit with`).toBe(true);
       // The reward is the species: at most the level its first attacking move

@@ -47,7 +47,20 @@ export interface BlackBelt {
   readonly team: readonly string[];
   readonly greeting: string;
   readonly beaten: string;
+  /** The dojo's prize Pokémon he hands over the first time he is beaten (`DOJO_PRIZE_LEVEL`). */
+  readonly prize?: string;
 }
+
+/**
+ * FireRed's Fighting Dojo gives whoever beats its master one of its two prize
+ * Pokémon, HITMONLEE or HITMONCHAN, at level 25 (pret/pokefirered,
+ * `SaffronCity_Dojo/scripts.inc`). The cartridge makes the player choose and
+ * leaves the other to a trade; this dojo has two masters at the top of its
+ * ladder and no second cartridge, so each hands over one - HITOSHI the kicker,
+ * AARON, who fields the puncher, the other - and the two are the only way a
+ * save comes to own either (the endgame bug hunt, 12 Nov 2026).
+ */
+export const DOJO_PRIZE_LEVEL = 25;
 
 export interface DojoClass {
   readonly id: DojoClassId;
@@ -90,6 +103,7 @@ export const BLACK_BELTS: readonly BlackBelt[] = [
     team: ['primeape', 'machoke', 'poliwrath'],
     greeting: 'Only MASTER BALL class is above me. Not you. Not yet.',
     beaten: 'Hmph. MASTER BALL class it is.',
+    prize: 'hitmonlee',
   },
   {
     id: 'belt:aaron',
@@ -97,6 +111,7 @@ export const BLACK_BELTS: readonly BlackBelt[] = [
     team: ['primeape', 'machamp', 'hitmonchan'],
     greeting: 'Nobody here is above AARON. Prove me wrong.',
     beaten: 'I bow to you. There is nobody left in this dojo to beat.',
+    prize: 'hitmonchan',
   },
 ];
 
@@ -288,6 +303,26 @@ export interface DojoSettlement {
   readonly topped: boolean;
   /** The run lost by losing this bout, if there was one. */
   readonly runLost: number;
+  /**
+   * The dojo's prize Pokémon handed over with this bout, by species: a Black
+   * Belt's, the first time he is beaten - or, for a save that beat him before
+   * he had one to give, with the next bout fought there.
+   */
+  readonly prizes: readonly string[];
+}
+
+/** The prize Pokémon the record has earned and not yet been handed, Black Belt by Black Belt. */
+export function dojoPrizesOwed(record: DojoRecord): readonly BlackBelt[] {
+  const given = record.prizes ?? [];
+  return BLACK_BELTS.filter((head) => head.prize !== undefined && record.beaten.includes(head.id) && !given.includes(head.prize));
+}
+
+/** A settlement with whatever prize Pokémon it has come to: written into the record, named for the save to hand over. */
+function withPrizes(settled: Omit<DojoSettlement, 'prizes'>): DojoSettlement {
+  const owed = dojoPrizesOwed(settled.record).map((head) => head.prize!);
+  return owed.length === 0
+    ? { ...settled, prizes: [] }
+    : { ...settled, record: { ...settled.record, prizes: [...(settled.record.prizes ?? []), ...owed] }, prizes: owed };
 }
 
 /**
@@ -302,6 +337,16 @@ export function settleDojoBout(
   won: boolean,
   now: Date,
 ): DojoSettlement {
+  return withPrizes(settleBout(record, gameCorner, opponent, won, now));
+}
+
+function settleBout(
+  record: DojoRecord | undefined,
+  gameCorner: GameCornerRecord,
+  opponent: string,
+  won: boolean,
+  now: Date,
+): Omit<DojoSettlement, 'prizes'> {
   const tally = afterDojoBout(record, opponent, won);
   const held = streakOf(record);
   if (!won) {
@@ -335,8 +380,18 @@ export function settleDojoBout(
   };
 }
 
-/** What the receptionist says as the player comes back to the counter from a bout. */
+/** What the receptionist says as the player comes back to the counter from a bout, and any prize handed over with it. */
 export function settlementLine(foe: DojoFoe | undefined, won: boolean, settled: DojoSettlement | null): string {
+  const line = boutLine(foe, won, settled);
+  const prizes = (settled?.prizes ?? []).map((speciesId) => {
+    const head = BLACK_BELTS.find((one) => one.prize === speciesId);
+    const name = SPECIES_BY_ID[speciesId]?.name.toUpperCase() ?? speciesId;
+    return ` BLACK BELT ${head?.name ?? ''} gives you the dojo's ${name}. It went into your boxes.`;
+  });
+  return `${line}${prizes.join('')}`;
+}
+
+function boutLine(foe: DojoFoe | undefined, won: boolean, settled: DojoSettlement | null): string {
   const who = foe?.name ?? 'them';
   if (!settled) {
     return won ? `You beat ${who}!` : `${who} took that one.`;

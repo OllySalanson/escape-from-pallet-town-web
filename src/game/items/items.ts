@@ -828,7 +828,7 @@ export const ITEMS = {
     displayName: 'Old Amber',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'A piece of amber with something very old inside. Bill wants it for his cabinet.',
+    description: 'A piece of amber with something very old inside. Bill wants a lump for his desk, and Professor Oak\'s machine can wake what is in the next.',
     effect: { type: 'errand' },
   },
   // Two for people out about THE HARBOUR, each FireRed's: the S.S. Anne

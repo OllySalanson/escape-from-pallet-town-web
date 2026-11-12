@@ -105,7 +105,8 @@ import { brimRuns, type MapLayers } from '../world/tiles';
 import { BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, NOTICE_BOARD, getBaseMap } from '../base/baseMap';
 import { noticeFor } from '../base/harbourNotices';
 import { dayNumber, rumourFrom, type RumourSource } from '../world/rumours';
-import { FOSSIL_ITEM_IDS, fossilAwake, fossilMachineLines } from '../hub/fossils';
+import { amberWeeps, fossilAwake, fossilMachineLines, fossilsForTheMachine } from '../hub/fossils';
+import { TRADER_ID, traderLines } from '../hub/trades';
 import {
   BEACH_BOTTLE,
   BOTTLE_FOUND_LINES,
@@ -596,6 +597,11 @@ export interface BaseSceneData {
    * itself (`said`, in `create`), so they are always in the room's own box.
    */
   readonly said?: readonly string[];
+  /**
+   * Who in the yard says `said`, when it is somebody out there rather than a
+   * room's keeper: the TRADER, after his list. Absent is the Day-Care Man.
+   */
+  readonly saidBy?: GridPosition;
   /** A new game, with nothing written yet: this is Oak's table with all three balls on it (`base/starterTable.ts`). */
   readonly choosing?: boolean;
   /** What a raid just brought out, to stand on the quay when the boat ties up (`base/haulOnTheQuay.ts`). */
@@ -1357,7 +1363,7 @@ export class BaseScene extends Phaser.Scene {
         [DOJO_RECEPTIONIST.position],
       );
     } else if (data.said?.length) {
-      const speaker = room ? room.keeper?.position : DAY_CARE_KEEPER.position;
+      const speaker = room ? room.keeper?.position : (data.saidBy ?? DAY_CARE_KEEPER.position);
       this.say(data.said, speaker ? [speaker] : []);
     } else if (!room && !this.visit && mapsMovedNews(this.savedGame.raidProgress)) {
       this.hearFirstWords('moved');
@@ -5301,6 +5307,14 @@ export class BaseScene extends Phaser.Scene {
     if (local?.kind === 'person' && this.speakForFavour(local, target)) {
       return;
     }
+    // THE TRADER says what he is after, and his list is what to trade.
+    if (local?.id === TRADER_ID) {
+      this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
+      this.say(traderLines(this.freshGame().raidProgress.tradesMade ?? []), [target], () =>
+        this.openHub({ savedGame: this.savedGame, view: 'trades', at: { ...this.currentTile } }),
+      );
+      return;
+    }
     if (local?.id === SAILOR_ID) {
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
       const log = seagallopLines(this.savedGame.raidProgress.raidRecord);
@@ -6621,8 +6635,8 @@ export class BaseScene extends Phaser.Scene {
     const game = this.freshGame();
     const fossil = game.raidProgress.fossil;
     const awake = fossil ? fossilAwake(fossil, game.raidProgress, game.raidInFlight) : false;
-    const held = FOSSIL_ITEM_IDS.filter((itemId) => game.stash.itemCount(itemId) > 0);
-    const lines = fossilMachineLines(fossil, awake, held);
+    const held = fossilsForTheMachine((itemId) => game.stash.itemCount(itemId), game.raidProgress);
+    const lines = fossilMachineLines(fossil, awake, held, amberWeeps(game.raidProgress));
     if (fossil && awake) {
       const woken = this.saveManager.takeRevivedFossil();
       if (!woken) {

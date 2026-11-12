@@ -10,6 +10,7 @@ import { generateRunPlan } from '../run/runGeneration';
 import { MAP_DISTRICTS, districtAt, districtsForMap } from './districts';
 import { WORLD_INTERIORS } from './interiors';
 import { encounterTableAt } from './localEncounters';
+import { MAP_FILE_HABITATS, MAP_FILE_NIGHT_HABITATS, type MapFileHabitat } from './mapFile';
 import { measureTable } from './encounterMeasure';
 import { districtTableFor } from './nightRaids';
 import { createRunTrainerEncounters } from './trainers';
@@ -95,23 +96,39 @@ describe('wildlife authored per place', () => {
   /**
    * A wild encounter has to be a fight that can end. Abra and Ditto come out of
    * the import with no move at all - Teleport and Transform are both on the
-   * bespoke list - so one in tall grass would stand there while the raid clock
-   * ran, and the player's only way out would be to flee. Cocoons are allowed:
+   * bespoke list - so one in tall grass only stands there. Cocoons are allowed:
    * Metapod and Kakuna know Harden and nothing else in FireRed, which is a free
    * catch rather than a stalemate.
+   *
+   * Ditto is allowed the same way, in one place: the Bunker's hideout floors,
+   * which are FireRed's Pokemon Mansion, the one place in reach FireRed keeps
+   * it, and without which no save could own one (the endgame bug hunt, 12 Nov
+   * 2026). It is a free catch until Transform is a move the engine has. The
+   * habitats a map file names are asked too, so nothing else slips in.
    */
-  it.each(HOURS)('never rolls a species with no move to make, $hour', ({ night }) => {
-    for (const district of MAP_DISTRICTS.filter((entry) => entry.encounters)) {
-      for (const entry of (districtTableFor(district, night) as WildEncounterTable).entries) {
+  it.each(HOURS)('never rolls a species with no move to make, but the Mansion’s Ditto, $hour', ({ night }) => {
+    const knowsNothing: string[] = [];
+    const tables = [
+      ...MAP_DISTRICTS.filter((entry) => entry.encounters).map(
+        (district) => [district.id, districtTableFor(district, night) as WildEncounterTable] as const,
+      ),
+      ...Object.entries(MAP_FILE_HABITATS).map(
+        ([habitat, table]) =>
+          [
+            `habitat ${habitat}`,
+            districtTableFor({ encounters: table, nightEncounters: MAP_FILE_NIGHT_HABITATS[habitat as MapFileHabitat] }, night)!,
+          ] as const,
+      ),
+    ];
+    for (const [where, table] of tables) {
+      for (const entry of table.entries) {
         const species = getSpeciesById(entry.speciesId)!;
         for (const level of [entry.minLevel, entry.maxLevel]) {
-          expect(
-            new Pokemon(species, level).moves.length,
-            `${district.id}: ${entry.speciesId} at ${level} knows nothing`,
-          ).toBeGreaterThan(0);
+          if (new Pokemon(species, level).moves.length === 0) knowsNothing.push(`${where}: ${entry.speciesId}`);
         }
       }
     }
+    expect([...new Set(knowsNothing)]).toEqual(['habitat hideout: ditto']);
   });
 
   it('resolves a tile to its district, and only then to the map', () => {

@@ -29,6 +29,7 @@ import {
   errandQuarter,
   errandSquares,
   errandsToLay,
+  getErrand,
   withErrandAsked,
   withErrandCompleted,
   withErrandFound,
@@ -292,9 +293,26 @@ describe('errands', () => {
     let errands = withErrandAsked(withErrandAsked(withErrandAsked(undefined, oak.id), joy.id), brock.id);
     errands = withErrandCompleted(errands, oak.id);
     const joyHome = (itemId: ItemId): number => (itemId === joy.itemId ? 1 : 0);
-    expect(errandsToLay({ errands }, joyHome)).toEqual([brock]);
+    expect(errandsToLay({ errands }, joyHome, () => false)).toEqual([brock]);
     // A find is only counted for an errand in hand.
     expect(withErrandFound(errands, oak.id)).toEqual(errands);
+  });
+
+  /**
+   * The endgame bug hunt (12 Nov 2026), finding 1: nothing woke an Aerodactyl.
+   * Bill keeps the first lump of amber on his desk, and PINE HOLLOW goes on
+   * weeping it - each lump after his a fossil for Oak's machine - until the
+   * Pokédex owns one, and only while the save holds none.
+   */
+  it('lays the amber again once Bill has his, until an Aerodactyl is owned', () => {
+    const amber = getErrand('old-amber')!;
+    const done = withErrandCompleted(withErrandAsked(undefined, amber.id), amber.id);
+    const none = (): number => 0;
+    expect(errandsToLay({ errands: done }, none, () => false)).toEqual([amber]);
+    expect(errandsToLay({ errands: done }, (itemId) => (itemId === 'old-amber' ? 1 : 0), () => false)).toEqual([]);
+    expect(errandsToLay({ errands: done }, none, (speciesId) => speciesId === 'aerodactyl')).toEqual([]);
+    // Never before Bill has asked for his.
+    expect(errandsToLay({ errands: undefined }, none, () => false)).toEqual([]);
   });
 
   it('is laid by the raid in its own place, as a prize, without moving any other roll', () => {

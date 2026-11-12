@@ -4,6 +4,7 @@ import {
   atStage,
   BLACK_BELTS,
   DOJO_CLASSES,
+  DOJO_PRIZE_LEVEL,
   dojoFoe,
   foeParty,
   foeTrainer,
@@ -19,7 +20,7 @@ import {
 import { DOJO_REGULARS } from './dojoCounter';
 import { rentalFoe, rentalTrainer } from './rentals';
 import { RUN_BOUTS } from './runRecords';
-import { readDojoRecord, type DojoRecord } from './dojoRecord';
+import { DOJO_PRIZE_SPECIES, readDojoRecord, type DojoRecord } from './dojoRecord';
 
 const NOW = new Date(2026, 10, 7, 12);
 
@@ -158,6 +159,49 @@ describe('a run and the Black Belt', () => {
     const again = play([['belt:aaron', true]], top.record);
     expect(again.topped).toBe(false);
     expect(again.tickets).toBe(10);
+  });
+
+  /**
+   * The endgame bug hunt (12 Nov 2026), finding 1: nothing in the game gave a
+   * Hitmonlee or a Hitmonchan. FireRed's Fighting Dojo gives its master's
+   * beater one of the two; here HITOSHI and AARON each hand over one.
+   */
+  it('hands over the dojo’s prize Pokémon the first time each of its two masters is beaten, and never twice', () => {
+    const ready: DojoRecord = {
+      wins: 9,
+      losses: 0,
+      beaten: [],
+      classId: 'ultra-ball',
+      streak: ['bot:karpking', 'bot:xkitx', 'bot:oz-hikes'],
+    };
+    const hitoshi = play([['belt:hitoshi', true]], ready);
+    expect(hitoshi.prizes).toEqual(['hitmonlee']);
+    expect(hitoshi.record.prizes).toEqual(['hitmonlee']);
+    expect(settlementLine(dojoFoe('belt:hitoshi', 'ultra-ball'), true, hitoshi)).toContain(
+      "BLACK BELT HITOSHI gives you the dojo's HITMONLEE. It went into your boxes.",
+    );
+    const aaron = play([['belt:aaron', true]], { ...hitoshi.record, streak: ['bot:karpking', 'bot:xkitx', 'bot:oz-hikes'] });
+    expect(aaron.prizes).toEqual(['hitmonchan']);
+    expect(aaron.record.prizes).toEqual(['hitmonlee', 'hitmonchan']);
+    expect(play([['belt:aaron', true]], aaron.record).prizes).toEqual([]);
+    // Lost to, he gives nothing.
+    expect(play([['belt:hitoshi', false]], ready).prizes).toEqual([]);
+    // FireRed's own two, at FireRed's level.
+    expect(BLACK_BELTS.flatMap((head) => (head.prize ? [head.prize] : []))).toEqual([...DOJO_PRIZE_SPECIES]);
+    expect(DOJO_PRIZE_LEVEL).toBe(25);
+  });
+
+  it('hands a save that beat both masters before they had prizes theirs with its next bout, won or lost', () => {
+    const veteran: DojoRecord = {
+      wins: 40,
+      losses: 3,
+      beaten: ['belt:hideki', 'belt:mike', 'belt:hitoshi', 'belt:aaron'],
+      classId: 'master-ball',
+      topped: true,
+    };
+    const next = play([['bot:karpking', false]], veteran);
+    expect(next.prizes).toEqual(['hitmonlee', 'hitmonchan']);
+    expect(readDojoRecord(next.record)?.prizes).toEqual(['hitmonlee', 'hitmonchan']);
   });
 
   it('reads a record back, keeping only a run of regulars and a class it knows', () => {

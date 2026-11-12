@@ -1138,6 +1138,25 @@ describe('what became of an errand', () => {
     expect(report('WIPED').pressure[0]).toBe("BROCK'S CRATE went down with the pack - Brock will want to hear");
   });
 
+  it('sends nobody an amber found once Bill has his: it is a fossil for Oak', () => {
+    const amberHome = (favoursInHand: readonly string[]) => {
+      const manager = startedRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] });
+      manager.resolveEscape();
+      return buildExtractionReport({
+        outcome: 'ESCAPED',
+        banked: { pokemon: [], items: [{ itemId: 'old-amber', quantity: 1 }] },
+        snapshot: manager.snapshot(),
+        durationMs: RAID_DURATION_MS,
+        saved: true,
+        favoursInHand,
+      });
+    };
+    expect(amberHome(['old-amber']).pressure).toContain('OLD AMBER is home - take it to Bill');
+    const after = amberHome([]);
+    expect(after.pressure.some((line) => line.includes('OLD AMBER'))).toBe(false);
+    expect(after.headline).toBe('You brought a fossil home!');
+  });
+
   // Found, then put down for good from the pack ("Drop one", or the room a
   // catch needed) and the raid walked out without it. The screen said nothing,
   // and Brock then told the player the raid had gone down with it.

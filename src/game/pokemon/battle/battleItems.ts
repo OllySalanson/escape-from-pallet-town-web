@@ -103,6 +103,17 @@ export function ballModifierOf(ball: ItemDefinition): number {
 }
 
 /**
+ * Where in `balls` the one with the best catch multiplier is - the first of
+ * them on a tie, so two balls of one strength open on the cheaper-listed one.
+ */
+export function bestBallIndex(balls: readonly ItemDefinition[]): number {
+  return balls.reduce(
+    (best, ball, index) => (ballModifierOf(ball) > ballModifierOf(balls[best]) ? index : best),
+    0,
+  );
+}
+
+/**
  * Uses one medicine on one party Pokemon.
  *
  * The active Pokemon's HP and status live on the combatant rather than on the

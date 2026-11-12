@@ -79,12 +79,23 @@ const wildlife = (
 
 // -- Pallet Town ------------------------------------------------------------
 
-/** Open pasture: the gentlest ground in the game, and the plainest wildlife. */
+/**
+ * Open pasture: the gentlest ground in the game, and the plainest wildlife -
+ * and the rare Ekans and Drowzee of FireRed's Route 11, the open road the two
+ * share (pret/pokefirered `wild_encounters.json`), so each has a home on the
+ * vale's fields (the endgame bug hunt, 12 Nov 2026: neither had one anywhere).
+ * Ekans at these levels knows only Leer, Wrap being one of the moves the
+ * engine leaves out: a free catch rather than a fight. Against a level-5
+ * starter (400 fights) the two take the field from 70/89/82% to 74/90/84%
+ * won for Bulbasaur, Charmander and Squirtle.
+ */
 export const PALLET_FIELD_WILDLIFE = wildlife(0.08, [
   { speciesId: 'rattata', minLevel: 3, maxLevel: 5, weight: 4 },
   { speciesId: 'pidgey', minLevel: 3, maxLevel: 4, weight: 3 },
   { speciesId: 'meowth', minLevel: 3, maxLevel: 4, weight: 2 },
   { speciesId: 'spearow', minLevel: 3, maxLevel: 4, weight: 1 },
+  { speciesId: 'ekans', minLevel: 3, maxLevel: 4, weight: 1 },
+  { speciesId: 'drowzee', minLevel: 3, maxLevel: 4, weight: 1 },
 ]);
 
 /**
@@ -865,17 +876,24 @@ export const HAUNTED_WILDLIFE = wildlife(0.07, [
  * The Bunker under the Greystone power station, gone dark: the Rocket
  * Hideout's floors with nobody in them, where what lives on the current and
  * on what was left behind lives now. FireRed's Pokemon Mansion gives it its
- * Grimer and Koffing and the Power Plant above it its Voltorb and Magnemite,
- * brought to a route's levels as the Power Plant is. Measured over the real
- * engine with a level-8 starter of each kind (`tools/encounters/report.mts`):
- * Bulbasaur 94%, Charmander 99%, Squirtle 67% - the Power Plant's own band
- * (87%, 95%, 54%), a Water starter's hard ground as the current always is.
+ * Grimer and Koffing, its Growlithe and the rare Ditto of its basement, and
+ * the Power Plant above it its Voltorb and Magnemite, brought to a route's
+ * levels as the Power Plant is. Growlithe and Ditto were nowhere else a raid
+ * goes (the endgame bug hunt, 12 Nov 2026). Ditto knows no move here -
+ * Transform is one the engine leaves out - so it only stands there, a free
+ * catch, as a cocoon is (`districtEncounters.test.ts`). Measured over the
+ * real engine with a level-8 starter of each kind (`world/encounterMeasure.ts`,
+ * 400 fights): Bulbasaur 83%, Charmander 91%, Squirtle 70% - the Power Plant's
+ * own band (87%, 95%, 54%), the Mansion's Growlithe a Grass starter's hard
+ * roll, on floors reached only behind the Card Key.
  */
 export const HIDEOUT_WILDLIFE = wildlife(0.1, [
   { speciesId: 'grimer', minLevel: 7, maxLevel: 9, weight: 6 },
   { speciesId: 'koffing', minLevel: 7, maxLevel: 9, weight: 6 },
   { speciesId: 'voltorb', minLevel: 7, maxLevel: 8, weight: 4 },
   { speciesId: 'magnemite', minLevel: 7, maxLevel: 8, weight: 4 },
+  { speciesId: 'growlithe', minLevel: 7, maxLevel: 8, weight: 3 },
+  { speciesId: 'ditto', minLevel: 7, maxLevel: 8, weight: 1 },
 ]);
 
 // -- THE COAST, behind Misty ---------------------------------------------------
