@@ -21,6 +21,7 @@ import {
 } from './hunter';
 import {
   isBlockedAt,
+  INSERTION_DECISION_STEPS,
   slideLength,
   stepDistances,
   unreachableTiles,
@@ -37,9 +38,6 @@ import { createRunTrainerEncounters, withoutDefeatedBosses } from './trainers';
 import { RAID_CONTRACTS } from '../objectives';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import { playerLinks } from './sailing';
-
-/** How far you may hold a direction from an insertion before something answers. */
-const INSERTION_DECISION_STEPS = 4;
 
 /**
  * The maps held to FireRed's own measure of a drawn map.
