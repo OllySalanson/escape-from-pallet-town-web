@@ -12,6 +12,7 @@ import { ITEMS } from '../items/items';
 import { createRunTrainerEncounters } from '../world/trainers';
 import { districtAt, districtsForMap } from '../world/districts';
 import { OMEN_ROOSTS, omenLine } from '../world/omens';
+import { CHEST_ITEM_ID, COAST_SHUT_LINE, MARLOW, TREASURE_GOAL, TREASURE_PLACE, TREASURE_SECRET_ID } from '../treasure/treasureMap';
 
 export interface ObjectiveGuideContext {
   readonly currentMapId: WorldMapId;
@@ -87,6 +88,7 @@ export function buildObjectiveGuide(
   const route = contract
     ? contractHints(contract, session, context, snapshot.contractSteps, safeExit?.label, currentExit?.label)
     : laterRunHints(session, context, currentExit?.label);
+  const treasure = treasureHints(session, context, snapshot.foundItems);
 
   return {
     isFirstContract,
@@ -94,8 +96,10 @@ export function buildObjectiveGuide(
     // a heading that repeats the line above it is a rank of nothing.
     contractLabel: contract ? contractLabel(contract, isFirstContract) : 'No contract on this raid',
     objectives,
-    radio: radioLines(contract !== undefined, route, session, context),
+    radio: radioLines(contract !== undefined, route, session, context, treasure?.radio),
     hints: [
+      // First, because a raid that set out with the whole chart set out for this.
+      ...(treasure ? [treasure.hint] : []),
       ...route,
       ...barredExitHints(session, context),
       ...lockedCacheHints(session, context),
@@ -111,17 +115,64 @@ export function buildObjectiveGuide(
  * Two lines over the radio, from the route the guide already works out: the
  * first thing it says and the last, which on every kind of raid is what to do
  * next and how to bank it. With no contract the first is the nearest landmark,
- * without the sentence about what it is: that is the full list's.
+ * without the sentence about what it is: that is the full list's. On a raid
+ * that set out with the whole chart, the first is where the X is.
  */
 function radioLines(
   hasContract: boolean,
   route: readonly string[],
   session: ActiveRunSession,
   context: ObjectiveGuideContext,
+  /** The treasure's X, while its chest is still under it: a whole chart outranks a board job. */
+  treasure?: string,
 ): readonly [string, string] {
-  const landmark = hasContract ? undefined : nearestLandmarkToWork(session, context);
-  const next = landmark ? landmarkWhere(landmark, context) : route[0];
+  const landmark = hasContract || treasure ? undefined : nearestLandmarkToWork(session, context);
+  const next = treasure ?? (landmark ? landmarkWhere(landmark, context) : route[0]);
   return [`Oak here! ${next}`, route[route.length - 1]];
+}
+
+/**
+ * THE TREASURE MAP's goal (`../treasure/treasureMap.ts`), on a raid that set
+ * out with the whole chart on MARLOW's board: where the X is and which way,
+ * until the chest is dug up, and then that it is only MARLOW's to open if it is
+ * carried out. Nothing once the chest has been home: the spot holds a berry.
+ */
+function treasureHints(
+  session: ActiveRunSession,
+  context: ObjectiveGuideContext,
+  found: readonly { readonly itemId: string }[],
+): { readonly hint: string; readonly radio?: string } | undefined {
+  const open = session.plan?.secrets?.find((secret) => secret.id === TREASURE_SECRET_ID);
+  if (!open || open.reward?.kind !== 'item' || open.reward.itemId !== CHEST_ITEM_ID) {
+    return undefined;
+  }
+  if (found.some((stack) => stack.itemId === CHEST_ITEM_ID)) {
+    return {
+      hint:
+        (context.carried?.(CHEST_ITEM_ID) ?? 1) > 0
+          ? `You are carrying the ${TREASURE_GOAL.prize}. Walk out with it and ${MARLOW.name} opens it; wipe and it is lost with the pack.`
+          : `You put the ${TREASURE_GOAL.prize} down. It will be under the X again next raid.`,
+    };
+  }
+  const spot = (session.plan?.loot[context.currentMapId] ?? []).find((piece) => piece.secret === TREASURE_SECRET_ID);
+  if (!spot) {
+    // A raid lays the chest only where it can be walked to: not laid, the cove is still MISTY's.
+    return {
+      hint: `${TREASURE_GOAL.title}: the ${TREASURE_GOAL.prize} is in ${TREASURE_PLACE}, ${TREASURE_GOAL.spot}. ${COAST_SHUT_LINE}`,
+      radio: `${TREASURE_GOAL.title}, in ${TREASURE_PLACE}. ${COAST_SHUT_LINE}`,
+    };
+  }
+  const where = directionTo(context.currentPosition, context.towards?.(spot.position) ?? spot.position);
+  const steps = context.stepsTo?.(spot.position);
+  const away = steps === undefined || steps === 0 ? '' : `, ${steps} ${steps === 1 ? 'step' : 'steps'} away`;
+  // A spot nobody can walk to from here is behind MISTY: say so rather than point at a wall.
+  const shut = context.stepsTo !== undefined && steps === undefined;
+  return {
+    hint: `${TREASURE_GOAL.title}: dig up the ${TREASURE_GOAL.prize} in ${TREASURE_PLACE}, ${where}${away}, ${TREASURE_GOAL.spot}.${shut ? ` ${COAST_SHUT_LINE}` : ''}`,
+    radio: shut
+      ? `${TREASURE_GOAL.title}, in ${TREASURE_PLACE}. ${COAST_SHUT_LINE}`
+      : `${TREASURE_GOAL.title}: ${TREASURE_PLACE}, ${where}${away}.`,
+  };
 }
 
 /**

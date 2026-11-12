@@ -69,7 +69,17 @@ const INK = {
   red: '#c03830',
   redLight: '#e05848',
   redDeep: '#802020',
-  // Night through the back windows.
+  // The sky through the back windows, by the player's own clock
+  // (`src/game/base/homeClock.ts`): the hours THE BOLTHOLE's window keeps, in
+  // that window's own evening orange and night blue brought to the GBA's steps.
+  day: '#90c8f8',
+  dayLight: '#c0e0f8',
+  cloud: '#f8f8f8',
+  dusk: '#f89860',
+  duskMid: '#f8b878',
+  duskLight: '#f8d898',
+  duskCloud: '#d07050',
+  sun: '#f8f0a0',
   night: '#203060',
   nightLight: '#385090',
   star: '#f8f8c8',
@@ -587,19 +597,44 @@ function goldenPlinth(x, y, locked) {
   set(x + 9, y + 5, INK.outline);
 }
 
-/** A tall window in the back wall, 1x2, the night (or day) through it. */
-function backWindow(x, y) {
+/**
+ * A tall window in the back wall, 1x2, with the sky of the hour through it:
+ * `day` is blue with a cloud, `dusk` orange with the sun low on the sill and
+ * `night` dark with the stars out. The room plants the one the player's clock
+ * says (`windowLight` in `src/game/base/homeClock.ts`).
+ */
+function backWindow(x, y, hour) {
+  const sky = { day: [INK.dayLight, INK.day], dusk: [INK.dusk, INK.duskMid], night: [INK.nightLight, INK.night] }[hour];
   fill(x, y, 16, 32, INK.woodShade);
-  box(x + 2, y + 3, 12, 26, INK.nightLight, INK.woodDeep);
+  box(x + 2, y + 3, 12, 26, sky[0], INK.woodDeep);
   for (let dy = 0; dy < 4; dy += 1) {
     const inset = [4, 2, 1, 0][dy];
     hline(x + 3, y + 4 + dy, inset, INK.woodDeep);
     hline(x + 13 - inset, y + 4 + dy, inset, INK.woodDeep);
   }
-  fill(x + 3, y + 16, 10, 12, INK.night);
-  set(x + 5, y + 9, INK.star);
-  set(x + 10, y + 13, INK.star);
-  set(x + 7, y + 20, INK.star);
+  fill(x + 3, y + 16, 10, 12, sky[1]);
+  if (hour === 'day') {
+    // A cloud going by in the top light.
+    hline(x + 4, y + 10, 4, INK.cloud);
+    hline(x + 5, y + 9, 2, INK.cloud);
+    hline(x + 10, y + 12, 2, INK.cloud);
+    // And one lower down, behind the bars.
+    hline(x + 9, y + 20, 3, INK.cloud);
+    hline(x + 10, y + 19, 2, INK.cloud);
+  } else if (hour === 'dusk') {
+    // Paler toward the skyline, and the sun half down behind the sill.
+    fill(x + 3, y + 22, 10, 6, INK.duskLight);
+    hline(x + 10, y + 24, 2, INK.sun);
+    fill(x + 9, y + 25, 4, 3, INK.sun);
+    // Two long thin clouds, dark against the light.
+    hline(x + 4, y + 10, 3, INK.duskCloud);
+    hline(x + 10, y + 12, 3, INK.duskCloud);
+    hline(x + 3, y + 19, 4, INK.duskCloud);
+  } else {
+    set(x + 5, y + 9, INK.star);
+    set(x + 10, y + 13, INK.star);
+    set(x + 7, y + 20, INK.star);
+  }
   // The bars.
   vline(x + 8, y + 5, 23, INK.woodDeep);
   hline(x + 3, y + 15, 10, INK.woodDeep);
@@ -795,7 +830,9 @@ runner(9 * TILE, 0);
 mat(10 * TILE, 0);
 wallCase(5 * TILE, TILE);
 stack(7 * TILE, TILE);
-backWindow(10 * TILE, TILE);
+backWindow(10 * TILE, TILE, 'night');
+backWindow(13 * TILE, 4 * TILE, 'day');
+backWindow(14 * TILE, 4 * TILE, 'dusk');
 globe(11 * TILE, TILE);
 fern(12 * TILE, TILE);
 Object.values(COVERS).forEach((cover, index) => lectern(index * TILE, 4 * TILE, cover));

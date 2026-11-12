@@ -18,9 +18,8 @@ import { GREAT_LIBRARY_NAME, LIBRARY_BOOKS } from '../library/books';
 import { resolveBookText } from '../library/bookText';
 import { SECRETS_BOOK_LOCKED_LINES, secretsBookOpens } from '../library/secretsBookLock';
 import {
-  CHART_PIECES,
+  chartBoardNote,
   CHART_ROOM_NAME,
-  chartWhole,
   MARLOW,
   NO_TREASURE_HUNT,
   OPEN_BOOKCASE_NOTE,
@@ -408,7 +407,9 @@ const DOJO_PROPS: Readonly<Record<DojoPropName, PropDefinition>> = {
 type LibraryPropName =
   | 'libCase'
   | 'libStack'
-  | 'libWindow'
+  | 'libWindowDay'
+  | 'libWindowDusk'
+  | 'libWindowNight'
   | 'libGlobe'
   | 'libFern'
   | 'libDesk'
@@ -427,7 +428,9 @@ function lecternPropName(colour: LecternColour): LibraryPropName {
 const LIBRARY_PROPS = {
   libCase: LIBRARY_SHEET_PIECES.solid('wallCase', 'bookcase'),
   libStack: LIBRARY_SHEET_PIECES.solid('stack', 'bookstack'),
-  libWindow: LIBRARY_SHEET_PIECES.solid('backWindow', 'window'),
+  libWindowDay: LIBRARY_SHEET_PIECES.solid('backWindowDay', 'window'),
+  libWindowDusk: LIBRARY_SHEET_PIECES.solid('backWindowDusk', 'window'),
+  libWindowNight: LIBRARY_SHEET_PIECES.solid('backWindowNight', 'window'),
   libGlobe: LIBRARY_SHEET_PIECES.solid('globe', 'globe'),
   libFern: LIBRARY_SHEET_PIECES.solid('fern', 'fern'),
   libDesk: LIBRARY_SHEET_PIECES.solid('desk', 'desk'),
@@ -906,14 +909,15 @@ export const LIBRARIAN_LINES: readonly string[] = [
  * books lying open on their lecterns: the first on the runner before the
  * desk, the rest in rows either side of it.
  */
-function drawLibrary(room: BaseRoom, game: RestoredGame): Drawn {
+function drawLibrary(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
   const sketch = shell(room);
   const hunt = game.raidProgress.treasureHunt ?? NO_TREASURE_HUNT;
+  const light = windowLight(now);
   for (const x of [0, 2, 5, 8, 11]) sketch.plant(x, 0, 'libCase');
   // The end bookcase, which MARLOW swings open onto THE CHART ROOM for good
   // once he has seen the bottled chart (`../treasure/treasureMap.ts`).
   sketch.plant(END_BOOKCASE.x, END_BOOKCASE.y, hunt.roomOpen ? 'libSecretOpen' : 'libCase');
-  for (const x of [4, 7, 10]) sketch.plant(x, 0, 'libWindow');
+  for (const x of LIBRARY_WINDOWS) sketch.plant(x, 0, LIBRARY_WINDOW_PIECES[light]);
   for (const y of [3, 9]) {
     sketch.plant(0, y, 'libStack');
     sketch.plant(12, y, 'libStack');
@@ -964,6 +968,14 @@ function drawLibrary(room: BaseRoom, game: RestoredGame): Drawn {
       tiles: [4, 10].flatMap((y) => [0, 1, 2, 12, 13, 14].map((x) => ({ x, y }))),
       lines: ['Shelf after shelf of old books. The ones worth reading are open on the lecterns.'],
     },
+    {
+      // Quiet: the sky is the picture, and a caption over a window is a label on the weather.
+      name: 'THE WINDOW',
+      note: LIBRARY_WINDOW_LINES[light],
+      tiles: LIBRARY_WINDOWS.map((x) => ({ x, y: 1 })),
+      lines: [LIBRARY_WINDOW_LINES[light]],
+      quiet: true,
+    },
   );
   const people: RoomPerson[] = [{ id: 'librarian', design: 'old-woman', tile: LIBRARIAN_TILE, facing: 'down' }];
   if (hunt.roomOpen) {
@@ -981,6 +993,27 @@ function drawLibrary(room: BaseRoom, game: RestoredGame): Drawn {
   return { sketch, catalogue: LIBRARY, things, sprites: [], people, solid: [LIBRARIAN_TILE, MARLOW_LIBRARY_TILE] };
 }
 
+/** The columns of the back wall its three tall windows stand in, between the bookcases. */
+export const LIBRARY_WINDOWS: readonly number[] = [4, 7, 10];
+
+/**
+ * The library's windows follow the player's own clock, by the hours THE
+ * BOLTHOLE's window and the harbour's light keep (`homeClock.ts`): blue sky by
+ * day, the sun going down at dusk, stars at night.
+ */
+export const LIBRARY_WINDOW_PIECES: Readonly<Record<WindowLight, LibraryPropName>> = {
+  day: 'libWindowDay',
+  dusk: 'libWindowDusk',
+  night: 'libWindowNight',
+};
+
+/** What a library window says when it is faced, by the hour. */
+export const LIBRARY_WINDOW_LINES: Readonly<Record<WindowLight, string>> = {
+  day: 'Blue sky over the tree tops.',
+  dusk: 'The sun is going down behind the trees.',
+  night: 'Stars over the tree tops.',
+};
+
 /** The end bookcase of the library's back wall, which swings open onto THE CHART ROOM. */
 export const END_BOOKCASE: GridPosition = { x: 13, y: 0 };
 /** The arch at the open bookcase's foot: stepped into, it is the way through to THE CHART ROOM. */
@@ -991,15 +1024,20 @@ export const MARLOW_LIBRARY_TILE: GridPosition = { x: 14, y: 2 };
 // --- THE CHART ROOM -------------------------------------------------------------
 
 /** THE CHART ROOM, behind the library's end bookcase. */
-export const CHART_ROOM = { width: 11, height: 8 } as const;
+export const CHART_ROOM = { width: 13, height: 9 } as const;
 /** The arch back into the library: the same open bookcase, from its other side. */
 export const CHART_ROOM_STAIR: GridPosition = { x: 0, y: 1 };
-/** The board the chart is pinned on, painted from the save (`../treasure/chartWall.ts`): its foot stands on the floor. */
-export const CHART_WALL: Rect = { x: 2, y: 0, width: 7, height: 4 };
+/**
+ * The board the chart is pinned on, painted from the save
+ * (`../treasure/chartWall.ts`): its foot stands on the floor. Nine tiles by
+ * five, so the chart inside its frame is the cove at two pixels to a tile
+ * (`CHART_GROUND`), big enough to know the place by.
+ */
+export const CHART_WALL: Rect = { x: 2, y: 0, width: 9, height: 5 };
 /** Where MARLOW stands in his room once he has opened it, at the board's right hand. */
-export const MARLOW_ROOM_TILE: GridPosition = { x: 9, y: 3 };
+export const MARLOW_ROOM_TILE: GridPosition = { x: 11, y: 3 };
 /** Where the opened chest stands, on the floor before the board. */
-export const SEA_CHEST_AT: GridPosition = { x: 4, y: 5 };
+export const SEA_CHEST_AT: GridPosition = { x: 5, y: 6 };
 
 /**
  * THE CHART ROOM: the library's panelling and boards, the open bookcase it was
@@ -1011,19 +1049,18 @@ function drawChartRoom(room: BaseRoom, game: RestoredGame): Drawn {
   const sketch = shell(room);
   const hunt = game.raidProgress.treasureHunt ?? NO_TREASURE_HUNT;
   sketch.plant(0, 0, 'libSecretOpen');
-  sketch.plant(9, 0, 'libCase');
-  sketch.plant(10, 4, 'libGlobe');
+  sketch.plant(CHART_WALL.x + CHART_WALL.width, 0, 'libCase');
+  sketch.plant(CHART_ROOM.width - 1, 5, 'libGlobe');
   sketch.plant(0, 5, 'libFern');
   const wallFoot = Array.from({ length: CHART_WALL.width }, (_, dx) => ({ x: CHART_WALL.x + dx, y: CHART_WALL.y + CHART_WALL.height - 1 }));
   const boardFloor = Array.from({ length: CHART_WALL.width * (CHART_WALL.height - 2) }, (_, index) => ({
     x: CHART_WALL.x + (index % CHART_WALL.width),
     y: CHART_WALL.y + 2 + Math.floor(index / CHART_WALL.width),
   }));
-  const pinned = hunt.pinned.length;
   const things: RoomThing[] = [
     {
       name: 'THE CHART',
-      note: chartWhole(hunt) ? 'Whole. X marks the spot' : `${pinned} of ${CHART_PIECES.length} pieces pinned`,
+      note: chartBoardNote(hunt),
       tiles: wallFoot,
       does: 'chart-wall',
       // The board is the picture: a caption seated over it hid the very
@@ -2375,8 +2412,9 @@ const DRAWERS: Readonly<Record<Exclude<RoomId, 'raid-arena'>, (room: BaseRoom, g
 
 /**
  * A room as it stands for this save, at this moment. Rebuilt on every visit; a
- * room is small. `now` is only read by the player's own house, whose window and
- * whose decorations follow the player's clock (`homeClock.ts`).
+ * room is small. `now` is read by the rooms that follow the player's clock
+ * (`homeClock.ts`): the player's own house, its window and its decorations,
+ * and THE GREAT LIBRARY's three tall windows.
  */
 export function buildRoom(
   room: BaseRoom,

@@ -32,7 +32,11 @@ export const LIBRARY_PIECES = {
   mat: { column: 10, row: 0, width: 1, height: 1 },
   wallCase: { column: 5, row: 1, width: 2, height: 2 },
   stack: { column: 7, row: 1, width: 3, height: 2 },
-  backWindow: { column: 10, row: 1, width: 1, height: 2 },
+  // The back windows, one for each hour the player's clock keeps
+  // (`homeClock.ts`): the room plants the one it is.
+  backWindowNight: { column: 10, row: 1, width: 1, height: 2 },
+  backWindowDay: { column: 13, row: 4, width: 1, height: 2 },
+  backWindowDusk: { column: 14, row: 4, width: 1, height: 2 },
   globe: { column: 11, row: 1, width: 1, height: 2 },
   fern: { column: 12, row: 1, width: 1, height: 2 },
   lecternRed: { column: 0, row: 4, width: 1, height: 2 },

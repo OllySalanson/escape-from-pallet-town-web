@@ -123,7 +123,7 @@ describe("Oak's chart table", () => {
         return seen;
       };
       const traced = colours(open(['moor']));
-      for (const ink of [CHART_INK.land, CHART_INK.sea, CHART_INK.tor, CHART_INK.red]) {
+      for (const ink of [CHART_INK.land, CHART_INK.sea, CHART_INK.pine, CHART_INK.roof, CHART_INK.red]) {
         expect(traced.has(ink), ink).toBe(false);
       }
       expect(colours({ ...open(CHART_PIECES.map((piece) => piece.id)) }).has('#c83020')).toBe(true);

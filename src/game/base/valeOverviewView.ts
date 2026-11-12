@@ -11,6 +11,7 @@ import type { RaidMark } from '../world/raidMemory';
 import type { RimLanding } from './arenaRim';
 import { heavyCloud, pressedBadge, sealedAt, sealedCard, type SealedQuarter } from './sealedQuarters';
 import { ringCard, ringChalk, ringMarkTile, type RumourRing } from './rumourRings';
+import { treasureCross, type TreasureMark } from '../treasure/treasureMark';
 import { podiumHole } from './arenaHall';
 import { calmedFloor, condensedFloor, steppedCloud, type Rgb } from './arenaPit';
 import { nextShadowInMs, SHADOW_WIDTH, shadowAt, shadowPassFor, type ShadowPass } from './pitLife';
@@ -74,6 +75,8 @@ export interface OverviewSource {
   readonly sealed: readonly SealedQuarter[];
   /** A chalk ring over the district of every rumour heard (`rumourRings.ts`): on the glass, never the map. */
   readonly rings: readonly RumourRing[];
+  /** The treasure map's X, while its chart is whole and its chest still buried (`treasure/treasureMark.ts`). */
+  readonly treasure?: TreasureMark;
   readonly light: WindowLight;
   readonly textures: {
     readonly light: string;
@@ -120,6 +123,8 @@ const CHALK = 0xe8e8d8;
 const CHALK_SHADE = 0x283040;
 const CHALK_MARK = 0xf8f8f8;
 const CHALK_TICK = 0xf8f8f8;
+/** The treasure map's X on the glass: the chart's own red. */
+const TREASURE_CROSS = 0xe83828;
 /** How near the cursor has to come to a ring's mark to read it, in screen pixels. */
 const RING_MARK_REACH = 6;
 const DIM_WORDS = '#70788c';
@@ -818,6 +823,13 @@ export class ValeOverviewView {
         }
       }
     }
+    // And the treasure map's X, over the very tile: the last thing chalked, so nothing lies over it.
+    if (this.source.treasure) {
+      const at = this.view.screenOf(mapPointOfTile(this.source.treasure.tile, scale));
+      for (const square of treasureCross()) {
+        chalk.fillStyle(square.ink === 'shade' ? CHALK_SHADE : TREASURE_CROSS, 1).fillRect(Math.round(at.x + square.x), Math.round(at.y + square.y), 1, 1);
+      }
+    }
     for (const light of townLights) {
       const at = this.view.screenOf({ x: light.x - mapFloor.left, y: light.y - mapFloor.top });
       town.fillStyle(light.warm ? 0xf8d070 : 0xf8e8b8, 1).fillRect(at.x, at.y, 1, 1);
@@ -934,6 +946,13 @@ export class ValeOverviewView {
     const mark = marks.find((each) => Math.hypot((each.x + 0.5) * scale - cursor.x, (each.y + 0.5) * scale - cursor.y) * zoom <= MARK_REACH);
     if (mark) {
       return { title: mark.line.toUpperCase(), lines: [] };
+    }
+    const treasure = this.source.treasure;
+    if (treasure) {
+      const cross = mapPointOfTile(treasure.tile, scale);
+      if (Math.hypot(cross.x - cursor.x, cross.y - cursor.y) * zoom <= RING_MARK_REACH) {
+        return { title: treasure.title, lines: treasure.lines };
+      }
     }
     const ring = this.source.rings.find((each) => {
       const mark = mapPointOfTile(ringMarkTile(each), scale);

@@ -12,6 +12,9 @@ import { WORLD_POIS, poisForMap } from '../world/pois';
 import { WORKED_LANDMARKS } from '../world/workedLandmarks';
 import { getWorldMap, type WorldMapId } from '../worldMap';
 import { walkingStepsFrom } from '../world/nearestExit';
+import { raidConditions, type RaidConditions } from '../world/secrets';
+import { MISTY_BOSS_ID } from '../world/valeQuarters';
+import { CHEST_ITEM_ID, COAST_SHUT_LINE, TREASURE_GOAL, TREASURE_PLACE } from '../treasure/treasureMap';
 
 function createFirstContractSession() {
   const manager = new RunManager();
@@ -748,5 +751,66 @@ describe('Professor Oak on the radio', () => {
     });
     expect(guide.radio[0]).toMatch(/^Oak here! The nearest landmark still to work is [^.]+\.$/);
     expect(guide.radio[1]).toMatch(/exit|gate/i);
+  });
+});
+
+describe('the treasure map in the field guide', () => {
+  const VALE = 'greystone-vale';
+  const whole: RaidConditions = raidConditions(new Date(2026, 10, 7, 12), [], [], true, []);
+
+  /** A raid on the vale from the Moor Top, with the chart whole or not and MISTY beaten or not. */
+  function valeSession(chartWhole: boolean, beaten: readonly string[], secretsFound: readonly string[] = []) {
+    const manager = new RunManager();
+    manager.startRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] }, { mapId: VALE, durationMs: 60_000 });
+    const plan = generateRunPlan(7, undefined, 'greystone-vale-moor-top', undefined, undefined, beaten, undefined, undefined, undefined, undefined, undefined, undefined, {
+      conditions: { ...whole, chartWhole },
+      known: { secretsFound, giftsReceived: [] },
+    });
+    return createActiveRunSession(manager, {}, {}, [], [], [], plan);
+  }
+
+  const guideFor = (session: ReturnType<typeof valeSession>, opened: readonly string[]) => {
+    const map = getWorldMap(VALE, opened);
+    const from = session.plan!.insertion.position;
+    return buildObjectiveGuide(session, {
+      currentMapId: VALE,
+      currentPosition: from,
+      activatedPoiIds: new Set(),
+      stepsTo: walkingStepsFrom(from, map.collision, map.links),
+    });
+  };
+
+  it('says nothing of it on a raid that set out without the whole chart', () => {
+    const guide = guideFor(valeSession(false, [MISTY_BOSS_ID]), [MISTY_BOSS_ID]);
+    expect(guide.hints.join(' ')).not.toContain(TREASURE_GOAL.title);
+    expect(guide.radio.join(' ')).not.toContain(TREASURE_GOAL.title);
+  });
+
+  it('puts the X first, with where, which way and how far, and Oak says it on the radio', () => {
+    const guide = guideFor(valeSession(true, [MISTY_BOSS_ID]), [MISTY_BOSS_ID]);
+    expect(guide.hints[0]).toContain(TREASURE_GOAL.title);
+    expect(guide.hints[0]).toContain(TREASURE_PLACE);
+    expect(guide.hints[0]).toContain(TREASURE_GOAL.prize);
+    expect(guide.hints[0]).toMatch(/to the south(-(east|west))?, \d+ steps away/);
+    expect(guide.hints[0]).not.toContain('MISTY');
+    expect(guide.radio[0]).toMatch(new RegExp(`^Oak here! ${TREASURE_GOAL.title}: ${TREASURE_PLACE}, to the south`));
+  });
+
+  it('says MISTY is in the way while the cove cannot be walked to', () => {
+    const guide = guideFor(valeSession(true, []), []);
+    expect(guide.hints[0]).toContain(TREASURE_GOAL.title);
+    expect(guide.hints[0]).toContain(COAST_SHUT_LINE);
+    expect(guide.radio[0]).toContain(COAST_SHUT_LINE);
+  });
+
+  it('turns to carrying it home once the chest is dug up, and is silent once it has been home', () => {
+    const session = valeSession(true, [MISTY_BOSS_ID]);
+    session.manager.registerFoundItem(CHEST_ITEM_ID);
+    const carrying = guideFor(session, [MISTY_BOSS_ID]);
+    expect(carrying.hints[0]).toContain(`carrying the ${TREASURE_GOAL.prize}`);
+    expect(carrying.hints[0]).toContain('MARLOW');
+    expect(carrying.radio[0]).not.toContain(TREASURE_GOAL.title);
+    const after = guideFor(valeSession(true, [MISTY_BOSS_ID], [CHEST_ITEM_ID]), [MISTY_BOSS_ID]);
+    expect(after.hints.join(' ')).not.toContain(TREASURE_GOAL.title);
   });
 });

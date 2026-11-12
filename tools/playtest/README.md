@@ -171,7 +171,11 @@ until the chart is whole. `raid.mjs --insertion=greystone-vale-cove-steps
 --beaten=vale-gym-misty --hunt=shore,moor,hollow,fold --grab=sea-chest
 --save-out=path.json` digs the chest up (`--hunt=` pins those pieces in the
 save), and `treasureHunt.mjs ... --chest=path.json` carries it to MARLOW to be
-opened - `docs/screens/treasure-hunt/`.
+opened - `docs/screens/treasure-hunt/`. `treasureHunt.mjs ... --playtest` plays
+the same board in a fresh explorer run, whose kit holds one of each piece and no
+chest: every piece pinned, and what the board and MARLOW say once it is whole.
+The driver reads where the board and MARLOW stand off the room as it is built,
+so a redrawn CHART ROOM needs no new numbers.
 
 `chartTable.mjs <cdp port> <url> <dir> [--save=path.json]` plays the lab's half
 of that chart and the telescope's rumour rings: Oak's CHART TABLE, his cork

@@ -358,13 +358,15 @@ in FireRed's manner (15-bit colours, a dark outline, light from the top left),
 and nothing in it is taken from anywhere: the building's front (a portico of
 four columns under a pediment, GREAT LIBRARY cut into its frieze in the
 script's own 3x5 lettering), the room's boards, panelled walls, bookcases,
-stacks, back windows, globe, fern, runner and mat, the librarian's desk, a
+stacks, back windows (one each for day, dusk and night), globe, fern, runner
+and mat, the librarian's desk, a
 wooden lectern in each of six book colours, and the golden plinth open and
 chained shut, and for the treasure map the end bookcase swung open on its hinge
 onto a lamp-lit arch and the smugglers' chest standing open. The board the
 treasure map is pinned on in THE CHART ROOM is no file either:
-`src/game/treasure/chartWall.ts` paints the chart, its frame and its slots from
-the save. The open book read full screen, its plinth and the reading room
+`src/game/treasure/chartWall.ts` paints the chart from the vale's own map file
+(SMUGGLERS' COVE, its lettering the script's own), and its frame and what is
+pinned from the save. The open book read full screen, its plinth and the reading room
 behind it are no file at all: `src/game/library/bookArt.ts` paints them at run
 time to the size of the window. Original to this repository.
 

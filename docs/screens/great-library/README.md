@@ -14,6 +14,11 @@ node tools/playtest/greatLibrary.mjs <cdp port> <build url> <out dir> --explorer
 - `library.png` - inside: the bookcases and back windows, the stacks, the
   librarian at her desk, THE BOLTHOLE open on its lectern and the golden plinth
   on the runner.
+- `windows-day.png`, `windows-dusk.png`, `windows-night.png` - the three tall
+  windows keep the player's own clock, by the hours THE BOLTHOLE's window keeps:
+  blue sky, the sun going down, stars. Made by
+  `node tools/playtest/treasureHunt.mjs <cdp port> <build url> <out dir> --windows`,
+  which puts the page in a time zone where it is each hour in turn.
 - `golden-plinth-locked.png` - in a normal game the golden book is chained shut,
   and facing it says so; it does not open.
 - `book-open.png` - THE BOLTHOLE full screen, on its wooden plinth.

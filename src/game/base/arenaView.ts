@@ -96,6 +96,7 @@ import { wallMapPicture } from './wallMap';
 import type { OverviewSource } from './valeOverviewView';
 import { townsOf } from './valeOverview';
 import { rumourRings } from './rumourRings';
+import { treasureMark } from '../treasure/treasureMark';
 import { sealedQuarters } from './sealedQuarters';
 import { openedDoors } from '../world/gates';
 import { marksOn, trailDots, type RaidMark } from '../world/raidMemory';
@@ -792,6 +793,8 @@ export class ArenaView {
         secretsFound: this.game.raidProgress.secretsFound ?? [],
         giftsReceived: this.game.raidProgress.giftsReceived,
       }),
+      // The treasure map's X, once the chart is whole: on the spot itself.
+      treasure: treasureMark(this.mapIdValue, this.game),
       textures: { light: LIGHT_TEXTURE, shadow: SHADOW_TEXTURE },
       trailInk: TRAIL_INK,
       trailShade: TRAIL_SHADE,

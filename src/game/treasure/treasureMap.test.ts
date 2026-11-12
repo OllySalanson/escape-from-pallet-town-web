@@ -3,7 +3,7 @@ import { getBaseMap } from '../base/baseMap';
 import { harbourPlaceAt } from '../base/harbourPlaces';
 import { HARBOUR_LIFE } from '../base/harbourLife';
 import { LOITER_SPOTS } from '../base/generated/harbourBotSpots';
-import { BASE_ROOMS, buildRoom, CHART_ROOM_STAIR, LIBRARY_CHART_STAIR, MARLOW_LIBRARY_TILE, roomNamed } from '../base/rooms';
+import { BASE_ROOMS, buildRoom, CHART_ROOM_STAIR, CHART_WALL, LIBRARY_CHART_STAIR, MARLOW_LIBRARY_TILE, roomNamed } from '../base/rooms';
 import { baseGame } from '../base/baseGames.testkit';
 import { TRADER_BERTH_PRICE } from '../hub/trader';
 import { Bag, getItemById, packSquares } from '../items';
@@ -17,7 +17,14 @@ import { MOST_TRAIL_MONEY } from '../world/raidStake';
 import { stepDistances } from '../world/mapStructure';
 import { nextReward, openSecrets, raidConditions, secretById, SECRETS, SPENT_NOOK_BERRIES, type RaidConditions } from '../world/secrets';
 import { MISTY_BOSS_ID } from '../world/valeQuarters';
+import { createPlaytestStash, playtestStock, withoutKitTreasure } from '../dev/playtestSave';
+import { directSources } from '../hub/pokedexSources';
+import { TICKET_PRIZES } from '../minigames/tickets';
+import { getSpeciesById } from '../pokemon/species';
+import { shareLine } from '../ui/dialogBoxes';
+import { POKEMON_GIFTS } from '../world/gifts';
 import { chartWallPicture } from './chartWall';
+import { treasureCross, treasureMark } from './treasureMark';
 import {
   BEACH_BOTTLE,
   bottleOnTheBeach,
@@ -27,14 +34,25 @@ import {
   chartWhole,
   CHEST_CONTENTS,
   CHEST_ITEM_ID,
+  CHEST_POKEMON,
+  chartBoardLines,
+  chartBoardNote,
+  CHART_ROOM_ARRIVAL_LINES,
   chestOpenedLines,
+  COAST_SHUT_LINE,
   huntStage,
   marlowLibraryLines,
+  marlowRoomLines,
   NO_TREASURE_HUNT,
   pinnedLines,
+  PLAYTEST_PIECES_LINE,
   readTreasureHunt,
+  TREASURE_GOAL,
   TREASURE_PLACE,
   TREASURE_SECRET_ID,
+  treasureGoalLines,
+  wholeChartLines,
+  type HuntStage,
   type TreasureHunt,
 } from './treasureMap';
 
@@ -164,11 +182,11 @@ describe('the treasure map', () => {
     });
 
     it('the board shows a piece where it is pinned and gilds its frame once the chart is whole', () => {
-      const area = { width: 7, height: 4 };
+      const area = CHART_WALL;
       const empty = chartWallPicture(undefined, area);
       const one = chartWallPicture({ ...NO_TREASURE_HUNT, roomOpen: true, pinned: ['shore'] }, area);
       const whole = chartWallPicture({ ...NO_TREASURE_HUNT, roomOpen: true, pinned: CHART_PIECES.map((piece) => piece.id) }, area);
-      expect([empty.width, empty.height]).toEqual([112, 64]);
+      expect([empty.width, empty.height]).toEqual([area.width * 16, area.height * 16]);
       expect(Buffer.from(one.data).equals(Buffer.from(empty.data))).toBe(false);
       // The top-left of the board's trim is plain wood until the chart is whole.
       const at = (picture: typeof empty, x: number, y: number) => [...picture.data.slice((y * picture.width + x) * 4, (y * picture.width + x) * 4 + 3)];
@@ -328,6 +346,175 @@ describe('the treasure map', () => {
         expect(faced.some((tile) => (steps[tile.y]?.[tile.x] ?? -1) > 0), name).toBe(true);
       }
     });
+  });
+});
+
+/** The harbour's dialogue box: two rows of about 38 characters, wrapped a word at a time (`ui/dialogBoxes.test.ts`). */
+function boxesOf(line: string): number {
+  const wrap = (text: string): string[] => {
+    const rows: string[] = [];
+    for (const word of text.split(' ')) {
+      const last = rows[rows.length - 1];
+      if (last !== undefined && `${last} ${word}`.length <= 38) rows[rows.length - 1] = `${last} ${word}`;
+      else rows.push(word);
+    }
+    return rows;
+  };
+  return shareLine(line, 2, wrap).length;
+}
+
+describe('the hunt is said in few words', () => {
+  const every = CHART_PIECES.map((piece) => piece.id);
+  const name = (itemId: string): string => getItemById(itemId)?.displayName ?? itemId;
+  const after = (count: number): TreasureHunt => ({ ...NO_TREASURE_HUNT, roomOpen: true, pinned: every.slice(0, count) });
+  const pinning = CHART_PIECES.map((piece, index) => pinnedLines(piece, after(index + 1), name(piece.itemId), 'CHARMANDER'));
+  const stages: readonly HuntStage[] = ['no-chart', 'first-chart', 'pinning', 'whole', 'chest', 'done'];
+  const said: readonly string[] = [
+    ...pinning.flat(),
+    ...pinnedLines(CHART_PIECES[3], after(4), name(CHART_PIECES[3].itemId), 'CHARMANDER', false),
+    ...wholeChartLines(false),
+    ...treasureGoalLines(),
+    ...CHART_ROOM_ARRIVAL_LINES,
+    ...stages.flatMap((stage) => [...marlowRoomLines(stage, after(1)), ...marlowRoomLines(stage, after(4), false)]),
+    ...[0, 1, 4].flatMap((count) => chartBoardLines(after(count), false)),
+    ...chartBoardLines({ ...after(4), chestOpened: true }),
+    ...chestOpenedLines(name),
+    PLAYTEST_PIECES_LINE,
+  ];
+
+  it.each([...new Set(said)])('one box holds: %s', (line) => {
+    // The owner's playtest of 12 Nov 2026: pinning the first piece took fifteen boxes.
+    expect(boxesOf(line)).toBe(1);
+  });
+
+  it('pins a piece in a handful of boxes: five for the first and the last, three for the rest', () => {
+    expect(pinning.map((lines) => lines.length)).toEqual([5, 3, 3, 5]);
+    expect(pinnedLines(CHART_PIECES[3], after(4), name(CHART_PIECES[3].itemId), undefined, false)).toHaveLength(6);
+  });
+
+  it('says where to go and what you get the moment the chart is whole, and everywhere after', () => {
+    for (const lines of [pinning[3], marlowRoomLines('whole', after(4)), chartBoardLines(after(4)), treasureGoalLines()]) {
+      const words = lines.join(' ');
+      expect(words).toContain(TREASURE_PLACE);
+      expect(words).toContain(TREASURE_GOAL.spot);
+      expect(words).toContain(TREASURE_GOAL.prize);
+      expect(words).not.toContain('MISTY');
+    }
+    // A save that cannot walk into the cove yet is told who is in the way.
+    expect(treasureGoalLines(false)).toContain(COAST_SHUT_LINE);
+    expect(COAST_SHUT_LINE).toContain('MISTY');
+    expect(chartBoardNote(after(4))).toBe('Whole. Dig at the X');
+    expect(chartBoardNote(after(2))).toBe('2 of 4 pieces pinned');
+    // Before it is whole, nothing names the place the chart has not shown yet.
+    expect(chartBoardLines(after(1)).join(' ')).not.toContain(TREASURE_PLACE);
+  });
+});
+
+describe('the X on the telescope', () => {
+  const every = CHART_PIECES.map((piece) => piece.id);
+  const nook = builtInFileMap(VALE)!.loot.find((piece) => piece.secret === TREASURE_SECRET_ID)!;
+  const game = (hunt: TreasureHunt | undefined, items: Readonly<Record<string, number>> = {}, defeatedBosses: readonly string[] = []) =>
+    freshSave({ ...(hunt ? { treasureHunt: hunt } : {}), defeatedBosses }, items).load()!;
+  const whole: TreasureHunt = { roomOpen: true, pinned: every, chestOpened: false };
+
+  it('is not there until the chart is whole', () => {
+    expect(treasureMark(VALE, game(undefined))).toBeUndefined();
+    expect(treasureMark(VALE, game({ ...whole, pinned: every.slice(1) }))).toBeUndefined();
+  });
+
+  it('stands on the very tile the chest is under, and says the goal', () => {
+    const mark = treasureMark(VALE, game(whole, {}, [MISTY_BOSS_ID]))!;
+    expect(mark.tile).toEqual(nook.position);
+    expect(mark.title).toBe(TREASURE_GOAL.title);
+    expect(mark.lines.join(' ')).toContain(TREASURE_PLACE);
+    expect(mark.lines.join(' ')).toContain(TREASURE_GOAL.prize);
+    expect(mark.lines.join(' ')).not.toContain('MISTY');
+    // Until MISTY is beaten, it says who holds the way in.
+    expect(treasureMark(VALE, game(whole))!.lines).toContain(COAST_SHUT_LINE);
+    expect(treasureCross().some((square) => square.ink === 'cross' && square.x === 0 && square.y === 0)).toBe(true);
+  });
+
+  it('comes off once the chest is home, and stays off once it is opened', () => {
+    expect(treasureMark(VALE, game(whole, { [CHEST_ITEM_ID]: 1 }))).toBeUndefined();
+    expect(treasureMark(VALE, game({ ...whole, chestOpened: true }))).toBeUndefined();
+  });
+});
+
+describe('the X leads to a rare find', () => {
+  it('hands over a shiny EEVEE, in the same write as the chest’s kit, and only once', () => {
+    const pinned = CHART_PIECES.map((piece) => piece.id);
+    const saves = freshSave({ treasureHunt: { roomOpen: true, pinned, chestOpened: false } }, { [CHEST_ITEM_ID]: 1 });
+    const found = () => saves.load()!.stash.listPokemon().filter((stored) => stored.pokemon.base.id === CHEST_POKEMON.speciesId);
+    expect(found()).toHaveLength(0);
+    expect(saves.openSeaChest()).toBe(true);
+    // Read back off the save, so the shine is something a reload keeps.
+    expect(found()).toHaveLength(1);
+    expect(found()[0].pokemon.level).toBe(CHEST_POKEMON.level);
+    expect(CHEST_POKEMON.shiny).toBe(true);
+    expect(found()[0].pokemon.shiny).toBe(true);
+    // The Pokédex has it as owned, and as a shiny.
+    expect(saves.load()!.raidProgress.pokedexShiny ?? []).toContain(getSpeciesById(CHEST_POKEMON.speciesId)!.dexId);
+    // Once: a second try gives nothing.
+    expect(saves.openSeaChest()).toBe(false);
+    expect(found()).toHaveLength(1);
+    const name = getSpeciesById(CHEST_POKEMON.speciesId)!.name.toUpperCase();
+    expect(chestOpenedLines((itemId) => getItemById(itemId)?.displayName ?? itemId, name).join(' ')).toContain(`A shiny ${name} came out!`);
+  });
+
+  it('is a kind no grass, water or floor of the vale rolls, and the Pokédex says the chest is one way to it', () => {
+    expect(getSpeciesById(CHEST_POKEMON.speciesId)).toBeDefined();
+    // Nothing a raid walks into is one: no step, cast, standing Pokemon or trainer of the vale.
+    expect(JSON.stringify(builtInFileMap(VALE)!.file)).not.toContain(`"${CHEST_POKEMON.speciesId}"`);
+    expect(POKEMON_GIFTS.map((gift) => gift.speciesId)).not.toContain(CHEST_POKEMON.speciesId);
+    expect(TICKET_PRIZES.flatMap((prize) => (prize.gives.kind === 'pokemon' ? [prize.gives.speciesId] : []))).not.toContain(CHEST_POKEMON.speciesId);
+    // The treasure's secret is among the ways the Pokédex lists for it, and only with the secrets counted.
+    const ways = (withSecrets: boolean) => directSources(withSecrets).get(CHEST_POKEMON.speciesId) ?? [];
+    expect(ways(true)).toContainEqual({ kind: 'secret', secretId: TREASURE_SECRET_ID });
+    expect(ways(false)).not.toContainEqual({ kind: 'secret', secretId: TREASURE_SECRET_ID });
+  });
+});
+
+describe('the explorer run and the treasure map', () => {
+  const every = CHART_PIECES.map((piece) => piece.id);
+
+  it('is dealt one of each piece and no chest, so the whole chart still sends it to the X', () => {
+    const stash = createPlaytestStash();
+    for (const piece of CHART_PIECES) {
+      expect(stash.itemCount(piece.itemId), piece.itemId).toBe(1);
+      expect(playtestStock(piece.itemId)).toBe(1);
+    }
+    expect(stash.itemCount(CHEST_ITEM_ID)).toBe(0);
+    // Everything else is still stocked.
+    expect(stash.itemCount('potion')).toBe(playtestStock('potion'));
+    expect(playtestStock('potion')).toBeGreaterThan(1);
+    // Every piece pinned: the hunt is at "go and dig", not at a chest nobody dug up.
+    const held = (itemId: string): number => (every.some((id) => CHART_PIECES.find((piece) => piece.id === id)!.itemId === itemId) ? 0 : stash.itemCount(itemId));
+    expect(huntStage({ roomOpen: true, pinned: every, chestOpened: false }, held)).toBe('whole');
+    expect(PLAYTEST_PIECES_LINE).toContain('PLAYTEST');
+  });
+
+  it('takes the old kit’s twenty of everything back out of a run kept from before', () => {
+    const stash = createPlaytestStash();
+    for (const piece of CHART_PIECES) stash.addItem(piece.itemId, 19);
+    stash.addItem(CHEST_ITEM_ID, 20);
+    // Two pieces already on the board: those are out of the vault for good.
+    expect(withoutKitTreasure(stash, ['shore', 'moor'])).toBe(true);
+    expect(CHART_PIECES.map((piece) => stash.itemCount(piece.itemId))).toEqual([0, 0, 1, 1]);
+    expect(stash.itemCount(CHEST_ITEM_ID)).toBe(0);
+    // And a run that is already right is left alone.
+    expect(withoutKitTreasure(stash, ['shore', 'moor'])).toBe(false);
+  });
+
+  it('keeps a chest the run dug up itself', () => {
+    const dug = createPlaytestStash();
+    dug.addItem(CHEST_ITEM_ID, 1);
+    expect(withoutKitTreasure(dug, every)).toBe(true);
+    expect(dug.itemCount(CHEST_ITEM_ID)).toBe(1);
+    // One more than the kit dealt is the kit's twenty and the run's own.
+    const both = createPlaytestStash();
+    both.addItem(CHEST_ITEM_ID, 21);
+    withoutKitTreasure(both, every);
+    expect(both.itemCount(CHEST_ITEM_ID)).toBe(1);
   });
 });
 

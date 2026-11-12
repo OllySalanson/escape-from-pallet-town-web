@@ -551,7 +551,8 @@ try {
   // under it thrown by the game), `grab:itemId` (every piece of it this raid
   // laid), `shimmer` and `shimmer:in` (beside this raid's shimmering grass, and
   // into it; `shimmer:shiny` forces its shiny roll first, for a picture), `omen`
-  // (stands until this raid's omen is half way across the screen) and `shot:name`
+  // (stands until this raid's omen is half way across the screen), `radio` (the
+  // guide key twice: Oak on the radio, then the whole field guide) and `shot:name`
   // (a picture, with --shot). It is how the Lost Garden is
   // walked: in behind the falls, the Falls Cave's boulders onto their switches,
   // out under the garden's cliff, the Miracle Seed, and the Gardener's Gate.
@@ -704,6 +705,25 @@ try {
         await wait(300);
         await page.screenshot(option('shot').replace(/\.png$/, `-${parts[0]}.png`));
       }
+    } else if (kind === 'radio') {
+      // `radio`: the guide key, once for Professor Oak on the radio and again
+      // while he is talking for the whole field guide, each photographed with
+      // --shot (`-radio.png`, `-guide.png`) and noted, then back to the raid.
+      // Nothing else being read, or the key is the whole guide at once.
+      for (let line = 0; line < 12 && (await state()).world?.dialog; line += 1) {
+        await press('Space');
+        await wait(300);
+      }
+      await press('KeyO');
+      await wait(2200);
+      note(`radio: ${JSON.stringify(await page.evaluate(`${GAME}.scene.getScene('world').dialogBox?.textObject?.text ?? null`))}`);
+      if (option('shot')) await page.screenshot(option('shot').replace(/\.png$/, '-radio.png'));
+      await press('KeyO');
+      await wait(900);
+      note(`guide: ${JSON.stringify(await page.evaluate(`[...document.querySelectorAll('.objectives-menu .px-row .px-wrap')].slice(0, 4).map((row) => row.textContent)`))}`);
+      if (option('shot')) await page.screenshot(option('shot').replace(/\.png$/, '-guide.png'));
+      await press('Escape');
+      await wait(600);
     } else {
       throw new Error(`no such step as ${kind}`);
     }

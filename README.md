@@ -257,7 +257,8 @@ move the pot plants, then fill the place with a doll of every kind of Pokémon y
 back alive. Dolls go on the table. Nothing goes on the door mat.
 
 Not sure how something works? Up at the top of the Green, set back in the trees, is the **Great
-Library**: a librarian, a lot of shelves, and books lying open on lecterns. Face one and it fills
+Library**: a librarian, a lot of shelves, three tall windows that show whatever sky you're actually
+playing under, and books lying open on lecterns. Face one and it fills
 the screen, open on its wooden plinth, and you turn its pages with the arrow keys or a click - each
 one curls over at the spine like a real page. The first teaches the Bolthole. And in the middle of
 the room, on a golden plinth of its own, there's a book on every secret in the vale... chained shut.
@@ -266,9 +267,11 @@ Keep an eye on the sand past the pleasure pier, too. Something washes up there i
 old chart keeper at the Library's end bookcase gets *very* excited about it - excited enough to swing
 that bookcase open on a room nobody's supposed to know about. There's a board in there with a space
 for every piece of a torn sea chart. One piece came out of the sea; the other three are out in the
-vale under the right sky. Pin them all up and the dotted line finally goes somewhere, and so do you:
-X marks the spot, and whatever's buried there is heavy, worth having, and just as easy to lose on
-the way home as everything else you carry.
+vale under the right sky. Pin them all up and the four corners turn out to be one real place - a
+cove you can walk into, sheds, jetty and all - with a red dotted line down its cliff steps to an X.
+The X is on the sand when you get there, too. Whatever's buried under it is heavy, worth having
+(something in it is still alive), and just as easy to lose on the way home as everything else you
+carry.
 
 And you never walk it alone. The starter you picked trots one step behind you, in your own
 footsteps, through every door and into every room, drawn in HeartGold and SoulSilver's own
