@@ -32,4 +32,4 @@ at the same second on a build of the commit before.
 | | |
 | --- | --- |
 | ![](01-before.png) | Before: Mill Square, the same raid at the same second. |
-| ![](02-the-shadow.png) | After: 58 seconds in, a great shadow half way across the square, with Moltres's cry. It lies on the ground under everybody, as the vale's own bird's shadow does, and is the bird's own battle picture three times over. Oak's full list then reads: "A great shadow crossed the vale, heading south-west. That cry was MOLTRES. They say it roosts in THE CRATER on EMBER ISLE." |
+| ![](02-the-shadow.png) | After: 58 seconds in, a great shadow half way across the square, with Moltres's cry. It lies on the ground under everybody, as the vale's own bird's shadow does, and is the bird's own battle picture three times over. Oak's full list then reads: "A great shadow crossed the vale, heading south. That cry was MOLTRES. They say it roosts in THE CRATER on EMBER ISLE." |
