@@ -316,6 +316,8 @@ A few things worth knowing before you go:
 - **Some ways need a move, not a fight.** Teach a Pokémon Strength and the boulders in your way start to shift.
 - **Every raid has something worth staying for.** A little money in sight of where you land, a little more on the way, and a proper find a good walk off and a bit too far from any exit. Walk straight out and you'll have ₽10 to show for it. Pick up the big one and somebody hears.
 - **Prizes gleam.** A few places in the vale hold something only they have, and on a raid where one turns up you can see it shining from a long way off. Is it worth the detour with forty seconds on the clock? Yes. No. Maybe.
+- **Some of the grass glitters.** One patch a raid, a little off the walk to the big find. Step in and you meet the rarest thing that lives there, and it's ten times likelier to be shiny than anything else you'll meet.
+- **The vale keeps secrets.** A Snorlax asleep across a glade who wants a particular tune. A shadow on a crypt floor with nothing to cast it. Somebody standing near each one, or a notice, will tell you part of what it's waiting for, and the gossips back at the harbour know a bit more. Nobody will tell you all of it.
 - **The pit is cloud where you haven't been.** Walk it, come home, and watch the cloud lift.
 - **Contracts change how a raid goes:** survey three stakes, carry a sealed case out through one particular exit, or spend your own supplies resupplying an outpost.
 
