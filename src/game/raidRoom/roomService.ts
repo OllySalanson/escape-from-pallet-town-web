@@ -50,8 +50,8 @@ export interface RaidRoomService {
   leave(code: string): Promise<void>;
   /** Claims one piece of the room's loot: the first claim holds. */
   takeLoot(code: string, lootId: string): Promise<LootClaim>;
-  /** Every piece already taken in the room, and by whom. */
-  lootTaken(code: string): Promise<ReadonlyMap<string, string>>;
+  /** Every piece already taken in the room, and by whom; `closed` as `takeLoot` says it, and null if the room could not be asked. */
+  lootTaken(code: string): Promise<ReadonlyMap<string, string> | 'closed' | null>;
 }
 
 /** Said when the database could not be reached, or said nothing the game understands. */
@@ -143,10 +143,16 @@ export function liveRoomService(): RaidRoomService {
     async lootTaken(code) {
       try {
         const { supabase } = await import('../maker/supabaseClient');
-        const { data } = await (await supabase()).rpc('raid_loot_taken', { room_code: code });
-        return new Map((data ?? []).map((row) => [row.loot_id, row.taker_uid] as const));
+        const { data, error } = await (await supabase()).rpc('raid_loot_taken', { room_code: code });
+        if (error?.message === NOT_IN_THE_ROOM) {
+          return 'closed';
+        }
+        if (error || !data) {
+          return null;
+        }
+        return new Map(data.map((row) => [row.loot_id, row.taker_uid] as const));
       } catch {
-        return new Map();
+        return null;
       }
     },
   };
@@ -310,8 +316,21 @@ export function localRoomService(me: () => Promise<string>): RaidRoomService {
       write(rooms);
       return { outcome: 'yours' };
     },
-    lootTaken(code) {
-      return Promise.resolve(new Map(Object.entries(read()[code]?.taken ?? {})));
+    async lootTaken(code) {
+      // As the database goes quiet for a claim, it goes quiet for this.
+      const offline = window.sessionStorage.getItem(LOCAL_ROOMS_OFFLINE_KEY);
+      if (offline === 'hang') {
+        return new Promise<null>(() => undefined);
+      }
+      if (offline === 'down') {
+        return null;
+      }
+      const id = await me();
+      const room = read()[code];
+      if (!room?.members.includes(id)) {
+        return 'closed';
+      }
+      return new Map(Object.entries(room.taken ?? {}));
     },
   };
 }

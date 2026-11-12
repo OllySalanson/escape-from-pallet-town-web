@@ -5183,6 +5183,18 @@ export class BaseScene extends Phaser.Scene {
         return;
       }
       const thing = this.thingFaced(target);
+      // A visitor looks round and touches nothing that is the owner's to use -
+      // asked before anything opens, because MY PC opened the visitor's own
+      // boxes and closing them took the visitor home, ending the visit without
+      // a word (the multiplayer bug hunt of 12 Nov 2026).
+      if (
+        this.visit &&
+        thing &&
+        (thing.does !== undefined || thing.opens === 'games' || thing.opens === 'wardrobe' || thing.opens === 'boxes')
+      ) {
+        this.say([notYoursLine(this.visit.ownerName)], [target]);
+        return;
+      }
       if (thing?.opens === 'bench' || thing?.opens === 'rack' || thing?.opens === 'locker') {
         this.openHallPanel(thing.opens);
         return;
@@ -5238,15 +5250,6 @@ export class BaseScene extends Phaser.Scene {
       }
       if (thing?.crated && cabinet) {
         this.say([cratesLine(cabinet.layout, cabinet.oddities, new Date())], [target]);
-        return;
-      }
-      // A visitor looks round and touches nothing that is the owner's to use.
-      if (
-        this.visit &&
-        thing &&
-        (thing.does !== undefined || thing.opens === 'games' || thing.opens === 'wardrobe' || thing.name.endsWith("'S PC"))
-      ) {
-        this.say([notYoursLine(this.visit.ownerName)], [target]);
         return;
       }
       if (thing?.does === 'sleep') {

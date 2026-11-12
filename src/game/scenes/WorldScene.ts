@@ -239,7 +239,7 @@ import {
 } from '../world/depths';
 import { hiddenInArea, placedAreaAt, type PlacedArea } from '../world/mapAreas';
 import { friendRoom } from '../raidRoom/friendRoom';
-import { hunterKeeper, nearestQuarry, type SharedHunter } from '../raidRoom/groupHunter';
+import { hunterKeeper, hunterLife, nearestQuarry, type SharedHunter } from '../raidRoom/groupHunter';
 import { ROOM_PHRASES, TALK_LIST_OPEN_MS } from '../raidRoom/roomTalk';
 import { roomOpenedDoors } from '../raidRoom/roomBosses';
 import { HarbourFigures } from '../base/harbourFigures';
@@ -1405,6 +1405,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.scale.off?.(Phaser.Scale.Events.RESIZE, relayout),
     );
     this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () => this.clearMap());
+    // Every way the world is paused - the pack, the team, the field guide,
+    // FEEDBACK, a window gone to the back - is said to the room (`sayAway`).
+    const away = () => this.sayAway(true);
+    const back = () => this.sayAway(false);
+    this.events?.on?.(Phaser.Scenes.Events.PAUSE, away);
+    this.events?.on?.(Phaser.Scenes.Events.RESUME, back);
+    this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.events.off(Phaser.Scenes.Events.PAUSE, away);
+      this.events.off(Phaser.Scenes.Events.RESUME, back);
+    });
     this.beginArrival(data.droppedIn === true);
     if (!this.arrival) {
       this.showFirstDeploymentBriefing();
@@ -1784,6 +1794,28 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
   }
 
+  /**
+   * The world paused under a menu, or running again, said to the room. A paused
+   * world steps nothing, so while it kept the room's hunter the hunter stood
+   * frozen beside a friend still walking, for as long as the menu was open (the
+   * multiplayer bug hunt of 12 Nov 2026). Away, this player is nobody's keeper
+   * and nobody's quarry; back, it takes the hunter from the last word heard, as
+   * any keeper taking over does.
+   */
+  private sayAway(away: boolean): void {
+    const rooms = friendRoom();
+    const room = rooms?.room;
+    if (!rooms || !room || !this.runSession || room.mapId !== this.currentMap.id) {
+      return;
+    }
+    if (away) {
+      // Whoever keeps it meanwhile moves it on, so the hunter this world holds
+      // is out of date when it runs again: the keeping is taken up afresh.
+      this.huntRoleWas = 'solo';
+    }
+    rooms.sayHunter({ kind: 'away', from: room.me, away });
+  }
+
   /** A boss this player beat this raid opens its doors for everybody in the room (`roomBosses.ts`). */
   private sayRoomWins(): void {
     friendRoom()?.won(
@@ -1827,6 +1859,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     const latest = rooms.hunters.latest;
+    // Beaten by somebody while this player was in a fight of their own with it
+    // - two friends caught at once - it is beaten in this world too, whatever
+    // this world's own fight left of it (the multiplayer bug hunt of 12 Nov
+    // 2026). Only the enrage's return outlives a defeat of its first life.
+    if (latest?.hunter.defeated && !this.hunterState.defeated && hunterLife(latest.hunter.returned) >= hunterLife(this.hunterState.returned)) {
+      this.takeSharedHunter(latest, role);
+    }
     const fresh = latest && latest.from !== room.me && latest.at > this.hunterHeardAt ? latest : null;
     if (role === 'follower') {
       if (fresh || was !== 'follower') {
@@ -1852,6 +1891,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       facing: this.hunterFacing,
       searchMs: this.hunterState.searchRemainingMs ?? 0,
       rivalId: this.hunterRival().id,
+      returned: this.hunterState.returned === true,
     };
   }
 
@@ -1899,12 +1939,21 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     this.hunterHeardAt = heard.at;
     const hunter = heard.hunter;
+    // A word about a life of the hunter older than this world's is out of
+    // date: this world's clock has already brought it back for the enrage.
+    if (hunterLife(hunter.returned) < hunterLife(this.hunterState.returned)) {
+      return;
+    }
     const arriving = role === 'follower' && hunter.spawned && !hunter.defeated && hunter.position !== null &&
       !(this.hunterState.spawned && !this.hunterState.defeated && this.hunterState.position);
+    // A defeat is one-way for the life it was won against: no word turns a
+    // hunter this world saw beaten back into one hunting (`HunterBoard.asBeaten`).
+    const sameLife = hunterLife(hunter.returned) === hunterLife(this.hunterState.returned);
     this.hunterState = {
       ...this.hunterState,
       spawned: hunter.spawned,
-      defeated: hunter.defeated,
+      defeated: hunter.defeated || (sameLife && this.hunterState.defeated),
+      returned: hunter.returned || this.hunterState.returned === true,
       mapId: this.currentMap.id,
       position: hunter.position ?? undefined,
       searchRemainingMs: hunter.searchMs,
@@ -7249,7 +7298,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       }
       // A room that has closed under this raid answers at once: the piece is
       // this player's, picked up on this step (`FriendRoom.claimLoot`).
-      if (rooms.loot.holder(loot.id) !== rooms.room!.me) {
+      if (!rooms.loot.collects(loot.id, rooms.room!.me)) {
         return null;
       }
       // Tried here, so the next frame's `settleRoomLoot` does not say it again.
@@ -7384,7 +7433,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       if (holder === undefined) {
         continue;
       }
-      if (holder === room.me) {
+      // Won in this raid. One this player took in an earlier raid in the room
+      // is gone like anybody else's (`LootLedger.takenBefore`).
+      if (rooms.loot.collects(loot.id, room.me)) {
         // Asked only once nothing is on screen, so a win answered while a line
         // is up is collected when the line is read rather than spent unseen.
         if (!this.dialogBox.visible && !this.pendingHubTransition && rooms.loot.firstTry(loot.id)) {

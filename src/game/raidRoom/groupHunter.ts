@@ -41,7 +41,17 @@ export interface SharedHunter {
   readonly searchMs: number;
   /** Who is hunting: the keeper's rival, so everybody sees and fights the same one. */
   readonly rivalId: HunterRivalId;
+  /**
+   * Whether this is the hunter's second life: beaten before the enrage and
+   * brought back for it, once (`hunterAtEnrage`). A defeat holds the hunter it
+   * was won against for the rest of the raid, and only the enrage's return
+   * comes back from one (`HunterBoard`).
+   */
+  readonly returned: boolean;
 }
+
+/** Which life of the hunter this is: its first, or (1) the enrage's return (`SharedHunter.returned`). */
+export const hunterLife = (returned: boolean | undefined): 0 | 1 => (returned ? 1 : 0);
 
 /** What one browser tells the others about the hunter. */
 export type HunterSignal =
@@ -50,7 +60,13 @@ export type HunterSignal =
   /** A player went into a fight (`withHunter`: the hunter's own), or (`busy` false) came out of one. */
   | { readonly kind: 'busy'; readonly from: string; readonly busy: boolean; readonly withHunter: boolean }
   /** A fight with the hunter ended, and this is the hunter it left. */
-  | { readonly kind: 'after'; readonly from: string; readonly hunter: SharedHunter };
+  | { readonly kind: 'after'; readonly from: string; readonly hunter: SharedHunter }
+  /**
+   * A player's world paused under a menu (the pack, the team, FEEDBACK, a tab
+   * gone to the back), or (`away` false) running again. While it is paused it
+   * steps nothing, so it may keep nothing and be nobody's quarry.
+   */
+  | { readonly kind: 'away'; readonly from: string; readonly away: boolean };
 
 /** The largest tile a hunter may stand on: the same bound a figure's step has (`raidProtocol.ts`). */
 const MAX_TILE = 2047;
@@ -68,6 +84,7 @@ function encodeHunter(hunter: SharedHunter): Record<string, unknown> {
     f: hunter.facing,
     q: Math.round(hunter.searchMs),
     r: hunter.rivalId,
+    e: hunter.returned ? 1 : 0,
   };
 }
 
@@ -80,6 +97,8 @@ export function encodeHunterSignal(signal: HunterSignal): Record<string, unknown
       return { k: 'a', u: signal.from, ...encodeHunter(signal.hunter) };
     case 'busy':
       return { k: 'b', u: signal.from, b: signal.busy ? 1 : 0, h: signal.withHunter ? 1 : 0 };
+    case 'away':
+      return { k: 'w', u: signal.from, w: signal.away ? 1 : 0 };
   }
 }
 
@@ -88,7 +107,7 @@ const isCoordinate = (value: unknown): value is number =>
   typeof value === 'number' && Number.isInteger(value) && value >= -1 && value <= MAX_TILE;
 
 function readHunter(body: Record<string, unknown>): SharedHunter | null {
-  const { s, d, x, y, f, q, r } = body;
+  const { s, d, x, y, f, q, r, e = 0 } = body;
   if (!isFlag(s) || !isFlag(d) || !isCoordinate(x) || !isCoordinate(y) || typeof f !== 'string' || !FACINGS.includes(f as Direction)) {
     return null;
   }
@@ -96,6 +115,10 @@ function readHunter(body: Record<string, unknown>): SharedHunter | null {
     return null;
   }
   if (typeof r !== 'string' || !RIVAL_IDS.includes(r)) {
+    return null;
+  }
+  // Left out by a build from before the enrage's return was shared: its first life.
+  if (!isFlag(e)) {
     return null;
   }
   const placed = x >= 0 && y >= 0;
@@ -109,6 +132,7 @@ function readHunter(body: Record<string, unknown>): SharedHunter | null {
     facing: f as Direction,
     searchMs: q,
     rivalId: r as HunterRivalId,
+    returned: e === 1,
   };
 }
 
@@ -125,6 +149,9 @@ export function readHunterSignal(payload: unknown): HunterSignal | null {
     return isFlag(body.b) && isFlag(body.h)
       ? { kind: 'busy', from: body.u, busy: body.b === 1, withHunter: body.h === 1 }
       : null;
+  }
+  if (body.k === 'w') {
+    return isFlag(body.w) ? { kind: 'away', from: body.u, away: body.w === 1 } : null;
   }
   if (body.k === 'h' || body.k === 'a') {
     const hunter = readHunter(body);
@@ -167,15 +194,27 @@ export function nearestQuarry<T extends { readonly id: string; readonly tile: Gr
 export class HunterBoard {
   private latestHeard: { readonly hunter: SharedHunter; readonly from: string; readonly at: number; readonly after: boolean } | null =
     null;
-  private readonly fights = new Map<string, boolean>();
+  /** Who is in a fight - the hunter's own, or any other - or away in a menu. */
+  private readonly fights = new Map<string, 'hunter' | 'wild' | 'away'>();
   /** Counts every word heard or said, so "newer" never depends on two arriving in different frames. */
   private count = 0;
+  /** The lives of the hunter somebody has beaten this raid: its first, and the enrage's return (`asBeaten`). */
+  private readonly beatenLives = new Set<boolean>();
 
   public hear(signal: HunterSignal): void {
     if (signal.kind === 'busy') {
       if (signal.busy) {
-        this.fights.set(signal.from, signal.withHunter);
+        this.fights.set(signal.from, signal.withHunter ? 'hunter' : 'wild');
       } else {
+        this.fights.delete(signal.from);
+      }
+      return;
+    }
+    if (signal.kind === 'away') {
+      // A fight is the stronger word: a menu is never opened over one.
+      if (signal.away && !this.fights.has(signal.from)) {
+        this.fights.set(signal.from, 'away');
+      } else if (!signal.away && this.fights.get(signal.from) === 'away') {
         this.fights.delete(signal.from);
       }
       return;
@@ -185,13 +224,31 @@ export class HunterBoard {
       this.fights.delete(signal.from);
     }
     this.count += 1;
-    this.latestHeard = { hunter: signal.hunter, from: signal.from, at: this.count, after: signal.kind === 'after' };
+    this.latestHeard = { hunter: this.asBeaten(signal.hunter), from: signal.from, at: this.count, after: signal.kind === 'after' };
   }
 
   /** This browser's own word on the hunter, kept as the latest so a handover starts from it. */
   public said(hunter: SharedHunter, from: string): void {
     this.count += 1;
-    this.latestHeard = { hunter, from, at: this.count, after: false };
+    this.latestHeard = { hunter: this.asBeaten(hunter), from, at: this.count, after: false };
+  }
+
+  /**
+   * A word on the hunter as this browser believes it. A defeat is one-way: two
+   * friends caught at once each fight the hunter, and the one who flees after
+   * the other won says *their own* raid's hunter, which never saw the win -
+   * taken as it was, it stood the hunter back up and set it on the winner again
+   * (the multiplayer bug hunt of 12 Nov 2026). So once a life of the hunter is
+   * heard or said beaten, every later word about that life is read as beaten;
+   * only the enrage's return, its second life (`SharedHunter.returned`), is a
+   * hunter a first-life defeat does not hold.
+   */
+  public asBeaten(hunter: SharedHunter): SharedHunter {
+    if (hunter.defeated) {
+      this.beatenLives.add(hunter.returned);
+      return hunter;
+    }
+    return this.beatenLives.has(hunter.returned) ? { ...hunter, defeated: true } : hunter;
   }
 
   /** Somebody left the room: whatever fight they were in is over for the hunter. */
@@ -204,24 +261,25 @@ export class HunterBoard {
     return this.latestHeard;
   }
 
-  /** Everybody in a fight now. */
+  /** Everybody in a fight now, or away in a menu: nobody's keeper and nobody's quarry. */
   public get busy(): ReadonlySet<string> {
     return new Set(this.fights.keys());
   }
 
   /** The fight a player is in, if any: the hunter's own, or any other. */
   public fightOf(id: string): 'hunter' | 'wild' | null {
-    const withHunter = this.fights.get(id);
-    return withHunter === undefined ? null : withHunter ? 'hunter' : 'wild';
+    const fight = this.fights.get(id);
+    return fight === undefined || fight === 'away' ? null : fight;
   }
 
   /** Whether anybody is fighting the hunter itself, which holds it where it stands. */
   public get hunterHeld(): boolean {
-    return [...this.fights.values()].some((withHunter) => withHunter);
+    return [...this.fights.values()].some((fight) => fight === 'hunter');
   }
 
   public clear(): void {
     this.latestHeard = null;
     this.fights.clear();
+    this.beatenLives.clear();
   }
 }

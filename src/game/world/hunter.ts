@@ -309,6 +309,13 @@ export interface HunterState {
   readonly enrageAnswered?: boolean;
   /** Set on a beaten hunter re-armed for the enrage, so its arrival says it is back. */
   readonly returning?: boolean;
+  /**
+   * Set for good on a beaten hunter re-armed for the enrage: it is the hunter's
+   * second life. A raid room shares it (`SharedHunter.returned`), so a defeat
+   * said before the return does not hold the returned hunter down, and one said
+   * after it does (`raidRoom/groupHunter.ts`).
+   */
+  readonly returned?: boolean;
 }
 
 /** A rung of the ladder: how far below each of yours its Pokemon stand. */
@@ -985,7 +992,7 @@ export const hunterAtEnrage = (state: HunterState): HunterState => {
     return state;
   }
   return state.defeated
-    ? { spawned: false, defeated: false, enrageAnswered: true, returning: true }
+    ? { spawned: false, defeated: false, enrageAnswered: true, returning: true, returned: true }
     : { ...state, enrageAnswered: true };
 };
 

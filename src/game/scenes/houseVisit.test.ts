@@ -340,3 +340,51 @@ describe('a knock that is no longer at the door', () => {
     expect(home.prompts()).toEqual({ up: 1, down: 0 });
   });
 });
+
+/**
+ * A visitor at the owner's PC (the multiplayer bug hunt of 12 Nov 2026): MY PC
+ * opened the visitor's own boxes, and backing out of them put the visitor in
+ * their own house, ending the visit without a word. The PC is the owner's, as
+ * the bed, the console and the wardrobe are, so it says so and opens nothing.
+ */
+describe("the owner's PC in somebody else's house", () => {
+  function facingThePc(visit: boolean) {
+    const said: string[][] = [];
+    const opened: unknown[] = [];
+    const pc = { name: visit ? "PIP'S PC" : 'MY PC', note: '', tiles: [{ x: 0, y: 1 }], opens: 'boxes' };
+    const scene = Object.create(BaseScene.prototype) as Record<string, unknown>;
+    Object.assign(scene, {
+      place: { room: { room: { id: 'house-upstairs', mat: { x: 4, y: 8 }, things: [pc], stairs: [] }, home: {} } },
+      currentTile: { x: 0, y: 2 },
+      facing: 'up',
+      visit: visit ? { ownerId: 'pip-id', ownerName: 'PIP', game: {} } : null,
+      savedGame: { raidProgress: { keysLearned: [] } },
+      choosing: false,
+      rivalHere: false,
+      arena: null,
+      readPlaytestBoard: () => false,
+      partnerAt: () => false,
+      leaderOn: () => undefined,
+      waveAt: () => false,
+      facesTheStands: () => false,
+      atTelescope: () => false,
+      thingFaced: () => pc,
+      say: (lines: readonly string[]) => said.push([...lines]),
+      openHub: (payload: unknown) => opened.push(payload),
+    });
+    (scene.tryInteract as () => void).call(scene);
+    return { said, opened };
+  }
+
+  it("tells a visitor it is the owner's, and opens nothing", () => {
+    const visitor = facingThePc(true);
+    expect(visitor.opened).toEqual([]);
+    expect(visitor.said).toEqual([["That's PIP's. Better not touch."]]);
+  });
+
+  it("opens the player's own boxes in their own house", () => {
+    const owner = facingThePc(false);
+    expect(owner.said).toEqual([]);
+    expect(owner.opened).toEqual([expect.objectContaining({ view: 'stash', from: 'house-upstairs' })]);
+  });
+});
