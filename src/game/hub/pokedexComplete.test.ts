@@ -127,7 +127,8 @@ describe('the Pokédex, on the maps a player is offered', () => {
   it('says where in the words a page prints: the commonest places first, the rest counted', () => {
     expect(sourceLines(sourcesOf('raichu'))).toEqual(['Evolves from PIKACHU with a Thunder Stone']);
     expect(sourceLines(sourcesOf('abra'))).toEqual(['A prize at THE GAME CORNER']);
-    expect(sourceLines(sourcesOf('alakazam'))).toEqual(['Evolves from KADABRA, traded to the TRADER and back']);
+    expect(sourceLines(sourcesOf('alakazam'))).toEqual(['One of the vale’s secrets', 'Evolves from KADABRA, traded to the TRADER and back']);
+    expect(sourceLines(sourcesOf('machamp')).at(-1)).toBe('Evolves from MACHOKE, traded to the TRADER and back');
     expect(sourceLines(sourcesOf('hitmonlee'))).toEqual(['HITOSHI’s prize at THE BATTLE ARENA']);
     expect(sourceLines(sourcesOf('aerodactyl'))).toEqual(['Woken from an Old Amber on the FOSSIL MACHINE']);
     expect(sourceLines(sourcesOf('lickitung'))).toEqual(['One of the vale’s secrets', 'The TRADER gives one for a GOLDUCK']);
