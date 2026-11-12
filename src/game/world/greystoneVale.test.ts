@@ -15,9 +15,10 @@ import {
   RUN_INSERTIONS,
 } from '../run/runGeneration';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
-import { BUILT_IN_MAP_IDS, isLazyMap, isMapInProgress, LAZY_MAPS } from '../worldMap';
+import { BUILT_IN_MAP_IDS, getWorldMap, isLazyMap, isMapInProgress, LAZY_MAPS } from '../worldMap';
 import { districtsForMap } from './districts';
 import { extractionPointsOn } from './extractionPoints';
+import { INSERTION_DECISION_STEPS, slideLength } from './mapStructure';
 import { entitiesForMap } from './npcs';
 import { builtInFileMap, isPublishedMap } from './playerMaps';
 
@@ -44,6 +45,22 @@ describe('Greystone Vale', () => {
     expect(insertionsOn('greystone-vale').map((insertion) => insertion.position)).toEqual(
       vale.insertions.map((insertion) => insertion.position),
     );
+  });
+
+  it('answers a direction held on landing within a few steps, at every landing', () => {
+    // The structure sweep asks this in every gate state, on a pull request's
+    // checks only. #530 opened the Stepping Stones' clearing to the road and
+    // left its landing at the foot of the Wide Water road: Up walked 27 tiles,
+    // and main went red with nobody having seen it. Asked here of the vale as
+    // shipped, it is seen before anything is pushed.
+    const { collision } = getWorldMap('greystone-vale');
+    const far = insertionsOn('greystone-vale').flatMap(({ id, position }) =>
+      ([['up', 0, -1], ['down', 0, 1], ['left', -1, 0], ['right', 1, 0]] as const)
+        .map(([way, dx, dy]) => ({ way, steps: slideLength(collision, position, dx, dy) }))
+        .filter(({ steps }) => steps > INSERTION_DECISION_STEPS)
+        .map(({ way, steps }) => `${id}: ${way} walks ${steps}`),
+    );
+    expect(far).toEqual([]);
   });
 
   it('reaches the game through the same lookups as any map', () => {

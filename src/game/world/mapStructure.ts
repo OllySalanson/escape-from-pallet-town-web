@@ -46,6 +46,15 @@ export function walkableTiles(collision: CollisionGrid): GridPosition[] {
   return tiles;
 }
 
+/**
+ * How far you may hold a direction from an insertion before something answers.
+ * The structure sweep asks it of every landing in every gate state
+ * (`mapStructure.testkit.ts`), and that sweep runs only on a pull request's
+ * checks; `greystoneVale.test.ts` asks it of the vale as shipped, in a moment,
+ * so opening the ground round a landing is caught before it is pushed.
+ */
+export const INSERTION_DECISION_STEPS = 4;
+
 /** How far a player sliding from `from` gets before something stops them. */
 export function slideLength(
   collision: CollisionGrid,

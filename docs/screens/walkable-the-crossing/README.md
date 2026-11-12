@@ -48,7 +48,7 @@ of reach.
 | Netter Bryn | On the road south, by the heron walk | Beside it, with the heron walk still his spot |
 | The burners' bend | A big stump on the bend of the road south, a log on the road, a log shutting Collier Osk in | The stump is behind the shed, the logs along the trees in the burners' clearing and beside the road |
 | The road south to Gull Strand | A big stump, a log and the sign across it | The stump and log are in the burners' clearing; the sign stands beside the road |
-| The Stepping Stones landing | Two pines and the heron hide's marker shut it in a pocket a pair could not walk out of | The two pines are gone, and the landing is a clearing off the road |
+| The Stepping Stones landing | Two pines and the heron hide's marker shut it in a pocket a pair could not walk out of | The two pines are gone, and the landing is a clearing off the road. It stands in the clearing's east corner under the end of a log, so a direction held on landing is answered at once: with the pines gone, every tile of the clearing looked straight up the Wide Water road, 27 tiles |
 
 ## Held by a test
 
