@@ -428,14 +428,15 @@ describe('the result screen on what a contract paid', () => {
       saved: true,
     });
     const { root } = open(report);
-    // A ledger row names its item first in its <strong>; the contract row,
-    // which leads the pane once banked, only mentions the Super Potion.
-    const rowOf = (label: string) =>
-      root.html.match(new RegExp(`<div class="px-row[^"]*">(?:(?!<div class="px-row).)*?<strong>${label}(?:(?!<div class="px-row).)*`, 's'))?.[0] ?? '';
+    // The haul is tiles, each saying what became of it in its colour, its mark
+    // and its words for a reader; the contract row, which leads the pane once
+    // banked, only mentions the Super Potion.
+    const tileOf = (label: string) =>
+      root.html.match(new RegExp(`<div class="px-item-tile result-tile is-(\\w+)" role="img" aria-label="${label} [^"]*"`))?.[1];
 
-    expect(rowOf('Super Potion')).toContain('>Reward<');
-    expect(rowOf('Super Potion')).not.toContain('>Banked<');
-    expect(rowOf('Cable coil')).toContain('>Banked<');
+    expect(tileOf('Super Potion')).toBe('reward');
+    expect(root.html).toContain('aria-label="Super Potion ×1, reward"');
+    expect(tileOf('Cable coil')).toBe('banked');
   });
 
   it('counts a kind found in the field and also paid by the contract as the two rows it is drawn as', () => {
