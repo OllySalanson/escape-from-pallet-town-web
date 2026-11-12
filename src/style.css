@@ -5381,3 +5381,77 @@ button {
 .pixel-ui .workshop-card > .workshop-effect {
   color: var(--ink-soft);
 }
+
+/* --- A stack of a thing (`pixelStack`): how many are taken of how many ------
+   One icon a piece, each overlapping the last by ten of its sixteen pixels like
+   a pile on a shelf; the taken ones lit, the rest dimmed, the remainder past
+   ten as a count. Under a supply's name on the rack and in the locker. */
+:where(.pixel-ui) .px-stack {
+  display: flex;
+  align-items: center;
+  height: calc(var(--u) * 16);
+  margin-top: var(--u);
+}
+:where(.pixel-ui) .px-stack-one {
+  flex: none;
+  width: calc(var(--u) * 6);
+  overflow: visible;
+}
+:where(.pixel-ui) .px-stack-one:last-of-type {
+  width: calc(var(--u) * 16);
+}
+.pixel-ui .px-stack-one:not(.is-taken) > .item-icon {
+  filter: grayscale(1);
+  opacity: 0.35;
+}
+:where(.pixel-ui) .px-stack-more {
+  margin-left: calc(var(--u) * 2);
+  color: var(--ink-soft);
+}
+
+/* --- YOUR THINGS's pockets as a strip of icons (`ui/thingsView.ts`) --------
+   HeartGold's bag: one icon a pocket across the top of storage, the cursor's
+   pocket lit and raised, the rest dim - a picture of where LEFT and RIGHT go. */
+:where(.pixel-ui) .things-pockets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 2) calc(var(--u) * 2) calc(var(--u) * 3);
+  border-bottom: var(--u) solid var(--frame);
+}
+:where(.pixel-ui) .things-pocket {
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 20);
+  height: calc(var(--u) * 20);
+  background: var(--cream-dim);
+  box-shadow: inset 0 0 0 var(--u) var(--ink-soft);
+}
+.pixel-ui .things-pocket:not(.is-here) > .item-icon {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+.pixel-ui .things-pocket.is-here {
+  background: var(--cream-lit);
+  box-shadow: inset 0 0 0 var(--u) var(--red);
+  transform: translateY(calc(var(--u) * -1));
+}
+/* The strip is a row of its own between the heading and the list: the window's
+   grid had rows for a heading, a list and a pane, and the strip took the list's
+   squeezable one and was drawn under the list's first band. */
+.pixel-ui .raid-bag-layout > .px-window.things-storage:has(.things-pockets) {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+/* The lit pocket's name beside the strip; the others' stand hidden. */
+:where(.pixel-ui) .things-pocket-name {
+  align-self: center;
+  margin-left: calc(var(--u) * 2);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .things-pocket-name:not(.is-here) {
+  display: none;
+}
+/* A pocket starts on a rule in the list, the strip having named it. */
+.pixel-ui .px-row.starts-pocket {
+  box-shadow: inset 0 var(--u) 0 var(--frame);
+}

@@ -179,3 +179,24 @@ export function pixelMonIconForDex(dexId: number, name: string, currentHp = 1, m
   const speciesId = POKEMON_ICON_ORDER[dexId - 1] ?? '';
   return pixelMonIcon({ name, currentHp, maxHp, base: { id: speciesId } });
 }
+
+/** How many of a thing a stack draws before it says the rest as a number. */
+export const STACK_SHOWN = 10;
+
+/**
+ * How many of a thing are going and how many are left behind, as the thing
+ * itself: a stack of its icon, overlapping like a pile on a shelf, the ones
+ * taken in colour and the rest dimmed, and past `STACK_SHOWN` the remainder as
+ * a count. The rack and the locker draw it under a supply's name in place of
+ * "9 at base", so the split is seen before it is read.
+ */
+export function pixelStack(item: { readonly id: string; readonly displayName: string }, taken: number, of: number): string {
+  const total = Math.max(0, of);
+  const drawn = Math.min(total, STACK_SHOWN);
+  const lit = Math.min(Math.max(0, taken), drawn);
+  const icons = Array.from({ length: drawn }, (_, index) =>
+    `<span class="px-stack-one${index < lit ? ' is-taken' : ''}">${itemIcon(item.id)}</span>`,
+  ).join('');
+  const more = total > drawn ? `<small class="px-stack-more">+${total - drawn}</small>` : '';
+  return `<span class="px-stack" role="img" aria-label="${escapeAttribute(`${taken} of ${total} ${item.displayName}`)}">${icons}${more}</span>`;
+}

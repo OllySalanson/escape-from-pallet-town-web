@@ -3,6 +3,7 @@ import { getItemById, ITEMS, packContents } from '../items';
 import { Pokemon, getSpeciesById } from '../pokemon';
 import {
   pocketJump,
+  pocketStrip,
   ableCount,
   homeUseOf,
   pocketOf,
@@ -94,5 +95,18 @@ describe('a pocket at a time', () => {
     expect(pocketJump(pockets, 4, 'first')).toBe(0);
     expect(pocketJump(pockets, 1, 'last')).toBe(6);
     expect(pocketJump([], 0, 1)).toBe(0);
+  });
+});
+
+describe('the pockets as a strip of icons', () => {
+  it('stands one icon a pocket, in pocket order, the first lit, and none for a single pocket', () => {
+    const pockets = storedPockets({ potion: 2, 'poke-ball': 3, 'thunder-stone': 1 });
+    const strip = pocketStrip(pockets);
+    expect([...strip.matchAll(/class="things-pocket(?: is-here)?" data-pocket-tab="(\w+)"/g)].map((match) => match[1])).toEqual(['medicine', 'balls', 'stones']);
+    expect(strip).toMatch(/things-pocket is-here" data-pocket-tab="medicine"/);
+    // And the lit pocket's name beside them, the others' hidden.
+    expect(strip).toMatch(/things-pocket-name is-here" data-pocket-tab="medicine">Medicine</);
+    expect(strip.match(/is-here/g)).toHaveLength(2);
+    expect(pocketStrip(storedPockets({ potion: 2 }))).toBe('');
   });
 });

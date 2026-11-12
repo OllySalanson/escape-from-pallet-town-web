@@ -111,6 +111,15 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     // Pokémon never makes it the one the stone is about to go to.
     this.overlay.pointerRule = 'previews';
     dockSidePanel(this, this.overlay, this.view);
+    // The pocket strip lights the pocket the cursor is in (`pocketStrip`): a
+    // class moved on focus, never a redraw.
+    this.overlay.root.addEventListener('focusin', (event) => {
+      const pocket = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-pocket]')?.dataset.pocket : undefined;
+      if (!pocket) return;
+      this.overlay?.root.querySelectorAll<HTMLElement>('[data-pocket-tab]').forEach((tab) => {
+        tab.classList.toggle('is-here', tab.dataset.pocketTab === pocket);
+      });
+    });
     this.render();
   }
 
