@@ -1,0 +1,233 @@
+{
+  "routes": [
+    {
+      "name": "over the bridge, through Bridge End and east to Tanglewood",
+      "reached": true,
+      "steps": 63,
+      "snags": []
+    },
+    {
+      "name": "back from: over the bridge, through Bridge End and east to Tanglewood",
+      "reached": true,
+      "steps": 63,
+      "snags": []
+    },
+    {
+      "name": "up the road to Greystone Peaks",
+      "reached": true,
+      "steps": 76,
+      "snags": []
+    },
+    {
+      "name": "back from: up the road to Greystone Peaks",
+      "reached": true,
+      "steps": 76,
+      "snags": []
+    },
+    {
+      "name": "down the road to Gull Strand",
+      "reached": true,
+      "steps": 77,
+      "snags": []
+    },
+    {
+      "name": "back from: down the road to Gull Strand",
+      "reached": true,
+      "steps": 77,
+      "snags": []
+    },
+    {
+      "name": "to the Coach and Ponyta door",
+      "reached": true,
+      "steps": 52,
+      "snags": []
+    },
+    {
+      "name": "back from: to the Coach and Ponyta door",
+      "reached": true,
+      "steps": 34,
+      "snags": []
+    },
+    {
+      "name": "to the Toll House door",
+      "reached": true,
+      "steps": 45,
+      "snags": []
+    },
+    {
+      "name": "back from: to the Toll House door",
+      "reached": true,
+      "steps": 45,
+      "snags": []
+    },
+    {
+      "name": "up past the toll house to the cheri tree",
+      "reached": true,
+      "steps": 54,
+      "snags": []
+    },
+    {
+      "name": "back from: up past the toll house to the cheri tree",
+      "reached": true,
+      "steps": 54,
+      "snags": []
+    },
+    {
+      "name": "up to the stone yard, to the masons’ shed door",
+      "reached": true,
+      "steps": 62,
+      "snags": []
+    },
+    {
+      "name": "back from: up to the stone yard, to the masons’ shed door",
+      "reached": true,
+      "steps": 62,
+      "snags": []
+    },
+    {
+      "name": "to the anglers’ hut door",
+      "reached": true,
+      "steps": 66,
+      "snags": []
+    },
+    {
+      "name": "back from: to the anglers’ hut door",
+      "reached": true,
+      "steps": 60,
+      "snags": []
+    },
+    {
+      "name": "into the drovers’ rest",
+      "reached": true,
+      "steps": 62,
+      "snags": []
+    },
+    {
+      "name": "back from: into the drovers’ rest",
+      "reached": true,
+      "steps": 62,
+      "snags": []
+    },
+    {
+      "name": "into the bee garden, to the aspear tree",
+      "reached": true,
+      "steps": 66,
+      "snags": []
+    },
+    {
+      "name": "back from: into the bee garden, to the aspear tree",
+      "reached": true,
+      "steps": 66,
+      "snags": []
+    },
+    {
+      "name": "round the bee garden to its hut door",
+      "reached": true,
+      "steps": 64,
+      "snags": []
+    },
+    {
+      "name": "back from: round the bee garden to its hut door",
+      "reached": true,
+      "steps": 64,
+      "snags": []
+    },
+    {
+      "name": "out along the heron walk",
+      "reached": true,
+      "steps": 54,
+      "snags": []
+    },
+    {
+      "name": "back from: out along the heron walk",
+      "reached": true,
+      "steps": 54,
+      "snags": []
+    },
+    {
+      "name": "down the lane and over the stepping stones to the heron hide",
+      "reached": true,
+      "steps": 61,
+      "snags": []
+    },
+    {
+      "name": "back from: down the lane and over the stepping stones to the heron hide",
+      "reached": true,
+      "steps": 61,
+      "snags": []
+    },
+    {
+      "name": "down the lane to the Stepping Stones landing",
+      "reached": true,
+      "steps": 64,
+      "snags": []
+    },
+    {
+      "name": "back from: down the lane to the Stepping Stones landing",
+      "reached": true,
+      "steps": 64,
+      "snags": []
+    },
+    {
+      "name": "over the stones and away east through the trees",
+      "reached": true,
+      "steps": 82,
+      "snags": []
+    },
+    {
+      "name": "back from: over the stones and away east through the trees",
+      "reached": true,
+      "steps": 82,
+      "snags": []
+    },
+    {
+      "name": "to the charcoal burners’ shed door",
+      "reached": true,
+      "steps": 74,
+      "snags": []
+    },
+    {
+      "name": "back from: to the charcoal burners’ shed door",
+      "reached": true,
+      "steps": 74,
+      "snags": []
+    },
+    {
+      "name": "along the burners’ road to Collier Osk",
+      "reached": true,
+      "steps": 80,
+      "snags": []
+    },
+    {
+      "name": "back from: along the burners’ road to Collier Osk",
+      "reached": true,
+      "steps": 80,
+      "snags": []
+    },
+    {
+      "name": "down the west bank to the eel weir’s hut door",
+      "reached": true,
+      "steps": 35,
+      "snags": []
+    },
+    {
+      "name": "back from: down the west bank to the eel weir’s hut door",
+      "reached": true,
+      "steps": 35,
+      "snags": []
+    },
+    {
+      "name": "into the carters’ yard, to the shed door",
+      "reached": true,
+      "steps": 10,
+      "snags": []
+    },
+    {
+      "name": "back from: into the carters’ yard, to the shed door",
+      "reached": true,
+      "steps": 10,
+      "snags": []
+    }
+  ],
+  "total": 0
+}
