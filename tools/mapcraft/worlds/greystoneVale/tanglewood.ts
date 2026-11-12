@@ -338,7 +338,8 @@ export function tanglewood(): MapcraftResult {
         { x: 52, y: 43, name: 'Carter’s Boy', look: 'youngster', facing: 'right', lines: ['We were carrying turnips. We are carrying less turnips now.', 'Do not tell him about the Rattata. He thinks it is the damp.'], beat: { everyMs: 2100, glances: ['right', 'down'] }, calls: ['Not the turnips!'] },
         // -- The butterfly ride -------------------------------------------------------------------------------
         { x: 26, y: 51, name: 'Ned', look: 'bug-catcher', facing: 'up', lines: ['Members catch and release. That is the rule. Release is optional. That is also the rule.', 'Tam says everybody gets lost in here, and that is how he catches them. Tam is not well.'], beat: { everyMs: 2400, roam: [[1, 0]], glances: ['up'] }, calls: ['Got one! No I have not.'] },
-        { x: 33, y: 50, name: 'Nell', look: 'little-girl', facing: 'left', lines: ['It was a Caterpie on Tuesday. Then it was a Metapod and it did not do anything for a week.', 'Then it was a Butterfree and it left. I cried. Do not tell Ned.'], beat: { everyMs: 1900, roam: [[0, 1]], glances: ['left'] }, calls: ['Do not squash him!'] },
+        // The secret's clue (`world/secrets.ts`, THE PINK ONE): hers left with a pink one.
+        { x: 33, y: 50, name: 'Nell', look: 'little-girl', facing: 'left', secret: 'the-pink-one', lines: ['It was a Caterpie on Tuesday. Then it was a Metapod and it did not do anything for a week.', 'Then it was a Butterfree and it left. I cried. Do not tell Ned.', 'Ned says a pink one comes down the ride sometimes, to see its own kind. Walk in with a BUG in front and it might.'], beat: { everyMs: 1900, roam: [[0, 1]], glances: ['left'] }, calls: ['Do not squash him!'] },
         // -- The Old Oak ----------------------------------------------------------------------------------------
         { x: 54, y: 53, name: 'Woodcutter', look: 'bald-man', facing: 'right', lines: ['Lost? Every path in Tanglewood comes back to the road in the end.', 'I was sent to cut this one down. I have been working up to it for thirty years.'], beat: { everyMs: 3800, glances: ['right', 'up'] }, calls: ['Any day now.'] },
         { x: 55, y: 56, name: 'Acorn Girl', look: 'lass', facing: 'left', lines: ['Every acorn off this tree goes in the bag. In the bag, in the wood, and up comes a pine.', 'I do not know why. Nobody has ever seen another oak come up. I just keep trying.'], beat: { everyMs: 2600, roam: [[0, 1]], glances: ['left', 'up'] }, calls: ['Nobody step on that!'] },
@@ -381,6 +382,9 @@ export function tanglewood(): MapcraftResult {
         { x: 48, y: 34, species: 'bellsprout', level: 8 },
         // The ride.
         { x: 22, y: 50, species: 'butterfree', beat: { everyMs: 1100, roam: [[1, 0], [2, 0]] } },
+        // The pink one, at the ride's east end by Nell: a Butterfree in its other
+        // colours, there only on a raid led by a Bug type (`world/secrets.ts`).
+        { x: 34, y: 52, species: 'butterfree', level: 28, secret: 'the-pink-one' },
         { x: 31, y: 51, species: 'metapod' },
         { x: 29, y: 50, species: 'caterpie', level: 6, beat: { everyMs: 2500, roam: [[1, 0]] } },
         { x: 21, y: 51, species: 'weedle', level: 7 },

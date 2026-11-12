@@ -229,6 +229,10 @@ export function highMoor(): MapcraftResult {
         // The Clefairy that come to the Little Stones, whatever anybody says about the night.
         { x: 35, y: 11, species: 'clefairy', beat: { everyMs: 2700, roam: [[0, 1]] } },
         { x: 38, y: 10, species: 'clefairy', level: 9 },
+        // The eleventh stone: an Alakazam sitting in the middle of the Little
+        // Stones with its eyes shut, every raid until it is had, which opens
+        // them only for a raid gone on alone (`world/secrets.ts`).
+        { x: 36, y: 10, species: 'alakazam', level: 22, secret: 'the-eleventh-stone' },
         // The fold, and the Lost Fold's old bull, who has been on his own a long time.
         { x: 21, y: 30, species: 'tauros', beat: { everyMs: 2600, glances: ['right'] } },
         { x: 47, y: 13, species: 'tauros', level: 13, beat: { everyMs: 3100, roam: [[1, 0]] } },
@@ -251,7 +255,8 @@ export function highMoor(): MapcraftResult {
         { x: 15, y: 26, name: 'Shepherd', look: 'old-man', facing: 'right', lines: ['The tarn never freezes, whatever the winter.', 'There was a sheep track west, under it, to the old chapel.', 'By day the fog turns you back. Go after dark, if you go.'], beat: { everyMs: 4200, glances: ['left', 'up'] }, calls: ['Good flock. Good... flock.'] },
         { x: 8, y: 24 + 1, name: 'Shepherd’s Lad', look: 'boy', facing: 'right', lines: ['Grandad says they are sheep. They have horns and they are poisonous.', 'I asked when we might get a sheep. He went very quiet.'], beat: { everyMs: 2600, glances: ['up', 'right'] }, calls: ['Here, sheep. Sheep?'] },
         { x: 25, y: 11, name: 'Toll Clerk', look: 'clerk', facing: 'right', lines: ['Nobody has paid the toll in forty years, but I still have to write it down.', 'That is nobody, again. You are the fourth nobody today.'], beat: { everyMs: 3300, roam: [[1, 0]], glances: ['up'] }, calls: ['One nobody. Noted.'] },
-        { x: 36, y: 12, name: 'Mother Stone', look: 'channeler', facing: 'up', lines: ['They sing at night, the stones. Clefairy come up to hear it.', 'I have counted them twice tonight. Nine and eleven. It is a good sign, or the other thing.'], beat: { everyMs: 4500, glances: ['left', 'right'] }, calls: ['Hush. They are listening.'] },
+        // The secret's clue (`world/secrets.ts`, THE ELEVENTH STONE): she is the one who counts.
+        { x: 36, y: 12, name: 'Mother Stone', look: 'channeler', facing: 'up', secret: 'the-eleventh-stone', lines: ['They sing at night, the stones. Clefairy come up to hear it.', 'I have counted them twice tonight. Nine and eleven. It is a good sign, or the other thing.', 'One of them is no stone. It only opens its eyes for somebody who comes up here ALONE: one POKéMON, no more.'], beat: { everyMs: 4500, glances: ['left', 'right'] }, calls: ['Hush. They are listening.'] },
         { x: 31, y: 13, name: 'Drover’s Wife', look: 'woman', facing: 'left', lines: ['You touch the Grey Stones for luck, going up and coming down.', 'He touched them every time for thirty years. Then a Tauros sat on him. So.'], beat: { everyMs: 3800, glances: ['down'] }, calls: ['Touch it. For luck.'] },
         { x: 38, y: 27, name: 'Camp Cook', look: 'chef', facing: 'up', lines: ['It is stew. It has been stew since Tuesday. It will be stew until we reach the sea.', 'There is more in it now than there was. I do not ask.'], beat: { everyMs: 2900, glances: ['left'] }, calls: ['Stew! Who wants stew?'] },
         { x: 28, y: 27, name: 'Herd Girl', look: 'lass', facing: 'down', lines: ['This fold holds sixty. We had sixty. I shut the gate myself.', 'There are fifty-nine, and one in Millbrook. I do not understand how he does it.'], beat: { everyMs: 3200, glances: ['right'] }, calls: ['Fifty-eight. Fifty-nine...'] },

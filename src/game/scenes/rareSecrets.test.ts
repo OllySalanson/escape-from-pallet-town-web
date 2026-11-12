@@ -44,7 +44,7 @@ const CONDITIONS: RaidConditions = {
   fieldMoves: [],
   carried: [],
   badges: [],
-  chartWhole: false,
+  chartWhole: false, partySize: 2,
 };
 
 interface Plan {
