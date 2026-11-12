@@ -13,6 +13,7 @@ import { TICKET_PRIZES } from '../minigames/tickets';
 import { BLACK_BELTS } from '../arena/classes';
 import { ERRANDS } from './errands';
 import { FOSSIL_KINDS } from './fossils';
+import { IN_GAME_TRADES, tradeEvolution } from './trades';
 import { KANTO_POKEDEX_SIZE } from './pokedex';
 
 /**
@@ -94,13 +95,21 @@ describe('the Pokédex, on the maps a player is offered', () => {
       if (head.prize) add(head.prize, `dojo prize from ${head.name}`);
     }
 
-    // Evolution, as far as it can be reached here: a level, or a stone (Bill
-    // barters every stone, and Oak hands a set out at 50 and 125 kinds).
+    // Evolution - a level, a stone (Bill barters every stone, and Oak hands a
+    // set out at 50 and 125 kinds) or the TRADER's trade and back - and his
+    // trades, each for a kind already in reach, until nothing more is.
     for (let grew = true; grew; ) {
       grew = false;
       for (const rule of EVOLUTIONS) {
-        if (from.has(rule.from) && !from.has(rule.to) && rule.trigger.kind !== 'trade') {
-          add(rule.to, `evolves from ${rule.from}`);
+        const reached = rule.trigger.kind !== 'trade' || tradeEvolution(rule.from)?.id === rule.to;
+        if (from.has(rule.from) && !from.has(rule.to) && reached) {
+          add(rule.to, `evolves from ${rule.from}${rule.trigger.kind === 'trade' ? ', traded and back' : ''}`);
+          grew = true;
+        }
+      }
+      for (const trade of IN_GAME_TRADES) {
+        if (from.has(trade.wants) && !from.has(trade.gives)) {
+          add(trade.gives, `the TRADER's ${trade.nickname}, for ${trade.wants}`);
           grew = true;
         }
       }
@@ -115,6 +124,27 @@ describe('the Pokédex, on the maps a player is offered', () => {
       .map((species) => species.id);
 
     expect(missing).toEqual([]);
+    // The sixteen the hunt found with no source, and where each comes from now.
+    const once = ['ekans', 'arbok', 'growlithe', 'arcanine', 'abra', 'kadabra', 'alakazam', 'gengar', 'drowzee', 'hypno',
+      'hitmonlee', 'hitmonchan', 'lickitung', 'mr-mime', 'ditto', 'aerodactyl'];
+    expect(Object.fromEntries(once.map((id) => [id, from.get(id)]))).toEqual({
+      ekans: 'greystone-vale day wild',
+      arbok: 'evolves from ekans',
+      growlithe: 'greystone-vale day wild',
+      arcanine: 'evolves from growlithe',
+      abra: 'Game Corner prize',
+      kadabra: 'evolves from abra',
+      alakazam: 'evolves from kadabra, traded and back',
+      gengar: 'evolves from haunter, traded and back',
+      drowzee: 'greystone-vale day wild',
+      hypno: 'evolves from drowzee',
+      hitmonlee: 'dojo prize from HITOSHI',
+      hitmonchan: 'dojo prize from AARON',
+      lickitung: "the TRADER's MARC, for golduck",
+      'mr-mime': "the TRADER's MIMIEN, for abra",
+      ditto: 'greystone-vale day wild',
+      aerodactyl: 'fossil old-amber',
+    });
     expect([...from.keys()].filter((id) => (getSpeciesById(id)?.dexId ?? 0) <= KANTO_POKEDEX_SIZE)).toHaveLength(
       KANTO_POKEDEX_SIZE,
     );

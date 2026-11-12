@@ -134,6 +134,7 @@ import { awayOnRaid, readRaidInFlight, type AbandonedRaid, type RaidInFlight } f
 import { secretsHeldBy } from '../world/secrets';
 import { isRumourId, millRumour, type Rumour } from '../world/rumours';
 import { fossilAwake, isFossil, revivedPokemon, type FossilItemId, type FossilOnMachine } from '../hub/fossils';
+import { clampTradesMade, tradeDealFor, tradedPokemon, tradeMadeLines, tradeRefusal } from '../hub/trades';
 import {
   bottleOnTheBeach,
   CHART_PIECES,
@@ -346,6 +347,8 @@ export interface RaidProgress {
   readonly rumoursHeard?: readonly string[];
   /** The fossil on Professor Oak's machine (`../hub/fossils.ts`), if one is. */
   readonly fossil?: FossilOnMachine;
+  /** The TRADER's trades made (`../hub/trades.ts`), each once a save, by id. Absent is none. */
+  readonly tradesMade?: readonly string[];
   /**
    * THE TREASURE MAP (`../treasure/treasureMap.ts`): whether MARLOW has opened
    * THE CHART ROOM, the pieces on its wall and whether the chest is open.
@@ -1489,6 +1492,41 @@ export class SaveManager {
         fossil: { itemId, raidsAt: raidsCompleted(game.raidProgress, game.raidInFlight) },
       },
     });
+  }
+
+  /**
+   * One trade with the TRADER (`../hub/trades.ts`), in one write: a trade of
+   * his - the Pokémon out of the vault, his into it at its level, with its
+   * gear back in the vault and the trade written down - or a trade and back,
+   * the Pokémon evolved where it stands. Undefined, and nothing done, when he
+   * would not take it (`tradeRefusal`) or the game could not be saved.
+   */
+  public makeTrade(pokemonId: string): { readonly lines: readonly string[] } | undefined {
+    const game = this.load();
+    if (!game) {
+      return undefined;
+    }
+    const made = game.raidProgress.tradesMade ?? [];
+    if (tradeRefusal(game.stash, pokemonId, awayOnRaid(game), made) !== undefined) {
+      return undefined;
+    }
+    const pokemon = game.stash.listPokemon().find((stored) => stored.id === pokemonId)!.pokemon;
+    const deal = tradeDealFor(pokemon.base.id, made)!;
+    const given = pokemon.name.toUpperCase();
+    if (deal.kind === 'and-back') {
+      pokemon.evolveInto(deal.into);
+      return this.save(game) ? { lines: tradeMadeLines(given, deal, deal.into.name.toUpperCase()) } : undefined;
+    }
+    if (pokemon.heldItemId) {
+      game.stash.takeHeldItem(pokemonId);
+    }
+    game.stash.removePokemon(pokemonId);
+    const received = tradedPokemon(deal.trade, pokemon.level);
+    game.stash.addPokemon(received);
+    const raidProgress: RaidProgress = { ...game.raidProgress, tradesMade: [...made, deal.trade.id] };
+    return this.save({ ...game, raidProgress })
+      ? { lines: tradeMadeLines(given, deal, received.name.toUpperCase()) }
+      : undefined;
   }
 
   /**
@@ -2903,6 +2941,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       ? { rumoursHeard: uniqueStrings(value.rumoursHeard).filter(isRumourId) }
       : {}),
     ...(readFossil(value.fossil) ? { fossil: readFossil(value.fossil) } : {}),
+    ...(Array.isArray(value.tradesMade) ? { tradesMade: clampTradesMade(value.tradesMade) } : {}),
     ...(readTreasureHunt(value.treasureHunt) ? { treasureHunt: readTreasureHunt(value.treasureHunt) } : {}),
     ...(readGameCorner(value.gameCorner) ? { gameCorner: readGameCorner(value.gameCorner) } : {}),
     ...(readDerbyCleared(value.derbyCleared) ? { derbyCleared: readDerbyCleared(value.derbyCleared) } : {}),
