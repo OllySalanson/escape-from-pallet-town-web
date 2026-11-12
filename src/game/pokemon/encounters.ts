@@ -85,7 +85,9 @@ const wildlife = (
  * share (pret/pokefirered `wild_encounters.json`), so each has a home on the
  * vale's fields (the endgame bug hunt, 12 Nov 2026: neither had one anywhere).
  * Ekans at these levels knows only Leer, Wrap being one of the moves the
- * engine leaves out: a free catch rather than a fight.
+ * engine leaves out: a free catch rather than a fight. Against a level-5
+ * starter (400 fights) the two take the field from 70/89/82% to 74/90/84%
+ * won for Bulbasaur, Charmander and Squirtle.
  */
 export const PALLET_FIELD_WILDLIFE = wildlife(0.08, [
   { speciesId: 'rattata', minLevel: 3, maxLevel: 5, weight: 4 },
@@ -879,8 +881,11 @@ export const HAUNTED_WILDLIFE = wildlife(0.07, [
  * levels as the Power Plant is. Growlithe and Ditto were nowhere else a raid
  * goes (the endgame bug hunt, 12 Nov 2026). Ditto knows no move here -
  * Transform is one the engine leaves out - so it Struggles, as anything with
- * nothing it can choose does (`mustStruggle`). Measured over the real
- * engine with a level-8 starter of each kind (`tools/encounters/report.mts`).
+ * nothing it can choose does - a free catch, as a cocoon is. Measured over the
+ * real engine with a level-8 starter of each kind (`world/encounterMeasure.ts`,
+ * 400 fights): Bulbasaur 83%, Charmander 91%, Squirtle 70% - the Power Plant's
+ * own band (87%, 95%, 54%), the Mansion's Growlithe a Grass starter's hard
+ * roll, on floors reached only behind the Card Key.
  */
 export const HIDEOUT_WILDLIFE = wildlife(0.1, [
   { speciesId: 'grimer', minLevel: 7, maxLevel: 9, weight: 6 },
