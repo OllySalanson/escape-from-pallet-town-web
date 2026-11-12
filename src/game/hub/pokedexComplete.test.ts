@@ -31,8 +31,14 @@ describe('the Pokédex, on the maps a player is offered', () => {
   beforeAll(() => retireMapsForTests(RETIRED_MAPS));
   afterAll(() => retireMapsForTests([]));
 
-  /** Every kind a raid or the base can put in the vault, by where it comes from. */
-  const sources = (): Map<string, string> => {
+  /**
+   * Every kind a raid or the base can put in the vault, by where it comes
+   * from. `withSecrets` false leaves the vale's secrets out (`world/secrets.ts`),
+   * the Pokemon they stand on the map among them: a secret is a second, rarer
+   * way to a kind, open only under its condition, and never the reason a kind
+   * can be had.
+   */
+  const sources = (withSecrets = true): Map<string, string> => {
     const from = new Map<string, string>();
     const add = (speciesId: string, where: string): void => {
       if (!from.has(speciesId)) from.set(speciesId, where);
@@ -61,12 +67,13 @@ describe('the Pokédex, on the maps a player is offered', () => {
         }
       }
       for (const entity of fileMap(mapId)?.entities ?? []) {
-        if (entity.pokemon && (entity.wildLevel !== undefined || entity.legendary)) {
+        // A secret's figure stands only while its secret is open: it is the secret's, below.
+        if (entity.pokemon && entity.secret === undefined && (entity.wildLevel !== undefined || entity.legendary)) {
           add(entity.pokemon, `${mapId} standing`);
         }
       }
     }
-    for (const secret of SECRETS) {
+    for (const secret of withSecrets ? SECRETS : []) {
       for (const reward of secret.rewards) {
         if (reward.kind === 'meet') add(reward.speciesId, `secret ${secret.id}`);
         if (reward.kind === 'gift') add(reward.gift.speciesId, `secret ${secret.id}`);
@@ -75,7 +82,7 @@ describe('the Pokédex, on the maps a player is offered', () => {
     // A fossil is laid by a secret, or by an errand that goes on laying its
     // thing once it is done (Bill's amber, `errands.ts`).
     const fossilsFound = new Set<string>([
-      ...SECRETS.flatMap((secret) => secret.rewards.flatMap((reward) => (reward.kind === 'item' ? [reward.itemId] : []))),
+      ...(withSecrets ? SECRETS : []).flatMap((secret) => secret.rewards.flatMap((reward) => (reward.kind === 'item' ? [reward.itemId] : []))),
       ...ERRANDS.filter((errand) => errand.afterwards && isMapOffered(errand.mapId)).map((errand) => errand.itemId),
     ]);
     for (const [itemId, speciesId] of Object.entries(FOSSIL_KINDS)) {
@@ -124,10 +131,15 @@ describe('the Pokédex, on the maps a player is offered', () => {
       .map((species) => species.id);
 
     expect(missing).toEqual([]);
-    // The sixteen the hunt found with no source, and where each comes from now.
+    // The sixteen the hunt found with no source, and where each comes from now -
+    // asked with the secrets left out, because four of them are also a secret's
+    // since (THE LOST PICNIC, THE STICKY TONGUE, THE SILENT PICKET, THE SHADOW
+    // IN THE CRYPT) and a way that is open one raid in several is not the way
+    // a kind is promised by.
+    const promised = sources(false);
     const once = ['ekans', 'arbok', 'growlithe', 'arcanine', 'abra', 'kadabra', 'alakazam', 'gengar', 'drowzee', 'hypno',
       'hitmonlee', 'hitmonchan', 'lickitung', 'mr-mime', 'ditto', 'aerodactyl'];
-    expect(Object.fromEntries(once.map((id) => [id, from.get(id)]))).toEqual({
+    expect(Object.fromEntries(once.map((id) => [id, promised.get(id)]))).toEqual({
       ekans: 'greystone-vale day wild',
       arbok: 'evolves from ekans',
       growlithe: 'greystone-vale day wild',
@@ -148,5 +160,12 @@ describe('the Pokédex, on the maps a player is offered', () => {
     expect([...from.keys()].filter((id) => (getSpeciesById(id)?.dexId ?? 0) <= KANTO_POKEDEX_SIZE)).toHaveLength(
       KANTO_POKEDEX_SIZE,
     );
+    // What the third wave of secrets adds is a second way to four of them, each met and not handed over.
+    expect(['hypno', 'lickitung', 'mr-mime', 'gengar'].map((id) => from.get(id))).toEqual([
+      'secret the-lost-picnic',
+      'secret the-sticky-tongue',
+      'secret the-silent-picket',
+      'secret the-shadow-in-the-crypt',
+    ]);
   });
 });
