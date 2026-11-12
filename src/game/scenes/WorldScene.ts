@@ -535,20 +535,25 @@ const PRIZE_GLEAM_REACH = 8;
 const PRIZE_GLEAM_PULSE_MS = 900;
 
 /**
- * The shimmering grass (`world/shimmer.ts`): three small glints over one tile of
- * tall grass, each coming up and going out in its turn, so the patch is never
- * still and never all lit. Paler than a prize's gold and with nothing under it
- * and no name beside it: a prize is a thing lying there, and this is something
+ * The shimmering grass (`world/shimmer.ts`): three glints over one tile of
+ * tall grass, each coming up and going down in its turn, so the patch is never
+ * still and one of them is always bright. White where a prize's light is gold,
+ * smaller, and with nothing under it and no name beside it: a prize is a thing lying there, and this is something
  * moving in the grass. In the canopy band for the reason a prize's light is -
  * grass under a crown still glitters.
  */
-const SHIMMER_COLOUR = 0xfff3b0;
+const SHIMMER_COLOUR = 0xffffff;
+const SHIMMER_CORE_COLOUR = 0xfff3b0;
+/** Half the length of a glint's bars: under a prize's eight, so the two are told apart at a glance. */
+const SHIMMER_GLINT_REACH = 5;
 const SHIMMER_GLINT_MS = 420;
 const SHIMMER_REST_MS = 520;
+/** As dim as a glint gets: seen on a first glance at a still frame, never gone. */
+const SHIMMER_GLINT_DIM = 0.2;
 const SHIMMER_GLINTS: readonly { readonly dx: number; readonly dy: number; readonly delayMs: number }[] = [
-  { dx: -5, dy: -6, delayMs: 0 },
-  { dx: 4, dy: -2, delayMs: 310 },
-  { dx: -1, dy: 4, delayMs: 620 },
+  { dx: -5, dy: -8, delayMs: 0 },
+  { dx: 5, dy: -2, delayMs: 450 },
+  { dx: -2, dy: 5, delayMs: 900 },
 ];
 
 /**
@@ -3259,19 +3264,24 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const x = tile.x * TILE_SIZE + TILE_SIZE / 2;
     const y = tile.y * TILE_SIZE + TILE_SIZE / 2;
     for (const glint of SHIMMER_GLINTS) {
-      // A four-pointed twinkle five pixels across: two crossed bars, drawn as
-      // the prize's light is rather than loaded.
+      // A four-pointed twinkle: two crossed white bars and a pale gold heart,
+      // drawn as the prize's light is rather than loaded. White on the vale's
+      // greens is what reads from across a screen; five-pixel crosses in pale
+      // yellow, which is what it first was, could not be found in a picture
+      // by somebody who knew where to look.
       const twinkle = this.add
         .graphics()
         .setDepth(atRow(CANOPY_BAND, tile.y))
         .fillStyle(SHIMMER_COLOUR, 1);
-      twinkle.fillRect(0, -2, 1, 5);
-      twinkle.fillRect(-2, 0, 5, 1);
-      twinkle.setPosition(x + glint.dx, y + glint.dy).setAlpha(0);
+      twinkle.fillRect(-1, -SHIMMER_GLINT_REACH, 2, SHIMMER_GLINT_REACH * 2);
+      twinkle.fillRect(-SHIMMER_GLINT_REACH, -1, SHIMMER_GLINT_REACH * 2, 2);
+      twinkle.fillStyle(SHIMMER_CORE_COLOUR, 1);
+      twinkle.fillRect(-2, -2, 4, 4);
+      twinkle.setPosition(x + glint.dx, y + glint.dy).setAlpha(SHIMMER_GLINT_DIM);
       this.tweens.add({
         targets: twinkle,
-        alpha: { from: 0, to: 1 },
-        scale: { from: 0.4, to: 1 },
+        alpha: { from: SHIMMER_GLINT_DIM, to: 1 },
+        scale: { from: 0.5, to: 1 },
         duration: SHIMMER_GLINT_MS,
         delay: glint.delayMs,
         yoyo: true,
