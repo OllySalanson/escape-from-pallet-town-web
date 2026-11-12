@@ -880,8 +880,8 @@ export const HAUNTED_WILDLIFE = wildlife(0.07, [
  * the Power Plant above it its Voltorb and Magnemite, brought to a route's
  * levels as the Power Plant is. Growlithe and Ditto were nowhere else a raid
  * goes (the endgame bug hunt, 12 Nov 2026). Ditto knows no move here -
- * Transform is one the engine leaves out - so it Struggles, as anything with
- * nothing it can choose does - a free catch, as a cocoon is. Measured over the
+ * Transform is one the engine leaves out - so it only stands there, a free
+ * catch, as a cocoon is (`districtEncounters.test.ts`). Measured over the
  * real engine with a level-8 starter of each kind (`world/encounterMeasure.ts`,
  * 400 fights): Bulbasaur 83%, Charmander 91%, Squirtle 70% - the Power Plant's
  * own band (87%, 95%, 54%), the Mansion's Growlithe a Grass starter's hard
