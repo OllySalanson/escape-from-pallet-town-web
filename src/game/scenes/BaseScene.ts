@@ -150,7 +150,7 @@ import { standingFixtures, type BaseFixture } from '../base/fixtures';
 import { COURSE_GATE_FRONT, HARBOUR_LANDMARKS, landmarkFaced, OUTDOOR_GAME_LANDMARKS, type OutdoorGameId } from '../base/landmarks';
 import { HarbourLifeFigures } from '../base/harbourLifeFigures';
 import { HomeGardenFigures } from '../base/homeGardenFigures';
-import { GLINT_EVERY_MS, ShinyGlints } from '../base/shinyGlint';
+import { PEN_GLINT_PLACE, ShinyGlints, glintHeadStart } from '../base/shinyGlint';
 import { gardenLines, gardenPokemon, gardenQuestion } from '../base/homeGarden';
 import {
   COURSE_KEEPER_ID,
@@ -3801,8 +3801,7 @@ export class BaseScene extends Phaser.Scene {
       .setOrigin(0.5, 1)
       .setDepth(atRow(FIGURE_BAND, tile.y))
       .play(key);
-    // Out of step with the partner's and with the garden's next door.
-    const glints = stay.pokemon.shiny ? new ShinyGlints(this, GLINT_EVERY_MS / 2) : null;
+    const glints = stay.pokemon.shiny ? new ShinyGlints(this, glintHeadStart(PEN_GLINT_PLACE)) : null;
     this.penPokemon = { sprite: pokemon, species, glints, tile, nextStepMs: PEN_STEP_EVERY_MS };
   }
 

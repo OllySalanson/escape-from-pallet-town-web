@@ -3,14 +3,13 @@ import type Phaser from 'phaser';
 import type { GridPosition } from '../movement/gridMovement';
 import type { Pokemon } from '../pokemon/Pokemon';
 import type { StashedPokemon } from '../stash/Stash';
-import { SHINY_SPARKLE_TEXTURE } from '../ui/shinySparkle';
 import { pokemonSoleDrop } from '../world/pokemonFigures';
 import { FIGURE_BAND, atRow } from '../world/depths';
 import { TILE_SIZE } from '../worldMap';
 import { FOLLOWER_ART } from './generated/followerArt';
 import { HomeGardenFigures } from './homeGardenFigures';
 import { PARTNER_GLINT_DROP, PARTNER_SPRITE_Y_OFFSET, PartnerFigure, type PartnerHost } from './partnerFigure';
-import { GLINT_EVERY_MS, GLINT_FIRST_MS, GLINT_MOTES, GLINT_OUT_OF_STEP_MS, ICON_GLINT_RISE, glintAt } from './shinyGlint';
+import { GARDEN_GLINT_PLACE, GLINT_ART, GLINT_EVERY_MS, GLINT_FIRST_MS, GLINT_MOTES, ICON_GLINT_RISE, glintAt, glintHeadStart } from './shinyGlint';
 
 /**
  * A shiny Pokemon walking about (`shinyGlint.ts`): the partner at the
@@ -26,6 +25,15 @@ class Drawn {
   public visible = true;
   public frame: string | number = 0;
   public gone = false;
+  public clear(): this {
+    return this;
+  }
+  public fillStyle(): this {
+    return this;
+  }
+  public fillRect(): this {
+    return this;
+  }
   public readonly texture: string;
   public constructor(texture = '') {
     this.texture = texture;
@@ -65,15 +73,11 @@ class Drawn {
   }
 }
 
+/** A stage, and every graphics drawn on it after the figures were stood up: the stars. */
 function stage() {
-  const frames = new Set<string>();
   const stars: Drawn[] = [];
   const sprites: Drawn[] = [];
   const scene = {
-    textures: {
-      exists: (key: string) => key === SHINY_SPARKLE_TEXTURE,
-      get: () => ({ has: (name: string) => frames.has(name), add: (name: string) => void frames.add(name) }),
-    },
     anims: { exists: () => true, create: () => undefined },
     tweens: { add: () => undefined },
     add: {
@@ -82,12 +86,11 @@ function stage() {
         sprites.push(sprite);
         return sprite;
       },
-      image: (_x: number, _y: number, texture: string) => {
-        const star = new Drawn(texture);
+      graphics: () => {
+        const star = new Drawn();
         stars.push(star);
         return star;
       },
-      graphics: () => new Drawn(),
     },
   } as unknown as Phaser.Scene;
   return { scene, stars, sprites, lit: () => stars.filter((star) => star.visible && !star.gone) };
@@ -126,18 +129,18 @@ describe('a shiny partner at the player’s heel', () => {
       x: HEEL.x * TILE_SIZE + TILE_SIZE / 2,
       y: HEEL.y * TILE_SIZE + PARTNER_SPRITE_Y_OFFSET + FOLLOWER_ART.charmander.topPixelY + PARTNER_GLINT_DROP,
     };
-    expect(lit().map((star) => [star.x, star.y, star.frame])).toEqual(
-      glintAt(ALL_OUT_MS).map((mote) => [head.x + mote.dx, head.y + mote.dy, mote.frame]),
+    expect(lit().map((star) => [star.x, star.y])).toEqual(
+      glintAt(ALL_OUT_MS).map((mote) => [head.x + mote.dx, head.y + mote.dy]),
     );
     for (const star of lit()) {
-      expect(star.texture).toBe(SHINY_SPARKLE_TEXTURE);
       expect(star.depth).toBeGreaterThan(sprite.depth);
       expect(star.depth).toBeLessThan(atRow(FIGURE_BAND, HEEL.y + 1));
     }
-    // Every glint is on the partner's own picture's tile or the half-tile round it.
+    // All of every star is within a tile of the middle of its head, and none below it.
+    const half = (GLINT_ART.star.length - 1) / 2;
     for (const star of lit()) {
-      expect(Math.abs(star.x - head.x)).toBeLessThanOrEqual(TILE_SIZE / 2);
-      expect(star.y).toBeGreaterThanOrEqual(sprite.y);
+      expect(Math.abs(star.x - head.x) + half).toBeLessThanOrEqual(TILE_SIZE);
+      expect(star.y).toBeLessThanOrEqual(head.y + TILE_SIZE / 2);
     }
   });
 
@@ -169,6 +172,9 @@ describe('a shiny partner at the player’s heel', () => {
 });
 
 describe('a shiny Pokemon out in THE BOLTHOLE’s garden', () => {
+  /** The first shiny one of the garden with all three of its glints out. */
+  const FIRST_IN_GARDEN_ALL_OUT_MS = GLINT_EVERY_MS - glintHeadStart(GARDEN_GLINT_PLACE) + ALL_OUT_MS;
+
   const stored = (id: string, speciesId: string, shiny: boolean): StashedPokemon =>
     ({ id, pokemon: { shiny, base: { id: speciesId, dexId: 25 } } }) as unknown as StashedPokemon;
 
@@ -177,8 +183,8 @@ describe('a shiny Pokemon out in THE BOLTHOLE’s garden', () => {
     const garden = new HomeGardenFigures(scene, [stored('a', 'pikachu', true), stored('b', 'eevee', false)], () => true);
     const pikachu = sprites[0];
 
-    // The first of the garden is one beat out of step with the partner.
-    garden.update(GLINT_EVERY_MS - GLINT_OUT_OF_STEP_MS + ALL_OUT_MS, true, () => false);
+    // The first of the garden has a head start on the partner (`glintHeadStart`).
+    garden.update(FIRST_IN_GARDEN_ALL_OUT_MS, true, () => false);
 
     const middle = { x: pikachu.x, y: pikachu.y - pokemonSoleDrop('pikachu') - ICON_GLINT_RISE };
     expect(lit().map((star) => [star.x, star.y])).toEqual(
@@ -189,27 +195,35 @@ describe('a shiny Pokemon out in THE BOLTHOLE’s garden', () => {
     }
   });
 
-  it('never glints in time with the one beside it', () => {
+  it('never begins a burst with the one beside it', () => {
     const { scene, stars, sprites } = stage();
     const garden = new HomeGardenFigures(scene, [stored('a', 'pikachu', true), stored('b', 'eevee', true)], () => true);
-    const owner = (star: Drawn): number => sprites.findIndex((sprite) => Math.abs(star.x - sprite.x) <= TILE_SIZE / 2);
-    const lit = [0, 0];
-    let together = 0;
+    // The two stand two tiles apart (`gardenStarts`), so a star is its nearer figure's.
+    const owner = (star: Drawn): number => (Math.abs(star.x - sprites[0].x) < Math.abs(star.x - sprites[1].x) ? 0 : 1);
+    const began: number[][] = [[], []];
+    let was = new Set<number>();
     for (let ms = 0; ms < GLINT_EVERY_MS * 3; ms += 50) {
       garden.update(50, true, () => false);
-      const owners = new Set(stars.filter((star) => star.visible).map(owner));
-      owners.forEach((index) => (lit[index] += 1));
-      if (owners.size > 1) together += 1;
+      const now = new Set(stars.filter((star) => star.visible).map(owner));
+      now.forEach((index) => {
+        if (!was.has(index)) began[index].push(ms);
+      });
+      was = now;
     }
-    expect(together).toBe(0);
-    expect(Math.min(...lit)).toBeGreaterThan(0);
+    expect(began[0].length).toBeGreaterThanOrEqual(2);
+    expect(began[1].length).toBeGreaterThanOrEqual(2);
+    for (const a of began[0]) {
+      for (const b of began[1]) {
+        expect(Math.abs(a - b)).toBeGreaterThanOrEqual(250);
+      }
+    }
   });
 
   it('takes the stars away with the Pokemon when it is taken onto the team', () => {
     const { scene, stars, lit } = stage();
     const shiny = stored('a', 'pikachu', true);
     const garden = new HomeGardenFigures(scene, [shiny], () => true);
-    garden.update(GLINT_EVERY_MS - GLINT_OUT_OF_STEP_MS + ALL_OUT_MS, false, () => false);
+    garden.update(FIRST_IN_GARDEN_ALL_OUT_MS, false, () => false);
     expect(lit()).toHaveLength(GLINT_MOTES.length);
 
     garden.settle([]);

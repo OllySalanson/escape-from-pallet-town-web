@@ -14,7 +14,7 @@ import {
 } from '../world/pokemonFigures';
 import { TILE_SIZE } from '../worldMap';
 import { gardenStarts, nextGardenTile } from './homeGarden';
-import { GLINT_OUT_OF_STEP_MS, ShinyGlints } from './shinyGlint';
+import { GARDEN_GLINT_PLACE, ShinyGlints, glintHeadStart } from './shinyGlint';
 
 /** How often one of them thinks about stepping, as the Day-Care pen's does. */
 const STEP_EVERY_MS = 1800;
@@ -39,6 +39,8 @@ interface GardenFigure {
  */
 export class HomeGardenFigures {
   private readonly figures: GardenFigure[] = [];
+  /** How many shiny ones have come out, so each twinkles at a moment of its own (`glintHeadStart`). */
+  private shinyOut = 0;
   private readonly scene: Phaser.Scene;
   /** Whether a tile may be stood on at all: the map's ground, and nobody else's. */
   private readonly free: (tile: GridPosition) => boolean;
@@ -91,7 +93,7 @@ export class HomeGardenFigures {
         // the garden is not six of the same picture in a row.
         .setFlipX(index % 2 === 1)
         .play(key);
-      const glints = stored.pokemon.shiny ? new ShinyGlints(this.scene, (index + 1) * GLINT_OUT_OF_STEP_MS) : null;
+      const glints = stored.pokemon.shiny ? new ShinyGlints(this.scene, glintHeadStart(GARDEN_GLINT_PLACE + this.shinyOut++)) : null;
       this.figures.push({ stored, species, sprite, glints, tile, nextStepMs: STEP_EVERY_MS + index * 400 });
     });
   }

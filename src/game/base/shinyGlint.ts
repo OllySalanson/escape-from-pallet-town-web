@@ -1,43 +1,80 @@
 import type Phaser from 'phaser';
-import { SHINY_SPARKLE_TEXTURE, SPARKLE_FRAMES } from '../ui/shinySparkle';
 import { pokemonSoleDrop, type FigureSpeciesId } from '../world/pokemonFigures';
 
 /**
  * A shiny Pokemon looks like one wherever it walks.
  *
  * A shiny was shiny in a fight and on every list (`pokemon/shiny.ts`), and
- * nowhere else: at the player's heel round THE HARBOUR and on a raid, and out
- * in THE BOLTHOLE's garden, it was drawn from the one sheet of following
- * sprites and party icons there is, in its ordinary colours. The rarest thing
- * a save can own walked about looking like any other of its kind.
+ * nowhere else: out in THE BOLTHOLE's garden, in the Day-Care pen and at the
+ * player's heel on a raid it leads, it was drawn from the one sheet of
+ * following sprites and party icons there is, in its ordinary colours. The
+ * rarest thing a save can own walked about looking like any other of its
+ * kind.
  *
  * There is no second sheet to draw it from, and a tint would be a lie about
  * which colours FireRed gives it. So it gives off what FireRed gives a shiny
- * as it lands in a fight - the gold stars, two of the three pictures on the
- * same sheet (`ui/shinySparkle.ts`) - small, round its head, every few
- * seconds: three glints, each coming out a beat after the last, each a plus
- * that opens into a star and closes again.
+ * as it lands in a fight - gold stars - small, round its head, every few
+ * seconds: three glints, each coming out a beat after the last, each a spark
+ * that opens into a four-pointed star and closes again.
+ *
+ * They are drawn here, a pixel at a time (`GLINT_ART`), rather than taken
+ * from the fight's sheet (`ui/shinySparkle.ts`): FireRed's stars are pale
+ * gold with no outline, made for the flat ground of a battle, and out of
+ * doors they stood on grass, sand, snow and a yellow Pikachu and could not be
+ * told from any of them. These have a dark rim, as everything else that must
+ * read on any ground has.
  *
  * `glintAt` is the whole choreography, a pure function of the time the
  * figure has been out; `ShinyGlints` only draws it.
  */
 
+/** The two pictures of a glint, in `GLINT_INKS`: `.` is nothing. Each is square and odd, so it has a middle pixel. */
+export const GLINT_ART = {
+  spark: [
+    '..k..',
+    '.kgk.',
+    'kgwgk',
+    '.kgk.',
+    '..k..',
+  ],
+  star: [
+    '....k....',
+    '...kgk...',
+    '...kgk...',
+    '.kkgwgkk.',
+    'kggwwwggk',
+    '.kkgwgkk.',
+    '...kgk...',
+    '...kgk...',
+    '....k....',
+  ],
+} as const satisfies Record<string, readonly string[]>;
+
+export type GlintFrame = keyof typeof GLINT_ART;
+
+/** A deep amber rim, FireRed's star gold, and a white heart. */
+export const GLINT_INKS: Record<string, number> = {
+  k: 0x6b4208,
+  g: 0xf8d030,
+  w: 0xffffff,
+};
+
 /** A burst begins this often. */
 export const GLINT_EVERY_MS = 3_600;
 /** The first one, this long after the figure comes out: soon enough to be seen by somebody who has just walked in. */
 export const GLINT_FIRST_MS = 700;
-/** How long one glint lives: a plus, a star, a plus, a third of it each. */
+/** How long one glint lives: a spark, a star, a spark, a third of it each. */
 export const GLINT_LIFE_MS = 420;
 
 /**
  * The three glints of a burst: when each comes out, and where, in pixels from
- * the middle of the figure's head. Inside a tile and a half either way, so a
- * figure standing beside somebody never glints on them.
+ * the middle of the figure's head. All of every star is within a tile of
+ * that, so a figure standing beside somebody never glints on their face.
  */
 export const GLINT_MOTES: readonly { readonly fromMs: number; readonly dx: number; readonly dy: number }[] = [
-  { fromMs: 0, dx: -8, dy: 1 },
-  { fromMs: 150, dx: 7, dy: -5 },
-  { fromMs: 300, dx: -1, dy: -10 },
+  { fromMs: 0, dx: -9, dy: 2 },
+  { fromMs: 150, dx: 9, dy: -3 },
+  { fromMs: 300, dx: -1, dy: -12 },
 ];
 
 /**
@@ -47,10 +84,21 @@ export const GLINT_MOTES: readonly { readonly fromMs: number; readonly dx: numbe
 export const ICON_GLINT_RISE = 9;
 
 /**
- * How far out of step with the last one each further shiny figure of a place
- * is: no whole fraction of the time between bursts, so no two ever keep time.
+ * How far out of step each further shiny figure of a place is with the last:
+ * the partner is the first, the Day-Care pen's the second, the garden's after
+ * them. No whole fraction of the time between bursts, so the first eight - a
+ * partner, a pen and a full garden, every one of them shiny - each begin at a
+ * moment of their own, and a yard of them twinkles here and there rather
+ * than all at once.
  */
 export const GLINT_OUT_OF_STEP_MS = 1_300;
+export const PEN_GLINT_PLACE = 1;
+export const GARDEN_GLINT_PLACE = 2;
+
+/** How long the `place`th shiny figure of a scene counts as having been out already when it is drawn. */
+export function glintHeadStart(place: number): number {
+  return (place * GLINT_OUT_OF_STEP_MS) % GLINT_EVERY_MS;
+}
 
 /** How long a whole burst lasts. */
 export const GLINT_BURST_MS = GLINT_MOTES[GLINT_MOTES.length - 1].fromMs + GLINT_LIFE_MS;
@@ -61,7 +109,7 @@ export const GLINT_OVER = 0.00002;
 export interface GlintMote {
   /** Which of the burst's three: stable for its whole life. */
   readonly index: number;
-  readonly frame: 'twinkle' | 'glint';
+  readonly frame: GlintFrame;
   readonly dx: number;
   readonly dy: number;
 }
@@ -78,26 +126,21 @@ export function glintAt(ms: number): readonly GlintMote[] {
       return [];
     }
     const third = Math.floor((age * 3) / GLINT_LIFE_MS);
-    return [{ index, frame: third === 1 ? ('twinkle' as const) : ('glint' as const), dx: mote.dx, dy: mote.dy }];
+    return [{ index, frame: third === 1 ? ('star' as const) : ('spark' as const), dx: mote.dx, dy: mote.dy }];
   });
 }
 
 /**
  * The glints of one shiny figure, drawn. Its owner tells it every frame where
  * the middle of the figure's head is and how the figure is drawn (`place`),
- * or that it is not to be seen (`hide`). A scene with no sparkle sheet - one
- * under test - draws nothing.
+ * or that it is not to be seen (`hide`).
  */
 export class ShinyGlints {
-  private readonly images: (Phaser.GameObjects.Image | undefined)[] = [];
+  private readonly drawn: ({ readonly graphics: Phaser.GameObjects.Graphics; frame: GlintFrame | null } | undefined)[] = [];
   private readonly scene: Phaser.Scene;
   private outMs: number;
 
-  /**
-   * `outMs` is how long it counts as having been out already: several shiny
-   * figures drawn in the same instant are each given their own, so a garden
-   * of them twinkles here and there rather than all at once.
-   */
+  /** `outMs` is how long it counts as having been out already (`glintHeadStart`). */
   public constructor(scene: Phaser.Scene, outMs = 0) {
     this.scene = scene;
     this.outMs = outMs;
@@ -113,11 +156,19 @@ export class ShinyGlints {
     for (let index = 0; index < GLINT_MOTES.length; index += 1) {
       const mote = motes.find((each) => each.index === index);
       if (!mote || alpha <= 0) {
-        this.images[index]?.setVisible(false);
+        this.drawn[index]?.graphics.setVisible(false);
         continue;
       }
-      const image = this.imageFor(index);
-      image?.setFrame(mote.frame).setPosition(Math.round(x + mote.dx), Math.round(y + mote.dy)).setDepth(depth).setAlpha(alpha).setVisible(true);
+      const glint = this.drawn[index] ?? (this.drawn[index] = { graphics: this.scene.add.graphics(), frame: null });
+      if (glint.frame !== mote.frame) {
+        glint.frame = mote.frame;
+        paintGlint(glint.graphics, mote.frame);
+      }
+      glint.graphics
+        .setPosition(Math.round(x + mote.dx), Math.round(y + mote.dy))
+        .setDepth(depth)
+        .setAlpha(alpha)
+        .setVisible(true);
     }
   }
 
@@ -129,33 +180,37 @@ export class ShinyGlints {
     this.place(sprite.x, sprite.y - pokemonSoleDrop(species) - ICON_GLINT_RISE, sprite.depth + GLINT_OVER, sprite.alpha);
   }
 
+  /** What is lit this frame and where its middle is, for a playtest driver. */
+  public get lit(): readonly { readonly x: number; readonly y: number; readonly frame: GlintFrame }[] {
+    return this.drawn.flatMap((glint) =>
+      glint?.graphics.visible && glint.frame ? [{ x: glint.graphics.x, y: glint.graphics.y, frame: glint.frame }] : [],
+    );
+  }
+
   public hide(): void {
-    for (const image of this.images) {
-      image?.setVisible(false);
+    for (const glint of this.drawn) {
+      glint?.graphics.setVisible(false);
     }
   }
 
   public destroy(): void {
-    for (const image of this.images) {
-      image?.destroy();
+    for (const glint of this.drawn) {
+      glint?.graphics.destroy();
     }
-    this.images.length = 0;
+    this.drawn.length = 0;
   }
+}
 
-  private imageFor(index: number): Phaser.GameObjects.Image | undefined {
-    if (this.images[index]) {
-      return this.images[index];
-    }
-    if (!this.scene.textures?.exists?.(SHINY_SPARKLE_TEXTURE)) {
-      return undefined;
-    }
-    const texture = this.scene.textures.get(SHINY_SPARKLE_TEXTURE);
-    for (const [name, frame] of Object.entries(SPARKLE_FRAMES)) {
-      if (!texture.has(name)) {
-        texture.add(name, 0, frame.x, frame.y, frame.width, frame.height);
+/** One picture of a glint, its middle pixel on the graphics' own origin. */
+function paintGlint(graphics: Phaser.GameObjects.Graphics, frame: GlintFrame): void {
+  const rows: readonly string[] = GLINT_ART[frame];
+  const half = (rows.length - 1) / 2;
+  graphics.clear();
+  rows.forEach((row, y) =>
+    [...row].forEach((ink, x) => {
+      if (ink !== '.') {
+        graphics.fillStyle(GLINT_INKS[ink], 1).fillRect(x - half, y - half, 1, 1);
       }
-    }
-    this.images[index] = this.scene.add.image(0, 0, SHINY_SPARKLE_TEXTURE, 'glint').setOrigin(0.5, 0.5).setVisible(false);
-    return this.images[index];
-  }
+    }),
+  );
 }
