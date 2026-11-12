@@ -1967,12 +1967,14 @@ describe('Brock', () => {
     hub.setView('workshop');
     const ladder = markupOf(hub);
     expect(ladder).toContain('Secure locker I');
-    // The price is a column of its own on the row, one line a part, and it is
-    // materials and nothing else (playtest 42, option A).
-    expect(ladder).toContain('<span class="px-price"><small>4× Parts crate</small></span>');
+    // The price is on the rung's card, one part a salvage's icon and its count,
+    // and it is materials and nothing else (playtest 42, option A).
+    const lockerOne = ladder.slice(ladder.indexOf('data-outfit="secure-locker-1"'), ladder.indexOf('data-outfit="secure-locker-2"'));
+    expect(lockerOne).toMatch(/<span class="workshop-cost"><span class="item-icon"><img src="[^"]*parts-crate\.png"[^]*?<small>×4<\/small>/);
     expect(ladder).not.toContain('Pokémon</small>');
-    // One mooring rope cannot pay the four the second locker asks.
-    expect(ladder).toContain('<small class="cost-short"><span class="cost-mark" aria-hidden="true"></span>4× Mooring rope</small>');
+    // One mooring rope cannot pay the four the second locker asks: crossed and red.
+    const lockerTwo = ladder.slice(ladder.indexOf('data-outfit="secure-locker-2"'));
+    expect(lockerTwo).toMatch(/<span class="workshop-cost is-short"><span class="cost-mark" aria-hidden="true"><\/span><span class="item-icon"><img src="[^"]*mooring-rope\.png"[^]*?<small>×4<\/small>/);
     // The heading names the drawn cross, never the colour (playtest 40 #4).
     expect(ladder).not.toContain('Red is not yet spare');
     expect(ladder).toContain('<span class="cost-mark" aria-hidden="true"></span>Not yet spare at base</small>');
@@ -2000,15 +2002,17 @@ describe('Brock', () => {
       /<button[^>]*>(?:(?!<\/button>)[\s\S])*<\/button>/g
         .exec(ladder.slice(ladder.indexOf(`data-shows="${id}"`) - 400))![0];
 
-    // Unbought: the row says what it does, and the price is beside it.
+    // Unbought: the card says what it does, and the price is under it.
     const unbought = rowOf('quarantine-ward');
     expect(unbought).toContain('One heal per raid, free of clock.');
-    expect(unbought).toContain('<span class="px-price">');
-    // Built: the same line, still there, and the price column says it is paid.
+    expect(unbought).toContain('<span class="workshop-costs">');
+    // Built: the same line, still there, gold and tagged BUILT, and what it
+    // cost with nothing marked short.
     const built = rowOf('secure-locker-1');
     expect(built).toContain('One more column of the secure container.');
-    expect(built).toContain('<span class="px-price is-paid"><small>Paid</small></span>');
-    expect(built).toContain('is-secured');
+    expect(built).toContain('workshop-card is-built');
+    expect(built).toContain('>Built<');
+    expect(built).not.toContain('is-short');
   });
 
   it('prices the pointed-at rung against what this base actually holds', () => {

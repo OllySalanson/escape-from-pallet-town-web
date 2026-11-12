@@ -157,7 +157,7 @@ const GLANCE = `(() => {
     range.selectNodeContents(node);
     if (inView(range.getBoundingClientRect(), node)) words += node.textContent.trim().split(/\\s+/).length;
   }
-  const pictures = [...screen.querySelectorAll('.px-mon-icon, .px-portrait img, .item-icon img')]
+  const pictures = [...screen.querySelectorAll('.px-mon-icon, .px-portrait img, .item-icon img, canvas.px-fixture')]
     .map((n) => [n, n.getBoundingClientRect()]).filter(([n, r]) => inView(r, n))
     .reduce((sum, [, r]) => sum + r.width * r.height, 0);
   return { words, pictureShare: Math.round((100 * pictures) / (box.width * box.height)) };
