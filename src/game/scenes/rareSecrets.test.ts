@@ -44,7 +44,7 @@ const CONDITIONS: RaidConditions = {
   fieldMoves: [],
   carried: [],
   badges: [],
-  chartWhole: false,
+  chartWhole: false, partySize: 2,
 };
 
 interface Plan {
@@ -203,5 +203,56 @@ describe('THE DROWNED BELL', () => {
         expect(internals.pendingWildBattle !== undefined).toBe(tolls);
       }
     }
+  });
+});
+
+describe('THE PINK ONE', () => {
+  const pink = secretById('the-pink-one')!;
+  const open: OpenSecret = { id: pink.id, reward: pink.rewards[0] };
+  const led = { conditions: { ...CONDITIONS, leadTypes: ['Bug' as const] }, secrets: [open] };
+
+  it('stands on the ride in its other colours while the raid is led by a Bug, and in none on any other figure', () => {
+    const { internals, entity } = beside(pink.id, 'pokemon', led);
+    const colours = internals as unknown as { otherColours(entity: WorldEntity): number | undefined };
+    expect(colours.otherColours(entity)).toBe(pink.figureTint);
+    expect(pink.figureTint).toBeDefined();
+
+    // The sleeper is an ordinary Snorlax in ordinary colours, open or shut.
+    const sleeper = secretById('the-sleeper-in-the-pines')!;
+    const awake = beside(sleeper.id, 'pokemon', {
+      conditions: { ...CONDITIONS, carried: ['poke-flute'] },
+      secrets: [{ id: sleeper.id, reward: sleeper.rewards[0] }],
+    });
+    expect((awake.internals as unknown as typeof colours).otherColours(awake.entity)).toBeUndefined();
+  });
+
+  it('is met in its other colours: the fight is promised a shiny Butterfree', () => {
+    const { internals, dialogBox } = beside(pink.id, 'pokemon', led);
+    internals.tryInteract();
+    // The words of finding it, and then its cry.
+    expect(dialogBox.shownMessages[0]).toBe(pink.foundLine);
+    expect(internals.pendingWildBattle).toEqual({ speciesId: 'butterfree', level: 28, shiny: true });
+  });
+});
+
+describe('THE ELEVENTH STONE', () => {
+  const stone = secretById('the-eleventh-stone')!;
+
+  it('sits with its eyes shut for a party of two, and says so, with no cry and no fight', () => {
+    const { internals, dialogBox } = beside(stone.id, 'pokemon', { conditions: CONDITIONS, secrets: [], sleeping: [stone.id] });
+    internals.tryInteract();
+    expect(dialogBox.shownMessages).toEqual([...stone.shutLines!]);
+    expect(internals.pendingWildBattle).toBeUndefined();
+    expect(internals.runSession.pokemonMet).toEqual([]);
+  });
+
+  it('opens its eyes for a raid gone on alone', () => {
+    const { internals, dialogBox } = beside(stone.id, 'pokemon', {
+      conditions: { ...CONDITIONS, partySize: 1 },
+      secrets: [{ id: stone.id, reward: stone.rewards[0] }],
+    });
+    internals.tryInteract();
+    expect(dialogBox.shownMessages[0]).toBe(stone.foundLine);
+    expect(internals.pendingWildBattle).toEqual({ speciesId: 'alakazam', level: 22 });
   });
 });

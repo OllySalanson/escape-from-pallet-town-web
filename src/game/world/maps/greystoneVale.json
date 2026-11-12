@@ -6892,9 +6892,11 @@
    "name": "Mother Stone",
    "look": "channeler",
    "facing": "up",
+   "secret": "the-eleventh-stone",
    "lines": [
     "They sing at night, the stones. Clefairy come up to hear it.",
-    "I have counted them twice tonight. Nine and eleven. It is a good sign, or the other thing."
+    "I have counted them twice tonight. Nine and eleven. It is a good sign, or the other thing.",
+    "One of them is no stone. It only opens its eyes for somebody who comes up here ALONE: one POKéMON, no more."
    ],
    "beat": {
     "everyMs": 4500,
@@ -8804,9 +8806,11 @@
    "name": "Nell",
    "look": "little-girl",
    "facing": "left",
+   "secret": "the-pink-one",
    "lines": [
     "It was a Caterpie on Tuesday. Then it was a Metapod and it did not do anything for a week.",
-    "Then it was a Butterfree and it left. I cried. Do not tell Ned."
+    "Then it was a Butterfree and it left. I cried. Do not tell Ned.",
+    "Ned says a pink one comes down the ride sometimes, to see its own kind. Walk in with a BUG in front and it might."
    ],
    "beat": {
     "everyMs": 1900,
@@ -16702,6 +16706,13 @@
    "level": 9
   },
   {
+   "x": 102,
+   "y": 75,
+   "species": "alakazam",
+   "level": 22,
+   "secret": "the-eleventh-stone"
+  },
+  {
    "x": 85,
    "y": 94,
    "species": "tauros",
@@ -17606,6 +17617,13 @@
      ]
     ]
    }
+  },
+  {
+   "x": 226,
+   "y": 180,
+   "species": "butterfree",
+   "level": 28,
+   "secret": "the-pink-one"
   },
   {
    "x": 223,

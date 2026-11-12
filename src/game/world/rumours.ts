@@ -172,6 +172,25 @@ export const RUMOURS: readonly Rumour[] = [
     ringsOver: 'THE MOOR CHAPEL',
     line: 'BILL: THE CRYPT under THE MOOR CHAPEL is the oldest room in the vale! A shadow on its floor belongs to nobody. Old books say it only follows a GHOST type.',
   },
+  // The fourth wave.
+  {
+    id: 'board-pink-one',
+    secret: 'the-pink-one',
+    source: 'board',
+    gives: ['where', 'bring'],
+    names: 'THE BUTTERFLY RIDE',
+    ringsOver: 'TANGLEWOOD',
+    line: 'RUMOUR: The Bug Club swears a pink one comes down THE BUTTERFLY RIDE in TANGLEWOOD. Only ever to see its own kind: lead with a BUG.',
+  },
+  {
+    id: 'spyglass-eleventh-stone',
+    secret: 'the-eleventh-stone',
+    source: 'spyglass',
+    gives: ['where', 'bring'],
+    names: 'THE LITTLE STONES',
+    ringsOver: 'HIGH MOOR',
+    line: 'I have counted THE LITTLE STONES on HIGH MOOR through this glass every day for a year. Never the same twice. One of them only stirs for somebody up there ALONE.',
+  },
   // THE RUMOUR MILL's own slips: when and what to bring, where the harbour's
   // rumour about the same secret gives where and one of them. Two rumours from
   // two sources complete each other (the harbour arenas plan, section 4.3).

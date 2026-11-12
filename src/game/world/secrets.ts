@@ -66,6 +66,8 @@ export interface RaidConditions {
    * than the raid.
    */
   readonly chartWhole: boolean;
+  /** How many Pokemon went on the raid: one is a raid gone on alone. */
+  readonly partySize: number;
 }
 
 /** Read as the raid deploys. A party with nobody in it leads with no type. */
@@ -87,6 +89,7 @@ export function raidConditions(
     carried: packed.filter((stack) => stack.quantity > 0).map((stack) => stack.itemId),
     badges: [...defeatedBosses],
     chartWhole,
+    partySize: party.length,
   };
 }
 
@@ -113,6 +116,12 @@ export type SecretCondition =
    * `MAX_PENDING_RECOVERY_MS` - which `secrets.test.ts` holds.
    */
   | { readonly kind: 'raid-clock'; readonly fromMs: number; readonly untilMs: number }
+  /**
+   * A raid gone on alone: one Pokemon in the party and no more. The one
+   * condition that is a risk taken rather than a thing brought - nobody to
+   * switch to, and a wipe on the first faint.
+   */
+  | { readonly kind: 'alone' }
   /** Any one of these. */
   | { readonly kind: 'either'; readonly of: readonly SecretCondition[] };
 
@@ -138,6 +147,8 @@ export function conditionHolds(condition: SecretCondition, raid: RaidConditions,
       return raid.chartWhole;
     case 'badge':
       return raid.badges.includes(condition.bossId);
+    case 'alone':
+      return raid.partySize === 1;
     case 'raid-clock':
       return elapsedMs === undefined || (elapsedMs >= condition.fromMs && elapsedMs < condition.untilMs);
     case 'either':
@@ -198,14 +209,24 @@ export interface Secret {
    */
   readonly shutLines?: readonly string[];
   /**
+   * For a `figure` met in its other colours: the tint its standing figure
+   * wears, so what is seen on the map is what the clue promised. The map's
+   * figures are drawn from one sheet of icons in their ordinary colours, and
+   * THE PINK ONE stood on its ride as blue as any Butterfree until the fight
+   * began. A multiply over the icon, as a place's weather tints its ground.
+   */
+  readonly figureTint?: number;
+  /**
    * Which wave of the plan it shipped in: the first needs no badge; the second
    * needs something bought or won first - the POKé FLUTE from THE GAME
    * CORNER's prize window, or MISTY beaten and THE COAST behind her open. The
    * third is four Pokemon a raid meets nowhere else, kinds FireRed keeps for
    * an in-game trade or a trade evolution: a Hypno, a Lickitung, a Mr. Mime
-   * and a Gengar, each in a place that already had half the story.
+   * and a Gengar, each in a place that already had half the story. The fourth
+   * is two more of the same making: an Alakazam among the Little Stones, and
+   * the vale's second Pokemon in its other colours, a pink Butterfree.
    */
-  readonly wave: 1 | 2 | 3;
+  readonly wave: 1 | 2 | 3 | 4;
 }
 
 /**
@@ -465,6 +486,44 @@ export const SECRETS: readonly Secret[] = [
       'It does not move when you do. You have the feeling it is being polite.',
     ],
     wave: 3,
+  },
+  {
+    // The anime's own: a pink Butterfree, and the Butterfree that left with
+    // it. Nell on the ride has been saying since the wood was filled that hers
+    // "was a Butterfree and it left"; the pink one comes down the ride only to
+    // see its own kind, a Bug type walking in front. A Butterfree in its other
+    // colours, as THE RED ONE is a Gyarados in its: Lv 28 is an earned fight
+    // before MISTY (at 25 the three starters won nine fights in ten).
+    id: 'the-pink-one',
+    name: 'THE PINK ONE',
+    place: 'THE BUTTERFLY RIDE',
+    nook: 'figure',
+    when: [{ kind: 'lead-type', type: 'Bug' }],
+    rewards: [{ kind: 'meet', speciesId: 'butterfree', level: 28, shiny: true }],
+    figureTint: 0xff9ecf,
+    foundLine: 'Something pink comes tumbling down the ride on the wind, round your Bug, and round again. A BUTTERFREE, and not the usual colour!',
+    wave: 4,
+  },
+  {
+    // The Little Stones' notice says there are nine and there were seven, and
+    // Mother Stone counted nine and eleven in one night. One of them is not a
+    // stone: an ALAKAZAM sits among them with its eyes shut, every raid until
+    // it is had (`shutLines`), and opens them only for somebody who came up
+    // alone - one Pokemon in the party, which is a raid with nobody to switch
+    // to. A Kadabra becomes one only by trade, so nothing in the vale's grass
+    // rolls one. Lv 22 is an earned fight before MISTY.
+    id: 'the-eleventh-stone',
+    name: 'THE ELEVENTH STONE',
+    place: 'THE LITTLE STONES',
+    nook: 'figure',
+    when: [{ kind: 'alone' }],
+    rewards: [{ kind: 'meet', speciesId: 'alakazam', level: 22 }],
+    foundLine: 'The stone opens its eyes. It has been counting you. ALAKAZAM lifts both spoons!',
+    shutLines: [
+      'A stone among the stones, sitting very upright with its eyes shut. It is breathing.',
+      'It knows exactly how many of you there are. It is waiting for fewer.',
+    ],
+    wave: 4,
   },
 ];
 
