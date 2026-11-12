@@ -341,6 +341,35 @@ describe('errands', () => {
     expect(withIt.hunter).toEqual(without.hunter);
   });
 
+  it('moves nothing else on the ground whichever tile it lands on: the stake, the trail and the shimmering grass stand where they would', () => {
+    // The seed above was one where it did: with High Moor redrawn, Brock's
+    // crate was seated, a step ahead of the stake, on one of the tiles the
+    // stake chooses among, and the same roll put the stake a tile over. Asked
+    // of a spread of seeds and of every errand on the vale, so it is not one
+    // seed's luck either way.
+    const moved: string[] = [];
+    for (const errand of ERRANDS.filter((each) => each.mapId === 'greystone-vale')) {
+      for (let seed = 1; seed <= 12; seed += 1) {
+        const without = generateRunPlan(seed, undefined, 'greystone-vale', undefined);
+        const withIt = generateRunPlan(
+          seed, undefined, 'greystone-vale', undefined, undefined, [], {}, [], [], false, [], [errandLoot(errand)],
+        );
+        const others = withIt.loot['greystone-vale'].filter((piece) => piece.itemId !== errand.itemId);
+        if (JSON.stringify(others) !== JSON.stringify(without.loot['greystone-vale'])) moved.push(`${errand.id} seed ${seed}: loot`);
+        if (JSON.stringify(withIt.shimmer) !== JSON.stringify(without.shimmer)) moved.push(`${errand.id} seed ${seed}: shimmer`);
+        if (JSON.stringify(withIt.trainers) !== JSON.stringify(without.trainers)) moved.push(`${errand.id} seed ${seed}: trainers`);
+        // And it shares a tile with nothing.
+        const laid = withIt.loot['greystone-vale'].find((piece) => piece.itemId === errand.itemId);
+        if (laid) {
+          const at = `${laid.position.x},${laid.position.y}`;
+          if (others.some((piece) => `${piece.position.x},${piece.position.y}` === at)) moved.push(`${errand.id} seed ${seed}: shares ${at}`);
+          if (withIt.shimmer && `${withIt.shimmer.position.x},${withIt.shimmer.position.y}` === at) moved.push(`${errand.id} seed ${seed}: on the shimmer`);
+        }
+      }
+    }
+    expect(moved).toEqual([]);
+  });
+
   it('reads a save back as errands that exist, once each, never more heard than found', () => {
     expect(clampErrandRecords(undefined)).toEqual([]);
     expect(

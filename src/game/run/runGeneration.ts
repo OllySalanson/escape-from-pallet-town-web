@@ -865,14 +865,7 @@ export function generateRunPlan(
         standingGround(insertionMap),
       )
     : undefined;
-  const loot = layErrands(
-    generateLoot(content.maps, reservedTiles, rng, isReachable, stakes && { mapId: insertion.mapId, ground: stakes }),
-    errands,
-    content.maps,
-    reservedTiles,
-    createSeededRng((seed ^ ERRAND_STREAM) >>> 0),
-    isReachable,
-  );
+  const loot = generateLoot(content.maps, reservedTiles, rng, isReachable, stakes && { mapId: insertion.mapId, ground: stakes });
   if (stakes) {
     const reserved = reservedTiles.get(insertion.mapId) ?? new Set<string>();
     loot[insertion.mapId] = [
@@ -927,6 +920,24 @@ export function generateRunPlan(
           createSeededRng((seed ^ SHIMMER_STREAM) >>> 0),
         )
       : undefined;
+
+  // The errand things, last of everything laid on the ground: the stake's
+  // trail and the shimmer each choose among the tiles nothing has taken, so an
+  // errand seated before them that took one of those tiles shortened the list
+  // and the same roll chose the next one along. Brock's crate did it to the
+  // stake once HIGH MOOR was redrawn - the stake stood a tile over - and a save
+  // with an errand in hand stopped rolling the raid one without does. Every
+  // piece down and the patch are reserved first, so the errand shares a tile
+  // with none of them.
+  for (const [mapId, pieces] of Object.entries(loot) as [WorldMapId, readonly WorldLoot[]][]) {
+    for (const piece of pieces) {
+      reserve(reservedTiles, mapId, piece.position);
+    }
+  }
+  if (shimmer) {
+    reserve(reservedTiles, insertion.mapId, shimmer.position);
+  }
+  layErrands(loot, errands, content.maps, reservedTiles, createSeededRng((seed ^ ERRAND_STREAM) >>> 0), isReachable);
 
   // One raid in three a legend's shadow crosses the sky (`world/omens.ts`):
   // rolled on a stream of its own, so it moves no other roll.
