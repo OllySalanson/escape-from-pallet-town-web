@@ -17,7 +17,9 @@
  * Phaser-free and a pure string, so the pace rule is tested without a browser.
  */
 import { POKEMON_ICON_ORDER, POKEMON_ICON_SHEET } from '../pokemon/generated/pokemonIcons';
-import { escapeAttribute } from './pixelUi';
+import { getHeldItem } from '../items';
+import { itemIcon } from './icons';
+import { escapeAttribute, pixelHpBar, pixelPokemonName } from './pixelUi';
 
 /** FireRed's five icon paces, by how much health is left: ticks of 60 a frame is held, or still. */
 export type MonIconPace = 'full' | 'green' | 'yellow' | 'red' | 'still';
@@ -77,4 +79,46 @@ export function pixelMonIcon(pokemon: MonIconSubject): string {
   }
   const pace = monIconPace(pokemon.currentHp, pokemon.maxHp);
   return `<span class="px-mon-icon is-${pace}" role="img" aria-label="${label}" style="--icon-col:${cell.column};--icon-row:${cell.row}"></span>`;
+}
+
+/** The bar under a party slot's name, in game pixels: what is left of the slot beside its level. */
+export const PARTY_SLOT_BAR = 32;
+
+export interface PartySlotSubject extends MonIconSubject {
+  readonly level: number;
+  readonly shiny: boolean;
+  readonly isFainted: boolean;
+  readonly heldItemId: string | null;
+}
+
+export interface PartySlotOptions {
+  /** The first sent out: its slot is gold, as FireRed's lead slot stands apart. */
+  readonly lead?: boolean;
+  /** Picked up to be moved to another slot. */
+  readonly holding?: boolean;
+  /** The button's wiring and words: `data-*`, `aria-label`, `data-help`, already escaped. */
+  readonly attributes: string;
+}
+
+/**
+ * One of a party's six, as FireRed's party menu draws a slot: the icon at its
+ * pace with what it holds on its corner, the name, and the level beside a bar.
+ * YOUR TEAM's six and the raid's PARTY are the same slot, so the two cannot
+ * drift.
+ */
+export function pixelPartySlot(pokemon: PartySlotSubject, options: PartySlotOptions): string {
+  const classes = [
+    'px-party-slot',
+    ...(options.lead ? ['is-lead'] : []),
+    ...(options.holding ? ['is-holding'] : []),
+    ...(pokemon.isFainted ? ['is-fainted'] : []),
+  ].join(' ');
+  const held = getHeldItem(pokemon.heldItemId);
+  const gear = held ? `<span class="px-slot-gear">${itemIcon(held.id, `holding ${held.displayName}`)}</span>` : '';
+  return `<button class="${classes}" ${options.attributes}>${pixelMonIcon(pokemon)}${gear}<span class="px-party-slot-words">${pixelPokemonName(pokemon)}<span class="px-party-slot-line"><span class="px-mon-level">Lv${pokemon.level}</span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp, PARTY_SLOT_BAR)}</span></span></button>`;
+}
+
+/** A slot with nobody in it: a dim Poké Ball, so a party of three is three of six. */
+export function pixelEmptyPartySlot(): string {
+  return `<span class="px-party-slot is-empty" aria-hidden="true">${itemIcon('poke-ball')}</span>`;
 }

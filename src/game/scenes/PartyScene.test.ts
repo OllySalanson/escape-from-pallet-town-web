@@ -96,6 +96,23 @@ describe('the order of the raid party', () => {
     scene.render();
 
     expect(scene.menuOverlay.root.innerHTML).toContain('ENTER pick up');
-    expect(scene.menuOverlay.root.innerHTML).toContain('Pick Pidgey up to move it');
+    expect(scene.menuOverlay.root.innerHTML).toContain('Pidgey is sent out first. ENTER picks it up to move it.');
+    expect(scene.menuOverlay.root.innerHTML).toContain('ENTER picks Pidgey up to move it.');
+  });
+
+  it('draws FireRed’s six slots: the lead in gold, the rest empty Poké Balls', () => {
+    const scene = Object.create(PartyScene.prototype) as PartyInternals & { render(): void };
+    const lead = new Pokemon(PIDGEY, 5);
+    lead.heldItemId = 'quick-claw';
+    scene.init({ party: new PokemonParty([lead, new Pokemon(PIDGEY, 6)]), bag: new Bag() });
+    scene.menuOverlay = { root: { innerHTML: '', querySelectorAll: () => [] }, refocus: () => undefined };
+    scene.render();
+
+    const html = scene.menuOverlay.root.innerHTML;
+    expect(html.match(/class="px-party-slot[" ]/g)).toHaveLength(6);
+    expect(html.match(/px-party-slot is-empty/g)).toHaveLength(4);
+    expect(html).toMatch(/class="px-party-slot is-lead" data-member="0"/);
+    // What it holds is on the icon's corner, so who carries gear is seen.
+    expect(html).toMatch(/data-member="0".*?px-slot-gear.*?holding Quick Claw/);
   });
 });

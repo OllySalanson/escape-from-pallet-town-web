@@ -25,7 +25,7 @@ import { getHeldItem } from '../items';
 import { MAX_RUN_PARTY, faintedRefusal } from '../hub/deploymentFlow';
 import { ABLE_TO_FIGHT, pickerFindField, pickerOrder, pickerRowAttributes, type PickerEntry } from './boxPicker';
 import { itemIcon } from './icons';
-import { pixelMonIcon } from './monIcon';
+import { pixelEmptyPartySlot, pixelMonIcon, pixelPartySlot } from './monIcon';
 import {
   escapeAttribute,
   pixelHpBar,
@@ -96,11 +96,10 @@ function teamCard(entry: PickerEntry, going: boolean, lead: boolean, partner: bo
   return `<div class="px-detail team-card" data-shown-by="${escapeAttribute(entry.id)}" hidden>${pixelPortrait(pokemon.base.dexId ?? 0, pokemon.name, pokemon.shiny)}<div class="team-card-words"><span class="px-row-line">${pixelPokemonName(pokemon)}<span class="team-card-level">Lv ${pokemon.level}</span>${tag}</span><span class="px-row-line">${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}<small>${pokemon.currentHp}/${pokemon.maxHp}</small></span><span class="px-row-line team-card-types">${types.map((type) => pixelTypeBadge(type)).join('')}</span><small class="team-card-where">${escapeAttribute(where)}${held ? ` · ${itemIcon(held.id, held.displayName)}${escapeAttribute(held.displayName)}` : ''}</small></div></div>`;
 }
 
-/** One of the six: the icon, the name, the level and the bar, as FireRed's party slot. */
+/** One of the six, as FireRed's party slot (`pixelPartySlot`). */
 function teamSlot(entry: PickerEntry, lead: boolean, size: number, first: boolean): string {
-  const { pokemon } = entry;
-  const classes = ['team-slot', ...(lead ? ['is-lead'] : []), ...(pokemon.isFainted ? ['is-fainted'] : [])].join(' ');
-  return `<button class="${classes}" data-member="${escapeAttribute(entry.id)}" data-shows="${escapeAttribute(entry.id)}" data-box-name="${escapeAttribute(entry.box)}" aria-label="${escapeAttribute(spokenName(entry))}"${first ? ' data-cursor-start' : ''} data-help="${escapeAttribute(teamRowHelp(entry, true, lead, size))}">${pixelMonIcon(pokemon)}<span class="team-slot-words">${pixelPokemonName(pokemon)}<span class="team-slot-line"><span class="team-level">Lv${pokemon.level}</span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp, TEAM_SLOT_BAR)}</span></span></button>`;
+  const attributes = `data-member="${escapeAttribute(entry.id)}" data-shows="${escapeAttribute(entry.id)}" data-box-name="${escapeAttribute(entry.box)}" aria-label="${escapeAttribute(spokenName(entry))}"${first ? ' data-cursor-start' : ''} data-help="${escapeAttribute(teamRowHelp(entry, true, lead, size))}"`;
+  return pixelPartySlot(entry.pokemon, { lead, attributes });
 }
 
 /** One in a box: the icon over its level and a short bar, as FireRed's PC box with the two facts a team is picked by. */
@@ -109,11 +108,9 @@ function boxTile(entry: PickerEntry, size: number, first: boolean): string {
   const fainted = pokemon.isFainted;
   const disabled = fainted || size >= MAX_RUN_PARTY;
   const classes = ['team-tile', ...(fainted ? ['is-fainted'] : [])].join(' ');
-  return `<button class="${classes}" data-member="${escapeAttribute(entry.id)}" data-shows="${escapeAttribute(entry.id)}" ${pickerRowAttributes(entry)} aria-label="${escapeAttribute(spokenName(entry))}"${first ? ' data-cursor-start' : ''}${disabled ? ' aria-disabled="true"' : ''} data-help="${escapeAttribute(teamRowHelp(entry, false, false, size))}">${pixelMonIcon(pokemon)}<span class="team-tile-line"><span class="team-level">${pokemon.level}</span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp, TEAM_TILE_BAR)}</span></button>`;
+  return `<button class="${classes}" data-member="${escapeAttribute(entry.id)}" data-shows="${escapeAttribute(entry.id)}" ${pickerRowAttributes(entry)} aria-label="${escapeAttribute(spokenName(entry))}"${first ? ' data-cursor-start' : ''}${disabled ? ' aria-disabled="true"' : ''} data-help="${escapeAttribute(teamRowHelp(entry, false, false, size))}">${pixelMonIcon(pokemon)}<span class="team-tile-line"><span class="px-mon-level">${pokemon.level}</span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp, TEAM_TILE_BAR)}</span></button>`;
 }
 
-/** The bar under a slot's name, in game pixels: what is left of the slot beside its level. */
-export const TEAM_SLOT_BAR = 32;
 /** The bar under a tile's icon, beside a two-figure level. */
 export const TEAM_TILE_BAR = 18;
 
@@ -125,14 +122,14 @@ export function teamBody(state: TeamViewState): string {
     const entry = team[index];
     return entry
       ? teamSlot(entry, index === 0, size, index === 0)
-      : `<span class="team-slot is-empty" aria-hidden="true">${itemIcon('poke-ball')}</span>`;
+      : pixelEmptyPartySlot();
   }).join('');
   const tiles =
     boxes.length > 0
       ? boxes.map((entry, index) => boxTile(entry, size, team.length === 0 && index === 0)).join('')
       : '<p class="px-empty px-wrap">Everybody you have is going.</p>';
   const cards = [...team.map((entry, index) => teamCard(entry, true, index === 0, entry.id === state.partnerId)), ...boxes.map((entry) => teamCard(entry, false, false, entry.id === state.partnerId))].join('');
-  const nextRaid = pixelWindow(`<div class="team-slots">${slots}</div>`, {
+  const nextRaid = pixelWindow(`<div class="px-party-slots">${slots}</div>`, {
     heading: 'Next raid',
     note: `${size} of ${MAX_RUN_PARTY}`,
     className: 'team-window',
