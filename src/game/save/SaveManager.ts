@@ -1652,8 +1652,10 @@ export class SaveManager {
     for (const { itemId, quantity } of CHEST_CONTENTS) {
       game.stash.addItem(itemId, quantity);
     }
-    // The old POKé BALL packed among them: the rare find the X leads to.
-    game.stash.addPokemon(new Pokemon(species, CHEST_POKEMON.level));
+    // The old POKé BALL packed among them: the rare find the X leads to, and a shiny one.
+    const rareFind = new Pokemon(species, CHEST_POKEMON.level);
+    rareFind.shiny = CHEST_POKEMON.shiny;
+    game.stash.addPokemon(rareFind);
     const found = game.raidProgress.secretsFound ?? [];
     return this.save({
       ...game,

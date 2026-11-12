@@ -131,12 +131,16 @@ export const CHEST_CONTENTS: readonly { readonly itemId: ItemId; readonly quanti
 
 /**
  * And the rare find packed among the kit: an old POKé BALL with something
- * still in it. EEVEE is met nowhere in the vale and given by nobody else -
- * FireRed keeps its one EEVEE in a ball on a table in a back room, behind a
- * door nobody shows you - so the X leads to the only one there is
- * (`treasureMap.test.ts` holds both halves of that). Lv 25 is FireRed's.
+ * still in it, and what is in it is **shiny**. The vale's other certain
+ * shinies are fought for under a sky (THE RED ONE, the pink Butterfree); this
+ * one is handed over, at the end of the longest hunt the vale has. An EEVEE
+ * because FireRed keeps its own in a ball on a table in a back room, behind a
+ * door nobody shows you, and because of all the kinds it is the one whose
+ * owner still gets to choose what it becomes. Lv 25 is FireRed's. BILL gives
+ * an ordinary one for his Old Amber (`hub/errands.ts`); the Pokédex lists the
+ * chest beside him (`hub/pokedexSources.ts`).
  */
-export const CHEST_POKEMON = { speciesId: 'eevee', level: 25 } as const;
+export const CHEST_POKEMON = { speciesId: 'eevee', level: 25, shiny: true } as const;
 
 /**
  * The hunt's goal once the chart is whole, in the words every screen that
@@ -399,7 +403,7 @@ export function chestOpenedLines(names: (itemId: ItemId) => string, pokemonName:
     'He works the lock with a hairpin and a bookmark. The lid creaks up.',
     `Inside: ${list}.`,
     'And an old POKé BALL, packed in straw. Something in it moves!',
-    `${pokemonName} came out! The smugglers' rarest cargo is yours.`,
+    `A shiny ${pokemonName} came out! The smugglers' rarest cargo is yours.`,
     `MARLOW: The chest stays here on show. The rest has gone to BILL'S PC.`,
   ];
 }

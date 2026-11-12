@@ -18,6 +18,7 @@ import { stepDistances } from '../world/mapStructure';
 import { nextReward, openSecrets, raidConditions, secretById, SECRETS, SPENT_NOOK_BERRIES, type RaidConditions } from '../world/secrets';
 import { MISTY_BOSS_ID } from '../world/valeQuarters';
 import { createPlaytestStash, playtestStock, withoutKitTreasure } from '../dev/playtestSave';
+import { directSources } from '../hub/pokedexSources';
 import { TICKET_PRIZES } from '../minigames/tickets';
 import { getSpeciesById } from '../pokemon/species';
 import { shareLine } from '../ui/dialogBoxes';
@@ -440,29 +441,36 @@ describe('the X on the telescope', () => {
 });
 
 describe('the X leads to a rare find', () => {
-  it('hands over the one EEVEE there is, in the same write as the chest’s kit', () => {
+  it('hands over a shiny EEVEE, in the same write as the chest’s kit, and only once', () => {
     const pinned = CHART_PIECES.map((piece) => piece.id);
     const saves = freshSave({ treasureHunt: { roomOpen: true, pinned, chestOpened: false } }, { [CHEST_ITEM_ID]: 1 });
-    const kinds = () => saves.load()!.stash.listPokemon().map((stored) => stored.pokemon.base.id);
-    expect(kinds()).not.toContain(CHEST_POKEMON.speciesId);
+    const found = () => saves.load()!.stash.listPokemon().filter((stored) => stored.pokemon.base.id === CHEST_POKEMON.speciesId);
+    expect(found()).toHaveLength(0);
     expect(saves.openSeaChest()).toBe(true);
-    const found = saves.load()!.stash.listPokemon().find((stored) => stored.pokemon.base.id === CHEST_POKEMON.speciesId)!;
-    expect(found.pokemon.level).toBe(CHEST_POKEMON.level);
+    // Read back off the save, so the shine is something a reload keeps.
+    expect(found()).toHaveLength(1);
+    expect(found()[0].pokemon.level).toBe(CHEST_POKEMON.level);
+    expect(CHEST_POKEMON.shiny).toBe(true);
+    expect(found()[0].pokemon.shiny).toBe(true);
+    // The Pokédex has it as owned, and as a shiny.
+    expect(saves.load()!.raidProgress.pokedexShiny ?? []).toContain(getSpeciesById(CHEST_POKEMON.speciesId)!.dexId);
     // Once: a second try gives nothing.
     expect(saves.openSeaChest()).toBe(false);
-    expect(kinds().filter((kind) => kind === CHEST_POKEMON.speciesId)).toHaveLength(1);
+    expect(found()).toHaveLength(1);
     const name = getSpeciesById(CHEST_POKEMON.speciesId)!.name.toUpperCase();
-    expect(chestOpenedLines((itemId) => getItemById(itemId)?.displayName ?? itemId, name).join(' ')).toContain(`${name} came out!`);
+    expect(chestOpenedLines((itemId) => getItemById(itemId)?.displayName ?? itemId, name).join(' ')).toContain(`A shiny ${name} came out!`);
   });
 
-  it('is a kind the vale lays nowhere and nobody else gives', () => {
-    const species = getSpeciesById(CHEST_POKEMON.speciesId);
-    expect(species).toBeDefined();
-    // No grass, water, floor, standing Pokemon or trainer of the vale has one.
+  it('is a kind no grass, water or floor of the vale rolls, and the Pokédex says the chest is one way to it', () => {
+    expect(getSpeciesById(CHEST_POKEMON.speciesId)).toBeDefined();
+    // Nothing a raid walks into is one: no step, cast, standing Pokemon or trainer of the vale.
     expect(JSON.stringify(builtInFileMap(VALE)!.file)).not.toContain(`"${CHEST_POKEMON.speciesId}"`);
     expect(POKEMON_GIFTS.map((gift) => gift.speciesId)).not.toContain(CHEST_POKEMON.speciesId);
     expect(TICKET_PRIZES.flatMap((prize) => (prize.gives.kind === 'pokemon' ? [prize.gives.speciesId] : []))).not.toContain(CHEST_POKEMON.speciesId);
-    expect(SECRETS.flatMap((secret) => secret.rewards.flatMap((reward) => (reward.kind === 'meet' ? [reward.speciesId] : reward.kind === 'gift' ? [reward.gift.speciesId] : [])))).not.toContain(CHEST_POKEMON.speciesId);
+    // The treasure's secret is among the ways the Pokédex lists for it, and only with the secrets counted.
+    const ways = (withSecrets: boolean) => directSources(withSecrets).get(CHEST_POKEMON.speciesId) ?? [];
+    expect(ways(true)).toContainEqual({ kind: 'secret', secretId: TREASURE_SECRET_ID });
+    expect(ways(false)).not.toContainEqual({ kind: 'secret', secretId: TREASURE_SECRET_ID });
   });
 });
 

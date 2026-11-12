@@ -57,8 +57,8 @@ raids would have banked them; finding one in a raid is #482's
 - `13-carried-home.png` - carried out at risk and banked.
 - `14-the-chest-opened.png` - MARLOW opens it: ₽600, a HAULER FRAME and five
   GREAT BALLs.
-- `20-the-rare-find.png` - and an old POKé BALL packed in the straw: the one
-  EEVEE in the game.
+- `20-the-rare-find.png` - and an old POKé BALL packed in the straw: a shiny
+  EEVEE, handed over.
 - `15-the-chest-on-show.png` - the empty chest stays on show before the board.
 - `21-explorer-run-says-so.png` - the explorer run's kit holds one of each piece
   and no chest, and the board says so before the first goes up.

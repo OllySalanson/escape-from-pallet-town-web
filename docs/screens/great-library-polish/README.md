@@ -107,7 +107,7 @@ Scored out of five, before and after.
 | The spot itself answers the clue | 3 | 5 | A hidden tile beside a marker post; now the chart's own X on the sand. |
 | What blocks you is named | 3 | 5 | MISTY was one clause in a long last line; now a line of her own, said only while she is in the way, and on the telescope and the radio. |
 | Text is short enough to be read | 1 | 4 | Fifteen boxes for the first piece; seven. MARLOW's welcome in the library is as long as it was, because the owner liked it. |
-| The reward is worth the walk | 3 | 5 | Money, a pack and balls; and now the only EEVEE in the game. |
+| The reward is worth the walk | 3 | 5 | Money, a pack and balls; and now a shiny EEVEE, the one certain shiny the vale hands over rather than makes you fight for. |
 | A test tool does not break the puzzle | 1 | 5 | The explorer run skipped the dig entirely; it now plays the hunt's ending as a player does. |
 | **Total** | **19 / 50** | **48 / 50** | |
 

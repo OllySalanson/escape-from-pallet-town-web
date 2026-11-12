@@ -20,6 +20,7 @@ import { isMapOffered } from '../world/mapRoster';
 import { districtTableFor } from '../world/nightRaids';
 import { entitiesForMap } from '../world/npcs';
 import { SECRETS } from '../world/secrets';
+import { CHEST_POKEMON, TREASURE_SECRET_ID } from '../treasure/treasureMap';
 import { BUILT_IN_MAP_IDS, getWorldMap, worldMapName, type BuiltInMapId } from '../worldMap';
 import type { WildEncounterTable } from '../pokemon/encounters';
 import { ERRANDS } from './errands';
@@ -210,6 +211,9 @@ export function directSources(withSecrets = true): ReadonlyMap<string, readonly 
       if (reward.kind === 'gift') add(reward.gift.speciesId, { kind: 'secret', secretId: secret.id });
     }
   }
+  // The treasure map's chest (`treasure/treasureMap.ts`): the secret gives the
+  // chest, and MARLOW opening it gives what is packed in it.
+  if (withSecrets) add(CHEST_POKEMON.speciesId, { kind: 'secret', secretId: TREASURE_SECRET_ID });
   // A fossil is laid by a secret, or by an errand that goes on laying its
   // thing once it is done (Bill's amber, `errands.ts`).
   const fossilsFound = new Set<string>([
