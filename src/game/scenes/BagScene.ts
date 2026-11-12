@@ -28,7 +28,7 @@ import { GridArranging } from '../ui/gridArranging';
 import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
 import { bagFocusPreference } from '../ui/menuFocus';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
-import { pixelMonIcon, pixelPartySlot } from '../ui/monIcon';
+import { pixelItemTile, pixelMonIcon, pixelPartySlot } from '../ui/monIcon';
 import { describeKey, splitDescribeKey } from '../ui/hoverDescribe';
 import {
   canChoosePupil,
@@ -499,7 +499,7 @@ export class BagScene extends Phaser.Scene {
     const carried = pixelWindow(
       `${
         tiles
-          ? `<div class="pack-tiles px-scroll">${tiles}</div>`
+          ? `<div class="px-item-tiles px-scroll">${tiles}</div>`
           : '<p class="px-empty">The pack is empty. Whatever is on the ground out there is all you have.</p>'
       }${details}`,
       { className: 'raid-pockets', heading: 'Carried', note: `${this.kinds} ${this.kinds === 1 ? 'kind' : 'kinds'}` },
@@ -537,7 +537,7 @@ export class BagScene extends Phaser.Scene {
     const help = `${item.displayName}: ${item.description}${learners ? ` ${learners}.` : ''} ${this.useLabel(item)} X drops ${this.dropWords(item)}.`;
     const count = itemCountTag(item.id, this.bag.count(item.id));
     const riding = item.effect.type === 'bike' && this.bike?.riding;
-    return `<button class="pack-tile${riding ? ' is-riding' : ''}" data-item="${item.id}" data-shows="${item.id}" data-describes="${describeKey('item', item.id)}" aria-label="${escapeAttribute(`${item.displayName} ${count}`)}" data-help="${escapeAttribute(help)}">${itemIcon(item.id, item.displayName)}<span class="pack-tile-count">${count}</span></button>`;
+    return pixelItemTile(item, count, `data-item="${item.id}" data-shows="${item.id}" data-describes="${describeKey('item', item.id)}" data-help="${escapeAttribute(help)}"`, riding ? ['is-riding'] : []);
   }
 
   /** What one X puts down: one of a thing, or a money bundle's worth. */

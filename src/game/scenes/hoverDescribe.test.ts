@@ -101,7 +101,7 @@ describe('pointing at something in the raid pack', () => {
     expect(markup).toContain(`data-describes="${describeKey('item', 'antidote')}"`);
     // Once on the tile and once on each square the item is seated in - two
     // Potions are two blocks, because a square holds one of them.
-    expect(markup.match(/pack-tile[^>]*data-describes="item:potion"/g)?.length).toBe(1);
+    expect(markup.match(/px-item-tile[^>]*data-describes="item:potion"/g)?.length).toBe(1);
     expect(markup.match(/px-grid-block[^>]*data-describes="item:potion"/g)?.length).toBe(2);
   });
 
