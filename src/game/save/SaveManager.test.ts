@@ -99,6 +99,25 @@ describe('SaveManager', () => {
     expect(new SaveManager(new MemoryStorage()).recordDojoBout('bot:xkitx', true)).toBeNull();
   });
 
+  it('puts the dojo’s prize Pokémon in the vault in the same write as the bout that earned it', () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+    const game = saves.load()!;
+    saves.save({
+      ...game,
+      raidProgress: {
+        ...game.raidProgress,
+        dojo: { wins: 9, losses: 0, beaten: [], classId: 'ultra-ball', streak: ['bot:karpking', 'bot:xkitx', 'bot:oz-hikes'] },
+      },
+    });
+    const settled = saves.recordDojoBout('belt:hitoshi', true, new Date(2026, 10, 7, 12))!;
+    expect(settled.prizes).toEqual(['hitmonlee']);
+    const after = new SaveManager(storage).load()!;
+    const prize = after.stash.listPokemon().find((stored) => stored.pokemon.base.id === 'hitmonlee');
+    expect(prize?.pokemon.level).toBe(25);
+    expect(after.raidProgress.dojo?.prizes).toEqual(['hitmonlee']);
+  });
+
   /**
    * The saves hunt, finding 3: a bout writes its result only when it comes
    * back to the room, so a reload in the middle of a losing one used to write

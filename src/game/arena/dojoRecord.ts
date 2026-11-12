@@ -26,11 +26,16 @@ export interface DojoRecord {
   readonly streak?: readonly string[];
   /** AARON, the head of MASTER BALL class, beaten: the top of the ladder. */
   readonly topped?: boolean;
+  /** The dojo's prize Pokémon handed over, by species (`classes.ts`, `BlackBelt.prize`). */
+  readonly prizes?: readonly string[];
   /** This week's cup run and what it has paid (`cups.ts`). */
   readonly cup?: CupRecord;
   /** The day's rental run (`rentals.ts`). */
   readonly rental?: RentalRecord;
 }
+
+/** The species a dojo prize can be: what a save's record may say it was handed (`classes.ts` names who gives which). */
+export const DOJO_PRIZE_SPECIES = ['hitmonlee', 'hitmonchan'] as const;
 
 export const NO_DOJO_BOUTS: DojoRecord = { wins: 0, losses: 0, beaten: [] };
 
@@ -76,7 +81,10 @@ export function readDojoRecord(value: unknown): DojoRecord | undefined {
   if (typeof value !== 'object' || value === null) {
     return undefined;
   }
-  const { wins, losses, beaten, classId, streak, topped, cup, rental } = value as Record<string, unknown>;
+  const { wins, losses, beaten, classId, streak, topped, prizes, cup, rental } = value as Record<string, unknown>;
+  const prizesGiven = Array.isArray(prizes)
+    ? [...new Set(prizes.filter((id): id is string => typeof id === 'string' && (DOJO_PRIZE_SPECIES as readonly string[]).includes(id)))]
+    : [];
   const cupRecord = readCupRecord(cup);
   const rentalRecord = readRentalRecord(rental);
   const regularsOnly = ids(streak, MOST_STREAK).filter((id) => id.startsWith('bot:'));
@@ -87,6 +95,7 @@ export function readDojoRecord(value: unknown): DojoRecord | undefined {
     ...(isDojoClassId(classId) && classId !== 'poke-ball' ? { classId } : {}),
     ...(regularsOnly.length > 0 ? { streak: regularsOnly } : {}),
     ...(topped === true ? { topped: true } : {}),
+    ...(prizesGiven.length > 0 ? { prizes: prizesGiven } : {}),
     ...(cupRecord ? { cup: cupRecord } : {}),
     ...(rentalRecord ? { rental: rentalRecord } : {}),
   };

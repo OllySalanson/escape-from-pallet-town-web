@@ -1,6 +1,6 @@
 import { afterBout, readBouts, type BoutRecord } from '../base/boutLadder';
 import { readDojoRecord, type DojoRecord } from '../arena/dojoRecord';
-import { settleDojoBout, type DojoSettlement } from '../arena/classes';
+import { DOJO_PRIZE_LEVEL, settleDojoBout, type DojoSettlement } from '../arena/classes';
 import { settleRunBout, type DojoRun, type RunSettlement } from '../arena/arenaRuns';
 import { gymOf } from '../world/valeQuarters';
 import { readBoutUnderWay, type BoutUnderWay } from '../arena/boutUnderWay';
@@ -1288,8 +1288,15 @@ export class SaveManager {
     if (!game || !comesBackTo(game, boutId)) {
       return null;
     }
-    // The tally, the class ladder and the tickets, in one write (`arena/classes.ts`).
+    // The tally, the class ladder, the tickets and any of the dojo's prize
+    // Pokémon, in one write (`arena/classes.ts`).
     const settled = settleDojoBout(game.raidProgress.dojo, game.raidProgress.gameCorner ?? NO_GAME_CORNER, opponent, won, now);
+    for (const speciesId of settled.prizes) {
+      const species = getSpeciesById(speciesId);
+      if (species) {
+        game.stash.addPokemon(new Pokemon(species, DOJO_PRIZE_LEVEL));
+      }
+    }
     const next = { ...game, raidProgress: withoutBout({ ...game.raidProgress, dojo: settled.record, gameCorner: settled.gameCorner }) };
     return this.save(next) ? settled : null;
   }

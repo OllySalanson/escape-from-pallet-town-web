@@ -10,6 +10,7 @@ import { SECRETS } from '../world/secrets';
 import { POKEMON_GIFTS } from '../world/gifts';
 import { isMapOffered, retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
 import { TICKET_PRIZES } from '../minigames/tickets';
+import { BLACK_BELTS } from '../arena/classes';
 import { ERRANDS } from './errands';
 import { FOSSIL_KINDS } from './fossils';
 import { KANTO_POKEDEX_SIZE } from './pokedex';
@@ -89,6 +90,9 @@ describe('the Pokédex, on the maps a player is offered', () => {
       for (const pokemon of errand.reward.pokemon ?? []) add(pokemon.speciesId, `errand ${errand.id}`);
     }
     for (const starter of STARTER_SPECIES) add(starter.id, 'starter');
+    for (const head of BLACK_BELTS) {
+      if (head.prize) add(head.prize, `dojo prize from ${head.name}`);
+    }
 
     // Evolution, as far as it can be reached here: a level, or a stone (Bill
     // barters every stone, and Oak hands a set out at 50 and 125 kinds).
