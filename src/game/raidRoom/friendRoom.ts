@@ -102,8 +102,15 @@ export class FriendRoom {
   public fighting: 'wild' | 'hunter' | null = null;
   /** Who holds which piece of the room's loot (`roomLoot.ts`). */
   public readonly loot = new LootLedger();
-  /** Whether this raid has asked the database what was taken before it dropped in. */
-  private askedTaken = false;
+  /**
+   * Whether this raid has heard from the room what was taken before it dropped
+   * in. Until it has, nothing is claimed (`claimLoot`): the database answers a
+   * piece's taker `yours` for the room's whole hour, so a claim on a piece this
+   * player took in an earlier raid would be won again.
+   */
+  private takenHeard = false;
+  /** Whether the question of what was taken is on its way. */
+  private askingTaken = false;
   /** How the room is answering claims on its loot (`RoomStanding`). */
   private standingNow: RoomStanding = 'answering';
   /** Pieces stepped on that the room did not answer for, asked about again every `ROOM_RETRY_MS`. */
@@ -164,7 +171,8 @@ export class FriendRoom {
     this.hunters.clear();
     this.fighting = null;
     this.loot.clear();
-    this.askedTaken = false;
+    this.takenHeard = false;
+    this.askingTaken = false;
     this.standingNow = 'answering';
     this.waiting.clear();
     this.silentSince = null;
@@ -235,10 +243,14 @@ export class FriendRoom {
 
   /** Tells everybody else about the hunter. Returns whether anybody was there to tell. */
   public sayHunter(signal: HunterSignal): boolean {
-    if (signal.kind !== 'busy') {
-      this.hunters.said(signal.hunter, signal.from);
+    // Said as this browser believes it: a fight fled after somebody else beat
+    // the hunter says it beaten (`HunterBoard.asBeaten`).
+    const told: HunterSignal =
+      signal.kind === 'busy' || signal.kind === 'away' ? signal : { ...signal, hunter: this.hunters.asBeaten(signal.hunter) };
+    if (told.kind === 'hunter' || told.kind === 'after') {
+      this.hunters.said(told.hunter, told.from);
     }
-    return this.link?.signal(encodeHunterSignal(signal)) ?? false;
+    return this.link?.signal(encodeHunterSignal(told)) ?? false;
   }
 
   /**
@@ -260,12 +272,27 @@ export class FriendRoom {
    * player's the moment the room says so, wherever they have walked to; and a
    * room that goes `ROOM_GIVE_UP_MS` without answering is given up on as a
    * closed one is, so what they find from then on is their own. A claim answered
-   * twice is harmless: the database gives a piece to its first claimant and
-   * answers them `yours` again.
+   * twice is harmless within a raid: the database gives a piece to its first
+   * claimant and answers them `yours` again. Across raids it is not - that
+   * `yours` is for the room's whole hour - so nothing is claimed until the room
+   * has said what was taken before this raid dropped in (`askWhatWasTaken`),
+   * and a piece stepped on before then waits for it.
    */
   public claimLoot(lootId: string): void {
     const held = this.held;
-    if (!held || !this.loot.claim(lootId)) {
+    if (!held) {
+      return;
+    }
+    if (this.loot.holder(lootId) !== undefined) {
+      this.waiting.delete(lootId);
+      return;
+    }
+    if (!this.takenHeard && !this.findsAreMine) {
+      this.waiting.add(lootId);
+      this.askWhatWasTaken();
+      return;
+    }
+    if (!this.loot.claim(lootId)) {
       return;
     }
     this.waiting.delete(lootId);
@@ -273,8 +300,10 @@ export class FriendRoom {
       this.loot.answered(lootId, held.me, held.me);
       return;
     }
-    void answerWithin(this.service.takeLoot(held.code, roomLootKey(lootId)), ROOM_ANSWER_MS).then((claim) => {
-      if (this.held?.code !== held.code) {
+    void answerWithin(this.service.takeLoot(held.code, roomLootKey(lootId)), ROOM_ANSWER_MS, NO_ANSWER).then((claim) => {
+      // Asked of this hold: a room left and joined again under the same code
+      // is another raid, which an old answer must not reach.
+      if (this.held !== held) {
         return;
       }
       if (claim.outcome === 'unreachable') {
@@ -312,6 +341,14 @@ export class FriendRoom {
     }
     this.loot.answered(lootId, null, me);
     this.waiting.add(lootId);
+    this.roomSilent();
+  }
+
+  /** The room did not answer: it is not answering, asked again on `ROOM_RETRY_MS` and given up on after `ROOM_GIVE_UP_MS`. */
+  private roomSilent(): void {
+    if (this.findsAreMine) {
+      return;
+    }
     if (this.standingNow !== 'not-answering') {
       this.standingNow = 'not-answering';
       this.retryAt = this.now + ROOM_RETRY_MS;
@@ -359,24 +396,48 @@ export class FriendRoom {
       return;
     }
     this.retryAt = nowMs + ROOM_RETRY_MS;
+    if (!this.takenHeard) {
+      this.askWhatWasTaken();
+      return;
+    }
     for (const lootId of [...this.waiting]) {
       this.claimLoot(lootId);
     }
   }
 
-  /** Once a raid: what was taken before this player dropped in. */
+  /**
+   * Once a raid: what was taken before this player dropped in, by anybody -
+   * this player included, in an earlier raid in the room - is gone
+   * (`LootLedger.takenBefore`). Asked again while the room does not answer, and
+   * only once it has are the pieces stepped on meanwhile claimed.
+   */
   public askWhatWasTaken(): void {
     const held = this.held;
-    if (!held || this.askedTaken) {
+    if (!held || this.takenHeard || this.askingTaken) {
       return;
     }
-    this.askedTaken = true;
-    void this.service.lootTaken(held.code).then((taken) => {
-      if (this.held?.code === held.code) {
-        for (const [key, holder] of taken) {
-          this.loot.heard(gameLootId(key), holder);
-        }
+    this.askingTaken = true;
+    void answerWithin(this.service.lootTaken(held.code), ROOM_ANSWER_MS, null).then((taken) => {
+      if (this.held !== held) {
+        return;
       }
+      this.askingTaken = false;
+      if (taken === null) {
+        this.roomSilent();
+        return;
+      }
+      if (taken === 'closed') {
+        this.findOnMyOwn('closed', ROOM_CLOSED_LINE);
+        return;
+      }
+      this.takenHeard = true;
+      for (const [key, holder] of taken) {
+        this.loot.takenBefore(gameLootId(key), holder);
+      }
+      for (const lootId of [...this.waiting]) {
+        this.claimLoot(lootId);
+      }
+      this.answeredAgain();
     });
   }
 
@@ -567,18 +628,21 @@ function localName(): string | null {
   }
 }
 
-/** A claim's answer, or `unreachable` if none comes within `withinMs`: a request that hangs is no answer. */
-function answerWithin(claim: Promise<LootClaim>, withinMs: number): Promise<LootClaim> {
+/** A claim the room did not answer. */
+const NO_ANSWER: LootClaim = { outcome: 'unreachable' };
+
+/** The room's answer, or `none` if it does not come within `withinMs` or fails: a request that hangs is no answer. */
+function answerWithin<T, N>(asked: Promise<T>, withinMs: number, none: N): Promise<T | N> {
   return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve({ outcome: 'unreachable' }), withinMs);
-    claim.then(
+    const timer = setTimeout(() => resolve(none), withinMs);
+    asked.then(
       (answer) => {
         clearTimeout(timer);
         resolve(answer);
       },
       () => {
         clearTimeout(timer);
-        resolve({ outcome: 'unreachable' });
+        resolve(none);
       },
     );
   });

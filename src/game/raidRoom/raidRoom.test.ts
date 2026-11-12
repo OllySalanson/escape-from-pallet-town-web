@@ -183,8 +183,16 @@ class FakeService implements RaidRoomService {
     this.taken.set(lootId, ME);
     return Promise.resolve({ outcome: 'yours' });
   }
-  public lootTaken(): Promise<ReadonlyMap<string, string>> {
-    return Promise.resolve(this.taken);
+  public listsAsked = 0;
+  public lootTaken(): Promise<ReadonlyMap<string, string> | 'closed' | null> {
+    this.listsAsked += 1;
+    if (this.offline === 'hang') {
+      return new Promise(() => undefined);
+    }
+    if (this.offline === 'down') {
+      return Promise.resolve(null);
+    }
+    return Promise.resolve(this.closed ? 'closed' : new Map(this.taken));
   }
 }
 
@@ -263,6 +271,8 @@ describe('raiding with a friend', () => {
     room.tick(1_000, 16);
     service.taken.set('potion', ASH);
     room.loot.heard('potion', ASH);
+    room.askWhatWasTaken();
+    await settle();
     service.closed = true;
     room.claimLoot('poke-ball');
     await settle();
@@ -292,6 +302,8 @@ describe('raiding with a friend', () => {
     it('says so, asks again, and gives the piece the moment the room answers, wherever the player is', async () => {
       const { room, service } = await inRoom();
       room.tick(1_000, 16);
+      room.askWhatWasTaken();
+      await settle();
       service.offline = 'down';
       room.claimLoot('poke-ball');
       await settle();
@@ -322,6 +334,8 @@ describe('raiding with a friend', () => {
       room.tick(1_000, 16);
       service.taken.set('potion', ASH);
       room.loot.heard('potion', ASH);
+      room.askWhatWasTaken();
+      await settle();
       service.offline = 'down';
       room.claimLoot('poke-ball');
       await settle();
@@ -347,6 +361,8 @@ describe('raiding with a friend', () => {
     it('counts a request that never comes back as no answer', async () => {
       const { room, service } = await inRoom();
       // After joining: the room is joined on real time.
+      room.askWhatWasTaken();
+      await settle();
       vi.useFakeTimers();
       room.tick(1_000, 16);
       service.offline = 'hang';
@@ -362,6 +378,8 @@ describe('raiding with a friend', () => {
       const answered = service.takeLoot.bind(service);
       // One piece the room never answers for; everything else it does.
       service.takeLoot = (code, lootId) => (lootId === 'poke-ball' ? Promise.resolve({ outcome: 'unreachable' }) : answered(code, lootId));
+      room.askWhatWasTaken();
+      await settle();
       room.tick(1_000, 16);
       room.claimLoot('poke-ball');
       await settle();
@@ -382,9 +400,13 @@ describe('raiding with a friend', () => {
     // database and thrown away off the channel, so nothing in a friend raid
     // on the vale could be picked up, or seen to go.
     const { room, wire, service } = await inRoom();
+    // What was taken before this player dropped in, by the same key.
+    service.taken.set('greystone-vale:sspot-9', ASH);
     room.inRaid('route-1', { x: 1, y: 1 }, 'down');
     wire.present([[ME, mapPlace('route-1')], [ASH, mapPlace('route-1')]]);
+    room.askWhatWasTaken();
     await settle();
+    expect(room.loot.holder('greystone-vale/spot-9')).toBe(ASH);
     room.claimLoot('greystone-vale/spot-31');
     await settle();
     expect(service.asked).toEqual(['greystone-vale:sspot-31']);
@@ -392,11 +414,80 @@ describe('raiding with a friend', () => {
     expect(wire.signals).toContainEqual({ k: 't', u: ME, l: 'greystone-vale:sspot-31' });
     wire.signalFromFriend({ k: 't', u: ASH, l: 'greystone-vale:sprize-2' });
     expect(room.loot.holder('greystone-vale/prize-2')).toBe(ASH);
-    // And what was taken before this player dropped in, by the same key.
-    service.taken.set('greystone-vale:sspot-9', ASH);
-    room.askWhatWasTaken();
-    await settle();
-    expect(room.loot.holder('greystone-vale/spot-9')).toBe(ASH);
+  });
+
+  describe('a room joined again for another raid (the multiplayer bug hunt of 12 Nov 2026)', () => {
+    it('counts nothing this player took in an earlier raid in it as theirs to collect', async () => {
+      const { room, service } = await inRoom();
+      service.taken.set('cable-coil', ME);
+      service.taken.set('potion', ASH);
+      room.askWhatWasTaken();
+      await settle();
+      expect(room.loot.collects('cable-coil', ME)).toBe(false);
+      expect(room.loot.holder('potion')).toBe(ASH);
+      // Stepped on again, it is asked about nowhere: it is gone.
+      room.claimLoot('cable-coil');
+      await settle();
+      expect(service.asked).toEqual([]);
+      expect(room.loot.collects('cable-coil', ME)).toBe(false);
+      // And a piece nobody took is still this player's for the stepping.
+      room.claimLoot('poke-ball');
+      await settle();
+      expect(room.loot.collects('poke-ball', ME)).toBe(true);
+    });
+
+    it('claims nothing until the room has said what was taken, then claims what was stepped on', async () => {
+      const { room, service } = await inRoom();
+      service.taken.set('cable-coil', ME);
+      room.claimLoot('cable-coil');
+      room.claimLoot('poke-ball');
+      expect(service.asked).toEqual([]);
+      await settle();
+      expect(service.asked).toEqual(['poke-ball']);
+      expect(room.loot.collects('cable-coil', ME)).toBe(false);
+      expect(room.loot.collects('poke-ball', ME)).toBe(true);
+      expect(service.listsAsked).toBe(1);
+    });
+
+    it('asks again while the room does not say, and gives up on it as on a claim', async () => {
+      const { room, service } = await inRoom();
+      room.tick(1_000, 16);
+      service.offline = 'down';
+      room.claimLoot('poke-ball');
+      await settle();
+      expect(room.standing).toBe('not-answering');
+      expect(service.asked).toEqual([]);
+      service.offline = null;
+      room.tick(1_000 + ROOM_RETRY_MS, 16);
+      await settle();
+      expect(service.listsAsked).toBe(2);
+      expect(room.loot.collects('poke-ball', ME)).toBe(true);
+      expect(room.standing).toBe('answering');
+    });
+
+    it('takes a room that has closed as closed, from the list as from a claim', async () => {
+      const { room, service } = await inRoom();
+      room.tick(1_000, 16);
+      service.closed = true;
+      room.claimLoot('poke-ball');
+      await settle();
+      expect(room.standing).toBe('closed');
+      expect(room.loot.holder('poke-ball')).toBe(ME);
+    });
+
+    it('lets no answer asked in one raid reach the next, though the code is the same', async () => {
+      const { room, service } = await inRoom();
+      room.askWhatWasTaken();
+      await settle();
+      let answer: ((claim: LootClaim) => void) | null = null;
+      service.takeLoot = () => new Promise((resolve) => (answer = resolve));
+      room.claimLoot('poke-ball');
+      room.leave();
+      await room.open('route-1', 'ME');
+      answer!({ outcome: 'yours' });
+      await settle();
+      expect(room.loot.holder('poke-ball')).toBeUndefined();
+    });
   });
 
   it('leaves the channel and the room at once when its raid ends', async () => {

@@ -69,6 +69,8 @@ export class LootLedger {
   private readonly claiming = new Set<string>();
   private readonly lost = new Set<string>();
   private readonly tried = new Set<string>();
+  /** Pieces the room said were taken before this raid dropped in (`takenBefore`). */
+  private readonly before = new Set<string>();
 
   /** Who holds a piece, if anybody yet. */
   public holder(lootId: string): string | undefined {
@@ -108,6 +110,25 @@ export class LootLedger {
     }
   }
 
+  /**
+   * The room said this piece was taken before this raid dropped in. It is gone,
+   * whoever took it - this player too: the database answers a piece's taker
+   * `yours` for the room's whole hour, so a player who took it in an earlier
+   * raid in the room, carried it out (or lost it) and joined again was handed
+   * it back on the landing, every raid (the multiplayer bug hunt of 12 Nov 2026).
+   */
+  public takenBefore(lootId: string, holder: string): void {
+    if (!this.holders.has(lootId)) {
+      this.holders.set(lootId, holder);
+      this.before.add(lootId);
+    }
+  }
+
+  /** Whether this player picks a piece up in this raid: theirs by a claim answered since it dropped in. */
+  public collects(lootId: string, me: string): boolean {
+    return this.holders.get(lootId) === me && !this.before.has(lootId);
+  }
+
   /** Whether this browser claimed a piece and somebody else had it first. Asked once. */
   public lostTheRace(lootId: string): boolean {
     return this.lost.delete(lootId);
@@ -127,5 +148,6 @@ export class LootLedger {
     this.claiming.clear();
     this.lost.clear();
     this.tried.clear();
+    this.before.clear();
   }
 }
