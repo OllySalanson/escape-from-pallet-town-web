@@ -309,6 +309,8 @@ export function gullStrand(): MapcraftResult {
       // The heath's own: a pair of Doduo on the dry ground, a Psyduck up the
       // river, and the Krabby that have the cove to themselves.
       pokemon: [
+        // THE LIGHT THAT ANSWERS (`world/secrets.ts`): under the Old Light every raid, until it is had.
+        { x: 11, y: 9, species: 'starmie', level: 22, secret: 'the-light-that-answers' },
         { x: 14, y: 25, species: 'doduo', level: 9 },
         { x: 34, y: 5, species: 'psyduck', level: 8 },
         { x: 3, y: 42, species: 'krabby', level: 9 },
@@ -359,7 +361,7 @@ export function gullStrand(): MapcraftResult {
           lines: ['The Magikarp come up from the sea this far, and no further.'],
         },
         { x: 16, y: 10, name: 'Kite Flyer', look: 'little-girl', facing: 'down', lines: ['The wind off the sea takes my kite right over the cliffs!', 'That is four kites. There is a very well-off Krabby down there.'], beat: { everyMs: 1900, roam: [[1, 0], [2, 0]], glances: ['up'] }, calls: ['Up! Up! Oh, not again.'] },
-        { x: 11, y: 12, name: 'Old Bertie', look: 'old-man', facing: 'left', lines: ['Lit her every night for forty years, and nobody has told me to stop.', 'They did tell me. I did not catch it. My hearing is very selective.'], beat: { everyMs: 3900, glances: ['up', 'down'] }, calls: ['Forty years!'] },
+        { x: 11, y: 12, name: 'Old Bertie', look: 'old-man', facing: 'left', secret: 'the-light-that-answers', lines: ['Lit her every night for forty years, and nobody has told me to stop.', 'They did tell me. I did not catch it. My hearing is very selective.', 'That star winks at her, not at me. It wants its answer in the wrong colours. Walk something SHINY up to it.'], beat: { everyMs: 3900, glances: ['up', 'down'] }, calls: ['Forty years!'] },
         { x: 43, y: 7, name: 'Ropemaker', look: 'worker', facing: 'left', lines: ['Forty fathoms a day, walking backwards. I have not seen where I was going since I was twelve.', 'If that Mankey has the end of it again, I am not going to know until the far post.'], beat: { everyMs: 2000, roam: [[-1, 0], [-2, 0], [-3, 0], [-4, 0], [-5, 0], [-6, 0]], glances: ['right'] }, calls: ['Mind your back. Mine, I mean.'] },
         { x: 47, y: 7, name: 'Rope Boy', look: 'youngster', facing: 'left', lines: ['I turn the wheel. He walks away. Then I turn the wheel some more. He is nearly at Pewter.'], beat: { everyMs: 3200, glances: ['left'] }, calls: ['Turn, turn, turn.'] },
         { x: 52, y: 11, name: 'Sexton', look: 'gentleman', facing: 'right', lines: ['There is nobody under most of these. The sea keeps them. These are just where to come and shout.', 'I have got a good one for you, down in the far corner. He is not dead. He owes me for the stone.'], beat: { everyMs: 4300, glances: ['down', 'right'] }, calls: ['Mind the graves.'] },

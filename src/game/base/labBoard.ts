@@ -154,9 +154,14 @@ const SLIP_WIDTH = 10;
 const SLIP_HEIGHT = 11;
 const SLIP_GAP = 2;
 
-/** A rumour's scrap: smaller than a notice, torn off something else. */
-const SCRAP_WIDTH = 6;
-const SCRAP_HEIGHT = 6;
+/**
+ * A rumour's scrap: smaller than a notice, torn off something else. Five tall
+ * since the fifth wave of secrets made twenty-one rumours: at six the corner
+ * held four rows, twenty scraps, and a twenty-first took a third column of
+ * slips and left the notices two. At five it holds five rows, twenty-five.
+ */
+export const SCRAP_WIDTH = 6;
+export const SCRAP_HEIGHT = 5;
 const SCRAP_GAP = 1;
 
 /** How many slips fit across a board this wide, with no rumours pinned. */
@@ -275,8 +280,8 @@ export function boardPoster(game: Pick<RestoredGame, 'raidProgress' | 'stash'>, 
     fill(x + (index % 2 === 0 ? 3 : 1), y + SCRAP_HEIGHT - 1, 2, 1, CORK.cork);
     fill(x, y + SCRAP_HEIGHT - 1, 1, 1, CORK.scrapEdge);
     fill(x + SCRAP_WIDTH - 1, y + 1, 1, SCRAP_HEIGHT - 1, CORK.scrapEdge);
-    fill(x + 1, y + 3, SCRAP_WIDTH - 2, 1, CORK.scrapWriting);
-    fill(x + 1, y + 4, SCRAP_WIDTH - 3, 1, CORK.scrapWriting);
+    fill(x + 1, y + SCRAP_HEIGHT - 3, SCRAP_WIDTH - 2, 1, CORK.scrapWriting);
+    fill(x + 1, y + SCRAP_HEIGHT - 2, SCRAP_WIDTH - 3, 1, CORK.scrapWriting);
     fill(x + 2, y, 2, 2, CORK.rumourPin);
   });
   notices

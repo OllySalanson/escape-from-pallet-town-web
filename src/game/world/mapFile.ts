@@ -236,7 +236,9 @@ export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   maxBuildings: 1024,
   maxItemSpots: 200,
   maxPrizes: 8,
-  maxSecrets: 32,
+  // A nook and a clue or two for each of the vale's secrets, with room for the
+  // waves to come: seventeen secrets were 34 tagged things, over the 32 it was.
+  maxSecrets: 64,
   // Room for the vale to be filled a ring at a time out from Mill Square: it
   // was the thinnest map in the game, and bigger has to mean more places.
   maxPeople: 384,

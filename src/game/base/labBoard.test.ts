@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { baseGame } from './baseGames.testkit';
-import { BARE_BOARD_LINE, RUMOURS_PINNED_LINE, boardLines, boardNote, boardNotices, boardPoster, scrapSeats, slipSeats } from './labBoard';
+import { BARE_BOARD_LINE, RUMOURS_PINNED_LINE, SCRAP_HEIGHT, SCRAP_WIDTH, boardLines, boardNote, boardNotices, boardPoster, scrapSeats, slipSeats } from './labBoard';
 import { BOARD_TILES, OAK_BOARD, OAK_CHART_TABLE, OAK_WALL_MAP, buildRoom, roomNamed } from './rooms';
 import { RUMOURS } from '../world/rumours';
 import { SECRETS, rewardKey } from '../world/secrets';
@@ -135,12 +135,14 @@ describe("Oak's cork board", () => {
       const slipsEnd = Math.max(...slips.map((seat) => seat.x + 10));
       for (const scrap of scraps) {
         expect(scrap.x).toBeGreaterThan(slipsEnd);
-        expect(scrap.x + 6).toBeLessThanOrEqual(width - 2);
-        expect(scrap.y + 6).toBeLessThanOrEqual(height - 2);
+        expect(scrap.x + SCRAP_WIDTH).toBeLessThanOrEqual(width - 2);
+        expect(scrap.y + SCRAP_HEIGHT).toBeLessThanOrEqual(height - 2);
       }
       // And no scrap is pinned over another.
       scraps.forEach((a, i) =>
-        scraps.slice(i + 1).forEach((b) => expect(a.x + 6 <= b.x || b.x + 6 <= a.x || a.y + 6 <= b.y || b.y + 6 <= a.y).toBe(true)),
+        scraps.slice(i + 1).forEach((b) =>
+          expect(a.x + SCRAP_WIDTH <= b.x || b.x + SCRAP_WIDTH <= a.x || a.y + SCRAP_HEIGHT <= b.y || b.y + SCRAP_HEIGHT <= a.y).toBe(true),
+        ),
       );
       // Without rumours the slips keep the whole board, as they always had it,
       // and a dozen rumours take one column of it, as they always did.

@@ -67,6 +67,10 @@ export function conditionWords(condition: SecretCondition): string {
       return `the ${gymOf(condition.bossId)?.badge ?? condition.bossId} won`;
     case 'alone':
       return 'one Pokémon in the party, and no more';
+    case 'lead-shiny':
+      return 'a shiny Pokémon leading';
+    case 'stood-still':
+      return `standing still for ${Math.round(condition.forMs / 1_000)} seconds, no step and no turn`;
     case 'raid-clock':
       return `${formatElapsedClock(condition.fromMs)} to ${formatElapsedClock(condition.untilMs)} into the raid`;
     case 'either':
