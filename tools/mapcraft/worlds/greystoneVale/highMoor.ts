@@ -229,10 +229,12 @@ export function highMoor(): MapcraftResult {
         // The Clefairy that come to the Little Stones, whatever anybody says about the night.
         { x: 35, y: 11, species: 'clefairy', beat: { everyMs: 2700, roam: [[0, 1]] } },
         { x: 38, y: 10, species: 'clefairy', level: 9 },
-        // The eleventh stone: an Alakazam sitting in the middle of the Little
-        // Stones with its eyes shut, every raid until it is had, which opens
-        // them only for a raid gone on alone (`world/secrets.ts`).
-        { x: 36, y: 10, species: 'alakazam', level: 22, secret: 'the-eleventh-stone' },
+        // The eleventh stone: an Alakazam sitting inside the Little Stones with
+        // its eyes shut, every raid until it is had, which opens them only for a
+        // raid gone on alone (`world/secrets.ts`). On the ring's east side, by
+        // the notice: in the gap at its north it shut the ground inside the ring
+        // off from everything, which a raid found and `secrets.test.ts` now holds.
+        { x: 38, y: 11, species: 'alakazam', level: 22, secret: 'the-eleventh-stone' },
         // The fold, and the Lost Fold's old bull, who has been on his own a long time.
         { x: 21, y: 30, species: 'tauros', beat: { everyMs: 2600, glances: ['right'] } },
         { x: 47, y: 13, species: 'tauros', level: 13, beat: { everyMs: 3100, roam: [[1, 0]] } },

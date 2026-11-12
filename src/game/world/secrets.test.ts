@@ -173,6 +173,24 @@ describe("the vale's secrets", () => {
     },
   );
 
+  /**
+   * And a figure shuts nothing in by standing there. THE ELEVENTH STONE's
+   * Alakazam first sat in the one gap of the stone ring: it could still be
+   * walked up to from outside, so the rule above passed, and the four tiles
+   * inside the ring were ground nobody could reach - collision that does not
+   * match the art. Every tile of ground beside a secret's figure is part of
+   * somewhere, with the figure standing.
+   */
+  it.each(
+    SECRETS.filter((secret) => secret.nook === 'figure' && secret.wave >= 3).map((secret) => [secret.name, secret] as const),
+  )('%s shuts no ground in by standing where it stands', (_name, secret) => {
+    const standing = new Set(entities.map((entity) => `${entity.position.x},${entity.position.y}`));
+    for (const tile of nookTiles(secret).filter((each) => !standing.has(`${each.x},${each.y}`))) {
+      const room = stepDistances(map.collision, tile, standing).reduce((sum, row) => sum + row.filter((steps) => steps >= 0).length, 0);
+      expect(room, `${secret.name} shuts in the ground at ${tile.x},${tile.y}: ${room} tiles`).toBeGreaterThanOrEqual(40);
+    }
+  });
+
   it.each(SECRETS.map((secret) => [secret.name, secret] as const))(
     '%s has a clue within ten steps that hints at what it waits for',
     (_name, secret) => {

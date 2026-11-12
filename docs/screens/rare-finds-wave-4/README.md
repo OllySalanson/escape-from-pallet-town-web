@@ -23,13 +23,13 @@ of the commit before.
 
 ## THE ELEVENTH STONE
 
-`--insertion=greystone-vale-moor-top --level=12 --team=pidgey:8 --steps=walk:101:76,shot:stones,read:100:75:up`,
-then with the starter alone: `--level=30 --steps=read:100:75:up`.
+`--insertion=greystone-vale-moor-top --level=12 --team=pidgey:8 --steps=walk:100:75,shot:stones,read:101:75:right`,
+then with the starter alone: `--level=30 --steps=read:101:75:right`.
 
 | | |
 | --- | --- |
 | ![](01-little-stones-before.png) | Before: the Little Stones. The notice says there are nine and there were seven; Mother Stone has counted nine and eleven in one night. |
-| ![](02-little-stones-after.png) | After: one of them is not a stone. An Alakazam sits in the middle of the ring every raid until it is had. Mother Stone's new third line is the clue: "One of them is no stone. It only opens its eyes for somebody who comes up here ALONE: one POKéMON, no more." |
+| ![](02-little-stones-after.png) | After: one of them is not a stone. An Alakazam sits inside the ring, by the notice, every raid until it is had. It first sat in the ring's one gap, which shut the ground inside off from everything; the raid found that, and `secrets.test.ts` now holds that a secret's figure shuts nothing in. Mother Stone's new third line is the clue: "One of them is no stone. It only opens its eyes for somebody who comes up here ALONE: one POKéMON, no more." |
 | ![](03-eyes-shut.png) | Spoken to with two Pokémon in the party: "A stone among the stones, sitting very upright with its eyes shut. It is breathing." |
 | ![](04-the-stone-opens-its-eyes.png) | With the starter alone: "The stone opens its eyes. It has been counting you." |
 | ![](05-alakazam-lv22.png) | A wild Alakazam, Lv 22. |
