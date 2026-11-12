@@ -229,14 +229,14 @@ export function reedmere(): MapcraftResult {
   p.road([[54, 8], [54, 10]], { letter: '_' });
   lilies([51, 7], [53, 6], [57, 8], [56, 7]);
   stand('wet-rock', 55, 6, 'W');
-  stand('hut', 52, 13);
-  stand('barrels', 53, 15 + 1);
+  stand('hut', 52, 14);
+  stand('barrels', 58, 15);
   stand('mooring-post', 49, 14);
   p.flowers([48, 15], [55, 14]);
 
   // -- The frog pools and the old drainage pump ----------------------------------------
   stand('roundhouse', 53, 30);
-  stand('stump', 52, 35);
+  stand('stump', 57, 30);
   stand('crate-stack', 50, 31);
   stand('log', 48, 36);
   lilies([54, 23], [57, 22], [59, 25], [55, 25], [58, 24]);
@@ -246,7 +246,7 @@ export function reedmere(): MapcraftResult {
   // -- The staithe, where the mere meets the boardwalk ------------------------------------
   p.road([[STAITHE_END.x, STAITHE_END.y], [45, STAITHE_END.y]], { letter: '_' });
   stand('shed', 42, 22, '.');
-  stand('barrels', 44, 26);
+  stand('barrels', 44, 28);
   stand('crate-pair', 42, 32);
   stand('mooring-post', 42, 28);
   p.road([[30, 23], [30, 25]], { letter: '_' });
@@ -292,13 +292,15 @@ export function reedmere(): MapcraftResult {
   stand('shed', 44, 50);
   stand('log', 38, 52);
   stand('log', 34, 52);
-  stand('crate-stack', 44, 54);
+  stand('crate-stack', 46, 48);
   stand('stump', 41, 52);
 
   // -- The duck hide, on its pond --------------------------------------------------------------
   p.road([[12, 46], [12, 50]], { letter: '_' });
   p.building('shed', 8, 48, { lot: '.' });
-  stand('bench', 9, 53);
+  // A clearing under the hide for its bench, where Tess sits out of the way of its door.
+  p.meadow(6, 54, 6, 2);
+  stand('bench', 6, 52);
   stand('lapras-doll', 17, 51, 'W');
   lilies([20, 53], [15, 53], [20, 51], [16, 50]);
   stand('wet-rock', 21, 52, 'W');
@@ -319,16 +321,19 @@ export function reedmere(): MapcraftResult {
   stand('bench', 7, 28);
 
   // -- The bog oak, in the eastern reeds ---------------------------------------------------------------
-  stand('dead-stump', 54, 40);
+  stand('dead-stump', 52, 41);
   stand('log', 51, 39);
   stand('big-stump', 56, 38);
 
   // A way nobody signs, down from the reeds through the wood to Smugglers' Cove.
   p.trail([[20, 54], [20, 61]]);
+  // A bay beside it at the bottom, where the Coast Guard stands with his notice,
+  // so the way down past them stays two wide.
+  p.meadow(22, 58, 2, 6);
   p.meadow(22, 54, 4, 4);
-  stand('crate-stack', 24, 54);
-  stand('barrels', 22, 54);
-  p.bushes([25, 56]);
+  stand('crate-stack', 20, 54);
+  stand('barrels', 33, 48, '_');
+  p.bushes([25, 57]);
 
   const file = districtFile(GREYSTONE_VALE, 'reedmere', p, {
     dropIns: [],
@@ -381,26 +386,26 @@ export function reedmere(): MapcraftResult {
         { x: 8, y: 14, species: 'oddish' },
         { x: 40, y: 18, species: 'venonat', beat: { everyMs: 2100, roam: [[0, 1]] } },
         // Pond Boy's Poliwag, and the Drain's Slowpoke, who has not moved since the Drain was dug.
-        { x: 56, y: 11, species: 'poliwag', beat: { everyMs: 1900, roam: [[-1, 0]] } },
+        { x: 56, y: 11, species: 'poliwag', beat: { everyMs: 1900, roam: [[1, 0]] } },
         { x: 49, y: 16, species: 'slowpoke' },
         // The frog pools.
         { x: 52, y: 28, species: 'poliwag', level: 8, beat: { everyMs: 1400, roam: [[0, 1]] } },
         { x: 58, y: 27, species: 'poliwag', beat: { everyMs: 1700, roam: [[-1, 0], [-1, 1]] } },
         { x: 55, y: 28, species: 'poliwhirl', level: 11 },
         // The staithe's cat, who knows what is in the barrels.
-        { x: 42, y: 27, species: 'meowth', beat: { everyMs: 1800, roam: [[1, 0]] } },
+        { x: 43, y: 28, species: 'meowth', beat: { everyMs: 1800, glances: ['right', 'down'] } },
         // Duck Island: the ducks.
         { x: 24, y: 28, species: 'psyduck', beat: { everyMs: 2300, roam: [[0, 1], [1, 1]] } },
         { x: 26, y: 28, species: 'psyduck', beat: { everyMs: 2900, roam: [[0, 1]] } },
         { x: 26, y: 33, species: 'golduck', level: 14 },
         // The Farfetch'd on the deck that everybody in Mere End pretends not to feed.
-        { x: 35, y: 50 + 1 - 1, species: 'farfetchd', level: 9, beat: { everyMs: 2200, roam: [[1, 0], [2, 0]] } },
+        { x: 37, y: 49, species: 'farfetchd', level: 9, beat: { everyMs: 2200, roam: [[1, 0]] } },
         { x: 28, y: 48, species: 'poliwag', level: 8 },
         // The turbary's Diglett, doing the work for free.
-        { x: 40, y: 54, species: 'diglett', beat: { everyMs: 1300, roam: [[-1, 0], [-2, 0]] } },
-        { x: 38, y: 53, species: 'diglett', level: 8, beat: { everyMs: 1600, roam: [[1, 0]] } },
+        { x: 40, y: 53, species: 'diglett', beat: { everyMs: 1300, roam: [[-1, 0]] } },
+        { x: 35, y: 53, species: 'diglett', level: 8, beat: { everyMs: 1600, roam: [[1, 0]] } },
         // The real ducks on Tess's pond: a Farfetch'd on the bank, and she has counted.
-        { x: 22, y: 49, species: 'farfetchd', beat: { everyMs: 2600, roam: [[1, 0]] } },
+        { x: 15, y: 50, species: 'farfetchd', beat: { everyMs: 2600, glances: ['left', 'down'] } },
         // The withy beds' caterpillars.
         { x: 4, y: 40, species: 'metapod' },
         { x: 10, y: 39, species: 'caterpie', level: 7, beat: { everyMs: 2400, roam: [[0, 1]] } },
@@ -409,34 +414,34 @@ export function reedmere(): MapcraftResult {
       ],
       landmarks: [
         { x: 41, y: 31, name: 'The Mere', kind: 'jetty' },
-        { x: 14, y: 49, name: 'Duck Hide', kind: 'hide' },
+        { x: 14, y: 51, name: 'Duck Hide', kind: 'hide' },
         { x: 52, y: 37, name: 'Drainage Pump', kind: 'shed' },
       ],
       signs: [
         // THE COAST's notice, at the bar Misty holds (`world/valeQuarters.ts`):
         // what the quarter does to a team, said before it costs one.
-        { x: 21, y: 60, lines: ['THE COAST. Past the sandbags at the end of this trail.', 'Rain all day, every day, and in the rain the swimmers move first.', 'Water hits harder and Fire hardly at all. Held by MISTY: CASCADE BADGE.'] },
+        { x: 22, y: 58, lines: ['THE COAST. Past the sandbags at the end of this trail.', 'Rain all day, every day, and in the rain the swimmers move first.', 'Water hits harder and Fire hardly at all. Held by MISTY: CASCADE BADGE.'] },
         { x: 42, y: 8, lines: ['REEDMERE', 'The boardwalk goes round. The reeds go through.'] },
         { x: 21, y: 15, lines: ['THE HUMMOCK', 'The only dry ground for a mile. Please leave some of it for the next person.'] },
         { x: 48, y: 11, lines: ['PRIVATE POND', 'Not on any map. Keep out. This means you. Signed, the Owner (age nine).'] },
         { x: 48, y: 17, lines: ['THE LONG DRAIN', 'Dug by hand in the old days, by people who had been told it would help.'] },
         { x: 48, y: 33, lines: ['THE OLD PUMP', 'It drained this whole fen once. Then it rained.'] },
-        { x: 44, y: 29, lines: ['THE MERE PUNT', 'Out to Duck Island and back. No charge. Mind the ducks. They do not mind you.'] },
+        { x: 43, y: 29, lines: ['THE MERE PUNT', 'Out to Duck Island and back. No charge. Mind the ducks. They do not mind you.'] },
         { x: 34, y: 49 + 1, lines: ['EELS', 'Smoked, jellied, or looked at. Ask at the stall.'] },
-        { x: 30, y: 48, lines: ['MERE END', 'East: the staithe, the old pump and Gull Strand. West: the duck hide and the Mere Path.'] },
+        { x: 29, y: 48, lines: ['MERE END', 'East: the staithe, the old pump and Gull Strand. West: the duck hide and the Mere Path.'] },
         { x: 37, y: 43, lines: ['THE DROWNED DUCK', 'Beds. Ale. No, you may not see the duck.'] },
-        { x: 15, y: 48, lines: ['THE DUCK HIDE', 'QUIET PLEASE. The ones on the bank are real. The one in the water is a doll. Tess knows.'] },
+        { x: 11, y: 54, lines: ['THE DUCK HIDE', 'QUIET PLEASE. The ones on the bank are real. The one in the water is a doll. Tess knows.'] },
         { x: 11, y: 36, lines: ['THE WITHY BEDS', 'Cut every seven years. Do not lean on them.'] },
         { x: 10, y: 25, lines: ['THE MERE PATH', 'West, out of the marsh. Last dry bed for a long way. Ask at the house.'] },
         { x: 19, y: 55, lines: ['NOTHING DOWN THIS PATH', 'Nothing at all. Certainly not a cove. Go back.'] },
-        { x: 40, y: 50, lines: ['THE TURBARY', 'Peat for the whole marsh. Cut it, stack it, turn it, swear at it.'] },
+        { x: 44, y: 49, lines: ['THE TURBARY', 'Peat for the whole marsh. Cut it, stack it, turn it, swear at it.'] },
       ],
       people: [
         // The guard at Misty's bar, as FireRed's Route 23 keeps its badge gates:
         // he says which badge opens it, and stands to one side of the way.
-        { x: 21, y: 62, name: 'Coast Guard', look: 'policeman', facing: 'left', lines: ['Past these sandbags is THE COAST, and MISTY keeps them. Only a trainer with her CASCADE BADGE goes through.', 'Beat her at Cerulean Gym on the strand and they come down for good. Mind the rain past them. It never stops.'] },
+        { x: 22, y: 60, name: 'Coast Guard', look: 'policeman', facing: 'left', lines: ['Past these sandbags is THE COAST, and MISTY keeps them. Only a trainer with her CASCADE BADGE goes through.', 'Beat her at Cerulean Gym on the strand and they come down for good. Mind the rain past them. It never stops.'] },
         // -- The reed yard and the road down ------------------------------------------
-        { x: 37, y: 8, name: 'Thatcher', look: 'straw-hat', facing: 'up', lines: ['Half of Millbrook sleeps under this marsh. It keeps the rain off, mostly.', 'If you are in a hurry, do not wade. It only feels quicker.'], beat: { everyMs: 3100, roam: [[-1, 0], [-2, 0]], glances: ['left'] }, calls: ['Mind the bundles!'] },
+        { x: 37, y: 7, name: 'Thatcher', look: 'straw-hat', facing: 'up', lines: ['Half of Millbrook sleeps under this marsh. It keeps the rain off, mostly.', 'If you are in a hurry, do not wade. It only feels quicker.'], beat: { everyMs: 3100, glances: ['left', 'down'] }, calls: ['Mind the bundles!'] },
         { x: 44, y: 14, name: 'Reed Boy', look: 'boy', facing: 'right', lines: ['I carry the bundles up to the yard. Then they give me more bundles.', 'That is the whole job. I thought there would be more to it.'], beat: { everyMs: 2800, roam: [[0, 1]], glances: ['up', 'down'] }, calls: ['Coming through!'] },
         // -- The Hummock and the north bank --------------------------------------------
         { x: 25, y: 12, name: 'Wildfowler', look: 'camper', facing: 'right', lines: ['Sit very still on this bank and the whole marsh comes to you.', 'Then a raider wades through and it all goes home again.'], beat: { everyMs: 3900, glances: ['down', 'left'] }, calls: ['Shh. Sit still.'] },
@@ -444,16 +449,16 @@ export function reedmere(): MapcraftResult {
         { x: 30, y: 26, name: 'Mere Fisher', look: 'fisherman', facing: 'down', lines: ['Still as a plate, this mere. I have fished it forty years.', 'Nothing yet.'], calls: ['Any minute now.'] },
         // -- The pond and the drain ------------------------------------------------------
         { x: 52, y: 11, name: 'Pond Boy', look: 'tuber-boy', facing: 'up', lines: ['This pond is not on the map. I checked. So it is mine.', 'You can look. Looking is free. Fishing is one Poké Ball. Nobody has paid yet.'], beat: { everyMs: 2500, roam: [[1, 0]], glances: ['left'] }, calls: ['My pond!', 'Oi! Private!'] },
-        { x: 55, y: 15, name: 'Lock Keeper', look: 'worker', facing: 'left', lines: ['I open the sluice when the water comes up and shut it when it goes down.', 'Nobody has told me what happens if I stop. I am not going to be the one who finds out.'], beat: { everyMs: 3300, roam: [[1, 0]], glances: ['up', 'down'] }, calls: ['Level is up a thumb.'] },
+        { x: 54, y: 15, name: 'Lock Keeper', look: 'worker', facing: 'left', lines: ['I open the sluice when the water comes up and shut it when it goes down.', 'Nobody has told me what happens if I stop. I am not going to be the one who finds out.'], beat: { everyMs: 3300, roam: [[1, 0]], glances: ['up', 'down'] }, calls: ['Level is up a thumb.'] },
         { x: 57, y: 17, name: 'Reed Cutter', look: 'straw-hat', facing: 'left', lines: ['We cut the reeds for thatch.', 'Wade through them if you like. The boardwalk is longer, but you stay dry.'], beat: { everyMs: 3700, glances: ['down'] } },
         // -- The frog pools and the pump -----------------------------------------------------
         { x: 49, y: 29, name: 'Tadpole Nan', look: 'little-girl', facing: 'right', lines: ['There are eleven frogs. I have named them all Gerald.', 'The big one is Big Gerald. He will fight you. He fights everybody.'], beat: { everyMs: 1900, roam: [[0, 1], [1, 1]], glances: ['up'] }, calls: ['Gerald! Not you, Gerald!'] },
         { x: 56, y: 33, name: 'Old Seth', look: 'old-man', facing: 'left', lines: ['My father ran this pump, and his father. It has not pumped anything since the rain.', 'I still oil it. You do not stop oiling a thing just because it has stopped.'], beat: { everyMs: 4100, roam: [[0, 1]], glances: ['left'] }, calls: ['She will go again one day.'] },
         // -- The staithe --------------------------------------------------------------------------
-        { x: 43, y: 31, name: 'Puntman', look: 'sailor', facing: 'left', lines: ['Punt goes out to Duck Island and comes back. Walk to the end of the boards and press on.', 'No, there is nothing out there. Nothing you can eat. There is a hermit. He is not for eating either.'], beat: { everyMs: 3000, glances: ['up', 'left'] }, calls: ['Punt! Duck Island!', 'Mind the pole.'] },
-        { x: 44, y: 28, name: 'Eel Wife', look: 'old-woman', facing: 'down', lines: ['Eels go up the drain at night. You can hear them, if you have nothing else to do.', 'I have nothing else to do.'], beat: { everyMs: 3500, glances: ['down'] } },
+        { x: 48, y: 30, name: 'Puntman', look: 'sailor', facing: 'left', lines: ['Punt goes out to Duck Island and comes back. Walk to the end of the boards and press on.', 'No, there is nothing out there. Nothing you can eat. There is a hermit. He is not for eating either.'], beat: { everyMs: 3000, glances: ['up', 'left'] }, calls: ['Punt! Duck Island!', 'Mind the pole.'] },
+        { x: 48, y: 26, name: 'Eel Wife', look: 'old-woman', facing: 'down', lines: ['Eels go up the drain at night. You can hear them, if you have nothing else to do.', 'I have nothing else to do.'], beat: { everyMs: 3500, glances: ['down'] } },
         // -- Duck Island ------------------------------------------------------------------------------
-        { x: 25, y: 31, name: 'Hermit Moss', look: 'bald-man', facing: 'right', lines: ['I came out here to be alone with my thoughts.', 'There were not as many as I had hoped.', 'Something is dug in under my good tree. It came with the island. I never looked.'], beat: { everyMs: 4700, glances: ['up', 'right'] }, calls: ['Oh. A person. Oh dear.'] },
+        { x: 25, y: 32, name: 'Hermit Moss', look: 'bald-man', facing: 'right', lines: ['I came out here to be alone with my thoughts.', 'There were not as many as I had hoped.', 'Something is dug in under my good tree. It came with the island. I never looked.'], beat: { everyMs: 4700, glances: ['up', 'right'] }, calls: ['Oh. A person. Oh dear.'] },
         // -- Mere End -----------------------------------------------------------------------------------
         { x: 41, y: 47, name: 'Eel Seller', look: 'heavy-man', facing: 'left', lines: ['Smoked is the good one. Jellied is the one I have got most of.', 'If you have a rod, the bay is full of them. Please do not. It is my living.'], beat: { everyMs: 2600, roam: [[0, -1]], glances: ['left', 'down'] }, calls: ['Eels! Lovely eels!', 'Jellied! Who wants jellied?'] },
         { x: 32, y: 49, name: 'Mrs Pike', look: 'woman', facing: 'up', lines: ['Last winter the bay came up through my floor and took the good chair.', 'We got it back. It was in the Drowned Duck. They said it floated in.'], beat: { everyMs: 3400, roam: [[-1, 0]], glances: ['up'] }, calls: ['Too dear, that is.'] },
@@ -461,20 +466,20 @@ export function reedmere(): MapcraftResult {
         { x: 26, y: 48, name: 'Netmaker', look: 'man', facing: 'up', lines: ['Every net in the vale came out of that loft, and every hole in them came out of the Krabby.', 'Down the coast they pay double. Down the coast they have Krabby.'], beat: { everyMs: 3200, roam: [[1, 0]], glances: ['up'] }, calls: ['Good net, that.'] },
         { x: 19, y: 41, name: 'Smoker', look: 'bald-man', facing: 'down', lines: ['You smell of smoke now. You will always smell of smoke now.', 'It is a good smell. You will not get a table anywhere, mind.'], beat: { everyMs: 3800, glances: ['right'] }, calls: ['Mind the smoke.'] },
         // -- The turbary --------------------------------------------------------------------------------------
-        { x: 42, y: 54 + 1, name: 'Turf Cutter', look: 'hiker', facing: 'left', lines: ['Peat is just a marsh that gave up. Cut it, dry it, burn it.', 'It takes a thousand years to grow a spade of it. I do about four hundred a day.'], beat: { everyMs: 2900, glances: ['left', 'down'] }, calls: ['Mind the strips.'] },
-        { x: 35, y: 55, name: 'Turf Boy', look: 'youngster', facing: 'up', lines: ['Dad says those Diglett do more than I do.', 'They do. They are very good. They do not take a wage. I have spoken to them about it.'], beat: { everyMs: 2200, roam: [[1, 0]], glances: ['up'] }, calls: ['Diglett! Other way!'] },
+        { x: 45, y: 55, name: 'Turf Cutter', look: 'hiker', facing: 'left', lines: ['Peat is just a marsh that gave up. Cut it, dry it, burn it.', 'It takes a thousand years to grow a spade of it. I do about four hundred a day.'], beat: { everyMs: 2900, glances: ['left', 'down'] }, calls: ['Mind the strips.'] },
+        { x: 37, y: 53, name: 'Turf Boy', look: 'youngster', facing: 'down', lines: ['Dad says those Diglett do more than I do.', 'They do. They are very good. They do not take a wage. I have spoken to them about it.'], beat: { everyMs: 2200, glances: ['left', 'right'] }, calls: ['Diglett! Other way!'] },
         // -- The duck hide -------------------------------------------------------------------------------------
-        { x: 12, y: 53, name: 'Birder Tess', look: 'old-woman', facing: 'right', lines: ['Hush. The ducks only come in when nobody wades the reeds.', 'One of those has not moved in a week. I am beginning to think it is a Lapras doll.'], beat: { everyMs: 4500, glances: ['down'] }, calls: ['Hush!', 'Quiet, please!'] },
+        { x: 14, y: 54, name: 'Birder Tess', look: 'old-woman', facing: 'right', lines: ['Hush. The ducks only come in when nobody wades the reeds.', 'One of those has not moved in a week. I am beginning to think it is a Lapras doll.'], beat: { everyMs: 4500, glances: ['down'] }, calls: ['Hush!', 'Quiet, please!'] },
         // -- The withy beds ---------------------------------------------------------------------------------------
         { x: 10, y: 42, name: 'Mrs Osier', look: 'woman', facing: 'left', lines: ['Baskets for the eels, baskets for the peat, baskets to put the other baskets in.', 'My sister at The Crossing says hers are better. They are not. Do not tell her I said so.'], beat: { everyMs: 3100, roam: [[0, -1]], glances: ['left'] }, calls: ['Baskets! Good baskets!'] },
         // -- The Last House --------------------------------------------------------------------------------------------
         { x: 10, y: 28, name: 'Old Reeve', look: 'gentleman', facing: 'left', lines: ['I collected the toll on the Mere Path for thirty years. There is no toll now.', 'I still sit here. Somebody ought to.', 'West, and do not stop for anybody on the path. Nobody good is out there.'], beat: { everyMs: 4200, glances: ['right'] }, calls: ['Toll is nothing. Mind it.'] },
         // -- The way nobody signs -----------------------------------------------------------------------------------------
         { x: 8, y: 11 + 2 - 1, name: 'Snipe Shooter', look: 'camper', facing: 'right', lines: ['You have walked all this way into the reeds to talk to me. I do not know what to do with that.', 'Nobody comes up here. That is what it is for.'], beat: { everyMs: 3900, glances: ['down'] }, calls: ['Oh. Hello. Why?'] },
-        { x: 22, y: 56, name: 'Birdwatcher', look: 'rocker', facing: 'left', lines: ['Birdwatching. That is what I am doing. With these crates. Which are for birds.', 'Cove? What cove? There is no cove down that path. Very rocky, the no cove.'], beat: { everyMs: 2700, glances: ['up', 'down'] }, calls: ['Lovely... bird, that.'] },
+        { x: 25, y: 56, name: 'Birdwatcher', look: 'rocker', facing: 'left', lines: ['Birdwatching. That is what I am doing. With these crates. Which are for birds.', 'Cove? What cove? There is no cove down that path. Very rocky, the no cove.'], beat: { everyMs: 2700, glances: ['up', 'down'] }, calls: ['Lovely... bird, that.'] },
       ],
       trainers: [
-        { x: 45, y: 33, name: 'Netter Fen', team: 'netter', look: 'fisherman', facing: 'left', sight: 0, lines: ['The mere is mine at this hour. Fight for it!'] },
+        { x: 48, y: 31, name: 'Netter Fen', team: 'netter', look: 'fisherman', facing: 'left', sight: 0, lines: ['The mere is mine at this hour. Fight for it!'] },
         { x: 29, y: 16, name: 'Fowler Hugh', team: 'drover', look: 'camper', facing: 'left', sight: 0, lines: ['You have put up every bird on the marsh. You can pay for them.'] },
         { x: 57, y: 40, name: 'Bog Walker Rue', team: 'scout', look: 'picnicker', facing: 'left', sight: 0, lines: ['I walk the bog for my health. It is terrible for my health. Battle me!'] },
       ],
