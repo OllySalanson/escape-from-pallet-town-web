@@ -11,6 +11,9 @@ import {
   pixelWindow,
 } from '../ui/pixelUi';
 import { getItemById } from '../items/items';
+import { Pokemon } from '../pokemon/Pokemon';
+import { EVOLUTIONS } from '../pokemon/evolution';
+import { getSpeciesById } from '../pokemon/species';
 import { MAX_JUMPERS, type JumpType } from './pokemonJump';
 import { PRIZE_WINDOW_NOTE } from './gameCornerTalk';
 import {
@@ -163,10 +166,28 @@ function prizeAbout(prize: TicketPrize): string {
       // A berry's own description already says what it does held.
       return getItemById(prize.gives.itemId)?.description ?? '';
     case 'pokemon':
-      return `FireRed's own prize, at Lv ${prize.gives.level}. One to a trainer: it goes to your boxes.`;
+      return `FireRed's own prize, at Lv ${prize.gives.level}. One to a trainer: it goes to your boxes.${prizeMovesNote(
+        prize.gives.speciesId,
+        prize.gives.level,
+      )}`;
     case 'rumour':
       return 'A slip from THE RUMOUR MILL: two of where, when and what to bring for a secret in the vale. One a day.';
   }
+}
+
+/**
+ * Said of a prize Pokémon that knows no move at its level - ABRA, whose
+ * Teleport is a move the engine leaves out - so nobody buys it thinking it can
+ * fight: it Struggles until it grows into a form that learns something.
+ */
+export function prizeMovesNote(speciesId: string, level: number): string {
+  const species = getSpeciesById(speciesId);
+  if (!species || new Pokemon(species, level).moves.length > 0) return '';
+  const grows = EVOLUTIONS.find((rule) => rule.from === speciesId && rule.trigger.kind === 'level');
+  const into = grows ? getSpeciesById(grows.to) : undefined;
+  return grows?.trigger.kind === 'level' && into
+    ? ` It knows no move yet and Struggles until it grows into ${into.name.toUpperCase()} at Lv ${grows.trigger.level}.`
+    : ' It knows no move yet and Struggles.';
 }
 
 /** The icon a prize row stands by. */

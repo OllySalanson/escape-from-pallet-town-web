@@ -1590,6 +1590,32 @@ describe('a Pokemon with no PP left', () => {
     expect(said).toBeGreaterThanOrEqual(0);
     expect(shown.slice(said + 1).some((line) => line.startsWith('Your SQUIRTLE used STRUGGLE!'))).toBe(true);
   });
+
+  it('Struggles too when it knows no move at all, so a prize Abra never stalls an authored fight', () => {
+    // Teleport is a move the engine leaves out, so an Abra knows nothing until
+    // it is a Kadabra (`docs/pokemon/roster.md`); with no bench and no bag an
+    // authored trainer fight had no button that moved it on.
+    const abra = new Pokemon(getSpeciesById('abra')!, 9);
+    expect(abra.moves).toHaveLength(0);
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({
+      authoredTrainer: true,
+      trainerParty: [new Pokemon(PIDGEY, 5)],
+      party: new PokemonParty([abra]),
+    });
+
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    read(renderedTexts).find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 20 && (scene as unknown as { mode: string }).mode !== 'main'; step += 1) {
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    }
+
+    const shown = dialog.shownMessages;
+    const said = shown.indexOf('ABRA has no moves left!');
+    expect(said).toBeGreaterThanOrEqual(0);
+    expect(shown.slice(said + 1).some((line) => line.startsWith('Your ABRA used STRUGGLE!'))).toBe(true);
+  });
 });
 
 /**

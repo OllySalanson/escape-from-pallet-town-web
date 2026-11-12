@@ -511,8 +511,11 @@ const itemPrize = (itemId: string, shelf: PrizeShelf, tickets: number, limits: P
  * - **The SMOKE BALL**: saves clock, not a fight that matters - the hunter and
  *   trainers pay it no mind - and lost with its holder on a wipe.
  * - **The POKé FLUTE**: never used up, carried in the pack.
- * - **DRATINI and PORYGON**, once each: FireRed's own prize Pokémon. The
- *   reward is the species, not the level (`PRIZE_POKEMON_LEVEL`).
+ * - **ABRA, DRATINI and PORYGON**, once each: FireRed's own prize Pokémon.
+ *   The reward is the species, not the level. ABRA is FireRed's cheapest
+ *   prize, at FireRed's Lv 9, and the one way a save comes to own one (the
+ *   endgame bug hunt, 12 Nov 2026): it knows only Teleport there, a move the
+ *   engine leaves out, so it Struggles until it is a KADABRA at 16.
  * - **A rumour** from THE RUMOUR MILL, one a day: information that sends a
  *   player out on a raid.
  * - **Furniture** for THE BOLTHOLE, the bottomless sink. Raid prizes - the
@@ -527,6 +530,7 @@ export const TICKET_PRIZES: readonly TicketPrize[] = [
   itemPrize('tm18-rain-dance', 'raids', 600, { perWeek: 1 }),
   itemPrize('smoke-ball', 'raids', 600, { oneHeld: true }),
   itemPrize('poke-flute', 'raids', 800, { oneHeld: true }),
+  { id: 'abra', gives: { kind: 'pokemon', speciesId: 'abra', level: 9 }, shelf: 'pokemon', tickets: 200, once: true },
   { id: 'dratini', gives: { kind: 'pokemon', speciesId: 'dratini', level: 15 }, shelf: 'pokemon', tickets: 2500, once: true },
   { id: 'porygon', gives: { kind: 'pokemon', speciesId: 'porygon', level: 5 }, shelf: 'pokemon', tickets: 4000, once: true },
   { id: 'rumour', gives: { kind: 'rumour' }, shelf: 'rumours', tickets: 50, perDay: RUMOURS_A_DAY },

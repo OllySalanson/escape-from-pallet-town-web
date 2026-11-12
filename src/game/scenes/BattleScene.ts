@@ -2621,10 +2621,16 @@ export class BattleScene extends Phaser.Scene {
    * A Pokemon with no PP left in any move is not shown a list it cannot use:
    * FIGHT says "X has no moves left!" and books Struggle, as FireRed does
    * (`BattleScript_NoMovesLeft`). The line leads the turn it starts.
+   *
+   * So is one of the player's that knows no move at all - an Abra, whose
+   * Teleport is a move the engine leaves out (`docs/pokemon/roster.md`) - or
+   * a prize Abra alone in an authored fight had no button that moved it on.
+   * A wild one that knows nothing only stands there, a free catch, as a cocoon is.
    */
   private struggleIfStuck(): boolean {
     const chooser = this.chooser();
-    if (!chooser || lockedMove(this.state, 'player', this.choosingSlot) !== null || !mustStruggle(chooser)) {
+    const nothingToChoose = chooser !== null && (chooser.moves.length === 0 || mustStruggle(chooser));
+    if (!chooser || lockedMove(this.state, 'player', this.choosingSlot) !== null || !nothingToChoose) {
       return false;
     }
     this.struggleLines.push(`${chooser.pokemon.name.toUpperCase()} has no moves left!`);
