@@ -98,6 +98,12 @@ export interface PartySlotOptions {
   readonly holding?: boolean;
   /** The button's wiring and words: `data-*`, `aria-label`, `data-help`, already escaped. */
   readonly attributes: string;
+  /**
+   * A third line, for a slot that answers a question about itself: ABLE or NOT
+   * ABLE for a stone, the HP a Potion is for - FireRed's party when an item is
+   * being used.
+   */
+  readonly note?: string;
 }
 
 /**
@@ -112,10 +118,11 @@ export function pixelPartySlot(pokemon: PartySlotSubject, options: PartySlotOpti
     ...(options.lead ? ['is-lead'] : []),
     ...(options.holding ? ['is-holding'] : []),
     ...(pokemon.isFainted ? ['is-fainted'] : []),
+    ...(options.note === undefined ? [] : ['has-note']),
   ].join(' ');
   const held = getHeldItem(pokemon.heldItemId);
   const gear = held ? `<span class="px-slot-gear">${itemIcon(held.id, `holding ${held.displayName}`)}</span>` : '';
-  return `<button class="${classes}" ${options.attributes}>${pixelMonIcon(pokemon)}${gear}<span class="px-party-slot-words">${pixelPokemonName(pokemon)}<span class="px-party-slot-line"><span class="px-mon-level">Lv${pokemon.level}</span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp, PARTY_SLOT_BAR)}</span></span></button>`;
+  return `<button class="${classes}" ${options.attributes}>${pixelMonIcon(pokemon)}${gear}<span class="px-party-slot-words">${pixelPokemonName(pokemon)}<span class="px-party-slot-line"><span class="px-mon-level">Lv${pokemon.level}</span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp, PARTY_SLOT_BAR)}</span>${options.note === undefined ? '' : `<span class="px-tag">${escapeAttribute(options.note)}</span>`}</span></button>`;
 }
 
 /** A slot with nobody in it: a dim Poké Ball, so a party of three is three of six. */

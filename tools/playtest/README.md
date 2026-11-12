@@ -467,6 +467,10 @@ same for the raid's PARTY on a raid of five, a few hurt, one fainted and the lea
 holding gear: every slot by arrow key, ENTER and ENTER to swap the lead, TAB into
 the dossier to give and take gear, and ESC back to the raid.
 
+`packShots.mjs <test-mode build url> <dir> [--window=WxH] [--before]` does the
+same for the raid's PACK with ten kinds in it: every tile by arrow key, a Potion
+used on the hurt one, a stone's ABLE and NOT ABLE, and X to drop one.
+
 `menuShots.mjs <url> <dir> [--window=1920x950] [--raid] [--resize] [--scrollbars]`
 photographs every DOM screen at a real window size and prints, per scrolling
 pane, how many rows it holds and how many of them a player can actually see -

@@ -4933,6 +4933,78 @@ button {
   display: inline-block;
   vertical-align: top;
 }
+/* A slot that answers a question about itself (`note`): a third line under the
+   bar, ABLE for a stone or the HP a Potion is for. */
+.pixel-ui .px-party-slot.has-note {
+  height: calc(var(--u) * 46);
+}
+
+/* --- The raid PACK's pockets as a grid of things (`scenes/BagScene.ts`) -----
+   Each kind its icon at twice its size with how many on its corner, six to a
+   row in the side column as the boxes are, pocket after pocket; the name, the
+   pocket and the words are the pane under the grid, for the one under the cursor. */
+:where(.pixel-ui) .pack-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, calc(var(--u) * 36));
+  justify-content: center;
+  align-content: start;
+  scroll-snap-type: y mandatory;
+}
+.pixel-ui .pack-tile {
+  --edge: transparent;
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  width: calc(var(--u) * 36);
+  height: calc(var(--u) * 43);
+  padding-top: var(--u);
+  scroll-snap-align: start;
+  background:
+    linear-gradient(var(--edge), var(--edge)) var(--u) 0 / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) var(--u) 100% / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) 0 var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) 100% var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat;
+}
+.pixel-ui .pack-tile > .item-icon,
+.pixel-ui .pack-tile > .item-icon img {
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+}
+.pixel-ui .pack-tile:focus {
+  --edge: var(--red);
+  outline: none;
+  background-color: var(--cream-lit);
+}
+.pixel-ui .pack-tile.is-riding {
+  background-color: var(--gold-wash);
+}
+:where(.pixel-ui) .pack-tile-count {
+  /* Tucked up under the icon, whose last rows are blank: the count's capitals
+     start three and a half pixels down its line. */
+  margin-top: calc(var(--u) * -3);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+:where(.pixel-ui) .pack-detail {
+  display: grid;
+  gap: var(--u);
+}
+/* The pack's partner: its icon and its name on one line, and the sentence
+   across under both - beside a 32-pixel icon in the narrow column of an 800x600
+   sheet it broke a letter at a time. */
+:where(.pixel-ui) .px-row.pack-partner {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+:where(.pixel-ui) .px-row.pack-partner > .px-row-main {
+  display: contents;
+}
+:where(.pixel-ui) .px-row.pack-partner > .px-row-main > small {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
 /* The raid PARTY's dossier in its side column leads with the Pokémon itself -
    the portrait, beside its name and health, its types under them - then what
    can be done (its gear), then the numbers - in a side column, and in a sheet
