@@ -547,7 +547,7 @@ try {
   // area and pushes it once - `WorldScene.tryPushBoulder`, a floor switch
   // under it thrown by the game), `grab:itemId` (every piece of it this raid
   // laid), `shimmer` and `shimmer:in` (beside this raid's shimmering grass, and
-  // into it) and `shot:name` (a picture, with --shot). It is how the Lost Garden is
+  // into it; `shimmer:shiny` forces its shiny roll first, for a picture) and `shot:name` (a picture, with --shot). It is how the Lost Garden is
   // walked: in behind the falls, the Falls Cave's boulders onto their switches,
   // out under the garden's cliff, the Miracle Seed, and the Gardener's Gate.
   const keyFor = (dir) => `Arrow${dir[0].toUpperCase()}${dir.slice(1)}`;
@@ -646,7 +646,14 @@ try {
       // unless --fight, as every wild one is.
       if (!plan.shimmer) throw new Error('this raid has no shimmering grass');
       const { x, y } = plan.shimmer.position;
-      if (parts[0] === 'in') {
+      if (parts[0] === 'in' || parts[0] === 'shiny') {
+        // `shimmer:shiny` answers the one-in-fifty roll yes before stepping in,
+        // for a picture of what a player sees one raid in fifty; nothing else
+        // about the raid is touched, and the driver says it did it.
+        if (parts[0] === 'shiny') {
+          await page.evaluate(`${GAME}.scene.getScene('world').runSession.shinyRng = { next: () => 0 }`);
+          note('shimmer: the shiny roll was forced by the driver');
+        }
         await walkTo({ x, y }, `the shimmering grass at ${x},${y}`);
         note(`shimmer met: ${await page.evaluate(`${GAME}.scene.getScene('world')?.runSession?.shimmerMet === true || ${GAME}.scene.getScene('battle')?.runSession?.shimmerMet === true`)}`);
       } else {
