@@ -70,6 +70,8 @@ function hintsOf(condition: SecretCondition): readonly string[] {
       return ['CHART'];
     case 'badge':
       return [gymOf(condition.bossId)!.badge, gymOf(condition.bossId)!.leader.toUpperCase()];
+    case 'alone':
+      return ['ALONE'];
     case 'raid-clock':
       return ['LOW WATER'];
     case 'either':
@@ -171,6 +173,24 @@ describe("the vale's secrets", () => {
     },
   );
 
+  /**
+   * And a figure shuts nothing in by standing there. THE ELEVENTH STONE's
+   * Alakazam first sat in the one gap of the stone ring: it could still be
+   * walked up to from outside, so the rule above passed, and the four tiles
+   * inside the ring were ground nobody could reach - collision that does not
+   * match the art. Every tile of ground beside a secret's figure is part of
+   * somewhere, with the figure standing.
+   */
+  it.each(
+    SECRETS.filter((secret) => secret.nook === 'figure' && secret.wave >= 3).map((secret) => [secret.name, secret] as const),
+  )('%s shuts no ground in by standing where it stands', (_name, secret) => {
+    const standing = new Set(entities.map((entity) => `${entity.position.x},${entity.position.y}`));
+    for (const tile of nookTiles(secret).filter((each) => !standing.has(`${each.x},${each.y}`))) {
+      const room = stepDistances(map.collision, tile, standing).reduce((sum, row) => sum + row.filter((steps) => steps >= 0).length, 0);
+      expect(room, `${secret.name} shuts in the ground at ${tile.x},${tile.y}: ${room} tiles`).toBeGreaterThanOrEqual(40);
+    }
+  });
+
   it.each(SECRETS.map((secret) => [secret.name, secret] as const))(
     '%s has a clue within ten steps that hints at what it waits for',
     (_name, secret) => {
@@ -201,12 +221,13 @@ describe("the vale's secrets", () => {
   );
 
   it('can each be opened by some raid, and only by one meeting all its conditions', () => {
-    const base: RaidConditions = { hour: 'day', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [], badges: [], chartWhole: false };
+    const base: RaidConditions = { hour: 'day', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [], badges: [], chartWhole: false, partySize: 2 };
     expect(openSecrets(base)).toEqual([]);
     const everything: RaidConditions = {
       ...base,
-      leadTypes: ['Fighting', 'Ground', 'Psychic', 'Ghost'],
+      leadTypes: ['Fighting', 'Ground', 'Psychic', 'Ghost', 'Bug'],
       fieldMoves: ['rock-smash'],
+      partySize: 1,
       carried: ['old-rod', 'pickaxe', 'poke-flute', 'pecha-berry'],
       badges: [MISTY_BOSS_ID],
       chartWhole: true,
@@ -269,6 +290,20 @@ describe("the vale's secrets", () => {
     expect(held).toEqual(['chart-piece-1', 'the-cracked-crag/golem']);
   });
 
+  it('stands a figure met in its other colours in them: a tint for every shiny that is seen before it is fought', () => {
+    const seen = SECRETS.filter(
+      (secret) => secret.nook === 'figure' && secret.rewards.some((reward) => reward.kind === 'meet' && reward.shiny),
+    );
+    expect(seen.map((secret) => secret.id)).toEqual(['the-pink-one']);
+    for (const secret of seen) {
+      expect(secret.figureTint, secret.name).toBeDefined();
+    }
+    // And only those: a tint on an ordinary figure would promise colours the fight does not keep.
+    for (const secret of SECRETS.filter((each) => !seen.includes(each))) {
+      expect(secret.figureTint, secret.name).toBeUndefined();
+    }
+  });
+
   it('rewards are things worth finding: found-only finds and Pokemon the vale has nowhere else', () => {
     for (const secret of SECRETS) {
       for (const reward of secret.rewards) {
@@ -282,7 +317,7 @@ describe("the vale's secrets", () => {
         reward.kind === 'meet' ? [reward.speciesId] : reward.kind === 'gift' ? [reward.gift.speciesId] : [],
       ),
     );
-    expect(species.sort()).toEqual(['gengar', 'golem', 'gyarados', 'hypno', 'kabutops', 'lickitung', 'machamp', 'mr-mime', 'snorlax']);
+    expect(species.sort()).toEqual(['alakazam', 'butterfree', 'gengar', 'golem', 'gyarados', 'hypno', 'kabutops', 'lickitung', 'machamp', 'mr-mime', 'snorlax']);
   });
 
   describe('against the gyms', () => {
@@ -389,7 +424,7 @@ describe("the vale's secrets", () => {
 
   describe('in a raid', () => {
     const insertion = 'greystone-vale-moor-top';
-    const dusk: RaidConditions = { hour: 'dusk', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [], badges: [], chartWhole: false };
+    const dusk: RaidConditions = { hour: 'dusk', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [], badges: [], chartWhole: false, partySize: 2 };
     const afternoon: RaidConditions = { ...dusk, hour: 'day' };
     const known = { secretsFound: [], giftsReceived: [] };
     const plan = (seed: number, conditions?: RaidConditions, found: readonly string[] = []) =>
@@ -449,6 +484,31 @@ describe("the vale's secrets", () => {
       const had = plan(7, { ...dusk, leadTypes: [type] }, [`${id}/${speciesId}`]);
       expect(had.sleeping ?? []).not.toContain(id);
       expect(had.secrets.find((secret) => secret.id === id)?.reward).toBeUndefined();
+    });
+
+    it('sits the eleventh stone among the stones every raid until it is had, and opens its eyes only for a raid gone on alone', () => {
+      const stone = 'the-eleventh-stone';
+      expect(plan(7, dusk).sleeping).toContain(stone);
+      expect(plan(7, dusk).secrets.map((secret) => secret.id)).not.toContain(stone);
+      const alone = plan(7, { ...dusk, partySize: 1 });
+      expect(alone.sleeping ?? []).not.toContain(stone);
+      expect(alone.secrets.find((secret) => secret.id === stone)?.reward).toEqual({ kind: 'meet', speciesId: 'alakazam', level: 22 });
+      expect(plan(7, { ...dusk, partySize: 3 }).secrets.map((secret) => secret.id)).not.toContain(stone);
+      expect(plan(7, { ...dusk, partySize: 1 }, [`${stone}/alakazam`]).sleeping ?? []).not.toContain(stone);
+    });
+
+    it('brings the pink one down the ride only for a Bug in front, in its other colours', () => {
+      const pink = 'the-pink-one';
+      expect(plan(7, afternoon).secrets.map((secret) => secret.id)).not.toContain(pink);
+      expect(plan(7, { ...afternoon, leadTypes: ['Bug', 'Flying'] }).secrets.find((secret) => secret.id === pink)?.reward).toEqual({
+        kind: 'meet',
+        speciesId: 'butterfree',
+        level: 28,
+        shiny: true,
+      });
+      // An ordinary Butterfree in the vault is not the pink one found.
+      expect(secretsHeldBy({ itemCount: () => 0, pokemon: [{ speciesId: 'butterfree', shiny: false }] })).not.toContain(`${pink}/butterfree`);
+      expect(secretsHeldBy({ itemCount: () => 0, pokemon: [{ speciesId: 'butterfree', shiny: true }] })).toContain(`${pink}/butterfree`);
     });
 
     it('brings the sticky tongue out only for a berry packed as the raid set out, and the dream eater only after dark', () => {

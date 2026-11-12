@@ -32,6 +32,7 @@ import {
   type PartnerPlace,
   type PartnerSpeciesId,
 } from './partner';
+import { GLINT_OVER, ShinyGlints } from './shinyGlint';
 
 /**
  * The partner on screen: one Pokemon walking at the player's heel, drawn from
@@ -57,6 +58,8 @@ const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 /** Top of the partner's frame relative to its tile, so its feet land where the player's soles do. */
 export const PARTNER_SPRITE_Y_OFFSET = PLAYER_SPRITE_Y_OFFSET + CHARACTER_FEET_PIXEL_Y - PARTNER_FEET_PIXEL_Y;
 const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
+/** How far below the top of its picture the middle of a partner's head is, for a shiny one's glints (`shinyGlint.ts`). */
+export const PARTNER_GLINT_DROP = 7;
 /** The bubble's drawn size, tail and all. */
 export const BUBBLE_WIDTH = 11;
 export const BUBBLE_HEIGHT = 15;
@@ -140,6 +143,8 @@ export class PartnerFigure {
   /** Whether it greets with the hop and without the chirp. */
   private readonly quietGreeting: boolean;
   private veiled = false;
+  /** A shiny partner's glints, which is the one way its walking picture says so (`shinyGlint.ts`). */
+  private readonly glints: ShinyGlints | null;
   private readonly scene: Phaser.Scene;
   private readonly host: PartnerHost;
 
@@ -165,6 +170,7 @@ export class PartnerFigure {
       .setOrigin(0, 0)
       .setAlpha(this.appearMs === null ? 1 : 0)
       .setVisible(place.out);
+    this.glints = who.pokemon.shiny ? new ShinyGlints(scene) : null;
     this.draw();
   }
 
@@ -355,6 +361,7 @@ export class PartnerFigure {
     if (standing && this.placeValue.out) {
       this.standAbout(deltaMs, reading);
     }
+    this.glints?.update(deltaMs);
     this.draw();
   }
 
@@ -381,6 +388,7 @@ export class PartnerFigure {
 
   public destroy(): void {
     this.dropBubble();
+    this.glints?.destroy();
     this.sprite.destroy();
     this.host.playerHeadMark.setDepth(PLAYER_MARKER_DEPTH);
   }
@@ -484,6 +492,21 @@ export class PartnerFigure {
       alpha = 1 - progress;
     }
     this.sprite.setAlpha(this.veiled ? Math.min(alpha, PARTNER_VEILED_ALPHA) : alpha);
+    if (this.glints) {
+      // Round its head, wherever its picture is - mid-step, mid-hop, coming
+      // down out of the cloud - and as faint as it is, so one fading into a
+      // doorway does not leave its stars behind.
+      if (this.sprite.visible) {
+        this.glints.place(
+          x + TILE_SIZE,
+          y + FOLLOWER_ART[this.species].topPixelY + PARTNER_GLINT_DROP,
+          depth + GLINT_OVER,
+          this.sprite.alpha,
+        );
+      } else {
+        this.glints.hide();
+      }
+    }
     if (this.bubble) {
       const art = FOLLOWER_ART[this.species];
       let bubbleX = Math.round(at.x * TILE_SIZE + TILE_SIZE / 2 - 5);

@@ -14,6 +14,7 @@ import {
 } from '../world/pokemonFigures';
 import { TILE_SIZE } from '../worldMap';
 import { gardenStarts, nextGardenTile } from './homeGarden';
+import { GARDEN_GLINT_PLACE, ShinyGlints, glintHeadStart } from './shinyGlint';
 
 /** How often one of them thinks about stepping, as the Day-Care pen's does. */
 const STEP_EVERY_MS = 1800;
@@ -23,6 +24,8 @@ interface GardenFigure {
   readonly stored: StashedPokemon;
   readonly species: FigureSpeciesId;
   readonly sprite: Phaser.GameObjects.Sprite;
+  /** A shiny one's glints (`shinyGlint.ts`): its icon is in the ordinary colours, as every icon is. */
+  readonly glints: ShinyGlints | null;
   tile: GridPosition;
   nextStepMs: number;
 }
@@ -36,6 +39,8 @@ interface GardenFigure {
  */
 export class HomeGardenFigures {
   private readonly figures: GardenFigure[] = [];
+  /** How many shiny ones have come out, so each twinkles at a moment of its own (`glintHeadStart`). */
+  private shinyOut = 0;
   private readonly scene: Phaser.Scene;
   /** Whether a tile may be stood on at all: the map's ground, and nobody else's. */
   private readonly free: (tile: GridPosition) => boolean;
@@ -56,6 +61,7 @@ export class HomeGardenFigures {
     for (const figure of [...this.figures]) {
       if (wanted.has(figure.stored.id)) continue;
       figure.sprite.destroy();
+      figure.glints?.destroy();
       this.figures.splice(this.figures.indexOf(figure), 1);
     }
     const drawn = pokemon.filter(
@@ -87,7 +93,8 @@ export class HomeGardenFigures {
         // the garden is not six of the same picture in a row.
         .setFlipX(index % 2 === 1)
         .play(key);
-      this.figures.push({ stored, species, sprite, tile, nextStepMs: STEP_EVERY_MS + index * 400 });
+      const glints = stored.pokemon.shiny ? new ShinyGlints(this.scene, glintHeadStart(GARDEN_GLINT_PLACE + this.shinyOut++)) : null;
+      this.figures.push({ stored, species, sprite, glints, tile, nextStepMs: STEP_EVERY_MS + index * 400 });
     });
   }
 
@@ -123,6 +130,12 @@ export class HomeGardenFigures {
    * it waits while anything is being read.
    */
   public update(deltaMs: number, paused: boolean, occupied: (tile: GridPosition) => boolean): void {
+    // A shiny one glints whether or not anything is being read: it is what it
+    // looks like, not something it does.
+    for (const figure of this.figures) {
+      figure.glints?.update(deltaMs);
+      figure.glints?.placeOverIcon(figure.sprite, figure.species);
+    }
     if (paused) return;
     for (const figure of this.figures) {
       figure.nextStepMs -= deltaMs;
@@ -145,7 +158,10 @@ export class HomeGardenFigures {
   }
 
   public destroy(): void {
-    for (const figure of this.figures) figure.sprite.destroy();
+    for (const figure of this.figures) {
+      figure.sprite.destroy();
+      figure.glints?.destroy();
+    }
     this.figures.length = 0;
   }
 

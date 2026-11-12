@@ -363,6 +363,15 @@ export class HarbourLink<P extends string = HarbourPlace> {
     return [...this.members.keys()].filter((id) => id !== this.me && this.names.has(id)).length;
   }
 
+  /**
+   * Whether another player is standing anywhere in the harbour, as the channel
+   * last said - or null while this link is not on the channel, and so cannot
+   * tell. A player in a menu or out on a raid stands nowhere (`away`).
+   */
+  public standing(id: string): boolean | null {
+    return this.joined === 'yes' ? this.members.has(id) : null;
+  }
+
   /** Everybody else on the channel the database has a name for, and where each says they are. */
   public othersPresent(): ReadonlyMap<string, { readonly name: string; readonly place: P }> {
     const present = new Map<string, { readonly name: string; readonly place: P }>();

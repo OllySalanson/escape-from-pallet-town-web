@@ -17,12 +17,13 @@ import type { GridPosition } from '../movement/gridMovement';
 import { nightDoors, openedDoors } from '../world/gates';
 import { stepDistances } from '../world/mapStructure';
 import { districtEncounterTables } from '../world/localEncounters';
-import { districtsForMap, type DistrictArea } from '../world/districts';
+import { districtAt, districtsForMap, type DistrictArea } from '../world/districts';
 import { extractionPointsOn, type ExtractionPoint } from '../world/extractionPoints';
 import { withWorkedExitsOpen } from '../world/workedLandmarks';
 import { isLandingOpen } from '../world/valeQuarters';
 import { isStakeTrail, type WorldLoot } from '../world/loot';
-import { hasRaidStake, layStakeTrail, stakeGround, type StakeGround } from '../world/raidStake';
+import { hasRaidStake, layStakeTrail, stakeGround, stakeRoute, type StakeGround } from '../world/raidStake';
+import { hasShimmer, layShimmer, rarestOf, shimmerSeats, type Shimmer } from '../world/shimmer';
 import {
   createRunTrainerEncounters,
   trainersForContract,
@@ -37,7 +38,7 @@ import {
 } from '../objectives/contracts';
 import { applyHunterThreat, hunterThreatFor, type HunterThreat } from '../world/hunterThreat';
 import { FIRST_HUNTER_RIVAL, type HunterRivalId } from '../world/hunters';
-import { forTheHour } from '../world/nightRaids';
+import { districtTableFor, forTheHour } from '../world/nightRaids';
 import {
   nextReward,
   openSecrets,
@@ -621,6 +622,13 @@ export interface RunPlan {
    * Absent, nothing sleeps.
    */
   readonly sleeping?: readonly string[];
+  /**
+   * This raid's patch of shimmering grass (`world/shimmer.ts`): one tile of
+   * tall grass, a little off the walk to the stake, holding its place's rarest
+   * Pokemon. Absent on a map with no stake, where no grass stands in reach,
+   * and on a new save's first raid.
+   */
+  readonly shimmer?: Shimmer;
 }
 
 /** A secret open this raid, and what its nook holds next. */
@@ -876,12 +884,49 @@ export function generateRunPlan(
   const sleeping = secrets ? sleepingSecrets(secrets.conditions, secrets.known).filter((id) => secretsDrawnOn(insertion.mapId).has(id)) : [];
   layOpenSecrets(loot, insertionMap, open, createSeededRng((seed ^ SECRET_STREAM) >>> 0), isReachable);
 
+  // One patch of tall grass glitters, a little off the walk to the stake, and
+  // holds its place's rarest Pokemon (`world/shimmer.ts`). Last, on a stream
+  // of its own and on a tile nothing else has, so it moves no other roll.
+  const stake = (loot[insertion.mapId] ?? []).find((piece) => piece.id === `${insertion.mapId}/stake`);
+  const shimmer =
+    stakes && hasShimmer(insertion.mapId) && outfitting.firstRaid !== true
+      ? layShimmer(
+          shimmerSeats(
+            insertionMap,
+            stakes.steps,
+            new Set([
+              ...(reservedTiles.get(insertion.mapId) ?? []),
+              ...(loot[insertion.mapId] ?? []).map((piece) => `${piece.position.x},${piece.position.y}`),
+            ]),
+            stake ? stakeRoute(stakes, stake.position) : [],
+            // Everybody standing on the map, where they stand and where they walk,
+            // and this raid's trainers: the patch keeps clear of them all.
+            [
+              ...insertionMap.entities.flatMap((entity) => [entity.position, ...(entity.idle?.roam ?? [])]),
+              ...trainers.filter((trainer) => trainer.mapId === insertion.mapId).map((trainer) => trainer.position),
+            ],
+          ),
+          (tile) => {
+            // The place's own table as it is authored, which names its guest,
+            // and what its grass holds at this raid's hour.
+            const district = districtAt(insertion.mapId, tile);
+            const habitat = district?.encounters ?? insertionMap.encounters;
+            const rolled = district?.encounters
+              ? districtTableFor(district, night)
+              : insertionMap.encounters && forTheHour(insertionMap.encounters, night);
+            return rarestOf(rolled, habitat);
+          },
+          createSeededRng((seed ^ SHIMMER_STREAM) >>> 0),
+        )
+      : undefined;
+
   return {
     seed: seed >>> 0,
     insertion,
     ...(secrets ? { conditions: secrets.conditions } : {}),
     secrets: open,
     ...(sleeping.length > 0 ? { sleeping } : {}),
+    ...(shimmer ? { shimmer } : {}),
     ...(carriedContract ? { contract: carriedContract } : {}),
     defeatedBosses: [...defeatedBosses],
     completedContracts: [...completedContracts],
@@ -992,6 +1037,8 @@ export function withRoomLoot(
     ...plan.trainers.filter((trainer) => trainer.mapId === mapId).map((trainer) => tileKey(trainer.position)),
     ...plan.extractionPoints.filter((point) => point.mapId === mapId).map((point) => tileKey(point.position)),
     ...(plan.contract?.mapId === mapId ? plan.contract.markers.map((marker) => tileKey(marker.position)) : []),
+    // The shimmering grass is this player's own patch, and nothing lies in it.
+    ...(plan.shimmer ? [tileKey(plan.shimmer.position)] : []),
   ]);
   const own = (plan.loot[mapId] ?? []).filter((loot) => isRaidsOwnLoot(loot, isErrand));
   for (const loot of own) {
@@ -1015,6 +1062,8 @@ const ERRAND_STREAM = 0x85ebca6b;
 const STAKE_STREAM = 0x27d4eb2f;
 /** The secrets' own stream (`world/secrets.ts`): only what a spent nook holds is rolled on it. */
 const SECRET_STREAM = 0x165667b1;
+/** The shimmering grass's own (`world/shimmer.ts`). */
+const SHIMMER_STREAM = 0x3c6ef372;
 
 /** The secrets with a nook or a clue drawn on a map. */
 function secretsDrawnOn(mapId: WorldMapId): ReadonlySet<string | undefined> {

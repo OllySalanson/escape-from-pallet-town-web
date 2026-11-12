@@ -191,6 +191,11 @@ function stakeContents(rng: SeededRng, firstRaid: boolean): { readonly itemId: I
   return roll <= 8 ? { itemId: rng.pick(MATERIAL_IDS), quantity: 2 } : rng.pick(STAKE_SUPPLIES);
 }
 
+/** The sure walk from the landing to a tile of this ground, landing first: the trail the way mark leads along. */
+export function stakeRoute(ground: StakeGround, to: GridPosition): readonly GridPosition[] {
+  return walkTo(ground.steps, to);
+}
+
 /** The walk from the landing to `to`, landing first, a tile for each step. */
 function walkTo(steps: readonly Int32Array[], to: GridPosition): readonly GridPosition[] {
   const route: GridPosition[] = [to];

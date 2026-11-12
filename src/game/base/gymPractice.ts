@@ -2,7 +2,7 @@ import type { GridPosition } from '../movement/gridMovement';
 import { Move, Pokemon } from '../pokemon';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
 import { bossEncounters, createRunTrainerEncounters } from '../world/trainers';
-import { gymOf, leadersMet, type ValeGym } from '../world/valeQuarters';
+import { gymOf, leadersMet, valeGyms, type ValeGym } from '../world/valeQuarters';
 import { RIVAL_TILE } from './arenaBouts';
 
 /**
@@ -26,7 +26,11 @@ import { RIVAL_TILE } from './arenaBouts';
  * (`pokemon/battle/whatBeatYou.ts`). Phaser-free.
  */
 
-/** Where the leaders who will spar wait: along the far floor west of the rival, in gym order. */
+/**
+ * Where the leaders who will spar wait: along the far floor west and east of the
+ * rival, one tile each in gym order (`valeGyms`), so a leader's tile is theirs
+ * whoever else has been met.
+ */
 export const LEADER_TILES: readonly GridPosition[] = [
   { x: RIVAL_TILE.x - 5, y: RIVAL_TILE.y },
   { x: RIVAL_TILE.x - 9, y: RIVAL_TILE.y + 1 },
@@ -45,26 +49,43 @@ export interface PracticeLeader {
   readonly tile: GridPosition;
 }
 
+type LeadersProgress = { readonly defeatedBosses: readonly string[]; readonly gymsMet?: readonly string[] };
+
+/**
+ * Every leader this save has met, each on their own tile, whoever is the rival
+ * today. One place each, every day: a leader who stood on the rival's tile the
+ * day they were the rival stepped off it onto their own the moment a bout moved
+ * the ladder on, and whoever was up next took the tile they had stood on (the
+ * owner, 12 Nov 2026: "Misty and the green NPC had swapped places").
+ */
+function leadersAtHome(progress: LeadersProgress): readonly PracticeLeader[] {
+  const gyms = valeGyms();
+  return leadersMet(progress).flatMap((gym) => {
+    const tile = LEADER_TILES[gyms.findIndex((each) => each.bossId === gym.bossId)];
+    return tile ? [{ gym, tile }] : [];
+  });
+}
+
 /**
  * Who waits to spar, and where: every leader this save has met, except one who
- * is the rival on the far floor today - they offer it there instead, so nobody
- * stands in the hall twice.
+ * is the rival on the far floor today - they offer it as the rival instead, from
+ * their own tile (`rivalTile`), so nobody stands in the hall twice.
  */
-export function practiceLeaders(
-  progress: { readonly defeatedBosses: readonly string[]; readonly gymsMet?: readonly string[] },
-  rivalOnTheFloor: string | null,
-): readonly PracticeLeader[] {
-  return leadersMet(progress)
-    .slice(0, LEADER_TILES.length)
-    .map((gym, index) => ({ gym, tile: LEADER_TILES[index] }))
-    .filter((leader) => leader.gym.rival !== rivalOnTheFloor);
+export function practiceLeaders(progress: LeadersProgress, rivalOnTheFloor: string | null): readonly PracticeLeader[] {
+  return leadersAtHome(progress).filter((leader) => leader.gym.rival !== rivalOnTheFloor);
+}
+
+/**
+ * Where today's rival waits: on their own tile when they are a leader the player
+ * has met, so they never change places with anybody, and otherwise under the
+ * hall's own banner (`RIVAL_TILE`).
+ */
+export function rivalTile(progress: LeadersProgress, rival: string): GridPosition {
+  return leadersAtHome(progress).find((leader) => leader.gym.rival === rival)?.tile ?? RIVAL_TILE;
 }
 
 /** The leader a rival on the far floor is, if the player has met them at their gym. */
-export function leaderBehindRival(
-  progress: { readonly defeatedBosses: readonly string[]; readonly gymsMet?: readonly string[] },
-  rival: string,
-): ValeGym | undefined {
+export function leaderBehindRival(progress: LeadersProgress, rival: string): ValeGym | undefined {
   return leadersMet(progress).find((gym) => gym.rival === rival);
 }
 

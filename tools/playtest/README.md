@@ -252,6 +252,8 @@ the keeper's screen, backing out does not land in the room, or down off the mat
 does not leave it - `docs/screens/base-rooms/` is what it photographs.
 `firstHour2Fixes.mjs <url> <dir> [--only=marshal,noballs,fainted]` plays the second first-hour hunt's fixes - the marshal with no balls and Bill a stranger, the rim with no balls at base, the rim with everyone fainted - `docs/screens/first-hour-2-fixes/`.
 
+`hallPlaces.mjs <test-mode build url> <dir> <raids> <rival|leader> [--pixels] [--lose]` fights the rival or a gym leader on THE RAID ARENA's far floor from a fresh save that has met Misty, and logs where everybody stands before the fight, on the way back and once the ladder has moved on - nobody who stays may move (`docs/screens/arena-misty-swap/`).
+
 `arenaHall.mjs <url> <dir> [--tour] [--window=] [--still] [--port=]` gets ready for a raid in THE RAID ARENA's great hall as a player and goes over the fence: the marshal, the bench, the rack, the locker, the rim, the jump, the landing, and the cloud lifting on the way home - `docs/screens/arena-raid-start/`. `deploy.mjs` is how every other driver does the same: `walkIntoBase(page, 'raid-arena')` walks through the door and up to the bench, `openHallPanel(page, 'rack')` walks on to the next and opens it, and `jumpIn(page, { insertion, press, until, wait })` goes to the rim and over.
 
 `raidArena.mjs <url> <dir>` plays the one way into a raid: a fresh save walks to

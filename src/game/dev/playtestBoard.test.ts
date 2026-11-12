@@ -9,8 +9,8 @@ import { WORKSHOP_UPGRADES } from '../hub/workshop';
 import type { GridPosition } from '../movement/gridMovement';
 import { DOJO_COUNTER_TILES } from '../arena/dojoCounter';
 import { baseGame } from '../base/baseGames.testkit';
-import { RIVAL_TILE, rivalUp } from '../base/arenaBouts';
-import { practiceLeaders } from '../base/gymPractice';
+import { rivalUp } from '../base/arenaBouts';
+import { practiceLeaders, rivalTile } from '../base/gymPractice';
 import { raidsDeployed } from '../save/SaveManager';
 import { withEveryLeaderMet } from './playtestKit';
 import { PLAYTEST_BOARD_TILE, STAND_ROWS, placeLanding, playtestBoardRows, practiceSpot } from './playtestBoard';
@@ -95,9 +95,9 @@ describe("the board's rows", () => {
         expect(built.collision[at.y]?.[at.x], row.id).toBe(false);
         const step = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } }[row.action.facing];
         const faced = { x: at.x + step.x, y: at.y + step.y };
-        const facesWhat =
-          room === 'battle-arena' ? DOJO_COUNTER_TILES : practiceLeaders(progress, rivalUp(progress.bouts, raidsDeployed(progress)).id).map((leader) => leader.tile);
-        expect(facesWhat.some((tile) => same(tile, faced)) || same(faced, RIVAL_TILE), `${row.id} after ${raids} raids`).toBe(true);
+        const rival = rivalUp(progress.bouts, raidsDeployed(progress)).id;
+        const facesWhat = room === 'battle-arena' ? DOJO_COUNTER_TILES : [...practiceLeaders(progress, rival).map((leader) => leader.tile), rivalTile(progress, rival)];
+        expect(facesWhat.some((tile) => same(tile, faced)), `${row.id} after ${raids} raids`).toBe(true);
       }
       expect(rows.some((each) => each.id === row.id), row.id).toBe(true);
     }

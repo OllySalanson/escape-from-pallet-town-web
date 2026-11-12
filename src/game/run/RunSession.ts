@@ -128,6 +128,12 @@ export interface ActiveRunSession {
    */
   pokemonMet?: string[];
   /**
+   * Whether this raid's patch of shimmering grass has been stepped into
+   * (`world/shimmer.ts`): met once, win, lose or run, and the grass stops
+   * glittering - which the world, rebuilt after the fight, has to be told.
+   */
+  shimmerMet?: boolean;
+  /**
    * The berry trees this raid has picked, by entity id: bare until the next
    * raid, for the reason a met Pokemon stays met - the world is rebuilt after
    * every fight.

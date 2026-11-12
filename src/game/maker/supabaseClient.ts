@@ -167,6 +167,18 @@ export type GameDatabase = {
         Args: { owner: string };
         Returns: { readonly name: string; readonly snapshot: unknown }[];
       };
+      still_visiting: {
+        Args: { owner: string };
+        Returns: string;
+      };
+      leave_house: {
+        Args: { owner: string };
+        Returns: string;
+      };
+      show_out: {
+        Args: { visitor: string };
+        Returns: string;
+      };
       /** Raiding with a friend (`raidRoom/roomService.ts`). */
       open_raid_room: {
         Args: { map_id: string };

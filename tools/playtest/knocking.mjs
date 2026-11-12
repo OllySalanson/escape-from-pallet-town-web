@@ -11,6 +11,9 @@
 // the cursor on NOT NOW, and lets her in. AMY is shown OLLY's house - his name
 // on his things, and him standing in it - and he sees her there. She cannot
 // pick his furniture up (H says why), and down off the mat takes her home to her own step.
+// A visit has no time limit: let in again, OLLY faces her and sees her out, and
+// she is told so and walked home; let in once more, OLLY closes his tab, and she
+// is told he has left the harbour.
 // It fails loudly - a thrown error - when any of that does not happen, and
 // photographs both screens on the way.
 import { mkdirSync } from 'node:fs';
@@ -36,14 +39,14 @@ const state = `(() => { const b = ${BASE}; const live = b && b.sys.isActive() &&
     things: live && b.place.room ? b.place.room.things.map((t) => t.name) : [] }; })()`;
 
 /** The first step of the shortest walk to a goal, round doorways and the partner. */
-const firstStep = (goal) => `(() => { const b = ${BASE}; if (!b.sys.isActive() || !b.ready || b.leaving || b.targetTile) return null;
+const firstStep = (goal, throughPartner = false) => `(() => { const b = ${BASE}; if (!b.sys.isActive() || !b.ready || b.leaving || b.targetTile) return null;
   const g = ${JSON.stringify(goal)}; const c = b.collision, H = c.length, W = c[0].length, s = b.currentTile, idx = (x, y) => y * W + x;
   if (s.x === g.x && s.y === g.y) return 'here';
   const prev = new Map([[idx(s.x, s.y), null]]); const q = [[s.x, s.y]]; let found = null;
   while (q.length) { const [x, y] = q.shift(); if (x === g.x && y === g.y) { found = [x, y]; break; }
     for (const [dx, dy, k] of [[0,-1,'ArrowUp'],[0,1,'ArrowDown'],[-1,0,'ArrowLeft'],[1,0,'ArrowRight']]) { const nx = x + dx, ny = y + dy;
       const here = { x: nx, y: ny }; const isGoal = nx === g.x && ny === g.y;
-      const inTheWay = !isGoal && ((!b.room && b.doors.some((d) => d.tiles.some((t) => t.x === nx && t.y === ny))) || (b.partner && b.partner.standsOn(here)));
+      const inTheWay = !isGoal && ((!b.room && b.doors.some((d) => d.tiles.some((t) => t.x === nx && t.y === ny))) || (!${throughPartner} && b.partner && b.partner.standsOn(here)));
       if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(idx(nx, ny)) || inTheWay || (!isGoal && b.isBlocked(here))) continue;
       prev.set(idx(nx, ny), [x, y, k]); q.push([nx, ny]); } }
   if (!found) return 'unreachable';
@@ -73,6 +76,18 @@ try {
       if (key === 'here') return;
       // Through a door the walk was for: the room loaded between asking and searching.
       if (key === 'unreachable' && (await done())) return;
+      // The partner at heel can stand in the only way out (off THE BOLTHOLE's
+      // step, say): a tap towards it only turns to face it, so the key is held
+      // to walk on past.
+      if (key === 'unreachable') {
+        const past = await tab.evaluate(firstStep(goal, true));
+        if (past && past !== 'unreachable' && past !== 'here') {
+          await toFront(tab);
+          await tab.tap(past, 400);
+          await sleep(220);
+          continue;
+        }
+      }
       if (key === 'unreachable') throw new Error(`nothing reaches ${JSON.stringify(goal)} from ${JSON.stringify(await tab.evaluate(state))}`);
       if (key) await press(tab, key);
       else await sleep(120);
@@ -90,11 +105,17 @@ try {
   };
   // Up to the garden sign, facing it, and read it: the ordinary text box asks
   // whose door, and once it is read the list of players comes up.
-  const sign = { x: 38, y: 12 };
+  // HOME_SIGN in `src/game/base/baseMap.ts`. It is read from whichever side of
+  // it is open ground, so the walk does not care where the path runs.
+  const sign = { x: 35, y: 11 };
   const readKnockSign = async (tab, shot) => {
-    // The sign stands east of the path up to THE BOLTHOLE's step.
-    await walkTo(tab, { x: sign.x - 1, y: sign.y });
-    await press(tab, 'ArrowRight');
+    const side = await tab.evaluate(`(() => { const b = ${BASE}; const s = ${JSON.stringify(sign)};
+      const sides = [[-1, 0, 'ArrowRight'], [1, 0, 'ArrowLeft'], [0, 1, 'ArrowUp'], [0, -1, 'ArrowDown']];
+      for (const [dx, dy, key] of sides) { const at = { x: s.x + dx, y: s.y + dy }; if (!b.isBlocked(at)) return { at, key }; }
+      return null; })()`);
+    if (!side) throw new Error('nowhere open beside the garden sign');
+    await walkTo(tab, side.at);
+    await press(tab, side.key);
     await press(tab, 'Space');
     const asked = await until(tab, 'the sign asking whose door', (s) => s.dialog?.includes('Select the player you want to knock on the door of.') ?? false);
     if (asked.knockScreen) throw new Error('the list came up before the sign was read');
@@ -226,6 +247,70 @@ try {
     throw new Error(`leaving put AMY on ${JSON.stringify(outside.tile)}, not her step`);
   }
   console.log(`AMY went home to ${outside.tile.x},${outside.tile.y}`);
+
+  // A visit has no time limit; it also ends when OLLY sees AMY out, or when
+  // he leaves the harbour. AMY knocks and is let in again for each.
+  const letInAgain = async () => {
+    await readKnockSign(amy);
+    await until(amy, 'OLLY listed at home', (s) => s.rows.some((row) => row.startsWith('OLLY') && row.includes('Home')));
+    await press(amy, 'Enter');
+    await until(olly, 'OLLY asked', (s) => s.asked === 'AMY');
+    await press(olly, 'ArrowLeft');
+    await press(olly, 'Space');
+    await readThrough(olly);
+    const welcomed = await until(amy, "AMY inside OLLY's house again", (s) => s.live && s.visit === 'OLLY' && s.dialog !== null, 20000);
+    await readThrough(amy);
+    await until(olly, 'OLLY seeing AMY in his house', (s) => s.seen.some((f) => f.name === 'AMY'));
+    return welcomed;
+  };
+  const welcomed = await letInAgain();
+  console.log(`let in again: ${welcomed.dialog}`);
+  if (welcomed.dialog.includes('minute')) throw new Error(`a visitor is still told of a time limit: ${welcomed.dialog}`);
+
+  // OLLY stands over AMY, faces her, and is asked whether to see her out, on NOT NOW.
+  // AMY walks into the room, clear of the mat where both partners stand, and
+  // OLLY comes up behind her - his partner at his own heel, not in front of him.
+  const amyGoal = await amy.evaluate(`(() => { const b = ${BASE}; const m = b.room.mat;
+    for (const k of [3, 2, 4]) { const at = { x: m.x, y: m.y - k }; if (!b.isBlocked(at)) return at; } return null; })()`);
+  if (!amyGoal) throw new Error('nowhere open in front of the mat');
+  await walkTo(amy, amyGoal);
+  await walkTo(olly, { x: amyGoal.x, y: amyGoal.y + 1 });
+  await olly.evaluate(`(() => { const b = ${BASE}; b.facing = 'up'; b.showHint(b.hintHere()); })()`);
+  const facingHer = await olly.evaluate(`${BASE}.hintShown`);
+  console.log(`OLLY facing AMY: ${facingHer}`);
+  if (!facingHer.includes('[SPACE] AMY')) throw new Error(`facing his visitor, OLLY's hint says "${facingHer}"`);
+  await press(olly, 'Space');
+  const question = await olly.evaluate(`(() => { const q = ${BASE}.boxQuestion?.prompt; return q ? { selected: q.selectedIndex } : null; })()`);
+  if (!question || question.selected !== 1) throw new Error(`OLLY was not asked about AMY on NOT NOW: ${JSON.stringify(question)}`);
+  await toFront(olly);
+  await olly.screenshot(`${out}/see-them-out.png`);
+  await press(olly, 'ArrowLeft');
+  await press(olly, 'Space');
+  const seenOut = await until(olly, 'OLLY seeing AMY out', (s) => s.dialog?.includes('to the door') ?? false);
+  console.log(`OLLY: ${seenOut.dialog}`);
+  await readThrough(olly);
+  const shownOut = await until(amy, 'AMY told she was seen out', (s) => s.dialog?.includes('sees you to the door') ?? false, 15000);
+  await toFront(amy);
+  await sleep(2500);
+  console.log(`AMY: ${(await amy.evaluate(state)).dialog}`);
+  await amy.screenshot(`${out}/seen-out.png`);
+  await readThrough(amy);
+  const shownHome = await until(amy, 'AMY back on her own step after being seen out', (s) => s.live && s.room === null && s.visit === null);
+  if (shownHome.tile.x !== home.returnTo.x || shownHome.tile.y !== home.returnTo.y) {
+    throw new Error(`being seen out put AMY on ${JSON.stringify(shownHome.tile)}, not her step`);
+  }
+
+  // In again, and OLLY closes his tab: AMY is told he has left the harbour.
+  await letInAgain();
+  await olly.close();
+  front = null;
+  await toFront(amy);
+  const ownerGone = await until(amy, 'AMY told OLLY left the harbour', (s) => s.dialog?.includes('left the harbour') ?? false, 90000);
+  await sleep(2500);
+  console.log(`AMY, OLLY gone: ${(await amy.evaluate(state)).dialog ?? ownerGone.dialog}`);
+  await amy.screenshot(`${out}/owner-left.png`);
+  await readThrough(amy);
+  await until(amy, 'AMY back on her own step after OLLY left', (s) => s.live && s.room === null && s.visit === null);
 } finally {
   await browser.close();
 }

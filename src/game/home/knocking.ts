@@ -1,4 +1,5 @@
 import type { HarbourHouse, KnockOutcome, KnockState } from '../harbour/houseService';
+import type { VisitEnding } from '../harbour/houseVisit';
 import { COLUMN_MEASURES, escapeAttribute, pixelColumns, pixelScreen, pixelTag, pixelWindow } from '../ui/pixelUi';
 
 /**
@@ -110,7 +111,35 @@ export const NOT_NOW = 'NOT NOW';
 
 /** What a visitor is told as they step in. */
 export function visitWelcomeLines(ownerName: string): readonly string[] {
-  return [`${ownerName} lets you in.`, `Have a look round ${ownerName}'s house. Down off the mat is the way home.`];
+  return [`${ownerName} lets you in.`, `Have a look round ${ownerName}'s house, as long as you like. Down off the mat is the way home.`];
+}
+
+/**
+ * What a visitor is told as their visit ends without them walking out, before
+ * they are on their own step again (`harbour/houseVisit.ts`).
+ */
+export function visitEndedLine(ending: VisitEnding, ownerName: string): string {
+  switch (ending) {
+    case 'shown-out':
+      return `${ownerName} sees you to the door. Time to head home.`;
+    case 'owner-gone':
+      return `${ownerName} has left the harbour, so you let yourself out.`;
+    case 'over':
+      return `Your visit to ${ownerName}'s house is over. You head home.`;
+  }
+}
+
+/** What the owner is asked on facing somebody visiting their house. */
+export function visitorQuestion(visitorName: string): string {
+  return `${visitorName} is visiting. See them out?`;
+}
+
+/** Seeing a visitor out; the other answer is NOT NOW, as at the door. */
+export const SEE_OUT = 'SEE THEM OUT';
+
+/** What the owner is told on seeing a visitor out. */
+export function seenOutLine(visitorName: string): string {
+  return `You see ${visitorName} to the door.`;
 }
 
 /** What a visitor is told about something that is the owner's to use. */

@@ -97,7 +97,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'Visiting',
-        text: 'Read the sign in your front garden to knock on another player\'s door. If they let you in, you may look round their house for ten minutes, but nothing of theirs can be moved.',
+        text: 'Read the sign in your front garden to knock on another player\'s door. If they let you in, stay as long as you like, but nothing of theirs can be moved. Face a visitor in your own house to see them out.',
       },
     ],
   },

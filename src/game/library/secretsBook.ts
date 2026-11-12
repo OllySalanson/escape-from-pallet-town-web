@@ -65,6 +65,8 @@ export function conditionWords(condition: SecretCondition): string {
       return 'the whole treasure map pinned up';
     case 'badge':
       return `the ${gymOf(condition.bossId)?.badge ?? condition.bossId} won`;
+    case 'alone':
+      return 'one Pokémon in the party, and no more';
     case 'raid-clock':
       return `${formatElapsedClock(condition.fromMs)} to ${formatElapsedClock(condition.untilMs)} into the raid`;
     case 'either':

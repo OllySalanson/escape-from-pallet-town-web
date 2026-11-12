@@ -69,9 +69,9 @@ describe('the Pokédex, on the maps a player is offered', () => {
 
     expect(missing).toEqual([]);
     // The sixteen the hunt found with no source, and where each comes from now -
-    // asked with the secrets left out, because four of them are also a secret's
+    // asked with the secrets left out, because five of them are also a secret's
     // since (THE LOST PICNIC, THE STICKY TONGUE, THE SILENT PICKET, THE SHADOW
-    // IN THE CRYPT) and a way that is open one raid in several is not the way
+    // IN THE CRYPT, THE ELEVENTH STONE) and a way that is open one raid in several is not the way
     // a kind is promised by.
     const promised = sources(false);
     const once = ['ekans', 'arbok', 'growlithe', 'arcanine', 'abra', 'kadabra', 'alakazam', 'gengar', 'drowzee', 'hypno',
@@ -104,6 +104,8 @@ describe('the Pokédex, on the maps a player is offered', () => {
       'secret the-silent-picket',
       'secret the-shadow-in-the-crypt',
     ]);
+    // And the fourth, to a fifth: the Alakazam among the Little Stones.
+    expect(from.get('alakazam')).toBe('secret the-eleventh-stone');
   });
   /**
    * The Pokédex prints these (`ui/pokedexView.ts`): a page may only ever name a

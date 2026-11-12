@@ -151,6 +151,7 @@ import { standingFixtures, type BaseFixture } from '../base/fixtures';
 import { COURSE_GATE_FRONT, HARBOUR_LANDMARKS, landmarkFaced, OUTDOOR_GAME_LANDMARKS, type OutdoorGameId } from '../base/landmarks';
 import { HarbourLifeFigures } from '../base/harbourLifeFigures';
 import { HomeGardenFigures } from '../base/homeGardenFigures';
+import { PEN_GLINT_PLACE, ShinyGlints, glintHeadStart } from '../base/shinyGlint';
 import { gardenLines, gardenPokemon, gardenQuestion } from '../base/homeGarden';
 import {
   COURSE_KEEPER_ID,
@@ -258,6 +259,7 @@ import {
   leaderBehindRival,
   practiceLeaders,
   practiceTrainer,
+  rivalTile,
   PRACTICE_AFTER_BOUT_QUESTION,
   PRACTICE_QUESTION,
   type PracticeLeader,
@@ -344,6 +346,7 @@ import { houseNameNeeded, welcomeHomeLines } from '../home/houseName';
 import { openNameScreen } from '../ui/PlayerNameOverlay';
 import { nameService } from '../names/nameService';
 import { harbour, harbourHouses, type HarbourWhere } from '../harbour/harbour';
+import { HouseVisitWatch } from '../harbour/houseVisit';
 import type { KnockAtTheDoor } from '../harbour/houseService';
 import { houseSnapshot, readHouseSnapshot } from '../home/houseSnapshot';
 import {
@@ -352,6 +355,10 @@ import {
   NOT_NOW,
   knockGoneLine,
   knockQuestion,
+  SEE_OUT,
+  seenOutLine,
+  visitEndedLine,
+  visitorQuestion,
   notYoursLine,
   notYoursToMoveLine,
   visitWelcomeLines,
@@ -723,6 +730,8 @@ export class BaseScene extends Phaser.Scene {
   private penPokemon: {
     readonly sprite: Phaser.GameObjects.Sprite;
     readonly species: FigureSpeciesId;
+    /** Its glints, if it is shiny (`base/shinyGlint.ts`). */
+    readonly glints: ShinyGlints | null;
     tile: GridPosition;
     nextStepMs: number;
   } | null = null;
@@ -855,6 +864,8 @@ export class BaseScene extends Phaser.Scene {
   /** The rival on the far floor, and who it is. */
   private rivalFigure: Phaser.GameObjects.Sprite | null = null;
   private rivalHere: HunterRival | null = null;
+  /** Where they stand: their own tile when they are a leader the player has met (`rivalTile`). */
+  private rivalAt: GridPosition = RIVAL_TILE;
   /** Gym leaders the player has met, waiting on the far floor to spar with their real team. */
   private leaderFigures: Phaser.GameObjects.Sprite[] = [];
   private leadersHere: readonly PracticeLeader[] = [];
@@ -896,6 +907,8 @@ export class BaseScene extends Phaser.Scene {
   /** The plate across the PLAYTEST BOARD, in the explorer run's yard only. */
   /** Somebody else's house this player is looking round, let in at the door. */
   private visit: HouseVisit | null = null;
+  /** The visit is over and the visitor is being told so, on their way out. */
+  private visitEnding = false;
   /** The knock screen, while it is up (`ui/KnockOverlay.ts`). */
   private knockScreen: MenuOverlay | null = null;
   /** The favours list, while it is up (`ui/FavourListOverlay.ts`). */
@@ -1062,6 +1075,7 @@ export class BaseScene extends Phaser.Scene {
     this.doorTold = false;
     this.doorLayout = undefined;
     this.visit = null;
+    this.visitEnding = false;
     this.kit = null;
     this.furniture = null;
     this.arenaPanel = null;
@@ -1084,6 +1098,7 @@ export class BaseScene extends Phaser.Scene {
     // from their snapshot, read as any save is, and everything in it is
     // theirs by name.
     this.visit = room && data.visit && isHomeRoom(room.id) ? data.visit : null;
+    this.keepVisitWatch();
     if (room) {
       const visit = this.visit;
       this.roomBuiltAt = new Date();
@@ -1210,6 +1225,7 @@ export class BaseScene extends Phaser.Scene {
     }
     this.rivalFigure = null;
     this.rivalHere = null;
+    this.rivalAt = RIVAL_TILE;
     this.leaderFigures = [];
     this.leadersHere = [];
     this.pitCoinMs = 0;
@@ -1389,9 +1405,18 @@ export class BaseScene extends Phaser.Scene {
     // Somebody waving at this player: a hand over them, and a "hi!" to say so.
     harbour()?.link.whenWavedAt(() => audioManager.play('harbourWave'));
     // Another player's browser saying it knocked here: look at the door now.
-    harbour()?.link.whenNudged((_from, gone) =>
-      gone ? harbourHouses()?.door.withdrawn(gone) : harbourHouses()?.door.knocked(),
-    );
+    // Or, from the owner of the house this player is visiting, that the visit
+    // may have changed: ask about it now.
+    harbour()?.link.whenNudged((from, gone) => {
+      const houses = harbourHouses();
+      if (gone) {
+        houses?.door.withdrawn(gone);
+      } else if (houses?.visit?.ownerId === from) {
+        houses.visit.nudged();
+      } else {
+        houses?.door.knocked();
+      }
+    });
   }
 
   public update(time: number, deltaMs: number): void {
@@ -1410,6 +1435,7 @@ export class BaseScene extends Phaser.Scene {
     const watcher = this.regularsWatcher();
     regulars?.tick(regularsClock(deltaMs, requestedTestMode() !== 'off'), deltaMs, watcher);
     this.watchFrontDoor(time);
+    this.watchVisit(time);
     this.tickHeldRoom(time, deltaMs);
     if (this.jump) {
       this.advanceJump(deltaMs);
@@ -1440,7 +1466,6 @@ export class BaseScene extends Phaser.Scene {
     this.noticePlace(deltaMs);
     this.watchThePit(deltaMs);
     this.askTheNameOnceHome();
-    this.tendTheWayMarks(deltaMs);
     if (!this.still) {
       this.boats?.update(deltaMs);
       this.night?.update(deltaMs);
@@ -1471,6 +1496,9 @@ export class BaseScene extends Phaser.Scene {
     // frame, a bubble it had just put up was a frame late into the seating and
     // a caption was drawn across it for that frame.
     this.containWorldLabels();
+    // And the chevron after them, against this frame's captions: placed
+    // before, it stood on a caption for the frame that caption arrived.
+    this.tendTheWayMarks(deltaMs);
   }
 
   private updateWalking(deltaMs: number): void {
@@ -1727,7 +1755,7 @@ export class BaseScene extends Phaser.Scene {
     const keeper = this.place.room?.room.keeper?.position;
     return (
       (keeper !== undefined && sameTile(keeper, tile)) ||
-      (this.rivalHere !== null && sameTile(tile, RIVAL_TILE)) ||
+      this.rivalOn(tile) ||
       this.leaderOn(tile) !== undefined
     );
   }
@@ -1947,7 +1975,7 @@ export class BaseScene extends Phaser.Scene {
       ? { ...this.arena.pointOfLanding({ id: '', tile: fogTile }) }
       : this.arenaPanel === 'rim' && this.aimed
         ? this.arena.pointOfLanding(this.aimed)
-        : this.crowdLookMs > 0 || (this.rivalHere && !this.targetTile && nearTheRival(this.currentTile))
+        : this.crowdLookMs > 0 || (this.rivalHere && !this.targetTile && nearTheRival(this.currentTile, this.rivalAt))
           ? this.halfwayToTheStands(middle)
           : null;
     if (lookedAt) {
@@ -2466,22 +2494,20 @@ export class BaseScene extends Phaser.Scene {
     this.rivalFigure?.destroy();
     this.rivalFigure = null;
     this.rivalHere = null;
+    this.rivalAt = RIVAL_TILE;
     if (!this.arena || this.visit) {
       return;
     }
     const rival = who ?? this.rivalNow();
     const appearance = getWorldCharacterAppearance('npc', rival.design);
+    const at = rivalTile(this.savedGame.raidProgress, rival.id);
     this.rivalHere = rival;
+    this.rivalAt = at;
     this.rivalFigure = this.add
-      .sprite(
-        RIVAL_TILE.x * TILE_SIZE,
-        RIVAL_TILE.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
-        appearance.textureKey,
-        worldCharacterIdleFrame(appearance, 'down'),
-      )
+      .sprite(at.x * TILE_SIZE, at.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET, appearance.textureKey, worldCharacterIdleFrame(appearance, 'down'))
       .setOrigin(0, 0)
       .setTint(appearance.tint ?? NO_TINT)
-      .setDepth(atRow(FIGURE_BAND, RIVAL_TILE.y));
+      .setDepth(atRow(FIGURE_BAND, at.y));
     this.standTheLeaders();
   }
 
@@ -2509,6 +2535,12 @@ export class BaseScene extends Phaser.Scene {
     });
   }
 
+  /** Whether today's rival stands on a tile. */
+  private rivalOn(tile: GridPosition): boolean {
+    // A scene a test builds without `create` has stood nobody up.
+    return Boolean(this.rivalHere) && sameTile(this.rivalAt, tile);
+  }
+
   /** The leader waiting on a tile, if one is. */
   private leaderOn(tile: GridPosition): PracticeLeader | undefined {
     // A scene a test builds without `create` has stood nobody up.
@@ -2518,7 +2550,7 @@ export class BaseScene extends Phaser.Scene {
   /** A leader on the far floor: their offer, the question, and the sand. */
   private speakToLeader(gym: ValeGym): void {
     const kit = this.kit;
-    const at = this.leadersHere.find((leader) => leader.gym.bossId === gym.bossId)?.tile ?? RIVAL_TILE;
+    const at = this.leadersHere.find((leader) => leader.gym.bossId === gym.bossId)?.tile ?? this.rivalAt;
     if (!kit) {
       return;
     }
@@ -2550,7 +2582,7 @@ export class BaseScene extends Phaser.Scene {
       bag: boutBag(kit.flow.packedContents),
       trainer,
       hunterBattle: true,
-      exhibition: { rival: rival.id, at: { ...this.currentTile }, practice: gym.bossId },
+      exhibition: { rival: rival.id, at: { ...this.currentTile }, facing: this.facing, practice: gym.bossId },
     };
     flowAcrossABout = kit.flow;
     this.leaving = true;
@@ -2566,7 +2598,7 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     this.arena.crowdReacts(practice.won ? 'cheer' : 'clap', this.figureMiddle());
-    const at = this.leadersHere.find((leader) => leader.gym.bossId === gym.bossId)?.tile ?? RIVAL_TILE;
+    const at = this.leadersHere.find((leader) => leader.gym.bossId === gym.bossId)?.tile ?? this.rivalAt;
     this.say([practice.won ? gym.practice.won : gym.practice.lost], [at]);
   }
 
@@ -2603,7 +2635,7 @@ export class BaseScene extends Phaser.Scene {
       this.hallSign ??= new PlaceNameSign(this);
       this.hallSign.show(ladderLine(went.record, went.ladderDone, bout.won));
     }
-    this.say([bout.won ? rival.hall.sulk : rival.hall.gloat], [RIVAL_TILE], () => this.standTheRival());
+    this.say([bout.won ? rival.hall.sulk : rival.hall.gloat], [this.rivalAt], () => this.standTheRival());
   }
 
   /** The rival on the far floor: what they make of the last raid, and the question. */
@@ -2615,11 +2647,11 @@ export class BaseScene extends Phaser.Scene {
     }
     this.standStill();
     if (kit.flow.party.length === 0) {
-      this.say([`${rival.name}: "Nobody on your bench? Come back with a team."`], [RIVAL_TILE]);
+      this.say([`${rival.name}: "Nobody on your bench? Come back with a team."`], [this.rivalAt]);
       return;
     }
     const lastRaid = this.savedGame.raidProgress.raidMemory?.marks.at(-1)?.kind;
-    this.say([rivalGreeting(rival, lastRaid), rival.hall.offer], [RIVAL_TILE], () =>
+    this.say([rivalGreeting(rival, lastRaid), rival.hall.offer], [this.rivalAt], () =>
       this.askInBox(BOUT_QUESTION, (yes) => {
         if (yes) {
           this.startBout(rival);
@@ -2628,18 +2660,18 @@ export class BaseScene extends Phaser.Scene {
         // A rival who is also a leader the player has met offers their gym team instead.
         const gym = leaderBehindRival(this.savedGame.raidProgress, rival.id);
         if (gym) {
-          this.say([gym.practice.offer], [RIVAL_TILE], () =>
+          this.say([gym.practice.offer], [this.rivalAt], () =>
             this.askInBox(PRACTICE_AFTER_BOUT_QUESTION, (practise) => {
               if (practise) {
                 this.startPractice(gym);
               } else {
-                this.say([rival.hall.later], [RIVAL_TILE]);
+                this.say([rival.hall.later], [this.rivalAt]);
               }
             }),
           );
           return;
         }
-        this.say([rival.hall.later], [RIVAL_TILE]);
+        this.say([rival.hall.later], [this.rivalAt]);
       }),
     );
   }
@@ -2673,7 +2705,7 @@ export class BaseScene extends Phaser.Scene {
       bag: boutBag(kit.flow.packedContents),
       trainer: boutTrainer(rival, party),
       hunterBattle: true,
-      exhibition: { rival: rival.id, at: { ...this.currentTile }, ...(boutId ? { boutId } : {}), ...(stake ? { stake } : {}) },
+      exhibition: { rival: rival.id, at: { ...this.currentTile }, facing: this.facing, ...(boutId ? { boutId } : {}), ...(stake ? { stake } : {}) },
     };
     // What has been got ready is the same when the player comes back: nothing was spent.
     flowAcrossABout = kit.flow;
@@ -3348,7 +3380,7 @@ export class BaseScene extends Phaser.Scene {
     const covered =
       this.targetTile === null &&
       ((keeper !== undefined && sameTile(keeper, above)) ||
-        (this.rivalHere !== null && sameTile(RIVAL_TILE, above)) ||
+        this.rivalOn(above) ||
         this.leaderOn(above) !== undefined ||
         // Whoever else stands in a room: MARLOW in THE CHART ROOM, the
         // librarian, the Game Corner's regulars.
@@ -3809,7 +3841,8 @@ export class BaseScene extends Phaser.Scene {
       .setOrigin(0.5, 1)
       .setDepth(atRow(FIGURE_BAND, tile.y))
       .play(key);
-    this.penPokemon = { sprite: pokemon, species, tile, nextStepMs: PEN_STEP_EVERY_MS };
+    const glints = stay.pokemon.shiny ? new ShinyGlints(this, glintHeadStart(PEN_GLINT_PLACE)) : null;
+    this.penPokemon = { sprite: pokemon, species, glints, tile, nextStepMs: PEN_STEP_EVERY_MS };
   }
 
   /** Where an icon stands on a tile of the pen: centred, its feet on the tile's last row. */
@@ -3824,6 +3857,8 @@ export class BaseScene extends Phaser.Scene {
    */
   private wanderPen(deltaMs: number): void {
     const pen = this.penPokemon;
+    pen?.glints?.update(deltaMs);
+    pen?.glints?.placeOverIcon(pen.sprite, pen.species);
     if (!pen || this.dialogBox.visible) {
       return;
     }
@@ -4075,7 +4110,9 @@ export class BaseScene extends Phaser.Scene {
     const partner = this.partner && this.partnerAt(facing) ? `[SPACE] ${this.partner.name}` : undefined;
     // Another player faced is waved at, and the same goes for them: facing
     // somebody is the only way anybody would find that out (playtest 49).
-    const wave = !partner && this.otherPlayerAt(facing) ? WAVE_HINT : undefined;
+    // In the player's own house, whoever is faced is a visitor, asked about by name.
+    const visitor = !partner ? this.visitorAt(facing) : undefined;
+    const wave = visitor ? `[SPACE] ${visitor.name}` : !partner && this.otherPlayerAt(facing) ? WAVE_HINT : undefined;
     if (!room) {
       // Nothing else to say in the yard: the keys this save has not used yet
       // (`input/keyBindings.ts`). A newcomer arrives here first, and the first
@@ -4145,7 +4182,7 @@ export class BaseScene extends Phaser.Scene {
     if (unit !== undefined && this.oddityToStartAt(facing, unit) !== undefined) {
       return '[SPACE] LOOK CLOSER';
     }
-    if (this.rivalHere && sameTile(facing, RIVAL_TILE)) {
+    if (this.rivalHere && this.rivalOn(facing)) {
       return `[SPACE] ${this.rivalHere.name}`;
     }
     const leaderFaced = this.leaderOn(facing);
@@ -4176,6 +4213,14 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /** Whether another player in the shared harbour stands (or is stepping) onto this tile: Space waves at them. */
+  /** Another player standing on `tile` in this player's own house, who can only be there visiting. */
+  private visitorAt(tile: GridPosition): { readonly id: string; readonly name: string } | undefined {
+    if (!this.place.room?.home || this.visit) {
+      return undefined;
+    }
+    return harbour()?.figuresHere().find((figure) => sameTile(figure.toward ?? figure.tile, tile));
+  }
+
   private otherPlayerAt(tile: GridPosition): boolean {
     return harbour()?.figuresHere().some((figure) => sameTile(figure.toward ?? figure.tile, tile)) ?? false;
   }
@@ -4632,7 +4677,7 @@ export class BaseScene extends Phaser.Scene {
     const keeper = this.place.room ? this.place.room.room.keeper?.position : DAY_CARE_KEEPER.position;
     return (
       (this.collision[tile.y]?.[tile.x] ?? true) ||
-      (this.rivalHere !== null && sameTile(tile, RIVAL_TILE)) ||
+      this.rivalOn(tile) ||
       this.leaderOn(tile) !== undefined ||
       (keeper !== undefined && keeper.x === tile.x && keeper.y === tile.y) ||
       (this.harbourLife?.holds(tile) ?? false) ||
@@ -5179,7 +5224,7 @@ export class BaseScene extends Phaser.Scene {
         this.speakToKeeper(room, room.screen);
         return;
       }
-      if (this.rivalHere && sameTile(target, RIVAL_TILE)) {
+      if (this.rivalOn(target)) {
         this.speakToRival();
         return;
       }
@@ -5188,7 +5233,7 @@ export class BaseScene extends Phaser.Scene {
         this.speakToLeader(leader.gym);
         return;
       }
-      if (this.waveAt(target)) {
+      if (this.askAboutVisitor(target) || this.waveAt(target)) {
         return;
       }
       if (this.facesTheStands(target)) {
@@ -5831,7 +5876,9 @@ export class BaseScene extends Phaser.Scene {
     }
     this.wayMarkMs += deltaMs;
     const reading = this.dialogBox.visible || this.boxQuestion !== null || this.leaving;
-    this.yardWayMark?.frame(this.wayMarkMs, { x: this.player.x + TILE_SIZE / 2, y: this.player.y }, reading);
+    // Clear of every caption on show, as the raid's is (`WorldScene.settleWayMark`).
+    const captions = this.yardWayMark ? [...this.worldLabels, ...(this.inspectLabel ? [this.inspectLabel] : [])].flatMap((label) => label.shown() ?? []) : [];
+    this.yardWayMark?.frame(this.wayMarkMs, { x: this.player.x + TILE_SIZE / 2, y: this.player.y }, reading, captions);
     this.runnerWayMarks?.frame(
       this.wayMarkMs,
       this.player.y - PLAYER_SPRITE_Y_OFFSET + TILE_SIZE / 2,
@@ -6100,6 +6147,87 @@ export class BaseScene extends Phaser.Scene {
       [],
       () => this.decor?.draw(),
     );
+  }
+
+  /**
+   * Facing somebody visiting the player's own house: asked whether to see them
+   * out, with the cursor on NOT NOW - the key that asked is still down.
+   * A visit lasts until the visitor walks out or this, never for a set time.
+   */
+  private askAboutVisitor(target: GridPosition): boolean {
+    const visitor = this.visitorAt(target);
+    const houses = harbourHouses();
+    if (!visitor || !houses) {
+      return false;
+    }
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.askInBox(
+      visitorQuestion(visitor.name),
+      (seeOut) => {
+        if (!seeOut) {
+          audioManager.play('menuClose');
+          return;
+        }
+        // The visitor's browser hears it within a few seconds anyway; the
+        // nudge is so it hears at once.
+        void houses.service.showOut(visitor.id).then(
+          (shown) => shown && harbour()?.link.nudge(visitor.id),
+          () => undefined,
+        );
+        audioManager.play('confirm');
+        this.say([seenOutLine(visitor.name)], [target]);
+      },
+      { startOnNotNow: true, options: [SEE_OUT, NOT_NOW] },
+    );
+    return true;
+  }
+
+  /**
+   * The visit this player is on keeps the clock (`harbour/houseVisit.ts`), and
+   * once it is over - seen out, the owner gone from the harbour, or over on
+   * the database's word - the visitor is told why and walked out to their own
+   * step, as soon as nothing else is on the screen.
+   */
+  private watchVisit(time: number): void {
+    const watch = harbourHouses()?.visit;
+    const visit = this.visit;
+    if (!visit || !watch || watch.ownerId !== visit.ownerId) {
+      return;
+    }
+    watch.tick(time);
+    const ending = watch.ended;
+    if (!ending || this.visitEnding || this.leaving || this.dialogBox.visible || this.boxQuestion || this.targetTile) {
+      return;
+    }
+    this.visitEnding = true;
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.closePhrases();
+    audioManager.play('cancel');
+    this.say([visitEndedLine(ending, visit.ownerName)], [], () =>
+      this.goTo({ savedGame: this.savedGame, from: 'bolthole' }, 'interiorLeave'),
+    );
+  }
+
+  /**
+   * One watch for one visit, across the scene starting again up and down the
+   * stairs: begun on stepping into somebody's house, and let go - the
+   * database told the visitor has left - on standing anywhere else.
+   */
+  private keepVisitWatch(): void {
+    const houses = harbourHouses();
+    if (!houses) {
+      return;
+    }
+    const owner = this.visit?.ownerId;
+    if (houses.visit && houses.visit.ownerId !== owner) {
+      houses.visit.leave();
+      houses.visit = null;
+    }
+    if (owner && !houses.visit) {
+      houses.visit = new HouseVisitWatch(houses.service, owner, () => harbour()?.standing(owner) ?? null);
+    }
   }
 
   private knockerWentAway(knock: KnockAtTheDoor): void {
@@ -7083,7 +7211,11 @@ export class BaseScene extends Phaser.Scene {
   private askInBox(
     question: string,
     answer: (yes: boolean) => void,
-    { spendsForGood = false, startOnNotNow = false } = {},
+    {
+      spendsForGood = false,
+      startOnNotNow = false,
+      options = FAVOUR_ANSWERS,
+    }: { spendsForGood?: boolean; startOnNotNow?: boolean; options?: readonly [string, string] } = {},
   ): void {
     audioManager.play('menuOpen');
     this.showHint('');
@@ -7103,7 +7235,7 @@ export class BaseScene extends Phaser.Scene {
         height: DIALOG_HEIGHT,
         padding: 10,
         lines: [question],
-        options: FAVOUR_ANSWERS,
+        options,
         selected: spendsForGood || startOnNotNow ? 1 : 0,
         // Every answer: the click that moved the box on to the question stands
         // where YES may now be drawn.

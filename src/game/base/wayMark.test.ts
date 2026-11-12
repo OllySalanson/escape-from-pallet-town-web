@@ -76,6 +76,35 @@ describe('the way shown to a first raid', () => {
     expect(chevronTowards({ x: 0, y: 320 }, VIEW, { x: 300, y: 320 }, 0, [{ ...sign, left: VIEW.left + 200 }])).toEqual(plain);
   });
 
+  it('slides along the edge off a caption seated there, so it never stands on its first letter', () => {
+    // THE WAREHOUSES' caption as the harbour seated it: against the left edge
+    // of the screen at the player's height, most of the way to the player.
+    const caption = { left: VIEW.left + 18, top: 306, width: 176, height: 33 };
+    for (let ms = 0; ms < 2000; ms += 37) {
+      const at = chevronTowards({ x: 0, y: 320 }, VIEW, { x: 300, y: 320 }, ms, [caption]);
+      const top = at.y + VIEW.top;
+      expect(at.angle).toBe(270);
+      expect(top + 11 <= caption.top || top - 11 >= caption.top + caption.height, `${ms}ms: at ${top}`).toBe(true);
+      // Still beside the player's row: a caption's height away, not across the screen.
+      expect(Math.abs(top - 320)).toBeLessThanOrEqual(caption.height + 11);
+    }
+  });
+
+  it('does not hop along the edge and back with its bob, beside a caption it only just reaches', () => {
+    // Two pixels past where it rests: covered at the top of the bob and clear at the bottom.
+    const caption = { left: VIEW.left + 22 + 8 + 1, top: 306, width: 176, height: 33 };
+    const heights = new Set<number>();
+    const across = new Set<number>();
+    for (let ms = 0; ms < 2000; ms += 17) {
+      const at = chevronTowards({ x: 0, y: 320 }, VIEW, { x: 300, y: 320 }, ms, [caption]);
+      heights.add(at.y);
+      across.add(at.x);
+    }
+    expect(heights.size).toBe(1);
+    // And it still bobs.
+    expect(across.size).toBeGreaterThan(1);
+  });
+
   it('is always whole pixels and on the screen', () => {
     for (let ms = 0; ms < 2000; ms += 37) {
       const at = chevronTowards({ x: 0, y: 9000 }, VIEW, { x: 300, y: 320 }, ms);

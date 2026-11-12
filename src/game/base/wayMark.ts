@@ -101,14 +101,27 @@ export function chevronTowards(
   const dx = target.x - player.x;
   const dy = target.y - player.y;
   const across = Math.abs(dx) / Math.max(1, view.width) >= Math.abs(dy) / Math.max(1, view.height);
+  // Whether it is clear is asked of the whole of its bob, from where it rests:
+  // asked of where it is this frame, a caption two pixels off it was covered
+  // on the way in and clear on the way out, and it hopped along the edge and
+  // back with every bob.
+  const reach = CHEVRON_HALF.short + BOB_PX;
   if (across) {
-    const x = dx < 0 ? EDGE_CLEAR + bob : view.width - EDGE_CLEAR - bob;
+    const rest = dx < 0 ? EDGE_CLEAR : view.width - EDGE_CLEAR;
     const y = Math.round(Math.max(EDGE_CLEAR, Math.min(view.height - EDGE_CLEAR, player.y - view.top)));
-    return { x, y: slideClear(y, x, CHEVRON_HALF.long, CHEVRON_HALF.short, signs, 'top', view.height), angle: dx < 0 ? 270 : 90 };
+    return {
+      x: dx < 0 ? rest + bob : rest - bob,
+      y: slideClear(y, rest, CHEVRON_HALF.long, reach, signs, 'top', view.height),
+      angle: dx < 0 ? 270 : 90,
+    };
   }
-  const y = dy < 0 ? EDGE_CLEAR + bob : view.height - EDGE_CLEAR - bob;
+  const rest = dy < 0 ? EDGE_CLEAR : view.height - EDGE_CLEAR;
   const x = Math.round(Math.max(EDGE_CLEAR, Math.min(view.width - EDGE_CLEAR, player.x - view.left)));
-  return { x: slideClear(x, y, CHEVRON_HALF.long, CHEVRON_HALF.short, signs, 'left', view.width), y, angle: dy < 0 ? 0 : 180 };
+  return {
+    x: slideClear(x, rest, CHEVRON_HALF.long, reach, signs, 'left', view.width),
+    y: dy < 0 ? rest + bob : rest - bob,
+    angle: dy < 0 ? 0 : 180,
+  };
 }
 
 /** Half the chevron's size as it stands, drawn at twice its pixels: along the edge it runs, and out from it. */
@@ -248,14 +261,25 @@ export class YardWayMark {
     this.image = scene.add.image(0, 0, TEXTURE).setScrollFactor(0).setScale(2).setDepth(FLOOR_FURNITURE_DEPTH + 3);
   }
 
-  public frame(elapsedMs: number, player: { readonly x: number; readonly y: number }, hidden: boolean): void {
+  /**
+   * `captions` are the ones on show, in the world's pixels: it stands on none
+   * of them, as the raid's does not. At the screen's edge it stood on the
+   * first letter of whichever place's caption was seated there, and THE
+   * WAREHOUSES read HE WAREHOUSES.
+   */
+  public frame(
+    elapsedMs: number,
+    player: { readonly x: number; readonly y: number },
+    hidden: boolean,
+    captions: readonly ScreenRect[] = [],
+  ): void {
     const view = this.scene.cameras.main.worldView;
     const at = chevronTowards(
       this.target,
       { left: view.left, top: view.top, width: view.width, height: view.height },
       player,
       this.still ? 0 : elapsedMs,
-      this.keepOff,
+      captions.length > 0 ? [...this.keepOff, ...captions] : this.keepOff,
     );
     this.image.setVisible(!hidden).setPosition(at.x, at.y).setAngle(at.angle);
   }
