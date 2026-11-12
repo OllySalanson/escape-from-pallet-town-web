@@ -201,3 +201,47 @@ drops a SAFE tag the window's own heading already says.
 | FireRed party: who an item is for | 2 | 5 | rows of names and HP; now the party slots with icons, bars and the answer |
 | Hades: words only for the one pointed at | 2 | 4 | a name on every row; now one pane (the help bar still speaks for the cursor) |
 | Every key path | 5 | 5 | arrows reach every kind, ENTER uses a Potion on the hurt one, a stone asks ABLE, X drops, ESC closes (`packShots.mjs`) |
+
+## Bill's PC (the Pokémon Center)
+
+`HubScene.stashView`, its tiles shared with YOUR TEAM and the raid's pack
+(`pixelMonTile` and `pixelItemTile` in `ui/monIcon.ts`). Pictures by
+`tools/playtest/stashShots.mjs <build> <dir> --window=WxH` (`--before` against
+`main`), on menuShots.mjs's save: two dozen Pokémon, four of them hurt, and a
+dozen supplies.
+
+| | Before | After |
+|---|---|---|
+| 1280x800 | ![](bills-pc/before-1280x800.png) | ![](bills-pc/after-1280x800.png) |
+| 1920x950 | ![](bills-pc/before-1920x950.png) | ![](bills-pc/after-1920x950.png) |
+| 800x600 | ![](bills-pc/before-800x600.png) | ![](bills-pc/after-800x600.png) |
+
+The cursor on a hurt Sandshrew - its treatment's price in red where its level
+would be, and the help bar saying what ENTER pays - and the moment after:
+![](bills-pc/after-hurt.png) ![](bills-pc/after-treated.png)
+
+What changed: the box is FireRed's PC box, a grid of party icons each at its
+health's pace over its level and a short bar, the box's own bar (PREV, NEXT, SORT,
+FIND, RENAME, NEW BOX) across its top; a hurt one at the Center shows what NURSE
+JOY's treatment costs in raid time, in red, where its level would be, because
+ENTER pays it. FIT, ON A RAID and GARDEN, which every row used to say, are the
+dossier's and the help bar's to say. The supplies are the pack's item tiles,
+twice their size with their counts, pocket after pocket.
+
+### Scorecard
+
+| Measure | 1280x800 before | after | 1920x950 before | after | 800x600 before | after |
+|---|---|---|---|---|---|---|
+| Words in view | 174 | **87** | 260 | **96** | 78 | **41** |
+| Pokémon in view (of 24) | 14 | **24** | 24 | 24 | 4 | **12** |
+| Supplies in view (of 13) | 13 | 13 | 13 | 13 | 7 | **13** |
+| Screen that is picture | 3% | **17%** | 2% | **10%** | 2% | **23%** |
+
+| Benchmark | Before | After | Why |
+|---|---|---|---|
+| FireRed PC box: the box as creatures | 1 | 5 | two columns of names; now the box as icons, two rows of twelve |
+| FireRed party: who is hurt, at a glance | 3 | 5 | bars and red figures on rows; now the flap pace, the bar, and the price in red |
+| Tarkov stash: everything in one look | 2 | 5 | 14 of 24 at 1280x800 and 4 at 800x600; now all 24, and 12 |
+| HeartGold bag: the supplies, big | 2 | 5 | a list of names; now icons twice the size with their counts |
+| Hades: words only for the one pointed at | 2 | 4 | 174 words; 87, most of them the dossier's |
+| Every key path | 5 | 5 | the box bar, all 24 and all 13 by arrow key, the dossier follows, ENTER treats a hurt one (`stashShots.mjs`) |

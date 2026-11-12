@@ -136,6 +136,33 @@ const AUDIT = `(() => {
   };
 })()`;
 
+/**
+ * What a glance gets from a screen (the menu overhaul's scorecards,
+ * `docs/screens/menu-overhaul/`): the words wholly in view, and how much of the
+ * screen is picture - a Pokémon's icon or portrait, an item's icon.
+ */
+const GLANCE = `(() => {
+  const screen = document.querySelector('.menu-overlay');
+  const box = screen.getBoundingClientRect();
+  const inView = (r, node) => {
+    const pane = node.parentElement?.closest('.px-scroll');
+    const clip = pane ? pane.getBoundingClientRect() : box;
+    return r.width > 0 && r.height > 0 && r.top >= clip.top - 0.5 && r.bottom <= clip.bottom + 0.5 && r.top >= box.top && r.bottom <= box.bottom;
+  };
+  let words = 0;
+  const walker = document.createTreeWalker(screen, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!node.textContent.trim() || node.parentElement.closest('.px-help, .visually-hidden, [hidden], input')) continue;
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    if (inView(range.getBoundingClientRect(), node)) words += node.textContent.trim().split(/\\s+/).length;
+  }
+  const pictures = [...screen.querySelectorAll('.px-mon-icon, .px-portrait img, .item-icon img')]
+    .map((n) => [n, n.getBoundingClientRect()]).filter(([n, r]) => inView(r, n))
+    .reduce((sum, [, r]) => sum + r.width * r.height, 0);
+  return { words, pictureShare: Math.round((100 * pictures) / (box.width * box.height)) };
+})()`;
+
 const browser = await launchBrowser({ window, scrollbars });
 let bad = 0;
 try {
@@ -175,7 +202,8 @@ try {
     const panes = shown.length === 0
       ? 'nothing scrolls'
       : shown.map((p) => `${p.name} ${p.whole}/${p.rows}${p.scrolls ? ' SCROLLS' : ''}`).join('; ');
-    console.log(`  ${name.padEnd(14)} ${audit.box.width}x${audit.box.height} @${audit.unit} | ${panes}${faults.length ? ` | ${faults.join(' | ')}` : ''}`);
+    const glance = JSON.parse(await page.evaluate(`JSON.stringify(${GLANCE})`));
+    console.log(`  ${name.padEnd(14)} ${audit.box.width}x${audit.box.height} @${audit.unit} | ${panes} | words ${glance.words}, picture ${glance.pictureShare}%${faults.length ? ` | ${faults.join(' | ')}` : ''}`);
     await page.screenshot(`${out}/${name}-${tag}.png`);
   };
 
@@ -324,7 +352,7 @@ try {
       return seen;
     };
     const wanted = JSON.parse(await page.evaluate(
-      `JSON.stringify([...document.querySelectorAll('.stash-roster > .px-list > button, .stash-side .px-list > button')].map(${NAME}))`,
+      `JSON.stringify([...document.querySelectorAll('.stash-roster > .px-list > button, .stash-roster > .px-mon-tiles > button, .stash-side .px-list > button, .stash-side .px-item-tiles > button')].map(${NAME}))`,
     ));
     const seen = await reachable();
     const missed = wanted.filter((id) => id && !seen.has(id));

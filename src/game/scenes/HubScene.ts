@@ -156,6 +156,7 @@ import { moveChoiceMessage } from '../ui/moveChooser';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { conditionLine } from '../ui/condition';
 import { pokemonDossier } from '../ui/pokemonDossier';
+import { pixelItemTile, pixelMonTile } from '../ui/monIcon';
 import {
   COLUMN_MEASURES,
   escapeAttribute,
@@ -203,7 +204,7 @@ import { friendRoom, friendRoomsOffered, raidName } from '../raidRoom/friendRoom
 import { typedRoomCode } from '../raidRoom/roomCode';
 import { friendRoomView, friendStatusLine, type RoomMapChoice } from '../hub/friendRoomView';
 import { keyHint } from '../input/keyBindings';
-import { THINGS_POCKET_LABELS, storedPockets } from '../ui/thingsView';
+import { storedPockets } from '../ui/thingsView';
 import { awayFromGarden, awayLine, gardenPokemon, toggleGarden, withGarden } from '../base/homeGarden';
 import { pokedexNote } from '../base/homeLines';
 import { wayInToward } from '../base/valeOverview';
@@ -321,6 +322,11 @@ const OUT_ON_A_RAID_NOTE = 'Out on a raid in your other window.';
 /** What a screen left open says when the game moved on in another tab. */
 export const STALE_SAVE_REFUSAL =
   'The game moved on in another tab, so this screen has caught up. Nothing was changed: try again.';
+
+/** A tag's words without its markup, for a tile that says them only to a reader. */
+function tagWords(tag: string): string {
+  return tag.replace(/<[^>]*>/g, '').trim().toLowerCase();
+}
 
 export class HubScene extends Phaser.Scene {
   private readonly saveManager = new SaveManager();
@@ -2390,7 +2396,18 @@ export class HubScene extends Phaser.Scene {
             : pixelTag('Fit', 'good', true);
         const boxed = boxNames[this.stash.boxIndexOf(stored.id)];
         const moving = this.boxMoving === stored.id;
-        return `<button class="px-row${moving ? ' is-selected' : ''}" ${wiring} data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''}>${this.pokemonRowBody(stored, tag, inBoxes ? boxed : undefined)}</button>`;
+        // FireRed's PC box: the icon at its health's pace over its level and a
+        // short bar. What the old row said in words - FIT, ON A RAID, GARDEN -
+        // is said by the dossier the cursor fills and the help bar; only the
+        // price of a treatment stays on the tile.
+        const spoken = [stored.pokemon.name, `level ${stored.pokemon.level}`, tagWords(tag), ...(inBoxes && boxed ? [boxed] : [])].filter(Boolean).join(', ');
+        return pixelMonTile(stored.pokemon, {
+          classes: [...(moving ? ['is-selected'] : []), ...(out ? ['is-away'] : [])],
+          // A hurt one at the Center says what ENTER would cost, in red, where
+          // its level would be: the treatment is a price and is seen first.
+          ...(hurt && !out && !this.atHome ? { line: pixelTag(this.recoveryPriceTag(stored), 'risk') } : {}),
+          attributes: `${wiring} data-shows="${stored.id}" data-box-name="${escapeAttribute(boxed ?? '')}" aria-label="${escapeAttribute(spoken)}"${index === 0 ? ' data-cursor-start' : ''}`,
+        });
       })
       .join('');
     const details = shown
@@ -2401,24 +2418,24 @@ export class HubScene extends Phaser.Scene {
         }),
       )
       .join('');
-    const supplyRow = (item: ItemDefinition): string =>
-      // One line a supply, as a bag lists them and in the same capitals as YOUR
-      // THINGS and the raid's pack (playtest wave 3, finding 12): what it does is said by the
-      // help bar when it is pointed at, which is why the row is a control.
-      `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}${usedInARaid(item)}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong class="px-name">${item.displayName}</strong></span><span class="px-tag">${itemCountTag(item.id, this.spare(item.id))}</span></button>`;
-    // In pockets, as YOUR THINGS reads them (`ui/thingsView.ts`): ninety rows
-    // on one list was a thing nobody could find anything on, and the two
-    // screens that show storage must sort it the same way.
+    const supplyTile = (item: ItemDefinition): string =>
+      // A supply is its icon at twice its size with how many are spare on its
+      // corner, as the raid's pack draws one; what it is and does is said by the
+      // help bar when it is pointed at, which is why the tile is a control.
+      pixelItemTile(item, itemCountTag(item.id, this.spare(item.id)), `data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}${usedInARaid(item)}`)}"`);
+    // In YOUR THINGS's pocket order (`ui/thingsView.ts`), so the two screens
+    // that show storage sort it the same way - pocket after pocket with no
+    // bands, because a band took a row of the grid for two tiles.
     const supplies = storedPockets(
       Object.fromEntries(this.stashItems.map((item) => [item.id, this.spare(item.id)])),
     )
-      .map(({ pocket, things }) => `<h3 class="px-subheading">${THINGS_POCKET_LABELS[pocket]}</h3>${things.map(({ item }) => supplyRow(item)).join('')}`)
+      .flatMap(({ things }) => things.map(({ item }) => supplyTile(item)))
       .join('');
     return `<main class="px-body stash-layout">${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${this.browseBar(true, this.boxManage())}${rows || `<p class="px-empty">${this.stashSearch.trim() ? 'No Pokémon answers that.' : pokemon.length === 0 ? 'No Pokémon in storage.' : 'This box is empty.'}</p>`}${this.swapPanel()}</div>${details}`,
+      `<div class="px-mon-tiles px-scroll">${this.browseBar(true, this.boxManage())}${rows || `<p class="px-empty">${this.stashSearch.trim() ? 'No Pokémon answers that.' : pokemon.length === 0 ? 'No Pokémon in storage.' : 'This box is empty.'}</p>`}${this.swapPanel()}</div>${details}`,
       { className: 'stash-roster', heading: 'Pokémon', note: `${pokemon.length} stored` },
     )}<div class="stash-side">${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.supply)}>${supplies || '<p class="px-empty">No supplies in storage.</p>'}</div>`,
+      supplies ? `<div class="px-item-tiles px-scroll">${supplies}</div>` : '<p class="px-empty">No supplies in storage.</p>',
       { heading: 'Supplies', note: `${this.stashItems.length} ${this.stashItems.length === 1 ? 'kind' : 'kinds'}` },
     )}</div></main>`;
   }

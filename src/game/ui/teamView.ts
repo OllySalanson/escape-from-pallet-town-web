@@ -25,7 +25,7 @@ import { getHeldItem } from '../items';
 import { MAX_RUN_PARTY, faintedRefusal } from '../hub/deploymentFlow';
 import { ABLE_TO_FIGHT, pickerFindField, pickerOrder, pickerRowAttributes, type PickerEntry } from './boxPicker';
 import { itemIcon } from './icons';
-import { pixelEmptyPartySlot, pixelMonIcon, pixelPartySlot } from './monIcon';
+import { pixelEmptyPartySlot, pixelMonTile, pixelPartySlot } from './monIcon';
 import {
   escapeAttribute,
   pixelHpBar,
@@ -104,15 +104,11 @@ function teamSlot(entry: PickerEntry, lead: boolean, size: number, first: boolea
 
 /** One in a box: the icon over its level and a short bar, as FireRed's PC box with the two facts a team is picked by. */
 function boxTile(entry: PickerEntry, size: number, first: boolean): string {
-  const { pokemon } = entry;
-  const fainted = pokemon.isFainted;
-  const disabled = fainted || size >= MAX_RUN_PARTY;
-  const classes = ['team-tile', ...(fainted ? ['is-fainted'] : [])].join(' ');
-  return `<button class="${classes}" data-member="${escapeAttribute(entry.id)}" data-shows="${escapeAttribute(entry.id)}" ${pickerRowAttributes(entry)} aria-label="${escapeAttribute(spokenName(entry))}"${first ? ' data-cursor-start' : ''}${disabled ? ' aria-disabled="true"' : ''} data-help="${escapeAttribute(teamRowHelp(entry, false, false, size))}">${pixelMonIcon(pokemon)}<span class="team-tile-line"><span class="px-mon-level">${pokemon.level}</span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp, TEAM_TILE_BAR)}</span></button>`;
+  const disabled = entry.pokemon.isFainted || size >= MAX_RUN_PARTY;
+  return pixelMonTile(entry.pokemon, {
+    attributes: `data-member="${escapeAttribute(entry.id)}" data-shows="${escapeAttribute(entry.id)}" ${pickerRowAttributes(entry)} aria-label="${escapeAttribute(spokenName(entry))}"${first ? ' data-cursor-start' : ''}${disabled ? ' aria-disabled="true"' : ''} data-help="${escapeAttribute(teamRowHelp(entry, false, false, size))}"`,
+  });
 }
-
-/** The bar under a tile's icon, beside a two-figure level. */
-export const TEAM_TILE_BAR = 18;
 
 /** The panel's body: the six slots, the boxes, and the card for the one under the cursor. */
 export function teamBody(state: TeamViewState): string {
@@ -134,7 +130,7 @@ export function teamBody(state: TeamViewState): string {
     note: `${size} of ${MAX_RUN_PARTY}`,
     className: 'team-window',
   });
-  const inBoxes = pixelWindow(`${pickerFindField()}<div class="team-box px-scroll">${tiles}</div>${cards}`, {
+  const inBoxes = pixelWindow(`${pickerFindField()}<div class="px-mon-tiles px-scroll">${tiles}</div>${cards}`, {
     heading: 'In your boxes',
     note: `${boxes.length}`,
     className: 'team-window team-boxes',

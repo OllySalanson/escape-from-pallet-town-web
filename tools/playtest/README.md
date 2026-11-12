@@ -471,6 +471,12 @@ the dossier to give and take gear, and ESC back to the raid.
 same for the raid's PACK with ten kinds in it: every tile by arrow key, a Potion
 used on the hurt one, a stone's ABLE and NOT ABLE, and X to drop one.
 
+`stashShots.mjs <test-mode build url> <dir> [--window=WxH] [--before]` does the
+same for Bill's PC on menuShots.mjs's save: the box bar, every Pokémon and every
+supply by arrow key, the dossier following the cursor, and ENTER treating a hurt
+one. (menuShots.mjs's own `--keys` walk no longer reopens the stash and stops at
+the bench; stashShots.mjs is the stash's walk.)
+
 `menuShots.mjs <url> <dir> [--window=1920x950] [--raid] [--resize] [--scrollbars]`
 photographs every DOM screen at a real window size and prints, per scrolling
 pane, how many rows it holds and how many of them a player can actually see -

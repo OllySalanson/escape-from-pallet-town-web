@@ -129,3 +129,43 @@ export function pixelPartySlot(pokemon: PartySlotSubject, options: PartySlotOpti
 export function pixelEmptyPartySlot(): string {
   return `<span class="px-party-slot is-empty" aria-hidden="true">${itemIcon('poke-ball')}</span>`;
 }
+
+/** The bar under a tile's icon, beside a two-figure level. */
+export const MON_TILE_BAR = 18;
+
+export interface MonTileSubject extends MonIconSubject {
+  readonly level: number;
+  readonly isFainted: boolean;
+}
+
+/**
+ * One Pokémon in a grid of them, as FireRed's PC box draws one, with the two
+ * facts a Pokémon is picked by under it: its level and a short bar. YOUR TEAM's
+ * boxes and Bill's PC are the same tile.
+ */
+export function pixelMonTile(
+  pokemon: MonTileSubject,
+  options: {
+    readonly classes?: readonly string[];
+    readonly attributes: string;
+    /**
+     * What stands under the icon instead of the level and bar, when the tile
+     * has something more pressing to say: the raid time NURSE JOY's treatment
+     * of a hurt one costs, in Bill's PC at the Center, where ENTER pays it.
+     */
+    readonly line?: string;
+  },
+): string {
+  const classes = ['px-mon-tile', ...(pokemon.isFainted ? ['is-fainted'] : []), ...(options.classes ?? [])].join(' ');
+  const line = options.line ?? `<span class="px-mon-level">${pokemon.level}</span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp, MON_TILE_BAR)}`;
+  return `<button class="${classes}" ${options.attributes}>${pixelMonIcon(pokemon)}<span class="px-mon-tile-line">${line}</span></button>`;
+}
+
+/**
+ * One kind of thing in a grid of them: its icon at twice its size and how many
+ * on its corner, as HeartGold's bag stands them. The raid's pack and Bill's PC
+ * are the same tile; what it is, is the help bar's and the pane's to say.
+ */
+export function pixelItemTile(item: { readonly id: string; readonly displayName: string }, count: string, attributes: string, classes: readonly string[] = []): string {
+  return `<button class="${['px-item-tile', ...classes].join(' ')}" ${attributes} aria-label="${escapeAttribute(`${item.displayName} ${count}`)}">${itemIcon(item.id, item.displayName)}<span class="px-item-tile-count">${escapeAttribute(count)}</span></button>`;
+}

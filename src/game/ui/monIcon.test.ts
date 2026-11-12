@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { POKEMON_ICON_ORDER, POKEMON_ICON_SHEET } from '../pokemon/generated/pokemonIcons';
-import { MON_ICON_TICKS, monIconCell, monIconPace, pixelMonIcon } from './monIcon';
+import { MON_ICON_TICKS, monIconCell, monIconPace, pixelItemTile, pixelMonIcon, pixelMonTile } from './monIcon';
 
 describe('a Pokémon on a menu, as FireRed draws it', () => {
   it('flaps at FireRed’s pace for its health, and stands still fainted', () => {
@@ -37,5 +37,27 @@ describe('a Pokémon on a menu, as FireRed draws it', () => {
     expect(html).toContain('aria-label="MANKEY"');
     expect(html).toContain('is-red');
     expect(html).toMatch(/--icon-col:\d+;--icon-row:\d+/);
+  });
+});
+
+describe('a tile in a grid of things', () => {
+  it('is a Pokémon over its level and a short bar, or what presses more', () => {
+    const mankey = { name: 'MANKEY', level: 11, currentHp: 25, maxHp: 25, isFainted: false, base: { id: 'mankey' } };
+    const tile = pixelMonTile(mankey, { attributes: 'data-fit="m"' });
+    expect(tile).toMatch(/^<button class="px-mon-tile" data-fit="m">/);
+    expect(tile).toContain('<span class="px-mon-level">11</span>');
+    expect(tile).toContain('px-hp is-short');
+    // A treatment's price stands where the level would.
+    const hurt = pixelMonTile({ ...mankey, currentHp: 3 }, { attributes: '', line: '<span class="px-tag px-tag-risk">−0:45</span>' });
+    expect(hurt).toContain('−0:45');
+    expect(hurt).not.toContain('px-mon-level');
+    expect(pixelMonTile({ ...mankey, currentHp: 0, isFainted: true }, { attributes: '' })).toContain('px-mon-tile is-fainted');
+  });
+
+  it('is an item twice its size with how many on its corner, named for a reader', () => {
+    const tile = pixelItemTile({ id: 'potion', displayName: 'Potion' }, '×9', 'data-supply="potion"');
+    expect(tile).toContain('aria-label="Potion ×9"');
+    expect(tile).toContain('<span class="px-item-tile-count">×9</span>');
+    expect(tile).toContain('data-supply="potion"');
   });
 });

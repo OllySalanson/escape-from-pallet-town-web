@@ -37,7 +37,7 @@ describe('the screens a raid opens over the world', () => {
     // grid of them in fixed whole-pixel tracks - the party's six slots, the
     // pack's item tiles (`ui/monIcon.ts`, `docs/screens/menu-overhaul/`).
     const across: Record<(typeof RAID_SCREENS)[number], string> = {
-      BagScene: 'class="pack-tile',
+      BagScene: 'pixelItemTile(',
       PartyScene: 'pixelPartySlot(',
       ObjectivesScene: 'pixelColumns(COLUMN_MEASURES.',
     };
@@ -48,7 +48,7 @@ describe('the screens a raid opens over the world', () => {
       expect(source).toContain('moveCursor(event.key)');
     }
     const style = await read('../../style.css');
-    expect(style).toMatch(/\.pack-tiles \{[^}]*grid-template-columns: repeat\(auto-fill, calc\(var\(--u\) \* 36\)\)/);
+    expect(style).toMatch(/\.px-item-tiles \{[^}]*grid-template-columns: repeat\(auto-fill, calc\(var\(--u\) \* 36\)\)/);
     expect(style).toMatch(/\.px-party-slots \{[^}]*grid-template-columns: repeat\(auto-fill, calc\(var\(--u\) \* 106\)\)/);
   });
 
