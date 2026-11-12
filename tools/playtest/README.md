@@ -477,6 +477,11 @@ supply by arrow key, the dossier following the cursor, and ENTER treating a hurt
 one. (menuShots.mjs's own `--keys` walk no longer reopens the stash and stops at
 the bench; stashShots.mjs is the stash's walk.)
 
+`resultShots.mjs <test-mode build url> <dir> [--window=WxH] [--before]` opens
+the raid's result screen straight from the title on a report it makes (walked out
+with a haul, and lost), photographs both and prints the glance measure: a raid
+played to its end only to photograph its last screen is minutes of a loaded box.
+
 `menuShots.mjs <url> <dir> [--window=1920x950] [--raid] [--resize] [--scrollbars]`
 photographs every DOM screen at a real window size and prints, per scrolling
 pane, how many rows it holds and how many of them a player can actually see -

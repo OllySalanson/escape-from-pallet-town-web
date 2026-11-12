@@ -284,3 +284,45 @@ that the types were cut in half.
 | FireRed party: who is hurt | 3 | 5 | bars on rows; now the flap pace and the bar |
 | Hades: the one pointed at, big | 2 | 4 | the portrait was below the fold; now it leads the dossier |
 | Every key path | 5 | 5 | ENTER on a tile benches it, on a slot takes it off, TAB into the dossier's care, DONE back to the hall (`deploy.mjs` drives it on every raid) |
+
+## The raid's result
+
+`scenes/ExtractionScene.ts`. Pictures by `tools/playtest/resultShots.mjs <build>
+<dir> --window=WxH` (`--before` against `main`), which opens the screen straight
+from the title on a report it makes - a raid walked out of with a haul, a
+contract's reward, a caught Pidgey, gear and field experience, and the same raid
+lost - because playing a raid to its end costs minutes of a loaded machine.
+
+| | Before | After |
+|---|---|---|
+| Walked out, 1280x800 | ![](raid-result/before-escaped-1280x800.png) | ![](raid-result/after-escaped-1280x800.png) |
+| Lost, 1280x800 | ![](raid-result/before-lost-1280x800.png) | ![](raid-result/after-lost-1280x800.png) |
+| Walked out, 1920x950 | ![](raid-result/before-escaped-1920x950.png) | ![](raid-result/after-escaped-1920x950.png) |
+| Lost, 1920x950 | ![](raid-result/before-lost-1920x950.png) | ![](raid-result/after-lost-1920x950.png) |
+
+What changed: what a raid carried out, paid or lost is the haul as the things
+themselves - each its icon twice its size with its count, tinted and marked by
+what became of it (teal and a tick banked, gold a contract's reward or the secure
+slot's, red-grey and a cross gone), each popping in a moment after the last. A
+Pokémon's line in the ledger and in field experience starts with its FireRed
+icon, overhanging the row as FireRed's party icons overhang their boxes, so the
+row is no taller. The fold now counts an item tile as a row (`SCROLL_ROWS`), so a
+MORE strip never cuts one. At 800x512 the contract still fills the ledger's pane
+and the haul is below its fold, as before: the contract leads because what it
+unlocks is said nowhere else (playtest 47).
+
+### Scorecard
+
+| Measure | 1280x800 walked out | lost | 1920x950 walked out | lost |
+|---|---|---|---|---|
+| Words in view | 146 → **138** | 106 → **90** | 161 → **146** | 106 → **90** |
+| Things in view, as pictures | 5 → **11** | 8 → **9** | 9 → **13** | 8 → **9** |
+| Screen that is picture | 1% → **4%** | 1% → **3%** | 1% → **3%** | 0% → **2%** |
+
+| Benchmark | Before | After | Why |
+|---|---|---|---|
+| Tarkov's raid result: the haul at a glance | 2 | 4 | a column of BANKED rows; now the haul laid out as tiles (at 800x512 still under the contract) |
+| Hades' end of a run: the reward moment | 1 | 4 | still rows; the tiles pop in one after another |
+| FireRed party: who | 2 | 4 | names on rows; now each with its icon |
+| Lost at a glance | 2 | 5 | GONE in red beside each row; now every lost thing greyed with a red cross |
+| Every key path | 5 | 5 | one control, BACK TO THE ARENA, on screen at every size (`resultShots.mjs`) |

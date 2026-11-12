@@ -1272,6 +1272,22 @@ button {
    cursor - three pixels up on the second frame and one down on the first
    (`SpriteCB_BouncePartyMonIcon`). `step-end` holds each frame whole. Kept out
    of the Pixel UI block below because a keyframe's percentage is no selector. */
+/* The haul on the raid's result, a tile at a time (`.result-tile`): each rises
+   four pixels into its place in two steps, after the one before it. */
+@keyframes result-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(calc(var(--u) * 4));
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(calc(var(--u) * 2));
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
 @keyframes mon-flap {
   0% {
     background-position-x: calc(var(--u) * -32 * var(--icon-col));
@@ -5183,4 +5199,63 @@ button {
   .pixel-ui .px-mon-icon {
     animation: none;
   }
+}
+
+/* --- The raid's result: the haul as the things themselves (`ExtractionScene`) --
+   What came home, what a contract paid and what was lost are tiles of the
+   item at twice its size with its count, tinted and marked by what became of
+   it - a tick for kept, a cross for gone - and popping in one after another. */
+:where(.pixel-ui) .result-tiles {
+  justify-content: start;
+  padding: var(--u) 0 calc(var(--u) * 2);
+}
+.pixel-ui .px-item-tile.result-tile {
+  animation: result-pop 0.24s step-end both;
+  animation-delay: calc(var(--i) * 0.12s);
+}
+.pixel-ui .result-tile.is-banked,
+.pixel-ui .result-tile.is-survived {
+  background-color: var(--teal-wash);
+}
+.pixel-ui .result-tile.is-reward,
+.pixel-ui .result-tile.is-secured {
+  background-color: var(--gold-wash);
+}
+.pixel-ui .result-tile.is-lost {
+  background-color: var(--red-wash);
+}
+.pixel-ui .result-tile.is-lost > .item-icon {
+  filter: grayscale(1);
+}
+.pixel-ui .result-tile::after {
+  content: '';
+  position: absolute;
+  top: calc(var(--u) * 2);
+  right: calc(var(--u) * 2);
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 5);
+  background: #1d6a4f;
+  mask: var(--px-tick) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
+}
+.pixel-ui .result-tile.is-reward::after,
+.pixel-ui .result-tile.is-secured::after {
+  background: #7a5a00;
+}
+.pixel-ui .result-tile.is-lost::after {
+  width: calc(var(--u) * 5);
+  background: var(--red);
+  mask-image: var(--px-cross);
+  -webkit-mask-image: var(--px-cross);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pixel-ui .px-item-tile.result-tile {
+    animation: none;
+  }
+}
+/* A Pokémon's icon at the head of a row overhangs it, as FireRed's party icons
+   overhang their boxes: the row stays the two lines it was, and the haul under
+   the ledger's rows is not pushed under its MORE strip. */
+:where(.pixel-ui) .extraction-layout .px-row.has-icon > .px-mon-icon {
+  margin: calc(var(--u) * -4) 0;
 }

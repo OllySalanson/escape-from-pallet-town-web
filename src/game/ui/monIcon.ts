@@ -169,3 +169,13 @@ export function pixelMonTile(
 export function pixelItemTile(item: { readonly id: string; readonly displayName: string }, count: string, attributes: string, classes: readonly string[] = []): string {
   return `<button class="${['px-item-tile', ...classes].join(' ')}" ${attributes} aria-label="${escapeAttribute(`${item.displayName} ${count}`)}">${itemIcon(item.id, item.displayName)}<span class="px-item-tile-count">${escapeAttribute(count)}</span></button>`;
 }
+
+/**
+ * A Pokémon's icon by its national dex number, for a screen that carries the
+ * number rather than the Pokémon (the raid's result): the icon sheet is in dex
+ * order, so the number is its place on it. Full health flaps at full pace.
+ */
+export function pixelMonIconForDex(dexId: number, name: string, currentHp = 1, maxHp = 1): string {
+  const speciesId = POKEMON_ICON_ORDER[dexId - 1] ?? '';
+  return pixelMonIcon({ name, currentHp, maxHp, base: { id: speciesId } });
+}

@@ -28,6 +28,7 @@ import { iconUrl, itemIcon, itemIconName, objectiveIcon } from '../ui/icons';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { formatExperience } from '../ui/pokemonSummary';
 import { pixelCommitBar, pixelHpBar, pixelScreen, pixelShinyStar, pixelTag, pixelWindow } from '../ui/pixelUi';
+import { pixelMonIconForDex } from '../ui/monIcon';
 
 export interface ExtractionSceneData {
   readonly report: ExtractionReport;
@@ -588,7 +589,7 @@ export class ExtractionScene extends Phaser.Scene {
     const rows = progress
       .map((entry) => {
         const levelled = entry.toLevel > entry.fromLevel;
-        return `<div class="px-row${levelled ? ' is-selected' : ''}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${escapeHtml(entry.name)}</strong>${entry.shiny ? pixelShinyStar() : ''}</span><small>${
+        return `<div class="px-row has-icon${levelled ? ' is-selected' : ''}">${pixelMonIconForDex(entry.dexId, entry.name)}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${escapeHtml(entry.name)}</strong>${entry.shiny ? pixelShinyStar() : ''}</span><small>${
           levelled
             ? `Level ${entry.fromLevel} to ${entry.toLevel}`
             : `Level ${entry.toLevel} · ${shortOfNextLevel(entry)}`
@@ -744,21 +745,39 @@ const ROW_TAGS: Record<RowTag, string> = {
   reward: pixelTag('Reward', 'good', true),
 };
 
+/** What became of a thing, in a word, for the tile that shows it by colour and mark instead. */
+const TILE_WORDS: Record<RowTag, string> = {
+  banked: 'banked',
+  lost: 'gone',
+  secured: 'protected',
+  partner: 'safe',
+  survived: 'made it',
+  reward: 'reward',
+};
+
 function groupRows(group: ReportGroup, tag: RowTag): string {
-  return [
-    ...group.pokemon.map((member) => pokemonRow(member, tag)),
-    ...group.items.map((item) => itemRow(item, tag)),
-  ].join('');
+  // The things carried home are the haul, shown as the haul: each its icon at
+  // twice its size with how many on its corner, laid across the pane and
+  // coloured by what became of it (`.result-tile`), each popping in after the
+  // last. A Pokémon keeps its row, its icon at the head of it: its level and
+  // its health are what a player reads it for.
+  const items = group.items.length
+    ? `<div class="px-item-tiles result-tiles">${group.items.map((item, index) => itemTile(item, tag, index)).join('')}</div>`
+    : '';
+  return `${group.pokemon.map((member) => pokemonRow(member, tag)).join('')}${items}`;
 }
 
 function pokemonRow(member: ReportPokemon, tag: RowTag): string {
-  return `<div class="px-row${tag === 'lost' ? ' is-lost' : ''}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${escapeHtml(member.name)}</strong>${member.shiny ? pixelShinyStar() : ''}${pixelHpBar(member.currentHp, member.maxHp)}</span><small>Level ${member.level} · ${member.currentHp}/${member.maxHp}\u00a0HP</small></span>${ROW_TAGS[tag]}</div>`;
+  // Its icon at the head of the row in the ledger; the gamble's column is too
+  // narrow for an icon beside a name, a bar and a tag, and its line broke.
+  const icon = tag === 'banked' || tag === 'lost' || tag === 'reward';
+  return `<div class="px-row${icon ? ' has-icon' : ''}${tag === 'lost' ? ' is-lost' : ''}">${icon ? pixelMonIconForDex(member.dexId, member.name, member.currentHp, member.maxHp) : ''}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${escapeHtml(member.name)}</strong>${member.shiny ? pixelShinyStar() : ''}${pixelHpBar(member.currentHp, member.maxHp)}</span><small>Level ${member.level} · ${member.currentHp}/${member.maxHp}\u00a0HP</small></span>${ROW_TAGS[tag]}</div>`;
 }
 
-function itemRow(item: ReportItem, tag: RowTag): string {
-  // Quantity sits on the name's own line: an item row has nothing to say on a
-  // second one, and the screen is worth more than the extra height costs.
-  return `<div class="px-row has-icon${tag === 'lost' ? ' is-lost' : ''}">${itemIcon(item.itemId, item.label)}<span class="px-row-main"><strong>${escapeHtml(item.label)} ${itemCountTag(item.itemId, item.quantity)}</strong></span>${ROW_TAGS[tag]}</div>`;
+function itemTile(item: ReportItem, tag: RowTag, index: number): string {
+  const count = itemCountTag(item.itemId, item.quantity);
+  const words = `${item.label} ${count}, ${TILE_WORDS[tag]}`;
+  return `<div class="px-item-tile result-tile is-${tag}" role="img" aria-label="${escapeHtml(words)}" title="${escapeHtml(words)}" style="--i:${index}">${itemIcon(item.itemId, item.label)}<span class="px-item-tile-count">${escapeHtml(count)}</span></div>`;
 }
 
 function itemText(item: ReportItem): string {
