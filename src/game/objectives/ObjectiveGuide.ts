@@ -10,6 +10,7 @@ import { errandForItem, errandPlace, errandSquares, errandThing } from '../hub/e
 import { isDugExit, itemThatOpens } from '../world/extractionPoints';
 import { ITEMS } from '../items/items';
 import { createRunTrainerEncounters } from '../world/trainers';
+import { districtAt } from '../world/districts';
 
 export interface ObjectiveGuideContext {
   readonly currentMapId: WorldMapId;
@@ -98,6 +99,7 @@ export function buildObjectiveGuide(
       ...barredExitHints(session, context),
       ...lockedCacheHints(session, context),
       ...errandHints(session, context, snapshot.foundItems),
+      ...shimmerHints(session, context),
       ...shinyHints(snapshot.caughtPokemon),
     ],
   };
@@ -192,6 +194,23 @@ function lockedCacheHints(session: ActiveRunSession, context: ObjectiveGuideCont
   }
   const where = directionTo(context.currentPosition, context.towards?.(cache.position) ?? cache.position);
   return [`You carry a Lockpick: ${cache.label}, ${where}, is locked and pays more than the open caches round it.`];
+}
+
+/**
+ * This raid's shimmering grass (`../world/shimmer`), for as long as nothing has
+ * been through it: the place and the way, and that what moves in it is rare.
+ * Never what it is - the glitter says go and look, and so does this.
+ */
+function shimmerHints(session: ActiveRunSession, context: ObjectiveGuideContext): string[] {
+  const shimmer = session.plan?.shimmer;
+  if (!shimmer || session.shimmerMet || session.plan?.insertion.mapId !== context.currentMapId) {
+    return [];
+  }
+  const place = districtAt(context.currentMapId, shimmer.position)?.name;
+  const heading = context.towards?.(shimmer.position) ?? shimmer.position;
+  return [
+    `Something rare is moving in the tall grass${place ? ` in ${place}` : ''}, ${directionTo(context.currentPosition, heading)}. Look for the glitter.`,
+  ];
 }
 
 /**
