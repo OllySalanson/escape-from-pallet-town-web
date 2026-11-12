@@ -18,6 +18,7 @@ import type { WorldEntity } from '../world/npcs';
 import { HERON_STILL_MS, secretById, type RaidConditions } from '../world/secrets';
 import { MISTY_BOSS_ID } from '../world/valeQuarters';
 import { MAX_PENDING_RECOVERY_MS } from '../hub/recovery';
+import { GLINT_FIRST_MS, ShinyGlints } from '../base/shinyGlint';
 import { WorldScene } from './WorldScene';
 
 /**
@@ -229,6 +230,58 @@ describe('THE PINK ONE', () => {
       secrets: [{ id: sleeper.id, reward: sleeper.rewards[0] }],
     });
     expect((awake.internals as unknown as typeof colours).otherColours(awake.entity)).toBeUndefined();
+  });
+
+  it('gives off a shiny’s stars where it stands while the raid is led by a Bug, and nobody else does', () => {
+    const shines = (at: ReturnType<typeof beside>): boolean =>
+      (at.internals as unknown as { standsShiny(entity: WorldEntity): boolean }).standsShiny(at.entity);
+    expect(shines(beside(pink.id, 'pokemon', led))).toBe(true);
+    // Not led by a Bug, it is not on the ride to shine; had, there is nothing to meet.
+    expect(shines(beside(pink.id, 'pokemon', { conditions: CONDITIONS, secrets: [] }))).toBe(false);
+    expect(shines(beside(pink.id, 'pokemon', { conditions: led.conditions, secrets: [{ id: pink.id }] }))).toBe(false);
+    // A secret's Pokemon in its ordinary colours gives off none, open or shut.
+    const sleeper = secretById('the-sleeper-in-the-pines')!;
+    expect(
+      shines(beside(sleeper.id, 'pokemon', { conditions: { ...CONDITIONS, carried: ['poke-flute'] }, secrets: [{ id: sleeper.id, reward: sleeper.rewards[0] }] })),
+    ).toBe(false);
+    expect(shines(beside(sleeper.id, 'pokemon', { conditions: CONDITIONS, secrets: [], sleeping: [sleeper.id] }))).toBe(false);
+  });
+
+  it('stands its stars round the figure it is, a frame at a time, and takes them down with the map', () => {
+    const scene = Object.create(WorldScene.prototype) as WorldScene;
+    const drawn: { x: number; y: number; visible: boolean; gone: boolean }[] = [];
+    const graphics = () => {
+      const made = {
+        x: 0, y: 0, visible: true, gone: false,
+        clear: () => made, fillStyle: () => made, fillRect: () => made,
+        setPosition: (x: number, y: number) => ((made.x = x), (made.y = y), made),
+        setDepth: () => made, setAlpha: () => made,
+        setVisible: (visible: boolean) => ((made.visible = visible), made),
+        destroy: () => void (made.gone = true),
+      };
+      drawn.push(made);
+      return made;
+    };
+    const sprite = { x: 400, y: 320, depth: 5, alpha: 1, visible: true };
+    const stage = { add: { graphics } };
+    Object.assign(scene as object, {
+      figureGlints: [{ glints: new ShinyGlints(stage as never), sprite, species: 'butterfree' }],
+    });
+    const tend = (ms: number): void => (scene as unknown as { tendFigureGlints(ms: number): void }).tendFigureGlints(ms);
+
+    tend(GLINT_FIRST_MS + 10);
+    const lit = drawn.filter((each) => each.visible);
+    expect(lit.length).toBeGreaterThan(0);
+    // Round the figure's own icon: within a tile of it, and above its feet.
+    for (const star of lit) {
+      expect(Math.abs(star.x - sprite.x)).toBeLessThanOrEqual(16);
+      expect(star.y).toBeLessThan(sprite.y);
+    }
+
+    // A figure not on show has no stars on show.
+    sprite.visible = false;
+    tend(16);
+    expect(drawn.some((each) => each.visible)).toBe(false);
   });
 
   it('is met in its other colours: the fight is promised a shiny Butterfree', () => {
