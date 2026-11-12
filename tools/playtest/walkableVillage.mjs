@@ -1,7 +1,7 @@
 // Millbrook - or THE HARBOUR, with --area=harbour, TANGLEWOOD, with
-// --area=tanglewood, PINE HOLLOW, with --area=pine-hollow, or THE CROSSING, with
-// --area=the-crossing - walked the way a player walks it, to count what gets in
-// the way.
+// --area=tanglewood, PINE HOLLOW, with --area=pine-hollow, THE CROSSING, with
+// --area=the-crossing, or HIGH MOOR, with --area=high-moor - walked the way a
+// player walks it, to count what gets in the way.
 //
 // The captain, 11 Nov 2026: "when you're walking around, there's just often
 // things in your way, and it's quite fiddly to get through places". So this
@@ -13,12 +13,13 @@
 // a snag, written down with what was in the way, and the walk steps round it
 // over the scene's own collision and carries on.
 //
-//   node tools/playtest/walkableVillage.mjs <test-mode build url> <out dir> [--area=harbour|tanglewood|pine-hollow|the-crossing] [--port=N]
+//   node tools/playtest/walkableVillage.mjs <test-mode build url> <out dir> [--area=harbour|tanglewood|pine-hollow|the-crossing|high-moor] [--port=N]
 //
 // It writes `<out>/snags.json` and a picture at each route's end. Run it against
 // a build from before a change and after it to compare (`docs/screens/walkable-millbrook/`,
 // `docs/screens/walkable-harbour/`, `docs/screens/walkable-tanglewood/`,
-// `docs/screens/walkable-pine-hollow/`, `docs/screens/walkable-the-crossing/`).
+// `docs/screens/walkable-pine-hollow/`, `docs/screens/walkable-the-crossing/`,
+// `docs/screens/walkable-high-moor/`).
 //
 // --area=harbour walks THE HARBOUR instead (the captain's bench on the way east
 // and the parasols on the beach were the two things he named): a new game is
@@ -41,6 +42,10 @@
 // is stood a step in on the road from Millbrook, where most players come over,
 // and every route starts and ends there.
 //
+// --area=high-moor walks HIGH MOOR, the drove road north out of Mill Square.
+// The walker is stood a step in on the road up from Millbrook, and every route
+// starts and ends there. The Lost Fold, behind a Strength boulder, is not walked.
+//
 // --at=name:x:y,... (any area but the harbour) walks nothing: it stands at each
 // tile, in the district's own tiles, and photographs it as `<out>/<name>.png`,
 // so the same view is taken of a build before a change and after it.
@@ -59,13 +64,14 @@ const shots = (args.find((arg) => arg.startsWith('--at='))?.slice('--at='.length
     const [name, x, y] = shot.split(':');
     return { name, at: [Number(x), Number(y)] };
   });
-if (!base || !['millbrook', 'harbour', 'tanglewood', 'pine-hollow', 'the-crossing'].includes(area)) {
-  throw new Error('usage: walkableVillage.mjs <url> <out dir> [--area=millbrook|harbour|tanglewood|pine-hollow|the-crossing] [--port=N]');
+if (!base || !['millbrook', 'harbour', 'tanglewood', 'pine-hollow', 'the-crossing', 'high-moor'].includes(area)) {
+  throw new Error('usage: walkableVillage.mjs <url> <out dir> [--area=millbrook|harbour|tanglewood|pine-hollow|the-crossing|high-moor] [--port=N]');
 }
 const HARBOUR = area === 'harbour';
 const TANGLEWOOD = area === 'tanglewood';
 const PINE_HOLLOW = area === 'pine-hollow';
 const THE_CROSSING = area === 'the-crossing';
+const HIGH_MOOR = area === 'high-moor';
 mkdirSync(out, { recursive: true });
 const url = new URL(base);
 url.searchParams.set('testmode', 'pixels');
@@ -74,7 +80,7 @@ const FRAME_MS = 1000 / 60;
 const WORLD = `${GAME}.scene.getScene('${HARBOUR ? 'base' : 'world'}')`;
 const BATTLE = `${GAME}.scene.getScene('battle')`;
 // Local to the district: Millbrook is the plan's cell [0, 1], Tanglewood [2, 1],
-// Pine Hollow [2, 0], The Crossing [1, 1]. The harbour is its own map.
+// Pine Hollow [2, 0], The Crossing [1, 1], High Moor [0, 0]. The harbour is its own map.
 const ORIGIN = HARBOUR
   ? { x: 0, y: 0 }
   : TANGLEWOOD
@@ -83,11 +89,14 @@ const ORIGIN = HARBOUR
       ? { x: 192, y: 64 }
       : THE_CROSSING
         ? { x: 128, y: 128 }
-        : { x: 64, y: 128 };
+        : HIGH_MOOR
+          ? { x: 64, y: 64 }
+          : { x: 64, y: 128 };
 // Where the walks start: Millbrook's landing, a step into Tanglewood on the road
-// from The Crossing, a step into Pine Hollow on the trail over the col, or a
-// step into The Crossing on the road from Millbrook.
-const LANDING = TANGLEWOOD ? [1, 33] : PINE_HOLLOW ? [1, 23] : THE_CROSSING ? [1, 31] : [32, 33];
+// from The Crossing, a step into Pine Hollow on the trail over the col, a step
+// into The Crossing on the road from Millbrook, or a step onto High Moor on the
+// drove road up from it.
+const LANDING = TANGLEWOOD ? [1, 33] : PINE_HOLLOW ? [1, 23] : THE_CROSSING ? [1, 31] : HIGH_MOOR ? [30, 61] : [32, 33];
 // THE HARBOUR's two starts (`BASE_SPAWN`, `BASE_LANDING` in `base/baseMap.ts`).
 const SPAWN = [16, 13];
 const JETTY = [12, 19];
@@ -218,6 +227,29 @@ const THE_CROSSING_ROUTES = [
   { name: 'along the burners’ road to Collier Osk', corners: [[39, 31], [39, 52], [58, 52], [58, 50]] },
   { name: 'down the west bank to the eel weir’s hut door', corners: [[16, 31], [16, 48], [19, 48]] },
   { name: 'into the carters’ yard, to the shed door', corners: [[8, 31], [8, 28]] },
+];
+
+// HIGH MOOR's main routes from the drove road up from Millbrook: up the road to
+// the Moor Gate, east to the peaks, west to the shepherd's and the sheep track,
+// every door but the Lost Fold's, the Little Stones, the camp and the fold, Moor
+// Top, the tarn's boards and the Moor Foot. The road is walked on its middle
+// lane; every corner is open ground before and after.
+const DROVE_ROAD = [[31, 51], [25, 51], [25, 41], [29, 41], [29, 33], [26, 33]];
+const HIGH_MOOR_ROUTES = [
+  { name: 'up the drove road to the Moor Gate', corners: [...DROVE_ROAD, [26, 23], [33, 23], [33, 11], [29, 11], [29, 1]] },
+  { name: 'to the toll house door', corners: [...DROVE_ROAD, [26, 23], [33, 23], [33, 11], [29, 11], [29, 9], [24, 9], [24, 8]] },
+  { name: 'past the tor to the Little Stones', corners: [...DROVE_ROAD, [26, 23], [33, 23], [33, 11], [38, 11]] },
+  { name: 'east along the trail to Greystone Peaks', corners: [[31, 51], [25, 51], [25, 41], [29, 41], [29, 37], [62, 37]] },
+  { name: 'to the spring’s bath hut door', corners: [[31, 51], [25, 51], [25, 41], [29, 41], [29, 37], [56, 37], [56, 35]] },
+  { name: 'over the heather to the drovers’ camp hut', corners: [...DROVE_ROAD, [26, 28], [37, 28], [37, 27]] },
+  { name: 'into the drovers’ fold', corners: [...DROVE_ROAD, [26, 29], [23, 29]] },
+  { name: 'west to the shepherd’s cottage door', corners: [...DROVE_ROAD, [26, 24], [12, 24], [12, 23]] },
+  { name: 'west to the pecha tree by the pen', corners: [...DROVE_ROAD, [26, 24], [17, 24], [17, 23]] },
+  { name: 'out by the sheep track to the Moor Chapel', corners: [...DROVE_ROAD, [26, 24], [7, 24], [7, 19], [1, 19]] },
+  { name: 'up to Moor Top', corners: [[31, 51], [25, 51], [25, 39], [22, 39], [22, 37]] },
+  { name: 'out along the tarn’s boards', corners: [[31, 51], [25, 51], [25, 44], [31, 44]] },
+  { name: 'to Lina at the waystones', corners: [[30, 57], [25, 57]] },
+  { name: 'into the Moor Foot’s pen, to the Drover Boy', corners: [[30, 59], [35, 59]] },
 ];
 
 const browser = port ? attachBrowser(Number(port), { window: PIXEL_WINDOW }) : await launchBrowser({ window: PIXEL_WINDOW });
@@ -414,8 +446,8 @@ try {
       await wait(600);
       await readAll();
     };
-    // Tanglewood's, Pine Hollow's and The Crossing's walks start a step in from the way in.
-    if (TANGLEWOOD || PINE_HOLLOW || THE_CROSSING) await standAt(LANDING);
+    // Tanglewood's, Pine Hollow's, The Crossing's and High Moor's walks start a step in from the way in.
+    if (TANGLEWOOD || PINE_HOLLOW || THE_CROSSING || HIGH_MOOR) await standAt(LANDING);
     const landed = await tile();
     console.log(`landed at ${landed} (the start is ${LANDING})`);
     await page.screenshot(`${out}/00-landing.png`);
@@ -432,7 +464,9 @@ try {
           ? PINE_HOLLOW_ROUTES
           : THE_CROSSING
             ? THE_CROSSING_ROUTES
-            : ROUTES).entries()) {
+            : HIGH_MOOR
+              ? HIGH_MOOR_ROUTES
+              : ROUTES).entries()) {
       await walkRoute(route.name, route.corners, `${String(k + 1).padStart(2, '0')}-${route.name.split(/[ ,]+/).slice(0, 4).join('-').toLowerCase().replace(/[^a-z-]/g, '')}`);
       // Back to the landing the way the route came, which is a walk too.
       await walkRoute(`back from: ${route.name}`, [...route.corners.slice(0, -1).reverse(), LANDING]);

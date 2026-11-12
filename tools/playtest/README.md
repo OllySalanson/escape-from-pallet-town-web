@@ -135,6 +135,11 @@ Millbrook: 19 routes and back - over the bridge and through Bridge End to
 Tanglewood, up to the peaks and down to Gull Strand, every door in the valley,
 the drovers' rest, the bee garden, the heron walk, the lane down to the stepping
 stones and the road nobody signs (`docs/screens/walkable-the-crossing/`).
+`--area=high-moor` walks HIGH MOOR from a step up the drove road from Millbrook:
+14 routes and back - up the road to the Moor Gate, east to the peaks, west to the
+shepherd's and out by the sheep track, every door but the Lost Fold's, the Little
+Stones, the drovers' camp and fold, Moor Top, the tarn's boards and the Moor Foot
+(`docs/screens/walkable-high-moor/`).
 
 `millbrook.mjs <url> <dir> [--port=N]` plays the vale's front door as a new game
 meets it: landing on Mill Square, the village moving and calling out round a
