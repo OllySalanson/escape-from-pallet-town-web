@@ -211,7 +211,7 @@ export function pocketJump(pockets: readonly string[], current: number, step: 1 
   return starts[Math.min(starts.length - 1, Math.max(0, here + step))];
 }
 
-function thingRow(view: ThingsView, thing: StoredThing): string {
+function thingRow(view: ThingsView, thing: StoredThing, startsPocket: boolean): string {
   const { item, count } = thing;
   const use = homeUseOf(item);
   // The pane under the list already says what it is and where it is used, so
@@ -222,7 +222,7 @@ function thingRow(view: ThingsView, thing: StoredThing): string {
   } LEFT and RIGHT go a pocket at a time.`;
   const packed = view.packed(item.id);
   const tag = packed > 0 ? pixelTag('Packed', 'plain') : '';
-  return `<button class="px-row has-icon" data-thing="${item.id}" data-pocket="${pocketOf(item)}" data-shows="${item.id}"${
+  return `<button class="px-row has-icon${startsPocket ? ' starts-pocket' : ''}" data-thing="${item.id}" data-pocket="${pocketOf(item)}" data-shows="${item.id}"${
     use ? ` data-use="${use}"` : ''
   } data-help="${escapeAttribute(help)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${item.displayName}</strong>${tag}</span></span><span class="px-tag">${itemCountTag(item.id, count)}</span></button>`;
 }
@@ -242,14 +242,40 @@ function thingDetail(view: ThingsView, thing: StoredThing, first: boolean): stri
   return `<div class="px-detail" data-shown-by="${item.id}"${first ? '' : ' hidden'}><span class="px-wrap">${item.description} ${whereItIsUsed(item)}</span><div class="care-options"><small class="px-label">${facts.join(' · ')}</small></div></div>`;
 }
 
+/**
+ * The pockets as HeartGold's bag stands them: a strip across the top, one icon a
+ * pocket - the first thing in it - with the cursor's own pocket lit
+ * (`ThingsScene` toggles `is-here` as the cursor moves; nothing is redrawn). It
+ * is a picture of where LEFT and RIGHT go, which jump a pocket at a time, so a
+ * player sees how many pockets there are and which one they are in without
+ * reading a band.
+ */
+export function pocketStrip(pockets: readonly { readonly pocket: ThingsPocket; readonly things: readonly StoredThing[] }[]): string {
+  if (pockets.length < 2) {
+    return '';
+  }
+  // The icons, then every pocket's name, of which only the lit pocket's shows.
+  return `<div class="things-pockets" aria-hidden="true">${pockets
+    .map(({ pocket, things }, index) => `<span class="things-pocket${index === 0 ? ' is-here' : ''}" data-pocket-tab="${pocket}" title="${escapeAttribute(THINGS_POCKET_LABELS[pocket])}">${itemIcon(things[0].item.id)}</span>`)
+    .join('')}${pockets
+    .map(({ pocket }, index) => `<span class="things-pocket-name${index === 0 ? ' is-here' : ''}" data-pocket-tab="${pocket}">${THINGS_POCKET_LABELS[pocket]}</span>`)
+    .join('')}</div>`;
+}
+
 /** The whole body: storage in pockets, and the next raid's pack beneath it as the squares it is. */
 export function thingsBody(view: ThingsView): string {
   const pockets = storedPockets(view.contents);
+  const strip = pocketStrip(pockets);
+  // With the strip over the list, a pocket is named there (and lit while the
+  // cursor is in it); in the list a pocket starts on a one-pixel rule rather
+  // than a band, because the bands cost two rows of the list at 1280x800. With
+  // one pocket there is no strip, and its band names it.
   const rows = pockets
-    .flatMap(({ pocket, things }) => [
-      `<h3 class="px-subheading">${THINGS_POCKET_LABELS[pocket]}</h3>`,
-      ...things.map((thing) => thingRow(view, thing)),
-    ])
+    .flatMap(({ pocket, things }, index) =>
+      strip
+        ? things.map((thing, at) => thingRow(view, thing, index > 0 && at === 0))
+        : [`<h3 class="px-subheading">${THINGS_POCKET_LABELS[pocket]}</h3>`, ...things.map((thing) => thingRow(view, thing, false))],
+    )
     .join('');
   const details = pockets
     .flatMap(({ things }) => things)
@@ -257,7 +283,7 @@ export function thingsBody(view: ThingsView): string {
     .join('');
   const kinds = pockets.reduce((sum, { things }) => sum + things.length, 0);
   const stored = pixelWindow(
-    `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.supply)}>${
+    `${strip}<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.supply)}>${
       rows || '<p class="px-empty">Storage is empty. Whatever a raid brings home is kept here.</p>'
     }</div>${details}`,
     { className: 'raid-pockets things-storage', heading: 'In storage', note: `${kinds} ${kinds === 1 ? 'kind' : 'kinds'}` },

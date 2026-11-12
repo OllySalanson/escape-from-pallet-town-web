@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { POKEMON_ICON_ORDER, POKEMON_ICON_SHEET } from '../pokemon/generated/pokemonIcons';
-import { MON_ICON_TICKS, monIconCell, monIconPace, pixelItemTile, pixelMonIcon, pixelMonTile } from './monIcon';
+import { MON_ICON_TICKS, monIconCell, monIconPace, pixelItemTile, pixelMonIcon, pixelMonTile, pixelStack } from './monIcon';
 
 describe('a Pokémon on a menu, as FireRed draws it', () => {
   it('flaps at FireRed’s pace for its health, and stands still fainted', () => {
@@ -59,5 +59,20 @@ describe('a tile in a grid of things', () => {
     expect(tile).toContain('aria-label="Potion ×9"');
     expect(tile).toContain('<span class="px-item-tile-count">×9</span>');
     expect(tile).toContain('data-supply="potion"');
+  });
+});
+
+describe('a stack of a thing', () => {
+  it('draws one icon a piece, the taken ones lit, and says the rest past ten', () => {
+    const potion = { id: 'potion', displayName: 'Potion' };
+    const html = pixelStack(potion, 3, 9);
+    expect(html.match(/px-stack-one/g)).toHaveLength(9);
+    expect(html.match(/px-stack-one is-taken/g)).toHaveLength(3);
+    expect(html).toContain('aria-label="3 of 9 Potion"');
+    const many = pixelStack(potion, 12, 14);
+    expect(many.match(/px-stack-one/g)).toHaveLength(10);
+    expect(many.match(/is-taken/g)).toHaveLength(10);
+    expect(many).toContain('<small class="px-stack-more">+4</small>');
+    expect(pixelStack(potion, 0, 0)).not.toContain('px-stack-one');
   });
 });

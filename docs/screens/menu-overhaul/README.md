@@ -393,3 +393,44 @@ deed is in the dossier, and ENTER on a tile does it.
 | FireRed PC box: the collection as creatures | 1 | 5 |
 | Hades: words only for the one pointed at | 2 | 4 |
 | Every key path | 5 | 5 |
+
+## The rack, and YOUR THINGS
+
+Two screens whose LEFT and RIGHT already do something - the rack's count
+selectors step a count, YOUR THINGS jumps a pocket at a time - so neither became
+a grid; each keeps its list and its keys, and shows inside it what the list said
+in words. Pictures by `menuShots.mjs` (the rack) and `yourThings.mjs` (YOUR
+THINGS, which now also checks that RIGHT moves the cursor a pocket and the
+strip's light with it).
+
+| | Before | After |
+|---|---|---|
+| The rack | ![](rack-and-things/rack-before-1280x800.png) | ![](rack-and-things/rack-after-1280x800.png) |
+| YOUR THINGS | ![](rack-and-things/things-before-1280x800.png) | ![](rack-and-things/things-after-1280x800.png) |
+
+What changed:
+- **The rack**: under a supply's name, where "1 square · 9 at base · packed for
+  you" was, is a pile of the thing itself (`pixelStack`): one icon a piece,
+  overlapping like a pile on a shelf, the packed ones lit and the rest dim, past
+  ten the remainder as a count. The squares, the count at base and "packed for
+  you" are the help bar's. The steppers and their keys are unchanged.
+- **YOUR THINGS**: HeartGold's bag pockets - a strip of one icon a pocket over the
+  list, the cursor's own pocket lit and raised and named beside the strip, so a
+  player sees how many pockets there are and which one LEFT and RIGHT have put
+  them in. In the list a pocket starts on a one-pixel rule instead of a band,
+  which gives back the rows the strip takes.
+- **The locker was tried and left as it was**: its pane is narrow, a pile under
+  each name made every row taller, and only five of its rows stood in view where
+  seven had.
+
+| Measure (1280x800) | The rack before | after | YOUR THINGS before | after |
+|---|---|---|---|---|
+| Words in view | 87 | **59** | - | - |
+| Rows in view | 5 of 5 | 5 of 5 | 6 of 14 | **7** of 14 |
+| Pockets seen at a glance | - | - | the 3 bands in view | **all 7** |
+
+| Benchmark | Before | After | Why |
+|---|---|---|---|
+| Tarkov stash: how many, at a glance | 2 | 4 | "9 at base" in words; now nine Potions, the packed ones lit |
+| HeartGold bag: which pocket | 2 | 5 | a band per pocket, three in view; now every pocket's icon, the current one lit and named |
+| Every key path | 5 | 5 | steppers on LEFT and RIGHT, pockets on LEFT and RIGHT, as before (`yourThings.mjs`, `menuShots.mjs`) |

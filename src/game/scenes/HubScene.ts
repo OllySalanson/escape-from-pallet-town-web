@@ -156,7 +156,7 @@ import { moveChoiceMessage } from '../ui/moveChooser';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { conditionLine } from '../ui/condition';
 import { pokemonDossier } from '../ui/pokemonDossier';
-import { pixelEmptyPartySlot, pixelItemTile, pixelMonTile, pixelPartySlot } from '../ui/monIcon';
+import { pixelEmptyPartySlot, pixelItemTile, pixelMonTile, pixelPartySlot, pixelStack } from '../ui/monIcon';
 import { drawFixture, fixtureArt } from '../ui/fixturePicture';
 import {
   COLUMN_MEASURES,
@@ -2680,13 +2680,11 @@ export class HubScene extends Phaser.Scene {
             ? `The pack has room for ${limit} ${item.displayName} as you have laid it out - ${tidied} if it is packed again. Tidy is under the squares.`
             : `The pack has room for ${limit} ${item.displayName} beside what else is packed.`
           : `All ${held} at base are packed.`;
-        // Each fact is held together, so a row too narrow for all three breaks
-        // between them: "packed for you" wrapped "you" onto a line of its own
-        // (playtest 47).
-        const facts = [size, `${held} at base`, ...(prepacked ? ['packed for you'] : [])]
-          .map((fact) => fact.replace(/ /g, '&nbsp;'))
-          .join(' · ');
-        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}" data-describes="${describeKey('item', item.id)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${facts}</small></span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason, cursorStart: index === 0 })}</div>`;
+        // How many are packed against how many are at base, as the thing
+        // itself: a pile of its icon, the packed ones lit (`pixelStack`). The
+        // squares each takes and whether it was packed for you are the help
+        // bar's, which says them the moment the cursor is on the row.
+        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}" data-describes="${describeKey('item', item.id)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong>${pixelStack(item, packed, held)}</span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason, cursorStart: index === 0 })}</div>`;
       })
       .join('');
     const cells = this.flow.bagCells;
@@ -3240,6 +3238,8 @@ export class HubScene extends Phaser.Scene {
     // else, because a second clause wrapped every row onto three lines and a
     // list of three-line rows is a list nobody scrolls. What is packed, and
     // what a material's room is for, are in the help bar the cursor fills.
+    // (A pile of the thing, as the rack draws, was tried here and cost two of
+    // the seven rows in view at 1280x800: the menu overhaul's notes.)
     const secureRow = (itemId: ItemId, help: string): string => {
       // Squares, not units. They are the same number for everything a square
       // holds one of, and for money - a bundle to a square - the stepper

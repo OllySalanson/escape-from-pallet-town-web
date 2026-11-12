@@ -116,11 +116,21 @@ try {
   await wait(300);
   await openThings('in the yard');
   await shoot('01-yard-things');
-  const headings = await page.evaluate(`[...document.querySelectorAll('#screens .things-menu .px-subheading')].map((h) => h.textContent)`);
+  // Every pocket is named: on the strip of pocket icons over the list (the menu
+  // overhaul, `ui/thingsView.ts`), or by a band when there is one pocket.
+  const headings = await page.evaluate(`[...document.querySelectorAll('#screens .things-menu .px-subheading, #screens .things-menu .things-pocket-name')].map((h) => h.textContent)`);
   console.log(`pockets: ${headings.join(', ')}`);
   for (const pocket of ['Medicine', 'Poké Balls', 'Discs', 'Stones', 'Tools', 'Packs', 'Found goods']) {
     if (!headings.includes(pocket)) fail(`no ${pocket} pocket`);
   }
+  // RIGHT jumps a pocket, and the strip's light goes with the cursor.
+  await page.evaluate(`document.querySelector('#screens .things-menu [data-thing]').focus()`);
+  await press('ArrowRight');
+  const lit = await page.evaluate(`[...document.querySelectorAll('#screens .things-menu .things-pocket.is-here')].map((tab) => tab.dataset.pocketTab).join()`);
+  const at = await page.evaluate(`document.activeElement?.dataset?.pocket ?? ''`);
+  console.log(`RIGHT: cursor in ${at}, strip lit on ${lit}`);
+  if (at !== 'balls' || lit !== 'balls') fail(`RIGHT left the cursor in ${at} and the strip lit on ${lit}`);
+  await press('ArrowLeft');
   if (await page.evaluate(`Boolean(document.querySelector('#screens .things-menu [data-drop]'))`)) fail('something can be dropped');
   if (!(await page.evaluate(`document.querySelector('#screens .things-menu .things-pack')?.textContent.includes('Next raid')`))) {
     fail('the next raid pack is not shown');

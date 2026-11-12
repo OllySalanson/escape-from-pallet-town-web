@@ -1428,14 +1428,18 @@ describe('what the base screen leads with', () => {
     expect(stash).toContain('data-view="reselect"');
   });
 
-  it('never breaks "packed for you" across two lines of a loadout row (playtest 47)', () => {
+  it('shows a supply on the rack as a pile of itself, packed ones lit, and says the rest on the help bar (playtest 47)', () => {
     const hub = createFreshHub();
     hub.setView('rack');
-    const row = /<div class="px-row has-icon[^"]*"[^>]*>(?:(?!<div class="px-row)[\s\S])*?data-count-id="potion"/.exec(markupOf(hub))?.[0] ?? '';
-    const facts = /<small>([^<]*)<\/small>/.exec(row)?.[1] ?? '';
+    const row = /<div class="px-row has-icon[^"]*"[^>]*>(?:(?!<div class="px-row)[\s\S])*?data-count-id="potion"[^>]*>/.exec(markupOf(hub))?.[0] ?? '';
 
-    // Breaks fall between the facts, never inside one.
-    expect(facts.split(' · ')).toEqual(['1&nbsp;square', '3&nbsp;at&nbsp;base', 'packed&nbsp;for&nbsp;you']);
+    // Three at base, all three packed for you: three Potions, three lit.
+    expect(row).toContain('aria-label="3 of 3 Potion"');
+    expect(row.match(/px-stack-one is-taken/g)).toHaveLength(3);
+    // The squares, the count at base and that it was packed for you are the help bar's.
+    expect(row).toMatch(/data-help="[^"]*1 square each, 3 at base\. Packed for you/);
+    // No line of facts to break across two lines any more (playtest 47).
+    expect(row).not.toContain('packed&nbsp;for&nbsp;you');
   });
 
   it('says at base that a disc is read from the pack in a raid (playtest 47)', () => {
