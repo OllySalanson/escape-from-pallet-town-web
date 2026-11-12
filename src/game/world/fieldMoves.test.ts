@@ -141,6 +141,8 @@ describe('a move that is also a route', () => {
           'bulbasaur',
           'charmander',
           'clefairy',
+          // The open fields' Ekans, FireRed's Route 11 (the endgame bug hunt).
+          'ekans',
           'geodude',
           'growlithe',
           'jigglypuff',
