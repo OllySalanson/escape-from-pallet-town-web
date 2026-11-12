@@ -5,6 +5,7 @@
 //   node tools/playtest/treasureHunt.mjs <cdp port> <url> <out dir> [--save-out=path.json]
 //   node tools/playtest/treasureHunt.mjs <cdp port> <url> <out dir> --chest=save.json
 //   node tools/playtest/treasureHunt.mjs <cdp port> <url> <out dir> --playtest
+//   node tools/playtest/treasureHunt.mjs <cdp port> <url> <out dir> --windows
 //
 // With no `--chest`: a new game, the bottle on THE BEACH, MARLOW at the library's
 // end bookcase, through into THE CHART ROOM, the bottled chart pinned on the
@@ -18,6 +19,10 @@
 //
 // With `--chest=dug.json`: that raid's save, walked from the yard to MARLOW, who
 // opens the chest it brought home.
+//
+// With `--windows`: a new game walked into THE GREAT LIBRARY three times, by
+// day, at dusk and at night, for its three tall windows (`--clock=` sets one
+// hour for any other run).
 //
 // With `--playtest`: a fresh explorer run (`src/game/dev/playtestMode.ts`),
 // whose kit already holds every piece: straight to MARLOW, every piece pinned,
@@ -33,6 +38,16 @@ const SAVE_KEY = PLAYTEST ? 'escape-from-pallet-town.save.playtest.v1' : 'escape
 mkdirSync(out, { recursive: true });
 const browser = attachBrowser(Number(port), { window: PIXEL_WINDOW });
 const page = await browser.openPage('about:blank');
+// `--clock=day|dusk|night` puts the page in a time zone where it is that hour
+// now, for the library's windows, which keep the player's clock
+// (`src/game/base/homeClock.ts`). Without it the page keeps this machine's hour.
+const CLOCK_HOUR = { day: 12, dusk: 19, night: 23 };
+if (option('clock') !== undefined) {
+  if (!(option('clock') in CLOCK_HOUR)) throw new Error('--clock is day, dusk or night');
+  let offset = (CLOCK_HOUR[option('clock')] - new Date().getUTCHours() + 24) % 24;
+  if (offset > 14) offset -= 24;
+  await page.send('Emulation.setTimezoneOverride', { timezoneId: offset === 0 ? 'Etc/UTC' : `Etc/GMT${offset > 0 ? '-' : '+'}${Math.abs(offset)}` });
+}
 const fullUrl = `${url}${url.includes('?') ? '&' : '?'}testmode=pixels${PLAYTEST ? '&playtest' : ''}`;
 const log = (...words) => console.log(...words);
 const press = async (code, after = 160) => {
@@ -151,10 +166,106 @@ async function pinAtTheBoard(name) {
   await sleep(700);
 }
 
+/** Out of whatever room the player is in, to the yard: off its mat south, or up through its arch. */
+async function toTheYard() {
+  for (let guard = 0; guard < 4 && (await base('Boolean(b.room)')); guard += 1) {
+    const room = await base('b.room.id');
+    const mat = await base('b.room.mat');
+    const stair = await base('b.room.stairs?.[0]?.tile ?? null');
+    // An arch is gone through by a push up into the wall it is cut in, from the floor at its foot.
+    await walkTo([mat ?? { x: stair.x, y: stair.y + 1 }], 'the way out');
+    for (let tries = 0; tries < 6 && (await base('b.room?.id ?? null')) === room; tries += 1) {
+      await press(mat ? 'ArrowDown' : 'ArrowUp', 700);
+    }
+    await until(settled, 'out of the room');
+    await sleep(700);
+    await readThrough();
+  }
+}
+
+/**
+ * THE RAID ARENA's east telescope, where a raid is planned: with the chart
+ * whole it carries the chart's own X over the very tile, and the card beside
+ * the cursor says the goal (`src/game/treasure/treasureMark.ts`).
+ */
+async function theXOnTheTelescope(name) {
+  await toTheYard();
+  const door = await base(`b.doors.find((d) => d.id === 'raid-arena').tiles`);
+  await walkTo(door.map((tile) => ({ x: tile.x, y: tile.y + 1 })), 'the Arena step');
+  for (let guard = 0; guard < 30 && (await base('b.room?.id ?? null')) !== 'raid-arena'; guard += 1) {
+    if (await page.evaluate(sceneIs('arenaIntro'))) {
+      await press('Escape', 400);
+      continue;
+    }
+    await press('ArrowUp', 400);
+  }
+  await until(`${settled} && ${GAME}.scene.getScene('base').room?.id === 'raid-arena'`, 'the Arena');
+  await sleep(900);
+  await readThrough();
+  await walkTo([await base('({ ...b.arenaTelescopes[1].stance })')], 'the telescope');
+  await face('up');
+  await sleep(400);
+  await press('Space', 400);
+  await until(`${GAME}.scene.getScene('base').telescope?.isOpen === true`, 'the glass');
+  await sleep(1500);
+  const canvas = await page.evaluate(
+    `(() => { const c = ${GAME}.canvas.getBoundingClientRect(); const b = ${GAME}.scene.getScene('base'); return { x: c.left, y: c.top, scale: c.width / b.scale.width }; })()`,
+  );
+  const hover = (x, y) =>
+    page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: canvas.x + x * canvas.scale, y: canvas.y + y * canvas.scale, button: 'none', buttons: 0 });
+  await hover(4, 4);
+  await sleep(1200);
+  await snap(`${name}-whole-map`);
+  const mark = await base('b.telescope.source.treasure ?? null');
+  expect('the telescope carries the X', Boolean(mark), JSON.stringify(mark));
+  if (mark) {
+    const at = await base(`(() => { const t = b.telescope; const s = t.source.scale; return t.rules.screenOf({ x: (${mark.tile.x} + 0.5) * s, y: (${mark.tile.y} + 0.5) * s }); })()`);
+    await hover(at.x, at.y);
+    await sleep(900);
+    const card = await base('b.telescope.cardShown');
+    expect('pointed at, the X says the goal', Boolean(card) && card.title === mark.title, JSON.stringify(card));
+    await snap(`${name}-the-x`);
+  }
+  await press('Escape', 900);
+  await until(`!${GAME}.scene.getScene('base').telescope`, 'the hall again');
+}
+
+/** A new game, out of the lab and into the yard with a partner. */
+async function newGame() {
+  await until(sceneIs('title'), 'the title');
+  await page.evaluate('localStorage.clear()');
+  await page.send('Page.navigate', { url: fullUrl });
+  await until(sceneIs('title'), 'the title');
+  await sleep(800);
+  await press('Space');
+  await until(settled, 'the lab');
+  await page.evaluate(`${GAME}.scene.getScene('base').takeStarterForDriver('bulbasaur')`);
+  await until(`${settled} && !${GAME}.scene.getScene('base').room`, 'the yard');
+  await sleep(800);
+  await readThrough();
+}
+
 try {
   await page.send('Page.navigate', { url: fullUrl });
   await until(`${GAME}?.scene.getScenes(true).length > 0`, 'the game');
-  if (option('chest')) {
+  if (process.argv.includes('--windows')) {
+    // The library's three tall windows, by the player's own clock.
+    for (const clock of Object.keys(CLOCK_HOUR)) {
+      let offset = (CLOCK_HOUR[clock] - new Date().getUTCHours() + 24) % 24;
+      if (offset > 14) offset -= 24;
+      await page.send('Emulation.setTimezoneOverride', { timezoneId: offset === 0 ? 'Etc/UTC' : `Etc/GMT${offset > 0 ? '-' : '+'}${Math.abs(offset)}` });
+      await page.send('Page.navigate', { url: fullUrl });
+      await newGame();
+      await intoLibrary();
+      await snap(`library-windows-${clock}`);
+      await walkTo([{ x: 4, y: 2 }], 'under the west window');
+      await face('up');
+      await press('Space', 600);
+      await sleep(2200);
+      await snap(`library-window-faced-${clock}`);
+      await readThrough();
+    }
+  } else if (option('chest')) {
     // The save the raid that dug the chest up banked.
     await page.evaluate(`localStorage.setItem('${SAVE_KEY}', ${JSON.stringify(readFileSync(option('chest'), 'utf8'))})`);
     await page.send('Page.navigate', { url: fullUrl });
@@ -184,6 +295,10 @@ try {
     expect('the chest is open', (await hunt())?.chestOpened === true);
     expect('the chest is out of the vault', (await vault('sea-chest')) === 0);
     expect('the Hauler frame is in the vault', (await vault('hauler-frame')) >= 1);
+    expect(
+      'the EEVEE from the old ball is in the vault',
+      await page.evaluate(`JSON.stringify(JSON.parse(localStorage.getItem('${SAVE_KEY}')).stash).includes('eevee')`),
+    );
     log('money now', await vault('money'));
   } else if (PLAYTEST) {
     // A fresh explorer run: `?playtest` goes straight in, with the kit's pieces.
@@ -224,17 +339,7 @@ try {
     await snap('room-at-the-end');
     log('the hunt', JSON.stringify(await hunt()), 'chests left', await vault('sea-chest'));
   } else {
-    await until(sceneIs('title'), 'the title');
-    await page.evaluate('localStorage.clear()');
-    await page.send('Page.navigate', { url: fullUrl });
-    await until(sceneIs('title'), 'the title');
-    await sleep(800);
-    await press('Space');
-    await until(settled, 'the lab');
-    await page.evaluate(`${GAME}.scene.getScene('base').takeStarterForDriver('bulbasaur')`);
-    await until(`${settled} && !${GAME}.scene.getScene('base').room`, 'the yard');
-    await sleep(800);
-    await readThrough();
+    await newGame();
 
     // 1. THE BEACH: the bottle at the tide line, past the pleasure pier.
     await walkTo([{ x: 83, y: 22 }], 'beside the bottle');
@@ -293,6 +398,8 @@ try {
     }
     const final = await hunt();
     expect('the chart is whole', ['shore', 'moor', 'hollow', 'fold'].every((id) => final?.pinned.includes(id)), JSON.stringify(final));
+    // 6. The goal, said wherever a player looks: the board, MARLOW, the telescope.
+    await pinAtTheBoard('board-says-the-goal');
     await walkTo([await inFrontOf('chart-keeper')], 'below MARLOW');
     await face('up');
     await press('Space', 600);
@@ -301,6 +408,7 @@ try {
       writeFileSync(option('save-out'), await page.evaluate(`localStorage.getItem('${SAVE_KEY}')`));
       log('save written to', option('save-out'));
     }
+    await theXOnTheTelescope('telescope');
   }
 } catch (error) {
   await page.screenshot(`${out}/failed.png`).catch(() => undefined);

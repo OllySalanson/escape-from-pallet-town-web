@@ -301,7 +301,8 @@ export function pinnedLines(
     lines.push(
       'By rights this belongs to the library. But the sea gave it to you.',
       `And look at ${company}. Mighty! It is yours to finish.`,
-      `${piecesLeftSentence(left)} are out in GREYSTONE VALE. Ask round the harbour.`,
+      // "the vale", not its name in capitals: with it the line ran to a second box.
+      `${piecesLeftSentence(left)} are out in the vale. Ask round the harbour.`,
     );
     return lines;
   }
@@ -312,18 +313,22 @@ export function pinnedLines(
 /** What is said of MISTY while she still holds the way into the cove. */
 export const COAST_SHUT_LINE = 'The cove is past MISTY. Beat her first.';
 
-/** Where the X is and what to do about it: the goal, as MARLOW, the board and Oak say it. */
-export function treasureGoalLines(coastOpen = true): readonly string[] {
+/**
+ * Where the X is and what to do about it: the goal, as MARLOW, the board and
+ * Oak say it. `to` is who the chest is carried home to, as the speaker would
+ * put it: MARLOW says "me".
+ */
+export function treasureGoalLines(coastOpen = true, to: string = MARLOW.name): readonly string[] {
   return [
     `The X is in ${TREASURE_PLACE}: ${TREASURE_GOAL.spot}.`,
-    `Dig up the ${TREASURE_GOAL.prize} and carry it home to ${MARLOW.name}.`,
+    `Dig up the ${TREASURE_GOAL.prize} and carry it home to ${to}.`,
     ...(coastOpen ? [] : [COAST_SHUT_LINE]),
   ];
 }
 
 /** What MARLOW says the moment the chart is whole: one cheer, then the goal. */
 export function wholeChartLines(coastOpen = true): readonly string[] {
-  return ['MARLOW: Whole! After sixty years!', ...treasureGoalLines(coastOpen)];
+  return ['MARLOW: Whole! After sixty years!', ...treasureGoalLines(coastOpen, 'me')];
 }
 
 /** The same with the cove open, for whoever only needs the words. */
@@ -342,7 +347,7 @@ export function marlowRoomLines(stage: HuntStage, hunt: TreasureHunt, coastOpen 
       ];
     }
     case 'whole':
-      return [`MARLOW: ${treasureGoalLines(coastOpen)[0]}`, ...treasureGoalLines(coastOpen).slice(1)];
+      return [`MARLOW: ${treasureGoalLines(coastOpen, 'me')[0]}`, ...treasureGoalLines(coastOpen, 'me').slice(1)];
     case 'chest':
       return ['MARLOW: Is that- it is! Put it down. Gently! GENTLY!'];
     case 'done':
