@@ -126,6 +126,8 @@ import {
   dueMilestone,
   pokedexMilestone,
   pokedexOwned,
+  pokedexSeen,
+  pokedexShiny,
   tidyDexIds,
   type PokedexMilestone,
 } from '../hub/pokedex';
@@ -393,6 +395,20 @@ export interface RaidProgress {
    * the kinds in its vault - registered by the first write after it loads.
    */
   readonly pokedexOwned?: readonly number[];
+  /**
+   * Every kind a fight has shown this save, by dex number: a wild one that
+   * appeared, or one a trainer sent out (`registerSeen`, asked by `BattleScene`
+   * as each takes the field). Written at once, mid-raid, so a wipe never loses
+   * it. A kind owned is seen whether or not it is listed here
+   * (`../hub/pokedex`'s `pokedexSeen`). Absent on every save written before
+   * the Pokédex had a screen, which has met what it has owned.
+   */
+  readonly pokedexSeen?: readonly number[];
+  /**
+   * Every kind this save has owned a shiny of, by dex number, registered by
+   * the same write as `pokedexOwned` and kept as it is.
+   */
+  readonly pokedexShiny?: readonly number[];
   /**
    * The Pokédex milestones Professor Oak has rewarded, by the number of kinds
    * each is for. Recorded the moment he hands one over, once per save. Absent
@@ -1847,6 +1863,31 @@ export class SaveManager {
   }
 
   /**
+   * Registers kinds as seen in the Pokédex (`../hub/pokedex`), as a fight shows
+   * them. Loads first and writes only what is new, so a kind met a hundred
+   * times costs one write; returns the kinds newly registered. It changes
+   * nothing a raid in flight holds, so it is written mid-raid like a key
+   * learned, and a raid lost afterwards has still met them.
+   */
+  public registerSeen(dexIds: readonly number[]): readonly number[] {
+    const game = this.load();
+    if (!game) {
+      return [];
+    }
+    const owned = pokedexOwned(game.raidProgress.pokedexOwned, game.stash);
+    const already = pokedexSeen(game.raidProgress.pokedexSeen, owned);
+    const fresh = tidyDexIds(dexIds).filter((dexId) => !already.includes(dexId));
+    if (fresh.length === 0) {
+      return [];
+    }
+    const raidProgress: RaidProgress = {
+      ...game.raidProgress,
+      pokedexSeen: tidyDexIds([...(game.raidProgress.pokedexSeen ?? []), ...fresh]),
+    };
+    return this.save({ ...game, raidProgress }) ? fresh : [];
+  }
+
+  /**
    * Puts a look on (`../look/look`): only a look whose every piece this save
    * owns (`../look/wardrobe`), and the classic look - `null` - always. Returns
    * the game as written, or nothing when it could not be.
@@ -2705,7 +2746,12 @@ export function serializeGame(state: SaveGameState): SaveData {
  */
 function withVaultRegistered(progress: RaidProgress, stash: Stash | undefined): RaidProgress {
   const owned = pokedexOwned(progress.pokedexOwned, stash);
-  const registered = owned.length === 0 ? progress : { ...progress, pokedexOwned: owned };
+  const shiny = pokedexShiny(progress.pokedexShiny, stash);
+  const registered = {
+    ...progress,
+    ...(owned.length === 0 ? {} : { pokedexOwned: owned }),
+    ...(shiny.length === 0 ? {} : { pokedexShiny: shiny }),
+  };
   // And what the vault holds of the vale's secrets, by the same rule: a find is
   // found once it has been banked, whichever way it was banked.
   const held = stash
@@ -2935,6 +2981,8 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       ? { keysLearned: uniqueStrings(value.keysLearned).filter(isLearnableKey) }
       : {}),
     ...(Array.isArray(value.pokedexOwned) ? { pokedexOwned: tidyDexIds(value.pokedexOwned) } : {}),
+    ...(Array.isArray(value.pokedexSeen) ? { pokedexSeen: tidyDexIds(value.pokedexSeen) } : {}),
+    ...(Array.isArray(value.pokedexShiny) ? { pokedexShiny: tidyDexIds(value.pokedexShiny) } : {}),
     ...(Array.isArray(value.harbourCatches) ? { harbourCatches: tidyDexIds(value.harbourCatches) } : {}),
     ...(Array.isArray(value.secretsFound) ? { secretsFound: uniqueStrings(value.secretsFound) } : {}),
     ...(Array.isArray(value.rumoursHeard)

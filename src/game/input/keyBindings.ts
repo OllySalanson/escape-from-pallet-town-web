@@ -51,7 +51,15 @@ export const ROOM_KEY_LETTERS = {
  * same question asked at home: what am I out for (`hub/favourList.ts`) - and
  * the quick phrases, on T as in a raid room.
  */
-export type YardKeyId = 'walk' | 'look' | 'favours' | 'things' | 'team' | 'talk';
+export type YardKeyId = 'walk' | 'look' | 'favours' | 'things' | 'team' | 'dex' | 'talk';
+
+/**
+ * THE POKéDEX's key anywhere in the harbour (`scenes/PokedexScene.ts`): X, the
+ * last letter of DEX, because D walks east and every other letter of the word
+ * is somebody's already. The house's own X (`HOME_KEY_LETTERS.putAway`) is
+ * only read while a piece is being decorated with, when this one is not.
+ */
+export const POKEDEX_KEY = 'X';
 
 /**
  * YOUR THINGS is on B, the raid's pack key, because it is the same question
@@ -64,6 +72,7 @@ export const YARD_KEY_WORDS: readonly (readonly [YardKeyId, string, string])[] =
   ['favours', RAID_KEY_LETTERS.objectives, 'FAVOURS'],
   ['things', RAID_KEY_LETTERS.bag, 'THINGS'],
   ['team', RAID_KEY_LETTERS.party, 'TEAM'],
+  ['dex', POKEDEX_KEY, 'DEX'],
   ['talk', ROOM_KEY_LETTERS.talk, 'SAY'],
 ];
 
@@ -134,7 +143,7 @@ export function roomKeyHintLine(learned: ReadonlySet<string>): string {
 }
 
 /** Every key the save can have learned, in one list (`raidProgress.keysLearned`). */
-export const LEARNABLE_KEYS = ['walk', 'objectives', 'look', 'bag', 'party', 'decorate', 'talk', 'ping', 'favours', 'things', 'team', 'coin'] as const;
+export const LEARNABLE_KEYS = ['walk', 'objectives', 'look', 'bag', 'party', 'decorate', 'talk', 'ping', 'favours', 'things', 'team', 'dex', 'coin'] as const;
 export type LearnableKeyId = (typeof LEARNABLE_KEYS)[number];
 
 export function isLearnableKey(value: unknown): value is LearnableKeyId {

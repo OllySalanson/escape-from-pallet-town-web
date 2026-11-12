@@ -186,7 +186,10 @@ and say yes, you're let in to have a nose round for as long as you like (or unti
   banners and a red runner up to the door - on its own stone forecourt at the west end, by the jetty,
   is where every raid starts, in a hall so big the pit in its floor has the whole of Greystone Vale at the bottom.
 - **Professor Oak's Lab** has the day's work pinned to a cork board on the wall, and a wall map that
-  lights up wherever you've walked.
+  lights up wherever you've walked. His PC along the back wall is the Pokédex: all 151 on one
+  screen, in colour once you've owned one, a shadow if you've only met it in a fight, an empty
+  ball if you haven't. Open a page and it's FireRed's own entry, its cry, and where in the vale to
+  go and find one. Shinies get a star. Oak's next reward sits at the end of the rail, waiting.
 - **Nurse Joy's Pokémon Center** looks after the team. She heals in full at her counter, and she
   charges in time: she names what comes off your next raid's clock before you say yes. Your boxes
   are on the PC beside her.
@@ -349,6 +352,7 @@ sightseeing.
 | <kbd>Space</kbd> / <kbd>Enter</kbd> | Talk, read, work a landmark, choose | On a door mat: speak to that keeper |
 | <kbd>B</kbd> | Open the pack | Your things: everything in storage, the next raid's pack, and a disc or stone to use |
 | <kbd>P</kbd> | Open the party | Your team: pick who goes on the next raid from every box |
+| <kbd>X</kbd> | Nothing: the Pokédex stays at home | The Pokédex: all 151, and a page for every one you've met |
 | <kbd>O</kbd> | Professor Oak on the radio; again for the whole field guide | Every favour you have been asked, on one screen |
 | <kbd>L</kbd> (hold) | Look: every caption on screen speaks | Look |
 | <kbd>T</kbd> | Raiding with a friend: pick a quick phrase to say | Pick a quick phrase to say |

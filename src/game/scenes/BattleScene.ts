@@ -598,6 +598,8 @@ export class BattleScene extends Phaser.Scene {
   private readonly collectedLootIds = new Set<string>();
   /** Carried through untouched: a fight neither finds nor forgets a prize. */
   private readonly seenPrizeIds = new Set<string>();
+  /** The kinds this fight has already told the Pokédex it met (`registerFoesSeen`). */
+  private readonly metThisFight = new Set<number>();
   private readonly activatedPoiIds = new Set<string>();
   private returnLocation: BattleSceneData['returnLocation'];
   private returnScene: BattleSceneData['returnScene'];
@@ -764,6 +766,7 @@ export class BattleScene extends Phaser.Scene {
     data.seenPrizeIds?.forEach((id) => this.seenPrizeIds.add(id));
     this.activatedPoiIds.clear();
     data.activatedPoiIds?.forEach((id) => this.activatedPoiIds.add(id));
+    this.metThisFight.clear();
     this.pendingHubTransition = false;
     // Same lifetime and the same teeth as pendingHubTransition: left set, the
     // next battle's first completed line would refuse to hand control back.
@@ -3758,6 +3761,32 @@ export class BattleScene extends Phaser.Scene {
       mine.forEach((pokemon) => faced.add(pokemon));
       this.foesFacedBy.set(foe.pokemon, faced);
     }
+    this.registerFoesSeen();
+  }
+
+  /**
+   * Tells the Pokédex about every kind standing opposite (`hub/pokedex.ts`), as
+   * FireRed sets its seen flag when a wild Pokémon appears or a trainer sends
+   * one out. Written to the save at once (`SaveManager.registerSeen`), so a
+   * raid lost afterwards has still met it, and each kind is asked of the save
+   * once a fight. A bout for show registers nothing: it is fought against
+   * copies and writes nothing but its result.
+   */
+  private registerFoesSeen(): void {
+    if (this.exhibition) {
+      return;
+    }
+    const fresh = slotsOf(this.state, 'enemy')
+      .flatMap((ref) => {
+        const foe = unitAt(this.state, ref);
+        return foe ? [foe.pokemon.base.dexId] : [];
+      })
+      .filter((dexId) => !this.metThisFight.has(dexId));
+    if (fresh.length === 0) {
+      return;
+    }
+    fresh.forEach((dexId) => this.metThisFight.add(dexId));
+    new SaveManager().registerSeen(fresh);
   }
 
   /**

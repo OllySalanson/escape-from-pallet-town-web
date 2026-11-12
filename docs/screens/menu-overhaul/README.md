@@ -434,3 +434,10 @@ What changed:
 | Tarkov stash: how many, at a glance | 2 | 4 | "9 at base" in words; now nine Potions, the packed ones lit |
 | HeartGold bag: which pocket | 2 | 5 | a band per pocket, three in view; now every pocket's icon, the current one lit and named |
 | Every key path | 5 | 5 | steppers on LEFT and RIGHT, pockets on LEFT and RIGHT, as before (`yourThings.mjs`, `menuShots.mjs`) |
+
+## THE POKéDEX
+
+Not a redraw: there was no screen. It is built to the rules above - all 151 as
+FireRed's party icons across the whole window, words only for the one under the
+cursor, one page behind ENTER - and has its own folder, pictures and scorecard
+against FireRed's Pokédex: [`docs/screens/pokedex/`](../pokedex/README.md).

@@ -8,6 +8,7 @@ import { ConsoleScene } from './scenes/ConsoleScene';
 import { BoutiqueScene } from './scenes/BoutiqueScene';
 import { ThingsScene } from './scenes/ThingsScene';
 import { TeamScene } from './scenes/TeamScene';
+import { PokedexScene } from './scenes/PokedexScene';
 import { DojoCounterScene } from './scenes/DojoCounterScene';
 import { GameCornerScene } from './scenes/GameCornerScene';
 import { BerryPickingScene } from './scenes/BerryPickingScene';
@@ -45,6 +46,7 @@ const BASE_SCENES = [
   BoutiqueScene,
   ThingsScene,
   TeamScene,
+  PokedexScene,
   DojoCounterScene,
   GameCornerScene,
   BerryPickingScene,

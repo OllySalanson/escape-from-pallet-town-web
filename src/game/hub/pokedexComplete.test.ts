@@ -1,20 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ALL_SPECIES, getSpeciesById } from '../pokemon/species';
-import { EVOLUTIONS } from '../pokemon/evolution';
-import { STARTER_SPECIES } from '../stash';
-import { getWorldMap } from '../worldMap';
-import { districtEncounterTables, encounterTableAt, stepRolls } from '../world/localEncounters';
-import { fishingTable, fishingWaterAt, isFishingWater, ROD_ITEM_IDS } from '../world/fishing';
-import { fileMap } from '../world/playerMaps';
-import { SECRETS } from '../world/secrets';
-import { POKEMON_GIFTS } from '../world/gifts';
+import { districtsForMap } from '../world/districts';
 import { isMapOffered, retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
-import { TICKET_PRIZES } from '../minigames/tickets';
-import { BLACK_BELTS } from '../arena/classes';
-import { ERRANDS } from './errands';
-import { FOSSIL_KINDS } from './fossils';
-import { IN_GAME_TRADES, tradeEvolution } from './trades';
 import { KANTO_POKEDEX_SIZE } from './pokedex';
+import { sourceLines, sourcesOf, waysToOwn, type KindSource } from './pokedexSources';
 
 /**
  * The endgame bug hunt (12 Nov 2026), finding 1: Oak promises his best reward
@@ -32,96 +21,44 @@ describe('the Pokédex, on the maps a player is offered', () => {
   afterAll(() => retireMapsForTests([]));
 
   /**
-   * Every kind a raid or the base can put in the vault, by where it comes
-   * from. `withSecrets` false leaves the vale's secrets out (`world/secrets.ts`),
-   * the Pokemon they stand on the map among them: a secret is a second, rarer
-   * way to a kind, open only under its condition, and never the reason a kind
-   * can be had.
+   * Every kind a raid or the base can put in the vault, by the first way it
+   * comes: `waysToOwn` (`pokedexSources.ts`), the same walk the Pokédex screen
+   * prints its pages from, said here in a word or two. `withSecrets` false
+   * leaves the vale's secrets out (`world/secrets.ts`), the Pokemon they stand
+   * on the map among them: a secret is a second, rarer way to a kind, open only
+   * under its condition, and never the reason a kind can be had.
    */
+  const said = (source: KindSource): string => {
+    switch (source.kind) {
+      case 'wild':
+        return `${source.mapId} ${source.when === 'night' ? 'night' : 'day'} wild`;
+      case 'fishing':
+        return `${source.mapId} fishing`;
+      case 'standing':
+        return `${source.mapId} standing`;
+      case 'secret':
+        return `secret ${source.secretId}`;
+      case 'fossil':
+        return `fossil ${source.itemId}`;
+      case 'gift':
+        return `gift ${source.giftId}`;
+      case 'prize':
+        return 'Game Corner prize';
+      case 'errand':
+        return `errand ${source.errandId}`;
+      case 'starter':
+        return 'starter';
+      case 'dojo':
+        return `dojo prize from ${source.master}`;
+      case 'evolution':
+        return `evolves from ${source.from}${source.trigger.kind === 'trade' ? ', traded and back' : ''}`;
+      case 'trade':
+        return `the TRADER's ${source.nickname}, for ${source.wants}`;
+    }
+  };
   const sources = (withSecrets = true): Map<string, string> => {
-    const from = new Map<string, string>();
-    const add = (speciesId: string, where: string): void => {
-      if (!from.has(speciesId)) from.set(speciesId, where);
-    };
-    for (const mapId of ['greystone-vale'] as const) {
-      expect(isMapOffered(mapId)).toBe(true);
-      const map = getWorldMap(mapId);
-      const tables = [false, true].map((night) => districtEncounterTables(mapId, night));
-      for (let y = 0; y < map.height; y += 1) {
-        for (let x = 0; x < map.width; x += 1) {
-          const tile = { x, y };
-          if (stepRolls(map, tile)) {
-            tables.forEach((own, night) => {
-              for (const entry of encounterTableAt(mapId, tile, map.encounters, own)?.entries ?? []) {
-                add(entry.speciesId, `${mapId} ${night ? 'night' : 'day'} wild`);
-              }
-            });
-          }
-          if (isFishingWater(map, tile)) {
-            for (const rod of ROD_ITEM_IDS) {
-              for (const entry of fishingTable(fishingWaterAt(mapId, tile), rod).entries) {
-                add(entry.speciesId, `${mapId} fishing`);
-              }
-            }
-          }
-        }
-      }
-      for (const entity of fileMap(mapId)?.entities ?? []) {
-        // A secret's figure stands only while its secret is open: it is the secret's, below.
-        if (entity.pokemon && entity.secret === undefined && (entity.wildLevel !== undefined || entity.legendary)) {
-          add(entity.pokemon, `${mapId} standing`);
-        }
-      }
-    }
-    for (const secret of withSecrets ? SECRETS : []) {
-      for (const reward of secret.rewards) {
-        if (reward.kind === 'meet') add(reward.speciesId, `secret ${secret.id}`);
-        if (reward.kind === 'gift') add(reward.gift.speciesId, `secret ${secret.id}`);
-      }
-    }
-    // A fossil is laid by a secret, or by an errand that goes on laying its
-    // thing once it is done (Bill's amber, `errands.ts`).
-    const fossilsFound = new Set<string>([
-      ...(withSecrets ? SECRETS : []).flatMap((secret) => secret.rewards.flatMap((reward) => (reward.kind === 'item' ? [reward.itemId] : []))),
-      ...ERRANDS.filter((errand) => errand.afterwards && isMapOffered(errand.mapId)).map((errand) => errand.itemId),
-    ]);
-    for (const [itemId, speciesId] of Object.entries(FOSSIL_KINDS)) {
-      if (fossilsFound.has(itemId)) add(speciesId, `fossil ${itemId}`);
-    }
-    for (const gift of POKEMON_GIFTS.filter((each) => isMapOffered(each.mapId))) {
-      add(gift.speciesId, `gift ${gift.id}`);
-    }
-    for (const prize of TICKET_PRIZES) {
-      if (prize.gives.kind === 'pokemon') add(prize.gives.speciesId, `Game Corner prize`);
-    }
-    for (const errand of ERRANDS.filter((each) => isMapOffered(each.mapId))) {
-      for (const pokemon of errand.reward.pokemon ?? []) add(pokemon.speciesId, `errand ${errand.id}`);
-    }
-    for (const starter of STARTER_SPECIES) add(starter.id, 'starter');
-    for (const head of BLACK_BELTS) {
-      if (head.prize) add(head.prize, `dojo prize from ${head.name}`);
-    }
-
-    // Evolution - a level, a stone (Bill barters every stone, and Oak hands a
-    // set out at 50 and 125 kinds) or the TRADER's trade and back - and his
-    // trades, each for a kind already in reach, until nothing more is.
-    for (let grew = true; grew; ) {
-      grew = false;
-      for (const rule of EVOLUTIONS) {
-        const reached = rule.trigger.kind !== 'trade' || tradeEvolution(rule.from)?.id === rule.to;
-        if (from.has(rule.from) && !from.has(rule.to) && reached) {
-          add(rule.to, `evolves from ${rule.from}${rule.trigger.kind === 'trade' ? ', traded and back' : ''}`);
-          grew = true;
-        }
-      }
-      for (const trade of IN_GAME_TRADES) {
-        if (from.has(trade.wants) && !from.has(trade.gives)) {
-          add(trade.gives, `the TRADER's ${trade.nickname}, for ${trade.wants}`);
-          grew = true;
-        }
-      }
-    }
-    return from;
+    expect(isMapOffered('greystone-vale')).toBe(true);
+    return new Map([...waysToOwn(withSecrets)].map(([speciesId, source]) => [speciesId, said(source)]));
   };
 
   it('has a way to own every one of Kanto’s 151 kinds', () => {
@@ -169,5 +106,38 @@ describe('the Pokédex, on the maps a player is offered', () => {
     ]);
     // And the fourth, to a fifth: the Alakazam among the Little Stones.
     expect(from.get('alakazam')).toBe('secret the-eleventh-stone');
+  });
+  /**
+   * The Pokédex prints these (`ui/pokedexView.ts`): a page may only ever name a
+   * place the game holds, so every line is asked of the same walk.
+   */
+  it('has somewhere to say every kind is found, and names only places the vale has', () => {
+    const places = new Set(districtsForMap('greystone-vale').map((district) => district.name));
+    for (const species of ALL_SPECIES.filter((each) => each.dexId <= KANTO_POKEDEX_SIZE)) {
+      const sources = sourcesOf(species.id);
+      expect(sourceLines(sources).length, species.id).toBeGreaterThan(0);
+      for (const source of sources) {
+        if (source.kind === 'wild' || source.kind === 'standing') {
+          expect(places.has(source.place), `${species.id} in ${source.place}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('says where in the words a page prints: the commonest places first, the rest counted', () => {
+    expect(sourceLines(sourcesOf('raichu'))).toEqual(['Evolves from PIKACHU with a Thunder Stone']);
+    expect(sourceLines(sourcesOf('abra'))).toEqual(['A prize at THE GAME CORNER']);
+    expect(sourceLines(sourcesOf('alakazam'))).toEqual(['One of the vale’s secrets', 'Evolves from KADABRA, traded to the TRADER and back']);
+    expect(sourceLines(sourcesOf('machamp')).at(-1)).toBe('Evolves from MACHOKE, traded to the TRADER and back');
+    expect(sourceLines(sourcesOf('hitmonlee'))).toEqual(['HITOSHI’s prize at THE BATTLE ARENA']);
+    expect(sourceLines(sourcesOf('aerodactyl'))).toEqual(['Woken from an Old Amber on the FOSSIL MACHINE']);
+    expect(sourceLines(sourcesOf('lickitung'))).toEqual(['One of the vale’s secrets', 'The TRADER gives one for a GOLDUCK']);
+    expect(sourceLines(sourcesOf('mew'))).toEqual(['A legend, standing in THE CAIRN']);
+    expect(sourceLines(sourcesOf('bulbasaur')).at(-1)).toBe('One of the three on Professor Oak’s table');
+    expect(sourceLines(sourcesOf('magikarp')).at(-1)).toBe('Fished from rivers and ponds with any rod');
+    // A kind in dozens of places names three and counts the rest.
+    expect(sourceLines(sourcesOf('pidgey'))[0]).toMatch(/^Wild in [^,]+, [^,]+, .+ and \d+ more places$/);
+    expect(sourceLines(sourcesOf('clefairy'))[0]).toMatch(/^Wild at night in /);
+    expect(sourceLines(sourcesOf('ekans'))[0]).toMatch(/^Wild by day in /);
   });
 });
