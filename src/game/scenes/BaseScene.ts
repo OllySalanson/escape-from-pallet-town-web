@@ -150,6 +150,7 @@ import { standingFixtures, type BaseFixture } from '../base/fixtures';
 import { COURSE_GATE_FRONT, HARBOUR_LANDMARKS, landmarkFaced, OUTDOOR_GAME_LANDMARKS, type OutdoorGameId } from '../base/landmarks';
 import { HarbourLifeFigures } from '../base/harbourLifeFigures';
 import { HomeGardenFigures } from '../base/homeGardenFigures';
+import { PEN_GLINT_PLACE, ShinyGlints, glintHeadStart } from '../base/shinyGlint';
 import { gardenLines, gardenPokemon, gardenQuestion } from '../base/homeGarden';
 import {
   COURSE_KEEPER_ID,
@@ -719,6 +720,8 @@ export class BaseScene extends Phaser.Scene {
   private penPokemon: {
     readonly sprite: Phaser.GameObjects.Sprite;
     readonly species: FigureSpeciesId;
+    /** Its glints, if it is shiny (`base/shinyGlint.ts`). */
+    readonly glints: ShinyGlints | null;
     tile: GridPosition;
     nextStepMs: number;
   } | null = null;
@@ -3800,7 +3803,8 @@ export class BaseScene extends Phaser.Scene {
       .setOrigin(0.5, 1)
       .setDepth(atRow(FIGURE_BAND, tile.y))
       .play(key);
-    this.penPokemon = { sprite: pokemon, species, tile, nextStepMs: PEN_STEP_EVERY_MS };
+    const glints = stay.pokemon.shiny ? new ShinyGlints(this, glintHeadStart(PEN_GLINT_PLACE)) : null;
+    this.penPokemon = { sprite: pokemon, species, glints, tile, nextStepMs: PEN_STEP_EVERY_MS };
   }
 
   /** Where an icon stands on a tile of the pen: centred, its feet on the tile's last row. */
@@ -3815,6 +3819,8 @@ export class BaseScene extends Phaser.Scene {
    */
   private wanderPen(deltaMs: number): void {
     const pen = this.penPokemon;
+    pen?.glints?.update(deltaMs);
+    pen?.glints?.placeOverIcon(pen.sprite, pen.species);
     if (!pen || this.dialogBox.visible) {
       return;
     }
