@@ -134,6 +134,12 @@ export interface ActiveRunSession {
    */
   shimmerMet?: boolean;
   /**
+   * Whether this raid's omen has crossed the sky (`world/omens.ts`): seen
+   * once, and from then on the field guide says which way it went - which the
+   * world, rebuilt after every fight, has to be told.
+   */
+  omenSeen?: boolean;
+  /**
    * The berry trees this raid has picked, by entity id: bare until the next
    * raid, for the reason a met Pokemon stays met - the world is rebuilt after
    * every fight.

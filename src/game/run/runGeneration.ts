@@ -24,6 +24,7 @@ import { isLandingOpen } from '../world/valeQuarters';
 import { isStakeTrail, type WorldLoot } from '../world/loot';
 import { hasRaidStake, layStakeTrail, stakeGround, stakeRoute, type StakeGround } from '../world/raidStake';
 import { hasShimmer, layShimmer, rarestOf, shimmerSeats, type Shimmer } from '../world/shimmer';
+import { hasOmens, layOmen, type Omen } from '../world/omens';
 import {
   createRunTrainerEncounters,
   trainersForContract,
@@ -629,6 +630,13 @@ export interface RunPlan {
    * and on a new save's first raid.
    */
   readonly shimmer?: Shimmer;
+  /**
+   * This raid's omen (`world/omens.ts`): a legendary bird not yet caught,
+   * whose shadow crosses the sky some way in, flying for its roost. Absent
+   * two raids in three, on a new save's first raid, and once all three birds
+   * are in the Pokedex.
+   */
+  readonly omen?: Omen;
 }
 
 /** A secret open this raid, and what its nook holds next. */
@@ -920,6 +928,13 @@ export function generateRunPlan(
         )
       : undefined;
 
+  // One raid in three a legend's shadow crosses the sky (`world/omens.ts`):
+  // rolled on a stream of its own, so it moves no other roll.
+  const omen =
+    hasOmens(insertion.mapId) && outfitting.firstRaid !== true
+      ? layOmen(caughtLegends, createSeededRng((seed ^ OMEN_STREAM) >>> 0))
+      : undefined;
+
   return {
     seed: seed >>> 0,
     insertion,
@@ -927,6 +942,7 @@ export function generateRunPlan(
     secrets: open,
     ...(sleeping.length > 0 ? { sleeping } : {}),
     ...(shimmer ? { shimmer } : {}),
+    ...(omen ? { omen } : {}),
     ...(carriedContract ? { contract: carriedContract } : {}),
     defeatedBosses: [...defeatedBosses],
     completedContracts: [...completedContracts],
@@ -1064,6 +1080,8 @@ const STAKE_STREAM = 0x27d4eb2f;
 const SECRET_STREAM = 0x165667b1;
 /** The shimmering grass's own (`world/shimmer.ts`). */
 const SHIMMER_STREAM = 0x3c6ef372;
+/** The omens' own (`world/omens.ts`). */
+const OMEN_STREAM = 0x5bd1e995;
 
 /** The secrets with a nook or a clue drawn on a map. */
 function secretsDrawnOn(mapId: WorldMapId): ReadonlySet<string | undefined> {

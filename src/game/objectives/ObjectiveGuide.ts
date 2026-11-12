@@ -10,7 +10,8 @@ import { errandForItem, errandPlace, errandSquares, errandThing } from '../hub/e
 import { isDugExit, itemThatOpens } from '../world/extractionPoints';
 import { ITEMS } from '../items/items';
 import { createRunTrainerEncounters } from '../world/trainers';
-import { districtAt } from '../world/districts';
+import { districtAt, districtsForMap } from '../world/districts';
+import { OMEN_ROOSTS, omenLine } from '../world/omens';
 
 export interface ObjectiveGuideContext {
   readonly currentMapId: WorldMapId;
@@ -100,6 +101,7 @@ export function buildObjectiveGuide(
       ...lockedCacheHints(session, context),
       ...errandHints(session, context, snapshot.foundItems),
       ...shimmerHints(session, context),
+      ...omenHints(session, context),
       ...shinyHints(snapshot.caughtPokemon),
     ],
   };
@@ -211,6 +213,27 @@ function shimmerHints(session: ActiveRunSession, context: ObjectiveGuideContext)
   return [
     `Something rare is moving in the tall grass${place ? ` in ${place}` : ''}, ${directionTo(context.currentPosition, heading)}. Look for the glitter.`,
   ];
+}
+
+/**
+ * This raid's omen (`../world/omens`), once its shadow has crossed: which way
+ * the bird went, what it was, and where they say it roosts. Nothing before -
+ * an omen foretold is no omen.
+ */
+function omenHints(session: ActiveRunSession, context: ObjectiveGuideContext): string[] {
+  const omen = session.plan?.omen;
+  if (!omen || !session.omenSeen || session.plan?.insertion.mapId !== context.currentMapId) {
+    return [];
+  }
+  const roost = omenRoost(context.currentMapId, omen.speciesId);
+  const bearing = roost ? compassBearing(context.currentPosition, roost) : undefined;
+  return [omenLine(omen, bearing ? compassWord(bearing) : undefined)];
+}
+
+/** The middle of the district a bird roosts in, on this map. */
+export function omenRoost(mapId: WorldMapId, speciesId: keyof typeof OMEN_ROOSTS): GridPosition | undefined {
+  const area = districtsForMap(mapId).find((district) => district.name === OMEN_ROOSTS[speciesId].district)?.areas[0];
+  return area ? { x: area.x + Math.floor(area.width / 2), y: area.y + Math.floor(area.height / 2) } : undefined;
 }
 
 /**

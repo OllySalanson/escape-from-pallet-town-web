@@ -192,12 +192,14 @@ try {
     return { seed: p.seed, map: w.currentMap.id, start: w.currentTile, contract: p.contract?.name ?? null, markers: (p.contract?.markers ?? []).map((m) => m.position),
       exits: p.extractionPoints.filter((e) => e.mapId === w.currentMap.id).map((e) => ({ label: e.label, position: e.position, opens: e.requirement?.poiId ?? null, open: (e.requirement?.kind ?? (e.unlockAtMs === 0 ? 'always' : 'elapsed')) === 'always' })),
       loot: (p.loot[w.currentMap.id] ?? []).map((l) => ({ id: l.id, itemId: l.itemId, quantity: l.quantity, position: l.position })),
-      secrets: p.secrets ?? [], conditions: p.conditions ?? null, shimmer: p.shimmer ?? null }; })()`);
+      secrets: p.secrets ?? [], conditions: p.conditions ?? null, shimmer: p.shimmer ?? null, omen: p.omen ?? null }; })()`);
   note(`seed ${plan.seed}, ${plan.map} from ${plan.start.x},${plan.start.y}, contract ${plan.contract}, stops ${JSON.stringify(plan.markers)}`);
   // The vale's secrets this raid opened, and what it deployed under (`world/secrets.ts`).
   note(`conditions ${JSON.stringify(plan.conditions)}; secrets open ${JSON.stringify(plan.secrets)}`);
   // This raid's patch of shimmering grass (`world/shimmer.ts`), if it has one.
   note(`shimmer ${JSON.stringify(plan.shimmer)}`);
+  // This raid's omen (`world/omens.ts`), if it has one: which bird, and when it crosses.
+  note(`omen ${JSON.stringify(plan.omen)}`);
 
   // --avoid-watch plays the player the map is drawn for: one who reads the shaded
   // ground in front of a trainer and does not walk into it. Without it the driver
@@ -547,7 +549,9 @@ try {
   // area and pushes it once - `WorldScene.tryPushBoulder`, a floor switch
   // under it thrown by the game), `grab:itemId` (every piece of it this raid
   // laid), `shimmer` and `shimmer:in` (beside this raid's shimmering grass, and
-  // into it; `shimmer:shiny` forces its shiny roll first, for a picture) and `shot:name` (a picture, with --shot). It is how the Lost Garden is
+  // into it; `shimmer:shiny` forces its shiny roll first, for a picture), `omen`
+  // (stands until this raid's omen is half way across the screen) and `shot:name`
+  // (a picture, with --shot). It is how the Lost Garden is
   // walked: in behind the falls, the Falls Cave's boulders onto their switches,
   // out under the garden's cliff, the Miracle Seed, and the Gardener's Gate.
   const keyFor = (dir) => `Arrow${dir[0].toUpperCase()}${dir.slice(1)}`;
@@ -660,6 +664,20 @@ try {
         const beside = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); return [[0, 1], [1, 0], [-1, 0], [0, -1]].map(([dx, dy]) => ({ x: ${x} + dx, y: ${y} + dy })).find((tile) => !w.isBlocked(tile)) ?? null; })()`);
         if (!beside) throw new Error('nowhere to stand beside the shimmering grass');
         await walkTo(beside, `beside the shimmering grass at ${x},${y}`);
+      }
+    } else if (kind === 'omen') {
+      // `omen` stands still until this raid's omen (`world/omens.ts`) is half
+      // way across the screen, which is when it is photographed (`shot:name`
+      // next). A raid with none says so and goes on.
+      if (!plan.omen) {
+        note('omen: this raid has none');
+      } else {
+        const elapsed = `${GAME}.scene.getScene('world').runSession.manager.snapshot().elapsedMs`;
+        while ((await page.evaluate(elapsed)) < plan.omen.atMs + 1400) {
+          await wait(100);
+          await clearInterruptions();
+        }
+        note(`omen: ${plan.omen.speciesId} crossing at ${Math.round((await page.evaluate(elapsed)) / 1000)}s, seen ${await page.evaluate(`${GAME}.scene.getScene('world').runSession.omenSeen === true`)}`);
       }
     } else if (kind === 'shot') {
       if (option('shot')) {

@@ -162,6 +162,9 @@ import {
 import { paintFloat } from '../world/fishingFloat';
 import { rollShiny } from '../pokemon/shiny';
 import { rollShimmerShiny } from '../world/shimmer';
+import { OMEN_SHADOW_SCALE, omenShadowAt } from '../world/omens';
+import { omenRoost } from '../objectives/ObjectiveGuide';
+import { pokemonTextureKey } from '../pokemon/pokemonSprites';
 import { encounterTableAt, stepRolls } from '../world/localEncounters';
 import { areaFrame } from '../world/areaFrame';
 import { hasPlayerSetOff } from '../world/hunterArrival';
@@ -796,6 +799,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private animatedLayers: AnimatedLayer[] = [];
   private tileAnimator: TileAnimator | null = null;
   private bird: HarbourBird | null = null;
+  /** The omen's shadow while it is crossing the screen (`world/omens.ts`). */
+  private omenFlight: {
+    ms: number;
+    readonly width: number;
+    readonly height: number;
+    readonly origin: { readonly x: number; readonly y: number };
+    readonly heading: GridPosition;
+    readonly shadow: Phaser.GameObjects.Image | undefined;
+  } | null = null;
   private villageCall: CallState = NO_CALL;
   private untilWaterMs = WATER_EVERY_MS;
   private villageBubble: SpeechBubble | null = null;
@@ -1352,6 +1364,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   public create(data: WorldSceneData = {}): void {
     // A battle shut the scene down and took the bird's two images with it.
     this.bird = null;
+    // A shadow mid-crossing went with the world it was drawn in.
+    this.omenFlight = null;
     this.villageBubble = null;
     this.villageCall = NO_CALL;
     this.resetStateFromPreviousRaid();
@@ -2177,6 +2191,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.advanceIdleFigures(deltaMs);
     this.animateGroundInView(deltaMs);
     this.updateBird(deltaMs);
+    this.updateOmen(deltaMs);
     this.advanceVillageCalls(deltaMs);
     this.listenToTheWater(deltaMs);
     if (this.pendingHubTransition) {
@@ -2951,6 +2966,75 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * a screen of the country rather than across the map. Never in a place with a
    * roof, on a night raid, or with reduced motion set.
    */
+  /**
+   * This raid's omen (`world/omens.ts`): once its moment on the raid's clock
+   * has come and the player is out of doors on the map they landed on, the
+   * bird's cry and its shadow across the screen, flying for its roost. Seen
+   * once: the session keeps that, because the world is rebuilt after a fight,
+   * and the field guide says which way it went from then on.
+   */
+  private updateOmen(deltaMs: number): void {
+    const session = this.runSession;
+    const omen = session?.plan?.omen;
+    if (!session || !omen) {
+      return;
+    }
+    if (this.omenFlight) {
+      this.omenFlight.ms += deltaMs;
+      const at = omenShadowAt(this.omenFlight.ms, this.omenFlight.width, this.omenFlight.height, this.omenFlight.heading);
+      if (!at) {
+        this.omenFlight.shadow?.destroy();
+        this.omenFlight = null;
+        return;
+      }
+      this.omenFlight.shadow?.setPosition(this.omenFlight.origin.x + at.x, this.omenFlight.origin.y + at.y);
+      return;
+    }
+    if (
+      session.omenSeen ||
+      session.plan?.insertion.mapId !== this.currentMap.id ||
+      (this.currentArea()?.kind ?? 'outdoors') !== 'outdoors' ||
+      session.manager.snapshot().elapsedMs < omen.atMs
+    ) {
+      return;
+    }
+    session.omenSeen = true;
+    const dexId = getSpeciesById(omen.speciesId)?.dexId;
+    if (dexId !== undefined) {
+      audioManager.play('cry', { species: dexId });
+    }
+    // A scene under test has no textures; a player who asked for less motion hears it and is told.
+    const key = dexId === undefined ? undefined : pokemonTextureKey('front', dexId);
+    if (this.reducedMotion || key === undefined || !this.textures?.exists?.(key)) {
+      return;
+    }
+    const roost = omenRoost(this.currentMap.id, omen.speciesId) ?? this.currentTile;
+    const view = this.cameras.main.worldView;
+    const shadow = this.add
+      .image(view.x, view.y, key)
+      .setOrigin(0.5, 0.5)
+      .setScale(OMEN_SHADOW_SCALE)
+      .setTintFill(0x000000)
+      .setAlpha(0.3)
+      // On the ground with the other marks, under everybody and under the trees,
+      // as the vale's own bird's shadow is: it is a shadow, and the bird is too high to see.
+      .setDepth(MARKER_BAND + 0.06)
+      .setVisible(false);
+    this.mapObjects.push(shadow);
+    this.omenFlight = {
+      ms: 0,
+      width: view.width,
+      height: view.height,
+      origin: { x: view.x, y: view.y },
+      heading: { x: roost.x - this.currentTile.x, y: roost.y - this.currentTile.y },
+      shadow,
+    };
+    const first = omenShadowAt(0, view.width, view.height, this.omenFlight.heading);
+    if (first) {
+      shadow.setPosition(view.x + first.x, view.y + first.y).setVisible(true);
+    }
+  }
+
   private updateBird(deltaMs: number): void {
     if (this.reducedMotion || !this.runSession || this.runSession.plan?.night) {
       return;
