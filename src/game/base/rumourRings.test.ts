@@ -38,12 +38,28 @@ describe("the telescope's rumour rings", () => {
         }
         return;
       }
-      // A cave floor: a way from it comes out of the rock inside the ringed district.
+      // A floor under a roof or a hill: a way from it comes out inside the ringed
+      // district - straight out of the rock, or up through the floors above it
+      // (the crypt under the Moor Chapel comes out through its nave).
       const floor = file.areas?.find((area) => area.name === rumour.names);
       expect(floor, rumour.names).toBeDefined();
-      const mouths = (file.links ?? []).flatMap((link) =>
-        link.ends.some((end) => end.area === floor!.id) ? link.ends.filter((end) => end.area === undefined) : [],
-      );
+      const floors = new Set([floor!.id]);
+      const mouths: { readonly x: number; readonly y: number }[] = [];
+      // Only as far up as the first floor with a way out: a floor with a mouth of its own is held to it.
+      for (let grown = true; grown && mouths.length === 0; ) {
+        grown = false;
+        for (const link of file.links ?? []) {
+          if (!link.ends.some((end) => end.area !== undefined && floors.has(end.area))) continue;
+          for (const end of link.ends) {
+            if (end.area === undefined) {
+              if (!mouths.some((mouth) => mouth.x === end.x && mouth.y === end.y)) mouths.push(end);
+            } else if (!floors.has(end.area)) {
+              floors.add(end.area);
+              grown = true;
+            }
+          }
+        }
+      }
       expect(mouths.some((mouth) => inside(ring.areas[0], mouth)), `a mouth onto ${rumour.names}`).toBe(true);
     },
   );

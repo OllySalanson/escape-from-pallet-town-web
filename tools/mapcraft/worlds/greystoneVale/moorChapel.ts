@@ -250,6 +250,9 @@ export function moorChapel(): MapcraftResult {
         { x: 46, y: 15, lines: ['LANTERN CROSS', 'Lit for the drovers coming over the fell after dark.'] },
         { x: 21, y: 32, lines: ['THE MOOR CHAPEL', 'Erected in the memory of the drovers and their POKéMON.'] },
         { x: 12, y: 42, lines: ['THE CORPSE ROAD', 'West, off the fell.'] },
+        // The secret's clue (`world/secrets.ts`, THE SHADOW IN THE CRYPT): the
+        // keeper's notice, inside the ring of stones by the way in.
+        { area: CRYPT.id, x: 15, y: 8, secret: 'the-shadow-in-the-crypt', lines: ['KEEPER’S NOTICE', 'The shadow at the foot of the gold graves is nobody’s. Leave it be. It only gets up for a GHOST walking in front.'] },
       ],
       // Who keeps the churchyard by night: a Gastly at the fell's edge, and
       // the gravedigger who has stopped minding it.
@@ -259,6 +262,10 @@ export function moorChapel(): MapcraftResult {
         // channeler upstairs can feel, and a Cubone among the west graves.
         { area: CRYPT.id, x: 14, y: 4, species: 'haunter', level: 14 },
         { area: CRYPT.id, x: 3, y: 10, species: 'cubone' },
+        // The shadow on the floor at the foot of the gold graves, with nothing
+        // to cast it: a Gengar, there every raid until it is had,
+        // getting up only for a Ghost type in front (`world/secrets.ts`).
+        { area: CRYPT.id, x: 11, y: 11, species: 'gengar', level: 25, secret: 'the-shadow-in-the-crypt' },
       ],
       people: [
         {

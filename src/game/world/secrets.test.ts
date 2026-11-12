@@ -14,6 +14,7 @@ import { entitiesForMap } from './npcs';
 import { builtInFileMap } from './playerMaps';
 import { dayNumber, RUMOURS, rumourFrom, type RumourFact } from './rumours';
 import {
+  BERRY_ITEM_IDS,
   conditionHolds,
   nextReward,
   openSecrets,
@@ -57,7 +58,13 @@ function hintsOf(condition: SecretCondition): readonly string[] {
       return [condition.move.replace('-', ' ').toUpperCase()];
     case 'carried':
       return condition.items.flatMap((item) =>
-        item.endsWith('rod') ? ['ROD', 'LINE'] : item === 'poke-flute' ? ['FLUTE', 'TUNE'] : [item.toUpperCase()],
+        item.endsWith('rod')
+          ? ['ROD', 'LINE']
+          : item === 'poke-flute'
+            ? ['FLUTE', 'TUNE']
+            : item.endsWith('-berry')
+              ? ['BERRY']
+              : [item.toUpperCase()],
       );
     case 'whole-chart':
       return ['CHART'];
@@ -142,6 +149,28 @@ describe("the vale's secrets", () => {
     }
   });
 
+  /**
+   * Walked up to with everybody standing where they stand. A figure is a
+   * wall, so a nook whose only way in has somebody standing in it is a nook
+   * nobody reaches: THE LOST PICNIC's Hypno stood behind the one tile its own
+   * Drowzee dozed on, which the collision alone called open ground and a raid
+   * called unreachable (12 Nov 2026). The ground beside a nook has to be part
+   * of somewhere - a room, a glade and the lane to it - never a pocket of a
+   * few tiles shut in by the people of the place.
+   */
+  it.each(SECRETS.filter((secret) => secret.nook !== 'line').map((secret) => [secret.name, secret] as const))(
+    '%s can be walked up to past everybody who stands near it',
+    (_name, secret) => {
+      const standing = new Set(entities.map((entity) => `${entity.position.x},${entity.position.y}`));
+      const open = nookTiles(secret).filter((tile) => !standing.has(`${tile.x},${tile.y}`));
+      const roomiest = Math.max(
+        0,
+        ...open.map((tile) => stepDistances(map.collision, tile, standing).reduce((sum, row) => sum + row.filter((steps) => steps >= 0).length, 0)),
+      );
+      expect(roomiest, `${secret.name}'s nook is shut in: ${roomiest} tiles of ground beside it`).toBeGreaterThanOrEqual(40);
+    },
+  );
+
   it.each(SECRETS.map((secret) => [secret.name, secret] as const))(
     '%s has a clue within ten steps that hints at what it waits for',
     (_name, secret) => {
@@ -176,9 +205,9 @@ describe("the vale's secrets", () => {
     expect(openSecrets(base)).toEqual([]);
     const everything: RaidConditions = {
       ...base,
-      leadTypes: ['Fighting', 'Ground'],
+      leadTypes: ['Fighting', 'Ground', 'Psychic', 'Ghost'],
       fieldMoves: ['rock-smash'],
-      carried: ['old-rod', 'pickaxe', 'poke-flute'],
+      carried: ['old-rod', 'pickaxe', 'poke-flute', 'pecha-berry'],
       badges: [MISTY_BOSS_ID],
       chartWhole: true,
     };
@@ -253,7 +282,7 @@ describe("the vale's secrets", () => {
         reward.kind === 'meet' ? [reward.speciesId] : reward.kind === 'gift' ? [reward.gift.speciesId] : [],
       ),
     );
-    expect(species.sort()).toEqual(['golem', 'gyarados', 'kabutops', 'machamp', 'snorlax']);
+    expect(species.sort()).toEqual(['gengar', 'golem', 'gyarados', 'hypno', 'kabutops', 'lickitung', 'machamp', 'mr-mime', 'snorlax']);
   });
 
   describe('against the gyms', () => {
@@ -391,14 +420,48 @@ describe("the vale's secrets", () => {
 
     it('lays the sleeper across his glade every raid until he is had, and wakes him only for the flute', () => {
       const sleeper = 'the-sleeper-in-the-pines';
-      expect(plan(7, dusk).sleeping).toEqual([sleeper]);
+      expect(plan(7, dusk).sleeping).toContain(sleeper);
       expect(plan(7, dusk).secrets.map((secret) => secret.id)).not.toContain(sleeper);
       const flute = plan(7, { ...dusk, carried: ['poke-flute'] });
-      expect(flute.sleeping).toBeUndefined();
+      expect(flute.sleeping ?? []).not.toContain(sleeper);
       expect(flute.secrets.find((secret) => secret.id === sleeper)?.reward).toEqual({ kind: 'meet', speciesId: 'snorlax', level: 25 });
       // Had, he is gone: nothing sleeps there and the flute wakes nobody.
-      expect(plan(7, dusk, [`${sleeper}/snorlax`]).sleeping).toBeUndefined();
-      expect(sleepingSecrets({ ...dusk, carried: [] }, { secretsFound: [], giftsReceived: [] })).toEqual([sleeper]);
+      expect(plan(7, dusk, [`${sleeper}/snorlax`]).sleeping ?? []).not.toContain(sleeper);
+      expect(sleepingSecrets({ ...dusk, carried: [] }, { secretsFound: [], giftsReceived: [] })).toContain(sleeper);
+    });
+
+    /**
+     * The third wave's two that are seen before they are had: the picket who
+     * has not moved in nine years, and the shadow on the crypt wall. Each
+     * stands every raid, as the sleeper lies, and answers only its own kind
+     * walking in front.
+     */
+    it.each([
+      ['the-silent-picket', 'Psychic', 'mr-mime', 22],
+      ['the-shadow-in-the-crypt', 'Ghost', 'gengar', 25],
+    ] as const)('stands %s every raid until it is had, and stirs it only for a %s type in front', (id, type, speciesId, level) => {
+      expect(plan(7, dusk).sleeping).toContain(id);
+      expect(plan(7, dusk).secrets.map((secret) => secret.id)).not.toContain(id);
+      const led = plan(7, { ...dusk, leadTypes: ['Water', type] });
+      expect(led.sleeping ?? []).not.toContain(id);
+      expect(led.secrets.find((secret) => secret.id === id)?.reward).toEqual({ kind: 'meet', speciesId, level });
+      // Had, it is gone for good, whoever leads.
+      const had = plan(7, { ...dusk, leadTypes: [type] }, [`${id}/${speciesId}`]);
+      expect(had.sleeping ?? []).not.toContain(id);
+      expect(had.secrets.find((secret) => secret.id === id)?.reward).toBeUndefined();
+    });
+
+    it('brings the sticky tongue out only for a berry packed as the raid set out, and the dream eater only after dark', () => {
+      const tongue = 'the-sticky-tongue';
+      expect(plan(7, afternoon).secrets.map((secret) => secret.id)).not.toContain(tongue);
+      for (const berry of BERRY_ITEM_IDS) {
+        expect(getItemById(berry)?.category, berry).toBe(getItemById('oran-berry')?.category);
+        expect(plan(7, { ...afternoon, carried: [berry] }).secrets.find((secret) => secret.id === tongue)?.reward).toEqual({ kind: 'meet', speciesId: 'lickitung', level: 24 });
+      }
+      const picnic = 'the-lost-picnic';
+      expect(plan(7, afternoon).secrets.map((secret) => secret.id)).not.toContain(picnic);
+      expect(plan(7, dusk).secrets.map((secret) => secret.id)).not.toContain(picnic);
+      expect(plan(7, { ...dusk, hour: 'night' }).secrets.find((secret) => secret.id === picnic)?.reward).toEqual({ kind: 'meet', speciesId: 'hypno', level: 26 });
     });
 
     it('rings the drowned bell only for the badge, and only at low water', () => {

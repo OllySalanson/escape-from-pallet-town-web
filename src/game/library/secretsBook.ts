@@ -27,9 +27,10 @@ export const NOTES: Readonly<Record<string, string>> = {
   'the-lost-fold': 'A STRENGTH boulder on HIGH MOOR shuts the fold.',
   'x-marks-the-spot': 'Past MISTY.',
   'the-drowned-bell': 'Past MISTY.',
+  'the-shadow-in-the-crypt': 'Under THE MOOR CHAPEL.',
 };
 
-const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
 
 function numberWord(count: number): string {
   return NUMBER_WORDS[count] ?? String(count);
@@ -55,6 +56,10 @@ export function conditionWords(condition: SecretCondition): string {
     case 'field-move':
       return `a Pokémon that knows ${FIELD_MOVES[condition.move].label}`;
     case 'carried':
+      // Every berry there is reads as that, not as a list of seven.
+      if (condition.items.every((item) => item.endsWith('-berry')) && condition.items.length > 2) {
+        return 'any berry packed';
+      }
       return `${condition.items.map((item) => `${article(getItemById(item)?.displayName ?? item)} {item:${item}}`).join(' or ')} packed`;
     case 'whole-chart':
       return 'the whole treasure map pinned up';
@@ -100,7 +105,7 @@ export function secretPage(secret: Secret): BookPage {
     `WHEN: ${when.length > 0 ? when.join(', ') : 'any raid'}`,
     ...(bring.length > 0 ? [`BRING: ${bring.join('; ')}`] : []),
     `HOLDS: ${secret.rewards.map(rewardWords).join(', then ')}`,
-    `${secret.shutLines ? 'It lies there asleep, every raid.' : NOOK_WORDS[secret.nook]}${NOTES[secret.id] ? ` ${NOTES[secret.id]}` : ''}`,
+    `${secret.shutLines ? 'It waits there, every raid.' : NOOK_WORDS[secret.nook]}${NOTES[secret.id] ? ` ${NOTES[secret.id]}` : ''}`,
   ];
   return { heading: secret.name, text: lines.join('\n') };
 }

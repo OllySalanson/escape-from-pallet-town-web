@@ -8405,9 +8405,11 @@
    "name": "Lost Picnicker",
    "look": "picnicker",
    "facing": "down",
+   "secret": "the-lost-picnic",
    "lines": [
     "I took one turn off the road for a picnic spot.",
-    "That was this morning."
+    "That was this morning.",
+    "Something stands by the bench after DARK, swinging a weight on a string. I always nod off before I see it."
    ],
    "calls": [
     "Is it still today?"
@@ -10433,9 +10435,11 @@
    "name": "Cider Maker",
    "look": "bald-man",
    "facing": "up",
+   "secret": "the-sticky-tongue",
    "lines": [
     "Everything goes in. Windfalls, wasps, the odd boot. It all comes out as cider.",
-    "It is very good for you. It is very good at something."
+    "It is very good for you. It is very good at something.",
+    "Something behind my barrels licks them clean round the bung. It only comes out for a BERRY brought in a pack."
    ],
    "beat": {
     "everyMs": 3000,
@@ -10685,9 +10689,11 @@
    "name": "Picket",
    "look": "worker",
    "facing": "down",
+   "secret": "the-silent-picket",
    "lines": [
     "We want the turbines back on. Then we want to not turn them on until they say sorry.",
-    "I do not know if anybody has thought that through."
+    "I do not know if anybody has thought that through.",
+    "Him on the end? Nine years, not a word. He only ever turned his head for a lad with a PSYCHIC type in front."
    ],
    "beat": {
     "everyMs": 2700,
@@ -10721,7 +10727,7 @@
    ]
   },
   {
-   "x": 292,
+   "x": 294,
    "y": 90,
    "name": "Scab",
    "look": "man",
@@ -14466,6 +14472,16 @@
    ]
   },
   {
+   "area": "moor-chapel-crypt",
+   "x": 15,
+   "y": 8,
+   "secret": "the-shadow-in-the-crypt",
+   "lines": [
+    "KEEPER’S NOTICE",
+    "The shadow at the foot of the gold graves is nobody’s. Leave it be. It only gets up for a GHOST walking in front."
+   ]
+  },
+  {
    "x": 341,
    "y": 97,
    "lines": [
@@ -15056,6 +15072,14 @@
    "wildlife": "woodland"
   },
   {
+   "name": "THE LOST PICNIC",
+   "x": 214,
+   "y": 130,
+   "width": 10,
+   "height": 6,
+   "wildlife": "woodland"
+  },
+  {
    "name": "THE PICNIC GROUND",
    "x": 200,
    "y": 146,
@@ -15356,8 +15380,8 @@
    "name": "THE CIDER PRESS",
    "x": 240,
    "y": 211,
-   "width": 6,
-   "height": 10,
+   "width": 8,
+   "height": 9,
    "wildlife": "field"
   },
   {
@@ -17407,6 +17431,19 @@
    "species": "oddish"
   },
   {
+   "x": 216,
+   "y": 131,
+   "species": "drowzee",
+   "level": 10
+  },
+  {
+   "x": 218,
+   "y": 130,
+   "species": "hypno",
+   "level": 26,
+   "secret": "the-lost-picnic"
+  },
+  {
    "x": 194,
    "y": 165,
    "species": "pidgey",
@@ -18186,6 +18223,13 @@
    "level": 10
   },
   {
+   "x": 247,
+   "y": 218,
+   "species": "lickitung",
+   "level": 24,
+   "secret": "the-sticky-tongue"
+  },
+  {
    "x": 240,
    "y": 230,
    "species": "tauros",
@@ -18423,6 +18467,13 @@
    "y": 2,
    "species": "meowth",
    "area": "orchard-the-farmhouse"
+  },
+  {
+   "x": 292,
+   "y": 89,
+   "species": "mr-mime",
+   "level": 22,
+   "secret": "the-silent-picket"
   },
   {
    "x": 261,
@@ -19539,6 +19590,14 @@
    "x": 3,
    "y": 10,
    "species": "cubone"
+  },
+  {
+   "area": "moor-chapel-crypt",
+   "x": 11,
+   "y": 11,
+   "species": "gengar",
+   "level": 25,
+   "secret": "the-shadow-in-the-crypt"
   },
   {
    "x": 361,

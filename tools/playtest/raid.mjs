@@ -10,7 +10,7 @@
 //        [--hp=N] [--stash=itemId[:n],..] [--read=itemId,..] [--open=LABEL] [--arrange]
 //        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--through=x:y:dir,..] [--grab=itemId,..] [--fight]
 //        [--progress=path.json] [--save-out=path.json] [--shot-dialogs] [--said] [--errands=id,..]
-//        [--hunt=pieceId,..] [--skip-contract] [--shot-battles]
+//        [--hunt=pieceId,..] [--skip-contract] [--shot-battles] [--attach=PORT [--fresh]] [--lead=Name]
 //
 // --said prints every line a battle puts up, once it has finished typing.
 //
@@ -131,6 +131,12 @@ try {
   }
   if (seed !== undefined) {
     await page.send('Page.addScriptToEvaluateOnNewDocument', { source: SEEDED(seed) });
+  }
+  // `--fresh` (with --attach) empties the game's storage first: an attached
+  // browser keeps its saves between drivers, which is what a driver carrying a
+  // save on wants and what a run of separate raids one after another does not.
+  if (flag('fresh')) {
+    await page.send('Storage.clearDataForOrigin', { origin: url.origin, storageTypes: 'local_storage' });
   }
   await page.send('Page.navigate', { url: url.href });
   // The last the world was seen of is the clock the raid ended on.
@@ -602,6 +608,11 @@ try {
       await wait(200);
       await press('Space');
       await wait(1500);
+      // The line typed out to its end before it is photographed: on a loaded
+      // machine a second and a half is half a sentence.
+      for (let guard = 0; guard < 40 && !(await page.evaluate(`Boolean(${GAME}.scene.getScene('world')?.dialogBox?.isCurrentMessageComplete)`).catch(() => true)); guard += 1) {
+        await wait(250);
+      }
       // A tile read twice - a clue before its hour and after - keeps both pictures.
       const reads = (readsAt.get(`${parts[0]},${parts[1]}`) ?? 0) + 1;
       readsAt.set(`${parts[0]},${parts[1]}`, reads);
