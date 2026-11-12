@@ -106,8 +106,12 @@ export function omenShadowAt(
   };
 }
 
-/** How big the shadow is drawn, in pixels: a bird's 64-pixel picture, two and a half times over. */
-export const OMEN_SHADOW_SCALE = 2.5;
+/**
+ * How big the shadow is drawn: a bird's 64-pixel picture three times over, half
+ * a small screen across. A whole number, so every pixel of it is the same size
+ * (at two and a half, which it first was, its edge was a ragged staircase).
+ */
+export const OMEN_SHADOW_SCALE = 3;
 export const OMEN_SHADOW_PIXELS = 64 * OMEN_SHADOW_SCALE;
 
 /**
