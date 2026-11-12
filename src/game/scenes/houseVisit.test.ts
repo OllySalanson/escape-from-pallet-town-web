@@ -43,7 +43,7 @@ import { BaseScene } from './BaseScene';
 import { HouseDoor } from '../harbour/houseDoor';
 import type { HouseService, KnockAtTheDoor } from '../harbour/houseService';
 import { HouseVisitWatch } from '../harbour/houseVisit';
-import { KNOCK_SIGN_LINE, LET_STAY, SEE_OUT, knockScreenMarkup } from '../home/knocking';
+import { KNOCK_SIGN_LINE, NOT_NOW, SEE_OUT, knockScreenMarkup } from '../home/knocking';
 import { HOME_SIGN } from '../base/baseMap';
 
 /**
@@ -406,7 +406,7 @@ describe("the owner's PC in somebody else's house", () => {
  * A visit lasts until the visitor walks out or the owner sees them out (the
  * captain, 12 Nov 2026: why only ten minutes?). The owner's side: facing
  * somebody in their own house asks whether to see them out, the cursor on
- * LET THEM STAY. The visitor's side: told why, and walked out to their own step.
+ * NOT NOW. The visitor's side: told why, and walked out to their own step.
  */
 describe('seeing a visitor out of your own house', () => {
   function ownHouseFacingAmy() {
@@ -452,13 +452,13 @@ describe('seeing a visitor out of your own house', () => {
     }
   });
 
-  it('asks whether to see them out, starting on LET THEM STAY, and sees them out on SEE THEM OUT', async () => {
+  it('asks whether to see them out, starting on NOT NOW, and sees them out on SEE THEM OUT', async () => {
     const home = ownHouseFacingAmy();
     try {
       (home.scene.tryInteract as () => void).call(home.scene);
       expect(home.asked).toHaveLength(1);
       expect(home.asked[0].question).toBe('AMY is visiting. See them out?');
-      expect(home.asked[0].options).toEqual({ startOnNotNow: true, options: [SEE_OUT, LET_STAY] });
+      expect(home.asked[0].options).toEqual({ startOnNotNow: true, options: [SEE_OUT, NOT_NOW] });
       home.asked[0].answer(true);
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(home.shownOut).toEqual(['amy-id']);
@@ -470,7 +470,7 @@ describe('seeing a visitor out of your own house', () => {
     }
   });
 
-  it('lets them stay on LET THEM STAY', () => {
+  it('lets them stay on NOT NOW', () => {
     const home = ownHouseFacingAmy();
     try {
       (home.scene.tryInteract as () => void).call(home.scene);

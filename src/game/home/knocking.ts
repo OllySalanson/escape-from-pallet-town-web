@@ -134,8 +134,8 @@ export function visitorQuestion(visitorName: string): string {
   return `${visitorName} is visiting. See them out?`;
 }
 
+/** Seeing a visitor out; the other answer is NOT NOW, as at the door. */
 export const SEE_OUT = 'SEE THEM OUT';
-export const LET_STAY = 'LET THEM STAY';
 
 /** What the owner is told on seeing a visitor out. */
 export function seenOutLine(visitorName: string): string {

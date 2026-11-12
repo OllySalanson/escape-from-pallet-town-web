@@ -352,7 +352,6 @@ import {
   NOT_NOW,
   knockGoneLine,
   knockQuestion,
-  LET_STAY,
   SEE_OUT,
   seenOutLine,
   visitEndedLine,
@@ -6090,7 +6089,7 @@ export class BaseScene extends Phaser.Scene {
 
   /**
    * Facing somebody visiting the player's own house: asked whether to see them
-   * out, with the cursor on LET THEM STAY - the key that asked is still down.
+   * out, with the cursor on NOT NOW - the key that asked is still down.
    * A visit lasts until the visitor walks out or this, never for a set time.
    */
   private askAboutVisitor(target: GridPosition): boolean {
@@ -6117,7 +6116,7 @@ export class BaseScene extends Phaser.Scene {
         audioManager.play('confirm');
         this.say([seenOutLine(visitor.name)], [target]);
       },
-      { startOnNotNow: true, options: [SEE_OUT, LET_STAY] },
+      { startOnNotNow: true, options: [SEE_OUT, NOT_NOW] },
     );
     return true;
   }
