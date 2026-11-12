@@ -100,10 +100,10 @@ export const RARE_SHARE = 1 / 6;
  *   moorland bird, Doduo.
  * - The fields: the Mankey of the routes out of Viridian, which the vale
  *   otherwise keeps for Stormcrown, and Growlithe, FireRed's own on Routes 7
- *   and 8, which the vale had nowhere at all.
+ *   and 8.
  * - The reeds: their own Squirtle, and the wild duck, Farfetch'd.
- * - Koga's marsh: the reserve's four, and Ekans, FireRed's own, which the
- *   vale had nowhere at all.
+ * - Koga's marsh: the reserve's four, and Ekans, FireRed's own on the routes
+ *   round Fuchsia.
  *
  * Keyed by the habitat's own table, which is what a district of a map file
  * holds (`MAP_FILE_HABITATS`), so nothing about any table's rolls changes.

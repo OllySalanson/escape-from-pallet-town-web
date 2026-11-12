@@ -16,10 +16,6 @@ shiny: one in fifty, against one in 500. `src/game/world/shimmer.ts` is the rule
 | KOGA's marsh (Safari Marsh, The Wreck) | Chansey, Kangaskhan, Pinsir, Scyther or Ekans |
 | Anywhere else with tall grass | The least common thing its own table holds: a Charmander in Millbrook, an Electabuzz at the Power Station, a Shellder on the strand |
 
-Growlithe and Ekans could not be had on the vale at all before this, so the
-patch is also what takes them, Arcanine and Arbok off the list of Pokémon the
-Pokédex could never hold (`pokedexReach.test.ts`).
-
 ## How to find it
 
 Follow the gold arrow towards the raid's stake: the patch lies a couple of
