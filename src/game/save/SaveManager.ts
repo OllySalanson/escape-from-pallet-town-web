@@ -143,6 +143,7 @@ import {
   chartWhole,
   CHEST_CONTENTS,
   CHEST_ITEM_ID,
+  CHEST_POKEMON,
   NO_TREASURE_HUNT,
   pieceById,
   readTreasureHunt,
@@ -1631,7 +1632,7 @@ export class SaveManager {
   /**
    * Opens the SEA CHEST in THE CHART ROOM, in one write: the chest out of the
    * vault and onto MARLOW's floor for good, and what was in it
-   * (`CHEST_CONTENTS`) into the vault. False when the chart is not whole, the
+   * (`CHEST_CONTENTS`, and the `CHEST_POKEMON` packed among them) into the vault. False when the chart is not whole, the
    * vault holds no chest, it is open already, or it could not be saved.
    */
   public openSeaChest(): boolean {
@@ -1643,10 +1644,16 @@ export class SaveManager {
     if (hunt.chestOpened || !chartWhole(hunt) || game.stash.itemCount(CHEST_ITEM_ID) < 1) {
       return false;
     }
+    const species = getSpeciesById(CHEST_POKEMON.speciesId);
+    if (!species) {
+      return false;
+    }
     game.stash.removeItem(CHEST_ITEM_ID, 1);
     for (const { itemId, quantity } of CHEST_CONTENTS) {
       game.stash.addItem(itemId, quantity);
     }
+    // The old POKé BALL packed among them: the rare find the X leads to.
+    game.stash.addPokemon(new Pokemon(species, CHEST_POKEMON.level));
     const found = game.raidProgress.secretsFound ?? [];
     return this.save({
       ...game,

@@ -112,9 +112,10 @@ import {
   BEACH_BOTTLE,
   BOTTLE_FOUND_LINES,
   bottleOnTheBeach,
-  CHART_PIECES,
   CHART_ROOM_ARRIVAL_LINES,
+  chartBoardLines,
   chartWhole,
+  CHEST_POKEMON,
   chestOpenedLines,
   huntStage,
   MARLOW,
@@ -124,6 +125,7 @@ import {
   piecesToPin,
   PIN_QUESTION,
   pinnedLines,
+  PLAYTEST_PIECES_LINE,
   type TreasureHunt,
 } from '../treasure/treasureMap';
 import { BASE_TILESET, type BasePropName } from '../base/baseTileset';
@@ -168,7 +170,7 @@ import { anglerLines, harbourBite, reeledInLines } from '../base/harbourFishing'
 import { spyglassLines } from '../base/spyglass';
 import { seagallopLines } from '../base/seagallopLog';
 import { paintFloat } from '../world/fishingFloat';
-import { ALL_SPECIES } from '../pokemon/species';
+import { ALL_SPECIES, getSpeciesById } from '../pokemon/species';
 import {
   NOT_EVEN_A_NIBBLE,
   ON_THE_HOOK,
@@ -264,7 +266,8 @@ import {
   PRACTICE_QUESTION,
   type PracticeLeader,
 } from '../base/gymPractice';
-import { gymOf, type ValeGym } from '../world/valeQuarters';
+import { gymOf, MISTY_BOSS_ID, type ValeGym } from '../world/valeQuarters';
+import { openedDoors } from '../world/gates';
 import type { BoutRecord } from '../base/boutLadder';
 import type { BattleSceneData } from './BattleScene';
 import { PokemonParty } from '../pokemon';
@@ -6601,10 +6604,18 @@ export class BaseScene extends Phaser.Scene {
 
   // -- THE TREASURE MAP (`treasure/treasureMap.ts`) -------------------------------
 
-  /** The hunt as the save stands, and how many of a thing the vault holds. */
-  private treasureNow(): { readonly hunt: TreasureHunt; readonly held: (itemId: string) => number } {
+  /**
+   * The hunt as the save stands, how many of a thing the vault holds, and
+   * whether the save can walk into SMUGGLERS' COVE yet: MISTY holds THE COAST
+   * until she is beaten (or her door stands open, as in the explorer run).
+   */
+  private treasureNow(): { readonly hunt: TreasureHunt; readonly held: (itemId: string) => number; readonly coastOpen: boolean } {
     const game = this.freshGame();
-    return { hunt: game.raidProgress.treasureHunt ?? NO_TREASURE_HUNT, held: (itemId) => game.stash.itemCount(itemId) };
+    return {
+      hunt: game.raidProgress.treasureHunt ?? NO_TREASURE_HUNT,
+      held: (itemId) => game.stash.itemCount(itemId),
+      coastOpen: openedDoors(game.raidProgress).includes(MISTY_BOSS_ID),
+    };
   }
 
   /** The partner's name, said in MARLOW's story, if the save still has one. */
@@ -6677,7 +6688,7 @@ export class BaseScene extends Phaser.Scene {
    * chest in his room, he opens it.
    */
   private speakToMarlow(room: BaseRoom, about: readonly GridPosition[]): void {
-    const { hunt, held } = this.treasureNow();
+    const { hunt, held, coastOpen } = this.treasureNow();
     const stage = huntStage(hunt, held);
     this.figures
       .get(MARLOW.id)
@@ -6716,17 +6727,20 @@ export class BaseScene extends Phaser.Scene {
           room: 'chart-room',
           at: { ...this.currentTile },
           facing: this.facing,
-          said: chestOpenedLines((itemId) => getItemById(itemId)?.displayName ?? itemId, this.partnerName()),
+          said: chestOpenedLines(
+            (itemId) => getItemById(itemId)?.displayName ?? itemId,
+            getSpeciesById(CHEST_POKEMON.speciesId)?.name.toUpperCase(),
+          ),
         },
         'confirm',
       );
       return;
     }
-    const inHand = piecesToPin(hunt, held);
+    // A piece in hand is the one thing to do next, so it is the one thing he says.
     this.say(
-      inHand.length > 0
-        ? [...marlowRoomLines(stage, hunt), 'MARLOW: Is that another piece in your things? Pin it on the board, go on!']
-        : marlowRoomLines(stage, hunt),
+      piecesToPin(hunt, held).length > 0
+        ? ['MARLOW: Is that a piece in your things? Pin it on the board, go on!']
+        : marlowRoomLines(stage, hunt, coastOpen),
       about,
     );
   }
@@ -6737,19 +6751,10 @@ export class BaseScene extends Phaser.Scene {
    * how the chart stands.
    */
   private workChartWall(about: readonly GridPosition[]): void {
-    const { hunt, held } = this.treasureNow();
+    const { hunt, held, coastOpen } = this.treasureNow();
     const piece = piecesToPin(hunt, held)[0];
     if (!piece) {
-      const left = CHART_PIECES.length - hunt.pinned.length;
-      this.say(
-        chartWhole(hunt)
-          ? ["The chart is whole. The red dotted line runs from the ship to an X in SMUGGLERS' COVE."]
-          : [
-              `THE CHART: ${hunt.pinned.length} of ${CHART_PIECES.length} pieces pinned.`,
-              `The board has ${left} empty slot${left === 1 ? '' : 's'} left, each drawn round in chalk with a question mark.`,
-            ],
-        about,
-      );
+      this.say(chartBoardLines(hunt, coastOpen), about);
       return;
     }
     const name = getItemById(piece.itemId)?.displayName ?? piece.itemId;
@@ -6772,12 +6777,15 @@ export class BaseScene extends Phaser.Scene {
           room: 'chart-room',
           at: { ...this.currentTile },
           facing: this.facing,
-          said: pinnedLines(piece, after, name, this.partnerName()),
+          said: pinnedLines(piece, after, name, this.partnerName(), coastOpen),
         },
         'confirm',
       );
     });
-    this.say([`The ${name.toUpperCase()} is in your things.`], about, ask);
+    // The explorer run's kit put every piece in the vault: it says so before
+    // the first goes up, so nobody thinks the hunt was done for them by accident.
+    const fromTheKit = isPlaytestRun() && hunt.pinned.length === 0;
+    this.say([...(fromTheKit ? [PLAYTEST_PIECES_LINE] : []), `The ${name.toUpperCase()} is in your things.`], about, ask);
   }
 
   /**

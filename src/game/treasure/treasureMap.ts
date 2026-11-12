@@ -21,7 +21,9 @@ import { formatMoney } from '../items/items';
  * 3. **The wall.** A board with a slot for every piece (`CHART_GRID`). A piece
  *    the vault holds is pinned up by facing the wall; MARLOW looks it over and
  *    says what he sees. The first time, he decides the chart is the player's
- *    to finish: they and their Pokémon are the mighty sort.
+ *    to finish: they and their Pokémon are the mighty sort. The chart is
+ *    SMUGGLERS' COVE itself, drawn off the vale's own map (`chartWall.ts`), so
+ *    each piece shows a real part of the place the X is in.
  * 4. **The torn charts** are the vale's three chart secrets
  *    (`../world/secrets.ts`), found under their own skies and carried home at
  *    risk as every secret is. Each pinned is out of the vault for good and
@@ -30,8 +32,13 @@ import { formatMoney } from '../items/items';
  *    that sets out with it whole opens the last secret, `TREASURE_SECRET_ID`:
  *    a hidden spot in SMUGGLERS' COVE that holds the SEA CHEST. It is found,
  *    carried home and lost with the pack like any other secret's reward.
- * 6. **The chest** is carried to MARLOW, who opens it (`CHEST_CONTENTS`) and
- *    keeps the empty chest on show in his room.
+ *    **From then the hunt is said as one goal, in the same few words wherever
+ *    a player looks** (`TREASURE_GOAL`, `treasureGoalLines`): MARLOW and the
+ *    board, Oak's chart table, a red X on THE RAID ARENA's telescope, and in
+ *    the raid the field guide, Oak's radio and an X on the sand itself.
+ * 6. **The chest** is carried to MARLOW, who opens it (`CHEST_CONTENTS`, and
+ *    `CHEST_POKEMON` in an old POKé BALL packed among them) and keeps the
+ *    empty chest on show in his room.
  *
  * What the save holds is `TreasureHunt`: whether the room is open, which
  * pieces are pinned and whether the chest has been opened. Everything else -
@@ -77,39 +84,28 @@ export const CHART_PIECES: readonly ChartPiece[] = [
     itemId: 'bottled-chart',
     slot: { column: 0, row: 0 },
     from: { kind: 'beach' },
-    pinnedLines: [
-      'MARLOW: The open sea, a compass rose and a ship, sailing in. That is where this chart starts.',
-    ],
+    pinnedLines: ['MARLOW: Open sea, and a ship coming in. Coming in to where?'],
   },
   {
     id: 'moor',
     itemId: 'chart-piece-1',
     slot: { column: 1, row: 0 },
     from: { kind: 'secret', secretId: 'the-long-shadow' },
-    pinnedLines: [
-      'MARLOW: The tor on HIGH MOOR! Drawn by somebody standing on it in a gale, by the wobble.',
-      'See the dotted line? It comes ashore and goes straight up onto the moor.',
-    ],
+    pinnedLines: ['MARLOW: A cliff top, and steps going down. The red line starts here!'],
   },
   {
     id: 'hollow',
     itemId: 'chart-piece-2',
     slot: { column: 0, row: 1 },
     from: { kind: 'secret', secretId: 'the-tappers-sunday' },
-    pinnedLines: [
-      'MARLOW: Pines, and a camp in them. PINE HOLLOW. The line comes down off the moor and through the trees.',
-      'Whoever drew this did not like the smell of resin. There is a little drawing of a nose.',
-    ],
+    pinnedLines: ["MARLOW: A long jetty, and a name on the water! SMUGGLERS' COVE."],
   },
   {
     id: 'fold',
     itemId: 'chart-piece-3',
     slot: { column: 1, row: 1 },
     from: { kind: 'secret', secretId: 'the-lost-fold' },
-    pinnedLines: [
-      'MARLOW: Cliffs, a cove under them, a little boat shed... and the line ends at a mark.',
-      'An X. Of course it is an X. It is always an X.',
-    ],
+    pinnedLines: ['MARLOW: A boat shed under a cliff... and an X. It is always an X.'],
   },
 ];
 
@@ -132,6 +128,28 @@ export const CHEST_CONTENTS: readonly { readonly itemId: ItemId; readonly quanti
   { itemId: 'hauler-frame', quantity: 1 },
   { itemId: 'great-ball', quantity: 5 },
 ];
+
+/**
+ * And the rare find packed among the kit: an old POKé BALL with something
+ * still in it. EEVEE is met nowhere in the vale and given by nobody else -
+ * FireRed keeps its one EEVEE in a ball on a table in a back room, behind a
+ * door nobody shows you - so the X leads to the only one there is
+ * (`treasureMap.test.ts` holds both halves of that). Lv 25 is FireRed's.
+ */
+export const CHEST_POKEMON = { speciesId: 'eevee', level: 25 } as const;
+
+/**
+ * The hunt's goal once the chart is whole, in the words every screen that
+ * names it uses: where the X is, what is under it and who it is carried to.
+ * Few and plain, because it is read at a glance.
+ */
+export const TREASURE_GOAL = {
+  title: 'X MARKS THE SPOT',
+  /** What is under the X. */
+  prize: 'SEA CHEST',
+  /** Where in the cove, as somebody standing in it would be told. */
+  spot: 'under the cliff, past the boat shed',
+} as const;
 
 /**
  * Where the bottle lies on THE BEACH: past the pleasure pier, in the far
@@ -237,7 +255,8 @@ export function marlowLibraryLines(stage: HuntStage): readonly string[] {
 export const CHART_ROOM_ARRIVAL_LINES: readonly string[] = [
   'The bookcase swings open on a room nobody has been into for years.',
   `MARLOW: ${CHART_ROOM_NAME}. Nobody knows it is here, which is how I like it.`,
-  `That board has waited sixty years for one chart, torn in ${NUMBER_WORDS[CHART_PIECES.length]}. Pin yours up and let us have a proper look.`,
+  `That board has waited sixty years for one chart, torn in ${NUMBER_WORDS[CHART_PIECES.length]}.`,
+  'Pin your piece on it. It will show us where the treasure is.',
 ];
 
 /**
@@ -250,83 +269,133 @@ export const PIN_QUESTION = 'PIN IT ON THE BOARD?';
 /** What the bookcase says once it stands open. */
 export const OPEN_BOOKCASE_NOTE = 'Open: THE CHART ROOM is through it';
 
+/** A count of pieces still to find, as a sentence starts with it: "Three more pieces". */
+function piecesLeftSentence(count: number): string {
+  const words = piecesLeftWords(count);
+  return `${words[0].toUpperCase()}${words.slice(1)}`;
+}
+
 /**
- * What is said as a piece goes up: that it was pinned, then MARLOW. The first
- * piece pinned is the bottle's, and it is the one he decides about: by rights
- * a chart like this belongs to the library, but the sea gave it to the player,
- * and they and their Pokémon look like the sort who go where charts point.
+ * What is said as a piece goes up: that it was pinned, then MARLOW, a box a
+ * line. The first piece pinned is the one he decides about: by rights a chart
+ * like this belongs to the library, but the sea gave it to the player, and
+ * they and their Pokémon look like the sort who go where charts point. The
+ * last turns the chart into the goal (`wholeChartLines`). `coastOpen` is
+ * whether the save can walk into the cove yet: MISTY holds THE COAST.
  */
-export function pinnedLines(piece: ChartPiece, after: TreasureHunt, itemName: string, partnerName?: string): readonly string[] {
+export function pinnedLines(
+  piece: ChartPiece,
+  after: TreasureHunt,
+  itemName: string,
+  partnerName?: string,
+  coastOpen = true,
+): readonly string[] {
   const first = after.pinned.length === 1;
   const left = CHART_PIECES.length - after.pinned.length;
   const company = partnerName ? `you and ${partnerName}` : 'you and your POKéMON';
   const lines = [`You pinned the ${itemName.toUpperCase()} on the board.`, ...piece.pinnedLines];
+  if (left === 0) {
+    return [...lines, ...wholeChartLines(coastOpen)];
+  }
   if (first) {
     lines.push(
-      'MARLOW: Hmm. Hmm! (He looks at it through a glass. Then through a bigger glass. Then he sniffs it.)',
-      'By rights a chart like this belongs to the library. Scholars would fight over it. With umbrellas.',
-      'But the sea did not give it to a scholar. It gave it to you.',
-      `And look at ${company}. Mighty, the pair of you.`,
-      'Mighty is what this chart wants. It is yours. It stays on my board where it is safe, and you finish it.',
-      `${piecesLeftWords(left)[0].toUpperCase()}${piecesLeftWords(left).slice(1)} are out in GREYSTONE VALE. Listen to the harbour: the board, the sailors and BILL talk of little else.`,
+      'By rights this belongs to the library. But the sea gave it to you.',
+      `And look at ${company}. Mighty! It is yours to finish.`,
+      `${piecesLeftSentence(left)} are out in GREYSTONE VALE. Ask round the harbour.`,
     );
     return lines;
   }
-  if (left > 0) {
-    lines.push(`MARLOW: ${piecesLeftWords(left)[0].toUpperCase()}${piecesLeftWords(left).slice(1)} to go.`);
-    return lines;
-  }
-  return [...lines, ...WHOLE_CHART_LINES];
+  lines.push(`MARLOW: ${piecesLeftSentence(left)} to go.`);
+  return lines;
 }
 
-/** What MARLOW says the moment the chart is whole. */
-export const WHOLE_CHART_LINES: readonly string[] = [
-  'MARLOW: There. Whole, for the first time in sixty years.',
-  `Follow the line: off the sea, up over the moor, down through the pines, along the cliffs... to ${TREASURE_PLACE}.`,
-  'Where the sand runs out under the cliff, past the boat shed. X marks the spot. It always does.',
-  'Mind: the cove is behind MISTY\'s sandbags. And the chest will not be light. Bring back what is under that X.',
-];
+/** What is said of MISTY while she still holds the way into the cove. */
+export const COAST_SHUT_LINE = 'The cove is past MISTY. Beat her first.';
+
+/** Where the X is and what to do about it: the goal, as MARLOW, the board and Oak say it. */
+export function treasureGoalLines(coastOpen = true): readonly string[] {
+  return [
+    `The X is in ${TREASURE_PLACE}: ${TREASURE_GOAL.spot}.`,
+    `Dig up the ${TREASURE_GOAL.prize} and carry it home to ${MARLOW.name}.`,
+    ...(coastOpen ? [] : [COAST_SHUT_LINE]),
+  ];
+}
+
+/** What MARLOW says the moment the chart is whole: one cheer, then the goal. */
+export function wholeChartLines(coastOpen = true): readonly string[] {
+  return ['MARLOW: Whole! After sixty years!', ...treasureGoalLines(coastOpen)];
+}
+
+/** The same with the cove open, for whoever only needs the words. */
+export const WHOLE_CHART_LINES: readonly string[] = wholeChartLines();
 
 /** What MARLOW says in his room, faced, by where the hunt has got to. */
-export function marlowRoomLines(stage: HuntStage, hunt: TreasureHunt): readonly string[] {
+export function marlowRoomLines(stage: HuntStage, hunt: TreasureHunt, coastOpen = true): readonly string[] {
   switch (stage) {
     case 'no-chart':
     case 'first-chart':
     case 'pinning': {
       const left = CHART_PIECES.length - hunt.pinned.length;
       return [
-        `MARLOW: ${piecesLeftWords(left)[0].toUpperCase()}${piecesLeftWords(left).slice(1)}, and the chart is whole. Torn charts turn up in GREYSTONE VALE, under the right sky.`,
-        'Bring me what you find and pin it on the board. I will do the squinting.',
+        `MARLOW: ${piecesLeftSentence(left)}, and the chart is whole.`,
+        'They turn up in GREYSTONE VALE, under the right sky. Ask round the harbour.',
       ];
     }
     case 'whole':
-      return [
-        `MARLOW: ${TREASURE_PLACE}, where the sand runs out under the cliff past the boat shed.`,
-        'The chart is whole, so whatever is under that X is waiting for you. Go on. I will put the kettle on.',
-      ];
+      return [`MARLOW: ${treasureGoalLines(coastOpen)[0]}`, ...treasureGoalLines(coastOpen).slice(1)];
     case 'chest':
       return ['MARLOW: Is that- it is! Put it down. Gently! GENTLY!'];
     case 'done':
       return [
-        'MARLOW: A whole chart and an empty chest. Best day this library has had in sixty years.',
-        'If the sea sends me another chart, you will be the first to hear of it.',
+        'MARLOW: A whole chart and an empty chest. The best day in sixty years!',
+        'If the sea sends me another chart, you will be the first to hear.',
       ];
   }
 }
 
-/** What is said as the chest is opened and its contents handed over. */
-export function chestOpenedLines(names: (itemId: ItemId) => string, partnerName?: string): readonly string[] {
+/** What the board says, faced with nothing to pin: how the chart stands, or the goal. */
+export function chartBoardLines(hunt: TreasureHunt, coastOpen = true): readonly string[] {
+  if (hunt.chestOpened) {
+    return [`THE CHART, whole. The ${TREASURE_GOAL.prize} it led to stands open on the floor.`];
+  }
+  if (chartWhole(hunt)) {
+    return [`${TREASURE_GOAL.title}!`, ...treasureGoalLines(coastOpen)];
+  }
+  const left = CHART_PIECES.length - hunt.pinned.length;
+  return [
+    `THE CHART: ${hunt.pinned.length} of ${CHART_PIECES.length} pieces pinned.`,
+    `${piecesLeftSentence(left)} to find. The whole chart shows where the treasure is.`,
+  ];
+}
+
+/** The note under the board's name: how many pieces, or the goal in three words. */
+export function chartBoardNote(hunt: TreasureHunt): string {
+  if (hunt.chestOpened) {
+    return 'Whole, and its chest found';
+  }
+  return chartWhole(hunt) ? `Whole. Dig at the X` : `${hunt.pinned.length} of ${CHART_PIECES.length} pieces pinned`;
+}
+
+/**
+ * What the explorer run says at the board before its first piece goes up: its
+ * kit put every piece in the vault (`dev/playtestKit.ts`), so nobody thinks
+ * they found them. Said once, on the way to the question.
+ */
+export const PLAYTEST_PIECES_LINE = `PLAYTEST: your kit holds all ${NUMBER_WORDS[CHART_PIECES.length]} pieces. Pin each one, then go and dig.`;
+
+/** What is said as the chest is opened and its contents handed over, a box a line. */
+export function chestOpenedLines(names: (itemId: ItemId) => string, pokemonName: string = CHEST_POKEMON.speciesId.toUpperCase()): readonly string[] {
   const handed = CHEST_CONTENTS.map(({ itemId, quantity }) =>
     itemId === 'money' ? formatMoney(quantity) : quantity === 1 ? `a ${names(itemId).toUpperCase()}` : `${quantity} ${names(itemId).toUpperCase()}S`,
   );
   const list = `${handed.slice(0, -1).join(', ')} and ${handed[handed.length - 1]}`;
   return [
     'MARLOW: Is that- it is! Put it down. Gently! GENTLY!',
-    'He works the old lock with a hairpin, a bookmark and a word nobody should say in a library. The lid creaks up.',
+    'He works the lock with a hairpin and a bookmark. The lid creaks up.',
     `Inside: ${list}.`,
-    'MARLOW: Not gold. Better: the smugglers\' own kit. They meant to come back for it. They never did.',
-    `The chest stays here with the chart, where people can gasp at it. What was in it is yours. ${partnerName ? `You and ${partnerName}` : 'You and your POKéMON'} earned every bit of it.`,
-    `It has gone into your things on BILL'S PC.`,
+    'And an old POKé BALL, packed in straw. Something in it moves!',
+    `${pokemonName} came out! The smugglers' rarest cargo is yours.`,
+    `MARLOW: The chest stays here on show. The rest has gone to BILL'S PC.`,
   ];
 }
 

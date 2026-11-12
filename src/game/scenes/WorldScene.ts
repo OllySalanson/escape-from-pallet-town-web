@@ -1,4 +1,5 @@
 import { secretById, secretOpenAt, type SecretReward } from '../world/secrets';
+import { CHEST_ITEM_ID, TREASURE_SECRET_ID } from '../treasure/treasureMap';
 import type { OpenSecret } from '../run/runGeneration';
 import Phaser from 'phaser';
 import { isPackId } from '../items/packs';
@@ -3322,8 +3323,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.collectedLootIds,
     )) {
       // A hidden spot is drawn as nothing at all, as FireRed hides an item in
-      // a tile: it is found by walking onto it, and only then said.
+      // a tile: it is found by walking onto it, and only then said. The one
+      // exception is the treasure map's: the whole chart put an X on this
+      // tile, so the sand has it too.
       if (loot.hidden) {
+        if (loot.secret === TREASURE_SECRET_ID && loot.itemId === CHEST_ITEM_ID) {
+          this.createTreasureCross(loot);
+        }
         continue;
       }
       const x = loot.position.x * TILE_SIZE + TILE_SIZE / 2;
@@ -3413,6 +3419,34 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       teachingBattle: false,
     });
     return true;
+  }
+
+  /**
+   * X marks the spot (`treasure/treasureMap.ts`): the chart's own red X,
+   * painted on the sand over the chest for a raid that set out with the chart
+   * whole, so the tile the chart points at is the tile that looks dug for.
+   * Kept with the prize gleams, which is what takes it off when the chest
+   * comes up (`takeLootMarksOff`).
+   */
+  private createTreasureCross(loot: WorldLoot): void {
+    const cross = this.add.graphics().setDepth(atRow(MARKER_BAND, loot.position.y));
+    const x = loot.position.x * TILE_SIZE;
+    const y = loot.position.y * TILE_SIZE;
+    // Two strokes corner to corner, two pixels thick, over a dark edge so it reads on sand.
+    for (const [ink, grow] of [[0x601008, 1], [0xc83020, 0]] as const) {
+      cross.fillStyle(ink, 1);
+      for (let d = 3; d <= 12; d += 1) {
+        cross.fillRect(x + d - grow, y + d - grow, 2 + grow * 2, 1 + grow * 2);
+        cross.fillRect(x + 14 - d - grow, y + d - grow, 2 + grow * 2, 1 + grow * 2);
+      }
+    }
+    cross.fillStyle(0xf05838, 1);
+    for (let d = 3; d <= 12; d += 1) {
+      cross.fillRect(x + d, y + d, 1, 1);
+      cross.fillRect(x + 15 - d, y + d, 1, 1);
+    }
+    this.mapObjects.push(cross);
+    this.prizeGleams.set(loot.id, cross);
   }
 
   /**

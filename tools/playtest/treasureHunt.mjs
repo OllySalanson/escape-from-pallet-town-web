@@ -4,6 +4,7 @@
 //
 //   node tools/playtest/treasureHunt.mjs <cdp port> <url> <out dir> [--save-out=path.json]
 //   node tools/playtest/treasureHunt.mjs <cdp port> <url> <out dir> --chest=save.json
+//   node tools/playtest/treasureHunt.mjs <cdp port> <url> <out dir> --playtest
 //
 // With no `--chest`: a new game, the bottle on THE BEACH, MARLOW at the library's
 // end bookcase, through into THE CHART ROOM, the bottled chart pinned on the
@@ -17,17 +18,22 @@
 //
 // With `--chest=dug.json`: that raid's save, walked from the yard to MARLOW, who
 // opens the chest it brought home.
+//
+// With `--playtest`: a fresh explorer run (`src/game/dev/playtestMode.ts`),
+// whose kit already holds every piece: straight to MARLOW, every piece pinned,
+// and what he says once the chart is whole.
 import { attachBrowser, PIXEL_WINDOW, sleep } from './browser.mjs';
 import { GAME, sceneIs } from './deploy.mjs';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const [port, url, out] = process.argv.slice(2);
 const option = (name) => process.argv.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
-const SAVE_KEY = 'escape-from-pallet-town.save.v1';
+const PLAYTEST = process.argv.includes('--playtest');
+const SAVE_KEY = PLAYTEST ? 'escape-from-pallet-town.save.playtest.v1' : 'escape-from-pallet-town.save.v1';
 mkdirSync(out, { recursive: true });
 const browser = attachBrowser(Number(port), { window: PIXEL_WINDOW });
 const page = await browser.openPage('about:blank');
-const fullUrl = `${url}${url.includes('?') ? '&' : '?'}testmode=pixels`;
+const fullUrl = `${url}${url.includes('?') ? '&' : '?'}testmode=pixels${PLAYTEST ? '&playtest' : ''}`;
 const log = (...words) => console.log(...words);
 const press = async (code, after = 160) => {
   await page.tap(code, 60);
@@ -131,8 +137,13 @@ async function intoChartRoom() {
   await sleep(900);
 }
 
+/** The floor in front of something in the room, read off the room as it is built. */
+const inFrontOf = (does) =>
+  base(`(() => { const tiles = b.place.room.things.find((thing) => thing.does === ${JSON.stringify(does)}).tiles;
+    const tile = tiles[Math.floor(tiles.length / 2)]; return { x: tile.x, y: tile.y + 1 }; })()`);
+
 async function pinAtTheBoard(name) {
-  await walkTo([{ x: 5, y: 4 }], 'in front of the board');
+  await walkTo([await inFrontOf('chart-wall')], 'in front of the board');
   await face('up');
   await press('Space', 600);
   await readThrough(name);
@@ -155,7 +166,7 @@ try {
     await readThrough();
     if (await base('Boolean(b.room)')) {
       // Home from the raid lands on the Arena's rim: out of the hall first.
-      await walkTo([await base('b.room.room.mat ?? b.room.room.stairs[0].tile')], 'the way out');
+      await walkTo([await base('b.room.mat ?? b.room.stairs[0].tile')], 'the way out');
       await press('ArrowDown', 900);
       await until(`${settled} && !${GAME}.scene.getScene('base').room`, 'the yard');
     }
@@ -163,7 +174,7 @@ try {
     await intoLibrary();
     await intoChartRoom();
     await snap('chart-room-with-the-chest');
-    await walkTo([{ x: 9, y: 4 }], 'below MARLOW');
+    await walkTo([await inFrontOf('chart-keeper')], 'below MARLOW');
     await face('up');
     await press('Space', 600);
     await readThrough('marlow-opens-the-chest');
@@ -174,6 +185,44 @@ try {
     expect('the chest is out of the vault', (await vault('sea-chest')) === 0);
     expect('the Hauler frame is in the vault', (await vault('hauler-frame')) >= 1);
     log('money now', await vault('money'));
+  } else if (PLAYTEST) {
+    // A fresh explorer run: `?playtest` goes straight in, with the kit's pieces.
+    await page.evaluate('localStorage.clear()');
+    await page.send('Page.navigate', { url: fullUrl });
+    await sleep(1500);
+    await until(`Boolean(${GAME}?.scene.getScenes(true).length > 0) && ${settled}`, 'the harbour');
+    await sleep(800);
+    await readThrough();
+    if (await base('Boolean(b.room)')) {
+      await walkTo([await base('b.room.mat ?? b.room.stairs[0].tile')], 'the way out');
+      await press('ArrowDown', 900);
+      await until(`${settled} && !${GAME}.scene.getScene('base').room`, 'the yard');
+    }
+    log('pieces in the kit', JSON.stringify(Object.fromEntries(await Promise.all(['bottled-chart', 'chart-piece-1', 'chart-piece-2', 'chart-piece-3', 'sea-chest'].map(async (id) => [id, await vault(id)])))));
+    await intoLibrary();
+    await snap('library-with-marlow');
+    await walkTo([{ x: 13, y: 2 }], 'beside MARLOW');
+    await face('right');
+    await press('Space', 600);
+    await readThrough('marlow-library');
+    await until(`${settled} && ${GAME}.scene.getScene('base').room?.id === 'chart-room'`, 'THE CHART ROOM');
+    await sleep(900);
+    await readThrough('chart-room-arrival');
+    await snap('chart-room-empty-board');
+    for (let piece = 1; piece <= 4 && ((await hunt())?.pinned.length ?? 0) < 4; piece += 1) {
+      await pinAtTheBoard(`pin-${piece}`);
+      await snap(`board-after-${piece}`);
+    }
+    expect('the chart is whole', (await hunt())?.pinned.length === 4, JSON.stringify(await hunt()));
+    await pinAtTheBoard('board-when-whole');
+    await walkTo([await inFrontOf('chart-keeper')], 'below MARLOW');
+    await face('up');
+    await press('Space', 600);
+    await readThrough('marlow-when-whole');
+    await until(settled, 'the room back');
+    await sleep(700);
+    await snap('room-at-the-end');
+    log('the hunt', JSON.stringify(await hunt()), 'chests left', await vault('sea-chest'));
   } else {
     await until(sceneIs('title'), 'the title');
     await page.evaluate('localStorage.clear()');
@@ -211,7 +260,7 @@ try {
     expect('the room is open for good', (await hunt())?.roomOpen === true);
 
     // 3. The bottled chart on the board, and MARLOW's decision.
-    await walkTo([{ x: 5, y: 4 }], 'in front of the board');
+    await walkTo([await inFrontOf('chart-wall')], 'in front of the board');
     await face('up');
     await press('Space', 600);
     await readThrough('shore');
@@ -233,7 +282,7 @@ try {
       localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
     await intoChartRoom();
     for (const [name, pieceId] of [['moor', 'moor'], ['hollow', 'hollow'], ['fold', 'fold']]) {
-      await walkTo([{ x: 5, y: 4 }], 'in front of the board');
+      await walkTo([await inFrontOf('chart-wall')], 'in front of the board');
       await face('up');
       await press('Space', 600);
       await readThrough(name);
@@ -244,7 +293,7 @@ try {
     }
     const final = await hunt();
     expect('the chart is whole', ['shore', 'moor', 'hollow', 'fold'].every((id) => final?.pinned.includes(id)), JSON.stringify(final));
-    await walkTo([{ x: 9, y: 4 }], 'below MARLOW');
+    await walkTo([await inFrontOf('chart-keeper')], 'below MARLOW');
     await face('up');
     await press('Space', 600);
     await readThrough('marlow-go-dig');

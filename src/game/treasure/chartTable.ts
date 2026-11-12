@@ -1,7 +1,9 @@
 import type { RestoredGame } from '../save/SaveManager';
 import type { PaintedPicture } from '../world/minimap';
+import { openedDoors } from '../world/gates';
 import { RUMOURS } from '../world/rumours';
 import { secretById } from '../world/secrets';
+import { MISTY_BOSS_ID } from '../world/valeQuarters';
 import { CHART_INK, chartPicture } from './chartWall';
 import {
   CHART_GRID,
@@ -10,7 +12,8 @@ import {
   chartWhole,
   MARLOW,
   NO_TREASURE_HUNT,
-  TREASURE_PLACE,
+  TREASURE_GOAL,
+  treasureGoalLines,
   type ChartPiece,
   type TreasureHunt,
 } from './treasureMap';
@@ -48,6 +51,8 @@ export interface ChartTableFacts {
   readonly hunt: TreasureHunt | undefined;
   readonly held: (itemId: string) => number;
   readonly rumoursHeard: readonly string[];
+  /** Whether the save can walk into the cove yet: MISTY holds THE COAST. Absent is open. */
+  readonly coastOpen?: boolean;
 }
 
 /** What the chart table is painted from, read off a save. */
@@ -56,6 +61,7 @@ export function chartTableFacts(game: Pick<RestoredGame, 'raidProgress' | 'stash
     hunt: game.raidProgress.treasureHunt,
     held: (itemId) => game.stash.itemCount(itemId),
     rumoursHeard: game.raidProgress.rumoursHeard ?? [],
+    coastOpen: openedDoors(game.raidProgress).includes(MISTY_BOSS_ID),
   };
 }
 
@@ -113,6 +119,7 @@ function foundAt(piece: ChartPiece): string {
  * for good - and a rumoured gap names only the place its rumour named.
  */
 export function chartTableLines(facts: ChartTableFacts, itemName: (itemId: string) => string): readonly string[] {
+  const coastOpen = facts.coastOpen ?? true;
   const hunt = facts.hunt ?? NO_TREASURE_HUNT;
   const pieces = chartTablePieces(facts);
   const here = pieces.filter(({ state }) => state === 'here');
@@ -128,8 +135,8 @@ export function chartTableLines(facts: ChartTableFacts, itemName: (itemId: strin
   if (chartWhole(hunt)) {
     return [
       'The whole chart, traced in pencil, and the dotted course inked over in red.',
-      `OAK: ${MARLOW.name} sent the last tracing over himself. Off the sea, over the moor, through the pines... to ${TREASURE_PLACE}.`,
-      'Whatever is under that X, it is behind MISTY\'s sandbags. Be ready for her.',
+      `OAK: ${TREASURE_GOAL.title}! ${treasureGoalLines(coastOpen)[0]}`,
+      ...treasureGoalLines(coastOpen).slice(1),
     ];
   }
   const lines: string[] = [];
@@ -221,13 +228,16 @@ export function chartTablePicture(facts: ChartTableFacts, area: { readonly width
   const slotWidth = Math.floor(inner.width / CHART_GRID.columns);
   const slotHeight = Math.floor(inner.height / CHART_GRID.rows);
   const pieces = chartTablePieces(facts);
-  // A pencil hatch for the sea and a pencil line for everything drawn, the
-  // tracing of what is on MARLOW's board; red only for the course once whole.
+  // A pencil hatch for the sea and a pencil line for what the chart-maker
+  // inked - the coast, the jetty, the houses, the lettering - the tracing of
+  // what is on MARLOW's board; red only for the course once whole. Ground is
+  // left the paper's own colour: a wood or a cliff traced solid was a smudge.
   const traced = (x: number, y: number, colour: string): string | null => {
     if (colour === CHART_INK.red || colour === CHART_INK.redLight) return whole ? INK.red : INK.pencil;
     if (colour === CHART_INK.sea || colour === CHART_INK.seaWave) return (x + y) % 3 === 0 ? INK.pencilLight : null;
-    if (colour === CHART_INK.land || colour === CHART_INK.landShade) return null;
-    return INK.pencil;
+    if (colour === CHART_INK.coast || colour === CHART_INK.ink || colour === CHART_INK.plank || colour === CHART_INK.roof) return INK.pencil;
+    if (colour === CHART_INK.pine || colour === CHART_INK.cliff) return (x + y) % 4 === 0 ? INK.pencilLight : null;
+    return null;
   };
   for (const { piece, state } of pieces) {
     const sx = inner.x + piece.slot.column * slotWidth;

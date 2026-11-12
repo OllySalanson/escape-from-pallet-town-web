@@ -21,6 +21,7 @@ import { getWorldMap, worldMapIds } from '../worldMap';
 import { FIRST_WORDS_IDS } from '../hub/firstWords';
 import { LEARNABLE_KEYS } from '../input/keyBindings';
 import { addPlaytestKit, withEveryDerbyLevel, withEveryLeaderMet, withPlaytestTickets } from './playtestKit';
+import { CHART_PIECES, CHEST_ITEM_ID, pieceForItem } from '../treasure/treasureMap';
 
 /**
  * What an explorer run starts as. See `playtestMode.ts` for what the mode is
@@ -152,6 +153,53 @@ export function withEverythingCurrent(progress: RaidProgress): RaidProgress {
   };
 }
 
+/**
+ * How many of a thing a new explorer run holds. Twenty of every supply, with
+ * THE TREASURE MAP's two exceptions (`treasure/treasureMap.ts`): **one** of
+ * each piece of the chart, so the board can be filled the night it is looked
+ * at without twenty torn corners of one sheet in the vault, and **no** SEA
+ * CHEST, because the chest is what the whole chart sends a raid to dig up -
+ * dealt one, MARLOW opened it the moment the last piece went up and nobody
+ * was ever sent anywhere (the owner's playtest of 12 Nov 2026). MARLOW's
+ * board says the pieces are the kit's (`PLAYTEST_PIECES_LINE`).
+ */
+export function playtestStock(itemId: string): number {
+  if (itemId === CURRENCY_ITEM_ID) {
+    return MONEY_STOCK;
+  }
+  if (itemId === CHEST_ITEM_ID) {
+    return 0;
+  }
+  return pieceForItem(itemId) ? 1 : SUPPLY_STOCK;
+}
+
+/**
+ * An explorer run dealt the treasure map the old way - twenty of each piece
+ * and twenty chests - brought to the rule above: a piece on the board is out
+ * of the vault, a piece still to pin is one piece, and the chests the kit
+ * dealt are taken back, so the whole chart sends the run to the X as it sends
+ * anybody. A chest the run dug up itself is one more than the kit dealt, and
+ * is kept. The one place a resumed run loses anything, and only what no raid
+ * of its own found. Returns whether anything changed.
+ */
+export function withoutKitTreasure(stash: Stash, pinned: readonly string[]): boolean {
+  let changed = false;
+  for (const piece of CHART_PIECES) {
+    const spare = stash.itemCount(piece.itemId) - (pinned.includes(piece.id) ? 0 : 1);
+    if (spare > 0) {
+      stash.removeItem(piece.itemId, spare);
+      changed = true;
+    }
+  }
+  const chests = stash.itemCount(CHEST_ITEM_ID);
+  // Twenty were dealt, and MARLOW may have opened one of them already.
+  if (chests >= SUPPLY_STOCK - 1) {
+    stash.removeItem(CHEST_ITEM_ID, Math.min(chests, SUPPLY_STOCK));
+    changed = true;
+  }
+  return changed;
+}
+
 export function createPlaytestStash(): Stash {
   const stash = new Stash();
   // The Charizard is the partner, so the explorer run has someone at its heel.
@@ -160,7 +208,10 @@ export function createPlaytestStash(): Stash {
     stash.addPokemon(built(base, level));
   }
   for (const item of ITEM_DEFINITIONS) {
-    stash.addItem(item.id, item.id === CURRENCY_ITEM_ID ? MONEY_STOCK : SUPPLY_STOCK);
+    const stock = playtestStock(item.id);
+    if (stock > 0) {
+      stash.addItem(item.id, stock);
+    }
   }
   // What every harbour game is played with (`playtestKit.ts`).
   addPlaytestKit(stash);
@@ -189,14 +240,15 @@ export function createPlaytestGame(): SaveGameState {
 
 /**
  * A resumed explorer run brought up to date: every map current
- * (`withEverythingCurrent`) and every row of the playtest kit it does not hold
- * yet. Returns the same object when there was nothing to add, so the caller
+ * (`withEverythingCurrent`), every row of the playtest kit it does not hold
+ * yet, and the treasure map dealt as a new run's is (`withoutKitTreasure`). Returns the same object when there was nothing to add, so the caller
  * writes the save back only when it changed.
  */
 export function withPlaytestCurrent(game: RestoredGame): RestoredGame {
   const progress = withEveryDerbyLevel(withEveryLeaderMet(withPlaytestTickets(withEverythingCurrent(game.raidProgress))));
   const kitAdded = addPlaytestKit(game.stash);
-  if (!kitAdded && progress === game.raidProgress) {
+  const treasureTidied = withoutKitTreasure(game.stash, game.raidProgress.treasureHunt?.pinned ?? []);
+  if (!kitAdded && !treasureTidied && progress === game.raidProgress) {
     return game;
   }
   return { ...game, raidProgress: progress };
