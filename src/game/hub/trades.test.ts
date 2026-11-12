@@ -92,8 +92,13 @@ describe('the TRADER', () => {
     expect(tradeRefusal(stash, ids[3], none, [])).toBeUndefined();
   });
 
-  it('names what he is still after, and the trade and back', () => {
-    expect(traderLines([])[0]).toContain('ABRA, POLIWHIRL');
+  it('names what he is still after in FireRed’s words, and the trade and back', () => {
+    expect(traderLines([])).toEqual([
+      "I'm looking for the POKéMON ABRA! Wanna trade one for my MR. MIME?",
+      "I'm after 8 more besides. My list says what for.",
+      'And a KADABRA, MACHOKE, GRAVELER or HAUNTER traded to my game and back evolves on the way.',
+    ]);
+    expect(traderLines(['mimien'])[0]).toBe("I'm looking for the POKéMON POLIWHIRL! Wanna trade one for my JYNX?");
     expect(traderLines(IN_GAME_TRADES.map((trade) => trade.id))[0]).toContain('every trade');
     expect(traderLines([]).join(' ')).toContain('KADABRA, MACHOKE, GRAVELER or HAUNTER');
   });

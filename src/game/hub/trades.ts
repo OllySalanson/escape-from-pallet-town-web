@@ -110,21 +110,24 @@ export function tradeRefusal(
   return undefined;
 }
 
-/** What he says on the lawn before the list opens: FireRed's trade line for each kind he is after. */
+/**
+ * What he says on the lawn before the list opens: FireRed's own trade line
+ * (`Trade_Text_LookingForMonWannaTradeForMon`) for the first trade he still
+ * has, the list for the rest, and the trade and back.
+ */
 export function traderLines(tradesMade: readonly string[]): readonly string[] {
   const open = IN_GAME_TRADES.filter((trade) => !tradesMade.includes(trade.id));
-  const wanted = open.map((trade) => getSpeciesById(trade.wants)?.name.toUpperCase() ?? trade.wants);
+  const name = (id: string): string => getSpeciesById(id)?.name.toUpperCase() ?? id;
+  const first = open[0];
   return [
-    ...(open.length > 0
-      ? [`I'm looking for the POKéMON ${listed(wanted)}! Wanna trade one for one of mine?`]
+    ...(first
+      ? [
+          `I'm looking for the POKéMON ${name(first.wants)}! Wanna trade one for my ${name(first.gives)}?`,
+          ...(open.length > 1 ? [`I'm after ${open.length - 1} more besides. My list says what for.`] : []),
+        ]
       : ['I have made every trade I came here to make. Thanks, you are a pal!']),
-    'And a KADABRA, MACHOKE, GRAVELER or HAUNTER sent over to my game and straight back evolves on the way. Any time.',
+    'And a KADABRA, MACHOKE, GRAVELER or HAUNTER traded to my game and back evolves on the way.',
   ];
-}
-
-/** Names in a line: "A, B or C". */
-function listed(names: readonly string[]): string {
-  return names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
 }
 
 /** The row's help line: what the trade would do, before it is asked. */

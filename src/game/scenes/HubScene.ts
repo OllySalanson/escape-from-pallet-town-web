@@ -3714,8 +3714,10 @@ export class HubScene extends Phaser.Scene {
     readonly confirmLabel: string;
     readonly confirmHelp: string;
     readonly tone?: 'danger' | 'primary';
+    /** The way out, when what is kept is not "them": one Pokémon is "it". */
+    readonly cancelLabel?: string;
   }): string {
-    return `<div class="px-pair px-arming" data-shows="${deal.id}"><div class="px-row has-icon px-tall">${deal.icon}<span class="px-row-main"><strong class="px-name">${deal.name}</strong><small class="px-wrap px-warning">${deal.question}</small></span></div><div class="px-bar-actions"><button class="px-window px-button" data-deal-cancel data-cursor-start data-shows="${deal.id}" data-help="Nothing changes.">Keep them</button><button class="px-window px-button is-${deal.tone ?? 'danger'}" ${deal.confirm} data-shows="${deal.id}" data-help="${deal.confirmHelp}">${deal.confirmLabel}</button></div></div>`;
+    return `<div class="px-pair px-arming" data-shows="${deal.id}"><div class="px-row has-icon px-tall">${deal.icon}<span class="px-row-main"><strong class="px-name">${deal.name}</strong><small class="px-wrap px-warning">${deal.question}</small></span></div><div class="px-bar-actions"><button class="px-window px-button" data-deal-cancel data-cursor-start data-shows="${deal.id}" data-help="Nothing changes.">${deal.cancelLabel ?? 'Keep them'}</button><button class="px-window px-button is-${deal.tone ?? 'danger'}" ${deal.confirm} data-shows="${deal.id}" data-help="${deal.confirmHelp}">${deal.confirmLabel}</button></div></div>`;
   }
 
   /**
@@ -4045,6 +4047,7 @@ export class HubScene extends Phaser.Scene {
             confirmLabel: deal.kind === 'swap' ? 'Trade' : 'Trade and back',
             confirmHelp: escapeAttribute(tradeHelp(stored.pokemon.name, deal)),
             tone: deal.kind === 'swap' ? 'danger' : 'primary',
+            cancelLabel: 'Keep it',
           });
         }
         const wiring = deal
