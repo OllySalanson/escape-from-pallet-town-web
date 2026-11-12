@@ -277,7 +277,7 @@ export const RUN_INSERTIONS = {
     id: 'greystone-vale',
     label: 'Greystone Vale',
     mapId: 'greystone-vale',
-    position: { x: 94, y: 160 },
+    position: { x: 96, y: 161 },
     description: 'Mill Square in Millbrook, where every road in the vale starts: down from the moor, east to The Crossing, south to the marsh, and out by the Westward Road.',
   },
   'greystone-vale-moor-top': {

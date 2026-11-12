@@ -126,8 +126,14 @@ export function millbrook(): MapcraftResult {
   // -- Mill Square, on market day ---------------------------------------------------
   // The square is where the four roads cross, so the crossing is kept clear: the
   // west and east streets run straight across it two abreast (rows 30-31), the
-  // north street runs straight down to where you land (x 30-31), and the way out
-  // to the south street (x 34-35) is open from the landing. Everything a market
+  // north street runs straight down through it (x 30-31), and the way out to the
+  // south street (x 34-35) is open from the landing. You land just off the
+  // crossing, in the corner between the north street and the south (32, 33),
+  // never on a street's line: walking straight from a landing meets something
+  // within four steps every way (`mapStructure.testkit.ts`), and from here that
+  // is the stall above, the fountain to the west, the crate to the east and the
+  // square's south edge - where on the crossing itself the north street ran
+  // forty-nine tiles to the moor. Everything a market
   // has stands in the quarters between those lines, never at a street's mouth: the
   // stalls along the top by the Centre with their keepers on the lawn behind them,
   // the fountain in the south-west quarter with the children racing round it, the
@@ -294,7 +300,7 @@ export function millbrook(): MapcraftResult {
   p.bushes([58, 22], [57, 21], [56, 8], [50, 8]);
 
   const file = districtFile(GREYSTONE_VALE, 'millbrook', p, {
-    dropIns: [{ x: 30, y: 32, name: 'Mill Square', description: 'The square where every road in the vale starts, on market day.' }],
+    dropIns: [{ x: 32, y: 33, name: 'Mill Square', description: 'The square where every road in the vale starts, on market day.' }],
     itemSpots: [
       { x: 20, y: 13 }, // between the allotment rows
       { x: 36, y: 50 }, // by the reeds
@@ -347,7 +353,7 @@ export function millbrook(): MapcraftResult {
       ],
       pokemon: [
         // The square's Pidgey, after what the stalls drop.
-        { x: 26, y: 28, species: 'pidgey', beat: { everyMs: 1500, roam: [[1, 0], [1, -1]] } },
+        { x: 26, y: 28, species: 'pidgey', beat: { everyMs: 1500, roam: [[1, 0], [0, -1]] } },
         { x: 36, y: 34, species: 'pidgey', beat: { everyMs: 1300, roam: [[0, -1]] } },
         // A dog at the east gate and a cat in the mill yard, who say their names and nothing else.
         { x: 59, y: 28, species: 'growlithe', beat: { everyMs: 2100, roam: [[-1, 0]] } },
@@ -356,8 +362,8 @@ export function millbrook(): MapcraftResult {
         { x: 26, y: 13, species: 'oddish', level: 4, beat: { everyMs: 2400, roam: [[0, 1], [-1, 1]] } },
         { x: 25, y: 4, species: 'tauros', beat: { everyMs: 2800, roam: [[1, 0]] } },
         { x: 37, y: 50, species: 'psyduck', beat: { everyMs: 2500, roam: [[0, -1]] } },
-        { x: 57, y: 35, species: 'butterfree', beat: { everyMs: 1600, roam: [[0, -1], [0, -2]] } },
-        { x: 45, y: 47, species: 'caterpie', level: 3, beat: { everyMs: 2200, roam: [[0, 1]] } },
+        { x: 57, y: 35, species: 'butterfree', beat: { everyMs: 1600, roam: [[0, 1], [0, 2]] } },
+        { x: 45, y: 47, species: 'caterpie', level: 3, beat: { everyMs: 2200, glances: ['down'] } },
         { x: 29, y: 46, species: 'slowpoke' },
         { x: 12, y: 57, species: 'vulpix', level: 6 },
       ],

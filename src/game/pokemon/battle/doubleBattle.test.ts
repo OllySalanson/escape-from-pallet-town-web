@@ -698,18 +698,31 @@ describe('where the one authored double battle is', () => {
     // his pair as she does, and two trainers past her doors play her combo,
     // each standing off the quarter's roads (`coastQuarter.test.ts`). Koga's
     // gym is the next, built as hers is: the leader two on two and his two
-    // trainers in his hall, spoken to.
+    // trainers in his hall, spoken to. The rest of each gym's quarter fights
+    // the same way (the coast bug hunt, 11 Nov 2026): the five who stand in
+    // the Coast's streets and cove and the four in the Marsh are
+    // `quarterTrainer`s in `trainers.ts`, two on two at the quarter's band,
+    // playing its gym's combo, and spoken to off the quarter's roads.
     expect(doubles.map((encounter) => encounter.trainer.id)).toEqual([
       'floodplain-orchard-warden-holt',
       'vale-quay-keeper-cragg',
       'vale-coast-fisherman-hal',
       'vale-coast-swimmer-nell',
+      'vale-coast-diver-coral',
+      'vale-coast-rates-man-odd',
+      'vale-coast-cove-grunt',
+      'vale-coast-carter-mags',
+      'vale-coast-wrecker-tobin',
       'vale-gym-misty',
       'vale-gym-misty-diana',
       'vale-gym-misty-luis',
       'vale-gym-koga',
       'vale-gym-koga-nate',
       'vale-gym-koga-phil',
+      'vale-marsh-poacher-vince',
+      'vale-marsh-ranger-moss',
+      'vale-marsh-salvager-ned',
+      'vale-marsh-wrecker-bess',
     ]);
     for (const double of doubles) {
       expect(`${double.trainer.id} ${double.bossId !== undefined || double.trainer.ai === 'gym'}`).toBe(
