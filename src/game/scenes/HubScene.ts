@@ -3714,10 +3714,8 @@ export class HubScene extends Phaser.Scene {
     readonly confirmLabel: string;
     readonly confirmHelp: string;
     readonly tone?: 'danger' | 'primary';
-    /** The way out, when what is kept is not "them": one Pokémon is "it". */
-    readonly cancelLabel?: string;
   }): string {
-    return `<div class="px-pair px-arming" data-shows="${deal.id}"><div class="px-row has-icon px-tall">${deal.icon}<span class="px-row-main"><strong class="px-name">${deal.name}</strong><small class="px-wrap px-warning">${deal.question}</small></span></div><div class="px-bar-actions"><button class="px-window px-button" data-deal-cancel data-cursor-start data-shows="${deal.id}" data-help="Nothing changes.">${deal.cancelLabel ?? 'Keep them'}</button><button class="px-window px-button is-${deal.tone ?? 'danger'}" ${deal.confirm} data-shows="${deal.id}" data-help="${deal.confirmHelp}">${deal.confirmLabel}</button></div></div>`;
+    return `<div class="px-pair px-arming" data-shows="${deal.id}"><div class="px-row has-icon px-tall">${deal.icon}<span class="px-row-main"><strong class="px-name">${deal.name}</strong><small class="px-wrap px-warning">${deal.question}</small></span></div><div class="px-bar-actions"><button class="px-window px-button" data-deal-cancel data-cursor-start data-shows="${deal.id}" data-help="Nothing changes.">Keep them</button><button class="px-window px-button is-${deal.tone ?? 'danger'}" ${deal.confirm} data-shows="${deal.id}" data-help="${deal.confirmHelp}">${deal.confirmLabel}</button></div></div>`;
   }
 
   /**
@@ -4030,54 +4028,67 @@ export class HubScene extends Phaser.Scene {
     const away = awayOnRaid(this.savedGame);
     const made = this.savedGame.raidProgress.tradesMade ?? [];
     const refusal = (stored: StashedPokemon): string | undefined => tradeRefusal(this.stash, stored.id, away, made);
+    const dealOf = (stored: StashedPokemon) =>
+      refusal(stored) === undefined ? tradeDealFor(stored.pokemon.base.id, made) : undefined;
     const found = this.findablePokemon;
     const shown = [...found.filter((stored) => refusal(stored) === undefined), ...found.filter((stored) => refusal(stored) !== undefined)];
     const boxNames = this.stash.listBoxes().map((box) => box.name);
+    // FireRed's PC box, as the Day-Care's is: the ones he would trade first.
+    // Never a start while a trade is asking: `refocus` takes the first one, and
+    // the press that armed it would make it (`traderView`'s rule).
     const rows = shown
       .map((stored, index) => {
         const why = refusal(stored);
-        const deal = why === undefined ? tradeDealFor(stored.pokemon.base.id, made) : undefined;
-        if (deal && this.tradeArmed === stored.id) {
-          return this.armedDeal({
-            id: stored.id,
-            icon: itemIcon('poke-ball', stored.pokemon.name),
-            name: escapeAttribute(stored.pokemon.name),
-            question: escapeAttribute(tradeQuestion(stored.pokemon.name, deal)),
-            confirm: `data-trade-confirm="${stored.id}"`,
-            confirmLabel: deal.kind === 'swap' ? 'Trade' : 'Trade and back',
-            confirmHelp: escapeAttribute(tradeHelp(stored.pokemon.name, deal)),
-            tone: deal.kind === 'swap' ? 'danger' : 'primary',
-            cancelLabel: 'Keep it',
-          });
-        }
+        const deal = dealOf(stored);
+        const name = stored.pokemon.name;
         const wiring = deal
-          ? `data-trade="${stored.id}" data-help="${escapeAttribute(tradeHelp(stored.pokemon.name, deal))}"`
+          ? `data-trade="${stored.id}" data-help="${escapeAttribute(tradeHelp(name, deal))}"`
           : `data-refused="${escapeAttribute(why ?? '')}" aria-disabled="true" data-help="${escapeAttribute(why ?? '')}"`;
-        const tag = deal ? pixelTag(deal.kind === 'swap' ? 'Trade' : 'And back') : away.has(stored.id) ? pixelTag('On a raid') : '';
-        // Never a start while a trade is asking: `refocus` takes the first one,
-        // and the press that armed it would make it (`traderView`'s rule).
+        const boxed = boxNames[this.stash.boxIndexOf(stored.id)] ?? '';
         const start = index === 0 && this.tradeArmed === undefined ? ' data-cursor-start' : '';
-        return `<button class="px-row" ${wiring} data-shows="${stored.id}"${start}>${this.pokemonRowBody(stored, tag, boxNames[this.stash.boxIndexOf(stored.id)])}</button>`;
+        return pixelMonTile(stored.pokemon, {
+          classes: away.has(stored.id) ? ['is-away'] : [],
+          attributes: `${wiring} data-shows="${stored.id}" data-box-name="${escapeAttribute(boxed)}" aria-label="${escapeAttribute(`${name}, level ${stored.pokemon.level}, ${boxed}${why === undefined ? '' : `, ${why}`}`)}"${start}`,
+        });
       })
       .join('');
+    const shownFirst = this.tradeArmed ?? shown[0]?.id;
     const details = shown
-      .map((stored, index) =>
-        this.pokemonDetail(stored, index === 0, {
+      .map((stored) =>
+        this.pokemonDetail(stored, stored.id === shownFirst, {
           label: 'Trader',
           chips: (shows) => {
             const why = refusal(stored);
-            const deal = why === undefined ? tradeDealFor(stored.pokemon.base.id, made) : undefined;
-            return deal
-              ? this.chip(`data-trade="${stored.id}" ${shows}`, tradeHelp(stored.pokemon.name, deal), deal.kind === 'swap' ? `Trade for ${deal.trade.nickname}` : 'Trade and back')
-              : this.chip(`data-refused="${escapeAttribute(why ?? '')}" ${shows}`, why ?? '', 'Trade', true);
+            const deal = dealOf(stored);
+            const boxed = boxNames[this.stash.boxIndexOf(stored.id)];
+            const kept = boxed ? `<span class="px-note">Kept in ${escapeAttribute(boxed)}</span>` : '';
+            return (
+              kept +
+              (deal
+                ? this.chip(`data-trade="${stored.id}" ${shows}`, tradeHelp(stored.pokemon.name, deal), deal.kind === 'swap' ? `Trade for ${deal.trade.nickname}` : 'Trade and back')
+                : this.chip(`data-refused="${escapeAttribute(why ?? '')}" ${shows}`, why ?? '', 'Trade', true))
+            );
           },
         }),
       )
       .join('');
+    const armed = shown.find((stored) => stored.id === this.tradeArmed);
+    const armedDeal = armed ? dealOf(armed) : undefined;
+    // A trade of his is for good, so it is asked, in the bar the partner swap
+    // asks in: Keep stands last, in the seat a double press lands on.
+    const asking =
+      armed && armedDeal
+        ? pixelCommitBar({
+            className: 'is-arming',
+            title: armedDeal.kind === 'swap' ? `Trade ${armed.pokemon.name.toUpperCase()}?` : `Send ${armed.pokemon.name.toUpperCase()} over and back?`,
+            lines: [`<span class="px-wrap px-warning">${escapeAttribute(tradeQuestion(armed.pokemon.name, armedDeal))}</span>`],
+            actions: `<button class="px-window px-button is-${armedDeal.kind === 'swap' ? 'danger' : 'primary'}" data-trade-confirm="${armed.id}" data-shows="${armed.id}" data-help="${escapeAttribute(tradeHelp(armed.pokemon.name, armedDeal))}">${armedDeal.kind === 'swap' ? `Trade for ${armedDeal.trade.nickname}` : 'Trade and back'}</button><button class="px-window px-button" data-deal-cancel data-cursor-start data-shows="${armed.id}" data-help="Nothing changes.">Keep it</button>`,
+          })
+        : '';
     return `<main class="px-body daycare-layout">${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${this.browseBar(false)}${rows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>${details}`,
+      `<div class="px-mon-tiles px-scroll">${this.browseBar(false)}${rows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>${details}`,
       { className: 'stash-roster', heading: 'Which Pokémon will you trade?', note: this.atBaseNote(away) },
-    )}</main>`;
+    )}${asking}</main>`;
   }
 
   /** One trade with THE TRADER, made in one write, and said back on the lawn. */

@@ -15,5 +15,5 @@ What the endgame bug hunt of 12 Nov 2026 found, before and after. The `before-` 
 ## THE TRADER
 
 - `after-trader-says.png`: on the lawn behind the RAID ARENA, in FireRed's own words. His first open trade is MIMIEN the MR. MIME, for an ABRA.
-- `after-trader-list.png`: his list. It shows every Pokémon at base. The ones he would trade for come first, each tagged TRADE (one of his nine) or AND BACK (the trade that evolves it). The rest say why not.
-- `after-trader-asks.png`: a trade of his is for good, so the row asks before he makes it.
+- `after-trader-list.png`: his list, laid out as FireRed's PC box like the Day-Care's. It shows every Pokémon at base, with the ones he would trade for first. The dossier's button says what each would come back as: TRADE FOR MIMIEN, or TRADE AND BACK for one that trading evolves. The rest are greyed out and say why not.
+- `after-trader-asks.png`: a trade of his is for good, so it is asked in the bar under the box, as the partner swap asks. KEEP IT stands where a double press lands.
