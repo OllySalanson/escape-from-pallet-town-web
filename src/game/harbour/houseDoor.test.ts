@@ -33,6 +33,15 @@ class FakeService implements HouseService {
   public visit(): Promise<{ name: string; snapshot: unknown } | null> {
     return Promise.resolve(null);
   }
+  public stillVisiting(): Promise<'over'> {
+    return Promise.resolve('over');
+  }
+  public leaveHouse(): Promise<void> {
+    return Promise.resolve();
+  }
+  public showOut(): Promise<boolean> {
+    return Promise.resolve(false);
+  }
 }
 
 const settle = async () => {

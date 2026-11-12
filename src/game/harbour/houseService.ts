@@ -25,6 +25,14 @@ export type KnockOutcome = 'knocking' | 'not-home' | 'busy';
 /** How a knock stands, asked by whoever knocked. */
 export type KnockState = 'waiting' | 'in' | 'not-now' | 'gone';
 
+/**
+ * How a visit stands, asked by the visitor's browser while they are in the
+ * house (`houseVisit.ts`): still in, seen out by the owner, or over for any
+ * other reason (walked out of, run out because the visitor's browser went
+ * quiet, or never let in).
+ */
+export type VisitState = 'in' | 'shown-out' | 'over';
+
 /** One knock waiting at the player's own door. */
 export interface KnockAtTheDoor {
   readonly knockId: string;
@@ -41,8 +49,15 @@ export interface HouseService {
   myKnock(knockId: string): Promise<KnockState>;
   /** The house to look round, once let in: its owner's name and what their browser saved. */
   visit(owner: string): Promise<{ readonly name: string; readonly snapshot: unknown } | null>;
+  /** The visitor is still in this owner's house: how the visit stands, and (while it stands) held a while longer. */
+  stillVisiting(owner: string): Promise<VisitState>;
+  /** The visitor has walked out of this owner's house. */
+  leaveHouse(owner: string): Promise<void>;
+  /** The owner sees this visitor out of their house. Whether they were visiting. */
+  showOut(visitor: string): Promise<boolean>;
 }
 
+const VISIT_STATES: readonly VisitState[] = ['in', 'shown-out', 'over'];
 const KNOCK_STATES: readonly KnockState[] = ['waiting', 'in', 'not-now', 'gone'];
 const OUTCOMES: readonly KnockOutcome[] = ['knocking', 'not-home', 'busy'];
 
@@ -100,6 +115,26 @@ export function liveHouseService(): HouseService {
       const [row] = data ?? [];
       return row ? { name: row.name, snapshot: row.snapshot } : null;
     },
+    async stillVisiting(owner) {
+      const { data, error } = await (await db()).rpc('still_visiting', { owner });
+      if (error) {
+        throw new Error(error.message);
+      }
+      return VISIT_STATES.find((each) => each === data) ?? 'over';
+    },
+    async leaveHouse(owner) {
+      const { error } = await (await db()).rpc('leave_house', { owner });
+      if (error) {
+        throw new Error(error.message);
+      }
+    },
+    async showOut(visitor) {
+      const { data, error } = await (await db()).rpc('show_out', { visitor });
+      if (error) {
+        throw new Error(error.message);
+      }
+      return data === 'shown-out';
+    },
   };
 }
 
@@ -108,6 +143,8 @@ const LOCAL_HOUSE_EVERY_MS = 1_000;
 const LOCAL_HOUSE_GONE_MS = 4_000;
 /** A knock is good for a minute, as the database holds it. */
 const KNOCK_GOOD_FOR_MS = 60_000;
+/** A visit is held ninety seconds after the visitor last said they were in, as the database holds it. */
+const LOCAL_VISIT_HELD_MS = 90_000;
 
 /**
  * The local stand-in for knocking: every tab of this browser in test mode is a
@@ -119,7 +156,9 @@ export function localHouseService(me: () => string | null, myName: () => string 
   const wire = new BroadcastChannel('eptw-houses-local');
   const houses = new Map<string, { name: string; home: boolean; snapshot: unknown; at: number }>();
   const atMyDoor = new Map<string, { from: string; name: string; at: number }>();
-  const mine = new Map<string, { to: string; state: KnockState; at: number }>();
+  const mine = new Map<string, { to: string; state: KnockState | 'shown-out' | 'left'; at: number }>();
+  /** Who is visiting this tab's house, and when they last said so. */
+  const visitors = new Map<string, number>();
   let home = false;
   let snapshot: unknown = null;
 
@@ -144,8 +183,21 @@ export function localHouseService(me: () => string | null, myName: () => string 
       if (knock) {
         knock.state = data.letIn === true ? 'in' : 'not-now';
       }
+    } else if (data.kind === 'visiting' && data.to === id && isPlayerId(data.from)) {
+      visitors.set(data.from, Date.now());
+    } else if (data.kind === 'left' && data.to === id && isPlayerId(data.from)) {
+      visitors.delete(data.from);
+    } else if (data.kind === 'shown-out' && data.to === id && isPlayerId(data.from)) {
+      for (const knock of mine.values()) {
+        if (knock.to === data.from && knock.state === 'in') {
+          knock.state = 'shown-out';
+        }
+      }
     }
   };
+  /** This tab's latest yes from `owner`, as it stands. */
+  const latestVisit = (owner: string): { state: KnockState | 'shown-out' | 'left' } | undefined =>
+    [...mine.values()].filter((knock) => knock.to === owner && knock.state !== 'waiting' && knock.state !== 'not-now').at(-1);
 
   const fresh = (at: number, forMs: number): boolean => Date.now() - at < forMs;
 
@@ -187,6 +239,9 @@ export function localHouseService(me: () => string | null, myName: () => string 
       atMyDoor.delete(knockId);
       if (knock) {
         wire.postMessage({ kind: 'answer', knockId, to: knock.from, letIn });
+        if (letIn) {
+          visitors.set(knock.from, Date.now());
+        }
       }
       return Promise.resolve();
     },
@@ -198,12 +253,41 @@ export function localHouseService(me: () => string | null, myName: () => string 
       if (knock.state === 'waiting' && !fresh(knock.at, KNOCK_GOOD_FOR_MS)) {
         return Promise.resolve('gone' as const);
       }
-      return Promise.resolve(knock.state);
+      return Promise.resolve(knock.state === 'shown-out' || knock.state === 'left' ? ('gone' as const) : knock.state);
     },
     visit(owner) {
       const letIn = [...mine.values()].some((knock) => knock.to === owner && knock.state === 'in');
       const house = houses.get(owner);
       return Promise.resolve(letIn && house ? { name: house.name, snapshot: house.snapshot } : null);
+    },
+    stillVisiting(owner) {
+      const visit = latestVisit(owner);
+      if (visit?.state === 'shown-out') {
+        return Promise.resolve('shown-out' as const);
+      }
+      if (visit?.state !== 'in') {
+        return Promise.resolve('over' as const);
+      }
+      wire.postMessage({ kind: 'visiting', from: me(), to: owner });
+      return Promise.resolve('in' as const);
+    },
+    leaveHouse(owner) {
+      for (const knock of mine.values()) {
+        if (knock.to === owner && knock.state === 'in') {
+          knock.state = 'left';
+        }
+      }
+      wire.postMessage({ kind: 'left', from: me(), to: owner });
+      return Promise.resolve();
+    },
+    showOut(visitor) {
+      const heard = visitors.get(visitor);
+      visitors.delete(visitor);
+      if (heard === undefined || !fresh(heard, LOCAL_VISIT_HELD_MS)) {
+        return Promise.resolve(false);
+      }
+      wire.postMessage({ kind: 'shown-out', from: me(), to: visitor });
+      return Promise.resolve(true);
     },
   };
 }
