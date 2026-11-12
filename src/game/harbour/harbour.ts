@@ -9,6 +9,7 @@ import { loadPlayerName } from '../console/playerName';
 import type { PlayerSignIn } from '../maker/playerSignIn';
 import { requestedTestMode } from '../dev/testMode';
 import { HouseDoor } from './houseDoor';
+import type { HouseVisitWatch } from './houseVisit';
 import type { HarbourPhraseId } from './harbourPhrases';
 import { liveHouseService, localHouseService, type HouseService } from './houseService';
 import { harbourMode, liveHarbourWire, localHarbourWire, type HarbourMode } from './harbourWire';
@@ -177,6 +178,11 @@ export class HarbourSession {
     return this.link.figuresIn(placeFor(this.where, this.me));
   }
 
+  /** Whether another player is standing anywhere in the harbour, or null if this page cannot tell (`HarbourLink.standing`). */
+  public standing(id: string): boolean | null {
+    return this.link.standing(id);
+  }
+
   /** Who this browser is seen as, once it is. */
   public get seenAs(): string | null {
     return this.me;
@@ -317,6 +323,12 @@ export function pageHarbourMode(): HarbourMode {
 export interface HarbourHouses {
   readonly service: HouseService;
   readonly door: HouseDoor;
+  /**
+   * The visit to somebody else's house this player is on, if any
+   * (`houseVisit.ts`): it outlives the scene, which starts again up and down
+   * the stairs, and is kept in step by `BaseScene`.
+   */
+  visit: HouseVisitWatch | null;
 }
 
 let houses: HarbourHouses | null | undefined;
@@ -337,7 +349,7 @@ export function harbourHouses(): HarbourHouses | null {
       : mode === 'local'
         ? localHouseService(() => harbour()?.seenAs ?? null, localName)
         : null;
-  houses = service ? { service, door: new HouseDoor(service) } : null;
+  houses = service ? { service, door: new HouseDoor(service), visit: null } : null;
   return houses;
 }
 

@@ -4,6 +4,7 @@ import { cleanPlayerName } from '../console/playerName';
 import { HOUSE_SNAPSHOT_MAX_BYTES } from '../home/houseSnapshot';
 import { KNOCK_WAIT_MS } from '../home/knocking';
 import { HARBOUR_TOPIC } from './harbourProtocol';
+import { VISIT_CHECK_EVERY_MS } from './houseVisit';
 
 /**
  * The database is what the shared harbour believes, so its copy of the rules
@@ -73,7 +74,7 @@ describe("the database's side of the shared harbour", () => {
     expect(atHome).toContain('caller uuid := (select auth.uid())');
   });
 
-  it('holds a knock for a minute, a yes for ten, and a knocker to the pace of a hand on a door', () => {
+  it('holds a knock for a minute, and a knocker to the pace of a hand on a door', () => {
     const knock = definition('private.knock_on');
     expect(knock).toContain("pg_advisory_xact_lock(hashtextextended('knock_on', 0))");
     expect(knock).toContain("interval '5 seconds'");
@@ -81,11 +82,33 @@ describe("the database's side of the shared harbour", () => {
     expect(knock).toContain('>= 5000');
     expect(knock).toContain('knock_on.owner = caller');
     expect(definition('private.my_knock')).toContain("interval '1 minute'");
-    expect(definition('private.visit_house')).toContain("interval '10 minutes'");
-    expect(definition('private.visit_house')).toContain("k.answer = 'in'");
     // The knock screen waits a little longer than a knock is good for, so it
     // hears the database say 'gone' rather than giving up first.
     expect(KNOCK_WAIT_MS).toBeGreaterThan(60_000);
+  });
+
+  it('holds a yes until the visitor walks out or is seen out, never for a set time', () => {
+    const visit = definition('private.visit_house');
+    expect(visit).toContain('private.visit_stands(k)');
+    expect(visit).not.toContain("interval '10 minutes'");
+    const stands = definition('private.visit_stands');
+    expect(stands).toContain("k.answer = 'in'");
+    expect(stands).toContain('k.visit_ended is null');
+    expect(stands).toContain('coalesce(k.visit_until, ');
+    // Held for ninety seconds after the visitor's browser last asked, from the
+    // yes on, so a tab closed mid-visit lets it go; and asked often enough that
+    // a visitor still in the house never runs out.
+    expect(definition('private.answer_knock')).toContain(
+      "visit_until = case when answer_knock.let_in then now() + interval '90 seconds' else null end",
+    );
+    const still = definition('private.still_visiting');
+    expect(still).toContain("set visit_until = now() + interval '90 seconds'");
+    expect(still).toContain('k.knocker_uid = caller');
+    expect(3 * VISIT_CHECK_EVERY_MS).toBeLessThan(90_000);
+    // Only the owner sees a visitor out of their own house; only the visitor walks out of it.
+    expect(definition('private.show_out')).toContain('k.owner_uid = (select auth.uid())');
+    expect(definition('private.show_out')).toContain("visit_ended = 'shown-out'");
+    expect(definition('private.leave_house')).toContain('k.knocker_uid = (select auth.uid())');
   });
 
   it('lets only the owner answer a knock at their own door', () => {

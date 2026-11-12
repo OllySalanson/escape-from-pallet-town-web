@@ -343,6 +343,7 @@ import { houseNameNeeded, welcomeHomeLines } from '../home/houseName';
 import { openNameScreen } from '../ui/PlayerNameOverlay';
 import { nameService } from '../names/nameService';
 import { harbour, harbourHouses, type HarbourWhere } from '../harbour/harbour';
+import { HouseVisitWatch } from '../harbour/houseVisit';
 import type { KnockAtTheDoor } from '../harbour/houseService';
 import { houseSnapshot, readHouseSnapshot } from '../home/houseSnapshot';
 import {
@@ -351,6 +352,11 @@ import {
   NOT_NOW,
   knockGoneLine,
   knockQuestion,
+  LET_STAY,
+  SEE_OUT,
+  seenOutLine,
+  visitEndedLine,
+  visitorQuestion,
   notYoursLine,
   notYoursToMoveLine,
   visitWelcomeLines,
@@ -892,6 +898,8 @@ export class BaseScene extends Phaser.Scene {
   /** The plate across the PLAYTEST BOARD, in the explorer run's yard only. */
   /** Somebody else's house this player is looking round, let in at the door. */
   private visit: HouseVisit | null = null;
+  /** The visit is over and the visitor is being told so, on their way out. */
+  private visitEnding = false;
   /** The knock screen, while it is up (`ui/KnockOverlay.ts`). */
   private knockScreen: MenuOverlay | null = null;
   /** The favours list, while it is up (`ui/FavourListOverlay.ts`). */
@@ -1058,6 +1066,7 @@ export class BaseScene extends Phaser.Scene {
     this.doorTold = false;
     this.doorLayout = undefined;
     this.visit = null;
+    this.visitEnding = false;
     this.kit = null;
     this.furniture = null;
     this.arenaPanel = null;
@@ -1080,6 +1089,7 @@ export class BaseScene extends Phaser.Scene {
     // from their snapshot, read as any save is, and everything in it is
     // theirs by name.
     this.visit = room && data.visit && isHomeRoom(room.id) ? data.visit : null;
+    this.keepVisitWatch();
     if (room) {
       const visit = this.visit;
       this.roomBuiltAt = new Date();
@@ -1385,9 +1395,18 @@ export class BaseScene extends Phaser.Scene {
     // Somebody waving at this player: a hand over them, and a "hi!" to say so.
     harbour()?.link.whenWavedAt(() => audioManager.play('harbourWave'));
     // Another player's browser saying it knocked here: look at the door now.
-    harbour()?.link.whenNudged((_from, gone) =>
-      gone ? harbourHouses()?.door.withdrawn(gone) : harbourHouses()?.door.knocked(),
-    );
+    // Or, from the owner of the house this player is visiting, that the visit
+    // may have changed: ask about it now.
+    harbour()?.link.whenNudged((from, gone) => {
+      const houses = harbourHouses();
+      if (gone) {
+        houses?.door.withdrawn(gone);
+      } else if (houses?.visit?.ownerId === from) {
+        houses.visit.nudged();
+      } else {
+        houses?.door.knocked();
+      }
+    });
   }
 
   public update(time: number, deltaMs: number): void {
@@ -1406,6 +1425,7 @@ export class BaseScene extends Phaser.Scene {
     const watcher = this.regularsWatcher();
     regulars?.tick(regularsClock(deltaMs, requestedTestMode() !== 'off'), deltaMs, watcher);
     this.watchFrontDoor(time);
+    this.watchVisit(time);
     this.tickHeldRoom(time, deltaMs);
     if (this.jump) {
       this.advanceJump(deltaMs);
@@ -4064,7 +4084,9 @@ export class BaseScene extends Phaser.Scene {
     const partner = this.partner && this.partnerAt(facing) ? `[SPACE] ${this.partner.name}` : undefined;
     // Another player faced is waved at, and the same goes for them: facing
     // somebody is the only way anybody would find that out (playtest 49).
-    const wave = !partner && this.otherPlayerAt(facing) ? WAVE_HINT : undefined;
+    // In the player's own house, whoever is faced is a visitor, asked about by name.
+    const visitor = !partner ? this.visitorAt(facing) : undefined;
+    const wave = visitor ? `[SPACE] ${visitor.name}` : !partner && this.otherPlayerAt(facing) ? WAVE_HINT : undefined;
     if (!room) {
       // Nothing else to say in the yard: the keys this save has not used yet
       // (`input/keyBindings.ts`). A newcomer arrives here first, and the first
@@ -4165,6 +4187,14 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /** Whether another player in the shared harbour stands (or is stepping) onto this tile: Space waves at them. */
+  /** Another player standing on `tile` in this player's own house, who can only be there visiting. */
+  private visitorAt(tile: GridPosition): { readonly id: string; readonly name: string } | undefined {
+    if (!this.place.room?.home || this.visit) {
+      return undefined;
+    }
+    return harbour()?.figuresHere().find((figure) => sameTile(figure.toward ?? figure.tile, tile));
+  }
+
   private otherPlayerAt(tile: GridPosition): boolean {
     return harbour()?.figuresHere().some((figure) => sameTile(figure.toward ?? figure.tile, tile)) ?? false;
   }
@@ -5171,7 +5201,7 @@ export class BaseScene extends Phaser.Scene {
         this.speakToLeader(leader.gym);
         return;
       }
-      if (this.waveAt(target)) {
+      if (this.askAboutVisitor(target) || this.waveAt(target)) {
         return;
       }
       if (this.facesTheStands(target)) {
@@ -6056,6 +6086,87 @@ export class BaseScene extends Phaser.Scene {
       [],
       () => this.decor?.draw(),
     );
+  }
+
+  /**
+   * Facing somebody visiting the player's own house: asked whether to see them
+   * out, with the cursor on LET THEM STAY - the key that asked is still down.
+   * A visit lasts until the visitor walks out or this, never for a set time.
+   */
+  private askAboutVisitor(target: GridPosition): boolean {
+    const visitor = this.visitorAt(target);
+    const houses = harbourHouses();
+    if (!visitor || !houses) {
+      return false;
+    }
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.askInBox(
+      visitorQuestion(visitor.name),
+      (seeOut) => {
+        if (!seeOut) {
+          audioManager.play('menuClose');
+          return;
+        }
+        // The visitor's browser hears it within a few seconds anyway; the
+        // nudge is so it hears at once.
+        void houses.service.showOut(visitor.id).then(
+          (shown) => shown && harbour()?.link.nudge(visitor.id),
+          () => undefined,
+        );
+        audioManager.play('confirm');
+        this.say([seenOutLine(visitor.name)], [target]);
+      },
+      { startOnNotNow: true, options: [SEE_OUT, LET_STAY] },
+    );
+    return true;
+  }
+
+  /**
+   * The visit this player is on keeps the clock (`harbour/houseVisit.ts`), and
+   * once it is over - seen out, the owner gone from the harbour, or over on
+   * the database's word - the visitor is told why and walked out to their own
+   * step, as soon as nothing else is on the screen.
+   */
+  private watchVisit(time: number): void {
+    const watch = harbourHouses()?.visit;
+    const visit = this.visit;
+    if (!visit || !watch || watch.ownerId !== visit.ownerId) {
+      return;
+    }
+    watch.tick(time);
+    const ending = watch.ended;
+    if (!ending || this.visitEnding || this.leaving || this.dialogBox.visible || this.boxQuestion || this.targetTile) {
+      return;
+    }
+    this.visitEnding = true;
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.closePhrases();
+    audioManager.play('cancel');
+    this.say([visitEndedLine(ending, visit.ownerName)], [], () =>
+      this.goTo({ savedGame: this.savedGame, from: 'bolthole' }, 'interiorLeave'),
+    );
+  }
+
+  /**
+   * One watch for one visit, across the scene starting again up and down the
+   * stairs: begun on stepping into somebody's house, and let go - the
+   * database told the visitor has left - on standing anywhere else.
+   */
+  private keepVisitWatch(): void {
+    const houses = harbourHouses();
+    if (!houses) {
+      return;
+    }
+    const owner = this.visit?.ownerId;
+    if (houses.visit && houses.visit.ownerId !== owner) {
+      houses.visit.leave();
+      houses.visit = null;
+    }
+    if (owner && !houses.visit) {
+      houses.visit = new HouseVisitWatch(houses.service, owner, () => harbour()?.standing(owner) ?? null);
+    }
   }
 
   private knockerWentAway(knock: KnockAtTheDoor): void {
@@ -7039,7 +7150,11 @@ export class BaseScene extends Phaser.Scene {
   private askInBox(
     question: string,
     answer: (yes: boolean) => void,
-    { spendsForGood = false, startOnNotNow = false } = {},
+    {
+      spendsForGood = false,
+      startOnNotNow = false,
+      options = FAVOUR_ANSWERS,
+    }: { spendsForGood?: boolean; startOnNotNow?: boolean; options?: readonly [string, string] } = {},
   ): void {
     audioManager.play('menuOpen');
     this.showHint('');
@@ -7059,7 +7174,7 @@ export class BaseScene extends Phaser.Scene {
         height: DIALOG_HEIGHT,
         padding: 10,
         lines: [question],
-        options: FAVOUR_ANSWERS,
+        options,
         selected: spendsForGood || startOnNotNow ? 1 : 0,
         // Every answer: the click that moved the box on to the question stands
         // where YES may now be drawn.

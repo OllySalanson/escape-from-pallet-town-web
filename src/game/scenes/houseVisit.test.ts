@@ -20,17 +20,30 @@ vi.mock('../ui/KnockOverlay', () => ({
     return {};
   },
 }));
-const frontDoor = vi.hoisted((): { door: unknown } => ({ door: {} }));
-const others = vi.hoisted((): { here: { tile: { x: number; y: number }; toward: null }[] } => ({ here: [] }));
+const frontDoor = vi.hoisted(
+  (): { door: unknown; service: unknown; visit: unknown } => ({ door: {}, service: {}, visit: null }),
+);
+const others = vi.hoisted(
+  (): { here: { tile: { x: number; y: number }; toward: null; id?: string; name?: string }[]; nudged: string[] } => ({
+    here: [],
+    nudged: [],
+  }),
+);
 vi.mock('../harbour/harbour', () => ({
-  harbour: () => ({ seenAs: 'me', figuresHere: () => others.here, link: { nudge: () => undefined } }),
-  harbourHouses: () => ({ service: {}, door: frontDoor.door }),
+  harbour: () => ({
+    seenAs: 'me',
+    figuresHere: () => others.here,
+    standing: () => true,
+    link: { nudge: (to: string) => others.nudged.push(to) },
+  }),
+  harbourHouses: () => frontDoor,
 }));
 
 import { BaseScene } from './BaseScene';
 import { HouseDoor } from '../harbour/houseDoor';
 import type { HouseService, KnockAtTheDoor } from '../harbour/houseService';
-import { KNOCK_SIGN_LINE, knockScreenMarkup } from '../home/knocking';
+import { HouseVisitWatch } from '../harbour/houseVisit';
+import { KNOCK_SIGN_LINE, LET_STAY, SEE_OUT, knockScreenMarkup } from '../home/knocking';
 import { HOME_SIGN } from '../base/baseMap';
 
 /**
@@ -386,5 +399,163 @@ describe("the owner's PC in somebody else's house", () => {
     const owner = facingThePc(false);
     expect(owner.said).toEqual([]);
     expect(owner.opened).toEqual([expect.objectContaining({ view: 'stash', from: 'house-upstairs' })]);
+  });
+});
+
+/**
+ * A visit lasts until the visitor walks out or the owner sees them out (the
+ * captain, 12 Nov 2026: why only ten minutes?). The owner's side: facing
+ * somebody in their own house asks whether to see them out, the cursor on
+ * LET THEM STAY. The visitor's side: told why, and walked out to their own step.
+ */
+describe('seeing a visitor out of your own house', () => {
+  function ownHouseFacingAmy() {
+    others.here = [{ tile: { x: 4, y: 7 }, toward: null, id: 'amy-id', name: 'AMY' }];
+    others.nudged = [];
+    const shownOut: string[] = [];
+    frontDoor.service = {
+      showOut: (visitor: string) => {
+        shownOut.push(visitor);
+        return Promise.resolve(true);
+      },
+    };
+    const said: string[][] = [];
+    const asked: { question: string; answer: (yes: boolean) => void; options: unknown }[] = [];
+    const scene = Object.create(BaseScene.prototype) as Record<string, unknown>;
+    Object.assign(scene, {
+      place: { room: { room: { id: 'bolthole', mat: { x: 4, y: 8 }, keeper: null, screen: null, things: [], stairs: [] }, home: {} } },
+      currentTile: { x: 4, y: 8 },
+      facing: 'up',
+      partner: null,
+      partnerAt: () => false,
+      visit: null,
+      savedGame: { raidProgress: { keysLearned: [] } },
+      choosing: false,
+      rivalHere: false,
+      arena: null,
+      readPlaytestBoard: () => false,
+      leaderOn: () => undefined,
+      player: { stop: () => undefined, setFrame: () => undefined },
+      say: (lines: readonly string[]) => said.push([...lines]),
+      askInBox: (question: string, answer: (yes: boolean) => void, options: unknown) =>
+        asked.push({ question, answer, options }),
+    });
+    return { scene, said, asked, shownOut };
+  }
+
+  it('names the visitor on the hint line, rather than offering a wave', () => {
+    const home = ownHouseFacingAmy();
+    try {
+      expect((home.scene.hintHere as () => string).call(home.scene)).toBe('[SPACE] AMY   [DOWN] OUT');
+    } finally {
+      others.here = [];
+    }
+  });
+
+  it('asks whether to see them out, starting on LET THEM STAY, and sees them out on SEE THEM OUT', async () => {
+    const home = ownHouseFacingAmy();
+    try {
+      (home.scene.tryInteract as () => void).call(home.scene);
+      expect(home.asked).toHaveLength(1);
+      expect(home.asked[0].question).toBe('AMY is visiting. See them out?');
+      expect(home.asked[0].options).toEqual({ startOnNotNow: true, options: [SEE_OUT, LET_STAY] });
+      home.asked[0].answer(true);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(home.shownOut).toEqual(['amy-id']);
+      // AMY's browser is told to look now, so she hears at once.
+      expect(others.nudged).toEqual(['amy-id']);
+      expect(home.said).toEqual([['You see AMY to the door.']]);
+    } finally {
+      others.here = [];
+    }
+  });
+
+  it('lets them stay on LET THEM STAY', () => {
+    const home = ownHouseFacingAmy();
+    try {
+      (home.scene.tryInteract as () => void).call(home.scene);
+      home.asked[0].answer(false);
+      expect(home.shownOut).toEqual([]);
+      expect(home.said).toEqual([]);
+    } finally {
+      others.here = [];
+    }
+  });
+});
+
+describe('a visit that ends while the visitor is inside', () => {
+  function visitorIn(ending: 'shown-out' | 'owner-gone' | 'over') {
+    const said: { lines: string[]; then?: () => void }[] = [];
+    const went: unknown[] = [];
+    const watch = { ownerId: 'pip-id', tick: () => undefined, ended: ending };
+    frontDoor.visit = watch;
+    const scene = Object.create(BaseScene.prototype) as Record<string, unknown>;
+    Object.assign(scene, {
+      visit: { ownerId: 'pip-id', ownerName: 'PIP', game: {} },
+      visitEnding: false,
+      leaving: false,
+      dialogBox: { visible: false },
+      boxQuestion: null,
+      targetTile: null,
+      facing: 'down',
+      savedGame: { raidProgress: {} },
+      player: { stop: () => undefined, setFrame: () => undefined },
+      closePhrases: () => undefined,
+      say: (lines: readonly string[], _about: unknown, then?: () => void) => said.push({ lines: [...lines], then }),
+      goTo: (data: unknown) => went.push(data),
+    });
+    const frame = () => (scene.watchVisit as (time: number) => void).call(scene, 0);
+    return { scene, said, went, frame };
+  }
+
+  it.each([
+    ['shown-out', 'PIP sees you to the door. Time to head home.'],
+    ['owner-gone', 'PIP has left the harbour, so you let yourself out.'],
+    ['over', "Your visit to PIP's house is over. You head home."],
+  ] as const)('says why (%s), once, and walks the visitor out to their own step after', (ending, line) => {
+    const visitor = visitorIn(ending);
+    visitor.frame();
+    visitor.frame();
+    expect(visitor.said.map((each) => each.lines)).toEqual([[line]]);
+    expect(visitor.went).toEqual([]);
+    visitor.said[0].then?.();
+    expect(visitor.went).toEqual([expect.objectContaining({ from: 'bolthole' })]);
+    frontDoor.visit = null;
+  });
+
+  it('waits for whatever is being read to be read first', () => {
+    const visitor = visitorIn('shown-out');
+    (visitor.scene.dialogBox as { visible: boolean }).visible = true;
+    visitor.frame();
+    expect(visitor.said).toEqual([]);
+    (visitor.scene.dialogBox as { visible: boolean }).visible = false;
+    visitor.frame();
+    expect(visitor.said).toHaveLength(1);
+    frontDoor.visit = null;
+  });
+});
+
+describe('the watch on a visit', () => {
+  it('begins on stepping into a house, is kept up and down its stairs, and tells the database on walking out', () => {
+    const left: string[] = [];
+    frontDoor.service = { leaveHouse: (owner: string) => (left.push(owner), Promise.resolve()) };
+    frontDoor.visit = null;
+    const scene = Object.create(BaseScene.prototype) as Record<string, unknown>;
+    const keep = (visit: { ownerId: string } | null) => {
+      scene.visit = visit;
+      (scene.keepVisitWatch as () => void).call(scene);
+    };
+    keep({ ownerId: 'pip-id' });
+    const watch = frontDoor.visit as HouseVisitWatch;
+    expect(watch).toBeInstanceOf(HouseVisitWatch);
+    expect(watch.ownerId).toBe('pip-id');
+    // Upstairs is the same visit.
+    keep({ ownerId: 'pip-id' });
+    expect(frontDoor.visit).toBe(watch);
+    expect(left).toEqual([]);
+    // Out on the visitor's own step.
+    keep(null);
+    expect(frontDoor.visit).toBeNull();
+    expect(left).toEqual(['pip-id']);
   });
 });
