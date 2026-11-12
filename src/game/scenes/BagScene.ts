@@ -28,7 +28,7 @@ import { GridArranging } from '../ui/gridArranging';
 import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
 import { bagFocusPreference } from '../ui/menuFocus';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
-import { conditionLine } from '../ui/condition';
+import { pixelMonIcon, pixelPartySlot } from '../ui/monIcon';
 import { describeKey, splitDescribeKey } from '../ui/hoverDescribe';
 import {
   canChoosePupil,
@@ -45,11 +45,8 @@ import { EVOLVE_MOMENT_ARMING_MS, evolveMomentBody, type EvolveMomentView } from
 import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
 import {
   CLOCK_STOPPED,
-  COLUMN_MEASURES,
   escapeAttribute,
-  pixelColumns,
   pixelGrid,
-  pixelHpBar,
   pixelScreen,
   pixelTag,
   pixelWindow,
@@ -483,24 +480,28 @@ export class BagScene extends Phaser.Scene {
     this.menuOverlay!.refocus(...prefer, ...bagFocusPreference({ choosingPokemon: Boolean(using), teaching: Boolean(machine) }));
   }
 
-  /** Every pocket at once, and the squares they are packed into beside them. */
+  /**
+   * Every pocket at once, as a grid of the things themselves - HeartGold's bag
+   * and Tarkov's stash: each kind its icon at twice its size with how many are
+   * carried on its corner, pocket after pocket, and the words for the one under
+   * the cursor in the pane below. The squares they are packed
+   * into stand beside.
+   */
   private pocketBody(): string {
-    const rows = POCKETS.flatMap((pocket) => {
-      const items = this.bag.itemsInCategory(pocket);
-      return items.length === 0
-        ? []
-        : [
-            `<h3 class="px-subheading">${ITEM_CATEGORY_LABELS[pocket]}</h3>`,
-            ...items.map((item) => this.itemRow(item)),
-          ];
-    }).join('');
+    // In pocket order and without the pockets' bands: a band took a whole row of
+    // the grid for two or three tiles, and the next pocket went under the MORE
+    // strip. The pictures tell a Potion from a Poké Ball; the pocket is named in
+    // the pane for the one under the cursor.
+    const tiles = POCKETS.flatMap((pocket) => this.bag.itemsInCategory(pocket).map((item) => this.itemRow(item))).join('');
     const details = POCKETS.flatMap((pocket) => this.bag.itemsInCategory(pocket))
       .map((item, index) => this.itemDetail(item, index === 0))
       .join('');
     const carried = pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.supply)}>${
-        rows || '<p class="px-empty">The pack is empty. Whatever is on the ground out there is all you have.</p>'
-      }</div>${details}`,
+      `${
+        tiles
+          ? `<div class="pack-tiles px-scroll">${tiles}</div>`
+          : '<p class="px-empty">The pack is empty. Whatever is on the ground out there is all you have.</p>'
+      }${details}`,
       { className: 'raid-pockets', heading: 'Carried', note: `${this.kinds} ${this.kinds === 1 ? 'kind' : 'kinds'}` },
     );
     return `<main class="px-body raid-bag-layout">${carried}<div class="raid-bag-side">${this.packWindow()}${this.partnerWindow()}</div></main>`;
@@ -516,20 +517,27 @@ export class BagScene extends Phaser.Scene {
       return '';
     }
     return pixelWindow(
-      `<div class="px-list"><div class="px-row is-secured is-partner-place"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(partner)}</span><small class="px-wrap">Your partner. A wipe never takes it.</small></span>${pixelTag('Safe', 'secure', true)}</div></div>`,
+      // Its icon and its name, and the one sentence: the heading already says it
+      // comes home, so a SAFE tag beside the name said it a third time and ran
+      // into a long name in a narrow column.
+      `<div class="px-list"><div class="px-row has-icon is-secured is-partner-place pack-partner">${pixelMonIcon(partner)}<span class="px-row-main"><span class="px-row-line">${pixelPokemonName(partner)}</span><small class="px-wrap">Your partner. A wipe never takes it.</small></span></div></div>`,
       { className: 'partner-place-window', heading: 'Partner', note: 'comes home' },
     );
   }
 
+  /**
+   * One kind carried, as a tile: its icon twice its size, how many on the
+   * corner, and what it is said of in the pane and on the help bar. A disc's
+   * learners and the Bicycle's riding are said there too, so the grid is all
+   * pictures and counts.
+   */
   private itemRow(item: ItemDefinition): string {
     const machine = machineForItem(item);
     const learners = machine ? learnersLine(machine, this.party.pokemon) : undefined;
     const help = `${item.displayName}: ${item.description}${learners ? ` ${learners}.` : ''} ${this.useLabel(item)} X drops ${this.dropWords(item)}.`;
-    const tag = item.effect.type === 'bike' && this.bike?.riding ? pixelTag('Riding', 'plain') : pocketTag(item);
-    // A disc says on its own row how many of the party it would teach, so
-    // nobody opens the teaching screen to find it is nobody.
-    const under = learners ? `<small>${learners}</small>` : '';
-    return `<button class="px-row has-icon" data-item="${item.id}" data-shows="${item.id}" data-describes="${describeKey('item', item.id)}" data-help="${escapeAttribute(help)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${item.displayName}</strong>${tag}</span>${under}</span><span class="px-tag">${itemCountTag(item.id, this.bag.count(item.id))}</span></button>`;
+    const count = itemCountTag(item.id, this.bag.count(item.id));
+    const riding = item.effect.type === 'bike' && this.bike?.riding;
+    return `<button class="pack-tile${riding ? ' is-riding' : ''}" data-item="${item.id}" data-shows="${item.id}" data-describes="${describeKey('item', item.id)}" aria-label="${escapeAttribute(`${item.displayName} ${count}`)}" data-help="${escapeAttribute(help)}">${itemIcon(item.id, item.displayName)}<span class="pack-tile-count">${count}</span></button>`;
   }
 
   /** What one X puts down: one of a thing, or a money bundle's worth. */
@@ -571,7 +579,10 @@ export class BagScene extends Phaser.Scene {
     const holding = isCurrency(item.id)
       ? `${itemCountTag(item.id, carried)} carried · ${itemCountTag(item.id, stackSizeOf(item.id))} to ${freed}`
       : `${carried} carried · ${freed} each`;
-    return `<div class="px-detail" data-shown-by="${item.id}"${first ? '' : ' hidden'}><span class="px-wrap">${item.description}</span><div class="care-options"><small class="px-label">${holding}</small>${drop}</div></div>`;
+    const machine = machineForItem(item);
+    const learners = machine ? learnersLine(machine, this.party.pokemon) : undefined;
+    const tag = item.effect.type === 'bike' && this.bike?.riding ? pixelTag('Riding', 'plain') : pocketTag(item);
+    return `<div class="px-detail pack-detail" data-shown-by="${item.id}"${first ? '' : ' hidden'}><span class="px-row-line"><strong class="px-name">${item.displayName}</strong><small class="px-label">${ITEM_CATEGORY_LABELS[item.category]}</small>${tag}</span><span class="px-wrap">${item.description}</span>${learners ? `<small class="px-wrap">${learners}</small>` : ''}<div class="care-options"><small class="px-label">${holding}</small>${drop}</div></div>`;
   }
 
   /**
@@ -582,18 +593,22 @@ export class BagScene extends Phaser.Scene {
    * because what it does depends on who reads it.
    */
   private recipientBody(item: ItemDefinition): string {
-    const rows = this.party.pokemon
+    // FireRed's party when an item is being used: the six slots, each with its
+    // answer - its HP for a Potion, ABLE or NOT ABLE for a stone - under it.
+    const slots = this.party.pokemon
       .map((pokemon, index) => {
         const note = this.targetNote(pokemon, item);
-        return `<button class="px-row" data-target="${index}" data-item="${item.id}" data-help="${escapeAttribute(
-          `Use ${item.displayName} on ${pokemon.name}. ${this.targetHelp(pokemon, item) ?? note}`,
-        )}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(pokemon)}${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${conditionLine(pokemon)}</small></span><span class="px-tag">${note}</span></button>`;
+        return pixelPartySlot(pokemon, {
+          lead: index === 0,
+          note,
+          attributes: `data-target="${index}" data-item="${item.id}" aria-label="${escapeAttribute(`${pokemon.name}, ${note}`)}" data-help="${escapeAttribute(
+            `Use ${item.displayName} on ${pokemon.name}. ${this.targetHelp(pokemon, item) ?? note}`,
+          )}"`,
+        });
       })
       .join('');
     const list = pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${
-        rows || '<p class="px-empty">Nobody is deployed.</p>'
-      }</div>`,
+      slots ? `<div class="px-party-slots">${slots}</div>` : '<p class="px-empty">Nobody is deployed.</p>',
       {
         className: 'raid-pockets',
         heading: `Use ${item.displayName} on`,

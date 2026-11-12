@@ -159,3 +159,45 @@ Every Pokémon was already in view, so the gain is in what a glance gets from th
 | FireRed party: moving one | 3 | 5 | a HOLDING tag; now the slot in hand turns red |
 | Hades: the one pointed at, big | 2 | 4 | the portrait was below the fold; now it leads the dossier (the numbers stay below it) |
 | Every key path | 5 | 5 | arrows reach every slot, ENTER/ENTER swaps the lead, TAB gives and takes gear, ESC closes (`partyShots.mjs`) |
+
+## The raid's PACK (B in a raid)
+
+`scenes/BagScene.ts`. Pictures by `tools/playtest/packShots.mjs <build> <dir>
+--window=WxH` (`--before` against `main`), on its raid: a party of three with
+Pikachu hurt, and ten kinds carried - medicine, balls, two pieces of gear, a
+Thunder Stone, a disc and a radio valve found on the way.
+
+| | Before | After |
+|---|---|---|
+| 1280x800 | ![](raid-pack/before-1280x800.png) | ![](raid-pack/after-1280x800.png) |
+| 1920x950 | ![](raid-pack/before-1920x950.png) | ![](raid-pack/after-1920x950.png) |
+| 800x600 (a sheet) | ![](raid-pack/before-800x600.png) | ![](raid-pack/after-800x600.png) |
+
+The cursor on the disc (the pane names it, its pocket, and who can learn it); a
+Potion asking who for, before and after; and a Thunder Stone's ABLE and NOT ABLE:
+![](raid-pack/after-disc.png) ![](raid-pack/before-potion-for-whom.png) ![](raid-pack/after-potion-for-whom.png) ![](raid-pack/after-stone-able.png)
+
+What changed: every kind carried is its icon at twice its size with its count on
+the corner, six to a row, pocket after pocket (the pockets' bands took a row each
+and pushed the next pocket under the MORE strip; a Potion is told from a Poké Ball
+by its picture). The name, its pocket, a disc's learners and the Bicycle's
+riding are in the pane for the one under the cursor. Using an item asks who for
+as FireRed's party does - the party slots, each with its HP for a Potion or ABLE /
+NOT ABLE for a stone on a third line. The partner's place shows its icon, and
+drops a SAFE tag the window's own heading already says.
+
+### Scorecard
+
+| Measure | 1280x800 before | after | 1920x950 before | after | 800x600 before | after |
+|---|---|---|---|---|---|---|
+| Words in view | 50 | **42** | 59 | **42** | 58 | **42** |
+| Kinds in view (of 10) | 5 | **10** | 7 | **10** | 7 | **10** |
+| Panel that is picture | 7% | **16%** | 6% | **14%** | 5% | **14%** |
+
+| Benchmark | Before | After | Why |
+|---|---|---|---|
+| HeartGold bag: the things, big | 2 | 5 | 16-pixel icons in rows of words; now 32-pixel icons with their counts |
+| Tarkov stash: everything in one look | 2 | 5 | half the kinds under a MORE strip; now all ten |
+| FireRed party: who an item is for | 2 | 5 | rows of names and HP; now the party slots with icons, bars and the answer |
+| Hades: words only for the one pointed at | 2 | 4 | a name on every row; now one pane (the help bar still speaks for the cursor) |
+| Every key path | 5 | 5 | arrows reach every kind, ENTER uses a Potion on the hurt one, a stone asks ABLE, X drops, ESC closes (`packShots.mjs`) |

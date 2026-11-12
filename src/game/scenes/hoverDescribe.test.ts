@@ -95,13 +95,13 @@ describe('pointing at something in the raid pack', () => {
 
   it('is the same question as pointing at its squares', () => {
     const markup = bagMarkup();
-    // The pocket row and the block it occupies carry one key, which is what
+    // The pocket's tile and the block it occupies carry one key, which is what
     // lets a pointer on either answer for the other and light it.
     expect(markup).toContain(`data-describes="${describeKey('item', 'potion')}"`);
     expect(markup).toContain(`data-describes="${describeKey('item', 'antidote')}"`);
-    // Once on the row and once on each square the item is seated in - two
+    // Once on the tile and once on each square the item is seated in - two
     // Potions are two blocks, because a square holds one of them.
-    expect(markup.match(/px-row[^>]*data-describes="item:potion"/g)?.length).toBe(1);
+    expect(markup.match(/pack-tile[^>]*data-describes="item:potion"/g)?.length).toBe(1);
     expect(markup.match(/px-grid-block[^>]*data-describes="item:potion"/g)?.length).toBe(2);
   });
 
