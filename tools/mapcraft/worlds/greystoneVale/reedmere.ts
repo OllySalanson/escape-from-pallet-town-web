@@ -425,7 +425,8 @@ export function reedmere(): MapcraftResult {
         { x: 34, y: 49 + 1, lines: ['EELS', 'Smoked, jellied, or looked at. Ask at the stall.'] },
         { x: 30, y: 48, lines: ['MERE END', 'East: the staithe, the old pump and Gull Strand. West: the duck hide and the Mere Path.'] },
         { x: 37, y: 43, lines: ['THE DROWNED DUCK', 'Beds. Ale. No, you may not see the duck.'] },
-        { x: 15, y: 48, lines: ['THE DUCK HIDE', 'QUIET PLEASE. The ones on the bank are real. The one in the water is a doll. Tess knows.'] },
+        // The nook of THE LAPRAS DOLL (`world/secrets.ts`): read with dry boots, it is answered.
+        { x: 15, y: 48, secret: 'the-lapras-doll', lines: ['THE DUCK HIDE', 'QUIET PLEASE. The ones on the bank are real. The one in the water is a doll. Tess knows.'] },
         { x: 11, y: 36, lines: ['THE WITHY BEDS', 'Cut every seven years. Do not lean on them.'] },
         { x: 10, y: 25, lines: ['THE MERE PATH', 'West, out of the marsh. Last dry bed for a long way. Ask at the house.'] },
         { x: 19, y: 55, lines: ['NOTHING DOWN THIS PATH', 'Nothing at all. Certainly not a cove. Go back.'] },
@@ -464,7 +465,7 @@ export function reedmere(): MapcraftResult {
         { x: 42, y: 54 + 1, name: 'Turf Cutter', look: 'hiker', facing: 'left', lines: ['Peat is just a marsh that gave up. Cut it, dry it, burn it.', 'It takes a thousand years to grow a spade of it. I do about four hundred a day.'], beat: { everyMs: 2900, glances: ['left', 'down'] }, calls: ['Mind the strips.'] },
         { x: 35, y: 55, name: 'Turf Boy', look: 'youngster', facing: 'up', lines: ['Dad says those Diglett do more than I do.', 'They do. They are very good. They do not take a wage. I have spoken to them about it.'], beat: { everyMs: 2200, roam: [[1, 0]], glances: ['up'] }, calls: ['Diglett! Other way!'] },
         // -- The duck hide -------------------------------------------------------------------------------------
-        { x: 12, y: 53, name: 'Birder Tess', look: 'old-woman', facing: 'right', lines: ['Hush. The ducks only come in when nobody wades the reeds.', 'One of those has not moved in a week. I am beginning to think it is a Lapras doll.'], beat: { everyMs: 4500, glances: ['down'] }, calls: ['Hush!', 'Quiet, please!'] },
+        { x: 12, y: 53, name: 'Birder Tess', look: 'old-woman', facing: 'right', secret: 'the-lapras-doll', lines: ['Hush. The ducks only come in when nobody wades the reeds.', 'One of those has not moved in a week. I am beginning to think it is a Lapras doll.', 'It looked at me once. I had DRY boots that day: not a step in the grass. Then read the notice.'], beat: { everyMs: 4500, glances: ['down'] }, calls: ['Hush!', 'Quiet, please!'] },
         // -- The withy beds ---------------------------------------------------------------------------------------
         { x: 10, y: 42, name: 'Mrs Osier', look: 'woman', facing: 'left', lines: ['Baskets for the eels, baskets for the peat, baskets to put the other baskets in.', 'My sister at The Crossing says hers are better. They are not. Do not tell her I said so.'], beat: { everyMs: 3100, roam: [[0, -1]], glances: ['left'] }, calls: ['Baskets! Good baskets!'] },
         // -- The Last House --------------------------------------------------------------------------------------------

@@ -431,3 +431,75 @@ describe('THE KITE THIEF', () => {
     expect(internals.pendingWildBattle).toEqual({ speciesId: 'kingler', level: 20 });
   });
 });
+
+describe('THE LAPRAS DOLL', () => {
+  const doll = secretById('the-lapras-doll')!;
+  const lapras = { kind: 'meet', speciesId: 'lapras', level: 25 } as const;
+  const plan: Plan = { conditions: CONDITIONS, secrets: [{ id: doll.id, reward: lapras }] };
+  /** The scene in front of the duck hide's notice, with boots dry or not. */
+  const arrived = (wadedGrass: boolean | undefined, laid: Plan = plan) => {
+    const at = beside(doll.id, 'sign', laid);
+    Object.assign(at.internals.runSession, wadedGrass === undefined ? {} : { wadedGrass });
+    return at;
+  };
+
+  it('is a doll, as its notice says, to anybody who waded on the way', () => {
+    const { internals, dialogBox, entity } = arrived(true);
+    internals.tryInteract();
+    expect(dialogBox.shownMessages).toEqual(entity.dialogLines);
+    expect(internals.pendingWildBattle).toBeUndefined();
+    expect(internals.runSession.pokemonMet).toEqual([]);
+  });
+
+  it('lifts its head for dry boots, once a raid', () => {
+    for (const dry of [false, undefined]) {
+      const { internals, dialogBox, entity } = arrived(dry);
+
+      internals.tryInteract();
+
+      expect(dialogBox.shownMessages).toEqual([doll.foundLine]);
+      expect(internals.pendingWildBattle).toEqual({ speciesId: 'lapras', level: 25 });
+      expect(internals.runSession.pokemonMet).toEqual([`secret:${doll.id}`]);
+
+      Object.assign(internals, { pendingWildBattle: undefined });
+      dialogBox.shownMessages.length = 0;
+      internals.tryInteract();
+      expect(dialogBox.shownMessages).toEqual(entity.dialogLines);
+    }
+  });
+
+  it('is a doll and nothing else once it has been had', () => {
+    const { internals, dialogBox, entity } = arrived(false, { conditions: CONDITIONS, secrets: [{ id: doll.id }] });
+    internals.tryInteract();
+    expect(dialogBox.shownMessages).toEqual(entity.dialogLines);
+    expect(internals.pendingWildBattle).toBeUndefined();
+  });
+
+  it('wets the boots for good on the first step that ends in tall grass, and on no other ground', () => {
+    const map = getWorldMap(VALE);
+    const tile = (grass: boolean): GridPosition => {
+      for (let y = 0; y < map.height; y += 1) {
+        for (let x = 0; x < map.width; x += 1) {
+          if (map.collision[y][x] === false && (map.tallGrass[y]?.[x] === true) === grass) return { x, y };
+        }
+      }
+      throw new Error('no such tile');
+    };
+    const scene = Object.create(WorldScene.prototype) as WorldScene;
+    const session: { wadedGrass?: boolean } = {};
+    Object.assign(scene as object, { currentMap: map, currentTile: tile(false), runSession: session });
+    const step = (): void => (scene as unknown as { noteWading(): void }).noteWading();
+
+    step();
+    expect(session.wadedGrass).toBeUndefined();
+
+    Object.assign(scene as object, { currentTile: tile(true) });
+    step();
+    expect(session.wadedGrass).toBe(true);
+
+    // Back on the boards, they are still wet.
+    Object.assign(scene as object, { currentTile: tile(false) });
+    step();
+    expect(session.wadedGrass).toBe(true);
+  });
+});

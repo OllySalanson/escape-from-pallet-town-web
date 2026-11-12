@@ -142,6 +142,13 @@ export type SecretCondition =
    * never as the raid deploys.
    */
   | { readonly kind: 'stood-still'; readonly forMs: number }
+  /**
+   * Dry boots: not one step in tall grass the whole raid, as the nook is
+   * worked. It is paid for in the long way round - the boards, not the reeds -
+   * and in every wild Pokemon the raid did not go into the grass for. Read at
+   * the moment, like standing still: no raid has waded as it deploys.
+   */
+  | { readonly kind: 'dry-boots' }
   /** Any one of these. */
   | { readonly kind: 'either'; readonly of: readonly SecretCondition[] };
 
@@ -151,6 +158,8 @@ export interface SecretMoment {
   readonly elapsedMs: number;
   /** How long the player has stood without a step or a turn. */
   readonly stillMs: number;
+  /** Whether the raid has set foot in tall grass yet. */
+  readonly waded: boolean;
 }
 
 /**
@@ -183,6 +192,8 @@ export function conditionHolds(condition: SecretCondition, raid: RaidConditions,
       return moment === undefined || (moment.elapsedMs >= condition.fromMs && moment.elapsedMs < condition.untilMs);
     case 'stood-still':
       return moment === undefined || moment.stillMs >= condition.forMs;
+    case 'dry-boots':
+      return moment === undefined || !moment.waded;
     case 'either':
       return condition.of.some((each) => conditionHolds(each, raid, moment));
   }
@@ -258,7 +269,7 @@ export interface Secret {
    * is two more of the same making: an Alakazam among the Little Stones, and
    * the vale's second Pokemon in its other colours, a pink Butterfree.
    */
-  readonly wave: 1 | 2 | 3 | 4 | 5;
+  readonly wave: 1 | 2 | 3 | 4 | 5 | 6;
 }
 
 /**
@@ -619,6 +630,26 @@ export const SECRETS: readonly Secret[] = [
       'It watches the sky over the cliff, and nothing of yours. You have brought nothing it wants.',
     ],
     wave: 5,
+  },
+  {
+    // The notice on THE DUCK HIDE says the ones on the bank are real and the
+    // one in the water is a doll, and Birder Tess says it has not moved in a
+    // week. It is a LAPRAS, and it lifts its head only for somebody the ducks
+    // did not hear coming: dry boots, not one step in tall grass the whole
+    // raid. Reedmere is "tall grass everywhere, and the dry way is the long
+    // way" (`plan.ts`), so that is the boards from wherever the raid landed -
+    // ten steps longer from Mill Square - and nothing caught in the grass on
+    // the way. The doll is the map's own furniture and floats there after, so
+    // once it is had the notice is true. FireRed hands its one LAPRAS over at
+    // Lv 25, in Silph Co.; here it is an earned fight before MISTY.
+    id: 'the-lapras-doll',
+    name: 'THE LAPRAS DOLL',
+    place: 'THE DUCK HIDE',
+    nook: 'summons',
+    when: [{ kind: 'dry-boots' }],
+    rewards: [{ kind: 'meet', speciesId: 'lapras', level: 25 }],
+    foundLine: 'You came all this way without bending a reed, and not a duck has stirred. Out on the water the doll lifts its head and looks at you. It is not a doll. LAPRAS!',
+    wave: 6,
   },
 ];
 

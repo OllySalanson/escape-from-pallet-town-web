@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { getItemById } from '../items/items';
 import { Pokemon } from '../pokemon';
 import { getSpeciesById } from '../pokemon/species';
-import { generateRunPlan } from '../run/runGeneration';
+import { STEP_DURATION_MS } from '../movement/stepClock';
+import { frontDoorFor, generateRunPlan } from '../run/runGeneration';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { MAX_PENDING_RECOVERY_MS } from '../hub/recovery';
 import { getWorldMap } from '../worldMap';
@@ -79,6 +80,8 @@ function hintsOf(condition: SecretCondition): readonly string[] {
       return ['SHINY'];
     case 'stood-still':
       return ['STILL'];
+    case 'dry-boots':
+      return ['DRY'];
     case 'raid-clock':
       return ['LOW WATER'];
     case 'either':
@@ -237,10 +240,13 @@ describe("the vale's secrets", () => {
   it('can each be opened by some raid, and only by one meeting all its conditions', () => {
     const base: RaidConditions = { hour: 'day', weekday: 3, month: 5, leadTypes: ['Normal'], fieldMoves: [], carried: [], badges: [], chartWhole: false, partySize: 2, leadShiny: false };
     // Nothing is open on an ordinary raid but what waits only for something
-    // done at the nook itself - a stretch of standing still - which every raid
-    // may yet do, so its nook is laid every raid and asks when it is worked.
-    const waitsOnlyOnTheMoment = SECRETS.filter((secret) => secret.when.every((condition) => condition.kind === 'stood-still')).map((secret) => secret.id);
-    expect(waitsOnlyOnTheMoment).toEqual(['the-heron-that-is-not']);
+    // done on the raid itself - a stretch of standing still, boots kept dry -
+    // which every raid may yet do, so its nook is laid every raid and asks
+    // when it is worked.
+    const waitsOnlyOnTheMoment = SECRETS.filter((secret) =>
+      secret.when.every((condition) => condition.kind === 'stood-still' || condition.kind === 'dry-boots'),
+    ).map((secret) => secret.id);
+    expect(waitsOnlyOnTheMoment).toEqual(['the-heron-that-is-not', 'the-lapras-doll']);
     expect(openSecrets(base)).toEqual(waitsOnlyOnTheMoment);
     const everything: RaidConditions = {
       ...base,
@@ -266,11 +272,12 @@ describe("the vale's secrets", () => {
       const moment = {
         elapsedMs: clock?.kind === 'raid-clock' ? clock.fromMs : 0,
         stillMs: still?.kind === 'stood-still' ? still.forMs : 0,
+        waded: false,
       };
       expect(secretOpenAt(secret, raid, moment), secret.name).toBe(true);
       for (const condition of secret.when) {
-        // Read at the start of the raid, having just walked up: no stretch of the clock or of standing opens on that.
-        expect(conditionHolds(condition, base, { elapsedMs: 0, stillMs: 0 }), `${secret.name} is open on an ordinary raid`).toBe(false);
+        // Read at the start of the raid, having just walked up through the grass: no stretch of the clock or of standing opens on that, and no boots are dry.
+        expect(conditionHolds(condition, base, { elapsedMs: 0, stillMs: 0, waded: true }), `${secret.name} is open on an ordinary raid`).toBe(false);
       }
     }
   });
@@ -350,7 +357,7 @@ describe("the vale's secrets", () => {
         reward.kind === 'meet' ? [reward.speciesId] : reward.kind === 'gift' ? [reward.gift.speciesId] : [],
       ),
     );
-    expect(species.sort()).toEqual(['alakazam', 'butterfree', 'dragonair', 'gengar', 'golem', 'gyarados', 'hypno', 'kabutops', 'kingler', 'lickitung', 'machamp', 'mr-mime', 'snorlax', 'starmie']);
+    expect(species.sort()).toEqual(['alakazam', 'butterfree', 'dragonair', 'gengar', 'golem', 'gyarados', 'hypno', 'kabutops', 'kingler', 'lapras', 'lickitung', 'machamp', 'mr-mime', 'snorlax', 'starmie']);
   });
 
   describe('against the gyms', () => {
@@ -487,9 +494,9 @@ describe("the vale's secrets", () => {
       expect(secretLoot(plan(7, dusk)).map((piece) => piece.itemId)).toEqual(['chart-piece-1']);
       expect(secretLoot(plan(7, afternoon))).toEqual([]);
       expect(secretLoot(plan(7))).toEqual([]);
-      // And the heron's notice, which waits on nothing a raid brings and is laid on every one.
-      expect(plan(7, dusk).secrets.map((secret) => secret.id)).toEqual(['the-long-shadow', 'the-heron-that-is-not']);
-      expect(plan(7, afternoon).secrets.map((secret) => secret.id)).toEqual(['the-heron-that-is-not']);
+      // And the heron's notice and the duck hide's, which wait on nothing a raid brings and are laid on every one.
+      expect(plan(7, dusk).secrets.map((secret) => secret.id)).toEqual(['the-long-shadow', 'the-heron-that-is-not', 'the-lapras-doll']);
+      expect(plan(7, afternoon).secrets.map((secret) => secret.id)).toEqual(['the-heron-that-is-not', 'the-lapras-doll']);
     });
 
     it('lays the sleeper across his glade every raid until he is had, and wakes him only for the flute', () => {
@@ -534,10 +541,41 @@ describe("the vale's secrets", () => {
       }
       expect(plan(7, dusk).sleeping ?? []).not.toContain(heron.id);
       expect(
-        [0, HERON_STILL_MS - 1, HERON_STILL_MS, 60_000].map((stillMs) => secretOpenAt(heron, dusk, { elapsedMs: 30_000, stillMs })),
+        [0, HERON_STILL_MS - 1, HERON_STILL_MS, 60_000].map((stillMs) => secretOpenAt(heron, dusk, { elapsedMs: 30_000, stillMs, waded: true })),
       ).toEqual([false, false, true, true]);
       // Had, the notice is a notice.
       expect(plan(7, dusk, [`${heron.id}/dragonair`]).secrets.find((secret) => secret.id === heron.id)?.reward).toBeUndefined();
+    });
+
+    it('lays the Lapras doll every raid until it is had, and has it look up only at boots that never went into the grass', () => {
+      const doll = SECRETS.find((secret) => secret.id === 'the-lapras-doll')!;
+      expect(plan(7, dusk).secrets.find((secret) => secret.id === doll.id)?.reward).toEqual({ kind: 'meet', speciesId: 'lapras', level: 25 });
+      expect(plan(7, dusk).sleeping ?? []).not.toContain(doll.id);
+      expect([false, true].map((waded) => secretOpenAt(doll, dusk, { elapsedMs: 60_000, stillMs: 0, waded }))).toEqual([true, false]);
+      expect(plan(7, dusk, [`${doll.id}/lapras`]).secrets.find((secret) => secret.id === doll.id)?.reward).toBeUndefined();
+    });
+
+    it('can be walked to with dry boots: the boards go all the way from where a new game lands, and are the longer way', () => {
+      const doll = SECRETS.find((secret) => secret.id === 'the-lapras-doll')!;
+      // Everybody where they stand and walk, and every tile of tall grass, shut.
+      const grass = new Set<string>();
+      for (let y = 0; y < map.height; y += 1) {
+        for (let x = 0; x < map.width; x += 1) {
+          if (map.tallGrass[y]?.[x] === true) grass.add(`${x},${y}`);
+        }
+      }
+      const figures = new Set(
+        entities.filter((entity) => !entity.boulder && !entity.barrier).flatMap((entity) => idleBeatTiles(entity).map((tile) => `${tile.x},${tile.y}`)),
+      );
+      const from = frontDoorFor(VALE)!.position;
+      const dry = stepDistances(map.collision, from, new Set([...grass, ...figures]), map.links);
+      const wet = stepDistances(map.collision, from, figures, map.links);
+      const reach = (field: ReturnType<typeof stepDistances>): number =>
+        Math.min(...nookTiles(doll).map((tile) => field[tile.y][tile.x]).filter((steps) => steps >= 0));
+      expect(Number.isFinite(reach(dry)), 'no dry way to the duck hide from the front door').toBe(true);
+      expect(reach(dry)).toBeGreaterThan(reach(wet));
+      // And a raid can afford the walk: well inside half the clock at a tile a step.
+      expect(reach(dry) * STEP_DURATION_MS).toBeLessThan(RAID_DURATION_MS / 2);
     });
 
     it('prices the heron in raid clock a raid can afford, and long enough that a hunter takes a step on whoever stands', () => {
@@ -603,8 +641,8 @@ describe("the vale's secrets", () => {
       const badge = { ...dusk, badges: [MISTY_BOSS_ID] };
       expect(plan(7, dusk).secrets.map((secret) => secret.id)).not.toContain(bell.id);
       expect(plan(7, badge).secrets.find((secret) => secret.id === bell.id)?.reward).toEqual({ kind: 'meet', speciesId: 'kabutops', level: 28 });
-      expect([0, 59_999, 60_000, 119_999, 120_000].map((elapsedMs) => secretOpenAt(bell, badge, { elapsedMs, stillMs: 0 }))).toEqual([false, false, true, true, false]);
-      expect(secretOpenAt(bell, dusk, { elapsedMs: 90_000, stillMs: 0 })).toBe(false);
+      expect([0, 59_999, 60_000, 119_999, 120_000].map((elapsedMs) => secretOpenAt(bell, badge, { elapsedMs, stillMs: 0, waded: true }))).toEqual([false, false, true, true, false]);
+      expect(secretOpenAt(bell, dusk, { elapsedMs: 90_000, stillMs: 0, waded: true })).toBe(false);
     });
 
     it('ends every stretch of the clock before the shortest raid a heal leaves does', () => {

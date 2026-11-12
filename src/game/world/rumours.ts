@@ -218,6 +218,15 @@ export const RUMOURS: readonly Rumour[] = [
     ringsOver: 'GULL STRAND',
     line: 'Ran a kite seller out to GULL STRAND once. He came back with no kites. Something on WRACKERS\' SAND takes them, and it will go for anything FLYING.',
   },
+  {
+    id: 'board-lapras-doll',
+    secret: 'the-lapras-doll',
+    source: 'board',
+    gives: ['where', 'bring'],
+    names: 'THE DUCK HIDE',
+    ringsOver: 'REEDMERE',
+    line: 'RUMOUR: The doll on the water at THE DUCK HIDE in REEDMERE is no doll. They say it only looks up at DRY boots: somebody who never set foot in the tall grass.',
+  },
   // THE RUMOUR MILL's own slips: when and what to bring, where the harbour's
   // rumour about the same secret gives where and one of them. Two rumours from
   // two sources complete each other (the harbour arenas plan, section 4.3).
