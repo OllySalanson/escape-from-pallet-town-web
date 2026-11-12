@@ -185,12 +185,15 @@ export function pixelWindow(content: string, options: PixelWindowOptions = {}): 
  * lands between pixels at most healths, and a bar is the one place on these
  * screens where a soft edge is read as a wrong number.
  */
-export function pixelHpBar(current: number, max: number): string {
+export function pixelHpBar(current: number, max: number, width: number = HP_BAR_WIDTH): string {
   const ratio = max === 0 ? 0 : Math.max(0, Math.min(1, current / max));
   const state = ratio > 0.5 ? 'healthy' : ratio > 0.2 ? 'warning' : 'critical';
   // Anyone still standing shows at least one pixel of health.
-  const fill = ratio === 0 ? 0 : Math.max(1, Math.round(ratio * HP_BAR_WIDTH));
-  return `<span class="px-hp" role="img" aria-label="HP ${current} of ${max}"><span class="px-hp-fill ${state}" style="--fill:${fill}"></span></span>`;
+  const fill = ratio === 0 ? 0 : Math.max(1, Math.round(ratio * width));
+  // A shorter bar - under a Pokémon's icon in a grid of them - is the same bar
+  // at its own whole number of pixels, and thinner.
+  const short = width === HP_BAR_WIDTH ? '' : ` is-short" style="--bar:${width}`;
+  return `<span class="px-hp${short}" role="img" aria-label="HP ${current} of ${max}"><span class="px-hp-fill ${state}" style="--fill:${fill}"></span></span>`;
 }
 
 /**

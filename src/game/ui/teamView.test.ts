@@ -23,18 +23,32 @@ describe('YOUR TEAM', () => {
     ]);
   });
 
-  it('names the box on every row, the lead, and who cannot go', () => {
+  it('names the box on every slot and tile, the lead, and who cannot go', () => {
     const stash = stashOf(['rattata', 5], ['pidgey', 9]);
     stash.listPokemon()[1].pokemon.currentHp = 0;
     const html = teamBody({ entries: pickerEntries(stash), team: ['rattata-0'], partnerId: 'rattata-0' });
     expect(html).toContain('Next raid');
     expect(html).toContain('In your boxes');
     expect(html).toContain('Lead');
-    expect(html).toContain('Box 1');
     expect(html).toContain('partner');
     expect(html).toContain('Fainted');
     expect(html).toContain('data-picker-find');
     expect(html).toContain('data-member="pidgey-1"');
+    // The box is on every slot and tile for a reader and the find, and in the card for the eye.
+    expect(html.match(/data-member="[^"]+"[^>]*data-box-name="Box 1"/g)).toHaveLength(2);
+    expect(html).toMatch(/team-card-where">Box 1 · partner/);
+    // The lead's slot is the gold one, and a fainted Pokémon's icon stands still.
+    expect(html).toMatch(/class="team-slot is-lead" data-member="rattata-0"/);
+    expect(html).toMatch(/data-member="pidgey-1"[^>]*>.*?px-mon-icon is-still/);
+  });
+
+  it('always draws six slots, an empty one a Poké Ball, so how many are going is seen', () => {
+    const stash = stashOf(['rattata', 5], ['pidgey', 9]);
+    const html = teamBody({ entries: pickerEntries(stash), team: ['rattata-0'] });
+    expect(html.match(/class="team-slot[" ]/g)).toHaveLength(6);
+    expect(html.match(/team-slot is-empty/g)).toHaveLength(5);
+    // Only the boxes are found in: the team is six at most and always in view.
+    expect(html).not.toMatch(/class="team-slot[^"]*"[^>]*data-find/);
   });
 
   it('says the team is full rather than taking a seventh', () => {
@@ -43,6 +57,6 @@ describe('YOUR TEAM', () => {
     const html = teamBody({ entries: pickerEntries(stash), team: stash.listPokemon().slice(0, 6).map((stored) => stored.id) });
     expect(html).toContain('6 of 6');
     expect(html).toMatch(/data-member="diglett-6"[^>]*aria-disabled="true"/);
-    expect(html).toContain('Full');
+    expect(html).toContain('The team is full (6)');
   });
 });

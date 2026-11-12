@@ -117,7 +117,7 @@ export class TeamScene extends Phaser.Scene implements ProvidesFeedbackContext {
         back: { label: 'Close', attribute: 'data-close' },
         aside: pixelTag(`${going} of ${MAX_RUN_PARTY}`, going > 0 ? 'good' : 'risk'),
         body,
-        hints: 'ARROWS move · ENTER take or leave · type in FIND · P close',
+        hints: 'ARROWS move · ENTER take or leave · FIND a name · P close',
         ...(status ? { status } : {}),
       }),
     );
@@ -132,7 +132,7 @@ export class TeamScene extends Phaser.Scene implements ProvidesFeedbackContext {
       this.find = (event.target as HTMLInputElement).value;
     });
     apply(this.find);
-    overlay.refocus(...prefer, '[data-member]:not([hidden])', '[data-close]');
+    overlay.refocus(...prefer, '[data-cursor-start]:not([hidden])', '[data-member]:not([hidden])', '[data-close]');
   }
 
   private onKey(event: KeyboardEvent): void {

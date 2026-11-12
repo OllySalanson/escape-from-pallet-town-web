@@ -183,7 +183,7 @@ try {
   await press('Space');
   await page.waitFor(sceneIs('base'));
   await shoot('starter');
-  await until(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`, 'the partner taken');
+  await page.waitFor(`window.__escapeFromPalletTownGame__.scene.getScene('base')?.takeStarterForDriver?.("bulbasaur") === true`, { what: 'the partner taken' });
   await page.waitFor(sceneIs('base'));
   await page.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
   // A save with a real amount in it: four maps unlocked, two dozen Pokemon and
@@ -263,9 +263,15 @@ try {
 
   if (raid) {
     await jumpIn(page, { until: (expression, what) => page.waitFor(expression, { what }) });
-    await sleep(900);
-    await press('Space');
-    await sleep(400);
+    await page.waitFor(sceneIs('world'), { what: 'the raid' });
+    await sleep(1500);
+    // The raid can open on more than one box (the briefing, a first-raid line),
+    // and a key pressed under one is the box's, not a screen's.
+    const world = `window.__escapeFromPalletTownGame__.scene.getScene('world')`;
+    for (let box = 0; box < 10 && (await page.evaluate(`${world}.dialogBox?.visible === true`)); box += 1) {
+      await press('Space');
+      await sleep(350);
+    }
     for (const [key, name] of [['KeyP', 'party'], ['KeyB', 'bag'], ['KeyO', 'field-guide']]) {
       await press(key);
       await shoot(name);

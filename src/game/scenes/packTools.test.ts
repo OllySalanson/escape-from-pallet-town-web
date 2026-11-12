@@ -31,6 +31,9 @@ function packHolding(itemId: string): PackHarness {
     usingItemId: undefined,
     onItemUsed: () => undefined,
     render: () => undefined,
+    // The pack stamps when it asks who an item is for (`askedAt`), so a second
+    // press of the same key cannot answer the question it just opened.
+    time: { now: 0 },
   });
   return scene as unknown as PackHarness;
 }

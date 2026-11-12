@@ -455,6 +455,13 @@ against a snapshot: `npx vite build --outDir "$SCRATCH/dist"` (no
 `VITE_EPTW_TEST_MODE`: that build is in test mode at every URL) and
 `npx vite preview --outDir "$SCRATCH/dist" --port "$FREE_PORT" --strictPort`.
 
+`teamShots.mjs <test-mode build url> <dir> [--window=WxH] [--before]` photographs
+YOUR TEAM on a save of two dozen Pokémon, walks every slot and tile by arrow key,
+takes and leaves one by ENTER, and prints the glance measure the menu overhaul's
+scorecards are made of - words in view, Pokémon in view, how much of the panel is
+picture (`docs/screens/menu-overhaul/`); `--before` drives a build of `main` from
+before a redraw, which has no card.
+
 `menuShots.mjs <url> <dir> [--window=1920x950] [--raid] [--resize] [--scrollbars]`
 photographs every DOM screen at a real window size and prints, per scrolling
 pane, how many rows it holds and how many of them a player can actually see -

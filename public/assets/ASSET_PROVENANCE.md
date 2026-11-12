@@ -932,7 +932,9 @@ ships is the frames, recoloured and packed in national-dex order onto a new
 `src/game/pokemon/generated/pokemonIcons.ts`, which records each species' frame
 and the row its feet stand on. They are the owner's ask on the palette board:
 "all of the Pokémon that are in the game should be in the mapmaker", and only
-those.
+those. The same frames are drawn on the game's menus as FireRed draws them in
+its party and PC (`src/game/ui/monIcon.ts`, from YOUR TEAM on, 12 Nov 2026):
+nothing new was cut for that.
 
 ### `player-bike.png` - the player on FireRed's Bicycle
 

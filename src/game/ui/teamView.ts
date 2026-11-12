@@ -3,18 +3,38 @@
  * harbour on P (`scenes/TeamScene.ts`).
  *
  * Pokémon live in boxes (the overnight plan's second decision), and a box is
- * where a Pokémon is kept, never a reason to walk somewhere: so this lists the
+ * where a Pokémon is kept, never a reason to walk somewhere: so this shows the
  * team first - the bench the Raid Arena will open on - and then everybody in
- * every box, fit to fight first and highest level first, each row saying which
- * box it is in, with a find over it. The raid's P is the party; at home it is
- * the same question asked before the raid.
+ * every box, fit to fight first and highest level first, with a find over it.
+ * The raid's P is the party; at home it is the same question asked before the
+ * raid.
+ *
+ * It is drawn as FireRed draws a party and a PC box, not as a list (the menu
+ * overhaul, `docs/screens/menu-overhaul/`): the team is six slots, two abreast
+ * as HeartGold's touch screen has them, the lead's in gold and an empty one a
+ * dim Poké Ball, so how many are going is seen rather than counted; the boxes
+ * are a grid of FireRed's party icons, each flapping at its own health's pace
+ * (`monIcon.ts`) over its level and a short health bar; and everything else
+ * about the one under the cursor - its portrait, its types, its health in
+ * figures, its box - is the one card at the foot, so the words are there for
+ * one Pokémon at a time and never for thirty.
  *
  * Phaser-free, so the order and the words are tested without a browser.
  */
+import { getHeldItem } from '../items';
 import { MAX_RUN_PARTY, faintedRefusal } from '../hub/deploymentFlow';
-import { healthLine } from './condition';
-import { ABLE_TO_FIGHT, pickerFindField, pickerOrder, pickerRowAttributes, pickerRowNote, type PickerEntry } from './boxPicker';
-import { COLUMN_MEASURES, escapeAttribute, pixelColumns, pixelHpBar, pixelPokemonName, pixelTag, pixelWindow } from './pixelUi';
+import { ABLE_TO_FIGHT, pickerFindField, pickerOrder, pickerRowAttributes, type PickerEntry } from './boxPicker';
+import { itemIcon } from './icons';
+import { pixelMonIcon } from './monIcon';
+import {
+  escapeAttribute,
+  pixelHpBar,
+  pixelPokemonName,
+  pixelPortrait,
+  pixelTag,
+  pixelTypeBadge,
+  pixelWindow,
+} from './pixelUi';
 
 export interface TeamViewState {
   /** Every Pokémon in every box (`pickerEntries`). */
@@ -36,19 +56,17 @@ export function teamRows(state: TeamViewState): { readonly team: readonly Picker
   return { team, boxes: pickerOrder(state.entries.filter((entry) => !going.has(entry.id)), ABLE_TO_FIGHT) };
 }
 
-/** What the help bar says of a row, and the status line after it is pressed. */
 /** Said when ENTER would leave the team empty: nobody is ever left with no team (playtest wave 3, finding 11). */
 export const LAST_ONE_STAYS = 'Somebody has to go. Take another first.';
 
+/** What the help bar says of a slot or a tile, and the status line after it is pressed: short, because the card says the rest. */
 export function teamRowHelp(entry: PickerEntry, going: boolean, lead: boolean, size: number): string {
   const name = entry.pokemon.name;
   if (going && size === 1) {
-    return `Somebody has to go: ${name} is the whole team. Take another first, then leave ${name} at home.`;
+    return `${name} is the whole team. Take another first.`;
   }
   if (going) {
-    return lead
-      ? `${name} leads the next raid. ENTER leaves it at home in ${entry.box}.`
-      : `${name} is going on the next raid (${size} of ${MAX_RUN_PARTY}). ENTER leaves it at home in ${entry.box}.`;
+    return `${name} ${lead ? 'leads' : 'is going'}. ENTER leaves it at home.`;
   }
   if (entry.pokemon.isFainted) {
     return faintedRefusal(name);
@@ -56,40 +74,73 @@ export function teamRowHelp(entry: PickerEntry, going: boolean, lead: boolean, s
   if (size >= MAX_RUN_PARTY) {
     return `The team is full (${MAX_RUN_PARTY}). Leave somebody at home first.`;
   }
-  return `${name} is at home in ${entry.box}. ENTER takes it on the next raid.`;
+  return `ENTER takes ${name} on the next raid.`;
 }
 
-/** The panel's body: the team, then every box, with a find over both. */
+/** The words a slot or a tile is read by, for a screen reader and a driver: who, how strong, where. */
+function spokenName(entry: PickerEntry): string {
+  return `${entry.pokemon.name}, level ${entry.pokemon.level}, ${entry.box}`;
+}
+
+/** The card at the foot for one Pokémon: the only place its words are. */
+function teamCard(entry: PickerEntry, going: boolean, lead: boolean, partner: boolean): string {
+  const { pokemon } = entry;
+  const types = [pokemon.base.primaryType, pokemon.base.secondaryType].filter((type): type is NonNullable<typeof type> => Boolean(type));
+  const held = getHeldItem(pokemon.heldItemId);
+  const tag = going
+    ? pixelTag(lead ? 'Lead' : 'Going', 'good', true)
+    : pokemon.isFainted
+      ? pixelTag('Fainted', 'risk')
+      : '';
+  const where = [entry.box, ...(partner ? ['partner'] : [])].join(' · ');
+  return `<div class="px-detail team-card" data-shown-by="${escapeAttribute(entry.id)}" hidden>${pixelPortrait(pokemon.base.dexId ?? 0, pokemon.name, pokemon.shiny)}<div class="team-card-words"><span class="px-row-line">${pixelPokemonName(pokemon)}<span class="team-card-level">Lv ${pokemon.level}</span>${tag}</span><span class="px-row-line">${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}<small>${pokemon.currentHp}/${pokemon.maxHp}</small></span><span class="px-row-line team-card-types">${types.map((type) => pixelTypeBadge(type)).join('')}</span><small class="team-card-where">${escapeAttribute(where)}${held ? ` · ${itemIcon(held.id, held.displayName)}${escapeAttribute(held.displayName)}` : ''}</small></div></div>`;
+}
+
+/** One of the six: the icon, the name, the level and the bar, as FireRed's party slot. */
+function teamSlot(entry: PickerEntry, lead: boolean, size: number, first: boolean): string {
+  const { pokemon } = entry;
+  const classes = ['team-slot', ...(lead ? ['is-lead'] : []), ...(pokemon.isFainted ? ['is-fainted'] : [])].join(' ');
+  return `<button class="${classes}" data-member="${escapeAttribute(entry.id)}" data-shows="${escapeAttribute(entry.id)}" data-box-name="${escapeAttribute(entry.box)}" aria-label="${escapeAttribute(spokenName(entry))}"${first ? ' data-cursor-start' : ''} data-help="${escapeAttribute(teamRowHelp(entry, true, lead, size))}">${pixelMonIcon(pokemon)}<span class="team-slot-words">${pixelPokemonName(pokemon)}<span class="team-slot-line"><span class="team-level">Lv${pokemon.level}</span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp, TEAM_SLOT_BAR)}</span></span></button>`;
+}
+
+/** One in a box: the icon over its level and a short bar, as FireRed's PC box with the two facts a team is picked by. */
+function boxTile(entry: PickerEntry, size: number, first: boolean): string {
+  const { pokemon } = entry;
+  const fainted = pokemon.isFainted;
+  const disabled = fainted || size >= MAX_RUN_PARTY;
+  const classes = ['team-tile', ...(fainted ? ['is-fainted'] : [])].join(' ');
+  return `<button class="${classes}" data-member="${escapeAttribute(entry.id)}" data-shows="${escapeAttribute(entry.id)}" ${pickerRowAttributes(entry)} aria-label="${escapeAttribute(spokenName(entry))}"${first ? ' data-cursor-start' : ''}${disabled ? ' aria-disabled="true"' : ''} data-help="${escapeAttribute(teamRowHelp(entry, false, false, size))}">${pixelMonIcon(pokemon)}<span class="team-tile-line"><span class="team-level">${pokemon.level}</span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp, TEAM_TILE_BAR)}</span></button>`;
+}
+
+/** The bar under a slot's name, in game pixels: what is left of the slot beside its level. */
+export const TEAM_SLOT_BAR = 32;
+/** The bar under a tile's icon, beside a two-figure level. */
+export const TEAM_TILE_BAR = 18;
+
+/** The panel's body: the six slots, the boxes, and the card for the one under the cursor. */
 export function teamBody(state: TeamViewState): string {
   const { team, boxes } = teamRows(state);
   const size = team.length;
-  const row = (entry: PickerEntry, going: boolean, index: number, first: boolean): string => {
-    const { pokemon } = entry;
-    const lead = going && index === 0;
-    const fainted = pokemon.isFainted;
-    const tag = going
-      ? pixelTag(lead ? 'Lead' : 'Going', 'good', true)
-      : fainted
-        ? pixelTag('Fainted', 'risk')
-        : pixelTag(size >= MAX_RUN_PARTY ? 'Full' : 'Take', 'plain');
-    const partner = entry.id === state.partnerId ? 'partner' : '';
-    const note = pickerRowNote(entry, [healthLine(pokemon), partner].filter(Boolean).join(' · '));
-    const disabled = !going && (fainted || size >= MAX_RUN_PARTY);
-    return `<button class="px-row${going ? ' is-selected' : ''}" data-member="${entry.id}" ${pickerRowAttributes(entry)}${first ? ' data-cursor-start' : ''}${disabled ? ' aria-disabled="true"' : ''} data-help="${escapeAttribute(teamRowHelp(entry, going, lead, size))}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(pokemon)}${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${note}</small></span>${tag}</button>`;
-  };
-  const going =
-    team.length > 0
-      ? team.map((entry, index) => row(entry, true, index, index === 0)).join('')
-      : '<p class="px-empty px-wrap">Nobody yet. Choose up to six from your boxes below.</p>';
-  const home =
+  const slots = Array.from({ length: MAX_RUN_PARTY }, (_, index) => {
+    const entry = team[index];
+    return entry
+      ? teamSlot(entry, index === 0, size, index === 0)
+      : `<span class="team-slot is-empty" aria-hidden="true">${itemIcon('poke-ball')}</span>`;
+  }).join('');
+  const tiles =
     boxes.length > 0
-      ? boxes.map((entry, index) => row(entry, false, index, team.length === 0 && index === 0)).join('')
+      ? boxes.map((entry, index) => boxTile(entry, size, team.length === 0 && index === 0)).join('')
       : '<p class="px-empty px-wrap">Everybody you have is going.</p>';
-  const list = `${pickerFindField()}<h3 class="px-subheading">Next raid</h3>${going}<h3 class="px-subheading">In your boxes</h3>${home}`;
-  // The raid party's layout: one list as tall as the panel and no taller, so
-  // its foot scrolls inside the window rather than running under the help bar.
-  return `<main class="px-body raid-party-layout">${pixelWindow(`<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${list}</div>`, {
-    heading: 'Who is going?',
+  const cards = [...team.map((entry, index) => teamCard(entry, true, index === 0, entry.id === state.partnerId)), ...boxes.map((entry) => teamCard(entry, false, false, entry.id === state.partnerId))].join('');
+  const nextRaid = pixelWindow(`<div class="team-slots">${slots}</div>`, {
+    heading: 'Next raid',
     note: `${size} of ${MAX_RUN_PARTY}`,
-  })}</main>`;
+    className: 'team-window',
+  });
+  const inBoxes = pixelWindow(`${pickerFindField()}<div class="team-box px-scroll">${tiles}</div>${cards}`, {
+    heading: 'In your boxes',
+    note: `${boxes.length}`,
+    className: 'team-window team-boxes',
+  });
+  return `<main class="px-body team-layout">${nextRaid}${inBoxes}</main>`;
 }
