@@ -371,3 +371,25 @@ cards' feet sit under the MORE strip.
 | Hades' Mirror: every upgrade at once | 2 | 5 | four of seven rows above a fold; now all seven on one line |
 | A shop's price at a glance | 3 | 5 | "4× Parts crate" in words; now the crate's icon ×4, crossed in red when short |
 | Every key path | 5 | 5 | arrows reach all seven, ENTER asks, KEEP THEM keeps, BUILD IT builds (`shopScreens.mjs`) |
+
+## The Day-Care
+
+`HubScene.dayCareView`, with Bill's PC's tiles. Pictures by
+`tools/playtest/teamAnywhere.mjs` (its last stop: a Charmander and a Pidgey in
+box one, a Rattata and a Mankey in box two).
+
+| Before | After |
+|---|---|
+| ![](day-care/before-1280x800.png) | ![](day-care/after-1280x800.png) |
+
+What changed: who he could raise is the box as FireRed's party icons - the ones
+he would take first first, one on a raid dim and refused - and the box each is
+kept in is said in the dossier's day-care deeds ("Kept in Box 1") for the one
+under the cursor, and to a reader on every tile. LEAVE on every row is gone: the
+deed is in the dossier, and ENTER on a tile does it.
+
+| Benchmark | Before | After |
+|---|---|---|
+| FireRed PC box: the collection as creatures | 1 | 5 |
+| Hades: words only for the one pointed at | 2 | 4 |
+| Every key path | 5 | 5 |
