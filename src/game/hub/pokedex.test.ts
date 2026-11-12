@@ -18,7 +18,11 @@ import {
   milestoneWords,
   nextMilestone,
   POKEDEX_MILESTONES,
+  dexStanding,
+  pokedexOf,
   pokedexOwned,
+  pokedexSeen,
+  pokedexShiny,
   rewardList,
 } from './pokedex';
 
@@ -241,5 +245,94 @@ describe('the Pokédex in the save', () => {
     const loaded = new SaveManager(storage).load()!;
     expect(loaded.raidProgress.pokedexOwned).toEqual([1, 4]);
     expect(loaded.raidProgress.pokedexRewards).toEqual([10]);
+  });
+});
+
+describe('what the Pokédex has met', () => {
+  it('counts a kind as met once a fight has shown it, and every kind owned as met too', () => {
+    expect(pokedexSeen([16, 19], [1, 4])).toEqual([1, 4, 16, 19]);
+    expect(pokedexSeen(undefined, [7])).toEqual([7]);
+    expect(pokedexSeen([19, 19, 0, 999], [])).toEqual([19]);
+  });
+
+  it('stands a kind as owned, only met, or not known', () => {
+    const dex = pokedexOf({ pokedexOwned: [1], pokedexSeen: [16] }, undefined);
+    expect(dexStanding(dex, 1)).toBe('owned');
+    expect(dexStanding(dex, 16)).toBe('seen');
+    expect(dexStanding(dex, 150)).toBe('unknown');
+  });
+
+  it('keeps owned exactly what it was: a kind only met is never counted as owned', () => {
+    const dex = pokedexOf({ pokedexOwned: [1], pokedexSeen: [16, 19, 21] }, vaultOf(2));
+    expect(dex.owned).toEqual([1, 2]);
+    expect(dex.seen).toEqual([1, 2, 16, 19, 21]);
+    expect(dueMilestone(dex.owned.length, [])).toBeUndefined();
+  });
+
+  it('registers a kind met in a fight at once, once, and keeps it through every later write', () => {
+    const storage = saveWith(vaultOf(1));
+    const saves = new SaveManager(storage);
+    expect(saves.registerSeen([16, 19])).toEqual([16, 19]);
+    // Met again, or owned already: nothing new, and nothing written.
+    const before = storage.getItem(SAVE_KEY);
+    expect(saves.registerSeen([16, 1])).toEqual([]);
+    expect(storage.getItem(SAVE_KEY)).toBe(before);
+    // A write that knows nothing of it - a key learned mid-raid - keeps it.
+    saves.learnKeys(['bag']);
+    const loaded = new SaveManager(storage).load()!;
+    expect(loaded.raidProgress.pokedexSeen).toEqual([16, 19]);
+    expect(pokedexOf(loaded.raidProgress, loaded.stash).seen).toEqual([1, 16, 19]);
+    expect(loaded.raidProgress.pokedexOwned).toEqual([1]);
+  });
+
+  it('says nothing was registered where there is no game to register it in', () => {
+    expect(new SaveManager(new MemoryStorage()).registerSeen([16])).toEqual([]);
+  });
+
+  it('drops anything in the saved lists that is not a kind', () => {
+    const storage = saveWith(vaultOf(1));
+    const raw = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: Record<string, unknown> };
+    raw.raidProgress.pokedexSeen = [16, 16, 'x', 152, 0];
+    raw.raidProgress.pokedexShiny = [129, 'x', -1];
+    storage.setItem(SAVE_KEY, JSON.stringify(raw));
+    const loaded = new SaveManager(storage).load()!;
+    expect(loaded.raidProgress.pokedexSeen).toEqual([16]);
+    expect(loaded.raidProgress.pokedexShiny).toEqual([129]);
+  });
+});
+
+describe('the shinies the Pokédex has owned', () => {
+  const shinyOf = (speciesId: string, level = 5): Pokemon => {
+    const pokemon = new Pokemon(ALL_SPECIES.find((species) => species.id === speciesId)!, level);
+    pokemon.shiny = true;
+    return pokemon;
+  };
+
+  it('registers a shiny by being banked, and keeps it after the Pokémon is gone', () => {
+    const stash = vaultOf(1);
+    stash.addPokemon(shinyOf('magikarp'));
+    const storage = saveWith(stash);
+    expect(new SaveManager(storage).load()!.raidProgress.pokedexShiny).toEqual([129]);
+
+    // Paid to Brock, lost to a wipe: it was still owned, and it was still shiny.
+    const saves = new SaveManager(storage);
+    const game = saves.load()!;
+    const kept = game.stash.listPokemon().find(({ pokemon }) => pokemon.shiny)!;
+    expect(game.stash.removePokemon(kept.id)).not.toBeNull();
+    saves.save(game);
+    const after = new SaveManager(storage).load()!;
+    expect(after.stash.listPokemon().some(({ pokemon }) => pokemon.shiny)).toBe(false);
+    expect(after.raidProgress.pokedexShiny).toEqual([129]);
+  });
+
+  it('counts both ends of a shiny that evolved, and no kind of one that is not shiny', () => {
+    const stash = new Stash();
+    const pikachu = shinyOf('pikachu', 12);
+    pikachu.rememberKinds([26]);
+    stash.addPokemon(pikachu);
+    stash.addPokemon(new Pokemon(ALL_SPECIES[15], 5));
+    expect(pokedexShiny(undefined, stash)).toEqual([25, 26]);
+    expect(pokedexShiny([129], stash)).toEqual([25, 26, 129]);
+    expect(pokedexShiny(undefined, undefined)).toEqual([]);
   });
 });

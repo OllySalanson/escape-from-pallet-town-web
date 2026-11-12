@@ -101,6 +101,7 @@ import {
   calendarLines,
   nextRival,
   partnerRug,
+  pokedexNote,
   tellyLines,
 } from './homeLines';
 import { hunterRival } from '../world/hunters';
@@ -627,6 +628,7 @@ export interface RoomThing {
     | 'pokemon-jump'
     | 'berry-picking'
     | 'book'
+    | 'pokedex'
     | ArenaStationId;
   /** The book lying open on it, in THE GREAT LIBRARY: faced and asked, it is read full screen (`library/books.ts`). */
   readonly book?: string;
@@ -1610,10 +1612,18 @@ function drawLab(room: BaseRoom, game: RestoredGame): Drawn {
     tiles: ballTiles(starter),
     lines: [BALL_LEFT_LINE],
   }));
+  // His computers along the back wall are where FireRed's Oak rates a Pokédex:
+  // faced, they open the whole of it (`scenes/PokedexScene.ts`).
+  const pokedex: RoomThing = {
+    name: "OAK'S PC",
+    note: pokedexNote(game),
+    tiles: OAK_PC_TILES,
+    opens: 'pokedex',
+  };
   return {
     sketch,
     catalogue: LAB,
-    things: [wallMap, board, fossilMachine, chartTable, ...balls],
+    things: [wallMap, board, pokedex, fossilMachine, chartTable, ...balls],
     sprites: left.map(ballSprite),
     wallMap: OAK_WALL_MAP,
     posters: [
@@ -1646,6 +1656,7 @@ function drawLabChoosing(room: BaseRoom, game: RestoredGame): Drawn {
     things: [
       waiting('THE WALL MAP', wallMapNote(game), WALL_MAP_TILES),
       waiting('THE BOARD', boardNote(game), BOARD_TILES),
+      waiting("OAK'S PC", 'The Pokédex', OAK_PC_TILES),
       waiting('THE CHART TABLE', chartTableNote(chartTableFacts(game)), CHART_TABLE_TILES),
       ...balls,
     ],
@@ -1657,6 +1668,17 @@ function drawLabChoosing(room: BaseRoom, game: RestoredGame): Drawn {
     ],
   };
 }
+
+/**
+ * The tiles of Oak's computers along the back wall (`labComputers`, planted at
+ * 0,1, four wide and two deep): what is faced to open the Pokédex, and what its
+ * caption is seated against. The machine stands in front of the west three, so
+ * the one way up to them is the aisle tile at (3, 3).
+ */
+export const OAK_PC_TILES: readonly GridPosition[] = Array.from({ length: 8 }, (_tile, index) => ({
+  x: index % 4,
+  y: 1 + Math.floor(index / 4),
+}));
 
 /** The tiles of the machine at the lab's west wall (`labMachine`, planted at 0,3). */
 export const FOSSIL_MACHINE_TILES: readonly GridPosition[] = [

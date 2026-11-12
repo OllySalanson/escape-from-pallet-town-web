@@ -67,6 +67,7 @@ import { FIRST_CONTRACT } from '../objectives/contracts';
 import { buildDefeatSequence } from '../run/defeatSequence';
 import type { ExtractionReport } from '../run/extractionReport';
 import { HUNTER_SEARCH_MS, createHunterState } from '../world/hunter';
+import { SaveManager } from '../save/SaveManager';
 import { BattleScene } from './BattleScene';
 import { combatantSpot, seatedSpriteY } from './battlePresentation';
 import { iconTextureKey, itemIconName } from '../ui/icons';
@@ -416,6 +417,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     // Class fields do not run for an Object.create'd scene, and experience is
     // awarded by walking this set.
     foesFacedBy: new Map(),
+    metThisFight: new Set(),
     // Whose faint has been put on screen - also a class field.
     fallen: new Set(),
     victoryRewardsGranted: false,
@@ -3510,5 +3512,51 @@ describe('both sides fainting on the same turn', () => {
     expect(charmander.experience).toBeGreaterThan(before);
     expect(dialog.shownMessages.some((line) => line.startsWith('CHARMANDER gained'))).toBe(true);
     expect(returned).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * The Pokédex's "met" (`hub/pokedex.ts`): a kind is registered the moment it
+ * stands opposite, as FireRed sets its seen flag, and written at once so a raid
+ * lost afterwards has still met it.
+ */
+describe('what a fight tells the Pokédex it met', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const noting = (scene: BattleScene): void => (scene as unknown as { noteWhoFacesWhom(): void }).noteWhoFacesWhom();
+
+  it('registers a wild Pokémon as met, once however often the field is looked at', () => {
+    const registered = vi.spyOn(SaveManager.prototype, 'registerSeen').mockReturnValue([]);
+    const { scene } = createBattleSceneHarness({ wild: new Pokemon(getSpeciesById('gastly')!, 10) });
+
+    noting(scene);
+    noting(scene);
+
+    expect(registered).toHaveBeenCalledTimes(1);
+    expect(registered).toHaveBeenCalledWith([92]);
+  });
+
+  it('registers what a trainer has out, and not what is still in a ball', () => {
+    const registered = vi.spyOn(SaveManager.prototype, 'registerSeen').mockReturnValue([]);
+    const { scene } = createBattleSceneHarness({
+      authoredTrainer: true,
+      trainerParty: [new Pokemon(PIDGEY, 7), new Pokemon(getSpeciesById('snorlax')!, 9)],
+    });
+
+    noting(scene);
+
+    expect(registered.mock.calls).toEqual([[[16]]]);
+  });
+
+  it('registers nothing in a bout for show, which writes nothing but its result', () => {
+    const registered = vi.spyOn(SaveManager.prototype, 'registerSeen').mockReturnValue([]);
+    const { scene } = createBattleSceneHarness({ wild: new Pokemon(PIDGEY, 3) });
+    // The harness has already stood the fight up as a raid's: start it again as a bout.
+    Object.assign(scene as object, { exhibition: { rival: 'blue', at: { x: 32, y: 8 } }, metThisFight: new Set() });
+    registered.mockClear();
+
+    noting(scene);
+
+    expect(registered).not.toHaveBeenCalled();
   });
 });

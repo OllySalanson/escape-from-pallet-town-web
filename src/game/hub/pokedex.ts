@@ -147,6 +147,68 @@ export function pokedexOwned(
 }
 
 /**
+ * Every kind the save has met: what a fight has registered
+ * (`SaveManager.registerSeen`, the moment a wild one appears or a trainer sends
+ * one out, as FireRed sets its seen flag) and every kind it has owned, because
+ * a Pokémon handed over, traded for or revived was looked at too. Seen is never
+ * lost: a raid that ends in a wipe has still met what it met.
+ */
+export function pokedexSeen(registered: readonly number[] | undefined, owned: readonly number[]): number[] {
+  return tidyDexIds([...(registered ?? []), ...owned]);
+}
+
+/**
+ * Every kind the save has owned a shiny of: what it has registered, and every
+ * kind each shiny in the vault has been - a shiny stays shiny through an
+ * evolution, so both ends of one count. Registered by the same write that
+ * registers a kind as owned (`SaveManager`'s `withVaultRegistered`), and kept
+ * after the Pokémon is gone, as `pokedexOwned` is.
+ */
+export function pokedexShiny(
+  registered: readonly number[] | undefined,
+  stash: Stash | undefined,
+): number[] {
+  const held =
+    stash
+      ?.listPokemon()
+      .filter((stored) => stored.pokemon.shiny)
+      .flatMap((stored) => stored.pokemon.kindsBeen) ?? [];
+  return tidyDexIds([...(registered ?? []), ...held]);
+}
+
+/** How well the save knows a kind: the three things a Pokédex tile can be. */
+export type DexStanding = 'owned' | 'seen' | 'unknown';
+
+/** The whole Pokédex as a screen reads it: who is owned, who has only been met, who was shiny. */
+export interface Pokedex {
+  readonly owned: readonly number[];
+  readonly seen: readonly number[];
+  readonly shiny: readonly number[];
+}
+
+/** The save's Pokédex, read off its progress and its vault. */
+export function pokedexOf(
+  progress: {
+    readonly pokedexOwned?: readonly number[];
+    readonly pokedexSeen?: readonly number[];
+    readonly pokedexShiny?: readonly number[];
+  },
+  stash: Stash | undefined,
+): Pokedex {
+  const owned = pokedexOwned(progress.pokedexOwned, stash);
+  return {
+    owned,
+    seen: pokedexSeen(progress.pokedexSeen, owned),
+    shiny: pokedexShiny(progress.pokedexShiny, stash),
+  };
+}
+
+/** Where one kind stands in it. */
+export function dexStanding(dex: Pokedex, dexId: number): DexStanding {
+  return dex.owned.includes(dexId) ? 'owned' : dex.seen.includes(dexId) ? 'seen' : 'unknown';
+}
+
+/**
  * The lowest milestone this many kinds has reached and Oak has not yet paid,
  * so a save that crosses two at once hears them in order, one at a time.
  */

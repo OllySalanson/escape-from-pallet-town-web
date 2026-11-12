@@ -5455,3 +5455,380 @@ button {
 .pixel-ui .px-row.starts-pocket {
   box-shadow: inset 0 var(--u) 0 var(--frame);
 }
+
+/* --- THE POKéDEX (`ui/pokedexView.ts`, `scenes/PokedexScene.ts`) --------------
+   All 151 as a grid of FireRed's party icons across the whole window: owned in
+   colour, met as a silhouette, never met as an empty ball. Over it the count,
+   drawn at twice its size, and the rail of Oak's milestones; beside it, where
+   the window is wide enough, the one under the cursor shown big. */
+.menu-overlay.pixel-ui.pokedex-menu {
+  --dex-ball: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M4 0h4v1h-4zM2 1h2v1h-2zM8 1h2v1h-2zM1 2h1v1h-1zM10 2h1v1h-1zM1 3h1v1h-1zM10 3h1v1h-1zM0 4h1v1h-1zM11 4h1v1h-1zM0 5h1v1h-1zM5 5h2v1h-2zM11 5h1v1h-1zM0 6h5v1h-5zM7 6h5v1h-5zM0 7h1v1h-1zM5 7h2v1h-2zM11 7h1v1h-1zM1 8h1v1h-1zM10 8h1v1h-1zM1 9h1v1h-1zM10 9h1v1h-1zM2 10h2v1h-2zM8 10h2v1h-2zM4 11h4v1h-4z'/%3E%3C/svg%3E");
+  /* How many game pixels of the rail one kind is: two where there is room. */
+  --dex-step: 2;
+}
+.menu-overlay.pixel-ui.pokedex-menu:is([data-room='tight'], [data-short]) {
+  --dex-step: 1;
+}
+.menu-overlay.pixel-ui.pokedex-menu[data-room='wide'] {
+  --dex-step: 4;
+}
+/* The count in words gives way first: a small window keeps the band to one
+   line, so the tiles keep a row, and the title bar says "37 of 151" instead. */
+.pixel-ui.pokedex-menu:is([data-room='tight'], [data-short]) .dex-count-words,
+.pixel-ui.pokedex-menu:not([data-room='tight'], [data-short]) .dex-aside {
+  display: none;
+}
+:where(.pixel-ui) .dex-layout {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 4);
+  min-height: 0;
+  height: 100%;
+}
+/* The band: the count, the rail and the thing to reach, on one line. */
+.pixel-ui .px-window.dex-band {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--u) * 2) calc(var(--u) * 8);
+  padding: calc(var(--u) * 3) calc(var(--u) * 6);
+}
+:where(.pixel-ui) .dex-count {
+  display: flex;
+  align-items: flex-end;
+  gap: calc(var(--u) * 4);
+}
+/* The one number on the screen drawn large: the same face magnified by a whole
+   number, as a sprite is, because the face has one size and no bold. Its box is
+   the size it is drawn at, so what stands beside it stands clear. */
+:where(.pixel-ui) .dex-count-big {
+  display: block;
+  width: calc(var(--u) * 14 * var(--digits, 1));
+  height: calc(var(--u) * 24);
+  color: var(--red);
+  white-space: nowrap;
+}
+:where(.pixel-ui) .dex-count-big > span {
+  display: block;
+  width: 50%;
+  height: 50%;
+  transform: scale(2);
+  transform-origin: 0 0;
+}
+:where(.pixel-ui) .dex-count-words {
+  display: grid;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* The rail: one step a kind, filled as far as the count has come, with a pip
+   on each of Oak's milestones. */
+:where(.pixel-ui) .dex-rail {
+  position: relative;
+  flex: none;
+  width: calc(var(--u) * (151 * var(--dex-step) + 2));
+  height: calc(var(--u) * 10);
+  background: var(--cream-dim);
+  box-shadow: inset 0 0 0 var(--u) var(--frame);
+}
+:where(.pixel-ui) .dex-rail-fill {
+  position: absolute;
+  left: var(--u);
+  top: var(--u);
+  width: calc(var(--u) * var(--owned) * var(--dex-step));
+  height: calc(var(--u) * 8);
+  background: var(--teal-ink);
+}
+:where(.pixel-ui) .dex-pip {
+  position: absolute;
+  top: calc(var(--u) * 2);
+  left: calc(var(--u) * (var(--at) * var(--dex-step) - 2));
+  width: calc(var(--u) * 6);
+  height: calc(var(--u) * 6);
+  background: var(--cream-lit);
+  box-shadow: inset 0 0 0 var(--u) var(--frame);
+}
+:where(.pixel-ui) .dex-pip.is-paid {
+  background: var(--gold);
+}
+:where(.pixel-ui) .dex-pip.is-due {
+  background: var(--gold);
+  box-shadow: inset 0 0 0 var(--u) var(--red);
+}
+:where(.pixel-ui) .dex-pip.is-next {
+  box-shadow: inset 0 0 0 var(--u) var(--red);
+}
+/* A milestone handed over carries the drawn tick. */
+:where(.pixel-ui) .dex-pip.is-paid::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: calc(var(--u) * -6);
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 5);
+  background: var(--teal-ink);
+  mask: var(--px-tick) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
+}
+:where(.pixel-ui) .dex-goal {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 6);
+  margin-left: auto;
+  white-space: nowrap;
+}
+:where(.pixel-ui) .dex-goal-words {
+  display: grid;
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .dex-rewards {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .dex-reward {
+  display: flex;
+  align-items: center;
+  gap: var(--u);
+}
+/* The grid and, where there is room, the card beside it. */
+:where(.pixel-ui) .dex-main {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--u) * 4);
+  min-height: 0;
+}
+/* A pixel of room round the tiles and no more: nine rows of them are 306
+   pixels, which is exactly what a 1280x800 window has left under the band. */
+.pixel-ui .px-window.dex-window {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  padding: var(--u) calc(var(--u) * 3);
+}
+:where(.pixel-ui) .dex-tiles {
+  flex: 0 1 auto;
+  display: grid;
+  /* As much room a tile as the pane has with all 151 in view (`dexPitch`). */
+  grid-template-columns: repeat(auto-fill, calc(var(--u) * var(--dex-pitch, 34)));
+  justify-content: center;
+  align-content: start;
+  /* The pane rests on a row's top, never between two: a tile is a tall row,
+     and one cut at each end is hidden whole by the scroll cues. */
+  scroll-snap-type: y mandatory;
+}
+.pixel-ui .dex-tile {
+  --edge: transparent;
+  position: relative;
+  /* Its own box and nothing past it, so the pane is exactly as tall as its rows. */
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * var(--dex-pitch, 34));
+  height: calc(var(--u) * var(--dex-pitch, 34));
+  padding: 0;
+  scroll-snap-align: start;
+  background:
+    linear-gradient(var(--edge), var(--edge)) var(--u) 0 / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) var(--u) 100% / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) 0 var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) 100% var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat;
+}
+.pixel-ui .dex-tile:focus {
+  --edge: var(--red);
+  outline: none;
+  background-color: var(--cream-lit);
+}
+/* A hundred and fifty-one icons stand still; only the one under the cursor
+   moves, as FireRed's chosen icon bounces. */
+.pixel-ui .dex-tile > .px-mon-icon {
+  animation: none;
+}
+.pixel-ui .dex-tile.is-owned:focus > .px-mon-icon {
+  animation: mon-bounce 0.2s step-end infinite;
+}
+/* Met and not owned: its shape and nothing else. */
+.pixel-ui .dex-tile.is-seen > .px-mon-icon {
+  filter: brightness(0);
+  opacity: 0.5;
+}
+/* A legend owned stands on gold. */
+.pixel-ui .dex-tile.is-legend.is-owned {
+  background-color: var(--gold-wash);
+}
+:where(.pixel-ui) .dex-tile > .px-shiny {
+  position: absolute;
+  top: calc(var(--u) * 2);
+  right: calc(var(--u) * 2);
+}
+/* Never met: an empty ball, drawn, in the ink of something not there yet. */
+:where(.pixel-ui) .dex-ball {
+  display: block;
+  width: calc(var(--u) * 12);
+  height: calc(var(--u) * 12);
+  background: var(--ink-soft);
+  opacity: 0.4;
+  mask: var(--dex-ball) center / 100% 100% no-repeat;
+  -webkit-mask: var(--dex-ball) center / 100% 100% no-repeat;
+}
+:where(.pixel-ui) .dex-ball.is-big {
+  width: calc(var(--u) * 36);
+  height: calc(var(--u) * 36);
+}
+/* The card: only where the window is wide enough to stand it beside the grid. */
+.pixel-ui .px-window.dex-card {
+  display: none;
+}
+.pixel-ui.pokedex-menu[data-room='wide'] .px-window.dex-card {
+  flex: none;
+  display: block;
+  width: calc(var(--u) * 196);
+  max-height: 100%;
+  overflow: hidden;
+}
+:where(.pixel-ui) .dex-card-body {
+  display: grid;
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .dex-card-figure {
+  display: grid;
+  place-items: center;
+  height: calc(var(--u) * 66);
+  border-bottom: var(--u) solid var(--frame);
+}
+:where(.pixel-ui) .dex-figures {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .dex-figure {
+  position: relative;
+  display: block;
+}
+.pixel-ui .dex-figure.is-silhouette img {
+  filter: brightness(0);
+  opacity: 0.55;
+}
+:where(.pixel-ui) .dex-figure > .px-shiny {
+  position: absolute;
+  top: calc(var(--u) * 4);
+  right: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .dex-card-where {
+  display: grid;
+  gap: var(--u);
+  padding-top: calc(var(--u) * 2);
+  border-top: var(--u) solid var(--frame);
+}
+:where(.pixel-ui) .dex-entry-head {
+  display: grid;
+  justify-items: start;
+  gap: var(--u);
+  min-width: 0;
+}
+:where(.pixel-ui) .dex-entry-head > .px-row-line {
+  gap: 0 calc(var(--u) * 4);
+}
+:where(.pixel-ui) .dex-category {
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .dex-types {
+  gap: calc(var(--u) * 3);
+  padding: var(--u);
+}
+/* A kind's own page: the sprite at twice its size beside its words. */
+:where(.pixel-ui) .dex-entry {
+  display: flex;
+  align-items: stretch;
+  gap: calc(var(--u) * 4);
+  min-height: 0;
+  height: 100%;
+}
+.pixel-ui .px-window.dex-entry-figure {
+  flex: none;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: calc(var(--u) * 6);
+  min-width: calc(var(--u) * 150);
+  padding: calc(var(--u) * 6);
+}
+.pixel-ui .px-window.dex-entry-figure.is-legend {
+  --fill: var(--gold-wash);
+}
+.pixel-ui .dex-entry-figure .px-portrait {
+  width: calc(var(--u) * 128);
+  height: calc(var(--u) * 128);
+}
+.pixel-ui .dex-entry-figure .px-portrait img {
+  transform: scale(calc(var(--zoom, 2) * 2));
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .px-window.dex-entry-figure {
+  min-width: calc(var(--u) * 76);
+  padding: calc(var(--u) * 4);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .dex-entry-figure .px-portrait {
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 64);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .dex-entry-figure .px-portrait img {
+  transform: scale(var(--zoom, 2));
+}
+:where(.pixel-ui) .dex-entry-side {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 4);
+  min-width: 0;
+  min-height: 0;
+}
+.pixel-ui .px-window.dex-entry-words,
+.pixel-ui .px-window.dex-entry-family {
+  flex: none;
+}
+.pixel-ui .px-window.dex-entry-where {
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(var(--u) * 30);
+}
+:where(.pixel-ui) .dex-where {
+  flex: 0 1 auto;
+  display: grid;
+  gap: calc(var(--u) * 2);
+  min-height: 0;
+}
+/* The line a kind belongs to, drawn as the grid draws each of them. */
+:where(.pixel-ui) .dex-family {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .dex-kin {
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 34);
+  height: calc(var(--u) * 34);
+}
+:where(.pixel-ui) .dex-kin.is-here {
+  background: var(--cream-lit);
+  box-shadow: inset 0 0 0 var(--u) var(--red);
+}
+.pixel-ui .dex-kin > .px-mon-icon {
+  animation: none;
+}
+.pixel-ui .dex-kin.is-seen > .px-mon-icon {
+  filter: brightness(0);
+  opacity: 0.5;
+}
+/* The page's three buttons stand at its foot, under the words. */
+:where(.pixel-ui) .dex-entry-actions {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 4);
+  margin-top: auto;
+}

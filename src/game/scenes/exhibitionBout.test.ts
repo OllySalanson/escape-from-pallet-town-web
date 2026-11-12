@@ -65,8 +65,11 @@ class CountingStorage implements StorageLike {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('a bout for show', () => {
-  it('reaches the save nowhere: the scene only names it where a raid is lost, behind a run session', () => {
-    expect(methodsTouchingTheSave()).toEqual(['resolveRunWipe']);
+  it('reaches the save nowhere: the scene only names it where a kind is met and where a raid is lost, and a bout is turned away from both', () => {
+    expect(methodsTouchingTheSave()).toEqual(['registerFoesSeen', 'resolveRunWipe']);
+    // The Pokédex is told what a fight met (`hub/pokedex.ts`), and a bout is the first thing it refuses.
+    const met = SOURCE.slice(SOURCE.indexOf('private registerFoesSeen(): void {'));
+    expect(met.split('\n')[1].trim()).toBe('if (this.exhibition) {');
     const wipe = SOURCE.slice(SOURCE.indexOf('private resolveRunWipe(): void {'));
     expect(wipe.split('\n')[1].trim()).toBe('if (!this.runSession || this.pendingHubTransition) {');
     // And the only way into that is a raid's.
