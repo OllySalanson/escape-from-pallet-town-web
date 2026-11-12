@@ -272,6 +272,20 @@ export const yieldQuestionLines = (stake: string): readonly [string, string] => 
 export const YIELD_OPTIONS = ['YES', 'NO'] as const;
 export const YIELD_DECLINE = YIELD_OPTIONS.indexOf('NO');
 
+/**
+ * Letting a beaten legend go - backing out of its one throw, or keeping a full
+ * pack rather than putting something down for it - asks first, on NO, in the
+ * panel the questions above are asked in. A legend costs most of a raid and the
+ * hardest fight on the map, and one stray ESC or one press too many through the
+ * make-room refusal used to end it without a word (the endgame bug hunt, finding 2).
+ */
+export const letLegendGoQuestionLines = (name: string): readonly [string, string] => [
+  `Let ${name.toUpperCase()} go?`,
+  'There is no second throw.',
+];
+export const LET_GO_OPTIONS = ['YES', 'NO'] as const;
+export const LET_GO_DECLINE = LET_GO_OPTIONS.indexOf('NO');
+
 export const aboutToUsePromptLayout = (line: number): { x: number; y: number } => ({
   x: BATTLE_PANEL.x + PANEL_INSET_X,
   y: 4 + line * 14,
@@ -805,14 +819,19 @@ export const packRoomRowForm = (
  * four free squares scattered around a Potion are not a seat for a Pidgey and
  * the player cannot see the packing. Undefined is the KEEP THE PACK row.
  */
-export const packRoomPrompt = (choice?: {
-  readonly itemId?: string;
-  readonly drops?: number;
-  readonly squares: number;
-  readonly freesEnough: boolean;
-}): string => {
+export const packRoomPrompt = (
+  choice?: {
+    readonly itemId?: string;
+    readonly drops?: number;
+    readonly squares: number;
+    readonly freesEnough: boolean;
+  },
+  // A beaten legend's name: keeping the pack there is not calling a catch off
+  // and fighting on, it is declining the one throw, and the line says so.
+  legend?: string,
+): string => {
   if (!choice) {
-    return 'Keep everything. The catch is off.';
+    return legend ? `Keep everything. ${legend.toUpperCase()} gets away.` : 'Keep everything. The catch is off.';
   }
   const freed = choice.squares === 1 ? '1 square' : `${choice.squares} squares`;
   // A find that stacks on a square goes down a square at a time, so the line

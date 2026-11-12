@@ -117,6 +117,7 @@ import {
   ballCount,
   ballModifierOf,
   battleItemCount,
+  bestBallIndex,
   carriedBalls,
   usableBattleItems,
 } from '../pokemon/battle/battleItems';
@@ -155,6 +156,9 @@ import {
   YIELD_DECLINE,
   YIELD_OPTIONS,
   yieldQuestionLines,
+  LET_GO_DECLINE,
+  LET_GO_OPTIONS,
+  letLegendGoQuestionLines,
   nicknameQuestionLines,
   aboutToUseLine,
   aboutToUseOptionLayout,
@@ -234,6 +238,8 @@ type CommandMode =
   | 'naming'
   /** "Yield the bout?", asked before a bout with something riding on it is given up. */
   | 'yield'
+  /** "Let ZAPDOS go?", asked before a beaten legend's one throw is given up. */
+  | 'let-go'
   | 'evolving'
   | 'events'
   | 'finished';
@@ -246,6 +252,7 @@ type BattleAction =
   | { readonly type: 'choose-item' }
   | { readonly type: 'choose-run' }
   | { readonly type: 'answer-yield'; readonly yielding: boolean }
+  | { readonly type: 'answer-let-go'; readonly lettingGo: boolean }
   | { readonly type: 'use-move'; readonly moveIndex: number }
   | { readonly type: 'aim-at'; readonly targetIndex: number }
   | { readonly type: 'select-item'; readonly itemIndex: number }
@@ -617,6 +624,9 @@ export class BattleScene extends Phaser.Scene {
    * every other fight.
    */
   private legendThrow: 'fighting' | 'offered' | 'thrown' | null = null;
+  /** The list "Let ZAPDOS go?" was asked over, and where its cursor was, for a NO to go back to. */
+  private letGoFrom: 'balls' | 'make-room' = 'balls';
+  private letGoCursor = 0;
   /** Failed wild escapes so far in this battle; each one improves the next roll. */
   private wildEscapeAttempts = 0;
   /** The HP each plate's bar is currently showing, which the tweens walk. */
@@ -1456,6 +1466,13 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.mode === 'let-go') {
+      this.commandContainer.add(
+        this.createQuestionBox(letLegendGoQuestionLines(this.state.enemy.pokemon.name), LET_GO_OPTIONS),
+      );
+      return;
+    }
+
     if (this.mode === 'target') {
       this.commandContainer.add(this.createTargetBox());
       return;
@@ -1793,7 +1810,12 @@ export class BattleScene extends Phaser.Scene {
       this.add.text(
         makeRoomPromptLayout.x,
         COMMAND_Y + makeRoomPromptLayout.y,
-        this.fitCaption(packRoomPrompt(rows[this.selectedCommand])),
+        this.fitCaption(
+          packRoomPrompt(
+            rows[this.selectedCommand],
+            this.legendThrow === 'offered' ? this.state.enemy.pokemon.name : undefined,
+          ),
+        ),
         {
           fontFamily: BATTLE_FONT,
           fontSize: CAPTION_FONT_SIZE,
@@ -1894,14 +1916,15 @@ export class BattleScene extends Phaser.Scene {
 
   /** Declining: nothing is put down, no ball is spent, and the fight goes on. */
   private keepThePack(): void {
-    this.heldBallId = undefined;
-    this.pendingMakeRoom = false;
-    // Declining to make room is declining the only throw a legend allows.
+    // Declining to make room is declining the only throw a legend allows, so
+    // it is asked first, and the panel kept whole for a NO to come back to.
     if (this.legendThrow === 'offered') {
       audioManager.play('cancel');
-      this.legendGetsAway([]);
+      this.askToLetLegendGo('make-room');
       return;
     }
+    this.heldBallId = undefined;
+    this.pendingMakeRoom = false;
     this.mode = 'main';
     this.selectedCommand = 0;
     this.showCommands();
@@ -2191,6 +2214,11 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.mode === 'let-go') {
+      this.dispatchAction({ type: 'answer-let-go', lettingGo: this.selectedCommand !== LET_GO_DECLINE });
+      return;
+    }
+
     if (this.mode === 'party') {
       // The party screen is the target picker as well as the switch menu, so
       // which one it is answering is the item waiting to be handed over.
@@ -2255,6 +2283,9 @@ export class BattleScene extends Phaser.Scene {
       case 'answer-nickname':
         this.answerNickname(action.naming);
         return;
+      case 'answer-let-go':
+        this.answerLetGo(action.lettingGo);
+        return;
       case 'answer-yield':
         this.answerYield(action.yielding);
         return;
@@ -2292,6 +2323,11 @@ export class BattleScene extends Phaser.Scene {
     if (this.mode === 'yield') {
       audioManager.play('cancel');
       this.answerYield(false);
+      return;
+    }
+    if (this.mode === 'let-go') {
+      audioManager.play('cancel');
+      this.answerLetGo(false);
       return;
     }
     if (this.mode === 'nickname' || this.mode === 'about-to-use') {
@@ -2347,10 +2383,10 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     // There is no fight to go back to: backing out of the one throw is letting
-    // the legend go.
+    // the legend go, so it is asked first.
     if (this.mode === 'balls' && this.legendThrow === 'offered') {
       audioManager.play('cancel');
-      this.legendGetsAway([]);
+      this.askToLetLegendGo('balls');
       return;
     }
     // Backing out of the target picker returns to the item list, not to the
@@ -2667,7 +2703,34 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     this.mode = 'balls';
-    this.selectedCommand = 0;
+    // The one throw is the one to spend the best ball on, so the list opens on
+    // it; a press made straight through used to throw the Poke Ball at 1%.
+    this.selectedCommand = oneThrow ? bestBallIndex(balls) : 0;
+    this.showCommands();
+  }
+
+  /**
+   * "Let ZAPDOS go?", on NO. `from` is the list the question was asked over,
+   * which NO goes back to as it was left.
+   */
+  private askToLetLegendGo(from: 'balls' | 'make-room'): void {
+    this.letGoFrom = from;
+    this.letGoCursor = this.selectedCommand;
+    this.mode = 'let-go';
+    this.selectedCommand = LET_GO_DECLINE;
+    this.showCommands();
+  }
+
+  /** YES lets the legend go, spending nothing; NO goes back to the list it was asked over. */
+  private answerLetGo(lettingGo: boolean): void {
+    if (lettingGo) {
+      this.heldBallId = undefined;
+      this.pendingMakeRoom = false;
+      this.legendGetsAway([]);
+      return;
+    }
+    this.mode = this.letGoFrom;
+    this.selectedCommand = this.letGoCursor;
     this.showCommands();
   }
 

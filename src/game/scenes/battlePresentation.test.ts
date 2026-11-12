@@ -584,6 +584,8 @@ describe('making room for a catch from inside the fight', () => {
     );
     // The row that changes nothing says so in the same place.
     expect(packRoomPrompt()).toBe('Keep everything. The catch is off.');
+    // At a beaten legend's one throw, keeping the pack is letting it go.
+    expect(packRoomPrompt(undefined, 'Zapdos')).toBe('Keep everything. ZAPDOS gets away.');
   });
 
   it('writes a page in the longest form every row on it fits', () => {

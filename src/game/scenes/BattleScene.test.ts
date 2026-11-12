@@ -3313,17 +3313,87 @@ describe('a legend', () => {
     expect(returned).toHaveBeenCalledTimes(1);
   });
 
-  it('backing out of the one throw is letting it go, and spends nothing', () => {
+  /**
+   * The endgame bug hunt (12 Nov 2026), finding 2: a legend costs most of a raid
+   * and a hard fight, and one stray key threw the one throw away. Backing out,
+   * or keeping a full pack, now asks first, on NO; and the list opens on the
+   * best ball carried, because the one throw is the one to spend it on.
+   */
+  type Asking = LegendInternals & {
+    goBack(): void;
+    confirm(): void;
+    selectedCommand: number;
+    commandTexts: { text: string }[];
+  };
+
+  it('backing out of the one throw asks first, on NO, and B on the question is NO', () => {
     const bag = new Bag({ 'poke-ball': 2 });
-    const { scene, dialog, beat, readOn, returned } = meet(bag);
+    const { scene, dialog, beat, readOn, returned, renderedTexts } = meet(bag);
+    const asking = scene as unknown as Asking;
 
     beat();
-    (scene as unknown as { goBack(): void }).goBack();
-    readOn();
+    const before = renderedTexts.length;
+    asking.goBack();
 
+    expect(asking.mode).toBe('let-go');
+    expect(read(renderedTexts).slice(before).map(({ text }) => text)).toContain('Let ARTICUNO go?');
+    expect(asking.commandTexts[asking.selectedCommand]?.text).toContain('NO');
+    // A press straight through the question is NO, and so is B: back to the list.
+    asking.confirm();
+    expect(asking.mode).toBe('balls');
+    asking.goBack();
+    asking.goBack();
+    expect(asking.mode).toBe('balls');
+    expect(returned).not.toHaveBeenCalled();
+    expect(dialog.shownMessages).not.toContain('Wild ARTICUNO fled!');
+
+    // YES lets it go, and spends nothing.
+    asking.goBack();
+    asking.selectedCommand = 0;
+    asking.confirm();
+    readOn();
     expect(bag.count('poke-ball')).toBe(2);
     expect(dialog.shownMessages.at(-1)).toBe('Wild ARTICUNO fled!');
     expect(returned).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the one throw on the best ball carried', () => {
+    const bag = new Bag({ 'poke-ball': 3, 'great-ball': 1 });
+    const { scene, beat } = meet(bag);
+    const asking = scene as unknown as Asking;
+
+    beat();
+
+    expect(asking.mode).toBe('balls');
+    expect(asking.commandTexts[asking.selectedCommand]?.text).toContain('GREAT BALL');
+  });
+
+  it('with a full pack, KEEP THE PACK says the legend leaves and asks first, so two presses lose nothing', () => {
+    const bag = new Bag({ potion: 17, 'poke-ball': 1 });
+    const { scene, dialog, beat, readOn, returned, press, renderedTexts } = meet(bag);
+    const asking = scene as unknown as Asking;
+
+    beat();
+    press('POKé BALL x', 0);
+    readOn();
+    expect(asking.mode).toBe('make-room');
+    expect(read(renderedTexts).map(({ text }) => text)).toContain('Keep everything. ARTICUNO gets away.');
+
+    // The press that read the refusal, and one more: the question, on NO.
+    asking.confirm();
+    expect(asking.mode).toBe('let-go');
+    asking.confirm();
+    expect(asking.mode).toBe('make-room');
+    // Escape out of the panel is KEEP THE PACK by another name, and asks too.
+    asking.goBack();
+    expect(asking.mode).toBe('let-go');
+    asking.goBack();
+    expect(asking.mode).toBe('make-room');
+
+    expect(bag.count('potion')).toBe(17);
+    expect(bag.count('poke-ball')).toBe(1);
+    expect(returned).not.toHaveBeenCalled();
+    expect(dialog.shownMessages).not.toContain('Wild ARTICUNO fled!');
   });
 });
 
