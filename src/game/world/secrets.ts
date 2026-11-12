@@ -68,6 +68,8 @@ export interface RaidConditions {
   readonly chartWhole: boolean;
   /** How many Pokemon went on the raid: one is a raid gone on alone. */
   readonly partySize: number;
+  /** Whether the party's first Pokemon, the one that leads, is in its other colours (`Pokemon.shiny`). */
+  readonly leadShiny: boolean;
 }
 
 /** Read as the raid deploys. A party with nobody in it leads with no type. */
@@ -90,8 +92,12 @@ export function raidConditions(
     badges: [...defeatedBosses],
     chartWhole,
     partySize: party.length,
+    leadShiny: party[0]?.shiny === true,
   };
 }
+
+/** How long THE HERON THAT IS NOT is stood still for: long enough to count, short enough that a raid can afford it. */
+export const HERON_STILL_MS = 12_000;
 
 /** One fact a secret waits for. */
 export type SecretCondition =
@@ -122,16 +128,38 @@ export type SecretCondition =
    * switch to, and a wipe on the first faint.
    */
   | { readonly kind: 'alone' }
+  /**
+   * A shiny walking in front: the party's first Pokemon in its other colours.
+   * The one condition that is a rare find itself, so what waits for it is the
+   * second link of a chain - THE RED ONE and THE PINK ONE are each a shiny a
+   * raid can go and get.
+   */
+  | { readonly kind: 'lead-shiny' }
+  /**
+   * Standing still: `forMs` with no step and no turn, as the nook is worked.
+   * It is paid for in raid clock, and a hunter walks up on anybody who stands
+   * (`hunterIdleSteps`). Like a stretch of the clock it is read at the moment,
+   * never as the raid deploys.
+   */
+  | { readonly kind: 'stood-still'; readonly forMs: number }
   /** Any one of these. */
   | { readonly kind: 'either'; readonly of: readonly SecretCondition[] };
 
+/** What is only known at the moment a nook is worked. */
+export interface SecretMoment {
+  /** How long the raid has been going. */
+  readonly elapsedMs: number;
+  /** How long the player has stood without a step or a turn. */
+  readonly stillMs: number;
+}
+
 /**
- * Whether a condition holds for a raid. `elapsedMs` is how long the raid has
- * been going; without it - as the raid deploys - a stretch of the clock is one
- * that may yet come, and holds, so the nook is laid and asks again when it is
- * worked.
+ * Whether a condition holds for a raid. `moment` is the moment a nook is
+ * worked; without it - as the raid deploys - a stretch of the clock or of
+ * standing still is one that may yet come, and holds, so the nook is laid and
+ * asks again when it is worked.
  */
-export function conditionHolds(condition: SecretCondition, raid: RaidConditions, elapsedMs?: number): boolean {
+export function conditionHolds(condition: SecretCondition, raid: RaidConditions, moment?: SecretMoment): boolean {
   switch (condition.kind) {
     case 'hour':
       return raid.hour === condition.hour;
@@ -149,10 +177,14 @@ export function conditionHolds(condition: SecretCondition, raid: RaidConditions,
       return raid.badges.includes(condition.bossId);
     case 'alone':
       return raid.partySize === 1;
+    case 'lead-shiny':
+      return raid.leadShiny;
     case 'raid-clock':
-      return elapsedMs === undefined || (elapsedMs >= condition.fromMs && elapsedMs < condition.untilMs);
+      return moment === undefined || (moment.elapsedMs >= condition.fromMs && moment.elapsedMs < condition.untilMs);
+    case 'stood-still':
+      return moment === undefined || moment.stillMs >= condition.forMs;
     case 'either':
-      return condition.of.some((each) => conditionHolds(each, raid, elapsedMs));
+      return condition.of.some((each) => conditionHolds(each, raid, moment));
   }
 }
 
@@ -226,7 +258,7 @@ export interface Secret {
    * is two more of the same making: an Alakazam among the Little Stones, and
    * the vale's second Pokemon in its other colours, a pink Butterfree.
    */
-  readonly wave: 1 | 2 | 3 | 4;
+  readonly wave: 1 | 2 | 3 | 4 | 5;
 }
 
 /**
@@ -525,6 +557,69 @@ export const SECRETS: readonly Secret[] = [
     ],
     wave: 4,
   },
+  {
+    // The Heron Man on the Wide Water has timed a heron standing still for six
+    // hours, and the Watcher in the hide says they stand just out of the slot.
+    // What stands out among the lilies never moves while anybody fidgets. Stand
+    // at the end of the boards as still as it does - twelve seconds with no
+    // step and no turn, which is twelve seconds of raid clock and of a hunter
+    // walking up - and it looks round, and it is blue. FireRed keeps DRAGONAIR
+    // in the Safari Zone's water, on the Super Rod, at about this level. Lv 24
+    // is an earned fight before MISTY.
+    id: 'the-heron-that-is-not',
+    name: 'THE HERON THAT IS NOT',
+    place: 'THE WIDE WATER',
+    nook: 'summons',
+    when: [{ kind: 'stood-still', forMs: HERON_STILL_MS }],
+    rewards: [{ kind: 'meet', speciesId: 'dragonair', level: 24 }],
+    foundLine: 'You have not so much as shuffled. Out among the lilies the heron turns its long neck to look at you. It is blue. It is not a heron. DRAGONAIR!',
+    wave: 5,
+  },
+  {
+    // Old Bertie has lit THE OLD LIGHT every night for forty years, and the
+    // boats have had radios for thirty of them. Something on the headland has
+    // been signalling back the whole time: a STARMIE, whose core lights up at
+    // night and is said to talk to others that way. It lies under the light
+    // every raid until it is had (`shutLines`) and answers only a light in the
+    // wrong colours - a shiny walking in front. A raid can go and get one: THE
+    // RED ONE and THE PINK ONE are each always shiny, so this is the second
+    // link of a chain. Lv 22 is an earned fight before MISTY, a level over her
+    // own.
+    id: 'the-light-that-answers',
+    name: 'THE LIGHT THAT ANSWERS',
+    place: 'THE OLD LIGHT',
+    nook: 'figure',
+    when: [{ kind: 'lead-shiny' }],
+    rewards: [{ kind: 'meet', speciesId: 'starmie', level: 22 }],
+    foundLine: 'Its core flares, colour after colour, at the one walking in front of you. Something has finally answered in the wrong colours. STARMIE spins up out of the grass!',
+    shutLines: [
+      'A star lies in the grass at the foot of the light, with a red stone at its heart. The stone flickers, stops, and flickers again.',
+      'It is signalling. It waits a long time for an answer, and then it tries again.',
+    ],
+    wave: 5,
+  },
+  {
+    // The Kite Flyer on the headland has lost four kites over the cliff and
+    // says there is "a very well-off Krabby down there". There is: a KINGLER
+    // on WRACKERS' SAND with four strings wound round its claw, every raid
+    // until it is had (`shutLines`). It grabs at anything the wind brings over
+    // the cliff, and comes for a Flying type walking in front - the commonest
+    // lead there is after a starter, so this is the wave's easy one, as the
+    // light is its hard one. FireRed keeps KINGLER on the Super Rod; a KRABBY
+    // turns into one at 28. Lv 20 is an earned fight before MISTY.
+    id: 'the-kite-thief',
+    name: 'THE KITE THIEF',
+    place: 'WRACKERS’ SAND',
+    nook: 'figure',
+    when: [{ kind: 'lead-type', type: 'Flying' }],
+    rewards: [{ kind: 'meet', speciesId: 'kingler', level: 20 }],
+    foundLine: 'It looks up at what is flying over its head, and it wants that as well. KINGLER drops the strings and comes for you, big claw first!',
+    shutLines: [
+      'A big crab sits in the sand with four kite strings wound round its claw. It is not flying them. It is keeping them.',
+      'It watches the sky over the cliff, and nothing of yours. You have brought nothing it wants.',
+    ],
+    wave: 5,
+  },
 ];
 
 export type SecretId = (typeof SECRETS)[number]['id'];
@@ -579,10 +674,11 @@ export function secretConditionHolds(secret: Secret, raid: RaidConditions): bool
 
 /**
  * Whether a secret is open at this moment of a raid: every condition, the
- * clock's stretch read at `elapsedMs`, how long the raid has been going.
+ * clock's stretch read at how long the raid has been going and a stretch of
+ * standing still at how long the player has stood.
  */
-export function secretOpenAt(secret: Secret, raid: RaidConditions, elapsedMs: number): boolean {
-  return secret.when.every((condition) => conditionHolds(condition, raid, elapsedMs));
+export function secretOpenAt(secret: Secret, raid: RaidConditions, moment: SecretMoment): boolean {
+  return secret.when.every((condition) => conditionHolds(condition, raid, moment));
 }
 
 /**

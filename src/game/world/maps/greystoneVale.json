@@ -8111,14 +8111,16 @@
    ]
   },
   {
-   "x": 157,
+   "x": 156,
    "y": 167,
    "name": "Heron Man",
    "look": "hiker",
    "facing": "left",
+   "secret": "the-heron-that-is-not",
    "lines": [
     "A heron can stand still for six hours. I have timed it.",
-    "I timed it from here. It took six hours."
+    "I timed it from here. It took six hours.",
+    "That grey one never stirs while I watch. I shuffle, is my trouble. You have to stand as STILL as it does."
    ],
    "calls": [
     "Hush. There it goes."
@@ -9798,9 +9800,11 @@
    "name": "Old Bertie",
    "look": "old-man",
    "facing": "left",
+   "secret": "the-light-that-answers",
    "lines": [
     "Lit her every night for forty years, and nobody has told me to stop.",
-    "They did tell me. I did not catch it. My hearing is very selective."
+    "They did tell me. I did not catch it. My hearing is very selective.",
+    "That star winks at her, not at me. It wants its answer in the wrong colours. Walk something SHINY up to it."
    ],
    "beat": {
     "everyMs": 3900,
@@ -10093,9 +10097,11 @@
    "name": "Wracker",
    "look": "hiker",
    "facing": "right",
+   "secret": "the-kite-thief",
    "lines": [
     "Three crates this week, and one of them full of dolls. What is it with that ship and dolls?",
-    "Something is under the sand by that log. I keep meaning to dig, but it might be somebody’s."
+    "Something is under the sand by that log. I keep meaning to dig, but it might be somebody’s.",
+    "That big crab by the crates has four kites off the cliff. It grabs at anything FLYING. I walk round it."
    ],
    "beat": {
     "everyMs": 3000,
@@ -13453,6 +13459,15 @@
    "lines": [
     "HERON WALK",
     "Please keep to the boards. The herons will not. They have been told."
+   ]
+  },
+  {
+   "x": 156,
+   "y": 166,
+   "secret": "the-heron-that-is-not",
+   "lines": [
+    "THE END OF THE BOARDS",
+    "Stand STILL here and count twelve. No step, no turn. It forgets you are there. Then look again."
    ]
   },
   {
@@ -18084,6 +18099,13 @@
    "area": "reedmere-the-drowned-duck"
   },
   {
+   "x": 139,
+   "y": 201,
+   "species": "starmie",
+   "level": 22,
+   "secret": "the-light-that-answers"
+  },
+  {
    "x": 142,
    "y": 217,
    "species": "doduo",
@@ -18100,6 +18122,13 @@
    "y": 234,
    "species": "krabby",
    "level": 9
+  },
+  {
+   "x": 134,
+   "y": 227,
+   "species": "kingler",
+   "level": 20,
+   "secret": "the-kite-thief"
   },
   {
    "x": 136,

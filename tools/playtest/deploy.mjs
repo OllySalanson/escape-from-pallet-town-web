@@ -392,12 +392,15 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
       // level pass so each keeps the level it was asked for. A third part names
       // the moves a player kept, |-separated (\`pikachu:15:Thunder Shock|Thunder
       // Wave\`): left to its level a Pikachu at 15 has walked Thunder Shock off
-      // the end of its moveset, which nobody playing lets happen.
+      // the end of its moveset, which nobody playing lets happen. A fourth part,
+      // \`shiny\`, is one caught in its other colours (\`butterfree:28::shiny\`):
+      // with --lead it is a shiny walking in front, which THE LIGHT THAT ANSWERS
+      // waits for (\`world/secrets.ts\`).
       ${JSON.stringify(team)}.forEach((entry, index) => {
-        const [speciesId, memberLevel = '10', kept = ''] = entry.split(':');
+        const [speciesId, memberLevel = '10', kept = '', colours = ''] = entry.split(':');
         const id = 'playtest-team-' + index;
         const moves = kept ? kept.split('|') : [];
-        save.stash.pokemon.push({ id, pokemon: { speciesId, level: Number(memberLevel), currentHp: 9999, xp: 0, moves, pendingMoves: [], primaryStatus: null, heldItemId: null } });
+        save.stash.pokemon.push({ id, pokemon: { speciesId, level: Number(memberLevel), currentHp: 9999, xp: 0, moves, pendingMoves: [], primaryStatus: null, heldItemId: null, ...(colours === 'shiny' ? { shiny: true } : {}) } });
         if (Array.isArray(save.stash.boxes) && save.stash.boxes[0]) { save.stash.boxes[0].pokemonIds.push(id); }
       });
       localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
@@ -431,7 +434,8 @@ async function enterRaid(page, { press, click, until, wait, insertion, starter, 
     await until(`document.querySelector('button[data-pokemon]') !== null`, 'the bench to list the vault');
     for (let guard = 0; guard < 6; guard += 1) {
       const stoodDown = await page.evaluate(
-        `(() => { const b = document.querySelector('button[data-pokemon].is-selected'); if (!b) return false; b.click(); return true; })()`,
+        // A Pokemon on the bench is a slot now (\`.px-party-slot\`); \`is-selected\` was the old list's row.
+        `(() => { const b = document.querySelector('button[data-pokemon].px-party-slot, button[data-pokemon].is-selected'); if (!b) return false; b.click(); return true; })()`,
       );
       if (!stoodDown) {
         break;

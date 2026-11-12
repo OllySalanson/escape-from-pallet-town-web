@@ -1139,6 +1139,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * a fight starts the count again: a battle is not standing still.
    */
   private hunterStillMs = 0;
+  /** How long the player has stood without a step or a turn, and the tile and facing they have stood with (`countStandingStill`). */
+  private stoodStillMs = 0;
+  private stoodAs = '';
   /**
    * The Pokemon walking at the player's heel, or null when nobody is: the
    * party's lead, else the partner (`world/raidFollower.ts`), drawn by the
@@ -1294,6 +1297,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.hunterArrived = null;
     this.hunterFacing = 'down';
     this.hunterStillMs = 0;
+    this.stoodStillMs = 0;
+    this.stoodAs = '';
     // Phaser destroyed its sprite with the scene; this only stops pointing at it.
     this.partner = null;
     // And the friend's, for the same reason.
@@ -5732,7 +5737,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /**
    * Works a secret's `summons` nook: when the secret is open at this moment of
    * the raid (its stretch of the clock read against the time gone by, as its
-   * clue says, never the tide) and its Pokemon is
+   * clue says, never the tide; its stretch of standing still against how long
+   * the player has stood) and its Pokemon is
    * not met yet this raid, says the finding, sounds it and promises the fight.
    * False when nothing answers, and the nook reads as its clue.
    */
@@ -5744,7 +5750,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       secret?.nook !== 'summons' ||
       open?.reward?.kind !== 'meet' ||
       conditions === undefined ||
-      !secretOpenAt(secret, conditions, this.runSession!.manager.snapshot().elapsedMs) ||
+      !secretOpenAt(secret, conditions, {
+        elapsedMs: this.runSession!.manager.snapshot().elapsedMs,
+        stillMs: this.stoodStillMs,
+      }) ||
       (this.runSession?.pokemonMet ?? []).includes(secretMetKey(id))
     ) {
       return false;
@@ -8376,6 +8385,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     this.advanceHunterSearch(clockMs);
     this.advanceHunterWhileStill(clockMs);
+    this.countStandingStill(clockMs);
     this.placeHunterIfDue(snapshot.elapsedMs);
     this.advanceHunterPack(clockMs, snapshot.elapsedMs);
     this.refreshExtractionMarkers();
@@ -9223,6 +9233,21 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.reachableExitPositions(),
       ),
     );
+  }
+
+  /**
+   * How long the player has stood without a step or a turn, in raid clock: what
+   * a secret that waits for stillness is asked against (`stood-still`,
+   * `world/secrets.ts`). Reading a box is standing still, and is charged for.
+   */
+  private countStandingStill(chargedMs: number): void {
+    const stance = `${this.currentTile.x},${this.currentTile.y},${this.facing}`;
+    if (this.targetTile || stance !== this.stoodAs) {
+      this.stoodAs = stance;
+      this.stoodStillMs = 0;
+      return;
+    }
+    this.stoodStillMs += chargedMs;
   }
 
   /**

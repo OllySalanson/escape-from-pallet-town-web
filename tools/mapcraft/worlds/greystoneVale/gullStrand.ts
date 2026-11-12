@@ -309,9 +309,15 @@ export function gullStrand(): MapcraftResult {
       // The heath's own: a pair of Doduo on the dry ground, a Psyduck up the
       // river, and the Krabby that have the cove to themselves.
       pokemon: [
+        // THE LIGHT THAT ANSWERS (`world/secrets.ts`): under the Old Light every raid, until it is had.
+        { x: 11, y: 9, species: 'starmie', level: 22, secret: 'the-light-that-answers' },
         { x: 14, y: 25, species: 'doduo', level: 9 },
         { x: 34, y: 5, species: 'psyduck', level: 8 },
         { x: 3, y: 42, species: 'krabby', level: 9 },
+        // THE KITE THIEF (`world/secrets.ts`): on the sand under the headland every raid, until it is had.
+        // Clear of the gap between the crates and the barrel: sat in its mouth, at 7,36, it shut two
+        // tiles of sand in behind itself and the Krabby's beat.
+        { x: 6, y: 35, species: 'kingler', level: 20, secret: 'the-kite-thief' },
         { x: 8, y: 37, species: 'krabby', beat: { everyMs: 1500, roam: [[1, 0]] } },
         { x: 25, y: 42, species: 'krabby', beat: { everyMs: 1300, roam: [[0, 1]] } },
         { x: 24, y: 36, species: 'staryu', level: 9 },
@@ -359,7 +365,7 @@ export function gullStrand(): MapcraftResult {
           lines: ['The Magikarp come up from the sea this far, and no further.'],
         },
         { x: 16, y: 10, name: 'Kite Flyer', look: 'little-girl', facing: 'down', lines: ['The wind off the sea takes my kite right over the cliffs!', 'That is four kites. There is a very well-off Krabby down there.'], beat: { everyMs: 1900, roam: [[1, 0], [2, 0]], glances: ['up'] }, calls: ['Up! Up! Oh, not again.'] },
-        { x: 11, y: 12, name: 'Old Bertie', look: 'old-man', facing: 'left', lines: ['Lit her every night for forty years, and nobody has told me to stop.', 'They did tell me. I did not catch it. My hearing is very selective.'], beat: { everyMs: 3900, glances: ['up', 'down'] }, calls: ['Forty years!'] },
+        { x: 11, y: 12, name: 'Old Bertie', look: 'old-man', facing: 'left', secret: 'the-light-that-answers', lines: ['Lit her every night for forty years, and nobody has told me to stop.', 'They did tell me. I did not catch it. My hearing is very selective.', 'That star winks at her, not at me. It wants its answer in the wrong colours. Walk something SHINY up to it.'], beat: { everyMs: 3900, glances: ['up', 'down'] }, calls: ['Forty years!'] },
         { x: 43, y: 7, name: 'Ropemaker', look: 'worker', facing: 'left', lines: ['Forty fathoms a day, walking backwards. I have not seen where I was going since I was twelve.', 'If that Mankey has the end of it again, I am not going to know until the far post.'], beat: { everyMs: 2000, roam: [[-1, 0], [-2, 0], [-3, 0], [-4, 0], [-5, 0], [-6, 0]], glances: ['right'] }, calls: ['Mind your back. Mine, I mean.'] },
         { x: 47, y: 7, name: 'Rope Boy', look: 'youngster', facing: 'left', lines: ['I turn the wheel. He walks away. Then I turn the wheel some more. He is nearly at Pewter.'], beat: { everyMs: 3200, glances: ['left'] }, calls: ['Turn, turn, turn.'] },
         { x: 52, y: 11, name: 'Sexton', look: 'gentleman', facing: 'right', lines: ['There is nobody under most of these. The sea keeps them. These are just where to come and shout.', 'I have got a good one for you, down in the far corner. He is not dead. He owes me for the stone.'], beat: { everyMs: 4300, glances: ['down', 'right'] }, calls: ['Mind the graves.'] },
@@ -371,7 +377,7 @@ export function gullStrand(): MapcraftResult {
         { x: 43, y: 52, name: 'Stage Angler', look: 'fisherman', facing: 'left', lines: ['Good bit of stage, this. Tide comes up through the boards at the spring.', 'Press at the water with a rod, if you have one. There is a Tentacool I am not speaking to.'], calls: ['Bite! No. Weed.'] },
         { x: 52, y: 28, name: 'Gorse Burner', look: 'hiker', facing: 'down', lines: ['Burn it back every spring or the whole heath goes to gorse.', 'It goes to gorse anyway. It is very good at it. I am quite fond of it.'], beat: { everyMs: 3600, roam: [[-1, 0]], glances: ['up', 'left'] }, calls: ['Stand back. Well. Stand.'] },
         { x: 38, y: 19, name: 'Salt Carter', look: 'man', facing: 'down', lines: ['Salt to the boats, fish to the salt, boats to the fish. I have been up and down this hill all my life.', 'I got to The Crossing once. It was all right.'], beat: { everyMs: 3000, glances: ['left', 'right'] }, calls: ['Salt! Mind your backs!'] },
-        { x: 13, y: 37, name: 'Wracker', look: 'hiker', facing: 'right', lines: ['Three crates this week, and one of them full of dolls. What is it with that ship and dolls?', 'Something is under the sand by that log. I keep meaning to dig, but it might be somebody’s.'], beat: { everyMs: 3000, roam: [[0, 1]], glances: ['left', 'right'] }, calls: ['Finders keepers!'] },
+        { x: 13, y: 37, name: 'Wracker', look: 'hiker', facing: 'right', secret: 'the-kite-thief', lines: ['Three crates this week, and one of them full of dolls. What is it with that ship and dolls?', 'Something is under the sand by that log. I keep meaning to dig, but it might be somebody’s.', 'That big crab by the crates has four kites off the cliff. It grabs at anything FLYING. I walk round it.'], beat: { everyMs: 3000, roam: [[0, 1]], glances: ['left', 'right'] }, calls: ['Finders keepers!'] },
         { x: 21, y: 39, name: 'Wracker’s Girl', look: 'tuber-girl', facing: 'left', lines: ['I found a boot. Then I found another boot. They are not the same boot.', 'I am going to keep looking until I find somebody with one of each.'], beat: { everyMs: 2200, glances: ['down'] }, calls: ['Found one!'] },
         { x: 49, y: 26, name: 'Gym Fan', look: 'lass', facing: 'up', lines: ['Misty sandbagged the jetty herself. Nobody goes out to the Coast till they have beaten her.', 'I have watched every fight from here. Fire never wins in there. It rains indoors. I do not know how.'], beat: { everyMs: 2700, glances: ['up', 'left'] }, calls: ['Go on, go in!'] },
         { x: 20, y: 28 + 1 - 1 - 4, name: 'Courting Couple', look: 'crush-girl', facing: 'left', lines: ['You can see the whole coast from up here. Yes. That is why we come. The coast.'] },

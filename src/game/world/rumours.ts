@@ -191,6 +191,33 @@ export const RUMOURS: readonly Rumour[] = [
     ringsOver: 'HIGH MOOR',
     line: 'I have counted THE LITTLE STONES on HIGH MOOR through this glass every day for a year. Never the same twice. One of them only stirs for somebody up there ALONE.',
   },
+  {
+    id: 'angler-heron-that-is-not',
+    secret: 'the-heron-that-is-not',
+    source: 'angler',
+    gives: ['where', 'bring'],
+    names: 'THE WIDE WATER',
+    ringsOver: 'THE CROSSING',
+    line: 'That heron on THE WIDE WATER at THE CROSSING has never once moved for me. They say it looks round at anybody who stands as STILL as it does.',
+  },
+  {
+    id: 'bill-light-that-answers',
+    secret: 'the-light-that-answers',
+    source: 'bill',
+    gives: ['where', 'bring'],
+    names: 'THE OLD LIGHT',
+    ringsOver: 'GULL STRAND',
+    line: 'THE OLD LIGHT on GULL STRAND! Not lit in thirty years, and something under it still signals back. It wants its answer in the wrong colours: something SHINY in front.',
+  },
+  {
+    id: 'sailor-kite-thief',
+    secret: 'the-kite-thief',
+    source: 'sailor',
+    gives: ['where', 'bring'],
+    names: 'WRACKERS’ SAND',
+    ringsOver: 'GULL STRAND',
+    line: 'Ran a kite seller out to GULL STRAND once. He came back with no kites. Something on WRACKERS\' SAND takes them, and it will go for anything FLYING.',
+  },
   // THE RUMOUR MILL's own slips: when and what to bring, where the harbour's
   // rumour about the same secret gives where and one of them. Two rumours from
   // two sources complete each other (the harbour arenas plan, section 4.3).

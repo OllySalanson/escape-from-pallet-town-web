@@ -271,6 +271,8 @@ export function theCrossing(): MapcraftResult {
         { x: 33, y: 13, lines: ['THE ANGLERS’ STAGE', 'Members only. Membership is free. Fish are extra.'] },
         { x: 52, y: 37, lines: ['THE BEE GARDEN', 'Nothing here will sting you if you are polite. Be polite.'] },
         { x: 37, y: 37, lines: ['HERON WALK', 'Please keep to the boards. The herons will not. They have been told.'] },
+        // The nook of THE HERON THAT IS NOT: read after standing still, it is answered.
+        { x: 28, y: 38, secret: 'the-heron-that-is-not', lines: ['THE END OF THE BOARDS', 'Stand STILL here and count twelve. No step, no turn. It forgets you are there. Then look again.'] },
         { x: 44, y: 51, lines: ['Nothing signposted', 'If you can read this you have gone wrong, or right. The burners do not mind.'] },
       ],
       pokemon: [
@@ -327,7 +329,8 @@ export function theCrossing(): MapcraftResult {
         // -- The bee garden -------------------------------------------------------------------------
         { x: 51, y: 41, name: 'Beekeeper', look: 'cameraman', facing: 'down', lines: ['You tell them everything, bees. Who has married, who has died. They like to know.', 'I told them about you. They were not interested. Mind the big one.'], beat: { everyMs: 3500, roam: [[1, 0]], glances: ['down', 'left'] }, calls: ['Gently now. Gently.'] },
         // -- The Wide Water -------------------------------------------------------------------------------
-        { x: 29, y: 40 - 1 + 0, name: 'Heron Man', look: 'hiker', facing: 'left', lines: ['A heron can stand still for six hours. I have timed it.', 'I timed it from here. It took six hours.'], calls: ['Hush. There it goes.'] },
+        // At the very end of the boards, beside the notice: the clue to THE HERON THAT IS NOT (`world/secrets.ts`).
+        { x: 28, y: 39, name: 'Heron Man', look: 'hiker', facing: 'left', secret: 'the-heron-that-is-not', lines: ['A heron can stand still for six hours. I have timed it.', 'I timed it from here. It took six hours.', 'That grey one never stirs while I watch. I shuffle, is my trouble. You have to stand as STILL as it does.'], calls: ['Hush. There it goes.'] },
         { x: 25, y: 48 + 1, name: 'Weir Keeper', look: 'bald-man', facing: 'right', lines: ['The eels come down in autumn, all at once, in the dark, off to the sea.', 'Nobody has ever seen them come back. They come back, though. Nobody knows how. Eels.'], beat: { everyMs: 3600, glances: ['up'] }, calls: ['Eels. It is always eels.'] },
         // -- The burners' road ------------------------------------------------------------------------------
         { x: 51, y: 50, name: 'Burner', look: 'worker', facing: 'left', lines: ['You keep it covered and you keep it slow. Six days and you do not sleep.', 'Then you have got charcoal, and nobody thanks you. Mind the Vulpix. It likes to help.'], beat: { everyMs: 3100, roam: [[-1, 0]], glances: ['up'] }, calls: ['Do not lift that!'] },

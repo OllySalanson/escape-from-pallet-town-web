@@ -15,7 +15,7 @@ import { getWorldMap } from '../worldMap';
 import { gateKeys, gatesForMap } from '../world/gates';
 import { FIRST_HUNTER_RIVAL } from '../world/hunters';
 import type { WorldEntity } from '../world/npcs';
-import { secretById, type RaidConditions } from '../world/secrets';
+import { HERON_STILL_MS, secretById, type RaidConditions } from '../world/secrets';
 import { MISTY_BOSS_ID } from '../world/valeQuarters';
 import { MAX_PENDING_RECOVERY_MS } from '../hub/recovery';
 import { WorldScene } from './WorldScene';
@@ -45,6 +45,7 @@ const CONDITIONS: RaidConditions = {
   carried: [],
   badges: [],
   chartWhole: false, partySize: 2,
+  leadShiny: false,
 };
 
 interface Plan {
@@ -58,8 +59,12 @@ interface Plan {
 /** The player beside the entity tagged with a secret, facing it, every door of the vale open. */
 function beside(secretId: string, kind: 'pokemon' | 'sign', plan: Plan, elapsedMs = 0) {
   const map = getWorldMap(VALE, gateKeys(gatesForMap(VALE)));
+  // A sign is asked for by its kind: a secret's clue may be a person standing beside its notice.
   const entity = map.entities.find(
-    (candidate) => candidate.secret === secretId && (kind === 'pokemon') === (candidate.pokemon !== undefined),
+    (candidate) =>
+      candidate.secret === secretId &&
+      (kind === 'pokemon') === (candidate.pokemon !== undefined) &&
+      (kind !== 'sign' || candidate.kind === 'sign'),
   )!;
   const [offset, facing] = STEPS.find(
     ([step]) => map.collision[entity.position.y + step.y]?.[entity.position.x + step.x] === false,
@@ -254,5 +259,122 @@ describe('THE ELEVENTH STONE', () => {
     internals.tryInteract();
     expect(dialogBox.shownMessages[0]).toBe(stone.foundLine);
     expect(internals.pendingWildBattle).toEqual({ speciesId: 'alakazam', level: 22 });
+  });
+});
+
+describe('THE HERON THAT IS NOT', () => {
+  const heron = secretById('the-heron-that-is-not')!;
+  const dragonair = { kind: 'meet', speciesId: 'dragonair', level: 24 } as const;
+  const plan: Plan = { conditions: CONDITIONS, secrets: [{ id: heron.id, reward: dragonair }] };
+  /** The scene at the end of the boards, having stood for `stillMs`. */
+  const stood = (stillMs: number, laid: Plan = plan) => {
+    const at = beside(heron.id, 'sign', laid);
+    Object.assign(at.internals, { stoodStillMs: stillMs });
+    return at;
+  };
+
+  it('reads as its notice to anybody who has just walked up, or who has not stood long enough', () => {
+    for (const stillMs of [0, 3_000, HERON_STILL_MS - 1]) {
+      const { internals, dialogBox, entity } = stood(stillMs);
+      internals.tryInteract();
+      expect(dialogBox.shownMessages, `${stillMs}ms`).toEqual(entity.dialogLines);
+      expect(internals.pendingWildBattle).toBeUndefined();
+      expect(internals.runSession.pokemonMet).toEqual([]);
+    }
+  });
+
+  it('looks round at somebody who has stood as still as it does, once a raid', () => {
+    const { internals, dialogBox, entity } = stood(HERON_STILL_MS);
+
+    internals.tryInteract();
+
+    expect(dialogBox.shownMessages).toEqual([heron.foundLine]);
+    expect(internals.pendingWildBattle).toEqual({ speciesId: 'dragonair', level: 24 });
+    expect(internals.runSession.pokemonMet).toEqual([`secret:${heron.id}`]);
+
+    // Run from, it does not come back the same raid: the notice is a notice again.
+    Object.assign(internals, { pendingWildBattle: undefined });
+    dialogBox.shownMessages.length = 0;
+    internals.tryInteract();
+    expect(dialogBox.shownMessages).toEqual(entity.dialogLines);
+    expect(internals.pendingWildBattle).toBeUndefined();
+  });
+
+  it('is a notice and nothing else once it has been had', () => {
+    const { internals, dialogBox, entity } = stood(HERON_STILL_MS * 2, { conditions: CONDITIONS, secrets: [{ id: heron.id }] });
+    internals.tryInteract();
+    expect(dialogBox.shownMessages).toEqual(entity.dialogLines);
+    expect(internals.pendingWildBattle).toBeUndefined();
+  });
+
+  it('counts standing still in raid clock, and a step or a turn starts the count again', () => {
+    const scene = Object.create(WorldScene.prototype) as WorldScene;
+    const stance = { currentTile: { x: 5, y: 5 }, facing: 'left', targetTile: null as GridPosition | null, stoodStillMs: 0, stoodAs: '' };
+    Object.assign(scene as object, stance);
+    const count = (ms: number): number => {
+      (scene as unknown as { countStandingStill(ms: number): void }).countStandingStill(ms);
+      return (scene as unknown as { stoodStillMs: number }).stoodStillMs;
+    };
+
+    // The frame it arrives is not a frame stood.
+    expect(count(1_000)).toBe(0);
+    expect(count(1_000)).toBe(1_000);
+    expect(count(4_000)).toBe(5_000);
+    // A frame the clock was not charged for - a fight queued, a beat running - adds nothing.
+    expect(count(0)).toBe(5_000);
+
+    Object.assign(scene as object, { facing: 'up' });
+    expect(count(1_000)).toBe(0);
+    expect(count(1_000)).toBe(1_000);
+
+    Object.assign(scene as object, { targetTile: { x: 5, y: 4 } });
+    expect(count(1_000)).toBe(0);
+    Object.assign(scene as object, { targetTile: null, currentTile: { x: 5, y: 4 } });
+    expect(count(1_000)).toBe(0);
+    expect(count(HERON_STILL_MS)).toBe(HERON_STILL_MS);
+  });
+});
+
+describe('THE LIGHT THAT ANSWERS', () => {
+  const light = secretById('the-light-that-answers')!;
+
+  it('lies signalling under the light for an ordinary lead, and says so, with no cry and no fight', () => {
+    const { internals, dialogBox } = beside(light.id, 'pokemon', { conditions: CONDITIONS, secrets: [], sleeping: [light.id] });
+    internals.tryInteract();
+    expect(dialogBox.shownMessages).toEqual([...light.shutLines!]);
+    expect(internals.pendingWildBattle).toBeUndefined();
+    expect(internals.runSession.pokemonMet).toEqual([]);
+  });
+
+  it('answers a shiny walking in front', () => {
+    const { internals, dialogBox } = beside(light.id, 'pokemon', {
+      conditions: { ...CONDITIONS, leadShiny: true },
+      secrets: [{ id: light.id, reward: light.rewards[0] }],
+    });
+    internals.tryInteract();
+    expect(dialogBox.shownMessages[0]).toBe(light.foundLine);
+    expect(internals.pendingWildBattle).toEqual({ speciesId: 'starmie', level: 22 });
+  });
+});
+
+describe('THE KITE THIEF', () => {
+  const thief = secretById('the-kite-thief')!;
+
+  it('sits on its four kites for anybody with nothing flying in front, and says so, with no cry and no fight', () => {
+    const { internals, dialogBox } = beside(thief.id, 'pokemon', { conditions: CONDITIONS, secrets: [], sleeping: [thief.id] });
+    internals.tryInteract();
+    expect(dialogBox.shownMessages).toEqual([...thief.shutLines!]);
+    expect(internals.pendingWildBattle).toBeUndefined();
+    expect(internals.runSession.pokemonMet).toEqual([]);
+  });
+
+  it('comes for a Flying type walking in front', () => {
+    const { internals, dialogBox } = beside(thief.id, 'pokemon', {
+      conditions: { ...CONDITIONS, leadTypes: ['Normal', 'Flying'] },
+      secrets: [{ id: thief.id, reward: thief.rewards[0] }],
+    });
+    internals.tryInteract();
+    expect(dialogBox.shownMessages[0]).toBe(thief.foundLine);
+    expect(internals.pendingWildBattle).toEqual({ speciesId: 'kingler', level: 20 });
   });
 });
