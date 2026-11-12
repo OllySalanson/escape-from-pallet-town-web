@@ -545,7 +545,8 @@ try {
   // `read:x:y:Dir` (walks to that tile, faces Dir and presses the interact
   // key: a sign, a clue, a person), `tide:S` (stands still until the raid's
   // tide reads S seconds, as a boat reads it), `clock:S` (until S seconds have
-  // gone by on the raid's own clock, as a secret reads it), `push:area:x:y:Dir` (walks behind the Strength boulder on that tile of an
+  // gone by on the raid's own clock, as a secret reads it), `still:S` (until
+  // the player has stood S seconds with no step and no turn), `push:area:x:y:Dir` (walks behind the Strength boulder on that tile of an
   // area and pushes it once - `WorldScene.tryPushBoulder`, a floor switch
   // under it thrown by the game), `grab:itemId` (every piece of it this raid
   // laid), `shimmer` and `shimmer:in` (beside this raid's shimmering grass, and
@@ -679,6 +680,16 @@ try {
         }
         note(`omen: ${plan.omen.speciesId} crossing at ${Math.round((await page.evaluate(elapsed)) / 1000)}s, seen ${await page.evaluate(`${GAME}.scene.getScene('world').runSession.omenSeen === true`)}`);
       }
+    } else if (kind === 'still') {
+      // `still:S` stands, with no step and no turn and nothing pressed, until
+      // the game has counted S seconds of it (`WorldScene.stoodStillMs`): what
+      // THE HERON THAT IS NOT waits for at the end of its boards.
+      const ms = Number(parts[0]) * 1000;
+      const stood = `${GAME}.scene.getScene('world').stoodStillMs`;
+      while ((await page.evaluate(stood)) < ms) {
+        await wait(stepped ? 250 : 500);
+      }
+      note(`stood still ${Math.round((await page.evaluate(stood)) / 1000)}s`);
     } else if (kind === 'shot') {
       if (option('shot')) {
         await wait(300);
