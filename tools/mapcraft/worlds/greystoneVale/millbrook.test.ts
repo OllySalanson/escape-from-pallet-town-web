@@ -84,7 +84,7 @@ describe('Millbrook, where a new game lands', () => {
 describe('Millbrook, walked in the stitched vale', () => {
   // Millbrook is the plan's cell [0, 1], one cell in from the map's west and north edges.
   const at = (x: number, y: number) => ({ x: 64 + x, y: 128 + y });
-  const landing = at(30, 32);
+  const landing = at(32, 33);
   const walk = (opened: readonly string[] = []) => {
     const map = getWorldMap('greystone-vale', opened);
     return stepDistances(map.collision, landing, undefined, map.links);
@@ -128,7 +128,7 @@ describe('Millbrook, walked in the stitched vale', () => {
  * each fail it, by name.
  */
 describe('Millbrook, walked two abreast', () => {
-  const LANDING = { x: 30, y: 32 };
+  const LANDING = { x: 32, y: 33 };
   // Millbrook is the plan's cell [0, 1].
   const walked = walkDistrict(file, valeSolid({ x: 64, y: 128 }), [LANDING]);
 

@@ -33,7 +33,7 @@ const NOT_HELD = { x: 0, y: 0 };
 /** The vale's own ways in, on a map of a pixel to the tile. */
 const WAYS: readonly OverviewLight[] = [
   ['stepping-stones', 168, 184],
-  ['mill-square', 94, 160],
+  ['mill-square', 96, 161],
   ['moor-top', 86, 101],
   ['quarry', 184, 77],
   ['dam', 286, 92],

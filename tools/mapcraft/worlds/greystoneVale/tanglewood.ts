@@ -322,7 +322,7 @@ export function tanglewood(): MapcraftResult {
         { x: 36, y: 30, name: 'Pilgrim’s Lad', look: 'youngster', facing: 'right', lines: ['Gran says the old stones go underground, at the rock, past the camp.', 'She says the keepers used to go in. She does not say whether they came out.'], beat: { everyMs: 2200, roam: [[1, 0]], glances: ['up'] }, calls: ['Gran! There is another one!'] },
         // -- The cavers' camp ------------------------------------------------------------------------
         { x: 48, y: 21, name: 'Caver', look: 'hiker', facing: 'left', lines: ['This is the Wood Mouth. Greystone Caves, second floor, by the time you are in.', 'There is a way down from here to the sea and a way up to the quarry. We have lost two ropes finding out.'], beat: { everyMs: 3100, glances: ['left', 'up'] }, calls: ['Rope! Who has the rope?'] },
-        { x: 53, y: 20, name: 'Tea Woman', look: 'worker-woman', facing: 'up', lines: ['They go in, I keep the kettle on. They come out, I count them.', 'It has never yet been the same number. I have stopped telling them.'], beat: { everyMs: 3500, roam: [[0, 1]], glances: ['up'] }, calls: ['Tea? Before you go in?'] },
+        { x: 53, y: 21, name: 'Tea Woman', look: 'worker-woman', facing: 'up', lines: ['They go in, I keep the kettle on. They come out, I count them.', 'It has never yet been the same number. I have stopped telling them.'], beat: { everyMs: 3500, glances: ['down'] }, calls: ['Tea? Before you go in?'] },
         // -- The halfway stone -------------------------------------------------------------------------
         { x: 39, y: 37, name: 'Pedlar', look: 'heavy-man', facing: 'left', lines: ['Halfway, it says. Everybody stops here and feels better about it.', 'Nobody has ever asked halfway to what. Pins?'], beat: { everyMs: 2700, glances: ['up', 'down'] }, calls: ['Pins! Thread! Directions!'] },
         // -- The hermit ------------------------------------------------------------------------------------
@@ -347,7 +347,7 @@ export function tanglewood(): MapcraftResult {
       ],
       pokemon: [
         { x: 22, y: 4, species: 'oddish' },
-        { x: 2, y: 37, species: 'pidgey', beat: { everyMs: 1500, roam: [[1, 0]] } },
+        { x: 2, y: 37, species: 'pidgey', beat: { everyMs: 1500, glances: ['right'] } },
         { x: 12, y: 24, species: 'caterpie', beat: { everyMs: 2300, roam: [[0, 1]] } },
         { x: 12, y: 10, species: 'paras', level: 8 },
         { x: 13, y: 9, species: 'paras', beat: { everyMs: 2900, roam: [[0, 1]] } },
@@ -361,7 +361,7 @@ export function tanglewood(): MapcraftResult {
         { x: 48, y: 23, species: 'zubat', beat: { everyMs: 1200, roam: [[0, -1]] } },
         { x: 49, y: 27, species: 'geodude', level: 9 },
         { x: 38, y: 39, species: 'rattata', beat: { everyMs: 1400, roam: [[1, 0]] } },
-        { x: 26, y: 41, species: 'venonat', beat: { everyMs: 2600, roam: [[0, 1]] } },
+        { x: 26, y: 41, species: 'venonat', beat: { everyMs: 2600, glances: ['down'] } },
         // The cart's turnips, and what has been eating them.
         { x: 59, y: 47, species: 'rattata', level: 7 },
         { x: 54, y: 47, species: 'pidgey' },

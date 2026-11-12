@@ -368,7 +368,7 @@ export const GREYSTONE_VALE: WorldPlan = {
     { district: 'ember-isle', side: 'west', at: 40, name: 'Cinder Boat', opens: { when: 'after', seconds: 200 } },
   ],
   landmarks: [
-    { district: 'millbrook', name: 'Mill Square', at: [30, 32], kind: 'landing' },
+    { district: 'millbrook', name: 'Mill Square', at: [32, 33], kind: 'landing' },
     { district: 'millbrook', name: 'The Mill', at: [44, 18], kind: 'landmark' },
     { district: 'high-moor', name: 'The Grey Stones', at: [24, 16], kind: 'landmark' },
     { district: 'high-moor', name: 'Moor Top', at: [22, 37], kind: 'landing' },

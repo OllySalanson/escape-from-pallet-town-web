@@ -4975,8 +4975,8 @@
  ],
  "dropIns": [
   {
-   "x": 94,
-   "y": 160,
+   "x": 96,
+   "y": 161,
    "name": "Mill Square",
    "description": "The square where every road in the vale starts, on market day."
   },
@@ -8636,7 +8636,7 @@
   },
   {
    "x": 245,
-   "y": 148,
+   "y": 149,
    "name": "Tea Woman",
    "look": "worker-woman",
    "facing": "up",
@@ -8646,14 +8646,8 @@
    ],
    "beat": {
     "everyMs": 3500,
-    "roam": [
-     [
-      0,
-      1
-     ]
-    ],
     "glances": [
-     "up"
+     "down"
     ]
    },
    "calls": [
@@ -16442,7 +16436,7 @@
       0
      ],
      [
-      1,
+      0,
       -1
      ]
     ]
@@ -16547,11 +16541,11 @@
     "roam": [
      [
       0,
-      -1
+      1
      ],
      [
       0,
-      -2
+      2
      ]
     ]
    }
@@ -16563,11 +16557,8 @@
    "level": 3,
    "beat": {
     "everyMs": 2200,
-    "roam": [
-     [
-      0,
-      1
-     ]
+    "glances": [
+     "down"
     ]
    }
   },
@@ -17421,11 +17412,8 @@
    "species": "pidgey",
    "beat": {
     "everyMs": 1500,
-    "roam": [
-     [
-      1,
-      0
-     ]
+    "glances": [
+     "right"
     ]
    }
   },
@@ -17542,11 +17530,8 @@
    "species": "venonat",
    "beat": {
     "everyMs": 2600,
-    "roam": [
-     [
-      0,
-      1
-     ]
+    "glances": [
+     "down"
     ]
    }
   },

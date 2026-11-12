@@ -70,7 +70,7 @@ const BATTLE = `${GAME}.scene.getScene('battle')`;
 const ORIGIN = HARBOUR ? { x: 0, y: 0 } : TANGLEWOOD ? { x: 192, y: 128 } : PINE_HOLLOW ? { x: 192, y: 64 } : { x: 64, y: 128 };
 // Where the walks start: Millbrook's landing, a step into Tanglewood on the road
 // from The Crossing, or a step into Pine Hollow on the trail over the col.
-const LANDING = TANGLEWOOD ? [1, 33] : PINE_HOLLOW ? [1, 23] : [30, 32];
+const LANDING = TANGLEWOOD ? [1, 33] : PINE_HOLLOW ? [1, 23] : [32, 33];
 // THE HARBOUR's two starts (`BASE_SPAWN`, `BASE_LANDING` in `base/baseMap.ts`).
 const SPAWN = [16, 13];
 const JETTY = [12, 19];

@@ -142,7 +142,7 @@ try {
   await wait(600);
   await readAll();
   const landed = await tile();
-  check(landed.x === at(30, 32).x && landed.y === at(30, 32).y, `a new game lands on Mill Square (${landed.x},${landed.y})`);
+  check(landed.x === at(32, 33).x && landed.y === at(32, 33).y, `a new game lands on Mill Square (${landed.x},${landed.y})`);
   await page.screenshot(`${out}/01-landing.png`);
 
   // -- The village going on round the player ----------------------------------------
