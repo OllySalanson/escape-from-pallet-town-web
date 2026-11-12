@@ -536,7 +536,8 @@ describe('a raid abandoned by closing the game', () => {
     ).toEqual([
       'The game closed before your raid at Floodplain Relay was over.',
       'Your team made it home, but your Raid pack was left out there.',
-      'Lost with it: 4 Potions, 1 Super Potion and 5 Poké Balls.',
+      'It went out with 4 Potions, 1 Super Potion and 5 Poké Balls.',
+      'Anything caught or found out there went with it.',
       'The secure container kept 1 Potion.',
     ]);
   });
@@ -556,7 +557,7 @@ describe('a raid abandoned by closing the game', () => {
       kept: [],
     });
     expect(lines.slice(2).every((line) => line.length <= ABANDONED_LINE_LETTERS)).toBe(true);
-    expect(lines.slice(2).join(' ')).toMatch(/^Lost with it: 12 Potions, .*Also lost: /);
+    expect(lines.slice(2).join(' ')).toMatch(/^It went out with 12 Potions, .*And with /);
     for (const word of ['12 Potions', '10 Super Potions', '9 Antidotes', '20 Poké Balls', '11 Great Balls', 'Aerial Ace']) {
       expect(lines.join(' ')).toContain(word);
     }

@@ -159,7 +159,12 @@ export const PACKED_FOR_RAID_LINE =
 
 /**
  * What the base says when it opens on a raid that was never finished. Plain,
- * in the order it happened: where, who came home, what did not.
+ * in the order it happened: where, who came home, what did not. The record is
+ * written as the raid leaves, so what it can name is what the pack went out
+ * with, and it says so rather than calling that what was in it at the end; a
+ * catch on the way - a legend's included - is only ever said to have gone with
+ * the pack, because nothing about it was written down (the endgame bug hunt,
+ * 12 Nov 2026, finding 3: a caught ZAPDOS went unmentioned).
  */
 export function abandonedRaidLines(raid: AbandonedRaid): readonly string[] {
   const where = isWorldMapId(raid.mapId) ? ` at ${worldMapName(raid.mapId)}` : '';
@@ -168,7 +173,8 @@ export function abandonedRaidLines(raid: AbandonedRaid): readonly string[] {
   return [
     `The game closed before your raid${where} was over.`,
     `Your team made it home, but ${pack} was left out there.`,
-    ...listedOver('Lost with it: ', 'Also lost: ', raid.lost),
+    ...listedOver('It went out with ', 'And with ', raid.lost),
+    'Anything caught or found out there went with it.',
     ...listedOver('The secure container kept ', 'It also kept ', raid.kept),
   ];
 }

@@ -10,7 +10,8 @@ import type { Stash } from '../stash/Stash';
  * trade and back. Phaser-free, and the whole rule.
  *
  * **The trades are FireRed's own nine** (pret/pokefirered,
- * `src/data/ingame_trades.h`, FireRed's side of each): the kind asked for, the
+ * `src/data/ingame_trades.h`, FireRed's side of each, made on its ROUTE 2,
+ * ROUTE 5, ROUTE 11 and ROUTE 18, in CERULEAN, VERMILION and on CINNABAR): the kind asked for, the
  * kind given and the nickname it comes with, each made once a save, as each
  * of FireRed's is made once. What comes back is at the level of what went, as
  * FireRed's `CreateInGameTradePokemon` makes it. Two of them are the only way
@@ -35,20 +36,18 @@ export interface InGameTrade {
   /** The kind he gives for it, under its FireRed nickname. */
   readonly gives: string;
   readonly nickname: string;
-  /** Where FireRed makes the trade, which is what he says he had it from. */
-  readonly fireRedPlace: string;
 }
 
 export const IN_GAME_TRADES: readonly InGameTrade[] = [
-  { id: 'mimien', wants: 'abra', gives: 'mr-mime', nickname: 'MIMIEN', fireRedPlace: 'ROUTE 2' },
-  { id: 'zynx', wants: 'poliwhirl', gives: 'jynx', nickname: 'ZYNX', fireRedPlace: 'CERULEAN CITY' },
-  { id: 'ms-nido', wants: 'nidoran-m', gives: 'nidoran-f', nickname: 'MS. NIDO', fireRedPlace: 'ROUTE 5' },
-  { id: 'chding', wants: 'spearow', gives: 'farfetchd', nickname: "CH'DING", fireRedPlace: 'VERMILION CITY' },
-  { id: 'nina', wants: 'nidorino', gives: 'nidorina', nickname: 'NINA', fireRedPlace: 'ROUTE 11' },
-  { id: 'marc', wants: 'golduck', gives: 'lickitung', nickname: 'MARC', fireRedPlace: 'ROUTE 18' },
-  { id: 'esphere', wants: 'raichu', gives: 'electrode', nickname: 'ESPHERE', fireRedPlace: 'CINNABAR ISLAND' },
-  { id: 'tangeny', wants: 'venonat', gives: 'tangela', nickname: 'TANGENY', fireRedPlace: 'CINNABAR ISLAND' },
-  { id: 'seelor', wants: 'ponyta', gives: 'seel', nickname: 'SEELOR', fireRedPlace: 'CINNABAR ISLAND' },
+  { id: 'mimien', wants: 'abra', gives: 'mr-mime', nickname: 'MIMIEN' },
+  { id: 'zynx', wants: 'poliwhirl', gives: 'jynx', nickname: 'ZYNX' },
+  { id: 'ms-nido', wants: 'nidoran-m', gives: 'nidoran-f', nickname: 'MS. NIDO' },
+  { id: 'chding', wants: 'spearow', gives: 'farfetchd', nickname: "CH'DING" },
+  { id: 'nina', wants: 'nidorino', gives: 'nidorina', nickname: 'NINA' },
+  { id: 'marc', wants: 'golduck', gives: 'lickitung', nickname: 'MARC' },
+  { id: 'esphere', wants: 'raichu', gives: 'electrode', nickname: 'ESPHERE' },
+  { id: 'tangeny', wants: 'venonat', gives: 'tangela', nickname: 'TANGENY' },
+  { id: 'seelor', wants: 'ponyta', gives: 'seel', nickname: 'SEELOR' },
 ];
 
 export const TRADER_NAME = 'TRADER';

@@ -93,8 +93,8 @@ export const POKEDEX_MILESTONES: readonly PokedexMilestone[] = [
     reward: [supply('great-ball', 15), supply('super-potion', 10)],
   },
   {
-    // FireRed's line for the 120s sends you to trade, which nobody can do here;
-    // this is his line for the 130s.
+    // FireRed's line for the 120s sends you to trade with friends, and the only
+    // trader here is THE TRADER on the lawn; this is his line for the 130s.
     kinds: 125,
     rating: ['Outstanding!', 'You’ve become a real pro at this!'],
     reward: EVERY_STONE,
