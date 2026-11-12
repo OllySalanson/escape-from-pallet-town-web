@@ -201,9 +201,9 @@ export interface Secret {
    * Which wave of the plan it shipped in: the first needs no badge; the second
    * needs something bought or won first - the POKé FLUTE from THE GAME
    * CORNER's prize window, or MISTY beaten and THE COAST behind her open. The
-   * third is the Pokemon the vale had nowhere at all, each met only here: until
-   * it shipped, sixteen of the 151 could not be had and Oak's last Pokedex
-   * milestone could not be reached (`pokedexReach.test.ts` keeps the count).
+   * third is four Pokemon a raid meets nowhere else, kinds FireRed keeps for
+   * an in-game trade or a trade evolution: a Hypno, a Lickitung, a Mr. Mime
+   * and a Gengar, each in a place that already had half the story.
    */
   readonly wave: 1 | 2 | 3;
 }
@@ -446,9 +446,9 @@ export const SECRETS: readonly Secret[] = [
     wave: 3,
   },
   {
-    // A HAUNTER turns into a GENGAR only by trade, which this game does not
-    // have, so the one GENGAR in the vale is the shadow on the crypt floor under
-    // THE MOOR CHAPEL - a place only a night raid reaches. It lies at the foot
+    // A HAUNTER turns into a GENGAR only by trade, so no grass or floor in the
+    // vale rolls one: the GENGAR a raid can meet is the shadow on the crypt
+    // floor under THE MOOR CHAPEL - a place only a night raid reaches. It lies at the foot
     // of the gold graves every raid until it is had, with nothing in the room
     // to cast it, and gets up only for its own kind: a Ghost type
     // walking in front, which the churchyard above is where to catch. Lv 25 is

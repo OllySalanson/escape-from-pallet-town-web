@@ -1,13 +1,9 @@
-# Rare finds, wave 3: four Pokémon the vale had nowhere
+# Rare finds, wave 3: a Hypno, a Lickitung, a Mr. Mime and a Gengar
 
-Until this change sixteen of the 151 could not be had on Greystone Vale at all,
-and only one of Eevee's three evolutions could, so Oak's last Pokédex milestone
-could never be paid. Wave 3 of the vale's secrets (`src/game/world/secrets.ts`)
-puts four of them in, each in a place that already had half the story:
-a Hypno, a Lickitung, a Mr. Mime and a Gengar - with a Drowzee dozing beside
-the first. `src/game/world/pokedexReach.test.ts` works out from the game's own
-data which kinds a save can come to own, and lists by name the eleven it still
-cannot.
+Wave 3 of the vale's secrets (`src/game/world/secrets.ts`): four Pokémon a
+raid meets nowhere else, kinds FireRed keeps for an in-game trade or a trade
+evolution - a Hypno, a Lickitung, a Mr. Mime and a Gengar - each put in a place
+that already had half the story, with a Drowzee dozing beside the first.
 
 Played end to end in a test-mode build (`VITE_EPTW_TEST_MODE=pixels`, served as
 the playtest README says) by `tools/playtest/raid.mjs --pixels --window=pixel
@@ -61,7 +57,7 @@ then `--clock=night ... --shot-battles --steps=walk:221:133,shot:glade,read:218:
 | | |
 | --- | --- |
 | ![](10-lost-picnic-before.png) | Before: the picnicker who "took one turn off the road" this morning, some time ago. |
-| ![](11-lost-picnic-by-day.png) | After, by day: the glade has a name on its plate, and a Drowzee dozes above the bench at any hour - the only one in the vale, Lv 10, fought when spoken to. It first stood on the one tile that leads to the back of the glade, which walled the Hypno in; the raid found that, and `secrets.test.ts` now walks up to every nook with everybody standing where they stand. |
+| ![](11-lost-picnic-by-day.png) | After, by day: the glade has a name on its plate, and a Drowzee dozes above the bench at any hour, Lv 10, fought when spoken to. It first stood on the one tile that leads to the back of the glade, which walled the Hypno in; the raid found that, and `secrets.test.ts` now walks up to every nook with everybody standing where they stand. |
 | ![](12-the-picnickers-clue.png) | The picnicker is the clue. His first box is shown; his new third reads "Something stands by the bench after DARK, swinging a weight on a string. I always nod off before I see it." |
 | ![](13-lost-picnic-by-night.png) | On a night raid: a Hypno stands at the back of the glade, over the Drowzee. |
 | ![](14-hypno-was-not-expecting-that.png) | "A little weight swings on its string, to and fro, to and fro... You shake your head clear." |
@@ -80,7 +76,7 @@ walk out does not go back up the stairs; `--through=... --deep` is the walk that
 | ![](18-the-keepers-notice.png) | The notice is the clue. Its first box is shown; the second reads "The shadow at the foot of the gold graves is nobody's. Leave it be. It only gets up for a GHOST walking in front." |
 | ![](19-nothing-to-cast-it.png) | Spoken to with a Bulbasaur in front: "There is nothing in the crypt to cast it." |
 | ![](20-a-ghost-in-front.png) | With a Gastly leading: "the shadow sits up and grins. GENGAR peels itself off the floor!" |
-| ![](21-gengar-lv25.png) | A wild Gengar, Lv 25. A Haunter turns into one only by trade, which this game does not have, so this is the vale's one. |
+| ![](21-gengar-lv25.png) | A wild Gengar, Lv 25. A Haunter turns into one only by trade, so nothing in the vale's grass or on its floors rolls one. |
 
 ## What else changed
 

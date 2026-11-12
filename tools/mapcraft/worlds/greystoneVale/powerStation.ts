@@ -478,7 +478,7 @@ export function powerStation(): MapcraftResult {
       // Voltorb on the lawn that every raid takes for a Poke Ball.
       pokemon: [
         // The silent picket, at the east end of the line between the banners and
-        // the sandwiches: a Mr. Mime, the only one in the vale, standing every
+        // the sandwiches: a Mr. Mime, standing every
         // raid until he is had and answering only a Psychic type in front
         // (`world/secrets.ts`, THE SILENT PICKET). The Scab stands a step east of
         // where he did, so the picket is spoken to from the forecourt.

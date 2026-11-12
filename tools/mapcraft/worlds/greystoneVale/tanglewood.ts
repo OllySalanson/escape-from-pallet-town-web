@@ -350,8 +350,7 @@ export function tanglewood(): MapcraftResult {
       ],
       pokemon: [
         { x: 22, y: 4, species: 'oddish' },
-        // The lost picnic: a Drowzee dozes by the bench all day, the only one in
-        // the vale, and after dark the Hypno it will be one day stands over it
+        // The lost picnic: a Drowzee dozes by the bench all day, and after dark the Hypno it will be one day stands over it
         // (`world/secrets.ts`, THE LOST PICNIC). Both at the back of the glade,
         // off the way through to Mislaid - and the Drowzee at its west end,
         // because the back of the glade is reached by the one tile between the

@@ -257,7 +257,7 @@ export function orchardTerraces(): MapcraftResult {
       // ready to argue about it, and the yard's Doduo, who are hens to everybody here.
       pokemon: [
         // What licks the press's barrels clean, in the gap between them and the
-        // wood: a Lickitung, the only one in the vale, there only on a raid that
+        // wood: a Lickitung, there only on a raid that
         // set out with a berry in the pack (`world/secrets.ts`, THE STICKY TONGUE).
         { x: 55, y: 26, species: 'lickitung', level: 24, secret: 'the-sticky-tongue' },
         { x: 48, y: 38, species: 'tauros', level: 9 },

@@ -263,7 +263,7 @@ export function moorChapel(): MapcraftResult {
         { area: CRYPT.id, x: 14, y: 4, species: 'haunter', level: 14 },
         { area: CRYPT.id, x: 3, y: 10, species: 'cubone' },
         // The shadow on the floor at the foot of the gold graves, with nothing
-        // to cast it: the vale's one Gengar, there every raid until it is had,
+        // to cast it: a Gengar, there every raid until it is had,
         // getting up only for a Ghost type in front (`world/secrets.ts`).
         { area: CRYPT.id, x: 11, y: 11, species: 'gengar', level: 25, secret: 'the-shadow-in-the-crypt' },
       ],
