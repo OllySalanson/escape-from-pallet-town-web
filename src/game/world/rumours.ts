@@ -170,7 +170,7 @@ export const RUMOURS: readonly Rumour[] = [
     gives: ['where', 'bring'],
     names: 'The Crypt',
     ringsOver: 'THE MOOR CHAPEL',
-    line: 'BILL: THE CRYPT under THE MOOR CHAPEL is the oldest room in the vale! A shadow on its wall belongs to nobody. Old books say it only follows a GHOST type.',
+    line: 'BILL: THE CRYPT under THE MOOR CHAPEL is the oldest room in the vale! A shadow on its floor belongs to nobody. Old books say it only follows a GHOST type.',
   },
   // THE RUMOUR MILL's own slips: when and what to bring, where the harbour's
   // rumour about the same secret gives where and one of them. Two rumours from

@@ -415,7 +415,20 @@ async function enterRaid(page, { press, click, until, wait, insertion, starter, 
   // the Raid Arena: this walks through its door and up to the bench.
   await walkIntoBase(page, 'raid-arena', { press, until, wait });
   // The first taken leads: --lead's, when one was asked for, with the starter after it.
+  // The bench is never empty at the door - the partner is put on it
+  // (`DeploymentFlow.packSomebodyIfBenchEmpty`) - so whoever is on it steps
+  // off first, as a player changing who leads has them do.
   if (lead) {
+    await until(`document.querySelector('button[data-pokemon]') !== null`, 'the bench to list the vault');
+    for (let guard = 0; guard < 6; guard += 1) {
+      const stoodDown = await page.evaluate(
+        `(() => { const b = document.querySelector('button[data-pokemon].is-selected'); if (!b) return false; b.click(); return true; })()`,
+      );
+      if (!stoodDown) {
+        break;
+      }
+      await sleep(150);
+    }
     await until(takePokemon(lead), `${lead} leading the raid party`);
   }
   await until(takePokemon(starter), `${starter} in the raid party`);

@@ -202,8 +202,8 @@ export interface Secret {
    * needs something bought or won first - the POKé FLUTE from THE GAME
    * CORNER's prize window, or MISTY beaten and THE COAST behind her open. The
    * third is the Pokemon the vale had nowhere at all, each met only here: until
-   * it shipped, fourteen of the 151 could not be had and Oak's last Pokedex
-   * milestone could not be reached.
+   * it shipped, sixteen of the 151 could not be had and Oak's last Pokedex
+   * milestone could not be reached (`pokedexReach.test.ts` keeps the count).
    */
   readonly wave: 1 | 2 | 3;
 }
@@ -447,10 +447,10 @@ export const SECRETS: readonly Secret[] = [
   },
   {
     // A HAUNTER turns into a GENGAR only by trade, which this game does not
-    // have, so the one GENGAR in the vale is the shadow on the crypt wall under
-    // THE MOOR CHAPEL - a place only a night raid reaches. It lies along the
-    // wall behind the tomb every raid until it is had, with nothing in the room
-    // to cast it, and steps off the wall only for its own kind: a Ghost type
+    // have, so the one GENGAR in the vale is the shadow on the crypt floor under
+    // THE MOOR CHAPEL - a place only a night raid reaches. It lies at the foot
+    // of the gold graves every raid until it is had, with nothing in the room
+    // to cast it, and gets up only for its own kind: a Ghost type
     // walking in front, which the churchyard above is where to catch. Lv 25 is
     // an earned fight before MISTY.
     id: 'the-shadow-in-the-crypt',
@@ -459,9 +459,9 @@ export const SECRETS: readonly Secret[] = [
     nook: 'figure',
     when: [{ kind: 'lead-type', type: 'Ghost' }],
     rewards: [{ kind: 'meet', speciesId: 'gengar', level: 25 }],
-    foundLine: 'Your Ghost drifts up to the wall, and the shadow on it turns round and grins. GENGAR steps off the stone!',
+    foundLine: 'Your Ghost drifts over the shadow, and the shadow sits up and grins. GENGAR peels itself off the floor!',
     shutLines: [
-      'A shadow lies along the wall behind the tomb. There is nothing in the crypt to cast it.',
+      'A shadow lies across the floor at the foot of the gold graves. There is nothing in the crypt to cast it.',
       'It does not move when you do. You have the feeling it is being polite.',
     ],
     wave: 3,
