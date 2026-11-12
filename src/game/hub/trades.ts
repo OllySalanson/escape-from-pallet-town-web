@@ -53,6 +53,9 @@ export const IN_GAME_TRADES: readonly InGameTrade[] = [
 
 export const TRADER_NAME = 'TRADER';
 
+/** His id among the people about THE HARBOUR (`base/harbourLife.ts`). */
+export const TRADER_ID = 'trader';
+
 /** The kind a trade and back turns this one into, if trading is what evolves it. */
 export function tradeEvolution(speciesId: string): PokemonBase | undefined {
   const rule = EVOLUTIONS.find((candidate) => candidate.from === speciesId && candidate.trigger.kind === 'trade');
@@ -123,6 +126,22 @@ export function traderLines(tradesMade: readonly string[]): readonly string[] {
 /** Names in a line: "A, B or C". */
 function listed(names: readonly string[]): string {
   return names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
+}
+
+/** The row's help line: what the trade would do, before it is asked. */
+export function tradeHelp(name: string, deal: TradeDeal): string {
+  const was = name.toUpperCase();
+  return deal.kind === 'swap'
+    ? `Trade ${was} for his ${deal.gives.name.toUpperCase()}, ${deal.trade.nickname}, at ${was}'s level. ${was} stays with him.`
+    : `Trade ${was} over to his game and straight back: it evolves into ${deal.into.name.toUpperCase()} on the way.`;
+}
+
+/** The question a trade asks before it is made, because a trade of his is for good. */
+export function tradeQuestion(name: string, deal: TradeDeal): string {
+  const was = name.toUpperCase();
+  return deal.kind === 'swap'
+    ? `Trade ${was} for ${deal.trade.nickname} the ${deal.gives.name.toUpperCase()}? ${was} will not come back.`
+    : `Send ${was} over and back? It comes home a ${deal.into.name.toUpperCase()}.`;
 }
 
 /** The Pokémon a trade of his hands back, at the level of the one that went: FireRed's own rule. */

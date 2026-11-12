@@ -6,6 +6,7 @@ import { HARBOUR_POKEMON_ART } from './generated/harbourPokemonArt';
 import { anglerLines } from './harbourFishing';
 import { spyglassLines } from './spyglass';
 import { seagallopLines } from './seagallopLog';
+import { TRADER_ID, TRADER_NAME, traderLines } from '../hub/trades';
 
 /**
  * Who lives in THE HARBOUR: the people who work it and the Pokemon about it.
@@ -85,6 +86,9 @@ export type HarbourFigure = HarbourPerson | HarbourPokemon;
 
 const at = (x: number, y: number): GridPosition => ({ x, y });
 
+/** Where THE TRADER stands (`hub/trades.ts`): what he says after his list is seated by him. */
+export const TRADER_POSITION: GridPosition = at(14, 9);
+
 /**
  * What the Safari Warden says when he has no favour to talk about: nothing
  * anybody can make out until his GOLD TEETH are back in, and then what
@@ -136,6 +140,19 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     idle: { roam: [at(28, 25)], glances: ['up', 'left'], beatMs: 6100 },
     // Spoken to, he lends his spyglass (`spyglass.ts`).
     lines: spyglassLines('day', 0),
+  },
+  {
+    // FireRed's in-game trades and a trade and back (`hub/trades.ts`): spoken
+    // to, he says what he is after and opens his list. On the lawn behind the
+    // RAID ARENA's east wall, off every way to a door.
+    id: TRADER_ID,
+    kind: 'person',
+    name: TRADER_NAME,
+    design: 'poke-maniac',
+    position: TRADER_POSITION,
+    facing: 'down',
+    idle: { roam: [at(13, 9)], glances: ['left', 'down'], beatMs: 5900 },
+    lines: traderLines([]),
   },
   {
     id: 'dock-worker',

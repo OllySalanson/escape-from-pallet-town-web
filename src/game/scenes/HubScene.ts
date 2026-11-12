@@ -203,6 +203,8 @@ import { quickerLandingFor, rewardLine, standingJobWalk } from '../objectives/st
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import { recoveryTermsFor } from '../hub/centerCounter';
 import { dayCareRefusal, leftLines, raidsCompleted } from '../hub/dayCare';
+import { tradeDealFor, tradeHelp, tradeQuestion, tradeRefusal } from '../hub/trades';
+import { TRADER_POSITION } from '../base/harbourLife';
 import { friendRoom, friendRoomsOffered, raidName } from '../raidRoom/friendRoom';
 import { typedRoomCode } from '../raidRoom/roomCode';
 import { friendRoomView, friendStatusLine, type RoomMapChoice } from '../hub/friendRoomView';
@@ -269,7 +271,7 @@ export type ArenaPanel = 'bench' | 'rack' | 'locker' | 'rim';
 const ARENA_PANELS: readonly string[] = ['bench', 'rack', 'locker', 'rim'] satisfies readonly ArenaPanel[];
 
 /** Every base screen, and the hall's panels. */
-type HubView = 'stash' | ArenaPanel | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare' | 'friend';
+type HubView = 'stash' | ArenaPanel | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare' | 'trades' | 'friend';
 
 /**
  * How much of the menu layer a panel over the hall may take, in game pixels: as
@@ -385,6 +387,8 @@ export class HubScene extends Phaser.Scene {
    * arming a second disarms the first.
    */
   private traderArmed: string | undefined;
+  /** The Pokémon THE TRADER's list is asking about (`hub/trades.ts`), by stash id. */
+  private tradeArmed: string | undefined;
   /**
    * When the last irreversible deal was armed (`armRelease`), so a pointer
    * click that lands on its confirm button straight away can be told for the
@@ -491,6 +495,7 @@ export class HubScene extends Phaser.Scene {
     this.swapArmed = false;
     this.workshopArmed = undefined;
     this.traderArmed = undefined;
+    this.tradeArmed = undefined;
     this.wallMapInspect = undefined;
     this.deploying = false;
     // A fresh look at a freshly loaded vault: nothing narrowed, nothing picked up.
@@ -1023,6 +1028,7 @@ export class HubScene extends Phaser.Scene {
     this.swapArmed = false;
     this.workshopArmed = undefined;
     this.traderArmed = undefined;
+    this.tradeArmed = undefined;
     this.wallMapInspect = undefined;
     if (view === 'reselect') {
       this.reselectStarterId = this.startingStarterId();
@@ -1114,7 +1120,9 @@ export class HubScene extends Phaser.Scene {
     const row =
       this.workshopArmed !== undefined
         ? `[data-outfit="${this.workshopArmed}"]`
-        : traded === undefined
+        : this.tradeArmed !== undefined
+          ? `[data-trade="${this.tradeArmed}"]`
+          : traded === undefined
           ? undefined
           : traded === BERTH_DEAL
             ? '[data-berth]'
@@ -1123,6 +1131,7 @@ export class HubScene extends Phaser.Scene {
               : `[data-barter="${traded}"]`;
     this.workshopArmed = undefined;
     this.traderArmed = undefined;
+    this.tradeArmed = undefined;
     this.render();
     if (row) {
       this.overlay.focus(row);
@@ -1463,7 +1472,10 @@ export class HubScene extends Phaser.Scene {
     }
     // A deal asked again is a YES/NO box, and ESC on one is NO, as B is in
     // FireRed: it puts the question down and stays at the counter.
-    if (event.key === 'Escape' && (this.swapArmed || this.workshopArmed !== undefined || this.traderArmed !== undefined)) {
+    if (
+      event.key === 'Escape' &&
+      (this.swapArmed || this.workshopArmed !== undefined || this.traderArmed !== undefined || this.tradeArmed !== undefined)
+    ) {
       event.preventDefault();
       audioManager.play('cancel');
       this.swapArmed = false;
@@ -1605,6 +1617,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'trader') return 'Bill’s Cottage';
     if (this.view === 'wallmap') return this.wallMapInspect ? worldMapName(this.wallMapInspect) : 'The wall map';
     if (this.view === 'daycare') return 'Day-Care';
+    if (this.view === 'trades') return 'The Trader';
     if (this.view === 'friend') return 'Raid with a friend';
     if (this.view === 'bench') return 'The bench';
     if (this.view === 'rack') return 'The armoury rack';
@@ -1622,6 +1635,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'wallmap') return this.wallMapInspect ? 'Wall map' : 'Lab';
     // He stands in the yard, so out of his screen is out into it.
     if (this.view === 'daycare') return 'Yard';
+    if (this.view === 'trades') return 'Yard';
     if (this.view === 'friend') return 'Lab';
     return 'Hall';
   }
@@ -1677,7 +1691,7 @@ export class HubScene extends Phaser.Scene {
                 ? formatMoney(moneyHeld(this.stash))
                 : this.view === 'wallmap'
                   ? wallMapNote(this.savedGame)
-                  : this.view === 'daycare'
+                  : this.view === 'daycare' || this.view === 'trades'
                     ? `${this.stashPokemon.filter((stored) => !awayOnRaid(this.savedGame).has(stored.id)).length} Pokémon at base`
                     // Kinds, as the Pokémon Center's own pane counts them:
                     // "7 items" over three Potions and three Poké Balls read
@@ -1846,6 +1860,12 @@ export class HubScene extends Phaser.Scene {
     on('[data-room-leave]', () => this.leaveRoom());
     this.wireRoomForm(root);
     on('[data-day-care-leave]', (button) => this.leaveAtDayCare(button.dataset.dayCareLeave!));
+    // A trade of his is for good, so the row asks before it is made, as Bill's
+    // barters do: the first press arms it, and the second is a different button.
+    on('[data-trade]', (button) => rerender(() => { this.tradeArmed = button.dataset.trade; this.armRelease(); }));
+    on('[data-trade-confirm]', (button, event) => {
+      if (!this.clickedTooSoon(event, '[data-deal-cancel]')) this.makeTrade(button.dataset.tradeConfirm!);
+    });
     // The way in the player is stood over is in view in its list, whichever it is.
     root.querySelector<HTMLElement>('[data-insertion].is-selected')?.scrollIntoView?.({ block: 'nearest' });
     // The cursor starts on what the screen is for, never on the way out of it.
@@ -1879,6 +1899,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'trader') return this.traderView();
     if (this.view === 'wallmap') return this.wallMapView();
     if (this.view === 'daycare') return this.dayCareView();
+    if (this.view === 'trades') return this.tradesView();
     if (this.view === 'friend') return this.friendView();
     if (this.view === 'bench') return this.benchView();
     if (this.view === 'rack') return this.rackView();
@@ -3996,6 +4017,88 @@ export class HubScene extends Phaser.Scene {
       `<div class="px-mon-tiles px-scroll">${this.browseBar(false)}${rows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>${details}`,
       { className: 'stash-roster', heading: 'Which Pokémon should I raise?', note: this.atBaseNote(away) },
     )}</main>`;
+  }
+
+  /**
+   * THE TRADER's list (`hub/trades.ts`). He has said what he is after on the
+   * lawn before it opens (`BaseScene`): every Pokémon at base, those he would
+   * trade first, each saying what it would come back as - or why not.
+   */
+  private tradesView(): string {
+    const away = awayOnRaid(this.savedGame);
+    const made = this.savedGame.raidProgress.tradesMade ?? [];
+    const refusal = (stored: StashedPokemon): string | undefined => tradeRefusal(this.stash, stored.id, away, made);
+    const found = this.findablePokemon;
+    const shown = [...found.filter((stored) => refusal(stored) === undefined), ...found.filter((stored) => refusal(stored) !== undefined)];
+    const boxNames = this.stash.listBoxes().map((box) => box.name);
+    const rows = shown
+      .map((stored, index) => {
+        const why = refusal(stored);
+        const deal = why === undefined ? tradeDealFor(stored.pokemon.base.id, made) : undefined;
+        if (deal && this.tradeArmed === stored.id) {
+          return this.armedDeal({
+            id: stored.id,
+            icon: itemIcon('poke-ball', stored.pokemon.name),
+            name: escapeAttribute(stored.pokemon.name),
+            question: escapeAttribute(tradeQuestion(stored.pokemon.name, deal)),
+            confirm: `data-trade-confirm="${stored.id}"`,
+            confirmLabel: deal.kind === 'swap' ? 'Trade' : 'Trade and back',
+            confirmHelp: escapeAttribute(tradeHelp(stored.pokemon.name, deal)),
+            tone: deal.kind === 'swap' ? 'danger' : 'primary',
+          });
+        }
+        const wiring = deal
+          ? `data-trade="${stored.id}" data-help="${escapeAttribute(tradeHelp(stored.pokemon.name, deal))}"`
+          : `data-refused="${escapeAttribute(why ?? '')}" aria-disabled="true" data-help="${escapeAttribute(why ?? '')}"`;
+        const tag = deal ? pixelTag(deal.kind === 'swap' ? 'Trade' : 'And back') : away.has(stored.id) ? pixelTag('On a raid') : '';
+        // Never a start while a trade is asking: `refocus` takes the first one,
+        // and the press that armed it would make it (`traderView`'s rule).
+        const start = index === 0 && this.tradeArmed === undefined ? ' data-cursor-start' : '';
+        return `<button class="px-row" ${wiring} data-shows="${stored.id}"${start}>${this.pokemonRowBody(stored, tag, boxNames[this.stash.boxIndexOf(stored.id)])}</button>`;
+      })
+      .join('');
+    const details = shown
+      .map((stored, index) =>
+        this.pokemonDetail(stored, index === 0, {
+          label: 'Trader',
+          chips: (shows) => {
+            const why = refusal(stored);
+            const deal = why === undefined ? tradeDealFor(stored.pokemon.base.id, made) : undefined;
+            return deal
+              ? this.chip(`data-trade="${stored.id}" ${shows}`, tradeHelp(stored.pokemon.name, deal), deal.kind === 'swap' ? `Trade for ${deal.trade.nickname}` : 'Trade and back')
+              : this.chip(`data-refused="${escapeAttribute(why ?? '')}" ${shows}`, why ?? '', 'Trade', true);
+          },
+        }),
+      )
+      .join('');
+    return `<main class="px-body daycare-layout">${pixelWindow(
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${this.browseBar(false)}${rows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>${details}`,
+      { className: 'stash-roster', heading: 'Which Pokémon will you trade?', note: this.atBaseNote(away) },
+    )}</main>`;
+  }
+
+  /** One trade with THE TRADER, made in one write, and said back on the lawn. */
+  private makeTrade(pokemonId: string): void {
+    this.tradeArmed = undefined;
+    if (this.movedOnElsewhere()) {
+      return;
+    }
+    const made = this.saveManager.makeTrade(pokemonId);
+    if (!made) {
+      this.readTheGameAgain();
+      this.refuse(
+        tradeRefusal(this.stash, pokemonId, awayOnRaid(this.savedGame), this.savedGame.raidProgress.tradesMade ?? []) ??
+          'He could not trade: the game could not be saved.',
+      );
+      return;
+    }
+    audioManager.play('itemObtained');
+    this.scene.start('base', {
+      savedGame: this.saveManager.load() ?? this.savedGame,
+      ...(this.enteredAt === undefined ? {} : { at: this.enteredAt }),
+      said: made.lines,
+      saidBy: TRADER_POSITION,
+    });
   }
 
   /** Hands one Pokémon to the Day-Care Man, if he will take it. */

@@ -106,6 +106,7 @@ import { BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, NOTICE_BOARD, getBaseMap } fro
 import { noticeFor } from '../base/harbourNotices';
 import { dayNumber, rumourFrom, type RumourSource } from '../world/rumours';
 import { amberWeeps, fossilAwake, fossilMachineLines, fossilsForTheMachine } from '../hub/fossils';
+import { TRADER_ID, traderLines } from '../hub/trades';
 import {
   BEACH_BOTTLE,
   BOTTLE_FOUND_LINES,
@@ -596,6 +597,11 @@ export interface BaseSceneData {
    * itself (`said`, in `create`), so they are always in the room's own box.
    */
   readonly said?: readonly string[];
+  /**
+   * Who in the yard says `said`, when it is somebody out there rather than a
+   * room's keeper: the TRADER, after his list. Absent is the Day-Care Man.
+   */
+  readonly saidBy?: GridPosition;
   /** A new game, with nothing written yet: this is Oak's table with all three balls on it (`base/starterTable.ts`). */
   readonly choosing?: boolean;
   /** What a raid just brought out, to stand on the quay when the boat ties up (`base/haulOnTheQuay.ts`). */
@@ -1357,7 +1363,7 @@ export class BaseScene extends Phaser.Scene {
         [DOJO_RECEPTIONIST.position],
       );
     } else if (data.said?.length) {
-      const speaker = room ? room.keeper?.position : DAY_CARE_KEEPER.position;
+      const speaker = room ? room.keeper?.position : (data.saidBy ?? DAY_CARE_KEEPER.position);
       this.say(data.said, speaker ? [speaker] : []);
     } else if (!room && !this.visit && mapsMovedNews(this.savedGame.raidProgress)) {
       this.hearFirstWords('moved');
@@ -5299,6 +5305,14 @@ export class BaseScene extends Phaser.Scene {
     // A favour first: somebody who wants something fetched says so before
     // anything else they have to say.
     if (local?.kind === 'person' && this.speakForFavour(local, target)) {
+      return;
+    }
+    // THE TRADER says what he is after, and his list is what to trade.
+    if (local?.id === TRADER_ID) {
+      this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
+      this.say(traderLines(this.freshGame().raidProgress.tradesMade ?? []), [target], () =>
+        this.openHub({ savedGame: this.savedGame, view: 'trades', at: { ...this.currentTile } }),
+      );
       return;
     }
     if (local?.id === SAILOR_ID) {
