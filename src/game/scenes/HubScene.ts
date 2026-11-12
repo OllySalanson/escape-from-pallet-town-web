@@ -3964,7 +3964,14 @@ export class HubScene extends Phaser.Scene {
           refusal === undefined
             ? `data-day-care-leave="${stored.id}" data-help="Leave ${name} with him. It grows half a level with every raid you go on."`
             : `data-refused="${escapeAttribute(refusal)}" aria-disabled="true" data-help="${escapeAttribute(refusal)}"`;
-        return `<button class="px-row" ${wiring} data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''}>${this.pokemonRowBody(stored, refusal === undefined ? pixelTag('Leave') : away.has(stored.id) ? pixelTag('On a raid') : '', boxNames[this.stash.boxIndexOf(stored.id)])}</button>`;
+        // FireRed's PC box, as Bill's PC is: the icon at its health's pace over
+        // its level and bar, the ones he would take first, its box said to a
+        // reader and in the pane under the box.
+        const boxed = boxNames[this.stash.boxIndexOf(stored.id)] ?? '';
+        return pixelMonTile(stored.pokemon, {
+          classes: away.has(stored.id) ? ['is-away'] : [],
+          attributes: `${wiring} data-shows="${stored.id}" data-box-name="${escapeAttribute(boxed)}" aria-label="${escapeAttribute(`${stored.pokemon.name}, level ${stored.pokemon.level}, ${boxed}${refusal === undefined ? '' : `, ${refusal}`}`)}"${index === 0 ? ' data-cursor-start' : ''}`,
+        });
       })
       .join('');
     const details = shown
@@ -3973,7 +3980,8 @@ export class HubScene extends Phaser.Scene {
           label: 'Day-Care',
           chips: (shows) => {
             const refusal = dayCareRefusal(this.stash, stored.id, away);
-            return this.chip(
+            const boxed = boxNames[this.stash.boxIndexOf(stored.id)];
+            return (boxed ? `<span class="px-note">Kept in ${escapeAttribute(boxed)}</span>` : '') + this.chip(
               refusal === undefined ? `data-day-care-leave="${stored.id}" ${shows}` : `data-refused="${escapeAttribute(refusal)}" ${shows}`,
               refusal ?? `Leave ${stored.pokemon.name} with him.`,
               'Leave it with him',
@@ -3984,7 +3992,7 @@ export class HubScene extends Phaser.Scene {
       )
       .join('');
     return `<main class="px-body daycare-layout">${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${this.browseBar(false)}${rows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>${details}`,
+      `<div class="px-mon-tiles px-scroll">${this.browseBar(false)}${rows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>${details}`,
       { className: 'stash-roster', heading: 'Which Pokémon should I raise?', note: this.atBaseNote(away) },
     )}</main>`;
   }
