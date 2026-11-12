@@ -111,9 +111,9 @@ node tools/playtest/raid.mjs <url> ...same... --insertion=greystone-vale-the-str
   --team=butterfree:28::shiny --lead=Butterfree --steps=walk:140:202,shot:light,read:140:201:left
 # the kite thief: nothing flying, then a Pidgey in front
 node tools/playtest/raid.mjs <url> ...same... --insertion=greystone-vale-the-strand --level=30 --avoid-watch \
-  --steps=walk:133:229,shot:sand,read:140:230:right:3,read:134:228:right
+  --steps=walk:133:229,shot:sand,read:140:230:right:3,read:133:227:right
 node tools/playtest/raid.mjs <url> ...same... --insertion=greystone-vale-the-strand --level=30 --avoid-watch \
-  --team=pidgey:12 --lead=Pidgey --steps=read:134:228:right
+  --team=pidgey:12 --lead=Pidgey --steps=read:133:227:right
 # the clue lines themselves: read on to the notice's second line, and each person's third
 node tools/playtest/raid.mjs <url> ...same... --insertion=greystone-vale-stepping-stones --level=30 --avoid-watch \
   --steps=read:157:166:left:2,read:157:167:left:3

@@ -11,6 +11,7 @@ import { winRateAgainst } from './encounterMeasure';
 import { HUNTER_IDLE_STEP_MS } from './hunter';
 import { stepDistances } from './mapStructure';
 import { readMapFile, MAP_FILE_LIMITS, type MapFile } from './mapFile';
+import { idleBeatTiles } from './npcIdle';
 import { entitiesForMap } from './npcs';
 import { builtInFileMap } from './playerMaps';
 import { dayNumber, RUMOURS, rumourFrom, type RumourFact } from './rumours';
@@ -190,7 +191,14 @@ describe("the vale's secrets", () => {
   it.each(
     SECRETS.filter((secret) => secret.nook === 'figure' && secret.wave >= 3).map((secret) => [secret.name, secret] as const),
   )('%s shuts no ground in by standing where it stands', (_name, secret) => {
-    const standing = new Set(entities.map((entity) => `${entity.position.x},${entity.position.y}`));
+    // Everybody where they stand and on every tile of their beat, as the
+    // structure sweep counts them (`mapStructure.testkit.ts`): THE KITE THIEF
+    // first sat in the mouth of two tiles of sand whose only other way in was
+    // a Krabby's beat, which standing places alone called open, and the
+    // sweep - on a pull request's checks only - called shut.
+    const standing = new Set(
+      entities.filter((entity) => !entity.boulder && !entity.barrier).flatMap((entity) => idleBeatTiles(entity).map((tile) => `${tile.x},${tile.y}`)),
+    );
     for (const tile of nookTiles(secret).filter((each) => !standing.has(`${each.x},${each.y}`))) {
       const room = stepDistances(map.collision, tile, standing).reduce((sum, row) => sum + row.filter((steps) => steps >= 0).length, 0);
       expect(room, `${secret.name} shuts in the ground at ${tile.x},${tile.y}: ${room} tiles`).toBeGreaterThanOrEqual(40);

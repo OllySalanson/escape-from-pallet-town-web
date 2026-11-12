@@ -315,7 +315,9 @@ export function gullStrand(): MapcraftResult {
         { x: 34, y: 5, species: 'psyduck', level: 8 },
         { x: 3, y: 42, species: 'krabby', level: 9 },
         // THE KITE THIEF (`world/secrets.ts`): on the sand under the headland every raid, until it is had.
-        { x: 7, y: 36, species: 'kingler', level: 20, secret: 'the-kite-thief' },
+        // Clear of the gap between the crates and the barrel: sat in its mouth, at 7,36, it shut two
+        // tiles of sand in behind itself and the Krabby's beat.
+        { x: 6, y: 35, species: 'kingler', level: 20, secret: 'the-kite-thief' },
         { x: 8, y: 37, species: 'krabby', beat: { everyMs: 1500, roam: [[1, 0]] } },
         { x: 25, y: 42, species: 'krabby', beat: { everyMs: 1300, roam: [[0, 1]] } },
         { x: 24, y: 36, species: 'staryu', level: 9 },
