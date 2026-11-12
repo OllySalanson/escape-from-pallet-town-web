@@ -105,7 +105,7 @@ import { brimRuns, type MapLayers } from '../world/tiles';
 import { BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, NOTICE_BOARD, getBaseMap } from '../base/baseMap';
 import { noticeFor } from '../base/harbourNotices';
 import { dayNumber, rumourFrom, type RumourSource } from '../world/rumours';
-import { FOSSIL_ITEM_IDS, fossilAwake, fossilMachineLines } from '../hub/fossils';
+import { amberWeeps, fossilAwake, fossilMachineLines, fossilsForTheMachine } from '../hub/fossils';
 import {
   BEACH_BOTTLE,
   BOTTLE_FOUND_LINES,
@@ -6621,8 +6621,8 @@ export class BaseScene extends Phaser.Scene {
     const game = this.freshGame();
     const fossil = game.raidProgress.fossil;
     const awake = fossil ? fossilAwake(fossil, game.raidProgress, game.raidInFlight) : false;
-    const held = FOSSIL_ITEM_IDS.filter((itemId) => game.stash.itemCount(itemId) > 0);
-    const lines = fossilMachineLines(fossil, awake, held);
+    const held = fossilsForTheMachine((itemId) => game.stash.itemCount(itemId), game.raidProgress);
+    const lines = fossilMachineLines(fossil, awake, held, amberWeeps(game.raidProgress));
     if (fossil && awake) {
       const woken = this.saveManager.takeRevivedFossil();
       if (!woken) {

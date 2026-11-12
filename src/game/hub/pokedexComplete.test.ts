@@ -70,11 +70,14 @@ describe('the Pokédex, on the maps a player is offered', () => {
         if (reward.kind === 'gift') add(reward.gift.speciesId, `secret ${secret.id}`);
       }
     }
-    const fossilsFound = new Set(
-      SECRETS.flatMap((secret) => secret.rewards.flatMap((reward) => (reward.kind === 'item' ? [reward.itemId] : []))),
-    );
+    // A fossil is laid by a secret, or by an errand that goes on laying its
+    // thing once it is done (Bill's amber, `errands.ts`).
+    const fossilsFound = new Set<string>([
+      ...SECRETS.flatMap((secret) => secret.rewards.flatMap((reward) => (reward.kind === 'item' ? [reward.itemId] : []))),
+      ...ERRANDS.filter((errand) => errand.afterwards && isMapOffered(errand.mapId)).map((errand) => errand.itemId),
+    ]);
     for (const [itemId, speciesId] of Object.entries(FOSSIL_KINDS)) {
-      if (fossilsFound.has(itemId as never)) add(speciesId, `fossil ${itemId}`);
+      if (fossilsFound.has(itemId)) add(speciesId, `fossil ${itemId}`);
     }
     for (const gift of POKEMON_GIFTS.filter((each) => isMapOffered(each.mapId))) {
       add(gift.speciesId, `gift ${gift.id}`);

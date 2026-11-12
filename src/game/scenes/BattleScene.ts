@@ -92,6 +92,7 @@ import {
 import type { SoundEffectName } from '../audio/soundEffects';
 import { getWorldMap } from '../worldMap';
 import { SaveManager } from '../save/SaveManager';
+import { favoursInHand } from '../hub/errands';
 import { RunPhase } from '../run/RunManager';
 import { buildExtractionReport } from '../run/extractionReport';
 import { buildWipeSettlement, deployedRaidCondition } from '../run/raidSettlement';
@@ -4395,6 +4396,8 @@ export class BattleScene extends Phaser.Scene {
       cause: 'defeated',
       snapshot,
       durationMs: snapshot.durationMs,
+      // A thing found for a favour that is done is nobody's errand (`favoursInHand`).
+      favoursInHand: favoursInHand(new SaveManager().load()?.raidProgress),
       // The world hands its seen-prize list through the carriage like every
       // other per-raid fact, so a raid lost in a fight says the same thing a
       // raid lost to the clock does.

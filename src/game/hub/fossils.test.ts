@@ -3,7 +3,8 @@ import { Bag } from '../items';
 import { CHARMANDER, PokemonParty } from '../pokemon';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type RaidProgress, type StorageLike } from '../save/SaveManager';
 import { createStartingStash } from '../stash/Stash';
-import { FOSSIL_ITEM_IDS, fossilAwake, fossilMachineLines, revivedPokemon } from './fossils';
+import { withErrandAsked, withErrandCompleted } from './errands';
+import { amberWeeps, FOSSIL_ITEM_IDS, fossilAwake, fossilMachineLines, fossilsForTheMachine, revivedPokemon } from './fossils';
 
 class MemoryStorage implements StorageLike {
   private readonly values = new Map<string, string>();
@@ -25,9 +26,21 @@ const progressAfter = (raids: number): RaidProgress => ({
 
 describe("Oak's fossil machine", () => {
   it('wakes FireRed’s own Pokemon from each fossil, at level 5', () => {
-    expect(FOSSIL_ITEM_IDS).toEqual(['helix-fossil', 'dome-fossil']);
-    expect([revivedPokemon('helix-fossil').base.id, revivedPokemon('dome-fossil').base.id]).toEqual(['omanyte', 'kabuto']);
+    expect(FOSSIL_ITEM_IDS).toEqual(['helix-fossil', 'dome-fossil', 'old-amber']);
+    expect(FOSSIL_ITEM_IDS.map((itemId) => revivedPokemon(itemId).base.id)).toEqual(['omanyte', 'kabuto', 'aerodactyl']);
     expect(revivedPokemon('helix-fossil').level).toBe(5);
+  });
+
+  it('never takes the Old Amber Bill is still waiting on, and says where the next lump is once he has his', () => {
+    const one = (): number => 1;
+    const asked = { errands: withErrandAsked(undefined, 'old-amber') };
+    const done = { errands: withErrandCompleted(asked.errands, 'old-amber') };
+    expect(fossilsForTheMachine(one, asked)).toEqual(['helix-fossil', 'dome-fossil']);
+    expect(fossilsForTheMachine(one, done)).toEqual(['helix-fossil', 'dome-fossil', 'old-amber']);
+    expect(amberWeeps(asked)).toBe(false);
+    expect(amberWeeps(done)).toBe(true);
+    expect(fossilMachineLines(undefined, false, [], false).join(' ')).not.toContain('amber');
+    expect(fossilMachineLines(undefined, false, [], true).join(' ')).toContain('PINE HOLLOW still weeps amber');
   });
 
   it('wakes a fossil once a raid has ended since it went on, never before', () => {

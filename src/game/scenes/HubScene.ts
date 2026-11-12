@@ -94,6 +94,7 @@ import { ItemHoverHelp } from '../ui/itemHoverHelp';
 import { flowForGame, offeredInsertions, type ArenaKit } from '../base/arenaKit';
 import { cargoSquaresLabel, pokemonCargo } from '../pokemon/pokemonCargo';
 import { PokemonParty, type PokemonBase } from '../pokemon';
+import { getSpeciesById } from '../pokemon/species';
 import { activeRunManager } from '../run';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import {
@@ -1332,7 +1333,7 @@ export class HubScene extends Phaser.Scene {
       // The legends the Pokedex owns, which stand nowhere this raid.
       caughtLegends(pokedexOwned(this.savedGame.raidProgress.pokedexOwned, this.stash)),
       // What the people at base are waiting on, each laid in its own place.
-      errandsToLay(this.savedGame.raidProgress, (itemId) => this.stash.itemCount(itemId)).map(errandLoot),
+      errandsToLay(this.savedGame.raidProgress, (itemId) => this.heldOrOnTheMachine(itemId), (speciesId) => this.pokedexOwns(speciesId)).map(errandLoot),
       // What the vale's secrets wait for, fixed now for the whole raid: the
       // hour, the day, who leads, what is packed and the badges in the case
       // (`world/secrets.ts`).
@@ -3276,7 +3277,7 @@ export class HubScene extends Phaser.Scene {
     // Somebody's errand is offered only while its thing is out there to be
     // found: four squares kept for a crate that is already home, or that
     // nobody has asked for, would be four squares kept for nothing.
-    const wanted = errandsToLay(this.savedGame.raidProgress, (itemId) => this.stash.itemCount(itemId)).map(
+    const wanted = errandsToLay(this.savedGame.raidProgress, (itemId) => this.heldOrOnTheMachine(itemId), (speciesId) => this.pokedexOwns(speciesId)).map(
       (errand) => errand.itemId as string,
     );
     // Furniture is found-only too, and the one kind no room is kept for: a
@@ -4040,6 +4041,17 @@ export class HubScene extends Phaser.Scene {
   private reloadAfterFailedWrite(message: string): void {
     this.readTheGameAgain();
     this.refuse(message);
+  }
+
+  /** How many of a thing the save holds: the vault's, and one on Oak's fossil machine. */
+  private heldOrOnTheMachine(itemId: string): number {
+    return this.stash.itemCount(itemId) + (this.savedGame.raidProgress.fossil?.itemId === itemId ? 1 : 0);
+  }
+
+  /** Whether the Pokédex owns a kind: the save's register and the vault's own. */
+  private pokedexOwns(speciesId: string): boolean {
+    const dexId = getSpeciesById(speciesId)?.dexId;
+    return dexId !== undefined && pokedexOwned(this.savedGame.raidProgress.pokedexOwned, this.stash).includes(dexId);
   }
 
   private itemName(itemId: string): string {

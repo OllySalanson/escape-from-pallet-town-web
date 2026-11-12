@@ -282,6 +282,13 @@ export interface ExtractionReportInput {
   /** The bag as it stood at the end, which is how supplies spent is measured. */
   readonly carriedOut?: BagContents;
   /**
+   * The favours the save has in hand (`errandsInHand`), by id. A thing found
+   * for one that is done - Bill's amber, which PINE HOLLOW goes on weeping for
+   * Oak's machine - is nobody's errand, and is not reported as one. Absent,
+   * every errand's thing is reported as wanted.
+   */
+  readonly favoursInHand?: readonly string[];
+  /**
    * The Pokemon that was out when the party ran out of Pokemon. Naming the one
    * that actually fell last is the whole point of the defeat sequence, and it
    * cannot be recovered from the party afterwards: by then they are all at 0 HP.
@@ -408,7 +415,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       ? `Extracted${input.exitLabel ? ` · ${input.exitLabel}` : ''}`
       : 'Raid lost',
     headline: escaped
-      ? (relicHeadline(ledgerFound) ?? escapeHeadline(haulTier))
+      ? (relicHeadline(ledgerFound, input.favoursInHand) ?? escapeHeadline(haulTier))
       : wipeHeadline(input.cause, secured, partner),
     summary: escaped
       ? escapeSummary(
@@ -475,6 +482,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
         escaped ? [] : ledger.items,
         escaped ? [] : secured.items,
         snapshot.foundItems.map((item) => item.itemId),
+        input.favoursInHand,
       ),
       ...pressureLines(snapshot, escaped, input.leftBehind ?? []),
     ],
@@ -542,9 +550,16 @@ const RELIC_HEADLINES: readonly { readonly itemIds: readonly string[]; readonly 
   { itemIds: ['chart-piece-1', 'chart-piece-2', 'chart-piece-3', 'bottled-chart'], headline: 'You found a piece of the old sea chart!' },
 ];
 
-/** The headline a relic carried home earns, or null when none was. */
-function relicHeadline(found: ReportGroup): string | null {
+/**
+ * The headline a relic carried home earns, or null when none was. Old Amber is
+ * a fossil once Bill has his (`hub/errands.ts`, `afterwards`): only then is it
+ * headlined as one, because before then it is his.
+ */
+function relicHeadline(found: ReportGroup, favoursInHand: readonly string[] | undefined): string | null {
   const home = new Set(found.items.map((item) => item.itemId));
+  if (home.has('old-amber') && favoursInHand !== undefined && !favoursInHand.includes('old-amber')) {
+    home.add('helix-fossil');
+  }
   return RELIC_HEADLINES.find((relic) => relic.itemIds.some((id) => home.has(id)))?.headline ?? null;
 }
 
@@ -687,15 +702,20 @@ function errandLines(
   lost: readonly ReportItem[],
   secured: readonly ReportItem[],
   found: readonly string[],
+  favoursInHand: readonly string[] | undefined,
 ): string[] {
+  const wantedFor = (itemId: string) => {
+    const errand = errandForItem(itemId);
+    return errand && (favoursInHand === undefined || favoursInHand.includes(errand.id)) ? errand : undefined;
+  };
   const named = (items: readonly ReportItem[]) =>
     items.flatMap((item) => {
-      const errand = errandForItem(item.itemId);
+      const errand = wantedFor(item.itemId);
       return errand ? [{ errand, thing: item.label.toUpperCase() }] : [];
     });
   const accounted = new Set([...banked, ...lost, ...secured].map((item) => item.itemId));
   const leftBehind = found.flatMap((itemId) => {
-    const errand = accounted.has(itemId) ? undefined : errandForItem(itemId);
+    const errand = accounted.has(itemId) ? undefined : wantedFor(itemId);
     const label = ITEM_DEFINITIONS.find((item) => item.id === itemId)?.displayName;
     return errand && label ? [{ errand, thing: label.toUpperCase() }] : [];
   });
