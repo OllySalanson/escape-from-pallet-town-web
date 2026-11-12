@@ -1,4 +1,4 @@
-import type { GridPosition } from '../movement/gridMovement';
+import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { HunterRivalId } from '../world/hunters';
 import { fellLine } from '../world/raidMemory';
 import { bossesBeatenOnRaid } from '../world/trainers';
@@ -361,6 +361,8 @@ export interface BattleSceneData extends Partial<RaidCarriage> {
 export interface HallBout {
   readonly rival: HunterRivalId;
   readonly at: GridPosition;
+  /** Which way the player faced the one they fought, so they come home still facing them. */
+  readonly facing?: Direction;
   /**
    * Set when the bout is a practice against a gym leader's real team
    * (`base/gymPractice.ts`): the leader's boss id. It goes home as a practice,
@@ -4271,6 +4273,7 @@ export class BattleScene extends Phaser.Scene {
       this.scene.start('base', {
         room: 'raid-arena',
         at: bout.at,
+        ...(bout.facing ? { facing: bout.facing } : {}),
         ...(bout.practice
           ? { practice: { leader: bout.practice, won } }
           : { bout: { rival: bout.rival, won, ...(bout.boutId ? { boutId: bout.boutId } : {}) } }),

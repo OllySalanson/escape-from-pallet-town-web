@@ -30,7 +30,11 @@ import type { PaintedPicture } from '../world/minimap';
  * a look at the face and team that are coming for it. Phaser-free.
  */
 
-/** Where the rival waits: on the far floor, under the hall's own banner. */
+/**
+ * Where the rival waits: on the far floor, under the hall's own banner - unless
+ * they are a gym leader the player has met, who waits on their own tile
+ * (`gymPractice.ts`'s `rivalTile`).
+ */
 export const RIVAL_TILE: GridPosition = { x: ARENA_MAT.x, y: 6 };
 
 /**
@@ -38,8 +42,8 @@ export const RIVAL_TILE: GridPosition = { x: ARENA_MAT.x, y: 6 };
  * banners and the people watching. Not for walking past: a lap of the outer floor
  * is no reason to swing the camera up and back (`BaseScene.settleHallCamera`).
  */
-export function nearTheRival(tile: GridPosition): boolean {
-  return Math.abs(tile.x - RIVAL_TILE.x) <= 2 && tile.y <= RIVAL_TILE.y + 2;
+export function nearTheRival(tile: GridPosition, rival: GridPosition): boolean {
+  return Math.abs(tile.x - rival.x) <= 2 && tile.y <= rival.y + 2;
 }
 
 /** The box's question, short enough to leave its answers a line of their own. */

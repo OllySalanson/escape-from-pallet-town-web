@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import type { GridPosition } from '../movement/gridMovement';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { bossEncounters, createRunTrainerEncounters } from '../world/trainers';
-import { leadersMet, MISTY_BOSS_ID } from '../world/valeQuarters';
+import { HUNTER_RIVALS } from '../world/hunters';
+import { KOGA_BOSS_ID, leadersMet, MISTY_BOSS_ID } from '../world/valeQuarters';
 import { arenaCollision, isOuterWall } from './arenaHall';
 import { RIVAL_TILE } from './arenaBouts';
-import { LEADER_TILES, leaderBehindRival, practiceLeaders, practiceTrainer } from './gymPractice';
+import { LEADER_TILES, leaderBehindRival, practiceLeaders, practiceTrainer, rivalTile } from './gymPractice';
 
 describe('practice against a gym leader', () => {
   it('is offered by nobody until the leader has been met in a raid, or beaten', () => {
@@ -19,6 +21,35 @@ describe('practice against a gym leader', () => {
     expect(practiceLeaders(met, 'misty')).toEqual([]);
     expect(leaderBehindRival(met, 'misty')?.bossId).toBe(MISTY_BOSS_ID);
     expect(leaderBehindRival(DEFAULT_RAID_PROGRESS, 'misty')).toBeUndefined();
+  });
+
+  it('stands everybody in one place, so a bout that moves the ladder on moves nobody who stays (the owner, 12 Nov 2026)', () => {
+    // Beaten in a bout, Misty stepped off the rival's tile onto her own and Lt.
+    // Surge, up next, took the one she had stood on: "Misty and the green NPC
+    // had swapped places." A leader met is on their own tile every day, the
+    // day they are the rival too.
+    const met = { ...DEFAULT_RAID_PROGRESS, gymsMet: [MISTY_BOSS_ID, KOGA_BOSS_ID] };
+    const farFloor = (rival: string) =>
+      new Map<string, GridPosition>([[rival, rivalTile(met, rival)], ...practiceLeaders(met, rival).map((leader) => [leader.gym.rival, leader.tile] as const)]);
+    for (const before of HUNTER_RIVALS) {
+      const was = farFloor(before.id);
+      expect(new Set([...was.values()].map((tile) => `${tile.x},${tile.y}`)).size, `nobody shares a tile with ${before.id} up`).toBe(was.size);
+      for (const after of HUNTER_RIVALS) {
+        for (const [who, tile] of farFloor(after.id)) {
+          if (was.has(who)) {
+            expect(tile, `${who}, ${before.id} up and then ${after.id}`).toEqual(was.get(who));
+          }
+        }
+      }
+    }
+    expect(rivalTile(met, 'misty')).toEqual(LEADER_TILES[0]);
+    expect(rivalTile(met, 'lt-surge')).toEqual(RIVAL_TILE);
+  });
+
+  it("keeps a leader's tile their own whoever else has been met", () => {
+    const kogaAlone = practiceLeaders({ ...DEFAULT_RAID_PROGRESS, gymsMet: [KOGA_BOSS_ID] }, null);
+    const both = practiceLeaders({ ...DEFAULT_RAID_PROGRESS, gymsMet: [MISTY_BOSS_ID, KOGA_BOSS_ID] }, null);
+    expect(kogaAlone.map((leader) => leader.tile)).toEqual([both.find((leader) => leader.gym.bossId === KOGA_BOSS_ID)!.tile]);
   });
 
   it('waits where there is room to walk up and face them, clear of the rival and the wall', () => {

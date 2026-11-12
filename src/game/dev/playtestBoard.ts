@@ -3,8 +3,8 @@ import { BASE_SPAWN, getBaseMap } from '../base/baseMap';
 import { HARBOUR_PLACES, type HarbourPlace } from '../base/harbourPlaces';
 import { BASE_ROOMS, type RoomId } from '../base/rooms';
 import { DOJO_COUNTER_TILES } from '../arena/dojoCounter';
-import { RIVAL_TILE, rivalUp } from '../base/arenaBouts';
-import { practiceLeaders } from '../base/gymPractice';
+import { rivalUp } from '../base/arenaBouts';
+import { practiceLeaders, rivalTile } from '../base/gymPractice';
 import { raidsDeployed, type RaidProgress } from '../save/SaveManager';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { PlaytestHour } from './playtestClock';
@@ -118,7 +118,7 @@ export const STAND_ROWS: readonly PlaytestBoardRow[] = [
  */
 export function practiceSpot(progress: RaidProgress): GridPosition {
   const rival = rivalUp(progress.bouts, raidsDeployed(progress));
-  const tile = practiceLeaders(progress, rival.id)[0]?.tile ?? RIVAL_TILE;
+  const tile = practiceLeaders(progress, rival.id)[0]?.tile ?? rivalTile(progress, rival.id);
   return { x: tile.x + 1, y: tile.y };
 }
 
