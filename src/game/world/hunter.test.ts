@@ -624,11 +624,14 @@ describe('hunterAtEnrage', () => {
   };
 
   it('brings a hunter beaten before the clock ran out back for the enrage, to arrive afresh', () => {
+    // `returned` is for good - its second life, which a raid room shares
+    // (`SharedHunter.returned`) - where `returning` only says its arrival.
     expect(hunterAtEnrage(beaten)).toEqual({
       spawned: false,
       defeated: false,
       enrageAnswered: true,
       returning: true,
+      returned: true,
     });
   });
 
