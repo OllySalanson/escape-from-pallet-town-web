@@ -395,8 +395,8 @@ export function reedmere(): MapcraftResult {
         // The staithe's cat, who knows what is in the barrels.
         { x: 43, y: 28, species: 'meowth', beat: { everyMs: 1800, glances: ['right', 'down'] } },
         // Duck Island: the ducks.
-        { x: 24, y: 28, species: 'psyduck', beat: { everyMs: 2300, roam: [[0, 1], [1, 1]] } },
-        { x: 26, y: 28, species: 'psyduck', beat: { everyMs: 2900, roam: [[0, 1]] } },
+        { x: 22, y: 27, species: 'psyduck', beat: { everyMs: 2300, glances: ['right', 'down'] } },
+        { x: 26, y: 27, species: 'psyduck', beat: { everyMs: 2900, roam: [[1, 0]] } },
         { x: 26, y: 33, species: 'golduck', level: 14 },
         // The Farfetch'd on the deck that everybody in Mere End pretends not to feed.
         { x: 37, y: 49, species: 'farfetchd', level: 9, beat: { everyMs: 2200, roam: [[1, 0]] } },
@@ -441,7 +441,7 @@ export function reedmere(): MapcraftResult {
         // he says which badge opens it, and stands to one side of the way.
         { x: 22, y: 60, name: 'Coast Guard', look: 'policeman', facing: 'left', lines: ['Past these sandbags is THE COAST, and MISTY keeps them. Only a trainer with her CASCADE BADGE goes through.', 'Beat her at Cerulean Gym on the strand and they come down for good. Mind the rain past them. It never stops.'] },
         // -- The reed yard and the road down ------------------------------------------
-        { x: 37, y: 7, name: 'Thatcher', look: 'straw-hat', facing: 'up', lines: ['Half of Millbrook sleeps under this marsh. It keeps the rain off, mostly.', 'If you are in a hurry, do not wade. It only feels quicker.'], beat: { everyMs: 3100, glances: ['left', 'down'] }, calls: ['Mind the bundles!'] },
+        { x: 44, y: 7, name: 'Thatcher', look: 'straw-hat', facing: 'up', lines: ['Half of Millbrook sleeps under this marsh. It keeps the rain off, mostly.', 'If you are in a hurry, do not wade. It only feels quicker.'], beat: { everyMs: 3100, glances: ['left', 'down'] }, calls: ['Mind the bundles!'] },
         { x: 44, y: 14, name: 'Reed Boy', look: 'boy', facing: 'right', lines: ['I carry the bundles up to the yard. Then they give me more bundles.', 'That is the whole job. I thought there would be more to it.'], beat: { everyMs: 2800, roam: [[0, 1]], glances: ['up', 'down'] }, calls: ['Coming through!'] },
         // -- The Hummock and the north bank --------------------------------------------
         { x: 25, y: 12, name: 'Wildfowler', look: 'camper', facing: 'right', lines: ['Sit very still on this bank and the whole marsh comes to you.', 'Then a raider wades through and it all goes home again.'], beat: { everyMs: 3900, glances: ['down', 'left'] }, calls: ['Shh. Sit still.'] },
@@ -458,7 +458,7 @@ export function reedmere(): MapcraftResult {
         { x: 48, y: 30, name: 'Puntman', look: 'sailor', facing: 'left', lines: ['Punt goes out to Duck Island and comes back. Walk to the end of the boards and press on.', 'No, there is nothing out there. Nothing you can eat. There is a hermit. He is not for eating either.'], beat: { everyMs: 3000, glances: ['up', 'left'] }, calls: ['Punt! Duck Island!', 'Mind the pole.'] },
         { x: 48, y: 26, name: 'Eel Wife', look: 'old-woman', facing: 'down', lines: ['Eels go up the drain at night. You can hear them, if you have nothing else to do.', 'I have nothing else to do.'], beat: { everyMs: 3500, glances: ['down'] } },
         // -- Duck Island ------------------------------------------------------------------------------
-        { x: 25, y: 32, name: 'Hermit Moss', look: 'bald-man', facing: 'right', lines: ['I came out here to be alone with my thoughts.', 'There were not as many as I had hoped.', 'Something is dug in under my good tree. It came with the island. I never looked.'], beat: { everyMs: 4700, glances: ['up', 'right'] }, calls: ['Oh. A person. Oh dear.'] },
+        { x: 25, y: 31, name: 'Hermit Moss', look: 'bald-man', facing: 'right', lines: ['I came out here to be alone with my thoughts.', 'There were not as many as I had hoped.', 'Something is dug in under my good tree. It came with the island. I never looked.'], beat: { everyMs: 4700, glances: ['up', 'right'] }, calls: ['Oh. A person. Oh dear.'] },
         // -- Mere End -----------------------------------------------------------------------------------
         { x: 41, y: 47, name: 'Eel Seller', look: 'heavy-man', facing: 'left', lines: ['Smoked is the good one. Jellied is the one I have got most of.', 'If you have a rod, the bay is full of them. Please do not. It is my living.'], beat: { everyMs: 2600, roam: [[0, -1]], glances: ['left', 'down'] }, calls: ['Eels! Lovely eels!', 'Jellied! Who wants jellied?'] },
         { x: 32, y: 49, name: 'Mrs Pike', look: 'woman', facing: 'up', lines: ['Last winter the bay came up through my floor and took the good chair.', 'We got it back. It was in the Drowned Duck. They said it floated in.'], beat: { everyMs: 3400, roam: [[-1, 0]], glances: ['up'] }, calls: ['Too dear, that is.'] },

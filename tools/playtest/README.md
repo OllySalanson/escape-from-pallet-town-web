@@ -140,6 +140,11 @@ stones and the road nobody signs (`docs/screens/walkable-the-crossing/`).
 shepherd's and out by the sheep track, every door but the Lost Fold's, the Little
 Stones, the drovers' camp and fold, Moor Top, the tarn's boards and the Moor Foot
 (`docs/screens/walkable-high-moor/`).
+`--area=reedmere` walks REEDMERE from a step down the lane from Millbrook: 20
+routes and back - round the boardwalk to the Mere Path, east to Gull Strand,
+south through the reeds to the Smugglers' Cove trail, every door in the marsh,
+the punt's end, the old pump, the bog oak, the turbary and the Hummock
+(`docs/screens/walkable-reedmere/`).
 
 `millbrook.mjs <url> <dir> [--port=N]` plays the vale's front door as a new game
 meets it: landing on Mill Square, the village moving and calling out round a

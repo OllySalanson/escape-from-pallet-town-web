@@ -1,7 +1,8 @@
 // Millbrook - or THE HARBOUR, with --area=harbour, TANGLEWOOD, with
 // --area=tanglewood, PINE HOLLOW, with --area=pine-hollow, THE CROSSING, with
-// --area=the-crossing, or HIGH MOOR, with --area=high-moor - walked the way a
-// player walks it, to count what gets in the way.
+// --area=the-crossing, HIGH MOOR, with --area=high-moor, or REEDMERE, with
+// --area=reedmere - walked the way a player walks it, to count what gets in the
+// way.
 //
 // The captain, 11 Nov 2026: "when you're walking around, there's just often
 // things in your way, and it's quite fiddly to get through places". So this
@@ -13,13 +14,13 @@
 // a snag, written down with what was in the way, and the walk steps round it
 // over the scene's own collision and carries on.
 //
-//   node tools/playtest/walkableVillage.mjs <test-mode build url> <out dir> [--area=harbour|tanglewood|pine-hollow|the-crossing|high-moor] [--port=N]
+//   node tools/playtest/walkableVillage.mjs <test-mode build url> <out dir> [--area=harbour|tanglewood|pine-hollow|the-crossing|high-moor|reedmere] [--port=N]
 //
 // It writes `<out>/snags.json` and a picture at each route's end. Run it against
 // a build from before a change and after it to compare (`docs/screens/walkable-millbrook/`,
 // `docs/screens/walkable-harbour/`, `docs/screens/walkable-tanglewood/`,
 // `docs/screens/walkable-pine-hollow/`, `docs/screens/walkable-the-crossing/`,
-// `docs/screens/walkable-high-moor/`).
+// `docs/screens/walkable-high-moor/`, `docs/screens/walkable-reedmere/`).
 //
 // --area=harbour walks THE HARBOUR instead (the captain's bench on the way east
 // and the parasols on the beach were the two things he named): a new game is
@@ -46,6 +47,11 @@
 // The walker is stood a step in on the road up from Millbrook, and every route
 // starts and ends there. The Lost Fold, behind a Strength boulder, is not walked.
 //
+// --area=reedmere walks REEDMERE, the marsh south of Mill Square, from a step
+// down the lane from Millbrook, round its boardwalks to every door in Mere End,
+// the staithe, the pump and the turbary, and out by each way. Duck Island, the
+// punt's, is not walked.
+//
 // --at=name:x:y,... (any area but the harbour) walks nothing: it stands at each
 // tile, in the district's own tiles, and photographs it as `<out>/<name>.png`,
 // so the same view is taken of a build before a change and after it.
@@ -64,14 +70,15 @@ const shots = (args.find((arg) => arg.startsWith('--at='))?.slice('--at='.length
     const [name, x, y] = shot.split(':');
     return { name, at: [Number(x), Number(y)] };
   });
-if (!base || !['millbrook', 'harbour', 'tanglewood', 'pine-hollow', 'the-crossing', 'high-moor'].includes(area)) {
-  throw new Error('usage: walkableVillage.mjs <url> <out dir> [--area=millbrook|harbour|tanglewood|pine-hollow|the-crossing|high-moor] [--port=N]');
+if (!base || !['millbrook', 'harbour', 'tanglewood', 'pine-hollow', 'the-crossing', 'high-moor', 'reedmere'].includes(area)) {
+  throw new Error('usage: walkableVillage.mjs <url> <out dir> [--area=millbrook|harbour|tanglewood|pine-hollow|the-crossing|high-moor|reedmere] [--port=N]');
 }
 const HARBOUR = area === 'harbour';
 const TANGLEWOOD = area === 'tanglewood';
 const PINE_HOLLOW = area === 'pine-hollow';
 const THE_CROSSING = area === 'the-crossing';
 const HIGH_MOOR = area === 'high-moor';
+const REEDMERE = area === 'reedmere';
 mkdirSync(out, { recursive: true });
 const url = new URL(base);
 url.searchParams.set('testmode', 'pixels');
@@ -80,7 +87,8 @@ const FRAME_MS = 1000 / 60;
 const WORLD = `${GAME}.scene.getScene('${HARBOUR ? 'base' : 'world'}')`;
 const BATTLE = `${GAME}.scene.getScene('battle')`;
 // Local to the district: Millbrook is the plan's cell [0, 1], Tanglewood [2, 1],
-// Pine Hollow [2, 0], The Crossing [1, 1], High Moor [0, 0]. The harbour is its own map.
+// Pine Hollow [2, 0], The Crossing [1, 1], High Moor [0, 0], Reedmere [0, 2].
+// The harbour is its own map.
 const ORIGIN = HARBOUR
   ? { x: 0, y: 0 }
   : TANGLEWOOD
@@ -91,12 +99,24 @@ const ORIGIN = HARBOUR
         ? { x: 128, y: 128 }
         : HIGH_MOOR
           ? { x: 64, y: 64 }
-          : { x: 64, y: 128 };
+          : REEDMERE
+            ? { x: 64, y: 192 }
+            : { x: 64, y: 128 };
 // Where the walks start: Millbrook's landing, a step into Tanglewood on the road
 // from The Crossing, a step into Pine Hollow on the trail over the col, a step
-// into The Crossing on the road from Millbrook, or a step onto High Moor on the
-// drove road up from it.
-const LANDING = TANGLEWOOD ? [1, 33] : PINE_HOLLOW ? [1, 23] : THE_CROSSING ? [1, 31] : HIGH_MOOR ? [30, 61] : [32, 33];
+// into The Crossing on the road from Millbrook, a step onto High Moor on the
+// drove road up from it, or a step down Reedmere's lane from it.
+const LANDING = TANGLEWOOD
+  ? [1, 33]
+  : PINE_HOLLOW
+    ? [1, 23]
+    : THE_CROSSING
+      ? [1, 31]
+      : HIGH_MOOR
+        ? [30, 61]
+        : REEDMERE
+          ? [40, 1]
+          : [32, 33];
 // THE HARBOUR's two starts (`BASE_SPAWN`, `BASE_LANDING` in `base/baseMap.ts`).
 const SPAWN = [16, 13];
 const JETTY = [12, 19];
@@ -250,6 +270,37 @@ const HIGH_MOOR_ROUTES = [
   { name: 'out along the tarn’s boards', corners: [[31, 51], [25, 51], [25, 44], [31, 44]] },
   { name: 'to Lina at the waystones', corners: [[30, 57], [25, 57]] },
   { name: 'into the Moor Foot’s pen, to the Drover Boy', corners: [[30, 59], [35, 59]] },
+];
+
+// REEDMERE's main routes from the lane down from Millbrook: round the boardwalk
+// to the Mere Path, east to Gull Strand, south through the reeds to the trail for
+// Smugglers' Cove, and every door - the reed yard's, Pond Boy's hut, the staithe
+// shed, Mere End's row, the duck hide, the turbary shed, the withy hut and the
+// Last House - with the punt's end, the old pump, the bog oak, the eel notice and
+// the Hummock. The boardwalks are walked on their left lane.
+const BOARDWALK = [[40, 10], [46, 10], [46, 34], [44, 34], [44, 44]];
+const MERE_END_WEST = [...BOARDWALK, [30, 44], [30, 46]];
+const REEDMERE_ROUTES = [
+  { name: 'round the boardwalk and out by the Mere Path', corners: [...MERE_END_WEST, [12, 46], [12, 26], [1, 26]] },
+  { name: 'east along the boards and the bank to Gull Strand', corners: [[40, 10], [46, 10], [46, 18], [62, 18]] },
+  { name: 'south through the reeds to the Smugglers’ Cove trail', corners: [...MERE_END_WEST, [24, 46], [24, 57], [21, 57], [21, 62]] },
+  { name: 'to the reed yard shed door', corners: [[40, 8], [34, 8]] },
+  { name: 'out along Pond Boy’s boards to his pond', corners: [[40, 10], [46, 10], [46, 12], [54, 12], [54, 10]] },
+  { name: 'to Pond Boy’s hut door', corners: [[40, 10], [46, 10], [46, 18], [52, 18], [52, 17]] },
+  { name: 'to the staithe shed door', corners: [[40, 10], [46, 10], [46, 26], [43, 26]] },
+  { name: 'out to the end of the staithe for the punt', corners: [[40, 10], [46, 10], [46, 30], [41, 30]] },
+  { name: 'round the old pump to Old Seth', corners: [[40, 10], [46, 10], [46, 34], [52, 34], [52, 35], [56, 35]] },
+  { name: 'past the bog oak to Bog Walker Rue', corners: [[40, 10], [46, 10], [46, 34], [52, 34], [52, 36], [55, 36], [55, 40], [56, 40]] },
+  { name: 'into Mere End to the Drowned Duck door', corners: [...BOARDWALK, [40, 44]] },
+  { name: 'to Mrs Pike’s door', corners: [...BOARDWALK, [35, 44]] },
+  { name: 'along Mere End to the net loft door', corners: [...MERE_END_WEST, [26, 46]] },
+  { name: 'to the cottage at the end of the row', corners: [...MERE_END_WEST, [18, 46]] },
+  { name: 'to the withy beds hut door', corners: [...MERE_END_WEST, [6, 46]] },
+  { name: 'down the boards to the duck hide door', corners: [...MERE_END_WEST, [12, 46], [12, 52], [9, 52]] },
+  { name: 'to the Last House door', corners: [...MERE_END_WEST, [12, 46], [12, 26], [6, 26]] },
+  { name: 'down the turbary boards to the shed door', corners: [...BOARDWALK, [42, 44], [42, 54], [45, 54]] },
+  { name: 'along the turbary to the eel notice', corners: [...BOARDWALK, [42, 44], [42, 50], [35, 50]] },
+  { name: 'over the reeds to the Hummock', corners: [[40, 9], [36, 9], [36, 17], [20, 17], [20, 12], [21, 12]] },
 ];
 
 const browser = port ? attachBrowser(Number(port), { window: PIXEL_WINDOW }) : await launchBrowser({ window: PIXEL_WINDOW });
@@ -446,8 +497,8 @@ try {
       await wait(600);
       await readAll();
     };
-    // Tanglewood's, Pine Hollow's, The Crossing's and High Moor's walks start a step in from the way in.
-    if (TANGLEWOOD || PINE_HOLLOW || THE_CROSSING || HIGH_MOOR) await standAt(LANDING);
+    // Every district's walk but Millbrook's starts a step in from the way in.
+    if (TANGLEWOOD || PINE_HOLLOW || THE_CROSSING || HIGH_MOOR || REEDMERE) await standAt(LANDING);
     const landed = await tile();
     console.log(`landed at ${landed} (the start is ${LANDING})`);
     await page.screenshot(`${out}/00-landing.png`);
@@ -466,7 +517,9 @@ try {
             ? THE_CROSSING_ROUTES
             : HIGH_MOOR
               ? HIGH_MOOR_ROUTES
-              : ROUTES).entries()) {
+              : REEDMERE
+                ? REEDMERE_ROUTES
+                : ROUTES).entries()) {
       await walkRoute(route.name, route.corners, `${String(k + 1).padStart(2, '0')}-${route.name.split(/[ ,]+/).slice(0, 4).join('-').toLowerCase().replace(/[^a-z-]/g, '')}`);
       // Back to the landing the way the route came, which is a walk too.
       await walkRoute(`back from: ${route.name}`, [...route.corners.slice(0, -1).reverse(), LANDING]);
