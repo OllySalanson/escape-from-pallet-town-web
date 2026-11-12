@@ -3016,7 +3016,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       .setScale(OMEN_SHADOW_SCALE)
       .setTintFill(0x000000)
       .setAlpha(0.3)
-      .setDepth(CANOPY_BAND + 0.04)
+      // On the ground with the other marks, under everybody and under the trees,
+      // as the vale's own bird's shadow is: it is a shadow, and the bird is too high to see.
+      .setDepth(MARKER_BAND + 0.06)
       .setVisible(false);
     this.mapObjects.push(shadow);
     this.omenFlight = {
