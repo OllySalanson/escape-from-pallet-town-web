@@ -110,7 +110,7 @@ try {
     await walkIntoBase(page, 'raid-arena', { press, until, wait });
     // The walk in leaves the bench open: put the Charmander on it and step back into the hall.
     await until(`${sceneIs('hub')} && !!document.querySelector('[data-pokemon]')`, 'the bench');
-    await page.evaluate(`(() => { const row = document.querySelector('[data-pokemon]'); if (!row.classList.contains('is-selected')) row.click(); })()`);
+    await page.evaluate(`(() => { const row = document.querySelector('[data-pokemon]'); if (!row.classList.contains('is-selected') && !row.classList.contains('px-party-slot')) row.click(); })()`);
     await wait(300);
     await wait(300);
     for (let guard = 0; guard < 6 && (await page.evaluate(sceneIs('hub'))); guard += 1) await press('Escape');

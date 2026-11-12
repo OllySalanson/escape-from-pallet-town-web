@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { menuClickSound } from '../audio/menuSounds';
 import { menuLayer } from '../display/menuStage';
-import { columnTracks, planColumns, roomFor } from './columnLayout';
+import { columnTracks, isShortRoom, planColumns, roomFor } from './columnLayout';
 import { CURSOR_CONTROLS, firstMatching, READING_PANES } from './menuFocus';
 import { claimOverlayKeyboard } from './overlayKeyboard';
 import { PointerPreview, type PointerRule } from './pointerPreview';
@@ -383,6 +383,7 @@ export class MenuOverlay {
     // exactly one rule uses it; see `roomFor`.
     if (unit > 0) {
       this.root.dataset.room = roomFor(this.root.clientWidth / unit, this.root.clientHeight / unit);
+      this.root.toggleAttribute('data-short', isShortRoom(this.root.clientHeight / unit));
     }
     this.root.querySelectorAll<HTMLElement>('[data-columns]').forEach((pane) => {
       // Cleared first, so the room measured is the room the pane would have

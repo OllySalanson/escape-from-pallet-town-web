@@ -22,8 +22,11 @@ const GOING_OVER = `(() => { const scenes = ${GAME}.scene.getScenes(true).map((s
  * only Pokemon is packed by default (`DeploymentFlow.packLonePokemon`), and
  * clicking its row again would take it back out.
  */
+// A Pokémon on the bench is a slot (`.px-party-slot`), one at base a tile named
+// only in its `aria-label` (the menu overhaul's bench, `HubScene.benchView`);
+// a row of the old list carried its name in its text and `is-selected` when chosen.
 export const takePokemon = (name = null) =>
-  `(() => { const rows = [...document.querySelectorAll('button[data-pokemon]')].filter((b) => ${JSON.stringify(name?.toLowerCase() ?? null)} === null || b.innerText.toLowerCase().includes(${JSON.stringify(name?.toLowerCase() ?? '')})); if (rows.length === 0) return false; if (rows.some((b) => b.classList.contains('is-selected'))) return true; const row = rows.find((b) => b.getAttribute('aria-disabled') !== 'true'); if (!row) return false; row.click(); return true; })()`;
+  `(() => { const label = (b) => ((b.getAttribute('aria-label') ?? '') + ' ' + b.innerText).toLowerCase(); const rows = [...document.querySelectorAll('button[data-pokemon]')].filter((b) => ${JSON.stringify(name?.toLowerCase() ?? null)} === null || label(b).includes(${JSON.stringify(name?.toLowerCase() ?? '')})); if (rows.length === 0) return false; if (rows.some((b) => b.classList.contains('is-selected') || b.classList.contains('px-party-slot'))) return true; const row = rows.find((b) => b.getAttribute('aria-disabled') !== 'true'); if (!row) return false; row.click(); return true; })()`;
 
 /**
  * Walks the base to one of its keepers' doors, goes in, and speaks to the keeper.
@@ -408,11 +411,12 @@ async function enterRaid(page, { press, click, until, wait, insertion, starter, 
   await walkIntoBase(page, 'raid-arena', { press, until, wait });
   await until(takePokemon(starter), `${starter} in the raid party`);
   // Everybody else the vault holds, so a `--team` deploys as a team. The rows
-  // carry the stash id they are for, and one already in the raid is
-  // `is-selected` - clicking it again would take it back out.
+  // carry the stash id they are for, and one already in the raid is a bench
+  // slot (or, before the menu overhaul, `is-selected`) - clicking it again
+  // would take it back out.
   for (let guard = 0; guard < 6 && team.length > 0; guard += 1) {
     const added = await page.evaluate(
-      `(() => { const b = document.querySelector('button[data-pokemon]:not(.is-selected)'); if (!b || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
+      `(() => { const b = document.querySelector('button[data-pokemon]:not(.is-selected):not(.px-party-slot)'); if (!b || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
     );
     if (!added) {
       break;

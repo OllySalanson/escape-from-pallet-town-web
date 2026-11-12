@@ -5035,56 +5035,94 @@ button {
   grid-row: 2;
 }
 
-/* The raid PARTY's dossier in its side column leads with the Pokémon itself -
-   the portrait, beside its name and health, its types under them - then what
-   can be done (its gear), then the numbers - in a side column, and in a sheet
-   with a tight room. Stacked as everywhere else in a tight room, the portrait
-   went last and below the fold, and the panel opened on a page of words. Placed by grid, so the shared dossier's markup is
-   untouched (`ui/pokemonDossier.ts`, which Bill's PC and the bench draw too). */
+/* The raid PARTY's dossier, and the bench's, in a side column or a tight room
+   leads with the Pokémon itself - the portrait with its types beside it, its
+   name and health beside those - then what can be done (its gear, its care),
+   then the numbers. Stacked as everywhere else in a tight room, the portrait
+   went last and below the fold, and the panel opened on a page of words.
+   Placed by grid, so the shared dossier's markup is untouched
+   (`ui/pokemonDossier.ts`, which Bill's PC draws too), and the figure stays one
+   box: the fold that keeps a MORE strip off a line's waist reads it as a row. */
 :where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-body,
-:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-body {
+:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-body,
+:where(.pixel-ui[data-layout='side']) .bench-layout .px-dossier-body,
+:where(.pixel-ui[data-room='tight']) .bench-layout .px-dossier-body {
   display: grid;
-  grid-template-columns: calc(var(--u) * 64) minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   column-gap: calc(var(--u) * 4);
   row-gap: calc(var(--u) * 2);
   align-items: start;
 }
 :where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-figure,
-:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-figure {
-  display: contents;
-}
-:where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-figure > .px-portrait,
-:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-figure > .px-portrait {
+:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-figure,
+:where(.pixel-ui[data-layout='side']) .bench-layout .px-dossier-figure,
+:where(.pixel-ui[data-room='tight']) .bench-layout .px-dossier-figure {
   grid-column: 1;
-  grid-row: 1 / span 2;
+  grid-row: 1;
 }
 :where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-vitals,
-:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-vitals {
+:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-vitals,
+:where(.pixel-ui[data-layout='side']) .bench-layout .px-dossier-vitals,
+:where(.pixel-ui[data-room='tight']) .bench-layout .px-dossier-vitals {
   grid-column: 2;
   grid-row: 1;
 }
-:where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-figure > .summary-types,
-:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-figure > .summary-types {
-  grid-column: 2;
-  grid-row: 2;
-  grid-template-columns: repeat(2, max-content);
-  column-gap: calc(var(--u) * 2);
-  align-self: end;
-}
 :where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-deeds,
-:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-deeds {
+:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-deeds,
+:where(.pixel-ui[data-layout='side']) .bench-layout .px-dossier-deeds,
+:where(.pixel-ui[data-room='tight']) .bench-layout .px-dossier-deeds {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+:where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-growth,
+:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-growth,
+:where(.pixel-ui[data-layout='side']) .bench-layout .px-dossier-growth,
+:where(.pixel-ui[data-room='tight']) .bench-layout .px-dossier-growth {
   grid-column: 1 / -1;
   grid-row: 3;
 }
-:where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-growth,
-:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-growth {
+:where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-moves,
+:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-moves,
+:where(.pixel-ui[data-layout='side']) .bench-layout .px-dossier-moves,
+:where(.pixel-ui[data-room='tight']) .bench-layout .px-dossier-moves {
   grid-column: 1 / -1;
   grid-row: 4;
 }
-:where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-moves,
-:where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-moves {
-  grid-column: 1 / -1;
-  grid-row: 5;
+/* And the pane never gives way past the portrait it now leads with and the
+   MORE strip under it: a lower floor left the figure under the strip with its
+   types cut in half, a row too tall for the fold to hide. */
+:where(.pixel-ui[data-layout='side']) .raid-party-layout,
+:where(.pixel-ui[data-room='tight']) .raid-party-layout,
+:where(.pixel-ui[data-layout='side']) .bench-layout,
+:where(.pixel-ui[data-room='tight']) .bench-layout {
+  --dossier-floor: calc(var(--u) * 80);
+}
+/* The bench in a window short of height (800x600, `data-short`): its six slots
+   are one strip of six tiles - the icon over its bar, the name and level the
+   dossier's - or two rows of named slots left no room for the box at all. */
+:where(.pixel-ui[data-short]) .bench-layout .px-party-slots {
+  grid-template-columns: repeat(6, calc(var(--u) * 36));
+  gap: 0;
+}
+:where(.pixel-ui[data-short]) .bench-layout .px-party-slot {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0;
+  width: calc(var(--u) * 36);
+  height: calc(var(--u) * 37);
+  padding: 0;
+}
+:where(.pixel-ui[data-short]) .bench-layout .px-party-slot .px-name,
+:where(.pixel-ui[data-short]) .bench-layout .px-party-slot .px-shiny,
+:where(.pixel-ui[data-short]) .bench-layout .px-party-slot .px-mon-level {
+  display: none;
+}
+:where(.pixel-ui[data-short]) .bench-layout .px-party-slot .px-hp.is-short {
+  margin-top: 0;
+}
+:where(.pixel-ui[data-short]) .bench-layout .px-slot-gear {
+  left: calc(var(--u) * 20);
+  bottom: calc(var(--u) * 8);
 }
 /* A sheet (the panel as the whole screen, in a window with no room beside the
    map) is wide and short: the card stands beside the boxes rather than under
