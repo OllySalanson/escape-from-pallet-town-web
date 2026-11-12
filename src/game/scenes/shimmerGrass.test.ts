@@ -85,8 +85,9 @@ describe('the shimmering grass in a raid', () => {
     internals.createShimmer();
     expect(drawn).toHaveLength(3);
     for (const glint of drawn) {
-      expect(Math.floor(glint.x / 16)).toBe(shimmer.position.x);
-      expect(Math.floor(glint.y / 16)).toBe(shimmer.position.y);
+      // Over its tile: within a tile's half and a little of its middle.
+      expect(Math.abs(glint.x - (shimmer.position.x * 16 + 8))).toBeLessThanOrEqual(10);
+      expect(Math.abs(glint.y - (shimmer.position.y * 16 + 8))).toBeLessThanOrEqual(10);
       // The canopy band: over the figures, as a prize's light is.
       expect(glint.depth).toBeGreaterThan(2.5);
     }

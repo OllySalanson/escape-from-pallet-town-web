@@ -899,6 +899,12 @@ export function generateRunPlan(
               ...(loot[insertion.mapId] ?? []).map((piece) => `${piece.position.x},${piece.position.y}`),
             ]),
             stake ? stakeRoute(stakes, stake.position) : [],
+            // Everybody standing on the map, where they stand and where they walk,
+            // and this raid's trainers: the patch keeps clear of them all.
+            [
+              ...insertionMap.entities.flatMap((entity) => [entity.position, ...(entity.idle?.roam ?? [])]),
+              ...trainers.filter((trainer) => trainer.mapId === insertion.mapId).map((trainer) => trainer.position),
+            ],
           ),
           (tile) => {
             // The place's own table as it is authored, which names its guest,

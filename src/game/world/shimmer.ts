@@ -63,6 +63,12 @@ export const SHIMMER_MOST_WALK = 170;
  * gone for rather than trodden on.
  */
 export const SHIMMER_OFF_TRAIL = { least: 2, across: 8, down: 5 } as const;
+/**
+ * How far from anybody the patch keeps, in tiles: a person calling out, a
+ * Pokemon on its beat or a sign beside it stands in front of the glitter or
+ * talks over it (the first one laid was under a mason's "Up she goes!").
+ */
+export const SHIMMER_CLEAR_OF_FIGURES = 2;
 /** The trail's first stretch is the landing's own screen, which the first money already has. */
 const TRAIL_FROM_SHARE = 0.2;
 
@@ -186,15 +192,28 @@ function grassWalkedTo(map: Pick<WorldMapDefinition, 'tallGrass'>, steps: readon
  * and any grass stands beside it, and anywhere in range where not.
  *
  * `steps` is the stake's own field (`StakeGround.steps`): from the landing,
- * with every figure and watch a wall.
+ * with every figure and watch a wall. `figures` is everybody and everything
+ * standing on the map, every tile of a beat among them: the patch keeps
+ * `SHIMMER_CLEAR_OF_FIGURES` clear of each.
  */
 export function shimmerSeats(
   map: Pick<WorldMapDefinition, 'tallGrass'>,
   steps: readonly Int32Array[],
   reserved: ReadonlySet<string>,
   trail: readonly GridPosition[] = [],
+  figures: readonly GridPosition[] = [],
 ): readonly GridPosition[] {
-  const free = grassWalkedTo(map, steps).filter((tile) => !reserved.has(`${tile.x},${tile.y}`));
+  const crowded = new Set<string>();
+  for (const figure of figures) {
+    for (let dy = -SHIMMER_CLEAR_OF_FIGURES; dy <= SHIMMER_CLEAR_OF_FIGURES; dy += 1) {
+      for (let dx = -SHIMMER_CLEAR_OF_FIGURES; dx <= SHIMMER_CLEAR_OF_FIGURES; dx += 1) {
+        crowded.add(`${figure.x + dx},${figure.y + dy}`);
+      }
+    }
+  }
+  const free = grassWalkedTo(map, steps).filter(
+    (tile) => !reserved.has(`${tile.x},${tile.y}`) && !crowded.has(`${tile.x},${tile.y}`),
+  );
   const walked = trail.slice(Math.floor(trail.length * TRAIL_FROM_SHARE));
   if (walked.length === 0) {
     return free;

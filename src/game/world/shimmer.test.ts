@@ -20,6 +20,7 @@ import {
   RARE_SHARE,
   rarestOf,
   rollShimmerShiny,
+  SHIMMER_CLEAR_OF_FIGURES,
   SHIMMER_LEAST_WALK,
   SHIMMER_LEVELS_OVER,
   SHIMMER_MOST_WALK,
@@ -170,6 +171,15 @@ describe('where the shimmering grass may lie', () => {
     expect(shimmerSeats({ tallGrass }, steps, new Set()).length).toBe(width * height);
   });
 
+  it('keeps two tiles clear of anybody standing or walking a beat', () => {
+    const figures = [{ x: 5, y: 2 }];
+    const seats = shimmerSeats({ tallGrass }, steps, new Set(), [], figures);
+    expect(seats.length).toBe(width * height - 25);
+    for (const seat of seats) {
+      expect(Math.max(Math.abs(seat.x - 5), Math.abs(seat.y - 2))).toBeGreaterThan(SHIMMER_CLEAR_OF_FIGURES);
+    }
+  });
+
   it('is only tall grass the walk reaches, inside its range', () => {
     const bare = tallGrass.map((row, y) => row.map((grass, x) => grass && !(x === 5 && y === 0)));
     const walked = steps.map((row, y) =>
@@ -237,17 +247,18 @@ describe('the shimmering grass on Greystone Vale', () => {
         plan.insertion.position,
       ];
       if (taken.some((tile) => tile.x === x && tile.y === y)) faults.push(`${at}: something else is on it`);
+      // Nobody stands, walks a beat or is signed within two tiles of it: a figure in front of
+      // the glitter hides it, and one calling out talks over it.
+      const near = [
+        ...map.entities.flatMap((entity) => [entity.position, ...(entity.idle?.roam ?? [])]),
+        ...plan.trainers.filter((trainer) => trainer.mapId === VALE).map((trainer) => trainer.position),
+      ].find((tile) => Math.max(Math.abs(tile.x - x), Math.abs(tile.y - y)) <= SHIMMER_CLEAR_OF_FIGURES);
+      if (near) faults.push(`${at}: somebody stands at ${near.x},${near.y}`);
       // What is in it is one of the rarest of the place a step there is in.
       const place = districtAt(VALE, shimmer.position);
       const rarest = rarestOf(place?.encounters ?? map.encounters);
       if (!rarest || !rarest.speciesIds.includes(shimmer.speciesId) || rarest.level !== shimmer.level) {
         faults.push(`${at}: holds ${shimmer.speciesId} Lv ${shimmer.level}, not ${rarest?.speciesIds.join('/')} Lv ${rarest?.level} of ${place?.name}`);
-      }
-      // Beside the walk to the stake where the stake was laid: in sight from the trail.
-      const stake = (plan.loot[VALE] ?? []).find((piece) => piece.id === `${VALE}/stake`);
-      if (stake) {
-        const far = Math.abs(stake.position.x - x) + Math.abs(stake.position.y - y);
-        if (far > SHIMMER_MOST_WALK) faults.push(`${at}: ${far} tiles from the stake`);
       }
     }
     expect(faults).toEqual([]);

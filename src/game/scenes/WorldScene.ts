@@ -544,6 +544,8 @@ const PRIZE_GLEAM_PULSE_MS = 900;
  */
 const SHIMMER_COLOUR = 0xffffff;
 const SHIMMER_CORE_COLOUR = 0xfff3b0;
+/** A dark rim round each glint: white alone is lost on the vale's pale grass. */
+const SHIMMER_RIM_COLOUR = 0x1e3a5f;
 /** Half the length of a glint's bars: under a prize's eight, so the two are told apart at a glance. */
 const SHIMMER_GLINT_REACH = 6;
 const SHIMMER_GLINT_MS = 480;
@@ -554,7 +556,7 @@ const SHIMMER_REST_MS = 160;
  * One bright cross at a time, which is what it first was, was found in a
  * picture only by somebody who knew which tile to look at.
  */
-const SHIMMER_GLINT_DIM = 0.45;
+const SHIMMER_GLINT_DIM = 0.55;
 const SHIMMER_GLINTS: readonly { readonly dx: number; readonly dy: number; readonly delayMs: number }[] = [
   { dx: -5, dy: -9, delayMs: 0 },
   { dx: 6, dy: -3, delayMs: 370 },
@@ -3269,15 +3271,19 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const x = tile.x * TILE_SIZE + TILE_SIZE / 2;
     const y = tile.y * TILE_SIZE + TILE_SIZE / 2;
     for (const glint of SHIMMER_GLINTS) {
-      // A four-pointed twinkle: two crossed white bars and a pale gold heart,
-      // drawn as the prize's light is rather than loaded. White on the vale's
-      // greens is what reads from across a screen; five-pixel crosses in pale
-      // yellow, which is what it first was, could not be found in a picture
-      // by somebody who knew where to look.
+      // A four-pointed twinkle: two crossed white bars with a dark rim and a
+      // pale gold heart, drawn as the prize's light is rather than loaded.
+      // The rim is what reads from across a screen: five-pixel crosses in pale
+      // yellow, and then white ones, could not be found on the vale's grass in
+      // a picture by somebody who knew where to look.
       const twinkle = this.add
         .graphics()
         .setDepth(atRow(CANOPY_BAND, tile.y))
-        .fillStyle(SHIMMER_COLOUR, 1);
+        .fillStyle(SHIMMER_RIM_COLOUR, 1);
+      twinkle.fillRect(-2, -SHIMMER_GLINT_REACH - 1, 4, SHIMMER_GLINT_REACH * 2 + 2);
+      twinkle.fillRect(-SHIMMER_GLINT_REACH - 1, -2, SHIMMER_GLINT_REACH * 2 + 2, 4);
+      twinkle.fillRect(-3, -3, 6, 6);
+      twinkle.fillStyle(SHIMMER_COLOUR, 1);
       twinkle.fillRect(-1, -SHIMMER_GLINT_REACH, 2, SHIMMER_GLINT_REACH * 2);
       twinkle.fillRect(-SHIMMER_GLINT_REACH, -1, SHIMMER_GLINT_REACH * 2, 2);
       twinkle.fillStyle(SHIMMER_CORE_COLOUR, 1);
