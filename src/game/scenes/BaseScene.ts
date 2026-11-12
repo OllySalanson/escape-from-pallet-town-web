@@ -1436,7 +1436,6 @@ export class BaseScene extends Phaser.Scene {
     this.noticePlace(deltaMs);
     this.watchThePit(deltaMs);
     this.askTheNameOnceHome();
-    this.tendTheWayMarks(deltaMs);
     if (!this.still) {
       this.boats?.update(deltaMs);
       this.night?.update(deltaMs);
@@ -1467,6 +1466,9 @@ export class BaseScene extends Phaser.Scene {
     // frame, a bubble it had just put up was a frame late into the seating and
     // a caption was drawn across it for that frame.
     this.containWorldLabels();
+    // And the chevron after them, against this frame's captions: placed
+    // before, it stood on a caption for the frame that caption arrived.
+    this.tendTheWayMarks(deltaMs);
   }
 
   private updateWalking(deltaMs: number): void {
