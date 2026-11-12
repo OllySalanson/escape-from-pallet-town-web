@@ -19,7 +19,7 @@ the playtest README says) by `tools/playtest/raid.mjs --pixels --window=pixel
 
 | Find | Where | What it waits for | Heard from |
 | --- | --- | --- | --- |
-| THE LOST PICNIC: Hypno, Lv 26 | Tanglewood's north glade, up the long lane past the mushroom ring. Nearest landing: Farmhouse, north up the Pickers' way. | A night raid (your own clock). A Drowzee, Lv 10, dozes by the bench at any hour. | The harbour board |
+| THE LOST PICNIC: Hypno, Lv 26 | Tanglewood, the glade with the bench just north-west of MISLAID. Nearest landing: Farmhouse, north up the Pickers' way. | A night raid (your own clock). A Drowzee, Lv 10, dozes by the bench at any hour. | The harbour board |
 | THE STICKY TONGUE: Lickitung, Lv 24 | Orchard Terraces, the gap behind the cider press's barrels, a short walk east of the Farmhouse landing. | Any berry in the pack as the raid sets out. | The Seagallop's sailor |
 | THE SILENT PICKET: Mr. Mime, Lv 22 | The Power Station's picket line, on the forecourt The Dam lands on. He stands there every raid. | A Psychic type leading the party. A Slowpoke will do: one stands in THE WARM WATER just east of the forecourt, and another at THE ANGLERS' STAGE in The Crossing. | The S.S. Anne's captain, through his glass |
 | THE SHADOW IN THE CRYPT: Gengar, Lv 25 | Under THE MOOR CHAPEL, which only a night raid reaches: from Moor Top along the sheep track, in at the chapel door, down the nave's stairs. It lies there every raid. | A Ghost type leading the party (the churchyard above is where to catch a Gastly). | Bill |
@@ -55,14 +55,14 @@ then again with `--stash=pecha-berry:2 --pack=pecha-berry:1 --level=30 --fight -
 
 ## THE LOST PICNIC
 
-`--clock=day --insertion=greystone-vale-farmhouse --level=30 --avoid-watch --steps=walk:221:133,shot:glade,read:219:133:up,read:220:132:up`,
+`--clock=day --insertion=greystone-vale-farmhouse --level=30 --avoid-watch --steps=walk:221:133,shot:glade,read:219:133:up,read:217:131:left`,
 then `--clock=night ... --shot-battles --steps=walk:221:133,shot:glade,read:218:131:up`.
 
 | | |
 | --- | --- |
 | ![](10-lost-picnic-before.png) | Before: the picnicker who "took one turn off the road" this morning, some time ago. |
-| ![](11-lost-picnic-by-day.png) | After, by day: the glade has a name on its plate, and a Drowzee dozes by the bench at any hour - the only one in the vale, Lv 10, fought when spoken to. |
-| ![](12-the-picnickers-clue.png) | The picnicker's new third line is the clue: "Something stands by the bench after DARK, swinging a weight on a string. I always nod off before I see it." |
+| ![](11-lost-picnic-by-day.png) | After, by day: the glade has a name on its plate, and a Drowzee dozes above the bench at any hour - the only one in the vale, Lv 10, fought when spoken to. It first stood on the one tile that leads to the back of the glade, which walled the Hypno in; the raid found that, and `secrets.test.ts` now walks up to every nook with everybody standing where they stand. |
+| ![](12-the-picnickers-clue.png) | The picnicker is the clue. His first box is shown; his new third reads "Something stands by the bench after DARK, swinging a weight on a string. I always nod off before I see it." |
 | ![](13-lost-picnic-by-night.png) | On a night raid: a Hypno stands at the back of the glade, over the Drowzee. |
 | ![](14-hypno-was-not-expecting-that.png) | "A little weight swings on its string, to and fro, to and fro... You shake your head clear." |
 | ![](15-hypno-lv26.png) | A wild Hypno, Lv 26 - the level a Drowzee turns into one. |
@@ -77,7 +77,7 @@ walk out does not go back up the stairs; `--through=... --deep` is the walk that
 | --- | --- |
 | ![](16-crypt-before.png) | Before: the crypt under the nave, the gold graves and the Grave Goods. |
 | ![](17-crypt-after.png) | After: a shadow lies on the floor at the foot of the gold graves every raid until it is had, and a keeper's notice stands inside the ring of stones. |
-| ![](18-the-keepers-notice.png) | The notice is the clue: "The shadow at the foot of the gold graves is nobody's. Leave it be. It only gets up for a GHOST walking in front." |
+| ![](18-the-keepers-notice.png) | The notice is the clue. Its first box is shown; the second reads "The shadow at the foot of the gold graves is nobody's. Leave it be. It only gets up for a GHOST walking in front." |
 | ![](19-nothing-to-cast-it.png) | Spoken to with a Bulbasaur in front: "There is nothing in the crypt to cast it." |
 | ![](20-a-ghost-in-front.png) | With a Gastly leading: "the shadow sits up and grins. GENGAR peels itself off the floor!" |
 | ![](21-gengar-lv25.png) | A wild Gengar, Lv 25. A Haunter turns into one only by trade, which this game does not have, so this is the vale's one. |

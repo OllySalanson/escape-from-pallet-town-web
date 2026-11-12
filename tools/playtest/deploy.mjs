@@ -403,7 +403,16 @@ export async function deploy(page, url, { press, click, until, wait, paused = fa
       localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
     await page.send('Page.navigate', { url });
     await title();
-    await press('Space'); await until(sceneIs('base'));
+    // A plain build asks a save with no name for one on the way in (YOUR NAME?,
+    // the names service; test mode never asks), and the harbour does not open
+    // until it is answered: LATER, which sends nothing. Pressed for again while
+    // the title is still what is up, because the question arrives after it.
+    const later = `(() => { const b = [...document.querySelectorAll('button')].find((each) => each.innerText.trim() === 'LATER'); if (!b) return false; b.click(); return true; })()`;
+    for (let tries = 0; tries < 20 && !(await page.evaluate(sceneIs('base'))); tries += 1) {
+      if (!(await page.evaluate(later)) && (await page.evaluate(sceneIs('title')))) await press('Space');
+      await wait(1500);
+    }
+    await until(sceneIs('base'));
     console.log(`continuing from a save with: ${JSON.stringify(await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress`))}`);
   }
   return enterRaid(page, { press, click, until, wait, insertion, starter, lead, team, pack, secure });
