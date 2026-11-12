@@ -88,8 +88,8 @@
   "TTTTTTTTCCCWWWWWW.....gggggggggg.......gggggggg.TTTTTTTTTTTTTTTTTTTTTT.WWWWWWWF..FTTCCCCCCCCCC..dddgggggTT..........TTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCddvvvvvvvvTTTTTTTTTTTTTTddddddddddddddddddddTTTTTTTTddTTTTTT...........f....TTTTTTTTTTddCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCWWWCCCCCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTCCCCFgg................F..........TTTTTTTTTTTT",
   "TTTTTTTTCCWWWWWWW.....ggggggggggg.....gggggggg..ddTTTTTTTTTTTTTTTTTTTT.WWWWWWWF..FTTCCCCCCCCCC..dddgggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCddvvvvvvvvTTTTTTTTTTTTTTdd..gggggg..........TTTTTTTTdd......ggg...ddddd.....TTTTTTTTTTddCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCWWWCCCCCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTCCCCFg.................F..........TTTTTTTTTTTT",
   "TTTTTTTTCCWWWWWWW......ggggggggg..ddddddddddddddddTTTTTTTTTTTTTTTTTTTT..WWWWW....FTTCCCCCCCCCC..ddd.ggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCddvvvvvvvvTTTTTTTTTTTTTTdd...gggg...........TTTTTTTTdd......gggg.ddddddd....TTTTTTTTTTddCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCWWWCCCCCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTCCCCFdddddddddddddddddddddddddd...TTTTTTTTTTTT",
-  "TTTTTTTT..WWWWWW.........ggggg....dddddddddddddddd............................F..FTTCCCCCCCCCC..ddd.ggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCdd.<=====>TTTTTTTTTTTTTTdd..TTTTTT..TTTTTTTTTTTTTTTTddTT....gg..dddddddd....TTTTTTTTTTddTTTTTTTTTTTTTTTT....................WWW..gTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCFdddddddddddddddddddddddddd...TTTTTTTTTTTT",
-  "TTTTTTTT..ggggggg..ddddddddddddddddddddddddddddddd............................FFFFTTCCCCCCCCCC..ddd..gggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCdd.gggggg.TTTTTTTTTTTTTTdd..TTTTTT..TTTTTTTTTTTTTTTTddTT....gg..dddddddd....TTTTTTTTTTddTTTTTTTTTTTTTTTT....................WWW.ggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCF..................F.....dd...TTTTTTTTTTTT",
+  "TTTTTTTT..WWWWWW.........ggggg....dddddddddddddddd............................F..FTTCCCCCCCCCC..ddd.ggggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCdd.<=====>TTTTTTTTTTTTTTdd..........TTTTTTTTTTTTTTTTddTT....gg..dddddddd....TTTTTTTTTTddTTTTTTTTTTTTTTTT....................WWW..gTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCFdddddddddddddddddddddddddd...TTTTTTTTTTTT",
+  "TTTTTTTT..ggggggg..ddddddddddddddddddddddddddddddd............................FFFFTTCCCCCCCCCC..ddd..gggTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCggggggdddgggCCCCCCWWWWCCCC.dddCCCCCCCCdd.gggggg.TTTTTTTTTTTTTTdd..........TTTTTTTTTTTTTTTTddTT....gg..dddddddd....TTTTTTTTTTddTTTTTTTTTTTTTTTT....................WWW.ggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCF..................F.....dd...TTTTTTTTTTTT",
   "TTTTTTTT...gggg....dddddddddddddddddd.......dd..TTTTTTTTTTTTTTTTTTTTTT............TTCCCCCCCCCC..ddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCC......ddd...CCCCCCWWWWCCCC.dddCCCCCCCCdd..ggggg.TTTTTTTTTTTTTTdd..........TTTTTTTTTTTTTTTTddTTTTTT....dd....dd..TTTTTTTTTTTTdd....................................WWWgggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCF.......#.....gggggF.....dd...TTTTTTTTTTTT",
   "TTTTTTTT...........dddddddddddddddddd.......ddggTTTTTTTTTTTTTTTTTTTTTT........f...TT............ddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCC......ddd...CCCCCCWWWWCCCC.dddCCCCCCCCdd......f.TTTTTTTTTTTTTTdd..........TTTTTTTTTTTTTTTTddTTTTTT....dd....dd..TTTTTTTTTTTTdd....................................WWWgggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCF...........gggggggF...f.dd...TTTTTTTTTTTT",
   "TTTTTTTTTTTTTT.....dddFFFFFFFFFFFFTT........ddggTTTTTTTTTTTTTTTTTTTTTT..f......f..TTTTTT.dddddddddd.....TTTTTTTTTTTTTTTTTTTTTTTTTTCCCCCCCCCCCC..dddCCCCCCCCCWWWWCCCCCddddddddddddddd..............dddddddd..TTTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTT..dd....ddTTTTTTTTTTTTTTdd....................................WWWgggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCCFFFFFF..FFFFFFFFF.FF.....dd...TTTTTTTTTTTT",
@@ -101,9 +101,9 @@
   "TTTTTTTTTTTTTTgggg.dddF..........FTT..dddddddd..TTTTTTTTTTTTTTTTTTTTTTTTTT...gggg.TTF....ddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCgggg..dddgggggCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTT........dddd....TTTTdd..TTTTTTTTTTTTTTTT.....dd................dddddddd.dd.....MMMMM......dd....TTTTTTTTTTTTTTTTTTTTTTCCCCFgggggg.........ffffo..F.dd.........F.TTTT",
   "TTTTTTTTTTTTTTgggg.dddF..........FTT..dd........TTTTTTTTTTTTTTTTTTTTTTTTTT........TTF...Fddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCgggg..dddgggggCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTT..f....dddddddd.TTTTdd..TTTTTTTTTTTTTTTT.....dd....................dd.........ggWWW.......dd....TTTTTTTTTTTTTTTTTTTTTTCCCCFggggg.........fff#ff..F.dd.........F.TTTT",
   "TTTTTTTTTTTTTTgggg.ddddddddd.....FTT..ddggggg...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTF...Fddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCggggdddddgggggCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTTgggg....f.dddddddddd..TTdd..TTTTTTTTTTTTTTTT.....dd....................dd........gggWWW.ggggggdd....TTTTTTCCCCCCCCCCCCCCCCCCCCF.ggg..o.....o..ff.ff..F.dd.........F.TTTT",
-  "TTTTTTTTTTTTTTgggg.ddddddddd.....FTT..ddgggggg..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTFFFFFddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCggggdddddgggggCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTT.....f..TTTTTTTTTTggggg.....dd##ddddddd.TTdd..TTTTTTTTTTTTTTTT.....dd.........FFFFFFFFFFFddFFFFFFF.gggWWWgggggggdd....TTTTTTCCCCCCCCCCCCCCCCCCCCF......PPPPPPPPPP......F.dd.f.........TTTT",
+  "TTTTTTTTTTTTTTgggg.ddddddddd.....FTT..ddgggggg..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTFFFFFddd.gggggggggggTTCCCCCCCCCCCCCCCCTTTTTTTTCCCCCCCCggggdddddgggggCCCCWWWWCCCCCCggggggddd.CCCCCCCCCCTTTTTTTTTTTT.....f..TTTTTTTTTTggggg.....dd##dddddd..TTdd..TTTTTTTTTTTTTTTT.....dd.........FFFFFFFFFFFddFFFFFFF.gggWWWgggggggdd....TTTTTTCCCCCCCCCCCCCCCCCCCCF......PPPPPPPPPP......F.dd.f.........TTTT",
   "TTTTTTTTTTTTTTgggg.dddF..........FTT..dd.ggggg..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....dddddd..............WWWWWWWW.....TTTTTTTTCCCCCCCCggggdddddgggggCCCCWWWWCCCC..ggggggddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTTgggg.......ddddddddddddddd..TTTTTTTTTTTTTTTT.....dd.........FgggggvvvvvvvvvvgggF..ggWWW.ggggg.dd....TTTTTTCCCCCCCCCCCCCC......F....PPPPPPP...PP......F.dd..f......F.TTTT",
-  "TTTTTTTTTTTTTTggg..dddF..........FTT..dd..ggg...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCC.dddddd.............fWWWWWWWW.....TTTTTTTTCCCCCCCCggggddd.ggggggCCCCWWWWCCCC..ggggggddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTT............ddddddd.dddddd..TTTTTTTTTTTTTTTT.....dd.........FggggggvvvvvvvvggggF.gggWWW.......dd....TTTTTTggg.dddddd..........F....PPPPPPP...PP......F.dd...........TTTT",
+  "TTTTTTTTTTTTTTggg..dddF..........FTT..dd..ggg...TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCC.dddddd.............fWWWWWWWW.....TTTTTTTTCCCCCCCCggggddd.ggggggCCCCWWWWCCCC..ggggggddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTT............dddddd..dddddd..TTTTTTTTTTTTTTTT.....dd.........FggggggvvvvvvvvggggF.gggWWW.......dd....TTTTTTggg.dddddd..........F....PPPPPPP...PP......F.dd...........TTTT",
   "TTTTTTTTTTTTTTgg...dddF..........FTT..dd..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCC.dddddd............f.WWWWWWWW.....TTTTTTTTTTTTTT......ddd.ggggggCCCCWWWWCCCC........ddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTT............................TTTTTTTTTTTTTTTT.....dd.........FvvgvgvvvvvvvvvvvggF..ggWWW.......dd....TTTTTTgggddddddddddddddddd.PPPPPPPPPPP...PPPPPPPPPdddddddd..TTTTTTTT",
   "TTTTTTTTTTTTTT.....dddF...g...g..FTT..ddggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCCCC....ddd...........................TTTTTTTTTTTTTT.f....ddd.ggggggCCCCWWWWCCCC........ddd.CCCCCCCCCCTTTTTTTTTTTT........TTTTTTTTTT............................TTTTTTTTTTTTTTTT.ddddddddddddd..FvvvvvvvvvvvvvvvvvvF.gggWWW.......dd....TTTTTTggg.dddddddddddddddd.PPPPPPPPPPPPPPP.PPPPPPPdddddddd..TTTTTTTT",
   "TTTTTTTTTTTTTT.....dddF.gggggggggFTT..ddggTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT........ddddddddddddddddddddddddddddddddddddddddddddddddddddd.......CCCCWWWWCCCC........ddd.CCCCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT............................TTTTTTTTTTTTTTTT.ddddddddddddd..FvvvvvvvvvvvvvvvvvvF.gggWWWgggggggdd....TTTTTTTTggg......ggggggg..F.....PPPPPPP..........F......dddddddddd..",
@@ -1268,18 +1268,18 @@
    "kind": "cave-mouth"
   },
   {
+   "x": 237,
+   "y": 103,
+   "kind": "rock"
+  },
+  {
    "x": 238,
-   "y": 102,
+   "y": 103,
    "kind": "rock"
   },
   {
    "x": 239,
-   "y": 102,
-   "kind": "rock"
-  },
-  {
-   "x": 239,
-   "y": 101,
+   "y": 103,
    "kind": "rock"
   },
   {
@@ -1314,7 +1314,7 @@
   },
   {
    "x": 218,
-   "y": 75,
+   "y": 72,
    "kind": "stump"
   },
   {
@@ -1338,8 +1338,8 @@
    "kind": "stump"
   },
   {
-   "x": 200,
-   "y": 95,
+   "x": 205,
+   "y": 94,
    "kind": "dead-stump"
   },
   {
@@ -1358,12 +1358,12 @@
    "kind": "barrels"
   },
   {
-   "x": 225,
-   "y": 91,
+   "x": 224,
+   "y": 88,
    "kind": "pot"
   },
   {
-   "x": 225,
+   "x": 220,
    "y": 90,
    "kind": "pot"
   },
@@ -1388,42 +1388,42 @@
    "kind": "pot"
   },
   {
-   "x": 233,
+   "x": 236,
    "y": 94,
    "kind": "big-stump"
   },
   {
-   "x": 232,
-   "y": 97,
+   "x": 237,
+   "y": 102,
    "kind": "log"
   },
   {
-   "x": 225,
-   "y": 114,
+   "x": 229,
+   "y": 116,
    "kind": "big-stump"
   },
   {
-   "x": 230,
-   "y": 116,
+   "x": 220,
+   "y": 114,
    "kind": "dead-stump"
   },
   {
-   "x": 229,
+   "x": 233,
    "y": 114,
    "kind": "stump"
   },
   {
    "x": 246,
-   "y": 106,
+   "y": 107,
    "kind": "rail-post"
   },
   {
    "x": 246,
-   "y": 110,
+   "y": 111,
    "kind": "rail-post"
   },
   {
-   "x": 244,
+   "x": 250,
    "y": 108,
    "kind": "crate-pair"
   },
@@ -1453,8 +1453,8 @@
    "kind": "dead-stump"
   },
   {
-   "x": 216,
-   "y": 105,
+   "x": 210,
+   "y": 104,
    "kind": "stump"
   },
   {
@@ -7545,8 +7545,8 @@
    ]
   },
   {
-   "x": 221,
-   "y": 94,
+   "x": 217,
+   "y": 97,
    "name": "Resin Tapper",
    "look": "worker",
    "facing": "up",
@@ -7571,8 +7571,8 @@
    ]
   },
   {
-   "x": 226,
-   "y": 94,
+   "x": 225,
+   "y": 95,
    "name": "Tapper’s Girl",
    "look": "little-girl",
    "facing": "left",
@@ -7593,8 +7593,8 @@
    ]
   },
   {
-   "x": 234,
-   "y": 96,
+   "x": 231,
+   "y": 98,
    "name": "Amber Hunter",
    "look": "poke-maniac",
    "facing": "left",
@@ -7614,11 +7614,11 @@
    ]
   },
   {
-   "x": 226,
+   "x": 223,
    "y": 120,
    "name": "Woodsman",
    "look": "hiker",
-   "facing": "left",
+   "facing": "right",
    "secret": "the-sleeper-in-the-pines",
    "lines": [
     "Shh! He came down the lane for the honey in the spring, lay down right there, and has not got up since.",
@@ -7627,7 +7627,7 @@
    "beat": {
     "everyMs": 4100,
     "glances": [
-     "left",
+     "right",
      "up"
     ]
    },
@@ -7636,11 +7636,11 @@
    ]
   },
   {
-   "x": 231,
-   "y": 114,
+   "x": 227,
+   "y": 116,
    "name": "Bee Warden",
    "look": "bug-catcher",
-   "facing": "left",
+   "facing": "right",
    "lines": [
     "Those are not bees. I keep saying that. They have got my hat.",
     "It is a very big nest. Do not stand there. No. Do not stand there either."
@@ -7648,7 +7648,7 @@
    "beat": {
     "everyMs": 2400,
     "glances": [
-     "left",
+     "right",
      "up"
     ]
    },
@@ -7658,7 +7658,7 @@
   },
   {
    "x": 247,
-   "y": 109,
+   "y": 108,
    "name": "Linesman",
    "look": "worker",
    "facing": "left",
@@ -7684,8 +7684,8 @@
    ]
   },
   {
-   "x": 242,
-   "y": 80,
+   "x": 243,
+   "y": 79,
    "name": "Collier’s Mate",
    "look": "man",
    "facing": "right",
@@ -7742,8 +7742,8 @@
    }
   },
   {
-   "x": 205,
-   "y": 114,
+   "x": 203,
+   "y": 112,
    "name": "Deer Stalker",
    "look": "gentleman",
    "facing": "right",
@@ -15980,13 +15980,13 @@
    ]
   },
   {
-   "x": 246,
-   "y": 81,
+   "x": 244,
+   "y": 79,
    "name": "Collier Bram",
    "team": "collier",
    "look": "hiker",
-   "facing": "left",
-   "sight": 3,
+   "facing": "down",
+   "sight": 2,
    "lines": [
     "I burn charcoal under the old oak. Nobody comes this far in."
    ]
@@ -16968,35 +16968,35 @@
    }
   },
   {
-   "x": 227,
-   "y": 117,
+   "x": 230,
+   "y": 119,
    "species": "beedrill",
    "level": 10
   },
   {
-   "x": 229,
+   "x": 231,
    "y": 118,
    "species": "weedle"
   },
   {
-   "x": 241,
+   "x": 243,
    "y": 99,
    "species": "pikachu",
    "level": 8
   },
   {
-   "x": 204,
+   "x": 202,
    "y": 116,
    "species": "nidoran-m",
    "level": 8
   },
   {
-   "x": 212,
-   "y": 106,
+   "x": 217,
+   "y": 107,
    "species": "caterpie"
   },
   {
-   "x": 228,
+   "x": 229,
    "y": 115,
    "species": "beedrill",
    "beat": {
@@ -17011,7 +17011,7 @@
   },
   {
    "x": 232,
-   "y": 117,
+   "y": 116,
    "species": "kakuna",
    "level": 8
   },
@@ -17030,13 +17030,13 @@
    }
   },
   {
-   "x": 245,
-   "y": 104,
+   "x": 244,
+   "y": 106,
    "species": "pikachu",
    "level": 9
   },
   {
-   "x": 215,
+   "x": 213,
    "y": 75,
    "species": "psyduck",
    "beat": {
@@ -17084,8 +17084,8 @@
    }
   },
   {
-   "x": 236,
-   "y": 99,
+   "x": 237,
+   "y": 84,
    "species": "pidgey",
    "beat": {
     "everyMs": 1500,
@@ -17104,8 +17104,8 @@
    "level": 9
   },
   {
-   "x": 240,
-   "y": 79,
+   "x": 236,
+   "y": 78,
    "species": "vulpix",
    "beat": {
     "everyMs": 2000,
@@ -17118,8 +17118,8 @@
    }
   },
   {
-   "x": 210,
-   "y": 114,
+   "x": 207,
+   "y": 112,
    "species": "nidoran-f",
    "beat": {
     "everyMs": 1800,
@@ -17132,18 +17132,18 @@
    }
   },
   {
-   "x": 205,
-   "y": 118,
+   "x": 202,
+   "y": 119,
    "species": "metapod"
   },
   {
-   "x": 248,
-   "y": 112,
+   "x": 251,
+   "y": 113,
    "species": "oddish",
    "level": 8
   },
   {
-   "x": 224,
+   "x": 227,
    "y": 119,
    "species": "snorlax",
    "level": 25,
@@ -25503,7 +25503,7 @@
    "berry": "pecha"
   },
   {
-   "x": 200,
+   "x": 203,
    "y": 82,
    "berry": "chesto"
   },

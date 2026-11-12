@@ -1,0 +1,1045 @@
+{
+  "routes": [
+    {
+      "name": "along the trail, down into the hollow and out east to the Power Station",
+      "reached": true,
+      "steps": 121,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            8,
+            19
+          ],
+          "heading": "up",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        },
+        {
+          "leg": 8,
+          "at": [
+            41,
+            32
+          ],
+          "heading": "right",
+          "blocked": [
+            42,
+            32
+          ],
+          "by": "npc greystone-vale/person-72"
+        },
+        {
+          "leg": 8,
+          "at": [
+            40,
+            31
+          ],
+          "heading": "right",
+          "blocked": [
+            41,
+            31
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: along the trail, down into the hollow and out east to the Power Station",
+      "reached": true,
+      "steps": 119,
+      "snags": [
+        {
+          "leg": 4,
+          "at": [
+            43,
+            32
+          ],
+          "heading": "left",
+          "blocked": [
+            42,
+            32
+          ],
+          "by": "npc greystone-vale/person-72"
+        },
+        {
+          "leg": 4,
+          "at": [
+            43,
+            31
+          ],
+          "heading": "left",
+          "blocked": [
+            42,
+            31
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 11,
+          "at": [
+            8,
+            17
+          ],
+          "heading": "down",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        }
+      ]
+    },
+    {
+      "name": "out by the Charcoal Track",
+      "reached": true,
+      "steps": 21,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            8,
+            30
+          ],
+          "heading": "down",
+          "blocked": [
+            8,
+            31
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: out by the Charcoal Track",
+      "reached": true,
+      "steps": 21,
+      "snags": [
+        {
+          "leg": 2,
+          "at": [
+            8,
+            32
+          ],
+          "heading": "up",
+          "blocked": [
+            8,
+            31
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "to Old Wren’s door",
+      "reached": true,
+      "steps": 21,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            8,
+            19
+          ],
+          "heading": "up",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        }
+      ]
+    },
+    {
+      "name": "back from: to Old Wren’s door",
+      "reached": true,
+      "steps": 21,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            8,
+            17
+          ],
+          "heading": "down",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        }
+      ]
+    },
+    {
+      "name": "along the spring to the Cold Spring",
+      "reached": true,
+      "steps": 34,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            8,
+            19
+          ],
+          "heading": "up",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        }
+      ]
+    },
+    {
+      "name": "back from: along the spring to the Cold Spring",
+      "reached": true,
+      "steps": 34,
+      "snags": [
+        {
+          "leg": 2,
+          "at": [
+            8,
+            17
+          ],
+          "heading": "down",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        }
+      ]
+    },
+    {
+      "name": "up past the spring to its far bank",
+      "reached": true,
+      "steps": 50,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            8,
+            19
+          ],
+          "heading": "up",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        },
+        {
+          "leg": 3,
+          "at": [
+            23,
+            12
+          ],
+          "heading": "up",
+          "blocked": [
+            23,
+            11
+          ],
+          "by": "npc psyduck"
+        }
+      ]
+    },
+    {
+      "name": "back from: up past the spring to its far bank",
+      "reached": true,
+      "steps": 56,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            23,
+            10
+          ],
+          "heading": "down",
+          "blocked": [
+            23,
+            11
+          ],
+          "by": "npc psyduck"
+        },
+        {
+          "leg": 3,
+          "at": [
+            8,
+            17
+          ],
+          "heading": "down",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        }
+      ]
+    },
+    {
+      "name": "through the walker’s rest on the col",
+      "reached": true,
+      "steps": 31,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            8,
+            19
+          ],
+          "heading": "up",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        }
+      ]
+    },
+    {
+      "name": "back from: through the walker’s rest on the col",
+      "reached": true,
+      "steps": 31,
+      "snags": [
+        {
+          "leg": 3,
+          "at": [
+            8,
+            17
+          ],
+          "heading": "down",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        }
+      ]
+    },
+    {
+      "name": "into the tappers’ camp to the lean-to door",
+      "reached": true,
+      "steps": 72,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            8,
+            19
+          ],
+          "heading": "up",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        }
+      ]
+    },
+    {
+      "name": "back from: into the tappers’ camp to the lean-to door",
+      "reached": true,
+      "steps": 90,
+      "snags": [
+        {
+          "leg": 7,
+          "at": [
+            8,
+            17
+          ],
+          "heading": "down",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        }
+      ]
+    },
+    {
+      "name": "down the deer path to Tanglewood",
+      "reached": true,
+      "steps": 193,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            8,
+            19
+          ],
+          "heading": "up",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        },
+        {
+          "leg": 7,
+          "at": [
+            40,
+            32
+          ],
+          "heading": "down",
+          "blocked": [
+            40,
+            33
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 11,
+          "at": [
+            12,
+            51
+          ],
+          "heading": "down",
+          "blocked": [
+            12,
+            52
+          ],
+          "by": "npc nidoran-m"
+        }
+      ]
+    },
+    {
+      "name": "back from: down the deer path to Tanglewood",
+      "reached": true,
+      "steps": 181,
+      "snags": [
+        {
+          "leg": 2,
+          "at": [
+            12,
+            53
+          ],
+          "heading": "up",
+          "blocked": [
+            12,
+            52
+          ],
+          "by": "npc nidoran-m"
+        },
+        {
+          "leg": 6,
+          "at": [
+            40,
+            34
+          ],
+          "heading": "up",
+          "blocked": [
+            40,
+            33
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 12,
+          "at": [
+            8,
+            17
+          ],
+          "heading": "down",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        }
+      ]
+    },
+    {
+      "name": "down the lane into the bee wood, to the sleeper",
+      "reached": true,
+      "steps": 106,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            8,
+            19
+          ],
+          "heading": "up",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        },
+        {
+          "leg": 7,
+          "at": [
+            40,
+            32
+          ],
+          "heading": "down",
+          "blocked": [
+            40,
+            33
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 9,
+          "at": [
+            33,
+            49
+          ],
+          "heading": "down",
+          "blocked": [
+            33,
+            50
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 9,
+          "at": [
+            32,
+            54
+          ],
+          "heading": "down",
+          "blocked": [
+            32,
+            55
+          ],
+          "by": "npc snorlax"
+        }
+      ]
+    },
+    {
+      "name": "back from: down the lane into the bee wood, to the sleeper",
+      "reached": true,
+      "steps": 106,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            33,
+            52
+          ],
+          "heading": "up",
+          "blocked": [
+            33,
+            51
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 3,
+          "at": [
+            40,
+            34
+          ],
+          "heading": "up",
+          "blocked": [
+            40,
+            33
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 9,
+          "at": [
+            8,
+            17
+          ],
+          "heading": "down",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        }
+      ]
+    },
+    {
+      "name": "through the bee wood to the fox earth",
+      "reached": true,
+      "steps": 115,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            8,
+            19
+          ],
+          "heading": "up",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        },
+        {
+          "leg": 7,
+          "at": [
+            40,
+            32
+          ],
+          "heading": "down",
+          "blocked": [
+            40,
+            33
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 9,
+          "at": [
+            33,
+            49
+          ],
+          "heading": "down",
+          "blocked": [
+            33,
+            50
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 9,
+          "at": [
+            32,
+            54
+          ],
+          "heading": "down",
+          "blocked": [
+            32,
+            55
+          ],
+          "by": "npc snorlax"
+        },
+        {
+          "leg": 10,
+          "at": [
+            33,
+            56
+          ],
+          "heading": "right",
+          "blocked": [
+            34,
+            56
+          ],
+          "by": "npc greystone-vale/person-73"
+        }
+      ]
+    },
+    {
+      "name": "back from: through the bee wood to the fox earth",
+      "reached": true,
+      "steps": 115,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            35,
+            56
+          ],
+          "heading": "left",
+          "blocked": [
+            34,
+            56
+          ],
+          "by": "npc greystone-vale/person-73"
+        },
+        {
+          "leg": 2,
+          "at": [
+            33,
+            52
+          ],
+          "heading": "up",
+          "blocked": [
+            33,
+            51
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 4,
+          "at": [
+            40,
+            34
+          ],
+          "heading": "up",
+          "blocked": [
+            40,
+            33
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 10,
+          "at": [
+            8,
+            17
+          ],
+          "heading": "down",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        }
+      ]
+    },
+    {
+      "name": "through the Pikachu glade and out by the Fox Run",
+      "reached": true,
+      "steps": 108,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            8,
+            19
+          ],
+          "heading": "up",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        },
+        {
+          "leg": 8,
+          "at": [
+            41,
+            32
+          ],
+          "heading": "right",
+          "blocked": [
+            42,
+            32
+          ],
+          "by": "npc greystone-vale/person-72"
+        },
+        {
+          "leg": 8,
+          "at": [
+            40,
+            31
+          ],
+          "heading": "right",
+          "blocked": [
+            41,
+            31
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 9,
+          "at": [
+            49,
+            34
+          ],
+          "heading": "down",
+          "blocked": [
+            49,
+            35
+          ],
+          "by": "npc pikachu"
+        },
+        {
+          "leg": 10,
+          "at": [
+            52,
+            40
+          ],
+          "heading": "right",
+          "blocked": [
+            53,
+            40
+          ],
+          "by": "npc pikachu"
+        }
+      ]
+    },
+    {
+      "name": "back from: through the Pikachu glade and out by the Fox Run",
+      "reached": true,
+      "steps": 106,
+      "snags": [
+        {
+          "leg": 0,
+          "at": [
+            54,
+            40
+          ],
+          "heading": "left",
+          "blocked": [
+            53,
+            40
+          ],
+          "by": "npc pikachu"
+        },
+        {
+          "leg": 1,
+          "at": [
+            49,
+            36
+          ],
+          "heading": "up",
+          "blocked": [
+            49,
+            35
+          ],
+          "by": "npc pikachu"
+        },
+        {
+          "leg": 2,
+          "at": [
+            43,
+            32
+          ],
+          "heading": "left",
+          "blocked": [
+            42,
+            32
+          ],
+          "by": "npc greystone-vale/person-72"
+        },
+        {
+          "leg": 2,
+          "at": [
+            43,
+            31
+          ],
+          "heading": "left",
+          "blocked": [
+            42,
+            31
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 9,
+          "at": [
+            8,
+            17
+          ],
+          "heading": "down",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        }
+      ]
+    },
+    {
+      "name": "up past the oak to where the card was dropped",
+      "reached": true,
+      "steps": 118,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            8,
+            19
+          ],
+          "heading": "up",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        },
+        {
+          "leg": 8,
+          "at": [
+            41,
+            32
+          ],
+          "heading": "right",
+          "blocked": [
+            42,
+            32
+          ],
+          "by": "npc greystone-vale/person-72"
+        },
+        {
+          "leg": 8,
+          "at": [
+            40,
+            31
+          ],
+          "heading": "right",
+          "blocked": [
+            41,
+            31
+          ],
+          "by": "solid"
+        }
+      ]
+    },
+    {
+      "name": "back from: up past the oak to where the card was dropped",
+      "reached": true,
+      "steps": 116,
+      "snags": [
+        {
+          "leg": 5,
+          "at": [
+            43,
+            32
+          ],
+          "heading": "left",
+          "blocked": [
+            42,
+            32
+          ],
+          "by": "npc greystone-vale/person-72"
+        },
+        {
+          "leg": 5,
+          "at": [
+            43,
+            31
+          ],
+          "heading": "left",
+          "blocked": [
+            42,
+            31
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 12,
+          "at": [
+            8,
+            17
+          ],
+          "heading": "down",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        }
+      ]
+    },
+    {
+      "name": "up from the road to the pecha tree under the oak",
+      "reached": true,
+      "steps": 113,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            8,
+            19
+          ],
+          "heading": "up",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        },
+        {
+          "leg": 8,
+          "at": [
+            41,
+            32
+          ],
+          "heading": "right",
+          "blocked": [
+            42,
+            32
+          ],
+          "by": "npc greystone-vale/person-72"
+        },
+        {
+          "leg": 8,
+          "at": [
+            40,
+            31
+          ],
+          "heading": "right",
+          "blocked": [
+            41,
+            31
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 11,
+          "at": [
+            48,
+            16
+          ],
+          "heading": "up",
+          "blocked": [
+            48,
+            15
+          ],
+          "by": "npc vulpix"
+        }
+      ]
+    },
+    {
+      "name": "back from: up from the road to the pecha tree under the oak",
+      "reached": true,
+      "steps": 111,
+      "snags": [
+        {
+          "leg": 1,
+          "at": [
+            48,
+            14
+          ],
+          "heading": "down",
+          "blocked": [
+            48,
+            15
+          ],
+          "by": "npc vulpix"
+        },
+        {
+          "leg": 4,
+          "at": [
+            43,
+            32
+          ],
+          "heading": "left",
+          "blocked": [
+            42,
+            32
+          ],
+          "by": "npc greystone-vale/person-72"
+        },
+        {
+          "leg": 4,
+          "at": [
+            43,
+            31
+          ],
+          "heading": "left",
+          "blocked": [
+            42,
+            31
+          ],
+          "by": "solid"
+        },
+        {
+          "leg": 11,
+          "at": [
+            8,
+            17
+          ],
+          "heading": "down",
+          "blocked": [
+            8,
+            18
+          ],
+          "by": "npc greystone-vale/berry-tree-12"
+        }
+      ]
+    }
+  ],
+  "total": 66
+}

@@ -124,7 +124,12 @@ TANGLEWOOD: the explorer run deployed on the vale, the walker stood a step into
 the wood on the road from The Crossing (it has no landing of its own), and 19
 routes and back from there - the road through to the Safari Marsh, every way
 out, the doors of Mislaid, the cavers' camp, Fuchsia Gym, the hermit, the Bug
-Club and the lodge, and the glades between (`docs/screens/walkable-tanglewood/`).
+Club and the lodge, and the glades between (`docs/screens/walkable-tanglewood/`) `--area=pine-hollow`
+walks PINE HOLLOW the same way, from a step in on the trail over the col from
+Greystone Peaks: 13 routes and back - the trail through the hollow and out east to
+the Power Station, the deer path south to Tanglewood, both ways out nobody signs,
+both doors, the spring, the col's rest, the oak, the Pikachu glade and the bee wood
+(`docs/screens/walkable-pine-hollow/`).
 
 `millbrook.mjs <url> <dir> [--port=N]` plays the vale's front door as a new game
 meets it: landing on Mill Square, the village moving and calling out round a

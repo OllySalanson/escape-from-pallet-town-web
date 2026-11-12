@@ -29,6 +29,13 @@
  * they work in the hollow; the collier's stack under the oak; the linesman walking
  * the cable through the trees to the station, who lost a card here and has not
  * told anybody; the bee wood; the Pikachu glade; and a deer stalker with no deer.
+ *
+ * Made walkable on 11 November 2026, the fourth area of the vale after Millbrook,
+ * THE HARBOUR and Tanglewood (`pineHollow.test.ts`, `docs/screens/walkable-pine-hollow/`).
+ * The conifer lattice makes every lane exactly two wide, so one thing in a lane
+ * closes it to a pair: what stands here stands in a clearing or at a nook's far
+ * corner, never in a lane or a nook's mouth, and the col's rest was opened a cell
+ * deeper rather than thinned.
  */
 import type { MapFile, MapFileOutdoorBuildingKind } from '../../../../src/game/world/mapFile';
 import type { MapcraftResult } from '../../report';
@@ -48,7 +55,7 @@ const WOOD = [
   'TTTT................TT........TT',
   'TTTT..........TTTT.TTT........TT',
   'TTTT..........TTTT............TT',
-  'TTTT..TTT.TTTTTTTT.T..........TT',
+  'TTTT......TTTTTTTT.T..........TT',
   'TTTT......TTTTTTTT.TTT.......TTT',
   '......TTTTTTTTTTTT.TTTT.....TTTT',
   'TTTT.TTTTTTTTTTT.T.TTTTT..T..TTT',
@@ -102,7 +109,7 @@ export function pineHollow(): MapcraftResult {
     '   ddddd  ',
   ]);
   p.bedRows([30, 24, 27], [31, 24, 28], [32, 24, 27], [37, 25, 32], [38, 24, 33], [39, 24, 30]);
-  p.building('rock', 46, 38).building('rock', 47, 38).building('rock', 47, 37);
+  p.building('rock', 45, 39).building('rock', 46, 39).building('rock', 47, 39);
   // What stands at the end of each dead end, so a lane is seen to lead somewhere.
   p.building('rock', 9, 34).building('rock', 41, 55).building('rock', 58, 42);
 
@@ -121,48 +128,56 @@ export function pineHollow(): MapcraftResult {
   // -- The spring: Old Wren's hut, and her water ----------------------------------------
   p.building('hut', 10, 9);
   stand('log', 10, 8); // her woodpile, behind it
-  stand('stump', 26, 11);
+  stand('stump', 26, 8);
   stand('water-lily', 19, 9, 'W');
   stand('wet-rock', 15, 9, 'W');
   p.flowers([9, 13], [24, 13], [14, 12], [26, 8]);
 
   // -- The col: a walker's rest, where the trail comes in over the top ---------------------
+  // A clearing three cells deep off the trail, the log and the stump along its
+  // foot, so the way round it is two wide.
   stand('log', 13, 20);
-  // The tappers' bucket, at the back of their camp's nook: the Sunday's nook
-  // is behind it (`src/game/world/secrets.ts`).
   stand('stump', 17, 21);
 
-  // -- The charcoal track: a burnt-out stack at the back of the nook ----------------------------
-  stand('dead-stump', 8, 31);
+  // -- The charcoal track: a burnt-out stack at the back of the nook, clear of
+  // the lane down into it ------------------------------------------------------------------------
+  stand('dead-stump', 13, 30);
   stand('dead-stump', 12, 35);
   p.flowers([11, 31]);
 
   // -- The tappers' camp, on the way down: pots on the trees, and a lean-to --------------------
+  // The upturned pot is at the back of the way up beside the lean-to, by the
+  // Sunday's find; the other hangs at the head of the alley behind the barrels.
   stand('hut', 30, 26);
   stand('barrels', 26, 26);
-  stand('pot', 33, 27);
-  stand('pot', 33, 26);
+  stand('pot', 32, 24);
+  stand('pot', 28, 26);
   p.flowers([30, 29], [32, 30]);
 
   // -- The weeping pine, standing alone on the hollow's floor ----------------------------------------
   stand('pine', 36, 31, 'd');
   p.block(36, 31, 2, 1, '#'); // thicket under its tip, so nobody stands hidden there
+  // Its pots round it on the floor the tappers have worn bare; their cut wood is
+  // stacked out of the way, the stump in the floor's east corner and the log in
+  // the hollow's, so the way from the trail's foot to the climb out is clear.
   stand('pot', 35, 33);
   stand('pot', 38, 33);
   stand('pot', 36, 34);
-  stand('big-stump', 41, 30);
-  stand('log', 40, 33);
+  stand('big-stump', 44, 30);
+  stand('log', 45, 38);
 
-  // -- The bee wood: the nest, and the old stumps round it ------------------------------------------------
-  stand('big-stump', 33, 50);
-  stand('dead-stump', 38, 52);
-  stand('stump', 37, 50);
+  // -- The bee wood: the nest, and the old stumps round it, off the lane down
+  // into it, which runs straight on to the back of the glade --------------------------------
+  stand('big-stump', 37, 52);
+  stand('dead-stump', 28, 50);
+  stand('stump', 41, 50);
   p.flowers([34, 53], [40, 51], [35, 49], [39, 49]);
 
-  // -- The Pikachu glade, under the line to the station ---------------------------------------------------------
-  stand('rail-post', 54, 42);
-  stand('rail-post', 54, 46);
-  stand('crate-pair', 52, 44);
+  // -- The Pikachu glade, under the line to the station: the cable's posts in
+  // the glade's middle, and the way in along its top to the Fox Run clear ------------
+  stand('rail-post', 54, 43);
+  stand('rail-post', 54, 47);
+  stand('crate-pair', 58, 44);
   p.flowers([56, 37], [52, 40], [57, 46]);
 
   // -- The oak: the collier's stack and his wood --------------------------------------------------------------------
@@ -174,7 +189,7 @@ export function pineHollow(): MapcraftResult {
   p.flowers([46, 10], [58, 14]);
 
   // -- The deer path, down through the grass ----------------------------------------------------------------------
-  stand('stump', 24, 41);
+  stand('stump', 18, 40);
   stand('log', 12, 48);
 
   const file = districtFile(GREYSTONE_VALE, 'pine-hollow', p, {
@@ -219,57 +234,57 @@ export function pineHollow(): MapcraftResult {
       berryTrees: [
         { x: 31, y: 34, berry: 'oran' },
         { x: 47, y: 9, berry: 'pecha' }, // in the north glade, past the charcoal burner
-        { x: 8, y: 18, berry: 'chesto' },
+        { x: 11, y: 18, berry: 'chesto' },
         { x: 58, y: 47, berry: 'cheri' },
       ],
       // Who lives in the pines: a Beedrill nest in the south glade, a Pikachu
       // in the east one, and Nidoran on the deer path, and the wood's small change -
       // and something very much bigger, asleep where the bees are.
       pokemon: [
-        { x: 35, y: 53, species: 'beedrill', level: 10 },
-        { x: 37, y: 54, species: 'weedle' },
-        { x: 49, y: 35, species: 'pikachu', level: 8 },
-        { x: 12, y: 52, species: 'nidoran-m', level: 8 },
-        { x: 20, y: 42, species: 'caterpie' },
-        { x: 36, y: 51, species: 'beedrill', beat: { everyMs: 1000, roam: [[1, 0]] } },
-        { x: 40, y: 53, species: 'kakuna', level: 8 },
+        { x: 38, y: 55, species: 'beedrill', level: 10 },
+        { x: 39, y: 54, species: 'weedle' },
+        { x: 51, y: 35, species: 'pikachu', level: 8 },
+        { x: 10, y: 52, species: 'nidoran-m', level: 8 },
+        { x: 25, y: 43, species: 'caterpie' },
+        { x: 37, y: 51, species: 'beedrill', beat: { everyMs: 1000, roam: [[1, 0]] } },
+        { x: 40, y: 52, species: 'kakuna', level: 8 },
         { x: 56, y: 42, species: 'pikachu', beat: { everyMs: 1200, roam: [[0, 1]] } },
-        { x: 53, y: 40, species: 'pikachu', level: 9 },
-        { x: 23, y: 11, species: 'psyduck', beat: { everyMs: 2500, roam: [[1, 0]] } },
+        { x: 52, y: 42, species: 'pikachu', level: 9 },
+        { x: 21, y: 11, species: 'psyduck', beat: { everyMs: 2500, roam: [[1, 0]] } },
         { x: 13, y: 13, species: 'pidgey', beat: { everyMs: 1500, roam: [[1, 0]] } },
         { x: 10, y: 20, species: 'spearow', level: 7 },
         { x: 11, y: 34, species: 'rattata', beat: { everyMs: 1400, roam: [[1, 0]] } },
-        { x: 44, y: 35, species: 'pidgey', beat: { everyMs: 1500, roam: [[0, 1]] } },
+        { x: 45, y: 20, species: 'pidgey', beat: { everyMs: 1500, roam: [[0, 1]] } },
         { x: 30, y: 36, species: 'venonat', level: 9 },
-        { x: 48, y: 15, species: 'vulpix', beat: { everyMs: 2000, roam: [[1, 0]] } },
-        { x: 18, y: 50, species: 'nidoran-f', beat: { everyMs: 1800, roam: [[1, 0]] } },
-        { x: 13, y: 54, species: 'metapod' },
-        { x: 56, y: 48, species: 'oddish', level: 8 },
-        // The sleeper in the pines (`src/game/world/secrets.ts`): across the
-        // back of the bee wood's glade, at the foot of the lane down into it,
+        { x: 44, y: 14, species: 'vulpix', beat: { everyMs: 2000, roam: [[1, 0]] } },
+        { x: 15, y: 48, species: 'nidoran-f', beat: { everyMs: 1800, roam: [[1, 0]] } },
+        { x: 10, y: 55, species: 'metapod' },
+        { x: 59, y: 49, species: 'oddish', level: 8 },
+        // The sleeper in the pines (`src/game/world/secrets.ts`): at the back
+        // of the bee wood's glade, beside the foot of the lane down into it,
         // every raid until he is had. Only a POKé FLUTE in the pack wakes him.
-        { x: 32, y: 55, species: 'snorlax', level: 25, secret: 'the-sleeper-in-the-pines' },
+        { x: 35, y: 55, species: 'snorlax', level: 25, secret: 'the-sleeper-in-the-pines' },
       ],
       people: [
         { x: 9, y: 12, name: 'Old Wren', look: 'old-woman', facing: 'right', lines: ['Nobody signs the trails in Pine Hollow. You find them or you do not.', 'The deer go south out of the hollow, down to the broadleaf wood.'], beat: { everyMs: 4200, glances: ['right', 'up'] }, calls: ['Who sent you?'] },
         { x: 18, y: 13, name: 'Water Girl', look: 'lass', facing: 'up', lines: ['Coldest spring in the vale. Gran says it cures everything.', 'She says that about everything. I just carry it.'], beat: { everyMs: 2200, glances: ['up', 'right'] }, calls: ['Mind the pails!'] },
         { x: 12, y: 21, name: 'Col Walker', look: 'hiker', facing: 'right', lines: ['Over the col from the peaks and this is what you get. Trees.', 'There is a charcoal track goes out of the nook south of here, if you know it. I never told you.'], beat: { everyMs: 3700, glances: ['right', 'down'] }, calls: ['Trees. More trees.'] },
         { x: 10, y: 32, name: 'Old Collier', look: 'old-man', facing: 'down', lines: ['My stack went cold here in the year of the fire. It has never been the same since.', 'You go out that way, behind me, if anything comes through the pines after you.'], beat: { everyMs: 4000, glances: ['down', 'left'] }, calls: ['Nothing here. Keep walking.'] },
-        { x: 29, y: 30, name: 'Resin Tapper', look: 'worker', facing: 'up', lines: ['Cut the bark, hang the pot, come back in a year. This whole wood weeps if you ask it.', 'Leave it a very long time, and it goes to amber. There is a collector down at the harbour who pays silly money.'], beat: { everyMs: 2900, roam: [[1, 0]], glances: ['up'] }, calls: ['Mind the pots!'] },
+        { x: 25, y: 33, name: 'Resin Tapper', look: 'worker', facing: 'up', lines: ['Cut the bark, hang the pot, come back in a year. This whole wood weeps if you ask it.', 'Leave it a very long time, and it goes to amber. There is a collector down at the harbour who pays silly money.'], beat: { everyMs: 2900, roam: [[1, 0]], glances: ['up'] }, calls: ['Mind the pots!'] },
         // Pine Hollow signs nothing, so the tappers' Sunday is told, not written.
-        { x: 34, y: 30, name: 'Tapper’s Girl', look: 'little-girl', facing: 'left', secret: 'the-tappers-sunday', lines: ['There is a Caterpie stuck in one of the old lumps, right the way through. Dad says a thousand years.', 'Dad never taps on a Sunday. He leaves a present by the upturned pot at the back, for whoever comes by.'], beat: { everyMs: 1800, glances: ['left', 'down'] }, calls: ['Do not touch, it is sticky!'] },
-        { x: 42, y: 32, name: 'Amber Hunter', look: 'poke-maniac', facing: 'left', lines: ['That pine has been weeping since before there was a vale. Look under it. Look under all of them.', 'Amber lies anywhere in this wood. Good luck finding it twice.'], beat: { everyMs: 3500, glances: ['left', 'down'] }, calls: ['Hush. I can smell resin.'] },
+        { x: 33, y: 31, name: 'Tapper’s Girl', look: 'little-girl', facing: 'left', secret: 'the-tappers-sunday', lines: ['There is a Caterpie stuck in one of the old lumps, right the way through. Dad says a thousand years.', 'Dad never taps on a Sunday. He leaves a present by the upturned pot at the back, for whoever comes by.'], beat: { everyMs: 1800, glances: ['left', 'down'] }, calls: ['Do not touch, it is sticky!'] },
+        { x: 39, y: 34, name: 'Amber Hunter', look: 'poke-maniac', facing: 'left', lines: ['That pine has been weeping since before there was a vale. Look under it. Look under all of them.', 'Amber lies anywhere in this wood. Good luck finding it twice.'], beat: { everyMs: 3500, glances: ['left', 'down'] }, calls: ['Hush. I can smell resin.'] },
         // Pine Hollow signs nothing, so the sleeper is told about too.
-        { x: 34, y: 56, name: 'Woodsman', look: 'hiker', facing: 'left', secret: 'the-sleeper-in-the-pines', lines: ['Shh! He came down the lane for the honey in the spring, lay down right there, and has not got up since.', 'DO NOT WAKE HIM. Not that you could. My grandad said nothing but a FLUTE ever woke one of those.'], beat: { everyMs: 4100, glances: ['left', 'up'] }, calls: ['Shh!'] },
-        { x: 39, y: 50, name: 'Bee Warden', look: 'bug-catcher', facing: 'left', lines: ['Those are not bees. I keep saying that. They have got my hat.', 'It is a very big nest. Do not stand there. No. Do not stand there either.'], beat: { everyMs: 2400, glances: ['left', 'up'] }, calls: ['Slowly. Very slowly.'] },
-        { x: 55, y: 45, name: 'Linesman', look: 'worker', facing: 'left', lines: ['I walk the cable from the station to the pass, and the Pikachu sit on it and drink.', 'I had a card for the Service Gate. I had it when I passed the oak. If you find it, you never saw me.'], beat: { everyMs: 3200, roam: [[0, 1]], glances: ['up', 'left'] }, calls: ['Off the line, you lot!'] },
-        { x: 50, y: 16, name: 'Collier’s Mate', look: 'man', facing: 'right', lines: ['Bram does not talk. He has not said anything since the spring.', 'He said something to you? Sit down. Tell me everything.'], beat: { everyMs: 2700, glances: ['right', 'up'] }, calls: ['Who goes there?'] },
+        { x: 31, y: 56, name: 'Woodsman', look: 'hiker', facing: 'right', secret: 'the-sleeper-in-the-pines', lines: ['Shh! He came down the lane for the honey in the spring, lay down right there, and has not got up since.', 'DO NOT WAKE HIM. Not that you could. My grandad said nothing but a FLUTE ever woke one of those.'], beat: { everyMs: 4100, glances: ['right', 'up'] }, calls: ['Shh!'] },
+        { x: 35, y: 52, name: 'Bee Warden', look: 'bug-catcher', facing: 'right', lines: ['Those are not bees. I keep saying that. They have got my hat.', 'It is a very big nest. Do not stand there. No. Do not stand there either.'], beat: { everyMs: 2400, glances: ['right', 'up'] }, calls: ['Slowly. Very slowly.'] },
+        { x: 55, y: 44, name: 'Linesman', look: 'worker', facing: 'left', lines: ['I walk the cable from the station to the pass, and the Pikachu sit on it and drink.', 'I had a card for the Service Gate. I had it when I passed the oak. If you find it, you never saw me.'], beat: { everyMs: 3200, roam: [[0, 1]], glances: ['up', 'left'] }, calls: ['Off the line, you lot!'] },
+        { x: 51, y: 15, name: 'Collier’s Mate', look: 'man', facing: 'right', lines: ['Bram does not talk. He has not said anything since the spring.', 'He said something to you? Sit down. Tell me everything.'], beat: { everyMs: 2700, glances: ['right', 'up'] }, calls: ['Who goes there?'] },
         { x: 58, y: 25, name: 'Walked Off', look: 'worker', facing: 'down', lines: ['Nine years on that picket, and one morning I went for a walk. Do not tell them where I am.', 'I am not telling you where this road goes, either. You would only tell them.'], beat: { everyMs: 3300, glances: ['down', 'right', 'left'] } },
         { x: 34, y: 11, name: 'Pot Carrier', look: 'youngster', facing: 'down', lines: ['Two pots for the tappers. They said I would find the camp. They said it the way people do here.', 'Nobody tells you anything in Pine Hollow, and then they ask why you are late.'], beat: { everyMs: 2800, glances: ['down', 'left'] } },
-        { x: 13, y: 50, name: 'Deer Stalker', look: 'gentleman', facing: 'right', lines: ['Eleven years I have stalked the deer of Pine Hollow. I have seen the path, the prints, the droppings.', 'South out of the hollow, then on down. There is a very fine wood at the bottom of it, I am told.'], beat: { everyMs: 3900, glances: ['down', 'right'] }, calls: ['Shh! A deer! No.'] },
+        { x: 11, y: 48, name: 'Deer Stalker', look: 'gentleman', facing: 'right', lines: ['Eleven years I have stalked the deer of Pine Hollow. I have seen the path, the prints, the droppings.', 'South out of the hollow, then on down. There is a very fine wood at the bottom of it, I am told.'], beat: { everyMs: 3900, glances: ['down', 'right'] }, calls: ['Shh! A deer! No.'] },
       ],
       trainers: [
-        { x: 54, y: 17, name: 'Collier Bram', team: 'collier', look: 'hiker', facing: 'left', sight: 3, lines: ['I burn charcoal under the old oak. Nobody comes this far in.'] },
+        { x: 52, y: 15, name: 'Collier Bram', team: 'collier', look: 'hiker', facing: 'down', sight: 2, lines: ['I burn charcoal under the old oak. Nobody comes this far in.'] },
         { x: 26, y: 35, name: 'Tapper Ines', team: 'scout', look: 'picnicker', facing: 'right', sight: 0, lines: ['Five years that pot has been hanging, and you kicked it! Battle me!'] },
         { x: 30, y: 42, name: 'Woodsman Crake', team: 'orchardist', look: 'camper', facing: 'up', sight: 0, lines: ['Nobody comes down here. I come down here so nobody will. It is working, except for you.'] },
       ],
