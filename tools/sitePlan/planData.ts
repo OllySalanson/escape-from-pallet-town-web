@@ -28,6 +28,14 @@ import { plantedProp, isOutdoorBuilding, type MapFileSpot } from '../../src/game
 import { createRunTrainerEncounters } from '../../src/game/world/trainers';
 import { VALE_QUARTERS, valeGyms } from '../../src/game/world/valeQuarters';
 import type { PlacedArea } from '../../src/game/world/mapAreas';
+import { buildAreaInfo, type AreaInfo, type PlanSpecies } from './areaInfo';
+import { SECRETS } from '../../src/game/world/secrets';
+import { hasShimmer, SHIMMER_SHINY_ODDS } from '../../src/game/world/shimmer';
+import { hasOmens, OMEN_EVERY } from '../../src/game/world/omens';
+import { SHINY_ODDS } from '../../src/game/pokemon/shiny';
+import { RAID_DURATION_MS } from '../../src/game/run/raidClock';
+import { RUN_GENERATION_BOUNDS } from '../../src/game/run/runGeneration';
+import { getSpeciesById } from '../../src/game/pokemon/species';
 
 export interface PlanRect {
   readonly x: number;
@@ -51,7 +59,8 @@ export type FeatureKind =
   | 'trainer'
   | 'sign'
   | 'berry'
-  | 'boat';
+  | 'boat'
+  | 'wild';
 
 export interface PlanFeature {
   readonly id: string;
@@ -75,6 +84,10 @@ export interface PlanFeature {
   readonly goto?: PlanRect;
   /** A path drawn for it, as plan points: a boat's crossing. */
   readonly path?: readonly (readonly [number, number])[];
+  /** A door that takes you in off the outdoors: the plan badges it and the key names it. */
+  readonly enters?: boolean;
+  /** The Pokemon a standing one is, for the filter and its picture. */
+  readonly species?: string;
 }
 
 export interface PlanData {
@@ -94,6 +107,21 @@ export interface PlanData {
   readonly rows: number;
   readonly quarters: readonly string[];
   readonly features: readonly PlanFeature[];
+  /** What each place - a district or a room, by feature id - holds and does (`areaInfo.ts`). */
+  readonly info: Readonly<Record<string, AreaInfo>>;
+  /** Every Pokemon the plan names, by id. */
+  readonly species: Readonly<Record<string, PlanSpecies>>;
+  /** What holds everywhere on the map, for the panel's legend. */
+  readonly rules: PlanRules;
+}
+
+export interface PlanRules {
+  readonly raidMinutes: number;
+  readonly shinyOdds: number;
+  readonly shimmerShinyOdds: number;
+  readonly levelSwing: number;
+  readonly omenEvery?: number;
+  readonly shimmer: boolean;
 }
 
 /** Tiles of paper between the outdoors and the block of rooms. */
@@ -546,7 +574,12 @@ export function buildPlanData(mapId: WorldMapId): PlanData {
       detail: [from ? `From ${from.name} to ${toName}.` : `Leads in to ${toName}.`],
       places: placesAt(warp.source.x, warp.source.y),
       grid: gridAt(warp.source.x, warp.source.y),
-      goto: toPlan(warp.destination.x - 4, warp.destination.y - 4, 9, 9),
+      // In off the outdoors, the whole room is what a click goes to see.
+      goto:
+        !from && to
+          ? toPlan(to.rect.x, to.rect.y, to.rect.width, to.rect.height)
+          : toPlan(warp.destination.x - 4, warp.destination.y - 4, 9, 9),
+      ...(!from && to ? { enters: true } : {}),
     });
   }
 
@@ -726,7 +759,11 @@ export function buildPlanData(mapId: WorldMapId): PlanData {
         landing.landing.x,
         landing.landing.y,
         [
-          `A ${sailing.craft} across the water.`,
+          // No craft is the ferry (`MapSailing.craft`).
+          `A ${sailing.craft ?? 'ferry'} across the water.`,
+          ...(sailing.runsFromMs > 0
+            ? [`Sails from ${Math.round(sailing.runsFromMs / 1000)} seconds into a raid.`]
+            : []),
           ...(sailing.runsUntilMs < Number.MAX_SAFE_INTEGER
             ? [`Runs for the first ${Math.round(sailing.runsUntilMs / 60000)} minutes of a raid.`]
             : []),
@@ -759,6 +796,66 @@ export function buildPlanData(mapId: WorldMapId): PlanData {
     }
   }
 
+  // Pokemon that stand their ground and fight when spoken to.
+  for (const [index, figure] of (file?.pokemon ?? []).entries()) {
+    if (figure.level === undefined) continue;
+    const offset = areaOffset(figure);
+    const secret = figure.secret ? SECRETS.find((each) => each.id === figure.secret) : undefined;
+    const name = getSpeciesById(figure.species)?.name ?? humanise(figure.species);
+    point(
+      `wild-${index}`,
+      'wild',
+      name,
+      figure.x + offset.x,
+      figure.y + offset.y,
+      [
+        figure.legendary
+          ? `A legend at Lv ${figure.level}: no ball until it is beaten, then one throw.`
+          : `Stands here at Lv ${figure.level}: speak to it to fight or catch it, once a raid.`,
+        ...(secret
+          ? [`Part of the secret ${titleCase(secret.name)}: see the place's panel for when.`]
+          : []),
+      ],
+      {
+        species: figure.species,
+        sort: figure.legendary ? 'legend' : secret ? 'secret' : undefined,
+      },
+    );
+  }
+
+  // What every place holds, read off the same rules a raid reads.
+  const targets = [
+    ...features
+      .filter((feature) => feature.kind === 'district')
+      .map((feature) => {
+        const district = districts.find((candidate) => candidate.id === feature.id)!;
+        return { id: feature.id, name: district.name, rects: district.areas };
+      }),
+    ...rooms.map((room) => ({
+      id: `room-${room.id}`,
+      name: room.name,
+      rects: [room.rect],
+      // The places drawn inside it: THE DIGGINGS is a room of the caves.
+      alsoNames: districts
+        .filter(
+          (district) =>
+            district.areas[0] && inside(room.rect, district.areas[0].x, district.areas[0].y),
+        )
+        .map((district) => district.name),
+    })),
+  ];
+  const { info, species } = buildAreaInfo(mapId, map, file, areas, targets, titleCase);
+  for (const feature of features)
+    if (feature.species && !species[feature.species]) {
+      const base = getSpeciesById(feature.species);
+      if (base)
+        (species as Record<string, PlanSpecies>)[feature.species] = {
+          name: base.name,
+          dex: base.dexId,
+          types: [base.primaryType, ...(base.secondaryType ? [base.secondaryType] : [])],
+        };
+    }
+
   return {
     mapId,
     title: worldMapName(mapId),
@@ -772,6 +869,16 @@ export function buildPlanData(mapId: WorldMapId): PlanData {
     rows,
     quarters: quarterNames,
     features,
+    info,
+    species,
+    rules: {
+      raidMinutes: RAID_DURATION_MS / 60000,
+      shinyOdds: SHINY_ODDS,
+      shimmerShinyOdds: SHIMMER_SHINY_ODDS,
+      levelSwing: RUN_GENERATION_BOUNDS.encounterLevelVariance,
+      ...(hasOmens(mapId) ? { omenEvery: OMEN_EVERY } : {}),
+      shimmer: hasShimmer(mapId),
+    },
   };
 }
 

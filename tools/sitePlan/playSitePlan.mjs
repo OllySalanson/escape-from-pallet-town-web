@@ -1,9 +1,10 @@
-// Plays the site plan's zoom and drag in a real headless Chromium, with real
-// wheel, mouse and touch input, and checks how they feel in numbers:
+// Plays the site plan in a real headless Chromium, with real wheel, mouse and
+// touch input: how its zoom and drag feel in numbers, and what a click on a
+// door, a place and the Pokémon filter do:
 //
 //   npm run site-plan -- --out=out/site-plan
 //   EPTW_CHROME_LIBS="$(tools/playtest/ensure-libs.sh "$SCRATCH/chrome-libs")" \
-//     node tools/sitePlan/zoomFeel.mjs out/site-plan/index.html
+//     node tools/sitePlan/playSitePlan.mjs out/site-plan/index.html
 //
 // It prints what it measured and exits non-zero if any check fails. Every
 // frame's view is recorded inside the page, so a measurement is of what was
@@ -221,6 +222,75 @@ try {
     mostBlankPieces: blank,
     deepest: Math.max(...log.map((f) => f[2])),
   });
+
+  // A door's badge takes you inside, and BACK OUT brings you back to where you were.
+  const click = async (x, y) => {
+    await mouse('mouseMoved', x, y);
+    await mouse('mousePressed', x, y, 1);
+    await mouse('mouseReleased', x, y);
+  };
+  await page.evaluate('window.__sitePlan.select(null)');
+  await setView(103, 160, 9);
+  await sleep(800);
+  const door = await page.evaluate(`(() => {
+    const p = window.__sitePlan, v = p.view;
+    const at = (f) => [(f.cx - v.x) * v.s + ${WIDTH} / 2, (f.cy - v.y) * v.s + ${HEIGHT} / 2];
+    const f = p.features.find((f) => f.layer === 'enter' && (([x, y]) => x > 500 && x < 1000 && y > 200 && y < 650)(at(f)));
+    return f && { at: at(f), room: f.goto, name: f.name };
+  })()`);
+  const outside = await view();
+  await click(door.at[0], door.at[1]);
+  await sleep(2600);
+  const inside = await view();
+  const back = await page.evaluate(`(() => {
+    const b = document.getElementById('back').getBoundingClientRect();
+    return document.getElementById('back').hidden ? null : [b.x + b.width / 2, b.y + b.height / 2];
+  })()`);
+  const inRoom =
+    inside.x >= door.room.x &&
+    inside.x <= door.room.x + door.room.w &&
+    inside.y >= door.room.y &&
+    inside.y <= door.room.y + door.room.h;
+  check('a click on a way-inside badge flies into the room behind it', inRoom && back !== null, {
+    door: door.name,
+    inside,
+  });
+  if (back) await click(back[0], back[1]);
+  await sleep(2600);
+  const returned = await view();
+  check(
+    'BACK OUT flies back to where you were',
+    Math.hypot(returned.x - outside.x, returned.y - outside.y) < 0.5 &&
+      Math.abs(returned.s / outside.s - 1) < 0.01 &&
+      (await page.evaluate("document.getElementById('back').hidden")),
+    { outside, returned },
+  );
+
+  // A click on a place you are inside opens everything it holds, and never zooms out.
+  await page.evaluate('window.__sitePlan.select(null)');
+  await setView(84, 176, 9);
+  await sleep(800);
+  const beforePlace = await view();
+  await click(640, 400);
+  await sleep(1500);
+  const panel = await page.evaluate(`(() => {
+    const card = document.getElementById('card');
+    return { open: card.style.display === 'block', area: card.classList.contains('area'), sections: card.querySelectorAll('.sect').length, title: card.querySelector('.title')?.textContent };
+  })()`);
+  check(
+    'a click inside a place opens its panel and keeps the zoom',
+    panel.open && (panel.area || panel.sections === 0) && (await view()).s >= beforePlace.s,
+    { panel, before: beforePlace.s, after: (await view()).s },
+  );
+
+  // The filter lights up where a kind can be met.
+  const found = await page.evaluate(`(() => {
+    const find = document.getElementById('find');
+    find.value = 'Ice type';
+    find.dispatchEvent(new Event('input'));
+    return document.getElementById('findnote').textContent;
+  })()`);
+  check('the filter finds where a type lives', /Ice type: [1-9]\d* place/.test(found), { found });
 
   // Two fingers pinching on a touch screen: the point between them stays between them.
   await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 2 });

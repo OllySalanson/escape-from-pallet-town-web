@@ -10,9 +10,9 @@
  * the same layers from the same builder), cut into a pyramid of 256-pixel
  * images so the page loads only what is on screen. What the plan says is
  * `planData.ts`, read off the same map. The folder it writes is the whole
- * thing: `index.html` and `tiles/`, opened straight from disk.
+ * thing: `index.html`, `tiles/` and `sprites/`, opened straight from disk.
  */
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
@@ -22,6 +22,7 @@ import { drawWorldMap } from '../tileset/mapPicture.mts';
 import { TILE_SIZE } from '../tileset/tileSheet.mjs';
 import { buildPlanData, ANNEX_GAP } from './planData';
 import { assemblePage } from './page';
+import { pokemonSpritePath } from '../../src/game/pokemon/pokemonSprites';
 import type { WorldMapId } from '../../src/game/worldMap';
 
 lowerOwnPriority();
@@ -186,6 +187,16 @@ for (let z = 0; ; z += 1) {
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+// Every Pokemon the plan names, in its own battle picture, beside the page.
+rmSync(join(out, 'sprites'), { recursive: true, force: true });
+mkdirSync(join(out, 'sprites'), { recursive: true });
+for (const { dex } of Object.values(plan.species)) {
+  copyFileSync(
+    join(here, '../../public/assets', pokemonSpritePath('front', dex).replace(/^assets\//, '')),
+    join(out, 'sprites', `${dex}.png`),
+  );
+}
 const commit = (() => {
   try {
     return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim();
