@@ -97,8 +97,41 @@ export function railStamps(risk: AtRisk, raidsWithThisTeam: number): readonly Ra
   const safe = (risk.safe ?? []).slice(0, MOST_NAMED_SAFE).map((word) => word.toUpperCase());
   return [
     ...words.slice(0, MOST_AT_RISK).map((text) => ({ text, kind: 'risk' as const })),
-    ...(safe.length > 0 ? [{ text: `SAFE: ${safe.join(', ')}`, kind: 'safe' as const }] : []),
+    ...(safe.length > 0 ? [{ text: `${SAFE_HEAD}${safe.join(SAFE_JOIN)}`, kind: 'safe' as const }] : []),
   ];
+}
+
+/** How the SAFE line starts, and what goes between the things it names. */
+const SAFE_HEAD = 'SAFE: ';
+const SAFE_JOIN = ', ';
+
+/**
+ * The stamp, made to fit across the screen. A SAFE line too wide for it goes
+ * on to a second line, where it breaks between two things it names, and if
+ * that would be more lines than the screen holds (`MOST_WORDS`) it names
+ * fewer: the first raid of every new save stamped SAFE: CHARMANDER (YOUR
+ * PARTNER), POTION x3 off both edges of the screen (playtest, 14 Nov 2026).
+ * `fits` is whether a line, as it would be stamped, is narrow enough.
+ */
+export function fitRailStamps(stamps: readonly RailStamp[], fits: (text: string) => boolean): readonly RailStamp[] {
+  return stamps.flatMap((stamp) => {
+    if (stamp.kind !== 'safe' || fits(stamp.text) || !stamp.text.startsWith(SAFE_HEAD)) {
+      return [stamp];
+    }
+    const room = MOST_WORDS - (stamps.length - 1);
+    const lines: string[] = [];
+    for (const name of stamp.text.slice(SAFE_HEAD.length).split(SAFE_JOIN)) {
+      const last = lines.length - 1;
+      if (last >= 0 && fits(`${lines[last]}${SAFE_JOIN}${name}`)) {
+        lines[last] = `${lines[last]}${SAFE_JOIN}${name}`;
+      } else if (lines.length < room) {
+        lines.push(last < 0 ? `${SAFE_HEAD}${name}` : name);
+      } else {
+        break;
+      }
+    }
+    return lines.map((text) => ({ text, kind: 'safe' as const }));
+  });
 }
 
 /** How big a bet the house reckons this is. */

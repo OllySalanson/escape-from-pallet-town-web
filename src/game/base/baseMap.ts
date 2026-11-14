@@ -47,9 +47,13 @@ export const BASE_PLACE_NAME = 'The Harbour';
 
 /**
  * Where the player stands when they walk in off the title screen: the middle of
- * the yard, between the Raid Arena and the keepers' row, with both in view.
+ * the yard, between the Raid Arena and the keepers' row, with both in view -
+ * on the smallest screen the Arena's door, the Center's, the lab's and Bill's
+ * all at once, and the lab's doorway clear of the FEEDBACK tab half way down
+ * the right edge (`harbourLooks.test.ts`). A row further down would clear the
+ * tab's corner off the lab's pillar too, at a step more to the Arena.
  */
-export const BASE_SPAWN: GridPosition = { x: 16, y: 13 };
+export const BASE_SPAWN: GridPosition = { x: 17, y: 13 };
 
 /**
  * And where a raid puts them down: the head of the jetty their boat is tied to,

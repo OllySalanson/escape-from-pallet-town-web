@@ -7,7 +7,7 @@ import type { HunterRival } from '../world/hunters';
 import { ensureTexture } from './arenaView';
 import { partnerFrame } from './partner';
 import { FIRE_LETTERING, SAFE_LETTERING, stampedWord } from '../ui/stampedLettering';
-import type { RailStamp } from './heldBreath';
+import { fitRailStamps, type RailStamp } from './heldBreath';
 
 /**
  * What falls and what goes past on the way down from THE RAID ARENA's rail: the
@@ -46,6 +46,8 @@ const STAKE_BIG_MOST = 3;
 const STAKE_TOP = 12;
 const STAKE_GAP = 1;
 const STAKE_SIDE_ROOM = 16;
+/** Where a line is stamped to be measured, before the stamp is set. */
+const STAKE_MEASURE = 'arena-stake-measure';
 /** How long a word stands at twice its size as it lands. */
 const STAKE_POP_MS = 70;
 
@@ -139,16 +141,29 @@ export class ArenaDiveView {
     }
   }
 
-  /** Stamps what is at risk, out of sight until it is called for. */
-  public stakesAre(stamps: readonly RailStamp[]): void {
+  /**
+   * Stamps what is at risk, out of sight until it is called for, every line
+   * inside the screen (`fitRailStamps`). Hands back how many lines that came
+   * to, which is what goes up a word at a time.
+   */
+  public stakesAre(given: readonly RailStamp[]): number {
     const { width } = this.scene.scale;
-    const stamp = (font: string) =>
-      stamps.map(({ text, kind }, index) =>
-        stampedWord(this.scene, `arena-stake-${index}`, text, { fontSize: font, depthPx: 3, ...(kind === 'safe' ? SAFE_LETTERING : FIRE_LETTERING) }),
+    const lettering = (kind: RailStamp['kind'], font: string) => ({
+      fontSize: font,
+      depthPx: 3,
+      ...(kind === 'safe' ? SAFE_LETTERING : FIRE_LETTERING),
+    });
+    const stamp = (stamps: readonly RailStamp[], font: string) =>
+      stamps.map(({ text, kind }, index) => stampedWord(this.scene, `arena-stake-${index}`, text, lettering(kind, font)));
+    const fits = (size: { readonly width: number }) => size.width <= width - STAKE_SIDE_ROOM;
+    let stamps = given;
+    let sizes = stamp(stamps, stamps.length <= STAKE_BIG_MOST ? STAKE_FONTS[0] : STAKE_FONTS[1]);
+    if (!sizes.every(fits)) {
+      stamps = fitRailStamps(given, (text) =>
+        fits(stampedWord(this.scene, STAKE_MEASURE, text, lettering('safe', STAKE_FONTS[1]))),
       );
-    let sizes = stamp(stamps.length <= STAKE_BIG_MOST ? STAKE_FONTS[0] : STAKE_FONTS[1]);
-    if (stamps.length <= STAKE_BIG_MOST && sizes.some((size) => size.width > width - STAKE_SIDE_ROOM)) {
-      sizes = stamp(STAKE_FONTS[1]);
+      this.scene.textures.remove(STAKE_MEASURE);
+      sizes = stamp(stamps, STAKE_FONTS[1]);
     }
     let top = STAKE_TOP;
     this.stakes = sizes.map((size, index) => {
@@ -162,6 +177,7 @@ export class ArenaDiveView {
       top += size.height + STAKE_GAP;
       return image;
     });
+    return stamps.length;
   }
 
   /** So many of the words are up. The newest lands from twice its size, a whole step at a time. */

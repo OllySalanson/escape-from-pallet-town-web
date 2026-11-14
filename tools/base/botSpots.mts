@@ -7,9 +7,10 @@
  *   npx vite-node tools/base/botSpots.mts
  */
 import { writeFileSync } from 'node:fs';
+import { regularsStandingSpots } from '../../src/game/base/harbourActivities';
 import { searchLoiterSpots } from '../../src/game/base/harbourBots';
 
-const spots = searchLoiterSpots();
+const spots = searchLoiterSpots(regularsStandingSpots());
 const rows = spots.map((spot) => `  [${spot.x}, ${spot.y}],`).join('\n');
 writeFileSync(
   new URL('../../src/game/base/generated/harbourBotSpots.ts', import.meta.url),

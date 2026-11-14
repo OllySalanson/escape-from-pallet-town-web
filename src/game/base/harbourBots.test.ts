@@ -8,6 +8,7 @@ import { servingTiles, stepsFrom } from './baseWalks';
 import { baseGame } from './baseGames.testkit';
 import { buildRoom, roomNamed } from './rooms';
 import { BASE_DOORS } from './doors';
+import { regularsStandingSpots } from './harbourActivities';
 import { isPartnerSpecies } from './partner';
 import { checkPlayerName } from '../console/playerName';
 import { botAt, visitPlan } from './harbourActivities';
@@ -117,7 +118,7 @@ describe('where the regulars stand', () => {
   const kept = [...BASE_DOORS.flatMap((door) => [...door.tiles, door.returnTo]), BASE_SPAWN, BASE_LANDING];
 
   it('are the spots the search finds today (re-run tools/base/botSpots.mts if not)', () => {
-    expect(spots).toEqual(searchLoiterSpots());
+    expect(spots).toEqual(searchLoiterSpots(regularsStandingSpots()));
   });
 
   it('pause only on open ground well away from every door, mat, the spawn and the landing', () => {

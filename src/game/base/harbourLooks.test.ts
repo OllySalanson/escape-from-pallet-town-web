@@ -10,6 +10,7 @@ import { harbourPlaceAt } from './harbourPlaces';
 import { HARBOUR_LANDMARKS } from './landmarks';
 import { BASE_TILESET, type BasePropName } from './baseTileset';
 import { BASE_DOORS, doorNamed } from './doors';
+import { tabOverGame } from '../feedback/feedbackTabCover';
 
 /**
  * The owner, 14 Nov 2026, of the harbour after it was made walkable: "there's
@@ -422,28 +423,67 @@ describe.each([
   });
 
   describe('what is in the window on arrival', () => {
-    /** The tiles a window of this many game pixels shows, the camera on `at` and kept inside the map. */
+    /**
+     * Where a window of this many game pixels stands, in game pixels: the
+     * middle of the tile at `at` in its middle, as `BaseScene`'s camera
+     * follows the player, and kept inside the map.
+     */
+    const viewOn = (at: GridPosition, width: number, height: number) => ({
+      left: Math.min(Math.max(at.x * 16 + 8 - width / 2, 0), map.width * 16 - width),
+      top: Math.min(Math.max(at.y * 16 + 8 - height / 2, 0), map.height * 16 - height),
+    });
+    /** The tiles a window of this many game pixels shows, the camera on `at`. */
     const windowOn = (at: GridPosition, width: number, height: number) => {
-      const across = width / 16;
-      const down = height / 16;
-      const left = Math.min(Math.max(at.x + 0.5 - across / 2, 0), map.width - across);
-      const top = Math.min(Math.max(at.y + 0.5 - down / 2, 0), map.height - down);
-      return (tile: GridPosition): boolean => tile.x >= left && tile.x + 1 <= left + across && tile.y >= top && tile.y + 1 <= top + down;
+      const { left, top } = viewOn(at, width, height);
+      return (tile: GridPosition): boolean =>
+        tile.x * 16 >= left && (tile.x + 1) * 16 <= left + width && tile.y * 16 >= top && (tile.y + 1) * 16 <= top + height;
     };
-    const doorTile = (id: string): GridPosition => {
+    /** Every tile of a door: the lab's is two wide, and its doorway is drawn in the second. */
+    const doorTiles = (id: string): readonly GridPosition[] => {
       const door = doorNamed(id);
       if (!door) throw new Error(`no door ${id}`);
-      return door.tiles[0];
+      return door.tiles;
     };
 
     it('shows a new visit the Arena’s door, the Center’s, the lab’s and Bill’s at once, on the smallest screen there is', () => {
       const shown = windowOn(BASE_SPAWN, BASE_STAGE_WIDTH, BASE_STAGE_HEIGHT);
-      expect(['raid-arena', 'pokemon-centre', 'oaks-lab', 'bills-cottage'].filter((id) => !shown(doorTile(id)))).toEqual([]);
+      expect(['raid-arena', 'pokemon-centre', 'oaks-lab', 'bills-cottage'].filter((id) => !doorTiles(id).every(shown))).toEqual([]);
+    });
+
+    it('keeps those doorways out from under the FEEDBACK tab on the smallest screen, at twice and three times over', () => {
+      // The smallest screen at 640x480 and at 960x720, the tab as `style.css` sizes it in the yard.
+      // A door is read by its doorway, drawn across the middle half of its
+      // tiles (the lab's straddles the join of its two): at 640x480 the tab's
+      // corner may touch the foot of the pillar beside it, never the door.
+      const under: string[] = [];
+      for (const zoom of [2, 3]) {
+        const window = { left: 0, top: 0, width: BASE_STAGE_WIDTH * zoom, height: BASE_STAGE_HEIGHT * zoom };
+        const tab = tabOverGame(
+          { left: window.width - 30, top: window.height / 2 - 56, width: 30, height: 112 },
+          window,
+          { width: BASE_STAGE_WIDTH, height: BASE_STAGE_HEIGHT },
+        )!;
+        const view = viewOn(BASE_SPAWN, BASE_STAGE_WIDTH, BASE_STAGE_HEIGHT);
+        for (const id of ['raid-arena', 'pokemon-centre', 'oaks-lab', 'bills-cottage']) {
+          const tiles = doorTiles(id);
+          const from = Math.min(...tiles.map((tile) => tile.x)) * 16;
+          const to = (Math.max(...tiles.map((tile) => tile.x)) + 1) * 16;
+          const left = from + (to - from) / 4 - view.left;
+          const right = to - (to - from) / 4 - view.left;
+          for (const tile of tiles) {
+            const y = tile.y * 16 - view.top;
+            if (left < tab.x + tab.width && right > tab.x && y < tab.y + tab.height && y + 16 > tab.y) {
+              under.push(`${id} at ${tile.x},${tile.y}, ${zoom}x`);
+            }
+          }
+        }
+      }
+      expect(under).toEqual([]);
     });
 
     it('shows a raid come home the Arena’s door and Bill’s, on the smallest screen there is', () => {
       const shown = windowOn(BASE_LANDING, BASE_STAGE_WIDTH, BASE_STAGE_HEIGHT);
-      expect(['raid-arena', 'bills-cottage'].filter((id) => !shown(doorTile(id)))).toEqual([]);
+      expect(['raid-arena', 'bills-cottage'].filter((id) => !doorTiles(id).every(shown))).toEqual([]);
     });
 
     it('shows a new visit the whole of the Arena, the Center, the lab and Bill’s cottage on the largest', () => {

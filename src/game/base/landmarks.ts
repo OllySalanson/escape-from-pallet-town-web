@@ -78,8 +78,12 @@ const LANDMARKS: readonly HarbourLandmark[] = [
     props: [{ name: 'warehouses', x: 36, y: 14 }],
     // Read at their west door: the stall and its gear stand along the rest.
     at: { x: 37, y: 17 },
-    // Named all along their front, which is where the quay is walked.
-    near: Array.from({ length: 10 }, (_, index) => ({ x: 36 + index, y: 19 })),
+    // Named along their front, which is where the quay is walked, from their
+    // west gable to their east door - and no further, or they spoke on the
+    // boutique's step, over the boutique's own name, in the biggest words on
+    // the screen (playtest, 14 Nov 2026). Five steps from here still reaches
+    // the drying net at their east end.
+    near: Array.from({ length: 7 }, (_, index) => ({ x: 36 + index, y: 19 })),
   },
   // THE PROMENADE's east end: THE FIELD-MOVE COURSE's gate, COURSE painted
   // over it with the four field moves it asks for, and the chalk board its

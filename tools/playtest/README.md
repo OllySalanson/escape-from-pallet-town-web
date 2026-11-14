@@ -203,6 +203,13 @@ is testing something else takes its partner with
 hands over and walks out to the quay: the haul stands there that one visit, a
 lost raid leaves none, and the hall is untouched.
 
+`harbourEdges.mjs <test-mode build url> <dir> [--port=N]` replays the harbour
+playtest of 14 Nov 2026 and fails if any finding comes back: walks out of HARBOUR
+SQUARE straight down the long pier, faces a moored rowing boat (no cast) and the
+sea beside it (a cast), stands on the boutique's step (no WAREHOUSES), and on the
+smallest screen at 640x480 and 960x720 finds every arrival door on screen with its
+doorway clear of the FEEDBACK tab (`docs/screens/harbour-edges/`).
+
 `raid.mjs --exit=LABEL` (`--exit=ferry-dock`) leaves by a named exit rather than
 the nearest one open from the first second: it stands beside the exit until its
 caption reads `EXTRACT OPEN`, then steps on. A timed exit is never chosen

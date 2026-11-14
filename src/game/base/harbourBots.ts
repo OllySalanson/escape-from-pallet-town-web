@@ -266,6 +266,7 @@ export function visitsAt(nowMs: number): readonly number[] {
 // -- the ground ---------------------------------------------------------------
 
 const key = (tile: GridPosition): string => `${tile.x},${tile.y}`;
+const sameTile = (a: GridPosition, b: GridPosition): boolean => a.x === b.x && a.y === b.y;
 const NEIGHBOURS: readonly (readonly [number, number])[] = [
   [0, -1],
   [0, 1],
@@ -351,28 +352,45 @@ function walkableGround() {
  * roof or crown, and nowhere a player would mind somebody standing. Slow -
  * it asks every yard walk again for every candidate - so it is run by
  * `tools/base/botSpots.mts`, which writes `generated/harbourBotSpots.ts`.
+ * `stood` is everywhere else a regular stands (`regularsStandingSpots` in
+ * `harbourActivities.ts`, which reads this module): no spot is the one way
+ * out of another, either way round, or whoever stood in it held the other
+ * where they were until their plan ran off and they jumped.
  */
-export function searchLoiterSpots(): GridPosition[] {
+export function searchLoiterSpots(stood: readonly GridPosition[] = []): GridPosition[] {
   const { walks, bare, built, kept } = walkableGround();
   const open = (x: number, y: number): boolean => walks[y]?.[x] === true;
-  // Reached from the jetty: the day-care pen is grass nobody can get into.
-  const reached = new Set<string>();
   const start = BOT_GATES[0].tile;
-  let frontier: GridPosition[] = [start];
-  reached.add(key(start));
-  while (frontier.length > 0) {
-    const next: GridPosition[] = [];
-    for (const tile of frontier) {
-      for (const [dx, dy] of NEIGHBOURS) {
-        const step = { x: tile.x + dx, y: tile.y + dy };
-        if (open(step.x, step.y) && !reached.has(key(step))) {
-          reached.add(key(step));
-          next.push(step);
+  /** The ground reached from the jetty with somebody stood on `blocker`. */
+  const reachedPast = (blocker: GridPosition | null): Set<string> => {
+    const reached = new Set<string>([key(start)]);
+    let frontier: GridPosition[] = [start];
+    while (frontier.length > 0) {
+      const next: GridPosition[] = [];
+      for (const tile of frontier) {
+        for (const [dx, dy] of NEIGHBOURS) {
+          const step = { x: tile.x + dx, y: tile.y + dy };
+          if (open(step.x, step.y) && !reached.has(key(step)) && !(blocker && sameTile(step, blocker))) {
+            reached.add(key(step));
+            next.push(step);
+          }
         }
       }
+      frontier = next;
     }
-    frontier = next;
-  }
+    return reached;
+  };
+  const past = new Map<string, Set<string>>();
+  const reachedWithout = (blocker: GridPosition): Set<string> => {
+    let reached = past.get(key(blocker));
+    if (!reached) {
+      reached = reachedPast(blocker);
+      past.set(key(blocker), reached);
+    }
+    return reached;
+  };
+  // Reached from the jetty: the day-care pen is grass nobody can get into.
+  const reached = reachedPast(null);
   const away = [
     ...BASE_DOORS.flatMap((door) => [...door.tiles, door.returnTo]),
     BASE_SPAWN,
@@ -401,6 +419,9 @@ export function searchLoiterSpots(): GridPosition[] {
       if (sides.some((side) => faced.has(key(side)) || bare.terrain[side.y]?.[side.x] === 'water')) continue;
       if (away.some((tile) => Math.max(Math.abs(tile.x - x), Math.abs(tile.y - y)) <= LOITER_CLEAR_OF_DOORS)) continue;
       if (spots.some((spot) => Math.max(Math.abs(spot.x - x), Math.abs(spot.y - y)) < LOITER_SPACING)) continue;
+      const others = [...stood, ...spots];
+      const here = { x, y };
+      if (others.some((other) => !sameTile(other, here) && (!reachedWithout(here).has(key(other)) || !reachedWithout(other).has(key(here))))) continue;
       // And never where a player's walk would be longer round them, even
       // with every spot taken at once.
       const taken = new Set([...spots, { x, y }].map((spot) => spot.y * bare.width + spot.x));

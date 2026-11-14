@@ -86,12 +86,13 @@ const stand = (x: number, y: number, facing: Direction): RoomSpot => ({ tile: { 
  * of the Seagallop's gate, the one way off the boat for anybody coming in on her.
  */
 export const SEA_VIEWS: readonly RoomSpot[] = [
-  stand(6, 19, 'down'),
   stand(13, 21, 'right'),
   stand(20, 19, 'down'),
   stand(37, 20, 'down'),
   stand(42, 20, 'down'),
-  stand(28, 27, 'down'),
+  // Either side of the end of the long pier, never its middle, which is the
+  // one way out of its west side.
+  stand(29, 27, 'right'),
   stand(27, 27, 'left'),
   stand(51, 20, 'down'),
   stand(55, 21, 'right'),
@@ -111,7 +112,7 @@ export const HANG_OUTS: readonly RoomSpot[] = [
   stand(26, 14, 'right'),
   stand(30, 15, 'left'),
   stand(30, 16, 'left'),
-  stand(59, 8, 'left'),
+  stand(59, 10, 'left'),
   stand(55, 14, 'right'),
   stand(59, 14, 'left'),
   stand(53, 9, 'left'),
@@ -150,6 +151,14 @@ export const NOTICE_BOARDS: readonly RoomSpot[] = [
   stand(3, 15, 'up'),
   stand(57, 18, 'up'),
 ];
+
+/**
+ * Every place a regular stands to do something, which the loiter spots are
+ * found round (`searchLoiterSpots`): no place is the one way out of another.
+ */
+export function regularsStandingSpots(): readonly GridPosition[] {
+  return [...SEA_VIEWS, ...GAME_WATCHES, ...HANG_OUTS, ...SHOP_WINDOWS, ...NOTICE_BOARDS, ...CHAT_CIRCLES.flat()].map(({ tile }) => tile);
+}
 
 /** The doors a regular may knock at: the keepers' and the boutique's. A keeper's door is a shop's. */
 export const KNOCKED_DOORS: readonly SharedRoomId[] = ['pokemon-centre', 'oaks-lab', 'brocks-workshop', 'bills-cottage', 'boutique'];

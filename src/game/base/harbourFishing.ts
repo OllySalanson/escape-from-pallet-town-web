@@ -3,6 +3,8 @@ import type { WildEncounterTable } from '../pokemon/encounters';
 import { rollEncounter } from '../world/wildEncounters';
 import { getSpeciesById } from '../pokemon/species';
 import { fishingTable, type RodItemId } from '../world/fishing';
+import type { BaseMapDefinition } from './baseMap';
+import { BASE_TILESET } from './baseTileset';
 
 /**
  * Fishing off THE HARBOUR's edges: something to do on the quay, and a reason
@@ -28,6 +30,30 @@ export const DEEP_WATER_FROM_ROW = 24;
 /** Whether a cast into `tile` is out in the deep water. */
 export function isDeepWater(tile: GridPosition): boolean {
   return tile.y >= DEEP_WATER_FROM_ROW;
+}
+
+/**
+ * Where a line can go in: the yard's sea, less every tile something planted on
+ * it draws over - a rowing boat tied up at the quay, the Seagallop, the S.S.
+ * Anne's hull, the pier's boards. Water is solid to walk on whatever floats on
+ * it, so terrain and collision alone cast a float onto a boat's thwart and
+ * reeled a MAGIKARP out of it (playtest, 14 Nov 2026).
+ */
+export function openWater(
+  yard: Pick<BaseMapDefinition, 'width' | 'height' | 'terrain' | 'collision' | 'planted'>,
+): readonly (readonly boolean[])[] {
+  const open = Array.from({ length: yard.height }, (_row, y) =>
+    Array.from({ length: yard.width }, (_column, x) => yard.terrain[y][x] === 'water' && yard.collision[y][x]),
+  );
+  for (const planted of yard.planted) {
+    const prop = BASE_TILESET.props[planted.name];
+    prop.cells.forEach((cell, index) => {
+      if (cell.tile < 0) return;
+      const row = open[planted.y + Math.floor(index / prop.width)];
+      if (row) row[planted.x + (index % prop.width)] = false;
+    });
+  }
+  return open;
 }
 
 /** What bites where the line goes in: the Old Rod's table in the shallows, the Good Rod's out deep. */

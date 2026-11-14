@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { getBaseMap } from './baseMap';
-import { DEEP_WATER_FROM_ROW, HARBOUR_KINDS, anglerLines, harbourBite, harbourTable, isDeepWater, reeledInLines } from './harbourFishing';
+import { WORKSHOP_UPGRADES } from '../hub/workshop';
+import { MOORED_ROWING_BOATS, getBaseMap } from './baseMap';
+import { BASE_TILESET } from './baseTileset';
+import {
+  DEEP_WATER_FROM_ROW,
+  HARBOUR_KINDS,
+  anglerLines,
+  harbourBite,
+  harbourTable,
+  isDeepWater,
+  openWater,
+  reeledInLines,
+} from './harbourFishing';
 import { HARBOUR_LANDMARKS } from './landmarks';
 
 /** A fixed sequence of rolls, for a bite that is always the same. */
@@ -47,5 +58,39 @@ describe('fishing off the harbour', () => {
     expect(anglerLines(true, []).join(' ')).toContain('long pier');
     expect(anglerLines(true, ['MAGIKARP']).join(' ')).toContain(`1 of ${HARBOUR_KINDS.length}`);
     expect(anglerLines(true, ['MAGIKARP', 'HORSEA', 'KRABBY']).join(' ')).toContain('every kind');
+  });
+
+  it.each([
+    ['nothing built', [] as string[]],
+    ['everything built', WORKSHOP_UPGRADES.map((upgrade) => upgrade.id)],
+  ])('never casts onto a boat or a hull, with %s', (_name, built) => {
+    const map = getBaseMap(built);
+    const open = openWater(map);
+    const afloat = map.planted.filter(
+      (planted) =>
+        planted.name === 'raidFerry' ||
+        planted.name === 'ssAnne' ||
+        MOORED_ROWING_BOATS.some((boat) => boat.name === planted.name && boat.x === planted.x && boat.y === planted.y),
+    );
+    // The six rowing boats at the quay walls, the Seagallop and the S.S. Anne.
+    expect(afloat.length).toBe(MOORED_ROWING_BOATS.length + 2);
+    const castable: string[] = [];
+    for (const boat of afloat) {
+      const prop = BASE_TILESET.props[boat.name];
+      prop.cells.forEach((cell, index) => {
+        const x = boat.x + (index % prop.width);
+        const y = boat.y + Math.floor(index / prop.width);
+        if (cell.tile >= 0 && open[y][x]) castable.push(`${boat.name} at ${x},${y}`);
+      });
+    }
+    expect(castable).toEqual([]);
+    // The red rowing boat under the fish stall, which a playtest reeled a MAGIKARP out of from (38,20).
+    expect(open[21][38]).toBe(false);
+    // And the sea itself still bites: beside that boat, at the foot of the west quay and off the end of the long pier.
+    expect(open[21][40]).toBe(true);
+    expect(open[20][18]).toBe(true);
+    const shipNear = HARBOUR_LANDMARKS.find((landmark) => landmark.id === 'ss-anne')!.near!;
+    const pierEnd = shipNear.reduce((low, tile) => (tile.y > low.y ? tile : low));
+    expect(open[pierEnd.y][pierEnd.x - 3]).toBe(true);
   });
 });

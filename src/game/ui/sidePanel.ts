@@ -118,9 +118,12 @@ export class PanelLean {
   private lean = 0;
   private widened = 0;
   private readonly camera: () => LeaningCamera;
+  private readonly rest: { readonly x: number; readonly y: number };
 
-  public constructor(camera: () => LeaningCamera) {
+  /** `rest` is the follow offset the camera keeps with no panel up, which the lean is added to. */
+  public constructor(camera: () => LeaningCamera, rest: { readonly x: number; readonly y: number } = { x: 0, y: 0 }) {
     this.camera = camera;
+    this.rest = rest;
   }
 
   /** How much of the canvas is covered right now, in game pixels. */
@@ -150,7 +153,7 @@ export class PanelLean {
     const bounds = camera.getBounds();
     camera.setBounds(bounds.x, bounds.y, bounds.width - this.widened + whole * 2, bounds.height);
     this.widened = whole * 2;
-    camera.setFollowOffset(-whole, 0);
+    camera.setFollowOffset(this.rest.x - whole, this.rest.y);
     return this.lean === target;
   }
 }
