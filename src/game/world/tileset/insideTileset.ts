@@ -12,6 +12,8 @@ import { ICE_SHEET_SOURCE, iceProp, iceTile } from './iceSheet';
 import { EMBER_SHEET_SOURCE, emberProp, emberTile } from './emberSheet';
 import { HIDEOUT_SHEET_SOURCE, hideoutProp, hideoutTile } from './hideoutSheet';
 import type { HideoutPieceName } from '../generated/hideoutPieces';
+import { GYM_SHEET_SOURCE, gymProp, gymTile } from './gymSheet';
+import type { GymPieceName } from '../generated/gymPieces';
 import type { MaterialTiles, PropDefinition, TilesetCatalogue } from './catalogue';
 import type { Material } from './materials';
 
@@ -61,6 +63,16 @@ import type { Material } from './materials';
  * FireRed's own teal panels. Its floor may also spin you on - the arrows and
  * the stop plate - and its ways between floors are its own stairs and its lift.
  * The Power Plant is a hall under a wall of machinery three rows deep.
+ *
+ * Two gyms are FireRed's own rooms too. Cerulean Gym is a pool (`W`, water)
+ * crossed by walkways (`_`, boards) one plank wide, ringed with floor and shut
+ * in by a wall at the back and down both sides (the dark beside the room,
+ * `C`, carries the side walls as the hideout's carries its border): the
+ * water's rim, the shadow every walkway throws on it and the posts it stands
+ * on, and each walkway's corners, ends and junctions are read off what is
+ * round them, as FireRed's own pool draws them (`GYM_LAYOUTS`, which
+ * `insideTileset.test.ts` holds the rules to). Fuchsia Gym is a maze on a
+ * pink floor, its partitions (`F`) the hideout's in Fuchsia's colours.
  */
 
 /** The rooms a building's inside may be drawn as. */
@@ -73,7 +85,9 @@ export type RoomStyle =
   | 'warehouse'
   | 'gatehouse'
   | 'hideout'
-  | 'power-plant';
+  | 'power-plant'
+  | 'cerulean-gym'
+  | 'fuchsia-gym';
 /** The caves a cave may be drawn as: Mt. Moon's, Icefall Cave's ice, or Mt. Ember's Ruby Path. */
 export type CaveStyle = 'cave' | 'ice' | 'ember';
 /** The tunnels a tunnel may be drawn as: the Underground Path's. */
@@ -286,6 +300,44 @@ export const INSIDE_PROPS = {
   powerComputer: hideoutProp('power.computer', 'computer', ['#', '#', '.']),
   powerGrating: hideoutProp('power.grating', 'grating', ['.']),
   powerMat: hideoutProp('power.mat', 'door mat', ['...']),
+
+  // --- Cerulean Gym ----------------------------------------------------------------
+  // What hangs on its back wall: a porthole on the cream face, and the water
+  // badge over the middle of it, its drop in the cornice.
+  poolPorthole: gymProp('pool.porthole', 'porthole'),
+  poolBadge: gymProp('pool.badge', 'badge'),
+  // The leader's dais, walked onto, its plaque at the middle - and the plaque's
+  // top, standing up out of whatever is behind the dais.
+  poolDais: {
+    label: 'dais',
+    width: 3,
+    height: 4,
+    cells: [
+      { tile: -1, solid: true },
+      { tile: gymTile('pool.plaqueTop'), solid: true },
+      { tile: -1, solid: true },
+      ...gymProp('pool.dais', 'dais', ['...', '...', '...']).cells,
+    ],
+  },
+  // The statues either side of the walk in. A statue's head is drawn over
+  // whoever walks behind it, as FireRed draws it.
+  poolStatueWest: gymProp('pool.statueWest', 'statue', ['^', '#']),
+  poolStatueEast: gymProp('pool.statueEast', 'statue', ['^', '#']),
+  // A ladder into the pool from the floor on its north rim, and out of it onto
+  // the floor at its south.
+  poolLadderNorth: gymProp('pool.ladderNorth', 'ladder', ['.', '#']),
+  poolLadderSouth: gymProp('pool.ladderSouth', 'ladder', ['#', '.']),
+  poolMat: gymProp('pool.mat', 'door mat', ['...']),
+
+  // --- Fuchsia Gym -------------------------------------------------------------------
+  // What stands in its back wall: a green pillar, its shadow on the floor
+  // below it; a window; and the badge at its middle.
+  mazePillar: gymProp('maze.pillar', 'pillar', ['#', '#', '.']),
+  mazeWindow: gymProp('maze.window', 'window'),
+  mazeBadge: gymProp('maze.badge', 'badge'),
+  mazeDais: gymProp('maze.dais', 'dais', ['...', '...', '...']),
+  mazeStatue: gymProp('maze.statue', 'statue', ['^', '#']),
+  mazeMat: gymProp('maze.mat', 'door mat', ['...']),
 } as const satisfies Record<string, PropDefinition>;
 
 export type InsidePropName = keyof typeof INSIDE_PROPS;
@@ -330,6 +382,9 @@ interface StyleArt {
   readonly dark?: MaterialTiles;
   readonly partition?: MaterialTiles;
   readonly spinners?: Partial<Record<'spin-up' | 'spin-down' | 'spin-left' | 'spin-right' | 'spin-stop', MaterialTiles>>;
+  /** A pool's water and the walkways over it; anywhere else they are drawn as floor. */
+  readonly water?: MaterialTiles;
+  readonly boards?: MaterialTiles;
 }
 
 /**
@@ -469,6 +524,163 @@ function powerFloor(at: (dx: number, dy: number) => Material | undefined): numbe
           ? 'power.floorShadeWest'
           : 'power.floor',
   );
+}
+
+type At = (dx: number, dy: number) => Material | undefined;
+const gym = (name: GymPieceName): number => gymTile(name);
+/** The dark beside a room, or off the grid altogether. */
+const isDarkOrOff = (material: Material | undefined): boolean => material === undefined || material === 'cliff';
+
+/** Cerulean Gym's floor: shaded under the back wall and down the west side, where the side wall is. */
+function poolFloor(at: At): number {
+  if (at(0, -1) === 'wall') {
+    return gym(
+      isDarkOrOff(at(-1, 0))
+        ? 'pool.floorUnderWallWest'
+        : isDarkOrOff(at(1, 0))
+          ? 'pool.floorUnderWallEast'
+          : 'pool.floorUnderWall',
+    );
+  }
+  return gym(isDarkOrOff(at(-1, 0)) ? 'pool.floorWest' : 'pool.floor');
+}
+
+/** Cerulean Gym's back wall, three rows - the cornice, the cream face, its foot - each with its ends. */
+function poolWall(at: At): number {
+  const row = at(0, -1) !== 'wall' ? 'Top' : at(0, -2) !== 'wall' ? 'Face' : 'Foot';
+  const end = at(-1, 0) !== 'wall' ? 'West' : at(1, 0) !== 'wall' ? 'East' : '';
+  return gym(`pool.wall${row}${end}` as GymPieceName);
+}
+
+/** The side walls of Cerulean Gym, drawn on the dark beside the room, their tops beside its cornice. */
+function poolDark(at: At): number | undefined {
+  for (const [side, top, run] of [
+    [1, 'pool.sideTopWest', 'pool.sideWest'],
+    [-1, 'pool.sideTopEast', 'pool.sideEast'],
+  ] as const) {
+    const beside = at(side, 0);
+    if (isDarkOrOff(beside)) {
+      continue;
+    }
+    return gym(beside === 'wall' && at(side, -1) !== 'wall' ? top : run);
+  }
+  return undefined;
+}
+
+/**
+ * Cerulean Gym's water, as FireRed draws its pool: a rim where it meets the
+ * floor, and the shadow of every walkway over it - under a walkway, and east
+ * of one, with a tail where a shadow ends on the diagonal. A walkway stands on
+ * posts, one at each end of every run of shadow, read off where the run starts
+ * and stops; the dais, which is three planks deep, stands on its corners.
+ */
+function poolWater(at: At): number {
+  const floor = (dx: number, dy: number): boolean => at(dx, dy) === 'paving';
+  const deck = (dx: number, dy: number): boolean => at(dx, dy) === 'boards';
+  if (floor(0, -1)) {
+    return gym(floor(-1, 0) ? 'pool.rimNw' : floor(1, 0) ? 'pool.rimNe' : 'pool.rimN');
+  }
+  if (floor(0, 1)) {
+    return gym(floor(-1, 0) ? 'pool.rimSw' : floor(1, 0) ? 'pool.rimSe' : deck(-1, 0) ? 'pool.rimSShadow' : 'pool.rimS');
+  }
+  if (floor(-1, 0)) {
+    return gym('pool.rimW');
+  }
+  if (floor(1, 0)) {
+    return gym('pool.rimE');
+  }
+  if (floor(-1, -1)) {
+    return gym('pool.notch');
+  }
+  if (deck(0, -1)) {
+    if (deck(-1, 0)) {
+      return gym('pool.shadowCorner');
+    }
+    if (!deck(-1, -1)) {
+      return gym(underDais(at) ? 'pool.shadowStartPost' : 'pool.shadowStart');
+    }
+    // The end of a run under a walkway that turns north.
+    if (!deck(1, -1) && deck(0, -2) && !deck(-1, -2)) {
+      return gym('pool.shadowTailPost');
+    }
+    return gym(poolPost(at) ? 'pool.shadowPost' : 'pool.shadow');
+  }
+  if (deck(-1, 0)) {
+    // A shadow beside a walkway begins at the top of it, unless a walkway
+    // runs across just below, whose own planks it is hidden under.
+    if (!deck(-1, -1) && deck(0, 1)) {
+      return gym('pool.water');
+    }
+    return gym(deck(-1, -1) ? 'pool.shadowEast' : 'pool.shadowEastTop');
+  }
+  if (deck(-1, -1)) {
+    return gym('pool.shadowTail');
+  }
+  return gym('pool.water');
+}
+
+/** Whether the walkway over a cell of water is more than a plank deep: the dais. */
+function underDais(at: At): boolean {
+  const deck = (dx: number, dy: number): boolean => at(dx, dy) === 'boards';
+  return deck(0, -2) && (deck(-1, -2) || deck(1, -2));
+}
+
+/**
+ * Whether a cell of shadow under a walkway has a post in it: the cell after
+ * the run's start and the cell before its end - and under the dais, which
+ * stands on its corners, only its east corner (the west one is the start).
+ */
+function poolPost(at: At): boolean {
+  const deck = (dx: number, dy: number): boolean => at(dx, dy) === 'boards';
+  if (underDais(at)) {
+    return !deck(1, -1);
+  }
+  // The cell west is where the run starts: its walkway begins over it, or
+  // turns down beside it.
+  const afterStart = !deck(-1, 0) && deck(-1, -1) && (!deck(-2, -1) || deck(-2, 0));
+  // The cell east is where it stops: a walkway going on down, the end of the
+  // walkway overhead, or the walkway turning north.
+  const beforeEnd =
+    (deck(1, 0) && deck(1, 1)) || !deck(1, -1) || (deck(1, -1) && !deck(2, -1) && deck(1, -2) && !deck(0, -2));
+  return afterStart || beforeEnd;
+}
+
+/**
+ * Cerulean Gym's walkways, one plank wide as FireRed lays them: a run across
+ * or down, the four corners, an end, and the two junctions FireRed's pool has
+ * - and the walk in from the door, wider, whose foot runs out onto the floor.
+ */
+function poolDeck(at: At): number {
+  const deck = (dx: number, dy: number): boolean => at(dx, dy) === 'boards';
+  if (at(0, 1) === 'paving') {
+    return gym('pool.deckFoot');
+  }
+  const n = deck(0, -1);
+  const s = deck(0, 1);
+  const e = deck(1, 0);
+  const w = deck(-1, 0);
+  // The top row of something wider than a plank: boards below it and either side of that.
+  if (s && deck(-1, 1) && deck(1, 1) && (e || w)) {
+    return gym(n ? 'pool.deckTopJoin' : 'pool.deckTop');
+  }
+  const shape = `${n ? 'n' : ''}${s ? 's' : ''}${e ? 'e' : ''}${w ? 'w' : ''}`;
+  const pieces: Readonly<Record<string, GymPieceName>> = {
+    ew: 'pool.deckH',
+    ns: 'pool.deckV',
+    se: 'pool.deckNw',
+    sw: 'pool.deckNe',
+    ne: 'pool.deckSw',
+    nw: 'pool.deckSe',
+    e: 'pool.deckCapW',
+    sew: 'pool.deckTeeS',
+    nsw: 'pool.deckTeeW',
+  };
+  return gym(pieces[shape] ?? 'pool.deck');
+}
+
+/** Fuchsia Gym's floor, shaded under its back wall and down its west side. */
+function mazeFloor(at: At): number {
+  return gym(at(0, -1) === 'wall' || isDarkOrOff(at(-1, 0)) ? 'maze.floorShade' : 'maze.floor');
 }
 
 /** A shell from the base's sheet: a floor shaded under the wall, and two rows of wall. */
@@ -700,6 +912,42 @@ const STYLE_ART: Readonly<Record<InsideStyle, StyleArt>> = {
     mat: 'powerMat',
     stairs: { down: HIDEOUT_STAIRS.down },
   },
+  // FireRed's Cerulean Gym: a pool crossed by walkways, ringed with floor,
+  // under a cream wall with portholes and walled down both sides.
+  'cerulean-gym': {
+    floor: { roles: { fill: gym('pool.floor') }, pick: poolFloor },
+    wall: { roles: { fill: gym('pool.wallFace') }, pick: poolWall },
+    dark: { roles: {}, pick: poolDark },
+    water: { roles: { fill: gym('pool.water') }, pick: poolWater },
+    boards: { roles: { fill: gym('pool.deck') }, pick: poolDeck },
+    mat: 'poolMat',
+  },
+  // FireRed's Fuchsia Gym: a pink floor under gold beams and green pillars,
+  // and the partitions of a maze - FireRed's are invisible; these are the
+  // Rocket Hideout's, in Fuchsia's own green and gold.
+  'fuchsia-gym': {
+    floor: { roles: { fill: gym('maze.floor') }, pick: mazeFloor },
+    wall: { roles: { fill: gym('maze.wallUpper'), 'edge-s': gym('maze.wallLower') } },
+    partition: {
+      // A partition run up to the side of the room ends there, capped.
+      edgesAtMapEdge: true,
+      roles: {
+        single: gym('maze.partition'),
+        fill: gym('maze.partition'),
+        'cap-w': gym('maze.partitionCapW'),
+        'run-h': gym('maze.partitionRunH'),
+        'cap-e': gym('maze.partitionCapE'),
+        'cap-n': gym('maze.partitionCapN'),
+        'run-v': gym('maze.partitionRunV'),
+        'cap-s': gym('maze.partitionCapS'),
+        'corner-nw': gym('maze.partitionNw'),
+        'corner-ne': gym('maze.partitionNe'),
+        'corner-sw': gym('maze.partitionSw'),
+        'corner-se': gym('maze.partitionSe'),
+      },
+    },
+    mat: 'mazeMat',
+  },
 };
 
 /** A weave cut from FireRed's own ground, as the tiles each of its cells is. */
@@ -734,6 +982,7 @@ function styleCatalogue(style: InsideStyle): TilesetCatalogue<InsidePropName> {
         'tree',
         'fence',
         'ice',
+        'boards',
         'spin-up',
         'spin-down',
         'spin-left',
@@ -749,6 +998,7 @@ function styleCatalogue(style: InsideStyle): TilesetCatalogue<InsidePropName> {
       ICE_SHEET_SOURCE.source,
       EMBER_SHEET_SOURCE.source,
       HIDEOUT_SHEET_SOURCE.source,
+      GYM_SHEET_SOURCE.source,
     ],
     materials: {
       ...floors,
@@ -758,6 +1008,8 @@ function styleCatalogue(style: InsideStyle): TilesetCatalogue<InsidePropName> {
       ...(art.ice ? { ice: art.ice } : {}),
       ...(art.partition ? { fence: art.partition } : {}),
       ...art.spinners,
+      ...(art.water ? { water: art.water } : {}),
+      ...(art.boards ? { boards: art.boards } : {}),
     },
     props: INSIDE_PROPS,
   };
@@ -773,6 +1025,8 @@ export const ROOM_STYLES: readonly RoomStyle[] = [
   'gatehouse',
   'hideout',
   'power-plant',
+  'cerulean-gym',
+  'fuchsia-gym',
 ];
 export const CAVE_STYLES: readonly CaveStyle[] = ['cave', 'ice', 'ember'];
 export const TUNNEL_STYLES: readonly TunnelStyle[] = ['underground'];

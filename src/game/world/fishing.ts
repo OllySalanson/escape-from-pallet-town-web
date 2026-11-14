@@ -87,13 +87,23 @@ export function fishingWaterAt(mapId: WorldMapId, tile: GridPosition): FishingWa
 /**
  * Whether a rod can be cast at `tile`: open water that nobody can stand on.
  * A bridge deck is water underneath and ground on top, so it is not; a shut
- * Surf door is, but the door answers the interact key first.
+ * Surf door is, but the door answers the interact key first. And water under
+ * a roof is not the wild: Cerulean Gym's pool is a gym's, and nothing is
+ * fished out of it.
  */
 export function isFishingWater(
-  map: Pick<WorldMapDefinition, 'terrain' | 'collision'>,
+  map: Pick<WorldMapDefinition, 'terrain' | 'collision' | 'areas'>,
   tile: GridPosition,
 ): boolean {
-  return map.terrain[tile.y]?.[tile.x] === 'water' && map.collision[tile.y]?.[tile.x] === true;
+  const indoors = map.areas?.some(
+    ({ kind, rect }) =>
+      kind === 'inside' &&
+      tile.x >= rect.x &&
+      tile.y >= rect.y &&
+      tile.x < rect.x + rect.width &&
+      tile.y < rect.y + rect.height,
+  );
+  return !indoors && map.terrain[tile.y]?.[tile.x] === 'water' && map.collision[tile.y]?.[tile.x] === true;
 }
 
 /** The best rod the pack holds, or null without one. */

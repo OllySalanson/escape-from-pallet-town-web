@@ -20,6 +20,7 @@ import {
 } from '../world/mapFile';
 import { MATERIAL_CHARS } from '../world/tileset/materials';
 import { TOWER_GROUND } from '../world/tileset/insideTileset';
+import { GYM_LAYOUTS } from '../world/generated/gymPieces';
 import { BUILDING_CHOICES } from './palette';
 import { keepOnMap, moveThing, removeThing, type GridPoint, type PlaceOutcome } from './draft';
 import { capital, doorwayArt, SPOT_ORDER, spotName, spotsOf } from './placement';
@@ -276,14 +277,18 @@ function templateFor(kind: MapFileOutdoorBuildingKind): InsideTemplate {
       return PATH_ENTRANCE;
     case 'pokemon-tower':
       return TOWER_GROUND_FLOOR;
-    // Kanto's town buildings, each into the room it is: a Gym and the Dojo
-    // into a hall cleared for battling, the Department Store and the Bike Shop
-    // into a shop, and the places somebody studies into Oak's own Lab.
-    case 'pewter-gym':
+    // Kanto's town buildings, each into the room it is: Cerulean Gym into its
+    // pool and Fuchsia Gym into its maze, as FireRed's are; every other Gym
+    // and the Dojo into a hall cleared for battling, the Department Store and
+    // the Bike Shop into a shop, and the places somebody studies into Oak's
+    // own Lab.
     case 'cerulean-gym':
+      return CERULEAN_GYM;
+    case 'fuchsia-gym':
+      return FUCHSIA_GYM;
+    case 'pewter-gym':
     case 'vermilion-gym':
     case 'celadon-gym':
-    case 'fuchsia-gym':
     case 'saffron-gym':
     case 'cinnabar-gym':
     case 'dojo':
@@ -439,6 +444,74 @@ const TOWER_GROUND_FLOOR: InsideTemplate = {
  * along the back wall, the machine he keeps Poké Balls in, the table the
  * starters were chosen at, and two rows of shelving either side of the aisle.
  */
+/**
+ * FireRed's Cerulean Gym, cell for cell: its pool and the walkways over it,
+ * the floor round it, its back wall with the portholes and the water badge,
+ * the walls down both sides (`C`, the dark the side walls are drawn on), the
+ * leader's dais across the water, the statues either side of the walk in and
+ * the ladders at the pool's four corners. Only FireRed's last row is left
+ * off, the dark the mat hangs over.
+ */
+const CERULEAN_GYM: InsideTemplate = {
+  name: 'Gym',
+  style: 'cerulean-gym',
+  width: GYM_LAYOUTS.cerulean.ground[0].length,
+  height: GYM_LAYOUTS.cerulean.ground.length - 1,
+  ground: GYM_LAYOUTS.cerulean.ground.slice(0, -1),
+  furniture: [
+    { kind: 'pool-badge', x: 8, y: 0 },
+    ...[5, 7, 9, 11].map((x) => ({ kind: 'pool-porthole' as const, x, y: 1 })),
+    { kind: 'pool-dais', x: 7, y: 5 },
+    { kind: 'pool-statue', x: 6, y: 16 },
+    { kind: 'pool-statue-east', x: 10, y: 16 },
+    { kind: 'pool-ladder', x: 3, y: 4 },
+    { kind: 'pool-ladder', x: 13, y: 4 },
+    { kind: 'pool-ladder-south', x: 3, y: 17 },
+    { kind: 'pool-ladder-south', x: 13, y: 17 },
+  ],
+};
+
+/**
+ * Fuchsia Gym: FireRed's pink floor, its back wall of gold beams with the
+ * green pillars, the windows and the badge where FireRed puts them, Koga's
+ * dais and the statues by the door - and its maze, which FireRed builds of
+ * walls nobody can see. Here the walls are drawn and the maze is two of them,
+ * each a turn the walk to the leader must take, a gap four wide at alternate
+ * ends, so it reads at a glance and two walk it abreast.
+ */
+const FUCHSIA_GYM: InsideTemplate = {
+  name: 'Gym',
+  style: 'fuchsia-gym',
+  width: 15,
+  height: 16,
+  ground: [
+    'BBBBBBBBBBBBBBB',
+    'BBBBBBBBBBBBBBB',
+    'PPPPPPPPPPPPPPP',
+    'PPPPPPPPPPPPPPP',
+    'PPPPPPPPPPPPPPP',
+    'PPPPPPPPPPPPPPP',
+    'PPPPPPPPPPPPPPP',
+    'PPPPFFFFFFFFFFF',
+    'PPPPPPPPPPPPPPP',
+    'PPPPPPPPPPPPPPP',
+    'FFFFFFFFFFFPPPP',
+    'PPPPPPPPPPPPPPP',
+    'PPPPPPPPPPPPPPP',
+    'PPPPPPPPPPPPPPP',
+    'PPPPPPPPPPPPPPP',
+    'PPPPPPPPPPPPPPP',
+  ],
+  furniture: [
+    ...[0, 3, 11, 14].map((x) => ({ kind: 'maze-pillar' as const, x, y: 0 })),
+    ...[1, 5, 8, 12].map((x) => ({ kind: 'maze-window' as const, x, y: 0 })),
+    { kind: 'maze-badge', x: 7, y: 0 },
+    { kind: 'maze-dais', x: 6, y: 3 },
+    { kind: 'maze-statue', x: 4, y: 12 },
+    { kind: 'maze-statue', x: 10, y: 12 },
+  ],
+};
+
 const LAB: InsideTemplate = {
   name: 'Lab',
   style: 'lab',

@@ -294,24 +294,37 @@ const gymPokemon = (speciesId: string, level: number, moves: readonly string[]):
   return pokemon;
 };
 
-/** Misty's gym hall in the vale's file (`gullStrand.ts`), and where she and her trainers stand in it. */
+/**
+ * Misty's gym hall in the vale's file (`gullStrand.ts`), and where she and her
+ * trainers stand in it. The hall is FireRed's Cerulean Gym, a pool crossed by
+ * walkways (`maker/areas.ts`), and they stand where FireRed stands its own:
+ * Misty on her dais across the water, the picnicker at the end of the
+ * walkway past it, and the swimmer - on the boards here, with nothing to swim
+ * in - on the loop round the west of the pool, off the walk up the middle.
+ */
 export const MISTY_GYM_HALL = 'strand-cerulean-gym';
 export const MISTY_GYM_SPOTS = {
-  misty: { x: 6, y: 2 },
-  diana: { x: 3, y: 5 },
-  luis: { x: 9, y: 7 },
+  misty: { x: 8, y: 6 },
+  diana: { x: 4, y: 7 },
+  luis: { x: 6, y: 13 },
 } as const;
 
 /** A spot in Misty's hall, as a tile of the vale's played grid. */
 const inMistysHall = (spot: { readonly x: number; readonly y: number }) =>
   builtInSpot('greystone-vale', { area: MISTY_GYM_HALL, ...spot });
 
-/** Koga's gym hall in the vale's file (`tanglewood.ts`), and where he and his trainers stand in it. */
+/**
+ * Koga's gym hall in the vale's file (`tanglewood.ts`), and where he and his
+ * trainers stand in it. The hall is Fuchsia Gym, its maze two walls the walk
+ * to him turns round (`maker/areas.ts`): Koga on his dais at the back, the
+ * juggler in the far corner of the middle aisle and the tamer at the west end
+ * of the hall by the door, each off the walk.
+ */
 export const KOGA_GYM_HALL = 'tanglewood-fuchsia-gym';
 export const KOGA_GYM_SPOTS = {
-  koga: { x: 6, y: 2 },
-  nate: { x: 9, y: 5 },
-  phil: { x: 3, y: 7 },
+  koga: { x: 7, y: 4 },
+  nate: { x: 14, y: 8 },
+  phil: { x: 1, y: 11 },
 } as const;
 
 /** A spot in Koga's hall, as a tile of the vale's played grid. */

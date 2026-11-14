@@ -41,6 +41,17 @@ meant (`mapFile.test.ts` holds the sample and an old-shape file to that).
   into by a `stairwell` in the floor of a hut's entrance, pressed into westward
   from beside it, and come up out of by `tunnel-stairs` at either end - eastward
   at the north end, westward at the south - into the entrance of another hut.
+- **Two gyms are FireRed's own rooms**, styles of an inside with ground of
+  their own. `cerulean-gym` has a pool (`W`) crossed by walkways (`_`), the
+  water's rim, the walkways' corners and junctions, and the shadows and posts
+  under them read off what is round each cell as FireRed's own pool draws them
+  (`gymStyles.test.ts` lays FireRed's layout and asks for FireRed's tiles back);
+  its side walls are drawn on the dark (`C`) beside the room. `fuchsia-gym` has
+  the partitions of a maze (`F`): FireRed's walls there are invisible, and here
+  they are the Rocket Hideout's partitions in Fuchsia's own green and gold. A
+  Cerulean Gym or Fuchsia Gym building's inside is that room (`templateFor`),
+  every other gym the warehouse hall. The sheet is `frlg-gyms.png`, cut by
+  `scripts/cut-frlg-gyms.mjs`.
 
 ## Going through
 

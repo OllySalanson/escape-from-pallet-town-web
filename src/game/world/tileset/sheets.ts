@@ -10,6 +10,7 @@ import { ICE_SHEET_SOURCE } from './iceSheet';
 import { EMBER_SHEET_SOURCE } from './emberSheet';
 import { BOARDS_SHEET_SOURCE } from './boardsSheet';
 import { HIDEOUT_SHEET_SOURCE } from './hideoutSheet';
+import { GYM_SHEET_SOURCE } from './gymSheet';
 import { RAID_ARENA_SHEET_SOURCE } from '../../base/raidArenaSheet';
 import { ARENA_HALL_SOURCE } from '../../base/arenaHallSheet';
 import { PROMENADE_SHEET_SOURCE } from '../../base/promenadeSheet';
@@ -75,6 +76,8 @@ export const TILE_SOURCES: readonly TileSource[] = [
   BOARDS_SHEET_SOURCE.source,
   // A room dressed as the Rocket Hideout or the Power Plant (`hideoutSheet.ts`).
   HIDEOUT_SHEET_SOURCE.source,
+  // A room dressed as Cerulean Gym or Fuchsia Gym (`gymSheet.ts`).
+  GYM_SHEET_SOURCE.source,
   // FireRed's own tile animations for the ground sheets' sea, surf and
   // flowers (`world/tileAnimation.ts`).
   TILE_ANIMATION_SOURCE.source,

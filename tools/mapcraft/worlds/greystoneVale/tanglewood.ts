@@ -441,14 +441,15 @@ export function tanglewood(): MapcraftResult {
 
 /** The doors of Mislaid, and of the wood's few other roofs. */
 function withInsides(file: MapFile): MapFile {
-  // Fuchsia Gym's hall. Koga and his two trainers are authored in
-  // `src/game/world/trainers.ts`, where a gym's parties are measured
-  // (`quarterPuzzle.test.ts`), and stand in this room's tiles as
-  // `KOGA_GYM_SPOTS` says; the Gym Guide by the mat is the file's own.
+  // Fuchsia Gym's hall: FireRed's own, its maze drawn (`maker/areas.ts`).
+  // Koga and his two trainers are authored in `src/game/world/trainers.ts`,
+  // where a gym's parties are measured (`quarterPuzzle.test.ts`), and stand
+  // in this room's tiles as `KOGA_GYM_SPOTS` says; the Gym Guide by the mat,
+  // where FireRed's stands, is the file's own.
   let next = withInside(file, 'tanglewood', 'fuchsia-gym', 49, 34, 'Fuchsia Gym', [
     {
-      x: 8,
-      y: 10,
+      x: 11,
+      y: 14,
       name: 'Gym Guide',
       look: 'gym-guide',
       facing: 'left',
