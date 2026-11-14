@@ -22,7 +22,7 @@ import {
   characterDesignAssetPath,
   characterDesignTextureKey,
 } from '../world/characterDesigns';
-import { PARTNER_FRAME, PARTNER_SPECIES, partnerAssetPath, partnerTextureKey } from '../base/partner';
+import { FOLLOWER_SPECIES, PARTNER_FRAME, followerAssetPath, followerTextureKey } from '../base/partner';
 import { HARBOUR_SPECIES, harbourPokemonAssetPath, harbourPokemonTextureKey } from '../base/harbourLife';
 import { HARBOUR_BIRD_PATH, HARBOUR_BIRD_TEXTURE } from '../base/harbourBird';
 import { SHARED_CHARACTER_TEXTURE } from '../world/characterPresentation';
@@ -84,11 +84,14 @@ export class BootScene extends Phaser.Scene {
       frameWidth: BIKE_FRAME_SIZE,
       frameHeight: BIKE_FRAME_SIZE,
     });
-    // The partner's walking art, for each Pokemon a partner can be. Nine small
-    // sheets, so all of them rather than only this save's: a partner evolves
-    // in a raid and comes home a different sheet.
-    for (const species of PARTNER_SPECIES) {
-      this.load.spritesheet(partnerTextureKey(species), publicAssetUrl(partnerAssetPath(species)), {
+    // HeartGold's walking art, for every Pokemon that can walk at the player's
+    // heel: the partner round the harbour, and on a raid whoever leads the
+    // party (`world/raidFollower.ts`), which can be any of Kanto's 151 - and
+    // changes mid-raid with a faint, a catch or an evolution. Small sheets, all
+    // of them, as the battle sprites are; a shiny's colours are fetched by the
+    // raid that walks one (`WorldScene.preload`).
+    for (const species of FOLLOWER_SPECIES) {
+      this.load.spritesheet(followerTextureKey(species), publicAssetUrl(followerAssetPath(species)), {
         frameWidth: PARTNER_FRAME,
         frameHeight: PARTNER_FRAME,
       });

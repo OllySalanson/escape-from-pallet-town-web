@@ -161,7 +161,7 @@ export const RUMOURS: readonly Rumour[] = [
     gives: ['where', 'bring'],
     names: 'THE POWER STATION',
     ringsOver: 'THE POWER STATION',
-    line: 'One picket outside THE POWER STATION has not shifted a foot in nine years. I have watched. They say he only stirs for a PSYCHIC type walking in front.',
+    line: 'One picket outside THE POWER STATION has not shifted a foot in nine years. I have watched. They say he only stirs for a PSYCHIC type walking at your heel.',
   },
   {
     id: 'bill-shadow-in-the-crypt',

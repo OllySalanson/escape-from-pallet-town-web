@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { BREATH_LISTENS_AFTER_MS, MOST_WORDS, RAIDS_NAMED_IN_FULL, betOf, breathMs, climbAt, fitRailStamps, railStamps, stakeWords, wordsUpAt, type AtRisk } from './heldBreath';
+import { BREATH_LISTENS_AFTER_MS, MOST_WORDS, RAIDS_NAMED_IN_FULL, RAIL_STAMP_EDGE, betOf, breathMs, climbAt, fitRailStamps, railStampRoom, railStamps, stakeWords, wordsUpAt, type AtRisk } from './heldBreath';
+import { tabOverGame } from '../feedback/feedbackTabCover';
+import { BASE_STAGE_WIDTH, computeStage } from '../display/stage';
 
 const team: AtRisk = {
   pokemon: [
@@ -89,6 +91,72 @@ describe('the held breath', () => {
     const fitted = fitRailStamps(full, (text) => text.length <= 30);
     expect(fitted).toHaveLength(MOST_WORDS);
     expect(fitted[MOST_WORDS - 1]).toEqual({ text: 'SAFE: BULBASAUR (YOUR PARTNER)', kind: 'safe' });
+  });
+
+  it("breaks a thing too wide for a line of its own before its bracket, so a new save's partner never runs under the FEEDBACK tab", () => {
+    const fits = (text: string) => text.length <= 28;
+    const firstJump = railStamps(
+      { pokemon: [], pack: 'Raid pack', packIsBetter: false, items: ['Poké Ball ×4'], safe: ['Charmander (your partner)', 'Potion ×3'] },
+      1,
+    );
+    const fitted = fitRailStamps(firstJump, fits);
+    expect(fitted).toEqual([
+      { text: 'AT RISK', kind: 'risk' },
+      { text: 'RAID PACK', kind: 'risk' },
+      { text: 'POKÉ BALL ×4', kind: 'risk' },
+      { text: 'SAFE: CHARMANDER', kind: 'safe' },
+      { text: '(YOUR PARTNER), POTION ×3', kind: 'safe' },
+    ]);
+    expect(fitted.every((stamp) => fits(stamp.text))).toBe(true);
+    // With one line left for it, the thing goes without what it says in brackets rather than run off the edge.
+    const items = Array.from({ length: 12 }, (_each, index) => `Thing ${index}`);
+    const full = fitRailStamps(railStamps({ ...team, items, safe: ['Charmander (your partner)', 'Potion ×3'] }, 1), fits);
+    expect(full).toHaveLength(MOST_WORDS);
+    expect(full[MOST_WORDS - 1]).toEqual({ text: 'SAFE: CHARMANDER, POTION ×3', kind: 'safe' });
+  });
+
+  describe('the room a line has, beside the FEEDBACK tab', () => {
+    // A window, the canvas `computeStage` fits into it, centred, and the tab as
+    // `style.css` sizes it on a game screen (no pixel-ui menu up): 30x112 CSS
+    // pixels half way down the right edge, and 50x14 in the corner at 480x360.
+    const onWindow = (width: number, height: number) => {
+      const stage = computeStage(width, height);
+      const canvas = {
+        left: (width - stage.width * stage.zoom) / 2,
+        top: (height - stage.height * stage.zoom) / 2,
+        width: stage.width * stage.zoom,
+        height: stage.height * stage.zoom,
+      };
+      const tab =
+        width <= 480 && height <= 360
+          ? { left: width - 50, top: height - 14, width: 50, height: 14 }
+          : { left: width - 30, top: height / 2 - 56, width: 30, height: 112 };
+      return { stage, tab: tabOverGame(tab, canvas, stage) };
+    };
+    // The lowest the stamp can reach: six lines of the small lettering, from the top.
+    const stampsBottom = 12 + MOST_WORDS * 25;
+
+    it('keeps every line, centred, clear of the tab at 640x480 and 960x720', () => {
+      for (const [width, height] of [
+        [640, 480],
+        [960, 720],
+      ]) {
+        const { stage, tab } = onWindow(width, height);
+        expect(tab!.y).toBeLessThan(stampsBottom);
+        const room = railStampRoom(stage.width, tab, stampsBottom);
+        expect((stage.width + room) / 2).toBeLessThanOrEqual(tab!.x - 1);
+        expect((stage.width - room) / 2).toBeGreaterThanOrEqual(RAIL_STAMP_EDGE);
+      }
+    });
+
+    it('asks nothing more of the stamp on the smallest window, where the tab is off the game, nor with no tab at all', () => {
+      const { stage, tab } = onWindow(480, 360);
+      expect(tab).toBeNull();
+      expect(railStampRoom(stage.width, tab, stampsBottom)).toBe(stage.width - RAIL_STAMP_EDGE * 2);
+      expect(railStampRoom(BASE_STAGE_WIDTH, { x: 300, y: 200, width: 20, height: 14 }, stampsBottom)).toBe(
+        BASE_STAGE_WIDTH - RAIL_STAMP_EDGE * 2,
+      );
+    });
   });
 
   it('stops for nothing when nothing is worth stopping for, heading and all', () => {

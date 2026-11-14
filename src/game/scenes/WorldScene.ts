@@ -222,10 +222,11 @@ import { buildObjectiveGuide } from '../objectives/ObjectiveGuide';
 import { PRESS_ARROWS } from '../ui/pressArrows';
 import { openNamingScreen } from '../ui/NamingScreenOverlay';
 import { placeCaptions, placeDialog, seatedOver, type CaptionPlacement, type Rect } from '../ui/labelPlacement';
-import { arrivalPlace } from '../base/partner';
+import { PARTNER_FRAME, arrivalPlace } from '../base/partner';
+import { publicAssetUrl } from '../publicAssetUrl';
 import { PartnerFigure, type PartnerHost } from '../base/partnerFigure';
 import { ShinyGlints, glintHeadStart } from '../base/shinyGlint';
-import { raidFollower, sameFollower, type RaidFollower } from '../world/raidFollower';
+import { raidFollower, sameFollower, shinyFollowerSheets, type RaidFollower } from '../world/raidFollower';
 import { advanceLookMs, isLooking } from '../ui/captionReveal';
 import { GAME_FONT } from '../ui/gameFont';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
@@ -1373,6 +1374,23 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.hunterNear =
       isHunterContactingPlayer(hunter, this.currentTile) ||
       (path.length > 0 && path.length <= HUNTER_NEAR_STEPS);
+  }
+
+  /**
+   * A shiny in the party walks in its shiny colours when it leads
+   * (`world/raidFollower.ts`), and those are fetched by the raid rather than
+   * all of them at boot, as a fight fetches a shiny's battle sprites. Phaser
+   * runs this before `create`; a sheet that never arrives is walked in its
+   * ordinary colours.
+   */
+  public preload(): void {
+    const data = (this.sys.settings.data ?? {}) as WorldSceneData;
+    const party = data.party?.pokemon ?? data.savedGame?.party.pokemon ?? [];
+    for (const { key, path } of shinyFollowerSheets(party)) {
+      if (!this.textures.exists(key)) {
+        this.load.spritesheet(key, publicAssetUrl(path), { frameWidth: PARTNER_FRAME, frameHeight: PARTNER_FRAME });
+      }
+    }
   }
 
   public create(data: WorldSceneData = {}): void {
@@ -2951,8 +2969,21 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.villageBubble ??= new SpeechBubble(this);
     this.villageBubble.say(saying.words);
     const bounds = sprite.getBounds();
-    // Slid clear of the player: writing never covers a person, least of all the one being called to.
-    this.villageBubble.place(bounds.centerX, Math.round(bounds.top) + CALL_BUBBLE_DROP, null, this.captionPlayer());
+    // Slid clear of the player - writing never covers a person, least of all
+    // the one being called to - and of every sign: the Heron Man stands under
+    // the notice at the end of the boards, and his "Hush" was seated over the
+    // very post a player has walked there to read (playtest, 14 Nov 2026).
+    this.villageBubble.place(bounds.centerX, Math.round(bounds.top) + CALL_BUBBLE_DROP, null, this.callKeepsClear());
+  }
+
+  /** What a call's bubble may not cover: the player, and the signs on the map. */
+  private callKeepsClear(): Rect[] {
+    return [...this.captionPlayer(), ...this.signRects()];
+  }
+
+  /** Every sign standing on this map, a tile each. */
+  private signRects(): Rect[] {
+    return this.currentMap.entities.filter((entity) => entity.kind === 'sign').map((entity) => tileRect(entity.position));
   }
 
   /**
@@ -4870,12 +4901,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.partner?.standAt(arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile)));
   }
 
-  /**
-   * The follower's frame. Who it is is asked again first, so a party put in
-   * a new order, an evolution or a gift changes it on the spot; and it gets
-   * out of the way of anybody who steps onto its tile - the hunter, a
-   * townsperson keeping their beat - by going after the player into theirs.
-   */
   /** The stars of the standing Pokemon about to be met shiny, a frame on (`standsShiny`). */
   private tendFigureGlints(deltaMs: number): void {
     for (const { glints, sprite, species } of this.figureGlints) {
@@ -4888,6 +4913,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
   }
 
+  /**
+   * The follower's frame. Who it is is asked again first, so a party put in
+   * a new order, an evolution or a gift changes it on the spot; and it gets
+   * out of the way of anybody who steps onto its tile - the hunter, a
+   * townsperson keeping their beat - by going after the player into theirs.
+   */
   private updatePartner(deltaMs: number): void {
     if (this.boardedAtMs !== null) {
       return;
@@ -7542,9 +7573,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * caption gives the player room only while it has somewhere else to sit.
    */
   private captionKeepClear(): Rect[] {
-    const signs = this.currentMap.entities
-      .filter((entity) => entity.kind === 'sign')
-      .map((entity) => tileRect(entity.position));
+    const signs = this.signRects();
     const crates = [...this.lootSprites.values()].map((crate) => ({
       x: crate.x - TILE_SIZE / 2,
       y: crate.y - TILE_SIZE / 2,

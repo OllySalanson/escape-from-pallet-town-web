@@ -611,7 +611,7 @@ export const SECRETS: readonly Secret[] = [
     nook: 'figure',
     when: [{ kind: 'lead-shiny' }],
     rewards: [{ kind: 'meet', speciesId: 'starmie', level: 22 }],
-    foundLine: 'Its core flares, colour after colour, at the one walking in front of you. Something has finally answered in the wrong colours. STARMIE spins up out of the grass!',
+    foundLine: 'Its core flares, colour after colour, at the one walking at your heel. Something has finally answered in the wrong colours. STARMIE spins up out of the grass!',
     shutLines: [
       'A star lies in the grass at the foot of the light, with a red stone at its heart. The stone flickers, stops, and flickers again.',
       'It is signalling. It waits a long time for an answer, and then it tries again.',

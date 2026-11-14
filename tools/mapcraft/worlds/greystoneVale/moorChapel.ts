@@ -252,7 +252,7 @@ export function moorChapel(): MapcraftResult {
         { x: 12, y: 42, lines: ['THE CORPSE ROAD', 'West, off the fell.'] },
         // The secret's clue (`world/secrets.ts`, THE SHADOW IN THE CRYPT): the
         // keeper's notice, inside the ring of stones by the way in.
-        { area: CRYPT.id, x: 15, y: 8, secret: 'the-shadow-in-the-crypt', lines: ['KEEPER’S NOTICE', 'The shadow at the foot of the gold graves is nobody’s. Leave it be. It only gets up for a GHOST walking in front.'] },
+        { area: CRYPT.id, x: 15, y: 8, secret: 'the-shadow-in-the-crypt', lines: ['KEEPER’S NOTICE', 'The shadow at the foot of the gold graves is nobody’s. Leave it be. It only gets up for a GHOST walking at your heel.'] },
       ],
       // Who keeps the churchyard by night: a Gastly at the fell's edge, and
       // the gravedigger who has stopped minding it.

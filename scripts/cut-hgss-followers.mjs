@@ -1,30 +1,36 @@
-// Cuts the partner's walking art in `public/assets/followers/` out of Pokemon
+// Cuts the walking art in `public/assets/followers/` out of Pokemon
 // HeartGold/SoulSilver's own following-Pokemon sprites, as the pret
 // disassembly of that game carries them.
 //
-//   node scripts/cut-hgss-followers.mjs            # fetches the nine textures
+//   node scripts/cut-hgss-followers.mjs            # fetches the textures
 //   node scripts/cut-hgss-followers.mjs <dir>      # or reads them from <dir>
 //
 // FireRed draws no Pokemon walking behind the player; HeartGold/SoulSilver is
 // the game that does, and every following sprite it has is one Nitro texture
 // file (`.NSBTX`) in `files/data/mmodel/mmodel/` of `pret/pokeheartgold`. Which
 // file is which Pokemon is that repository's own `include/constants/mmodel.h`
-// (`MMODEL_FOLLOWER_MON_BULBASAUR` is 297, and so on), so nothing here is a
-// guess about which picture is whose. The repository is pinned to one commit.
+// (`MMODEL_FOLLOWER_MON_BULBASAUR` is 297, and so on), read here rather than
+// copied, so nothing is a guess about which picture is whose. The repository
+// is pinned to one commit.
 //
-// A following texture holds eight 32x32 frames, four-bit, one palette: two a
-// facing, in the order up, down, left, right. What ships is one 64x128 sheet a
-// species, two columns of frames in four rows - down, up, left, right - with
-// the pixels exactly as the game draws them: nothing is scaled, filtered or
-// moved, so a frame row here is a frame row there.
+// A following texture holds eight 32x32 frames, four-bit, and two palettes:
+// `tsure_poke0`, its colours, and `tsure_poke1`, its shiny colours. Two frames
+// a facing, in the order up, down, left, right. What ships is one 64x128 sheet
+// a species and a second in its shiny colours under `shiny/`, two columns of
+// frames in four rows - down, up, left, right - with the pixels exactly as the
+// game draws them: nothing is scaled, filtered or moved, so a frame row here
+// is a frame row there.
+//
+// Every one of Kanto's 151 is cut (the species catalogue's own list), because
+// on a raid whoever leads the party walks at the player's heel
+// (`world/raidFollower.ts`), and the harbour's partner is one of the starters'
+// lines among them (`base/partner.ts`).
 //
 // The harbour's own Pokemon - the ones that live about THE HARBOUR rather
 // than following anybody (`src/game/base/harbourLife.ts`) - are cut the same
 // way into `public/assets/harbour-pokemon/`, with their metrics in
-// `src/game/base/generated/harbourPokemonArt.ts`. They are kept apart from the
-// partners on purpose: a species with following art walks behind the player
-// on a raid when it leads the party (`world/raidFollower.ts`), and the harbour
-// growing a Slowpoke must not change who walks on a raid.
+// `src/game/base/generated/harbourPokemonArt.ts`, and kept apart so the
+// harbour's crowd is its own list.
 //
 // It also writes `src/game/base/generated/followerArt.ts`: where each species'
 // art starts and ends inside its frame, read off the pixels, because the
@@ -36,26 +42,40 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
 const PRET_COMMIT = '9d8b7591f09b65804da2fb2dfd56f320633e0d36';
-const SOURCE_URL = (file) =>
-  `https://raw.githubusercontent.com/pret/pokeheartgold/${PRET_COMMIT}/files/data/mmodel/mmodel/${file}`;
+const SOURCE_URL = (path) => `https://raw.githubusercontent.com/pret/pokeheartgold/${PRET_COMMIT}/${path}`;
+const TEXTURE_PATH = (file) => `files/data/mmodel/mmodel/${file}`;
+const MODEL_HEADER = 'include/constants/mmodel.h';
+
+/** Kanto's 151, by the id the game knows each one by, read off the generated species catalogue. */
+function kantoSpecies() {
+  const catalogue = readFileSync(new URL('../src/game/pokemon/generated/speciesCatalogue.ts', import.meta.url), 'utf8');
+  const species = [...catalogue.matchAll(/dexId: (\d+),\n\s+id: '([a-z-]+)'/g)]
+    .filter(([, dexId]) => Number(dexId) <= 151)
+    .map(([, , id]) => id);
+  if (species.length !== 151) throw new Error(`expected Kanto's 151 in the species catalogue, found ${species.length}`);
+  return species;
+}
 
 /**
- * Every Pokemon a partner can be: the three starters and both of their
- * evolutions, by `MMODEL_FOLLOWER_MON_*` in `include/constants/mmodel.h`.
- * HeartGold also draws a female Venusaur (300, a seed on her flower); a save
- * records no gender, so the one drawn is the male, as the battle sprite is.
+ * Every Pokemon that can walk at the player's heel, and the texture each is
+ * cut from: `MMODEL_FOLLOWER_MON_<ID>` in pret's header, the id in capitals
+ * with its hyphen an underscore (NIDORAN_F, MR_MIME). HeartGold also draws a
+ * female form of some (VENUSAUR_F, a seed on her flower); a save records no
+ * gender, so the one drawn is the male, as the battle sprite is.
  */
-const FOLLOWERS = {
-  bulbasaur: 297,
-  ivysaur: 298,
-  venusaur: 299,
-  charmander: 301,
-  charmeleon: 302,
-  charizard: 303,
-  squirtle: 304,
-  wartortle: 305,
-  blastoise: 306,
-};
+async function followerModels() {
+  const header = (await readSource(MODEL_HEADER)).toString('utf8');
+  const models = new Map(
+    [...header.matchAll(/#define MMODEL_FOLLOWER_MON_([A-Z0-9_]+)\s+(\d+)/g)].map(([, name, model]) => [name, Number(model)]),
+  );
+  return Object.fromEntries(
+    kantoSpecies().map((species) => {
+      const model = models.get(species.toUpperCase().replace(/-/g, '_'));
+      if (model === undefined) throw new Error(`${species}: no MMODEL_FOLLOWER_MON_ in ${MODEL_HEADER}`);
+      return [species, model];
+    }),
+  );
+}
 
 /**
  * The Pokemon that live about the harbour, by the same header: the ones a
@@ -111,7 +131,7 @@ function dictionary(bytes, at) {
   }));
 }
 
-/** Every frame of one following texture, as palette indices, and the palette as RGB. */
+/** Every frame of one following texture, as palette indices, and its two palettes - ordinary and shiny - as RGB. */
 function decodeTexture(bytes) {
   if (bytes.subarray(0, 4).toString('latin1') !== 'BTX0') throw new Error('not a BTX0 file');
   const tex0 = bytes.readUInt32LE(0x10);
@@ -120,14 +140,16 @@ function decodeTexture(bytes) {
   const textureData = tex0 + bytes.readUInt32LE(tex0 + 0x14);
   const paletteInfo = tex0 + bytes.readUInt32LE(tex0 + 0x34);
   const paletteData = tex0 + bytes.readUInt32LE(tex0 + 0x38);
-  const [palette] = dictionary(bytes, paletteInfo);
-  const paletteAt = paletteData + (palette.entry.readUInt16LE(0) << 3);
-  const colours = Array.from({ length: 16 }, (_, index) => {
-    const bgr = bytes.readUInt16LE(paletteAt + index * 2);
-    // Five bits a channel, widened the way every GBA and DS rip in this
-    // repository is (`ASSET_PROVENANCE.md`: every colour a multiple of 8).
-    return [(bgr & 31) << 3, ((bgr >> 5) & 31) << 3, ((bgr >> 10) & 31) << 3];
+  const palettes = dictionary(bytes, paletteInfo).map((palette) => {
+    const paletteAt = paletteData + (palette.entry.readUInt16LE(0) << 3);
+    return Array.from({ length: 16 }, (_, index) => {
+      const bgr = bytes.readUInt16LE(paletteAt + index * 2);
+      // Five bits a channel, widened the way every GBA and DS rip in this
+      // repository is (`ASSET_PROVENANCE.md`: every colour a multiple of 8).
+      return [(bgr & 31) << 3, ((bgr >> 5) & 31) << 3, ((bgr >> 10) & 31) << 3];
+    });
   });
+  const [colours, shinyColours] = palettes;
   const frames = dictionary(bytes, textureInfo).map(({ entry, name }) => {
     const offset = entry.readUInt16LE(0) << 3;
     const params = entry.readUInt16LE(2);
@@ -146,7 +168,7 @@ function decodeTexture(bytes) {
     return pixels;
   });
   if (frames.length !== 8) throw new Error(`expected eight frames, found ${frames.length}`);
-  return { colours, frames };
+  return { colours, shinyColours, frames };
 }
 
 const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
@@ -184,44 +206,60 @@ function encodePng(width, height, pixels) {
   ]);
 }
 
-async function readSource(file) {
+/** A file of the pinned repository, by its path there; from a directory, by its name alone. */
+async function readSource(path) {
   const fromDir = process.argv[2];
-  if (fromDir) return readFileSync(`${fromDir}/${file}`);
-  const response = await fetch(SOURCE_URL(file));
-  if (!response.ok) throw new Error(`${file}: HTTP ${response.status}`);
+  if (fromDir) return readFileSync(`${fromDir}/${path.split('/').pop()}`);
+  const response = await fetch(SOURCE_URL(path));
+  if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
   return Buffer.from(await response.arrayBuffer());
 }
 
-/** Cuts every texture in `set` into `folder`, and hands back where each one's art sits. */
-async function cutSheets(set, folder) {
+/** One sheet of a species, its frames in `colours`, and where its art starts and ends inside a frame. */
+function cutSheet(frames, colours) {
+  const width = FRAME * 2;
+  const height = FRAME * OUTPUT_FACINGS.length;
+  const sheet = Buffer.alloc(width * height * 4);
+  let top = FRAME;
+  let bottom = -1;
+  OUTPUT_FACINGS.forEach((facing, row) => {
+    const first = SOURCE_FACINGS.indexOf(facing) * 2;
+    for (let column = 0; column < 2; column += 1) {
+      const frame = frames[first + column];
+      for (let y = 0; y < FRAME; y += 1) {
+        for (let x = 0; x < FRAME; x += 1) {
+          const index = frame[y * FRAME + x];
+          if (index === 0) continue;
+          top = Math.min(top, y);
+          bottom = Math.max(bottom, y);
+          const at = ((row * FRAME + y) * width + column * FRAME + x) * 4;
+          sheet.set([...colours[index], 255], at);
+        }
+      }
+    }
+  });
+  return { png: encodePng(width, height, sheet), top, bottom };
+}
+
+/**
+ * Cuts every texture in `set` into `folder`, and its shiny colours into
+ * `folder/shiny/` when `shiny` is asked for, and hands back where each one's
+ * art sits.
+ */
+async function cutSheets(set, folder, { shiny = false } = {}) {
   const outputRoot = new URL(`../public/assets/${folder}/`, import.meta.url);
   mkdirSync(outputRoot, { recursive: true });
+  if (shiny) mkdirSync(new URL('shiny/', outputRoot), { recursive: true });
   const metrics = {};
   for (const [species, model] of Object.entries(set)) {
     const file = `mmodel_${String(model).padStart(8, '0')}.NSBTX`;
-    const { colours, frames } = decodeTexture(await readSource(file));
-    const width = FRAME * 2;
-    const height = FRAME * OUTPUT_FACINGS.length;
-    const sheet = Buffer.alloc(width * height * 4);
-    let top = FRAME;
-    let bottom = -1;
-    OUTPUT_FACINGS.forEach((facing, row) => {
-      const first = SOURCE_FACINGS.indexOf(facing) * 2;
-      for (let column = 0; column < 2; column += 1) {
-        const frame = frames[first + column];
-        for (let y = 0; y < FRAME; y += 1) {
-          for (let x = 0; x < FRAME; x += 1) {
-            const index = frame[y * FRAME + x];
-            if (index === 0) continue;
-            top = Math.min(top, y);
-            bottom = Math.max(bottom, y);
-            const at = ((row * FRAME + y) * width + column * FRAME + x) * 4;
-            sheet.set([...colours[index], 255], at);
-          }
-        }
-      }
-    });
-    writeFileSync(new URL(`${species}.png`, outputRoot), encodePng(width, height, sheet));
+    const { colours, shinyColours, frames } = decodeTexture(await readSource(TEXTURE_PATH(file)));
+    const { png, top, bottom } = cutSheet(frames, colours);
+    writeFileSync(new URL(`${species}.png`, outputRoot), png);
+    if (shiny) {
+      if (!shinyColours) throw new Error(`${file}: no shiny palette`);
+      writeFileSync(new URL(`shiny/${species}.png`, outputRoot), cutSheet(frames, shinyColours).png);
+    }
     metrics[species] = { model, topPixelY: top, bottomPixelY: bottom };
     console.log(`${species}: ${file}, art rows ${top}-${bottom}`);
   }
@@ -232,11 +270,11 @@ const artTable = (metrics) =>
   Object.entries(metrics)
     .map(
       ([species, { model, topPixelY, bottomPixelY }]) =>
-        `  ${species}: { model: ${model}, topPixelY: ${topPixelY}, bottomPixelY: ${bottomPixelY} },`,
+        `  ${/^[a-z]+$/.test(species) ? species : `'${species}'`}: { model: ${model}, topPixelY: ${topPixelY}, bottomPixelY: ${bottomPixelY} },`,
     )
     .join('\n');
 
-const metrics = await cutSheets(FOLLOWERS, 'followers');
+const metrics = await cutSheets(await followerModels(), 'followers', { shiny: true });
 const harbour = await cutSheets(HARBOUR, 'harbour-pokemon');
 const rides = await cutSheets(RIDES, 'rides');
 
@@ -244,8 +282,8 @@ const generated = `// Generated by scripts/cut-hgss-followers.mjs from pret/poke
 // Do not edit by hand: run the script again.
 
 /**
- * Where each partner's art sits inside its 32x32 frame, read off the pixels of
- * every frame: the highest and lowest painted rows, and the
+ * Where each following Pokemon's art sits inside its 32x32 frame, read off the
+ * pixels of every frame: the highest and lowest painted rows, and the
  * \`MMODEL_FOLLOWER_MON_*\` texture it was cut from.
  */
 export const FOLLOWER_ART = {

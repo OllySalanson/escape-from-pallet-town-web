@@ -1356,10 +1356,10 @@ ruling and from the same source as `pokemon-icons.png` above.
   texture is missing, and a shiny's star would want a drawn replacement in
   `style.css`.
 
-### `followers/<species>.png` - the partner's walking art, from HeartGold/SoulSilver
+### `followers/<species>.png` and `followers/shiny/<species>.png` - the walking art of every Kanto Pokemon, from HeartGold/SoulSilver
 
 FireRed/LeafGreen draws no Pokemon walking behind the player, so the one place
-the partner's art could come from without anybody drawing it is the game that
+the walking art - the harbour's partner, and on a raid whoever leads the party - could come from without anybody drawing it is the game that
 does: **Pokemon HeartGold/SoulSilver's own following-Pokemon sprites**, ripped
 from that commercial DS game. Rights holder: Nintendo / Creatures / Game Freak.
 It ships under the same ruling as everything else in this section - the owner
@@ -1372,10 +1372,11 @@ non-commercial fan game on 2026-09-19 - and is recorded here in those words.
   family this repository already reads `pret/pokefirered` from for stats,
   moves and character casting. Each sprite is one Nitro texture,
   `files/data/mmodel/mmodel/mmodel_<n>.NSBTX`, and which `<n>` is which Pokemon
-  is that repository's own `include/constants/mmodel.h`:
-  `MMODEL_FOLLOWER_MON_BULBASAUR` 297, `IVYSAUR` 298, `VENUSAUR` 299,
-  `CHARMANDER` 301, `CHARMELEON` 302, `CHARIZARD` 303, `SQUIRTLE` 304,
-  `WARTORTLE` 305, `BLASTOISE` 306. Fetched 2026-10-10.
+  is that repository's own `include/constants/mmodel.h`, which the script reads:
+  `MMODEL_FOLLOWER_MON_<ID>` for each of Kanto's 151 (`BULBASAUR` 297 to
+  `MEW` 449; the generated `src/game/base/generated/followerArt.ts` records
+  each one's number). The starters' lines were fetched 2026-10-10, the other
+  142 on 2026-11-14.
 - **Licence.** The repository states none (GitHub reports no licence), and it is
   a reconstruction of a commercial game whose art belongs to the rights holder.
   Nothing here should be read as a licence for these images.
@@ -1383,9 +1384,11 @@ non-commercial fan game on 2026-09-19 - and is recorded here in those words.
   it reads each texture's own header and dictionaries, decodes the eight 32x32
   four-bit frames with colour 0 clear, widens each 15-bit colour by `<< 3` as
   every other GBA/DS rip here is, and lays them out as one 64x128 sheet a
-  species - two poses a facing, rows down, up, left, right. **Not a pixel is
-  scaled, filtered, recoloured or moved**, so a frame here is the frame the game
-  draws. HeartGold also has a female Venusaur (300, a seed on the flower); a
+  species - two poses a facing, rows down, up, left, right. Each texture holds
+  two palettes, `tsure_poke0` and `tsure_poke1`, the ordinary and the shiny
+  colours, and the sheet under `shiny/` is the same frames in the second.
+  **Not a pixel is scaled, filtered, recoloured or moved**, so a frame here is
+  the frame the game draws. HeartGold also has a female Venusaur (300, a seed on the flower); a
   save records no gender, so the male is the one cut, as the battle sprite is.
   The source textures are not committed; the script fetches them from the
   pinned commit.
