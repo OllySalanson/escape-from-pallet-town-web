@@ -402,17 +402,19 @@ export function gullStrand(): MapcraftResult {
 
 /** The doors along the shore. */
 function withInsides(file: MapFile): MapFile {
-  // Cerulean Gym's hall. Misty and her two trainers are authored in
+  // Cerulean Gym's hall: FireRed's own, a pool crossed by walkways
+  // (`maker/areas.ts`). Misty and her two trainers are authored in
   // `src/game/world/trainers.ts`, where a gym's parties are measured
   // (`quarterPuzzle.test.ts`), and stand in this room's tiles as
-  // `MISTY_GYM_SPOTS` says; the Gym Guide by the mat is the file's own.
+  // `MISTY_GYM_SPOTS` says; the Gym Guide at the head of the walk in, where
+  // FireRed's stands, is the file's own.
   let next = withInside(file, 'strand', 'cerulean-gym', 48, 19, 'Cerulean Gym', [
     {
-      x: 8,
-      y: 10,
+      x: 7,
+      y: 16,
       name: 'Gym Guide',
       look: 'gym-guide',
-      facing: 'left',
+      facing: 'right',
       lines: [
         'Yo! Champ in the making! MISTY holds the jetty and the reed trail, the two ways into the Coast.',
         'She makes it rain, and in the rain her Horsea moves first. Water hits harder and Fire goes soft.',

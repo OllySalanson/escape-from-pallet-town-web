@@ -697,6 +697,21 @@ export const MAP_FILE_FURNITURE = {
   'power-console-dials': 'powerConsoleDials',
   'power-computer': 'powerComputer',
   'power-grating': 'powerGrating',
+  // Cerulean Gym's: FireRed's own, round and over its pool.
+  'pool-porthole': 'poolPorthole',
+  'pool-badge': 'poolBadge',
+  'pool-dais': 'poolDais',
+  'pool-statue': 'poolStatueWest',
+  'pool-statue-east': 'poolStatueEast',
+  'pool-ladder': 'poolLadderNorth',
+  'pool-ladder-south': 'poolLadderSouth',
+  // Fuchsia Gym's: FireRed's own, its back wall's pillars, windows and badge,
+  // Koga's dais and the statues by the door.
+  'maze-pillar': 'mazePillar',
+  'maze-window': 'mazeWindow',
+  'maze-badge': 'mazeBadge',
+  'maze-dais': 'mazeDais',
+  'maze-statue': 'mazeStatue',
 } as const satisfies Record<string, InsidePropName>;
 
 export type MapFileFurnitureKind = keyof typeof MAP_FILE_FURNITURE;
@@ -963,7 +978,9 @@ export const MAP_FILE_AREA_LETTERS: Readonly<Record<MapFileAreaKind, readonly st
  * in a cave of ice: anywhere else it would be a floor that looked like stone
  * and slid like ice. And only the Rocket Hideout has partitions (`F`, the
  * teal panels of its maze) and a floor that spins you on - its four arrows
- * and the plate that stops a spin.
+ * and the plate that stops a spin. Two gyms are FireRed's own rooms: Cerulean
+ * Gym has a pool (`W`) and the walkways over it (`_`), and Fuchsia Gym the
+ * partitions of its maze (`F`) - the walls FireRed hides, drawn.
  */
 export function areaLetters(kind: MapFileAreaKind, style: unknown): readonly string[] {
   const own = MAP_FILE_AREA_LETTERS[kind];
@@ -972,6 +989,12 @@ export function areaLetters(kind: MapFileAreaKind, style: unknown): readonly str
   }
   if (kind === 'inside' && style === 'hideout') {
     return [...own, ...HIDEOUT_LETTERS];
+  }
+  if (kind === 'inside' && style === 'cerulean-gym') {
+    return [...own, MATERIAL_CHARS.water, MATERIAL_CHARS.boards];
+  }
+  if (kind === 'inside' && style === 'fuchsia-gym') {
+    return [...own, MATERIAL_CHARS.fence];
   }
   return own;
 }

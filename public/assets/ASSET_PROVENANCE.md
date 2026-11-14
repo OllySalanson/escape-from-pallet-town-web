@@ -1125,6 +1125,43 @@ Nintendo / Creatures / Game Freak, no licence from them.
   both of a metatile's layers, with FireRed's black lifted out of a border
   piece so it stands against whatever dark the game draws round a room.
 
+### `frlg-gyms.png` - Cerulean Gym's pool and Fuchsia Gym's maze
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling
+as `frlg-areas.png` below: Pokemon FireRed/LeafGreen art, rights holders
+Nintendo / Creatures / Game Freak, no licence from them.
+
+- **Source.** pret's FireRed disassembly, **pret/pokefirered**
+  (<https://github.com/pret/pokefirered>), at commit
+  `037335f4c725d7c9aecdac87066f2002b4bd7e14`, read 2026-11-14: three tileset
+  pairs. Cerulean Gym's - `data/tilesets/primary/building` with
+  `secondary/cerulean_gym` - named by metatile as `data/layouts/CeruleanCity_Gym`
+  uses them: the tiled floor round the pool, the cream back wall with its
+  portholes and water badge, the side walls, the pool's water and rim, the
+  shadows and posts under its walkways, the walkways, the leader's dais and
+  plaque, the statues, the ladders and the mat. Fuchsia Gym's -
+  `primary/building` with `secondary/fuchsia_gym` - named as
+  `data/layouts/FuchsiaCity_Gym` uses them: the pink floor and its shade, the
+  back wall of gold beams with its green pillars, windows and badge, Koga's
+  dais, the statues and the mat. And the Rocket Hideout's maze partitions, from
+  the same pair `frlg-hideout.png` above is cut from (`secondary/silph_co`'s
+  metatiles on `secondary/condominiums`' tiles), as `RocketHideout_B2F` uses
+  them.
+- **One recolour.** FireRed's Fuchsia Gym is a maze of invisible walls. Here
+  they are drawn, as the hideout's own partitions with four colours of their
+  palette (12) swapped for four of Fuchsia Gym's own palette 7 - the teal top
+  for the pillars' green, the pale rims for the beams' gold, the grey shade for
+  the pillars' dark green. Every other pixel is as FireRed draws it.
+- **Terms.** As for `frlg-areas.png`: nothing of the checkout is committed;
+  what ships is a cut - 81 named pieces on a new 16x8 grid.
+- **How it was cut.** `scripts/cut-frlg-gyms.mjs` is the whole method, and
+  writes `src/game/world/generated/gymPieces.ts`, with each gym's own layout as
+  ground letters and pieces, which `gymStyles.test.ts` holds the two room
+  styles' drawing rules to. Colours are read back to the GBA's five bits a
+  channel and written `x << 3`; every piece is drawn from both of a metatile's
+  layers, but the mats, which are cut from the top layer and fitted to one row
+  as `frlg-areas.png`'s are.
+
 ### `frlg-areas.png` - the insides of a player's buildings, and its caves
 
 **RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling

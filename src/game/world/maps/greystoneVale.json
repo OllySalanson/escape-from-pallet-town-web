@@ -8992,8 +8992,8 @@
    ]
   },
   {
-   "x": 8,
-   "y": 10,
+   "x": 11,
+   "y": 14,
    "name": "Gym Guide",
    "look": "gym-guide",
    "facing": "left",
@@ -10191,11 +10191,11 @@
    ]
   },
   {
-   "x": 8,
-   "y": 10,
+   "x": 7,
+   "y": 16,
    "name": "Gym Guide",
    "look": "gym-guide",
-   "facing": "left",
+   "facing": "right",
    "lines": [
     "Yo! Champ in the making! MISTY holds the jetty and the reed trail, the two ways into the Coast.",
     "She makes it rain, and in the rain her Horsea moves first. Water hits harder and Fire goes soft.",
@@ -21033,43 +21033,87 @@
    "id": "tanglewood-fuchsia-gym",
    "name": "Fuchsia Gym",
    "kind": "inside",
-   "style": "warehouse",
-   "width": 13,
-   "height": 12,
+   "style": "fuchsia-gym",
+   "width": 15,
+   "height": 16,
    "ground": [
-    "BBBBBBBBBBBBB",
-    "BBBBBBBBBBBBB",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP"
+    "BBBBBBBBBBBBBBB",
+    "BBBBBBBBBBBBBBB",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPFFFFFFFFFFF",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "FFFFFFFFFFFPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP",
+    "PPPPPPPPPPPPPPP"
    ],
    "buildings": [
     {
-     "kind": "boxes",
+     "kind": "maze-pillar",
      "x": 0,
-     "y": 2
+     "y": 0
     },
     {
-     "kind": "boxes",
-     "x": 12,
-     "y": 2
+     "kind": "maze-pillar",
+     "x": 3,
+     "y": 0
     },
     {
-     "kind": "big-crate",
-     "x": 0,
-     "y": 9
-    },
-    {
-     "kind": "big-crate",
+     "kind": "maze-pillar",
      "x": 11,
-     "y": 9
+     "y": 0
+    },
+    {
+     "kind": "maze-pillar",
+     "x": 14,
+     "y": 0
+    },
+    {
+     "kind": "maze-window",
+     "x": 1,
+     "y": 0
+    },
+    {
+     "kind": "maze-window",
+     "x": 5,
+     "y": 0
+    },
+    {
+     "kind": "maze-window",
+     "x": 8,
+     "y": 0
+    },
+    {
+     "kind": "maze-window",
+     "x": 12,
+     "y": 0
+    },
+    {
+     "kind": "maze-badge",
+     "x": 7,
+     "y": 0
+    },
+    {
+     "kind": "maze-dais",
+     "x": 6,
+     "y": 3
+    },
+    {
+     "kind": "maze-statue",
+     "x": 4,
+     "y": 12
+    },
+    {
+     "kind": "maze-statue",
+     "x": 10,
+     "y": 12
     }
    ]
   },
@@ -21543,43 +21587,90 @@
    "id": "strand-cerulean-gym",
    "name": "Cerulean Gym",
    "kind": "inside",
-   "style": "warehouse",
-   "width": 13,
-   "height": 12,
+   "style": "cerulean-gym",
+   "width": 17,
+   "height": 19,
    "ground": [
-    "BBBBBBBBBBBBB",
-    "BBBBBBBBBBBBB",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP",
-    "PPPPPPPPPPPPP"
+    "CBBBBBBBBBBBBBBBC",
+    "CBBBBBBBBBBBBBBBC",
+    "CBBBBBBBBBBBBBBBC",
+    "CPPPPPPPPPPPPPPPC",
+    "CPPPPPPWWWPPPPPPC",
+    "CPWWWWWWWWWWWWWPC",
+    "CPWWWWW___WWWWWPC",
+    "CPWW_________WWPC",
+    "CPWWWWW___WW_WWPC",
+    "CPWWWWWWWWWW_WWPC",
+    "CPWW_________WWPC",
+    "CPWW_WWWW_WWWWWPC",
+    "CPWW_WWWW_WWWWWPC",
+    "CPWW______WWWWWPC",
+    "CPWWWWWWW_WWWWWPC",
+    "CPWWWWWWW_WWWWWPC",
+    "CPWWWW_____WWWWPC",
+    "CPWWWW_____WWWWPC",
+    "CPPPPPPPPPPPPPPPC"
    ],
    "buildings": [
     {
-     "kind": "boxes",
-     "x": 0,
-     "y": 2
+     "kind": "pool-badge",
+     "x": 8,
+     "y": 0
     },
     {
-     "kind": "boxes",
-     "x": 12,
-     "y": 2
+     "kind": "pool-porthole",
+     "x": 5,
+     "y": 1
     },
     {
-     "kind": "big-crate",
-     "x": 0,
-     "y": 9
+     "kind": "pool-porthole",
+     "x": 7,
+     "y": 1
     },
     {
-     "kind": "big-crate",
+     "kind": "pool-porthole",
+     "x": 9,
+     "y": 1
+    },
+    {
+     "kind": "pool-porthole",
      "x": 11,
-     "y": 9
+     "y": 1
+    },
+    {
+     "kind": "pool-dais",
+     "x": 7,
+     "y": 5
+    },
+    {
+     "kind": "pool-statue",
+     "x": 6,
+     "y": 16
+    },
+    {
+     "kind": "pool-statue-east",
+     "x": 10,
+     "y": 16
+    },
+    {
+     "kind": "pool-ladder",
+     "x": 3,
+     "y": 4
+    },
+    {
+     "kind": "pool-ladder",
+     "x": 13,
+     "y": 4
+    },
+    {
+     "kind": "pool-ladder-south",
+     "x": 3,
+     "y": 17
+    },
+    {
+     "kind": "pool-ladder-south",
+     "x": 13,
+     "y": 17
     }
    ]
   },
@@ -24696,8 +24787,8 @@
     },
     {
      "area": "tanglewood-fuchsia-gym",
-     "x": 6,
-     "y": 11,
+     "x": 7,
+     "y": 15,
      "toward": "down",
      "look": "mat"
     }
@@ -24889,8 +24980,8 @@
     },
     {
      "area": "strand-cerulean-gym",
-     "x": 6,
-     "y": 11,
+     "x": 8,
+     "y": 18,
      "toward": "down",
      "look": "mat"
     }
