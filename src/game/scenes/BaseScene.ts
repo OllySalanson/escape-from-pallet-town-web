@@ -940,6 +940,8 @@ export class BaseScene extends Phaser.Scene {
   private knockPrompt: { readonly prompt: ChoicePrompt; readonly knock: KnockAtTheDoor } | null = null;
   /** A question asked YES or NOT NOW at the foot of what somebody said (`askInBox`): a favour, or a heal. */
   private boxQuestion: { readonly prompt: ChoicePrompt; readonly answer: (yes: boolean) => void } | null = null;
+  /** Whether the box up is somebody speaking to the player, seated clear of them both: the hall's view holds still under it. */
+  private talkingWithSomebody = false;
   /** The pointer came down while a box was up: read as the key that moves it on. */
   private boxClicked = false;
   /** The "!" over a keeper who has something to say about their favour. */
@@ -1995,6 +1997,17 @@ export class BaseScene extends Phaser.Scene {
   private settleHallCamera(deltaMs: number, snap: boolean): void {
     if (!this.arena || this.jump) {
       return;
+    }
+    // While somebody is speaking or asking, the view holds where it was when
+    // the box was seated clear of them: eased on round to the stands under it,
+    // MISTY and the player slid down beneath the question (the gyms playtest
+    // of 14 Nov 2026, her on her own tile on the far floor).
+    if (this.talkingWithSomebody && (this.dialogBox?.visible || this.boxQuestion)) {
+      if (!snap) {
+        return;
+      }
+    } else {
+      this.talkingWithSomebody = false;
     }
     const middle = {
       x: this.player.x + TILE_SIZE / 2,
@@ -5580,12 +5593,15 @@ export class BaseScene extends Phaser.Scene {
     onLineShown?: (index: number) => void,
   ): void {
     this.afterSaid = then ?? null;
+    this.talkingWithSomebody = about.length > 0;
     const view = this.cameras.main.worldView;
     const seat = placeDialog({
       viewHeight: this.scale.height,
       box: { x: this.dialogBox.x, width: DIALOG_WIDTH, height: DIALOG_HEIGHT },
       margin: DIALOG_MARGIN,
-      about: about.map((tile) => {
+      // The player is always one of the two in a conversation: the box keeps
+      // clear of them as well as of whoever it is about.
+      about: [...about, this.currentTile].map((tile) => {
         const figure = figureRect(tile);
         return { ...figure, x: figure.x - view.left, y: figure.y - view.top };
       }),

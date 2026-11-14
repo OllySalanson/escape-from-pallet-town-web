@@ -4731,13 +4731,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private createSign(entity: WorldEntity): void {
     // Map art rather than a figure: a signpost that outranked a caption put its
     // post through the middle of the cache list beside it. A secret's bell
-    // rope is the drowned spire it hangs from, standing up out of the sea.
-    const summons = entity.secret !== undefined && secretById(entity.secret)?.nook === 'summons';
+    // rope is the drowned spire it hangs from, standing up out of the sea;
+    // every other secret's sign is a notice, and drawn as one.
+    const rope = entity.secret !== undefined && secretById(entity.secret)?.bellRope === true;
     const sign = this.add
       .image(
         entity.position.x * TILE_SIZE + TILE_SIZE / 2,
         entity.position.y * TILE_SIZE + TILE_SIZE / 2,
-        iconTextureKey(summons ? WORLD_ICONS.bellRope : WORLD_ICONS.signPost),
+        iconTextureKey(rope ? WORLD_ICONS.bellRope : WORLD_ICONS.signPost),
       )
       .setDepth(atRow(MARKER_BAND, entity.position.y));
     this.mapObjects.push(sign);
