@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BREATH_LISTENS_AFTER_MS, MOST_WORDS, RAIDS_NAMED_IN_FULL, betOf, breathMs, climbAt, railStamps, stakeWords, wordsUpAt, type AtRisk } from './heldBreath';
+import { BREATH_LISTENS_AFTER_MS, MOST_WORDS, RAIDS_NAMED_IN_FULL, betOf, breathMs, climbAt, fitRailStamps, railStamps, stakeWords, wordsUpAt, type AtRisk } from './heldBreath';
 
 const team: AtRisk = {
   pokemon: [
@@ -60,6 +60,35 @@ describe('the held breath', () => {
   it('never asks more of the screen with a heading and a SAFE line than it did without', () => {
     const items = Array.from({ length: 12 }, (_each, index) => `Thing ${index}`);
     expect(railStamps({ ...team, items, safe: ['Pidgey'] }, 1)).toHaveLength(MOST_WORDS);
+  });
+
+  it("puts a SAFE line too wide for the screen on to a second line, between two things, as a new save's first jump needs", () => {
+    // A stand-in for the stamped width: so many letters across the screen.
+    const fits = (text: string) => text.length <= 32;
+    const firstJump = railStamps(
+      { pokemon: [], pack: 'Raid pack', packIsBetter: false, items: ['Poké Ball ×4'], safe: ['Charmander (your partner)', 'Potion ×3'] },
+      1,
+    );
+    expect(firstJump.some((stamp) => !fits(stamp.text))).toBe(true);
+    const fitted = fitRailStamps(firstJump, fits);
+    expect(fitted).toEqual([
+      { text: 'AT RISK', kind: 'risk' },
+      { text: 'RAID PACK', kind: 'risk' },
+      { text: 'POKÉ BALL ×4', kind: 'risk' },
+      { text: 'SAFE: CHARMANDER (YOUR PARTNER)', kind: 'safe' },
+      { text: 'POTION ×3', kind: 'safe' },
+    ]);
+    expect(fitted.every((stamp) => fits(stamp.text))).toBe(true);
+    // A line that already fits is left as it is.
+    expect(fitRailStamps(firstJump, () => true)).toEqual(firstJump);
+  });
+
+  it('names fewer safe things rather than stamp more lines than the screen holds', () => {
+    const items = Array.from({ length: 12 }, (_each, index) => `Thing ${index}`);
+    const full = railStamps({ ...team, items, safe: ['Bulbasaur (your partner)', 'Potion ×3'] }, 1);
+    const fitted = fitRailStamps(full, (text) => text.length <= 30);
+    expect(fitted).toHaveLength(MOST_WORDS);
+    expect(fitted[MOST_WORDS - 1]).toEqual({ text: 'SAFE: BULBASAUR (YOUR PARTNER)', kind: 'safe' });
   });
 
   it('stops for nothing when nothing is worth stopping for, heading and all', () => {

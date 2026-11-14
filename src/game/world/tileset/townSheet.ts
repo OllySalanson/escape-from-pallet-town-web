@@ -22,12 +22,17 @@ export const TOWN_SHEET_SOURCE = tileReader(
 
 /**
  * Cells a player walks on, by piece: the boards of Vermilion's pier between its
- * two lamps, the steps up to a north-south gatehouse's door and the floor of
- * the east-west one's porches. Everything else drawn is wall, and a cell the cut
- * left empty is nothing at all.
+ * two lamps, the steps up to a north-south gatehouse's door, the floor of the
+ * east-west one's porches, and the two top corners of Celadon's round fountain,
+ * which hold only the ground beside its rim. Everything else drawn is wall, and
+ * a cell the cut left empty is nothing at all.
  */
 const WALKED: Partial<Record<TownPieceName, readonly (readonly [number, number])[]>> = {
   pier: [2, 3, 4, 5, 6, 7].flatMap((y) => [2, 3, 4].map((x) => [x, y] as const)),
+  roundFountain: [
+    [0, 0],
+    [2, 0],
+  ],
   route2Gate: [1, 2, 3, 4].map((x) => [x, 6] as const),
   saffronGate: [1, 2, 3, 4].map((x) => [x, 7] as const),
   saffronSideGate: [3, 4].flatMap((y) => [0, 7].map((x) => [x, y] as const)),

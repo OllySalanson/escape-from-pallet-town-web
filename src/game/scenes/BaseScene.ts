@@ -166,7 +166,7 @@ import {
 import { HARBOUR_PLACES, harbourPlaceAt } from '../base/harbourPlaces';
 import { PlaceNameSign } from '../base/placeNameSign';
 import { FloatingBoats } from '../base/floatingBoats';
-import { anglerLines, harbourBite, reeledInLines } from '../base/harbourFishing';
+import { anglerLines, harbourBite, openWater, reeledInLines } from '../base/harbourFishing';
 import { spyglassLines } from '../base/spyglass';
 import { seagallopLines } from '../base/seagallopLog';
 import { paintFloat } from '../world/fishingFloat';
@@ -434,6 +434,16 @@ const CAMERA_ZOOM = 1;
 /** Whether this page has counted a walk into the harbour yet (`analytics/playCounter.ts`). */
 let harbourCounted = false;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
+/**
+ * The camera's follow offset, so it is the middle of the tile the player
+ * stands on that is the middle of the screen, as every test of what is in the
+ * window reckons it (`harbourLooks.test.ts`, `doorCaptions.test.ts`). Phaser
+ * follows a sprite's position, which for the player is its frame's top-left:
+ * the view stood half a tile west and more than a tile north of that, and on
+ * the smallest screen a new visit's lab door was under the FEEDBACK tab at
+ * the right edge (playtest, 14 Nov 2026).
+ */
+const FOLLOW_TILE = { x: -TILE_SIZE / 2, y: PLAYER_SPRITE_Y_OFFSET - TILE_SIZE / 2 } as const;
 /** How many rows of the figure are its head, for the telescope's map to show whose it is. */
 const TOWN_MAP_HEAD_ROWS = 11;
 const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
@@ -778,6 +788,8 @@ export class BaseScene extends Phaser.Scene {
   private tileAnimationMs = 0;
   /** What the yard's ground is made of, for hearing the sea from it; null in a room. */
   private terrain: readonly (readonly Material[])[] | null = null;
+  /** The yard's sea a line can go into (`openWater`), and nothing in a room. */
+  private fishable: readonly (readonly boolean[])[] | null = null;
   /** Until the sea is next heard lapping at the quay. */
   private untilWaveMs = WAVE_EVERY_MS;
   /** Until the S.S. Anne next sounds her horn, out in the harbour. */
@@ -977,7 +989,7 @@ export class BaseScene extends Phaser.Scene {
 
   /** The camera moved over for the favours' side panel (`ui/sidePanel.ts`). The hall's is `settleHallCamera`. */
   private get panelLean(): PanelLean {
-    this.panelLeanValue ??= new PanelLean(() => this.cameras.main);
+    this.panelLeanValue ??= new PanelLean(() => this.cameras.main, FOLLOW_TILE);
     return this.panelLeanValue;
   }
 
@@ -1128,6 +1140,7 @@ export class BaseScene extends Phaser.Scene {
       };
       this.fixtures = [];
       this.terrain = null;
+      this.fishable = null;
       // In through the door, onto the mat, facing the keeper - or back where
       // they were standing, if a screen opened from inside the room is what
       // they have just backed out of - or on the stair mat they have just
@@ -1156,6 +1169,7 @@ export class BaseScene extends Phaser.Scene {
       };
       this.fixtures = standingFixtures(loaded.raidProgress.workshopUpgrades);
       this.terrain = map.terrain;
+      this.fishable = openWater(map);
       const returning = data.from === undefined ? undefined : doorNamed(data.from);
       // Backing out of the Day-Care's screen stands the player back where they
       // spoke to him, still facing him.
@@ -2287,9 +2301,9 @@ export class BaseScene extends Phaser.Scene {
     const risk = this.stakesGoingOver();
     const words = risk ? railStamps(risk, new SaveManager().load()?.raidProgress.benchRaids ?? 1) : [];
     this.jump.bet = risk ? betOf(risk) : 'nothing';
-    this.jump.dive?.stakesAre(words);
-    if (words.length > 0) {
-      this.jump.breath = { elapsedMs: 0, ms: breathMs(words.length), words: words.length, cut: false };
+    const lines = this.jump.dive?.stakesAre(words) ?? words.length;
+    if (lines > 0) {
+      this.jump.breath = { elapsedMs: 0, ms: breathMs(lines), words: lines, cut: false };
       arena.holdBreath(true);
       const rising = moodOnTheRail(this.jump.bet);
       if (rising) {
@@ -3303,15 +3317,12 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /**
-   * Whether a rod reaches `tile`: open sea in front of the player outdoors,
-   * with the angler's rod lent or one of the player's own in the vault.
+   * Whether a rod reaches `tile`: open sea in front of the player outdoors -
+   * never a boat or a hull on it - with the angler's rod lent or one of the
+   * player's own in the vault.
    */
   private canFishAt(tile: GridPosition): boolean {
-    return (
-      this.terrain?.[tile.y]?.[tile.x] === 'water' &&
-      this.collision[tile.y]?.[tile.x] === true &&
-      (harbourRodLent || this.hasHarbourRod())
-    );
+    return this.fishable?.[tile.y]?.[tile.x] === true && (harbourRodLent || this.hasHarbourRod());
   }
 
   /** A rod of the player's own, or the angler's tally showing he has lent his. */
@@ -4382,6 +4393,7 @@ export class BaseScene extends Phaser.Scene {
     // (`settleHallCamera`), because it leans as well as follows.
     if (!this.place.room?.pit) {
       camera.startFollow(this.player, true);
+      camera.setFollowOffset(FOLLOW_TILE.x, FOLLOW_TILE.y);
     }
   }
 

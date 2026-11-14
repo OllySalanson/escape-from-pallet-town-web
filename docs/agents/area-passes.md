@@ -42,7 +42,7 @@ its line and its picture: it says what was checked.
 | 7 | **Life** | Is something always moving, and does it stand where it makes sense? | A figure on a way; a figure that stares at a wall; a moved prop that left a figure looking at nothing; a quiet part with nobody in it | The `--beats` picture, then the game at day and at night. Sound effects yes; music stays off |
 | 8 | **Danger and pace** | Are the threats where the player expects them, with calm between? | A fight on a doorstep; nowhere to breathe; (in the harbour) any threat at all | A raid area: where encounters, trainers and the hunter's ground sit against the safe spots. The harbour is safe by construction and must stay so |
 | 9 | **Character** | Could this be nowhere else in the game? | Borrowed colours and materials; no one thing you would name it by | Name its materials and its signature feature in a line. If the line fits another area, it is not done |
-| 10 | **Fit in the window** | Is what a newcomer needs in view when they arrive? | A key door a tile off the edge of the smallest screen; an arrival that looks at a wall | The 20x15 and 25x16 windows on every arrival tile (`harbourLooks.test.ts`, "what is in the window on arrival") |
+| 10 | **Fit in the window** | Is what a newcomer needs in view when they arrive? | A key door a tile off the edge of the smallest screen, or under the FEEDBACK tab half way down its right edge; an arrival that looks at a wall | The 20x15 and 25x16 windows on every arrival tile, every tile of every door, and the tab at 2x and 3x (`harbourLooks.test.ts`, "what is in the window on arrival"); the yard's camera centres the player's tile (`FOLLOW_TILE` in `BaseScene.ts`), which is what that test reckons |
 | 11 | **Building placement** | Does every building stand where a town would put it? | A building set back behind a lawn or into the trees, with no way to its door; something standing in front of a door, or one building behind another's board; a front that has no line (each building at its own depth); trade away from where the goods land, a home among the shops; a square with nothing closing its sides; a long view that ends on nothing | Draw the whole area and name its lines - the front, the street, the square - then say where each kind of building belongs on them. Move buildings, not props. A moved building takes its people, its captions, its regulars' spots, its place name and every walk measured to it with it, so move one at a time and run the area's tests between (`harbourLooks.test.ts`, "where its buildings stand") |
 | 12 | **Density** | Is the place full without being in the way? | Bare ground: paving or lawn four steps from anything; an edge with nothing against it; water with nothing on it; a plaza that is only its paving. And the other way: anything on a walking line, a pinch a pair cannot pass, things wedged (passes 2 and 3 still hold) | Measure it - how many steps each open tile is from something to look at (`harbourLooks.test.ts`, "how full it is") - then fill the edges with things that belong to the place: against a wall, the water, a kerb, never the middle. A thing two tiles deep takes a row a way needs, so stand it on one row with its top over the wall behind it (`promenadeLeanTo`). People and Pokémon count, and so does shrinking ground nobody uses |
 
@@ -58,7 +58,12 @@ its line and its picture: it says what was checked.
   read as sparse; the answer was not to put the muddle back but to give the room a job - a lawn
   nobody walked became a lane and a shop, a quay five deep became three with boats against it.
 - A yard change re-plans every regular (`npx vite-node tools/base/botSpots.mts`), and a moved prop
-  can leave a figure, a caption spot or a playtest route pointing at where it used to be.
+  can leave a figure, a caption spot or a playtest route pointing at where it used to be. No place
+  a regular stands may be the one way out of another's (`harbourActivities.test.ts`; the loiter
+  search keeps to it): opening the pier's head reshuffled the spots and a sea view in a pocket was
+  shut in by a chat circle standing in its neck, until the plan ran off and the regular jumped.
+  A solid cell with almost nothing drawn on dry ground is an invisible wall (`invisibleWalls.test.ts`
+  reads the art).
 
 ## Done means
 

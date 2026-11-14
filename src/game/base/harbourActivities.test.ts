@@ -21,6 +21,7 @@ import {
   chatInWindow,
   directionOf,
   forgetVisitPlans,
+  regularsStandingSpots,
   visitPlan,
   type BotActivity,
   type VisitPlan,
@@ -79,6 +80,34 @@ describe('where the regulars go to do things', () => {
         expect(circle[2].facing).toBe(circle[2].tile.y < middle.y ? 'down' : 'up');
       }
     }
+  });
+
+  it('never shut another regular in, whichever place somebody is stood on', () => {
+    // A sea view in a pocket whose one way out was a chat circle's place: stood
+    // in, it held the one looking at the sea until the plan ran off and they
+    // jumped across the quay (14 Nov 2026, once the pier's head opened).
+    const { spots } = botGround();
+    const everywhere = [...regularsStandingSpots(), ...spots];
+    const shutIn: string[] = [];
+    for (const blocker of everywhere) {
+      const reached = new Set<string>([key(BOT_GATES[0].tile)]);
+      let frontier: GridPosition[] = [BOT_GATES[0].tile];
+      while (frontier.length > 0) {
+        const next: GridPosition[] = [];
+        for (const tile of frontier) {
+          for (const step of [ahead(tile, 'up'), ahead(tile, 'down'), ahead(tile, 'left'), ahead(tile, 'right')]) {
+            if (walks[step.y]?.[step.x] !== true || reached.has(key(step)) || key(step) === key(blocker)) continue;
+            reached.add(key(step));
+            next.push(step);
+          }
+        }
+        frontier = next;
+      }
+      for (const other of everywhere) {
+        if (key(other) !== key(blocker) && !reached.has(key(other))) shutIn.push(`${key(other)} by ${key(blocker)}`);
+      }
+    }
+    expect([...new Set(shutIn)]).toEqual([]);
   });
 
   it('lengthen nobody\'s walk, whichever place somebody is stood on', () => {

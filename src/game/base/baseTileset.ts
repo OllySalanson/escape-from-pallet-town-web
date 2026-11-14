@@ -365,11 +365,14 @@ export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
     // 7x8. Vermilion's own pier: the two bollard towers on the quay with a
     // rope between them, the awning the walkway passes under, and the walkway
     // running out over the water - and only the walkway walked, because its
-    // sides are sea.
+    // sides are sea. Its head is open quay paving three wide, the walkway's
+    // own width (the cell on the left holds only the edge of the left tower's
+    // plinth, a hairline), so the way out of HARBOUR SQUARE on the fountain's
+    // line walks straight on down the pier.
     shipPier: afloat(
       TOWN_PROPS.pier,
       [
-        ...[0, 1].flatMap((y) => [3, 4].map((x) => [x, y] as const)),
+        ...[0, 1].flatMap((y) => [2, 3, 4].map((x) => [x, y] as const)),
         ...[4, 5, 6, 7].flatMap((y) => [2, 3, 4].map((x) => [x, y] as const)),
       ],
       [2, 3].flatMap((y) => [2, 3, 4].map((x) => [x, y] as const)),
