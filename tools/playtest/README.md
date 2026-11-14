@@ -468,8 +468,10 @@ believing it met the exit sealed. And the dev server reloads the page whenever a
 file under `src/`, which takes the raid with it - `raid.mjs` says so rather than
 failing somewhere odd. With another worker editing, play the real-speed pass
 against a snapshot: `npx vite build --outDir "$SCRATCH/dist"` (no
-`VITE_EPTW_TEST_MODE`: that build is in test mode at every URL) and
-`npx vite preview --outDir "$SCRATCH/dist" --port "$FREE_PORT" --strictPort`.
+`VITE_EPTW_TEST_MODE`: that build is in test mode at every URL), served under
+the Pages subpath it is built for ('Idle costs the machine' below) - `vite preview`
+serves it at the root, where the page finds no script and the driver times out
+waiting for a title that never comes.
 
 `teamShots.mjs <test-mode build url> <dir> [--window=WxH] [--before]` photographs
 YOUR TEAM on a save of two dozen Pokémon, walks every slot and tile by arrow key,

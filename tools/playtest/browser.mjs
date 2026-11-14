@@ -8,7 +8,7 @@
 //   await browser.close();                            // always, in a finally
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { homedir, tmpdir } from 'node:os';
+import { constants, homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { lowerOwnPriority } from '../lowPriority.mjs';
 
@@ -25,6 +25,21 @@ export const PIXEL_WINDOW = { width: 1200, height: 768 };
 export function writeScreenshot(path, base64) {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, Buffer.from(base64, 'base64'));
+}
+
+/**
+ * Whatever ends the driver ends what it started. Node runs its `exit`
+ * listeners when a script finishes or throws, and not when a signal stops it:
+ * a `timeout` that ran out on a slow real-speed raid left a whole browser
+ * running under nobody (14 Nov 2026), which is what has run this box out of
+ * memory before. So a signal becomes an exit, with the code a shell would
+ * have reported for it.
+ */
+export function stopWithDriver(stop) {
+  process.once('exit', stop);
+  for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
+    process.once(signal, () => process.exit(128 + constants.signals[signal]));
+  }
 }
 
 const KEYS = {
@@ -121,7 +136,11 @@ export async function launchBrowser({ window = LOGIC_WINDOW, libs = process.env.
         resolve(Number(match[1]));
       }
     });
-    child.once('exit', (code) => reject(new Error(`Chromium exited (${code}) before listening:\n${stderr}`)));
+    child.once('exit', (code) => {
+      // It never ran, so nothing will ever close it: its profile goes now.
+      rmSync(profile, { recursive: true, force: true });
+      reject(new Error(`Chromium exited (${code}) before listening:\n${stderr}`));
+    });
   });
   child.stderr.resume();
 
@@ -145,14 +164,15 @@ export async function launchBrowser({ window = LOGIC_WINDOW, libs = process.env.
     }
     rmSync(profile, { recursive: true, force: true });
   };
-  // A driver that throws must not leave a browser behind it.
-  process.once('exit', () => {
+  // A driver that throws, or is stopped, must not leave a browser behind it.
+  stopWithDriver(() => {
     if (!closed) {
       try {
         process.kill(-child.pid, 'SIGKILL');
       } catch {
         // Already gone.
       }
+      rmSync(profile, { recursive: true, force: true });
     }
   });
 
