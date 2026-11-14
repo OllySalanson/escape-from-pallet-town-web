@@ -159,6 +159,8 @@
         display: block;
       }
       .zoombox {
+        /* In the column's flow, so BACK OUT stands under it. */
+        position: relative;
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -424,6 +426,213 @@
         color: var(--ink-soft);
       }
 
+      /* A place's panel: everything it holds, grouped. */
+      #card.area {
+        width: 380px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 12px 14px 14px;
+      }
+      .sect {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+      }
+      .sect h3 {
+        margin: 0 0 6px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+      .sect .sub {
+        margin: 8px 0 3px;
+        font-size: 12.5px;
+        font-weight: 700;
+      }
+      .sect .sub:first-of-type {
+        margin-top: 0;
+      }
+      .sect .also {
+        font-size: 12px;
+        color: var(--ink-soft);
+        margin: -1px 0 4px;
+      }
+      .sect p {
+        margin: 3px 0;
+        font-size: 13px;
+        line-height: 1.35;
+      }
+      .sect p b {
+        font-weight: 700;
+      }
+      .mon {
+        display: grid;
+        grid-template-columns: 34px 1fr auto auto;
+        align-items: center;
+        column-gap: 8px;
+        min-height: 34px;
+        font-size: 13px;
+      }
+      .mon img {
+        width: 34px;
+        height: 34px;
+        image-rendering: pixelated;
+        object-fit: contain;
+      }
+      .mon .nm {
+        font-weight: 650;
+        min-width: 0;
+      }
+      .mon .nm small {
+        display: block;
+        font-weight: 500;
+        font-size: 11px;
+        color: var(--ink-soft);
+      }
+      .mon .lv {
+        font-size: 12px;
+        color: var(--ink-soft);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .mon .pc {
+        min-width: 44px;
+        text-align: right;
+        font-weight: 750;
+        font-variant-numeric: tabular-nums;
+      }
+      .mon.match {
+        background: #fff3bf;
+        border-radius: 6px;
+      }
+      .ty {
+        display: inline-block;
+        margin: 1px 3px 0 0;
+        padding: 0 5px;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 750;
+        letter-spacing: 0.03em;
+        line-height: 15px;
+        color: #fff;
+        text-transform: uppercase;
+      }
+      .tag {
+        display: inline-block;
+        margin-left: 4px;
+        padding: 0 5px;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 750;
+        line-height: 15px;
+        border: 1px solid currentColor;
+        text-transform: uppercase;
+      }
+      .legend {
+        margin-top: 12px;
+        padding-top: 8px;
+        border-top: 1px solid var(--line);
+        font-size: 11.5px;
+        line-height: 1.4;
+        color: var(--ink-soft);
+      }
+      .legend p {
+        margin: 2px 0;
+      }
+
+      .linkish {
+        font: inherit;
+        font-weight: 650;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--ink);
+        text-align: left;
+        text-decoration: underline;
+        text-decoration-color: var(--line);
+        text-underline-offset: 2px;
+        cursor: pointer;
+      }
+      .linkish:hover {
+        text-decoration-color: var(--ink);
+      }
+
+      /* The Pokémon filter, under the search. */
+      #findwrap {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin: 8px 0 0;
+      }
+      #find {
+        flex: 1;
+        min-width: 0;
+        font: inherit;
+        font-size: 14px;
+        padding: 7px 10px;
+        border: 1.5px solid var(--ink);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--ink);
+      }
+      #find:focus-visible {
+        outline: 3px solid var(--focus);
+      }
+      #findclear {
+        font: inherit;
+        font-size: 16px;
+        width: 30px;
+        height: 30px;
+        border: 0;
+        border-radius: 6px;
+        background: none;
+        color: var(--ink-soft);
+        cursor: pointer;
+      }
+      #findclear:hover {
+        background: var(--paper);
+        color: var(--ink);
+      }
+      #findnote {
+        margin: 6px 0 0;
+        font-size: 12px;
+        color: var(--ink-soft);
+      }
+      #findnote button {
+        font: inherit;
+        font-size: 12px;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--ink);
+        text-decoration: underline;
+        cursor: pointer;
+      }
+
+      /* Back out of a building, under the zoom buttons. */
+      #back {
+        font: inherit;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        width: 64px;
+        padding: 7px 4px;
+        border-radius: 8px;
+        border: 1.5px solid var(--ink);
+        background: var(--ink);
+        color: #fff;
+        cursor: pointer;
+        box-shadow: var(--shadow);
+      }
+      #back[hidden] {
+        display: none;
+      }
+      #back:focus-visible {
+        outline: 3px solid var(--focus);
+      }
+
       @media (max-width: 720px) {
         #titleblock {
           left: 8px;
@@ -472,6 +681,17 @@
           bottom: 76px;
           width: auto;
         }
+        #card.area {
+          width: auto;
+          max-height: 58vh;
+        }
+        #card.area .close {
+          position: sticky;
+          float: right;
+          top: 0;
+          margin: -6px -8px 0 0;
+          background: var(--card);
+        }
       }
     </style>
   </head>
@@ -501,6 +721,19 @@
         />
       </div>
       <ul id="results" role="listbox"></ul>
+      <div id="findwrap">
+        <input
+          id="find"
+          list="findlist"
+          placeholder="Show a Pokémon or a type"
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Show where a Pokémon or a type is found"
+        />
+        <button id="findclear" type="button" aria-label="Stop showing" hidden>×</button>
+      </div>
+      <datalist id="findlist"></datalist>
+      <div id="findnote" hidden></div>
     </header>
 
     <nav id="controls" class="panel" aria-label="Zoom">
@@ -525,6 +758,7 @@
         <button id="zoomout" type="button" aria-label="Zoom out">&minus;</button>
         <button id="zoomfit" class="fit" type="button" aria-label="Show the whole plan">ALL</button>
       </div>
+      <button id="back" type="button" hidden>◀ BACK OUT</button>
     </nav>
 
     <aside id="key" class="panel" aria-label="Key">
@@ -549,6 +783,7 @@
     <script>
       'use strict';
       const PLAN = /*__PLAN__*/ null;
+      /*__MOTION__*/
 
       // ---------------------------------------------------------------- what is drawn
       const T = PLAN.tileSize;
@@ -564,7 +799,9 @@
         gym: { label: 'Gym', colour: '#7048e8', from: 0.9, labelFrom: 3 },
         landmark: { label: 'Landmark', colour: '#f59f00', from: 2.2, labelFrom: 7 },
         building: { label: 'Building', colour: '#8d5a2b', from: 3.5, labelFrom: 5 },
+        enter: { label: 'Way inside', colour: '#2b8a3e', from: 1.4, labelFrom: 99 },
         door: { label: 'Door, stairs or cave mouth', colour: '#8d5a2b', from: 5, labelFrom: 99 },
+        wild: { label: 'Standing Pokémon', colour: '#0b7285', from: 3, labelFrom: 9 },
         trainer: { label: 'Trainer', colour: '#d9480f', from: 4, labelFrom: 12 },
         boat: { label: 'Boat or lift', colour: '#0c8599', from: 1.5, labelFrom: 5 },
         berry: { label: 'Berry tree', colour: '#c2255c', from: 5, labelFrom: 16 },
@@ -573,6 +810,7 @@
       const ROOM_SORTS = new Set(['center', 'shop', 'gym']);
       /** The key row a feature is shown under. */
       function layerOf(f) {
+        if (f.kind === 'door' && f.enters) return 'enter';
         if ((f.kind === 'building' || f.kind === 'room') && ROOM_SORTS.has(f.sort)) return f.sort;
         if (f.kind === 'room') return 'building';
         return f.kind;
@@ -592,8 +830,11 @@
         sign: 'Sign',
         berry: 'Berry tree',
         boat: 'Boat',
+        wild: 'Pokémon',
       };
       function kindWord(f) {
+        if (f.layer === 'enter') return 'Way inside';
+        if (f.kind === 'wild') return f.sort === 'legend' ? 'Legendary Pokémon' : 'Pokémon';
         if (f.sort === 'center') return 'Pokémon Center';
         if (f.sort === 'shop') return 'Shop';
         if (f.sort === 'gym') return 'Gym';
@@ -646,6 +887,7 @@
         'berry',
         'sign',
         'door',
+        'wild',
       ]);
       const markers = features.filter(
         (f) => MARKER_KINDS.has(f.kind) || (f.kind === 'building' && ROOM_SORTS.has(f.sort)),
@@ -767,23 +1009,24 @@
       const PIECE = PLAN.piece;
       const images = new Map();
       let loading = 0;
-      function pieceImage(z, column, row) {
+      /** A piece's picture once it can be drawn, asking for it the first time; and how far it has faded in. */
+      function pieceEntry(z, column, row) {
         const key = z + '/' + column + '_' + row;
         let entry = images.get(key);
         if (entry) {
           entry.used = frameNumber;
-          return entry.ready ? entry.image : null;
+          return entry;
         }
-        const level = LEVELS[z];
-        if (!level || column < 0 || row < 0 || column >= level.columns || row >= level.rows)
-          return null;
-        if (level.pieces[row * level.columns + column] !== '1') return null;
+        if (!present(z, column, row)) return null;
         const image = new Image();
-        entry = { image, ready: false, used: frameNumber, z };
+        entry = { image, ready: false, readyAt: 0, used: frameNumber, z };
         images.set(key, entry);
         loading++;
-        image.onload = () => {
+        const arrived = () => {
+          if (entry.ready) return;
           entry.ready = true;
+          // Decoded before it is first drawn, so a picture never stalls the frame it arrives in.
+          entry.readyAt = performance.now();
           loading--;
           dirty();
         };
@@ -791,7 +1034,13 @@
           loading--;
         };
         image.src = 'tiles/' + key + '.png';
-        return null;
+        if (image.decode) image.decode().then(arrived, () => (image.complete ? arrived() : 0));
+        else image.onload = arrived;
+        return entry;
+      }
+      function pieceImage(z, column, row) {
+        const entry = pieceEntry(z, column, row);
+        return entry && entry.ready ? entry.image : null;
       }
       function present(z, column, row) {
         const level = LEVELS[z];
@@ -807,49 +1056,113 @@
       function forget() {
         if (images.size < 360) return;
         const old = [...images.entries()]
-          .filter(([, e]) => e.ready && e.z < LEVELS.length - 2)
+          .filter(([, e]) => e.ready && e.z < LEVELS.length - 2 && e.used < frameNumber)
           .sort((a, b) => a[1].used - b[1].used);
         for (const [key] of old.slice(0, images.size - 300)) images.delete(key);
       }
-      function drawPictures() {
+      /** Whether a level's piece is loaded and showing, without asking for it. */
+      function shown(z, column, row) {
+        const entry = images.get(z + '/' + column + '_' + row);
+        return !!entry && entry.ready;
+      }
+      let fading = false;
+      /** Pieces on screen this frame with no picture at all yet, which the zoom checks count. */
+      const pictureStats = { blank: 0 };
+      function drawPictures(now) {
         const deviceScale = view.s * DPR;
         const top = LEVELS.length - 1;
-        const z = Math.max(0, Math.min(top, Math.floor(Math.log2(T / deviceScale))));
+        const z = levelFor(deviceScale, T, top);
         const span = (PIECE * 2 ** z) / T; // tiles a piece covers
         const c0 = Math.max(0, Math.floor(px(0) / span)),
           c1 = Math.floor(px(W) / span);
         const r0 = Math.max(0, Math.floor(py(0) / span)),
           r1 = Math.floor(py(H) / span);
-        ctx.imageSmoothingEnabled = deviceScale < (T / 2 ** z) * 1.5;
+        // Smoothed when a picture is shrunk, sharp pixels once it is blown up: switching
+        // exactly at one to one, where the two look the same, so the switch never shows.
+        ctx.imageSmoothingEnabled = deviceScale < T / 2 ** z;
         ctx.imageSmoothingQuality = 'high';
+        fading = false;
+        pictureStats.blank = 0;
         for (let row = r0; row <= r1; row++)
           for (let column = c0; column <= c1; column++) {
-            if (!present(z, column, row)) continue;
+            const entry = pieceEntry(z, column, row);
+            if (!entry) continue;
+            const opacity = entry.ready ? pictureOpacity(entry.readyAt, now) : 0;
+            // Until it is in and fully faded up, the same ground from another level stays under it.
+            if (opacity < 1) {
+              if (!drawStandIn(z, column, row, top) && !entry.ready) pictureStats.blank++;
+              fading = true;
+            }
+            if (!entry.ready) continue;
+            const image = entry.image;
             const x = column * span,
               y = row * span;
-            const image = pieceImage(z, column, row);
-            if (image) {
-              const w = (image.width * 2 ** z) / T,
-                h = (image.height * 2 ** z) / T;
-              drawImageAt(image, 0, 0, image.width, image.height, x, y, w, h);
-              continue;
-            }
-            // Not loaded yet: the same ground from a coarser level, until it is.
-            for (let up = z + 1; up <= top; up++) {
-              const d = up - z,
-                k = 2 ** d;
-              const parent = pieceImage(up, column >> d, row >> d);
-              if (!parent) continue;
-              const pieceInParent = PIECE / k;
-              const ox = (column % k) * pieceInParent,
-                oy = (row % k) * pieceInParent;
-              const w = Math.min(pieceInParent, parent.width - ox),
-                h = Math.min(pieceInParent, parent.height - oy);
-              if (w <= 0 || h <= 0) break;
-              drawImageAt(parent, ox, oy, w, h, x, y, (w * 2 ** up) / T, (h * 2 ** up) / T);
-              break;
-            }
+            ctx.globalAlpha = opacity;
+            drawImageAt(
+              image,
+              0,
+              0,
+              image.width,
+              image.height,
+              x,
+              y,
+              (image.width * 2 ** z) / T,
+              (image.height * 2 ** z) / T,
+            );
+            ctx.globalAlpha = 1;
           }
+      }
+      /** The ground of level z's piece from the nearest coarser level that is loaded, else from the finer one under it. */
+      function drawStandIn(z, column, row, top) {
+        for (let up = z + 1; up <= top; up++) {
+          const d = up - z,
+            k = 2 ** d;
+          const parent = pieceImage(up, column >> d, row >> d);
+          if (!parent) continue;
+          const pieceInParent = PIECE / k;
+          const ox = (column % k) * pieceInParent,
+            oy = (row % k) * pieceInParent;
+          const w = Math.min(pieceInParent, parent.width - ox),
+            h = Math.min(pieceInParent, parent.height - oy);
+          if (w <= 0 || h <= 0) return false;
+          const span = (PIECE * 2 ** z) / T;
+          drawImageAt(
+            parent,
+            ox,
+            oy,
+            w,
+            h,
+            column * span,
+            row * span,
+            (w * 2 ** up) / T,
+            (h * 2 ** up) / T,
+          );
+          return true;
+        }
+        // Zooming out, the finer pieces that were just on screen cover it until it comes.
+        if (z === 0) return false;
+        let any = false;
+        for (let dy = 0; dy < 2; dy++)
+          for (let dx = 0; dx < 2; dx++) {
+            const c = column * 2 + dx,
+              r = row * 2 + dy;
+            if (!shown(z - 1, c, r)) continue;
+            const child = pieceImage(z - 1, c, r);
+            const childSpan = (PIECE * 2 ** (z - 1)) / T;
+            drawImageAt(
+              child,
+              0,
+              0,
+              child.width,
+              child.height,
+              c * childSpan,
+              r * childSpan,
+              (child.width * 2 ** (z - 1)) / T,
+              (child.height * 2 ** (z - 1)) / T,
+            );
+            any = true;
+          }
+        return any;
       }
       function drawImageAt(image, sx0, sy0, sw, sh, x, y, w, h) {
         // Rounded to device pixels, so neighbouring pieces meet without a seam.
@@ -893,6 +1206,7 @@
             c.lineTo(-r * 1.1, r * 0.85);
             c.closePath();
           } else if (kind === 'gate') c.rect(-r * 1.05, -r * 0.75, 2.1 * r, 1.5 * r);
+          else if (kind === 'enter') roundedPath(c, -r, -r, 2 * r, 2 * r, r * 0.35);
           else if (kind === 'door' || kind === 'sign')
             c.rect(-r * 0.85, -r * 0.85, 1.7 * r, 1.7 * r);
           else c.arc(0, 0, r, 0, Math.PI * 2);
@@ -980,6 +1294,32 @@
             c.rect(-k * 0.45, -k * 0.7, k * 0.9, k * 1.5);
             c.fill();
             break;
+          case 'enter': // an open door with a step in
+            c.rect(-k * 0.55, -k * 0.85, k * 1.1, k * 1.75);
+            c.stroke();
+            c.beginPath();
+            c.moveTo(-k * 0.55, -k * 0.85);
+            c.lineTo(k * 0.25, -k * 0.55);
+            c.lineTo(k * 0.25, k * 1.1);
+            c.lineTo(-k * 0.55, k * 0.9);
+            c.closePath();
+            c.fill();
+            break;
+          case 'wild': // a ball
+            c.moveTo(-k * 1.05, 0);
+            c.lineTo(k * 1.05, 0);
+            c.stroke();
+            c.beginPath();
+            c.arc(0, 0, k * 0.38, 0, Math.PI * 2);
+            c.fill();
+            if (f.sort === 'legend') {
+              c.beginPath();
+              c.strokeStyle = '#ffd43b';
+              c.lineWidth = Math.max(1.4, r * 0.22);
+              c.arc(0, 0, r + c.lineWidth, 0, Math.PI * 2);
+              c.stroke();
+            }
+            break;
           case 'trainer':
             c.moveTo(0, -k * 0.55);
             c.lineTo(0, k * 0.25);
@@ -1038,6 +1378,14 @@
         }
         c.restore();
       }
+      function roundedPath(c, x, y, w, h, r) {
+        c.moveTo(x + r, y);
+        c.arcTo(x + w, y, x + w, y + h, r);
+        c.arcTo(x + w, y + h, x, y + h, r);
+        c.arcTo(x, y + h, x, y, r);
+        c.arcTo(x, y, x + w, y, r);
+        c.closePath();
+      }
       function iconCanvas(f, size) {
         const c = document.createElement('canvas');
         const d = Math.min(window.devicePixelRatio || 1, 3);
@@ -1061,18 +1409,19 @@
         pending = false;
         frameNumber++;
         stepMotion(now);
-        draw();
-        if (motion || flash) dirty();
+        draw(now);
+        if (motion || flash || fading) dirty();
         forget();
       }
-      function draw() {
+      function draw(now = performance.now()) {
         ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
         ctx.fillStyle =
           getComputedStyle(document.documentElement).getPropertyValue('--paper') || '#f1eadb';
         ctx.fillRect(0, 0, W, H);
         drawSheet();
-        drawPictures();
+        drawPictures(now);
         drawZones();
+        drawFilter();
         if (show.grid) drawGrid();
         drawBuildings();
         drawBoats();
@@ -1342,10 +1691,11 @@
         ctx.fillStyle = '#1f2430';
         ctx.font = `800 ${size}px ${FONT}`;
         for (const [c, middle] of columnsAt) {
-          ctx.fillText(letter(c), middle, rulerY + band / 2 + (tick < cell ? 3 : 0));
+          // Where they stand whether or not the tile numbers are in, so letters never hop as they come.
+          ctx.fillText(letter(c), middle, rulerY + band / 2 + 3);
         }
         for (const [r, middle] of rowsAt) {
-          ctx.fillText(String(r + 1), rulerX + band / 2 + (tick < cell ? 3 : 0), middle);
+          ctx.fillText(String(r + 1), rulerX + band / 2 + 3, middle);
         }
         ctx.beginPath();
         for (let c = 0; c <= PLAN.columns; c++) {
@@ -1439,15 +1789,23 @@
       }
       markers.forEach((f) => (f.markerKind = true));
       function markerShown(f) {
-        if (!visible[f.layer]) return false;
-        if (f === selected || f === hovered) return true;
-        return (
-          view.s >= KINDS[f.layer].from * (f.layer === 'door' && f.sort === 'stairs' ? 0.6 : 1)
+        return markerOpacity(f) > 0;
+      }
+      /** A kind of marker fades in as the zoom passes the scale it is shown from, rather than popping up. */
+      function markerOpacity(f) {
+        if (!visible[f.layer]) return 0;
+        if (f === selected || f === hovered) return 1;
+        // Showing a Pokémon or a type, every one of it standing is shown, and no other.
+        if (filter && f.kind === 'wild') return filterHits.has(f) ? 1 : 0;
+        return fadeIn(
+          view.s,
+          KINDS[f.layer].from * (f.layer === 'door' && f.sort === 'stairs' ? 0.6 : 1),
         );
       }
       function markerRadius(f) {
         const base =
-          { exit: 8, landing: 8, boss: 8.5, center: 8, shop: 8, gym: 8.5 }[f.layer] || 6.5;
+          { exit: 8, landing: 8, boss: 8.5, center: 8, shop: 8, gym: 8.5, enter: 7.5 }[f.layer] ||
+          6.5;
         return Math.max(base * 0.85, Math.min(base * 1.5, base * (0.8 + view.s / 24)));
       }
       function drawMarkers(placed) {
@@ -1455,6 +1813,8 @@
           'sign',
           'berry',
           'door',
+          'wild',
+          'enter',
           'trainer',
           'landmark',
           'boat',
@@ -1475,7 +1835,9 @@
             y = sy(f.cy);
           const r = markerRadius(f);
           if (x < -r || y < -r || x > W + r || y > H + r) continue;
+          ctx.globalAlpha = markerOpacity(f);
           icon(ctx, f, x, y, r);
+          ctx.globalAlpha = 1;
           f.drawn = frameNumber;
           placed.push({ x0: x - r - 1, y0: y - r - 1, x1: x + r + 1, y1: y + r + 1 });
         }
@@ -1625,11 +1987,13 @@
           'boat',
           'landmark',
           'trainer',
+          'wild',
           'berry',
           'sign',
         ];
         for (const kind of order) {
           if (!visible[kind] || view.s < KINDS[kind].labelFrom) continue;
+          ctx.globalAlpha = fadeIn(view.s, KINDS[kind].labelFrom);
           const size = kind === 'exit' || kind === 'landing' ? 12.5 : 12;
           for (const f of features) {
             if (f.layer !== kind) continue;
@@ -1647,6 +2011,7 @@
             }) || label(f.name, sx(f.cx), sy(f.cy) + r + size * 0.75, size, 700, colour, placed);
           }
         }
+        ctx.globalAlpha = 1;
       }
       function updateScale() {
         const wanted = 140 / view.s;
@@ -1706,22 +2071,29 @@
         const places = f.places.length ? f.places.join(' › ') : '';
         const detail = f.detail.filter(Boolean);
         let hint = '';
+        const info = PLAN.info[f.id];
         if (!forCard)
-          hint = f.goto
-            ? f.kind === 'room'
-              ? 'Click to go to its door'
-              : f.kind === 'building'
-                ? 'Click to go inside'
-                : 'Click to go through'
-            : 'Click to zoom in';
+          hint = info
+            ? 'Click for everything here'
+            : f.goto
+              ? f.kind === 'room'
+                ? 'Click to go to its door'
+                : f.kind === 'building' || f.layer === 'enter'
+                  ? 'Click to go inside'
+                  : 'Click to go through'
+              : 'Click to zoom in';
+        const summary = info && !forCard ? areaSummary(f, info) : '';
+        const mon = f.species && PLAN.species[f.species] ? monRow(f.species, '', '') : '';
         return (
           `<div class="kind" style="color:${colourOf(f)}"><span class="ic" data-i="${f.index}"></span>${escapeHtml(kind)}</div>` +
           `<div class="title">${escapeHtml(f.name)}</div>` +
           (places ? `<div class="places">in ${escapeHtml(places)}</div>` : '') +
           (f.grid ? `<span class="grid">${escapeHtml(f.grid)}</span>` : '') +
+          (mon ? `<div class="sect" style="border:0;margin-top:6px;padding:0">${mon}</div>` : '') +
           (detail.length
             ? `<ul>${detail.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>`
             : '') +
+          (summary ? `<div class="places" style="margin-top:6px">${summary}</div>` : '') +
           (hint ? `<div class="hint">${hint}</div>` : '')
         );
       }
@@ -1776,19 +2148,482 @@
                 ? 'Cross over'
                 : 'Go through'
           : '';
+        const info = PLAN.info[f.id];
         card.innerHTML =
           '<button class="close" type="button" aria-label="Close">×</button>' +
           describe(f, true) +
-          `<div class="actions"><button type="button" class="primary" data-act="zoom">Zoom to it</button>${go ? `<button type="button" data-act="go">${go}</button>` : ''}</div>`;
+          `<div class="actions"><button type="button" class="primary" data-act="zoom">Zoom to it</button>${go ? `<button type="button" data-act="go">${go}</button>` : ''}</div>` +
+          (info ? areaPanel(f, info) : '');
         fillIcons(card);
+        card.classList.toggle('area', !!info);
         card.style.display = 'block';
+        placeCard();
+        card.scrollTop = 0;
         card.querySelector('.close').onclick = () => select(null);
         card.querySelector('[data-act="zoom"]').onclick = () => flyToFeature(f);
         const goButton = card.querySelector('[data-act="go"]');
-        if (goButton) goButton.onclick = () => flyTo(f.goto, 'go');
+        if (goButton) goButton.onclick = () => goThrough(f.goto);
+        const door = card.querySelector('[data-door]');
+        if (door) door.onclick = () => goThrough(f.goto);
+        for (const link of card.querySelectorAll('[data-go]'))
+          link.onclick = () => {
+            const g = features[Number(link.dataset.go)];
+            select(g);
+            flyToFeature(g);
+          };
         if (options.fly) flyToFeature(f);
         dirty();
       }
+
+      /** A place's panel stands under the title block, as tall as the window leaves it. */
+      function placeCard() {
+        if (!card.classList.contains('area') || W < 720) {
+          card.style.top = '';
+          card.style.maxHeight = '';
+          return;
+        }
+        const title = document.getElementById('titleblock').getBoundingClientRect();
+        card.style.top = title.bottom + 10 + 'px';
+        card.style.maxHeight = `calc(100vh - ${title.bottom + 10 + 96}px)`;
+      }
+
+      // ---------------------------------------------------------------- what a place holds
+      const TYPE_COLOURS = {
+        Normal: '#8a8a6c',
+        Fire: '#e8590c',
+        Water: '#3b6fd8',
+        Grass: '#3d9a3d',
+        Electric: '#d4a106',
+        Ice: '#4fb3bf',
+        Fighting: '#b02a24',
+        Poison: '#8a3c94',
+        Ground: '#b8913a',
+        Flying: '#7d6fd6',
+        Psychic: '#e0457b',
+        Bug: '#86a01e',
+        Rock: '#a08c3a',
+        Ghost: '#5e4a8c',
+        Dragon: '#5a35d8',
+        Dark: '#5a4a3e',
+        Steel: '#8f8fa8',
+      };
+      const featureById = new Map(features.map((f) => [f.id, f]));
+      const districtByName = new Map(districts.map((d) => [d.name, d]));
+      function pct(share) {
+        if (share >= 0.995) return 'all';
+        if (share < 0.005) return '<1%';
+        return Math.round(share * 100) + '%';
+      }
+      function levels(min, max) {
+        return min === max ? `Lv ${min}` : `Lv ${min}–${max}`;
+      }
+      function speciesLabel(id) {
+        return PLAN.species[id] ? PLAN.species[id].name : id;
+      }
+      function monRow(id, lv, share, note = '') {
+        const sp = PLAN.species[id];
+        if (!sp) return '';
+        const types = sp.types
+          .map(
+            (t) => `<span class="ty" style="background:${TYPE_COLOURS[t] || '#666'}">${t}</span>`,
+          )
+          .join('');
+        const match = filter && matchesFilter(id) ? ' match' : '';
+        return (
+          `<div class="mon${match}"><img src="sprites/${sp.dex}.png" alt="" loading="lazy">` +
+          `<span class="nm">${escapeHtml(sp.name)}${note}<small>${types}</small></span>` +
+          `<span class="lv">${lv}</span><span class="pc">${share}</span></div>`
+        );
+      }
+      function wildRows(list) {
+        return list
+          .map((w) => monRow(w.species, levels(w.minLevel, w.maxLevel), pct(w.share)))
+          .join('');
+      }
+      /** The features that stand inside a place: those whose middle is in one of its blocks. */
+      function featuresIn(f) {
+        const within = (x, y) =>
+          f.rects.some((r) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h);
+        return features.filter(
+          (g) =>
+            g !== f &&
+            g.kind !== 'district' &&
+            g.kind !== 'quarter' &&
+            g.kind !== 'room' &&
+            within(g.cx, g.cy),
+        );
+      }
+      function linkTo(g, text) {
+        return `<button type="button" class="linkish" data-go="${g.index}">${escapeHtml(text || g.name)}</button>`;
+      }
+      function section(title, body) {
+        return body ? `<div class="sect"><h3>${title}</h3>${body}</div>` : '';
+      }
+      function para(text) {
+        return `<p>${text}</p>`;
+      }
+      function areaSummary(f, info) {
+        const kinds = new Set();
+        for (const g of info.ground)
+          for (const w of [...g.day, ...(g.night || [])]) kinds.add(w.species);
+        for (const w of info.standing) kinds.add(w.species);
+        const inside = featuresIn(f);
+        const count = (kind) => inside.filter((g) => g.kind === kind).length;
+        const bits = [];
+        if (kinds.size) bits.push(`${kinds.size} kind${kinds.size > 1 ? 's' : ''} of Pokémon`);
+        if (info.fishing.length) bits.push('fishing');
+        const trainers = count('trainer') + count('boss');
+        if (trainers) bits.push(`${trainers} trainer${trainers > 1 ? 's' : ''}`);
+        if (info.caches.length)
+          bits.push(`${info.caches.length} cache${info.caches.length > 1 ? 's' : ''}`);
+        if (count('exit')) bits.push(`${count('exit')} way${count('exit') > 1 ? 's' : ''} out`);
+        if (info.secrets.length)
+          bits.push(`${info.secrets.length} secret${info.secrets.length > 1 ? 's' : ''}`);
+        return escapeHtml(bits.join(' · '));
+      }
+      function areaPanel(f, info) {
+        const here = f.name;
+        const inside = featuresIn(f);
+        const of = (...kinds) =>
+          inside.filter((g) => kinds.includes(g.kind) || kinds.includes(g.layer));
+        let html = '';
+
+        // Wild Pokémon in its grass and on its floors.
+        html += section(
+          'Wild Pokémon',
+          info.ground
+            .map((g) => {
+              const head =
+                (g.how === 'grass' ? 'In the tall grass' : 'On every step') +
+                ` · a step meets one ${pct(g.rate)} of the time`;
+              const others = g.places.filter((p) => p !== here);
+              const also =
+                g.places.length > 1 || others.length
+                  ? `<div class="also">${escapeHtml((g.places.includes(here) ? [here, ...others] : others).join(', '))}</div>`
+                  : '';
+              const dayOnly = g.night ? new Set(g.night.map((w) => w.species)) : null;
+              const rows = g.day
+                .map((w) =>
+                  monRow(
+                    w.species,
+                    levels(w.minLevel, w.maxLevel),
+                    pct(w.share),
+                    dayOnly && !dayOnly.has(w.species) ? '<span class="tag">Day only</span>' : '',
+                  ),
+                )
+                .join('');
+              const byDay = new Set(g.day.map((w) => w.species));
+              const night = g.night
+                ? `<div class="sub">By night (9pm to 5am on your clock), instead</div>` +
+                  g.night
+                    .filter((w) => !byDay.has(w.species))
+                    .map((w) =>
+                      monRow(
+                        w.species,
+                        levels(w.minLevel, w.maxLevel),
+                        pct(w.share),
+                        '<span class="tag">Night</span>',
+                      ),
+                    )
+                    .join('')
+                : '';
+              const shimmer = g.shimmer
+                ? `<div class="sub">✦ Shimmering grass, if a raid lays its patch here</div>` +
+                  g.shimmer.species.map((id) => monRow(id, `Lv ${g.shimmer.level}`, '')).join('') +
+                  para(`Shiny 1 in ${PLAN.rules.shimmerShinyOdds} there.`)
+                : '';
+              return `<div class="sub">${head}</div>${also}${rows}${night}${shimmer}`;
+            })
+            .join(''),
+        );
+
+        // What a rod pulls out of its water.
+        html += section(
+          'Fishing',
+          info.fishing
+            .map(
+              (w) =>
+                `<div class="sub">${w.water === 'sea' ? 'The sea' : 'Fresh water'} · face open water with a rod in the pack</div>` +
+                w.rods
+                  .map(
+                    (rod) => `<div class="also">${escapeHtml(rod.rod)}</div>` + wildRows(rod.wild),
+                  )
+                  .join(''),
+            )
+            .join(''),
+        );
+
+        // Pokémon that stand their ground.
+        const standing = of('wild');
+        html += section(
+          'Standing Pokémon',
+          standing
+            .map((g) => {
+              const w = info.standing.find((s) => s.species === g.species) || {};
+              const note =
+                g.sort === 'legend'
+                  ? '<span class="tag">Legend</span>'
+                  : g.sort === 'secret'
+                    ? '<span class="tag">Secret</span>'
+                    : '';
+              const lv = (g.detail[0].match(/Lv (\d+)/) || [])[1];
+              return monRow(g.species, lv ? 'Lv ' + lv : '', '', note);
+            })
+            .join('') +
+            (standing.length
+              ? para('Speak to one to fight it, once a raid; a wild one can be caught.')
+              : ''),
+        );
+
+        // Rare finds with a condition.
+        html += section(
+          'Secrets',
+          info.secrets
+            .map(
+              (secret) =>
+                `<div class="sub">${escapeHtml(secret.name)}</div>` +
+                para(`<b>When:</b> ${escapeHtml(secret.when.join(', and '))}.`) +
+                para(`<b>Gives:</b> ${escapeHtml(secret.rewards.join(', then '))}.`),
+            )
+            .join(''),
+        );
+        if (info.omen)
+          html += section(
+            'Legend overhead',
+            monRow(info.omen, '', '') +
+              para(
+                `One raid in ${PLAN.rules.omenEvery}, while ${escapeHtml(speciesLabel(info.omen))} is still uncaught, it crosses the sky for here.`,
+              ),
+          );
+
+        // Who fights.
+        const fighters = of('boss', 'trainer');
+        html += section(
+          'Trainers and bosses',
+          fighters
+            .map((g) =>
+              para(
+                `${linkTo(g)}${g.kind === 'boss' ? ' <span class="tag">Boss</span>' : ''}${g.kind === 'boss' ? '<br>' + escapeHtml(g.detail.join(' ')) : ''}`,
+              ),
+            )
+            .join(''),
+        );
+
+        // What lies about.
+        let items = '';
+        for (const cache of info.caches)
+          items += para(
+            `<b>${escapeHtml(cache.name)}:</b> ${escapeHtml(cache.pays.join(', '))}${cache.locked ? ' · locked, needs a Lockpick' : ''}`,
+          );
+        if (info.hoard) items += para(`<b>The hoard:</b> ${escapeHtml(info.hoard.join(', '))}`);
+        for (const prize of info.prizes)
+          items += para(
+            `<b>Only here:</b> ${escapeHtml(prize.item)}, in ${Math.round(prize.chance * 100)}% of raids`,
+          );
+        if (info.spots)
+          items += para(
+            `${info.spots.count} item spot${info.spots.count > 1 ? 's' : ''}${info.spots.hidden ? `, ${info.spots.hidden} hidden` : ''}${info.spots.keys ? `, ${info.spots.keys} for a key` : ''}. Each raid lays some, each with one find from the map's mix.`,
+          );
+        if (info.berries.length)
+          items += para(
+            `<b>Berry trees:</b> ${escapeHtml(info.berries.map((b) => `${b.count} ${b.berry}`).join(', '))}, picked once a raid`,
+          );
+        html += section('Items', items);
+
+        // Ways about.
+        let ways = '';
+        for (const g of of('exit'))
+          ways += para(
+            `${linkTo(g)} <span class="tag" style="color:#c92a2a">Way out</span><br>${escapeHtml(g.detail.slice(1).join(' '))}`,
+          );
+        for (const g of of('landing'))
+          ways += para(`${linkTo(g)} <span class="tag" style="color:#1864ab">Landing</span>`);
+        for (const g of of('enter')) ways += para(linkTo(g));
+        for (const g of of('gate')) ways += para(`${linkTo(g)}: ${escapeHtml(g.detail.join(' '))}`);
+        for (const g of of('boat')) ways += para(`${linkTo(g)}: ${escapeHtml(g.detail.join(' '))}`);
+        if (f.kind === 'room' && f.goto)
+          ways += para(
+            '<button type="button" class="linkish" data-door>Back to its door outside</button>',
+          );
+        html += section('Ways in and out', ways);
+
+        // What the ground does.
+        let ground = '';
+        if (info.weather)
+          ground += para(
+            `<b>Always ${escapeHtml(info.weather.name)}:</b> every fight here is fought in it. ${escapeHtml(info.weather.lines.join(' '))}`,
+          );
+        for (const line of info.mechanics) ground += para(escapeHtml(line));
+        html += section('The ground here', ground);
+
+        // What the quarter throws at you.
+        const quarter =
+          f.quarter !== undefined ? quarters.find((q) => q.quarter === f.quarter) : null;
+        if (quarter)
+          html += section(
+            `Danger · ${escapeHtml(quarter.name)}`,
+            quarter.detail.map((line) => para(escapeHtml(line))).join(''),
+          );
+
+        // The rules every number above is read by.
+        const r = PLAN.rules;
+        html +=
+          '<div class="legend">' +
+          `<p><b>%</b> is how often a kind comes up when a step meets a wild Pokémon. Levels shift by up to ${r.levelSwing} either way each raid.</p>` +
+          `<p><b>Shiny:</b> 1 in ${r.shinyOdds} wild Pokémon${r.shimmer ? `, 1 in ${r.shimmerShinyOdds} in shimmering grass` : ''}.</p>` +
+          (r.shimmer
+            ? '<p><b>✦ Shimmering grass:</b> one patch a raid, on tall grass on the way to the raid’s stake, holding the place’s rarest kind a level up. Met once.</p>'
+            : '') +
+          `<p><b>Raid clock:</b> ${r.raidMinutes} minutes. Fights do not use it.</p>` +
+          '</div>';
+        return html;
+      }
+
+      // ---------------------------------------------------------------- the Pokémon filter
+      let filter = null;
+      let filterHits = new Set();
+      const find = document.getElementById('find');
+      const findNote = document.getElementById('findnote');
+      const findClear = document.getElementById('findclear');
+      const TYPES = [...new Set(Object.values(PLAN.species).flatMap((sp) => sp.types))].sort();
+      document.getElementById('findlist').innerHTML =
+        TYPES.map((t) => `<option value="${t} type">`).join('') +
+        Object.values(PLAN.species)
+          .map((sp) => sp.name)
+          .sort()
+          .map((name) => `<option value="${escapeHtml(name)}">`)
+          .join('');
+      function matchesFilter(id) {
+        if (!filter) return false;
+        if (filter.species) return id === filter.species;
+        const sp = PLAN.species[id];
+        return !!sp && sp.types.includes(filter.type);
+      }
+      /** Every place where something the filter asks for can be met, and every Pokémon standing that is one. */
+      function computeHits() {
+        filterHits = new Set();
+        if (!filter) return;
+        const hit = (name) => {
+          const d = districtByName.get(name);
+          if (d) filterHits.add(d);
+        };
+        for (const [id, info] of Object.entries(PLAN.info)) {
+          const f = featureById.get(id);
+          if (!f) continue;
+          const room = f.kind === 'room';
+          for (const g of info.ground) {
+            const kinds = [...g.day, ...(g.night || [])]
+              .map((w) => w.species)
+              .concat(g.shimmer ? g.shimmer.species : []);
+            if (!kinds.some(matchesFilter)) continue;
+            if (room) filterHits.add(f);
+            else g.places.forEach(hit);
+          }
+          for (const w of info.fishing) {
+            if (!w.rods.some((rod) => rod.wild.some((x) => matchesFilter(x.species)))) continue;
+            if (room) filterHits.add(f);
+            else w.places.forEach(hit);
+          }
+          if (info.secrets.some((secret) => secret.species.some(matchesFilter))) filterHits.add(f);
+          if (info.omen && matchesFilter(info.omen)) filterHits.add(f);
+          if (room && info.standing.some((w) => matchesFilter(w.species))) filterHits.add(f);
+        }
+        for (const f of markers)
+          if (f.kind === 'wild' && matchesFilter(f.species)) filterHits.add(f);
+      }
+      function setFilter(value) {
+        const text = value.trim().toLowerCase();
+        const type = TYPES.find(
+          (t) => text === t.toLowerCase() || text === t.toLowerCase() + ' type',
+        );
+        const species = Object.entries(PLAN.species).find(
+          ([, sp]) => sp.name.toLowerCase() === text,
+        );
+        filter = type
+          ? { type, label: type + ' type' }
+          : species
+            ? { species: species[0], label: species[1].name }
+            : null;
+        computeHits();
+        findClear.hidden = !value;
+        if (filter) {
+          const places = [...filterHits].filter((f) => f.kind !== 'wild');
+          const spots = [...filterHits].filter((f) => f.kind === 'wild');
+          findNote.hidden = false;
+          findNote.innerHTML =
+            places.length || spots.length
+              ? `${escapeHtml(filter.label)}: ${places.length} place${places.length === 1 ? '' : 's'}${spots.length ? `, ${spots.length} standing` : ''}. <button type="button" id="findshow">Show them all</button>`
+              : `${escapeHtml(filter.label)}: not found anywhere on this map.`;
+          const showAll = document.getElementById('findshow');
+          if (showAll)
+            showAll.onclick = () => {
+              const rects = [...filterHits].flatMap((f) => f.rects);
+              if (rects.length) flyTo(boundsOf(rects), 'zoom');
+            };
+        } else {
+          findNote.hidden = !value;
+          findNote.textContent = value ? 'Pick a Pokémon or a type from the list.' : '';
+        }
+        if (selected) select(selected);
+        dirty();
+      }
+      find.addEventListener('input', () => setFilter(find.value));
+      find.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          find.value = '';
+          setFilter('');
+          find.blur();
+        }
+      });
+      findClear.onclick = () => {
+        find.value = '';
+        setFilter('');
+      };
+      const veil = document.createElement('canvas');
+      function drawFilter() {
+        if (!filter) return;
+        // Everything else is laid under a sheet of paper, so where it lives stands out at any zoom.
+        veil.width = canvas.width;
+        veil.height = canvas.height;
+        const v = veil.getContext('2d');
+        v.setTransform(DPR, 0, 0, DPR, 0, 0);
+        v.fillStyle = 'rgba(241,234,219,0.62)';
+        v.fillRect(0, 0, W, H);
+        for (const f of filterHits) {
+          if (f.kind === 'wild') {
+            const r = Math.max(10, markerRadius(f) + 6);
+            v.clearRect(sx(f.cx) - r, sy(f.cy) - r, 2 * r, 2 * r);
+          } else
+            for (const r of f.rects)
+              v.clearRect(sx(r.x) - 2, sy(r.y) - 2, r.w * view.s + 4, r.h * view.s + 4);
+        }
+        ctx.drawImage(veil, 0, 0, W, H);
+        for (const f of filterHits) {
+          if (f.kind === 'wild') continue;
+          ctx.globalAlpha = 0.3;
+          ctx.fillStyle = '#fab005';
+          for (const r of f.rects) ctx.fillRect(sx(r.x), sy(r.y), r.w * view.s, r.h * view.s);
+          ctx.globalAlpha = 1;
+          strokeOutline(f, 5, 'rgba(255,255,255,0.9)');
+          strokeOutline(f, 2.5, '#e67700');
+        }
+      }
+
+      // ---------------------------------------------------------------- in and out of buildings
+      /** Where the view was before each trip through a door, so you can come back out. */
+      const trail = [];
+      const backButton = document.getElementById('back');
+      function goThrough(rect, scale) {
+        trail.push({ x: view.x, y: view.y, s: view.s });
+        backButton.hidden = false;
+        flyTo(rect, 'go', scale);
+      }
+      function backOut() {
+        const last = trail.pop();
+        backButton.hidden = trail.length === 0;
+        if (last) flyTo({ x: last.x, y: last.y, w: 0, h: 0 }, 'go', last.s);
+      }
+      backButton.onclick = backOut;
 
       // ---------------------------------------------------------------- movement
       let motion = null;
@@ -1825,15 +2660,20 @@
         }
         return { at, duration: Math.max(450, Math.min(1800, Math.abs(S) * 700)) };
       }
-      function flyTo(rect, why) {
+      /** The scale that frames a rectangle of the plan, for a flight to it. */
+      function framingScale(rect, why) {
         const pad = W < 720 ? 1.5 : 1.8;
         const minimum = why === 'go' ? 16 : 26;
         const w = Math.max(rect.w, minimum),
           h = Math.max(rect.h, minimum);
-        const s = Math.max(
+        return Math.max(
           minScale(),
           Math.min(MAX_SCALE / 2, Math.min(W / (w * pad), H / (h * pad))),
         );
+      }
+      /** Out, across and in to a rectangle of the plan, at `scale` if given, else framing it. */
+      function flyTo(rect, why, scale) {
+        const s = scale || framingScale(rect, why);
         const target = [rect.x + rect.w / 2, rect.y + rect.h / 2, W / s];
         const path = interpolateZoom([view.x, view.y, viewWidth()], target);
         motion = { kind: 'fly', start: performance.now(), path };
@@ -1841,10 +2681,7 @@
       }
       function flyToFeature(f) {
         flash = { f, at: performance.now() + 300 };
-        flyTo(
-          f.kind === 'district' || f.kind === 'quarter' || f.kind === 'room' ? f.box : f.box,
-          'zoom',
-        );
+        flyTo(f.box, 'zoom');
       }
       function stepMotion(now) {
         if (!motion) return;
@@ -1857,33 +2694,54 @@
           view.s = W / w;
           if (t >= 1) motion = null;
         } else if (motion.kind === 'zoom') {
-          // A wheel's clicks eased into one movement, about the point under the pointer.
-          const k = 1 - Math.pow(0.001, (now - motion.last) / 260);
+          // Every zoom eases toward one goal, about the point under the pointer.
+          const goal = motion.target;
+          const next = easeToward(Math.log(view.s), goal, now - motion.last);
           motion.last = now;
-          const s = Math.exp(
-            Math.log(view.s) + (Math.log(motion.target) - Math.log(view.s)) * Math.min(1, k),
-          );
-          zoomAbout(motion.ax, motion.ay, s);
-          if (Math.abs(Math.log(s / motion.target)) < 0.002) {
-            zoomAbout(motion.ax, motion.ay, motion.target);
-            motion = null;
-          }
+          const arrived = Math.abs(next - goal) < 0.0015;
+          zoomAbout(motion.ax, motion.ay, Math.exp(arrived ? goal : next));
+          if (arrived) motion = null;
         }
         clampView();
         saveHash();
       }
       function zoomAbout(screenX, screenY, s) {
-        const x = px(screenX),
-          y = py(screenY);
-        view.s = Math.max(minScale(), Math.min(MAX_SCALE, s));
-        view.x = x - (screenX - W / 2) / view.s;
-        view.y = y - (screenY - H / 2) / view.s;
+        const next = zoomedAbout(
+          view,
+          W,
+          H,
+          screenX,
+          screenY,
+          Math.max(minScale(), Math.min(MAX_SCALE, s)),
+        );
+        view.x = next.x;
+        view.y = next.y;
+        view.s = next.s;
+      }
+      /**
+       * Zoom by `logZoom` about a point on screen. Eased, the view glides there over a
+       * few frames; not, it moves the whole way now, and whatever an earlier notch had
+       * still to go is kept, so a wheel and a trackpad together never fight.
+       */
+      function zoomBy(screenX, screenY, logZoom, eased = true) {
+        const easing = motion && motion.kind === 'zoom';
+        const from = easing ? motion.target : Math.log(view.s);
+        const target = Math.max(
+          Math.log(minScale()),
+          Math.min(Math.log(MAX_SCALE), from + logZoom),
+        );
+        if (!eased) {
+          zoomAbout(screenX, screenY, view.s * Math.exp(target - from));
+          clampView();
+          saveHash();
+        }
+        if (eased || easing)
+          motion = { kind: 'zoom', target, ax: screenX, ay: screenY, last: performance.now() };
+        else motion = null;
+        dirty();
       }
       function wheelZoom(screenX, screenY, factor) {
-        const from = motion && motion.kind === 'zoom' ? motion.target : view.s;
-        const target = Math.max(minScale(), Math.min(MAX_SCALE, from * factor));
-        motion = { kind: 'zoom', target, ax: screenX, ay: screenY, last: performance.now() };
-        dirty();
+        zoomBy(screenX, screenY, Math.log(factor));
       }
 
       // ---------------------------------------------------------------- input
@@ -1902,6 +2760,8 @@
             vx: view.x,
             vy: view.y,
             moved: false,
+            farthest: 0,
+            at: performance.now(),
             type: event.pointerType,
           };
         else if (pointers.size === 2) {
@@ -1937,7 +2797,8 @@
         if (drag) {
           const dx = event.clientX - drag.x,
             dy = event.clientY - drag.y;
-          if (!drag.moved && Math.hypot(dx, dy) > (drag.type === 'touch' ? 8 : 4)) {
+          drag.farthest = Math.max(drag.farthest, Math.hypot(dx, dy));
+          if (!drag.moved && drag.farthest > clickSlop(drag.type)) {
             drag.moved = true;
             canvas.classList.add('dragging');
             showTip(null);
@@ -1972,19 +2833,43 @@
         else where.textContent = place ? `Inside · ${place}` : '';
         where.style.display = where.textContent ? '' : 'none';
       }
+      /** Whether the last press to come up was a click, which a double click needs both of. */
+      let lastRelease = { click: false, previous: null };
       function release(event) {
-        const wasDrag = drag && drag.moved;
-        const wasTap = drag && !drag.moved && pointers.size === 1;
+        const wasTap =
+          !!drag &&
+          !drag.moved &&
+          pointers.size === 1 &&
+          event.type === 'pointerup' &&
+          isClick({
+            farthest: Math.max(
+              drag.farthest,
+              Math.hypot(event.clientX - drag.x, event.clientY - drag.y),
+            ),
+            heldMs: performance.now() - drag.at,
+            pointerType: drag.type,
+          });
+        if (pointers.has(event.pointerId))
+          lastRelease = { click: wasTap, previous: { click: lastRelease.click } };
         pointers.delete(event.pointerId);
         if (pointers.size < 2) pinch = null;
         if (pointers.size === 1) {
           const [p] = [...pointers.values()];
-          drag = { x: p.x, y: p.y, vx: view.x, vy: view.y, moved: true, type: event.pointerType };
+          drag = {
+            x: p.x,
+            y: p.y,
+            vx: view.x,
+            vy: view.y,
+            moved: true,
+            farthest: Infinity,
+            at: 0,
+            type: event.pointerType,
+          };
           return;
         }
         canvas.classList.remove('dragging');
         drag = null;
-        if (wasTap && !wasDrag) {
+        if (wasTap) {
           const f = featureAt(event.clientX, event.clientY);
           if (event.pointerType === 'touch') {
             select(f);
@@ -1996,10 +2881,18 @@
           }
           const framed = selected === f;
           select(f);
-          if (framed && f.goto) flyTo(f.goto, 'go');
-          else if (f.goto && (f.kind === 'door' || f.kind === 'boat')) flyTo(f.goto, 'go');
-          else flyToFeature(f);
           showTip(null);
+          // A door or a boat is a way somewhere: through it, keeping at least this zoom.
+          if (f.goto && (framed || f.kind === 'door' || f.kind === 'boat')) {
+            goThrough(f.goto, Math.max(view.s, framingScale(f.goto, 'go')));
+            return;
+          }
+          // Anything else is zoomed in to, never out from.
+          const scale = clickFlight(view.s, framingScale(f.box, 'zoom'));
+          if (scale) {
+            flash = { f, at: performance.now() + 300 };
+            flyTo(f.box, 'zoom', scale);
+          }
         }
       }
       canvas.addEventListener('pointerup', release);
@@ -2015,23 +2908,16 @@
         'wheel',
         (event) => {
           event.preventDefault();
-          const unit = event.deltaMode === 1 ? 33 : event.deltaMode === 2 ? 400 : 1;
-          const delta = event.deltaY * unit;
-          // A pinch on a trackpad comes as a wheel with the control key held.
-          const factor = Math.exp(-delta * (event.ctrlKey ? 0.012 : 0.0022));
-          if (Math.abs(delta) < 40 && !event.ctrlKey && event.deltaMode === 0) {
-            motion = null;
-            zoomAbout(event.clientX, event.clientY, view.s * factor);
-            clampView();
-            saveHash();
-            dirty();
-          } else wheelZoom(event.clientX, event.clientY, factor);
+          const { zoom, eased } = wheelIntent(event);
+          zoomBy(event.clientX, event.clientY, zoom, eased);
           if (lastPointer) setTimeout(() => lastPointer && hover(lastPointer.x, lastPointer.y), 0);
         },
         { passive: false },
       );
       canvas.addEventListener('dblclick', (event) => {
         event.preventDefault();
+        // Only two clicks are a double click: the browser counts two quick drags as one too.
+        if (!lastRelease.click || !lastRelease.previous || !lastRelease.previous.click) return;
         wheelZoom(event.clientX, event.clientY, 2.5);
       });
       window.addEventListener('keydown', (event) => {
@@ -2049,8 +2935,12 @@
         else if (event.key === 'ArrowRight') view.x += step;
         else if (event.key === 'ArrowUp') view.y -= step;
         else if (event.key === 'ArrowDown') view.y += step;
-        else if (event.key === 'Escape') select(null);
-        else return;
+        else if (event.key === 'Escape') {
+          // Escape puts a card away first, and after that steps back out.
+          if (selected) select(null);
+          else if (trail.length) backOut();
+          else wheelZoom(W / 2, H / 2, 0.5);
+        } else return;
         clampView();
         saveHash();
         dirty();
@@ -2271,7 +3161,7 @@
         for (let r = 0; r < LEVELS[z].rows; r++)
           for (let c = 0; c < LEVELS[z].columns; c++) pieceImage(z, c, r);
       dirty();
-      window.__sitePlan = { view, features, select, flyTo, dirty, fit };
+      window.__sitePlan = { view, features, select, flyTo, goThrough, dirty, fit, pictureStats };
     </script>
   </body>
 </html>
