@@ -128,11 +128,30 @@ export const withoutDefeatedBosses = (
   trainers: readonly RunTrainerEncounter[],
   defeatedBosses: readonly string[],
 ): readonly RunTrainerEncounter[] =>
-  trainers.filter(
-    (trainer) =>
-      (trainer.bossId === undefined || !defeatedBosses.includes(trainer.bossId)) &&
-      (trainer.challengedAfter === undefined || defeatedBosses.includes(trainer.challengedAfter)),
-  );
+  withoutBeatenBosses(trainers, defeatedBosses).filter((trainer) => isChallenging(trainer, defeatedBosses));
+
+/**
+ * A raid's trainers without the bosses already beaten, and nothing else: what
+ * a raid is generated with. A leader who will not fight it yet stays in it,
+ * standing out of sight (`isChallenging`), because the badge he waits for can
+ * be won in the same raid - Misty beaten, Koga is at the head of his hall when
+ * the player walks in - and a raid's trainers are fixed when it deploys. His
+ * tile is held for him from the start, so nothing is laid where he will stand.
+ */
+export const withoutBeatenBosses = (
+  trainers: readonly RunTrainerEncounter[],
+  defeatedBosses: readonly string[],
+): readonly RunTrainerEncounter[] =>
+  trainers.filter((trainer) => trainer.bossId === undefined || !defeatedBosses.includes(trainer.bossId));
+
+/**
+ * Whether this trainer fights a save that has beaten these bosses: every
+ * trainer does, except a leader whose `challengedAfter` is not among them yet.
+ * Asked with the bosses beaten so far *this raid* included, so a badge won
+ * mid-raid brings the next leader in at once.
+ */
+export const isChallenging = (trainer: RunTrainerEncounter, defeatedBosses: readonly string[]): boolean =>
+  trainer.challengedAfter === undefined || defeatedBosses.includes(trainer.challengedAfter);
 
 /**
  * A raid's trainers as the contract it carries meets them: on the first

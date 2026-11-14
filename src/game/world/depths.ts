@@ -65,6 +65,14 @@ export const ROOF_BAND = 2.6;
 export const RAID_NAME_PLATE_DEPTH = 2.88;
 
 /**
+ * The rain over a place that rains (`ui/rainOverlay.ts`): pinned to the
+ * screen, over the canopy and the roofs it falls on, and under another
+ * player's name plate and the dark over the rooms laid beside the map, so it
+ * never falls on the black where a room is.
+ */
+export const RAIN_DEPTH = 2.7;
+
+/**
  * The veil that makes an interior dim. Over the ground and under every figure,
  * so the floor is dark and whoever is standing on it is not.
  */

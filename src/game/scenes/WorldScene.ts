@@ -124,7 +124,7 @@ import {
   type WorldMapId,
   worldMapName,
 } from '../worldMap';
-import { spokenLines, type WorldEntity } from '../world/npcs';
+import { linesSpoken, spokenLines, type WorldEntity } from '../world/npcs';
 import {
   advanceIdleFigures,
   createIdleFigures,
@@ -211,6 +211,7 @@ import { RaidHud } from '../ui/RaidHud';
 import { PanelLean, type SidePanelView } from '../ui/sidePanel';
 import { HunterEdgeGlow } from '../ui/HunterEdgeGlow';
 import { prefersReducedMotion } from '../ui/reducedMotion';
+import { RainOverlay } from '../ui/rainOverlay';
 import { hunterWarningStrength } from '../world/hunterWarning';
 import { WorldLabel, type WorldLabelSpec, type WorldLabelTone } from '../ui/WorldLabel';
 import { ExitVehicleSprite } from '../ui/ExitVehicleSprite';
@@ -241,6 +242,7 @@ import {
   WATCH_SHADING_DEPTH,
   AREA_DARK_DEPTH,
   RAID_NAME_PLATE_DEPTH,
+  RAIN_DEPTH,
   atRow,
 } from '../world/depths';
 import { hiddenInArea, placedAreaAt, type PlacedArea } from '../world/mapAreas';
@@ -267,7 +269,7 @@ import {
   isInsideRect,
   type MapInterior,
 } from '../world/interiors';
-import type { WeatherId } from '../pokemon/battle/weather';
+import { WeatherId } from '../pokemon/battle/weather';
 import { SURVEY_RADIUS, tilesAround } from '../world/minimap';
 import { WINDOW_CREAM, drawPixelWindow } from '../ui/pixelWindow';
 import {
@@ -297,7 +299,8 @@ import {
   bossesBeatenOnRaid,
   bossGearDropped,
   createRunTrainerEncounters,
-  withoutDefeatedBosses,
+  withoutBeatenBosses,
+  isChallenging,
   type RunTrainerEncounter,
 } from '../world/trainers';
 import {
@@ -801,6 +804,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private animatedLayers: AnimatedLayer[] = [];
   private tileAnimator: TileAnimator | null = null;
   private bird: HarbourBird | null = null;
+  /** The rain over a place that rains (`ui/rainOverlay.ts`), made the first time it is needed. */
+  private rain: RainOverlay | null = null;
   /** The omen's shadow while it is crossing the screen (`world/omens.ts`). */
   private omenFlight: {
     ms: number;
@@ -1373,6 +1378,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   public create(data: WorldSceneData = {}): void {
     // A battle shut the scene down and took the bird's two images with it.
     this.bird = null;
+    // And the rain's graphics with them.
+    this.rain = null;
     // A shadow mid-crossing went with the world it was drawn in.
     this.omenFlight = null;
     this.villageBubble = null;
@@ -1508,7 +1515,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.keysLearned = new Set(stored?.keysLearned ?? []);
     this.trainerEncounters = this.runSession
       ? (this.runSession.plan?.trainers ??
-        withoutDefeatedBosses(createRunTrainerEncounters(), deployedWith))
+        withoutBeatenBosses(createRunTrainerEncounters(), deployedWith))
       : [];
     const beatenThisRaid = bossEncounters(this.trainerEncounters)
       .filter((boss) => this.defeatedTrainerIds.has(boss.trainer.id))
@@ -2202,6 +2209,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.advanceIdleFigures(deltaMs);
     this.animateGroundInView(deltaMs);
     this.updateBird(deltaMs);
+    this.updateRain(deltaMs);
     this.updateOmen(deltaMs);
     this.advanceVillageCalls(deltaMs);
     this.listenToTheWater(deltaMs);
@@ -3044,6 +3052,23 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (first) {
       shadow.setPosition(view.x + first.x, view.y + first.y).setVisible(true);
     }
+  }
+
+  /**
+   * Rain over a place that rains, out of doors: the Coast never stops, and the
+   * corner chip saying RAIN was all that showed it (the gyms playtest of 14 Nov
+   * 2026). A roof keeps it off, so a room in a wet district is dry.
+   */
+  private updateRain(deltaMs: number): void {
+    const raining =
+      this.currentWeather() === WeatherId.Rain &&
+      this.currentInterior === null &&
+      (this.currentArea()?.kind ?? 'outdoors') === 'outdoors';
+    if (!raining && !this.rain) {
+      return;
+    }
+    this.rain ??= new RainOverlay(this, RAIN_DEPTH);
+    this.rain.update(deltaMs, raining, { x: 0, y: 0, width: this.scale.width, height: this.scale.height });
   }
 
   private updateBird(deltaMs: number): void {
@@ -5761,7 +5786,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
 
-    this.dialogBox.showMessages(spokenLines(entity!.dialogLines, this.hunterRival().name));
+    this.dialogBox.showMessages(
+      spokenLines(linesSpoken(entity!, this.defeatedBosses), this.hunterRival().name),
+    );
   }
 
   /**
@@ -8139,11 +8166,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private trainersForCurrentMap(): readonly RunTrainerEncounter[] {
     // A keeper beaten by somebody in the room steps aside for the rest of the
     // raid, so the door that win opened is a door and not a keeper in a lane.
+    // A leader waiting on a badge stands once it is won, this raid or before
+    // (`isChallenging`): Misty beaten, Koga is in his hall.
     const roomDoors = this.roomDoors();
     return this.trainerEncounters.filter(
       (trainer) =>
         trainer.mapId === this.currentMap.id &&
         !this.defeatedTrainerIds.has(trainer.trainer.id) &&
+        isChallenging(trainer, this.defeatedBosses) &&
         !(trainer.bossId !== undefined && roomDoors.includes(trainer.bossId)),
     );
   }

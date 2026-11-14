@@ -75,7 +75,23 @@ export interface WorldEntity {
    * while it is open.
    */
   secret?: string;
+  /**
+   * What they say instead once a boss is beaten, each stage naming its boss
+   * (`MapFilePerson.afterBeating`, `linesSpoken`).
+   */
+  afterBeating?: readonly { readonly boss: string; readonly lines: readonly string[] }[];
 }
+
+/**
+ * What somebody says to a save that has beaten these bosses, this raid's wins
+ * included: the last of their `afterBeating` stages whose boss is among them,
+ * else their own lines. A Gym Guide's words follow the badges - "come back with
+ * the badge before his", "he will fight you now", "the doors are open" - so they
+ * are never the words for a save that has moved on.
+ */
+export const linesSpoken = (entity: WorldEntity, defeatedBosses: readonly string[]): readonly string[] =>
+  [...(entity.afterBeating ?? [])].reverse().find((stage) => defeatedBosses.includes(stage.boss))?.lines ??
+  entity.dialogLines;
 
 /**
  * Stands in a townsperson's line for the name of whoever hunts this raid. The

@@ -52,12 +52,13 @@ import {
   teachingBattleMessages,
   withdrawLine,
 } from '../pokemon/battle/battleFlow';
-import type { WeatherId } from '../pokemon/battle/weather';
+import { WeatherId } from '../pokemon/battle/weather';
 import type { DojoRun } from '../arena/arenaRuns';
 import { whatBeatYou } from '../pokemon/battle/whatBeatYou';
 import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
 import { flashScreen } from '../ui/screenFlash';
+import { RainOverlay } from '../ui/rainOverlay';
 import { doubleBattleBackdrop } from './battleBackdrop';
 import { iconTextureKey, itemIconName } from '../ui/icons';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
@@ -214,6 +215,7 @@ import {
   NO_BALLS_MESSAGE,
   NOTHING_TO_DROP_MESSAGE,
   weatherSetMessage,
+  weatherShownAfter,
   WILD_ESCAPE_FAILURE_MESSAGE,
   changesShownStatus,
   shownStatusLabel,
@@ -310,6 +312,8 @@ const GRASS_BACKDROP_ART = { x: 0, y: 1, width: 255, height: 143 } as const;
  * top is at 174.
  */
 const GRASS_BACKDROP_DEPTH = 180;
+/** The rain over the field: over the Pokemon (2), the sparkle and the ball (3), under the plates (5). */
+const BATTLE_RAIN_DEPTH = 4;
 /** The double battle's own backdrop, made at run time from the single battle's. */
 const DOUBLE_BACKDROP_KEY = 'battle-background-grass-double';
 const BANNER_TEXT_STYLE = {
@@ -550,6 +554,14 @@ export class BattleScene extends Phaser.Scene {
   private readonly cursorGutters = new Map<string, number>();
   /** The ball on the field during a throw, and which ball it is. */
   private ballSprite?: Phaser.GameObjects.Image;
+  /**
+   * The rain over the field (`ui/rainOverlay.ts`), and the weather the screen
+   * is showing: the engine resolves a turn before it is read, so the rain
+   * starts on the line "It started to rain!" and stops on the one saying it
+   * stopped, not when the engine knew.
+   */
+  private rain: RainOverlay | null = null;
+  private shownWeather: WeatherId | null = null;
   private thrownBallId?: string;
   /** "X has no moves left!" for each slot that is about to Struggle this turn. */
   private struggleLines: string[] = [];
@@ -811,6 +823,10 @@ export class BattleScene extends Phaser.Scene {
         : createBattleState(playerPokemon, wildPokemon, data.weather ?? null)),
       playerParty: this.party.pokemon,
     };
+    // A fight in a wet place is in the rain from its first frame; the last
+    // fight's overlay went down with the scene that drew it.
+    this.rain = null;
+    this.shownWeather = this.state.weather?.id ?? null;
     // Every Pokemon that can come out in this fight, so each cries on the line
     // that lets it out rather than its stand-in. The world asked for the wild
     // one before the fade; asking again costs nothing.
@@ -967,6 +983,7 @@ export class BattleScene extends Phaser.Scene {
 
   public update(_time: number, delta: number): void {
     this.advanceSlides();
+    this.updateRain(delta);
     this.dialog.update(delta);
     // The naming screen owns the keyboard; the fight waits on its answer.
     if (this.mode === 'naming') {
@@ -4128,7 +4145,22 @@ export class BattleScene extends Phaser.Scene {
     this.showStatus(ref, statusAfterLine(shown, event));
   }
 
+  /**
+   * Rain over the field while the fight is in it: over both sides and the
+   * shiny sparkle and the ball, under the plates and the text box, which is
+   * what has to be read.
+   */
+  private updateRain(deltaMs: number): void {
+    const raining = this.shownWeather === WeatherId.Rain;
+    if (!raining && !this.rain) {
+      return;
+    }
+    this.rain ??= new RainOverlay(this, BATTLE_RAIN_DEPTH, false);
+    this.rain.update(deltaMs, raining, { x: 0, y: 0, width: BATTLEFIELD_WIDTH, height: GRASS_BACKDROP_DEPTH });
+  }
+
   private presentCombatEvent(event: BattleEvent): void {
+    this.shownWeather = weatherShownAfter(this.shownWeather, event);
     const step = combatPresentationSteps([event])[0];
     if (!step) {
       return;

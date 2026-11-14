@@ -27,6 +27,7 @@ import { districtFile } from '../../stitch';
 import { planLimits, SEAM_DEPTH, startDistrict } from '../../worldPlan';
 import { withInside } from './insides';
 import { caveLadders, caveMouthLink, greystoneCaves } from './greystoneCaves';
+import { MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
 import { GREYSTONE_VALE } from './plan';
 
 /** The land above the coast, a letter a lattice cell: T the wood, . the heath. */
@@ -417,6 +418,17 @@ function withInsides(file: MapFile): MapFile {
         'She makes it rain, and in the rain her Horsea moves first. Water hits harder and Fire goes soft.',
         'Bring Electric or Grass. And a Psyduck: while one is out, the weather goes still.',
         'Beat her and both ways open for good, and the CASCADE BADGE is yours.',
+      ],
+      // Once she is beaten, this raid or before, he says so (`linesSpoken`).
+      afterBeating: [
+        {
+          boss: MISTY_BOSS_ID,
+          lines: [
+            'Yo! You beat MISTY! The jetty and the reed trail are open for good.',
+            'The CASCADE BADGE is yours, and KOGA will fight you now.',
+            'Fuchsia Gym is in Tanglewood, by the road to the Safari Marsh. Bring something that shrugs off poison!',
+          ],
+        },
       ],
     },
   ]);

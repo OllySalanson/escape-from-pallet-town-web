@@ -28,7 +28,7 @@ import { hasOmens, layOmen, type Omen } from '../world/omens';
 import {
   createRunTrainerEncounters,
   trainersForContract,
-  withoutDefeatedBosses,
+  withoutBeatenBosses,
   type RunTrainerEncounter,
 } from '../world/trainers';
 import {
@@ -769,10 +769,12 @@ export function generateRunPlan(
   const authored =
     suppliedContent ?? authoredContent(insertion.mapId, openedDoorKeys, completedContracts);
   // A beaten boss is gone for good, so they are dropped before anything is
-  // reserved for them: the tile they stood on is ordinary ground again.
+  // reserved for them: the tile they stood on is ordinary ground again. A
+  // leader who waits on a badge stays, and stands only once it is won
+  // (`isChallenging`), which can be in this very raid.
   const content: RunGenerationContent = {
     ...authored,
-    trainers: withoutDefeatedBosses(authored.trainers, defeatedBosses),
+    trainers: withoutBeatenBosses(authored.trainers, defeatedBosses),
   };
   const encounters = Object.fromEntries(
     Object.values(content.maps)

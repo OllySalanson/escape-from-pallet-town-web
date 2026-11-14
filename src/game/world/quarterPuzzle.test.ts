@@ -3,7 +3,7 @@ import type { TrainerBattle } from '../pokemon/battle/battleEngine';
 import { WeatherId } from '../pokemon/battle/weather';
 import { generateRunPlan } from '../run/runGeneration';
 import { partyOf, trainerWinRate, type MeasuredMember, type MeasuredParty } from './trainerMeasure';
-import { createRunTrainerEncounters } from './trainers';
+import { createRunTrainerEncounters, isChallenging } from './trainers';
 import { KOGA_BOSS_ID, MISTY_BOSS_ID } from './valeQuarters';
 
 /**
@@ -265,8 +265,12 @@ describe('THE MARSH: Koga, two on two in the poison', () => {
   });
 
   it('stands in a raid only for a holder of the CASCADE BADGE, knowing his taught moves', () => {
+    // He is in every raid, his tile held, because the badge can be won in it
+    // (`scenes/kogaAfterMisty.test.ts`); he only stands once it is held.
     const before = generateRunPlan(1, undefined, 'greystone-vale-the-strand');
-    expect(before.trainers.some((trainer) => trainer.bossId === KOGA_BOSS_ID)).toBe(false);
+    const waiting = before.trainers.find((trainer) => trainer.bossId === KOGA_BOSS_ID)!;
+    expect(isChallenging(waiting, [])).toBe(false);
+    expect(isChallenging(waiting, [MISTY_BOSS_ID])).toBe(true);
     const after = generateRunPlan(1, undefined, 'greystone-vale-the-strand', undefined, undefined, [MISTY_BOSS_ID]);
     const raidKoga = after.trainers.find((trainer) => trainer.bossId === KOGA_BOSS_ID)!;
     expect(raidKoga.trainer.party.map((pokemon) => pokemon.moves.map((move) => move.base.name))).toEqual(
