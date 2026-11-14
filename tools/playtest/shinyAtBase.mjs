@@ -8,8 +8,10 @@
 // a shiny Squirtle and an ordinary Eevee in the box and a shiny Psyduck left
 // with the Day-Care Man. The Charmander off Oak's table is ordinary, as every
 // starter is, so the one at heel round the harbour gives off nothing; the
-// Squirtle then leads a raid, and is the one walking there - the lead walks,
-// if it is of a line there is walking art for (`world/raidFollower.ts`). Stepped at exact 60fps frames on a paused loop, so it needs a
+// Pikachu then leads a raid, and is the one walking there in its shiny colours
+// - the lead walks whatever its kind (`world/raidFollower.ts`). The garden is
+// photographed from open ground the yard is asked for, and the driver fails if
+// it stands anywhere else. Stepped at exact 60fps frames on a paused loop, so it needs a
 // test-mode build (`?testmode=pixels` for a picture worth judging). It fails
 // loudly when a shiny one gives off no stars, when an ordinary one gives off
 // any, when a star is drawn anywhere but round its own figure, or when two
@@ -166,15 +168,35 @@ try {
     localStorage.setItem('${SAVE_KEY}', JSON.stringify(save));
   })()`);
 
-  // The lawn below the garden, the pen's fence in view to the east; two steps
-  // west, so the partner stands in the open at the player's side.
-  await page.evaluate(`void ${base}.scene.start('base', { at: { x: 44, y: 15 }, facing: 'down' })`);
-  await until(baseReady, 'the yard by the house');
+  // Beside the garden, on ground the yard as it is now drawn can be stood on.
+  // The yard is restarted for the box's three to come out, and then asked
+  // where they are: the open tile nearest the middle of them, which puts the
+  // garden and the pen in the picture. A tile written down here once went
+  // solid when the harbour was redrawn, and the scene stands a player who
+  // asks for a solid tile at its usual arrival instead - so this stood on
+  // the arrival square and photographed it as the garden, and passed.
+  await page.evaluate(`void ${base}.scene.start('base', {})`);
+  await until(`${baseReady} && ${base}.garden?.figures.length === 3`, 'the yard with the garden out');
+  const stand = await page.evaluate(`(() => {
+    const s = ${base};
+    const tiles = s.garden.figures.map((f) => f.tile);
+    const middle = { x: tiles.reduce((sum, t) => sum + t.x, 0) / tiles.length, y: tiles.reduce((sum, t) => sum + t.y, 0) / tiles.length };
+    const taken = (x, y) => tiles.some((t) => t.x === x && t.y === y);
+    let best = null;
+    s.collision.forEach((row, y) => row.forEach((blocked, x) => {
+      if (blocked || taken(x, y)) return;
+      const far = Math.hypot(x - middle.x, y - middle.y);
+      if (far >= 1.5 && (!best || far < best.far)) best = { x, y, far };
+    }));
+    return best && { x: best.x, y: best.y };
+  })()`);
+  if (!stand) fail('no open ground anywhere near the garden');
+  await page.evaluate(`void ${base}.scene.start('base', { at: ${JSON.stringify(stand)}, facing: 'down' })`);
+  await until(baseReady, 'the yard by the garden');
   await press('Escape');
-  await page.keyDown('ArrowLeft');
-  await until(`${base}.currentTile.x <= 42`, 'two steps west');
-  await page.keyUp('ArrowLeft');
   await until(`${base}.targetTile === null`, 'standing still');
+  const at = await page.evaluate(`${base}.currentTile`);
+  if (at.x !== stand.x || at.y !== stand.y) fail(`asked to stand at ${stand.x},${stand.y} by the garden, and stood at ${at.x},${at.y}`);
 
   const seen = await page.evaluate(starsOf(base));
   if (!seen.partner) fail('no partner at heel');
@@ -220,9 +242,10 @@ try {
   }
 
   if (raid) {
-    // Over the fence with the shiny Squirtle leading: whoever is on the bench
-    // steps off, it is taken first and the Charmander after it, as a player
-    // changing who leads has them do.
+    // Over the fence with the shiny Pikachu leading - no starter, so this is
+    // the lead walking whatever its kind, in its shiny colours: whoever is on
+    // the bench steps off, it is taken first and the Charmander after it, as a
+    // player changing who leads has them do.
     await walkIntoBase(page, 'raid-arena', { press, until, wait });
     await until(`document.querySelector('button[data-pokemon]') !== null`, 'the bench to list the vault');
     for (let guard = 0; guard < 6; guard += 1) {
@@ -232,12 +255,13 @@ try {
       if (!stoodDown) break;
       await wait(150);
     }
-    await until(takePokemon('squirtle'), 'Squirtle leading the raid party');
+    await until(takePokemon('pikachu'), 'Pikachu leading the raid party');
     await until(takePokemon('charmander'), 'Charmander in the raid party');
     await jumpIn(page, { press, until, wait });
     await until(`${world}.partner && ${world}.partner.place.out`, 'the follower out on the raid');
-    const walking = await page.evaluate(`${world}.partner.species`);
-    if (walking !== 'squirtle') fail(`${walking} is walking on the raid, not the Squirtle that leads`);
+    const walking = await page.evaluate(`({ species: ${world}.partner.species, texture: ${world}.partner.sprite.texture.key })`);
+    if (walking.species !== 'pikachu') fail(`${walking.species} is walking on the raid, not the Pikachu that leads`);
+    if (!before && walking.texture !== 'partner-shiny-pikachu') fail(`the shiny Pikachu walks as ${walking.texture}, not in its shiny colours`);
     if (before) {
       await wait(1500);
       await shoot('raid-heel');

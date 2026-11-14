@@ -74,10 +74,11 @@ class Drawn {
 }
 
 /** A stage, and every graphics drawn on it after the figures were stood up: the stars. */
-function stage() {
+function stage(fetched: readonly string[] = []) {
   const stars: Drawn[] = [];
   const sprites: Drawn[] = [];
   const scene = {
+    textures: { exists: (key: string) => fetched.includes(key) },
     anims: { exists: () => true, create: () => undefined },
     tweens: { add: () => undefined },
     add: {
@@ -101,8 +102,8 @@ const HEEL: GridPosition = { x: 14, y: 13 };
 /** A moment with all three glints out at once. */
 const ALL_OUT_MS = GLINT_FIRST_MS + GLINT_MOTES[GLINT_MOTES.length - 1].fromMs + 10;
 
-function partnerAtHeel(shiny: boolean, place = { tile: HEEL, out: true, facing: 'up' as const }) {
-  const { scene, sprites, stars, lit } = stage();
+function partnerAtHeel(shiny: boolean, place = { tile: HEEL, out: true, facing: 'up' as const }, fetched: readonly string[] = []) {
+  const { scene, sprites, stars, lit } = stage(fetched);
   const host: PartnerHost = {
     playerTile: () => PLAYER,
     playerStepping: () => false,
@@ -119,6 +120,12 @@ function partnerAtHeel(shiny: boolean, place = { tile: HEEL, out: true, facing: 
 }
 
 describe('a shiny partner at the player’s heel', () => {
+  it('walks in its shiny colours once the raid has fetched them, and in its ordinary ones until then', () => {
+    expect(partnerAtHeel(true, undefined, ['partner-shiny-charmander']).sprite.texture).toBe('partner-shiny-charmander');
+    expect(partnerAtHeel(true).sprite.texture).toBe('partner-charmander');
+    expect(partnerAtHeel(false, undefined, ['partner-shiny-charmander']).sprite.texture).toBe('partner-charmander');
+  });
+
   it('glints round its head, over its own picture and under whoever stands a row nearer', () => {
     const { figure, sprite, lit } = partnerAtHeel(true);
 

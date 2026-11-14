@@ -281,7 +281,9 @@ footsteps, through every door and into every room, drawn in HeartGold and SoulSi
 following-Pokémon art. Turn round, press Space, and it'll tell you how it's doing. Everybody
 else's trots behind them too, so a busy harbour is a parade - and if you bump into somebody,
 face them and press Space to wave. It's that
-Pokémon and nobody else, so lose it in a raid and the Harbour gets very quiet.
+Pokémon and nobody else, so lose it in a raid and the Harbour gets very quiet. Out on a raid
+it's whoever leads your team instead - all 151 can walk, shinies in their shiny colours - so when a
+lighthouse flares at "the one walking at your heel", you can see who it means.
 
 <p align="center">
   <img src="docs/readme/harbour.png" width="800" alt="The Harbour: the Seagallop ferry tied up beside the jetty and two rowing boats along the quay wall, a sailor, a Slowpoke and a coil of rope on the quay, lobster pots on its corner, the Raid Arena under its banners, Bill's cottage with its name over it, and a policeman with his Growlithe by Harbour Square.">

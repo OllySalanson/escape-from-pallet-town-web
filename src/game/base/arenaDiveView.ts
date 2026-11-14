@@ -7,7 +7,8 @@ import type { HunterRival } from '../world/hunters';
 import { ensureTexture } from './arenaView';
 import { partnerFrame } from './partner';
 import { FIRE_LETTERING, SAFE_LETTERING, stampedWord } from '../ui/stampedLettering';
-import { fitRailStamps, type RailStamp } from './heldBreath';
+import { MOST_WORDS, fitRailStamps, railStampRoom, type RailStamp } from './heldBreath';
+import type { Rect } from '../ui/labelPlacement';
 
 /**
  * What falls and what goes past on the way down from THE RAID ARENA's rail: the
@@ -45,7 +46,6 @@ const STAKE_FONTS = ['30px', '20px'] as const;
 const STAKE_BIG_MOST = 3;
 const STAKE_TOP = 12;
 const STAKE_GAP = 1;
-const STAKE_SIDE_ROOM = 16;
 /** Where a line is stamped to be measured, before the stamp is set. */
 const STAKE_MEASURE = 'arena-stake-measure';
 /** How long a word stands at twice its size as it lands. */
@@ -143,10 +143,12 @@ export class ArenaDiveView {
 
   /**
    * Stamps what is at risk, out of sight until it is called for, every line
-   * inside the screen (`fitRailStamps`). Hands back how many lines that came
-   * to, which is what goes up a word at a time.
+   * inside the screen and clear of the FEEDBACK tab (`feedbackTab`, in game
+   * pixels, as `feedbackTabOverGame` hands it; `fitRailStamps`,
+   * `railStampRoom`). Hands back how many lines that came to, which is what
+   * goes up a word at a time.
    */
-  public stakesAre(given: readonly RailStamp[]): number {
+  public stakesAre(given: readonly RailStamp[], feedbackTab: Rect | null = null): number {
     const { width } = this.scene.scale;
     const lettering = (kind: RailStamp['kind'], font: string) => ({
       fontSize: font,
@@ -155,16 +157,18 @@ export class ArenaDiveView {
     });
     const stamp = (stamps: readonly RailStamp[], font: string) =>
       stamps.map(({ text, kind }, index) => stampedWord(this.scene, `arena-stake-${index}`, text, lettering(kind, font)));
-    const fits = (size: { readonly width: number }) => size.width <= width - STAKE_SIDE_ROOM;
+    const lineHeight = stampedWord(this.scene, STAKE_MEASURE, 'A', lettering('safe', STAKE_FONTS[1])).height;
+    const room = railStampRoom(width, feedbackTab, STAKE_TOP + MOST_WORDS * (lineHeight + STAKE_GAP));
+    const fits = (size: { readonly width: number }) => size.width <= room;
     let stamps = given;
     let sizes = stamp(stamps, stamps.length <= STAKE_BIG_MOST ? STAKE_FONTS[0] : STAKE_FONTS[1]);
     if (!sizes.every(fits)) {
       stamps = fitRailStamps(given, (text) =>
         fits(stampedWord(this.scene, STAKE_MEASURE, text, lettering('safe', STAKE_FONTS[1]))),
       );
-      this.scene.textures.remove(STAKE_MEASURE);
       sizes = stamp(stamps, STAKE_FONTS[1]);
     }
+    this.scene.textures.remove(STAKE_MEASURE);
     let top = STAKE_TOP;
     this.stakes = sizes.map((size, index) => {
       const image = this.keep(

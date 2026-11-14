@@ -281,12 +281,13 @@ describe('who walks at the heel on a raid', () => {
     expect(Math.abs(tile.x - driven.currentTile.x) + Math.abs(tile.y - driven.currentTile.y)).toBe(1);
   });
 
-  it('is the partner when the lead has no walking art, and nobody when neither does', () => {
+  it('is the lead whatever its kind, and the partner only for a lead with no walking art', () => {
     const starter = new Pokemon(CHARMANDER, 5);
-    expect(dropIn({ party: [new Pokemon(PIDGEY, 4), starter], partner: starter }).driven.partner?.pokemon).toBe(
-      starter,
-    );
-    expect(dropIn({ party: [new Pokemon(PIDGEY, 4)] }).driven.partner).toBeNull();
+    const pidgey = new Pokemon(PIDGEY, 4);
+    expect(dropIn({ party: [pidgey, starter], partner: starter }).driven.partner?.pokemon).toBe(pidgey);
+    const unwalked = new Pokemon({ ...PIDGEY, id: 'unown' }, 4);
+    expect(dropIn({ party: [unwalked, starter], partner: starter }).driven.partner?.pokemon).toBe(starter);
+    expect(dropIn({ party: [new Pokemon({ ...PIDGEY, id: 'unown' }, 4)] }).driven.partner).toBeNull();
   });
 
   it('is still the starter when it is packed into the secure container, which fills itself with it', () => {

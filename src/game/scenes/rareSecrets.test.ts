@@ -360,6 +360,48 @@ describe('THE HERON THAT IS NOT', () => {
     expect(internals.pendingWildBattle).toBeUndefined();
   });
 
+  it("seats the Heron Man's call clear of the notice the player has walked up to read, and clear of the player", () => {
+    const { internals, entity: notice } = stood(0);
+    const scene = internals as unknown as Record<string, unknown> & { advanceVillageCalls(deltaMs: number): void };
+    const map = scene.currentMap as { entities: readonly WorldEntity[] };
+    const heronMan = map.entities.find((candidate) => candidate.secret === heron.id && candidate.kind === 'npc' && candidate.pokemon === undefined)!;
+    expect(heronMan.dialogLines.length).toBeGreaterThan(0);
+    // Stands under the notice, as the map places him, which is what put his bubble over it.
+    expect(heronMan.position).toEqual({ x: notice.position.x, y: notice.position.y + 1 });
+    // His figure as `createFigure` stands it (top-left at its tile, the sheet's feet on the tile's foot),
+    // and a bubble as `SpeechBubble` draws one: a window and its words, anything asked of them handed back.
+    const top = heronMan.position.y * 16 + 16 - 27;
+    const sprite = {
+      x: heronMan.position.x * 16,
+      y: top,
+      getBounds: () => ({ centerX: heronMan.position.x * 16 + 8, top }),
+    };
+    const drawn = (): unknown => new Proxy({}, { get: (_target, key) => (key === 'width' ? 84 : key === 'height' ? 12 : () => drawn()) });
+    Object.assign(scene, {
+      npcSprites: new Map([[heronMan.id, sprite]]),
+      add: { graphics: drawn, text: drawn },
+      targetTile: null,
+      voyaging: null,
+      isWarping: false,
+      pendingHubTransition: false,
+      trainerPrompt: undefined,
+      dialogBox: { visible: false },
+      villageBubble: null,
+      villageCall: { saying: { id: heronMan.id, words: 'Hush. There it goes.', leftMs: 2_000 }, untilNextMs: 0, lastId: heronMan.id },
+    });
+
+    scene.advanceVillageCalls(16);
+
+    const bubble = (scene.villageBubble as { box: { x: number; y: number; width: number; height: number } }).box;
+    const covers = (tile: GridPosition) =>
+      bubble.x < (tile.x + 1) * 16 && tile.x * 16 < bubble.x + bubble.width && bubble.y < (tile.y + 1) * 16 && tile.y * 16 < bubble.y + bubble.height;
+    expect(covers(notice.position)).toBe(false);
+    expect(covers(scene.currentTile as GridPosition)).toBe(false);
+    // And still over him, its tail on its speaker.
+    expect(bubble.x).toBeLessThan(heronMan.position.x * 16 + 8);
+    expect(bubble.x + bubble.width).toBeGreaterThan(heronMan.position.x * 16 + 8);
+  });
+
   it('counts standing still in raid clock, and a step or a turn starts the count again', () => {
     const scene = Object.create(WorldScene.prototype) as WorldScene;
     const stance = { currentTile: { x: 5, y: 5 }, facing: 'left', targetTile: null as GridPosition | null, stoodStillMs: 0, stoodAs: '' };

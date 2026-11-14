@@ -204,12 +204,14 @@ import type { PaintedPicture } from '../world/minimap';
 import {
   arrivalPlace,
   directionBetween,
+  isPartnerSpecies,
   sameTile,
   partnerFrame,
   partnerOf,
   partnerReaction,
   turnToPartner,
   type PartnerEmote,
+  type PartnerSpeciesId,
 } from '../base/partner';
 import {
   BUBBLE_HEIGHT,
@@ -2315,7 +2317,7 @@ export class BaseScene extends Phaser.Scene {
     const risk = this.stakesGoingOver();
     const words = risk ? railStamps(risk, new SaveManager().load()?.raidProgress.benchRaids ?? 1) : [];
     this.jump.bet = risk ? betOf(risk) : 'nothing';
-    const lines = this.jump.dive?.stakesAre(words) ?? words.length;
+    const lines = this.jump.dive?.stakesAre(words, feedbackTabOverGame(this.game?.canvas, this.scale?.gameSize)) ?? words.length;
     if (lines > 0) {
       this.jump.breath = { elapsedMs: 0, ms: breathMs(lines), words: lines, cut: false };
       arena.holdBreath(true);
@@ -5944,6 +5946,12 @@ export class BaseScene extends Phaser.Scene {
     this.spentPresses.spendHeld(this.directionKeys());
   }
 
+  /** The partner walking with the player, as the shared harbour shows it to everybody else: one of the starters' lines, or nobody. */
+  private partnerSpecies(): PartnerSpeciesId | null {
+    const species = this.partner?.species;
+    return species !== undefined && isPartnerSpecies(species) ? species : null;
+  }
+
   /** Named, the player can be seen in the harbour from now on. */
   private takeTheName(name: string): void {
     nameThisSitting = name;
@@ -5952,7 +5960,7 @@ export class BaseScene extends Phaser.Scene {
       this.currentTile,
       this.facing,
       name,
-      this.partner?.species ?? null,
+      this.partnerSpecies(),
       readLook(this.savedGame.raidProgress.look),
       this.wornPack(),
       shownClass(this.savedGame.raidProgress.dojo),
@@ -6401,7 +6409,7 @@ export class BaseScene extends Phaser.Scene {
         this.currentTile,
         this.facing,
         houseName(),
-        this.partner?.species ?? null,
+        this.partnerSpecies(),
         readLook(this.savedGame.raidProgress.look),
         this.wornPack(),
       );

@@ -1,4 +1,5 @@
-import { isPartnerSpecies, type PartnerSpeciesId } from '../base/partner';
+import { followerAssetPath, followerTextureKey, isFollowerSpecies, type FollowerSpeciesId } from '../base/partner';
+import { evolutionFamily } from '../pokemon/evolution';
 import type { Pokemon } from '../pokemon/Pokemon';
 
 /**
@@ -6,10 +7,14 @@ import type { Pokemon } from '../pokemon/Pokemon';
  *
  * The harbour's partner is the starter and nobody else (`partner.ts`). A raid
  * is HeartGold's own rule instead - the Pokemon walking behind you is the one
- * that leads your party, the one sent out first - with the starter as the
- * second answer, because the only walking art there is (`FOLLOWER_ART`) is
- * the three starters' lines: a lead with nobody to draw it hands the walk to
- * the partner rather than leave the player alone.
+ * that leads your party, the one sent out first - in its own colours, shiny
+ * when it is. Every one of Kanto's 151 has HeartGold's walking art
+ * (`FOLLOWER_ART`), so the lead is always the one drawn: a find that answers
+ * "the one walking with you" - a Bug leading, a shiny leading, a Ghost - is
+ * answering the Pokemon the player can see. Only the three starters' lines had
+ * art once, and a shiny Butterfree leading walked as the Bulbasaur behind it
+ * while THE OLD LIGHT's Starmie flared at it (playtest, 14 Nov 2026). The
+ * partner is still the second answer, for a lead the art does not cover.
  *
  * Two things put a Pokemon out of the running:
  *
@@ -28,7 +33,7 @@ import type { Pokemon } from '../pokemon/Pokemon';
  */
 export interface RaidFollower {
   readonly pokemon: Pokemon;
-  readonly species: PartnerSpeciesId;
+  readonly species: FollowerSpeciesId;
 }
 
 export function raidFollower(options: {
@@ -42,7 +47,7 @@ export function raidFollower(options: {
   const lead = party.find(out);
   const candidates = [lead, partner !== undefined && party.includes(partner) ? partner : undefined];
   for (const pokemon of candidates) {
-    if (pokemon !== undefined && out(pokemon) && isPartnerSpecies(pokemon.base.id)) {
+    if (pokemon !== undefined && out(pokemon) && isFollowerSpecies(pokemon.base.id)) {
       return { pokemon, species: pokemon.base.id };
     }
   }
@@ -52,4 +57,23 @@ export function raidFollower(options: {
 /** Whether two answers are the same Pokemon drawn the same way - an evolution is not. */
 export function sameFollower(a: RaidFollower | null, b: RaidFollower | null): boolean {
   return a?.pokemon === b?.pokemon && a?.species === b?.species;
+}
+
+/**
+ * The shiny walking sheets a raid with this party could draw: every shiny one's
+ * kind and whatever it evolves into, since it can evolve on the way. Ordinary
+ * sheets are loaded with the game; a shiny's are fetched by the raid that walks
+ * one, as a fight fetches a shiny's battle sprites (`shinyTexturesFor`), because
+ * one encounter in five hundred is shiny.
+ */
+export function shinyFollowerSheets(
+  party: readonly { readonly shiny: boolean; readonly base: { readonly id: string } }[],
+): readonly { readonly key: string; readonly path: string }[] {
+  const species = new Set(
+    party
+      .filter((member) => member.shiny)
+      .flatMap((member) => evolutionFamily(member.base.id).map((kind) => kind.id))
+      .filter(isFollowerSpecies),
+  );
+  return [...species].map((kind) => ({ key: followerTextureKey(kind, true), path: followerAssetPath(kind, true) }));
 }

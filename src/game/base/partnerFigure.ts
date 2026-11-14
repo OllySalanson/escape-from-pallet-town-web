@@ -26,11 +26,11 @@ import {
   idleBeat,
   partnerFrame,
   partnerPose,
-  partnerTextureKey,
+  followerTextureKey,
   sameTile,
   type PartnerEmote,
   type PartnerPlace,
-  type PartnerSpeciesId,
+  type FollowerSpeciesId,
 } from './partner';
 import { GLINT_OVER, ShinyGlints } from './shinyGlint';
 
@@ -111,12 +111,14 @@ export interface PartnerHost {
 /** The Pokemon the figure is of, and the walking art it is drawn with. */
 export interface PartnerIdentity {
   readonly pokemon: Pokemon;
-  readonly species: PartnerSpeciesId;
+  readonly species: FollowerSpeciesId;
 }
 
 export class PartnerFigure {
   public readonly pokemon: Pokemon;
-  public readonly species: PartnerSpeciesId;
+  public readonly species: FollowerSpeciesId;
+  /** The sheet it is drawn from: its shiny colours when it is shiny and they have been fetched. */
+  private readonly texture: string;
   /** Its name as the game writes one, in capitals. */
   public readonly name: string;
   private readonly sprite: Phaser.GameObjects.Sprite;
@@ -143,7 +145,7 @@ export class PartnerFigure {
   /** Whether it greets with the hop and without the chirp. */
   private readonly quietGreeting: boolean;
   private veiled = false;
-  /** A shiny partner's glints, which is the one way its walking picture says so (`shinyGlint.ts`). */
+  /** A shiny one's glints, over its shiny colours (`shinyGlint.ts`). */
   private readonly glints: ShinyGlints | null;
   private readonly scene: Phaser.Scene;
   private readonly host: PartnerHost;
@@ -165,8 +167,10 @@ export class PartnerFigure {
     this.quietGreeting = options.quietGreeting === true;
     this.appearMs = place.out && options.fadeIn !== false ? 0 : null;
     this.nextBeatMs = nextBeatDelay();
+    const shinyTexture = followerTextureKey(who.species, true);
+    this.texture = who.pokemon.shiny && scene.textures.exists(shinyTexture) ? shinyTexture : followerTextureKey(who.species);
     this.sprite = scene.add
-      .sprite(0, 0, partnerTextureKey(who.species), partnerFrame(place.facing, 0))
+      .sprite(0, 0, this.texture, partnerFrame(place.facing, 0))
       .setOrigin(0, 0)
       .setAlpha(this.appearMs === null ? 1 : 0)
       .setVisible(place.out);
@@ -251,13 +255,13 @@ export class PartnerFigure {
    * place here, and the scene draws the jump from where it stood and what it is.
    * Null if it is not out to go.
    */
-  public leaveForJump(): { readonly x: number; readonly y: number; readonly texture: string; readonly species: PartnerSpeciesId } | null {
+  public leaveForJump(): { readonly x: number; readonly y: number; readonly texture: string; readonly species: FollowerSpeciesId } | null {
     if (!this.placeValue.out || !this.sprite.visible) {
       return null;
     }
     const at = { x: this.sprite.x, y: this.sprite.y };
     this.hideAt(this.placeValue.tile);
-    return { ...at, texture: partnerTextureKey(this.species), species: this.species };
+    return { ...at, texture: this.texture, species: this.species };
   }
 
   /**

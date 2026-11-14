@@ -111,6 +111,10 @@ const SAFE_JOIN = ', ';
  * that would be more lines than the screen holds (`MOST_WORDS`) it names
  * fewer: the first raid of every new save stamped SAFE: CHARMANDER (YOUR
  * PARTNER), POTION x3 off both edges of the screen (playtest, 14 Nov 2026).
+ * One thing too wide for a line of its own breaks before what it says in
+ * brackets, and with no line left for that it goes without it: a new save's
+ * partner alone was wider than the room beside the FEEDBACK tab at 640x480,
+ * and its bracket went under the tab (second playtest, 14 Nov 2026).
  * `fits` is whether a line, as it would be stamped, is narrow enough.
  */
 export function fitRailStamps(stamps: readonly RailStamp[], fits: (text: string) => boolean): readonly RailStamp[] {
@@ -124,14 +128,50 @@ export function fitRailStamps(stamps: readonly RailStamp[], fits: (text: string)
       const last = lines.length - 1;
       if (last >= 0 && fits(`${lines[last]}${SAFE_JOIN}${name}`)) {
         lines[last] = `${lines[last]}${SAFE_JOIN}${name}`;
-      } else if (lines.length < room) {
-        lines.push(last < 0 ? `${SAFE_HEAD}${name}` : name);
-      } else {
+        continue;
+      }
+      if (lines.length >= room) {
         break;
+      }
+      const head = last < 0 ? SAFE_HEAD : '';
+      const bracket = name.indexOf(BRACKET);
+      if (fits(`${head}${name}`) || bracket <= 0) {
+        lines.push(`${head}${name}`);
+        continue;
+      }
+      lines.push(`${head}${name.slice(0, bracket)}`);
+      const said = name.slice(bracket + 1);
+      if (lines.length < room && fits(said)) {
+        lines.push(said);
       }
     }
     return lines.map((text) => ({ text, kind: 'safe' as const }));
   });
+}
+
+/** Where a thing's bracket starts, which a line too narrow for the whole of it breaks before. */
+const BRACKET = ' (';
+
+/** The least a stamp keeps clear of each edge of the screen, in game pixels. */
+export const RAIL_STAMP_EDGE = 8;
+/** How far a stamp keeps clear of the FEEDBACK tab's frame, beyond the tab itself. */
+const TAB_CLEARANCE = 3;
+
+/**
+ * How wide a line of the stamp may be on a screen `width` across. Each line is
+ * centred, so what the FEEDBACK tab takes of the right edge is kept clear of on
+ * the left as well - when the tab stands beside the stamp at all, which is down
+ * to `stampsBottom`, the lowest a stamp can reach. The tab is in game pixels,
+ * as `tabOverGame` hands it, or null when it is not over the game.
+ */
+export function railStampRoom(
+  width: number,
+  tab: { readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null,
+  stampsBottom: number,
+): number {
+  const beside = tab !== null && tab.y < stampsBottom && tab.x < width;
+  const edge = beside ? Math.max(RAIL_STAMP_EDGE, width - tab.x + TAB_CLEARANCE) : RAIL_STAMP_EDGE;
+  return width - edge * 2;
 }
 
 /** How big a bet the house reckons this is. */

@@ -31,8 +31,27 @@ import { FOLLOWER_ART } from './generated/followerArt';
  *   walked by these same rules and drawn by the same `PartnerFigure`.
  */
 
-/** One partner's walking art, as `scripts/cut-hgss-followers.mjs` cut it. */
-export type PartnerSpeciesId = keyof typeof FOLLOWER_ART;
+/** A Pokemon with walking art, as `scripts/cut-hgss-followers.mjs` cut it: every one of Kanto's 151. */
+export type FollowerSpeciesId = keyof typeof FOLLOWER_ART;
+
+/**
+ * Every Pokemon a partner can be: the three starters and both of their
+ * evolutions. The partner is the starter the save picked, so the harbour only
+ * ever walks one of these, and only these are loaded with the game.
+ */
+export const PARTNER_SPECIES = [
+  'bulbasaur',
+  'ivysaur',
+  'venusaur',
+  'charmander',
+  'charmeleon',
+  'charizard',
+  'squirtle',
+  'wartortle',
+  'blastoise',
+] as const satisfies readonly FollowerSpeciesId[];
+
+export type PartnerSpeciesId = (typeof PARTNER_SPECIES)[number];
 
 /** A frame of a partner sheet is 32 pixels square: two a facing, four facings. */
 export const PARTNER_FRAME = 32;
@@ -40,25 +59,38 @@ export const PARTNER_FRAME = 32;
 /**
  * The frame row a partner's feet rest on. HeartGold draws every following
  * Pokemon standing on row 29 of its frame (a Bulbasaur's toes reach 30), so
- * one anchor stands all nine on the ground the player stands on.
+ * one anchor stands every one of them on the ground the player stands on.
  */
 export const PARTNER_FEET_PIXEL_Y = 29;
 
 /** The order of the rows on a partner sheet. */
 const PARTNER_ROWS: readonly Direction[] = ['down', 'up', 'left', 'right'];
 
-export function partnerTextureKey(species: PartnerSpeciesId): string {
-  return `partner-${species}`;
+/** The walking art of a Pokemon, in its shiny colours if `shiny`. */
+export function followerTextureKey(species: FollowerSpeciesId, shiny = false): string {
+  return shiny ? `partner-shiny-${species}` : `partner-${species}`;
 }
 
-export function partnerAssetPath(species: PartnerSpeciesId): string {
-  return `assets/followers/${species}.png`;
+export function followerAssetPath(species: FollowerSpeciesId, shiny = false): string {
+  return shiny ? `assets/followers/shiny/${species}.png` : `assets/followers/${species}.png`;
 }
 
-export const PARTNER_SPECIES = Object.keys(FOLLOWER_ART) as readonly PartnerSpeciesId[];
+export function partnerTextureKey(species: FollowerSpeciesId): string {
+  return followerTextureKey(species);
+}
+
+export function partnerAssetPath(species: FollowerSpeciesId): string {
+  return followerAssetPath(species);
+}
+
+export const FOLLOWER_SPECIES = Object.keys(FOLLOWER_ART) as readonly FollowerSpeciesId[];
+
+export function isFollowerSpecies(speciesId: string): speciesId is FollowerSpeciesId {
+  return Object.prototype.hasOwnProperty.call(FOLLOWER_ART, speciesId);
+}
 
 export function isPartnerSpecies(speciesId: string): speciesId is PartnerSpeciesId {
-  return Object.prototype.hasOwnProperty.call(FOLLOWER_ART, speciesId);
+  return (PARTNER_SPECIES as readonly string[]).includes(speciesId);
 }
 
 /** Which frame of a partner sheet shows it facing `facing`, in pose 0 or 1. */
