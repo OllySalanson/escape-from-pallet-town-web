@@ -40,9 +40,11 @@ export const DAY_CARE_KEEPER: DayCareKeeper = {
 /**
  * The grass inside the fence: where the Pokémon he is raising may stand. Three
  * rows deep: at four its fence stood across the straight way east from KEEPERS'
- * ROW to THE PROMENADE, and a player walking it met the fence.
+ * ROW to THE PROMENADE, and a player walking it met the fence. It backs onto
+ * the wood, a row above where it was, so KEEPERS' ROW's gravel runs straight
+ * on under its fence to THE PROMENADE without stepping down a row round it.
  */
-export const DAY_CARE_PEN = { x: 47, y: 9, width: 5, height: 3 } as const;
+export const DAY_CARE_PEN = { x: 47, y: 8, width: 5, height: 3 } as const;
 
 /** Every tile inside the fence, row by row. */
 export function penTiles(): readonly GridPosition[] {

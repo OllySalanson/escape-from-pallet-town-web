@@ -141,6 +141,30 @@ describe.each([
       expect(longer).toEqual([]);
     });
 
+    it('never sends a pair the long way round along the water, from the jetty to the pier head', () => {
+      // Places with no door: the docks under the warehouses (the upper quay
+      // comes down to them by three tiles past the long pier's foot, and a
+      // stack of crates on two of them sent a pair round by THE COVE), the
+      // pier out to the S.S. Anne, THE COVE's jetty, the breakwater, the beach
+      // and the pleasure pier's head. A pair rounds a corner a tile wider than
+      // one walker does, so it is allowed two steps over; a detour is dozens.
+      const along: readonly (readonly [string, number, number])[] = [
+        ['the docks', 40, 21],
+        ['the long pier', 29, 25],
+        ['THE COVE', 54, 19],
+        ['the breakwater', 59, 26],
+        ['the beach', 70, 21],
+        ['the pleasure pier’s head', 80, 28],
+      ];
+      const longer = [BASE_SPAWN, BASE_LANDING].flatMap((start) => {
+        const { single, toStand } = harbour.from(start);
+        return along
+          .filter(([, x, y]) => toStand(x, y) < 0 || toStand(x, y) > single[y][x] + 2)
+          .map(([name, x, y]) => `${name} from ${start.x},${start.y}: ${toStand(x, y)} two abreast, ${single[y][x]} single file`);
+      });
+      expect(longer).toEqual([]);
+    });
+
     it('keeps KEEPERS’ ROW clear: nothing stands on the trodden path', () => {
       // Its two rows in front of the keepers' doors; Bill's cottage stands on
       // the earth where the row widens to the arena's forecourt.
@@ -154,16 +178,19 @@ describe.each([
     });
 
     it('walks straight east from the gravel to the end of the stone, two abreast, with nothing in the way', () => {
-      // The captain's bench stood across this: KEEPERS' ROW's lower row runs on
-      // over THE GREEN and becomes THE PROMENADE's stone walk, and the row
-      // under it is the other half of the pair from the end of the gravel.
+      // The captain's bench stood across this. KEEPERS' ROW's gravel runs on
+      // over THE GREEN, both rows of it, to the DERBY's apron, where THE
+      // PROMENADE's stone walk takes over a row lower: rows 12 and 13 as far
+      // as the gravel goes, rows 13 and 14 from where the stone starts.
       const pathEnd = Math.max(...harbour.map.terrain[13].map((material, x) => (material === 'earth' ? x : -1)));
       const blocked: string[] = [];
       for (let x = BASE_SPAWN.x; x <= 86; x += 1) {
         if (!harbour.free(x, 13)) blocked.push(`${x},13`);
+        if (x <= pathEnd && !harbour.free(x, 12)) blocked.push(`${x},12`);
         if (x >= pathEnd && !harbour.free(x, 14)) blocked.push(`${x},14`);
       }
       expect(blocked).toEqual([]);
+      expect(pathEnd).toBe(60);
       expect(harbour.map.terrain[13][86]).toBe('stone');
     });
 

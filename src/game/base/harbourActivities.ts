@@ -112,8 +112,8 @@ export const HANG_OUTS: readonly RoomSpot[] = [
   stand(30, 15, 'left'),
   stand(30, 16, 'left'),
   stand(59, 8, 'left'),
-  stand(45, 15, 'right'),
-  stand(49, 15, 'left'),
+  stand(49, 14, 'right'),
+  stand(53, 15, 'left'),
   stand(53, 9, 'left'),
   stand(6, 17, 'up'),
   stand(10, 17, 'up'),
@@ -134,7 +134,7 @@ export const GAME_WATCHES: readonly RoomSpot[] = [
 ];
 
 /** THE HARBOUR BOUTIQUE's front, and THE GAME CORNER's prize window either side of its step. */
-export const SHOP_WINDOWS: readonly RoomSpot[] = [stand(54, 8, 'up'), stand(80, 10, 'up'), stand(82, 10, 'up')];
+export const SHOP_WINDOWS: readonly RoomSpot[] = [stand(54, 7, 'up'), stand(80, 10, 'up'), stand(82, 10, 'up')];
 
 /** In front of a sign. Never THE BOLTHOLE's, which is somebody's front garden. */
 export const NOTICE_BOARDS: readonly RoomSpot[] = [
@@ -158,7 +158,7 @@ export const KNOCKED_DOORS: readonly SharedRoomId[] = ['pokemon-centre', 'oaks-l
 export const CHAT_CIRCLES: readonly (readonly RoomSpot[])[] = [
   [stand(25, 17, 'right'), stand(27, 17, 'left'), stand(26, 15, 'down')],
   [stand(13, 8, 'right'), stand(15, 8, 'left'), stand(14, 10, 'up')],
-  [stand(42, 15, 'right'), stand(44, 15, 'left')],
+  [stand(40, 15, 'right'), stand(42, 15, 'left')],
   [stand(50, 18, 'right'), stand(52, 18, 'left'), stand(51, 16, 'down')],
   [stand(6, 18, 'right'), stand(8, 18, 'left'), stand(7, 16, 'down')],
   [stand(30, 7, 'right'), stand(32, 7, 'left')],
@@ -780,8 +780,10 @@ class VisitPlanner {
         const spot = this.roll.pick(call.spots);
         const from = this.now;
         if (from < opens || from >= opens + ROOM_WINDOW_MS - 3_000) {
-          // Held up, or there too soon, the room is not theirs: on past the door.
-          if (!this.stepOut()) {
+          // Held up, or there too soon, the room is not theirs: on past the
+          // door, and at once. They are standing in the doorway, not in the
+          // room, so a wait for a clear run would be a wait in the door.
+          if (!this.stepOut(0)) {
             this.pushOut();
           }
           return true;
@@ -815,7 +817,7 @@ class VisitPlanner {
   }
 
   /** Out of a doorway to the nearest open ground, for a moment, so nobody is left standing in it. */
-  private stepOut(): boolean {
+  private stepOut(holdAtMost = Infinity): boolean {
     const { spots } = botGround();
     const near = [...spots]
       .map((spot) => ({ spot, far: Math.abs(spot.x - this.at.x) + Math.abs(spot.y - this.at.y) }))
@@ -823,7 +825,7 @@ class VisitPlanner {
       .slice(0, 8);
     for (const { spot } of near) {
       const stay = this.roll.int(1_500, 3_000);
-      if (!this.walkTo(spot, 'wander', stay)) continue;
+      if (!this.walkTo(spot, 'wander', stay, false, holdAtMost)) continue;
       this.standAbout(stay);
       return true;
     }
@@ -978,13 +980,16 @@ class VisitPlanner {
    * giving way to whoever is passing, setting off a little later if the road is
    * full - and never at the very moment somebody else starts the same thing.
    */
-  private walkTo(tile: GridPosition, kind: BotActivity, stay: number, must = false): boolean {
+  private walkTo(tile: GridPosition, kind: BotActivity, stay: number, must = false, holdAtMost = Infinity): boolean {
     if (key(tile, this.at)) {
       return must || this.book.free(tileIndex(tile), this.now, this.now + stay + STEP_DURATION_MS, this.visit);
     }
     // However long they wait for a clear run, it comes out of the time they have.
     // Not out of the door yet, they are only held a moment: a door busy for longer is another way out for them.
-    const mostHeld = this.legs.length === 0 ? DOOR_BUSY_MS : must ? LONGEST_HOLD_MS : Math.min(LONGEST_HOLD_MS, this.spareAfterWalkingTo(tile) - stay);
+    const mostHeld = Math.min(
+      holdAtMost,
+      this.legs.length === 0 ? DOOR_BUSY_MS : must ? LONGEST_HOLD_MS : Math.min(LONGEST_HOLD_MS, this.spareAfterWalkingTo(tile) - stay),
+    );
     for (let held = 0; held <= mostHeld; held += 400) {
       const start = this.now + held;
       if (held > 0 && !this.ableToStayUntil(start)) break;

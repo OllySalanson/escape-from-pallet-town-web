@@ -86,9 +86,10 @@ export interface BaseDoor {
  * Where THE BATTLE ARENA stands: FireRed's Fighting Dojo, 6x5, at the head of
  * THE PROMENADE where its garden was, its door at the foot of its middle and
  * its name painted onto its front by `scripts/draw-promenade.mjs`, as THE GAME
- * CORNER's is.
+ * CORNER's is. A tile clear of the DERBY's board on its west: the board's leg
+ * stood against its wall, and the two read as one thing.
  */
-export const BATTLE_ARENA_LOT = { x: 64, y: 8, width: 6, height: 5, door: { x: 67, y: 12 } } as const;
+export const BATTLE_ARENA_LOT = { x: 65, y: 8, width: 6, height: 5, door: { x: 68, y: 12 } } as const;
 
 export const BASE_DOORS: readonly BaseDoor[] = [
   {
@@ -161,9 +162,11 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     id: 'boutique',
     screen: 'boutique',
     name: BOUTIQUE_NAME,
-    building: { prop: 'boutique', x: 54, y: 4 },
-    tiles: [{ x: 55, y: 7 }],
-    returnTo: { x: 55, y: 8 },
+    // A row back into the trees from where it was, so there is a row of lawn
+    // between its front and THE GREEN's fountain, which stood against it.
+    building: { prop: 'boutique', x: 54, y: 3 },
+    tiles: [{ x: 55, y: 6 }],
+    returnTo: { x: 55, y: 7 },
   },
   {
     // THE GAME CORNER (`gameCorner.ts`), out along THE PROMENADE: Celadon's own,
@@ -196,9 +199,10 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     id: 'great-library',
     screen: null,
     name: GREAT_LIBRARY_NAME,
-    building: { prop: 'greatLibrary', x: 59, y: 3 },
-    tiles: [{ x: 61, y: 6 }],
-    returnTo: { x: 61, y: 7 },
+    // A tile east of the boutique's wall, which it shared: each has its own.
+    building: { prop: 'greatLibrary', x: 60, y: 3 },
+    tiles: [{ x: 62, y: 6 }],
+    returnTo: { x: 62, y: 7 },
   },
   {
     // THE BATTLE ARENA (`../arena/`): Saffron's Fighting Dojo on its lot at the

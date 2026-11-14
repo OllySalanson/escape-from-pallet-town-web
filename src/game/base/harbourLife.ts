@@ -196,10 +196,13 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     kind: 'person',
     name: 'OLD MAN',
     design: 'old-man',
-    position: at(53, 12),
+    // On the lawn beside THE GREEN's bench, looking out over THE COVE: he
+    // watches the boats come in, and from under the Day-Care's fence he could
+    // not see one.
+    position: at(49, 15),
     facing: 'down',
     byDayOnly: true,
-    idle: { glances: ['left', 'down'], beatMs: 8200 },
+    idle: { glances: ['right', 'down'], beatMs: 8200 },
     lines: [
       'Sixty years I\'ve watched the boats come in here.',
       'Every one of them comes back lighter than it went out. That\'s raiding, that is.',
@@ -316,11 +319,13 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     kind: 'pokemon',
     species: 'pidgey',
     name: 'PIDGEY',
-    // Under the fountain, between the ways up either side of it.
-    position: at(57, 12),
+    // On the lawn east of THE GREEN's bench, south of the path and clear of
+    // the way down to THE COVE: under the fountain it pecked on the gravel
+    // everybody walks east on.
+    position: at(56, 15),
     facing: 'left',
     byDayOnly: true,
-    idle: { roam: [at(56, 12), at(58, 12)], glances: ['right', 'down'], beatMs: 1900 },
+    idle: { roam: [at(55, 15), at(57, 15)], glances: ['right', 'down'], beatMs: 1900 },
     lines: ['PIDGEY is pecking at crumbs somebody dropped on the green.'],
   },
   {
