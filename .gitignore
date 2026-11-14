@@ -24,3 +24,6 @@ coverage
 *.sln
 *.sw?
 .scratch/
+
+# What the tools write: npm run site-plan, and mapcraft's pictures.
+/out/
