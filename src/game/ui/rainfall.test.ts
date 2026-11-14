@@ -85,8 +85,8 @@ function graphicsStub() {
       return self;
     }),
     fillStyle: vi.fn(() => self),
-    fillRect: vi.fn(() => {
-      self.rects += 1;
+    fillRect: vi.fn((...rect: number[]) => {
+      self.rects += rect.length > 0 ? 1 : 0;
       return self;
     }),
     destroy: vi.fn(),
@@ -177,6 +177,18 @@ describe('the rain in a fight', () => {
     expect(graphics.setScrollFactor).toHaveBeenCalledWith(1);
     // The shade covers the field above the text box, not the box.
     expect(graphics.fillRect).toHaveBeenCalledWith(0, 0, 320, 180);
+    // And not one drop falls outside it, over the frame round the field: a
+    // streak starting just above its top did, in the first real-game look.
+    for (let frame = 0; frame < 40; frame += 1) {
+      graphics.fillRect.mockClear();
+      update(50);
+      for (const [x, y, width, height] of graphics.fillRect.mock.calls) {
+        expect(x).toBeGreaterThanOrEqual(0);
+        expect(y).toBeGreaterThanOrEqual(0);
+        expect(x + width).toBeLessThanOrEqual(320);
+        expect(y + height).toBeLessThanOrEqual(180);
+      }
+    }
     (scene as unknown as { shownWeather: unknown }).shownWeather = null;
     update(16);
     expect(graphics.visible).toBe(false);

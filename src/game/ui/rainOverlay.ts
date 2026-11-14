@@ -79,24 +79,34 @@ export class RainOverlay {
     g.fillStyle(RAIN_SHADE.colour, RAIN_SHADE.alpha);
     g.fillRect(view.x, view.y, view.width, view.height);
     g.fillStyle(RAIN_STREAK_COLOUR.colour, RAIN_STREAK_COLOUR.alpha);
+    // Every pixel is kept inside the view: the battle's field has a frame
+    // round it, and a streak starting just above the top drew over it.
+    const right = view.x + view.width;
+    const bottom = view.y + view.height;
+    const pixels = (x: number, y: number, width: number, height: number): void => {
+      const left = Math.max(x, view.x);
+      const top = Math.max(y, view.y);
+      const across = Math.min(x + width, right) - left;
+      const down = Math.min(y + height, bottom) - top;
+      if (across > 0 && down > 0) {
+        g.fillRect(left, top, across, down);
+      }
+    };
     for (const drop of rain.drops) {
       const x = view.x + Math.round(drop.x);
       const y = view.y + Math.round(drop.y);
-      if (x < view.x - 4 || x > view.x + view.width + 4) {
-        continue;
-      }
       if (drop.splashMs > 0) {
         // FireRed's splash: a pixel either side, one up, where it hit.
-        g.fillRect(x - 2, y - 1, 1, 1);
-        g.fillRect(x + 1, y - 1, 1, 1);
-        g.fillRect(x - 1, y, 2, 1);
+        pixels(x - 2, y - 1, 1, 1);
+        pixels(x + 1, y - 1, 1, 1);
+        pixels(x - 1, y, 2, 1);
         continue;
       }
       // The streak, a pixel wide, stepping one to the right halfway up: drawn
       // as two runs of pixels rather than a line, so it is as crisp as the art.
       const half = RAIN_STREAK.y / 2;
-      g.fillRect(x, y - half + 1, 1, half);
-      g.fillRect(x - RAIN_STREAK.x / 2, y - RAIN_STREAK.y + 1, 1, half);
+      pixels(x, y - half + 1, 1, half);
+      pixels(x - RAIN_STREAK.x / 2, y - RAIN_STREAK.y + 1, 1, half);
     }
   }
 }
