@@ -125,16 +125,20 @@ export const ARENA_SIGN: BaseSign = {
   lines: ['THE RAID ARENA', 'Every raid starts here. Walk in, kit up, drop in.'],
 };
 
-/** At the head of the long pier, beside the bollards. */
+/** On the wharf at the head of the long pier, west of its bollards. */
 export const PIER_SIGN: BaseSign = {
-  x: 25,
+  x: 24,
   y: 20,
   lines: ['THE LONG PIER', 'The S.S. ANNE lies at the end of it. Nobody aboard has said when she sails.'],
 };
 
-/** On the beach past the warehouses, where the fishing jetty goes out. */
+/**
+ * At the top of THE COVE's beach, past the boutique, above where the fishing
+ * jetty goes out - and two tiles clear of the derby's west line (x 55), where
+ * eight riders line up on the sand.
+ */
 export const COVE_SIGN: BaseSign = {
-  x: 49,
+  x: 57,
   y: 17,
   lines: ['THE COVE', 'Sand, rocks and a jetty to fish off. The ANGLER on the end of it lends his rod.'],
 };
@@ -146,8 +150,8 @@ export const SQUARE_MAP: BaseSign = {
   lines: [
     'HARBOUR SQUARE - a map of THE HARBOUR.',
     'The RAID ARENA is west, on ARENA SQUARE. The keepers are along KEEPERS\u2019 ROW. THE QUAY and the SEAGALLOP are south.',
-    'East along the water: THE DOCKS, THE LONG PIER out to the S.S. ANNE, and THE COVE. THE GREEN is past THE BOLTHOLE.',
-    'Past THE GREEN, THE PROMENADE runs along the beach to the GAME CORNER, the FIELD-MOVE COURSE and the PLEASURE PIER.',
+    'South through the lamps: THE LONG PIER out to the S.S. ANNE. East along THE DOCKS: the fish stall, the warehouses, THE HARBOUR BOUTIQUE and THE COVE.',
+    'THE GREEN and THE GREAT LIBRARY are past THE BOLTHOLE. Past them THE PROMENADE runs along the beach to the GAME CORNER, the FIELD-MOVE COURSE and the PLEASURE PIER.',
   ],
 };
 
@@ -162,12 +166,14 @@ export const BREAKWATER_SIGN: BaseSign = {
 };
 
 /**
- * At the west end of THE PROMENADE, on THE GREEN's edge below where the stone
- * walk starts: it stood at the foot of the way up to THE GREAT LIBRARY.
+ * At the west end of THE PROMENADE, where the stone walk starts: against THE
+ * BATTLE ARENA's corner, at the foot of the hedge between it and the DERBY's
+ * board, and read from the walk. On the lawn over THE COVE it stood on the
+ * line the derby's riders come up from the sand by.
  */
 export const PROMENADE_SIGN: BaseSign = {
-  x: 58,
-  y: 15,
+  x: 64,
+  y: 12,
   lines: [
     'THE PROMENADE',
     'The front: the GAME CORNER, the DERBY, the FIELD-MOVE COURSE, the DIG on the beach and the FISHING DERBY off the PLEASURE PIER. Walk it at dusk when the lamps come on.',
@@ -195,12 +201,28 @@ export const PLEASURE_PIER_SIGN: BaseSign = {
 };
 
 /**
- * THE GREEN's bench, by its top-left: three tiles wide and two deep, its back
- * to the path and a row of lawn between it and THE COVE's sand. East of it
- * two columns of lawn are left clear from the path down to the sand: the way
- * to THE COVE and its jetty.
+ * The bench over THE COVE, by its top-left: three tiles wide and two deep, its
+ * back to the path and a row of lawn between it and the sand. West of it two
+ * columns of lawn are left clear from the path down to the sand, beside the
+ * boutique's wall: the way to THE COVE and its jetty.
  */
-export const BENCH = { x: 50, y: 14 } as const;
+export const BENCH = { x: 56, y: 14 } as const;
+
+/**
+ * The rowing boats tied up along the quay, each against a wall: two in the
+ * corner between the raid jetty and the wharf, and four along the quay under
+ * the fish stall and the boutique. They ride the swell as the ships do
+ * (`floatingBoats.ts`, each on a swell of its own), which the one pulled up on
+ * the sand past the pleasure pier does not.
+ */
+export const MOORED_ROWING_BOATS: readonly PlantedProp<BasePropName>[] = [
+  { name: 'rowBoatBlue', x: 16, y: 20 },
+  { name: 'rowBoatRed', x: 20, y: 21 },
+  { name: 'rowBoatRed', x: 38, y: 21 },
+  { name: 'rowBoatBlue', x: 43, y: 21 },
+  { name: 'rowBoatGreen', x: 47, y: 21 },
+  { name: 'rowBoatBlue', x: 52, y: 21 },
+];
 
 /** Where THE BATTLE ARENA stands (`doors.ts` says it, beside its door). */
 export { BATTLE_ARENA_LOT } from './doors';
@@ -231,10 +253,10 @@ export const BASE_SIGNS: readonly BaseSign[] = [
 export const FLOWER_BEDS: readonly { readonly name: string; readonly tiles: readonly (readonly [number, number])[] }[] = [
   // Under THE BOLTHOLE's window boxes, beside its step.
   { name: 'THE BOLTHOLE’s front garden', tiles: [[38, 11], [39, 11], [40, 11]] },
-  // Down the Day-Care's east fence, a border along the way up to the boutique.
+  // Down the Day-Care's east fence, a border along the west way up to the library.
   { name: 'THE GREEN’s border', tiles: [[53, 7], [53, 8]] },
-  // Either side of THE GREAT LIBRARY's step.
-  { name: 'THE GREAT LIBRARY’s beds', tiles: [[60, 7], [61, 7], [63, 7], [64, 7]] },
+  // Either side of THE GREAT LIBRARY's step, at the head of THE GREEN.
+  { name: 'THE GREAT LIBRARY’s beds', tiles: [[55, 6], [56, 6], [58, 6], [59, 6]] },
 ];
 
 export interface BaseMapDefinition {
@@ -255,12 +277,19 @@ export interface BaseMapDefinition {
  * instructions that would build it.
  *
  * Five bands read from the top: the wood the harbour is cut out of, the grass
- * the buildings stand on, the trodden path in front of them (KEEPERS' ROW,
- * two tiles wide) with HARBOUR SQUARE's brick and its fountain below it
- * opening onto the stone quay, and the water - which is a harbour rather than a sea's edge
- * because of what is on it (`landmarks.ts`): the ferry at the jetty, the
- * S.S. Anne at the end of the long pier, the warehouses on the deeper east
- * quay and THE COVE's beach past them. The three tiles of quay under the
+ * the keepers' buildings stand on, the trodden path in front of them
+ * (KEEPERS' ROW, two tiles wide), the quay front - Bill's cottage, HARBOUR
+ * SQUARE and its fountain, the warehouses and THE HARBOUR BOUTIQUE on one
+ * building line, their backs to the row and their doors to the water - and
+ * the stone quay under them, three tiles deep from the jetty to THE COVE.
+ * And the water, which is a harbour rather than a sea's edge because of what
+ * is on it (`landmarks.ts`, `plantQuay`): the ferry at the jetty, the wharf
+ * the long pier leaves from with the S.S. Anne at the end of it, and rowing
+ * boats tied up along the quay wall. The owner asked for this building line
+ * (14 Nov 2026: "better building placement ... it looks a little bit
+ * sparse"): the warehouses stood two rows lower with a dead lawn behind them
+ * and the boutique was set into the trees at the top of THE GREEN, so the
+ * quay had no front and the row had one side. The three tiles of quay under the
  * pier's awning are ground the awning is walked under, because a canopy cell
  * leaves the ground to decide whether it is walked. Earth for the yard and stone for the quay because
  * the two have to tell each other apart at a glance - paving on this sheet is a
@@ -294,28 +323,28 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   map.draw(0, 0, [
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtT............TtTTtTTtTTtTTtTTtTTT.....T.....TTTtTTtTTtTTtTTtTTtTTtTTT',
-    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTTTTTTTTTTTTTTT...........TTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTTTTTTTTTTTTTTT...........TTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TtTTTTtTTTTtTTTTTtTTTT............TTTtTTTTTTTTTTTtTTTT...........TtTTTTtT..........TTTtTTT',
-    'TTT...........................................FFFFFFF..................................TTT',
-    'TTT...........................................F.....F..................................TTT',
-    'TtTMMMMMMMMMMM................................F.....F..................................TtT',
-    'TTTMMMMMMMMMMM................................F.....F..................................TTT',
-    'TTTMMMMMMMMMMM................................FFFFFFF..................................TTT',
-    'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MMM.......................TtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtT............TtTTtTTtTTtTTtTTtTTTT.....TTTTTTTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTTTTTTTTTTTTTTTT.....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTTTTTTTTTTTTTTTT.....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTTTtTTTTtTTTTTtTTTT............TTTtTTTTTTTTTTTtTTTT.......TTtTTtTTTTtT..........TTTtTTT',
+    'TTT...........................................FFFFFFF........TTTTTTTTTTTT..............TTT',
+    'TTT...........................................F.....F........TTTT......TT..............TTT',
+    'TtTMMMMMMMMMMM................................F.....F...........T......TT..............TtT',
+    'TTTMMMMMMMMMMM................................F.....F...........T......TT.......MMM....TTT',
+    'TTTMMMMMMMMMMM................................FFFFFFF...........T...............MMM....TTT',
+    'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MMM...........MMM..MMM....TtT',
     'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMMMMTTT',
-    'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMM..........................MMMMMMMMMMMMMMMMMMMMMMMMMMTTT',
-    'TtTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMM..........................__________________________TTT',
-    'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMM..........................__________________________TtT',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMddddddddddddd~~~~~~~~~~~~~~~~~~___~~~~~TTT',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~TTT',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~TtT',
-    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~TTT',
-    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWMM~~~~~~~~~~~~~~~~~~___~~~~~TTT',
-    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWMM~~~~~~~~~~~~~~~~~~___~~~~~TTT',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWW___WWWWWWWW',
+    'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........MMMMMMMMMMMMMMMMMMMMMMMMMMTTT',
+    'TtTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........__________________________TTT',
+    'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........__________________________TtT',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMddddddd~~~~~~~~~~~~~~~~~~___~~~~~TTT',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~TTT',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~TtT',
+    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~TTT',
+    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWWWWMM~~~~~~~~~~~~~~~~~~___~~~~~TTT',
+    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWWWWMM~~~~~~~~~~~~~~~~~~___~~~~~TTT',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWW___WWWWWWWW',
     'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWW___WWWWWWWW',
     'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWW___WWWWWWWW',
     'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWW___WWWWWWWW',
@@ -343,37 +372,32 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   map.plant(13, 19, 'jetty');
 
   // The waterfront (`landmarks.ts`): the ferry a raid goes out on, tied up
-  // beside the jetty; the warehouses along the east quay; Vermilion's long
-  // pier running out to the S.S. Anne.
-  map.plant(26, 20, 'shipPier');
-  // The working quay: posts along the edge to tie up to either side of the
-  // pier's foot, and what came off the boats stacked outside the warehouses.
-  // Everything on it stands off the two ways along it - KEEPERS' ROW's way down
-  // to the boat, and the waterfront from the jetty to THE COVE - which were a
-  // single tile wide between barrels, cellar doors and posts.
-  // The posts have the quay's edge to themselves: the pair of barrels that
-  // stood in the corner under them, wedged between the corner post and the
-  // pier's, is with the rest of the cargo behind the warehouses' east end.
-  for (const x of [24, 25, 33]) {
+  // beside the jetty; the warehouses on the quay front; Vermilion's long
+  // pier running out to the S.S. Anne. The pier stands on HARBOUR SQUARE's
+  // own line: its walkway is the three tiles under the fountain and between
+  // the square's two lamps, so the ship is at the end of the view from the row.
+  map.plant(25, 20, 'shipPier');
+  // The wharf the pier leaves from: posts along its edge to tie up to either
+  // side of the pier's foot, and one at its west corner. They stood a row
+  // further in and one tile nearer the pier, where the corner post and the
+  // square's planter shut the quay to a pair between them.
+  for (const x of [24, 32, 33]) {
     map.plant(x, 21, 'mooringPost');
   }
-  map.plant(22, 19, 'mooringPost');
-  // Cargo at the warehouses' two ends, off the rows along the water and off
-  // the three tiles the upper quay comes down to the docks by (x 33 to 35,
-  // the one way round the pier's foot, which a pair needs two of): one barrel
-  // against the west wall; at the east end two stacks of crates, one on the
-  // quay and one on the lawn's dead corner above it, the barrels from the
-  // pier's foot beside them behind the roof, and a sack by the door.
-  // The sack stood with a pair of barrels in the corner where HARBOUR
-  // SQUARE's paving, the lawn and the warehouses' wall meet, against the
-  // second locker's door: that pair is the barrel here and the one by Bill's.
-  map.plant(35, 17, 'barrel');
-  map.plant(44, 14, 'barrelPair');
-  map.plant(46, 15, 'crateStack');
-  map.plant(46, 17, 'crateStack');
-  map.plant(45, 20, 'sack');
-  // THE COVE, past the warehouses: a strip of beach under THE GREEN, with a
-  // jetty to fish off and rocks out in the water.
+  map.plant(22, 20, 'mooringPost');
+  // Cargo, each pile against one wall and off every way: two barrels against
+  // the warehouses' west gable, where HARBOUR SQUARE's paving runs up to it;
+  // a stack of crates on the wharf's east corner, behind the mooring posts,
+  // where the dock worker and his Machop stack it; and THE TRADER's stock
+  // beside him, against the Center's wall (`plantQuay`). The stacks stood at
+  // the warehouses' east end on a corner of lawn, which is the lane down to
+  // the docks now.
+  map.plant(35, 14, 'barrel');
+  map.plant(35, 16, 'barrel');
+  map.plant(34, 21, 'crateStack');
+  plantQuay(map);
+  // THE COVE, past the boutique: a strip of beach under the bench's lawn,
+  // with a jetty to fish off and rocks out in the water.
   map.plant(54, 21, 'jetty');
   map.plant(COVE_SIGN.x, COVE_SIGN.y, 'homeSign');
   map.plant(BREAKWATER_SIGN.x, BREAKWATER_SIGN.y, 'homeSign');
@@ -389,10 +413,8 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
 
   // Crates on the corner of the quay, off the boats and waiting for the
   // warehouses (`harbourLife.ts` has the porter minding them). The quay below
-  // them is where a raid's haul is stood out (`haulOnTheQuay.ts`). The stack
-  // that stood between the Arena's east statue and Bill's cottage, touching
-  // both, is at the warehouses' east end now, where the rest of the cargo is:
-  // the forecourt's corner is a statue, a gap, a barrel and a cottage.
+  // them is where a raid's haul is stood out (`haulOnTheQuay.ts`). The
+  // forecourt's other corner is a statue, a gap, a barrel and a cottage.
   map.plant(3, 16, 'crateStack');
   // What Bill keeps by his own wall is one barrel, a tile clear of the
   // statue and off the quay's row below it, which is the pair's way from the
@@ -425,18 +447,21 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
     }
   }
 
-  // HARBOUR SQUARE, in the middle of the yard: a paved square round a
-  // fountain, with the keepers' path running along the top of it and the
-  // quay along the bottom, so it is crossed on the way to everything.
+  // HARBOUR SQUARE, in the middle of the quay front: a paved square round a
+  // fountain, with the keepers' path along the top of it, the warehouses'
+  // gable closing its east side and the quay along the bottom, so it is
+  // crossed on the way to everything (`plantQuay` lights its way out).
   map.plant(27, 14, 'stoneFountain');
   map.plant(SQUARE_MAP.x, SQUARE_MAP.y, 'townMap');
 
-  // THE GREEN, past the Day-Care: a fountain to meet at and its sign, with a
-  // way up either side of the fountain to THE HARBOUR BOUTIQUE and THE GREAT
-  // LIBRARY. KEEPERS' ROW's gravel runs on under them to THE PROMENADE's
-  // stone, the straight way east, and nothing stands on it: the bench stood
-  // across it once. It is on the lawn's edge over THE COVE's sand now, clear
-  // of the warehouses' crates, with the jetty and the bay in front of it.
+  // THE GREEN, past the Day-Care: THE GREAT LIBRARY at its head with a
+  // fountain on its door's own line, two rows of lawn between them, a way up
+  // either side of the fountain and its sign at the foot. The library shared
+  // the top of the lawn with the boutique and stood behind the DERBY's board;
+  // the wood is closed behind the board now. KEEPERS' ROW's gravel runs on
+  // under THE GREEN to THE PROMENADE's stone, the straight way east, and
+  // nothing stands on it. The bench is on the lawn south of the row, over
+  // THE COVE's sand, with the jetty and the bay in front of it.
   map.plant(56, 8, 'roundFountain');
   map.plant(BENCH.x, BENCH.y, 'bench');
   map.plant(GREEN_SIGN.x, GREEN_SIGN.y, 'homeSign');
@@ -452,6 +477,61 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   }
 
   return map;
+}
+
+/**
+ * What makes the quay a working one, and the harbour full (the owner, 14 Nov
+ * 2026: "it looks a little bit sparse"): the things a harbour has standing
+ * about on it, each against an edge - a wall, the water, a kerb - and none of
+ * them on a way (`harbourWalkable.test.ts` walks every way two abreast,
+ * `harbourLooks.test.ts` holds how full it is). The quay's own things are
+ * drawn for it (`scripts/draw-promenade.mjs`, "The quay").
+ */
+function plantQuay(map: MapSketch<BasePropName>): void {
+  // HARBOUR SQUARE's south side: a planter and a lamp either side of the way
+  // out onto the quay, three tiles wide under the fountain, with the long
+  // pier straight ahead. A pair walks the quay below them; either side of
+  // the planters the square is open to it.
+  map.plant(24, 17, 'troughBlue');
+  map.plant(26, 17, 'promenadeLamp');
+  map.plant(30, 17, 'promenadeLamp');
+  map.plant(31, 17, 'troughBlue');
+  // The fish stall, a lean-to against the warehouses' wall between their two
+  // doors, with the catch on ice and a net hung out to dry beside the second
+  // door (`harbourLife.ts` has the fishmonger and the Meowth). Each takes one
+  // row of the quay (`promenadeLeanTo`), so the two rows along the water are
+  // the way from the jetty to THE COVE.
+  map.plant(38, 18, 'fishStall');
+  map.plant(43, 18, 'fishCrate');
+  map.plant(44, 18, 'netRack');
+  // The boutique's front: a planter under its window and a lamp at the end
+  // of it. The tile west of its step is left open: with a lamp there the
+  // step had one way off it, and a regular knocking at the door was shut in
+  // by the next one to walk up (`harbourRegulars.test.ts`).
+  map.plant(50, 18, 'troughRed');
+  map.plant(52, 18, 'promenadeLamp');
+  // Rowing boats, each tied up against a wall (`MOORED_ROWING_BOATS`), and
+  // one pulled up on the sand past the pleasure pier.
+  for (const boat of MOORED_ROWING_BOATS) {
+    map.plant(boat.x, boat.y, boat.name);
+  }
+  map.plant(83, 21, 'rowBoatBlue');
+  // Gear at the water's edge: lobster pots on the corner of the quay, an
+  // anchor on the wharf's, and a coil of rope where the Seagallop ties up.
+  map.plant(21, 19, 'lobsterPots');
+  map.plant(22, 22, 'anchor');
+  map.plant(8, 19, 'ropeCoil');
+  // THE TRADER's stock, against the Center's west wall beside where he
+  // stands: the crates and the sack from the warehouses' end and a barrel.
+  // The lawn's two columns nearest the forecourt are left clear to reach him.
+  map.plant(15, 7, 'crateStack');
+  map.plant(16, 9, 'sack');
+  map.plant(16, 10, 'barrel');
+  // The front: a bench either side of the prize window's step, looking over
+  // the walk at the sea, and on the sand a castle somebody built.
+  map.plant(78, 12, 'seaBench');
+  map.plant(83, 12, 'seaBench');
+  map.plant(72, 19, 'sandcastle');
 }
 
 /**

@@ -83,7 +83,7 @@ export function boutiqueMarkup(state: BoutiqueState): string {
   )}</div>${commitBar(state)}</main>`;
   return pixelScreen({
     title: shop ? BOUTIQUE_NAME : 'Your wardrobe',
-    place: shop ? 'The Green' : 'The Bolthole',
+    place: shop ? 'The Docks' : 'The Bolthole',
     back: { label: shop ? 'Shop' : 'Bedroom', attribute: 'data-close' },
     aside: `${formatMoney(state.held('money'))} in the vault`,
     body,
@@ -185,7 +185,7 @@ function wardrobeShelves(state: BoutiqueState): string {
     return pieces.length === 0 ? '' : `${shelfHeading(kind, SHELF_HEADINGS[kind])}${pieces.map((piece) => pieceCard(state, piece)).join('')}`;
   }).join('');
   const more = WEARABLES.length - WEARABLES.filter((piece) => state.owned.has(piece.id)).length;
-  const tail = more > 0 ? `<p class="px-note px-wrap">${more} more on the shelves of ${BOUTIQUE_NAME}, at the top of THE GREEN, and a few that only turn up on raids.</p>` : '';
+  const tail = more > 0 ? `<p class="px-note px-wrap">${more} more on the shelves of ${BOUTIQUE_NAME}, on THE DOCKS, and a few that only turn up on raids.</p>` : '';
   return `${head}${shelves}${tail}`;
 }
 
@@ -228,7 +228,7 @@ export function commitBar(state: BoutiqueState): string {
   if (state.mode === 'wardrobe') {
     return pixelCommitBar({
       title: 'Not yours yet',
-      lines: [`<small class="px-wrap">${names}: from ${BOUTIQUE_NAME}, at the top of THE GREEN.</small>`],
+      lines: [`<small class="px-wrap">${names}: from ${BOUTIQUE_NAME}, on THE DOCKS.</small>`],
       actions: putBack,
     });
   }

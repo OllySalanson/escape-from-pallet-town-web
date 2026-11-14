@@ -290,7 +290,7 @@ export interface BotGate {
  */
 export const BOT_GATES: readonly BotGate[] = [
   { id: 'seagallop', tile: { x: 11, y: 21 } },
-  { id: 'ss-anne', tile: { x: 30, y: 26 } },
+  { id: 'ss-anne', tile: { x: 29, y: 26 } },
   ...BASE_DOORS.filter((door) => door.id !== 'bolthole').map((door) => ({ id: door.id, tile: door.tiles[0] })),
 ];
 

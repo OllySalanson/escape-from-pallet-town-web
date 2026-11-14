@@ -103,7 +103,7 @@ import {
 } from '../world/depths';
 import type { TileSource } from '../world/tileset/catalogue';
 import { brimRuns, type MapLayers } from '../world/tiles';
-import { BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, NOTICE_BOARD, getBaseMap } from '../base/baseMap';
+import { BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, MOORED_ROWING_BOATS, NOTICE_BOARD, getBaseMap } from '../base/baseMap';
 import { noticeFor } from '../base/harbourNotices';
 import { dayNumber, rumourFrom, type RumourSource } from '../world/rumours';
 import { amberWeeps, fossilAwake, fossilMachineLines, fossilsForTheMachine } from '../hub/fossils';
@@ -793,6 +793,12 @@ export class BaseScene extends Phaser.Scene {
   private night: HarbourNight | null = null;
   /** The boats on the water, riding the swell (`base/floatingBoats.ts`), outdoors only. */
   private boats: FloatingBoats | null = null;
+  /**
+   * The rowing boats along the quay, riding it too. Kept apart from the ships:
+   * the night looks for portholes in every one of `boats` (`harbourNight.ts`),
+   * and a rowing boat's oars are not windows.
+   */
+  private rowingBoats: FloatingBoats | null = null;
   private arena: ArenaView | null = null;
   /** What the player is getting ready with in THE RAID ARENA's hall (`base/arenaKit.ts`). */
   private kit: ArenaKit | null = null;
@@ -1188,6 +1194,7 @@ export class BaseScene extends Phaser.Scene {
       haulDueHome = [];
     }
     this.boats = null;
+    this.rowingBoats = null;
     if (detail && !this.place.room) {
       this.boats = new FloatingBoats(
         this,
@@ -1197,6 +1204,14 @@ export class BaseScene extends Phaser.Scene {
         ),
         detail.depth + 0.001,
         boatHome && !this.still,
+      );
+      this.rowingBoats = new FloatingBoats(
+        this,
+        detail,
+        // Each on a swell of its own, by where she is tied up, so no two rise together.
+        MOORED_ROWING_BOATS.map((boat) => ({ props: [boat], swellMs: 2_300 + ((boat.x * 137) % 900) })),
+        detail.depth + 0.001,
+        false,
       );
     }
     this.night = null;
@@ -1211,6 +1226,7 @@ export class BaseScene extends Phaser.Scene {
         ],
         boats: this.boats,
         crowns: this.crownBoxes(),
+        lanterns: new Set(BASE_TILESET.props.promenadeLamp.brim?.tiles ?? []),
         // The lamp at the top of the harbour light's roof.
         beacon: beacon
           ? { x: (beacon.x + BASE_TILESET.props[beacon.name].width / 2) * TILE_SIZE, y: beacon.y * TILE_SIZE + 5 }
@@ -1471,6 +1487,7 @@ export class BaseScene extends Phaser.Scene {
     this.askTheNameOnceHome();
     if (!this.still) {
       this.boats?.update(deltaMs);
+      this.rowingBoats?.update(deltaMs);
       this.night?.update(deltaMs);
     }
     this.settleStarterPreview();
@@ -1765,17 +1782,19 @@ export class BaseScene extends Phaser.Scene {
 
   // -- the map ---------------------------------------------------------------
 
-  /** Every tile a crown or a brim is drawn on over the figures, in pixels: what a night wash lays over again. */
+  /**
+   * Every tile a crown is drawn on over the figures, in pixels: what a night
+   * wash lays over again. A brim is washed through its own art instead
+   * (`HarbourNight.washBrims`): it is rarely a whole tile, and a box of wash
+   * round a lamp's head darkened the quay behind it.
+   */
   private crownBoxes(): { x: number; y: number; width: number; height: number }[] {
-    const { canopy, brimDepth } = this.place.layers;
+    const { canopy } = this.place.layers;
     const boxes: { x: number; y: number; width: number; height: number }[] = [];
     canopy.tiles.forEach((row, y) =>
       row.forEach((tile, x) => {
         if (tile >= 0) {
           boxes.push({ x: x * TILE_SIZE, y: y * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE });
-        } else if ((brimDepth[y]?.[x] ?? 0) > 0) {
-          const depth = brimDepth[y][x];
-          boxes.push({ x: x * TILE_SIZE, y: (y + 1) * TILE_SIZE - depth, width: TILE_SIZE, height: depth });
         }
       }),
     );

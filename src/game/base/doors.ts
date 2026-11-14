@@ -156,17 +156,18 @@ export const BASE_DOORS: readonly BaseDoor[] = [
   },
   {
     // THE HARBOUR BOUTIQUE (`look/wearables.ts`): Vermilion's Pokémon Fan
-    // Club, green awning and all, set into the trees at the top of THE GREEN.
-    // It is not on the way to a raid, so it is not held to the keepers' walk:
-    // it is somewhere to go when a raid has paid.
+    // Club, green awning and all, on the quay front past the warehouses, on
+    // their building line, with its door to the water and THE COVE beside it.
+    // It was set into the trees at the top of THE GREEN, five rows back from
+    // any path: a shop belongs where the trade is (the owner, 14 Nov 2026:
+    // "better building placement"). It is not on the way to a raid, so it is
+    // not held to the keepers' walk: it is somewhere to go when a raid has paid.
     id: 'boutique',
     screen: 'boutique',
     name: BOUTIQUE_NAME,
-    // A row back into the trees from where it was, so there is a row of lawn
-    // between its front and THE GREEN's fountain, which stood against it.
-    building: { prop: 'boutique', x: 54, y: 3 },
-    tiles: [{ x: 55, y: 6 }],
-    returnTo: { x: 55, y: 7 },
+    building: { prop: 'boutique', x: 48, y: 14 },
+    tiles: [{ x: 49, y: 17 }],
+    returnTo: { x: 49, y: 18 },
   },
   {
     // THE GAME CORNER (`gameCorner.ts`), out along THE PROMENADE: Celadon's own,
@@ -191,18 +192,18 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     returnTo: { x: 81, y: 10 },
   },
   {
-    // THE GREAT LIBRARY (`../library/`): a portico of its own at the top of
-    // THE GREEN, set back into the trees beside the boutique so the lawn in
-    // front of it is still the way along to THE BATTLE ARENA's garden, with books
-    // that teach the harbour lying open on lecterns inside. Somewhere to go, not a
+    // THE GREAT LIBRARY (`../library/`): a portico of its own at the head of
+    // THE GREEN, alone in a notch of the wood, its door on the line of the
+    // lawn's fountain with two rows of lawn between them, and books that teach
+    // the harbour lying open on lecterns inside. It stood east of that line
+    // beside the boutique, behind the DERBY's board. Somewhere to go, not a
     // re-kit stop, so it is held to a walk of its own.
     id: 'great-library',
     screen: null,
     name: GREAT_LIBRARY_NAME,
-    // A tile east of the boutique's wall, which it shared: each has its own.
-    building: { prop: 'greatLibrary', x: 60, y: 3 },
-    tiles: [{ x: 62, y: 6 }],
-    returnTo: { x: 62, y: 7 },
+    building: { prop: 'greatLibrary', x: 55, y: 2 },
+    tiles: [{ x: 57, y: 5 }],
+    returnTo: { x: 57, y: 6 },
   },
   {
     // THE BATTLE ARENA (`../arena/`): Saffron's Fighting Dojo on its lot at the

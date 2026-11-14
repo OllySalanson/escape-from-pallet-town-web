@@ -1,10 +1,17 @@
-# Taking an area to perfect: the ten passes
+# Taking an area to perfect: the twelve passes
 
 Read this before polishing any area - a district of Greystone Vale, a room, the harbour. It is the
 standard THE HARBOUR was taken to on 14 Nov 2026 (`docs/screens/harbour-perfect/`), written down so
 the next area is held to the same one. The owner's words that started it: "there's flowers on the
 path and stuff ... some bits where they get all a bit muddled together ... I'd like you to just get
 one area perfect."
+
+It was ten passes that morning. The owner looked at what came out of them the same day - "I think
+we need better building placement as well on the harbour, also like now it looks a little bit
+sparse as well" - and passes 11 and 12 are what that second round was judged by
+(`docs/screens/harbour-round2/`). They are last in the table and first in the work: where the
+buildings stand decides every path, gap and view the other ten are asked about, so look at 11
+before polishing anything, and at 12 after pass 3 has made room.
 
 One area at a time. Each pass is judged on a picture, not on the code, and gets a line on the
 scorecard in the pull request with a before and an after. A pass that needed no change still gets
@@ -36,13 +43,20 @@ its line and its picture: it says what was checked.
 | 8 | **Danger and pace** | Are the threats where the player expects them, with calm between? | A fight on a doorstep; nowhere to breathe; (in the harbour) any threat at all | A raid area: where encounters, trainers and the hunter's ground sit against the safe spots. The harbour is safe by construction and must stay so |
 | 9 | **Character** | Could this be nowhere else in the game? | Borrowed colours and materials; no one thing you would name it by | Name its materials and its signature feature in a line. If the line fits another area, it is not done |
 | 10 | **Fit in the window** | Is what a newcomer needs in view when they arrive? | A key door a tile off the edge of the smallest screen; an arrival that looks at a wall | The 20x15 and 25x16 windows on every arrival tile (`harbourLooks.test.ts`, "what is in the window on arrival") |
+| 11 | **Building placement** | Does every building stand where a town would put it? | A building set back behind a lawn or into the trees, with no way to its door; something standing in front of a door, or one building behind another's board; a front that has no line (each building at its own depth); trade away from where the goods land, a home among the shops; a square with nothing closing its sides; a long view that ends on nothing | Draw the whole area and name its lines - the front, the street, the square - then say where each kind of building belongs on them. Move buildings, not props. A moved building takes its people, its captions, its regulars' spots, its place name and every walk measured to it with it, so move one at a time and run the area's tests between (`harbourLooks.test.ts`, "where its buildings stand") |
+| 12 | **Density** | Is the place full without being in the way? | Bare ground: paving or lawn four steps from anything; an edge with nothing against it; water with nothing on it; a plaza that is only its paving. And the other way: anything on a walking line, a pinch a pair cannot pass, things wedged (passes 2 and 3 still hold) | Measure it - how many steps each open tile is from something to look at (`harbourLooks.test.ts`, "how full it is") - then fill the edges with things that belong to the place: against a wall, the water, a kerb, never the middle. A thing two tiles deep takes a row a way needs, so stand it on one row with its top over the wall behind it (`promenadeLeanTo`). People and Pokémon count, and so does shrinking ground nobody uses |
 
 ## After each change
 
 - Draw it again and look. A fix is judged on the picture it makes, and the first draft is rarely it:
   the harbour's bench moved three times and its cargo four.
 - Re-run the area's walk test after every move. Spacing and walking pull against each other: the
-  tidiest place for a stack of crates was the one tile a pair needed to reach the docks.
+  tidiest place for a stack of crates was the one tile a pair needed to reach the docks. Density
+  pulls against both: on a quay three tiles deep one thing on the edge and one against the wall,
+  two tiles apart, shut it to a pair, and the walk test said so every time.
+- Spacing and density pull against each other too. Round one gave everything room and the harbour
+  read as sparse; the answer was not to put the muddle back but to give the room a job - a lawn
+  nobody walked became a lane and a shop, a quay five deep became three with boats against it.
 - A yard change re-plans every regular (`npx vite-node tools/base/botSpots.mts`), and a moved prop
   can leave a figure, a caption spot or a playtest route pointing at where it used to be.
 

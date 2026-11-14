@@ -17,12 +17,13 @@ import { TRADER_ID, TRADER_NAME, traderLines } from '../hub/trades';
  * buildings are. Everybody here has a job that explains where they stand: the
  * sailor at the Seagallop's jetty, the Gym Guide at the Raid Arena's door as
  * every Gym in Kanto has one, the captain on the long pier, the dock worker
- * and his Machop at the warehouses, the angler on the cove's jetty, the
+ * and his Machop on the wharf, the fishmonger at his stall under the warehouses,
+ * the gardener at THE GREAT LIBRARY's beds, the angler on the cove's jetty, the
  * policeman and his Growlithe on the yard, and the Safari Warden visiting from
  * the Safari Zone, above the cove. Two of them have a favour to ask (`hub/errands.ts`), said in the
  * dialogue box like anything else they say. And the Pokemon are the ones a
  * FireRed port has - a Slowpoke staring at the sea, Pidgey after crumbs on the green, a
- * Meowth by the crates, Krabby and Psyduck on the beach, and Lapras, Tentacool
+ * Meowth by the fish stall, Krabby and Psyduck on the beach, and Lapras, Tentacool
  * and Magikarp out in the water.
  *
  * Every one of them keeps a beat (`world/npcIdle.ts`): a few tiles they drift
@@ -135,9 +136,9 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     kind: 'person',
     name: 'CAPTAIN',
     design: 'captain',
-    position: at(28, 26),
+    position: at(27, 26),
     facing: 'right',
-    idle: { roam: [at(28, 25)], glances: ['up', 'left'], beatMs: 6100 },
+    idle: { roam: [at(27, 25)], glances: ['up', 'left'], beatMs: 6100 },
     // Spoken to, he lends his spyglass (`spyglass.ts`).
     lines: spyglassLines('day', 0),
   },
@@ -159,13 +160,29 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     kind: 'person',
     name: 'DOCK WORKER',
     design: 'worker',
-    // Along the warehouse wall, off the way along the quay below him.
-    position: at(39, 20),
-    facing: 'up',
-    idle: { roam: [at(38, 20), at(40, 20), at(41, 20)], glances: ['left', 'right'], beatMs: 3900 },
+    // On the wharf at the long pier's foot, beside the crates he is stacking:
+    // the quay under the warehouses is the fish stall's now, and the way along it.
+    position: at(34, 20),
+    facing: 'down',
+    idle: { roam: [at(35, 20)], glances: ['left', 'right'], beatMs: 3900 },
     lines: [
       'Mind your feet! Crates off the boats go in the warehouses.',
       'What\'s in them? Ask BILL. Half of it\'s his, and he won\'t say what the other half is.',
+    ],
+  },
+  {
+    // The fish stall under its awning against the warehouses: he stands at
+    // its east end, by the scales, and is spoken to from the quay in front.
+    id: 'fishmonger',
+    kind: 'person',
+    name: 'FISHMONGER',
+    design: 'clerk',
+    position: at(41, 18),
+    facing: 'down',
+    idle: { glances: ['left', 'down'], beatMs: 5600 },
+    lines: [
+      'Fresh off the boats this morning! MAGIKARP, mostly. It\'s always mostly MAGIKARP.',
+      'Want to catch your own? The ANGLER on THE COVE\'s jetty lends his rod.',
     ],
   },
   {
@@ -184,11 +201,12 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     kind: 'person',
     name: 'LITTLE GIRL',
     design: 'little-girl',
-    // Paddling at the water's edge, below the way along the sand.
-    position: at(51, 20),
+    // On the sand by her sandcastle, between the huts and the way along the
+    // water: THE COVE she paddled in is half the beach it was.
+    position: at(72, 20),
     facing: 'down',
     byDayOnly: true,
-    idle: { roam: [at(50, 20), at(52, 20)], glances: ['left', 'right'], beatMs: 2900 },
+    idle: { glances: ['left', 'right'], beatMs: 2900 },
     lines: ['The KRABBY pinched me! I\'m not crying. It\'s the sea in my eyes.'],
   },
   {
@@ -196,16 +214,30 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     kind: 'person',
     name: 'OLD MAN',
     design: 'old-man',
-    // On the lawn beside THE GREEN's bench, looking out over THE COVE: he
-    // watches the boats come in, and from under the Day-Care's fence he could
-    // not see one.
-    position: at(49, 15),
+    // On the lawn beside the bench over THE COVE, looking out at the bay: he
+    // watches the boats come in.
+    position: at(55, 15),
     facing: 'down',
     byDayOnly: true,
     idle: { glances: ['right', 'down'], beatMs: 8200 },
     lines: [
       'Sixty years I\'ve watched the boats come in here.',
       'Every one of them comes back lighter than it went out. That\'s raiding, that is.',
+    ],
+  },
+  {
+    // Tending the bed east of THE GREAT LIBRARY's step: the west way up to it stays two wide.
+    id: 'green-gardener',
+    kind: 'person',
+    name: 'GARDENER',
+    design: 'straw-hat',
+    position: at(60, 6),
+    facing: 'left',
+    byDayOnly: true,
+    idle: { glances: ['down', 'left'], beatMs: 6400 },
+    lines: [
+      'A flower wants a bed. Leave it to itself and it comes up in the middle of the path.',
+      'The books in THE GREAT LIBRARY are free to read. Mind my beds on the way in.',
     ],
   },
   {
@@ -222,17 +254,18 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     ],
   },
   {
-    // FireRed's Safari Zone Warden, off the boat and walking the grass above
-    // THE COVE with nothing in his mouth but gums: he asks the player to find
+    // FireRed's Safari Zone Warden, off the boat and pacing the dry sand at
+    // the top of THE COVE (which is where the favours list says he is found)
+    // with nothing in his mouth but gums: he asks the player to find
     // his GOLD TEETH (`hub/errands.ts`), and until then nothing he says can be
     // understood - FireRed's own joke.
     id: 'safari-warden',
     kind: 'person',
     name: 'WARDEN',
     design: 'hiker',
-    position: at(56, 17),
-    facing: 'up',
-    idle: { roam: [at(57, 17), at(57, 16), at(56, 16)], glances: ['left', 'up'], beatMs: 3500 },
+    position: at(58, 17),
+    facing: 'down',
+    idle: { roam: [at(59, 17)], glances: ['left', 'down'], beatMs: 3500 },
     lines: wardenLines(false),
   },
   {
@@ -319,13 +352,14 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     kind: 'pokemon',
     species: 'pidgey',
     name: 'PIDGEY',
-    // On the lawn east of THE GREEN's bench, south of the path and clear of
-    // the way down to THE COVE: under the fountain it pecked on the gravel
-    // everybody walks east on.
-    position: at(56, 15),
+    // On the lawn east of the bench, south of the path, and a column short
+    // of the lawn's east edge: that column is the way off the boardwalk's
+    // west end, and walked west along the boards it was met there
+    // (`walkableVillage.mjs --area=harbour`).
+    position: at(59, 15),
     facing: 'left',
     byDayOnly: true,
-    idle: { roam: [at(55, 15), at(57, 15)], glances: ['right', 'down'], beatMs: 1900 },
+    idle: { roam: [at(59, 16)], glances: ['right', 'down'], beatMs: 1900 },
     lines: ['PIDGEY is pecking at crumbs somebody dropped on the green.'],
   },
   {
@@ -333,20 +367,20 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     kind: 'pokemon',
     species: 'meowth',
     name: 'MEOWTH',
-    // On the sand beside the crates, at the back of the beach.
-    position: at(48, 17),
+    // Beside the fishmonger, with its eye on his stall.
+    position: at(42, 18),
     facing: 'left',
-    idle: { glances: ['down', 'up'], beatMs: 3700 },
-    lines: ['MEOWTH is eyeing the crates. Something in there smells of fish.'],
+    idle: { glances: ['down', 'left'], beatMs: 3700 },
+    lines: ['MEOWTH is eyeing the stall. Everything on it smells of fish.'],
   },
   {
     id: 'dock-machop',
     kind: 'pokemon',
     species: 'machop',
     name: 'MACHOP',
-    position: at(42, 20),
-    facing: 'left',
-    idle: { roam: [at(43, 20)], glances: ['up'], beatMs: 3300 },
+    position: at(33, 21),
+    facing: 'right',
+    idle: { glances: ['up', 'right'], beatMs: 3300 },
     lines: ['MACHOP is carrying a crate on one finger. Showing off.'],
   },
   {
@@ -361,14 +395,18 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     lines: ['GROWLITHE is on duty. It sniffs your pack, then wags.'],
   },
   {
-    id: 'beach-krabby',
+    // THE COVE's own Krabby. It shared the id of THE PROMENADE's, and the
+    // scene keeps its figures by id, so this one was never drawn: the beat
+    // was held and the tile was solid, with nobody standing on it.
+    id: 'cove-krabby',
     kind: 'pokemon',
     species: 'krabby',
     name: 'KRABBY',
-    // At the water's edge east of the jetty, clear of the way out along it.
-    position: at(56, 20),
+    // At the water's edge east of the jetty, clear of the way out along it
+    // and of the two rows of sand the beach is walked by.
+    position: at(57, 20),
     facing: 'left',
-    idle: { roam: [at(57, 20)], glances: ['right', 'down'], beatMs: 2300 },
+    idle: { glances: ['right', 'down'], beatMs: 2300 },
     lines: ['KRABBY waves a pincer at you. It means it.'],
   },
   {
@@ -376,9 +414,10 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     kind: 'pokemon',
     species: 'psyduck',
     name: 'PSYDUCK',
-    // At the water's edge beside the girl, west of the jetty: it stood where
-    // the sand narrows on to the breakwater and THE PROMENADE's beach.
-    position: at(53, 20),
+    // At the water's edge beside the Krabby, east of the jetty. (On the jetty
+    // it shut the plank behind it in with the angler; on the boutique's quay
+    // it and the planter shut the quay to a pair.)
+    position: at(56, 20),
     facing: 'down',
     idle: { glances: ['left', 'right'], beatMs: 6700 },
     lines: ['PSYDUCK is holding its head. The sea is too loud for it today.'],

@@ -102,7 +102,7 @@ export const THE_FRONT: DerbyLevel = {
 // --- what the later courses share ------------------------------------------------
 
 /** The west beach's finish line, on the sand below THE GREEN. */
-const WEST_LINE = { x: 52, from: 17, to: 19 } as const;
+const WEST_LINE = { x: 55, from: 17, to: 19 } as const;
 
 // The pier with a crate on it, at (80,24): leapt going down and again coming back.
 const PIER_CRATE = leg('pier-crate', 'land', [at(80, 20), at(80, 24), at(80, 28)], { hurdles: [1] });
@@ -153,7 +153,7 @@ const MOLE_OUT: DerbyStretch = road(
 );
 
 // Back along the breakwater's other lane: the same waves over it again.
-const MOLE_BACK = leg('mole-back', 'land', [at(41, 31), at(46, 31), at(56, 31), at(59, 31), at(59, 29), at(59, 24), at(59, 21), at(59, 19), at(52, 18)], {
+const MOLE_BACK = leg('mole-back', 'land', [at(41, 31), at(46, 31), at(56, 31), at(59, 31), at(59, 29), at(59, 24), at(59, 21), at(59, 19), at(55, 18)], {
   tight: [3, 7],
   waves: [
     { from: 1, to: 2, ...ARM_WAVES },
@@ -166,8 +166,8 @@ const MOLE_HOME: DerbyStretch = {
   id: 'third',
   lines: [
     line('mole', 'up', [MOLE_BACK], undefined, 'STONE'),
-    line('swim', 'left', [leg('mole-swim', 'water', [at(41, 31), at(45, 27), at(50, 22), at(51, 20)]), leg('mole-wade', 'sand', [at(51, 20), at(52, 18)])], 'water'),
-    line('air', 'right', [leg('mole-air', 'air', [at(41, 31), at(52, 18)])], 'flying'),
+    line('swim', 'left', [leg('mole-swim', 'water', [at(41, 31), at(45, 27), at(57, 24), at(57, 20)]), leg('mole-wade', 'sand', [at(57, 20), at(55, 18)])], 'water'),
+    line('air', 'right', [leg('mole-air', 'air', [at(41, 31), at(55, 18)])], 'flying'),
   ],
 };
 
@@ -215,8 +215,8 @@ export const THE_BREAKWATER: DerbyLevel = {
 const START_FORK: DerbyStretch = {
   id: 'start',
   lines: [
-    line('green', 'up', [leg('the-green', 'land', [at(52, 18), at(52, 16), at(59, 16), at(61, 13)], { tight: [1, 2] })]),
-    line('shore', 'down', [leg('the-shore', 'sand', [at(52, 18), at(59, 18), at(60, 17)]), leg('shore-climb', 'land', [at(60, 17), at(60, 14), at(61, 13)])]),
+    line('green', 'up', [leg('the-green', 'land', [at(55, 18), at(55, 16), at(59, 16), at(61, 13)], { tight: [1, 2] })]),
+    line('shore', 'down', [leg('the-shore', 'sand', [at(55, 18), at(59, 18), at(60, 17)]), leg('shore-climb', 'land', [at(60, 17), at(60, 14), at(61, 13)])]),
   ],
 };
 

@@ -90,8 +90,14 @@ export interface HarbourNightOptions {
   /** The buildings whose windows light, by what is planted. */
   readonly buildings: readonly (readonly BaseProp[])[];
   readonly boats: FloatingBoats | null;
-  /** Where the tree crowns and their brims are drawn over the figures, in pixels. */
+  /** Where the tree crowns are drawn over the figures, in pixels: whole tiles of leaves. */
   readonly crowns: readonly PixelBox[];
+  /**
+   * The brim tiles that are a lamp's lantern (`promenadePost`): once the
+   * lights are on they are left out of the wash and given a glow, because a
+   * lamp that goes dark at dusk is the one thing on a quay that should not.
+   */
+  readonly lanterns: ReadonlySet<number>;
   /** Where the harbour light's lamp is, in pixels, when the beacon is built. */
   readonly beacon: { readonly x: number; readonly y: number } | null;
 }
@@ -116,17 +122,25 @@ export class HarbourNight {
     // The crowns are drawn over the figures, so the wash under the captions
     // never reaches them: they get the same wash again, laid just over each
     // crown's own tile. Nobody can stand under a crown (`crowns.test.ts`), so
-    // no figure is ever darkened by it; a brim is the bottom of a tile, and
-    // only that much is washed.
+    // no figure is ever darkened by it.
     const crowns = scene.add.graphics().setDepth(CANOPY_BAND + 0.001);
     crowns.fillStyle(this.wash.colour, this.wash.alpha);
     for (const crown of options.crowns) {
       crowns.fillRect(crown.x, crown.y, crown.width, crown.height);
     }
-    if (!lightsAreOn(options.now)) {
+    const lit = lightsAreOn(options.now);
+    const lanterns = this.washBrims(scene, options, lit);
+    if (!lit) {
       return;
     }
     const lights = scene.add.graphics().setDepth(LIGHTS_DEPTH);
+    // A pool of lamplight on the ground under each lantern, and a halo round it.
+    for (const lantern of lanterns) {
+      lights.fillStyle(LAMP_GLOW, 0.1);
+      lights.fillEllipse(lantern.x + 8, lantern.y + 30, 34, 18);
+      lights.fillStyle(LAMP_GLOW, 0.16);
+      lights.fillCircle(lantern.x + 8, lantern.y + 7, 9);
+    }
     const detail = options.map.getLayer('base-detail')?.tilemapLayer;
     if (detail) {
       for (const props of options.buildings) {
@@ -150,6 +164,46 @@ export class HarbourNight {
     if (!this.beam) return;
     this.ms += deltaMs;
     this.drawBeam();
+  }
+
+  /**
+   * The wash over everything drawn above the figures that is not a whole tile
+   * of leaves: the top of a tree's crown, a lamp's head, a stall's awning, a
+   * net on its rack (`PropDefinition.brim`). Each is washed through its own
+   * art - a copy of the tile filled with the wash's colour - so only what is
+   * drawn is darkened. Washed as a box, a lamp's head stood in a dark square
+   * of the quay behind it, and anybody under it went dark with it. Returns
+   * where the lanterns are, which are not washed once the lights are on.
+   */
+  private washBrims(scene: Phaser.Scene, options: HarbourNightOptions, lit: boolean): { x: number; y: number }[] {
+    const wash = this.wash;
+    const brim = options.map.getLayer('base-brim')?.tilemapLayer;
+    const lanterns: { x: number; y: number }[] = [];
+    if (!wash || !brim) return lanterns;
+    const size = brim.tilemap.tileWidth;
+    brim.forEachTile((tile) => {
+      if (tile.index < 0 || !tile.tileset) return;
+      if (options.lanterns.has(tile.index)) {
+        lanterns.push({ x: tile.pixelX, y: tile.pixelY });
+        if (lit) return;
+      }
+      const at = tile.tileset.getTileTextureCoordinates(tile.index) as { x: number; y: number } | null;
+      const key = tile.tileset.image?.key;
+      if (!at || !key) return;
+      const frame = `tile-${tile.index}`;
+      const texture = scene.textures.get(key);
+      if (!texture.has(frame)) {
+        texture.add(frame, 0, at.x, at.y, size, size);
+      }
+      scene.add
+        .image(tile.pixelX, tile.pixelY, key, frame)
+        .setOrigin(0, 0)
+        .setFlipX(tile.flipX)
+        .setTintFill(wash.colour)
+        .setAlpha(wash.alpha)
+        .setDepth(CANOPY_BAND + 0.001);
+    });
+    return lanterns;
   }
 
   private lightBuilding(

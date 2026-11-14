@@ -17,7 +17,7 @@ number of screen pixels to the game pixel and stays sharp on a high-density disp
 | `walk.webp` | A walk out of Mill Square in Millbrook, fifteen frames a second of game time, a straight run at a time | `tools/playtest/readmeShots.mjs`, then ffmpeg |
 | `quarry.png` | The Quarry in Greystone Peaks, a moment into a raid (1600x1024) | `readmeShots.mjs --part=place --insertion=greystone-vale-the-quarry --window=1600x1024` |
 | `hunter.png`, `battle.png` | The hunters coming out in Millbrook, and a fight with Blue (1600x1024) | `readmeShots.mjs --window=1600x1024`; `battle.png` was taken with the one hunter a raid had before the pack, and `--battle` is what would ask for it again |
-| `harbour.png` | The harbour with every one of Brock's upgrades built, by day (1600x1024) | `harbourTour.mjs --built=all --clock=day --window=1600x1024`, taken off the quay |
+| `harbour.png` | The harbour with every one of Brock's upgrades built, by day (1600x1024) | `harbourTour.mjs --built=all --clock=day --window=1600x1024 --at=readme:12:19`, its `readme.png`: standing on the jetty a raid comes home to |
 | `brocks-workshop.png` | Inside Brock's Workshop, every bay built (800x512) | `readmeShots.mjs --part=base --rooms=brocks-workshop` |
 | `the-bench.png`, `the-rim.png` | Getting ready on the floor of the Raid Arena: the bench over the hall, and looking down from the rim (800x512) | `arenaHall.mjs --window=800x512`, its `3-bench.png`; `arenaTelescope.mjs --window=800x512`, its `rim-another-way-in.png` |
 | `pack.png` | The pack opened mid-raid with a few finds put in the raid's own bag first: a crate, a roll of linen, a valve, a Super Potion, a Thunder Stone and ₽40 (800x512) | `readmeShots.mjs` |

@@ -42,7 +42,7 @@ import {
  * `hang-out` stands about facing a fountain, a bench, a statue or the Pokémon in
  * the pen; `watch-sea` stands at the water's edge looking at it; `watch-game`
  * stands beside one of the promenade's outdoor games looking at its board; `window-shop`
- * stands at THE HARBOUR BOUTIQUE's windows; `read-board` reads a sign;
+ * stands at the fish stall or the prize window; `read-board` reads a sign;
  * `knock` raises a hand at a keeper's door and waits, and sometimes goes in;
  * `call-in` goes through a door and stands in the room (`ROOM_CALLS`), which the
  * player sees if they are in there too; and `chat` meets two or three others at
@@ -88,12 +88,12 @@ const stand = (x: number, y: number, facing: Direction): RoomSpot => ({ tile: { 
 export const SEA_VIEWS: readonly RoomSpot[] = [
   stand(6, 19, 'down'),
   stand(13, 21, 'right'),
-  stand(35, 22, 'down'),
-  stand(34, 22, 'down'),
-  stand(45, 22, 'down'),
-  stand(29, 27, 'down'),
-  stand(28, 27, 'left'),
-  stand(48, 20, 'down'),
+  stand(20, 19, 'down'),
+  stand(37, 20, 'down'),
+  stand(42, 20, 'down'),
+  stand(28, 27, 'down'),
+  stand(27, 27, 'left'),
+  stand(51, 20, 'down'),
   stand(55, 21, 'right'),
   stand(49, 20, 'down'),
   stand(54, 22, 'left'),
@@ -112,12 +112,12 @@ export const HANG_OUTS: readonly RoomSpot[] = [
   stand(30, 15, 'left'),
   stand(30, 16, 'left'),
   stand(59, 8, 'left'),
-  stand(49, 14, 'right'),
-  stand(53, 15, 'left'),
+  stand(55, 14, 'right'),
+  stand(59, 14, 'left'),
   stand(53, 9, 'left'),
   stand(6, 17, 'up'),
   stand(10, 17, 'up'),
-  stand(30, 24, 'right'),
+  stand(29, 24, 'right'),
 ];
 
 /**
@@ -133,18 +133,22 @@ export const GAME_WATCHES: readonly RoomSpot[] = [
   stand(78, 29, 'left'),
 ];
 
-/** THE HARBOUR BOUTIQUE's front, and THE GAME CORNER's prize window either side of its step. */
-export const SHOP_WINDOWS: readonly RoomSpot[] = [stand(54, 7, 'up'), stand(80, 10, 'up'), stand(82, 10, 'up')];
+/**
+ * The west end of the fish stall, and THE GAME CORNER's prize window either
+ * side of its step. Not THE HARBOUR BOUTIQUE's front: on the quay the only
+ * tiles before its window are its step's way off and the way along the water.
+ */
+export const SHOP_WINDOWS: readonly RoomSpot[] = [stand(37, 18, 'right'), stand(80, 10, 'up'), stand(82, 10, 'up')];
 
 /** In front of a sign. Never THE BOLTHOLE's, which is somebody's front garden. */
 export const NOTICE_BOARDS: readonly RoomSpot[] = [
   // The harbour's board from the lawn behind it: on the quay in front of it
   // they stood on the way down from KEEPERS' ROW to Bill's.
   stand(18, 16, 'down'),
-  stand(25, 21, 'up'),
+  stand(24, 21, 'up'),
   stand(53, 10, 'down'),
   stand(3, 15, 'up'),
-  stand(49, 18, 'up'),
+  stand(57, 18, 'up'),
 ];
 
 /** The doors a regular may knock at: the keepers' and the boutique's. A keeper's door is a shop's. */
@@ -156,10 +160,10 @@ export const KNOCKED_DOORS: readonly SharedRoomId[] = ['pokemon-centre', 'oaks-l
  * beneath the figures and one row off their name is behind their friends' heads.
  */
 export const CHAT_CIRCLES: readonly (readonly RoomSpot[])[] = [
-  [stand(25, 17, 'right'), stand(27, 17, 'left'), stand(26, 15, 'down')],
-  [stand(13, 8, 'right'), stand(15, 8, 'left'), stand(14, 10, 'up')],
-  [stand(40, 15, 'right'), stand(42, 15, 'left')],
-  [stand(50, 18, 'right'), stand(52, 18, 'left'), stand(51, 16, 'down')],
+  [stand(27, 19, 'right'), stand(29, 19, 'left'), stand(28, 17, 'down')],
+  [stand(10, 14, 'right'), stand(12, 14, 'left')],
+  [stand(23, 14, 'right'), stand(25, 14, 'left')],
+  [stand(57, 19, 'right'), stand(59, 19, 'left')],
   [stand(6, 18, 'right'), stand(8, 18, 'left'), stand(7, 16, 'down')],
   [stand(30, 7, 'right'), stand(32, 7, 'left')],
 ];

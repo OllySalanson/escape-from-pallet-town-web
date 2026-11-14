@@ -204,7 +204,7 @@ and say yes, you're let in to have a nose round for as long as you like (or unti
   Mr. Mime called MIMIEN for your Abra, a Lickitung called MARC for your Golduck, and the rest -
   and sends a Kadabra, Machoke, Graveler or Haunter over to his game and straight back, which is
   the only way an Alakazam or a Gengar ever happens. All 151 can be had. All 151. Oak is counting.
-- **The Harbour Boutique**, at the top of the Green, is where you stop looking like everybody else.
+- **The Harbour Boutique**, on the quay front past the warehouses, is where you stop looking like everybody else.
   Every player starts in the same clothes; in here are 209 things to wear, all of them off
   somebody in Kanto - a Youngster's cap, a Hiker's hat and beard, Erika's bob, Misty's side tail,
   a lab coat, a Team Rocket tunic, a Lass's dress in five colours - plus whole looks from Champion
@@ -218,19 +218,22 @@ and say yes, you're let in to have a nose round for as long as you like (or unti
 
 And it's a working waterfront. The **Seagallop**, the islands ferry, is tied up at the jetty: every
 raid sails out on her and comes home on her. The **S.S. Anne** lies at the end of the long pier,
-the warehouses along the east quay hold what the boats bring in, and past them there's a little
+dead ahead as you walk out of Harbour Square between its two lamps. The warehouses on the quay
+front hold what the boats bring in, with a fish stall under a striped awning against their wall,
+a net drying beside it and rowing boats tied up below; past them there's a little
 cove with a jetty to fish off, sheltered by a stone breakwater that runs out round the bay to the
 harbour mouth - where Brock will build you a harbour light. And it's busy: a sailor waits by the ferry (and keeps her log: ask him how many raids she's brought you home from), a porter minds the crates she brought in, a Gym Guide hangs about
 outside the Raid Arena, the captain paces the pier (and lends you his spyglass - go back after dark and he'll show you
-the lights of the vale's hardest places to reach), a dock worker and his Machop shift crates, an
+the lights of the vale's hardest places to reach), a dock worker and his Machop stack crates on the wharf, a fishmonger
+sells the morning's catch (mostly Magikarp) while a Meowth eyes his stall, a gardener minds the flower beds outside the Great Library, an
 old angler grumbles about Magikarp (and lends you his rod: fish off any quay, or out at the end
 of the long pier where the good ones bite - they all go back, but he keeps a tally), a policeman walks the yard with his Growlithe, and there's a
 Slowpoke staring at the sea, Krabby and Psyduck on the beach, and Lapras and Tentacool out in the
 bay, and now and then a bird glides over. They keep your hours, too - after dark the children
 have gone home, and if you walk out along the breakwater you might hear Lapras singing. Talk to any of them. The sea moves the way FireRed's does, the surf laps at the cove, and the
 Seagallop sounds her horn as she glides in to the jetty to bring you home, and the boats ride the
-swell while they're moored. And it keeps your clock: the harbour goes gold at dusk and blue at
-night, every window lights up, the S.S. Anne's portholes glow, and once Brock has built you the
+swell while they're moored, rowing boats and all. And it keeps your clock: the harbour goes gold at dusk and blue at
+night, every window lights up, the lamps come on along the quay and the front, the S.S. Anne's portholes glow, and once Brock has built you the
 beacon, its beam sweeps the bay. Every part of the harbour has a name, and like a
 FireRed town it tells you on a little board at the top of the screen as you walk into it - Arena
 Square, Keepers' Row, Harbour Square with its fountain and its town map, the Quay, the Docks, the
@@ -256,7 +259,7 @@ them about, turn them round and put them down, a tile at a time. Shove the table
 move the pot plants, then fill the place with a doll of every kind of Pokémon you've ever brought
 back alive. Dolls go on the table. Nothing goes on the door mat.
 
-Not sure how something works? Up at the top of the Green, set back in the trees, is the **Great
+Not sure how something works? At the head of the Green, square behind its fountain, is the **Great
 Library**: a librarian, a lot of shelves, three tall windows that show whatever sky you're actually
 playing under, and books lying open on lecterns. Face one and it fills
 the screen, open on its wooden plinth, and you turn its pages with the arrow keys or a click - each
@@ -281,7 +284,7 @@ face them and press Space to wave. It's that
 Pokémon and nobody else, so lose it in a raid and the Harbour gets very quiet.
 
 <p align="center">
-  <img src="docs/readme/harbour.png" width="800" alt="The Harbour: THE HARBOUR on its board at the top left, the Seagallop ferry tied up beside the jetty, a sailor and a Slowpoke on the quay, the Raid Arena and the Pokémon Center up the yard, Bill's cottage with its name over it, and a policeman with his Growlithe by Harbour Square.">
+  <img src="docs/readme/harbour.png" width="800" alt="The Harbour: the Seagallop ferry tied up beside the jetty and two rowing boats along the quay wall, a sailor, a Slowpoke and a coil of rope on the quay, lobster pots on its corner, the Raid Arena under its banners, Bill's cottage with its name over it, and a policeman with his Growlithe by Harbour Square.">
 </p>
 
 <p align="center">

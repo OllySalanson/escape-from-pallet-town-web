@@ -81,12 +81,14 @@ describe('the base map', () => {
 
   /**
    * THE HARBOUR BOUTIQUE is where a raid's money is spent rather than where a
-   * raid starts, so it stands at the top of THE GREEN, past THE BOLTHOLE:
-   * further than any keeper, and still a walk, not a trek.
+   * raid starts, so it stands at the east end of the quay front, past the
+   * warehouses: further than any keeper, and still a walk, not a trek - and
+   * no further from the boat than from the yard, which at the top of THE
+   * GREEN it was by ten steps (46 and 56, measured; 39 and 41 here).
    */
-  it('keeps THE HARBOUR BOUTIQUE a walk up THE GREEN from both landings', () => {
-    expect(stepsTo(stepsFrom(BASE_SPAWN), approachesTo('boutique'))).toBeLessThanOrEqual(50);
-    expect(stepsTo(stepsFrom(BASE_LANDING), approachesTo('boutique'))).toBeLessThanOrEqual(58);
+  it('keeps THE HARBOUR BOUTIQUE a walk along the quay from both landings', () => {
+    expect(stepsTo(stepsFrom(BASE_SPAWN), approachesTo('boutique'))).toBeLessThanOrEqual(44);
+    expect(stepsTo(stepsFrom(BASE_LANDING), approachesTo('boutique'))).toBeLessThanOrEqual(44);
   });
 
   /**
