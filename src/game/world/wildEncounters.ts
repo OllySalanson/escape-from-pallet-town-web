@@ -16,6 +16,12 @@ export interface WildEncounter {
    * once it is beaten.
    */
   legendary?: boolean;
+  /**
+   * The vale's secret this one is, by its reward key (`secrets.ts`): what the
+   * fight tags it with (`Pokemon.fromSecret`), so that banking it is what
+   * finds the secret.
+   */
+  secret?: string;
 }
 
 export type EncounterRng = () => number;

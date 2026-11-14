@@ -734,10 +734,17 @@ export function openSecrets(raid: RaidConditions): readonly string[] {
   return SECRETS.filter((secret) => secretConditionHolds(secret, raid)).map((secret) => secret.id);
 }
 
-/** What the vault holds that a save writes as found: the item and Pokemon rewards it has had. */
+/**
+ * What the vault holds that a save writes as found: the item rewards it has
+ * had, and every secret Pokemon it holds that *is* that secret's - tagged as it
+ * was met (`Pokemon.fromSecret`). A Lapras caught in the Frozen Lagoon, or a
+ * Krabby grown into a Kingler, is not the Lapras doll or the kite thief's, and
+ * matching on species alone spent those secrets for good unfound (the gyms
+ * playtest of 14 Nov 2026).
+ */
 export function secretsHeldBy(vault: {
   readonly itemCount: (itemId: string) => number;
-  readonly pokemon: readonly { readonly speciesId: string; readonly shiny: boolean }[];
+  readonly pokemon: readonly { readonly fromSecret: string | null }[];
 }): readonly string[] {
   return SECRETS.flatMap((secret) =>
     secret.rewards.flatMap((reward) => {
@@ -745,10 +752,8 @@ export function secretsHeldBy(vault: {
         return vault.itemCount(reward.itemId) > 0 ? [rewardKey(secret, reward)] : [];
       }
       if (reward.kind === 'meet') {
-        const held = vault.pokemon.some(
-          (pokemon) => pokemon.speciesId === reward.speciesId && (reward.shiny !== true || pokemon.shiny),
-        );
-        return held ? [rewardKey(secret, reward)] : [];
+        const key = rewardKey(secret, reward);
+        return vault.pokemon.some((pokemon) => pokemon.fromSecret === key) ? [key] : [];
       }
       return [];
     }),

@@ -187,6 +187,11 @@ export interface SavedPokemon {
   readonly shiny?: boolean;
   /** The name the player gave it when it was caught. Absent on older saves and on a Pokemon never named. */
   readonly nickname?: string | null;
+  /**
+   * The secret it was met as (`Pokemon.fromSecret`). Written only for one, so
+   * every other Pokemon saves as it did; absent on a save from before it.
+   */
+  readonly fromSecret?: string;
 }
 
 export interface SavedStashedPokemon {
@@ -2762,11 +2767,13 @@ function withVaultRegistered(progress: RaidProgress, stash: Stash | undefined): 
     ...(shiny.length === 0 ? {} : { pokedexShiny: shiny }),
   };
   // And what the vault holds of the vale's secrets, by the same rule: a find is
-  // found once it has been banked, whichever way it was banked.
+  // found once it has been banked, whichever way it was banked - a Pokemon by
+  // being the one the secret was (`Pokemon.fromSecret`), never by its species.
+  // A key already written stays written: a save keeps every find it shows.
   const held = stash
     ? secretsHeldBy({
         itemCount: (itemId) => stash.itemCount(itemId),
-        pokemon: stash.listPokemon().map(({ pokemon }) => ({ speciesId: pokemon.base.id, shiny: pokemon.shiny })),
+        pokemon: stash.listPokemon().map(({ pokemon }) => ({ fromSecret: pokemon.fromSecret })),
       })
     : [];
   const already = registered.secretsFound ?? [];
@@ -3158,6 +3165,7 @@ function serializePokemon(pokemon: Pokemon): SavedPokemon {
     heldItemId: pokemon.heldItemId,
     ...(pokemon.shiny ? { shiny: true } : {}),
     ...(pokemon.nickname === null ? {} : { nickname: pokemon.nickname }),
+    ...(pokemon.fromSecret === null ? {} : { fromSecret: pokemon.fromSecret }),
   };
 }
 
@@ -3185,6 +3193,7 @@ function deserializePokemon(value: unknown, saveVersion = SAVE_VERSION): Pokemon
   // Read through the same rule a name is typed through, so a hand-edited save
   // cannot carry markup or an eleventh character onto a screen.
   pokemon.giveNickname(typeof value.nickname === 'string' ? value.nickname : null);
+  pokemon.fromSecret = typeof value.fromSecret === 'string' && value.fromSecret.length > 0 ? value.fromSecret : null;
 
   if (Array.isArray(value.moves)) {
     // Learnsets and machines across the whole line, through the same lookup

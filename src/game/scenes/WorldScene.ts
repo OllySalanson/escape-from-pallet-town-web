@@ -1,4 +1,4 @@
-import { secretById, secretOpenAt, type SecretReward } from '../world/secrets';
+import { rewardKey, secretById, secretOpenAt, type SecretReward } from '../world/secrets';
 import { CHEST_ITEM_ID, TREASURE_SECRET_ID } from '../treasure/treasureMap';
 import type { OpenSecret } from '../run/runGeneration';
 import Phaser from 'phaser';
@@ -4694,6 +4694,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           speciesId: cast.secret.reward.speciesId,
           level: cast.secret.reward.level,
           ...(cast.secret.reward.shiny ? { shiny: true } : {}),
+          secret: rewardKey(secretById(cast.secret.id)!, cast.secret.reward),
         }
       : rolled;
     if (cast.secret && this.runSession) {
@@ -5786,9 +5787,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
 
-    this.dialogBox.showMessages(
-      spokenLines(linesSpoken(entity!, this.defeatedBosses), this.hunterRival().name),
-    );
+    this.dialogBox.showMessages(spokenLines(linesSpoken(entity!, this.defeatedBosses), this.hunterRival().name));
   }
 
   /**
@@ -5810,6 +5809,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // A legend is a boss you can keep: no ball until it is beaten, then one.
       ...(entity.legendary ? { legendary: true } : {}),
       ...(secret?.reward?.kind === 'meet' && secret.reward.shiny ? { shiny: true } : {}),
+      ...(secret?.reward?.kind === 'meet' ? { secret: rewardKey(secretById(secret.id)!, secret.reward) } : {}),
     };
     // A secret's Pokemon is met with the words of finding it.
     const found = secret ? secretById(secret.id)?.foundLine : undefined;
@@ -5867,6 +5867,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       speciesId: reward.speciesId,
       level: reward.level,
       ...(reward.shiny ? { shiny: true } : {}),
+      secret: rewardKey(secret, reward),
     };
     if (secret.foundSound) {
       audioManager.play(secret.foundSound);

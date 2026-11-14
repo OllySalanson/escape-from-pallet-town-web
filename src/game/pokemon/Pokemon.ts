@@ -172,6 +172,15 @@ export class Pokemon {
    */
   public nickname: string | null = null;
   /**
+   * The vale's secret this very Pokemon was met as, by its reward key
+   * (`secrets.ts` `rewardKey`), or null for any other. It is what makes a
+   * secret found (`secretsHeldBy`): the Lapras doll is found by banking the
+   * Lapras that came up off the water, never by banking a Lapras from anywhere
+   * else. Set when the secret's fight begins, so it is on whatever is caught
+   * there; persisted (`SavedPokemon.fromSecret`) and kept through evolution.
+   */
+  public fromSecret: string | null = null;
+  /**
    * Every kind this Pokemon has been since it was made or loaded, by dex
    * number, in the order it became them. Not saved: the Pokédex
    * (`hub/pokedex.ts`) registers it on the next write, which is the only

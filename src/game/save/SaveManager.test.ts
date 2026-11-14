@@ -3167,3 +3167,43 @@ describe('a save whose secure container held the partner', () => {
     expect(after.stash.partnerId()).toBe('charmander-1');
   });
 });
+
+describe('a secret Pokemon is found by banking that one, never its kind', () => {
+  // The gyms playtest of 14 Nov 2026: any Lapras banked spent the Lapras doll
+  // for good, unfound, and a Kingler, a Starmie and a Hypno did the same to
+  // three more secrets - the vault was matched on species.
+  const saveWith = (storage: MemoryStorage, pokemon: readonly Pokemon[], secretsFound?: readonly string[]) => {
+    const stash = new Stash();
+    pokemon.forEach((one) => stash.addPokemon(one));
+    new SaveManager(storage).save({
+      party: new PokemonParty(),
+      mapId: 'pallet-town',
+      position: { x: 6, y: 8 },
+      bag: new Bag(),
+      stash,
+      raidProgress: { ...DEFAULT_RAID_PROGRESS, ...(secretsFound ? { secretsFound } : {}) },
+    });
+    return new SaveManager(storage).load()!;
+  };
+  const kind = (id: string, level: number) => new Pokemon(SPECIES_BY_ID[id], level);
+
+  it('does not count a Lapras, a Kingler, a Starmie or a Hypno from anywhere else', () => {
+    const loaded = saveWith(new MemoryStorage(), [kind('lapras', 25), kind('kingler', 30), kind('starmie', 30), kind('hypno', 30)]);
+    expect(loaded.raidProgress.secretsFound ?? []).toEqual([]);
+  });
+
+  it('counts the one met as the secret, and keeps the tag through a save', () => {
+    const doll = kind('lapras', 25);
+    doll.fromSecret = 'the-lapras-doll/lapras';
+    const storage = new MemoryStorage();
+    const loaded = saveWith(storage, [doll, kind('lapras', 10)]);
+    expect(loaded.raidProgress.secretsFound).toEqual(['the-lapras-doll/lapras']);
+    const tags = loaded.stash.listPokemon().map(({ pokemon }) => pokemon.fromSecret);
+    expect(tags.sort()).toEqual([null, 'the-lapras-doll/lapras'].sort());
+  });
+
+  it('takes nothing away from a save that already shows a secret found', () => {
+    const loaded = saveWith(new MemoryStorage(), [kind('lapras', 25)], ['the-lapras-doll/lapras']);
+    expect(loaded.raidProgress.secretsFound).toEqual(['the-lapras-doll/lapras']);
+  });
+});

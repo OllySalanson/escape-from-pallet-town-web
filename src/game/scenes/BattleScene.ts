@@ -813,6 +813,7 @@ export class BattleScene extends Phaser.Scene {
     const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
     const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
     wildPokemon.shiny = data.wild?.shiny === true;
+    wildPokemon.fromSecret = data.wild?.secret ?? null;
     this.launchedFromWorld = Boolean((data.wild || data.trainer) && data.party);
     // The whole party rides on the state, so the engine counts the bench as it
     // counts a trainer's: the field emptying is not the battle lost while
