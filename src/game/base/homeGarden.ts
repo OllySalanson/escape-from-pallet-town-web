@@ -31,13 +31,15 @@ export const GARDEN_SIZE = 6;
 
 /**
  * The lawn the garden is: east of the house, west of the Day-Care's fence,
- * from under the walk along the trees (which stays free, as the way into the
- * nook the radio mast rises out of) down to the path. The mast stands on its
- * west side once built (`fixtures.ts`) and the Day-Care Man at its south-east
- * corner, and the garden gives both the room: a tile something solid stands
- * on is never stood on.
+ * from the wood down to the path. The mast stands in the middle of it once
+ * built (`fixtures.ts`), a tile clear of the house and of the fence, and the
+ * Day-Care Man at its south-east corner, and the garden gives both the room: a
+ * tile something solid stands on is never stood on. It runs up to the trees
+ * since the Day-Care's pen backed onto them: the row along the wood is not a
+ * way to anywhere, and a lawn that is nobody's is a corner a full garden
+ * would wall off.
  */
-export const GARDEN = { x: 41, y: 8, width: 5, height: 4 } as const;
+export const GARDEN = { x: 41, y: 7, width: 5, height: 5 } as const;
 
 /**
  * Where anything built is read from (`fixtures.ts`): the mast is faced from

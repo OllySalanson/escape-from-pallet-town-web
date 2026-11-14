@@ -259,6 +259,12 @@ const PROPS = {
 
 export type FrlgPropName = keyof typeof PROPS;
 
+/**
+ * The lawn's red-flower accent, by its tile. A map that plants its own flowers
+ * leaves this one out of its grass (THE HARBOUR, `base/baseTileset.ts`).
+ */
+export const FRLG_GRASS_FLOWERS_TILE = index(FRLG_TILES.GRASS_FLOWERS);
+
 export const FRLG_TILESET: TilesetCatalogue<FrlgPropName> = {
   sources: [SHEET.source],
   materials: {

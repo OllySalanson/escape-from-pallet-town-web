@@ -4,6 +4,7 @@ import {
   FLOOD_TOWN_TILESET,
   type FloodTownPropName,
 } from '../world/tileset/floodTownTileset';
+import { FRLG_GRASS_FLOWERS_TILE } from '../world/tileset/frlgTileset';
 import { KANTO_TILESET } from '../world/tileset/kantoTileset';
 import { TOWN_PROPS, TOWN_SHEET_SOURCE } from '../world/tileset/townSheet';
 import { TILE_ANIMATION_SOURCE } from '../world/tileAnimation';
@@ -231,7 +232,28 @@ export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
   // draws a beach's waterline in the sand, not under it.
   materials: {
     ...FLOOD_TOWN_TILESET.materials,
-    beach: { ...FLOOD_TOWN_TILESET.materials.beach, joins: ['grass', 'turf', 'stone', 'sand', 'earth', 'paving', 'tree', 'hedge'] },
+    // The lawn keeps its tufts and gives up its flowers. The shared grass
+    // spends a red-flower tile by position (`fillVariants`), which on a raid
+    // map is a meadow and here put flowers wherever the hash fell: half under
+    // the eaves of THE BATTLE ARENA, between the legs of the DERBY board, on
+    // the lawn in front of a door. A flower in the harbour is one somebody
+    // planted (`gardenFlowers`, in `baseMap.ts`'s beds), so it is never on a
+    // way and never cut off by what stands over it (`harbourLooks.test.ts`).
+    grass: {
+      ...FLOOD_TOWN_TILESET.materials.grass,
+      fillVariants: (FLOOD_TOWN_TILESET.materials.grass.fillVariants ?? []).filter((tile) => tile !== FRLG_GRASS_FLOWERS_TILE),
+    },
+    // And it runs on under THE PROMENADE's boards: a beach that drew its surf
+    // against them had a waterline along the boardwalk's foot and down both
+    // sides of the pleasure pier, on dry sand.
+    beach: { ...FLOOD_TOWN_TILESET.materials.beach, joins: ['grass', 'turf', 'stone', 'sand', 'earth', 'paving', 'tree', 'hedge', 'boards'] },
+    // The dry sand along THE COVE's top is the same beach as the sand below it
+    // and stops flush at the quay: drawn with an edge against either, the row
+    // ended in a stub of lawn at both ends.
+    sand: {
+      ...FLOOD_TOWN_TILESET.materials.sand,
+      joins: [...(FLOOD_TOWN_TILESET.materials.sand.joins ?? []), 'beach', 'stone'],
+    },
     water: {
       ...FLOOD_TOWN_TILESET.materials.water,
       joins: [...(FLOOD_TOWN_TILESET.materials.water.joins ?? []), 'beach', 'boards'],

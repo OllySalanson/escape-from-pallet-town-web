@@ -1,5 +1,5 @@
 import type { GridPosition } from '../movement/gridMovement';
-import { MapSketch } from '../world/mapGrid';
+import { MapSketch, type PlantedProp } from '../world/mapGrid';
 import { buildMapLayers, type MapLayers } from '../world/tiles';
 import type { Material } from '../world/tileset/materials';
 import { BASE_TILESET, type BasePropName } from './baseTileset';
@@ -174,10 +174,13 @@ export const PROMENADE_SIGN: BaseSign = {
   ],
 };
 
-/** Beside THE GAME CORNER's door. */
+/**
+ * On the lawn in front of THE GAME CORNER, west of the way up to its door:
+ * where it stood, between the hall and THE BATTLE ARENA, is a flower trough.
+ */
 export const GAME_CORNER_SIGN: BaseSign = {
-  x: 72,
-  y: 11,
+  x: 74,
+  y: 12,
   lines: [
     'THE GAME CORNER',
     'POKéMON JUMP and BERRY PICKING inside - bring your best jumpers, and a DODRIO. TICKETS are kept at home and spent at the PRIZE WINDOW next door.',
@@ -190,6 +193,14 @@ export const PLEASURE_PIER_SIGN: BaseSign = {
   y: 16,
   lines: ['THE PLEASURE PIER', 'Out over the sea. Mind the gulls.'],
 };
+
+/**
+ * THE GREEN's bench, by its top-left: three tiles wide and two deep, its back
+ * to the path and a row of lawn between it and THE COVE's sand. East of it
+ * two columns of lawn are left clear from the path down to the sand: the way
+ * to THE COVE and its jetty.
+ */
+export const BENCH = { x: 50, y: 14 } as const;
 
 /** Where THE BATTLE ARENA stands (`doors.ts` says it, beside its door). */
 export { BATTLE_ARENA_LOT } from './doors';
@@ -208,10 +219,23 @@ export const BASE_SIGNS: readonly BaseSign[] = [
   SQUARE_MAP,
 ];
 
-/** FireRed's red flowers in the front garden, either side of the path. */
-const GARDEN_FLOWERS: readonly (readonly [number, number])[] = [39, 40, 41, 42].flatMap(
-  (x) => [12, 13].map((y) => [x, y] as const),
-);
+/**
+ * Every flower in the harbour, bed by bed: FireRed's red flowers, planted where
+ * somebody would plant them and nowhere a walker's line runs. They stood on
+ * KEEPERS' ROW's gravel once - eight of them, across both rows of the path -
+ * and the lawn grew more wherever a hash fell, half under a roof or a board
+ * (the owner, 14 Nov 2026: "there's flowers on the path and stuff").
+ * `harbourLooks.test.ts` holds every one to lawn, clear of every way and of
+ * everything that stands over it.
+ */
+export const FLOWER_BEDS: readonly { readonly name: string; readonly tiles: readonly (readonly [number, number])[] }[] = [
+  // Under THE BOLTHOLE's window boxes, beside its step.
+  { name: 'THE BOLTHOLE’s front garden', tiles: [[38, 11], [39, 11], [40, 11]] },
+  // Down the Day-Care's east fence, a border along the way up to the boutique.
+  { name: 'THE GREEN’s border', tiles: [[53, 7], [53, 8]] },
+  // Either side of THE GREAT LIBRARY's step.
+  { name: 'THE GREAT LIBRARY’s beds', tiles: [[60, 7], [61, 7], [63, 7], [64, 7]] },
+];
 
 export interface BaseMapDefinition {
   readonly width: number;
@@ -219,6 +243,11 @@ export interface BaseMapDefinition {
   readonly layers: MapLayers;
   readonly collision: readonly boolean[][];
   readonly terrain: readonly Material[][];
+  /**
+   * Everything planted on it, by name and top-left, the wood's trees among
+   * them: what `harbourLooks.test.ts` asks about what stands against what.
+   */
+  readonly planted: readonly PlantedProp<BasePropName>[];
 }
 
 /**
@@ -266,21 +295,21 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtT............TtTTtTTtTTtTTtTTtTTtTTtTT.....TtTTtTTtTTtTTtTTtTTtTTtTTT',
-    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTT....TTTTTTTTT..........TTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTT....TTTTTTTTT..........TTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TtTTTTtTTTTtTTTTTtTTTT............TTTtTTT....TTTTtTTTT..........TTtTTTTtT..........TTTtTTT',
-    'TTT....................................................................................TTT',
+    'TTtTTtTTtTTtTTtTTtTTtT............TtTTtTTtTTtTTtTTtTTT.....T.....TTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTTTTTTTTTTTTTTT...........TTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTTTTTTTTTTTTTTT...........TTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTTTtTTTTtTTTTTtTTTT............TTTtTTTTTTTTTTTtTTTT...........TtTTTTtT..........TTTtTTT',
     'TTT...........................................FFFFFFF..................................TTT',
+    'TTT...........................................F.....F..................................TTT',
     'TtTMMMMMMMMMMM................................F.....F..................................TtT',
     'TTTMMMMMMMMMMM................................F.....F..................................TTT',
-    'TTTMMMMMMMMMMM................................F.....F..................................TTT',
-    'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.FFFFFFF..................................TtT',
-    'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,................MMMMMMMMMMMMMMMMMMMMMMMMMMTTT',
-    'TTTMMMMMMMMMMM,,,,....MMMMMMMMMMMMM..........................MMMMMMMMMMMMMMMMMMMMMMMMMMTTT',
-    'TtTMMMMMMMMMMM,,,,....MMMMMMMMMMMMM..........................__________________________TTT',
-    'TTTMMMMMMMMMMM,,,,....MMMMMMMMMMMMM..........................__________________________TtT',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMddddddddddddddddddddddddddddddd___dddddTTT',
+    'TTTMMMMMMMMMMM................................FFFFFFF..................................TTT',
+    'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MMM.......................TtT',
+    'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMMMMTTT',
+    'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMM..........................MMMMMMMMMMMMMMMMMMMMMMMMMMTTT',
+    'TtTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMM..........................__________________________TTT',
+    'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMM..........................__________________________TtT',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMddddddddddddd~~~~~~~~~~~~~~~~~~___~~~~~TTT',
     'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~TTT',
     'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~TtT',
     'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~TTT',
@@ -322,14 +351,27 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   // Everything on it stands off the two ways along it - KEEPERS' ROW's way down
   // to the boat, and the waterfront from the jetty to THE COVE - which were a
   // single tile wide between barrels, cellar doors and posts.
+  // The posts have the quay's edge to themselves: the pair of barrels that
+  // stood in the corner under them, wedged between the corner post and the
+  // pier's, is with the rest of the cargo behind the warehouses' east end.
   for (const x of [24, 25, 33]) {
     map.plant(x, 21, 'mooringPost');
   }
   map.plant(22, 19, 'mooringPost');
-  map.plant(22, 21, 'barrelPair');
+  // Cargo at the warehouses' two ends, off the rows along the water and off
+  // the three tiles the upper quay comes down to the docks by (x 33 to 35,
+  // the one way round the pier's foot, which a pair needs two of): one barrel
+  // against the west wall; at the east end two stacks of crates, one on the
+  // quay and one on the lawn's dead corner above it, the barrels from the
+  // pier's foot beside them behind the roof, and a sack by the door.
+  // The sack stood with a pair of barrels in the corner where HARBOUR
+  // SQUARE's paving, the lawn and the warehouses' wall meet, against the
+  // second locker's door: that pair is the barrel here and the one by Bill's.
+  map.plant(35, 17, 'barrel');
+  map.plant(44, 14, 'barrelPair');
+  map.plant(46, 15, 'crateStack');
   map.plant(46, 17, 'crateStack');
-  map.plant(33, 17, 'sack');
-  map.plant(34, 16, 'barrelPair');
+  map.plant(45, 20, 'sack');
   // THE COVE, past the warehouses: a strip of beach under THE GREEN, with a
   // jetty to fish off and rocks out in the water.
   map.plant(54, 21, 'jetty');
@@ -346,11 +388,17 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   map.plant(NOTICE_BOARD.x, NOTICE_BOARD.y, 'noticeBoard');
 
   // Crates on the corner of the quay, off the boats and waiting for the
-  // warehouses (`harbourLife.ts` has the porter minding them), and Bill's own
-  // against his cottage's west wall. The quay below them is where a raid's
-  // haul is stood out (`haulOnTheQuay.ts`).
+  // warehouses (`harbourLife.ts` has the porter minding them). The quay below
+  // them is where a raid's haul is stood out (`haulOnTheQuay.ts`). The stack
+  // that stood between the Arena's east statue and Bill's cottage, touching
+  // both, is at the warehouses' east end now, where the rest of the cargo is:
+  // the forecourt's corner is a statue, a gap, a barrel and a cottage.
   map.plant(3, 16, 'crateStack');
-  map.plant(11, 15, 'crateStack');
+  // What Bill keeps by his own wall is one barrel, a tile clear of the
+  // statue and off the quay's row below it, which is the pair's way from the
+  // jetty to the Arena: enough to say at a glance that this is where things
+  // are traded, and small enough to leave the forecourt's corner open.
+  map.plant(12, 15, 'barrel');
 
   // THE RAID ARENA's forecourt: a pair of statues on the way up from the
   // quay, as every Gym in Kanto has, with the forecourt in front of the door
@@ -368,11 +416,13 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   map.plant(8, 16, 'arenaRunnerFoot');
   map.plant(ARENA_SIGN.x, ARENA_SIGN.y, 'homeSign');
 
-  // THE BOLTHOLE's front garden: its sign beside the path to the step, and
-  // FireRed's red flowers either side of it.
+  // THE BOLTHOLE's sign beside the path to its step, and the harbour's flower
+  // beds, each where it belongs (`FLOWER_BEDS`).
   map.plant(HOME_SIGN.x, HOME_SIGN.y, 'homeSign');
-  for (const [x, y] of GARDEN_FLOWERS) {
-    map.plant(x, y, 'gardenFlowers');
+  for (const bed of FLOWER_BEDS) {
+    for (const [x, y] of bed.tiles) {
+      map.plant(x, y, 'gardenFlowers');
+    }
   }
 
   // HARBOUR SQUARE, in the middle of the yard: a paved square round a
@@ -381,17 +431,15 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   map.plant(27, 14, 'stoneFountain');
   map.plant(SQUARE_MAP.x, SQUARE_MAP.y, 'townMap');
 
-  // THE GREEN, past the Day-Care: a fountain to meet at, flowers and its sign,
-  // with a way up either side of the fountain to THE HARBOUR BOUTIQUE and THE
-  // GREAT LIBRARY. The lawn under them is the straight way from KEEPERS' ROW to
-  // THE PROMENADE's stone, and nothing stands on it: the bench stood across it,
-  // and is on the lawn's edge above THE COVE now, looking out over the water.
+  // THE GREEN, past the Day-Care: a fountain to meet at and its sign, with a
+  // way up either side of the fountain to THE HARBOUR BOUTIQUE and THE GREAT
+  // LIBRARY. KEEPERS' ROW's gravel runs on under them to THE PROMENADE's
+  // stone, the straight way east, and nothing stands on it: the bench stood
+  // across it once. It is on the lawn's edge over THE COVE's sand now, clear
+  // of the warehouses' crates, with the jetty and the bay in front of it.
   map.plant(56, 8, 'roundFountain');
-  map.plant(46, 15, 'bench');
+  map.plant(BENCH.x, BENCH.y, 'bench');
   map.plant(GREEN_SIGN.x, GREEN_SIGN.y, 'homeSign');
-  for (const [x, y] of [[54, 8], [60, 8], [54, 9], [60, 9]] as const) {
-    map.plant(x, y, 'gardenFlowers');
-  }
 
   plantPromenade(map);
 
@@ -424,7 +472,7 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
   // Flower troughs either side of the arcade's plaza, against its walls; past
   // it THE FIELD-MOVE COURSE's gate and its TIME BOARD stand with the landmarks
   // (`landmarks.ts`), with the way up to the gate's front left open.
-  map.plant(70, 11, 'troughPink');
+  map.plant(71, 11, 'troughPink');
   map.plant(78, 11, 'troughYellow');
   map.plant(86, 11, 'pennantYellow');
   // The boardwalk's seaward edge, read from the west: the railing, a lamp
@@ -508,6 +556,7 @@ export function getBaseMap(builtUpgradeIds: readonly string[] = []): BaseMapDefi
     terrain: Array.from({ length: sketch.height }, (_row, y) =>
       Array.from({ length: sketch.width }, (_column, x) => sketch.surfaceAt(x, y)),
     ),
+    planted: sketch.props(),
   };
   built.set(key, definition);
   return definition;

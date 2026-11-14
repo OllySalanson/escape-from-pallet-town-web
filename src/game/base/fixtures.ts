@@ -62,8 +62,10 @@ export const BASE_FIXTURES: readonly BaseFixture[] = [
     // tallest thing in the base, for the rung most players build first. A first
     // purchase should change the skyline, and the house the player lives in is
     // where they will see it from.
-    props: [{ name: 'tower', x: 41, y: 4 }],
-    at: { x: 42, y: 10 },
+    // It stands a tile clear of the house and a tile clear of the Day-Care's
+    // fence: against the house's wall the two read as one building.
+    props: [{ name: 'tower', x: 42, y: 4 }],
+    at: { x: 43, y: 10 },
   },
   {
     upgradeId: 'beacon',
