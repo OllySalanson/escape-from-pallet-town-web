@@ -146,6 +146,27 @@ describe('the two gyms of Greystone Vale, each its own FireRed room', () => {
     }
   });
 
+  it.each(GYMS)('leaves nobody in $name walling off a tile: all of it is walked to from the mat, whoever stands in it', (gym) => {
+    // The structure sweeps' rule (`mapStructure.testkit.ts`), asked of the hall
+    // alone: Cerulean's statues were stood behind as FireRed's are, and the
+    // Gym Guide at the head of the walk in shut the one way behind the west one.
+    const map = getWorldMap(VALE, [MISTY_BOSS_ID, KOGA_BOSS_ID]);
+    const people = standing(gym.area, [gym.leader, ...gym.trainers]);
+    const blocked = new Set(people.map(key));
+    const stood = stepDistances(map.collision, matOf(gym.area), blocked, map.links);
+    const { width, height } = hall(gym.area);
+    const origin = builtInSpot(VALE, { area: gym.area, x: 0, y: 0 });
+    const shut: string[] = [];
+    for (let y = origin.y; y < origin.y + height; y += 1) {
+      for (let x = origin.x; x < origin.x + width; x += 1) {
+        if (!map.collision[y][x] && !blocked.has(`${x},${y}`) && stood[y][x] < 0) {
+          shut.push(`${x - origin.x},${y - origin.y}`);
+        }
+      }
+    }
+    expect(shut).toEqual([]);
+  });
+
   it('keeps Misty’s pool a pool: water nobody walks on and nobody fishes in', () => {
     const map = getWorldMap(VALE, []);
     const pool = builtInSpot(VALE, { area: MISTY_GYM_HALL, x: 8, y: 12 });
