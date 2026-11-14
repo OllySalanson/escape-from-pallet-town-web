@@ -24,7 +24,7 @@ export const HARBOUR_NOTICES: readonly string[] = [
   'Two brass telescopes stand on the rail in THE RAID ARENA: all of GREYSTONE VALE, in one look.',
   'Somebody else walking the harbour? Face them and press SPACE to wave.',
   'Everything BROCK builds stands in the harbour: the mast, the lockers, the light at the breakwater\'s head.',
-  `${BOUTIQUE_NAME} at the top of THE GREEN dresses you. Trying a look on in its mirror is free.`,
+  `${BOUTIQUE_NAME} on THE DOCKS, past the warehouses, dresses you. Trying a look on in its mirror is free.`,
   'Legendary and shiny colours are never on a shop\'s shelves. They turn up on raids in GREYSTONE VALE.',
   'Change what you wear at home: YOUR WARDROBE is the drawers upstairs in THE BOLTHOLE.',
 ];

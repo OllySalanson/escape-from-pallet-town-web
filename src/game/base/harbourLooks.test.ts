@@ -4,6 +4,10 @@ import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, MAX_STAGE_HEIGHT, MAX_STAGE_WIDTH 
 import { WORKSHOP_UPGRADES } from '../hub/workshop';
 import { FRLG_GRASS_FLOWERS_TILE } from '../world/tileset/frlgTileset';
 import { BASE_LANDING, BASE_SPAWN, FLOWER_BEDS, getBaseMap } from './baseMap';
+import { DAY_CARE_PEN } from './dayCarePen';
+import { harbourLifeAt, onLand } from './harbourLife';
+import { harbourPlaceAt } from './harbourPlaces';
+import { HARBOUR_LANDMARKS } from './landmarks';
 import { BASE_TILESET, type BasePropName } from './baseTileset';
 import { BASE_DOORS, doorNamed } from './doors';
 
@@ -21,6 +25,13 @@ import { BASE_DOORS, doorNamed } from './doors';
  * walker from the Arena's forecourt to the far end of the front; nothing small
  * is wedged between two other things and no two buildings share a wall unless
  * they are one place; and what a newcomer needs is in the window they arrive in.
+ *
+ * And the owner the same day, of the harbour that came out of that: "I think we
+ * need better building placement as well on the harbour, also like now it looks
+ * a little bit sparse as well." So it also holds where the buildings stand - a
+ * quay front on one building line, every door on a way, like with like - and
+ * how full the place is: no bare ground, boats at their moorings, and none of
+ * it on a way (`docs/screens/harbour-round2/`).
  */
 const EVERY_RUNG = WORKSHOP_UPGRADES.map((upgrade) => upgrade.id);
 const key = (x: number, y: number): string => `${x},${y}`;
@@ -140,10 +151,13 @@ describe.each([
       expect(faults).toEqual([]);
     });
 
-    it('lead down from KEEPERS’ ROW to the quay beside Bill’s, where the way down is walked', () => {
+    it.each([
+      ['beside Bill’s', 18, 21],
+      ['between the warehouses and the boutique', 46, 47],
+    ])('lead down from KEEPERS’ ROW to the quay %s, where the way down is walked', (_where, from, to) => {
       const faults: string[] = [];
       for (let y = 14; y <= 16; y += 1) {
-        for (let x = 18; x <= 21; x += 1) {
+        for (let x = from; x <= to; x += 1) {
           if (map.terrain[y][x] !== 'earth') faults.push(`${x},${y} is ${map.terrain[y][x]}`);
           if (map.collision[y][x] || map.layers.detail.tiles[y][x] >= 0) faults.push(`${x},${y} has something on it`);
         }
@@ -176,6 +190,7 @@ describe.each([
       'courseGate',
       'roundFountain',
       'stoneFountain',
+      'fishStall',
     ];
     /**
      * Pairs that are one place and stand together on purpose, each with why.
@@ -183,6 +198,7 @@ describe.each([
      */
     const ONE_PLACE: readonly (readonly [BasePropName, BasePropName, string])[] = [
       ['gameCorner', 'prizeWindow', 'the prize room is the arcade’s own, next door as Celadon’s is'],
+      ['fishStall', 'warehouses', 'the stall is a lean-to: its awning hangs off their wall'],
     ];
     const onePlace = (a: Thing, b: Thing): boolean =>
       ONE_PLACE.some(([first, second]) => (a.name === first && b.name === second) || (a.name === second && b.name === first));
@@ -197,7 +213,7 @@ describe.each([
       expect(joined).toEqual([]);
     });
 
-    it('wedges nothing small between two other things: a crate, a barrel, a sack, a statue, a sign or a bench leans on one thing at most', () => {
+    it('wedges nothing small between two other things: a crate, a barrel, a sack, a statue, a sign, a bench or a piece of fishing gear leans on one thing at most', () => {
       const SMALL: readonly BasePropName[] = [
         'crateStack',
         'barrel',
@@ -209,13 +225,21 @@ describe.each([
         'townMap',
         'bench',
         'cellarDoors',
+        'lobsterPots',
+        'fishCrate',
+        'netRack',
+        'anchor',
+        'ropeCoil',
+        'sandcastle',
+        'seaBench',
       ];
       // What something may stand against without being crowded by it: the
       // boardwalk's own edge, and planting, which belongs against a wall.
       const EDGING = new Set<BasePropName>(['railing', 'promenadeLamp', 'troughPink', 'troughYellow', 'troughRed', 'troughBlue', 'gardenFlowers']);
       // Cargo stacked against cargo is one pile, and a pile is one thing: it
-      // may stand against a wall, and may not fill the gap between two.
-      const CARGO = new Set<BasePropName>(['crateStack', 'barrel', 'barrelPair', 'sack']);
+      // may stand against a wall, and may not fill the gap between two. The
+      // fishing gear beside the stall is a pile the same way.
+      const CARGO = new Set<BasePropName>(['crateStack', 'barrel', 'barrelPair', 'sack', 'lobsterPots', 'fishCrate', 'netRack']);
       const others = things.filter((thing) => !EDGING.has(thing.name));
       const pileOf = (thing: Thing): readonly Thing[] => {
         const pile = [thing];
@@ -251,6 +275,149 @@ describe.each([
         }
       }
       expect(fence).toEqual([]);
+    });
+  });
+
+  describe('where its buildings stand', () => {
+    const things = thingsOn(built);
+    const door = (id: string) => {
+      const found = doorNamed(id);
+      if (!found) throw new Error(`no door ${id}`);
+      return found;
+    };
+    const foot = (id: string): number => door(id).building.y + BASE_TILESET.props[door(id).building.prop].height - 1;
+    const warehouses = HARBOUR_LANDMARKS.find((landmark) => landmark.id === 'warehouses')!.props[0];
+
+    it('gives the quay one front: Bill’s, the warehouses and the boutique on one building line, their doors to the water', () => {
+      const fronts = [foot('bills-cottage'), warehouses.y + BASE_TILESET.props[warehouses.name].height - 1, foot('boutique')];
+      expect(fronts).toEqual([fronts[0], fronts[0], fronts[0]]);
+      for (const id of ['bills-cottage', 'boutique']) {
+        const step = door(id).returnTo;
+        expect([id, map.terrain[step.y][step.x]]).toEqual([id, 'stone']);
+        // And the sea is in front of it: straight down from the step is quay, then water.
+        let y = step.y;
+        while (y < map.height && map.terrain[y][step.x] === 'stone') y += 1;
+        expect([id, map.terrain[y]?.[step.x], y - step.y <= 3]).toEqual([id, 'water', true]);
+      }
+    });
+
+    it('opens every door onto a way: no building is set back behind a lawn, but THE GREAT LIBRARY at the head of THE GREEN', () => {
+      const setBack = BASE_DOORS.filter((each) => {
+        const { x, y } = each.returnTo;
+        return !WAY_MATERIALS.has(map.terrain[y][x]) && !WAY_MATERIALS.has(map.terrain[y + 1][x]);
+      }).map((each) => each.id);
+      expect(setBack).toEqual(['great-library']);
+      // The library is the one building a lawn is in front of, and it stands
+      // square to it: its door is on the fountain's own line, two rows of lawn between.
+      const fountain = things.find((thing) => thing.name === 'roundFountain')!;
+      const library = door('great-library');
+      expect(library.tiles[0].x).toBe(fountain.x + 1);
+      expect(fountain.y - library.returnTo.y).toBe(2);
+    });
+
+    it('stands nothing in front of a door: the step and the tile before it are open', () => {
+      const shut = BASE_DOORS.filter((each) => map.collision[each.returnTo.y][each.returnTo.x] || map.collision[each.returnTo.y + 1][each.returnTo.x]).map(
+        (each) => each.id,
+      );
+      expect(shut).toEqual([]);
+    });
+
+    it('keeps like with like: the keepers on their row, trade on the quay, the games on the front, home beside the Day-Care', () => {
+      const where = (id: string): string | undefined => harbourPlaceAt(door(id).returnTo)?.id;
+      expect(['pokemon-centre', 'oaks-lab', 'brocks-workshop'].map(where)).toEqual(['yard', 'yard', 'yard']);
+      expect(new Set(['pokemon-centre', 'oaks-lab', 'brocks-workshop'].map(foot)).size).toBe(1);
+      expect(['bills-cottage', 'boutique'].map(where)).toEqual(['quay', 'docks']);
+      expect(harbourPlaceAt({ x: warehouses.x, y: warehouses.y + 4 })?.id).toBe('docks');
+      expect(['battle-arena', 'game-corner', 'prize-window'].map(where)).toEqual(['promenade', 'promenade', 'promenade']);
+      expect(where('great-library')).toBe('green');
+      // Home and the Day-Care are neighbours: the pen starts within ten tiles of the house's door.
+      expect(DAY_CARE_PEN.x - door('bolthole').returnTo.x).toBeLessThanOrEqual(10);
+    });
+
+    it('closes HARBOUR SQUARE on the east with the warehouses’ wall: the paving runs up to it', () => {
+      for (let y = warehouses.y; y < warehouses.y + 3; y += 1) {
+        expect([y, map.terrain[y][warehouses.x - 1]]).toEqual([y, 'stone']);
+      }
+    });
+  });
+
+  describe('how full it is', () => {
+    const things = thingsOn(built);
+    /** Out over the sea, where the sea is the thing to look at. */
+    const OVER_WATER = new Set(['pleasure-pier', 'long-pier', 'breakwater']);
+    /**
+     * How many steps each open tile of the town is from something to look at:
+     * a building, a prop, a tree, a fence, a person or a Pokémon. Open water
+     * is not something: a quay with nothing on it is bare however much sea is
+     * beside it, and a boat on that sea is what makes it a harbour.
+     */
+    const stepsFromSomething = (): number[][] => {
+      const steps = Array.from({ length: map.height }, () => Array<number>(map.width).fill(Infinity));
+      const queue: [number, number][] = [];
+      const something = (x: number, y: number): void => {
+        if (steps[y][x] === 0) return;
+        steps[y][x] = 0;
+        queue.push([x, y]);
+      };
+      for (let y = 0; y < map.height; y += 1) {
+        for (let x = 0; x < map.width; x += 1) {
+          if (map.collision[y][x] && (map.terrain[y][x] !== 'water' || map.layers.detail.tiles[y][x] >= 0)) something(x, y);
+        }
+      }
+      for (const figure of harbourLifeAt('day').filter(onLand)) something(figure.position.x, figure.position.y);
+      for (let k = 0; k < queue.length; k += 1) {
+        const [x, y] = queue[k];
+        for (const [dx, dy] of STEPS) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= map.width || ny >= map.height || steps[ny][nx] <= steps[y][x] + 1) continue;
+          steps[ny][nx] = steps[y][x] + 1;
+          queue.push([nx, ny]);
+        }
+      }
+      return steps;
+    };
+
+    it('leaves no bare ground: nowhere in the town is more than four steps from something, and little of it more than two', () => {
+      const steps = stepsFromSomething();
+      const open: number[] = [];
+      for (let y = 0; y < map.height; y += 1) {
+        for (let x = 0; x < map.width; x += 1) {
+          const place = harbourPlaceAt({ x, y });
+          if (!map.collision[y][x] && place && !OVER_WATER.has(place.id)) open.push(steps[y][x]);
+        }
+      }
+      expect(Math.max(...open)).toBeLessThanOrEqual(4);
+      // Before the quay was filled 11% of the town was three steps or more from
+      // anything with nothing built and 8% with everything; it is 5% and 3%,
+      // and what is left is the middle of a way and the clearings Brock builds in.
+      expect(open.filter((each) => each >= 3).length / open.length).toBeLessThan(0.06);
+    });
+
+    it('moors its boats: half a dozen rowing boats, every one against a quay, a jetty or the sand', () => {
+      const boats = things.filter((thing) => thing.name.startsWith('rowBoat'));
+      expect(boats.length).toBeGreaterThanOrEqual(6);
+      const adrift = boats.filter(
+        (boat) => !boat.solid.some((tile) => STEPS.some(([dx, dy]) => map.terrain[tile.y + dy]?.[tile.x + dx] !== 'water')),
+      );
+      expect(adrift.map(say)).toEqual([]);
+    });
+
+    it('lights and plants HARBOUR SQUARE’s way out onto the quay: a lamp and a planter either side of it, on the fountain’s line', () => {
+      const fountain = things.find((thing) => thing.name === 'stoneFountain')!;
+      const middle = fountain.x + 1;
+      const lamps = things.filter((thing) => thing.name === 'promenadeLamp' && thing.y === fountain.y + 3).map((thing) => thing.x - middle);
+      expect(lamps.sort((a, b) => a - b)).toEqual([-2, 2]);
+      // And the way between them is open, three wide.
+      expect([-1, 0, 1].filter((dx) => map.collision[fountain.y + 3][middle + dx])).toEqual([]);
+    });
+
+    it('stands a stall where the boats land: the fish stall against the warehouses, with its keeper beside it', () => {
+      const stall = things.find((thing) => thing.name === 'fishStall')!;
+      const wall = things.find((thing) => thing.name === 'warehouses')!;
+      expect(leaningOn(stall, [wall])).toEqual([wall]);
+      const monger = harbourLifeAt('day').find((figure) => figure.id === 'fishmonger')!;
+      expect(Math.abs(monger.position.x - (stall.x + 3)) + Math.abs(monger.position.y - stall.y)).toBe(0);
     });
   });
 

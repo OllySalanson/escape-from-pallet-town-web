@@ -1024,6 +1024,290 @@ function fishingBoard() {
   return image;
 }
 
+// --- The quay ------------------------------------------------------------
+//
+// What a working harbour has standing about on it, and no FireRed town does:
+// lobster pots, a net hung out to dry, a crate of the morning's fish on ice, a
+// coil of rope, an anchor, rowing boats, the fish stall the boats land to, a
+// bench to watch them from, and on the beach a sandcastle. Drawn as the front's things are: 15-bit colours, a dark outline,
+// light from the top left.
+
+const NET = { n: '#58a098', N: '#88c8b8', m: '#386868' };
+const ROPE = { r: '#e8d8a8', R: '#f8f0d0', q: '#b09860' };
+const BUOY = { b: '#f08030', B: '#f8b060', c: '#b85018' };
+const FISH = { f: '#98b8d8', F: '#d0e0f0', g: '#5878a0', p: '#f09088', i: '#e8f0f8', I: '#c0d8e8' };
+
+/** Lobster pots, 1x1: two creels stacked, netted over their hoops, and a buoy on its line. */
+function lobsterPots() {
+  const image = canvas(TILE, TILE);
+  draw(
+    image,
+    0,
+    0,
+    [
+      '................',
+      '.....oooooooo...',
+      '....oNnNnNnNno..',
+      '....onNnmmNnNo..',
+      '....oNnNmmnNno..',
+      '....owwwwwwwwo..',
+      '..oooooooooooo..',
+      '.oNnNnNnNnNnNno.',
+      '.onNnNmmmNnNnNo.',
+      '.oNnNnmmmnNnNno.',
+      '.onNnNnNnNnNnNo.',
+      '.owwwwwwwwwwwwo.',
+      '.odddddddddddd..',
+      'cbBb.oooooooo...',
+      'cbbb............',
+      '.cc.............',
+    ],
+    { o: INK.woodDark, w: INK.woodLight, d: INK.wood, ...NET, ...BUOY },
+  );
+  return image;
+}
+
+/** A crate of fish on ice, 1x1. */
+function fishCrate() {
+  const image = canvas(TILE, TILE);
+  draw(
+    image,
+    0,
+    0,
+    [
+      '................',
+      '.oooooooooooooo.',
+      '.oiIiiiiiiiIiio.',
+      '.oigggggiiigiio.',
+      '.ogFFFffggggiIo.',
+      '.oigggggiiigiio.',
+      '.oIigiiigggggio.',
+      '.oiiggggffFFFgo.',
+      '.oiigiiigggggio.',
+      '.oooooooooooooo.',
+      '.owwwwwwwwwwwwo.',
+      '.owdwwwwwwwwdwo.',
+      '.odddddddddddd..',
+      '.oooooooooooooo.',
+      '................',
+      '................',
+    ],
+    { o: INK.woodDark, w: INK.woodLight, d: INK.wood, ...FISH },
+  );
+  return image;
+}
+
+/** An old anchor propped on the quay, 1x1. */
+function anchor() {
+  const image = canvas(TILE, TILE);
+  draw(
+    image,
+    0,
+    0,
+    [
+      '.......kk.......',
+      '......kwsk......',
+      '......ks.k......',
+      '.......kk.......',
+      '.......ks.......',
+      '....kkkkskkk....',
+      '....kwsssssk....',
+      '....kkkkskkk....',
+      '.......ks.......',
+      '.kk....ks....kk.',
+      '.kwk...ks...ksk.',
+      '.kssk..ks..kssk.',
+      '..ksskkkskkssk..',
+      '...kssssssssk...',
+      '....kkkksskk....',
+      '.......kkk......',
+    ],
+    IRON,
+  );
+  return image;
+}
+
+/** A coil of mooring rope, 1x1. */
+function ropeCoil() {
+  const image = canvas(TILE, TILE);
+  const cx = 7.5;
+  const cy = 9;
+  for (let y = 3; y < 15; y += 1) {
+    for (let x = 1; x < 15; x += 1) {
+      const r = Math.hypot((x - cx) / 6.4, (y - cy) / 4.6);
+      if (r > 1) continue;
+      const ring = Math.floor(r * 3.999);
+      const edge = r > 0.86;
+      const hole = r < 0.2;
+      const lit = y < cy;
+      const ink = edge ? ROPE.q : hole ? INK.woodDark : ring % 2 === 0 ? (lit ? ROPE.R : ROPE.r) : lit ? ROPE.r : ROPE.q;
+      set(image, x, y, hex(ink));
+    }
+  }
+  // The end of it, lying off the coil.
+  draw(image, 11, 13, ['.qRr', '..qq'], ROPE);
+  return image;
+}
+
+/** A sandcastle, 1x1: two towers, a wall with a gate, a flag, and the bucket it came out of. */
+function sandcastle() {
+  const image = canvas(TILE, TILE);
+  draw(
+    image,
+    0,
+    0,
+    [
+      '................',
+      '......kR........',
+      '......kRR.......',
+      '......k.........',
+      '..o.o.k.o.o.....',
+      '..oSSoooSSo.....',
+      '..oSsSSSsSo.....',
+      '..oSsSSSsSo.kbk.',
+      '.ooSsSSSsSoo.b..',
+      '.oSSSSooSSSokbBk',
+      '.oSsSSodSsSokbBk',
+      '.oSsSSodSsSokbbk',
+      '.oooooooooooo.kk',
+      '..tttttttttt....',
+      '................',
+      '................',
+    ],
+    { o: '#a08048', S: '#f0d890', s: '#d8b868', d: '#806030', t: '#d8c088', k: INK.outline, R: INK.red, b: STRIPES.blue.c, B: STRIPES.blue.l },
+  );
+  return image;
+}
+
+/**
+ * A rowing boat, 2x1, seen from above with her bow to the east: a painted
+ * gunwale in `colour`, two thwarts and her oars shipped along them.
+ */
+function rowBoat(colour) {
+  const image = canvas(2 * TILE, TILE);
+  const { c, d, l } = STRIPES[colour];
+  const cy = 7.5;
+  const half = (x) => (x <= 20 ? 5.6 - Math.max(0, 5 - x) * 0.35 : 5.6 * Math.sqrt(Math.max(0, 1 - ((x - 20) / 10.5) ** 2)));
+  for (let x = 1; x < 31; x += 1) {
+    const h = half(x);
+    for (let y = 0; y < 16; y += 1) {
+      const off = Math.abs(y - cy);
+      if (off > h) continue;
+      const rim = off > h - 1 || x === 1 || half(x + 1) < off;
+      const gunwale = off > h - 2.2 || x <= 2 || half(x + 2) < off;
+      let ink = y < cy ? INK.woodLight : INK.wood;
+      // Her ribs, and the two thwarts across her.
+      if ((x - 4) % 5 === 0) ink = INK.woodDark;
+      if ((x >= 8 && x <= 10) || (x >= 17 && x <= 19)) ink = y < cy ? INK.cream : '#d8c8a0';
+      if (gunwale) ink = y < cy - 1 ? l : y > cy + 2 ? d : c;
+      if (rim) ink = INK.outline;
+      set(image, x, y, hex(ink));
+    }
+  }
+  // The oars, shipped side by side along her middle, blades to the stern.
+  draw(image, 4, 6, ['pppkkkkkkkkkkkkkkk', 'PPPssssssssssssss.'], { p: INK.shade, P: INK.white, k: INK.woodDark, s: INK.woodLight });
+  draw(image, 4, 9, ['PPPssssssssssssss.', 'pppkkkkkkkkkkkkkkk'], { p: INK.shade, P: INK.white, k: INK.woodDark, s: INK.woodLight });
+  return image;
+}
+
+/** A net hung out to dry, 2x2: two posts and a rail, the net's mesh over it, its cork floats along the foot. */
+function netRack() {
+  const image = canvas(2 * TILE, 2 * TILE);
+  // The net: a diamond mesh you can see the quay through, hanging in three scallops.
+  for (let x = 4; x < 28; x += 1) {
+    const sag = Math.round(2.5 * Math.sin(((x - 4) / 24) * Math.PI * 3) ** 2);
+    for (let y = 6; y <= 21 + sag; y += 1) {
+      const strand = (x + y) % 4 === 0 || (x - y + 64) % 4 === 0;
+      if (y === 21 + sag) set(image, x, y, hex(NET.m));
+      else if (strand) set(image, x, y, hex(y < 12 ? NET.N : NET.n));
+    }
+    if ((x - 5) % 4 === 0) draw(image, x - 1, 21 + sag, ['.cc.', 'cbBc', 'cbbc', '.cc.'], BUOY);
+  }
+  // The rail and its two posts, down into their feet.
+  fill(image, 1, 4, 30, 3, INK.woodDark);
+  fill(image, 2, 5, 28, 1, INK.woodLight);
+  for (const x of [2, 27]) {
+    fill(image, x, 3, 3, 26, INK.woodDark);
+    fill(image, x + 1, 4, 1, 24, INK.woodLight);
+    draw(image, x - 1, 28, ['kkkkk', 'kwwdk', 'kkkkk'], { k: INK.woodDark, w: INK.woodLight, d: INK.wood });
+  }
+  return image;
+}
+
+/**
+ * THE FISH STALL, 3x2: a blue-and-white awning on two posts over a table of
+ * the morning's catch on ice, with the scales at one end.
+ */
+function fishStall() {
+  const image = canvas(3 * TILE, 2 * TILE);
+  const { c, d, l } = STRIPES.blue;
+  // The awning: stripes down its slope, a scalloped valance along its front edge.
+  for (let y = 1; y <= 11; y += 1) {
+    const inset = y < 4 ? 4 - y : 0;
+    for (let x = 1 + inset; x < 47 - inset; x += 1) {
+      const edge = x === 1 + inset || x === 46 - inset || y === 1;
+      const band = Math.floor((x - 1) / 4) % 2 === 0;
+      let ink = band ? (y < 5 ? l : c) : y < 5 ? INK.white : INK.cream;
+      if (y >= 9) ink = band ? d : INK.shade;
+      set(image, x, y, hex(edge ? INK.outline : ink));
+    }
+  }
+  for (let x = 1; x < 47; x += 1) {
+    const scallop = (x - 1) % 4;
+    set(image, x, 12, hex(scallop === 0 || scallop === 3 ? INK.outline : Math.floor((x - 1) / 4) % 2 === 0 ? d : INK.shade));
+    if (scallop === 1 || scallop === 2) set(image, x, 13, hex(INK.outline));
+  }
+  // Its posts.
+  for (const x of [3, 43]) {
+    for (let y = 13; y < 30; y += 1) draw(image, x, y, ['ks'], { k: INK.woodDark, s: INK.woodLight });
+  }
+  // The table: a slab of ice with the catch laid out on it, over a boarded front.
+  fill(image, 5, 17, 38, 13, INK.outline);
+  fill(image, 6, 18, 36, 6, FISH.i);
+  for (let x = 6; x < 42; x += 1) if ((x * 7) % 5 === 0) set(image, x, 18 + ((x * 3) % 6), hex(FISH.I));
+  const fish = ['.ggggg..g', 'gFFFffgg.', 'gFffffgg.', '.ggggg..g'];
+  for (const [x, y] of [[8, 19], [19, 19], [30, 19]]) draw(image, x, y, fish, FISH);
+  draw(image, 14, 22, ['pp.pp', '.ppp.'], FISH);
+  draw(image, 26, 22, ['pp.pp', '.ppp.'], FISH);
+  fill(image, 6, 24, 36, 1, INK.woodLight);
+  fill(image, 6, 25, 36, 4, INK.wood);
+  for (let x = 11; x < 42; x += 6) fill(image, x, 25, 1, 4, INK.woodDark);
+  fill(image, 6, 28, 36, 1, INK.woodDark);
+  // The scales, at the east end of the table.
+  draw(image, 36, 14, ['..kk..', '.kyyk.', 'kkyykk', '..kk..', '.kkkk.'], { k: INK.iron, y: INK.gold });
+  return image;
+}
+
+/** A slatted bench with iron ends, 2x1, facing the sea. */
+function seaBench() {
+  const image = canvas(2 * TILE, TILE);
+  draw(
+    image,
+    0,
+    0,
+    [
+      '................................',
+      '................................',
+      '..kkoooooooooooooooooooooooookk.',
+      '..kswwwwwwwwwwwwwwwwwwwwwwwwwsk.',
+      '..ksddddddddddddddddddddddddsk..',
+      '..kkoooooooooooooooooooooooookk.',
+      '..kswwwwwwwwwwwwwwwwwwwwwwwwwsk.',
+      '..ksddddddddddddddddddddddddsk..',
+      '.kkkooooooooooooooooooooooookkk.',
+      '.kswWWWWWWWWWWWWWWWWWWWWWWWWwsk.',
+      '.kswwwwwwwwwwwwwwwwwwwwwwwwwwsk.',
+      '.ksddddddddddddddddddddddddddsk.',
+      '.kkkooooooooooooooooooooooookkk.',
+      '..ks........................ks..',
+      '..kk........................kk..',
+      '................................',
+    ],
+    { ...IRON, o: INK.woodDark, w: INK.wood, W: INK.woodLight, d: '#905830' },
+  );
+  return image;
+}
+
 // --- The sheet -----------------------------------------------------------
 
 /**
@@ -1064,6 +1348,17 @@ const LAYOUT = [
   ['digSign', 9, 9, digSign],
   ['fishingBoard', 11, 9, fishingBoard],
   ['dojo', 0, 12, (towns) => SIGNS.dojo(towns)],
+  ['lobsterPots', 7, 12, lobsterPots],
+  ['fishCrate', 8, 12, fishCrate],
+  ['anchor', 9, 12, anchor],
+  ['ropeCoil', 10, 12, ropeCoil],
+  ['sandcastle', 11, 12, sandcastle],
+  ['rowBoatBlue', 12, 12, () => rowBoat('blue')],
+  ['rowBoatRed', 14, 12, () => rowBoat('red')],
+  ['netRack', 6, 13, netRack],
+  ['fishStall', 8, 13, fishStall],
+  ['seaBench', 11, 13, seaBench],
+  ['rowBoatGreen', 13, 13, () => rowBoat('green')],
 ];
 
 const towns = readPng(new URL('public/assets/frlg-towns.png', ROOT).pathname);

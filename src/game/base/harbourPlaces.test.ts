@@ -37,7 +37,7 @@ describe('the parts of the harbour', () => {
     expect(harbourPlaceAt(door('raid-arena'))?.id).toBe('arena-square');
     expect(harbourPlaceAt(door('oaks-lab'))?.id).toBe('yard');
     expect(harbourPlaceAt(door('bills-cottage'))?.id).toBe('quay');
-    expect(harbourPlaceAt({ x: 29, y: 27 })?.id).toBe('long-pier');
+    expect(harbourPlaceAt({ x: 28, y: 27 })?.id).toBe('long-pier');
     expect(harbourPlaceAt({ x: 54, y: 19 })?.id).toBe('cove');
   });
 });

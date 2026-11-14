@@ -57,6 +57,18 @@ export const PROMENADE_PIECES = {
   digSign: { column: 9, row: 9, width: 2, height: 2 },
   fishingBoard: { column: 11, row: 9, width: 2, height: 2 },
   dojo: { column: 0, row: 12, width: 6, height: 5 },
+  // The quay's own things (`draw-promenade.mjs`, "The quay").
+  lobsterPots: { column: 7, row: 12, width: 1, height: 1 },
+  fishCrate: { column: 8, row: 12, width: 1, height: 1 },
+  anchor: { column: 9, row: 12, width: 1, height: 1 },
+  ropeCoil: { column: 10, row: 12, width: 1, height: 1 },
+  sandcastle: { column: 11, row: 12, width: 1, height: 1 },
+  rowBoatBlue: { column: 12, row: 12, width: 2, height: 1 },
+  rowBoatRed: { column: 14, row: 12, width: 2, height: 1 },
+  netRack: { column: 6, row: 13, width: 2, height: 2 },
+  fishStall: { column: 8, row: 13, width: 3, height: 2 },
+  seaBench: { column: 11, row: 13, width: 2, height: 1 },
+  rowBoatGreen: { column: 13, row: 13, width: 2, height: 1 },
 } as const;
 
 export type PromenadePieceName = keyof typeof PROMENADE_PIECES;
@@ -101,6 +113,30 @@ export function promenadePost(name: PromenadePieceName, label: string): PropDefi
     height: 1,
     cells: [{ tile: PROMENADE_SHEET_SOURCE.at(place.column, place.row + 1), solid: true }],
     brim: { tiles: [PROMENADE_SHEET_SOURCE.at(place.column, place.row)], depth: 16 },
+  };
+}
+
+/**
+ * A lean-to two tiles tall that stands on its bottom row: the fish stall, the
+ * drying net. Its footing is the row its table or its feet stand on, and its
+ * awning or its mesh is drawn in the row above as a brim - over the wall it
+ * stands against, or over whoever walks behind it - so it takes one row of a
+ * quay rather than two.
+ */
+export function promenadeLeanTo(name: PromenadePieceName, label: string): PropDefinition {
+  const place = PROMENADE_PIECES[name];
+  if (place.height !== 2) {
+    throw new Error(`'${name}' is not two tiles tall`);
+  }
+  return {
+    label,
+    width: place.width,
+    height: 1,
+    cells: Array.from({ length: place.width }, (_cell, x) => ({
+      tile: PROMENADE_SHEET_SOURCE.at(place.column + x, place.row + 1),
+      solid: true,
+    })),
+    brim: { tiles: Array.from({ length: place.width }, (_cell, x) => PROMENADE_SHEET_SOURCE.at(place.column + x, place.row)), depth: 16 },
   };
 }
 

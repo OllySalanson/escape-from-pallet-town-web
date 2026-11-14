@@ -121,10 +121,12 @@ const ROUTES = [
 ];
 
 // THE HARBOUR's main routes, each from the yard where a visit starts or the
-// jetty a raid comes home to. Every corner is open ground in the harbour before
-// and after it was made walkable, so the same walk is asked of both; the quay's
-// corners go round the long pier's statues and the cove's edge as the quay
-// does, because straight on there is the sea or the pier's own front.
+// jetty a raid comes home to. Every corner is open ground. The quay's routes
+// keep to its second row from the water, which is clear from the jetty to
+// THE COVE: the corner of the west quay has lobster pots on its edge. (The
+// corners were moved with the quay front on 14 Nov 2026 - the boutique's door
+// is on the docks, the library's at the head of THE GREEN, the pier a tile
+// west - so a build from before that needs the list from before it.)
 const HARBOUR_ROUTES = [
   { from: SPAWN, name: 'to the Raid Arena door', corners: [[8, 13]] },
   { from: SPAWN, name: 'to the Pokemon Center door', corners: [[19, 13], [19, 12]] },
@@ -133,22 +135,24 @@ const HARBOUR_ROUTES = [
   { from: SPAWN, name: 'to the Bolthole step', corners: [[37, 13], [37, 11]] },
   { from: SPAWN, name: 'down the lawn to Bill’s door', corners: [[19, 13], [19, 19], [14, 19], [14, 18]] },
   { from: SPAWN, name: 'east from the gravel to the end of the stone', corners: [[86, 13]] },
-  { from: SPAWN, name: 'up THE GREEN to the Boutique door', corners: [[54, 13], [54, 7], [55, 7]] },
-  { from: SPAWN, name: 'up THE GREEN to the Great Library door', corners: [[60, 13], [60, 8], [62, 8], [62, 7]] },
+  { from: SPAWN, name: 'down the lane past the warehouses to the Boutique door', corners: [[46, 13], [46, 19], [49, 19], [49, 18]] },
+  { from: SPAWN, name: 'up THE GREEN to the Great Library door', corners: [[54, 13], [54, 7], [57, 7], [57, 6]] },
   { from: SPAWN, name: 'along THE PROMENADE to the Battle Arena door', corners: [[68, 13]] },
   { from: SPAWN, name: 'along THE PROMENADE to the Game Corner door', corners: [[76, 13], [76, 11]] },
   { from: SPAWN, name: 'along THE PROMENADE to the Field-Move Course gate', corners: [[85, 13], [85, 10]] },
   { from: SPAWN, name: 'along the boardwalk', corners: [[60, 13], [60, 15], [86, 15]] },
-  { from: SPAWN, name: 'down the steps and along the beach to THE COVE', corners: [[67, 13], [67, 22], [60, 22], [60, 19], [50, 19]] },
+  { from: SPAWN, name: 'down the steps and along the beach to THE COVE', corners: [[67, 13], [67, 22], [60, 22], [60, 19], [56, 19]] },
   { from: SPAWN, name: 'down the steps and along the beach to the pleasure pier head', corners: [[67, 13], [67, 22], [80, 22], [80, 28]] },
-  { from: SPAWN, name: 'off the pleasure pier and along the sand to THE COVE', corners: [[80, 13], [80, 21], [61, 21], [60, 19], [50, 19]] },
+  { from: SPAWN, name: 'off the pleasure pier and along the sand to THE COVE', corners: [[80, 13], [80, 21], [61, 21], [60, 19], [56, 19]] },
   { from: SPAWN, name: 'down to the jetty in THE COVE', corners: [[54, 13], [54, 21]] },
   { from: JETTY, name: 'from the boat to Bill’s door', corners: [[14, 19], [14, 18]] },
   { from: JETTY, name: 'from the boat to the Raid Arena door', corners: [[12, 18], [8, 18], [8, 13]] },
   { from: JETTY, name: 'from the boat up to the Pokemon Center door', corners: [[19, 19], [19, 12]] },
-  { from: JETTY, name: 'from the boat along the quay to the S.S. Anne', corners: [[29, 19], [29, 25]] },
-  { from: JETTY, name: 'from the boat along the waterfront to THE COVE', corners: [[30, 19], [34, 19], [35, 21], [46, 21], [47, 19], [50, 19]] },
-  { from: JETTY, name: 'from the boat out along the breakwater to the harbour light', corners: [[30, 19], [34, 19], [35, 21], [46, 21], [47, 19], [60, 19], [60, 21], [60, 30], [42, 30]] },
+  { from: JETTY, name: 'from the boat along the quay to the S.S. Anne', corners: [[12, 18], [28, 18], [28, 25]] },
+  { from: JETTY, name: 'from the boat along the quay to the fish stall', corners: [[12, 18], [33, 18], [33, 19], [41, 19]] },
+  { from: JETTY, name: 'from the boat along the quay to the Boutique door', corners: [[12, 18], [33, 18], [33, 19], [49, 19], [49, 18]] },
+  { from: JETTY, name: 'from the boat along the waterfront to THE COVE', corners: [[12, 18], [33, 18], [33, 19], [56, 19]] },
+  { from: JETTY, name: 'from the boat out along the breakwater to the harbour light', corners: [[12, 18], [33, 18], [33, 19], [60, 19], [60, 21], [60, 30], [42, 30]] },
 ];
 
 // TANGLEWOOD's main routes from the road in from The Crossing: the road

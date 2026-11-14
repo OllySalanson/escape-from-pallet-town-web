@@ -26,6 +26,15 @@ const neighbours = (tile: GridPosition): GridPosition[] =>
 const landBeatsOf = (life: readonly HarbourFigure[]): Set<string> =>
   new Set(life.filter(onLand).flatMap((figure) => harbourBeatTiles(figure).map(key)));
 
+describe('who is in the harbour', () => {
+  it('gives every figure an id of its own: two under one id are drawn as one', () => {
+    // THE COVE's Krabby and THE PROMENADE's were both `beach-krabby`, and the
+    // one in the cove held its tile without ever being drawn.
+    const ids = HARBOUR_LIFE.map((figure) => figure.id);
+    expect(ids.filter((id, index) => ids.indexOf(id) !== index)).toEqual([]);
+  });
+});
+
 describe('the harbour after dark', () => {
   it('sends the day-only figures home and moves the night ones, and nobody else', () => {
     const day = harbourLifeAt('day');

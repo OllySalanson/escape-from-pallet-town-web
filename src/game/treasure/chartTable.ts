@@ -154,7 +154,7 @@ export function chartTableLines(facts: ChartTableFacts, itemName: (itemId: strin
     lines.push(
       hunt.roomOpen
         ? `OAK: ${MARLOW.name} will want ${here.length === 1 ? 'that' : 'those'} pinned on his board. ${CHART_ROOM_NAME}, behind THE GREAT LIBRARY's end bookcase.`
-        : `OAK: An old chart! That is ${MARLOW.name}'s line, not mine. Take it to him at THE GREAT LIBRARY, up past THE GREEN.`,
+        : `OAK: An old chart! That is ${MARLOW.name}'s line, not mine. Take it to him at THE GREAT LIBRARY, at the head of THE GREEN.`,
     );
   }
   if (traced > 0) {

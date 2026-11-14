@@ -17,7 +17,7 @@ import {
   RAID_ARENA_SHEET_SOURCE,
   RAID_ARENA_STATUE,
 } from './raidArenaSheet';
-import { BATTLE_ARENA_BUILDING, GAME_CORNER_HALL, PRIZE_WINDOW_BUILDING, PROMENADE_SHEET_SOURCE, promenadePost, promenadeProp } from './promenadeSheet';
+import { BATTLE_ARENA_BUILDING, GAME_CORNER_HALL, PRIZE_WINDOW_BUILDING, PROMENADE_SHEET_SOURCE, promenadeLeanTo, promenadePost, promenadeProp } from './promenadeSheet';
 import { BOARDS, BOARDS_SHEET_SOURCE } from '../world/tileset/boardsSheet';
 import { GREAT_LIBRARY_BUILDING, LIBRARY_SHEET_SOURCE } from './librarySheet';
 
@@ -101,7 +101,26 @@ export type PromenadePropName =
   | 'timeBoard'
   | 'derbyBoard'
   | 'digSign'
-  | 'fishingBoard';
+  | 'fishingBoard'
+  | QuayPropName;
+
+/**
+ * What a working quay has standing about on it (`scripts/draw-promenade.mjs`,
+ * "The quay"): somewhere to tie up, the gear the boats fish with, the catch,
+ * the boats themselves and the stall they land to.
+ */
+export type QuayPropName =
+  | 'lobsterPots'
+  | 'fishCrate'
+  | 'anchor'
+  | 'ropeCoil'
+  | 'sandcastle'
+  | 'rowBoatBlue'
+  | 'rowBoatRed'
+  | 'rowBoatGreen'
+  | 'netRack'
+  | 'fishStall'
+  | 'seaBench';
 
 const PROMENADE_PROPS: Readonly<Record<PromenadePropName, PropDefinition>> = {
   // 7x6. THE GAME CORNER: Celadon's own, with GAME CORNER lit across its
@@ -148,6 +167,20 @@ const PROMENADE_PROPS: Readonly<Record<PromenadePropName, PropDefinition>> = {
   derbyBoard: promenadeProp('derbyBoard', 'derby board'),
   digSign: promenadeProp('digSign', 'dig sign'),
   fishingBoard: promenadeProp('fishingBoard', 'fishing board'),
+  // The quay's things. All of them stand solid; a boat is solid on the water
+  // she floats on as much as on the sand she is pulled up on.
+  lobsterPots: promenadeProp('lobsterPots', 'lobster pots'),
+  fishCrate: promenadeProp('fishCrate', 'crate of fish'),
+  anchor: promenadeProp('anchor', 'anchor'),
+  ropeCoil: promenadeProp('ropeCoil', 'coil of rope'),
+  sandcastle: promenadeProp('sandcastle', 'sandcastle'),
+  rowBoatBlue: promenadeProp('rowBoatBlue', 'rowing boat'),
+  rowBoatRed: promenadeProp('rowBoatRed', 'rowing boat'),
+  rowBoatGreen: promenadeProp('rowBoatGreen', 'rowing boat'),
+  // Each stands on its bottom row, its net or its awning over the row behind (`promenadeLeanTo`).
+  netRack: promenadeLeanTo('netRack', 'drying net'),
+  fishStall: promenadeLeanTo('fishStall', 'fish stall'),
+  seaBench: promenadeProp('seaBench', 'bench'),
 };
 
 /**

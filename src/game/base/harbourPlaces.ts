@@ -40,7 +40,7 @@ export const HARBOUR_PLACES: readonly HarbourPlace[] = [
   {
     id: 'long-pier',
     name: 'THE LONG PIER',
-    areas: [{ x: 28, y: 22, width: 3, height: 6 }],
+    areas: [{ x: 27, y: 22, width: 3, height: 6 }],
   },
   {
     id: 'breakwater',
@@ -53,14 +53,18 @@ export const HARBOUR_PLACES: readonly HarbourPlace[] = [
   {
     id: 'cove',
     name: 'THE COVE',
-    areas: [{ x: 48, y: 17, width: 13, height: 7 }],
+    areas: [{ x: 54, y: 17, width: 7, height: 7 }],
   },
   {
     id: 'docks',
     name: 'THE DOCKS',
+    // The wharf the long pier leaves from, the quay under the warehouses and
+    // the boutique, and the lane down to it between them.
     areas: [
-      { x: 36, y: 17, width: 12, height: 6 },
-      { x: 22, y: 20, width: 26, height: 3 },
+      { x: 36, y: 18, width: 18, height: 3 },
+      { x: 48, y: 17, width: 6, height: 1 },
+      { x: 46, y: 14, width: 2, height: 4 },
+      { x: 22, y: 20, width: 14, height: 3 },
     ],
   },
   {
@@ -71,7 +75,7 @@ export const HARBOUR_PLACES: readonly HarbourPlace[] = [
   {
     id: 'square',
     name: 'HARBOUR SQUARE',
-    areas: [{ x: 22, y: 14, width: 13, height: 3 }],
+    areas: [{ x: 22, y: 14, width: 14, height: 3 }],
   },
   {
     id: 'arena-square',
@@ -81,7 +85,7 @@ export const HARBOUR_PLACES: readonly HarbourPlace[] = [
   {
     id: 'green',
     name: 'THE GREEN',
-    areas: [{ x: 44, y: 4, width: 19, height: 13 }],
+    areas: [{ x: 44, y: 2, width: 19, height: 15 }],
   },
   {
     id: 'yard',

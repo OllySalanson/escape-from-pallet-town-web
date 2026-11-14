@@ -14,7 +14,7 @@ import type { BaseProp } from './fixtures';
  * at the jetty a raid comes home to, because that is the boat a raid goes out
  * and comes back on; the S.S. Anne at the end of Vermilion's long pier, which
  * is the biggest thing in Kanto that floats and the reason a harbour is worth
- * walking down to; and a row of brick warehouses on the east quay, which is
+ * walking down to; and a row of brick warehouses on the quay front, which is
  * what a working waterfront is made of.
  */
 export interface HarbourLandmark {
@@ -59,10 +59,10 @@ const LANDMARKS: readonly HarbourLandmark[] = [
     name: 'S.S. ANNE',
     note: 'In from Vermilion, and staying',
     // At the end of the long pier, her bow against the walkway.
-    props: [{ name: 'ssAnne', x: 31, y: 24 }],
-    at: { x: 31, y: 26 },
+    props: [{ name: 'ssAnne', x: 30, y: 24 }],
+    at: { x: 30, y: 26 },
     // Named the length of the walkway she lies along.
-    near: [24, 25, 26, 27].flatMap((y) => [28, 29, 30].map((x) => ({ x, y }))),
+    near: [24, 25, 26, 27].flatMap((y) => [27, 28, 29].map((x) => ({ x, y }))),
     // A big ship rides a long, slow swell.
     floats: { swellMs: 3_700 },
   },
@@ -70,13 +70,16 @@ const LANDMARKS: readonly HarbourLandmark[] = [
     id: 'warehouses',
     name: 'THE WAREHOUSES',
     note: 'What the boats bring in waits here',
-    // A row back from the water, so the quay along their front is three tiles
-    // deep: the dock worker and his Machop work the row against the wall and
-    // the two along the water are the way to THE COVE.
-    props: [{ name: 'warehouses', x: 36, y: 16 }],
-    at: { x: 44, y: 19 },
+    // On the quay front's building line, their roofs backing onto KEEPERS'
+    // ROW and their west gable closing HARBOUR SQUARE: the quay along their
+    // front is three tiles deep, the row against the wall the fish stall's
+    // and the two along the water the way to THE COVE. They stood two rows
+    // nearer the water, with a lawn nobody walked behind them.
+    props: [{ name: 'warehouses', x: 36, y: 14 }],
+    // Read at their west door: the stall and its gear stand along the rest.
+    at: { x: 37, y: 17 },
     // Named all along their front, which is where the quay is walked.
-    near: Array.from({ length: 10 }, (_, index) => ({ x: 36 + index, y: 20 })),
+    near: Array.from({ length: 10 }, (_, index) => ({ x: 36 + index, y: 19 })),
   },
   // THE PROMENADE's east end: THE FIELD-MOVE COURSE's gate, COURSE painted
   // over it with the four field moves it asks for, and the chalk board its

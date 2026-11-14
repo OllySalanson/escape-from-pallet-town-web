@@ -149,8 +149,8 @@ describe.each([
       // and the pleasure pier's head. A pair rounds a corner a tile wider than
       // one walker does, so it is allowed two steps over; a detour is dozens.
       const along: readonly (readonly [string, number, number])[] = [
-        ['the docks', 40, 21],
-        ['the long pier', 29, 25],
+        ['the docks', 40, 20],
+        ['the long pier', 28, 25],
         ['THE COVE', 54, 19],
         ['the breakwater', 59, 26],
         ['the beach', 70, 21],
@@ -194,9 +194,11 @@ describe.each([
       expect(harbour.map.terrain[13][86]).toBe('stone');
     });
 
-    it('keeps THE PROMENADE’s boardwalk walkable its whole length, lamps and all', () => {
+    it('keeps THE PROMENADE’s boardwalk walkable its whole length, lamps and all, and the lawn it is stepped off onto', () => {
+      // From x 60: the tile of lawn at the boards' west end is the way on and
+      // off them, and a Pidgey that pecked there was walked into coming west.
       const blocked: string[] = [];
-      for (let x = 61; x <= 86; x += 1) {
+      for (let x = 60; x <= 86; x += 1) {
         if (!harbour.free(x, 15)) blocked.push(`${x},15`);
       }
       expect(blocked).toEqual([]);

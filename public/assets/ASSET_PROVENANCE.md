@@ -884,6 +884,14 @@ does, and for the promenade to be varied rather than samey.
   reading BATTLE ARENA in red, pegged at its corners, drawn here over its brick
   front, and the tops of Saffron's flower beds that the cut carried above the
   roof taken off. Same script, same rules.
+- **The quay's things, added 2026-11-14.** Drawn from nothing, by the same
+  script (its "The quay" section) in the same hand, because the owner asked
+  for the harbour to be less sparse and a working quay has things no FireRed
+  town does: lobster pots with a buoy, a crate of fish on ice, an anchor, a
+  coil of rope, a sandcastle with a bucket, a rowing boat in three colours, a
+  net on a drying rack, a fish stall under a blue-and-white awning, and a
+  slatted bench. They sit in the sheet's free cells beside the dojo; no pixel
+  of any earlier piece changed. Nothing was copied or traced from anywhere.
 
 ### `frlg-dojo.png` - THE BATTLE ARENA's room: Saffron's Fighting Dojo
 
