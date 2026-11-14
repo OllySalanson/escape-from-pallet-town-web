@@ -260,6 +260,14 @@ export interface Secret {
    */
   readonly figureTint?: number;
   /**
+   * For a `summons` nook that is a rope rather than a notice: the drowned
+   * church's bell rope, drawn as the rope it is. Every other summons sign is a
+   * notice and is drawn as one - THE LAPRAS DOLL's at THE DUCK HIDE was drawn
+   * as the rope, a dark bollard nobody read as a notice (the gyms playtest of
+   * 14 Nov 2026).
+   */
+  readonly bellRope?: true;
+  /**
    * Which wave of the plan it shipped in: the first needs no badge; the second
    * needs something bought or won first - the POKé FLUTE from THE GAME
    * CORNER's prize window, or MISTY beaten and THE COAST behind her open. The
@@ -447,6 +455,7 @@ export const SECRETS: readonly Secret[] = [
     name: 'THE DROWNED BELL',
     place: 'THE DROWNED TOWN',
     nook: 'summons',
+    bellRope: true,
     when: [
       { kind: 'badge', bossId: MISTY_BOSS_ID },
       { kind: 'raid-clock', fromMs: 60_000, untilMs: 120_000 },

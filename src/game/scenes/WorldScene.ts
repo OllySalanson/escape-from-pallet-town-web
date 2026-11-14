@@ -4731,13 +4731,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private createSign(entity: WorldEntity): void {
     // Map art rather than a figure: a signpost that outranked a caption put its
     // post through the middle of the cache list beside it. A secret's bell
-    // rope is the drowned spire it hangs from, standing up out of the sea.
-    const summons = entity.secret !== undefined && secretById(entity.secret)?.nook === 'summons';
+    // rope is the drowned spire it hangs from, standing up out of the sea;
+    // every other secret's sign is a notice, and drawn as one.
+    const rope = entity.secret !== undefined && secretById(entity.secret)?.bellRope === true;
     const sign = this.add
       .image(
         entity.position.x * TILE_SIZE + TILE_SIZE / 2,
         entity.position.y * TILE_SIZE + TILE_SIZE / 2,
-        iconTextureKey(summons ? WORLD_ICONS.bellRope : WORLD_ICONS.signPost),
+        iconTextureKey(rope ? WORLD_ICONS.bellRope : WORLD_ICONS.signPost),
       )
       .setDepth(atRow(MARKER_BAND, entity.position.y));
     this.mapObjects.push(sign);
@@ -4829,7 +4830,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!who) {
       return;
     }
-    const place = arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile));
+    // Back from a fight it comes to the player's side, never onto the tile of
+    // the trainer just beaten in front of them (`arrivalPlace`'s `afterFight`).
+    const place = arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile), this.arrivedFromBattle);
     this.partner = new PartnerFigure(this, this.partnerHost(), who, place, { fadeIn });
   }
 
@@ -4899,7 +4902,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           this,
           this.partnerHost(),
           who,
-          place?.out ? place : arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile)),
+          place?.out
+            ? place
+            : arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile), this.arrivedFromBattle),
         )
         : null;
     }
@@ -7171,6 +7176,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.currentTile = { ...warp.destination };
       this.facing = warp.facing;
       this.targetTile = null;
+      // A landing is a tile stood on, as the end of a step is.
+      this.noteWading();
       this.createMap();
       this.ensureHunterPack();
       this.moveHunterToCurrentMap();
@@ -7212,6 +7219,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       const left = this.currentArea();
       this.currentTile = { ...warp.destination };
+      // A door that lands in tall grass wets the boots, as a step into it does
+      // (the Revenue House's, in the Coast: the gyms playtest of 14 Nov 2026).
+      this.noteWading();
       if (this.currentArea() !== left) {
         this.resetBouldersLeftIn(left);
       }

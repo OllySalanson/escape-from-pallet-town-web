@@ -40,6 +40,18 @@ export const LEADER_TILES: readonly GridPosition[] = [
 /** The box's question to a leader, short enough to leave its answers a line of their own. */
 export const PRACTICE_QUESTION = 'PRACTISE FOR FREE?';
 
+/**
+ * What somebody on the hall's far floor says when there is nobody to fight
+ * them with. With every Pokemon fainted the team is right there - the partner
+ * walks at your heel - so "nobody on your bench" was untrue: it sends you to
+ * Nurse Joy, as the rim card does (the gyms playtest of 14 Nov 2026).
+ */
+export function nobodyToSparLine(speaker: string, everyoneFainted: boolean): string {
+  return everyoneFainted
+    ? `${speaker}: "Your team's all fainted! See Nurse Joy, then come back."`
+    : `${speaker}: "Nobody on your bench? Come back with a team."`;
+}
+
 /** Asked of the rival on the far floor when they are a leader the player has met, after the bout for show is turned down. */
 export const PRACTICE_AFTER_BOUT_QUESTION = 'MY GYM TEAM, THEN?';
 

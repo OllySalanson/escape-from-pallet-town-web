@@ -171,6 +171,13 @@ export function arrivalPlace(
   player: GridPosition,
   facing: Direction,
   canStand: (tile: GridPosition) => boolean,
+  /**
+   * Back from a fight rather than through a door: the tile in front is where
+   * the trainer just fought stood, so the partner comes to the player's side
+   * first. Put on a beaten leader's tile, a small partner above the player read
+   * as a hat (the gyms playtest of 14 Nov 2026, at Misty and at Koga).
+   */
+  afterFight = false,
 ): PartnerPlace {
   const sides: Record<Direction, readonly Direction[]> = {
     up: ['left', 'right'],
@@ -183,7 +190,11 @@ export function arrivalPlace(
   // the player crowds half of them (its picture is two tiles wide), while one a
   // row above is drawn behind them whole. Turned to face them, it is the first
   // thing walked into, which is a swap.
-  const order = facing === 'up' ? (['up', ...sides.up, 'down'] as const) : [OPPOSITE[facing], ...sides[facing], facing];
+  const order: readonly Direction[] = afterFight
+    ? [...sides[facing], OPPOSITE[facing], facing]
+    : facing === 'up'
+      ? ['up', ...sides.up, 'down']
+      : [OPPOSITE[facing], ...sides[facing], facing];
   // The tile below, last of all: the one place a partner is drawn over the player.
   const inOrder = [...order.filter((from) => from !== 'down'), 'down' as const];
   for (const from of inOrder) {

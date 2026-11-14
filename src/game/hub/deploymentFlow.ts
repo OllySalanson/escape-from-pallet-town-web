@@ -1122,6 +1122,11 @@ export class DeploymentFlow {
     this.insertion = insertionId;
   }
 
+  /** Whether every Pokemon the player has is fainted: Nurse Joy is the only way on. */
+  public get everyoneFainted(): boolean {
+    return !this.stash.listPokemon().some((stored) => !stored.pokemon.isFainted);
+  }
+
   /**
    * Why nobody can jump yet, in the marshal's own terms, or undefined when
    * somebody can. A fainted Pokemon cannot fight and nothing in a raid revives
@@ -1131,8 +1136,7 @@ export class DeploymentFlow {
     if (this.isDeployable) {
       return undefined;
     }
-    const standing = this.stash.listPokemon().some((stored) => !stored.pokemon.isFainted);
-    if (!standing) {
+    if (this.everyoneFainted) {
       return 'Everyone you have has fainted. Nurse Joy can revive them, out of the door and across the yard.';
     }
     return this.party.length === 0

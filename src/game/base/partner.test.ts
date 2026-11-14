@@ -250,6 +250,16 @@ describe('where the partner arrives', () => {
     expect(arrivalPlace({ x: 5, y: 5 }, 'left', open([]))).toEqual({ tile: { x: 6, y: 5 }, facing: 'left', out: true });
   });
 
+  it('comes to their side after a fight, never onto the tile of the trainer just beaten in front of them', () => {
+    // The gyms playtest of 14 Nov 2026: Misty beaten from below, the partner
+    // was stood on her tile above the player's head, like a hat.
+    const back = arrivalPlace({ x: 448, y: 81 }, 'up', open([]), true);
+    expect(back.tile.y).toBe(81);
+    expect([447, 449]).toContain(back.tile.x);
+    // Through a door facing up it is still in front, as before.
+    expect(arrivalPlace({ x: 5, y: 5 }, 'up', open([])).tile).toEqual({ x: 5, y: 4 });
+  });
+
   it('stands beside them when behind is solid, and in front - turned to face them - when both sides are', () => {
     expect(arrivalPlace({ x: 5, y: 5 }, 'down', open([{ x: 5, y: 4 }])).tile).toEqual({ x: 6, y: 5 });
     const front = arrivalPlace({ x: 5, y: 5 }, 'left', open([{ x: 6, y: 5 }, { x: 5, y: 4 }]));

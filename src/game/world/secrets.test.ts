@@ -689,3 +689,11 @@ describe("the vale's secrets", () => {
     expect(reading.ok ? [] : reading.problems).toContain("Nothing on a map can belong to a secret: secrets are the game's own.");
   });
 });
+
+describe('how a summons nook is drawn', () => {
+  it('is the bell rope only at the drowned bell; every other is a notice', () => {
+    const summons = SECRETS.filter((secret) => secret.nook === 'summons');
+    expect(summons.filter((secret) => secret.bellRope).map((secret) => secret.id)).toEqual(['the-drowned-bell']);
+    expect(summons.map((secret) => secret.id)).toContain('the-lapras-doll');
+  });
+});

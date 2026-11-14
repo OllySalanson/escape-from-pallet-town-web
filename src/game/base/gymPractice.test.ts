@@ -6,7 +6,7 @@ import { HUNTER_RIVALS } from '../world/hunters';
 import { KOGA_BOSS_ID, leadersMet, MISTY_BOSS_ID } from '../world/valeQuarters';
 import { arenaCollision, isOuterWall } from './arenaHall';
 import { RIVAL_TILE } from './arenaBouts';
-import { LEADER_TILES, leaderBehindRival, practiceLeaders, practiceTrainer, rivalTile } from './gymPractice';
+import { LEADER_TILES, leaderBehindRival, nobodyToSparLine, practiceLeaders, practiceTrainer, rivalTile } from './gymPractice';
 
 describe('practice against a gym leader', () => {
   it('is offered by nobody until the leader has been met in a raid, or beaten', () => {
@@ -80,5 +80,15 @@ describe('practice against a gym leader', () => {
 
   it('is nobody else', () => {
     expect(practiceTrainer('vale-quay-keeper')).toBeUndefined();
+  });
+});
+
+describe('nobody to spar with', () => {
+  // The gyms playtest of 14 Nov 2026: every Pokemon fainted, the partner at the
+  // player's heel, and Misty said "Nobody on your bench?".
+  it('sends a team that has all fainted to Nurse Joy, and an empty bench to choose one', () => {
+    expect(nobodyToSparLine('MISTY', true)).toBe('MISTY: "Your team\'s all fainted! See Nurse Joy, then come back."');
+    expect(nobodyToSparLine('MISTY', true)).not.toContain('bench');
+    expect(nobodyToSparLine('MISTY', false)).toContain('Nobody on your bench?');
   });
 });

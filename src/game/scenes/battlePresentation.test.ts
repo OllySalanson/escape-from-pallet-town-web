@@ -66,6 +66,7 @@ import {
   shownStatusLabel,
   statusAfterLine,
   statusBeforeLines,
+  DOUBLE_PLAYER_GROUND,
 } from './battlePresentation';
 
 const battleSceneSource = await readFile(new URL('./BattleScene.ts', import.meta.url), 'utf8');
@@ -939,6 +940,17 @@ describe('where a Pokemon stands on the field', () => {
 
   it('keeps the double battle’s spots where they were authored for a typical picture', () => {
     expect(combatantSpot('enemy', 0, 2)).toMatchObject({ x: 202, y: 76, scale: 0.9 });
-    expect(combatantSpot('player', 1, 2)).toMatchObject({ x: 128, y: 80, scale: 1.1 });
+  });
+
+  it('stands both of the player’s back pictures in a double on the top of their plates, so no cut hangs in mid-air', () => {
+    for (const slot of [0, 1]) {
+      const spot = combatantSpot('player', slot, 2);
+      expect(spot.scale).toBe(1.1);
+      // Bulbasaur's back picture, sixteen empty rows under it: its cut is the
+      // plate row's top or below it, where the plate is drawn over it.
+      expect(base(seatedSpriteY(spot, 'player', 1), spot.scale, 16)).toBeCloseTo(DOUBLE_PLAYER_GROUND);
+      expect(spot.ground).toBe(DOUBLE_PLAYER_GROUND);
+    }
+    expect(combatantSpot('player', 0, 2).x).toBeLessThan(combatantSpot('player', 1, 2).x);
   });
 });
