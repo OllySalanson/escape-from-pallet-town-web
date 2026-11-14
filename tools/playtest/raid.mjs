@@ -5,7 +5,7 @@
 // check that a raid plays the same at ten frames a second as at sixty.
 //
 //   node tools/playtest/raid.mjs http://localhost:5173/ [--testmode] [--stepped] [--pixels]
-//        [--window=logic|pixel|WxH] [--seed=N] [--shot=path.png] [--taps] [--avoid-watch]
+//        [--window=logic|pixel|WxH] [--seed=N] [--shot=path.png] [--taps] [--avoid-watch] [--dry]
 //        [--insertion=id] [--beaten=bossId,..] [--opened=gateId,..] [--completed=contractId,..]
 //        [--hp=N] [--stash=itemId[:n],..] [--read=itemId,..] [--open=LABEL] [--arrange]
 //        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--through=x:y:dir,..] [--grab=itemId,..] [--fight]
@@ -214,11 +214,20 @@ try {
           for (let i = 0; i < t.sightRange; i += 1) { x += dx; y += dy; if (w.collisionData[y]?.[x] !== false) break; out.add(y * w.collisionData[0].length + x); } }
         return out; })()`
     : 'new Set()';
+  // --dry keeps the driver's boots dry: no step into tall grass, whatever the
+  // shorter way is, which is the walk THE LAPRAS DOLL waits for
+  // (`world/secrets.ts`). A place only the grass reaches is then unreachable,
+  // and said so.
+  const SHUNNED = flag('dry')
+    ? `(() => { const w = ${GAME}.scene.getScene('world'); const out = ${WATCHED}; const grass = w.currentMap.tallGrass; const W = w.collisionData[0].length;
+        for (let y = 0; y < grass.length; y += 1) { const row = grass[y]; if (!row) continue; for (let x = 0; x < row.length; x += 1) { if (row[x] === true) out.add(y * W + x); } }
+        return out; })()`
+    : WATCHED;
 
   /** The next key towards `goal` over the live collision, or a reason to stop. */
   const nextKey = (goal) => page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
     const c = w.collisionData, H = c.length, W = c[0].length, s = w.currentTile, id = (x, y) => y * W + x;
-    const watched = ${WATCHED};
+    const watched = ${SHUNNED};
     if (s.x === ${goal.x} && s.y === ${goal.y}) return { arrived: true };
     const prev = new Map([[id(s.x, s.y), null]]); const queue = [[s.x, s.y]];
     while (queue.length) { const [x, y] = queue.shift(); if (x === ${goal.x} && y === ${goal.y}) break;

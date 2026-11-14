@@ -69,6 +69,8 @@ export function conditionWords(condition: SecretCondition): string {
       return 'one Pokémon in the party, and no more';
     case 'lead-shiny':
       return 'a shiny Pokémon leading';
+    case 'dry-boots':
+      return 'dry boots: not a step in tall grass all raid';
     case 'stood-still':
       return `standing still for ${Math.round(condition.forMs / 1_000)} seconds, no step and no turn`;
     case 'raid-clock':

@@ -9558,9 +9558,11 @@
    "name": "Birder Tess",
    "look": "old-woman",
    "facing": "right",
+   "secret": "the-lapras-doll",
    "lines": [
     "Hush. The ducks only come in when nobody wades the reeds.",
-    "One of those has not moved in a week. I am beginning to think it is a Lapras doll."
+    "One of those has not moved in a week. I am beginning to think it is a Lapras doll.",
+    "It looked at me once. I had DRY boots that day: not a step in the grass. Then read the notice."
    ],
    "beat": {
     "everyMs": 4500,
@@ -13728,6 +13730,7 @@
   {
    "x": 79,
    "y": 240,
+   "secret": "the-lapras-doll",
    "lines": [
     "THE DUCK HIDE",
     "QUIET PLEASE. The ones on the bank are real. The one in the water is a doll. Tess knows."

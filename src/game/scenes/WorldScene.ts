@@ -5828,6 +5828,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       !secretOpenAt(secret, conditions, {
         elapsedMs: this.runSession!.manager.snapshot().elapsedMs,
         stillMs: this.stoodStillMs,
+        waded: this.runSession!.wadedGrass === true,
       }) ||
       (this.runSession?.pokemonMet ?? []).includes(secretMetKey(id))
     ) {
@@ -6887,6 +6888,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (this.runSession) {
       this.runSession.stepsTaken = (this.runSession.stepsTaken ?? 0) + 1;
     }
+    this.noteWading();
     // A step is the hunter's step: standing still starts counting again from here.
     this.hunterStillMs = 0;
     this.setPlayerPosition(this.stepEnd.x, this.stepEnd.y);
@@ -9310,6 +9312,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.reachableExitPositions(),
       ),
     );
+  }
+
+  /**
+   * A step that ends in tall grass is the raid's boots wet, for good: what a
+   * secret that waits for dry boots is asked (`dry-boots`, `world/secrets.ts`).
+   * Kept on the session, because a fight in that very grass rebuilds the world.
+   */
+  private noteWading(): void {
+    if (this.runSession && this.currentMap.tallGrass[this.currentTile.y]?.[this.currentTile.x] === true) {
+      this.runSession.wadedGrass = true;
+    }
   }
 
   /**

@@ -140,6 +140,12 @@ export interface ActiveRunSession {
    */
   omenSeen?: boolean;
   /**
+   * Whether this raid has set foot in tall grass (`WorldScene.advanceStep`):
+   * what a secret that waits for dry boots is asked (`world/secrets.ts`), and
+   * what the world, rebuilt after every fight, has to be told.
+   */
+  wadedGrass?: boolean;
+  /**
    * The berry trees this raid has picked, by entity id: bare until the next
    * raid, for the reason a met Pokemon stays met - the world is rebuilt after
    * every fight.
