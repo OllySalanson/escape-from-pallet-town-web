@@ -368,6 +368,8 @@ const DOUBLE_PLATE_PITCH = 156;
 /** The top band, clear of the field; and the bottom one, just over the panel. */
 const DOUBLE_ENEMY_BAND_Y = 2;
 const DOUBLE_PLAYER_BAND_Y = 126;
+/** Where a double battle's player pictures stand: just behind the top of their plate row. */
+export const DOUBLE_PLAYER_GROUND = DOUBLE_PLAYER_BAND_Y + 2;
 
 /**
  * A word space the small caption lines can be read by.
@@ -526,7 +528,12 @@ export const combatantSpot = (
   if (side === 'enemy') {
     return slot === 0 ? spotOn(202, 94, 0.9) : spotOn(264, 104, 0.9);
   }
-  return slot === 0 ? spotOn(58, 112, 1.1) : spotOn(128, 102, 1.1);
+  // The player's two back pictures stand on the top of their plate row, which
+  // is drawn over them, as FireRed's stand on its text box: a back picture
+  // ends in a straight cut where the Pokemon's body goes on below the frame,
+  // and stood above the plates both cuts hung in mid-air (the gyms playtest of
+  // 14 Nov 2026, every badge fight being two on two).
+  return spotOn(slot === 0 ? 58 : 128, DOUBLE_PLAYER_GROUND, 1.1);
 };
 
 /** Where a combatant slides in from, so it comes in past the field's frame. */

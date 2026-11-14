@@ -4830,7 +4830,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!who) {
       return;
     }
-    const place = arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile));
+    // Back from a fight it comes to the player's side, never onto the tile of
+    // the trainer just beaten in front of them (`arrivalPlace`'s `afterFight`).
+    const place = arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile), this.arrivedFromBattle);
     this.partner = new PartnerFigure(this, this.partnerHost(), who, place, { fadeIn });
   }
 
