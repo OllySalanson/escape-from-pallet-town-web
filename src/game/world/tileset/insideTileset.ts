@@ -319,10 +319,12 @@ export const INSIDE_PROPS = {
       ...gymProp('pool.dais', 'dais', ['...', '...', '...']).cells,
     ],
   },
-  // The statues either side of the walk in. A statue's head is drawn over
-  // whoever walks behind it, as FireRed draws it.
-  poolStatueWest: gymProp('pool.statueWest', 'statue', ['^', '#']),
-  poolStatueEast: gymProp('pool.statueEast', 'statue', ['^', '#']),
+  // The statues either side of the walk in. FireRed lets you step behind a
+  // statue's head; here it is solid, because between the water and the walk
+  // in that tile is a pocket, and whoever stands at the head of the walk - the
+  // Gym Guide, where FireRed stands its own - would shut the player in it.
+  poolStatueWest: gymProp('pool.statueWest', 'statue', ['#', '#']),
+  poolStatueEast: gymProp('pool.statueEast', 'statue', ['#', '#']),
   // A ladder into the pool from the floor on its north rim, and out of it onto
   // the floor at its south.
   poolLadderNorth: gymProp('pool.ladderNorth', 'ladder', ['.', '#']),
