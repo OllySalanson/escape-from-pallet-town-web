@@ -1,0 +1,2277 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Site Plan</title>
+    <style>
+      :root {
+        --paper: #f1eadb;
+        --paper-deep: #e6dcc6;
+        --ink: #1f2430;
+        --ink-soft: #5b6170;
+        --line: rgba(31, 36, 48, 0.18);
+        --card: #fffdf7;
+        --accent: #e8590c;
+        --focus: #ffd43b;
+        --shadow: 0 6px 22px rgba(31, 36, 48, 0.18), 0 1px 3px rgba(31, 36, 48, 0.2);
+        --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--font);
+      }
+      #plan {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        touch-action: none;
+        cursor: grab;
+        outline: none;
+      }
+      #plan.dragging {
+        cursor: grabbing;
+      }
+      #plan.pointing {
+        cursor: pointer;
+      }
+      .panel {
+        position: fixed;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+      }
+
+      /* Title block and search, top left. */
+      #titleblock {
+        top: 12px;
+        left: 12px;
+        width: 320px;
+        padding: 12px 14px 12px;
+        z-index: 3;
+      }
+      #titleblock h1 {
+        margin: 0;
+        font-size: 20px;
+        line-height: 1.1;
+        font-weight: 850;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      #titleblock .sub {
+        margin: 3px 0 10px;
+        font-size: 12px;
+        color: var(--ink-soft);
+        letter-spacing: 0.02em;
+      }
+      #searchwrap {
+        position: relative;
+      }
+      #search {
+        width: 100%;
+        font: inherit;
+        font-size: 15px;
+        padding: 8px 10px 8px 32px;
+        border: 1.5px solid var(--ink);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--ink);
+      }
+      #search:focus {
+        outline: 3px solid var(--focus);
+        outline-offset: 0;
+      }
+      #searchwrap svg {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+      }
+      #results {
+        list-style: none;
+        margin: 6px 0 0;
+        padding: 0;
+        max-height: min(50vh, 380px);
+        overflow-y: auto;
+      }
+      #results:empty {
+        display: none;
+      }
+      #results li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      #results li[aria-selected='true'],
+      #results li:hover {
+        background: var(--paper);
+      }
+      #results .name {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #results .where {
+        font-size: 12px;
+        color: var(--ink-soft);
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+      #results .none {
+        color: var(--ink-soft);
+        cursor: default;
+      }
+
+      /* Zoom buttons and north arrow, top right. */
+      #controls {
+        top: 12px;
+        right: 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        z-index: 3;
+        background: none;
+        border: 0;
+        box-shadow: none;
+      }
+      #controls .north {
+        width: 46px;
+        height: 58px;
+        display: block;
+      }
+      .zoombox {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .zoombox button {
+        width: 42px;
+        height: 40px;
+        font: inherit;
+        font-size: 22px;
+        font-weight: 700;
+        background: var(--card);
+        color: var(--ink);
+        border: 0;
+        cursor: pointer;
+      }
+      .zoombox button + button {
+        border-top: 1px solid var(--line);
+      }
+      .zoombox button:hover {
+        background: var(--paper);
+      }
+      .zoombox button:focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: -3px;
+      }
+      .zoombox .fit {
+        font-size: 12px;
+        letter-spacing: 0.04em;
+      }
+
+      /* The key, bottom right. */
+      #key {
+        right: 12px;
+        bottom: 12px;
+        width: 250px;
+        max-height: calc(100vh - 210px);
+        overflow-y: auto;
+        padding: 10px 12px 12px;
+        z-index: 2;
+      }
+      #key h2,
+      #card h2 {
+        margin: 0 0 6px;
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+      #key h2 {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      #keytoggle {
+        font: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        padding: 4px 2px 4px 10px;
+        background: none;
+        border: 0;
+        color: var(--ink);
+        cursor: pointer;
+      }
+      #key:not(.open) > :not(h2) {
+        display: none;
+      }
+      #key:not(.open) h2 {
+        margin: 0;
+      }
+      #key:not(.open) {
+        width: auto;
+        padding: 6px 10px;
+      }
+      #key label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13.5px;
+        padding: 3px 0;
+        cursor: pointer;
+        user-select: none;
+      }
+      #key label .count {
+        margin-left: auto;
+        color: var(--ink-soft);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+      #key input {
+        margin: 0;
+        accent-color: var(--ink);
+      }
+      #key canvas {
+        width: 20px;
+        height: 20px;
+        flex: none;
+      }
+      #key .zones {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+        margin: 2px 0 8px;
+        font-size: 13px;
+      }
+      #key .zones span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      #key .zones i {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        border: 2px solid;
+        display: inline-block;
+      }
+      #key hr {
+        border: 0;
+        border-top: 1px solid var(--line);
+        margin: 8px 0;
+      }
+
+      /* Scale bar and where the pointer is, bottom left. */
+      #scale {
+        left: 12px;
+        bottom: 12px;
+        padding: 8px 12px;
+        z-index: 2;
+        font-size: 12px;
+        min-width: 200px;
+      }
+      #scale .bar {
+        height: 8px;
+        border: 1.5px solid var(--ink);
+        border-top: 0;
+        margin: 4px 0 2px;
+        position: relative;
+      }
+      #scale .bar::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        bottom: 0;
+        height: 5px;
+        border-left: 1.5px solid var(--ink);
+      }
+      #scale .ticks {
+        display: flex;
+        justify-content: space-between;
+        font-variant-numeric: tabular-nums;
+      }
+      #where {
+        margin-top: 6px;
+        color: var(--ink-soft);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 300px;
+      }
+
+      /* What the pointer is over, and what was chosen. */
+      #tip {
+        position: fixed;
+        z-index: 5;
+        pointer-events: none;
+        max-width: 300px;
+        padding: 9px 11px;
+        font-size: 13px;
+        display: none;
+      }
+      #card {
+        left: 12px;
+        bottom: 96px;
+        width: 320px;
+        padding: 12px 14px;
+        z-index: 4;
+        display: none;
+      }
+      #card .close {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 30px;
+        height: 30px;
+        border: 0;
+        background: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: var(--ink-soft);
+        border-radius: 6px;
+      }
+      #card .close:hover {
+        background: var(--paper);
+        color: var(--ink);
+      }
+      #card .actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      #card .actions button {
+        font: inherit;
+        font-size: 13px;
+        font-weight: 650;
+        padding: 7px 12px;
+        border-radius: 7px;
+        border: 1.5px solid var(--ink);
+        background: #fff;
+        color: var(--ink);
+        cursor: pointer;
+      }
+      #card .actions button.primary {
+        background: var(--ink);
+        color: #fff;
+      }
+      #card .actions button:focus-visible {
+        outline: 3px solid var(--focus);
+      }
+      .feat .kind {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .feat .kind canvas {
+        width: 16px;
+        height: 16px;
+      }
+      .feat .title {
+        font-size: 16px;
+        font-weight: 750;
+        margin: 3px 0 2px;
+        line-height: 1.2;
+      }
+      .feat .places {
+        font-size: 12.5px;
+        color: var(--ink-soft);
+      }
+      .feat .grid {
+        display: inline-block;
+        margin-top: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 1px 6px;
+        border: 1.5px solid var(--ink);
+        border-radius: 4px;
+        font-variant-numeric: tabular-nums;
+      }
+      .feat ul {
+        margin: 6px 0 0;
+        padding-left: 16px;
+        font-size: 13px;
+        line-height: 1.35;
+      }
+      .feat .hint {
+        margin-top: 6px;
+        font-size: 11.5px;
+        color: var(--ink-soft);
+      }
+
+      @media (max-width: 720px) {
+        #titleblock {
+          left: 8px;
+          right: 64px;
+          top: 8px;
+          width: auto;
+          padding: 8px 10px 10px;
+        }
+        #titleblock h1 {
+          font-size: 16px;
+        }
+        #titleblock .sub {
+          margin-bottom: 6px;
+        }
+        #controls {
+          top: 8px;
+          right: 8px;
+        }
+        #controls .north {
+          width: 38px;
+          height: 48px;
+        }
+        #key {
+          right: 8px;
+          bottom: 8px;
+          width: auto;
+          max-width: calc(100vw - 16px);
+          max-height: 55vh;
+          padding: 6px 10px;
+        }
+        #key.open {
+          left: 8px;
+        }
+        #scale {
+          left: 8px;
+          bottom: 8px;
+          min-width: 0;
+          padding: 6px 10px;
+        }
+        #where {
+          max-width: 52vw;
+        }
+        #card {
+          left: 8px;
+          right: 8px;
+          bottom: 76px;
+          width: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas
+      id="plan"
+      tabindex="0"
+      aria-label="Site plan. Drag to move, scroll or pinch to zoom."
+    ></canvas>
+
+    <header id="titleblock" class="panel">
+      <h1 id="maptitle">Site plan</h1>
+      <p class="sub" id="mapsub"></p>
+      <div id="searchwrap">
+        <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">
+          <circle cx="6.5" cy="6.5" r="5" fill="none" stroke="#1f2430" stroke-width="2" />
+          <path d="M10.5 10.5 15 15" stroke="#1f2430" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        <input
+          id="search"
+          type="search"
+          placeholder="Find a place"
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Find a place"
+          aria-controls="results"
+        />
+      </div>
+      <ul id="results" role="listbox"></ul>
+    </header>
+
+    <nav id="controls" class="panel" aria-label="Zoom">
+      <svg class="north" viewBox="0 0 46 58" aria-label="North is up" role="img">
+        <text
+          x="23"
+          y="13"
+          text-anchor="middle"
+          font-family="system-ui, sans-serif"
+          font-weight="800"
+          font-size="13"
+          fill="#1f2430"
+        >
+          N
+        </text>
+        <circle cx="23" cy="36" r="19" fill="#fffdf7" stroke="#1f2430" stroke-width="1.5" />
+        <path d="M23 19 L30 42 L23 37 L16 42 Z" fill="#1f2430" />
+        <path d="M23 19 L23 37 L16 42 Z" fill="#e8590c" />
+      </svg>
+      <div class="zoombox panel">
+        <button id="zoomin" type="button" aria-label="Zoom in">+</button>
+        <button id="zoomout" type="button" aria-label="Zoom out">&minus;</button>
+        <button id="zoomfit" class="fit" type="button" aria-label="Show the whole plan">ALL</button>
+      </div>
+    </nav>
+
+    <aside id="key" class="panel" aria-label="Key">
+      <h2>
+        <span>Key</span><button id="keytoggle" type="button" aria-expanded="false">SHOW ▴</button>
+      </h2>
+      <div class="zones" id="zones"></div>
+      <div id="layers"></div>
+    </aside>
+
+    <div id="scale" class="panel" aria-live="off">
+      <div class="ticks">
+        <span>0</span><span id="scalehalf"></span><span id="scalefull"></span>
+      </div>
+      <div class="bar" id="scalebar"></div>
+      <div id="where" style="display: none"></div>
+    </div>
+
+    <div id="tip" class="panel feat" role="tooltip"></div>
+    <section id="card" class="panel feat" aria-live="polite"></section>
+
+    <script>
+      'use strict';
+      const PLAN = /*__PLAN__*/ null;
+
+      // ---------------------------------------------------------------- what is drawn
+      const T = PLAN.tileSize;
+      const QUARTER_COLOURS = ['#2b8a3e', '#1864ab', '#862e9c', '#c92a2a', '#e67700'];
+      const FAR_COLOUR = '#495057';
+      const KINDS = {
+        exit: { label: 'Way out', colour: '#e03131', from: 0, labelFrom: 1.6 },
+        landing: { label: 'Landing (raid start)', colour: '#1971c2', from: 0, labelFrom: 1.6 },
+        boss: { label: 'Gym leader or keeper', colour: '#f08c00', from: 0, labelFrom: 2.5 },
+        gate: { label: 'Barred way', colour: '#343a40', from: 1.2, labelFrom: 5 },
+        center: { label: 'Pokémon Center', colour: '#e03131', from: 0.9, labelFrom: 3 },
+        shop: { label: 'Shop', colour: '#1c7ed6', from: 0.9, labelFrom: 3 },
+        gym: { label: 'Gym', colour: '#7048e8', from: 0.9, labelFrom: 3 },
+        landmark: { label: 'Landmark', colour: '#f59f00', from: 2.2, labelFrom: 7 },
+        building: { label: 'Building', colour: '#8d5a2b', from: 3.5, labelFrom: 5 },
+        door: { label: 'Door, stairs or cave mouth', colour: '#8d5a2b', from: 5, labelFrom: 99 },
+        trainer: { label: 'Trainer', colour: '#d9480f', from: 4, labelFrom: 12 },
+        boat: { label: 'Boat or lift', colour: '#0c8599', from: 1.5, labelFrom: 5 },
+        berry: { label: 'Berry tree', colour: '#c2255c', from: 5, labelFrom: 16 },
+        sign: { label: 'Sign', colour: '#868e96', from: 7, labelFrom: 18 },
+      };
+      const ROOM_SORTS = new Set(['center', 'shop', 'gym']);
+      /** The key row a feature is shown under. */
+      function layerOf(f) {
+        if ((f.kind === 'building' || f.kind === 'room') && ROOM_SORTS.has(f.sort)) return f.sort;
+        if (f.kind === 'room') return 'building';
+        return f.kind;
+      }
+      const KIND_WORDS = {
+        quarter: 'Quarter',
+        district: 'Place',
+        room: 'Inside',
+        building: 'Building',
+        door: 'Door',
+        exit: 'Way out',
+        landing: 'Landing',
+        gate: 'Barred way',
+        landmark: 'Landmark',
+        boss: 'Boss',
+        trainer: 'Trainer',
+        sign: 'Sign',
+        berry: 'Berry tree',
+        boat: 'Boat',
+      };
+      function kindWord(f) {
+        if (f.sort === 'center') return 'Pokémon Center';
+        if (f.sort === 'shop') return 'Shop';
+        if (f.sort === 'gym') return 'Gym';
+        if (f.sort === 'cave' && f.kind !== 'door') return 'Cave';
+        if (f.sort === 'stairs') return 'Stairs';
+        if (f.sort === 'lift') return 'Lift';
+        if (f.kind === 'district' && f.depth === 0) return 'District';
+        return KIND_WORDS[f.kind] || f.kind;
+      }
+      function colourOf(f) {
+        if (f.kind === 'district' || f.kind === 'quarter')
+          return f.quarter !== undefined ? QUARTER_COLOURS[f.quarter] : FAR_COLOUR;
+        if (f.kind === 'room' && !ROOM_SORTS.has(f.sort))
+          return f.quarter !== undefined ? QUARTER_COLOURS[f.quarter] : FAR_COLOUR;
+        return KINDS[layerOf(f)].colour;
+      }
+
+      const features = PLAN.features;
+      features.forEach((f, i) => {
+        f.index = i;
+        const r = f.rects[0];
+        let best = r;
+        for (const rect of f.rects) if (rect.w * rect.h > best.w * best.h) best = rect;
+        f.box = boundsOf(f.rects);
+        f.main = best;
+        f.cx = best.x + best.w / 2;
+        f.cy = best.y + best.h / 2;
+        f.layer = layerOf(f);
+        f.areaSize = f.rects.reduce((sum, rect) => sum + rect.w * rect.h, 0);
+        f.search = fold(f.name);
+      });
+      function boundsOf(rects) {
+        const x0 = Math.min(...rects.map((r) => r.x)),
+          y0 = Math.min(...rects.map((r) => r.y));
+        const x1 = Math.max(...rects.map((r) => r.x + r.w)),
+          y1 = Math.max(...rects.map((r) => r.y + r.h));
+        return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+      }
+      function fold(text) {
+        return text.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’‘]/g, "'").toLowerCase();
+      }
+      const MARKER_KINDS = new Set([
+        'exit',
+        'landing',
+        'boss',
+        'gate',
+        'landmark',
+        'trainer',
+        'boat',
+        'berry',
+        'sign',
+        'door',
+      ]);
+      const markers = features.filter(
+        (f) => MARKER_KINDS.has(f.kind) || (f.kind === 'building' && ROOM_SORTS.has(f.sort)),
+      );
+      const buildings = features.filter((f) => f.kind === 'building');
+      const rooms = features.filter((f) => f.kind === 'room');
+      const districts = features
+        .filter((f) => f.kind === 'district')
+        .sort((a, b) => a.areaSize - b.areaSize);
+      const quarters = features.filter((f) => f.kind === 'quarter');
+      const gates = features.filter((f) => f.kind === 'gate');
+      const boats = features.filter((f) => f.path);
+
+      /** The outline of a union of rectangles, as merged straight edges. */
+      function outlineOf(rects) {
+        const key = (x, y) => x + ',' + y;
+        const cells = new Set();
+        for (const r of rects)
+          for (let y = r.y; y < r.y + r.h; y++)
+            for (let x = r.x; x < r.x + r.w; x++) cells.add(key(x, y));
+        const horizontal = new Map(); // y -> sorted xs with an edge from x to x+1
+        const vertical = new Map();
+        const add = (map, at, from) => {
+          if (!map.has(at)) map.set(at, []);
+          map.get(at).push(from);
+        };
+        for (const r of rects)
+          for (let y = r.y; y < r.y + r.h; y++)
+            for (let x = r.x; x < r.x + r.w; x++) {
+              if (!cells.has(key(x, y - 1))) add(horizontal, y, x);
+              if (!cells.has(key(x, y + 1))) add(horizontal, y + 1, x);
+              if (!cells.has(key(x - 1, y))) add(vertical, x, y);
+              if (!cells.has(key(x + 1, y))) add(vertical, x + 1, y);
+            }
+        const segments = [];
+        const merge = (map, flip) => {
+          for (const [at, list] of map) {
+            const sorted = [...new Set(list)].sort((a, b) => a - b);
+            let start = sorted[0],
+              end = sorted[0] + 1;
+            for (let i = 1; i <= sorted.length; i++) {
+              if (i < sorted.length && sorted[i] === end) {
+                end++;
+                continue;
+              }
+              segments.push(flip ? [at, start, at, end] : [start, at, end, at]);
+              if (i < sorted.length) {
+                start = sorted[i];
+                end = start + 1;
+              }
+            }
+          }
+        };
+        merge(horizontal, false);
+        merge(vertical, true);
+        return segments;
+      }
+      for (const f of [...districts, ...quarters])
+        f.outline = f.rects.length > 1 ? outlineOf(f.rects) : null;
+
+      // ---------------------------------------------------------------- the view
+      const canvas = document.getElementById('plan');
+      const ctx = canvas.getContext('2d');
+      let W = 0,
+        H = 0,
+        DPR = 1;
+      const view = { x: PLAN.width / 2, y: PLAN.height / 2, s: 1 };
+      const visible = Object.fromEntries(Object.keys(KINDS).map((k) => [k, true]));
+      const show = { grid: true, names: true, zones: true };
+      let hovered = null,
+        selected = null,
+        flash = null;
+      const MAX_SCALE = T * 48;
+      /** The part of the window the panels leave clear: beside the title block, or under it, whichever is bigger. */
+      function clearArea() {
+        if (W < 720) return { x: 8, y: 150, w: W - 16, h: H - 150 - 70 };
+        const title = document.getElementById('titleblock').getBoundingClientRect();
+        const key = document.getElementById('key').getBoundingClientRect();
+        const keyOpen = document.getElementById('key').classList.contains('open');
+        const right = W - (keyOpen ? key.width + 24 : 70);
+        const beside = { x: title.right + 16, y: 16, w: right - title.right - 16, h: H - 32 };
+        const under = { x: 16, y: title.bottom + 16, w: right - 16, h: H - title.bottom - 16 - 64 };
+        return scaleFor(beside) >= scaleFor(under) ? beside : under;
+      }
+      function scaleFor(area) {
+        // Room for the rulers on the left and above, and the interiors heading.
+        return Math.min((area.w - 30) / (PLAN.width + 2), (area.h - 40) / (PLAN.height + 2));
+      }
+      function fitScale() {
+        return scaleFor(clearArea());
+      }
+      let fitted = 1;
+      function minScale() {
+        return fitted * 0.6;
+      }
+      function resize() {
+        DPR = Math.min(window.devicePixelRatio || 1, 2.5);
+        W = window.innerWidth;
+        H = window.innerHeight;
+        canvas.width = Math.round(W * DPR);
+        canvas.height = Math.round(H * DPR);
+        fitted = fitScale();
+        dirty();
+      }
+      const sx = (x) => (x - view.x) * view.s + W / 2;
+      const sy = (y) => (y - view.y) * view.s + H / 2;
+      const px = (screenX) => (screenX - W / 2) / view.s + view.x;
+      const py = (screenY) => (screenY - H / 2) / view.s + view.y;
+      function clampView() {
+        view.s = Math.max(minScale(), Math.min(MAX_SCALE, view.s));
+        const marginX = W / 2 / view.s,
+          marginY = H / 2 / view.s;
+        view.x = Math.max(-marginX * 0.6, Math.min(PLAN.width + marginX * 0.6, view.x));
+        view.y = Math.max(-marginY * 0.6, Math.min(PLAN.height + marginY * 0.6, view.y));
+      }
+
+      // ---------------------------------------------------------------- the pictures
+      const LEVELS = PLAN.levels;
+      const PIECE = PLAN.piece;
+      const images = new Map();
+      let loading = 0;
+      function pieceImage(z, column, row) {
+        const key = z + '/' + column + '_' + row;
+        let entry = images.get(key);
+        if (entry) {
+          entry.used = frameNumber;
+          return entry.ready ? entry.image : null;
+        }
+        const level = LEVELS[z];
+        if (!level || column < 0 || row < 0 || column >= level.columns || row >= level.rows)
+          return null;
+        if (level.pieces[row * level.columns + column] !== '1') return null;
+        const image = new Image();
+        entry = { image, ready: false, used: frameNumber, z };
+        images.set(key, entry);
+        loading++;
+        image.onload = () => {
+          entry.ready = true;
+          loading--;
+          dirty();
+        };
+        image.onerror = () => {
+          loading--;
+        };
+        image.src = 'tiles/' + key + '.png';
+        return null;
+      }
+      function present(z, column, row) {
+        const level = LEVELS[z];
+        return (
+          level &&
+          column >= 0 &&
+          row >= 0 &&
+          column < level.columns &&
+          row < level.rows &&
+          level.pieces[row * level.columns + column] === '1'
+        );
+      }
+      function forget() {
+        if (images.size < 360) return;
+        const old = [...images.entries()]
+          .filter(([, e]) => e.ready && e.z < LEVELS.length - 2)
+          .sort((a, b) => a[1].used - b[1].used);
+        for (const [key] of old.slice(0, images.size - 300)) images.delete(key);
+      }
+      function drawPictures() {
+        const deviceScale = view.s * DPR;
+        const top = LEVELS.length - 1;
+        const z = Math.max(0, Math.min(top, Math.floor(Math.log2(T / deviceScale))));
+        const span = (PIECE * 2 ** z) / T; // tiles a piece covers
+        const c0 = Math.max(0, Math.floor(px(0) / span)),
+          c1 = Math.floor(px(W) / span);
+        const r0 = Math.max(0, Math.floor(py(0) / span)),
+          r1 = Math.floor(py(H) / span);
+        ctx.imageSmoothingEnabled = deviceScale < (T / 2 ** z) * 1.5;
+        ctx.imageSmoothingQuality = 'high';
+        for (let row = r0; row <= r1; row++)
+          for (let column = c0; column <= c1; column++) {
+            if (!present(z, column, row)) continue;
+            const x = column * span,
+              y = row * span;
+            const image = pieceImage(z, column, row);
+            if (image) {
+              const w = (image.width * 2 ** z) / T,
+                h = (image.height * 2 ** z) / T;
+              drawImageAt(image, 0, 0, image.width, image.height, x, y, w, h);
+              continue;
+            }
+            // Not loaded yet: the same ground from a coarser level, until it is.
+            for (let up = z + 1; up <= top; up++) {
+              const d = up - z,
+                k = 2 ** d;
+              const parent = pieceImage(up, column >> d, row >> d);
+              if (!parent) continue;
+              const pieceInParent = PIECE / k;
+              const ox = (column % k) * pieceInParent,
+                oy = (row % k) * pieceInParent;
+              const w = Math.min(pieceInParent, parent.width - ox),
+                h = Math.min(pieceInParent, parent.height - oy);
+              if (w <= 0 || h <= 0) break;
+              drawImageAt(parent, ox, oy, w, h, x, y, (w * 2 ** up) / T, (h * 2 ** up) / T);
+              break;
+            }
+          }
+      }
+      function drawImageAt(image, sx0, sy0, sw, sh, x, y, w, h) {
+        // Rounded to device pixels, so neighbouring pieces meet without a seam.
+        const X0 = Math.round(sx(x) * DPR),
+          Y0 = Math.round(sy(y) * DPR);
+        const X1 = Math.round(sx(x + w) * DPR),
+          Y1 = Math.round(sy(y + h) * DPR);
+        ctx.drawImage(
+          image,
+          sx0,
+          sy0,
+          sw,
+          sh,
+          X0 / DPR,
+          Y0 / DPR,
+          (X1 - X0) / DPR,
+          (Y1 - Y0) / DPR,
+        );
+      }
+
+      // ---------------------------------------------------------------- icons
+      function icon(c, f, x, y, r) {
+        const kind = f.layer;
+        const colour = KINDS[kind] ? KINDS[kind].colour : '#333';
+        c.save();
+        c.translate(x, y);
+        c.lineJoin = 'round';
+        c.lineCap = 'round';
+        const shape = () => {
+          c.beginPath();
+          if (kind === 'exit') c.rect(-r, -r, 2 * r, 2 * r);
+          else if (kind === 'landmark') {
+            c.moveTo(0, -r * 1.2);
+            c.lineTo(r * 1.2, 0);
+            c.lineTo(0, r * 1.2);
+            c.lineTo(-r * 1.2, 0);
+            c.closePath();
+          } else if (kind === 'trainer') {
+            c.moveTo(0, -r * 1.15);
+            c.lineTo(r * 1.1, r * 0.85);
+            c.lineTo(-r * 1.1, r * 0.85);
+            c.closePath();
+          } else if (kind === 'gate') c.rect(-r * 1.05, -r * 0.75, 2.1 * r, 1.5 * r);
+          else if (kind === 'door' || kind === 'sign')
+            c.rect(-r * 0.85, -r * 0.85, 1.7 * r, 1.7 * r);
+          else c.arc(0, 0, r, 0, Math.PI * 2);
+        };
+        shape();
+        c.fillStyle = kind === 'center' ? '#fff' : colour;
+        c.shadowColor = 'rgba(0,0,0,0.35)';
+        c.shadowBlur = r * 0.5;
+        c.shadowOffsetY = r * 0.12;
+        c.fill();
+        c.shadowColor = 'transparent';
+        c.lineWidth = Math.max(1.2, r * 0.2);
+        c.strokeStyle = '#fff';
+        c.stroke();
+        c.strokeStyle = '#fff';
+        c.fillStyle = '#fff';
+        const lw = Math.max(1.2, r * 0.24);
+        c.lineWidth = lw;
+        const k = r * 0.55;
+        c.beginPath();
+        switch (kind) {
+          case 'exit': // an arrow out of a door
+            c.moveTo(-k, 0);
+            c.lineTo(k * 0.9, 0);
+            c.moveTo(k * 0.25, -k * 0.65);
+            c.lineTo(k * 0.9, 0);
+            c.lineTo(k * 0.25, k * 0.65);
+            c.stroke();
+            break;
+          case 'landing': // a chevron coming down
+            c.moveTo(-k, -k * 0.35);
+            c.lineTo(0, k * 0.55);
+            c.lineTo(k, -k * 0.35);
+            c.stroke();
+            break;
+          case 'boss': // a crown
+            c.moveTo(-k, k * 0.6);
+            c.lineTo(-k, -k * 0.45);
+            c.lineTo(-k * 0.45, k * 0.1);
+            c.lineTo(0, -k * 0.75);
+            c.lineTo(k * 0.45, k * 0.1);
+            c.lineTo(k, -k * 0.45);
+            c.lineTo(k, k * 0.6);
+            c.closePath();
+            c.fill();
+            break;
+          case 'gate': // a bar across
+            c.moveTo(-k * 1.1, 0);
+            c.lineTo(k * 1.1, 0);
+            c.stroke();
+            break;
+          case 'center': // the cross
+            c.fillStyle = colour;
+            c.rect(-k * 0.3, -k, k * 0.6, 2 * k);
+            c.rect(-k, -k * 0.3, 2 * k, k * 0.6);
+            c.fill();
+            c.beginPath();
+            c.arc(0, 0, r, 0, Math.PI * 2);
+            c.strokeStyle = colour;
+            c.lineWidth = Math.max(1, r * 0.14);
+            c.stroke();
+            break;
+          case 'shop': // a bag
+            c.rect(-k * 0.75, -k * 0.25, k * 1.5, k * 1.1);
+            c.fill();
+            c.beginPath();
+            c.lineWidth = lw * 0.75;
+            c.arc(0, -k * 0.25, k * 0.45, Math.PI, 0);
+            c.stroke();
+            break;
+          case 'gym': // a badge
+            for (let i = 0; i < 10; i++) {
+              const a = -Math.PI / 2 + (i * Math.PI) / 5,
+                rr = i % 2 ? k * 0.45 : k * 1.05;
+              c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+            }
+            c.closePath();
+            c.fill();
+            break;
+          case 'landmark':
+            c.arc(0, 0, k * 0.38, 0, Math.PI * 2);
+            c.fill();
+            break;
+          case 'door':
+            c.rect(-k * 0.45, -k * 0.7, k * 0.9, k * 1.5);
+            c.fill();
+            break;
+          case 'trainer':
+            c.moveTo(0, -k * 0.55);
+            c.lineTo(0, k * 0.25);
+            c.stroke();
+            c.beginPath();
+            c.arc(0, k * 0.72, lw * 0.55, 0, Math.PI * 2);
+            c.fill();
+            break;
+          case 'boat':
+            if (f.sort === 'lift') {
+              c.moveTo(-k * 0.5, -k * 0.1);
+              c.lineTo(0, -k * 0.7);
+              c.lineTo(k * 0.5, -k * 0.1);
+              c.moveTo(-k * 0.5, k * 0.25);
+              c.lineTo(0, k * 0.85);
+              c.lineTo(k * 0.5, k * 0.25);
+              c.stroke();
+            } else {
+              c.moveTo(-k, k * 0.05);
+              c.lineTo(k, k * 0.05);
+              c.lineTo(k * 0.6, k * 0.6);
+              c.lineTo(-k * 0.6, k * 0.6);
+              c.closePath();
+              c.fill();
+              c.beginPath();
+              c.moveTo(0, k * 0.05);
+              c.lineTo(0, -k);
+              c.lineTo(k * 0.7, -k * 0.2);
+              c.closePath();
+              c.fill();
+            }
+            break;
+          case 'berry':
+            c.arc(-k * 0.3, k * 0.15, k * 0.4, 0, Math.PI * 2);
+            c.arc(k * 0.35, k * 0.25, k * 0.4, 0, Math.PI * 2);
+            c.fill();
+            break;
+          case 'sign':
+            c.moveTo(-k * 0.55, -k * 0.3);
+            c.lineTo(k * 0.55, -k * 0.3);
+            c.moveTo(-k * 0.55, k * 0.25);
+            c.lineTo(k * 0.3, k * 0.25);
+            c.stroke();
+            break;
+          case 'building':
+            c.moveTo(-k, 0);
+            c.lineTo(0, -k);
+            c.lineTo(k, 0);
+            c.lineTo(k * 0.7, 0);
+            c.lineTo(k * 0.7, k);
+            c.lineTo(-k * 0.7, k);
+            c.lineTo(-k * 0.7, 0);
+            c.closePath();
+            c.fill();
+            break;
+        }
+        c.restore();
+      }
+      function iconCanvas(f, size) {
+        const c = document.createElement('canvas');
+        const d = Math.min(window.devicePixelRatio || 1, 3);
+        c.width = c.height = size * d;
+        const g = c.getContext('2d');
+        g.scale(d, d);
+        icon(g, f, size / 2, size / 2, size * 0.36);
+        return c;
+      }
+
+      // ---------------------------------------------------------------- drawing
+      let frameNumber = 0,
+        pending = false;
+      function dirty() {
+        if (!pending) {
+          pending = true;
+          requestAnimationFrame(frame);
+        }
+      }
+      function frame(now) {
+        pending = false;
+        frameNumber++;
+        stepMotion(now);
+        draw();
+        if (motion || flash) dirty();
+        forget();
+      }
+      function draw() {
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        ctx.fillStyle =
+          getComputedStyle(document.documentElement).getPropertyValue('--paper') || '#f1eadb';
+        ctx.fillRect(0, 0, W, H);
+        drawSheet();
+        drawPictures();
+        drawZones();
+        if (show.grid) drawGrid();
+        drawBuildings();
+        drawBoats();
+        drawHighlights();
+        const markerBoxes = [];
+        drawMarkers(markerBoxes);
+        if (show.names) drawNames(markerBoxes);
+        drawRulers();
+        updateScale();
+      }
+      function drawSheet() {
+        // A shadow under each block of the plan, so it sits on the paper.
+        ctx.save();
+        ctx.fillStyle = '#d8ccb2';
+        const o = PLAN.outdoors;
+        ctx.fillRect(sx(o.x) + 3, sy(o.y) + 4, o.w * view.s, o.h * view.s);
+        for (const r of rooms)
+          ctx.fillRect(sx(r.main.x) + 2, sy(r.main.y) + 3, r.main.w * view.s, r.main.h * view.s);
+        ctx.restore();
+        if (PLAN.annex) {
+          const a = PLAN.annex;
+          const size = Math.max(11, Math.min(26, view.s * 4));
+          ctx.font = `800 ${size}px ${FONT}`;
+          ctx.fillStyle = '#1f2430';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText('INTERIORS', sx(a.x), sy(a.y) - size * 0.35);
+          const small = Math.max(10, size * 0.55);
+          const after = sx(a.x) + measure('INTERIORS', 800, size) + size * 0.6;
+          ctx.font = `500 ${small}px ${FONT}`;
+          ctx.fillStyle = '#5b6170';
+          ctx.fillText('Every room, cave and floor', after, sy(a.y) - size * 0.42);
+        }
+      }
+      const FONT =
+        'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+      function measure(text, weight, size) {
+        ctx.font = `${weight} ${size}px ${FONT}`;
+        return ctx.measureText(text).width;
+      }
+      function strokeOutline(f, width, colour, dash) {
+        ctx.beginPath();
+        if (f.outline)
+          for (const [x0, y0, x1, y1] of f.outline) {
+            ctx.moveTo(sx(x0), sy(y0));
+            ctx.lineTo(sx(x1), sy(y1));
+          }
+        else for (const r of f.rects) ctx.rect(sx(r.x), sy(r.y), r.w * view.s, r.h * view.s);
+        ctx.lineWidth = width;
+        ctx.strokeStyle = colour;
+        ctx.setLineDash(dash || []);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      function drawZones() {
+        if (!show.zones) return;
+        // Each quarter washed in its colour from afar, fading as you get close.
+        const wash = Math.max(0, Math.min(0.32, 0.4 - view.s * 0.045));
+        if (wash > 0.01)
+          for (const q of quarters) {
+            ctx.globalAlpha = wash;
+            ctx.fillStyle = colourOf(q);
+            for (const r of q.rects) ctx.fillRect(sx(r.x), sy(r.y), r.w * view.s, r.h * view.s);
+            ctx.globalAlpha = 1;
+          }
+        for (const d of districts) {
+          const size = d.main.w * view.s;
+          if (d.depth > 0 && size < 50) continue;
+          const colour = colourOf(d);
+          if (d.depth === 0) {
+            strokeOutline(
+              d,
+              Math.max(2.5, Math.min(5, view.s * 0.6)) + 2,
+              'rgba(255,255,255,0.75)',
+            );
+            strokeOutline(d, Math.max(1.5, Math.min(3.5, view.s * 0.45)), colour);
+          } else {
+            strokeOutline(d, 3, 'rgba(255,255,255,0.55)', [7, 5]);
+            strokeOutline(d, 1.5, colour, [7, 5]);
+          }
+        }
+        for (const q of quarters) {
+          strokeOutline(q, Math.max(3, Math.min(7, view.s)) + 2.5, 'rgba(255,255,255,0.8)');
+          strokeOutline(q, Math.max(3, Math.min(7, view.s)), colourOf(q));
+        }
+        for (const r of rooms) {
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = colourOf(r);
+          ctx.strokeRect(sx(r.main.x), sy(r.main.y), r.main.w * view.s, r.main.h * view.s);
+        }
+      }
+      function niceStep(minimum) {
+        for (const step of [1, 2, 4, 8, 16, 32, 64, 128, 256, 512])
+          if (step >= minimum) return step;
+        return 1024;
+      }
+      function drawGrid() {
+        const o = PLAN.outdoors,
+          cell = PLAN.gridCell;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(sx(o.x), sy(o.y), o.w * view.s, o.h * view.s);
+        ctx.clip();
+        // Tile lines, once a tile is big enough to point at.
+        if (view.s >= 14) {
+          ctx.beginPath();
+          const x0 = Math.max(0, Math.floor(px(0))),
+            x1 = Math.min(o.w, Math.ceil(px(W)));
+          const y0 = Math.max(0, Math.floor(py(0))),
+            y1 = Math.min(o.h, Math.ceil(py(H)));
+          for (let x = x0; x <= x1; x++) {
+            ctx.moveTo(sx(x), sy(y0));
+            ctx.lineTo(sx(x), sy(y1));
+          }
+          for (let y = y0; y <= y1; y++) {
+            ctx.moveTo(sx(x0), sy(y));
+            ctx.lineTo(sx(x1), sy(y));
+          }
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = `rgba(255,255,255,${Math.min(0.28, (view.s - 14) / 60)})`;
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        for (let x = 0; x <= o.w; x += cell) {
+          ctx.moveTo(sx(x), sy(0));
+          ctx.lineTo(sx(x), sy(o.h));
+        }
+        for (let y = 0; y <= o.h; y += cell) {
+          ctx.moveTo(sx(0), sy(y));
+          ctx.lineTo(sx(o.w), sy(y));
+        }
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.stroke();
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = 'rgba(20,24,34,0.62)';
+        ctx.stroke();
+        // Up close, each square says which it is in its corner.
+        if (cell * view.s > 260) {
+          const size = 12;
+          ctx.font = `700 ${size}px ${FONT}`;
+          ctx.textBaseline = 'top';
+          for (
+            let c = Math.max(0, Math.floor(px(0) / cell));
+            c <= Math.min(PLAN.columns - 1, Math.floor(px(W) / cell));
+            c++
+          )
+            for (
+              let r = Math.max(0, Math.floor(py(0) / cell));
+              r <= Math.min(PLAN.rows - 1, Math.floor(py(H) / cell));
+              r++
+            ) {
+              const text = letter(c) + (r + 1);
+              const x = Math.max(sx(c * cell), 34) + 5,
+                y = Math.max(sy(r * cell), 30) + 5;
+              if (x > sx((c + 1) * cell) - 40 || y > sy((r + 1) * cell) - 24) continue;
+              const w = ctx.measureText(text).width;
+              ctx.fillStyle = 'rgba(31,36,48,0.78)';
+              roundRect(x - 4, y - 3, w + 8, size + 6, 4);
+              ctx.fill();
+              ctx.fillStyle = '#fff';
+              ctx.fillText(text, x, y);
+            }
+        }
+        ctx.restore();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#1f2430';
+        ctx.strokeRect(sx(o.x), sy(o.y), o.w * view.s, o.h * view.s);
+      }
+      function roundRect(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+      }
+      function letter(index) {
+        let value = index,
+          letters = '';
+        do {
+          letters = String.fromCharCode(65 + (value % 26)) + letters;
+          value = Math.floor(value / 26) - 1;
+        } while (value >= 0);
+        return letters;
+      }
+      function drawRulers() {
+        const o = PLAN.outdoors,
+          cell = PLAN.gridCell;
+        const band = 22;
+        const left = sx(0),
+          right = sx(o.w),
+          top = sy(0),
+          bottom = sy(o.h);
+        if (right < 0 || left > W || bottom < 0 || top > H) return;
+        ctx.save();
+        // Pinned to the window's edge once the plan's own edge has gone past it.
+        const rulerY = Math.max(top - band, 0);
+        const rulerX = Math.max(left - band, 0);
+        ctx.fillStyle = 'rgba(241,234,219,0.94)';
+        ctx.fillRect(Math.max(left, 0), rulerY, Math.min(right, W) - Math.max(left, 0), band);
+        ctx.fillRect(rulerX, Math.max(top, 0), band, Math.min(bottom, H) - Math.max(top, 0));
+        ctx.strokeStyle = '#1f2430';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(Math.max(left, 0), rulerY + band + 0.5);
+        ctx.lineTo(Math.min(right, W), rulerY + band + 0.5);
+        ctx.moveTo(rulerX + band + 0.5, Math.max(top, 0));
+        ctx.lineTo(rulerX + band + 0.5, Math.min(bottom, H));
+        ctx.stroke();
+        ctx.fillStyle = '#1f2430';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const size = Math.max(10, Math.min(14, cell * view.s * 0.4));
+        // Where each square's letter and number go: in the middle of what is seen of it.
+        const columnsAt = [];
+        for (let c = 0; c < PLAN.columns; c++) {
+          const a = Math.max(sx(c * cell), Math.max(left, 0) + band),
+            b = Math.min(sx((c + 1) * cell), Math.min(right, W));
+          if (b - a >= size) columnsAt.push([c, (a + b) / 2]);
+        }
+        const rowsAt = [];
+        for (let r = 0; r < PLAN.rows; r++) {
+          const a = Math.max(sy(r * cell), Math.max(top, 0) + band),
+            b = Math.min(sy((r + 1) * cell), Math.min(bottom, H));
+          if (b - a >= size) rowsAt.push([r, (a + b) / 2]);
+        }
+        const clear = (at, list) => list.every(([, middle]) => Math.abs(middle - at) > size + 10);
+        // Fine ticks: tile numbers once there is room for them, never over a square's own name.
+        const tick = niceStep(48 / view.s);
+        ctx.font = `500 9.5px ${FONT}`;
+        ctx.fillStyle = '#5b6170';
+        if (tick < cell) {
+          ctx.beginPath();
+          for (
+            let x = Math.max(0, Math.ceil(px(rulerX + band) / tick) * tick);
+            x <= Math.min(o.w, px(W));
+            x += tick
+          ) {
+            if (x % cell === 0) continue;
+            ctx.moveTo(sx(x), rulerY + band);
+            ctx.lineTo(sx(x), rulerY + band - 4);
+            if (clear(sx(x), columnsAt)) ctx.fillText(String(x), sx(x), rulerY + 6);
+          }
+          ctx.save();
+          ctx.textAlign = 'left';
+          for (
+            let y = Math.max(0, Math.ceil(py(rulerY + band) / tick) * tick);
+            y <= Math.min(o.h, py(H));
+            y += tick
+          ) {
+            if (y % cell === 0) continue;
+            ctx.moveTo(rulerX + band, sy(y));
+            ctx.lineTo(rulerX + band - 4, sy(y));
+            if (!clear(sy(y), rowsAt)) continue;
+            ctx.save();
+            ctx.translate(rulerX + 7, sy(y));
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillText(String(y), 0, 0);
+            ctx.restore();
+          }
+          ctx.restore();
+          ctx.strokeStyle = '#5b6170';
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#1f2430';
+        ctx.font = `800 ${size}px ${FONT}`;
+        for (const [c, middle] of columnsAt) {
+          ctx.fillText(letter(c), middle, rulerY + band / 2 + (tick < cell ? 3 : 0));
+        }
+        for (const [r, middle] of rowsAt) {
+          ctx.fillText(String(r + 1), rulerX + band / 2 + (tick < cell ? 3 : 0), middle);
+        }
+        ctx.beginPath();
+        for (let c = 0; c <= PLAN.columns; c++) {
+          ctx.moveTo(sx(c * cell), rulerY);
+          ctx.lineTo(sx(c * cell), rulerY + band);
+        }
+        for (let r = 0; r <= PLAN.rows; r++) {
+          ctx.moveTo(rulerX, sy(r * cell));
+          ctx.lineTo(rulerX + band, sy(r * cell));
+        }
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(241,234,219,1)';
+        ctx.fillRect(rulerX, rulerY, band, band);
+        ctx.restore();
+      }
+      function drawBuildings() {
+        if (view.s < 3) return;
+        ctx.lineWidth = 1.5;
+        for (const b of buildings) {
+          if (!visible[b.layer]) continue;
+          const r = b.main;
+          if (sx(r.x + r.w) < 0 || sx(r.x) > W || sy(r.y + r.h) < 0 || sy(r.y) > H) continue;
+          ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+          ctx.strokeRect(sx(r.x) - 1, sy(r.y) - 1, r.w * view.s + 2, r.h * view.s + 2);
+          ctx.strokeStyle = b.goto ? 'rgba(31,36,48,0.85)' : 'rgba(31,36,48,0.4)';
+          ctx.strokeRect(sx(r.x), sy(r.y), r.w * view.s, r.h * view.s);
+        }
+      }
+      function drawBoats() {
+        if (!visible.boat) return;
+        for (const b of boats) {
+          if (!b.path || b.id.endsWith('-1')) continue;
+          ctx.beginPath();
+          b.path.forEach(([x, y], i) => (i ? ctx.lineTo(sx(x), sy(y)) : ctx.moveTo(sx(x), sy(y))));
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+          ctx.setLineDash([]);
+          ctx.stroke();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = KINDS.boat.colour;
+          ctx.setLineDash([6, 5]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+      function drawHighlights() {
+        for (const [f, colour, width] of [
+          [hovered, '#ffd43b', 3],
+          [selected, '#e8590c', 3.5],
+        ]) {
+          if (!f) continue;
+          if (f.kind === 'district' || f.kind === 'quarter') {
+            strokeOutline(f, width + 3, 'rgba(255,255,255,0.9)');
+            strokeOutline(f, width, colour);
+          } else if (!isMarker(f) || f.kind === 'gate') {
+            ctx.lineWidth = width + 3;
+            ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+            for (const r of f.rects)
+              ctx.strokeRect(sx(r.x) - 2, sy(r.y) - 2, r.w * view.s + 4, r.h * view.s + 4);
+            ctx.lineWidth = width;
+            ctx.strokeStyle = colour;
+            for (const r of f.rects)
+              ctx.strokeRect(sx(r.x) - 2, sy(r.y) - 2, r.w * view.s + 4, r.h * view.s + 4);
+          }
+        }
+        if (flash) {
+          const t = (performance.now() - flash.at) / 1600;
+          if (t >= 1) {
+            flash = null;
+            return;
+          }
+          const f = flash.f;
+          const radius = 18 + t * 40;
+          ctx.globalAlpha = 1 - t;
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = '#e8590c';
+          if (isMarker(f) && f.kind !== 'gate') {
+            ctx.beginPath();
+            ctx.arc(sx(f.cx), sy(f.cy), radius, 0, Math.PI * 2);
+            ctx.stroke();
+          } else {
+            const r = f.box,
+              g = t * 18;
+            ctx.strokeRect(sx(r.x) - g, sy(r.y) - g, r.w * view.s + 2 * g, r.h * view.s + 2 * g);
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
+      function isMarker(f) {
+        return f.markerKind === true;
+      }
+      markers.forEach((f) => (f.markerKind = true));
+      function markerShown(f) {
+        if (!visible[f.layer]) return false;
+        if (f === selected || f === hovered) return true;
+        return (
+          view.s >= KINDS[f.layer].from * (f.layer === 'door' && f.sort === 'stairs' ? 0.6 : 1)
+        );
+      }
+      function markerRadius(f) {
+        const base =
+          { exit: 8, landing: 8, boss: 8.5, center: 8, shop: 8, gym: 8.5 }[f.layer] || 6.5;
+        return Math.max(base * 0.85, Math.min(base * 1.5, base * (0.8 + view.s / 24)));
+      }
+      function drawMarkers(placed) {
+        const order = [
+          'sign',
+          'berry',
+          'door',
+          'trainer',
+          'landmark',
+          'boat',
+          'gate',
+          'building',
+          'center',
+          'shop',
+          'gym',
+          'boss',
+          'landing',
+          'exit',
+        ];
+        const list = markers
+          .filter(markerShown)
+          .sort((a, b) => order.indexOf(a.layer) - order.indexOf(b.layer));
+        for (const f of list) {
+          const x = sx(f.cx),
+            y = sy(f.cy);
+          const r = markerRadius(f);
+          if (x < -r || y < -r || x > W + r || y > H + r) continue;
+          icon(ctx, f, x, y, r);
+          f.drawn = frameNumber;
+          placed.push({ x0: x - r - 1, y0: y - r - 1, x1: x + r + 1, y1: y + r + 1 });
+        }
+      }
+      function overlaps(box, placed) {
+        for (const p of placed)
+          if (box.x0 < p.x1 && p.x0 < box.x1 && box.y0 < p.y1 && p.y0 < box.y1) return true;
+        return false;
+      }
+      function label(text, x, y, size, weight, colour, placed, options = {}) {
+        ctx.font = `${weight} ${size}px ${FONT}`;
+        const lines = options.lines || [text];
+        const widths = lines.map(
+          (line) => ctx.measureText(line).width + (options.spacing || 0) * line.length,
+        );
+        const w = Math.max(...widths),
+          lh = size * 1.12,
+          h = lh * lines.length;
+        const align = options.align || 'center';
+        const x0 = align === 'left' ? x : x - w / 2;
+        const box = { x0: x0 - 3, y0: y - h / 2 - 2, x1: x0 + w + 3, y1: y + h / 2 + 2 };
+        if (box.x1 < 0 || box.x0 > W || box.y1 < 0 || box.y0 > H) return false;
+        if (overlaps(box, placed)) return false;
+        placed.push(box);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        if ('letterSpacing' in ctx) ctx.letterSpacing = (options.spacing || 0) + 'px';
+        lines.forEach((line, i) => {
+          const lx = align === 'left' ? x : x - widths[i] / 2;
+          const ly = y - h / 2 + lh * (i + 0.5);
+          ctx.lineJoin = 'round';
+          ctx.lineWidth = Math.max(3, size * 0.32);
+          ctx.strokeStyle = options.halo || 'rgba(255,253,247,0.92)';
+          ctx.strokeText(line, lx, ly);
+          ctx.fillStyle = colour;
+          ctx.fillText(line, lx, ly);
+        });
+        if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+        return true;
+      }
+      function splitName(name) {
+        const words = name.split(' ');
+        if (words.length < 2) return [name];
+        let best = [name],
+          bestWidth = Infinity;
+        for (let i = 1; i < words.length; i++) {
+          const a = words.slice(0, i).join(' '),
+            b = words.slice(i).join(' ');
+          const w = Math.max(a.length, b.length);
+          if (w < bestWidth) {
+            bestWidth = w;
+            best = [a, b];
+          }
+        }
+        return best;
+      }
+      function drawNames(markerBoxes) {
+        // Place names stand over markers, halo and all; a feature's own name gives way to both.
+        const placed = [];
+        // Quarters from afar, in their colours.
+        if (view.s < 1.05 && show.zones) {
+          for (const q of quarters) {
+            const box = q.box;
+            label(
+              q.name.toUpperCase(),
+              sx(box.x + box.w / 2),
+              sy(box.y + box.h / 2),
+              15,
+              850,
+              colourOf(q),
+              placed,
+              { spacing: 2 },
+            );
+          }
+        }
+        // Places, biggest first, each as large as fits inside it.
+        const byDepth = districts
+          .filter((d) => d.depth === 0)
+          .concat(districts.filter((d) => d.depth > 0).sort((a, b) => b.areaSize - a.areaSize));
+        for (const d of byDepth) {
+          const r = d.main;
+          const width = r.w * view.s,
+            height = r.h * view.s;
+          if (width < 46 || height < 18) continue;
+          const name = d.depth === 0 ? d.name.toUpperCase() : d.name;
+          const weight = d.depth === 0 ? 800 : 650;
+          const one = measure(name, weight, 100) / 100;
+          const lines = splitName(name);
+          const two = Math.max(...lines.map((line) => measure(line, weight, 100) / 100));
+          const max = d.depth === 0 ? 22 : 15;
+          let size = Math.min(max, (width * 0.8) / one, height * 0.4);
+          let use = [name];
+          if (lines.length > 1) {
+            const twoSize = Math.min(max, (width * 0.8) / two, height * 0.22);
+            if (twoSize > size * 1.25) {
+              size = twoSize;
+              use = lines;
+            }
+          }
+          if (size < (d.depth === 0 ? 8 : 10)) continue;
+          let y = sy(r.y + r.h / 2);
+          if (d.depth === 0 && view.s >= 5)
+            y = Math.max(sy(r.y) + size * 1.4, Math.min(sy(r.y + r.h) - size * 1.4, H * 0.12));
+          label(
+            name,
+            sx(r.x + r.w / 2),
+            y,
+            size,
+            weight,
+            d.depth === 0 ? colourOf(d) : '#1f2430',
+            placed,
+            { lines: use, spacing: d.depth === 0 && size >= 12 ? 1 : 0 },
+          );
+        }
+        // Rooms, in the block of interiors.
+        for (const room of rooms) {
+          const r = room.main;
+          const width = r.w * view.s;
+          if (width < 40) continue;
+          const size = Math.min(
+            14,
+            (width * 0.9) / (measure(room.name, 700, 100) / 100),
+            r.h * view.s * 0.3,
+          );
+          if (size < 9) continue;
+          label(
+            room.name,
+            sx(r.x + r.w / 2),
+            sy(r.y) + Math.max(size, Math.min(r.h * view.s * 0.5, size * 1.4)),
+            size,
+            700,
+            '#1f2430',
+            placed,
+          );
+        }
+        // Features beside their markers, the most important first.
+        placed.push(...markerBoxes);
+        const order = [
+          'exit',
+          'landing',
+          'boss',
+          'center',
+          'shop',
+          'gym',
+          'building',
+          'gate',
+          'boat',
+          'landmark',
+          'trainer',
+          'berry',
+          'sign',
+        ];
+        for (const kind of order) {
+          if (!visible[kind] || view.s < KINDS[kind].labelFrom) continue;
+          const size = kind === 'exit' || kind === 'landing' ? 12.5 : 12;
+          for (const f of features) {
+            if (f.layer !== kind) continue;
+            if (kind === 'building') {
+              if (f.kind !== 'building' || (!f.goto && view.s < 9)) continue;
+              const r = f.main;
+              label(f.name, sx(r.x + r.w / 2), sy(r.y + r.h) + 9, 11.5, 650, '#1f2430', placed);
+              continue;
+            }
+            if (!isMarker(f) || f.drawn !== frameNumber) continue;
+            const r = markerRadius(f);
+            const colour = kind === 'exit' ? '#c92a2a' : kind === 'landing' ? '#1864ab' : '#1f2430';
+            label(f.name, sx(f.cx) + r + 4, sy(f.cy), size, 700, colour, placed, {
+              align: 'left',
+            }) || label(f.name, sx(f.cx), sy(f.cy) + r + size * 0.75, size, 700, colour, placed);
+          }
+        }
+      }
+      function updateScale() {
+        const wanted = 140 / view.s;
+        let step = niceStep(wanted / 2) * 2;
+        if ((step / 2) * view.s > 180) step = Math.max(1, step / 2);
+        const bar = document.getElementById('scalebar');
+        bar.style.width = step * view.s + 'px';
+        document.getElementById('scalehalf').textContent = step >= 2 ? String(step / 2) : '';
+        document.getElementById('scalefull').textContent = step + (step === 1 ? ' tile' : ' tiles');
+        document.getElementById('scale').firstElementChild.style.width = step * view.s + 'px';
+      }
+
+      // ---------------------------------------------------------------- what is under the pointer
+      function featureAt(screenX, screenY) {
+        let best = null,
+          bestDistance = Infinity;
+        for (const f of markers) {
+          if (f.drawn !== frameNumber || !markerShown(f)) continue;
+          const r = markerRadius(f) + 4;
+          const d = Math.hypot(sx(f.cx) - screenX, sy(f.cy) - screenY);
+          if (d <= r && d < bestDistance) {
+            best = f;
+            bestDistance = d;
+          }
+        }
+        if (best) return best;
+        const x = px(screenX),
+          y = py(screenY);
+        const within = (r) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
+        if (view.s >= 1.2)
+          for (const g of gates) if (visible.gate && g.rects.some(within)) return g;
+        if (view.s >= 3)
+          for (const b of buildings) if (visible[b.layer] && within(b.main)) return b;
+        for (const r of rooms) if (within(r.main)) return r;
+        for (const d of districts)
+          if (d.rects.some(within) && (d.depth === 0 || d.main.w * view.s >= 50)) return d;
+        return null;
+      }
+      function placeOf(x, y) {
+        for (const d of districts)
+          if (d.rects.some((r) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h))
+            return d.name;
+        for (const r of rooms) {
+          const m = r.main;
+          if (x >= m.x && y >= m.y && x < m.x + m.w && y < m.y + m.h) return r.name;
+        }
+        return '';
+      }
+      function escapeHtml(text) {
+        return String(text).replace(
+          /[&<>"]/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+        );
+      }
+      function describe(f, forCard) {
+        const kind = kindWord(f);
+        const places = f.places.length ? f.places.join(' › ') : '';
+        const detail = f.detail.filter(Boolean);
+        let hint = '';
+        if (!forCard)
+          hint = f.goto
+            ? f.kind === 'room'
+              ? 'Click to go to its door'
+              : f.kind === 'building'
+                ? 'Click to go inside'
+                : 'Click to go through'
+            : 'Click to zoom in';
+        return (
+          `<div class="kind" style="color:${colourOf(f)}"><span class="ic" data-i="${f.index}"></span>${escapeHtml(kind)}</div>` +
+          `<div class="title">${escapeHtml(f.name)}</div>` +
+          (places ? `<div class="places">in ${escapeHtml(places)}</div>` : '') +
+          (f.grid ? `<span class="grid">${escapeHtml(f.grid)}</span>` : '') +
+          (detail.length
+            ? `<ul>${detail.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>`
+            : '') +
+          (hint ? `<div class="hint">${hint}</div>` : '')
+        );
+      }
+      function fillIcons(root) {
+        for (const span of root.querySelectorAll('.ic')) {
+          const f = features[Number(span.dataset.i)];
+          if (isMarker(f) || f.kind === 'building' || f.kind === 'room')
+            span.replaceWith(
+              iconCanvas(
+                f.kind === 'room' && !ROOM_SORTS.has(f.sort) ? { layer: 'building' } : f,
+                16,
+              ),
+            );
+          else span.remove();
+        }
+      }
+      const tip = document.getElementById('tip');
+      function showTip(f, screenX, screenY) {
+        if (!f) {
+          tip.style.display = 'none';
+          return;
+        }
+        if (tip.dataset.f !== String(f.index)) {
+          tip.innerHTML = describe(f, false);
+          fillIcons(tip);
+          tip.dataset.f = String(f.index);
+        }
+        tip.style.display = 'block';
+        const w = tip.offsetWidth,
+          h = tip.offsetHeight;
+        let x = screenX + 16,
+          y = screenY + 18;
+        if (x + w > W - 8) x = screenX - w - 16;
+        if (y + h > H - 8) y = screenY - h - 14;
+        tip.style.left = Math.max(8, x) + 'px';
+        tip.style.top = Math.max(8, y) + 'px';
+      }
+      const card = document.getElementById('card');
+      function select(f, options = {}) {
+        selected = f;
+        if (!f) {
+          card.style.display = 'none';
+          dirty();
+          return;
+        }
+        const go = f.goto
+          ? f.kind === 'room'
+            ? 'Go to its door'
+            : f.kind === 'building'
+              ? 'Go inside'
+              : f.kind === 'boat'
+                ? 'Cross over'
+                : 'Go through'
+          : '';
+        card.innerHTML =
+          '<button class="close" type="button" aria-label="Close">×</button>' +
+          describe(f, true) +
+          `<div class="actions"><button type="button" class="primary" data-act="zoom">Zoom to it</button>${go ? `<button type="button" data-act="go">${go}</button>` : ''}</div>`;
+        fillIcons(card);
+        card.style.display = 'block';
+        card.querySelector('.close').onclick = () => select(null);
+        card.querySelector('[data-act="zoom"]').onclick = () => flyToFeature(f);
+        const goButton = card.querySelector('[data-act="go"]');
+        if (goButton) goButton.onclick = () => flyTo(f.goto, 'go');
+        if (options.fly) flyToFeature(f);
+        dirty();
+      }
+
+      // ---------------------------------------------------------------- movement
+      let motion = null;
+      function viewWidth() {
+        return W / view.s;
+      }
+      function interpolateZoom(p0, p1) {
+        // van Wijk and Nuij's smooth zoom and pan: out, across, and in.
+        const rho = Math.SQRT2,
+          rho2 = 2,
+          rho4 = 4;
+        const [ux0, uy0, w0] = p0,
+          [ux1, uy1, w1] = p1;
+        const dx = ux1 - ux0,
+          dy = uy1 - uy0,
+          d2 = dx * dx + dy * dy;
+        let at, S;
+        if (d2 < 1e-9) {
+          S = Math.log(w1 / w0) / rho;
+          at = (t) => [ux0 + t * dx, uy0 + t * dy, w0 * Math.exp(rho * t * S)];
+        } else {
+          const d1 = Math.sqrt(d2);
+          const b0 = (w1 * w1 - w0 * w0 + rho4 * d2) / (2 * w0 * rho2 * d1);
+          const b1 = (w1 * w1 - w0 * w0 - rho4 * d2) / (2 * w1 * rho2 * d1);
+          const r0 = Math.log(Math.sqrt(b0 * b0 + 1) - b0),
+            r1 = Math.log(Math.sqrt(b1 * b1 + 1) - b1);
+          S = (r1 - r0) / rho;
+          at = (t) => {
+            const s = t * S,
+              c0 = Math.cosh(r0);
+            const u = (w0 / (rho2 * d1)) * (c0 * Math.tanh(rho * s + r0) - Math.sinh(r0));
+            return [ux0 + u * dx, uy0 + u * dy, (w0 * c0) / Math.cosh(rho * s + r0)];
+          };
+        }
+        return { at, duration: Math.max(450, Math.min(1800, Math.abs(S) * 700)) };
+      }
+      function flyTo(rect, why) {
+        const pad = W < 720 ? 1.5 : 1.8;
+        const minimum = why === 'go' ? 16 : 26;
+        const w = Math.max(rect.w, minimum),
+          h = Math.max(rect.h, minimum);
+        const s = Math.max(
+          minScale(),
+          Math.min(MAX_SCALE / 2, Math.min(W / (w * pad), H / (h * pad))),
+        );
+        const target = [rect.x + rect.w / 2, rect.y + rect.h / 2, W / s];
+        const path = interpolateZoom([view.x, view.y, viewWidth()], target);
+        motion = { kind: 'fly', start: performance.now(), path };
+        dirty();
+      }
+      function flyToFeature(f) {
+        flash = { f, at: performance.now() + 300 };
+        flyTo(
+          f.kind === 'district' || f.kind === 'quarter' || f.kind === 'room' ? f.box : f.box,
+          'zoom',
+        );
+      }
+      function stepMotion(now) {
+        if (!motion) return;
+        if (motion.kind === 'fly') {
+          const t = Math.min(1, (now - motion.start) / motion.path.duration);
+          const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+          const [x, y, w] = motion.path.at(e);
+          view.x = x;
+          view.y = y;
+          view.s = W / w;
+          if (t >= 1) motion = null;
+        } else if (motion.kind === 'zoom') {
+          // A wheel's clicks eased into one movement, about the point under the pointer.
+          const k = 1 - Math.pow(0.001, (now - motion.last) / 260);
+          motion.last = now;
+          const s = Math.exp(
+            Math.log(view.s) + (Math.log(motion.target) - Math.log(view.s)) * Math.min(1, k),
+          );
+          zoomAbout(motion.ax, motion.ay, s);
+          if (Math.abs(Math.log(s / motion.target)) < 0.002) {
+            zoomAbout(motion.ax, motion.ay, motion.target);
+            motion = null;
+          }
+        }
+        clampView();
+        saveHash();
+      }
+      function zoomAbout(screenX, screenY, s) {
+        const x = px(screenX),
+          y = py(screenY);
+        view.s = Math.max(minScale(), Math.min(MAX_SCALE, s));
+        view.x = x - (screenX - W / 2) / view.s;
+        view.y = y - (screenY - H / 2) / view.s;
+      }
+      function wheelZoom(screenX, screenY, factor) {
+        const from = motion && motion.kind === 'zoom' ? motion.target : view.s;
+        const target = Math.max(minScale(), Math.min(MAX_SCALE, from * factor));
+        motion = { kind: 'zoom', target, ax: screenX, ay: screenY, last: performance.now() };
+        dirty();
+      }
+
+      // ---------------------------------------------------------------- input
+      const pointers = new Map();
+      let drag = null,
+        pinch = null,
+        lastPointer = null;
+      canvas.addEventListener('pointerdown', (event) => {
+        canvas.setPointerCapture(event.pointerId);
+        pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        motion = null;
+        if (pointers.size === 1)
+          drag = {
+            x: event.clientX,
+            y: event.clientY,
+            vx: view.x,
+            vy: view.y,
+            moved: false,
+            type: event.pointerType,
+          };
+        else if (pointers.size === 2) {
+          const [a, b] = [...pointers.values()];
+          pinch = {
+            d: Math.hypot(a.x - b.x, a.y - b.y),
+            s: view.s,
+            mx: (a.x + b.x) / 2,
+            my: (a.y + b.y) / 2,
+            px: px((a.x + b.x) / 2),
+            py: py((a.y + b.y) / 2),
+          };
+          drag = null;
+        }
+      });
+      canvas.addEventListener('pointermove', (event) => {
+        lastPointer = { x: event.clientX, y: event.clientY, type: event.pointerType };
+        if (pointers.has(event.pointerId))
+          pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (pinch && pointers.size >= 2) {
+          const [a, b] = [...pointers.values()];
+          const d = Math.hypot(a.x - b.x, a.y - b.y);
+          const mx = (a.x + b.x) / 2,
+            my = (a.y + b.y) / 2;
+          view.s = Math.max(minScale(), Math.min(MAX_SCALE, pinch.s * (d / pinch.d)));
+          view.x = pinch.px - (mx - W / 2) / view.s;
+          view.y = pinch.py - (my - H / 2) / view.s;
+          clampView();
+          saveHash();
+          dirty();
+          return;
+        }
+        if (drag) {
+          const dx = event.clientX - drag.x,
+            dy = event.clientY - drag.y;
+          if (!drag.moved && Math.hypot(dx, dy) > (drag.type === 'touch' ? 8 : 4)) {
+            drag.moved = true;
+            canvas.classList.add('dragging');
+            showTip(null);
+          }
+          if (drag.moved) {
+            view.x = drag.vx - dx / view.s;
+            view.y = drag.vy - dy / view.s;
+            clampView();
+            saveHash();
+            dirty();
+            return;
+          }
+        }
+        if (event.pointerType !== 'touch') hover(event.clientX, event.clientY);
+      });
+      function hover(x, y) {
+        const f = featureAt(x, y);
+        if (f !== hovered) {
+          hovered = f;
+          dirty();
+        }
+        canvas.classList.toggle('pointing', !!f);
+        showTip(f, x, y);
+        const tx = px(x),
+          ty = py(y);
+        const o = PLAN.outdoors;
+        const where = document.getElementById('where');
+        const inOutdoors = tx >= 0 && ty >= 0 && tx < o.w && ty < o.h;
+        const place = placeOf(tx, ty);
+        if (inOutdoors)
+          where.textContent = `${letter(Math.floor(tx / PLAN.gridCell))}${Math.floor(ty / PLAN.gridCell) + 1} · tile ${Math.floor(tx)}, ${Math.floor(ty)}${place ? ' · ' + place : ''}`;
+        else where.textContent = place ? `Inside · ${place}` : '';
+        where.style.display = where.textContent ? '' : 'none';
+      }
+      function release(event) {
+        const wasDrag = drag && drag.moved;
+        const wasTap = drag && !drag.moved && pointers.size === 1;
+        pointers.delete(event.pointerId);
+        if (pointers.size < 2) pinch = null;
+        if (pointers.size === 1) {
+          const [p] = [...pointers.values()];
+          drag = { x: p.x, y: p.y, vx: view.x, vy: view.y, moved: true, type: event.pointerType };
+          return;
+        }
+        canvas.classList.remove('dragging');
+        drag = null;
+        if (wasTap && !wasDrag) {
+          const f = featureAt(event.clientX, event.clientY);
+          if (event.pointerType === 'touch') {
+            select(f);
+            return;
+          }
+          if (!f) {
+            select(null);
+            return;
+          }
+          const framed = selected === f;
+          select(f);
+          if (framed && f.goto) flyTo(f.goto, 'go');
+          else if (f.goto && (f.kind === 'door' || f.kind === 'boat')) flyTo(f.goto, 'go');
+          else flyToFeature(f);
+          showTip(null);
+        }
+      }
+      canvas.addEventListener('pointerup', release);
+      canvas.addEventListener('pointercancel', release);
+      canvas.addEventListener('pointerleave', (event) => {
+        if (!pointers.size && event.pointerType !== 'touch') {
+          hovered = null;
+          showTip(null);
+          dirty();
+        }
+      });
+      canvas.addEventListener(
+        'wheel',
+        (event) => {
+          event.preventDefault();
+          const unit = event.deltaMode === 1 ? 33 : event.deltaMode === 2 ? 400 : 1;
+          const delta = event.deltaY * unit;
+          // A pinch on a trackpad comes as a wheel with the control key held.
+          const factor = Math.exp(-delta * (event.ctrlKey ? 0.012 : 0.0022));
+          if (Math.abs(delta) < 40 && !event.ctrlKey && event.deltaMode === 0) {
+            motion = null;
+            zoomAbout(event.clientX, event.clientY, view.s * factor);
+            clampView();
+            saveHash();
+            dirty();
+          } else wheelZoom(event.clientX, event.clientY, factor);
+          if (lastPointer) setTimeout(() => lastPointer && hover(lastPointer.x, lastPointer.y), 0);
+        },
+        { passive: false },
+      );
+      canvas.addEventListener('dblclick', (event) => {
+        event.preventDefault();
+        wheelZoom(event.clientX, event.clientY, 2.5);
+      });
+      window.addEventListener('keydown', (event) => {
+        if (event.target === search) return;
+        const step = 80 / view.s;
+        if (event.key === '/') {
+          event.preventDefault();
+          search.focus();
+          return;
+        }
+        if (event.key === '+' || event.key === '=') wheelZoom(W / 2, H / 2, 1.8);
+        else if (event.key === '-' || event.key === '_') wheelZoom(W / 2, H / 2, 1 / 1.8);
+        else if (event.key === '0') fit(true);
+        else if (event.key === 'ArrowLeft') view.x -= step;
+        else if (event.key === 'ArrowRight') view.x += step;
+        else if (event.key === 'ArrowUp') view.y -= step;
+        else if (event.key === 'ArrowDown') view.y += step;
+        else if (event.key === 'Escape') select(null);
+        else return;
+        clampView();
+        saveHash();
+        dirty();
+      });
+      document.getElementById('zoomin').onclick = () => wheelZoom(W / 2, H / 2, 2);
+      document.getElementById('zoomout').onclick = () => wheelZoom(W / 2, H / 2, 0.5);
+      document.getElementById('zoomfit').onclick = () => fit(true);
+      function fit(animated) {
+        const area = clearArea();
+        const s = scaleFor(area);
+        // The plan's middle at the middle of the clear area, nudged right and down for the rulers.
+        const cx = PLAN.width / 2 - (area.x + area.w / 2 - W / 2 + 12) / s;
+        const cy = PLAN.height / 2 - (area.y + area.h / 2 - H / 2 + 16) / s;
+        if (animated) {
+          const path = interpolateZoom([view.x, view.y, viewWidth()], [cx, cy, W / s]);
+          motion = { kind: 'fly', start: performance.now(), path };
+          dirty();
+          return;
+        }
+        view.s = s;
+        view.x = cx;
+        view.y = cy;
+      }
+      window.addEventListener('resize', () => {
+        resize();
+        clampView();
+      });
+
+      // ---------------------------------------------------------------- search
+      const search = document.getElementById('search');
+      const results = document.getElementById('results');
+      let found = [],
+        cursor = 0;
+      /** How much a match matters: places and the buildings people head for first, a sign's words last. */
+      function importance(f) {
+        if (f.kind === 'district' || f.kind === 'quarter') return 0;
+        if (f.kind === 'building' && f.goto) return ROOM_SORTS.has(f.sort) ? 0 : 1;
+        if (f.kind === 'room') return ROOM_SORTS.has(f.sort) ? 1 : 2;
+        if (f.kind === 'exit' || f.kind === 'landing' || f.kind === 'boss') return 1;
+        if (f.kind === 'gate' || f.kind === 'landmark' || f.kind === 'boat') return 2;
+        if (f.kind === 'trainer') return 3;
+        if (f.kind === 'building') return 4;
+        return { door: 5, sign: 6, berry: 7 }[f.kind] ?? 5;
+      }
+      function runSearch() {
+        const q = fold(search.value.trim());
+        if (!q) {
+          found = [];
+          results.innerHTML = '';
+          return;
+        }
+        const seen = new Set();
+        found = features
+          .filter((f) => f.search.includes(q))
+          .map((f) => ({
+            f,
+            score:
+              importance(f) * 3 + (f.search.startsWith(q) ? 0 : f.search.includes(' ' + q) ? 1 : 2),
+          }))
+          .sort((a, b) => a.score - b.score || a.f.name.length - b.f.name.length)
+          .map(({ f }) => f)
+          .filter((f) => {
+            const k = f.name + '|' + kindWord(f);
+            if (seen.has(k)) return false;
+            seen.add(k);
+            return true;
+          })
+          .slice(0, 14);
+        cursor = 0;
+        renderResults();
+      }
+      function renderResults() {
+        if (!found.length) {
+          results.innerHTML = '<li class="none">Nothing on the plan is called that.</li>';
+          return;
+        }
+        results.innerHTML = found
+          .map(
+            (f, i) =>
+              `<li role="option" aria-selected="${i === cursor}" data-i="${f.index}"><span class="ic" data-i="${f.index}"></span><span class="name">${escapeHtml(f.name)}</span><span class="where">${escapeHtml(kindWord(f))}${f.grid && !f.grid.startsWith('Inside') ? ' · ' + escapeHtml(f.grid) : ''}</span></li>`,
+          )
+          .join('');
+        for (const span of results.querySelectorAll('.ic')) {
+          const f = features[Number(span.dataset.i)];
+          const c =
+            isMarker(f) || f.kind === 'building' || f.kind === 'room'
+              ? iconCanvas(
+                  f.kind === 'room' && !ROOM_SORTS.has(f.sort) ? { layer: 'building' } : f,
+                  18,
+                )
+              : swatch(colourOf(f));
+          span.replaceWith(c);
+        }
+        for (const li of results.querySelectorAll('li[data-i]'))
+          li.onclick = () => choose(features[Number(li.dataset.i)]);
+      }
+      function swatch(colour) {
+        const c = document.createElement('canvas');
+        c.width = c.height = 36;
+        c.style.width = c.style.height = '18px';
+        const g = c.getContext('2d');
+        g.fillStyle = colour + '33';
+        g.strokeStyle = colour;
+        g.lineWidth = 4;
+        g.fillRect(5, 5, 26, 26);
+        g.strokeRect(5, 5, 26, 26);
+        return c;
+      }
+      function choose(f) {
+        results.innerHTML = '';
+        search.blur();
+        select(f, { fly: true });
+      }
+      search.addEventListener('input', runSearch);
+      search.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown') {
+          cursor = Math.min(found.length - 1, cursor + 1);
+          renderResults();
+          event.preventDefault();
+        } else if (event.key === 'ArrowUp') {
+          cursor = Math.max(0, cursor - 1);
+          renderResults();
+          event.preventDefault();
+        } else if (event.key === 'Enter' && found[cursor]) choose(found[cursor]);
+        else if (event.key === 'Escape') {
+          search.value = '';
+          runSearch();
+          search.blur();
+          canvas.focus();
+        }
+      });
+      search.addEventListener('focus', () => {
+        if (search.value) runSearch();
+      });
+
+      // ---------------------------------------------------------------- the key
+      function buildKey() {
+        const zones = document.getElementById('zones');
+        zones.innerHTML =
+          PLAN.quarters
+            .map(
+              (name, i) =>
+                `<span><i style="border-color:${QUARTER_COLOURS[i]};background:${QUARTER_COLOURS[i]}33"></i>${escapeHtml(name)}</span>`,
+            )
+            .join('') +
+          `<span><i style="border-color:${FAR_COLOUR};background:${FAR_COLOUR}22"></i>Far places</span>`;
+        const layers = document.getElementById('layers');
+        const counts = {};
+        for (const f of features)
+          if (KINDS[f.layer] && (isMarker(f) || f.kind === 'building'))
+            counts[f.layer] = (counts[f.layer] || 0) + 1;
+        const rows = Object.keys(KINDS).filter((k) => counts[k]);
+        layers.innerHTML =
+          rows
+            .map(
+              (k) =>
+                `<label><input type="checkbox" data-k="${k}" checked><span class="sw" data-k="${k}"></span>${escapeHtml(KINDS[k].label)}<span class="count">${counts[k]}</span></label>`,
+            )
+            .join('') +
+          '<hr>' +
+          '<label><input type="checkbox" data-show="grid" checked>Grid</label>' +
+          '<label><input type="checkbox" data-show="zones" checked>Quarters and places</label>' +
+          '<label><input type="checkbox" data-show="names" checked>Names</label>';
+        for (const span of layers.querySelectorAll('.sw'))
+          span.replaceWith(iconCanvas({ layer: span.dataset.k, sort: '' }, 20));
+        for (const input of layers.querySelectorAll('input')) {
+          input.onchange = () => {
+            if (input.dataset.k) visible[input.dataset.k] = input.checked;
+            else show[input.dataset.show] = input.checked;
+            dirty();
+          };
+        }
+        const key = document.getElementById('key');
+        const toggle = document.getElementById('keytoggle');
+        const set = (open) => {
+          key.classList.toggle('open', open);
+          toggle.setAttribute('aria-expanded', String(open));
+          toggle.textContent = open ? 'HIDE ▾' : 'SHOW ▴';
+        };
+        toggle.onclick = () => set(!key.classList.contains('open'));
+        // Open from the start where there is room for it beside the whole plan.
+        set(window.innerWidth >= 1400 && window.innerHeight >= 860);
+      }
+
+      // ---------------------------------------------------------------- where the view was
+      let hashTimer = 0;
+      function saveHash() {
+        clearTimeout(hashTimer);
+        hashTimer = setTimeout(() => {
+          const value = `#${view.x.toFixed(1)},${view.y.toFixed(1)},${view.s.toFixed(3)}`;
+          try {
+            history.replaceState(null, '', value);
+          } catch {
+            /* a page opened from disk may refuse; the view still works */
+          }
+        }, 250);
+      }
+      function loadHash() {
+        const parts = location.hash.slice(1).split(',').map(Number);
+        if (parts.length === 3 && parts.every(Number.isFinite)) {
+          [view.x, view.y, view.s] = parts;
+          return true;
+        }
+        return false;
+      }
+
+      // ---------------------------------------------------------------- start
+      document.title = `${PLAN.title} site plan`;
+      document.getElementById('maptitle').textContent = PLAN.title;
+      document.getElementById('mapsub').textContent =
+        `Site plan · Escape from Pallet Town · ${PLAN.outdoors.w} × ${PLAN.outdoors.h} tiles, ${PLAN.gridCell} to a square · drawn ${PLAN.made}`;
+      buildKey();
+      resize();
+      if (!loadHash()) fit(false);
+      clampView();
+      // The whole world first, so nothing is ever blank.
+      for (let z = LEVELS.length - 1; z >= Math.max(0, LEVELS.length - 3); z--)
+        for (let r = 0; r < LEVELS[z].rows; r++)
+          for (let c = 0; c < LEVELS[z].columns; c++) pieceImage(z, c, r);
+      dirty();
+      window.__sitePlan = { view, features, select, flyTo, dirty, fit };
+    </script>
+  </body>
+</html>

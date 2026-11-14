@@ -18,5 +18,9 @@ re-implements what the game does can disagree with it, and this one cannot.
   committed PokeAPI snapshot. See `moves/README.md`.
 - `encounters/` - what a raid through each place meets, and what it costs; and
   `frlgWater.mjs`, which reads FireRed's own fishing and surfing slots into the game.
+- `sitePlan/` - a festival-style site plan of a whole map as one web page: a
+  lettered grid, every place and building named on hover, and a zoom from the
+  whole world to a single tile in the game's own art. `npm run site-plan`; see
+  `sitePlan/sitePlan.mts`.
 - `weather/` - what weather does to a wild fight and to each hunter rung,
   measured over the real engine. See `weather/README.md`.
