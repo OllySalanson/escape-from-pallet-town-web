@@ -709,3 +709,21 @@ describe("the map maker's passed-check tick", () => {
     expect((light + 0.05) / (dark + 0.05)).toBeGreaterThanOrEqual(3);
   });
 });
+
+describe('a refused button', () => {
+  // The gyms playtest of 14 Nov 2026: with the whole team fainted the rim's
+  // JUMP IN took the cursor lit teal, because `.is-primary:focus` outranked the
+  // dim fill a refused button is given, and pressed nothing.
+  it('stays dim with the cursor on it, whatever kind of button it is', () => {
+    const focusedKinds = [...stylesheet.matchAll(/\.pixel-ui \.px-button((?:\.[\w-]+)*):focus\s*\{([^}]*)\}/g)]
+      .filter(([, , body]) => body.includes('--fill'))
+      .map(([, kind]) => kind);
+    expect(focusedKinds).toContain('.is-primary');
+    for (const kind of focusedKinds) {
+      const refused = new RegExp(
+        `\\.pixel-ui \\.px-button${kind.replace(/\./g, '\\.')}\\[aria-disabled='true'\\]:focus[^{]*\\{[^}]*--fill: var\\(--cream-dim\\)`,
+      );
+      expect(stylesheet, `a refused ${kind || 'plain'} button with the cursor on it`).toMatch(refused);
+    }
+  });
+});

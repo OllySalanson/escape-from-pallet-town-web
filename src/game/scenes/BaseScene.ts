@@ -259,6 +259,7 @@ import {
 } from '../base/arenaBouts';
 import {
   leaderBehindRival,
+  nobodyToSparLine,
   practiceLeaders,
   practiceTrainer,
   rivalTile,
@@ -2592,7 +2593,7 @@ export class BaseScene extends Phaser.Scene {
     }
     this.standStill();
     if (kit.flow.party.length === 0) {
-      this.say([`${gym.leader.toUpperCase()}: "Nobody on your bench? Come back with a team."`], [at]);
+      this.say([nobodyToSparLine(gym.leader.toUpperCase(), kit.flow.everyoneFainted)], [at]);
       return;
     }
     this.say([gym.practice.offer], [at], () =>
@@ -2683,7 +2684,7 @@ export class BaseScene extends Phaser.Scene {
     }
     this.standStill();
     if (kit.flow.party.length === 0) {
-      this.say([`${rival.name}: "Nobody on your bench? Come back with a team."`], [this.rivalAt]);
+      this.say([nobodyToSparLine(rival.name, kit.flow.everyoneFainted)], [this.rivalAt]);
       return;
     }
     const lastRaid = this.savedGame.raidProgress.raidMemory?.marks.at(-1)?.kind;
