@@ -141,7 +141,7 @@ describe('THE SLEEPER IN THE PINES', () => {
     internals.tryInteract();
 
     expect(dialogBox.shownMessages[0]).toBe(sleeper.foundLine);
-    expect(internals.pendingWildBattle).toEqual({ speciesId: 'snorlax', level: 25 });
+    expect(internals.pendingWildBattle).toEqual({ speciesId: 'snorlax', level: 25, secret: 'the-sleeper-in-the-pines/snorlax' });
     expect(internals.wasMet(entity)).toBe(true);
   });
 
@@ -172,7 +172,7 @@ describe('THE DROWNED BELL', () => {
     internals.tryInteract();
 
     expect(dialogBox.shownMessages).toEqual([bell.foundLine]);
-    expect(internals.pendingWildBattle).toEqual({ speciesId: 'kabutops', level: 28 });
+    expect(internals.pendingWildBattle).toEqual({ speciesId: 'kabutops', level: 28, secret: 'the-drowned-bell/kabutops' });
     expect(internals.runSession.pokemonMet).toEqual([`secret:${bell.id}`]);
   });
 
@@ -289,7 +289,7 @@ describe('THE PINK ONE', () => {
     internals.tryInteract();
     // The words of finding it, and then its cry.
     expect(dialogBox.shownMessages[0]).toBe(pink.foundLine);
-    expect(internals.pendingWildBattle).toEqual({ speciesId: 'butterfree', level: 28, shiny: true });
+    expect(internals.pendingWildBattle).toEqual({ speciesId: 'butterfree', level: 28, shiny: true, secret: 'the-pink-one/butterfree' });
   });
 });
 
@@ -311,7 +311,7 @@ describe('THE ELEVENTH STONE', () => {
     });
     internals.tryInteract();
     expect(dialogBox.shownMessages[0]).toBe(stone.foundLine);
-    expect(internals.pendingWildBattle).toEqual({ speciesId: 'alakazam', level: 22 });
+    expect(internals.pendingWildBattle).toEqual({ speciesId: 'alakazam', level: 22, secret: 'the-eleventh-stone/alakazam' });
   });
 });
 
@@ -342,7 +342,7 @@ describe('THE HERON THAT IS NOT', () => {
     internals.tryInteract();
 
     expect(dialogBox.shownMessages).toEqual([heron.foundLine]);
-    expect(internals.pendingWildBattle).toEqual({ speciesId: 'dragonair', level: 24 });
+    expect(internals.pendingWildBattle).toEqual({ speciesId: 'dragonair', level: 24, secret: 'the-heron-that-is-not/dragonair' });
     expect(internals.runSession.pokemonMet).toEqual([`secret:${heron.id}`]);
 
     // Run from, it does not come back the same raid: the notice is a notice again.
@@ -406,7 +406,7 @@ describe('THE LIGHT THAT ANSWERS', () => {
     });
     internals.tryInteract();
     expect(dialogBox.shownMessages[0]).toBe(light.foundLine);
-    expect(internals.pendingWildBattle).toEqual({ speciesId: 'starmie', level: 22 });
+    expect(internals.pendingWildBattle).toEqual({ speciesId: 'starmie', level: 22, secret: 'the-light-that-answers/starmie' });
   });
 });
 
@@ -428,7 +428,7 @@ describe('THE KITE THIEF', () => {
     });
     internals.tryInteract();
     expect(dialogBox.shownMessages[0]).toBe(thief.foundLine);
-    expect(internals.pendingWildBattle).toEqual({ speciesId: 'kingler', level: 20 });
+    expect(internals.pendingWildBattle).toEqual({ speciesId: 'kingler', level: 20, secret: 'the-kite-thief/kingler' });
   });
 });
 
@@ -458,7 +458,7 @@ describe('THE LAPRAS DOLL', () => {
       internals.tryInteract();
 
       expect(dialogBox.shownMessages).toEqual([doll.foundLine]);
-      expect(internals.pendingWildBattle).toEqual({ speciesId: 'lapras', level: 25 });
+      expect(internals.pendingWildBattle).toEqual({ speciesId: 'lapras', level: 25, secret: 'the-lapras-doll/lapras' });
       expect(internals.runSession.pokemonMet).toEqual([`secret:${doll.id}`]);
 
       Object.assign(internals, { pendingWildBattle: undefined });

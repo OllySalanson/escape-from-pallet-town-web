@@ -910,6 +910,14 @@ export const WILD_ESCAPE_SUCCESS_MESSAGE = 'Got away safely!';
  */
 export const WILD_ESCAPE_FAILURE_MESSAGE = "Can't escape!";
 
+/**
+ * The weather the battle screen shows once this event's line is read: the
+ * weather a move or an ability brought on from "It started to rain!", and none
+ * from the line saying it stopped. Any other line leaves it as it was.
+ */
+export const weatherShownAfter = (shown: WeatherId | null, event: BattleEvent): WeatherId | null =>
+  event.type === 'weather-set' ? event.weather : event.type === 'weather-ended' ? null : shown;
+
 export const combatPresentationSteps = (
   events: readonly BattleEvent[],
 ): readonly CombatPresentationStep[] =>

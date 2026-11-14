@@ -39,6 +39,7 @@ import { planLimits, startDistrict } from '../../worldPlan';
 import { caveLife } from './caveLife';
 import { caveLadders, caveMouthLink, greystoneCaves } from './greystoneCaves';
 import { INN_ROOM, withInside } from './insides';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
 import { GREYSTONE_VALE } from './plan';
 
 /** The wood, a letter a lattice cell: T pines, . lanes and glades, g tall grass, d the road, C rock. */
@@ -456,6 +457,25 @@ function withInsides(file: MapFile): MapFile {
         'He only fights a trainer with Misty’s CASCADE BADGE. Until then, look around!',
         'His Pokémon poison you, float over Ground moves, and his Koffing blows itself up.',
         'A Ghost shrugs off Normal moves and most Poison. Fire and Flying never touch. Beat him for the SOUL BADGE!',
+      ],
+      // His words follow the badges (`linesSpoken`): Misty beaten, this raid
+      // or before, KOGA is at the head of the hall (`isChallenging`).
+      afterBeating: [
+        {
+          boss: MISTY_BOSS_ID,
+          lines: [
+            'Yo! That’s Misty’s CASCADE BADGE! KOGA will fight you. He’s at the head of the hall.',
+            'His Pokémon poison you, float over Ground moves, and his Koffing blows itself up.',
+            'A Ghost shrugs off Normal moves and most Poison. Fire and Flying never touch. Beat him for the SOUL BADGE!',
+          ],
+        },
+        {
+          boss: KOGA_BOSS_ID,
+          lines: [
+            'Yo! You beat KOGA! Every road into the Marsh is open for good.',
+            'The SOUL BADGE is yours. Mind what you touch in there: it poisons you back.',
+          ],
+        },
       ],
     },
   ]);

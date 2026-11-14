@@ -174,6 +174,12 @@ export const MAP_FILE_LIMITS = {
    * as every boss is.
    */
   maxBossDoors: 0,
+  /**
+   * The stages of what one person says as bosses fall
+   * (`MapFilePerson.afterBeating`): none on a player's map, which has no
+   * bosses of its own; a guide's few on the game's own.
+   */
+  maxSpeechStages: 0,
   /** The widest or deepest a stretch of water Surf opens may be. */
   maxDoorSide: 12,
   maxTrainers: 12,
@@ -259,6 +265,7 @@ export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   // FireRed's Mewtwo is level 70, as the shipped four's list has it (`legends.ts`).
   maxPokemonLevel: 70,
   maxBeatTiles: 8,
+  maxSpeechStages: 3,
   maxLockedLandmarks: 2,
   maxLandmarkExits: 2,
   // Two doors for every keeper: Boatswain Cragg's barricades, and two for each
@@ -1446,6 +1453,21 @@ export interface MapFilePerson extends MapFileSpot {
    * beside it. Only on the game's own maps (`maxSecrets`).
    */
   readonly secret?: string;
+  /**
+   * What they say instead once a boss is beaten (`linesSpoken` in `npcs.ts`):
+   * the last stage whose boss the save or this raid has beaten, else `lines`.
+   * A Gym Guide says to come back with the badge before it, that the leader
+   * will fight now, and that the doors are open, each when it is true. Only on
+   * the game's own maps (`maxSpeechStages`), whose bosses are measured.
+   */
+  readonly afterBeating?: readonly MapFileSpeechStage[];
+}
+
+/** What a person says once a boss is beaten (`MapFilePerson.afterBeating`). */
+export interface MapFileSpeechStage {
+  /** The boss, by the id `trainers.ts` records a win under. */
+  readonly boss: string;
+  readonly lines: readonly string[];
 }
 
 /** A Pokemon standing in the world: any species the game has (`pokemonFigures.ts`). */
@@ -1797,7 +1819,12 @@ export function wordsOf(file: Partial<MapFile>): readonly string[] {
     file.maker ?? '',
     ...(file.dropIns ?? []).flatMap((spot) => [spot.name, spot.description ?? '']),
     ...(file.exits ?? []).map((spot) => spot.name),
-    ...(file.people ?? []).flatMap((person) => [person.name, ...person.lines, ...(person.calls ?? [])]),
+    ...(file.people ?? []).flatMap((person) => [
+      person.name,
+      ...person.lines,
+      ...(person.calls ?? []),
+      ...(person.afterBeating ?? []).flatMap((stage) => stage.lines),
+    ]),
     ...(file.signs ?? []).flatMap((sign) => sign.lines),
     ...(file.landmarks ?? []).map((landmark) => landmark.name),
     ...(file.districts ?? []).map((district) => district.name),
@@ -2157,6 +2184,24 @@ export function readMapFile(
         !calls.every((call) => typeof call === 'string' && call.length > 0 && call.length <= MAX_CALL_LENGTH)
       ) {
         problems.push(`${what} may call out up to ${limits.maxLines} things of at most ${MAX_CALL_LENGTH} letters.`);
+      }
+    }
+    if (person.afterBeating !== undefined) {
+      const stages = person.afterBeating as unknown[];
+      if (!Array.isArray(stages) || stages.length > limits.maxSpeechStages) {
+        problems.push(
+          limits.maxSpeechStages === 0
+            ? `${what} cannot change their words as bosses fall: a map's bosses are the game's own.`
+            : `${what} may change their words at most ${limits.maxSpeechStages} times.`,
+        );
+      } else {
+        stages.forEach((stage, at) => {
+          if (!isRecord(stage) || typeof stage.boss !== 'string' || stage.boss.length === 0) {
+            problems.push(`${what}'s words after a boss ${at + 1} must name the boss.`);
+            return;
+          }
+          linesOf(`${what} after ${stage.boss}`, stage.lines);
+        });
       }
     }
   });
@@ -3216,6 +3261,9 @@ export function buildFileMap(
         ...(person.beat ? { idle: fileBeat(person, at) } : {}),
         ...(person.calls ? { calls: [...person.calls] } : {}),
         ...(person.secret ? { secret: person.secret } : {}),
+        ...(person.afterBeating
+          ? { afterBeating: person.afterBeating.map((stage) => ({ boss: stage.boss, lines: [...stage.lines] })) }
+          : {}),
       })),
       ...(file.pokemon ?? []).map((standing, index): WorldEntity => ({
         id: `${id}/pokemon-${index + 1}`,

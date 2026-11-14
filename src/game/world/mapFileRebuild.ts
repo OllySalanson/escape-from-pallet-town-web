@@ -20,6 +20,7 @@ import type {
   MapFilePerson,
   MapFilePokemon,
   MapFileSign,
+  MapFileSpeechStage,
   MapFileSwitch,
   MapFileTrainer,
 } from './mapFile';
@@ -67,7 +68,10 @@ const BUILDING = keysOf<MapFileBuilding>()(['x', 'y', 'area', 'kind']);
 const DROP_IN = keysOf<MapFileDropIn>()(['x', 'y', 'area', 'name', 'description', 'id']);
 const EXIT = keysOf<MapFileExit>()(['x', 'y', 'area', 'name', 'opens']);
 const ITEM_SPOT = keysOf<MapFileItemSpot>()(['x', 'y', 'area', 'hidden', 'key', 'prize', 'secret']);
-const PERSON = keysOf<MapFilePerson>()(['x', 'y', 'area', 'name', 'look', 'facing', 'lines', 'beat', 'calls', 'secret']);
+const PERSON = keysOf<MapFilePerson>()([
+  'x', 'y', 'area', 'name', 'look', 'facing', 'lines', 'beat', 'calls', 'secret', 'afterBeating',
+]);
+const SPEECH_STAGE = keysOf<MapFileSpeechStage>()(['boss', 'lines']);
 const BEAT = keysOf<MapFileBeat>()(['roam', 'glances', 'everyMs']);
 const SIGN = keysOf<MapFileSign>()(['x', 'y', 'area', 'lines', 'secret']);
 const LANDMARK = keysOf<MapFileLandmark>()(['x', 'y', 'area', 'name', 'kind', 'locked']);
@@ -131,7 +135,10 @@ export function onlyMapFileFields(file: MapFile): MapFile {
     dropIns: each(file.dropIns, DROP_IN),
     exits: file.exits.map((exit) => ({ ...pick(exit, EXIT), opens: opens(exit.opens) })),
     itemSpots: each(file.itemSpots, ITEM_SPOT),
-    people: file.people?.map((person) => withBeat(person, PERSON)),
+    people: file.people?.map((person) => {
+      const kept = withBeat(person, PERSON);
+      return person.afterBeating ? { ...kept, afterBeating: each(person.afterBeating, SPEECH_STAGE) } : kept;
+    }),
     signs: each(file.signs, SIGN),
     landmarks: each(file.landmarks, LANDMARK),
     districts: each(file.districts, DISTRICT),

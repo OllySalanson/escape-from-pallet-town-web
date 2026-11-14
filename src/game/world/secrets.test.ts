@@ -321,13 +321,20 @@ describe("the vale's secrets", () => {
     expect(nextReward(shells, { secretsFound: ['helix-fossil', 'dome-fossil'], giftsReceived: [] })).toBeUndefined();
     const held = secretsHeldBy({
       itemCount: (itemId) => (itemId === 'chart-piece-1' ? 1 : 0),
-      pokemon: [
-        { speciesId: 'gyarados', shiny: false },
-        { speciesId: 'golem', shiny: false },
-      ],
+      pokemon: [{ fromSecret: null }, { fromSecret: 'the-cracked-crag/golem' }],
     });
-    // An ordinary Gyarados is not the red one.
     expect(held).toEqual(['chart-piece-1', 'the-cracked-crag/golem']);
+  });
+
+  it('counts a secret Pokemon found only when that very one is banked, never another of its kind', () => {
+    // The gyms playtest of 14 Nov 2026: a Lapras from the Frozen Lagoon, a
+    // Kingler grown from a Krabby, a Starmie from a Water Stone - each spent its
+    // secret for good, unfound, because the vault was matched on species.
+    const untagged = [{ fromSecret: null }, { fromSecret: null }, { fromSecret: null }];
+    expect(secretsHeldBy({ itemCount: () => 0, pokemon: untagged })).toEqual([]);
+    expect(secretsHeldBy({ itemCount: () => 0, pokemon: [{ fromSecret: 'the-lapras-doll/lapras' }] })).toEqual([
+      'the-lapras-doll/lapras',
+    ]);
   });
 
   it('stands a figure met in its other colours in them: a tint for every shiny that is seen before it is fought', () => {
@@ -619,8 +626,9 @@ describe("the vale's secrets", () => {
         shiny: true,
       });
       // An ordinary Butterfree in the vault is not the pink one found.
-      expect(secretsHeldBy({ itemCount: () => 0, pokemon: [{ speciesId: 'butterfree', shiny: false }] })).not.toContain(`${pink}/butterfree`);
-      expect(secretsHeldBy({ itemCount: () => 0, pokemon: [{ speciesId: 'butterfree', shiny: true }] })).toContain(`${pink}/butterfree`);
+      // A Butterfree in the vault, shiny or not, is not the pink one found: the one met is.
+      expect(secretsHeldBy({ itemCount: () => 0, pokemon: [{ fromSecret: null }] })).not.toContain(`${pink}/butterfree`);
+      expect(secretsHeldBy({ itemCount: () => 0, pokemon: [{ fromSecret: `${pink}/butterfree` }] })).toContain(`${pink}/butterfree`);
     });
 
     it('brings the sticky tongue out only for a berry packed as the raid set out, and the dream eater only after dark', () => {
