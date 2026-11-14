@@ -549,6 +549,7 @@
     <script>
       'use strict';
       const PLAN = /*__PLAN__*/ null;
+      /*__MOTION__*/
 
       // ---------------------------------------------------------------- what is drawn
       const T = PLAN.tileSize;
@@ -767,23 +768,24 @@
       const PIECE = PLAN.piece;
       const images = new Map();
       let loading = 0;
-      function pieceImage(z, column, row) {
+      /** A piece's picture once it can be drawn, asking for it the first time; and how far it has faded in. */
+      function pieceEntry(z, column, row) {
         const key = z + '/' + column + '_' + row;
         let entry = images.get(key);
         if (entry) {
           entry.used = frameNumber;
-          return entry.ready ? entry.image : null;
+          return entry;
         }
-        const level = LEVELS[z];
-        if (!level || column < 0 || row < 0 || column >= level.columns || row >= level.rows)
-          return null;
-        if (level.pieces[row * level.columns + column] !== '1') return null;
+        if (!present(z, column, row)) return null;
         const image = new Image();
-        entry = { image, ready: false, used: frameNumber, z };
+        entry = { image, ready: false, readyAt: 0, used: frameNumber, z };
         images.set(key, entry);
         loading++;
-        image.onload = () => {
+        const arrived = () => {
+          if (entry.ready) return;
           entry.ready = true;
+          // Decoded before it is first drawn, so a picture never stalls the frame it arrives in.
+          entry.readyAt = performance.now();
           loading--;
           dirty();
         };
@@ -791,7 +793,13 @@
           loading--;
         };
         image.src = 'tiles/' + key + '.png';
-        return null;
+        if (image.decode) image.decode().then(arrived, () => (image.complete ? arrived() : 0));
+        else image.onload = arrived;
+        return entry;
+      }
+      function pieceImage(z, column, row) {
+        const entry = pieceEntry(z, column, row);
+        return entry && entry.ready ? entry.image : null;
       }
       function present(z, column, row) {
         const level = LEVELS[z];
@@ -807,49 +815,113 @@
       function forget() {
         if (images.size < 360) return;
         const old = [...images.entries()]
-          .filter(([, e]) => e.ready && e.z < LEVELS.length - 2)
+          .filter(([, e]) => e.ready && e.z < LEVELS.length - 2 && e.used < frameNumber)
           .sort((a, b) => a[1].used - b[1].used);
         for (const [key] of old.slice(0, images.size - 300)) images.delete(key);
       }
-      function drawPictures() {
+      /** Whether a level's piece is loaded and showing, without asking for it. */
+      function shown(z, column, row) {
+        const entry = images.get(z + '/' + column + '_' + row);
+        return !!entry && entry.ready;
+      }
+      let fading = false;
+      /** Pieces on screen this frame with no picture at all yet, which the zoom checks count. */
+      const pictureStats = { blank: 0 };
+      function drawPictures(now) {
         const deviceScale = view.s * DPR;
         const top = LEVELS.length - 1;
-        const z = Math.max(0, Math.min(top, Math.floor(Math.log2(T / deviceScale))));
+        const z = levelFor(deviceScale, T, top);
         const span = (PIECE * 2 ** z) / T; // tiles a piece covers
         const c0 = Math.max(0, Math.floor(px(0) / span)),
           c1 = Math.floor(px(W) / span);
         const r0 = Math.max(0, Math.floor(py(0) / span)),
           r1 = Math.floor(py(H) / span);
-        ctx.imageSmoothingEnabled = deviceScale < (T / 2 ** z) * 1.5;
+        // Smoothed when a picture is shrunk, sharp pixels once it is blown up: switching
+        // exactly at one to one, where the two look the same, so the switch never shows.
+        ctx.imageSmoothingEnabled = deviceScale < T / 2 ** z;
         ctx.imageSmoothingQuality = 'high';
+        fading = false;
+        pictureStats.blank = 0;
         for (let row = r0; row <= r1; row++)
           for (let column = c0; column <= c1; column++) {
-            if (!present(z, column, row)) continue;
+            const entry = pieceEntry(z, column, row);
+            if (!entry) continue;
+            const opacity = entry.ready ? pictureOpacity(entry.readyAt, now) : 0;
+            // Until it is in and fully faded up, the same ground from another level stays under it.
+            if (opacity < 1) {
+              if (!drawStandIn(z, column, row, top) && !entry.ready) pictureStats.blank++;
+              fading = true;
+            }
+            if (!entry.ready) continue;
+            const image = entry.image;
             const x = column * span,
               y = row * span;
-            const image = pieceImage(z, column, row);
-            if (image) {
-              const w = (image.width * 2 ** z) / T,
-                h = (image.height * 2 ** z) / T;
-              drawImageAt(image, 0, 0, image.width, image.height, x, y, w, h);
-              continue;
-            }
-            // Not loaded yet: the same ground from a coarser level, until it is.
-            for (let up = z + 1; up <= top; up++) {
-              const d = up - z,
-                k = 2 ** d;
-              const parent = pieceImage(up, column >> d, row >> d);
-              if (!parent) continue;
-              const pieceInParent = PIECE / k;
-              const ox = (column % k) * pieceInParent,
-                oy = (row % k) * pieceInParent;
-              const w = Math.min(pieceInParent, parent.width - ox),
-                h = Math.min(pieceInParent, parent.height - oy);
-              if (w <= 0 || h <= 0) break;
-              drawImageAt(parent, ox, oy, w, h, x, y, (w * 2 ** up) / T, (h * 2 ** up) / T);
-              break;
-            }
+            ctx.globalAlpha = opacity;
+            drawImageAt(
+              image,
+              0,
+              0,
+              image.width,
+              image.height,
+              x,
+              y,
+              (image.width * 2 ** z) / T,
+              (image.height * 2 ** z) / T,
+            );
+            ctx.globalAlpha = 1;
           }
+      }
+      /** The ground of level z's piece from the nearest coarser level that is loaded, else from the finer one under it. */
+      function drawStandIn(z, column, row, top) {
+        for (let up = z + 1; up <= top; up++) {
+          const d = up - z,
+            k = 2 ** d;
+          const parent = pieceImage(up, column >> d, row >> d);
+          if (!parent) continue;
+          const pieceInParent = PIECE / k;
+          const ox = (column % k) * pieceInParent,
+            oy = (row % k) * pieceInParent;
+          const w = Math.min(pieceInParent, parent.width - ox),
+            h = Math.min(pieceInParent, parent.height - oy);
+          if (w <= 0 || h <= 0) return false;
+          const span = (PIECE * 2 ** z) / T;
+          drawImageAt(
+            parent,
+            ox,
+            oy,
+            w,
+            h,
+            column * span,
+            row * span,
+            (w * 2 ** up) / T,
+            (h * 2 ** up) / T,
+          );
+          return true;
+        }
+        // Zooming out, the finer pieces that were just on screen cover it until it comes.
+        if (z === 0) return false;
+        let any = false;
+        for (let dy = 0; dy < 2; dy++)
+          for (let dx = 0; dx < 2; dx++) {
+            const c = column * 2 + dx,
+              r = row * 2 + dy;
+            if (!shown(z - 1, c, r)) continue;
+            const child = pieceImage(z - 1, c, r);
+            const childSpan = (PIECE * 2 ** (z - 1)) / T;
+            drawImageAt(
+              child,
+              0,
+              0,
+              child.width,
+              child.height,
+              c * childSpan,
+              r * childSpan,
+              (child.width * 2 ** (z - 1)) / T,
+              (child.height * 2 ** (z - 1)) / T,
+            );
+            any = true;
+          }
+        return any;
       }
       function drawImageAt(image, sx0, sy0, sw, sh, x, y, w, h) {
         // Rounded to device pixels, so neighbouring pieces meet without a seam.
@@ -1061,17 +1133,17 @@
         pending = false;
         frameNumber++;
         stepMotion(now);
-        draw();
-        if (motion || flash) dirty();
+        draw(now);
+        if (motion || flash || fading) dirty();
         forget();
       }
-      function draw() {
+      function draw(now = performance.now()) {
         ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
         ctx.fillStyle =
           getComputedStyle(document.documentElement).getPropertyValue('--paper') || '#f1eadb';
         ctx.fillRect(0, 0, W, H);
         drawSheet();
-        drawPictures();
+        drawPictures(now);
         drawZones();
         if (show.grid) drawGrid();
         drawBuildings();
@@ -1342,10 +1414,11 @@
         ctx.fillStyle = '#1f2430';
         ctx.font = `800 ${size}px ${FONT}`;
         for (const [c, middle] of columnsAt) {
-          ctx.fillText(letter(c), middle, rulerY + band / 2 + (tick < cell ? 3 : 0));
+          // Where they stand whether or not the tile numbers are in, so letters never hop as they come.
+          ctx.fillText(letter(c), middle, rulerY + band / 2 + 3);
         }
         for (const [r, middle] of rowsAt) {
-          ctx.fillText(String(r + 1), rulerX + band / 2 + (tick < cell ? 3 : 0), middle);
+          ctx.fillText(String(r + 1), rulerX + band / 2 + 3, middle);
         }
         ctx.beginPath();
         for (let c = 0; c <= PLAN.columns; c++) {
@@ -1439,10 +1512,15 @@
       }
       markers.forEach((f) => (f.markerKind = true));
       function markerShown(f) {
-        if (!visible[f.layer]) return false;
-        if (f === selected || f === hovered) return true;
-        return (
-          view.s >= KINDS[f.layer].from * (f.layer === 'door' && f.sort === 'stairs' ? 0.6 : 1)
+        return markerOpacity(f) > 0;
+      }
+      /** A kind of marker fades in as the zoom passes the scale it is shown from, rather than popping up. */
+      function markerOpacity(f) {
+        if (!visible[f.layer]) return 0;
+        if (f === selected || f === hovered) return 1;
+        return fadeIn(
+          view.s,
+          KINDS[f.layer].from * (f.layer === 'door' && f.sort === 'stairs' ? 0.6 : 1),
         );
       }
       function markerRadius(f) {
@@ -1475,7 +1553,9 @@
             y = sy(f.cy);
           const r = markerRadius(f);
           if (x < -r || y < -r || x > W + r || y > H + r) continue;
+          ctx.globalAlpha = markerOpacity(f);
           icon(ctx, f, x, y, r);
+          ctx.globalAlpha = 1;
           f.drawn = frameNumber;
           placed.push({ x0: x - r - 1, y0: y - r - 1, x1: x + r + 1, y1: y + r + 1 });
         }
@@ -1630,6 +1710,7 @@
         ];
         for (const kind of order) {
           if (!visible[kind] || view.s < KINDS[kind].labelFrom) continue;
+          ctx.globalAlpha = fadeIn(view.s, KINDS[kind].labelFrom);
           const size = kind === 'exit' || kind === 'landing' ? 12.5 : 12;
           for (const f of features) {
             if (f.layer !== kind) continue;
@@ -1647,6 +1728,7 @@
             }) || label(f.name, sx(f.cx), sy(f.cy) + r + size * 0.75, size, 700, colour, placed);
           }
         }
+        ctx.globalAlpha = 1;
       }
       function updateScale() {
         const wanted = 140 / view.s;
@@ -1825,15 +1907,20 @@
         }
         return { at, duration: Math.max(450, Math.min(1800, Math.abs(S) * 700)) };
       }
-      function flyTo(rect, why) {
+      /** The scale that frames a rectangle of the plan, for a flight to it. */
+      function framingScale(rect, why) {
         const pad = W < 720 ? 1.5 : 1.8;
         const minimum = why === 'go' ? 16 : 26;
         const w = Math.max(rect.w, minimum),
           h = Math.max(rect.h, minimum);
-        const s = Math.max(
+        return Math.max(
           minScale(),
           Math.min(MAX_SCALE / 2, Math.min(W / (w * pad), H / (h * pad))),
         );
+      }
+      /** Out, across and in to a rectangle of the plan, at `scale` if given, else framing it. */
+      function flyTo(rect, why, scale) {
+        const s = scale || framingScale(rect, why);
         const target = [rect.x + rect.w / 2, rect.y + rect.h / 2, W / s];
         const path = interpolateZoom([view.x, view.y, viewWidth()], target);
         motion = { kind: 'fly', start: performance.now(), path };
@@ -1841,10 +1928,7 @@
       }
       function flyToFeature(f) {
         flash = { f, at: performance.now() + 300 };
-        flyTo(
-          f.kind === 'district' || f.kind === 'quarter' || f.kind === 'room' ? f.box : f.box,
-          'zoom',
-        );
+        flyTo(f.box, 'zoom');
       }
       function stepMotion(now) {
         if (!motion) return;
@@ -1857,33 +1941,54 @@
           view.s = W / w;
           if (t >= 1) motion = null;
         } else if (motion.kind === 'zoom') {
-          // A wheel's clicks eased into one movement, about the point under the pointer.
-          const k = 1 - Math.pow(0.001, (now - motion.last) / 260);
+          // Every zoom eases toward one goal, about the point under the pointer.
+          const goal = motion.target;
+          const next = easeToward(Math.log(view.s), goal, now - motion.last);
           motion.last = now;
-          const s = Math.exp(
-            Math.log(view.s) + (Math.log(motion.target) - Math.log(view.s)) * Math.min(1, k),
-          );
-          zoomAbout(motion.ax, motion.ay, s);
-          if (Math.abs(Math.log(s / motion.target)) < 0.002) {
-            zoomAbout(motion.ax, motion.ay, motion.target);
-            motion = null;
-          }
+          const arrived = Math.abs(next - goal) < 0.0015;
+          zoomAbout(motion.ax, motion.ay, Math.exp(arrived ? goal : next));
+          if (arrived) motion = null;
         }
         clampView();
         saveHash();
       }
       function zoomAbout(screenX, screenY, s) {
-        const x = px(screenX),
-          y = py(screenY);
-        view.s = Math.max(minScale(), Math.min(MAX_SCALE, s));
-        view.x = x - (screenX - W / 2) / view.s;
-        view.y = y - (screenY - H / 2) / view.s;
+        const next = zoomedAbout(
+          view,
+          W,
+          H,
+          screenX,
+          screenY,
+          Math.max(minScale(), Math.min(MAX_SCALE, s)),
+        );
+        view.x = next.x;
+        view.y = next.y;
+        view.s = next.s;
+      }
+      /**
+       * Zoom by `logZoom` about a point on screen. Eased, the view glides there over a
+       * few frames; not, it moves the whole way now, and whatever an earlier notch had
+       * still to go is kept, so a wheel and a trackpad together never fight.
+       */
+      function zoomBy(screenX, screenY, logZoom, eased = true) {
+        const easing = motion && motion.kind === 'zoom';
+        const from = easing ? motion.target : Math.log(view.s);
+        const target = Math.max(
+          Math.log(minScale()),
+          Math.min(Math.log(MAX_SCALE), from + logZoom),
+        );
+        if (!eased) {
+          zoomAbout(screenX, screenY, view.s * Math.exp(target - from));
+          clampView();
+          saveHash();
+        }
+        if (eased || easing)
+          motion = { kind: 'zoom', target, ax: screenX, ay: screenY, last: performance.now() };
+        else motion = null;
+        dirty();
       }
       function wheelZoom(screenX, screenY, factor) {
-        const from = motion && motion.kind === 'zoom' ? motion.target : view.s;
-        const target = Math.max(minScale(), Math.min(MAX_SCALE, from * factor));
-        motion = { kind: 'zoom', target, ax: screenX, ay: screenY, last: performance.now() };
-        dirty();
+        zoomBy(screenX, screenY, Math.log(factor));
       }
 
       // ---------------------------------------------------------------- input
@@ -1902,6 +2007,8 @@
             vx: view.x,
             vy: view.y,
             moved: false,
+            farthest: 0,
+            at: performance.now(),
             type: event.pointerType,
           };
         else if (pointers.size === 2) {
@@ -1937,7 +2044,8 @@
         if (drag) {
           const dx = event.clientX - drag.x,
             dy = event.clientY - drag.y;
-          if (!drag.moved && Math.hypot(dx, dy) > (drag.type === 'touch' ? 8 : 4)) {
+          drag.farthest = Math.max(drag.farthest, Math.hypot(dx, dy));
+          if (!drag.moved && drag.farthest > clickSlop(drag.type)) {
             drag.moved = true;
             canvas.classList.add('dragging');
             showTip(null);
@@ -1972,19 +2080,43 @@
         else where.textContent = place ? `Inside · ${place}` : '';
         where.style.display = where.textContent ? '' : 'none';
       }
+      /** Whether the last press to come up was a click, which a double click needs both of. */
+      let lastRelease = { click: false, previous: null };
       function release(event) {
-        const wasDrag = drag && drag.moved;
-        const wasTap = drag && !drag.moved && pointers.size === 1;
+        const wasTap =
+          !!drag &&
+          !drag.moved &&
+          pointers.size === 1 &&
+          event.type === 'pointerup' &&
+          isClick({
+            farthest: Math.max(
+              drag.farthest,
+              Math.hypot(event.clientX - drag.x, event.clientY - drag.y),
+            ),
+            heldMs: performance.now() - drag.at,
+            pointerType: drag.type,
+          });
+        if (pointers.has(event.pointerId))
+          lastRelease = { click: wasTap, previous: { click: lastRelease.click } };
         pointers.delete(event.pointerId);
         if (pointers.size < 2) pinch = null;
         if (pointers.size === 1) {
           const [p] = [...pointers.values()];
-          drag = { x: p.x, y: p.y, vx: view.x, vy: view.y, moved: true, type: event.pointerType };
+          drag = {
+            x: p.x,
+            y: p.y,
+            vx: view.x,
+            vy: view.y,
+            moved: true,
+            farthest: Infinity,
+            at: 0,
+            type: event.pointerType,
+          };
           return;
         }
         canvas.classList.remove('dragging');
         drag = null;
-        if (wasTap && !wasDrag) {
+        if (wasTap) {
           const f = featureAt(event.clientX, event.clientY);
           if (event.pointerType === 'touch') {
             select(f);
@@ -1996,10 +2128,18 @@
           }
           const framed = selected === f;
           select(f);
-          if (framed && f.goto) flyTo(f.goto, 'go');
-          else if (f.goto && (f.kind === 'door' || f.kind === 'boat')) flyTo(f.goto, 'go');
-          else flyToFeature(f);
           showTip(null);
+          // A door or a boat is a way somewhere: through it, keeping at least this zoom.
+          if (f.goto && (framed || f.kind === 'door' || f.kind === 'boat')) {
+            flyTo(f.goto, 'go', Math.max(view.s, framingScale(f.goto, 'go')));
+            return;
+          }
+          // Anything else is zoomed in to, never out from.
+          const scale = clickFlight(view.s, framingScale(f.box, 'zoom'));
+          if (scale) {
+            flash = { f, at: performance.now() + 300 };
+            flyTo(f.box, 'zoom', scale);
+          }
         }
       }
       canvas.addEventListener('pointerup', release);
@@ -2015,23 +2155,16 @@
         'wheel',
         (event) => {
           event.preventDefault();
-          const unit = event.deltaMode === 1 ? 33 : event.deltaMode === 2 ? 400 : 1;
-          const delta = event.deltaY * unit;
-          // A pinch on a trackpad comes as a wheel with the control key held.
-          const factor = Math.exp(-delta * (event.ctrlKey ? 0.012 : 0.0022));
-          if (Math.abs(delta) < 40 && !event.ctrlKey && event.deltaMode === 0) {
-            motion = null;
-            zoomAbout(event.clientX, event.clientY, view.s * factor);
-            clampView();
-            saveHash();
-            dirty();
-          } else wheelZoom(event.clientX, event.clientY, factor);
+          const { zoom, eased } = wheelIntent(event);
+          zoomBy(event.clientX, event.clientY, zoom, eased);
           if (lastPointer) setTimeout(() => lastPointer && hover(lastPointer.x, lastPointer.y), 0);
         },
         { passive: false },
       );
       canvas.addEventListener('dblclick', (event) => {
         event.preventDefault();
+        // Only two clicks are a double click: the browser counts two quick drags as one too.
+        if (!lastRelease.click || !lastRelease.previous || !lastRelease.previous.click) return;
         wheelZoom(event.clientX, event.clientY, 2.5);
       });
       window.addEventListener('keydown', (event) => {
@@ -2049,8 +2182,11 @@
         else if (event.key === 'ArrowRight') view.x += step;
         else if (event.key === 'ArrowUp') view.y -= step;
         else if (event.key === 'ArrowDown') view.y += step;
-        else if (event.key === 'Escape') select(null);
-        else return;
+        else if (event.key === 'Escape') {
+          // Escape puts a card away first, and after that steps back out.
+          if (selected) select(null);
+          else wheelZoom(W / 2, H / 2, 0.5);
+        } else return;
         clampView();
         saveHash();
         dirty();
@@ -2271,7 +2407,7 @@
         for (let r = 0; r < LEVELS[z].rows; r++)
           for (let c = 0; c < LEVELS[z].columns; c++) pieceImage(z, c, r);
       dirty();
-      window.__sitePlan = { view, features, select, flyTo, dirty, fit };
+      window.__sitePlan = { view, features, select, flyTo, dirty, fit, pictureStats };
     </script>
   </body>
 </html>

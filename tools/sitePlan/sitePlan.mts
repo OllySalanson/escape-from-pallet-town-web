@@ -21,6 +21,7 @@ import { lowerOwnPriority } from '../lowPriority.mjs';
 import { drawWorldMap } from '../tileset/mapPicture.mts';
 import { TILE_SIZE } from '../tileset/tileSheet.mjs';
 import { buildPlanData, ANNEX_GAP } from './planData';
+import { assemblePage } from './page';
 import type { WorldMapId } from '../../src/game/worldMap';
 
 lowerOwnPriority();
@@ -185,8 +186,6 @@ for (let z = 0; ; z += 1) {
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
-/** Where the page takes its plan, however a formatter has spaced it. */
-const PLAN_SLOT = /\/\*__PLAN__\*\/\s*null/;
 const commit = (() => {
   try {
     return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim();
@@ -194,14 +193,10 @@ const commit = (() => {
     return '';
   }
 })();
-const page = readFileSync(join(here, 'viewer.html'), 'utf8').replace(PLAN_SLOT, () =>
-  JSON.stringify({
-    ...plan,
-    piece: PIECE,
-    levels,
-    made: new Date().toISOString().slice(0, 10),
-    commit,
-  }).replace(/</g, '\\u003c'),
+const page = assemblePage(
+  readFileSync(join(here, 'viewer.html'), 'utf8'),
+  readFileSync(join(here, 'viewMotion.mjs'), 'utf8'),
+  { ...plan, piece: PIECE, levels, made: new Date().toISOString().slice(0, 10), commit },
 );
 writeFileSync(join(out, 'index.html'), page);
 const count = levels.reduce(
