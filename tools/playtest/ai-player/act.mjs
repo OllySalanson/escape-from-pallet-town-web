@@ -175,7 +175,8 @@ async function start() {
   const previous = resume ? readStatus(resume) : null;
   if (resume && !previous) fail(`no run ${resume}`);
   ensureBuild();
-  const status = previous ? { ...previous, state: 'playing' } : createRun({ persona: persona ?? fail('--persona=veteran or --persona=newcomer') });
+  // A new tab's event log starts again at 1.
+  const status = previous ? { ...previous, state: 'playing', lastEvent: 0, sameFor: 0, stuck: false } : createRun({ persona: persona ?? fail('--persona=veteran or --persona=newcomer') });
   const runId = status.runId;
   const old = readSession(runId);
   const cdpPort = flags.port ? Number(flags.port) : startBrowser();
@@ -346,6 +347,8 @@ async function act(runId) {
       reloaded = true;
       status.reloads = (status.reloads ?? 0) + 1;
       status.reloadedAtAction = status.actions;
+      // A new tab's event log starts again at 1.
+      status.lastEvent = 0;
       status.browserMb = browserMb(session.browserName) ?? memory;
     }
   }
@@ -356,6 +359,13 @@ async function act(runId) {
     console.log(JSON.stringify({ result: { ok: result.ok, note: result.note }, screen, events, advice: folded.advice }, null, 1));
   } else {
     console.log(renderScreen(screen, { events, advice: folded.advice, note: result.note }));
+  }
+  // The session's clock, when the overnight runner set one, so the player keeps
+  // playing to the end of it rather than stopping early to sum up.
+  const endsAt = Number(process.env.EPTW_AI_SESSION_ENDS ?? 0);
+  if (endsAt > 0) {
+    const left = Math.round((endsAt - Date.now()) / 60_000);
+    console.log(left <= 3 ? `\nTIME IS UP: update memory.md now; this session ends in ${Math.max(0, left)} min.` : `\nSESSION: ${left} min left. Keep playing.`);
   }
   if (reloaded) {
     console.log(`\nTHE GAME WAS RELOADED to free memory (the browser was at ${memory}MB). It is on its title screen: choose CONTINUE.`);

@@ -35,7 +35,7 @@ folder holds.
 
 ```bash
 claude -p "$(cat tools/playtest/ai-player/PLAYTEST.md)" --permission-mode dontAsk \
-  --allowedTools 'Bash(tools/playtest/ai-player/act:*)' Read Write Edit
+  --allowedTools 'Bash(tools/playtest/ai-player/act:*)' Read Edit
 ```
 
 after a `start`. Or all night, alternating personas, one browser at a time,

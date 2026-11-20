@@ -21,6 +21,7 @@ act goal "jump into a raid"  # say what you are trying to do, before you try it
 act walk 102 160             # walk to a tile
 act walk THE BENCH           # walk to something named on screen
 act walk way                 # walk to where the gold arrow points
+act walk way out             # leave the room you are in
 act walk left 10             # walk one way (up/down/left/right) for up to 10 tiles
 act talk                     # press SPACE at what you face, and read what is said
 act talk up                  # face up first
@@ -115,6 +116,7 @@ Do not write down what you merely dislike. Do not write a finding twice.
 - FINISHED: write a short report into `runs/<run-id>/report.md` (how far you
   got, the five findings that matter most, where you were stuck longest), then
   `act stop finished`.
-- Out of time or context: update `memory.md` so the next session can carry on,
-  then `act stop out of time`.
+- An action says TIME IS UP (or your context is nearly full): update `memory.md`
+  so the next session can carry on, and end. The run is stopped for you.
+- Never stop early just to sum up: keep playing while there is time.
 - The game tab is gone or the browser died: `act stop broken` and say so.

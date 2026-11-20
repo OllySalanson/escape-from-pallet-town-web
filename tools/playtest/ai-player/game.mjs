@@ -101,7 +101,7 @@ export function createHands(page) {
     const field = fieldOf(screen);
     if (!field) return null;
     if (['way', 'arrow', 'objective'].includes(wanted) && field.raid?.way?.toward) {
-      return { tile: field.raid.way.toward, what: `the arrow (${field.raid.way.cue ?? 'way'})` };
+      return { tile: field.raid.way.toward, near: field.raid.way.next, what: `the arrow (${field.raid.way.cue ?? 'way'})` };
     }
     const named = [
       ...(field.raid?.exits ?? []).map((each) => ({ name: each.label, tile: each.tile, what: 'exit' })),
@@ -116,6 +116,8 @@ export function createHands(page) {
       // A thing in a room is walked to where it is used from, and faced.
       ...(field.near?.things ?? []).map((each) => ({ name: each.name, tile: each.use?.stand ?? each.tile, face: each.use?.face, what: 'thing' })),
       ...(field.near?.rim ? [{ name: 'rim', tile: field.near.rim, what: 'the' }] : []),
+      // A room is left by stepping down off its door mat.
+      ...(field.near?.exit ? [{ name: 'way out', tile: field.near.exit, leave: 'ArrowDown', what: 'the' }, { name: 'out', tile: field.near.exit, leave: 'ArrowDown', what: 'the way' }] : []),
       ...(field.near?.captions ?? []).filter((each) => each.tile).map((each) => ({ name: each.text, tile: each.tile, what: 'caption' })),
       ...(field.near?.people ?? []).map((each) => ({ name: each.pokemon ?? each.kind, tile: each.tile, what: each.kind })),
     ];
@@ -123,7 +125,7 @@ export function createHands(page) {
       named.find((each) => each.name?.toLowerCase() === wanted) ??
       named.find((each) => each.name?.toLowerCase().startsWith(wanted)) ??
       named.find((each) => each.name?.toLowerCase().includes(wanted));
-    return match ? { tile: match.tile, face: match.face, what: `${match.what} ${match.name}` } : null;
+    return match ? { tile: match.tile, face: match.face, leave: match.leave, what: `${match.what} ${match.name}` } : null;
   };
 
   /**
@@ -141,18 +143,27 @@ export function createHands(page) {
     let goal = target.tile;
     let what = target.label ?? `${goal?.x},${goal?.y}`;
     let face = null;
+    let leave = null;
     if (!goal) {
       const found = resolveLabel(screen, target.label);
       if (!found) return { ok: false, note: `nothing on screen is called "${target.label}"` };
       goal = found.tile;
       what = found.what;
       face = found.face ?? null;
+      leave = found.leave ?? null;
     }
     const arrive = async (result) => {
+      if (result.ok && leave) {
+        await press(leave, FRAMES_PER_STEP - 1);
+        const after = await settle(100);
+        const field = fieldOf(after);
+        return { ...result, note: `went out to ${field?.place ?? top(after)}`, screen: after };
+      }
       if (!result.ok || !face) return result;
       const now = fieldOf(await look());
       if (now && now.tile.x === goal.x && now.tile.y === goal.y && now.facing !== face) {
-        await press(DIRECTION_KEYS[face], 2);
+        // A press made while the figure is still turning is dropped, so the turn is let finish.
+        await press(DIRECTION_KEYS[face], 4);
         await settle(30);
       }
       return { ...result, note: `${result.note}, facing it` };
@@ -162,7 +173,13 @@ export function createHands(page) {
     while (steps < maxSteps) {
       const here = fieldOf(screen);
       if (!here) return { ok: false, steps, note: `stopped: ${interruption(screen) ?? 'the scene changed'}` };
-      const route = here.key === 'world' ? await worldRoute(goal) : await baseRoute(goal);
+      let route = here.key === 'world' ? await worldRoute(goal) : await baseRoute(goal);
+      if (route === null && target.label && ['way', 'arrow', 'objective'].includes(target.label.toLowerCase())) {
+        // The arrow's target is through a door: walk to where the arrow aims now, and on from there.
+        const aim = fieldOf(screen)?.raid?.way?.next;
+        if (aim && !(aim.x === here.tile.x && aim.y === here.tile.y)) route = await worldRoute(aim);
+        if (route && route.length === 0) return { ok: true, steps, note: `as far as the arrow goes on foot: look for a door` };
+      }
       if (route === null) return { ok: false, steps, note: `no way to ${what} from ${here.tile.x},${here.tile.y}` };
       if (route.length === 0) return arrive({ ok: true, steps, note: `at ${what}` });
       for (const key of route) {
@@ -180,9 +197,12 @@ export function createHands(page) {
         if (now.tile.x === before.x && now.tile.y === before.y) {
           // Walked into the goal itself (a person, a door, a sign): that is arriving.
           const ahead = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[key];
-          if (before.x + ahead[0] === goal.x && before.y + ahead[1] === goal.y) {
+          // Unless the goal is a spot to stand on, and somebody (the partner at heel, say) is on it.
+          if (!face && before.x + ahead[0] === goal.x && before.y + ahead[1] === goal.y) {
             return { ok: true, steps, note: `next to ${what}, facing it` };
           }
+          await step(5);
+          screen = await settle(30);
           replans += 1;
           if (replans > 6) return { ok: false, steps, note: `blocked on the way to ${what} at ${before.x},${before.y}` };
           break;
@@ -241,9 +261,16 @@ export function createHands(page) {
         screen = await settle(60);
       }
     }
+    const before = await look();
     await press('Space', 3);
     screen = await readThrough();
-    return { ok: true, note: interruption(screen) ?? 'nothing more is said', screen };
+    // A press the game was not ready for (mid-turn, mid-step) is dropped: one more try.
+    if (!interruption(screen) && screen.scenes.join() === before.scenes.join()) {
+      await step(4);
+      await press('Space', 3);
+      screen = await readThrough();
+    }
+    return { ok: true, note: interruption(screen) ?? 'the talking is over (every line is under SINCE LAST ACTION)', screen };
   };
 
   const pickIndex = (options, label) => {
@@ -255,16 +282,30 @@ export function createHands(page) {
     return index;
   };
 
-  /** Moves a cursor until `selected()` is the wanted index, trying each pair of keys in turn. */
+  /**
+   * Moves a cursor until `selected()` is the wanted index. A list moves one
+   * way and a battle menu is a grid, so each press tries the arrows in turn
+   * and keeps the first that brings the cursor closer, undoing one that does
+   * not.
+   */
+  const OPPOSITE = { ArrowRight: 'ArrowLeft', ArrowLeft: 'ArrowRight', ArrowDown: 'ArrowUp', ArrowUp: 'ArrowDown' };
   const moveCursor = async (wanted, selected) => {
-    for (const [forward, back] of [['ArrowRight', 'ArrowLeft'], ['ArrowDown', 'ArrowUp']]) {
-      for (let guard = 0; guard < 12; guard += 1) {
-        const now = await selected();
-        if (now === wanted) return true;
-        if (now === null) return false;
-        await press(now < wanted ? forward : back, 1);
-        if ((await selected()) === now) break;
+    for (let guard = 0; guard < 16; guard += 1) {
+      const now = await selected();
+      if (now === wanted) return true;
+      if (now === null || now < 0) return false;
+      const keys = now < wanted ? ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'] : ['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown'];
+      let closer = false;
+      for (const key of keys) {
+        await press(key, 1);
+        const after = await selected();
+        if (after === wanted || (after !== null && Math.abs(after - wanted) < Math.abs(now - wanted))) {
+          closer = true;
+          break;
+        }
+        if (after !== now) await press(OPPOSITE[key], 1);
       }
+      if (!closer) return false;
     }
     return (await selected()) === wanted;
   };
@@ -363,19 +404,22 @@ export function createHands(page) {
       const wantCommand = async (label) => {
         const index = pickIndex(battle.commands, label);
         if (index < 0) return false;
-        await moveCursor(index, async () => (await look()).scene.battle?.cursor ?? null);
+        if (!(await moveCursor(index, async () => (await look()).scene.battle?.cursor ?? null))) return false;
         await press('Space', 3);
         return true;
       };
       if (battle.mode === 'main') {
-        if (policy === 'run' && (await wantCommand('RUN'))) continue;
+        // RUN from a wild Pokemon, FLEE from a hunter; a trainer cannot be left.
+        if (policy === 'run' && ((await wantCommand('RUN')) || (await wantCommand('FLEE')))) continue;
         if (await wantCommand('FIGHT')) continue;
         await press('Space', 3);
         continue;
       }
       if (battle.mode === 'moves') {
         const index = pickMove(battle, policy);
-        await moveCursor(index, async () => (await look()).scene.battle?.cursor ?? null);
+        if (!(await moveCursor(index, async () => (await look()).scene.battle?.cursor ?? null))) {
+          return { ok: false, note: `could not move the cursor to ${battle.moves[index]?.name}: choose a move yourself`, said, screen };
+        }
         await press('Space', 3);
         continue;
       }

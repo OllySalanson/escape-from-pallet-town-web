@@ -71,7 +71,7 @@ const prompt = (runId) => `${readFileSync(join(here, 'PLAYTEST.md'), 'utf8')}
 ---
 
 Your run is ${runId}. It is already started and the game is on screen. Its folder is ${runDir(runId)}.
-Read ${join(runDir(runId), 'memory.md')} first if it exists. Then play. You have about ${flags['session-minutes'] ?? 60} minutes in this session; before it runs out, update memory.md.`;
+Read ${join(runDir(runId), 'memory.md')} first if it exists. Then play. Every action says how many minutes this session has left: keep playing until one says TIME IS UP - do not stop early to sum up. When it does, update memory.md and end.`;
 
 let child = null;
 let stopping = false;
@@ -121,12 +121,17 @@ async function main() {
     const args = [
       '-p', prompt(runId),
       '--permission-mode', 'dontAsk',
-      '--allowedTools', 'Bash(tools/playtest/ai-player/act:*)', 'Read', `Write(/${runDir(runId)}/**)`, `Edit(/${runDir(runId)}/**)`,
+      // An Edit rule covers every file-writing tool; a Write rule is not matched.
+      '--allowedTools', 'Bash(tools/playtest/ai-player/act:*)', 'Read', `Edit(/${runDir(runId)}/**)`,
       '--no-session-persistence', '--output-format', 'text',
     ];
     if (flags.model) args.push('--model', flags.model);
     await new Promise((done) => {
-      child = spawn('claude', args, { cwd: repo, stdio: ['ignore', 'pipe', 'pipe'], env: process.env });
+      child = spawn('claude', args, {
+        cwd: repo,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: { ...process.env, EPTW_AI_SESSION_ENDS: String(Date.now() + left) },
+      });
       const log = [];
       child.stdout.on('data', (chunk) => log.push(chunk));
       child.stderr.on('data', (chunk) => log.push(chunk));

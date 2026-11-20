@@ -5187,6 +5187,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
                 ? {
                     cue: way.cue ?? null,
                     toward: { x: Math.floor(way.mark.target.x / TILE_SIZE), y: Math.floor(way.mark.target.y / TILE_SIZE) },
+                    // The tile ahead on the walk there, which the arrow aims at: reachable on foot
+                    // even when the target is through a door.
+                    next: { x: Math.floor(way.mark.aim.x / TILE_SIZE), y: Math.floor(way.mark.aim.y / TILE_SIZE) },
                     out: way.mark.out,
                   }
                 : way.cue
