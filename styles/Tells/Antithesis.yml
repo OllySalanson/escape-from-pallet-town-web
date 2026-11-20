@@ -1,0 +1,12 @@
+# "Not X but Y", "a X, not a Y", ", never a ...": the designer's correction
+# shape. Fine once; a tell when everybody talks in it.
+extends: existence
+message: "Antithesis: '%s'. Does a person say it this way?"
+level: suggestion
+ignorecase: true
+nonword: true
+tokens:
+  - '\bnot (?:a |an |the )?\w+(?: \w+)?,? but (?:a |an |the )?\w+'
+  - '\b(?:is|was) an? \w+, not an? \w+'
+  - ', never an? \w+'
+  - '\bis a \w+(?: \w+)?, not a \w+'

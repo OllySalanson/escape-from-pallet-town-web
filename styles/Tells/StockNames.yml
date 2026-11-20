@@ -1,0 +1,22 @@
+# The names models reach for (slop-forensics' list; "Elias in the Lighthouse,
+# Again?", EMNLP 2026). None is in the game today; this keeps it that way.
+extends: existence
+message: "Stock AI name: '%s'."
+level: error
+ignorecase: false
+tokens:
+  - Elara
+  - Kael
+  - Kaelen
+  - Lyra
+  - Thorne
+  - Elias
+  - Voss
+  - Seraphina
+  - Zephyr
+  - Eldoria
+  - Aldric
+  - Alaric
+  - Silas
+  - Evelyn
+  - Mara

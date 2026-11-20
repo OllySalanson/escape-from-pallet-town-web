@@ -31,3 +31,4 @@ coverage
 # The AI playtester's own build and its runs (tools/playtest/ai-player)
 tools/playtest/ai-player/.build/
 tools/playtest/ai-player/runs/
+styles/config/grammars/

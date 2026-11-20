@@ -1,0 +1,18 @@
+# The stock comfort: the same reassurance from several people reads as one
+# writer, not a town.
+extends: existence
+message: "Stock comfort: '%s'. Is this this person's own way of saying it?"
+level: warning
+ignorecase: true
+tokens:
+  - 'that is what counts'
+  - "that's what counts"
+  - 'that is what matters'
+  - "that's what matters"
+  - 'and that matters more'
+  - 'what matters (?:most|is that)'
+  - 'you came back'
+  - 'you made it back'
+  - 'you did your best'
+  - 'no shame in'
+  - 'every journey'

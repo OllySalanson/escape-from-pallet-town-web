@@ -1,0 +1,21 @@
+# Words and phrases machine-written fiction leans on (slop-forensics,
+# vale-ai-tells), and the menu copy of a thousand generated games.
+extends: existence
+message: "Stock phrase: '%s'."
+level: warning
+ignorecase: true
+tokens:
+  - embark
+  - unleash
+  - your adventure awaits
+  - tapestry
+  - testament to
+  - a symphony of
+  - whispering woods
+  - in the heart of
+  - little did (?:they|you|he|she) know
+  - a journey of
+  - realm
+  - beacon of hope
+  - shimmering
+  - palpable
