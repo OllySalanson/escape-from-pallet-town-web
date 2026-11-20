@@ -45,6 +45,22 @@ export function describesForTest(scene: unknown): scene is DescribesForTest {
   return typeof (scene as Partial<DescribesForTest> | null)?.describeForTest === 'function';
 }
 
+/**
+ * A scene's own description, or what went wrong asking for it: a scene caught
+ * half built (between `init` and the end of `create`) is still a screen, and
+ * one bad part must not cost the whole description.
+ */
+export function sceneDescription(scene: unknown): SceneDescription {
+  if (!describesForTest(scene)) {
+    return {};
+  }
+  try {
+    return scene.describeForTest();
+  } catch (error) {
+    return { busy: 'starting', error: String(error) };
+  }
+}
+
 /** A line of canvas text on screen, where it sits in the game's own pixels. */
 export interface ScreenText {
   readonly text: string;
@@ -317,7 +333,7 @@ export function describeGame(inputs: DescribeInputs): GameDescription {
   const texts: ScreenText[] = [];
   for (const each of inputs.scenes) {
     const key = each.scene.key;
-    const own = describesForTest(each) ? each.describeForTest() : {};
+    const own = sceneDescription(each);
     const details = providesFeedbackContext(each) ? each.feedbackContext() : [];
     scene[key] = {
       ...own,

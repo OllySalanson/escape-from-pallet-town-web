@@ -4,6 +4,7 @@ import {
   describeGame,
   describesForTest,
   pressMenuControl,
+  sceneDescription,
   controlLabel,
   CONTROL_SELECTOR,
   type DocumentLike,
@@ -49,7 +50,7 @@ export function installTestReadouts<TGame extends ReadableGame>(game: TGame): TG
     const byKey = new Map(scenes.map((scene) => [scene.scene.key, scene]));
     return (key: string): SceneDescription | undefined => {
       const scene = byKey.get(key);
-      return scene && describesForTest(scene) ? scene.describeForTest() : undefined;
+      return scene && describesForTest(scene) ? sceneDescription(scene) : undefined;
     };
   };
 

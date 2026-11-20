@@ -183,4 +183,18 @@ describe('describeGame', () => {
     expect(description.lastEvent).toBe(12);
     expect(JSON.parse(JSON.stringify(description))).toEqual(description);
   });
+
+  it('describes a scene caught half built as starting, and still describes the rest', () => {
+    const broken = {
+      scene: { key: 'base' },
+      describeForTest: () => {
+        throw new TypeError('cameras is undefined');
+      },
+    };
+    const title = { scene: { key: 'title' }, describeForTest: () => ({ choices: [] }) };
+    const description = describeGame({ scenes: [broken, title], document: null, saveText: null, lastEvent: 0 });
+    expect(description.busy).toBe('starting');
+    expect(description.scene.base.error).toMatch(/cameras is undefined/);
+    expect(description.scene.title).toEqual({ choices: [] });
+  });
 });
