@@ -62,6 +62,26 @@ In either test mode `window.__escapeFromPalletTownGame__` gains:
   as fast as the machine can step it rather than in real time.
 - `resumeLoop()` - hand the loop back to the clock; the pause is not charged.
 - `loopPaused`.
+- `describe()` - the screen as plain JSON (`src/game/dev/testDescribe.ts`): the
+  running scenes, what each says about itself (`describeForTest()` on the world,
+  the harbour, the battle, the title and the raid result - where the player
+  stands, what is on screen near them, what the box says or asks, the clock,
+  the arrow, the team and the pack), every scene's feedback details, the visible
+  canvas text, the DOM menu with its controls, `busy` (a cutscene, a fight
+  queued, a warp: nothing to press yet) and how far the save is towards a
+  finished run (`dev/runProgress.ts`). Read this rather than a scene's private
+  fields: a rename breaks a driver that reads them, and the compiler names every
+  `describeForTest` it must reach.
+- `eventLog(since)` - what happened since event number `since`: moved, talked,
+  chose, battle start and end, extracted, wiped, milestone and page errors,
+  written by a watcher on every frame (`dev/testEvents.ts`), so a line said and
+  dismissed inside one `stepFrames` call is still there.
+- `pressMenu(label)` - presses the topmost DOM menu's control with that label.
+
+`ai-player/` is an AI playtester built on these: one short command per action
+(look, walk, talk, choose, fight...), run tracking, the two personas' prompt and
+an overnight runner, with `dashboard.html` beside this to watch it - see
+`ai-player/README.md`.
 
 A key event sent before `stepFrames` is processed by the first frame stepped. A
 press that is down and up again inside one frame still counts, for every key the

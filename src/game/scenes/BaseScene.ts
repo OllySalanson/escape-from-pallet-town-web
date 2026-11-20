@@ -130,6 +130,8 @@ import {
 } from '../treasure/treasureMap';
 import { BASE_TILESET, type BasePropName } from '../base/baseTileset';
 import { BASE_DOORS, doorAt, doorNamed, type BaseDoor, type BaseScreen } from '../base/doors';
+import type { SceneDescription } from '../dev/testDescribe';
+import { describeBag, describeTeam, inView, tileOf, viewTiles } from '../dev/describeParts';
 import { doorStatusLine } from '../base/doorStatus';
 import { GYM_GUIDE_REEL_QUESTION, gymGuideLines } from '../base/gymGuide';
 import { ARENA_INTRO_ENDS_ON, arenaIntroViewing } from '../cutscene/arenaIntro';
@@ -1005,6 +1007,96 @@ export class BaseScene extends Phaser.Scene {
   /** The room the player is standing in, or null in the yard. */
   public get room(): BaseRoom | null {
     return this.place?.room?.room ?? null;
+  }
+
+  /**
+   * The harbour as a program playing it reads it, in test mode only
+   * (`dev/testDescribe.ts`): where the player stands, the doors and things on
+   * screen, what the box says or asks, the hint line, and the team and vault.
+   */
+  public describeForTest(): SceneDescription {
+    const view = viewTiles(this.cameras.main.worldView, TILE_SIZE);
+    const onScreen = (tile: GridPosition): boolean => inView(tile, view);
+    const question = this.boxQuestion?.prompt ?? this.knockPrompt?.prompt;
+    const room = this.place?.room;
+    const busy = !this.ready
+      ? 'loading'
+      : this.leaving
+        ? 'leaving'
+        : this.jump
+          ? 'jumping'
+          : this.walkPlan
+            ? 'walking-on-its-own'
+            : null;
+    const stash = this.savedGame?.stash;
+    const vault = stash ? stash.listPokemon().map((stored) => stored.pokemon) : [];
+    return {
+      busy,
+      place: room ? room.room.name : (harbourPlaceAt(this.currentTile)?.name ?? null),
+      room: room?.room.id ?? null,
+      tile: tileOf(this.currentTile),
+      facing: this.facing,
+      walking: this.targetTile !== null,
+      dialogue: this.dialogBox?.visible
+        ? {
+            text: this.dialogBox.shownText.replace(/\s+/g, ' ').trim(),
+            complete: this.dialogBox.isCurrentMessageComplete,
+            boxesLeft: this.dialogBox.boxesLeft,
+          }
+        : null,
+      choice: question ? { question: question.question.join(' '), options: question.optionLabels, selected: question.selected } : null,
+      hint: this.hintText?.visible ? this.hintText.text.replace(/\s+/g, ' ').trim() : null,
+      near: {
+        doors: room
+          ? []
+          : this.doors
+              .filter((door) => door.tiles.some(onScreen))
+              .map((door) => ({ id: door.id, name: door.name, tile: tileOf(door.tiles[0]) })),
+        things: room
+          ? room.things
+              .filter((thing) => thing.tiles.some(onScreen))
+              .map((thing) => ({ name: thing.name, tile: tileOf(thing.tiles[0]), ...this.usedFrom(thing) }))
+          : [],
+        exit: room?.room.mat ? tileOf(room.room.mat) : null,
+        // THE RAID ARENA's rim, where a raid is jumped into: the nearest tile of it.
+        rim:
+          room?.room.id === 'raid-arena'
+            ? tileOf(
+                [...this.arenaRim].sort(
+                  (a, b) =>
+                    Math.abs(a.x - this.currentTile.x) + Math.abs(a.y - this.currentTile.y) -
+                    (Math.abs(b.x - this.currentTile.x) + Math.abs(b.y - this.currentTile.y)),
+                )[0] ?? this.currentTile,
+              )
+            : null,
+        captions: this.worldLabels
+          .filter((label) => label.shown() !== undefined)
+          .map((label) => ({ text: label.caption.replace(/\s+/g, ' ').trim(), tile: label.tiles[0] ? tileOf(label.tiles[0]) : null })),
+      },
+      team: describeTeam(vault.slice(0, 6)),
+      vaultPokemon: vault.length,
+      vault: stash ? describeBag(stash.listItems()) : {},
+    };
+  }
+
+  /**
+   * Where a thing in a room can be used from: the nearest open tile beside it
+   * (or beside a tile that answers for it, across a desk), and which way to
+   * face from there. Absent when nothing beside it is open.
+   */
+  private usedFrom(thing: RoomThing): { use?: { stand: GridPosition; face: Direction } } {
+    const faced = [...thing.tiles, ...(thing.alsoFaced ?? [])];
+    const steps: readonly [Direction, number, number][] = [['up', 0, -1], ['down', 0, 1], ['left', -1, 0], ['right', 1, 0]];
+    const spots = faced.flatMap((tile) =>
+      steps
+        .map(([face, dx, dy]) => ({ stand: { x: tile.x - dx, y: tile.y - dy }, face }))
+        .filter(({ stand }) => !faced.some((each) => each.x === stand.x && each.y === stand.y) && !this.isBlocked(stand)),
+    );
+    const here = this.currentTile;
+    const nearest = spots.sort(
+      (a, b) => Math.abs(a.stand.x - here.x) + Math.abs(a.stand.y - here.y) - (Math.abs(b.stand.x - here.x) + Math.abs(b.stand.y - here.y)),
+    )[0];
+    return nearest ? { use: nearest } : {};
   }
 
   /** Which room the player stands in, for a feedback message. See `feedback/feedbackContext.ts`. */

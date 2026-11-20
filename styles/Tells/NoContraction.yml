@@ -1,0 +1,37 @@
+# Speech with every contraction spelled out reads stiff in most mouths, and it
+# is a known sign of machine-written dialogue. Some characters are formal on
+# purpose; tools/vale/README.md says which.
+extends: substitution
+message: "Uncontracted: '%s' would usually be '%s' in speech."
+level: warning
+ignorecase: false
+swap:
+  '\b[Ii]t is\b': "it's"
+  '\b[Tt]hat is\b': "that's"
+  '\b[Tt]here is\b': "there's"
+  '\b[Ww]hat is\b': "what's"
+  '\b[Ww]ho is\b': "who's"
+  '\b[Hh]e is\b': "he's"
+  '\b[Ss]he is\b': "she's"
+  '\bI am\b': "I'm"
+  '\bI will\b': "I'll"
+  '\bI would\b': "I'd"
+  '\b[Yy]ou are\b': "you're"
+  '\b[Yy]ou will\b': "you'll"
+  '\b[Ww]e are\b': "we're"
+  '\b[Ww]e will\b': "we'll"
+  '\b[Tt]hey are\b': "they're"
+  '\b[Dd]o not\b': "don't"
+  '\b[Dd]oes not\b': "doesn't"
+  '\b[Dd]id not\b': "didn't"
+  '\b[Ii]s not\b': "isn't"
+  '\b[Aa]re not\b': "aren't"
+  '\b[Ww]as not\b': "wasn't"
+  '\b[Hh]as not\b': "hasn't"
+  '\b[Hh]ave not\b': "haven't"
+  '\b[Cc]annot\b': "can't"
+  '\b[Ww]ill not\b': "won't"
+  '\b[Ww]ould not\b': "wouldn't"
+  '\b[Cc]ould not\b': "couldn't"
+  '\b[Ss]hould not\b': "shouldn't"
+  '\b[Ll]et us\b': "let's"

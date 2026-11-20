@@ -1,0 +1,5 @@
+# Only what a string literal holds: the words a player reads.
+engine: tree-sitter
+scopes:
+  - expr: (string_fragment) @string
+    name: strings

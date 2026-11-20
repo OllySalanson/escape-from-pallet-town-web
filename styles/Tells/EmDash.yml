@@ -1,0 +1,7 @@
+# The captain's rule: no em dash anywhere, a plain dash instead.
+extends: existence
+message: "Em dash: use a plain dash."
+level: error
+nonword: true
+tokens:
+  - '—'

@@ -3,6 +3,7 @@ import './style.css';
 import { createGameConfig } from './game/gameConfig';
 import { isTestLabRequested } from './game/dev/testLabAccess';
 import { installTestModeControls, requestedTestMode } from './game/dev/testMode';
+import { installTestReadouts } from './game/dev/testReadouts';
 import { mountGame, unmountGame } from './game/gameLifecycle';
 import { watchViewport } from './game/display/stageScaler';
 import { installFeedbackDesk } from './game/feedback/feedbackDesk';
@@ -32,8 +33,10 @@ const testMode = requestedTestMode();
 const game = mountGame(() => {
   const created = new Phaser.Game(createGameConfig(developmentScenes, testMode));
   // The handle a driver already reaches for gains `pauseLoop`, `stepFrames` and
-  // `resumeLoop` - and only in test mode, so nothing else can stop the game.
-  return testMode === 'off' ? created : installTestModeControls(created);
+  // `resumeLoop`, and `describe()`, `eventLog()` and `pressMenu()` for a program
+  // that plays it (`dev/testReadouts.ts`) - and only in test mode, so nothing
+  // else can stop or read the game.
+  return testMode === 'off' ? created : installTestReadouts(installTestModeControls(created));
 });
 const stopWatchingViewport = watchViewport(game);
 // The FEEDBACK tab and the F key, on every screen. See `feedback/feedbackDesk.ts`.

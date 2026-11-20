@@ -14,6 +14,8 @@ import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose, cleanLa
 
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
+import type { SceneDescription } from '../dev/testDescribe';
+import { describeBag, describeTeam, inView, tileOf, viewTiles } from '../dev/describeParts';
 import {
   nextTileFromDirection,
   planNextGridStep,
@@ -5083,6 +5085,138 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           ]
         : []),
     ];
+  }
+
+  /**
+   * The raid as a program playing it reads it, in test mode only
+   * (`dev/testDescribe.ts`): where the player stands, what is on screen near
+   * them, what the box says, the clock, the way the arrow points, the team and
+   * the pack. Only what a player could see or has been told - the arrow's
+   * target, the exits' captions - and never the run plan's hidden loot.
+   */
+  public describeForTest(): SceneDescription {
+    const session = this.runSession;
+    const snapshot = session?.manager.snapshot();
+    const view = viewTiles(this.cameras.main.worldView, TILE_SIZE);
+    const onScreen = (tile: GridPosition): boolean => inView(tile, view);
+    const way = this.raidWay();
+    const busy = this.cutscene
+      ? 'cutscene'
+      : this.isWarping
+        ? 'warping'
+        : this.pendingTrainerBattle || this.pendingWildBattle
+          ? 'fight-queued'
+          : this.fishing
+            ? 'fishing'
+            : this.pendingHubTransition
+              ? 'leaving'
+              : null;
+    const people = this.currentMap.entities.flatMap((entity) => {
+      const at = this.entityHeldTiles(entity)[0];
+      if (!at || !onScreen(at)) {
+        return [];
+      }
+      const kind = entity.kind === 'sign'
+        ? 'sign'
+        : entity.boulder
+          ? 'boulder'
+          : entity.barrier
+            ? 'barrier'
+            : entity.berry
+              ? 'berry-tree'
+              : entity.pokemon
+                ? 'pokemon'
+                : 'person';
+      return [{ kind, tile: tileOf(at), ...(entity.pokemon ? { pokemon: entity.pokemon } : {}) }];
+    });
+    const trainers = this.trainersForCurrentMap()
+      .filter((encounter) => onScreen(encounter.position))
+      .map((encounter) => ({
+        name: encounter.trainer.name,
+        tile: tileOf(encounter.position),
+        beaten: this.defeatedTrainerIds.has(encounter.trainer.id),
+        ...(encounter.bossId ? { boss: encounter.bossId } : {}),
+      }));
+    const loot = this.lootForCurrentMap()
+      .filter((piece) => this.lootSprites.has(piece.id) && !this.collectedLootIds.has(piece.id) && onScreen(piece.position))
+      .map((piece) => ({ item: getItemById(piece.itemId)?.displayName ?? piece.itemId, tile: tileOf(piece.position) }));
+    const landmarks = this.currentMap.pois
+      .filter((poi) => onScreen(poi.position) && !(this.activatedPoiIds.has(poi.id) && this.piecesLeftIn(poi) === 0))
+      .map((poi) => ({ label: poi.label, tile: tileOf(poi.position), searched: this.activatedPoiIds.has(poi.id) }));
+    const captions = this.worldLabels
+      .filter((label) => label.shown() !== undefined)
+      .map((label) => ({ text: label.caption.replace(/\s+/g, ' ').trim(), tile: label.tiles[0] ? tileOf(label.tiles[0]) : null }));
+    const hunters = [
+      ...(this.isHunterOnCurrentMap() && this.hunterState.position ? [tileOf(this.hunterState.position)] : []),
+      ...(this.hunterPackHere()?.hunters ?? []).map((hunter) => tileOf(hunter.position)),
+    ].filter(onScreen);
+    return {
+      busy,
+      map: this.currentMap.id,
+      mapName: worldMapName(this.currentMap.id),
+      place: this.placeName,
+      inside: this.currentInterior?.label ?? null,
+      tile: tileOf(this.currentTile),
+      facing: this.facing,
+      walking: this.targetTile !== null,
+      dialogue: this.dialogBox.visible
+        ? {
+            text: this.dialogBox.shownText.replace(/\s+/g, ' ').trim(),
+            complete: this.dialogBox.isCurrentMessageComplete,
+            boxesLeft: this.dialogBox.boxesLeft,
+          }
+        : null,
+      choice: this.trainerPrompt
+        ? { question: this.trainerPrompt.question.join(' '), options: this.trainerPrompt.optionLabels, selected: this.trainerPrompt.selected }
+        : null,
+      raid:
+        session && snapshot
+          ? {
+              elapsedMs: Math.round(snapshot.elapsedMs),
+              remainingMs: Math.round(snapshot.remainingMs),
+              enraged: session.manager.isEnraged,
+              contract: session.plan?.contract?.name ?? null,
+              stopsLeft: session.plan?.contract
+                ? remainingMarkers(session.plan.contract, snapshot.contractSteps).map((marker) => ({
+                    label: marker.label.replace(/\s+/g, ' ').trim(),
+                    ...(this.currentMap.id === session.plan?.contract?.mapId ? { tile: tileOf(marker.position) } : {}),
+                  }))
+                : [],
+              // The mark is in world pixels, at a tile's centre.
+              way: way.mark
+                ? {
+                    cue: way.cue ?? null,
+                    toward: { x: Math.floor(way.mark.target.x / TILE_SIZE), y: Math.floor(way.mark.target.y / TILE_SIZE) },
+                    // The tile ahead on the walk there, which the arrow aims at: reachable on foot
+                    // even when the target is through a door.
+                    next: { x: Math.floor(way.mark.aim.x / TILE_SIZE), y: Math.floor(way.mark.aim.y / TILE_SIZE) },
+                    out: way.mark.out,
+                  }
+                : way.cue
+                  ? { cue: way.cue }
+                  : null,
+              exits: (session.plan?.extractionPoints ?? [])
+                .filter((point) => point.mapId === this.currentMap.id)
+                .map((point) => ({
+                  label: point.label,
+                  tile: tileOf(point.position),
+                  open: this.isExtractionOpen(point),
+                  steps: Math.abs(point.position.x - this.currentTile.x) + Math.abs(point.position.y - this.currentTile.y),
+                }))
+                .sort((a, b) => a.steps - b.steps),
+              hunter: {
+                coming: this.hunterState.spawned && !this.hunterState.defeated,
+                beaten: this.hunterState.defeated,
+                ...(hunters.length > 0 ? { here: hunters } : {}),
+              },
+              found: snapshot.foundItems.map((stack) => `${getItemById(stack.itemId)?.displayName ?? stack.itemId} x${stack.quantity}`),
+              caught: snapshot.caughtPokemon.map((pokemon) => pokemon.name),
+            }
+          : null,
+      near: { people, trainers, loot, landmarks, captions },
+      team: describeTeam(this.party.pokemon),
+      bag: describeBag(this.bag.toJSON()),
+    };
   }
 
   /** The weather of the district the player is standing in, or null. */

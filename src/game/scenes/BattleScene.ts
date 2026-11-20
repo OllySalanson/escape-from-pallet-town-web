@@ -7,6 +7,7 @@ import { MUTE_KEY } from '../input/keyBindings';
 import { setFightForShow } from '../dev/playtestMode';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
+import type { SceneDescription } from '../dev/testDescribe';
 import { homeAfterRaid } from '../maker/tryIt';
 import {
   Pokemon,
@@ -169,6 +170,7 @@ import {
   combatPresentationSteps,
   describeItemGuidance,
   describeMoveGuidance,
+  effectivenessLabel,
   escapeAbilityMessage,
   escapeItemMessage,
   eventToMessage,
@@ -704,6 +706,57 @@ export class BattleScene extends Phaser.Scene {
       { label: 'Yours', value: side(this.state.player.pokemon) },
       { label: 'Theirs', value: side(this.state.enemy.pokemon) },
     ];
+  }
+
+  /**
+   * The fight as a program playing it reads it, in test mode only
+   * (`dev/testDescribe.ts`): the menu and where its cursor is, the line on the
+   * box, and both sides as the screen shows them.
+   */
+  public describeForTest(): SceneDescription {
+    if (!this.state) {
+      return { busy: 'starting' };
+    }
+    const cursor = this.mode === 'make-room' ? this.selectedCommand - this.makeRoomPage * 6 : this.selectedCommand;
+    const side = (unit: BattleCombatant | null) =>
+      unit
+        ? {
+            name: unit.pokemon.name,
+            level: unit.pokemon.level,
+            hp: unit.currentHp,
+            maxHp: unit.pokemon.maxHp,
+            status: unit.currentHp <= 0 ? 'fainted' : (unit.primaryStatus ?? null),
+          }
+        : null;
+    const commands = this.commandTexts.filter((text) => text.visible).map((text) => text.text.replace(/\s+/g, ' ').trim());
+    return {
+      mode: this.mode,
+      commands,
+      cursor: commands.length > 0 ? cursor : null,
+      message: this.dialog?.visible
+        ? { text: this.dialog.shownText.replace(/\s+/g, ' ').trim(), complete: this.dialog.isCurrentMessageComplete }
+        : null,
+      trainer: this.trainer?.name ?? null,
+      outcome: this.state.outcome,
+      yours: side(this.state.player),
+      yoursPartner: side(this.state.playerPartner),
+      moves: this.state.player.moves.map((move) => ({
+        name: move.base.name,
+        type: move.base.type,
+        power: move.base.power,
+        pp: move.pp,
+        maxPp: move.base.pp,
+        against: effectivenessLabel(
+          describeMoveGuidance(move, getCombatantTypes(this.state.player), {
+            name: this.state.enemy.pokemon.name,
+            types: getCombatantTypes(this.state.enemy),
+          }).effectiveness,
+        ),
+      })),
+      foe: side(this.state.enemy),
+      foePartner: side(this.state.enemyPartner),
+      foesLeft: this.trainer ? this.trainer.party.filter((pokemon) => !pokemon.isFainted).length : null,
+    };
   }
 
   /**

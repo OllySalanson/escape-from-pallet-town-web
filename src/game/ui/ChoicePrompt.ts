@@ -48,12 +48,14 @@ const UNSELECTED_COLOR = '#94a3b8';
 export class ChoicePrompt extends Phaser.GameObjects.Container {
   private readonly optionTexts: Phaser.GameObjects.Text[];
   private readonly onChoose: (index: number) => void;
+  private readonly questionLines: readonly string[];
   private selectedIndex: number;
 
   public constructor(scene: Phaser.Scene, options: ChoicePromptOptions) {
     super(scene, options.x, options.y);
     const padding = options.padding ?? DEFAULT_PADDING;
     this.onChoose = options.onChoose;
+    this.questionLines = options.lines;
     this.selectedIndex = options.selected ?? 0;
     const clicksFrom = options.clickArmingMs ? scene.time.now + options.clickArmingMs : 0;
     const armed = (): boolean => clicksFrom === 0 || scene.time.now >= clicksFrom;
@@ -146,6 +148,16 @@ export class ChoicePrompt extends Phaser.GameObjects.Container {
 
   public get selected(): number {
     return this.selectedIndex;
+  }
+
+  /** What is being asked, as the lines above the answers read: for test mode's `describe()`. */
+  public get question(): readonly string[] {
+    return this.questionLines;
+  }
+
+  /** The answers as the player reads them, without the cursor: for test mode's `describe()`. */
+  public get optionLabels(): readonly string[] {
+    return this.optionTexts.map((text) => text.text.replace(/^[▶ ]{2}/, ''));
   }
 
   private select(index: number): void {

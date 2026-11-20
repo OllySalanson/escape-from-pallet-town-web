@@ -49,6 +49,7 @@ import { characterDesignTextureKey, getCharacterDesign } from '../world/characte
 import { CHARACTER_FEET_PIXEL_Y, CHARACTER_FRAME_HEIGHT } from '../playerFrames';
 import { lookTexture, lookWalkKey } from '../look/lookTexture';
 import { isPartnerSpecies, partnerFrame, partnerTextureKey, PARTNER_FEET_PIXEL_Y, type PartnerSpeciesId } from '../base/partner';
+import type { SceneDescription } from '../dev/testDescribe';
 
 /**
  * The first screen anyone sees, and the living version of the front page's
@@ -154,6 +155,20 @@ export class TitleScene extends Phaser.Scene {
   /** Where the logo was put on screen, for the glint the shine leaves on it. */
   private logoAt = { x: 0, y: 0 };
   private cursor: { graphics: Phaser.GameObjects.Graphics; x: number; y: number } | null = null;
+
+  /** The title's menu and where its cursor is, for test mode's `describe()` (`dev/testDescribe.ts`). */
+  public describeForTest(): SceneDescription {
+    return {
+      question: this.menu.question ?? null,
+      choices: this.menu.choices.map((choice) => ({
+        label: choice.label,
+        ...(choice.detail ? { detail: choice.detail } : {}),
+        ...(choice.enabled ? {} : { off: true }),
+        ...(choice.id === this.choice ? { cursor: true } : {}),
+      })),
+      naming: this.naming !== null,
+    };
+  }
 
   public constructor() {
     super('title');

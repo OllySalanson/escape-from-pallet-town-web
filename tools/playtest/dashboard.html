@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Playtesters</title>
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --card: #ffffff;
+    --ink: #1d1d1f;
+    --soft: #5c5c66;
+    --line: #dedad0;
+    --good: #1f7a3d;
+    --good-bg: #dff3e4;
+    --warn: #9a5b00;
+    --warn-bg: #fdf0d5;
+    --bad: #b3261e;
+    --bad-bg: #fbe3e1;
+    --bar: #e7e3d8;
+    --fill: #2f6fdb;
+    --finish: #d29a00;
+    --bug: #b3261e;
+    --confusing: #9a5b00;
+    --aifeel: #6b3fb5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16171b;
+      --card: #202127;
+      --ink: #f2f2f4;
+      --soft: #a8a8b3;
+      --line: #33343c;
+      --good: #6fd48f;
+      --good-bg: #183323;
+      --warn: #f3bf5c;
+      --warn-bg: #3a2c12;
+      --bad: #ff8a80;
+      --bad-bg: #3d1c1a;
+      --bar: #33343c;
+      --fill: #6e9ef5;
+      --finish: #f3c74d;
+      --bug: #ff8a80;
+      --confusing: #f3bf5c;
+      --aifeel: #c4a5ff;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16171b; --card: #202127; --ink: #f2f2f4; --soft: #a8a8b3; --line: #33343c;
+    --good: #6fd48f; --good-bg: #183323; --warn: #f3bf5c; --warn-bg: #3a2c12; --bad: #ff8a80; --bad-bg: #3d1c1a;
+    --bar: #33343c; --fill: #6e9ef5; --finish: #f3c74d; --bug: #ff8a80; --confusing: #f3bf5c; --aifeel: #c4a5ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 20px/1.45 Verdana, Tahoma, "Segoe UI", sans-serif;
+    letter-spacing: 0.02em;
+    word-spacing: 0.08em;
+  }
+  main { max-width: 1280px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 30px; margin: 0; }
+  h2 { font-size: 24px; margin: 0 0 12px; }
+  .top { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .verdict { font-size: 24px; font-weight: bold; padding: 10px 18px; border-radius: 12px; }
+  .verdict.good { background: var(--good-bg); color: var(--good); }
+  .verdict.warn { background: var(--warn-bg); color: var(--warn); }
+  .verdict.bad { background: var(--bad-bg); color: var(--bad); }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; min-width: 0; }
+  .big { font-size: 34px; font-weight: bold; line-height: 1.1; }
+  .label { color: var(--soft); font-size: 17px; }
+  .meter { height: 22px; background: var(--bar); border-radius: 11px; overflow: hidden; margin: 8px 0 4px; }
+  .meter > div { height: 100%; background: var(--fill); border-radius: 11px; }
+  .meter.high > div { background: var(--bad); }
+  .meter.mid > div { background: var(--warn); }
+  .who { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .steps { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 14px 0 6px; }
+  .step { height: 26px; border-radius: 7px; background: var(--bar); position: relative; }
+  .step.done { background: var(--fill); }
+  .step.finish { outline: 3px solid var(--finish); outline-offset: -3px; }
+  .step.finish.done { background: var(--finish); outline: none; }
+  .milestones { list-style: none; padding: 0; margin: 10px 0 0; font-size: 18px; }
+  .milestones li { padding: 2px 0; }
+  .milestones .done { color: var(--soft); text-decoration: line-through; }
+  .now { font-size: 22px; font-weight: bold; margin: 12px 0 4px; overflow-wrap: anywhere; }
+  .ago { font-size: 22px; font-weight: bold; }
+  .ago.red { color: var(--bad); }
+  .ago.amber { color: var(--warn); }
+  .pill { display: inline-block; font-size: 17px; font-weight: bold; padding: 3px 12px; border-radius: 999px; margin: 6px 8px 0 0; background: var(--bar); }
+  .pill.red { background: var(--bad-bg); color: var(--bad); }
+  .numbers { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 12px; font-size: 19px; }
+  .numbers b { font-size: 26px; }
+  .findings { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .column h2 { display: flex; justify-content: space-between; }
+  .column.bug h2 { color: var(--bug); }
+  .column.confusing h2 { color: var(--confusing); }
+  .column.ai-feel h2 { color: var(--aifeel); }
+  .finding { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .finding img { width: 120px; height: 77px; object-fit: cover; border-radius: 8px; image-rendering: pixelated; border: 1px solid var(--line); background: #000; }
+  .finding .noimg { width: 120px; height: 77px; border-radius: 8px; background: var(--bar); }
+  .finding p { margin: 0; font-size: 18px; overflow-wrap: anywhere; }
+  .finding .meta { color: var(--soft); font-size: 15px; margin-top: 4px; }
+  .empty { color: var(--soft); font-size: 18px; }
+  a { color: inherit; }
+  @media (max-width: 560px) {
+    body { font-size: 18px; }
+    .big { font-size: 28px; }
+    .finding { grid-template-columns: 90px 1fr; }
+    .finding img, .finding .noimg { width: 90px; height: 58px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <h1>AI Playtesters</h1>
+    <div id="verdict" class="verdict warn">Loading</div>
+  </div>
+  <div class="row">
+    <div class="card"><div class="label">Memory</div><div class="big" id="mem">-</div><div class="meter" id="memBar"><div style="width:0"></div></div><div class="label" id="memNote"></div></div>
+    <div class="card"><div class="label">Processor</div><div class="big" id="cpu">-</div><div class="meter" id="cpuBar"><div style="width:0"></div></div><div class="label" id="cpuNote"></div></div>
+    <div class="card"><div class="label">Night shift</div><div class="big" id="shift">-</div><div class="label" id="shiftNote"></div></div>
+  </div>
+  <div class="row" id="players"></div>
+  <div class="findings" id="findings"></div>
+  <p class="label" id="updated"></p>
+</main>
+<script>
+  const REFRESH_MS = 30000;
+  /** Over this long since its last action, a playtester is shown red. */
+  const STALE_MS = 5 * 60 * 1000;
+  const NAMES = { veteran: 'Veteran', newcomer: 'Newcomer' };
+  const KINDS = [
+    ['bug', 'Bugs'],
+    ['confusing', 'Confusing'],
+    ['ai-feel', 'AI feel'],
+  ];
+
+  const el = (tag, attrs = {}, ...children) => {
+    const node = document.createElement(tag);
+    for (const [key, value] of Object.entries(attrs)) {
+      if (key === 'class') node.className = value;
+      else if (key === 'style') node.setAttribute('style', value);
+      else node.setAttribute(key, value);
+    }
+    for (const child of children.flat()) {
+      if (child === null || child === undefined || child === false) continue;
+      node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+    }
+    return node;
+  };
+
+  const ago = (ms) => {
+    const s = Math.max(0, Math.round(ms / 1000));
+    if (s < 60) return `${s} s ago`;
+    const m = Math.round(s / 60);
+    if (m < 60) return `${m} min ago`;
+    return `${Math.floor(m / 60)} h ${m % 60} min ago`;
+  };
+  const span = (ms) => {
+    const m = Math.round(ms / 60000);
+    return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
+  };
+  const clockOf = (ms) => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const meter = (id, percent) => {
+    const bar = document.getElementById(id);
+    bar.className = `meter${percent >= 85 ? ' high' : percent >= 70 ? ' mid' : ''}`;
+    bar.firstElementChild.style.width = `${Math.min(100, percent)}%`;
+  };
+
+  function renderMachine(state) {
+    const { machine, overnight, now } = state;
+    document.getElementById('mem').textContent = `${machine.usedPercent}% used`;
+    document.getElementById('memNote').textContent = `${(machine.freeMb / 1024).toFixed(1)} GB free of ${(machine.totalMb / 1024).toFixed(1)} GB`;
+    meter('memBar', machine.usedPercent);
+    document.getElementById('cpu').textContent = `${machine.processorPercent}% busy`;
+    document.getElementById('cpuNote').textContent = `load ${machine.load} on ${machine.cores} cores`;
+    meter('cpuBar', machine.processorPercent);
+
+    const verdict = document.getElementById('verdict');
+    const heavy = machine.usedPercent >= 85 || machine.processorPercent >= 85;
+    const busy = machine.usedPercent >= 70 || machine.processorPercent >= 70;
+    verdict.className = `verdict ${heavy ? 'bad' : busy ? 'warn' : 'good'}`;
+    verdict.textContent = heavy ? 'Machine is struggling' : busy ? 'Machine is busy' : 'Machine is fine';
+
+    const shift = document.getElementById('shift');
+    const note = document.getElementById('shiftNote');
+    const alive = overnight && overnight.state !== 'done' && overnight.state !== 'stopped' && now - overnight.updatedAt < 3 * 60 * 60 * 1000;
+    if (!overnight) {
+      shift.textContent = 'Not started';
+      note.textContent = '';
+    } else if (alive && overnight.state === 'waiting') {
+      shift.textContent = 'Waiting';
+      note.textContent = overnight.doing ?? '';
+    } else if (alive) {
+      shift.textContent = `Until ${clockOf(overnight.deadline)}`;
+      note.textContent = overnight.doing ?? '';
+    } else {
+      shift.textContent = overnight.state === 'done' ? 'Finished' : 'Stopped';
+      note.textContent = overnight.doing ?? '';
+    }
+  }
+
+  function renderPlayer(entry, now) {
+    const run = entry.current;
+    const card = el('div', { class: 'card' });
+    card.append(el('div', { class: 'who' }, el('div', { class: 'big' }, NAMES[entry.persona] ?? entry.persona), run ? el('div', { class: 'label' }, run.state === 'playing' ? `playing for ${span(now - run.startedAt)}` : run.state) : null));
+    if (!run) {
+      card.append(el('p', { class: 'empty' }, 'No run yet'));
+      return card;
+    }
+    const milestones = run.milestones ?? [];
+    card.append(el('div', { class: 'steps' }, milestones.map((m) => el('div', { class: `step${m.done ? ' done' : ''}${m.finish ? ' finish' : ''}`, title: m.label }))));
+    card.append(el('div', { class: 'label' }, `${run.milestonesDone ?? 0} of ${run.milestonesTotal || milestones.length || 7} steps${run.finished ? ' - FINISHED' : ''}`));
+    const sinceAction = now - (run.lastActionAt ?? run.startedAt);
+    const playing = run.state === 'playing';
+    const red = playing && (run.stuck || sinceAction > STALE_MS);
+    card.append(el('div', { class: 'now' }, playing ? (run.goal ?? run.doing ?? '-') : (run.doing ?? run.state)));
+    card.append(el('div', { class: `ago${red ? ' red' : sinceAction > STALE_MS / 2 && playing ? ' amber' : ''}` }, `Last action ${ago(sinceAction)}`));
+    if (run.stuck) card.append(el('span', { class: 'pill red' }, 'STUCK'));
+    if (run.stuckCount) card.append(el('span', { class: 'pill' }, `stuck ${run.stuckCount}x`));
+    card.append(el('div', { class: 'numbers' },
+      el('span', {}, el('b', {}, entry.raids), ' raids'),
+      el('span', {}, el('b', {}, entry.extractions), ' out'),
+      el('span', {}, el('b', {}, entry.wipes), ' lost'),
+      el('span', {}, el('b', {}, entry.runs), entry.runs === 1 ? ' run' : ' runs'),
+      el('span', {}, el('b', {}, entry.findings), entry.findings === 1 ? ' finding' : ' findings'),
+      playing && run.browserMb ? el('span', {}, el('b', {}, (run.browserMb / 1024).toFixed(1)), ' GB browser') : null,
+    ));
+    card.append(el('ul', { class: 'milestones' }, milestones.map((m) => el('li', { class: m.done ? 'done' : '' }, `${m.finish ? '★ ' : ''}${m.label}${m.count && !m.done ? ` (${m.count.have}/${m.count.need})` : ''}`))));
+    return card;
+  }
+
+  function renderFindings(findings, now) {
+    return KINDS.map(([kind, title]) => {
+      const group = findings[kind] ?? { count: 0, newest: [] };
+      const column = el('div', { class: `card column ${kind}` }, el('h2', {}, el('span', {}, title), el('span', {}, group.count)));
+      if (group.newest.length === 0) column.append(el('p', { class: 'empty' }, 'None yet'));
+      for (const finding of group.newest) {
+        const picture = finding.shot
+          ? el('a', { href: finding.shot, target: '_blank' }, el('img', { src: finding.shot, alt: '', loading: 'lazy' }))
+          : el('div', { class: 'noimg' });
+        column.append(el('div', { class: 'finding' }, picture, el('div', {},
+          el('p', {}, finding.text),
+          el('div', { class: 'meta' }, `${NAMES[finding.persona] ?? finding.persona} · ${ago(now - finding.at)}${finding.where ? ` · ${finding.where}` : ''}`),
+        )));
+      }
+      return column;
+    });
+  }
+
+  async function refresh() {
+    try {
+      const state = await (await fetch('/api/state', { cache: 'no-store' })).json();
+      renderMachine(state);
+      document.getElementById('players').replaceChildren(...state.personas.map((entry) => renderPlayer(entry, state.now)));
+      document.getElementById('findings').replaceChildren(...renderFindings(state.findings, state.now));
+      document.getElementById('updated').textContent = `Updated ${clockOf(state.now)}`;
+    } catch (error) {
+      const verdict = document.getElementById('verdict');
+      verdict.className = 'verdict bad';
+      verdict.textContent = 'Dashboard server is not answering';
+    }
+  }
+
+  refresh();
+  setInterval(refresh, REFRESH_MS);
+</script>
+</body>
+</html>

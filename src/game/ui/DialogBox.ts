@@ -279,6 +279,11 @@ export class DialogBox extends Phaser.GameObjects.Container {
     return (this.typewriter?.isComplete ?? false) && this.heldMs <= 0;
   }
 
+  /** The words in the box now, as far as they have typed: for test mode's `describe()`. */
+  public get shownText(): string {
+    return this.visible ? this.textObject.text : '';
+  }
+
   public get isDone(): boolean {
     return this.typewriter?.isDone ?? true;
   }
