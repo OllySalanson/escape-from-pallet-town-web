@@ -228,6 +228,7 @@
       el('span', {}, el('b', {}, entry.wipes), ' lost'),
       el('span', {}, el('b', {}, entry.runs), entry.runs === 1 ? ' run' : ' runs'),
       el('span', {}, el('b', {}, entry.findings), entry.findings === 1 ? ' finding' : ' findings'),
+      playing && run.browserMb ? el('span', {}, el('b', {}, (run.browserMb / 1024).toFixed(1)), ' GB browser') : null,
     ));
     card.append(el('ul', { class: 'milestones' }, milestones.map((m) => el('li', { class: m.done ? 'done' : '' }, `${m.finish ? '★ ' : ''}${m.label}${m.count && !m.done ? ` (${m.count.have}/${m.count.need})` : ''}`))));
     return card;

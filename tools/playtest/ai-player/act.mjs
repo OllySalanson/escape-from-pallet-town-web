@@ -54,6 +54,14 @@ const FM_BROWSER = process.env.EPTW_AI_FM_BROWSER ?? '/home/ollys/firstmate/data
 const BROWSER_NAME = process.env.EPTW_AI_BROWSER_NAME ?? 'eptw-ai-player';
 /** The browser helper stops a browser nobody has asked for in 30 minutes; ask well inside that. */
 const TOUCH_BROWSER_EVERY_MS = 10 * 60_000;
+/**
+ * The machine's watchdog stops a browser past about 1.5GB. A fresh tab in a
+ * raid on Greystone Vale is about 1.27GB and a long session grows past 1.6GB,
+ * so over this the tab is reloaded from its save - only where nothing is lost
+ * by it: the harbour, the title, a result screen.
+ */
+const RELOAD_OVER_MB = Number(process.env.EPTW_AI_RELOAD_MB ?? 1300);
+const RELOAD_SAFE_SCENES = new Set(['base', 'title', 'hub', 'extraction']);
 
 const argv = process.argv.slice(2);
 const flags = Object.fromEntries(argv.filter((a) => a.startsWith('--')).map((a) => {
@@ -316,6 +324,24 @@ async function act(runId) {
   // The save, copied out after every action, so a run can be picked up again in a new browser.
   const save = await page.evaluate(`localStorage.getItem(${JSON.stringify(SAVE_KEY)})`);
   if (save) writeFileSync(join(runDir(runId), 'save.json'), save);
+  // Memory, and a reload from the save when it has grown past what the watchdog allows.
+  const memory = session.browserName ? browserMb(session.browserName) : null;
+  let reloaded = false;
+  if (memory !== null) {
+    status.browserMb = memory;
+    const top = screen.scenes[screen.scenes.length - 1];
+    if (memory > RELOAD_OVER_MB && RELOAD_SAFE_SCENES.has(top) && !screen.scenes.includes('world')) {
+      await page.send('Page.navigate', { url: session.url });
+      for (let i = 0; i < 200; i += 1) {
+        if (await page.evaluate(`typeof ${GAME}?.describe === 'function'`).catch(() => false)) break;
+        await sleep(100);
+      }
+      await page.evaluate(`${GAME}.pauseLoop()`);
+      await hands.settle(100);
+      reloaded = true;
+      status.reloads = (status.reloads ?? 0) + 1;
+    }
+  }
   writeStatus(status);
   recordAction(runId, { at: Date.now(), ms: Date.now() - startedAt, action: command, args: words, ok: result.ok, note: result.note, events: events.length, where: summaryOf(screen) });
   await page.close();
@@ -323,6 +349,28 @@ async function act(runId) {
     console.log(JSON.stringify({ result: { ok: result.ok, note: result.note }, screen, events, advice: folded.advice }, null, 1));
   } else {
     console.log(renderScreen(screen, { events, advice: folded.advice, note: result.note }));
+  }
+  if (reloaded) {
+    console.log(`\nTHE GAME WAS RELOADED to free memory (the browser was at ${memory}MB). It is on its title screen: choose CONTINUE.`);
+  }
+}
+
+/** A browser's memory as the kernel shares it out (PSS), summed over its process group, in MB. */
+export function browserMb(name = BROWSER_NAME) {
+  try {
+    const leader = Number(readFileSync(`/tmp/fm-browser/${name}/pid`, 'utf8').trim());
+    const listed = spawnSync('ps', ['-o', 'pid=', '-g', String(leader)], { encoding: 'utf8' }).stdout.split('\n').map(Number).filter(Boolean);
+    let kb = 0;
+    for (const pid of listed) {
+      try {
+        kb += Number(/^Pss:\s+(\d+)/m.exec(readFileSync(`/proc/${pid}/smaps_rollup`, 'utf8'))?.[1] ?? 0);
+      } catch {
+        // Gone between the listing and the read.
+      }
+    }
+    return Math.round(kb / 1024);
+  } catch {
+    return null;
   }
 }
 

@@ -5178,7 +5178,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
               contract: session.plan?.contract?.name ?? null,
               stopsLeft: session.plan?.contract
                 ? remainingMarkers(session.plan.contract, snapshot.contractSteps).map((marker) => ({
-                    label: marker.label,
+                    label: marker.label.replace(/\s+/g, ' ').trim(),
                     ...(this.currentMap.id === session.plan?.contract?.mapId ? { tile: tileOf(marker.position) } : {}),
                   }))
                 : [],
