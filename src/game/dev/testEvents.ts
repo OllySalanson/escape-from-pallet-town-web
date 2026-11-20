@@ -201,7 +201,8 @@ export class EventWatcher {
   }
 
   private dialogue(key: string, scene: SceneDescription | undefined): void {
-    const dialogue = scene?.dialogue as Dialogue | null | undefined;
+    // A battle's box is its `message`; everywhere else it is `dialogue`.
+    const dialogue = (scene?.dialogue ?? scene?.message) as Dialogue | null | undefined;
     const text = dialogue?.complete && dialogue.text ? dialogue.text : '';
     if (text && this.said.get(key) !== text) {
       this.log.record('talked', { scene: key, text, ...(dialogue?.speaker ? { speaker: dialogue.speaker } : {}) });

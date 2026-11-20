@@ -236,8 +236,28 @@ function processGroupCpuSeconds(groupId) {
  */
 export const PROJECT_URLS = ['*supabase.co*'];
 
-async function openPage(port, url, window, { save, init, project = false } = {}) {
+async function openPage(port, url, window, options = {}) {
   const target = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json();
+  return connectPage(port, target, window, url, options);
+}
+
+/**
+ * A tab that is already open - one a driver opened and left, so a later
+ * process can carry on playing it: `tools/playtest/ai-player` is one short
+ * command per action, and the game stays where it was between them. Nothing
+ * is navigated or reloaded; `close()` drops the connection and leaves the tab.
+ */
+export async function reattachPage(port, targetId, { window = LOGIC_WINDOW } = {}) {
+  const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+  const target = targets.find((each) => each.id === targetId);
+  if (!target) {
+    throw new Error(`no tab ${targetId} in the browser on port ${port}`);
+  }
+  const page = await connectPage(port, target, window, null, {});
+  return { ...page, close: page.disconnect };
+}
+
+async function connectPage(port, target, window, url, { save, init, project = false } = {}) {
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
     socket.addEventListener('open', resolve, { once: true });
@@ -281,7 +301,9 @@ async function openPage(port, url, window, { save, init, project = false } = {})
     await send('Network.enable');
     await send('Network.setBlockedURLs', { urls: PROJECT_URLS });
   }
-  await send('Emulation.setDeviceMetricsOverride', { ...window, deviceScaleFactor: 1, mobile: false });
+  if (url !== null) {
+    await send('Emulation.setDeviceMetricsOverride', { ...window, deviceScaleFactor: 1, mobile: false });
+  }
   if (save !== undefined) {
     // Seeded before any script of the page runs, so the title screen finds it.
     await send('Page.addScriptToEvaluateOnNewDocument', {
@@ -293,9 +315,11 @@ async function openPage(port, url, window, { save, init, project = false } = {})
     // refuses to store anything is `Storage.prototype.setItem` throwing.
     await send('Page.addScriptToEvaluateOnNewDocument', { source: init });
   }
-  const loaded = new Promise((resolve) => listeners.set('Page.loadEventFired', resolve));
-  await send('Page.navigate', { url });
-  await loaded;
+  if (url !== null) {
+    const loaded = new Promise((resolve) => listeners.set('Page.loadEventFired', resolve));
+    await send('Page.navigate', { url });
+    await loaded;
+  }
 
   const keyDown = (code) => send('Input.dispatchKeyEvent', { type: 'keyDown', ...keyDescription(code) });
   const keyUp = (code) => send('Input.dispatchKeyEvent', { type: 'keyUp', ...keyDescription(code) });
@@ -348,6 +372,12 @@ async function openPage(port, url, window, { save, init, project = false } = {})
     async screenshot(path) {
       const { data } = await send('Page.captureScreenshot', { format: 'png' });
       writeScreenshot(path, data);
+    },
+    /** The tab's id, for `reattachPage`. */
+    targetId: target.id,
+    /** Drops this connection and leaves the tab open. */
+    disconnect: async () => {
+      socket.close();
     },
     close: async () => {
       socket.close();

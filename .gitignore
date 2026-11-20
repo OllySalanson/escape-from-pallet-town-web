@@ -27,3 +27,7 @@ coverage
 
 # What the tools write: npm run site-plan, and mapcraft's pictures.
 /out/
+
+# The AI playtester's own build and its runs (tools/playtest/ai-player)
+tools/playtest/ai-player/.build/
+tools/playtest/ai-player/runs/

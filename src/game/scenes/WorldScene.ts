@@ -5149,7 +5149,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const hunters = [
       ...(this.isHunterOnCurrentMap() && this.hunterState.position ? [tileOf(this.hunterState.position)] : []),
       ...(this.hunterPackHere()?.hunters ?? []).map((hunter) => tileOf(hunter.position)),
-    ];
+    ].filter(onScreen);
     return {
       busy,
       map: this.currentMap.id,
@@ -5182,14 +5182,25 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
                     ...(this.currentMap.id === session.plan?.contract?.mapId ? { tile: tileOf(marker.position) } : {}),
                   }))
                 : [],
+              // The mark is in world pixels, at a tile's centre.
               way: way.mark
-                ? { cue: way.cue ?? null, toward: tileOf(way.mark.target), out: way.mark.out }
+                ? {
+                    cue: way.cue ?? null,
+                    toward: { x: Math.floor(way.mark.target.x / TILE_SIZE), y: Math.floor(way.mark.target.y / TILE_SIZE) },
+                    out: way.mark.out,
+                  }
                 : way.cue
                   ? { cue: way.cue }
                   : null,
               exits: (session.plan?.extractionPoints ?? [])
                 .filter((point) => point.mapId === this.currentMap.id)
-                .map((point) => ({ label: point.label, tile: tileOf(point.position), open: this.isExtractionOpen(point) })),
+                .map((point) => ({
+                  label: point.label,
+                  tile: tileOf(point.position),
+                  open: this.isExtractionOpen(point),
+                  steps: Math.abs(point.position.x - this.currentTile.x) + Math.abs(point.position.y - this.currentTile.y),
+                }))
+                .sort((a, b) => a.steps - b.steps),
               hunter: {
                 coming: this.hunterState.spawned && !this.hunterState.defeated,
                 beaten: this.hunterState.defeated,

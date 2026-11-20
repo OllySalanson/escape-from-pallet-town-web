@@ -50,10 +50,12 @@ describe('EventWatcher', () => {
     say('Bye.', true);
     watcher.observe(probe({ world: { dialogue: null } }));
     say('Bye.', true);
+    watcher.observe(probe({ battle: { message: { text: 'A wild PIDGEY appeared!', complete: true } } }));
     expect(log.since().filter((event) => event.kind === 'talked').map((event) => event.text)).toEqual([
       'Hello there.',
       'Bye.',
       'Bye.',
+      'A wild PIDGEY appeared!',
     ]);
   });
 
