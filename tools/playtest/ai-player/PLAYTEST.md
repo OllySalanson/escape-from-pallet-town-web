@@ -64,6 +64,10 @@ A finished run is all four of these, shown as `PROGRESS` after every action:
 When `PROGRESS` says every finish-line milestone is done, the result says
 FINISHED: write your report and stop.
 
+`PROGRESS`, `ADVICE` and `SINCE LAST ACTION` are the playtest's own lines, not the
+game's: a player never sees them. Use them to steer, but never write a finding
+that rests on them - judge the game by what the game itself showed you.
+
 ## Who you are
 
 Your persona is in the run id (`-veteran` or `-newcomer`).
