@@ -174,6 +174,16 @@ export class WorldLabel {
     }
   }
 
+  /** The caption's words: for test mode's `describe()`. */
+  public get caption(): string {
+    return this.label.text;
+  }
+
+  /** The tiles the caption is about, as it is judged for speaking. */
+  public get tiles(): CaptionSpeech['tiles'] {
+    return this.speech.tiles;
+  }
+
   /** Where it is drawn in the world, while it is on show: what the way mark stands clear of. */
   public shown(): { readonly left: number; readonly top: number; readonly width: number; readonly height: number } | undefined {
     return this.frame.visible

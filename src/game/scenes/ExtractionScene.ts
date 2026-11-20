@@ -26,6 +26,7 @@ import { publicAssetUrl } from '../publicAssetUrl';
 import { pokemonSpritePath } from '../pokemon/pokemonSprites';
 import { iconUrl, itemIcon, itemIconName, objectiveIcon } from '../ui/icons';
 import { MenuOverlay } from '../ui/MenuOverlay';
+import type { SceneDescription } from '../dev/testDescribe';
 import { formatExperience } from '../ui/pokemonSummary';
 import { pixelCommitBar, pixelHpBar, pixelScreen, pixelShinyStar, pixelTag, pixelWindow } from '../ui/pixelUi';
 import { pixelMonIconForDex } from '../ui/monIcon';
@@ -109,6 +110,21 @@ export class ExtractionScene extends Phaser.Scene {
    * Phaser reuses one instance per scene key, so every field describing the last
    * result outlives it. Everything the sequence sets is cleared here.
    */
+  /** How the raid ended, for test mode's `describe()` and its event log (`dev/testDescribe.ts`). */
+  public describeForTest(): SceneDescription {
+    const report = this.report;
+    return report
+      ? {
+          outcome: report.outcome,
+          cause: report.cause ?? null,
+          headline: report.headline,
+          clock: report.clockLabel,
+          contract: report.contract ? { done: report.contract.complete, reward: report.contract.reward } : null,
+          exit: report.eyebrow,
+        }
+      : {};
+  }
+
   public init(data: ExtractionSceneData): void {
     this.report = data.report;
     this.leaving = false;
