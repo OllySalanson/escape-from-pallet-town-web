@@ -1055,7 +1055,7 @@ export class BaseScene extends Phaser.Scene {
         things: room
           ? room.things
               .filter((thing) => thing.tiles.some(onScreen))
-              .map((thing) => ({ name: thing.name, tile: tileOf(thing.tiles[0]) }))
+              .map((thing) => ({ name: thing.name, tile: tileOf(thing.tiles[0]), ...this.usedFrom(thing) }))
           : [],
         exit: room?.room.mat ? tileOf(room.room.mat) : null,
         // THE RAID ARENA's rim, where a raid is jumped into: the nearest tile of it.
@@ -1077,6 +1077,26 @@ export class BaseScene extends Phaser.Scene {
       vaultPokemon: vault.length,
       vault: stash ? describeBag(stash.listItems()) : {},
     };
+  }
+
+  /**
+   * Where a thing in a room can be used from: the nearest open tile beside it
+   * (or beside a tile that answers for it, across a desk), and which way to
+   * face from there. Absent when nothing beside it is open.
+   */
+  private usedFrom(thing: RoomThing): { use?: { stand: GridPosition; face: Direction } } {
+    const faced = [...thing.tiles, ...(thing.alsoFaced ?? [])];
+    const steps: readonly [Direction, number, number][] = [['up', 0, -1], ['down', 0, 1], ['left', -1, 0], ['right', 1, 0]];
+    const spots = faced.flatMap((tile) =>
+      steps
+        .map(([face, dx, dy]) => ({ stand: { x: tile.x - dx, y: tile.y - dy }, face }))
+        .filter(({ stand }) => !faced.some((each) => each.x === stand.x && each.y === stand.y) && !this.isBlocked(stand)),
+    );
+    const here = this.currentTile;
+    const nearest = spots.sort(
+      (a, b) => Math.abs(a.stand.x - here.x) + Math.abs(a.stand.y - here.y) - (Math.abs(b.stand.x - here.x) + Math.abs(b.stand.y - here.y)),
+    )[0];
+    return nearest ? { use: nearest } : {};
   }
 
   /** Which room the player stands in, for a feedback message. See `feedback/feedbackContext.ts`. */

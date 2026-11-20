@@ -113,7 +113,8 @@ export function createHands(page) {
         { name: each.name, tile: each.tile, what: 'door' },
         { name: each.id, tile: each.tile, what: 'door' },
       ]),
-      ...(field.near?.things ?? []).map((each) => ({ name: each.name, tile: each.tile, what: 'thing' })),
+      // A thing in a room is walked to where it is used from, and faced.
+      ...(field.near?.things ?? []).map((each) => ({ name: each.name, tile: each.use?.stand ?? each.tile, face: each.use?.face, what: 'thing' })),
       ...(field.near?.rim ? [{ name: 'rim', tile: field.near.rim, what: 'the' }] : []),
       ...(field.near?.captions ?? []).filter((each) => each.tile).map((each) => ({ name: each.text, tile: each.tile, what: 'caption' })),
       ...(field.near?.people ?? []).map((each) => ({ name: each.pokemon ?? each.kind, tile: each.tile, what: each.kind })),
@@ -122,7 +123,7 @@ export function createHands(page) {
       named.find((each) => each.name?.toLowerCase() === wanted) ??
       named.find((each) => each.name?.toLowerCase().startsWith(wanted)) ??
       named.find((each) => each.name?.toLowerCase().includes(wanted));
-    return match ? { tile: match.tile, what: `${match.what} ${match.name}` } : null;
+    return match ? { tile: match.tile, face: match.face, what: `${match.what} ${match.name}` } : null;
   };
 
   /**
@@ -139,12 +140,23 @@ export function createHands(page) {
     if (blocker) return { ok: false, note: `cannot walk yet: ${blocker}` };
     let goal = target.tile;
     let what = target.label ?? `${goal?.x},${goal?.y}`;
+    let face = null;
     if (!goal) {
       const found = resolveLabel(screen, target.label);
       if (!found) return { ok: false, note: `nothing on screen is called "${target.label}"` };
       goal = found.tile;
       what = found.what;
+      face = found.face ?? null;
     }
+    const arrive = async (result) => {
+      if (!result.ok || !face) return result;
+      const now = fieldOf(await look());
+      if (now && now.tile.x === goal.x && now.tile.y === goal.y && now.facing !== face) {
+        await press(DIRECTION_KEYS[face], 2);
+        await settle(30);
+      }
+      return { ...result, note: `${result.note}, facing it` };
+    };
     let steps = 0;
     let replans = 0;
     while (steps < maxSteps) {
@@ -152,7 +164,7 @@ export function createHands(page) {
       if (!here) return { ok: false, steps, note: `stopped: ${interruption(screen) ?? 'the scene changed'}` };
       const route = here.key === 'world' ? await worldRoute(goal) : await baseRoute(goal);
       if (route === null) return { ok: false, steps, note: `no way to ${what} from ${here.tile.x},${here.tile.y}` };
-      if (route.length === 0) return { ok: true, steps, note: `at ${what}` };
+      if (route.length === 0) return arrive({ ok: true, steps, note: `at ${what}` });
       for (const key of route) {
         const before = here.tile;
         await press(key, FRAMES_PER_STEP - 1);
@@ -164,7 +176,7 @@ export function createHands(page) {
         if (!now || now.key !== here.key || now.map !== here.map || now.room !== here.room) {
           return { ok: true, steps, note: `went through to ${now?.place ?? now?.mapName ?? top(screen)}` };
         }
-        if (now.tile.x === goal.x && now.tile.y === goal.y) return { ok: true, steps, note: `at ${what}` };
+        if (now.tile.x === goal.x && now.tile.y === goal.y) return arrive({ ok: true, steps, note: `at ${what}` });
         if (now.tile.x === before.x && now.tile.y === before.y) {
           // Walked into the goal itself (a person, a door, a sign): that is arriving.
           const ahead = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[key];
