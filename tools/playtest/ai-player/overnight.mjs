@@ -121,7 +121,7 @@ async function main() {
     const args = [
       '-p', prompt(runId),
       '--permission-mode', 'dontAsk',
-      '--allowedTools', 'Bash(tools/playtest/ai-player/act:*)', 'Read', `Write(${runDir(runId)}/**)`, `Edit(${runDir(runId)}/**)`,
+      '--allowedTools', 'Bash(tools/playtest/ai-player/act:*)', 'Read', `Write(/${runDir(runId)}/**)`, `Edit(/${runDir(runId)}/**)`,
       '--no-session-persistence', '--output-format', 'text',
     ];
     if (flags.model) args.push('--model', flags.model);

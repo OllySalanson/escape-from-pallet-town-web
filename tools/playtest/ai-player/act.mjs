@@ -61,6 +61,8 @@ const TOUCH_BROWSER_EVERY_MS = 10 * 60_000;
  * by it: the harbour, the title, a result screen.
  */
 const RELOAD_OVER_MB = Number(process.env.EPTW_AI_RELOAD_MB ?? 1300);
+/** Actions between two reloads at least, so a game that is simply that big is not reloaded on every one. */
+const RELOAD_EVERY_ACTIONS = 25;
 const RELOAD_SAFE_SCENES = new Set(['base', 'title', 'hub', 'extraction']);
 
 const argv = process.argv.slice(2);
@@ -330,16 +332,21 @@ async function act(runId) {
   if (memory !== null) {
     status.browserMb = memory;
     const top = screen.scenes[screen.scenes.length - 1];
-    if (memory > RELOAD_OVER_MB && RELOAD_SAFE_SCENES.has(top) && !screen.scenes.includes('world')) {
-      await page.send('Page.navigate', { url: session.url });
-      for (let i = 0; i < 200; i += 1) {
-        if (await page.evaluate(`typeof ${GAME}?.describe === 'function'`).catch(() => false)) break;
-        await sleep(100);
-      }
-      await page.evaluate(`${GAME}.pauseLoop()`);
-      await hands.settle(100);
+    const sinceReload = status.actions - (status.reloadedAtAction ?? -Infinity);
+    if (memory > RELOAD_OVER_MB && sinceReload >= RELOAD_EVERY_ACTIONS && RELOAD_SAFE_SCENES.has(top) && !screen.scenes.includes('world')) {
+      // A new tab, not a reload in place: a reload keeps the same renderer
+      // process, and its memory was measured not to come back (1.65GB before,
+      // 1.67-1.70GB after, three times running). A new tab is a new process.
+      await page.close();
+      await fetch(`http://127.0.0.1:${session.cdpPort}/json/close/${session.targetId}`).catch(() => undefined);
+      const fresh = await openGame(session.cdpPort, session.url, null);
+      page = fresh.page;
+      writeSession(runId, { ...readSession(runId), targetId: fresh.targetId });
+      await createHands(page).settle(100);
       reloaded = true;
       status.reloads = (status.reloads ?? 0) + 1;
+      status.reloadedAtAction = status.actions;
+      status.browserMb = browserMb(session.browserName) ?? memory;
     }
   }
   writeStatus(status);
