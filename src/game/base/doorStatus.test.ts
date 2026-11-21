@@ -181,15 +181,13 @@ describe("what each of the base's doors says", () => {
     ).toMatch(/^Your things · your Pokémon · 2 (of \d+ )?badges$/);
   });
 
-  /** Once somebody has given their name at the door, the door says whose house it is. */
-  it("puts the name given at THE BOLTHOLE's door on it, still inside one short line", () => {
+  /** The name is over the door (`home/houseName.ts`), so the line under it never says it again. */
+  it("keeps THE BOLTHOLE's line inside one short line with every badge won", () => {
     const home = doorNamed('bolthole');
-    expect(doorStatusLine(home, baseGame(), 'OLLY')).toBe("OLLY's things & Pokémon");
     const everyBadge = baseGame({ progress: { defeatedBosses: BADGES.map((badge) => badge.bossId) } });
-    expect(doorStatusLine(home, everyBadge, 'OLLY')).toMatch(/^OLLY's things & Pokémon · \d+ (of \d+ )?badges$/);
-    const longest = doorStatusLine(home, everyBadge, 'WWWWWWWWWW');
-    expect(longest.startsWith("WWWWWWWWWW's things & Pokémon")).toBe(true);
-    expect(longest.length).toBeLessThanOrEqual(40);
+    const line = doorStatusLine(home, everyBadge);
+    expect(line).toMatch(/^Your things · your Pokémon( · \d+ (of \d+ )?badges)?$/);
+    expect(line.length).toBeLessThanOrEqual(40);
   });
 
   it('says when a keeper has a favour to ask, a thing to take, or a loss to hear about', () => {

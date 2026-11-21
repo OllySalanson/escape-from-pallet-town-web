@@ -1,8 +1,8 @@
 /**
  * FireRed's YOUR NAME? screen, where a player chooses the name that is theirs
- * alone in Pallet Town (`names/nameService.ts`): at NEW GAME, at CONTINUE for a
- * player who has none yet, and at THE BOLTHOLE's door for anybody who somehow
- * still has none.
+ * alone in Pallet Town (`names/nameService.ts`): in the hall as the first raid
+ * comes home, and at CONTINUE for a player who has none yet. THE BOLTHOLE
+ * never asks: it carries the name once there is one (`home/houseName.ts`).
  *
  * Phaser-free, so the words and the markup are tested without a browser; the
  * DOM half is `ui/PlayerNameOverlay.ts`.
@@ -15,14 +15,14 @@ import type { NameCheck, NameClaim } from './nameService';
 export const YOUR_NAME_TITLE = 'YOUR NAME?';
 
 /** Where the name is being asked. */
-export type NameScreenWhere = 'first-raid' | 'continue' | 'house';
+export type NameScreenWhere = 'first-raid' | 'continue';
 
 interface NameScreenWords {
   readonly place: string;
   readonly lead: string;
   readonly bar: string;
   readonly hints: string;
-  /** The button that is not OK: back to the title, later, or back out of the door. */
+  /** The button that is not OK: play on without a name, and be asked again next time. */
   readonly away: { readonly label: string; readonly help: string };
 }
 
@@ -42,13 +42,6 @@ const WORDS: Readonly<Record<NameScreenWhere, NameScreenWords>> = {
     bar: 'One name each',
     hints: 'TYPE your name · ENTER OK · ESC later',
     away: { label: 'Later', help: 'Play now without a name; you are asked again next time.' },
-  },
-  house: {
-    place: 'THE BOLTHOLE',
-    lead: `Nobody lives here yet. Type the name that goes ${EVERYWHERE} - nobody else can have it.`,
-    bar: 'Type a name to come in',
-    hints: 'TYPE your name · ENTER OK · ESC back outside',
-    away: { label: 'Back outside', help: 'Back out of the door, without a name.' },
   },
 };
 
@@ -74,15 +67,18 @@ export function nameProblemLine(problem: Extract<PlayerNameCheck, { ok: false }>
     : 'Not that name. Everybody who plays sees it - pick another.';
 }
 
-/** What the screen says when a name could not be had. */
-export function nameClaimLine(claim: Exclude<NameClaim, 'claimed'>, where: NameScreenWhere): string {
+/**
+ * What the screen says when a name could not be had. The console's own
+ * "Change name" has no LATER to point at, so it is only told to try again.
+ */
+export function nameClaimLine(claim: Exclude<NameClaim, 'claimed'>, where: NameScreenWhere | 'console'): string {
   switch (claim) {
     case 'taken':
       return 'Somebody already has that name. Pick another.';
     case 'refused':
       return nameProblemLine('unkind');
     case 'offline':
-      return where === 'house'
+      return where === 'console'
         ? "Pallet Town isn't answering, so the name can't be checked. Try again in a moment."
         : "Pallet Town isn't answering, so the name can't be checked. Try again, or LATER to pick it next time.";
   }

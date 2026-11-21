@@ -350,7 +350,7 @@ import { ABANDONED_BOUT_LINE, newBoutId, type BoutUnderWay } from '../arena/bout
 import { isHomeRoom, ownedFurniture, type Placement } from '../home/arrangement';
 import { DecorateMode, type DecorateHost } from '../base/decorateMode';
 import { loadPlayerName } from '../console/playerName';
-import { houseNameNeeded, welcomeHomeLines } from '../home/houseName';
+import { houseTitle } from '../home/houseName';
 import { openNameScreen } from '../ui/PlayerNameOverlay';
 import { nameService } from '../names/nameService';
 import { harbour, harbourHouses, type HarbourWhere } from '../harbour/harbour';
@@ -763,10 +763,7 @@ export class BaseScene extends Phaser.Scene {
   private furnitureImages: Phaser.GameObjects.Image[] = [];
   /** Decorating THE BOLTHOLE, while it is being decorated (`base/decorateMode.ts`). */
   private decor: DecorateMode | null = null;
-  /**
-   * THE BOLTHOLE asking who lives there (`home/houseName.ts`), while it asks:
-   * nobody walks about the house until it has a name.
-   */
+  /** YOUR NAME?, while it asks (`askTheNameOnceHome`): nobody walks about until it has an answer. */
   private namePrompt: MenuOverlay | null = null;
   /** Everybody else in the shared harbour, drawn where they walk (`harbour/`). */
   private harbourFigures: HarbourFigures | null = null;
@@ -1479,7 +1476,7 @@ export class BaseScene extends Phaser.Scene {
       this.tellThePractice(data.practice);
     }
     if (this.arena && data.arrival === 'raid') {
-      this.nameDue = nameService() !== null && !isPlaytestRun() && houseNameNeeded(houseName()) && raidsDeployed(this.savedGame.raidProgress) === 1;
+      this.nameDue = nameService() !== null && !isPlaytestRun() && houseName() === null && raidsDeployed(this.savedGame.raidProgress) === 1;
       this.crowdHeardFrom(data.raidMood);
       if (data.closeCall) {
         this.hallSign ??= new PlaceNameSign(this);
@@ -1527,10 +1524,6 @@ export class BaseScene extends Phaser.Scene {
       if (data.stairsFrom === undefined) {
         this.say(visitWelcomeLines(this.visit.ownerName), []);
       }
-    } else if (this.place.room?.home && !isPlaytestRun() && houseNameNeeded(houseName())) {
-      // Never in the explorer run: a name typed there would claim a real
-      // player's name for a test browser (playtest 50).
-      this.askHouseName();
     }
     // Somebody waving at this player: a hand over them, and a "hi!" to say so.
     harbour()?.link.whenWavedAt(() => audioManager.play('harbourWave'));
@@ -4098,7 +4091,7 @@ export class BaseScene extends Phaser.Scene {
           // of these speak at once from the middle of it, and at three lines
           // each there was no base left to look at. What each keeper does is
           // said once, on the harbour's own board by the jetty.
-          text: [door.name, doorStatusLine(door, this.savedGame, houseName())].filter(Boolean).join('\n'),
+          text: [door.screen === null ? houseTitle(houseName()) : door.name, doorStatusLine(door, this.savedGame)].filter(Boolean).join('\n'),
           tone: DOOR_TONE,
           depth: atRow(CAPTION_BAND, door.tiles[0].y),
           speech: { voice: 'name', tiles: door.tiles },
@@ -6079,30 +6072,6 @@ export class BaseScene extends Phaser.Scene {
     });
   }
 
-  /**
-   * Who lives here? Asked on the way into THE BOLTHOLE until it has an answer
-   * (`home/houseName.ts`), over a house that stands still while it asks. A name
-   * is welcomed home; going back outside instead is out of the door it came in.
-   */
-  private askHouseName(): void {
-    const room = this.place.room?.room;
-    if (!room || this.namePrompt) {
-      return;
-    }
-    this.player.stop();
-    this.player.setFrame(getIdleFrame(this.facing));
-    this.showHint('');
-    this.namePrompt = openNameScreen(this, { where: 'house', service: nameService() }, (end) => {
-      this.nameScreenEnded();
-      if (typeof end !== 'object') {
-        this.leaveRoom(room);
-        return;
-      }
-      this.takeTheName(end.name);
-      this.say(welcomeHomeLines(end.name), []);
-    });
-  }
-
   /** Where the shared harbour has the player: the yard, a keeper's room, or their own house. */
   private harbourWhere(): HarbourWhere {
     const room = this.place.room?.room;
@@ -7785,14 +7754,14 @@ function insideThePit(x: number, y: number): boolean {
 const TALK_SKIP_HINT = '[ESC] SKIP';
 
 /**
- * The name given at THE BOLTHOLE's door, for this sitting. It is kept on the
- * device (`console/playerName.ts`), and this is only what a browser that
- * cannot store anything still knows: without it, every stair climbed would
- * ask the name again.
+ * The name the player gave, for this sitting. It is kept on the device
+ * (`console/playerName.ts`), and this is only what a browser that cannot store
+ * anything still knows: without it, the house would lose its name on the
+ * stairs and the first-raid hall would ask again.
  */
 let nameThisSitting: string | null = null;
 
-/** The name the house goes by: the device's, else this sitting's. */
+/** The player's name: the device's, else this sitting's. */
 function houseName(): string | null {
   return loadPlayerName() ?? nameThisSitting;
 }

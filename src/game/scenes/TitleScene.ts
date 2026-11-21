@@ -893,7 +893,8 @@ export class TitleScene extends Phaser.Scene {
     }
     // A name is one each in Pallet Town (`names/`), and a new game is not asked
     // for one on its way in: the hall asks as the first raid comes home, and
-    // CONTINUE and THE BOLTHOLE ask anybody who still has none. Where there is
+    // CONTINUE asks anybody who still has none. THE BOLTHOLE never asks; it
+    // carries the name once there is one (`home/houseName.ts`). Where there is
     // nothing to check names against - a test that did not ask for one - nobody
     // is asked here.
     const service = nameService();
@@ -904,18 +905,14 @@ export class TitleScene extends Phaser.Scene {
     this.beginGame(mode);
   }
 
-  /** YOUR NAME? over the title (`ui/PlayerNameOverlay.ts`), then the game - or back to the menu. */
+  /** YOUR NAME? over the title (`ui/PlayerNameOverlay.ts`), then the game, named or put off till later. */
   private askName(service: NameService): void {
     void audioManager.playWaking('confirm');
-    this.naming = openNameScreen(this, { where: 'continue', service }, (end) => {
+    this.naming = openNameScreen(this, { where: 'continue', service }, () => {
       this.naming = null;
       // The screen kept every key to itself, so a key the title saw go down
       // before it opened never came back up here.
       this.input.keyboard?.resetKeys();
-      if (end === 'away') {
-        void audioManager.playWaking('cancel');
-        return;
-      }
       this.beginGame('continue');
     });
   }

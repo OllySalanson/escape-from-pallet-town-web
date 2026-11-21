@@ -39,7 +39,7 @@ import { DOJO_LEVEL } from '../arena/boutRules';
 /** The most a door's second line may hold: it is a row of a caption seated over a building on a 320-pixel stage. */
 const DOOR_LINE_ROOM = 40;
 
-export function doorStatusLine(door: BaseDoor, game: RestoredGame, ownerName: string | null = null): string {
+export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
   // On the way to a first raid a door has its name and nothing else to read:
   // the one door anybody needs says why (`hub/firstRaid.ts`).
   if (isFirstRaid(game.raidProgress) && door.screen !== 'arena') {
@@ -49,11 +49,11 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame, ownerName: st
   switch (door.screen) {
     case null: {
       // The player's own house, which says from the yard what is kept in it -
-      // their things and their Pokémon, on MY PC - under the name that was
-      // given at its door (`home/houseName.ts`), and how full its badge case
-      // is, the one number in it worth walking over for, while the line has
-      // room for it.
-      const whose = ownerName ? `${ownerName}'s things & Pokémon` : 'Your things · your Pokémon';
+      // their things and their Pokémon, on MY PC - under their name, which is
+      // the caption's first line (`home/houseName.ts`), and how full its badge
+      // case is, the one number in it worth walking over for, while the line
+      // has room for it.
+      const whose = 'Your things · your Pokémon';
       const won = wonBadges(game).length;
       if (won === 0) return whose;
       const said = [`${whose} · ${won} of ${caseBadges().length} badges`, `${whose} · ${won} badges`];

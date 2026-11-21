@@ -73,7 +73,7 @@ const patient = (tab) => {
 const throughTitle = async (tab) => {
   await tab.waitFor(sceneIs('title'));
   for (let guard = 0; guard < 60 && !(await tab.evaluate(sceneIs('base'))); guard += 1) {
-    // A plain build asks a name the first time (`houseNameNeeded`): LATER.
+    // A plain build asks a name the first time (`TitleScene.startGame`): LATER.
     const later = await tab.evaluate(
       `(() => { const b = [...document.querySelectorAll('button')].find((each) => each.innerText.trim().toUpperCase() === 'LATER'); if (!b) return false; b.click(); return true; })()`,
     );

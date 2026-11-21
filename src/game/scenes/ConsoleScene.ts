@@ -275,11 +275,11 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
             this.keepName(check.name);
             return;
           }
-          this.status = nameClaimLine(claim, 'house');
+          this.status = nameClaimLine(claim, 'console');
           this.render();
         },
         () => {
-          this.status = nameClaimLine('offline', 'house');
+          this.status = nameClaimLine('offline', 'console');
           this.render();
         },
       );

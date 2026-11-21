@@ -20,7 +20,8 @@ import { harbourMode, liveHarbourWire, localHarbourWire, type HarbourMode } from
  * walked through.
  *
  * Who this browser is seen as is decided here. A player is seen once they have
- * a named house - the name given at THE BOLTHOLE's door (`home/houseName.ts`),
+ * a named house - the player's name, given in the hall or at CONTINUE and put
+ * over THE BOLTHOLE's door (`home/houseName.ts`),
  * written to the database by `name_my_house` as the signed-in player - and
  * until then only watches. The name is written once per name and per player,
  * and remembered on the device, so walking about never costs a call; a name

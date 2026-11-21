@@ -20,7 +20,7 @@ describe('YOUR NAME?', () => {
     expect(marks).toContain('-');
     expect(typedPlayerName('A A')).toBe('A A');
 
-    const help = /data-name-field[^>]*data-help="([^"]*)"/.exec(nameScreenMarkup({ where: 'house', value: '' }))?.[1];
+    const help = /data-name-field[^>]*data-help="([^"]*)"/.exec(nameScreenMarkup({ where: 'continue', value: '' }))?.[1];
     const consoleLine = /On every board[^<]*/.exec(
       gamesMenuMarkup({ games: CONSOLE_GAMES, boards: new Map(), playerName: null, naming: { value: '' } }),
     )?.[0];
@@ -33,7 +33,7 @@ describe('YOUR NAME?', () => {
   });
 
   it("asks in FireRed's words, with one line of ten letters and OK, wherever it is asked", () => {
-    for (const where of ['first-raid', 'continue', 'house'] as const) {
+    for (const where of ['first-raid', 'continue'] as const) {
       const markup = nameScreenMarkup({ where, value: '' });
       expect(markup).toContain(YOUR_NAME_TITLE);
       expect(markup).toContain(`maxlength="${PLAYER_NAME_MAX_LENGTH}"`);
@@ -44,10 +44,9 @@ describe('YOUR NAME?', () => {
     }
   });
 
-  it('lets the first homecoming and CONTINUE put it off, and the house be left', () => {
+  it('lets the first homecoming and CONTINUE put it off', () => {
     expect(nameScreenMarkup({ where: 'first-raid', value: '' })).toContain('>Later<');
     expect(nameScreenMarkup({ where: 'continue', value: '' })).toContain('>Later<');
-    expect(nameScreenMarkup({ where: 'house', value: '' })).toContain('>Back outside<');
   });
 
   it('says under the line whether anybody else has the name, once there is a name to ask about', () => {
@@ -61,9 +60,9 @@ describe('YOUR NAME?', () => {
 
   it('says plainly why a name could not be had', () => {
     expect(nameClaimLine('taken', 'first-raid')).toBe('Somebody already has that name. Pick another.');
-    expect(nameClaimLine('refused', 'house')).toBe(nameProblemLine('unkind'));
+    expect(nameClaimLine('refused', 'console')).toBe(nameProblemLine('unkind'));
     expect(nameClaimLine('offline', 'continue')).toMatch(/LATER/);
-    expect(nameClaimLine('offline', 'house')).not.toMatch(/LATER/);
+    expect(nameClaimLine('offline', 'console')).not.toMatch(/LATER/);
     expect(nameProblemLine('empty')).toMatch(/Type a name first/);
   });
 });

@@ -20,7 +20,7 @@ import { PhraseBoard, PhrasePace, type HarbourPhraseId } from './harbourPhrases'
  * has heard of them, over whichever wire it is given (`HarbourWire`).
  *
  * A browser that has a named house is *seen*: it says where it is and sends
- * its steps. One that has not yet named itself at THE BOLTHOLE's door only
+ * its steps. One that has no name yet (`home/houseName.ts`) only
  * *watches* - the channel will not take a word from it (the database's policy)
  * - so a newcomer sees the harbour busy from the first second and is seen once
  * they have a name. Nothing heard is drawn without the name the database has
