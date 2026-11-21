@@ -155,8 +155,9 @@ try {
   // The house's own sign, in its garden.
   const door = await page.evaluate(`${BASE}.doors.find((d) => d.id === 'bolthole')`);
   if (!door) throw new Error('the base has no door called bolthole');
-  await walkTo([{ x: door.returnTo.x, y: door.returnTo.y + 1 }]);
-  const sign = (await read('ArrowRight')).join(' / ');
+  // `HOME_SIGN` in `src/game/base/baseMap.ts`: west of the house, read from the row below it.
+  await walkTo([{ x: 35, y: 12 }]);
+  const sign = (await read('ArrowUp')).join(' / ');
   if (!sign.startsWith('THE BOLTHOLE')) throw new Error(`the garden sign says "${sign}"`);
   console.log(`sign: ${sign}`);
   await page.screenshot(`${out}/garden.png`);
@@ -223,7 +224,8 @@ try {
   console.log(`upstairs: arrived on the stair mat ${upstairs.tile.x},${upstairs.tile.y} facing down`);
 
   const heard = {};
-  for (const name of ['PENNANTS', 'YOUR BED', 'MY PC', 'THE CONSOLE', 'THE CALENDAR']) {
+  // MY PC opens home storage over the house, which `homeStorage.mjs` plays.
+  for (const name of ['PENNANTS', 'YOUR BED', 'THE CONSOLE', 'THE CALENDAR']) {
     const tiles = await page.evaluate(`${BASE}.place.room.things.find((t) => t.name === ${JSON.stringify(name)}).tiles`);
     const stands = [];
     for (const tile of tiles) {
