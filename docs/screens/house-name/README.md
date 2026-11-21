@@ -1,21 +1,20 @@
-# YOUR NAME? at THE BOLTHOLE's door
+# THE BOLTHOLE carries your name
 
-Names are chosen at NEW GAME now, one each (`docs/screens/player-names/`), so
-this is the fallback: anybody who walks into THE BOLTHOLE without one is asked
-here. The first time anybody walks into THE BOLTHOLE without a name, the house asks who lives there,
-in FireRed's own words (`gText_YourName`), before they can walk about inside.
-It is the house console's name and rule (`src/game/console/playerName.ts`):
-capitals, numbers and `. ! ? ' -`, up to ten, through the word filter, kept on
-the device. So the console never asks somebody the door has named, a player
-who already named themselves at the console is never asked at all, and the
-door's caption in the yard says whose house it is (*OLLY's house*).
+The captain, 21 Nov 2026: "you shouldn't have to walk in your house first to give
+it a name. It should just have your name, right?"
 
-| | |
-|---|---|
-| `your-name.png` | Just in through the door: the line, the count, BACK OUTSIDE and OK. ENTER on an empty line is refused over the help bar and the screen stays; ESC or BACK OUTSIDE is back out onto the step. |
-| `your-name-typed.png` | A name typed. ENTER or OK keeps it, and the house says *Welcome home, OLLY!* |
+| | Before | After |
+|---|---|---|
+| A new player walks in | ![](before/new-inside.png) | ![](after/new-inside.png) |
+| An existing save, named MISTY | ![](before/existing-yard.png) | ![](after/existing-yard.png) |
 
-Taken from a test-mode build at 1200x768 by
-`node tools/playtest/bolthole.mjs <url> <dir>`, which also plays the refusal,
-the way back outside, the welcome, the console's copy of the name and the
-door's caption.
+Once a name is given (in the hall after the first raid, at CONTINUE, or at the
+console), the door carries it: ![](after/named-later.png)
+
+Made against a test-mode build (`VITE_EPTW_TEST_MODE=1 npx vite build`, served
+under `/escape-from-pallet-town-web/`):
+
+    node tools/playtest/houseName.mjs <url> docs/screens/house-name/after
+    node tools/playtest/houseName.mjs <main build url> docs/screens/house-name/before --look
+
+`named-later.png` is `outside.png` from `tools/playtest/bolthole.mjs <url> <dir> --starter=charmander`.

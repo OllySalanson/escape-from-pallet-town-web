@@ -300,9 +300,9 @@ rim - `docs/screens/raid-arena/`.
 backs out into his cottage and looks along his cabinet with the keys and the
 pointer, failing if the goods paid are not on the shelf or the look moves the
 player - `docs/screens/bill-cabinet/`. `bolthole.mjs <url> <dir> [--built=..]`
-walks the player's own house: reads the garden sign, goes in, is asked its name
-(refuses an empty one, types `--name=`, OLLY by default, and checks the welcome
-and the door's caption), faces the telly,
+walks the player's own house: reads the garden sign, goes in with no name and
+is asked nothing, gives the device `--name=` (OLLY by default) and checks the
+door's caption carries it once outside, faces the telly,
 climbs the stairs and checks it arrived on the matching mat facing away, reads
 the bed, the PC, the console and the calendar, comes back down and leaves by the
 mat - `docs/screens/bolthole/`. The house has no keeper, so `walkIntoBase`
@@ -323,6 +323,9 @@ taken: NEW GAME asks YOUR NAME?, *ash* is said to be taken and refused, MISTY
 is free and kept, CONTINUE does not ask again, CONTINUE with no name asks and
 LATER goes in without one, and a new map in MAKE A MAP is named in the world's
 words and REROLL draws another - `docs/screens/player-names/`.
+`houseName.mjs <url> <dir> [--look]` plays THE BOLTHOLE's name as a new player
+(THE BOLTHOLE, nothing asked at the door) and as a save already named MISTY
+(MISTY’S BOLTHOLE from the first look) - `docs/screens/house-name/`.
 `knocking.mjs <url> <dir>` knocks from THE BOLTHOLE's garden sign (text box,
 then the list of players): AMY is told OLLY is not home while he is
 out, knocks again once he is, OLLY is asked with the cursor on NOT NOW and lets

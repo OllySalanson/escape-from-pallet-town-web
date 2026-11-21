@@ -9,8 +9,8 @@ import { putUpPixelStatus, takeDownPixelStatus } from './pixelUi';
 /** How long typing must pause before the harbour is asked whether the name is free. */
 export const NAME_CHECK_AFTER_MS = 350;
 
-/** How a name screen ended: a name that is the player's now, put off till later, or backed out of. */
-export type NameScreenEnd = { readonly name: string } | 'later' | 'away';
+/** How a name screen ended: a name that is the player's now, or put off till later. */
+export type NameScreenEnd = { readonly name: string } | 'later';
 
 /**
  * Asks the player's name (`names/nameScreen.ts`) and calls back once with how
@@ -47,7 +47,6 @@ export function openNameScreen(
     overlay.destroy();
     onDone(end);
   };
-  const awayEnd = (): NameScreenEnd => (where === 'house' ? 'away' : 'later');
   const say = (text: string): void => {
     putUpPixelStatus(overlay.root, text);
     field?.focus();
@@ -116,7 +115,7 @@ export function openNameScreen(
   const overlay: MenuOverlay = new MenuOverlay(scene, 'naming-menu player-name-menu pixel-ui', (event) => {
     if (event.key === 'Escape') {
       event.preventDefault();
-      settle(awayEnd());
+      settle('later');
       return;
     }
     if (overlay.moveCursor(event.key)) {
@@ -152,7 +151,7 @@ export function openNameScreen(
     // cursor back, as the nickname line does.
     field.onkeyup = (event) => {
       if (event.key === 'Escape') {
-        settle(awayEnd());
+        settle('later');
       } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         overlay.moveCursor(event.key);
       }
@@ -163,7 +162,7 @@ export function openNameScreen(
     if (target?.dataset.nameOk !== undefined) {
       submit(field?.value ?? '');
     } else if (target?.dataset.nameAway !== undefined) {
-      settle(awayEnd());
+      settle('later');
     }
   });
   overlay.focus('[data-name-field]');
