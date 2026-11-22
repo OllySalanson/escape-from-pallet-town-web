@@ -260,7 +260,7 @@ export function greystonePeaks(): MapcraftResult {
         { x: 49, y: 13, name: 'Foreman', look: 'worker', facing: 'right', lines: ['Every step in Millbrook came off this bench, and every statue at The Crossing.', 'Somebody left a good crate of tools up here and has not been back. Big lad. Very serious.'], beat: { everyMs: 3200, glances: ['right', 'down'] }, calls: ['Stand clear!', 'Mind your head!'] },
         { x: 53, y: 17, name: 'Quarryman', look: 'heavy-man', facing: 'up', lines: ['You hit it till it breaks. Then there are two of it. Then you hit that.', 'Thirty years in, and there is more of it than when I started.'], beat: { everyMs: 2700, roam: [[1, 0]], glances: ['up'] }, calls: ['Clang!'] },
         // -- The stone carts ------------------------------------------------------------------------
-        { x: 43, y: 37, name: 'Stone Carter', look: 'man', facing: 'right', lines: ['Going down full, coming up empty. You would think that was the easy way round.', 'That is what the last horse thought.'], beat: { everyMs: 3000, glances: ['right', 'up'] }, calls: ['Whoa! Hold her there!'] },
+        { x: 43, y: 37, name: 'Stone Carter', look: 'man', facing: 'right', lines: ["Going down full, coming up empty. You'd think that was the easy way round.", "That's what the last horse thought."], beat: { everyMs: 3000, glances: ['right', 'up'] }, calls: ['Whoa! Hold her there!'] },
         { x: 39, y: 36, name: 'Carter’s Lad', look: 'boy', facing: 'left', lines: ['That Mankey up on the edge throws things at the carts. It has got a very good arm.', 'I threw one back. It kept it.'], beat: { everyMs: 1900, glances: ['left', 'up'] }, calls: ['Oi! Put that back!'] },
         // -- The goat track --------------------------------------------------------------------------
         { x: 11, y: 55, name: 'Goat Boy', look: 'little-boy', facing: 'right', lines: ['These are my goats. They are very good goats. Mum says they are Rhyhorn.', 'I have told them. They do not mind.'], beat: { everyMs: 2400, roam: [[0, 1]], glances: ['right'] }, calls: ['Here, goat! Good goat!'] },
@@ -323,7 +323,7 @@ export function greystonePeaks(): MapcraftResult {
 function withInsides(file: MapFile): MapFile {
   let next = withInside(file, 'peaks', 'hut', 42, 4, 'The Kettle Room', [], { itemSpots: [{ x: 5, y: 3, hidden: true }] });
   next = withInside(next, 'peaks', 'grey-house', 38, 37, 'Mrs Gantry’s Shop', [
-    { x: 3, y: 3, name: 'Mrs Gantry', look: 'old-woman', facing: 'down', lines: ['Rope? I have got rope. I have got tea, if you do not want rope.', 'Everybody who goes up that pass wants rope on the way back. They never think of it on the way up.'] },
+    { x: 3, y: 3, name: 'Mrs Gantry', look: 'old-woman', facing: 'down', lines: ["Rope? I've got rope. I've got tea, if you don't want rope.", 'Everybody who goes up that pass wants rope on the way back. They never think of it on the way up.'] },
   ]);
   next = withInside(next, 'peaks', 'shed', 52, 11, 'The Quarry Hut', [
     { x: 5, y: 5, name: 'Tally Clerk', look: 'clerk', facing: 'left', lines: ['Tons out: forty thousand. Tons left: all of it.', 'I have sent the figures to Millbrook. They have asked me to stop.'] },

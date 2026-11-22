@@ -7371,8 +7371,8 @@
    "look": "man",
    "facing": "right",
    "lines": [
-    "Going down full, coming up empty. You would think that was the easy way round.",
-    "That is what the last horse thought."
+    "Going down full, coming up empty. You'd think that was the easy way round.",
+    "That's what the last horse thought."
    ],
    "beat": {
     "everyMs": 3000,
@@ -7460,7 +7460,7 @@
    "look": "old-woman",
    "facing": "down",
    "lines": [
-    "Rope? I have got rope. I have got tea, if you do not want rope.",
+    "Rope? I've got rope. I've got tea, if you don't want rope.",
     "Everybody who goes up that pass wants rope on the way back. They never think of it on the way up."
    ],
    "area": "peaks-mrs-gantry-s-shop"
@@ -12032,8 +12032,8 @@
    "look": "rich-boy",
    "facing": "down",
    "lines": [
-    "Mother says we are on holiday. Father is still looking for the second funnel.",
-    "It is the best holiday we have ever had."
+    "Mother says we're on holiday. Father's still looking for the second funnel.",
+    "It's the best holiday we've ever had."
    ],
    "beat": {
     "everyMs": 1900,
@@ -16134,7 +16134,7 @@
    "sight": 0,
    "lines": [
     "The bridge is my spot!",
-    "Let us see what you have caught."
+    "Let's see what you've caught."
    ]
   },
   {

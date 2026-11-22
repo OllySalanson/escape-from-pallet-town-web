@@ -112,23 +112,30 @@ export function timeBoardLines(progress: Pick<RaidProgress, 'gameCorner'>, now: 
   ];
 }
 
-/** What the attendant says from behind the counter: how the place works, a box at a time. */
+/**
+ * What a cabinet's score pays, as its own screen prints it under the team: the
+ * rate card is the cabinet's, not the attendant's. Read out at the counter it
+ * was nine lines of tables from a person, a spec sheet rather than somebody
+ * talking (the AI playtests of 22 Nov 2026).
+ */
+export function cabinetRates(game: 'pokemon-jump' | 'berry-picking'): string {
+  const tiers = game === 'pokemon-jump' ? JUMP_TICKET_TIERS : BERRY_TICKET_TIERS;
+  const berryFrom = game === 'pokemon-jump' ? POKEMON_JUMP_PRIZES[0].score : BERRY_PICKING_PRIZE_SCORE;
+  const card = tiers.map((tier) => `${number(tier.score)} pays ${tier.tickets}`).join(' · ');
+  return `Tickets, once a day: ${card}. From ${number(berryFrom)}, a BERRY too.`;
+}
+
+/** What the attendant says from behind the counter: how the place works, as she would put it. */
 export function attendantLines(progress: Pick<RaidProgress, 'gameCorner'>): readonly string[] {
   const record = progress.gameCorner ?? NO_GAME_CORNER;
-  const [first, second, third] = JUMP_TICKET_TIERS;
-  const [berryFirst, berrySecond, berryThird] = BERRY_TICKET_TIERS;
   const lines = [
-    'Welcome to the GAME CORNER! No coins here - the cabinets pay TICKETS.',
-    `POKéMON JUMP: SPACE jumps everyone on the ground. Small, quick jumpers do best.`,
-    `${number(first.score)} points pays ${first.tickets} tickets, ${number(second.score)} pays ${second.tickets}, ${number(third.score)} pays ${third.tickets}. Once a day.`,
-    `Past ${number(POKEMON_JUMP_PRIZES[0].score)} it pays BERRIES too. Spend tickets at the PRIZE WINDOW next door.`,
-    'BERRY PICKING wants a DODRIO, one head a column. A DODUO tries with two.',
-    `${number(berryFirst.score)} pays ${berryFirst.tickets}, ${number(berrySecond.score)} ${berrySecond.tickets}, ${number(berryThird.score)} ${berryThird.tickets}. From ${number(BERRY_PICKING_PRIZE_SCORE)}, a BERRY.`,
+    'Welcome to the GAME CORNER! No coins here - the cabinets pay out in TICKETS.',
+    "POKéMON JUMP's down the left and BERRY PICKING's down the right. You'll want a DODRIO for that one.",
+    "A better score pays more, once a day, and each cabinet's screen says what. The lamps on the front show what it's paid you today.",
+    "Spend your tickets at the PRIZE WINDOW next door, and keep an eye on the HIGH SCORES board. The regulars are on it too.",
   ];
-  lines.push('Lamps on each cabinet light for every ticket tier paid today.');
-  lines.push('The HIGH SCORES board has today’s best: yours and the regulars’.');
   if (record.tickets > 0) {
-    lines.push(`You have ${number(record.tickets)} tickets. They are kept at home - a raid cannot lose them.`);
+    lines.push(`You've got ${number(record.tickets)} tickets. They're kept at home, so a raid can't lose them.`);
   }
   return lines;
 }
