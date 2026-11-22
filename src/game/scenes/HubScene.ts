@@ -3106,7 +3106,7 @@ export class HubScene extends Phaser.Scene {
         note: entry.walked ? `${known}% known` : 'Never walked',
       },
     )}${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.line)}>${maps}${briefing ? this.placeFacts(briefing) : ''}${signs}${briefing ? this.placeWorth(briefing) : ''}${doors}${exits}${briefing ? this.placeWildlife(briefing) : ''}</div>`,
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.line)}>${maps}${briefing ? this.placeFacts(briefing, entry.known) : ''}${signs}${briefing ? this.placeWorth(briefing) : ''}${doors}${exits}${briefing ? this.placeWildlife(briefing) : ''}</div>`,
       { className: 'wallmap-about', heading: 'On the wall', note: `${entry.districtsKnown}/${entry.districts} places` },
     )}</main>`;
   }
@@ -3117,9 +3117,13 @@ export class HubScene extends Phaser.Scene {
    * picture wants that room now. They scroll with the rest, because at the
    * smallest stage five lines pinned over the pane were most of it.
    */
-  private placeFacts(briefing: DropInBriefing): string {
+  private placeFacts(briefing: DropInBriefing, known: number): string {
     const { grade, record } = briefing;
-    const walked = Math.round(record.surveyed * 100);
+    // The share the picture beside it is lit by, which counts the ground round
+    // your own doors as known as well as the ground walked: counted from the
+    // walked tiles alone, one screen said '9% KNOWN' over 'Known 22/204 · 6%'
+    // (AI playtest, 22 Nov 2026).
+    const walked = Math.round(known * 100);
     return `<dl class="dropin-facts">${
       // A second entrance does not carry its map's name, so it says which map
       // it is on. A front door is the map.
