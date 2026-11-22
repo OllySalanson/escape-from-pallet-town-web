@@ -143,6 +143,9 @@ try {
   await editSave((save) => {
     save.stash.pokemon[0].pokemon.currentHp = 3;
     save.raidProgress.firstWordsHeard = ['lab', 'loadout'];
+    // Today's free heal already taken, so she names a price (`hub/recovery.ts`, `healDayOf`).
+    const now = new Date();
+    save.freeHealDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   });
   await intoRoom('pokemon-centre');
   await shot('10-center-room');

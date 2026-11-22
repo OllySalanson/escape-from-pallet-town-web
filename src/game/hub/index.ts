@@ -37,6 +37,8 @@ export {
 
 export {
   applyRecovery,
+  healDayOf,
+  isFreeHealDay,
   chargeRecovery,
   clampPendingRecoveryMs,
   clampWardTreatmentsUsed,

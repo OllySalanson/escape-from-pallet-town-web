@@ -47,7 +47,7 @@ export const OMEN_EVERY = 3;
 /**
  * When it crosses, in milliseconds of the raid's own clock: after the landing
  * has been looked at, and well inside the shortest raid a heal can leave
- * (half the clock, `MAX_PENDING_RECOVERY_MS`).
+ * (the clock less `MAX_PENDING_RECOVERY_MS`).
  */
 export const OMEN_EARLIEST_MS = 20_000;
 export const OMEN_LATEST_MS = 90_000;

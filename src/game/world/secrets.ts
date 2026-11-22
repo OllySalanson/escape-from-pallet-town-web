@@ -123,7 +123,7 @@ export type SecretCondition =
    * boat and a timed exit are read against: that runs ahead by whatever the
    * Pokemon Center took off the raid, so after a heal the bell rang only in a
    * raid's first seconds, or with two minutes owed not at all (the bug hunt of
-   * 10 Nov). A stretch must end before the shortest raid does - half the clock,
+   * 10 Nov). A stretch must end before the shortest raid does - the clock less
    * `MAX_PENDING_RECOVERY_MS` - which `secrets.test.ts` holds.
    */
   | { readonly kind: 'raid-clock'; readonly fromMs: number; readonly untilMs: number }

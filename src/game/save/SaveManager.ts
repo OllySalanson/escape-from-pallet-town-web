@@ -30,6 +30,7 @@ import { isWearableId } from '../look/wearables';
 import { getWorkshopUpgrade, takePayment, type PaymentCheck } from '../hub/workshop';
 import {
   applyRecovery,
+  healDayOf,
   clampPendingRecoveryMs,
   clampWardTreatmentsUsed,
   pokemonNeedingRecovery,
@@ -693,6 +694,12 @@ export interface SaveData {
    */
   readonly wardTreatmentsUsed: number;
   /**
+   * The day on the player's own clock that the free heal was last taken
+   * (`healDayOf` in `hub/recovery.ts`): the first heal each day costs no raid
+   * time. Absent until a save has taken one.
+   */
+  readonly freeHealDay?: string;
+  /**
    * Units of Bill's stock already bought before the coming raid. It is
    * per-raid state rather than an effect, so it is stored, and it is cleared by
    * the same `RAID_RESOLVED` as the ward's bed for the same reason: a reload
@@ -726,6 +733,7 @@ export interface RestoredGame {
   readonly pendingRecoveryMs: number;
   readonly recoveryCarried?: boolean;
   readonly wardTreatmentsUsed: number;
+  readonly freeHealDay?: string;
   readonly traderRationUsed: number;
   readonly traderBerthPaid: boolean;
   readonly raidInFlight?: RaidInFlight | null;
@@ -743,6 +751,7 @@ export interface SaveGameState {
   readonly pendingRecoveryMs?: number;
   readonly recoveryCarried?: boolean;
   readonly wardTreatmentsUsed?: number;
+  readonly freeHealDay?: string;
   readonly traderRationUsed?: number;
   readonly traderBerthPaid?: boolean;
   readonly raidInFlight?: RaidInFlight | null;
@@ -1485,7 +1494,7 @@ export class SaveManager {
    * storage rather than handed a copy, so a tab behind the one that banked or
    * lost a raid heals the game as it stands.
    */
-  public healAtCenter(): RecoveryOutcome | undefined {
+  public healAtCenter(now: Date = new Date()): RecoveryOutcome | undefined {
     const game = this.load();
     if (!game) {
       return undefined;
@@ -1499,7 +1508,7 @@ export class SaveManager {
       pokemonNeedingRecovery(game.stash)
         .map((stored) => stored.id)
         .filter((id) => !away.has(id)),
-      recoveryTermsFor(game.raidProgress.workshopUpgrades, game.wardTreatmentsUsed),
+      recoveryTermsFor(game.raidProgress.workshopUpgrades, game.wardTreatmentsUsed, game.freeHealDay, now),
     );
     if (outcome.recoveredIds.length === 0) {
       return outcome;
@@ -1508,6 +1517,7 @@ export class SaveManager {
       ...game,
       pendingRecoveryMs: outcome.pendingRecoveryMs,
       wardTreatmentsUsed: game.wardTreatmentsUsed + outcome.wardTreatmentsUsed,
+      ...(outcome.usedFreeHeal ? { freeHealDay: healDayOf(now) } : {}),
     })
       ? outcome
       : undefined;
@@ -2873,6 +2883,7 @@ export function serializeGame(state: SaveGameState): SaveData {
     pendingRecoveryMs: clampPendingRecoveryMs(state.pendingRecoveryMs),
     ...(state.recoveryCarried === true && clampPendingRecoveryMs(state.pendingRecoveryMs) > 0 ? { recoveryCarried: true } : {}),
     wardTreatmentsUsed: clampWardTreatmentsUsed(state.wardTreatmentsUsed),
+    ...(readHealDay(state.freeHealDay) ? { freeHealDay: state.freeHealDay } : {}),
     traderRationUsed: clampTraderCount(state.traderRationUsed),
     traderBerthPaid: state.traderBerthPaid === true,
     ...(state.raidInFlight ? { raidInFlight: state.raidInFlight } : {}),
@@ -2987,6 +2998,7 @@ export function deserializeGame(value: unknown): RestoredGame | null {
     pendingRecoveryMs: clampPendingRecoveryMs(value.pendingRecoveryMs),
     recoveryCarried: value.recoveryCarried === true && clampPendingRecoveryMs(value.pendingRecoveryMs) > 0,
     wardTreatmentsUsed: clampWardTreatmentsUsed(value.wardTreatmentsUsed),
+    ...(readHealDay(value.freeHealDay) ? { freeHealDay: value.freeHealDay } : {}),
     traderRationUsed: clampTraderCount(value.traderRationUsed),
     traderBerthPaid: value.traderBerthPaid === true,
     raidInFlight: readRaidInFlight(value.raidInFlight, bagContents),
@@ -3687,4 +3699,9 @@ export function traderProgressOf(raidProgress: RaidProgress): TraderProgress {
     traderMoneySpent: clampTraderCount(raidProgress.traderMoneySpent),
     traderBarters: clampTraderBarters(raidProgress.traderBarters),
   };
+}
+
+/** A free-heal day as a save may hold it (`healDayOf`), or undefined for anything else. */
+function readHealDay(value: unknown): value is string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
 }

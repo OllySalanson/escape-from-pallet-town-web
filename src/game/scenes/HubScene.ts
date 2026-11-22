@@ -12,6 +12,7 @@ import type {
 import {
   secureNeverReason,
   applyRecovery,
+  healDayOf,
   partnerPlaceLine,
   beaconUnlockAtMs,
   checkBerth,
@@ -773,7 +774,7 @@ export class HubScene extends Phaser.Scene {
    * treatment does not charge.
    */
   private get recoveryTerms(): RecoveryTerms {
-    return recoveryTermsFor(this.builtUpgradeIds, this.savedGame.wardTreatmentsUsed);
+    return recoveryTermsFor(this.builtUpgradeIds, this.savedGame.wardTreatmentsUsed, this.savedGame.freeHealDay, new Date());
   }
 
   /** Whether the ward's free bed would go to this Pokemon if it were treated now. */
@@ -783,7 +784,8 @@ export class HubScene extends Phaser.Scene {
 
   /** What treating this one Pokemon at the bay costs right now. */
   private recoveryPriceMs(stored: StashedPokemon): number {
-    return recoveryCostMs(stored.pokemon, this.recoveryTerms, this.inWardBed(stored));
+    // Today's free heal costs nothing, as `applyRecovery` charges it.
+    return this.recoveryTerms.freeToday ? 0 : recoveryCostMs(stored.pokemon, this.recoveryTerms, this.inWardBed(stored));
   }
 
   /**
@@ -823,6 +825,7 @@ export class HubScene extends Phaser.Scene {
     if (this.movedOnElsewhere() || ids.some((id) => this.outOnRaid(id))) {
       return;
     }
+    const now = new Date();
     const outcome = applyRecovery(this.stash, this.pendingRecoveryMs, ids, this.recoveryTerms);
     if (outcome.recoveredIds.length === 0) {
       this.refuse(
@@ -840,6 +843,7 @@ export class HubScene extends Phaser.Scene {
       ...this.savedGame,
       pendingRecoveryMs: outcome.pendingRecoveryMs,
       wardTreatmentsUsed: this.savedGame.wardTreatmentsUsed + outcome.wardTreatmentsUsed,
+      ...(outcome.usedFreeHeal ? { freeHealDay: healDayOf(now) } : {}),
     };
     const treated =
       outcome.recoveredIds.length === 1

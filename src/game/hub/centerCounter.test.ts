@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { baseGame } from '../base/baseGames.testkit';
-import { centerOffer, healedLine, nobodyCanRaid, recoveryTermsFor } from './centerCounter';
-import { formatRecoveryClock, MAX_PENDING_RECOVERY_MS, quoteRecovery } from './recovery';
+import { centerOffer, HEAL_RULE_LINE, healedLine, nobodyCanRaid, recoveryTermsFor } from './centerCounter';
+import { formatRecoveryClock, healDayOf, MAX_PENDING_RECOVERY_MS, quoteRecovery } from './recovery';
 
+/** A save that has had today's free heal, so a heal is charged as every other is. */
 function hurtGame() {
-  const game = baseGame();
+  const game = { ...baseGame(), freeHealDay: healDayOf(new Date()) };
   const [stored] = game.stash.listPokemon();
   stored.pokemon.takeDamage(stored.pokemon.maxHp - 1);
   return { game, stored };
@@ -84,6 +85,24 @@ describe('Nurse Joy at her counter', () => {
     expect(centerOffer(game).lines.join(' ')).not.toContain('WARD');
   });
 
+  it("heals free the first time each day, and says so and what healing ever costs", () => {
+    const { game, stored } = hurtGame();
+    stored.pokemon.takeDamage(stored.pokemon.currentHp);
+    const today = new Date(2026, 10, 22, 18);
+    const fresh = { ...game, freeHealDay: undefined };
+    const offer = centerOffer(fresh, false, today);
+    expect(offer.lines[0]).toContain("Your first heal today is free: it won't cost your next raid a second.");
+    expect(offer.lines).toContain(HEAL_RULE_LINE);
+    expect(HEAL_RULE_LINE).toBe('Healing costs at most 1:00 of a raid, and the first each day is free.');
+    // A free heal opens on YES, as FireRed's does.
+    expect(offer.spendsForGood).toBe(false);
+    // Taken today, she charges, and still says the rule; tomorrow it is free again.
+    const taken = { ...game, freeHealDay: healDayOf(today) };
+    expect(centerOffer(taken, false, today).lines[0]).toContain('Healing would take');
+    expect(centerOffer(taken, false, today).lines).toContain(HEAL_RULE_LINE);
+    expect(centerOffer(taken, false, new Date(2026, 10, 23, 9)).lines[0]).toContain('first heal today is free');
+  });
+
   it('charges an explorer run nothing, whose clock nothing can shorten', () => {
     const { game } = hurtGame();
     expect(centerOffer(game, true).lines[0]).toContain('Healing will not cost your next raid a second.');
@@ -93,5 +112,6 @@ describe('Nurse Joy at her counter', () => {
   it('says the clock it left, only when it charged one', () => {
     expect(healedLine(30_000, 30_000)).toContain('Your next raid runs 4:30.');
     expect(healedLine(0, 0)).toBe('Your Pokémon are fit to raid. We hope to see you again!');
+    expect(healedLine(0, 0, false, true)).toBe('Your Pokémon are fit to raid. That was today’s free heal. We hope to see you again!');
   });
 });

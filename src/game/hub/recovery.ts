@@ -71,10 +71,29 @@ export const RECOVERY_STATUS_MS = shareOfRaid(STATUS_SHARE);
 export interface RecoveryTerms {
   readonly priceShare: number;
   readonly wardTreatments: number;
+  /**
+   * Whether today's free heal is still unused (`isFreeHealDay`): the first heal
+   * on each day of the player's own clock costs no raid time at all. A lost
+   * raid already takes the pack, and newcomers who then paid 1:40 to 2:30 of
+   * the next raid to stand back up lost again on the shorter clock and quit
+   * (AI playtest 5, 22 Nov 2026).
+   */
+  readonly freeToday?: boolean;
 }
 
 /** The bay as every save starts with it. */
 export const STANDARD_RECOVERY_TERMS: RecoveryTerms = { priceShare: 1, wardTreatments: 0 };
+
+/** A day on the player's own clock, as the save remembers the free heal by: `2026-11-22`. */
+export function healDayOf(now: Date): string {
+  const two = (value: number): string => String(value).padStart(2, '0');
+  return `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}`;
+}
+
+/** Whether a save that last took its free heal on `freeHealDay` has today's still to take. */
+export function isFreeHealDay(freeHealDay: string | undefined, now: Date): boolean {
+  return freeHealDay !== healDayOf(now);
+}
 
 export interface RecoveryPrices {
   readonly fullBarMs: number;
@@ -94,7 +113,11 @@ export function recoveryPrices(priceShare: number): RecoveryPrices {
 }
 
 /**
- * The most raid time recovery can ever take: half the raid clock, exactly.
+ * The most raid time recovery can ever take: a fifth of the raid clock, which
+ * is 1:00 of the five minutes. It was half (2:30), and a fainted lone starter
+ * cost 1:40 of a five-minute raid: losing made the next raid shorter and so
+ * likelier to be lost too, and newcomers quit on that spiral (AI playtest 5,
+ * 22 Nov 2026).
  *
  * This is derived rather than written down because the two must move together -
  * a cap larger than the clock leaves a treated party deploying into a raid that
@@ -115,7 +138,7 @@ export function recoveryPrices(priceShare: number): RecoveryPrices {
  * nobody at base can raid at all, because a player must always be able to
  * attempt a run.
  */
-export const MAX_PENDING_RECOVERY_MS = Math.floor(RAID_DURATION_MS / 2);
+export const MAX_PENDING_RECOVERY_MS = Math.floor(RAID_DURATION_MS / 5);
 
 export interface RecoveryOutcome {
   /** Stash IDs that were actually restored, in the order they were treated. */
@@ -128,6 +151,8 @@ export interface RecoveryOutcome {
   readonly pendingRecoveryMs: number;
   /** Stash IDs she would not treat, because the debt was at the cap before she began. */
   readonly heldBackIds: readonly string[];
+  /** Whether this was today's free heal, which the save then remembers (`healDayOf`). */
+  readonly usedFreeHeal: boolean;
 }
 
 /**
@@ -236,14 +261,17 @@ function planRecovery(
   terms: RecoveryTerms,
 ): { readonly treatments: readonly PlannedTreatment[]; readonly heldBackIds: readonly string[]; readonly pendingRecoveryMs: number } {
   const patients = resolve(stash, ids);
-  const beds = wardBedIds(pokemonNeedingRecovery(stash), terms);
-  const heldBack = isRecoveryHeldBack(stash, pendingRecoveryMs);
+  // Today's free heal takes everybody for nothing, so it neither fills a ward
+  // bed nor waits on a debt at the cap.
+  const free = terms.freeToday === true;
+  const beds = free ? new Set<string>() : wardBedIds(pokemonNeedingRecovery(stash), terms);
+  const heldBack = !free && isRecoveryHeldBack(stash, pendingRecoveryMs);
   const treatments: PlannedTreatment[] = [];
   const heldBackIds: string[] = [];
   let pending = pendingRecoveryMs;
   for (const stored of patients) {
     const inWardBed = beds.has(stored.id);
-    const costMs = recoveryCostMs(stored.pokemon, terms, inWardBed);
+    const costMs = free ? 0 : recoveryCostMs(stored.pokemon, terms, inWardBed);
     if (heldBack && costMs > 0) {
       heldBackIds.push(stored.id);
       continue;
@@ -313,7 +341,14 @@ export function applyRecovery(
     wardTreatmentsUsed += inWardBed ? 1 : 0;
     recoveredIds.push(stored.id);
   }
-  return { recoveredIds, chargedMs, pendingRecoveryMs: pending, wardTreatmentsUsed, heldBackIds: plan.heldBackIds };
+  return {
+    recoveredIds,
+    chargedMs,
+    pendingRecoveryMs: pending,
+    wardTreatmentsUsed,
+    heldBackIds: plan.heldBackIds,
+    usedFreeHeal: terms.freeToday === true && recoveredIds.length > 0,
+  };
 }
 
 /** Adds one treatment to the debt, never taking it past the cap. */

@@ -27,7 +27,7 @@ import { flowForGame, type ArenaKit } from '../base/arenaKit';
 import type { RestoredGame } from '../save/SaveManager';
 import { availableInsertionIds, frontDoorFor, requireInsertion, RUN_INSERTIONS } from '../run/runGeneration';
 import { QUICKER_LANDING_MS, standingJobWalk } from '../objectives/standingBoard';
-import { formatRecoveryClock } from '../hub/recovery';
+import { formatRecoveryClock, healDayOf } from '../hub/recovery';
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import type { ActiveRunSession } from '../run/RunSession';
 import { createStartingStash, Stash, type StashedPokemon } from '../stash';
@@ -366,6 +366,8 @@ function createHub(
       starterSpeciesId: 'bulbasaur',
       pendingRecoveryMs: 0,
       wardTreatmentsUsed: 0,
+      // Today's free heal already taken, so a heal is charged as every other is.
+      freeHealDay: healDayOf(new Date()),
       traderRationUsed: 0,
       traderBerthPaid: false,
     },
@@ -393,7 +395,7 @@ function deploy(hub: HubInternals, start: ReturnType<typeof vi.fn>): void {
 }
 
 /** A hub whose stored save holds one worn-down Pokemon, as a raid leaves it. */
-function createWornHub(damage = (maxHp: number) => maxHp - 3): {
+function createWornHub(damage = (maxHp: number) => maxHp - 3, freeHealTaken = true): {
   hub: HubInternals;
   start: ReturnType<typeof vi.fn>;
   storage: MemoryStorage;
@@ -410,6 +412,7 @@ function createWornHub(damage = (maxHp: number) => maxHp - 3): {
     position: { x: 6, y: 8 },
     bag: new Bag(),
     stash,
+    ...(freeHealTaken ? { freeHealDay: healDayOf(new Date()) } : {}),
   });
   const { hub, start } = createHub(DEFAULT_RAID_PROGRESS, storage);
   const worn = hub.stash.listPokemon().find((stored) => stored.id === 'charmander-1')!;
@@ -735,6 +738,15 @@ describe('hub deployment route', () => {
     expect(deployed.bag.count('potion')).toBe(2);
     // And the vault the raid was drawn from agrees, on disk.
     expect(new SaveManager(storage).load()?.stash.itemCount('potion')).toBe(2);
+  });
+
+  it("heals free the first time each day, and remembers the day it was taken", () => {
+    const { hub, storage, worn } = createWornHub((maxHp) => maxHp, false);
+    hub.recover(['charmander-1']);
+    expect(worn.pokemon.isFainted).toBe(false);
+    expect(hub.pendingRecoveryMs).toBe(0);
+    expect(hub.raidClockMs).toBe(RAID_DURATION_MS);
+    expect(new SaveManager(storage).load()?.freeHealDay).toBe(healDayOf(new Date()));
   });
 
   it('leaves a fainted Pokemon to the Pokemon Center rather than letting a Potion revive it', () => {
@@ -2082,6 +2094,7 @@ describe('Brock', () => {
         standingContractsBanked: 0,
         giftsReceived: [],
       },
+      freeHealDay: healDayOf(new Date()),
     });
     const { hub, start } = createHub(DEFAULT_RAID_PROGRESS, storage);
     return { hub: hub as WorkshopInternals, start, storage };

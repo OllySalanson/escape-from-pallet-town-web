@@ -13,6 +13,7 @@ import { CHARMANDER, PIDGEY, Pokemon, PokemonParty } from '../pokemon';
 import { activeRunManager, RunPhase } from '../run';
 import { RAID_PULSE_KEY, RaidHeartbeat } from '../run/raidInFlight';
 import { createStartingStash, type RaidCondition } from '../stash';
+import { healDayOf } from '../hub/recovery';
 import type { DeploymentFlow } from '../hub';
 import { SaveManager, spareAtBase, type StorageLike } from '../save/SaveManager';
 import { HubScene } from './HubScene';
@@ -226,7 +227,11 @@ describe('a raid out in one tab, and the base open in another', () => {
     seedSave(storage);
     const raidId = deployFrom(storage);
 
-    const outcome = new SaveManager(storage).healAtCenter();
+    // Today's free heal taken, so the heal is booked against the raid clock.
+    const day = new Date();
+    const seeded = new SaveManager(storage);
+    seeded.save({ ...seeded.load()!, freeHealDay: healDayOf(day) });
+    const outcome = new SaveManager(storage).healAtCenter(day);
     expect(outcome?.recoveredIds).toEqual(['bulbasaur-1']);
     const booked = new SaveManager(storage).load()!.pendingRecoveryMs;
     expect(booked).toBeGreaterThan(0);
