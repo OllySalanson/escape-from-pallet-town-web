@@ -150,16 +150,17 @@ const species = (id: string): PokemonBase => {
  *   hunter 99-100% and the enrage stopped being one by mid-game.
  * - **Every rung sits below you.** Measured at each offset, all five rivals
  *   together, re-measured once each rival took their own escorts (the captain,
- *   22 Nov 2026; the table with the shared Rattata-led escorts, in brackets):
+ *   22 Nov 2026; the table with the shared Rattata-led escorts, in brackets;
+ *   the early parties now include a Lv 4 Drowzee leading a Lv 20 Ivysaur):
  *
  * | rung            | offset | early parties: wins (mean / worst), HP left | late parties: wins, HP left        |
  * | --------------- | ------ | ------------------------------------------- | ---------------------------------- |
- * | 1: 0-120s       | -4     | 100% / 98%, 84% (100% / 98%, 84%)           | 94% / 46%, 76% (93% / 63%, 82%)    |
- * | 2: 120-180s     | -3     | 100% / 96%, 80% (100% / 96%, 80%)           | 95% / 70%, 72% (91% / 54%, 79%)    |
- * | 3: 180-240s     | -2     | 99% / 82%, 72% (99% / 82%, 73%)             | 92% / 45%, 66% (92% / 68%, 68%)    |
+ * | 1: 0-120s       | -4     | 100% / 98%, 83% (100% / 98%, 84%)           | 94% / 46%, 76% (93% / 63%, 82%)    |
+ * | 2: 120-180s     | -3     | 100% / 96%, 79% (100% / 96%, 80%)           | 95% / 70%, 72% (91% / 54%, 79%)    |
+ * | 3: 180-240s     | -2     | 99% / 82%, 71% (99% / 82%, 73%)             | 92% / 45%, 66% (92% / 68%, 68%)    |
  * | 4: 240s-end     | -1     | 95% / 63%, 64% (95% / 63%, 64%)             | 91% / 40%, 62% (90% / 64%, 64%)    |
- * | at your level   | 0      | 79% / 1%, 55% (79% / 1%, 55%)               | 84% / 19%, 55% (89% / 46%, 56%)    |
- * | enraged         | +3     | 43% / 0%, 46% (41% / 0%, 45%)               | 63% / 0%, 43% (73% / 1%, 45%)      |
+ * | at your level   | 0      | 80% / 1%, 55% (79% / 1%, 55%)               | 84% / 19%, 55% (89% / 46%, 56%)    |
+ * | enraged         | +3     | 45% / 0%, 46% (41% / 0%, 45%)               | 63% / 0%, 43% (73% / 1%, 45%)      |
  *
  * Typed escorts moved only the late parties, and only where a type now lands:
  * LT. SURGE's Pikachu against a team with a Pidgey in it is the worst late
