@@ -25,6 +25,7 @@ import {
   errandLoot,
   errandOf,
   errandOpen,
+  openErrandForItem,
   errandPlace,
   errandQuarter,
   errandRewardFor,
@@ -434,5 +435,16 @@ describe('a favour that pays an HM already owned', () => {
         expect(swapped === errand.reward, `${errand.id}: ${itemId}`).toBe(!itemId.startsWith('hm'));
       }
     }
+  });
+});
+
+describe('a favour\'s thing found again once the favour is done', () => {
+  // AI playtest, 22 Nov 2026: a second Old Amber after Bill had his said 'Walk
+  // out with it and Bill gets it back'.
+  it('is just a find: no favour claims it', () => {
+    expect(openErrandForItem('old-amber', undefined)?.id).toBe('old-amber');
+    expect(openErrandForItem('old-amber', [{ id: 'old-amber', status: 'started', found: 0, lossesHeard: 0 }])?.id).toBe('old-amber');
+    expect(openErrandForItem('old-amber', [{ id: 'old-amber', status: 'completed', found: 1, lossesHeard: 0 }])).toBeUndefined();
+    expect(openErrandForItem('potion', undefined)).toBeUndefined();
   });
 });

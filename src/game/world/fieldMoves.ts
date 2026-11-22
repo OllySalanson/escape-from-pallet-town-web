@@ -145,6 +145,11 @@ export function fieldMoveLines(
   return [obstacle, authored.worked(user.name.toUpperCase())];
 }
 
+/** What the raid's first boulder push says: who moved it, and that walking into one is how. */
+export function strengthUsedLine(userName: string): string {
+  return `${userName.toUpperCase()} used STRENGTH! Walk into a boulder to push it.`;
+}
+
 /**
  * The line said once, on the step that opened a door for good. It is the same
  * promise `gatesOpenedLines` makes for a boss's gate, because it is the same

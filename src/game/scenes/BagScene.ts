@@ -115,7 +115,7 @@ export const POKE_FLUTE_LINE = 'Played the POKé FLUTE. Now, that\'s a catchy tu
 const useLabel = (item: ItemDefinition): string => {
   switch (item.effect.type) {
     case 'capture-modifier':
-      return 'Thrown in a battle, from the BALL command. Nothing to do with it here.';
+      return 'Thrown at a wild Pokémon in battle, from BALL. Nothing to do with it here.';
     case 'material':
       return 'Carry it home: Brock is the only one who takes it.';
     case 'currency':

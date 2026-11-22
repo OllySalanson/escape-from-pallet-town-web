@@ -2985,7 +2985,7 @@ describe('the wall map in Oak’s Lab', () => {
     // A Cut door has no keeper: it wants a move.
     expect(close).toContain('needs CUT');
     expect(close).not.toContain('held by CUT');
-    expect(close).toContain('No keeper beaten here yet');
+    expect(close).toContain('No boss beaten here yet');
     // Only what has been walked to is named; the rest is counted.
     expect(close).toContain(`And ${gatesForMap('route-1').length - 2} more to find.`);
     expect(close).toMatch(/\d+ ways out to find\./);

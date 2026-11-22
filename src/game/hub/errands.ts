@@ -380,6 +380,16 @@ export function errandForItem(itemId: string): Errand | undefined {
 }
 
 /** The errand a keeper gives. One each, so far. */
+/**
+ * The favour a found thing is for, while that favour is still to be done. Once
+ * it is done the thing is just a find: a second Old Amber after Bill had his
+ * said 'Walk out with it and Bill gets it back' (AI playtest, 22 Nov 2026).
+ */
+export function openErrandForItem(itemId: string, records: readonly ErrandRecord[] | undefined): Errand | undefined {
+  const errand = errandForItem(itemId);
+  return errand && errandRecord(records, errand.id)?.status !== 'completed' ? errand : undefined;
+}
+
 export function errandOf(giver: ErrandGiver): Errand | undefined {
   return ERRANDS.find((errand) => errand.giver === giver);
 }

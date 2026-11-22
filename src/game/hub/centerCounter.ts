@@ -118,7 +118,7 @@ export function centerOffer(game: CounterGame, free = false, now: Date = new Dat
     terms.freeToday && !free
       ? "Your first heal today is free: it won't cost your next raid a second."
       : quoteMs === 0
-      ? 'Healing will not cost your next raid a second.'
+      ? "Healing won't cost your next raid a second."
       : // The heal's price, not a charge already made: 'It takes 0:45 off your
         // next raid' before the question read as lost whatever the answer
         // (AI playtest, 22 Nov 2026).

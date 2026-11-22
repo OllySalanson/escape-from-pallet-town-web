@@ -337,6 +337,7 @@ import {
 } from '../world/gates';
 import {
   fieldMoveLines,
+  strengthUsedLine,
   fieldMoveOpenedLine,
   fieldMoveUser,
 } from '../world/fieldMoves';
@@ -359,7 +360,7 @@ import {
 import { hasHunterIntel } from '../hub/workshop';
 import { anyoneFitToRaid } from '../hub/recovery';
 import { DAY_CARE_LEAST_RAID_MS } from '../hub/dayCare';
-import { errandForItem, favoursInHand } from '../hub/errands';
+import { favoursInHand, openErrandForItem } from '../hub/errands';
 import { BEACON_EXIT_LABEL } from '../run/runGeneration';
 import {
   getVisibleLoot,
@@ -4416,6 +4417,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       );
       return true;
     }
+    // The raid's first push says who did it, as FireRed's does: a boulder that
+    // slid without a word read as the map moving by itself (AI playtest, 22 Nov
+    // 2026). Read off the raid's own record of moved boulders, so a rebuilt
+    // world does not say it again.
+    const firstPush = Object.keys(this.runSession.bouldersMoved ?? {}).length === 0;
     this.runSession.bouldersMoved = { ...this.runSession.bouldersMoved, [boulder.id]: destination };
     this.facing = facing;
     this.pushingAgainst = null;
@@ -4432,6 +4438,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       });
     }
     audioManager.play('bump');
+    if (firstPush) {
+      this.dialogBox.showMessage(strengthUsedLine(fieldMoveUser(this.party.pokemon, 'strength')!.name));
+    }
     const plate = switchAt(this.switchesHere(), destination);
     if (plate?.kind === 'plate' && !this.switchThrown(plate)) {
       this.time.delayedCall(STEP_DURATION_MS, () => this.throwSwitch(plate));
@@ -8317,7 +8326,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Somebody at base is waiting on this one (`hub/errands.ts`). That it was
     // picked up is written now, as a beaten boss is, so the giver knows to ask
     // after it whichever way the raid ends.
-    const errand = errandForItem(item.id);
+    const errand = openErrandForItem(item.id, new SaveManager().load()?.raidProgress?.errands);
     if (errand) {
       new SaveManager().recordErrandFound(item.id);
       return `Found ${item.displayName}! Walk out with it and ${errand.name} gets it back.${this.reseatNote()}`;

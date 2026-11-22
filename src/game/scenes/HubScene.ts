@@ -2786,7 +2786,7 @@ export class HubScene extends Phaser.Scene {
     )}</div>${pixelCommitBar({
       title: this.flow.packName,
       lines: [
-        `<small class="px-wrap${warning ? ' px-warning' : ''}">${warning || `${supplies} ${supplies === 1 ? 'supply' : 'supplies'} packed. Lost on a wipe unless they are in the locker, and the ${this.flow.packName} goes either way.`}</small>`,
+        `<small class="px-wrap${warning ? ' px-warning' : ''}">${warning || `${supplies} ${supplies === 1 ? 'supply' : 'supplies'} packed. Lost on a wipe unless they are in the locker. The ${this.flow.packName} is lost on a wipe either way.`}</small>`,
       ],
       // The cursor starts on what the rack is for, never on the way out.
       actions: `<button class="px-window px-button is-primary" data-back${firstCount < 0 ? ' data-cursor-start' : ''} data-help="Back to the hall.">Done</button>`,
@@ -3082,7 +3082,7 @@ export class HubScene extends Phaser.Scene {
         const known = Math.round(entry.known * 100);
         const signs =
           entry.signs.length === 0
-            ? `<small class="wallmap-none">${entry.held === 0 ? 'Nobody holds a door here' : `${entry.held} keeper${entry.held === 1 ? '' : 's'} still holding doors`}</small>`
+            ? `<small class="wallmap-none">${entry.held === 0 ? 'No boss here' : `${entry.held} ${entry.held === 1 ? 'boss' : 'bosses'} still guarding the way on`}</small>`
             : entry.signs.map((sign) => this.wallSign(sign.keeper)).join('');
         const gym = entry.nextGym
           ? `<small class="wallmap-none wallmap-next-gym">Next gym: ${entry.nextGym.building}, ${entry.nextGym.standsIn}</small>`
@@ -3143,7 +3143,7 @@ export class HubScene extends Phaser.Scene {
       : '';
     const signs = `<h3 class="px-subheading">Signs pinned here</h3>${gym}${
       entry.signs.length === 0
-        ? `<p class="px-empty px-wrap">${entry.held === 0 ? 'Nobody holds a door on this map.' : `No keeper beaten here yet. Beat one and their sign goes up.`}</p>`
+        ? `<p class="px-empty px-wrap">${entry.held === 0 ? 'No boss on this map.' : `No boss beaten here yet. Beat one and their sign goes up.`}</p>`
         : entry.signs
             .map((sign) =>
               told(
