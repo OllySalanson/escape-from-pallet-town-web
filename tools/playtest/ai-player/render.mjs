@@ -20,6 +20,13 @@ function renderField(key, field) {
   if (field.search) lines.push(`SEARCHING ${field.search.title}: ${field.search.rows.join('; ') || 'nothing found yet'} | ${field.search.footer.join(' · ')}`);
   if (field.choice) lines.push(`QUESTION: ${field.choice.question ? `"${field.choice.question}" ` : ''}${field.choice.options.map((o, i) => (i === field.choice.selected ? `[${o}]` : o)).join(' / ')}`);
   if (field.hint) lines.push(`HINT: ${field.hint}`);
+  // THE RAID ARENA's telescope covers the hall while it is up, and holds the keys.
+  const glass = field.telescope;
+  if (glass) {
+    lines.push(`LOOKING THROUGH THE TELESCOPE${glass.open ? '' : ' (the glass is opening or closing)'}: ${glass.wayIn ? `the cursor is on the way in ${glass.wayIn}` : 'the cursor is out over the country'}`);
+    if (glass.card) lines.push(`THE GLASS SAYS: "${glass.card.title}${glass.card.body ? ` - ${glass.card.body}` : ''}"`);
+    if (glass.keys.length) lines.push(`TELESCOPE KEYS: ${glass.keys.join(' · ')}`);
+  }
   const raid = field.raid;
   if (raid) {
     lines.push(`RAID: ${clock(raid.remainingMs)} left${raid.enraged ? ' (ENRAGED)' : ''}${raid.contract ? ` - job: ${raid.contract}` : ''}`);

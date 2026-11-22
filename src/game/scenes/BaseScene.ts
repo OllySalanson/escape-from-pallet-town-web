@@ -1046,6 +1046,8 @@ export class BaseScene extends Phaser.Scene {
         : null,
       choice: question ? { question: question.question.join(' '), options: question.optionLabels, selected: question.selected } : null,
       hint: this.hintText?.visible ? this.hintText.text.replace(/\s+/g, ' ').trim() : null,
+      // THE RAID ARENA's telescope, while somebody is looking through it.
+      telescope: this.telescope?.describeForTest() ?? null,
       near: {
         doors: room
           ? []

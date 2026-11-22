@@ -441,6 +441,27 @@ export class ValeOverviewView {
       : null;
   }
 
+  /**
+   * What the glass shows, for test mode's `describe()`: the AI playtester read
+   * nothing while it was open - the harbour said nothing about it, so every
+   * look through it was reported as a telescope that never opened, and the keys
+   * it held on to as being stuck (AI playtests, 22 Nov 2026).
+   */
+  public describeForTest(): {
+    readonly open: boolean;
+    readonly wayIn: string | null;
+    readonly card: { readonly title: string; readonly body: string } | null;
+    readonly keys: readonly string[];
+  } {
+    const card = this.cardShown;
+    return {
+      open: this.isOpen,
+      wayIn: this.wayIn?.id ?? null,
+      card: card ? { title: card.title.replace(/\s+/g, ' ').trim(), body: card.body.replace(/\s+/g, ' ').trim() } : null,
+      keys: this.chips.filter((chip) => chip.text.visible).map((chip) => chip.text.text.replace(/\s+/g, ' ').trim()),
+    };
+  }
+
   /** Where the last of the keys along the foot ends, for a driver checking none is cut off. */
   public get barEnds(): number {
     return Math.max(...this.chips.filter((chip) => chip.text.visible).map((chip) => chip.x + chip.width));
