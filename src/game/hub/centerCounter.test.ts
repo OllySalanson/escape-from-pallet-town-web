@@ -66,6 +66,24 @@ describe('Nurse Joy at her counter', () => {
     expect(centerOffer(built).lines[0]).toContain(`It takes ${formatRecoveryClock(cheaper)} off`);
   });
 
+  it('says who THE WARD takes, what its bed never waives, and when the bed is used', () => {
+    const { game, stored } = hurtGame();
+    const ward = { ...game, raidProgress: { workshopUpgrades: ['quarantine-ward'] } };
+    const name = stored.pokemon.name;
+    // Hurt, not fainted: its healing is the bed's, and the bill is nothing.
+    expect(centerOffer(ward).lines).toContain(`THE WARD takes ${name}, so its healing is free.`);
+    expect(centerOffer(ward).lines[0]).toContain('It will not cost your next raid a second.');
+    // Fainted: the bed still takes it, and she says the faint is not the bed's.
+    stored.pokemon.takeDamage(stored.pokemon.currentHp);
+    expect(centerOffer(ward).lines).toContain(
+      `THE WARD takes ${name}, so its healing is free. Bringing a Pokémon round from a faint never is.`,
+    );
+    // The bed used this raid: she says so, rather than nothing.
+    expect(centerOffer({ ...ward, wardTreatmentsUsed: 1 }).lines).toContain('THE WARD’s bed is used until your next raid.');
+    // Without the ward, not a word about it.
+    expect(centerOffer(game).lines.join(' ')).not.toContain('WARD');
+  });
+
   it('charges an explorer run nothing, whose clock nothing can shorten', () => {
     const { game } = hurtGame();
     expect(centerOffer(game, true).lines[0]).toContain('It will not cost your next raid a second.');

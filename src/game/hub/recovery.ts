@@ -265,6 +265,18 @@ export function quoteRecovery(
   return planRecovery(stash, pendingRecoveryMs, ids, terms).treatments.reduce((total, treatment) => total + treatment.chargedMs, 0);
 }
 
+/** Which of these Pokemon a visit now would put in the ward's beds, by stash id. */
+export function wardBedIdsFor(
+  stash: Stash,
+  pendingRecoveryMs: number,
+  ids: readonly string[],
+  terms: RecoveryTerms = STANDARD_RECOVERY_TERMS,
+): readonly string[] {
+  return planRecovery(stash, pendingRecoveryMs, ids, terms)
+    .treatments.filter((treatment) => treatment.inWardBed)
+    .map((treatment) => treatment.stored.id);
+}
+
 /** Which of these Pokemon a visit now would hold back (`isRecoveryHeldBack`). */
 export function recoveryHeldBackIds(
   stash: Stash,
