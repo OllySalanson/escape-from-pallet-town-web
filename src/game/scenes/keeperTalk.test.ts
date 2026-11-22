@@ -279,16 +279,22 @@ describe('Nurse Joy, at her counter', () => {
     expect(joy.went[0].said?.[0]).toContain('fit to raid');
   });
 
-  it("heals free the first time each day, says so, and charges the next heal that day", () => {
+  it('heals free the first time each day, and says so once in the whole visit', () => {
     const manager = hurt(NOTHING_NEW, false);
     const joy = room(manager, [true]);
     joy.speak('pokemon-centre', 'stash');
     expect(joy.said.join(' ')).toContain('Your first heal today is free');
-    expect(joy.said.join(' ')).toContain('Healing costs at most 1:00 of a raid');
+    // Three times in one visit read as rules text (retest, 22 Nov 2026).
+    expect([...joy.said, ...(joy.went[0].said ?? [])].join(' ').match(/free/g)).toHaveLength(1);
     const after = manager.load()!;
     expect(after.pendingRecoveryMs).toBe(0);
     expect(after.freeHealDay).toBe(healDayOf(new Date()));
-    expect(joy.went[0].said?.[0]).toContain('That was today’s free heal.');
+  });
+
+  it('says the rule with a price: at most 1:00, and the first each day free', () => {
+    const joy = room(hurt(), [false]);
+    joy.speak('pokemon-centre', 'stash');
+    expect(joy.said.join(' ')).toContain('Healing costs at most 1:00 of a raid, and the first each day is free.');
   });
 
   it('asks nothing of a fit team', () => {

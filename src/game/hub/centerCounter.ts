@@ -43,7 +43,12 @@ export function recoveryTermsFor(
   };
 }
 
-/** Her plain word on what healing costs, said with every price (AI playtest 5, 22 Nov 2026). */
+/**
+ * Her plain word on what healing costs, said with a price (AI playtest 5, 22 Nov
+ * 2026). Never with today's free heal: its own line already says it is free, and
+ * the rule said beside it, and again after, was the same thing three times in
+ * one visit (the first-time-friend retest, 22 Nov 2026).
+ */
 export const HEAL_RULE_LINE = `Healing costs at most ${formatRecoveryClock(MAX_PENDING_RECOVERY_MS)} of a raid, and the first each day is free.`;
 
 type CounterGame = Pick<RestoredGame, 'stash' | 'pendingRecoveryMs' | 'wardTreatmentsUsed' | 'freeHealDay'> & {
@@ -129,7 +134,7 @@ export function centerOffer(game: CounterGame, free = false, now: Date = new Dat
       `${teamCondition(game.stash, away) ?? 'Somebody needs me'}. ${price}`,
       ...(heldBack.length > 0 ? [`${capped} The rest must wait for a raid.`] : []),
       ...(free || terms.freeToday ? [] : wardLines(game, pending, ids, terms)),
-      ...(free ? [] : [HEAL_RULE_LINE]),
+      ...(free || terms.freeToday ? [] : [HEAL_RULE_LINE]),
     ],
     question: `Shall I heal ${them}?`,
     // With nobody able to raid, the only useful answer is yes: a question opening
@@ -172,11 +177,10 @@ export function nobodyCanRaid(game: Pick<RestoredGame, 'stash'>): boolean {
 }
 
 /** What she says with the team back on its feet. */
-export function healedLine(chargedMs: number, pendingMs: number, free = false, usedFreeHeal = false): string {
+export function healedLine(chargedMs: number, pendingMs: number, free = false): string {
   const clock =
     chargedMs > 0 && !free ? ` Your next raid runs ${clockAfter(pendingMs)}.` : '';
-  const today = usedFreeHeal && !free ? ' That was today’s free heal.' : '';
-  return `Your Pokémon are fit to raid.${clock}${today} We hope to see you again!`;
+  return `Your Pokémon are fit to raid.${clock} We hope to see you again!`;
 }
 
 /** What she says to NOT NOW. */
