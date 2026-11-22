@@ -366,7 +366,7 @@ describe('what making a stop says', () => {
       expect(said).toEqual([
         `${order[0].collectedMessage} Two left.`,
         `${order[1].collectedMessage} One left.`,
-        `${order[2].collectedMessage} That is all three.`,
+        `${order[2].collectedMessage} That's all three.`,
       ]);
     }
     expect(contractStopMessage(braid, c, [c.id, a.id])).toBe('EAST ROAD logged. One left.');

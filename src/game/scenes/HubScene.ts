@@ -2706,7 +2706,9 @@ export class HubScene extends Phaser.Scene {
             : `The pack has room for ${limit} ${item.displayName} beside what else is packed.`
           : held === 1
             ? 'The only one at base is packed.'
-            : `All ${held} at base are packed.`;
+            : held === 2
+              ? 'Both at base are packed.'
+              : `Every one of the ${held} at base is packed.`;
         // How many are packed against how many are at base, as the thing
         // itself: a pile of its icon, the packed ones lit (`pixelStack`). The
         // squares each takes and whether it was packed for you are the help

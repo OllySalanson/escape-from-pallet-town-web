@@ -310,7 +310,7 @@ export function pinnedLines(
   if (first) {
     lines.push(
       'By rights this belongs to the library. But the sea gave it to you.',
-      `And look at ${company}. Mighty! It is yours to finish.`,
+      `And look at ${company}. Mighty! It's yours to finish.`,
       // "the vale", not its name in capitals: with it the line ran to a second box.
       `${piecesLeftSentence(left)} are out in the vale. ${leads ? `Try ${leads}.` : 'Ask round the harbour.'}`,
     );

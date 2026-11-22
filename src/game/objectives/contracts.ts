@@ -420,7 +420,7 @@ export function contractStopMessage(
   }
   const left = remainingMarkers(contract, contractSteps).length;
   const word = (count: number): string => COUNT_WORDS[count] ?? String(count);
-  const count = left === 0 ? `That is all ${word(total)}.` : `${word(left)} left.`;
+  const count = left === 0 ? `That's all ${word(total)}.` : `${word(left)} left.`;
   return `${marker.collectedMessage} ${count.charAt(0).toUpperCase()}${count.slice(1)}`;
 }
 
