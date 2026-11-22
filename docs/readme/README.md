@@ -13,7 +13,7 @@ number of screen pixels to the game pixel and stays sharp on a high-density disp
 |---|---|---|
 | `hero.svg` | The animated banner: Millbrook, in Greystone Vale, drifting by at dusk, the title plate, the raid clock gone red, and Blue chasing the player along the bottom | `tools/readme/drawArt.mjs` |
 | `cast.png` | The four keepers of the base and the five rivals, off the sheets the game draws them from | `tools/readme/drawArt.mjs` |
-| `social-preview.png` | The picture a link to the repository unfurls as (1280x640, the banner's parts at four to one so the title survives a thumbnail). Not shown on the page: GitHub has no API for it, so it is uploaded by hand under Settings, General, Social preview | `tools/readme/drawArt.mjs` |
+| `social-preview.png` | The picture a link to the repository unfurls as (1280x640, the banner's parts at four to one so the title survives a thumbnail). Not shown on the page: GitHub has no API for it, so it is uploaded by hand under Settings, General, Social preview. The same bytes go to `public/social-preview.png`, the published game's own link preview (`index.html`'s `og:image`) | `tools/readme/drawArt.mjs` |
 | `walk.webp` | A walk out of Mill Square in Millbrook, fifteen frames a second of game time, a straight run at a time | `tools/playtest/readmeShots.mjs`, then ffmpeg |
 | `quarry.png` | The Quarry in Greystone Peaks, a moment into a raid (1600x1024) | `readmeShots.mjs --part=place --insertion=greystone-vale-the-quarry --window=1600x1024` |
 | `hunter.png`, `battle.png` | The hunters coming out in Millbrook, and a fight with Blue (1600x1024) | `readmeShots.mjs --window=1600x1024`; `battle.png` was taken with the one hunter a raid had before the pack, and `--battle` is what would ask for it again |
