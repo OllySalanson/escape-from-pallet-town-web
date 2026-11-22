@@ -6461,11 +6461,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Through another place's doorway, the walk goes to where it is pressed
     // from, and stood there the arrow points into it (`doorwayTowards`).
     const doorway = doorwayTowards(this.currentMap, this.currentTile, tile);
+    const links = playerLinks(this.currentMap);
     const aim = !doorway
-      ? aheadOnWalk(this.wayField(tile), this.currentTile, tile)
+      ? aheadOnWalk(this.wayField(tile), this.currentTile, tile, links)
       : this.currentTile.x === doorway.stand.x && this.currentTile.y === doorway.stand.y
         ? doorway.into
-        : aheadOnWalk(this.wayField(doorway.stand), this.currentTile, doorway.stand);
+        : aheadOnWalk(this.wayField(doorway.stand), this.currentTile, doorway.stand, links);
     return {
       target: worldTile(tile),
       aim: worldTile(aim),
@@ -6480,7 +6481,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (known) {
       return known;
     }
-    const field = stepDistances(this.collisionData, tile);
+    // Over the map's doorways too: a walk that only goes through a cave does
+    // not reach the player otherwise, and the arrow points at the target
+    // across the cliffs (`aheadOnWalk`).
+    const field = stepDistances(this.collisionData, tile, new Set(), playerLinks(this.currentMap));
     if (this.wayFields.size >= WAY_FIELDS_KEPT) {
       this.wayFields.clear();
     }
