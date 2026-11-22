@@ -67,6 +67,15 @@ const JUMP_WORDS: Readonly<Record<JumpType, { readonly label: string; readonly h
   slow: { label: 'Slow', help: 'Floats at the top: easy while the vine is slow, too slow once it is fast.' },
 };
 
+/**
+ * Which kinds can jump, in words a player can go and catch by. "Not on
+ * FireRed's list" told a new player nothing about which Pokémon to fetch (AI
+ * playtest, 20 Nov 2026). FireRed's list (`generated/pokemonJump.ts`) is no
+ * one shape - Pidgey and Diglett are off it, Oddish and Psyduck on - so the
+ * line names kinds on it that the vale's grass holds rather than a rule.
+ */
+export const JUMPERS_ARE = 'Only some kinds can jump, as in FireRed: RATTATA, ODDISH, PSYDUCK, PIKACHU and the like.';
+
 /** The cabinet's own screen: pick up to three jumpers, then play. */
 export function jumpTeamMarkup(state: JumpTeamState): string {
   const jumpers = state.candidates.filter((candidate) => candidate.jumpType !== undefined);
@@ -81,15 +90,15 @@ export function jumpTeamMarkup(state: JumpTeamState): string {
         : full
           ? `Three are jumping already. Take one out first.`
           : `${candidate.name}: ${JUMP_WORDS[type].help}`
-      : `${candidate.name} cannot play: FireRed's POKéMON JUMP has no ${candidate.name.toUpperCase()} on its list.`;
+      : `${candidate.name} cannot play. ${JUMPERS_ARE}`;
     const tag = type
       ? pixelTag(chosen ? 'Jumping' : JUMP_WORDS[type].label, chosen ? 'good' : 'plain', chosen)
       : pixelTag('Cannot jump', 'risk');
-    return `<button class="px-row${chosen ? ' is-selected' : ''}" ${type ? `data-jumper="${candidate.id}"` : 'aria-disabled="true"'} ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"${full ? ' aria-disabled="true"' : ''}><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level}${type ? ` · ${JUMP_WORDS[type].label} jumper` : ' · not on FireRed’s list'} · ${escapeAttribute(candidate.box)}</small></span>${tag}</button>`;
+    return `<button class="px-row${chosen ? ' is-selected' : ''}" ${type ? `data-jumper="${candidate.id}"` : 'aria-disabled="true"'} ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"${full ? ' aria-disabled="true"' : ''}><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level}${type ? ` · ${JUMP_WORDS[type].label} jumper` : ''} · ${escapeAttribute(candidate.box)}</small></span>${tag}</button>`;
   };
   const rows = [
     ...jumpers.map(row),
-    ...(grounded.length > 0 ? ['<h3 class="px-subheading">Not on the list</h3>', ...grounded.map((candidate, index) => row(candidate, jumpers.length + index))] : []),
+    ...(grounded.length > 0 ? ['<h3 class="px-subheading">Can’t jump</h3>', `<p class="px-empty px-wrap">${JUMPERS_ARE}</p>`, ...grounded.map((candidate, index) => row(candidate, jumpers.length + index))] : []),
   ].join('');
   const empty =
     jumpers.length === 0
