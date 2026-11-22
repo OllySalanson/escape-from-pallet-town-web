@@ -184,7 +184,7 @@ import {
   nextHunterProximity,
 } from '../audio/worldSounds';
 import { DEFAULT_RAID_PROGRESS, SaveManager, raidsDeployed, type RestoredGame } from '../save/SaveManager';
-import { gymOf } from '../world/valeQuarters';
+import { gymOf, nextGym } from '../world/valeQuarters';
 import { Bag, ITEMS, formatMoney, getItemById, isCurrency, itemAmountsFor, type ItemId } from '../items';
 import {
   areContractStopsComplete,
@@ -221,7 +221,7 @@ import { ExitVehicleSprite } from '../ui/ExitVehicleSprite';
 import { rideOnMap } from '../world/exitVehicles';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { RadioChip } from '../ui/RadioChip';
-import { buildObjectiveGuide } from '../objectives/ObjectiveGuide';
+import { buildObjectiveGuide, type NextGymHere } from '../objectives/ObjectiveGuide';
 import { PRESS_ARROWS } from '../ui/pressArrows';
 import { openNamingScreen } from '../ui/NamingScreenOverlay';
 import { placeCaptions, placeDialog, seatedOver, type CaptionPlacement, type Rect } from '../ui/labelPlacement';
@@ -1508,6 +1508,24 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // interruption so the key already held walks the player at the door.
       this.interrupt(openedGates);
     }
+  }
+
+  /**
+   * The next gym this save has to beat, if its room is on this map and the
+   * player is not already in it: what Oak's radio says the way to.
+   */
+  private nextGymHere(): NextGymHere | undefined {
+    const gym = nextGym([...(this.runSession?.plan?.defeatedBosses ?? []), ...this.bossesBeatenThisRaid()]);
+    const room = gym && this.currentMap.areas?.find((area) => area.name === gym.building);
+    if (!gym || !room || this.currentArea() === room) {
+      return undefined;
+    }
+    return {
+      building: gym.building,
+      standsIn: gym.standsIn,
+      leader: gym.leader,
+      inside: { x: room.rect.x + Math.floor(room.rect.width / 2), y: room.rect.y + Math.floor(room.rect.height / 2) },
+    };
   }
 
   /** The keepers this raid has beaten, for the result screen to name their badges. */
@@ -6333,6 +6351,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       stepsTo: walkingStepsFrom(this.currentTile, this.collisionData, playerLinks(this.currentMap)),
       defeatedTrainerIds: new Set(this.defeatedTrainerIds),
       nextStop: (stops) => nearestByWalk(this.currentMap, this.currentTile, stops),
+      nextGym: this.nextGymHere(),
     });
     audioManager.play('menuOpen');
     this.player.stop();
@@ -6533,6 +6552,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       stepsTo: walkingStepsFrom(this.currentTile, this.collisionData, playerLinks(this.currentMap)),
       defeatedTrainerIds: [...this.defeatedTrainerIds],
       nextStop: <Stop extends { readonly position: GridPosition }>(stops: readonly Stop[]) => nearestByWalk(this.currentMap, this.currentTile, stops),
+      nextGym: this.nextGymHere(),
       pausedWorld: true,
     });
   }

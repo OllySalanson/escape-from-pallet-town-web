@@ -32,6 +32,8 @@ export interface ObjectivesSceneData {
   readonly defeatedTrainerIds?: readonly string[];
   /** Which of a job's stops the gold arrow is after (`ObjectiveGuideContext.nextStop`). */
   readonly nextStop?: ObjectiveGuideContext['nextStop'];
+  /** Which gym is next and where its room is (`ObjectiveGuideContext.nextGym`). */
+  readonly nextGym?: ObjectiveGuideContext['nextGym'];
   /** Only resume WorldScene when this overlay paused it. */
   readonly pausedWorld: boolean;
 }
@@ -70,6 +72,7 @@ export class ObjectivesScene extends Phaser.Scene {
       ...(data.stepsTo ? { stepsTo: data.stepsTo } : {}),
       ...(data.defeatedTrainerIds ? { defeatedTrainerIds: new Set(data.defeatedTrainerIds) } : {}),
       ...(data.nextStop ? { nextStop: data.nextStop } : {}),
+      ...(data.nextGym ? { nextGym: data.nextGym } : {}),
     });
     this.createOverlay(guide);
   }

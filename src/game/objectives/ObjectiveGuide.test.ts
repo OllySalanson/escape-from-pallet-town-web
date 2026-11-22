@@ -13,7 +13,7 @@ import { WORKED_LANDMARKS } from '../world/workedLandmarks';
 import { getWorldMap, type WorldMapId } from '../worldMap';
 import { walkingStepsFrom } from '../world/nearestExit';
 import { raidConditions, type RaidConditions } from '../world/secrets';
-import { MISTY_BOSS_ID } from '../world/valeQuarters';
+import { MISTY_BOSS_ID, valeGyms } from '../world/valeQuarters';
 import { CHEST_ITEM_ID, COAST_SHUT_LINE, TREASURE_GOAL, TREASURE_PLACE } from '../treasure/treasureMap';
 
 function createFirstContractSession() {
@@ -777,6 +777,37 @@ describe('Professor Oak on the radio', () => {
     });
     expect(guide.radio[0]).toMatch(/^Oak here! The nearest landmark still to work is [^.]+\.$/);
     expect(guide.radio[1]).toMatch(/exit|gate/i);
+  });
+});
+
+describe('the way to the next gym', () => {
+  const here = { currentMapId: 'floodplain-relay' as WorldMapId, currentPosition: { x: 10, y: 10 }, activatedPoiIds: new Set<string>() };
+  const cerulean = { building: 'Cerulean Gym', standsIn: 'GULL STRAND', leader: 'Misty', inside: { x: 10, y: 60 } };
+
+  it('is the radio\'s last line, and in the full list, while there is a gym to beat', () => {
+    // The 22 Nov AI playtest: the wall map named the gym, and nothing in the
+    // raid said which way it was. Seven newcomers quit looking for it.
+    const guide = buildObjectiveGuide(createFirstContractSession(), { ...here, nextGym: cerulean });
+
+    expect(guide.radio).toHaveLength(3);
+    expect(guide.radio[2]).toBe(
+      'The next gym is CERULEAN GYM, to the south on GULL STRAND: the big building with GYM on its front. MISTY is inside.',
+    );
+    expect(guide.hints).toContain(guide.radio[2]);
+  });
+
+  it('is not said once every gym is beaten', () => {
+    const guide = buildObjectiveGuide(createFirstContractSession(), here);
+
+    expect(guide.radio.join(' ')).not.toContain('next gym');
+    expect(guide.hints.join(' ')).not.toContain('next gym');
+  });
+
+  it('has a room on the vale to point at for every gym the wall map can name', () => {
+    const vale = getWorldMap('greystone-vale');
+    for (const gym of valeGyms()) {
+      expect(vale.areas?.map((area) => area.name)).toContain(gym.building);
+    }
   });
 });
 
