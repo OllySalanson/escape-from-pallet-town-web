@@ -81,6 +81,8 @@ export function flowForGame(game: RestoredGame): DeploymentFlow {
     game.starterSpeciesId,
     // Whoever went down last raid is back on the bench.
     game.raidProgress.lastBench,
+    // And what the pack held as it was left is packed again.
+    game.raidProgress.lastPack,
   );
 }
 

@@ -246,6 +246,7 @@ export class DeploymentFlow {
     arrangements: LoadoutArrangements = EMPTY_LOADOUT_ARRANGEMENTS,
     partnerSpeciesId: string | null = null,
     lastBench: readonly string[] = [],
+    lastPack: Readonly<Record<string, number>> = {},
   ) {
     this.stash = stash;
     this.partnerSpecies = new Set(
@@ -262,10 +263,27 @@ export class DeploymentFlow {
     this.bagArranged = arrangements.bag.items.length > 0 || arrangements.bag.cargo.length > 0;
     this.secureArranged =
       arrangements.secure.items.length > 0 || arrangements.secure.cargo.length > 0;
+    this.packLastPack(lastPack);
     this.packMedicine();
     this.packBalls();
     this.packLonePokemon();
     this.packLastBench(lastBench);
+  }
+
+  /**
+   * Puts back what the pack held as the player left it, before the default
+   * medicine and balls fill in around it (they never pack over a choice): the
+   * Old Rod and the Poke Balls laid out at the rack came home from a raid and
+   * were back on the shelf, and only the default was packed again (the
+   * overnight playtest of 20 Nov 2026). As much of each as the vault still
+   * holds and the pack will take; what was spent or lost is simply short.
+   */
+  private packLastPack(lastPack: Readonly<Record<string, number>>): void {
+    for (const [itemId, quantity] of Object.entries(lastPack)) {
+      if (this.stash.itemCount(itemId) > 0 && quantity > 0) {
+        this.setItemQuantity(itemId as ItemId, quantity);
+      }
+    }
   }
 
   /**
