@@ -1,0 +1,3 @@
+# YOUR TEAM on a short sheet
+
+At 800x512 the panel is a whole-screen sheet, and still too short for the card under the boxes: before, its name and HP were under the frame and its LEAD tick was drawn on the hint line. After, `fitSidePanel` marks a sheet that still spills `data-short`, and the card drops its big portrait (the slot above shows the icon) and puts its type badge and where it lives on one line. `after-800x512.png` has 18 in the boxes; at 1024x600 the portrait sheet also spilled a little, so it is short too; 1280x720 is a side column and unchanged. Made against a test-mode build on `?testmode=pixels` in a headless Chromium at each size, pressing P in the harbour.

@@ -43,6 +43,19 @@ export interface SidePanelView {
  * against the layer put SEND off the edge.
  */
 export function fitSidePanel(root: HTMLElement): SidePanelLayout {
+  const layout = fitLayout(root);
+  // Even a sheet can be too short for a screen: at 800x512 YOUR TEAM's card lost
+  // its name and HP under the frame and its LEAD tick was drawn on the hint line
+  // (scenario loop, 22 Nov 2026). `data-short` asks the screen to drop what it
+  // can do without - the card its big portrait, the slot above has the icon.
+  delete root.dataset.short;
+  if (layout === 'sheet' && spillsOutOfItsFrame(root)) {
+    root.dataset.short = 'true';
+  }
+  return layout;
+}
+
+function fitLayout(root: HTMLElement): SidePanelLayout {
   const layer = root.parentElement;
   const unit = Number.parseFloat(layer?.style.getPropertyValue('--px') ?? '') || 2;
   const box = layer?.getBoundingClientRect();
