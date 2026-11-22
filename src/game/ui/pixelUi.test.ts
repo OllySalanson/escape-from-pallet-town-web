@@ -76,6 +76,14 @@ describe('pixelScreen', () => {
     expect(() => takeDownPixelStatus({ querySelector: () => null })).not.toThrow();
   });
 
+  it('keeps the place and the screen name two words for anything reading the text', () => {
+    const titled = pixelScreen({ title: 'THE HARBOUR BOUTIQUE', place: 'THE DOCKS', body: '', hints: '' });
+    const heading = /<h1>(.*)<\/h1>/.exec(titled)?.[1] ?? '';
+    const text = heading.replace(/<[^>]+>/g, '');
+
+    expect(text).toBe('THE DOCKS - THE HARBOUR BOUTIQUE');
+  });
+
   it('only draws a way back on a screen that has one', () => {
     expect(screen()).not.toContain('px-back');
     expect(

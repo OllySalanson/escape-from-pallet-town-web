@@ -143,7 +143,12 @@ export function pixelScreen(options: PixelScreenOptions): string {
   const back = options.back
     ? `<button class="px-back" ${options.back.attribute}>${options.back.label}</button>`
     : '';
-  const place = options.place ? `<span class="px-place">${options.place}</span>` : '';
+  // The place and the screen's name are set apart by a margin, which a screen
+  // reader (or anything reading the page's text) never hears: without a word
+  // between them THE DOCKS and THE HARBOUR BOUTIQUE read as one run-together word.
+  const place = options.place
+    ? `<span class="px-place">${options.place}</span><span class="visually-hidden"> - </span>`
+    : '';
   const aside = options.aside ? `<div class="px-title-aside">${options.aside}</div>` : '';
   // The status line stands over the help text rather than replacing it, so it
   // can be taken down by removing it - no re-render, and so no rebuilding the
