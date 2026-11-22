@@ -414,19 +414,34 @@ export function createHands(page) {
    * who has never seen a type chart would; `run` tries to get away.
    */
   const fight = async (policy = 'strongest') => {
+    // What the fight said is read off the event log, which the game writes every
+    // frame: lines shown while the battle was busy - 'Foe KRABBY used LEER!',
+    // 'It's super effective!', a faint - came and went inside one settle, and a
+    // log built from the settled screens alone dropped them, so every playtest
+    // reported the attacker's line missing (22 Nov 2026).
+    const start = (await look()).lastEvent ?? 0;
     const said = [];
+    const heard = async () => {
+      said.length = 0;
+      for (const event of await eventsSince(start)) {
+        if (event.kind === 'talked' && event.scene === 'battle' && typeof event.text === 'string') said.push(event.text);
+      }
+    };
+    const done = async (result) => {
+      await heard();
+      return result;
+    };
     for (let guard = 0; guard < 300; guard += 1) {
       const screen = await settle(60);
       const battle = screen.scene.battle;
       if (!screen.scenes.includes('battle')) {
-        return { ok: true, note: `the fight is over; ${interruption(screen) ?? 'back on the map'}`, said, screen };
+        return done({ ok: true, note: `the fight is over; ${interruption(screen) ?? 'back on the map'}`, said, screen });
       }
       if (!battle || battle.busy) {
         await step(3);
         continue;
       }
-      if (battle.message?.complete && said[said.length - 1] !== battle.message.text) said.push(battle.message.text);
-      if (screen.menu) return { ok: false, note: `the fight asks: ${screen.menu.heading ?? screen.menu.text.slice(0, 80)}`, said, screen };
+      if (screen.menu) return done({ ok: false, note: `the fight asks: ${screen.menu.heading ?? screen.menu.text.slice(0, 80)}`, said, screen });
       if (battle.commands.length === 0 || ['events', 'evolving', 'finished'].includes(battle.mode)) {
         await press('Space', 3);
         continue;
@@ -448,7 +463,7 @@ export function createHands(page) {
       if (battle.mode === 'moves') {
         const index = pickMove(battle, policy);
         if (!(await moveCursor(index, async () => (await look()).scene.battle?.cursor ?? null))) {
-          return { ok: false, note: `could not move the cursor to ${battle.moves[index]?.name}: choose a move yourself`, said, screen };
+          return done({ ok: false, note: `could not move the cursor to ${battle.moves[index]?.name}: choose a move yourself`, said, screen });
         }
         await press('Space', 3);
         continue;
@@ -457,9 +472,9 @@ export function createHands(page) {
         await press('Space', 3);
         continue;
       }
-      return { ok: false, note: `the fight asks (${battle.mode}): ${battle.commands.join(' / ')}`, said, screen };
+      return done({ ok: false, note: `the fight asks (${battle.mode}): ${battle.commands.join(' / ')}`, said, screen });
     }
-    return { ok: false, note: 'the fight did not end in 300 turns of pressing', said, screen: await look() };
+    return done({ ok: false, note: 'the fight did not end in 300 turns of pressing', said, screen: await look() });
   };
 
   return { look, eventsSince, step, beat, press, settle, walkTo, stroll, talk, readThrough, choose, fight, interruption };
