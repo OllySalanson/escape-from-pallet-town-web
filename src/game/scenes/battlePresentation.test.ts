@@ -30,6 +30,7 @@ import {
   STATUS_TAG_GAP,
   statusTagSeat,
   MAKE_ROOM_PAGE,
+  makeRoomPageNote,
   MOVE_COMMAND_HEIGHT,
   formatPackRoomRow,
   packRoomRowForm,
@@ -1040,5 +1041,15 @@ describe('a single-target hit in a double battle', () => {
     const hit = { type: 'used-move', user: 'enemy', target: 'player', name: 'Staryu', move: 'Tackle', damage: 6 } as const;
     expect(eventToMessage({ ...hit, targetName: 'Bulbasaur' })).toBe('Foe STARYU used TACKLE! Your BULBASAUR -6 HP');
     expect(eventToMessage(hit)).toBe('Foe STARYU used TACKLE! -6 HP');
+  });
+});
+
+describe('the make-room list run to more than one page', () => {
+  // AI playtest, 22 Nov 2026: the first page read as the whole pack, and an
+  // Antidote was dropped before the RAID PACK on the next page was seen.
+  it('says which page, and that there is more, at the prompt', () => {
+    expect(makeRoomPageNote(0, MAKE_ROOM_PAGE)).toBe('');
+    expect(makeRoomPageNote(0, MAKE_ROOM_PAGE + 1)).toBe('1/2 ▼');
+    expect(makeRoomPageNote(1, MAKE_ROOM_PAGE + 1)).toBe('2/2 ▲');
   });
 });
