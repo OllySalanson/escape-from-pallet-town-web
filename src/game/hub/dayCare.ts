@@ -191,8 +191,16 @@ export function leftLines(name: string): readonly string[] {
 export function checkOnLines(report: DayCareReport): readonly string[] {
   const name = report.stay.pokemon.name;
   const grown = report.levelNow - report.levelLeft;
+  // Said, not left to be worked out: 'needs some more time' after two short
+  // raids gave a planner no way to check the half-a-level promise (AI
+  // playtest, 22 Nov 2026). A raid under the least that counts pays nothing.
   if (grown <= 0) {
-    return [`You’re back already? Your ${name} needs to spend some more time with me.`];
+    return report.raids === 0
+      ? [
+          `You’re back already? Your ${name} needs to spend some more time with me.`,
+          `Only a raid of ${DAY_CARE_LEAST_RAID_MS / 1000} seconds or more counts.`,
+        ]
+      : [`Your ${name}’s coming along: half a level a raid, and it’s had ${report.raids === 1 ? 'one' : report.raids}.`];
   }
   return [
     `Your ${name} has grown a lot. Yes, quite a lot, I’d say.`,
