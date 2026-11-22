@@ -175,6 +175,12 @@ function prizeAbout(prize: TicketPrize): string {
       // A berry's own description already says what it does held.
       return getItemById(prize.gives.itemId)?.description ?? '';
     case 'pokemon':
+      if (prize.gives.shiny) {
+        return `Gold all over, at Lv ${prize.gives.level}: the one shiny anybody sells. Walk it in front, and whatever in the vale waits for a shiny will see it. One to a trainer: it goes to your boxes.${prizeMovesNote(
+          prize.gives.speciesId,
+          prize.gives.level,
+        )}`;
+      }
       return `FireRed's own prize, at Lv ${prize.gives.level}. One to a trainer: it goes to your boxes.${prizeMovesNote(
         prize.gives.speciesId,
         prize.gives.level,

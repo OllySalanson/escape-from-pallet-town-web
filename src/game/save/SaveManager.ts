@@ -1857,6 +1857,9 @@ export class SaveManager {
         return null;
       }
       pokemon = new Pokemon(species, prize.gives.level);
+      if (prize.gives.shiny) {
+        pokemon.shiny = true;
+      }
       game.stash.addPokemon(pokemon);
     }
     const heard = game.raidProgress.rumoursHeard ?? [];

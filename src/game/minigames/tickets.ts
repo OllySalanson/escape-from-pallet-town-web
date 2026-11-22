@@ -461,7 +461,7 @@ export const RUMOUR_BOUGHT_LINE = 'Heard. The slip is pinned on THE BOARD in OAK
 /** What a prize is: a thing for the vault, a Pokémon for the boxes, or a rumour said there and then. */
 export type PrizeGives =
   | { readonly kind: 'item'; readonly itemId: string }
-  | { readonly kind: 'pokemon'; readonly speciesId: string; readonly level: number }
+  | { readonly kind: 'pokemon'; readonly speciesId: string; readonly level: number; readonly shiny?: true }
   | { readonly kind: 'rumour' };
 
 /** Which part of the window a prize is listed under. */
@@ -519,6 +519,8 @@ const itemPrize = (itemId: string, shelf: PrizeShelf, tickets: number, limits: P
  * - **The SMOKE BALL**: saves clock, not a fight that matters - the hunter and
  *   trainers pay it no mind - and lost with its holder on a wipe.
  * - **The POKé FLUTE**: never used up, carried in the pack.
+ * - **A shiny MAGIKARP**, once: the one shiny on sale, a second route to what
+ *   waits on a shiny lead, and no use in a fight.
  * - **ABRA, DRATINI and PORYGON**, once each: FireRed's own prize Pokémon.
  *   The reward is the species, not the level. ABRA is FireRed's cheapest
  *   prize, at FireRed's Lv 9, and the one way a save comes to own one (the
@@ -541,6 +543,13 @@ export const TICKET_PRIZES: readonly TicketPrize[] = [
   { id: 'abra', gives: { kind: 'pokemon', speciesId: 'abra', level: 9 }, shelf: 'pokemon', tickets: 200, once: true },
   { id: 'dratini', gives: { kind: 'pokemon', speciesId: 'dratini', level: 15 }, shelf: 'pokemon', tickets: 2500, once: true },
   { id: 'porygon', gives: { kind: 'pokemon', speciesId: 'porygon', level: 5 }, shelf: 'pokemon', tickets: 4000, once: true },
+  // The one shiny anybody sells, for a save that has never had the luck: THE
+  // LIGHT THAT ANSWERS waits on a shiny lead (`../world/secrets.ts`), and a
+  // roll of one in 500 is no route to anything (Olly's pick of 22 Nov 2026,
+  // the AI playtest's #35, #96, #152). A gold MAGIKARP, FireRed's joke sale at
+  // Mt. Moon: no use in a fight, and that is the point of a lead that is only
+  // there to be seen. About four days of a full day's tickets.
+  { id: 'shiny-magikarp', gives: { kind: 'pokemon', speciesId: 'magikarp', level: 5, shiny: true }, shelf: 'pokemon', tickets: 1200, once: true },
   { id: 'rumour', gives: { kind: 'rumour' }, shelf: 'rumours', tickets: 50, perDay: RUMOURS_A_DAY },
   itemPrize('pretty-flowers', 'house', 100),
   itemPrize('tropical-plant', 'house', 120),
@@ -698,7 +707,7 @@ export function prizeName(prize: TicketPrize): string {
     case 'item':
       return getItemById(prize.gives.itemId)?.displayName ?? prize.gives.itemId;
     case 'pokemon':
-      return prize.gives.speciesId.toUpperCase();
+      return `${prize.gives.shiny ? 'SHINY ' : ''}${prize.gives.speciesId.toUpperCase()}`;
     case 'rumour':
       return 'A rumour';
   }
