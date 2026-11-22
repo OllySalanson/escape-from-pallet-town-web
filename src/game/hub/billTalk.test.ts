@@ -132,6 +132,8 @@ describe('Bill from the mat', () => {
     // Money cannot start it, so he says what does, counted.
     expect(stranger.lines[2]).toBe("Bank 3 jobs off Oak's board, or beat a boss, and I'll start selling to you.");
     expect(stranger.question).toBe('See my whole list?');
+    // One count of jobs, not 'a job' and then '3 jobs' (AI playtest, 22 Nov 2026).
+    expect(stranger.lines.join(' ').match(/\bjobs?\b/g)).toHaveLength(1);
 
     // Two jobs banked is not yet a regular, and he says he has counted them.
     const started = billFromTheMat(counter({ money: 40 }, { standingContractsBanked: 2 }));
