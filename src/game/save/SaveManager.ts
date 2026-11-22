@@ -2309,10 +2309,17 @@ export class SaveManager {
     if (raid.packItemId !== undefined) {
       game.stash.removeItem(raid.packItemId, 1);
     }
+    const afterLoss = game.stash.listItems();
     game.stash.ensurePlayable(
       game.starterSpeciesId ? getStarterSpecies(game.starterSpeciesId) : undefined,
     );
     game.stash.restockMinimumSupplies();
+    // Named back to the player, as the wipe screen names it: a vault that
+    // quietly still holds a Satchel reads as the base having lied about losing one.
+    const after = game.stash.listItems();
+    const restocked = Object.entries(after)
+      .map(([itemId, quantity]) => ({ itemId, quantity: quantity - (afterLoss[itemId] ?? 0) }))
+      .filter(({ quantity }) => quantity > 0);
     // Walking away from a raid is losing it, or a run could be saved by closing the tab.
     const raidProgress = countShortRaid(extendRun(game.raidProgress, 'wiped'));
     // And it has paid for nothing, as a raid out before the first hunter has:
@@ -2328,6 +2335,7 @@ export class SaveManager {
       ...(raid.packItemId === undefined ? {} : { packItemId: raid.packItemId }),
       lost,
       kept,
+      restocked,
     };
   }
 

@@ -206,6 +206,7 @@ describe('a raid abandoned by closing the game', () => {
         { itemId: 'super-potion', quantity: 2 },
       ],
       kept: [],
+      restocked: [{ itemId: 'satchel', quantity: 1 }],
     });
     const game = new SaveManager(storage).load()!;
     expect(game.raidInFlight).toBeNull();
@@ -539,6 +540,25 @@ describe('a raid abandoned by closing the game', () => {
       'It went out with 4 Potions, 1 Super Potion and 5 Poké Balls.',
       'Anything caught or found out there went with it.',
       'The secure container kept 1 Potion.',
+    ]);
+  });
+
+  it("names the starter kit Oak put back, so a Satchel still at base is not a contradiction", () => {
+    expect(
+      abandonedRaidLines({
+        mapId: 'floodplain-relay',
+        packItemId: 'satchel',
+        lost: [{ itemId: 'poke-ball', quantity: 3 }],
+        kept: [],
+        restocked: [
+          { itemId: 'poke-ball', quantity: 3 },
+          { itemId: 'satchel', quantity: 1 },
+        ],
+      }).slice(-3),
+    ).toEqual([
+      'Anything caught or found out there went with it.',
+      'Oak keeps a starter kit for just this.',
+      'Waiting at base: 3 Poké Balls and 1 Satchel.',
     ]);
   });
 
