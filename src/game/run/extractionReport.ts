@@ -324,6 +324,14 @@ export interface ExtractionReportInput {
    */
   readonly fitToRaid?: boolean;
   /**
+   * What the wipe's restock put back at base (`Stash.ensurePlayable` and
+   * `restockMinimumSupplies`), as `SaveManager.settleWipe` measured it
+   * between the loss and the restock. The screen said a Satchel and three balls
+   * were 'gone for good' and the vault had them again, with nothing said, which
+   * read as either a lie or a bug (AI playtest, 22 Nov 2026, eight times).
+   */
+  readonly restocked?: readonly Stack[];
+  /**
    * The healing still owed after a survived raid that was out too soon to pay
    * for it, read off the save the caller just wrote. Absent or zero when the
    * raid paid, or nothing was owed.
@@ -509,7 +517,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     ...(input.cause === 'defeated' && input.beatenBy ? { beatenBy: input.beatenBy } : {}),
     ...badgeLines(input.bossesBeaten ?? []),
     ...(snapshot.secureFilledForYou ? { secureFilledForYou: true } : {}),
-    baseNote: escaped ? null : wipedBaseNote(input.fitToRaid ?? true),
+    baseNote: escaped ? null : wipedBaseNote(input.fitToRaid ?? true, input.restocked ?? []),
     ...(escaped && (input.recoveryStillOwedMs ?? 0) > 0
       ? { recoveryStillOwed: recoveryStillOwedLine(input.recoveryStillOwedMs ?? 0) }
       : {}),
@@ -519,11 +527,19 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
 }
 
 /** True of any wipe: the restock adds only what the kit is short of, so a stocked vault is given nothing. */
-function wipedBaseNote(fitToRaid: boolean): string {
+function wipedBaseNote(fitToRaid: boolean, restocked: readonly Stack[]): string {
+  const kit = describeGroup({ pokemon: [], items: toReportItems(restocked) });
+  const notFit = 'nobody is fit to raid: revive a Pokémon at the Pokémon Center first.';
+  if (kit !== null) {
+    // What was lost stays lost; the kit is the last resort a wipe always leaves.
+    const given = `What you lost stays lost, but Oak keeps a starter kit for this: ${kit} ${restocked.length === 1 && restocked[0].quantity === 1 ? 'is' : 'are'} waiting at base`;
+    return fitToRaid ? `${given}.` : `${given}, but ${notFit}`;
+  }
   return fitToRaid
     ? 'You still have what you need to deploy again.'
-    : 'You have the supplies to deploy again, but nobody is fit to raid: revive a Pokémon at the Pokémon Center first.';
+    : `You have the supplies to deploy again, but ${notFit}`;
 }
+
 
 /**
  * The deployed party in the order it was deployed, then every Pokemon the raid

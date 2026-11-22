@@ -2687,9 +2687,27 @@ export class SaveManager {
     packItemId?: string,
     raidId?: string,
   ): boolean {
+    return this.settleWipe(broughtPokemonIds, broughtItems, secureSlot, condition, packItemId, raidId).saved;
+  }
+
+  /**
+   * `applyWipeLoss`, saying as well what the last-resort restock put back
+   * (`restocked`): the result screen names it, because a vault refilled in
+   * silence after 'gone for good' read as the screen lying (AI playtest, 22
+   * Nov 2026). Measured between the loss and the restock, so it is exactly the
+   * restock's and never a thing the raid was still holding.
+   */
+  public settleWipe(
+    broughtPokemonIds: readonly string[],
+    broughtItems: readonly { readonly itemId: string; readonly quantity: number }[],
+    secureSlot: SecureSlot = {},
+    condition: readonly RaidCondition[] = [],
+    packItemId?: string,
+    raidId?: string,
+  ): { readonly saved: boolean; readonly restocked: readonly { readonly itemId: string; readonly quantity: number }[] } {
     const game = this.load();
     if (!game || !endsRaidInFlight(game, raidId)) {
-      return false;
+      return { saved: false, restocked: [] };
     }
 
     game.stash.applyRaidCondition(condition);
@@ -2717,6 +2735,7 @@ export class SaveManager {
     if (packItemId !== undefined) {
       game.stash.removeItem(packItemId, 1);
     }
+    const afterLoss = game.stash.listItems();
     // A wipe must never hand the player back a run they cannot attempt: a fresh
     // starter when none survived, and whatever the kit is short of either way,
     // including when the secure slot saved a Pokemon but no items. It is the
@@ -2725,7 +2744,12 @@ export class SaveManager {
       game.starterSpeciesId ? getStarterSpecies(game.starterSpeciesId) : undefined,
     );
     game.stash.restockMinimumSupplies();
-    return this.save({ ...game, ...paidOff(game, true) });
+    const after = game.stash.listItems();
+    const restocked = Object.entries(after)
+      .map(([itemId, quantity]) => ({ itemId, quantity: quantity - (afterLoss[itemId] ?? 0) }))
+      .filter(({ quantity }) => quantity > 0);
+    const saved = this.save({ ...game, ...paidOff(game, true) });
+    return { saved, restocked: saved ? restocked : [] };
   }
 }
 

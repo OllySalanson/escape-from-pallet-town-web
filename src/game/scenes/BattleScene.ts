@@ -4581,7 +4581,7 @@ export class BattleScene extends Phaser.Scene {
     // that got home, and a layout that came back only from the endings that
     // happen in the overworld would be a promise kept three times in four.
     new SaveManager().recordContainerArrangements(this.bag.arrangement);
-    const saved = new SaveManager().applyWipeLoss(
+    const { saved, restocked } = new SaveManager().settleWipe(
       this.runSession.broughtPokemonIds,
       this.runSession.broughtItems,
       { ...this.runSession.stashSecureSlot, items: wipe.securedItems },
@@ -4637,6 +4637,7 @@ export class BattleScene extends Phaser.Scene {
       // A wipe restocks the kit but revives nobody, so whether the lab will
       // let this player out again is read off the stash just written.
       fitToRaid: anyoneFitToRaid(new SaveManager().load()?.stash),
+      restocked,
       saved,
       ...(settledElsewhere ? { settledElsewhere } : {}),
     });
