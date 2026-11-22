@@ -766,6 +766,28 @@ describe('extraction report after a lost raid', () => {
     expect(note).not.toMatch(/topped/i);
   });
 
+  /**
+   * A raid out too soon pays for no healing, and the overnight playtest of 20
+   * Nov 2026 read the next short clock as the heal charged twice.
+   */
+  it('says when a raid came home too soon to pay for its healing', () => {
+    const escaped = (recoveryStillOwedMs?: number) => {
+      const manager = startedRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] });
+      manager.resolveEscape();
+      return buildExtractionReport({
+        outcome: 'ESCAPED',
+        snapshot: manager.snapshot(),
+        durationMs: RAID_DURATION_MS,
+        ...(recoveryStillOwedMs === undefined ? {} : { recoveryStillOwedMs }),
+        saved: true,
+      }).recoveryStillOwed;
+    };
+
+    expect(escaped(150_000)).toBe("Out too soon to pay for Nurse Joy's healing: your next raid still runs 2:30.");
+    expect(escaped(0)).toBeUndefined();
+    expect(escaped()).toBeUndefined();
+  });
+
   it('says nothing about the base after a survived raid', () => {
     const manager = startedRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] });
     manager.resolveEscape();

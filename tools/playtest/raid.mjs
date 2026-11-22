@@ -990,6 +990,8 @@ try {
   const clock = clockMs === null ? 'unknown' : `${Math.floor(clockMs / 60000)}:${String(Math.floor(clockMs / 1000) % 60).padStart(2, '0')}`;
   const report = await page.evaluate(`(document.querySelector('[data-continue]')?.closest('.menu-overlay') ?? document.querySelector('#app'))?.innerText.replace(/\\n+/g, ' | ').slice(0, 420)`);
   note(`result after ${clock} of raid: ${ended ? report : 'raid did not end'}`);
+  // The footer is the screen's last word (what the base is like, what is still owed), and past the cut above.
+  if (ended) note(`result footer: ${await page.evaluate(`document.querySelector('[data-continue]')?.closest('.menu-overlay')?.querySelector('.px-help')?.innerText ?? ''`)}`);
   const cpu = (browser.cpuSeconds?.() ?? 0) - cpuAtDeploy;
   const wall = (Date.now() - raidStarted) / 1000;
   console.log(JSON.stringify({
