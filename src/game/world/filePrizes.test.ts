@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { getWorldMap } from '../worldMap';
 import { districtsForMap } from './districts';
-import { BUILT_IN_FILE_HOARDS, BUILT_IN_FILE_PRIZES, hoardOf } from './filePrizes';
+import { isMaterial } from '../items';
+import { BUILT_IN_FILE_HOARDS, BUILT_IN_FILE_LEANS, BUILT_IN_FILE_PRIZES, hoardOf, leanOf } from './filePrizes';
 import { isPrize } from './loot';
 
 /**
@@ -48,5 +49,51 @@ describe("Greystone Vale's far places' finds", () => {
     contents.forEach((piece) => expect(at({ x: 1, y: 1 })?.contents).toEqual(piece));
     expect(() => at({ x: 1, y: 1 })).toThrow(/more item spots/);
     expect(at({ x: 9, y: 9 })).toBeUndefined();
+  });
+});
+
+/**
+ * The coast leans to parts crates (`BUILT_IN_FILE_LEANS`): nine of Bill's deals
+ * want them, a newcomer raids the coast first, and ten raids from the Old Quay
+ * found one (the 20 Nov AI playtest, #42, #51).
+ */
+describe("the coast's salvage", () => {
+  const map = getWorldMap('greystone-vale');
+  const districts = districtsForMap(map.id);
+  const inPlace = (name: string, position: { x: number; y: number }) =>
+    districts
+      .filter((district) => district.name === name)
+      .some((district) =>
+        district.areas.some(
+          (area) => position.x >= area.x && position.x < area.x + area.width && position.y >= area.y && position.y < area.y + area.height,
+        ),
+      );
+  const [lean] = BUILT_IN_FILE_LEANS['greystone-vale'] ?? [];
+  const onTheCoast = map.loot.filter((piece) => piece.chance === undefined && lean.places.some((place) => inPlace(place, piece.position)));
+
+  it('turns every material on the coast’s ground into a parts crate, and leaves its supplies alone', () => {
+    expect(lean.itemId).toBe('parts-crate');
+    const materials = onTheCoast.filter((piece) => isMaterial(piece.itemId));
+    expect(materials.length).toBeGreaterThanOrEqual(6);
+    expect(materials.every((piece) => piece.itemId === 'parts-crate')).toBe(true);
+    expect(onTheCoast.some((piece) => !isMaterial(piece.itemId))).toBe(true);
+  });
+
+  it('makes the parts crate the commonest material on the vale’s ground', () => {
+    const counts = new Map<string, number>();
+    for (const piece of map.loot) {
+      if (piece.chance === undefined && isMaterial(piece.itemId)) counts.set(piece.itemId, (counts.get(piece.itemId) ?? 0) + piece.quantity);
+    }
+    const crates = counts.get('parts-crate') ?? 0;
+    for (const [itemId, count] of counts) {
+      if (itemId !== 'parts-crate') expect(crates, itemId).toBeGreaterThan(count);
+    }
+  });
+
+  it('leans only a material, and only inside its places', () => {
+    const at = leanOf('greystone-vale', { districts: [{ name: 'GULL STRAND', x: 0, y: 0, width: 4, height: 4 }] });
+    expect(at({ x: 1, y: 1 }, { itemId: 'lamp-oil', quantity: 1 })).toEqual({ itemId: 'parts-crate', quantity: 1 });
+    expect(at({ x: 1, y: 1 }, { itemId: 'potion', quantity: 1 })).toEqual({ itemId: 'potion', quantity: 1 });
+    expect(at({ x: 9, y: 9 }, { itemId: 'lamp-oil', quantity: 1 })).toEqual({ itemId: 'lamp-oil', quantity: 1 });
   });
 });

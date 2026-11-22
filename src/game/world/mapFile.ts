@@ -67,7 +67,7 @@ import {
 } from './mapAreas';
 import { foldedSlug, isMapText, typedMapText } from './mapText';
 import { RAID_DURATION_MS } from '../run/raidClock';
-import { filePrizes, hoardOf } from './filePrizes';
+import { filePrizes, hoardOf, leanOf } from './filePrizes';
 import { isSecretId } from './secrets';
 
 /**
@@ -2914,6 +2914,7 @@ function lootFor(
 ): WorldLoot[] {
   let turn = 0;
   const hoard = hoardOf(id, { districts, itemSpots: spots });
+  const lean = leanOf(id, { districts });
   // A secret's nook is the secret's (`secrets.ts`): it takes no turn of the
   // rotation and no number of the ordinary spots', so a map's other spots hold
   // and are called what they always were, and the raid lays it only while its
@@ -2962,7 +2963,9 @@ function lootFor(
         ...(home >= 0 ? { district: `${id}/district-${home + 1}` } : {}),
       };
     }
-    const entry = itemSpotContents(turn);
+    // A place that leans to a material holds it in place of its turn's, and
+    // still takes the turn (`BUILT_IN_FILE_LEANS`).
+    const entry = lean(spot, itemSpotContents(turn));
     turn += 1;
     return { ...common, itemId: entry.itemId, quantity: entry.quantity };
   });
