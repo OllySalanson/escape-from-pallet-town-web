@@ -531,6 +531,9 @@ interface RaidWay {
   readonly mark: { readonly target: GridPosition; readonly aim: GridPosition; readonly out: boolean } | null;
 }
 
+/** How near the next gym's door, in walking steps, the gold arrow turns to it (`gymDoorNear`). */
+const GYM_DOOR_NEAR_STEPS = 10;
+
 const NO_WAY: RaidWay = { mark: null };
 
 /** Where a carried job sends the player: the chip's line, and the tile the arrow is after, if it is on this map. */
@@ -6557,7 +6560,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     let cue: string | undefined;
     let tile: GridPosition | undefined;
     let out = false;
-    if (job) {
+    const gymDoor = hunted ? undefined : this.gymDoorNear();
+    if (gymDoor) {
+      ({ cue, tile } = gymDoor);
+    } else if (job) {
       ({ cue, tile, out } = job);
     } else {
       const trail = this.lootForCurrentMap().filter((loot) => isStakeTrail(loot));
@@ -6572,6 +6578,33 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     this.wayCache = { ...(cue === undefined ? {} : { cue }), mark: tile ? this.wayMarkTo(tile, out) : null };
     return this.wayCache;
+  }
+
+  /**
+   * The next gym, while its door is a few steps off: what the gold arrow is after
+   * there, whatever else the raid is for, until the player walks on. The radio
+   * names the gym by a compass bearing, and the last of the walk is where it
+   * failed: on GULL STRAND the caption over the front showed from several
+   * tiles, only one of them is the door, and seven of tester 3's sessions
+   * hunted for it, three giving up (AI playtest, 22 Nov 2026). Aimed at a tile
+   * inside, so the mark leads to the doorstep and then points into the door
+   * (`wayMarkTo`, `doorwayTowards`).
+   */
+  private gymDoorNear(): { readonly cue: string; readonly tile: GridPosition } | undefined {
+    const gym = this.nextGymHere();
+    if (!gym) {
+      return undefined;
+    }
+    // Counted to the doorstep, not into the room: the walk inside is the gym's own.
+    const doorway = doorwayTowards(this.currentMap, this.currentTile, gym.inside);
+    if (!doorway) {
+      return undefined;
+    }
+    const steps = this.wayField(doorway.stand)[this.currentTile.y]?.[this.currentTile.x] ?? -1;
+    if (steps < 0 || steps > GYM_DOOR_NEAR_STEPS) {
+      return undefined;
+    }
+    return { cue: `${gym.building.toUpperCase()}: ${this.headingTo(gym.inside)}`, tile: gym.inside };
   }
 
   /**
