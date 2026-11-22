@@ -764,9 +764,11 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     name: 'BROOK HEAD',
     encounters: wildlife.FOREST_WATERSIDE_WILDLIFE,
     // Where the brook starts, under the only canopy on the map that drips, and
-    // the one place in the game where rain decides a wild fight outright: the
+    // the one place in the game where rain costs a wild fight most: the
     // waterside's Squirtles are level 7-9, so they have Water Gun, and in the
-    // rain it hits a Fire lead for half again - 44% wins against 88% clear.
+    // rain it hits a Fire lead for half again - a Lv 9 Charmander wins 50%
+    // against 62% clear at FireRed's own stat and damage formulas (44 against
+    // 88 at the Unity ones, until 22 Nov 2026; `tools/weather/measure.mts --lead`).
     // Sap Pool shares that table and is deliberately left dry: two rainy
     // clearings in one wood is weather every dozen steps, which nobody reads.
     weather: WeatherId.Rain,
