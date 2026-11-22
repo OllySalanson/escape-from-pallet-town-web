@@ -11,6 +11,8 @@ import { followTesterLink, installPlayCounter, isAutomatedBrowser } from './game
 import { installPixelText } from './game/ui/pixelText';
 import { watchForKeyboard } from './game/input/keyboardSeen';
 import { pausesForWindow, watchWindowFocus } from './game/world/windowPause';
+import { keepSavesSafe } from './game/save/keepSavesSafe';
+import { SaveManager } from './game/save/SaveManager';
 
 const developmentScenes = import.meta.env.DEV && isTestLabRequested()
   ? [(await import('./game/scenes/TestLabScene')).TestLabScene]
@@ -30,6 +32,13 @@ const stopWatchingForKeyboard = watchForKeyboard(window);
 installPixelText(Phaser.GameObjects.Text);
 
 const testMode = requestedTestMode();
+// Asks the browser to keep the save rather than clear it after a week away
+// (Safari) or when the disk is short: now if there is a game, or on the first
+// save this page writes. Never in test mode, whose drivers seed and throw away
+// saves by the hundred.
+if (testMode === 'off') {
+  void keepSavesSafe(navigator.storage, new SaveManager().describe().kind !== 'none');
+}
 const game = mountGame(() => {
   const created = new Phaser.Game(createGameConfig(developmentScenes, testMode));
   // The handle a driver already reaches for gains `pauseLoop`, `stepFrames` and

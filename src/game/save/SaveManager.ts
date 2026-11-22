@@ -152,6 +152,7 @@ import {
   type TreasureHunt,
 } from '../treasure/treasureMap';
 import { readHomeLayout, type Placement } from '../home/arrangement';
+import { saveWritten } from './keepSavesSafe';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
 const SAVE_VERSION = 7;
@@ -1052,10 +1053,12 @@ export class SaveManager {
         return false;
       }
       this.storage.setItem(this.key, JSON.stringify(data));
-      return true;
     } catch {
       return false;
     }
+    // Now there is a game worth keeping, ask the browser to keep it (`keepSavesSafe.ts`).
+    void saveWritten();
+    return true;
   }
 
   /** What `save` would refuse to write over the stored game, and why (`raidHoldRefusal`). */
