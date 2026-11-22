@@ -325,15 +325,34 @@ export function createHands(page) {
       if (now === wanted) return true;
       if (now === null || now < 0) return false;
       const keys = now < wanted ? ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'] : ['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown'];
+      const nearer = (after) => after === wanted || (after !== null && Math.abs(after - wanted) < Math.abs(now - wanted));
       let closer = false;
       for (const key of keys) {
         await press(key, 1);
         const after = await selected();
-        if (after === wanted || (after !== null && Math.abs(after - wanted) < Math.abs(now - wanted))) {
+        if (nearer(after)) {
           closer = true;
           break;
         }
         if (after !== now) await press(OPPOSITE[key], 1);
+      }
+      // A grid that wraps along its rows can need two keys before the index
+      // gets any nearer - Down then Left, from the end of one row to the middle
+      // of the next - and a list with nothing nearer one key away is not a
+      // list the player cannot use. Gave up, the AI pressed on by hand and put
+      // its Poke Balls down instead of the rope it chose (22 Nov 2026).
+      for (const first of closer ? [] : keys) {
+        for (const second of keys) {
+          if (closer || second === OPPOSITE[first]) continue;
+          await press(first, 1);
+          await press(second, 1);
+          if (nearer(await selected())) {
+            closer = true;
+            continue;
+          }
+          await press(OPPOSITE[second], 1);
+          await press(OPPOSITE[first], 1);
+        }
       }
       if (!closer) return false;
     }
