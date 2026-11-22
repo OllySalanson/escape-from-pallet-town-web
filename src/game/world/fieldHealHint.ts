@@ -11,8 +11,14 @@
  * then they know where the Potions are. Phaser-free, so it is tested here.
  */
 
-/** At or below this share of its HP, a Pokémon is worn out enough to be named. */
-export const FIELD_HEAL_SHARE = 1 / 4;
+/**
+ * Below this share of its HP, a Pokémon is worn out enough to be named: the
+ * rim's own "hurt" (`hub/railWarning.ts`). It was a quarter, and a Squirtle
+ * came out of its first wild fight on 6/22, walked on unwarned, and the first
+ * raid's hunter took the raid at 0:43 (scenario loop, 22 Nov 2026). The line
+ * only speaks until the pack has been opened once, so it cannot nag.
+ */
+export const FIELD_HEAL_SHARE = 1 / 2;
 
 export interface FieldHealMember {
   readonly name: string;
@@ -20,7 +26,7 @@ export interface FieldHealMember {
   readonly maxHp: number;
 }
 
-/** The line, or null when nobody standing is that low, there is nothing to give, or the pack is already known. */
+/** The line, or null when nobody standing is below half, there is nothing to give, or the pack is already known. */
 export function fieldHealHint(
   team: readonly FieldHealMember[],
   medicine: string | null,
@@ -29,7 +35,7 @@ export function fieldHealHint(
   if (packKnown || medicine === null) {
     return null;
   }
-  const worn = team.find((member) => member.currentHp > 0 && member.currentHp <= member.maxHp * FIELD_HEAL_SHARE);
+  const worn = team.find((member) => member.currentHp > 0 && member.currentHp < member.maxHp * FIELD_HEAL_SHARE);
   return worn
     ? `OAK: ${worn.name.toUpperCase()} is worn out! Press B for your pack and give it a ${medicine.toUpperCase()} before the next fight.`
     : null;
