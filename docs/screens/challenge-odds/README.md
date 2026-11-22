@@ -17,3 +17,10 @@ After, a single battle: ![](after-single.png)
 Made with a test-mode build at `PIXEL_WINDOW`, deployed to THE STRAND at level 9
 (a Bulbasaur, plus a level 9 Slowpoke for the double), with the prompt opened on
 the trainer's encounter through `WorldScene.askForTrainerChallenge`, 22 Nov 2026.
+
+Later the same day the double battle's line became `Your first two go out
+together. It cannot be fled.`: 'Two on two' still left a level-2 catch walked
+out beside the starter and knocked out on turn one, and the answer, a team of
+one, is the player's to take:
+
+![](after-double-who.png)
