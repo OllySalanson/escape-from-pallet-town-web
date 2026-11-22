@@ -203,12 +203,22 @@ describe('a stat stage on the user', () => {
 });
 
 describe('accuracy and evasion', () => {
-  it('uses generation III’s own 3/(3-n) ladder, not the damage one', () => {
-    // +1 accuracy is 4/3, not the damage table's 1.5.
-    expect(stagedAccuracy(75, 1, 0)).toBeCloseTo(100);
-    expect(stagedAccuracy(100, 0, 1)).toBeCloseTo(75);
-    expect(stagedAccuracy(100, 0, 6)).toBeCloseTo(100 / 3);
-    expect(stagedAccuracy(100, 6, 6)).toBeCloseTo(100);
+  it("uses FireRed's own accuracy ratios, not the damage ladder, in whole numbers", () => {
+    // +1 accuracy is FireRed's 133/100, not the damage table's 1.5.
+    expect(stagedAccuracy(75, 1, 0)).toBe(99);
+    expect(stagedAccuracy(100, 0, 1)).toBe(75);
+    expect(stagedAccuracy(100, 0, 6)).toBe(33);
+    expect(stagedAccuracy(100, 6, 6)).toBe(100);
+    expect(stagedAccuracy(70, 0, 2)).toBe(42);
+  });
+
+  it('reads accuracy and evasion as one stage, as FireRed does', () => {
+    // +1 accuracy against -1 evasion is one stage of +2: 166/100, where two
+    // ladders applied one after the other made it 16/9.
+    expect(stagedAccuracy(50, 1, -1)).toBe(83);
+    // Stage for stage they cancel, and the stage is held to six either way.
+    expect(stagedAccuracy(90, 3, 3)).toBe(90);
+    expect(stagedAccuracy(100, -6, 6)).toBe(33);
   });
 
   it('lowers the target’s accuracy and raises the user’s evasion', () => {
