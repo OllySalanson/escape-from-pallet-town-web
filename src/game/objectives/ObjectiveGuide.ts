@@ -51,6 +51,23 @@ export interface ObjectiveGuideContext {
    * (AI playtest, 20 Nov 2026).
    */
   readonly nextStop?: <Stop extends { readonly position: GridPosition }>(stops: readonly Stop[]) => Stop | undefined;
+  /**
+   * The next gym this save has still to beat (`../world/valeQuarters`'s
+   * `nextGym`) and a tile inside it, for the line that says which way it is.
+   * Absent when every gym is beaten, when this map has no room of that name,
+   * or when the player is already inside it.
+   */
+  readonly nextGym?: NextGymHere;
+}
+
+/** The next gym as the guide names it, and somewhere inside it to head for. */
+export interface NextGymHere {
+  /** Its building's name, as the wall map gives it: 'Cerulean Gym'. */
+  readonly building: string;
+  /** The district it stands in, in the map's capitals: 'GULL STRAND'. */
+  readonly standsIn: string;
+  readonly leader: string;
+  readonly inside: GridPosition;
 }
 
 export interface ObjectiveGuideObjective {
@@ -66,11 +83,11 @@ export interface ObjectiveGuideModel {
   readonly objectives: readonly ObjectiveGuideObjective[];
   readonly hints: readonly string[];
   /**
-   * What Professor Oak says on the radio: where to go next, and how to get out.
-   * The two things a raid asks of the key, in the box; `hints` is everything,
-   * for the full list.
+   * What Professor Oak says on the radio: where to go next, and how to get out,
+   * and then which way the next gym is while there is one to beat. The things a
+   * raid asks of the key, in the box; `hints` is everything, for the full list.
    */
-  readonly radio: readonly [string, string];
+  readonly radio: readonly string[];
 }
 
 /**
@@ -97,6 +114,7 @@ export function buildObjectiveGuide(
     ? contractHints(contract, session, context, snapshot.contractSteps, safeExit?.label, currentExit?.label)
     : laterRunHints(session, context, currentExit?.label);
   const treasure = treasureHints(session, context, snapshot.foundItems);
+  const gym = nextGymHint(context);
 
   return {
     isFirstContract,
@@ -104,7 +122,7 @@ export function buildObjectiveGuide(
     // a heading that repeats the line above it is a rank of nothing.
     contractLabel: contract ? contractLabel(contract, isFirstContract) : 'No contract on this raid',
     objectives,
-    radio: radioLines(contract !== undefined, route, session, context, treasure?.radio),
+    radio: [...radioLines(contract !== undefined, route, session, context, treasure?.radio), ...(gym ? [gym] : [])],
     hints: [
       // First, because a raid that set out with the whole chart set out for this.
       ...(treasure ? [treasure.hint] : []),
@@ -115,8 +133,25 @@ export function buildObjectiveGuide(
       ...shimmerHints(session, context),
       ...omenHints(session, context),
       ...shinyHints(snapshot.caughtPokemon),
+      ...(gym ? [gym] : []),
     ],
   };
+}
+
+/**
+ * Which way the next gym is, from here. The wall map in Oak's Lab named the
+ * gym and its district, and nothing in the raid did: the 22 Nov AI playtest's
+ * newcomers walked GULL STRAND for raid after raid reading every sign, pressed
+ * O and heard only the job, and seven of them quit there. So the radio says it,
+ * by the same bearing every other line uses, and says what to look for.
+ */
+function nextGymHint(context: ObjectiveGuideContext): string | undefined {
+  const gym = context.nextGym;
+  if (!gym) {
+    return undefined;
+  }
+  const where = directionTo(context.currentPosition, context.towards?.(gym.inside) ?? gym.inside);
+  return `The next gym is ${gym.building.toUpperCase()}, ${where} on ${gym.standsIn}: the big building with GYM on its front. ${gym.leader.toUpperCase()} is inside.`;
 }
 
 /**
