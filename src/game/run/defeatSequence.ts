@@ -179,9 +179,11 @@ function heldBeat(heldNames: string | null, partnerName: string | undefined, fil
     };
   }
   // The container filled itself and was never opened, so it was not the
-  // player's call (playtest 43 B6); say what decided it instead.
+  // player's call (playtest 43 B6); say what decided it instead, by the
+  // name the hall gives it: 'the container' meant nothing to a newcomer (AI
+  // playtest, 22 Nov 2026).
   const call = filledForYou
-    ? 'The container filled itself before you deployed.'
+    ? 'THE LOCKER packed itself before you jumped in.'
     : 'That was the call you made before you deployed.';
   return {
     id: 'held',
