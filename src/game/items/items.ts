@@ -185,6 +185,13 @@ export type ItemEffect =
    */
   | { readonly type: 'flute' }
   /**
+   * A Repel: sprayed from the raid's pack, it keeps wild Pokémon weaker than the
+   * lead away for `steps` steps, FireRed's own rule (`../world/repel.ts`). The
+   * step count is the catalogue's for the reason a Potion's 20 HP is. Packed,
+   * costs its square and is spent by the spray.
+   */
+  | { readonly type: 'repel'; readonly steps: number }
+  /**
    * A Lockpick: opens one locked crate (`../world/pois.ts`, `WorldPoi.locked`)
    * and snaps in the lock doing it, so it is spent where a Pickaxe is not. Most
    * locks open with one; an exit with a key of its own does not.
@@ -649,6 +656,16 @@ export const ITEMS = {
     footprint: { width: 1, height: 2 },
     description: 'Digs out an exit buried under rubble, for the raid it is carried on. Never used up.',
     effect: { type: 'pickaxe' },
+  },
+  // FireRed's own Repel: 100 steps, and a wild Pokémon weaker than the lead
+  // keeps away (`../world/repel.ts`). Bartered for at Bill's in lamp oil.
+  repel: {
+    id: 'repel',
+    displayName: 'Repel',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'Sprayed from the pack: wild Pokémon weaker than your lead keep away for 100 steps.',
+    effect: { type: 'repel', steps: 100 },
   },
   lockpick: {
     id: 'lockpick',
@@ -1710,6 +1727,8 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       return { used: false, message: `${item.displayName} is ridden, not used on a Pokémon. Choose it in the raid's pack.` };
     case 'flute':
       return { used: false, message: `${item.displayName} is played, not used on a Pokémon. Choose it in the raid's pack.` };
+    case 'repel':
+      return { used: false, message: `${item.displayName} is sprayed, not used on a Pokémon. Choose it in the raid's pack.` };
     case 'lockpick':
       return { used: false, message: `${item.displayName} opens a locked crate. Face the crate and press the interact key.` };
     case 'key':

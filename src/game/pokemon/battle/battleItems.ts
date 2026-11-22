@@ -199,6 +199,8 @@ function refusalMessage(item: ItemDefinition): string {
       return `${item.displayName} is ridden in the field, not in a fight.`;
     case 'flute':
       return `${item.displayName} is played in the field, not in a fight.`;
+    case 'repel':
+      return `${item.displayName} keeps wild Pokémon away in the field. It is no use once one is here.`;
     case 'lockpick':
       return `${item.displayName} picks locks in the field, not in a fight.`;
     case 'key':

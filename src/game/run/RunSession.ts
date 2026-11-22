@@ -1,3 +1,4 @@
+import type { RepelState } from '../world/repel';
 import type { RaidWalk } from '../world/raidMemory';
 import type { DressedLook } from '../look/look';
 import type { SecureSlot as StashSecureSlot } from '../stash';
@@ -191,6 +192,12 @@ export interface ActiveRunSession {
    * Bicycle dropped in a fight to make room for a catch is not ridden.
    */
   riding?: boolean;
+  /**
+   * A Repel sprayed this raid (`world/repel.ts`): the steps it has left, and
+   * zero until its wearing off has been said. On the raid rather than the world
+   * because a fight rebuilds the world and a Repel lasts across it.
+   */
+  repel?: RepelState;
   /**
    * The barred exits this raid has opened - dug out with a Pickaxe or unlocked
    * with their key - by label (`ExtractionPoint.label`).

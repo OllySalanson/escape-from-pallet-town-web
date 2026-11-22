@@ -144,6 +144,8 @@ const useLabel = (item: ItemDefinition): string => {
       return `Read ${item.displayName} to a Pokémon. A move learned is learned for good.`;
     case 'flute':
       return `Play the ${item.displayName}. It is never used up.`;
+    case 'repel':
+      return `Spray the ${item.displayName}. One is spent.`;
     default:
       return `Use ${item.displayName} on a Pokémon.`;
   }
@@ -181,6 +183,11 @@ export interface BagBike {
   readonly toggle: () => string | null;
 }
 
+/** A Repel, as the raid it is sprayed in sees it (`world/repel.ts`): sprayed, or why not. */
+export interface BagRepel {
+  readonly spray: (item: ItemDefinition) => { readonly used: boolean; readonly message: string };
+}
+
 interface BagSceneData {
   readonly bag: Bag;
   readonly party: PokemonParty;
@@ -189,6 +196,8 @@ interface BagSceneData {
   readonly onItemDropped?: (itemId: string, quantity: number) => void;
   /** Absent where nothing can be ridden - the bag is only ever opened in a raid today. */
   readonly bike?: BagBike;
+  /** Absent where nothing can be kept away - the bag is only ever opened in a raid today. */
+  readonly repel?: BagRepel;
   /** The world beside the panel, told what the panel covers. */
   readonly view?: SidePanelView;
   /**
@@ -220,6 +229,7 @@ export class BagScene extends Phaser.Scene {
   private onItemUsed!: () => void;
   private onItemDropped?: (itemId: string, quantity: number) => void;
   private bike?: BagBike;
+  private repel?: BagRepel;
   private view?: SidePanelView;
   private partner?: Pokemon;
   /** The item whose recipient list is open, if one is. */
@@ -289,6 +299,7 @@ export class BagScene extends Phaser.Scene {
     this.onItemUsed = data.onItemUsed;
     this.onItemDropped = data.onItemDropped;
     this.bike = data.bike;
+    this.repel = data.repel;
     this.view = data.view;
     this.partner = data.partner;
     this.usingItemId = undefined;
@@ -743,6 +754,10 @@ export class BagScene extends Phaser.Scene {
       this.rideOrWalk();
       return;
     }
+    if (item.effect.type === 'repel') {
+      this.spray(item);
+      return;
+    }
     this.usingItemId = itemId;
     this.askedAt = this.time.now;
     this.status = undefined;
@@ -973,6 +988,17 @@ export class BagScene extends Phaser.Scene {
     }
     this.scene.stop();
     this.scene.resume('world');
+  }
+
+  /** The row's own press on a Repel: sprayed and spent, or refused and kept. */
+  private spray(item: ItemDefinition): void {
+    const result = this.repel?.spray(item) ?? { used: false, message: 'There is nothing to keep away here.' };
+    audioManager.play(result.used ? 'repelSpray' : 'denied');
+    if (result.used) {
+      this.spend(item);
+    }
+    this.status = result.message;
+    this.render();
   }
 
   /** Takes one of an item out of the pack. */

@@ -170,6 +170,15 @@ import { OMEN_SHADOW_SCALE, omenShadowAt } from '../world/omens';
 import { omenRoost } from '../objectives/ObjectiveGuide';
 import { pokemonTextureKey } from '../pokemon/pokemonSprites';
 import { encounterTableAt, stepRolls } from '../world/localEncounters';
+import {
+  REPEL_LINGERED_LINE,
+  REPEL_WORE_OFF_LINE,
+  repelKeepsAway,
+  repelSprayedLine,
+  repelWoreOff,
+  sprayRepel,
+  stepRepel,
+} from '../world/repel';
 import { areaFrame } from '../world/areaFrame';
 import { hasPlayerSetOff } from '../world/hunterArrival';
 import { SpentPresses } from '../world/spentPresses';
@@ -185,7 +194,7 @@ import {
 } from '../audio/worldSounds';
 import { DEFAULT_RAID_PROGRESS, SaveManager, raidsDeployed, type RestoredGame } from '../save/SaveManager';
 import { gymOf, nextGym } from '../world/valeQuarters';
-import { Bag, ITEMS, formatMoney, getItemById, isCurrency, itemAmountsFor, type ItemId } from '../items';
+import { Bag, ITEMS, formatMoney, getItemById, isCurrency, itemAmountsFor, type ItemDefinition, type ItemId } from '../items';
 import {
   areContractStopsComplete,
   completedObjectiveRewards,
@@ -6233,6 +6242,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       },
       onItemDropped: (itemId: string, quantity: number) => this.putDownHere(itemId as ItemId, quantity),
       bike: { riding: this.riding, toggle: () => this.toggleBike() },
+      repel: { spray: (item: ItemDefinition) => this.sprayRepel(item) },
       view: this.besidePanel,
       ...(this.runSession?.secureSlot.partner ? { partner: this.runSession.secureSlot.partner } : {}),
     });
@@ -7132,6 +7142,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.partner?.arrived();
     if (this.runSession) {
       this.runSession.stepsTaken = (this.runSession.stepsTaken ?? 0) + 1;
+      this.runSession.repel = stepRepel(this.runSession.repel);
     }
     this.noteWading();
     // A step is the hunter's step: standing still starts counting again from here.
@@ -7212,6 +7223,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
 
+    // The step a Repel runs out on is said and rolls nothing, as FireRed's
+    // step script stops the step there.
+    if (this.runSession && repelWoreOff(this.runSession.repel)) {
+      delete this.runSession.repel;
+      this.dialogBox.showMessages([REPEL_WORE_OFF_LINE]);
+      return;
+    }
+
     const encounters = this.encountersAtCurrentTile();
     if (stepRolls(this.currentMap, this.currentTile) && encounters) {
       const rng = this.runSession?.rng;
@@ -7222,8 +7241,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // player who lost their first raid met the same Pidgey with the same
       // three lines explaining a screen they had just spent a raid reading.
       const teachingBattle = teaching !== null && new SaveManager().claimBattleLesson();
-      const wild =
+      const rolled =
         teaching ?? rollEncounter(encounters, rng === undefined ? undefined : () => rng.next());
+      // A Repel turns back what is weaker than the lead; the teaching fight is
+      // authored, and is met whatever is sprayed.
+      const wild =
+        rolled && teaching === null && repelKeepsAway(this.runSession?.repel, rolled.level, this.party.pokemon)
+          ? null
+          : rolled;
       if (wild) {
         audioManager.play('encounter');
         this.transitionToBattle({ wild, teachingBattle });
@@ -7369,6 +7394,21 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.setRiding(answer.kind === 'mount');
     this.saveGame();
     return null;
+  }
+
+  /**
+   * The pack's USE on a Repel: whether it was sprayed, and what to say. One
+   * still working is refused and not spent (`world/repel.ts`).
+   */
+  private sprayRepel(item: ItemDefinition): { readonly used: boolean; readonly message: string } {
+    const session = this.runSession;
+    const sprayed = session ? sprayRepel(session.repel, item) : null;
+    if (!session || !sprayed) {
+      return { used: false, message: REPEL_LINGERED_LINE };
+    }
+    session.repel = sprayed;
+    this.saveGame();
+    return { used: true, message: repelSprayedLine(item) };
   }
 
   private warp(warp: MapWarp): void {

@@ -681,6 +681,8 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   bicycle: 0,
   // A prize window's, bought with tickets and never handed out by a board.
   'poke-flute': 0,
+  // Bill's, for lamp oil: the board pays in what it pays, never in the barter.
+  repel: 0,
   // A Lockpick is a tool Bill barters and the maps lay, and a key is found on
   // the map it opens and nowhere else: neither is ever pay.
   lockpick: 0,

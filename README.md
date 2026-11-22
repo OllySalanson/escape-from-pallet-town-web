@@ -197,9 +197,9 @@ and say yes, you're let in to have a nose round for as long as you like (or unti
   empty bay has what goes there chalked on the floor: walk up, he quotes it, you say yes. And
   every one of them turns up on the map: a radio mast, a beacon, cellar doors in the quay wall.
 - **Bill's cottage**, down on the quay, is where Pokédollars go, and where gear, evolution stones,
-  HMs, fishing rods and, once he really trusts you, a Bicycle are bartered for things you found.
-  It's all out on his shelves, under a dust sheet until he knows you: walk up to one and he names
-  his price. Everything you trade him ends up on his shelves too.
+  HMs, fishing rods, Repels and, once he really trusts you, a Bicycle are bartered for things you
+  found. It's all out on his shelves, under a dust sheet until he knows you: walk up to one and he
+  names his price. Everything you trade him ends up on his shelves too.
 - **The Trader**, on the lawn behind the Raid Arena, makes FireRed's own nine in-game trades - a
   Mr. Mime called MIMIEN for your Abra, a Lickitung called MARC for your Golduck, and the rest -
   and sends a Kadabra, Machoke, Graveler or Haunter over to his game and straight back, which is

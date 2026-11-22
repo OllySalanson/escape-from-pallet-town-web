@@ -61,6 +61,9 @@ export const ITEM_ICONS = {
   // FireRed's Bicycle, side on in its own icon's colours, redrawn at 16x16
   // (`scripts/draw-bicycle-icon.mjs`).
   bicycle: 'bicycle',
+  // A spray can, teal so it is never the purple Antidote
+  // (`scripts/draw-repel-icon.mjs`).
+  repel: 'repel',
   // A hooked pick and five brass keys, each key's bow in a colour of its own
   // so five of them in one vault are five things (`scripts/draw-lock-icons.mjs`).
   lockpick: 'lockpick',

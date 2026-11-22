@@ -579,13 +579,14 @@ describe('the stones on the counter', () => {
     // And nothing else on the table repeats but the tools carried in the pack
     // and lost with it - the Pickaxe, the rods and the Lockpick, which a lock
     // spends besides: a deal struck once would be a way home a single wipe took
-    // away for good. No key is on the table at all.
+    // away for good - and the Repel, which a spray spends. No key is on the
+    // table at all.
     expect(
       TRADER_BARTERS.filter((barter) => !barter.once)
         .map((barter) => barter.id)
         .sort(),
     ).toEqual(
-      [...stoneBarters.map((barter) => barter.id), 'barter-pickaxe', 'barter-old-rod', 'barter-good-rod', 'barter-lockpick'].sort(),
+      [...stoneBarters.map((barter) => barter.id), 'barter-pickaxe', 'barter-old-rod', 'barter-good-rod', 'barter-lockpick', 'barter-repel'].sort(),
     );
   });
 

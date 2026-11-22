@@ -34,6 +34,13 @@ export const GOODS_ROWS = [10, 12] as const;
 
 /** The columns of a run, west and east of the aisle up the middle of the room. */
 const WEST_RUN = [1, 2, 3, 4, 5, 6] as const;
+/**
+ * The back row's two runs go on to the walls, one longer each side, so the
+ * Repel stands with his Lockpick; the east run's end, by the wall, is bare
+ * shelf, and the room stays the same either side of the aisle.
+ */
+const WEST_TO_THE_WALL = [0, 1, 2, 3, 4, 5, 6] as const;
+const EAST_TO_THE_WALL = [8, 9, 10, 11, 12, 13, 14] as const;
 const EAST_RUN = [8, 9, 10, 11, 12, 13] as const;
 
 const stock = (itemId: string): BillGood => ({ kind: 'stock', itemId });
@@ -72,7 +79,7 @@ const SHELVES: readonly { readonly y: number; readonly xs: readonly number[]; re
   },
   {
     y: GOODS_ROWS[0],
-    xs: WEST_RUN,
+    xs: WEST_TO_THE_WALL,
     goods: [
       barter('barter-hm01'),
       barter('barter-hm03'),
@@ -80,11 +87,12 @@ const SHELVES: readonly { readonly y: number; readonly xs: readonly number[]; re
       barter('barter-hm06'),
       barter('barter-pickaxe'),
       barter('barter-lockpick'),
+      barter('barter-repel'),
     ],
   },
   {
     y: GOODS_ROWS[0],
-    xs: EAST_RUN,
+    xs: EAST_TO_THE_WALL,
     goods: [
       barter('barter-old-rod'),
       barter('barter-good-rod'),
@@ -107,7 +115,7 @@ export const GOODS_ON_SHELVES: readonly ShelfSeat[] = SHELVES.flatMap(({ y, xs, 
 );
 
 /** Every tile his shelves stand on, things on them or not: the shelf is solid whatever is on it. */
-export const SHELF_TILES: readonly GridPosition[] = GOODS_ON_SHELVES.map((seat) => seat.tile);
+export const SHELF_TILES: readonly GridPosition[] = SHELVES.flatMap(({ y, xs }) => xs.map((x) => ({ x, y })));
 
 /** The name of a thing on his shelves, as the hint at the foot of the screen says it. */
 export function goodName(good: BillGood): string {
