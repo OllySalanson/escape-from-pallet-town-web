@@ -108,7 +108,6 @@ describe('an ability is visible', () => {
    */
   const KINDS: readonly AbilityEffectKind[] = [
     'powered-up',
-    'sharpened',
     'shrugged-off',
     'hardened',
     'absorbed',
@@ -122,7 +121,6 @@ describe('an ability is visible', () => {
     'contact',
     'sent-out',
     'quickened',
-    'hidden',
     'weathered-out',
   ];
 

@@ -760,7 +760,6 @@ const damageAbilities = (attacker: BattleCombatant, defender: BattleCombatant): 
  */
 const CONTINUOUS_ABILITY_EFFECTS: ReadonlySet<AbilityEffectKind> = new Set([
   'powered-up',
-  'sharpened',
   'shrugged-off',
   'hardened',
   // The weather abilities are a standing state, not an event: a Swift Swim in
@@ -1886,32 +1885,18 @@ const applyMove = (
     }
 
     // 6b. One accuracy roll per target, read through both stages and through
-    // the attacker's own ability. A move with `alwaysHits` skips it, which is
-    // the only way Swift can exist. Compound Eyes is read here and said after
-    // the move is named, because a line about taking aim before anyone knows
-    // what is being aimed reads backwards. A move that cannot miss is not
-    // aimed at all, so it says nothing - and leaves the once-a-battle line for
-    // the first move the eye does change.
+    // both abilities. A move with `alwaysHits` skips it, which is the only way
+    // Swift can exist. Compound Eyes and Sand Veil are silent, as FireRed's
+    // are: they move a roll nobody sees, and a line about taking aim read as
+    // something having happened when nothing had (playtest 20 Nov). The
+    // abilities that change a hit itself still say so.
     const abilityAccuracy = accuracyMultiplier(abilityCarrier(attackerNow()), move.base);
-    const sayAccuracy = (): void => {
-      if (abilityAccuracy === 1 || move.base.alwaysHits) {
-        return;
-      }
-      const sharpened = announceAbility(nextState, ref, 'sharpened');
-      nextState = sharpened.state;
-      events.push(...sharpened.events);
-    };
     // Sand Veil moves the *move's* accuracy rather than an evasion stage,
     // because a quarter is not a step on generation III's evasion ladder.
     const veiled = incomingAccuracyMultiplier(
       abilityCarrier(defenderNow()),
       effectiveWeather(nextState),
     );
-    if (veiled !== 1) {
-      const hidden = announceAbility(nextState, targetRef, 'hidden');
-      nextState = hidden.state;
-      events.push(...hidden.events);
-    }
     // FireRed's order: the stages first, then Compound Eyes (130/100) and
     // Sand Veil (80/100) on the result, each floored.
     const percentOf = (value: number, multiplier: number): number =>
@@ -1935,7 +1920,6 @@ const applyMove = (
       if (!spread) {
         events.push({ type: 'used-move', user, ...inSlot(ref), name: attackerName, move: move.base.name });
       }
-      sayAccuracy();
       // A Leech Seed that misses says the target evaded it, as FireRed does:
       // `BattleScript_EffectLeechSeed` sends a miss on to `setseeded` rather
       // than to the ordinary miss line.
@@ -2062,7 +2046,6 @@ const applyMove = (
     }
     // Which ability changed the swing, said once each and after the line that
     // names the move, so the log reads "used X" and then why it landed as it did.
-    sayAccuracy();
     for (const note of abilityNotes) {
       const [side, effect] = note.split(':');
       const said = announceAbility(

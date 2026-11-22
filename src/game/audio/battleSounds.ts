@@ -173,10 +173,8 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
         case 'sent-out':
           return withLine('statDown');
         case 'powered-up':
-        case 'sharpened':
         case 'shrugged-off':
         case 'quickened':
-        case 'hidden':
           return withLine('statUp');
         case 'weathered-out':
           return withLine('statusMove');

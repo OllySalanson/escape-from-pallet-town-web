@@ -186,7 +186,7 @@ describe('the abilities that change a number', () => {
     expect(guts.modifyAttack!({ holder: { ...holder, primaryStatus: PrimaryStatus.Sleep }, move: TACKLE })).toBe(1);
   });
 
-  it('raises a move’s accuracy with Compound Eyes rather than its damage', () => {
+  it('raises a move’s accuracy with Compound Eyes rather than its damage, and says nothing', () => {
     // Seventy per cent raised by a third is ninety-one, so a roll of 0.8 misses
     // the plain swing and lands the sharpened one. It has to be a move that can
     // miss at all: a hundred is a hundred however keen the eye.
@@ -209,7 +209,9 @@ describe('the abilities that change a number', () => {
     expect(types(swing(null).events)).toContain('missed');
     const sharp = swing('compound-eyes');
     expect(types(sharp.events)).not.toContain('missed');
-    expect(didFire(sharp.events, 'sharpened')).toBe(true);
+    // FireRed never names Compound Eyes: it moves a roll nobody sees, and a
+    // line about taking aim read as a lock-on that never happened (playtest 20 Nov).
+    expect(sharp.events.filter((event) => event.type === 'ability')).toEqual([]);
   });
 
   it('halves what Thick Fat takes from Fire and leaves everything else alone', () => {
@@ -236,35 +238,12 @@ describe('the abilities that change a number', () => {
   });
 
   it('says a continuous ability once a battle and no more', () => {
-    const player = armed(species({ abilityId: 'compound-eyes' }), 20, SMOKESCREEN, SMOKESCREEN);
-    const first = resolveTurn(createBattleState(player, armed(species({ abilityId: null }), 20)), 0, at({}));
-    const second = resolveTurn(first.state, 1, at({}));
+    const attacker = armed(species({ abilityId: null }), 20, TACKLE, TACKLE);
+    const first = resolveTurn(createBattleState(attacker, armed(species({ abilityId: 'shell-armor' }), 20)), 0, always);
+    const second = resolveTurn(first.state, 1, always);
 
-    expect(didFire(first.events, 'sharpened')).toBe(true);
-    expect(didFire(second.events, 'sharpened')).toBe(false);
-  });
-
-  it('keeps Compound Eyes quiet on a move that cannot miss, and says it on the first that can', () => {
-    // Agility and Swift roll no accuracy, so a keener eye changes nothing about
-    // them; "has it in its sights!" after Agility was a line about nothing, and
-    // being said once a battle it then stayed silent when it did matter.
-    const agility = new MoveBase({
-      name: 'Agility',
-      type: PokemonType.Psychic,
-      power: 0,
-      accuracy: 100,
-      pp: 30,
-      category: MoveCategory.Status,
-      alwaysHits: true,
-      target: MoveTarget.Self,
-      effects: { boosts: [{ stat: 'speed', stages: 2 }] },
-    });
-    const player = armed(species({ abilityId: 'compound-eyes' }), 20, agility, SMOKESCREEN);
-    const first = resolveTurn(createBattleState(player, armed(species({ abilityId: null }), 20)), 0, at({}));
-    const second = resolveTurn(first.state, 1, at({}));
-
-    expect(didFire(first.events, 'sharpened')).toBe(false);
-    expect(didFire(second.events, 'sharpened')).toBe(true);
+    expect(didFire(first.events, 'hardened')).toBe(true);
+    expect(didFire(second.events, 'hardened')).toBe(false);
   });
 });
 
@@ -819,7 +798,8 @@ describe('the four that are only about the weather', () => {
     expect(types(swing(WeatherId.Sandstorm, null).events)).not.toContain('missed');
     const veiled = swing(WeatherId.Sandstorm, 'sand-veil');
     expect(types(veiled.events)).toContain('missed');
-    expect(didFire(veiled.events, 'hidden')).toBe(true);
+    // Silent, as FireRed's is: the miss is the whole of what is seen.
+    expect(veiled.events.filter((event) => event.type === 'ability')).toEqual([]);
     // Out of the sand it is an ordinary Pokemon.
     expect(types(swing(null, 'sand-veil').events)).not.toContain('missed');
 

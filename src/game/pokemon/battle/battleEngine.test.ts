@@ -456,8 +456,8 @@ describe('battle turn resolution', () => {
     const powderEvents = result.events.slice(0, enemyReplyIndex);
 
     expect(powderEvents[0]).toMatchObject({ type: 'used-move', move: 'Poison Powder' });
-    // Butterfree's Compound Eyes introduces itself once, after the move it aimed.
-    expect(powderEvents[1]).toMatchObject({ type: 'ability', effect: 'sharpened' });
+    // Butterfree's Compound Eyes says nothing, as FireRed's does.
+    expect(powderEvents.filter((event) => event.type === 'ability')).toEqual([]);
     expect(powderEvents.filter((event) => event.type === 'effectiveness')).toEqual([]);
     expect(powderEvents.some((event) => event.type === 'status-applied')).toBe(true);
   });
