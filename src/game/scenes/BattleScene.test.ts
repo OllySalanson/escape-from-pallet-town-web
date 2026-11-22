@@ -2174,6 +2174,23 @@ describe('a catch the pack has no room for', () => {
     expect(bag.count('potion')).toBe(18);
   });
 
+  it('never leaves the cursor on another kind after a drop, so the next press cannot put the money down', () => {
+    // AI playtest of 22 Nov 2026: the last berry put down, the cursor slid onto
+    // POKéDOLLARS at the foot of the list, and the next SPACE dropped them all.
+    const bag = new Bag({ potion: 15, 'sitrus-berry': 1, money: 50, 'poke-ball': 1 });
+    const { scene, press, renderedTexts } = open(bag);
+    const before = renderedTexts.length;
+    press('BALL x1');
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+
+    press('SITRUS BERRY', before);
+
+    expect(bag.count('sitrus-berry')).toBe(0);
+    expect((scene as unknown as { mode: string }).mode).toBe('make-room');
+    expect((scene as unknown as { selectedCommand: number }).selectedCommand).toBe(0);
+    expect(bag.count('money')).toBe(50);
+  });
+
   it('throws the held ball the moment a drop has bought the room', () => {
     const roll = vi.spyOn(Math, 'random').mockReturnValue(0.01);
     try {
