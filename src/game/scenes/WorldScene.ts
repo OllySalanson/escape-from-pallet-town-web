@@ -7831,18 +7831,29 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    */
   private tryCollectLootAt(position: GridPosition): string | null {
     // A tile can hold a piece already taken and one put down on it since, so
-    // only what is still there is asked about.
-    const loot = this.lootForCurrentMap().find(
+    // only what is still there is asked about - and every piece on it is, each
+    // on its own: a pile behind one thing that would not fit stayed on the
+    // ground however often it was stepped on, and the P35 under a Radio valve
+    // could only be had back by dropping more (AI playtest, 22 Nov 2026).
+    const pieces = this.lootForCurrentMap().filter(
       (candidate) =>
         candidate.position.x === position.x &&
         candidate.position.y === position.y &&
         !this.collectedLootIds.has(candidate.id),
     );
+    const said = pieces.flatMap((loot) => {
+      const line = this.tryCollectOnePiece(loot);
+      return line === null ? [] : [line];
+    });
+    return said.length === 0 ? null : said.join(' ');
+  }
+
+  private tryCollectOnePiece(loot: WorldLoot): string | null {
     // The room's ground is picked up by whoever the database says was first
     // (`raidRoom/roomLoot.ts`): a step onto a piece nobody holds yet is the
     // claim, and the piece is collected on the frame the answer is this
     // player's (`settleRoomLoot`). Held by somebody else, it is already gone.
-    if (loot && this.isSharedLoot(loot) && this.isLootAvailable() && !this.collectedLootIds.has(loot.id)) {
+    if (this.isSharedLoot(loot) && this.isLootAvailable() && !this.collectedLootIds.has(loot.id)) {
       const rooms = friendRoom()!;
       if (rooms.loot.holder(loot.id) === undefined) {
         rooms.claimLoot(loot.id);
