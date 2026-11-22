@@ -971,8 +971,11 @@ function farTiles(ground: Ground): readonly GridPosition[] {
   if (known) {
     return known;
   }
+  // Out of doors: a far tile inside a place is a far floor of a cave, and a
+  // stake on GREYSTONE CAVES B5F could not be read and walked out from in one
+  // raid (AI playtest, tester 4's release blocker 3).
   const far = ground.open.filter(
-    (tile) => ground.steps[tile.y][tile.x] >= ground.longestWalk * FAR_SHARE,
+    (tile) => ground.steps[tile.y][tile.x] >= ground.longestWalk * FAR_SHARE && insidePlace(ground.map, tile) === undefined,
   );
   const tiles = far.length > 0 ? far : ground.open;
   farByGround.set(ground, tiles);

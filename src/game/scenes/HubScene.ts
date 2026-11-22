@@ -338,6 +338,14 @@ function tagWords(tag: string): string {
   return tag.replace(/<[^>]*>/g, '').trim().toLowerCase();
 }
 
+/**
+ * How much longer than a straight walk a job really takes: the stops, getting
+ * your bearings and the lines read on the way. The playtests of 22 Nov 2026
+ * took two to three times the straight walk, and a player who trusted the
+ * straight figure alone ran out of clock (tester 4's release blocker 3).
+ */
+const JOB_WALK_ALLOWANCE = 2.5;
+
 export class HubScene extends Phaser.Scene {
   private readonly saveManager = new SaveManager();
   private stash!: Stash;
@@ -2957,7 +2965,7 @@ export class HubScene extends Phaser.Scene {
     const walking =
       walk === undefined
         ? ''
-        : ` Walked straight, it takes ${formatRecoveryClock(walk * STEP_DURATION_MS)}${isPlaytestRun() ? ' of walking' : ` of your ${formatRecoveryClock(this.raidClockMs)}`}.${
+        : ` Walked straight with no stops, it takes ${formatRecoveryClock(walk * STEP_DURATION_MS)}${isPlaytestRun() ? ' of walking' : ` of your ${formatRecoveryClock(this.raidClockMs)}`}; allow ${formatRecoveryClock(walk * STEP_DURATION_MS * JOB_WALK_ALLOWANCE)}.${
             quicker ? ` From ${quicker.landing.label} it takes ${formatRecoveryClock(quicker.walk * STEP_DURATION_MS)}.` : ''
           }`;
     const job = contract
