@@ -97,6 +97,14 @@ describe('a line shared out between dialogue boxes', () => {
     expect(boxes[0].endsWith('a burn:')).toBe(true);
   });
 
+  it('never leaves a box ending on a word that leans on the next', () => {
+    // THE BEACH's ice cream seller (AI playtest, 22 Nov 2026) read 'The lad with the' as a box.
+    const line = 'The lad with the cart before me went out on a raid and never came back for it.';
+    const boxes = shareLine(line, ROWS, wrap);
+    expect(boxes.join(' ')).toBe(line);
+    expect(boxes[0].split(' ').at(-1)).not.toBe('the');
+  });
+
   it('keeps a line with its own breaks as it was written', () => {
     const line = 'ONE\nTWO\nTHREE';
     expect(shareLine(line, ROWS, (text) => text.split('\n'))).toEqual(['ONE\nTWO', 'THREE']);
