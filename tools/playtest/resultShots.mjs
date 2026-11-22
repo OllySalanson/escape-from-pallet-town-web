@@ -28,7 +28,7 @@ const bulbasaur = { name: 'Bulbasaur', dexId: 1, level: 13, currentHp: 11, maxHp
 const pidgey = { name: 'Pidgey', dexId: 16, level: 7, currentHp: 21, maxHp: 21 };
 const found = [item('mooring-rope', 'Mooring rope', 2), item('super-potion', 'Super Potion', 2), item('radio-valve', 'Radio valve', 1), item('thunder-stone', 'Thunder Stone', 1), item('money', 'Pokédollars', 140)];
 const common = {
-  clockLabel: '4:00 of 5:00',
+  clockLabel: '4:00 used of 5:00',
   elapsedMs: 240000,
   durationMs: 300000,
   haulTier: 'loaded',

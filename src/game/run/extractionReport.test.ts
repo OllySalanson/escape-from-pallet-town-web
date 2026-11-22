@@ -84,7 +84,7 @@ describe('extraction report after a survived raid', () => {
       saved: true,
     });
 
-    expect(report.clockLabel).toBe('4:59 of 5:00');
+    expect(report.clockLabel).toBe('4:59 used of 5:00');
   });
 
   it('reports exactly what was banked, and prices the risk the player actually took', () => {
@@ -157,7 +157,7 @@ describe('extraction report after a survived raid', () => {
       { itemId: 'potion', label: 'Potion', quantity: 2 },
       { itemId: 'poke-ball', label: 'Poké Ball', quantity: 1 },
     ]);
-    expect(report.clockLabel).toBe('2:17 of 5:00');
+    expect(report.clockLabel).toBe('2:17 used of 5:00');
     expect(report.contract?.complete).toBe(true);
   });
 
@@ -520,7 +520,7 @@ describe('extraction report after a lost raid', () => {
     );
     // A loss is never graded as a haul, whatever the secure slot rescued.
     expect(report.haulTier).toBe('empty');
-    expect(report.clockLabel).toBe('5:00 of 5:00');
+    expect(report.clockLabel).toBe('5:00 used of 5:00');
   });
 
   /**
@@ -891,6 +891,8 @@ describe('what the party earned', () => {
     );
     expect(report.haulTier).toBe('thin');
     expect(report.summary).toContain('experience short of level 6.');
+    // Not 'stronger' over 'Nobody levelled.' (AI playtest, 22 Nov 2026).
+    expect(report.headline).toBe('Nothing banked, but the experience came home.');
   });
 
   it('says nothing at all about a raid that taught nobody anything', () => {

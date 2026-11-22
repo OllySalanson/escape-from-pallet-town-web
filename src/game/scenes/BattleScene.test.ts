@@ -1338,7 +1338,7 @@ describe('a lost raid resolved inside a battle', () => {
     (scene as unknown as { resolveRunWipe(): void }).resolveRunWipe();
 
     expect(start.mock.calls[0][1]).toMatchObject({
-      report: { durationMs: shortenedMs, clockLabel: '1:00 of 3:00' },
+      report: { durationMs: shortenedMs, clockLabel: '1:00 used of 3:00' },
     });
   });
 });
