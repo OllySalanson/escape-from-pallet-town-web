@@ -5,9 +5,11 @@ import { BULBASAUR, IVYSAUR, PIDGEY, getSpeciesById } from '../pokemon/species';
 import { pokemonCargo } from '../pokemon/pokemonCargo';
 import { RunManager } from './RunManager';
 import {
+  clearPackRoomForPokemon,
   packCouldEverHoldPokemon,
   packFullForPokemonLine,
   packHasRoomForPokemon,
+  packHasRoomOnceThrown,
   packNeverFitsPokemonLine,
   packRoomChoices,
   raidPackCargo,
@@ -167,13 +169,43 @@ describe('a catch no amount of putting down would make room for', () => {
   it('is known before anything is put down', () => {
     const alakazam = new Pokemon(getSpeciesById('alakazam')!, 22);
     expect(packHasRoomForPokemon(satchel(), alakazam)).toBe(false);
-    expect(packCouldEverHoldPokemon(satchel(), alakazam, 'poke-ball')).toBe(false);
+    expect(packCouldEverHoldPokemon(satchel(), alakazam)).toBe(false);
     expect(packNeverFitsPokemonLine(alakazam)).toBe(
       `${packFullForPokemonLine(alakazam)} Even with everything else put down, this pack cannot hold it.`,
     );
   });
 
   it('still offers the panel where putting things down would make room', () => {
-    expect(packCouldEverHoldPokemon(satchel(), new Pokemon(PIDGEY, 4), 'poke-ball')).toBe(true);
+    expect(packCouldEverHoldPokemon(satchel(), new Pokemon(PIDGEY, 4))).toBe(true);
+  });
+});
+
+/**
+ * AI playtests of 22 Nov 2026: 'PIDGEY needs 4 squares, and 3 are free' made
+ * the player put a Pecha Berry down, when the Poke Ball being thrown was itself
+ * one of the fifteen squares in use; and an Alakazam needing 9 beside 8 free
+ * took two Potions where one was enough. The ball has left the pack by the
+ * time anything is caught, so it is room.
+ */
+describe('the ball being thrown', () => {
+  it('is room for the catch, so a catch that fits once it is thrown asks nothing', () => {
+    const bag = new Bag({ potion: 14, 'poke-ball': 1 }, RAID_BAG_GRID);
+    const pidgey = new Pokemon(PIDGEY, 4);
+
+    expect(packHasRoomForPokemon(bag, pidgey)).toBe(false);
+    expect(packHasRoomOnceThrown(bag, pidgey, 'poke-ball')).toBe(true);
+    expect(packHasRoomOnceThrown(bag, pidgey)).toBe(false);
+    // And thrown, the Pidgey really is seated.
+    bag.remove('poke-ball', 1);
+    expect(clearPackRoomForPokemon(bag, pidgey).fits).toBe(true);
+  });
+
+  it('counts towards what putting one thing down would free', () => {
+    const bag = new Bag({ potion: 9, 'poke-ball': 2 }, RAID_BAG_GRID);
+    const alakazam = new Pokemon(getSpeciesById('alakazam')!, 22);
+
+    expect(packHasRoomOnceThrown(bag, alakazam, 'poke-ball')).toBe(false);
+    const potion = packRoomChoices(bag, alakazam, 'poke-ball').find(({ itemId }) => itemId === 'potion')!;
+    expect(potion.freesEnough).toBe(true);
   });
 });

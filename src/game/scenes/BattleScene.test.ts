@@ -2171,13 +2171,14 @@ describe('a catch the pack has no room for', () => {
       const before = renderedTexts.length;
       press('BALL x1');
       (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-      // Four Potions is four squares, and a 2x2 Bulbasaur needs all four of
-      // them together - so the first three drops leave the panel open.
-      for (let drop = 0; drop < 4; drop += 1) {
+      // A 2x2 Bulbasaur needs four squares together, and the ball thrown is
+      // one of them - so three Potions buy the room and the first two drops
+      // leave the panel open.
+      for (let drop = 0; drop < 3; drop += 1) {
         press('POTION x', before);
       }
 
-      expect(bag.count('potion')).toBe(13);
+      expect(bag.count('potion')).toBe(14);
       // The ball held over the refusal is the ball thrown, and only then.
       expect(bag.count('poke-ball')).toBe(0);
       expect((scene as unknown as { state: { outcome: string } }).state.outcome).toBe('caught');
@@ -2257,7 +2258,8 @@ describe('a catch the pack has no room for', () => {
       (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
       const panelFrom = renderedTexts.length;
       press('POKé BALL x1', before);
-      for (let drop = 0; drop < 3; drop += 1) {
+      // The Great Ball thrown frees a square too, so two Potions finish the room.
+      for (let drop = 0; drop < 2; drop += 1) {
         press('POTION x', panelFrom);
       }
 
