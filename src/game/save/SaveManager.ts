@@ -2614,7 +2614,8 @@ export class SaveManager {
       saved: this.save({
         ...game,
         raidProgress,
-        traderRationUsed: clampTraderCount(game.traderRationUsed) + quantity,
+        // Potions and Poke Balls are off the ration (`TraderStockItem.rationed`).
+        traderRationUsed: clampTraderCount(game.traderRationUsed) + (offer.item.rationed ? quantity : 0),
       }),
     };
   }

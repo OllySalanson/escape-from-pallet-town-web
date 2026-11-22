@@ -58,13 +58,9 @@ describe('the marshal on where Poké Balls come from', () => {
     return { game, flow };
   };
 
-  it('never sends a stranger to Bill, who sells them nothing (first-hour hunt 2, finding 1)', () => {
+  it('sends a stranger to Bill too, who sells anybody Poké Balls for money', () => {
     const { game, flow } = noBallsAtBase();
-    const said = marshalLines(['loadout'], flow, { bill: traderProgressOf(game.raidProgress) }).join(' ');
-    expect(said).not.toMatch(/Bill sells them/);
-    expect(said).toMatch(/stranger/);
-    expect(said).toMatch(/out there/);
-    expect(said).toMatch(/job/);
+    expect(marshalLines(['loadout'], flow, { bill: traderProgressOf(game.raidProgress) }).join(' ')).toMatch(/Bill sells them/);
   });
 
   it('sends a player Bill will sell to, to Bill', () => {

@@ -1748,16 +1748,31 @@ describe('SaveManager', () => {
     const storage = new MemoryStorage();
     const saves = counterSave(storage);
     const before = saves.load()!.stash;
-    const potions = before.itemCount('potion');
+    const antidotes = before.itemCount('antidote');
 
-    expect(saves.buyTraderStock('potion')).toMatchObject({ ok: true, saved: true });
+    expect(saves.buyTraderStock('antidote')).toMatchObject({ ok: true, saved: true });
 
     const after = saves.load()!;
-    expect(after.stash.itemCount('potion')).toBe(potions + 1);
-    expect(after.stash.itemCount('money')).toBe(1_000 - 120);
+    expect(after.stash.itemCount('antidote')).toBe(antidotes + 1);
+    expect(after.stash.itemCount('money')).toBe(1_000 - 80);
     // Turnover, which is the only thing standing is bought with.
-    expect(after.raidProgress.traderMoneySpent).toBe(120);
+    expect(after.raidProgress.traderMoneySpent).toBe(80);
     expect(after.traderRationUsed).toBe(1);
+  });
+
+  it('sells Potions and Poke Balls off the ration: money and turnover, and the ration untouched', () => {
+    const storage = new MemoryStorage();
+    const saves = counterSave(storage);
+    const potions = saves.load()!.stash.itemCount('potion');
+
+    expect(saves.buyTraderStock('potion', 3)).toMatchObject({ ok: true, saved: true });
+    expect(saves.buyTraderStock('poke-ball')).toMatchObject({ ok: true, saved: true });
+
+    const after = saves.load()!;
+    expect(after.stash.itemCount('potion')).toBe(potions + 3);
+    expect(after.stash.itemCount('money')).toBe(1_000 - 360 - 90);
+    expect(after.raidProgress.traderMoneySpent).toBe(450);
+    expect(after.traderRationUsed).toBe(0);
   });
 
   it('buys several in one deal, charging money and ration for every one', () => {
@@ -1773,21 +1788,21 @@ describe('SaveManager', () => {
         defeatedBosses: [...seeded.raidProgress.defeatedBosses, 'floodplain-orchard-warden'],
       },
     });
-    const potions = saves.load()!.stash.itemCount('potion');
+    const antidotes = saves.load()!.stash.itemCount('antidote');
     const ration = saves.load()!.traderRationUsed;
 
-    const bought = saves.buyTraderStock('potion', 2);
-    expect(bought.message).toBe('Bought 2 for ₽240.');
+    const bought = saves.buyTraderStock('antidote', 2);
+    expect(bought.message).toBe('Bought 2 for ₽160.');
 
     const after = saves.load()!;
-    expect(after.stash.itemCount('potion')).toBe(potions + 2);
-    expect(after.stash.itemCount('money')).toBe(1_000 - 240);
-    expect(after.raidProgress.traderMoneySpent).toBe(240);
+    expect(after.stash.itemCount('antidote')).toBe(antidotes + 2);
+    expect(after.stash.itemCount('money')).toBe(1_000 - 160);
+    expect(after.raidProgress.traderMoneySpent).toBe(160);
     expect(after.traderRationUsed).toBe(ration + 2);
     // More than the ration allows is refused whole, and costs nothing.
-    const refused = saves.buyTraderStock('potion', 99);
+    const refused = saves.buyTraderStock('antidote', 9);
     expect(refused.ok).toBe(false);
-    expect(saves.load()!.stash.itemCount('money')).toBe(1_000 - 240);
+    expect(saves.load()!.stash.itemCount('money')).toBe(1_000 - 160);
   });
 
   it('refuses a second purchase on a one-a-trip ration, and costs nothing for refusing', () => {
@@ -1802,9 +1817,9 @@ describe('SaveManager', () => {
       raidProgress: { ...game.raidProgress, defeatedBosses: ['floodplain-toll-keeper'] },
     });
 
-    expect(saves.buyTraderStock('potion')).toMatchObject({ ok: true });
+    expect(saves.buyTraderStock('antidote')).toMatchObject({ ok: true });
     const held = saves.load()!.stash.itemCount('money');
-    const refused = saves.buyTraderStock('potion');
+    const refused = saves.buyTraderStock('antidote');
     expect(refused.ok).toBe(false);
     expect(refused.message).toContain('a raid');
     expect(saves.load()!.stash.itemCount('money')).toBe(held);
@@ -1813,7 +1828,7 @@ describe('SaveManager', () => {
   it('hands the ration back only once the raid it was spent before has resolved', () => {
     const storage = new MemoryStorage();
     const saves = counterSave(storage);
-    expect(saves.buyTraderStock('potion')).toMatchObject({ ok: true });
+    expect(saves.buyTraderStock('antidote')).toMatchObject({ ok: true });
 
     // A reload is not a resolution, exactly as with the ward's bed.
     expect(new SaveManager(storage).load()?.traderRationUsed).toBe(1);
