@@ -1,4 +1,4 @@
-import type { ItemId } from '../items';
+import { isMaterial, type ItemId } from '../items';
 import type { WorldMapId } from '../worldMap';
 import type { WorldLoot } from './loot';
 import type { MapFile, MapFileSpot } from './mapFile';
@@ -175,4 +175,54 @@ export function filePrizes(
       },
     ];
   });
+}
+
+/**
+ * A place whose item spots lean to one material: an ordinary spot there whose
+ * turn of the rotation is one of Brock's materials (`isMaterial`) holds this
+ * one instead, and supplies are left as they were. The spot still takes its
+ * turn, so every other spot on the map holds what it always held.
+ *
+ * The coast is the one lean, and it is parts crates: what washes up and is
+ * salvaged off the wrecks. Nine of Bill's deals and Brock's ladder want them,
+ * and a newcomer raids the coast first; across ten raids from the Old Quay the
+ * 20 Nov AI playtest found one (#42, #51). Olly's pick of 22 Nov: raise their
+ * weight in the coast's pools.
+ */
+export interface FileLean {
+  /** The named places it is in, as the file's districts name them. */
+  readonly places: readonly string[];
+  readonly itemId: ItemId;
+}
+
+export const BUILT_IN_FILE_LEANS: Readonly<Partial<Record<WorldMapId, readonly FileLean[]>>> = {
+  'greystone-vale': [{ places: ['THE SUNKEN QUARTER', "SMUGGLERS' COVE", 'GULL STRAND'], itemId: 'parts-crate' }],
+};
+
+/** What a spot of a file map holds once its place's lean is applied: its own turn, or the lean's material. */
+export function leanOf(
+  id: WorldMapId,
+  file: Pick<MapFile, 'districts'>,
+): (
+  spot: MapFileSpot,
+  contents: { readonly itemId: ItemId; readonly quantity: number },
+) => { readonly itemId: ItemId; readonly quantity: number } {
+  const districts = file.districts ?? [];
+  const leans = (BUILT_IN_FILE_LEANS[id] ?? []).flatMap((lean) =>
+    districts.filter((district) => lean.places.includes(district.name)).map((rect) => ({ lean, rect })),
+  );
+  return (spot, contents) => {
+    if (!isMaterial(contents.itemId)) {
+      return contents;
+    }
+    const found = leans.find(
+      ({ rect }) =>
+        rect.area === spot.area &&
+        spot.x >= rect.x &&
+        spot.x < rect.x + rect.width &&
+        spot.y >= rect.y &&
+        spot.y < rect.y + rect.height,
+    );
+    return found ? { itemId: found.lean.itemId, quantity: 1 } : contents;
+  };
 }
