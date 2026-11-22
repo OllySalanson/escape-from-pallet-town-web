@@ -192,6 +192,7 @@ import { clampCount, countKeyTarget, countSelector, COUNT_BIG_STEP, neighbourCou
 import {
   errandLoot,
   errandPlace,
+  errandRewardFor,
   errandSquares,
   errandThing,
   errandsInHand,
@@ -3250,7 +3251,7 @@ export class HubScene extends Phaser.Scene {
               }</small></span>`,
               home
                 ? `${thing} is already on BILL’S PC. Speak to ${errand.name} and it is handed over.`
-                : `${thing}: ${errand.name} asked for it. It lies in ${errandPlace(errand)}, takes ${squares} ${squares === 1 ? 'square' : 'squares'} of the pack, and is lost with the pack if you do not walk out. ${errand.name} pays ${errand.reward.summary.toLowerCase()} for it.`,
+                : `${thing}: ${errand.name} asked for it. It lies in ${errandPlace(errand)}, takes ${squares} ${squares === 1 ? 'square' : 'squares'} of the pack, and is lost with the pack if you do not walk out. ${errand.name} pays ${errandRewardFor(errand, (itemId) => this.stash.itemCount(itemId) > 0).summary.toLowerCase()} for it.`,
               ' px-tall',
             );
           })

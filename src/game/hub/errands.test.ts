@@ -27,6 +27,7 @@ import {
   errandOpen,
   errandPlace,
   errandQuarter,
+  errandRewardFor,
   errandSquares,
   errandsToLay,
   getErrand,
@@ -38,6 +39,7 @@ import {
   TM39_NAMED_READERS,
 } from './errands';
 import { MACHINES } from '../pokemon/machines';
+import { TRADER_BARTERS } from './trader';
 
 const FRESH: ErrandProgress = DEFAULT_RAID_PROGRESS;
 /** A new save with one raid behind it, which is when anybody first asks a favour. */
@@ -399,5 +401,38 @@ describe('errands', () => {
       expect(learners).not.toContain(starter);
     }
     expect(line).toContain('No starter can.');
+  });
+});
+
+/**
+ * An HM is never used up, so a second copy does nothing: Captain Hale's HM01
+ * handed to a player who already had one off Bill was no reward at all (the
+ * 20 Nov AI playtest, #92). An HM already owned is paid as its worth at Bill's.
+ */
+describe('a favour that pays an HM already owned', () => {
+  const captain = getErrand('ships-log')!;
+  const warden = getErrand('gold-teeth')!;
+
+  it('pays the HM to a save without one', () => {
+    expect(errandRewardFor(captain, () => false)).toBe(captain.reward);
+  });
+
+  it('pays what Bill asks for the HM instead, and says so', () => {
+    const bill = TRADER_BARTERS.find((barter) => barter.gives.itemId === 'hm01-cut')!;
+    const reward = errandRewardFor(captain, (itemId) => itemId === 'hm01-cut');
+    expect(reward.items).toEqual(bill.takes);
+    expect(reward.received).toBe('You already have HM01 Cut, so Captain Hale gave you 1 Linen roll and 1 Parts crate instead.');
+    expect(reward.summary).toBe('1 Linen roll and 1 Parts crate, as you already have HM01 Cut');
+    // Only the HM held is swapped: another HM in the vault changes nothing here.
+    expect(errandRewardFor(warden, (itemId) => itemId === 'hm01-cut')).toBe(warden.reward);
+  });
+
+  it('swaps only a disc that is never used up', () => {
+    for (const errand of ERRANDS) {
+      for (const { itemId } of errand.reward.items) {
+        const swapped = errandRewardFor(errand, (held) => held === itemId);
+        expect(swapped === errand.reward, `${errand.id}: ${itemId}`).toBe(!itemId.startsWith('hm'));
+      }
+    }
   });
 });

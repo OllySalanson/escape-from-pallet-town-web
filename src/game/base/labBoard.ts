@@ -1,6 +1,7 @@
 import { buildContractBoard, type ContractBoardRow } from '../hub/contractBoard';
 import { isStandingBoardOpen } from '../objectives/standingBoard';
-import { errandPlace, errandSquares, errandThing, errandsInHand, type Errand } from '../hub/errands';
+import { errandPlace, errandRewardFor, errandSquares, errandThing, errandsInHand, type Errand } from '../hub/errands';
+import type { ItemId } from '../items';
 import { carriedRecoveryLine, formatRecoveryClock, raidClockAfterRecovery, teamCondition } from '../hub/recovery';
 import { DAY_CARE_LEAST_RAID_MS } from '../hub/dayCare';
 import { RAID_DURATION_MS } from '../run/raidClock';
@@ -54,7 +55,7 @@ function contractNotice(row: ContractBoardRow): BoardNotice {
   };
 }
 
-function errandNotice(errand: Errand, home: boolean): BoardNotice {
+function errandNotice(errand: Errand, home: boolean, holds: (itemId: ItemId) => boolean): BoardNotice {
   const thing = errandThing(errand);
   if (home) {
     return { kind: 'errand', line: `${thing} is home. Take it to ${errand.name}.` };
@@ -62,7 +63,7 @@ function errandNotice(errand: Errand, home: boolean): BoardNotice {
   const squares = errandSquares(errand);
   return {
     kind: 'errand',
-    line: `${thing} for ${errand.name}: in ${errandPlace(errand)}. ${squares} ${squares === 1 ? 'square' : 'squares'} of your pack. Reward: ${errand.reward.summary}.`,
+    line: `${thing} for ${errand.name}: in ${errandPlace(errand)}. ${squares} ${squares === 1 ? 'square' : 'squares'} of your pack. Reward: ${errandRewardFor(errand, holds).summary}.`,
   };
 }
 
@@ -86,7 +87,9 @@ export function rumourNotices(raidProgress: RestoredGame['raidProgress']): reado
 export function boardNotices(game: Pick<RestoredGame, 'raidProgress' | 'stash'>): readonly BoardNotice[] {
   return [
     ...buildContractBoard(game.raidProgress).rows.map(contractNotice),
-    ...errandsInHand(game.raidProgress).map((errand) => errandNotice(errand, game.stash.itemCount(errand.itemId) > 0)),
+    ...errandsInHand(game.raidProgress).map((errand) =>
+      errandNotice(errand, game.stash.itemCount(errand.itemId) > 0, (itemId) => game.stash.itemCount(itemId) > 0),
+    ),
     ...rumourNotices(game.raidProgress),
   ];
 }
