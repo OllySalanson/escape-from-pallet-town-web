@@ -425,7 +425,7 @@ export function tanglewood(): MapcraftResult {
         { x: 50, y: 39, lines: ['FUCHSIA GYM', 'Leader: KOGA. The poisonous ninja master!', 'He fights holders of the CASCADE BADGE. Beat him for the SOUL BADGE and the Marsh.'] },
         // THE MARSH's notice, at the bar Koga holds (`world/valeQuarters.ts`):
         // what the quarter does to a team, said before it costs one.
-        { x: 60, y: 38, lines: ['THE MARSH. Past the bar at the end of this track.', 'Touch anything in there and it poisons you back.', 'Fire and Flying never touch. Held by KOGA: SOUL BADGE.'] },
+        { x: 60, y: 38, lines: ['THE MARSH. Past the bar at the end of this track.', 'Touch anything in there and it poisons you back.', 'Fire and Flying hit without touching. Held by KOGA: SOUL BADGE.'] },
         { x: 19, y: 55, lines: ['THE BUG CLUB', 'Catch and release. Release optional. Mown on Tuesdays, by the Weedle, badly.'] },
         { x: 52, y: 50, lines: ['THE OLD OAK', 'No relation to the Professor. He has asked us to say so.'] },
         { x: 5, y: 54, lines: ['FORESTER’S LODGE', 'Official maps of Tanglewood. Correct as of the day before you bought it.'] },
@@ -461,7 +461,7 @@ function withInsides(file: MapFile): MapFile {
         'Yo! Champ in the making! KOGA holds every road into the Marsh.',
         'He only fights a trainer with Misty’s CASCADE BADGE. Until then, look around!',
         'His Pokémon poison you, float over Ground moves, and his Koffing blows itself up.',
-        'A Ghost shrugs off Normal moves and most Poison. Fire and Flying never touch. Beat him for the SOUL BADGE!',
+        'Bring a Ghost: Normal and most Poison pass it by. Fire and Flying hit without touching. Beat him for the SOUL BADGE!',
       ],
       // His words follow the badges (`linesSpoken`): Misty beaten, this raid
       // or before, KOGA is at the head of the hall (`isChallenging`).
@@ -471,7 +471,7 @@ function withInsides(file: MapFile): MapFile {
           lines: [
             'Yo! That’s Misty’s CASCADE BADGE! KOGA will fight you. He’s at the head of the hall.',
             'His Pokémon poison you, float over Ground moves, and his Koffing blows itself up.',
-            'A Ghost shrugs off Normal moves and most Poison. Fire and Flying never touch. Beat him for the SOUL BADGE!',
+            'Bring a Ghost: Normal and most Poison pass it by. Fire and Flying hit without touching. Beat him for the SOUL BADGE!',
           ],
         },
         {

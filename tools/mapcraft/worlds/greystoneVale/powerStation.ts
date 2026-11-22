@@ -358,7 +358,7 @@ export function powerStation(): MapcraftResult {
       signs: [
         // THE MARSH's notice, at the bar Koga holds (`world/valeQuarters.ts`):
         // what the quarter does to a team, said before it costs one.
-        { x: 28, y: 60, lines: ['THE MARSH. Past the bar at the end of this road.', 'Touch anything in there and it poisons you back.', 'Fire and Flying never touch. Held by KOGA: SOUL BADGE.'] },
+        { x: 28, y: 60, lines: ['THE MARSH. Past the bar at the end of this road.', 'Touch anything in there and it poisons you back.', 'Fire and Flying hit without touching. Held by KOGA: SOUL BADGE.'] },
         { area: 'falls-cave', x: 4, y: 15, lines: ['Scratched on the wall:', 'THE BOULDERS UPSTAIRS MOVE. IT TAKES SOMETHING STRONG.'] },
         { x: 27, y: 28, lines: ['GREYSTONE POWER STATION', 'Service gate locked. Card Key holders only.'] },
         { x: 8, y: 25, lines: ['PYLON ROAD', 'North: along the reservoir and out of the vale.'] },
