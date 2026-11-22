@@ -69,7 +69,7 @@ import { buildDefeatSequence } from '../run/defeatSequence';
 import type { ExtractionReport } from '../run/extractionReport';
 import { HUNTER_SEARCH_MS, createHunterState } from '../world/hunter';
 import { SaveManager } from '../save/SaveManager';
-import { BattleScene } from './BattleScene';
+import { BattleScene, CATCH_SHAKE_LINE_MS } from './BattleScene';
 import { combatantSpot, seatedSpriteY } from './battlePresentation';
 import { iconTextureKey, itemIconName } from '../ui/icons';
 import { audioManager } from '../audio/AudioManager';
@@ -380,6 +380,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     displayedHp,
     shownStatus: new Map(),
     pendingCombatMessages: [],
+    combatLinesShown: 0,
     pendingChoices: [],
     choosingSlot: 0,
     aimingMoveIndex: 0,
@@ -2839,6 +2840,37 @@ describe("a Pokemon's own cry", () => {
       ['faintCry', PIDGEY.dexId],
       ['cry', CHARMANDER.dexId],
     ]);
+  });
+
+  it("moves a catch's shake lines on by themselves, and only the line each timer was set for", () => {
+    const wild = new Pokemon(PIDGEY, 3);
+    wild.takeDamage(wild.maxHp - 1);
+    const harness = createBattleSceneHarness({ wild });
+    type Shaking = { onMessagesComplete(): void; throwBall(index: number): void; time: unknown; cameras: unknown };
+    const scene = harness.scene as unknown as Shaking;
+    scene.cameras = { main: { flash: vi.fn(), shake: vi.fn(), fadeOut: vi.fn(), once: vi.fn() } };
+    const timers: { ms: number; run: () => void }[] = [];
+    scene.time = { delayedCall: (ms: number, run: () => void) => timers.push({ ms, run }) };
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    scene.onMessagesComplete();
+    scene.throwBall(0);
+    harness.dialog.isCurrentMessageComplete = true;
+    // Read on to the first shake.
+    for (let step = 0; step < 10 && harness.dialog.visibleText !== '1...'; step += 1) {
+      scene.onMessagesComplete();
+    }
+    expect(harness.dialog.visibleText).toBe('1...');
+    const shake = timers.filter((timer) => timer.ms === CATCH_SHAKE_LINE_MS);
+    expect(shake).toHaveLength(1);
+    harness.dialog.advance.mockClear();
+    shake[0].run();
+    expect(harness.dialog.advance).toHaveBeenCalledTimes(1);
+    // Pressed on before its timer ran: the timer leaves the next line alone.
+    scene.onMessagesComplete();
+    expect(harness.dialog.visibleText).toBe('2...');
+    harness.dialog.advance.mockClear();
+    shake[0].run();
+    expect(harness.dialog.advance).not.toHaveBeenCalled();
   });
 
   describe('a nickname for the catch', () => {
