@@ -10,8 +10,10 @@ import { WEATHER_CONDITIONS, type WeatherId } from './weather';
  * count - the weather racing their swimmers, hits that landed for double, turns
  * lost to sleep or paralysis, attacks that missed after a Smokescreen - and never
  * the answer. Every count is read off lines the player has already been shown in
- * the battle log, so the line is a summary and never news. A fight with nothing
- * worth saying (the other side simply hit harder) says nothing.
+ * the battle log, so the line is a summary and never news. A foe that healed
+ * itself over and over is named, and so is one that simply hit much harder -
+ * which was once left unsaid, and the Speed line said in its place. A fight
+ * with nothing lopsided in it says nothing.
  *
  * Phaser-free, and asked by the battle scene with every turn's events in order.
  */
@@ -51,6 +53,11 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
   let accuracyDropped: string | null = null;
   let missesAfterDrop = 0;
   let confusionHits = 0;
+  /** A foe healing itself with a move (Recover), by name: the HP it undid. */
+  const foeHeals = new Map<string, { count: number; move: string }>();
+  /** Damage dealt by each side's hits, to say how lopsided the trade was. */
+  const dealt = { player: { total: 0, hits: 0 }, enemy: { total: 0, hits: 0 } };
+  const foeHitters = new Map<string, number>();
 
   for (const turn of turns) {
     const weatherThisTurn = current;
@@ -65,6 +72,19 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
           break;
         case 'used-move':
           lastMover = { user: event.user, move: event.move };
+          if (event.damage) {
+            dealt[event.user].total += event.damage;
+            dealt[event.user].hits += 1;
+            if (event.user === 'enemy') {
+              foeHitters.set(event.name, (foeHitters.get(event.name) ?? 0) + event.damage);
+            }
+          }
+          break;
+        case 'healed':
+          if (event.user === 'enemy' && lastMover?.user === 'enemy') {
+            const before = foeHeals.get(event.name);
+            foeHeals.set(event.name, { count: (before?.count ?? 0) + 1, move: before?.move ?? lastMover.move ?? '' });
+          }
           break;
         case 'effectiveness':
           if (lastMover?.user === 'enemy' && event.multiplier > 1 && event.name === undefined) {
@@ -173,10 +193,34 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
   if (confusionHits >= WHAT_BEAT_YOU_LEAST) {
     facts.push({ line: `Confusion: your Pokémon hurt itself ${times(confusionHits)}.`, weight: confusionHits * 1.25 });
   }
+  const [healer] = [...foeHeals.entries()].sort((a, b) => b[1].count - a[1].count);
+  if (healer && healer[1].count >= WHAT_BEAT_YOU_LEAST) {
+    // Starmie's Recover undid fight after fight while the line blamed a
+    // Smokescreen (AI playtest, 22 Nov 2026): every heal is a turn of the
+    // player's damage handed back.
+    facts.push({
+      line: `${title(healer[1].move)}: ${healer[0].toUpperCase()} healed itself ${times(healer[1].count)}.`,
+      weight: healer[1].count * 1.5,
+    });
+  }
   const turnsPlayed = turns.filter((turn) =>
     turn.some((event) => (event.type === 'used-move' || event.type === 'missed') && event.user === 'player') &&
     turn.some((event) => (event.type === 'used-move' || event.type === 'missed') && event.user === 'enemy'),
   ).length;
+  // The other side simply hitting much harder is the commonest loss there is,
+  // and it was said as 'Speed: STARYU moved first 8 times', which sent a
+  // newcomer looking for speed when they were four levels short (AI playtest,
+  // 22 Nov 2026). Said when their hits did at least twice what the player's did.
+  const average = (side: { total: number; hits: number }): number => (side.hits === 0 ? 0 : side.total / side.hits);
+  const theirs = Math.round(average(dealt.enemy));
+  const yours = Math.round(average(dealt.player));
+  if (facts.length === 0 && dealt.enemy.hits >= WHAT_BEAT_YOU_LEAST && theirs >= Math.max(2, yours * 2)) {
+    const [hitter] = [...foeHitters.entries()].sort((a, b) => b[1] - a[1]);
+    facts.push({
+      line: `Damage: ${foeHitters.size === 1 ? hitter[0].toUpperCase() : 'they'} hit for about ${theirs} a turn, you for about ${yours}.`,
+      weight: dealt.enemy.hits,
+    });
+  }
   if (facts.length === 0 && foeFirst >= Math.max(3, Math.ceil(turnsPlayed * 0.75))) {
     const [name] = [...foeFirstNames.entries()].sort((a, b) => b[1] - a[1]);
     facts.push({

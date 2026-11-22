@@ -81,6 +81,28 @@ describe('what beat you', () => {
     expect(whatBeatYou(even)).toBeNull();
   });
 
+  it('names a foe that healed itself over and over', () => {
+    // Starmie's Recover undid the fight while the line blamed a Smokescreen
+    // missing once or twice (AI playtest, 22 Nov 2026).
+    const recover = (): BattleEvent[] => [
+      mine('Bulbasaur', 'Vine Whip'),
+      foeMoves('Starmie', 'Recover'),
+      { type: 'healed', user: 'enemy', name: 'Starmie', amount: 19 },
+    ];
+    expect(whatBeatYou([recover(), recover(), recover()])).toBe('Recover: STARMIE healed itself 3 times.');
+  });
+
+  it('says the other side simply hit much harder, rather than who moved first', () => {
+    // 'Speed: STARYU moved first 8 times' on a fight lost to a four-level gap
+    // sent newcomers looking for speed (AI playtest, 22 Nov 2026).
+    const hit = (user: 'player' | 'enemy', name: string, damage: number): BattleEvent => ({ type: 'used-move', user, name, move: 'Tackle', damage });
+    const turns: BattleEvent[][] = Array.from({ length: 4 }, () => [hit('enemy', 'Staryu', 9), hit('player', 'Squirtle', 2)]);
+    expect(whatBeatYou(turns)).toBe('Damage: STARYU hit for about 9 a turn, you for about 2.');
+    // An even trade is not lopsided, and Speed is still the line for a race.
+    const even: BattleEvent[][] = Array.from({ length: 4 }, () => [hit('enemy', 'Staryu', 5), hit('player', 'Squirtle', 4)]);
+    expect(whatBeatYou(even)).toBe('Speed: STARYU moved first 4 times.');
+  });
+
   it('names the one foe that kept moving first, and only says "most" of several', () => {
     const lone: BattleEvent[][] = Array.from({ length: 4 }, () => [foeMoves('Staryu', 'Tackle'), mine('Charmander', 'Scratch')]);
     expect(whatBeatYou(lone)).toBe('Speed: STARYU moved first 4 times.');
