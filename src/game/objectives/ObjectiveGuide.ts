@@ -337,7 +337,7 @@ function contractHints(
   currentExit: string | undefined,
 ): readonly string[] {
   const outstanding = remainingMarkers(contract, contractSteps);
-  const extractionHint = bankingHint(contract, session, context, safeExit, currentExit);
+  const extractionHint = bankingHint(contract, session, context, safeExit, currentExit, outstanding.length === 0);
 
   if (outstanding.length === 0) {
     return [
@@ -545,11 +545,23 @@ function bankingHint(
   context: ObjectiveGuideContext,
   safeExit: string | undefined,
   currentExit: string | undefined,
+  /** Every stop made, so getting out now banks it. */
+  ready: boolean,
 ): string {
   if (contract.requiredExitLabel) {
     return requiredExitHint(contract.requiredExitLabel, session, context);
   }
   const nearest = nearestExitHint(context);
+  // With stops still to make, an exit is where the job is banked later, never
+  // a reason to leave now: "Extract there to bank the contract" with none of
+  // three survey stakes read told a player the job was done (veteran
+  // playtest, 20 Nov 2026).
+  if (!ready) {
+    const exit = nearest ?? safeExit ?? currentExit;
+    return exit
+      ? `Once every stop is made, extract to bank the contract: the nearest open exit is ${exit}.`
+      : 'Once every stop is made, extract through a marked gate to bank the contract.';
+  }
   if (nearest) {
     return `The nearest open exit is ${nearest}. Extract there to bank the contract and your haul.`;
   }
