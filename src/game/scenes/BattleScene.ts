@@ -4005,6 +4005,7 @@ export class BattleScene extends Phaser.Scene {
       this.refreshPlayerCombatant(slot);
     }
     const name = pokemon.name.toUpperCase();
+    this.renameQueuedLines(result.evolution.from.name, pokemon.name);
     this.pendingCombatMessages.unshift(
       {
         message: evolvedLine(pokemon.nickname ?? result.evolution.from.name, result.evolution.to.name),
@@ -4018,6 +4019,32 @@ export class BattleScene extends Phaser.Scene {
       ...result.movesToChoose.flatMap((move) => moveOfferNotes(pokemon, move)),
     );
     this.showNextCombatMessage();
+  }
+
+  /**
+   * The rest of the turn's lines, said of the Pokemon that has just evolved,
+   * under the name it has now. They were written when the turn was resolved,
+   * before it evolved, so the line after 'CHARMANDER evolved into CHARMELEON!'
+   * was 'Your CHARMANDER's accuracy fell!' (AI playtest, 22 Nov 2026). Only the
+   * player's own lines are touched: a foe of the same kind keeps its name.
+   */
+  private renameQueuedLines(before: string, after: string): void {
+    if (before === after) {
+      return;
+    }
+    const same = (name: unknown): boolean => typeof name === 'string' && name.toUpperCase() === before.toUpperCase();
+    this.pendingCombatMessages = this.pendingCombatMessages.map((pending) => {
+      const event = pending.event as (BattleEvent & { readonly user?: string; readonly target?: string; readonly name?: unknown }) | undefined;
+      if (!event) {
+        return pending;
+      }
+      const side = event.type === 'spread-damage' ? event.target : event.user;
+      if (side !== 'player' || !same(event.name)) {
+        return pending;
+      }
+      const renamed = { ...event, name: after } as BattleEvent;
+      return { ...pending, event: renamed, message: eventToMessage(renamed, this.foeWord()) };
+    });
   }
 
   private awardVictoryExperience(defeatedPokemon: PokemonInstance): StagedNote[] {

@@ -3158,6 +3158,32 @@ describe('an evolution B can stop, as FireRed lets you', () => {
     expect(cries()).toEqual([['cry', getSpeciesById('charmeleon')!.dexId]]);
   });
 
+  /**
+   * AI playtest of 22 Nov 2026: straight after 'Congratulations! Your
+   * CHARMANDER evolved into CHARMELEON!' came 'Foe HORSEA used SMOKESCREEN!' and
+   * 'Your CHARMANDER's accuracy fell!' - the rest of the turn was written
+   * before it evolved.
+   */
+  it('reads the rest of the turn under the new name', () => {
+    const { driven, renderedTexts, dialog, evolutionTimers } = evolvingBattle();
+    driven.onMessagesComplete();
+    scratch(renderedTexts);
+    readUntil(driven, dialog, 'evolving');
+    const queued = driven as unknown as { pendingCombatMessages: { event?: unknown; message: string }[] };
+    queued.pendingCombatMessages.push(
+      { event: { type: 'stat-stage-changed', user: 'player', name: 'Charmander', stat: 'accuracy', stages: -1 }, message: 'stale' },
+      { event: { type: 'stat-stage-changed', user: 'enemy', name: 'Charmander', stat: 'accuracy', stages: -1 }, message: 'kept' },
+    );
+
+    evolutionTimers.at(-1)!();
+
+    const lines = queued.pendingCombatMessages.map((pending) => pending.message);
+    expect(lines).toContain("Your CHARMELEON's accuracy fell!");
+    expect(lines).not.toContain('stale');
+    // A foe of the kind it was keeps its own name.
+    expect(lines).toContain('kept');
+  });
+
   it('is never asked of a Pokemon that did not level', () => {
     const { driven, renderedTexts, dialog, charmander } = evolvingBattle();
     // Past its evolution level already - stopped there once - but this
