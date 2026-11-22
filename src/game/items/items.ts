@@ -1636,10 +1636,12 @@ export function heldItemName(id: string | null | undefined): string | undefined 
 
 /**
  * What is said when medicine gives HP back, in FireRed's party-menu words
- * (`gText_PkmnHPRestoredByVar2`), the same line in a fight and out of one.
+ * (`gText_PkmnHPRestoredByVar2`), the same line in a fight and out of one -
+ * with the plural worked out, where FireRed printed "point(s)" and a player
+ * read it as unfinished (the overnight playtest of 20 Nov 2026).
  */
 export function hpRestoredLine(name: string, amount: number): string {
-  return `${name}'s HP was restored by ${amount} point(s).`;
+  return `${name}'s HP was restored by ${amount} ${amount === 1 ? 'point' : 'points'}.`;
 }
 
 /**

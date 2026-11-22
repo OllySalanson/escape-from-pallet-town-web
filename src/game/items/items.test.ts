@@ -15,6 +15,7 @@ import {
   MATERIAL_IDS,
   isErrandItem,
   getItemById,
+  hpRestoredLine,
   isMaterial,
   useFieldItem,
 } from './items';
@@ -62,6 +63,13 @@ describe('medicine in the field', () => {
     const full = new Pokemon(BULBASAUR, 5);
     expect(useFieldItem(getItemById('potion')!, full).message).toBe("It won't have any effect.");
     expect(useFieldItem(getItemById('antidote')!, full).message).toBe("It won't have any effect.");
+  });
+});
+
+describe('the HP restored line', () => {
+  it('says point or points, never "point(s)"', () => {
+    expect(hpRestoredLine('CHARMANDER', 1)).toBe("CHARMANDER's HP was restored by 1 point.");
+    expect(hpRestoredLine('CHARMANDER', 12)).toBe("CHARMANDER's HP was restored by 12 points.");
   });
 });
 
