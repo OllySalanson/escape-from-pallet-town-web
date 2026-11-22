@@ -3439,6 +3439,13 @@ export function buildFileMap(
       (file.trainers ?? []).map((placed, index) => {
         const template = trainerTemplate(placed.team);
         const name = placed.name.toUpperCase();
+        // The measured team as measured: its own moves, not its level's.
+        const fresh = (party: readonly Pokemon[]): Pokemon[] =>
+          party.map((pokemon) => {
+            const copy = new Pokemon(pokemon.base, pokemon.level);
+            copy.moves = pokemon.moves.map((move) => new Move(move.base));
+            return copy;
+          });
         return {
           mapId: id,
           position: at(placed),
@@ -3447,15 +3454,13 @@ export function buildFileMap(
           ...(placed.sight > 0 ? { sightRange: placed.sight } : {}),
           design: placed.look,
           introLines: placed.lines.length > 0 ? [...placed.lines] : [trainerChallengeLine(name)],
+          // A newcomer's first job meets the team's softer price, as the
+          // team's own trainer does (`trainersForContract`).
+          ...(template.firstContractParty ? { firstContractParty: fresh(template.firstContractParty) } : {}),
           trainer: {
             id: `${id}/trainer-${index + 1}`,
             name,
-            // The measured team as measured: its own moves, not its level's.
-            party: template.trainer.party.map((pokemon) => {
-              const fresh = new Pokemon(pokemon.base, pokemon.level);
-              fresh.moves = pokemon.moves.map((move) => new Move(move.base));
-              return fresh;
-            }),
+            party: fresh(template.trainer.party),
             defeatText: trainerDefeatLine(name),
             unitCount: template.trainer.unitCount,
           },

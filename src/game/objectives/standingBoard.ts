@@ -36,6 +36,7 @@ import {
 import {
   availableContracts,
   isChainFinished,
+  STANDING_ID_PREFIX,
   type ContractMarker,
   type ContractPokemon,
   type ContractReward,
@@ -99,8 +100,6 @@ export interface StandingBoardProgress {
 
 /** How many standing contracts are banked before the board's top offer rises a hunter tier. */
 export const STANDING_BANKS_PER_PRESSURE = 2;
-
-const STANDING_ID_PREFIX = 'standing';
 
 export type StandingTemplate = 'survey' | 'dispatch' | 'resupply' | 'sealed';
 
