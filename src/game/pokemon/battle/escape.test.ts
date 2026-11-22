@@ -45,11 +45,11 @@ describe('getWildEscapeChance', () => {
 });
 
 describe('wildEscapeChanceFor', () => {
-  it('lets a level-5 Charmander (Speed 8) always run from a level-3 Pidgey (Speed 6) - playtest 45', () => {
+  it('lets a level-5 Charmander (Speed 11) always run from a level-3 Pidgey (Speed 8) - playtest 45', () => {
     const state = createBattleState(new Pokemon(CHARMANDER, 5), new Pokemon(PIDGEY, 3));
 
-    expect(state.player.pokemon.stats.speed).toBe(8);
-    expect(state.enemy.pokemon.stats.speed).toBe(6);
+    expect(state.player.pokemon.stats.speed).toBe(11);
+    expect(state.enemy.pokemon.stats.speed).toBe(8);
     expect(wildEscapeChanceFor(state.player, state.enemy, 0)).toBe(1);
     expect(attemptWildEscape(state.player, state.enemy, 0, () => 0.999999).escaped).toBe(true);
   });
@@ -63,14 +63,14 @@ describe('wildEscapeChanceFor', () => {
 });
 
 describe('attemptWildEscape', () => {
-  // A level-20 Pidgey (Speed 16) outruns a level-12 Charmander (Speed 12).
+  // A level-20 Pidgey (Speed 27) outruns a level-12 Charmander (Speed 20).
   const state = createBattleState(new Pokemon(CHARMANDER, 12), new Pokemon(PIDGEY, 20));
 
   it('reports the same chance it rolls against, so the command label cannot drift', () => {
     const attempt = attemptWildEscape(state.player, state.enemy, 0, () => 0.99);
 
     expect(attempt.chance).toBe(wildEscapeChanceFor(state.player, state.enemy, 0));
-    expect(attempt.chance).toBe(96 / 256);
+    expect(attempt.chance).toBe(94 / 256);
     expect(attempt.escaped).toBe(false);
   });
 

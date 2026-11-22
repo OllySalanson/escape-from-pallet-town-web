@@ -8,7 +8,7 @@ import {
   blocksCriticalHits,
   damageTakenMultiplier,
 } from './abilityHooks';
-import { attackMultiplier, attackRecoil } from './heldItems';
+import { attackRecoil, gearTypeBoost, lifeOrbMultiplier } from './heldItems';
 import { getTypeEffectiveness } from './typeChart';
 import { createStatStages, getStagedStat, type StatStages } from './statStages';
 import { weatherDamageMultiplier } from './weather';
@@ -83,7 +83,10 @@ export interface DamageResult {
 
 const clampRandom = (random: RandomSource): number => Math.min(1, Math.max(0, random()));
 
-const randomModifier = (random: RandomSource): number => 0.85 + clampRandom(random) * 0.15;
+/** FireRed's damage roll, 85 to 100 per cent in sixteen steps; a roll of 1 is the top one. */
+const randomPercent = (random: RandomSource): number =>
+  100 - DAMAGE_ROLL_STEPS + 1 + Math.min(DAMAGE_ROLL_STEPS - 1, Math.floor(clampRandom(random) * DAMAGE_ROLL_STEPS));
+const DAMAGE_ROLL_STEPS = 16;
 
 /** Whether this attacker's burn halves its physical damage: burned, and not Guts. */
 const burnHalves = (attacker: AbilityCarrier | undefined): boolean =>
@@ -177,9 +180,7 @@ export const calculateDamage = (
     : defender.stats[defenseStat];
   const defense = getStagedStat(unstagedDefense, defenseStage);
   // Blaze and the three like it, Guts, and a charged Flash Fire on one side;
-  // Thick Fat on the other. Both are multipliers on the one number, which is
-  // where generation III puts the first and close enough for the second that
-  // halving the damage and halving the power cannot be told apart.
+  // Thick Fat on the other.
   const abilityAttack = abilities ? abilityAttackMultiplier(abilities.attacker, move) : 1;
   const abilityDefence = abilities ? damageTakenMultiplier(abilities.defender, move) : 1;
   if (abilityAttack !== 1) {
@@ -188,28 +189,55 @@ export const calculateDamage = (
   if (abilityDefence !== 1) {
     abilityNotes.push({ side: 'defender', effect: 'shrugged-off' });
   }
-  const stabMultiplier = isStab ? STAB_MULTIPLIER : 1;
-  // A burned attacker's physical hit is halved, before the two that every hit
-  // gets: FireRed's `CalculateBaseDamage` halves the damage straight after
-  // dividing by fifty and before it adds two, and Guts is the one exception.
-  const burn =
-    move.category === MoveCategory.Physical && burnHalves(abilities?.attacker) ? 0.5 : 1;
-  const baseDamage = ((2 * attacker.level + 10) / 250) * move.power * (attack / defense) * burn + 2;
-  // The attacker's own gear is read straight off the Pokemon rather than passed
-  // in: an item is not a property of the swing, and a copy of it here would be
-  // one more thing to keep in step with the party.
-  const damage = Math.floor(
-    baseDamage *
-      randomModifier(random) *
-      typeEffectiveness *
-      stabMultiplier *
-      criticalMultiplier *
-      weatherDamageMultiplier(weather, move.type) *
-      abilityAttack *
-      abilityDefence *
-      (spread ? SPREAD_DAMAGE_MULTIPLIER : 1) *
-      attackMultiplier(attacker, move.type),
+  // FireRed's own integer pipeline, step for step: `CalculateBaseDamage`
+  // (pret/pokefirered `src/pokemon.c`), then `Cmd_damagecalc`, `Cmd_typecalc`
+  // and `Cmd_adjustnormaldamage` (`src/battle_script_commands.c`). Every step
+  // floors, in FireRed's order, because the rounding is part of the rule: the
+  // level term alone is `2 * level / 5 + 2` in whole numbers, which at level 7
+  // is 4 where the continuous form the Unity original used gives 4.8.
+  //
+  // The attacking stat carries what FireRed puts on it - a type-boosting held
+  // item, Guts, and the halving of Thick Fat on the other side - and the pinch
+  // abilities and Flash Fire with it, which FireRed puts on the power and on
+  // the damage: the same one-and-a-half, a step or two earlier.
+  const boostedAttack = Math.floor(
+    Math.floor(attack * abilityAttack * gearTypeBoost(attacker, move.type)) * abilityDefence,
   );
+  const levelTerm = Math.floor((2 * attacker.level) / 5) + 2;
+  let damage = Math.floor(Math.floor(boostedAttack * move.power * levelTerm) / Math.max(1, defense) / 50);
+  if (move.category === MoveCategory.Physical && burnHalves(abilities?.attacker)) {
+    damage = Math.floor(damage / 2);
+  }
+  if (spread) {
+    damage = Math.floor(damage * SPREAD_DAMAGE_MULTIPLIER);
+  }
+  if (move.category === MoveCategory.Physical && damage === 0) {
+    // "Moves always do at least 1 damage", FireRed says of a physical hit.
+    damage = 1;
+  }
+  const weatherMultiplier = weatherDamageMultiplier(weather, move.type);
+  if (weatherMultiplier !== 1) {
+    damage = Math.floor((damage * Math.round(weatherMultiplier * 10)) / 10);
+  }
+  damage += 2;
+  damage *= criticalMultiplier;
+  if (isStab) {
+    damage = Math.floor((damage * Math.round(STAB_MULTIPLIER * 10)) / 10);
+  }
+  // Each of the defender's types is a step of its own, as `ModulateDmgByType`
+  // takes them, and a hit that lands is never rounded to nothing.
+  if (!move.typeless) {
+    for (const type of [defender.base.primaryType, ...(defender.base.secondaryType ? [defender.base.secondaryType] : [])]) {
+      const multiplier = getTypeEffectiveness(move.type, [type]);
+      if (multiplier !== 1) {
+        damage = Math.max(1, Math.floor((damage * Math.round(multiplier * 10)) / 10));
+      }
+    }
+  }
+  // The roll is one of sixteen, 85 to 100 per cent (`100 - Random() % 16`).
+  damage = Math.max(1, Math.floor((damage * randomPercent(random)) / 100));
+  // A Life Orb is not FireRed's, and is the one multiplier left on the end.
+  damage = Math.floor(damage * lifeOrbMultiplier(attacker));
 
   return {
     damage,

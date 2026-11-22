@@ -352,7 +352,9 @@ export const FOREST_RISE_WILDLIFE = wildlife(0.1, [
 export const FOREST_DEEP_WILDLIFE = wildlife(0.12, [
   { speciesId: 'butterfree', minLevel: 9, maxLevel: 10, weight: 2 },
   { speciesId: 'beedrill', minLevel: 9, maxLevel: 10, weight: 2 },
-  { speciesId: 'pikachu', minLevel: 9, maxLevel: 10, weight: 2 },
+  // A level under the rest since FireRed's own stat and damage formulas: at
+  // 9-10 a Lv 8 Squirtle won 10% of the stand, under the forest's 12% floor.
+  { speciesId: 'pikachu', minLevel: 8, maxLevel: 9, weight: 2 },
   { speciesId: 'venonat', minLevel: 9, maxLevel: 10, weight: 1 },
   { speciesId: 'oddish', minLevel: 9, maxLevel: 10, weight: 1 },
 ]);
@@ -785,12 +787,17 @@ export const VOLCANO_NIGHT_WILDLIFE = wildlife(0.1, [
  * the rare rolls here: Pokemon a raid cannot meet anywhere else in the game.
  * Doduo is left out because by night its slot would go to a Golbat
  * (`nightRaids.ts`), fielded far below the level a Zubat becomes one at.
+ *
+ * The Nidoran, Exeggcute and Venonat stand a level lower than they did since
+ * this game took FireRed's own stat and damage formulas (22 Nov 2026): at
+ * 7-9 a level-8 Squirtle won 41% of the reserve, under the 45% a level-8
+ * starter of each kind is held to, and a level lower it wins 54%.
  */
 export const SAFARI_ZONE_WILDLIFE = wildlife(0.1, [
-  { speciesId: 'nidoran-f', minLevel: 7, maxLevel: 9, weight: 7 },
-  { speciesId: 'nidoran-m', minLevel: 7, maxLevel: 9, weight: 6 },
-  { speciesId: 'exeggcute', minLevel: 7, maxLevel: 8, weight: 4 },
-  { speciesId: 'venonat', minLevel: 7, maxLevel: 9, weight: 6 },
+  { speciesId: 'nidoran-f', minLevel: 6, maxLevel: 8, weight: 7 },
+  { speciesId: 'nidoran-m', minLevel: 6, maxLevel: 8, weight: 6 },
+  { speciesId: 'exeggcute', minLevel: 6, maxLevel: 7, weight: 4 },
+  { speciesId: 'venonat', minLevel: 6, maxLevel: 8, weight: 6 },
   { speciesId: 'paras', minLevel: 7, maxLevel: 8, weight: 6 },
   { speciesId: 'rhyhorn', minLevel: 8, maxLevel: 9, weight: 2 },
   { speciesId: 'chansey', minLevel: 8, maxLevel: 8, weight: 1 },
@@ -840,16 +847,19 @@ export const SUMMIT_WILDLIFE = wildlife(0.1, [
  * It is a Water starter's hard ground and is meant to be - Absorb and Vine
  * Whip are 2x on Squirtle and Bubble is resisted by every grass - so Oddish
  * and Bellsprout are held to a third of the table between them, and a
- * level-8 Squirtle wins 49% of what it meets against 73% and 100% for the
+ * level-8 Squirtle wins 51% of what it meets against 79% and 100% for the
  * other two (`tools/encounters/report.mts`; `districtEncounters.test.ts` holds
- * the vale's places to 45%).
+ * the vale's places to 45%). FireRed's own stat and damage formulas (22 Nov
+ * 2026) took that 49% to 41%, because at FireRed's scale an Oddish's Absorb
+ * is 10-12 of a Lv 8 Squirtle's 25 HP, so the four commonest are a level
+ * lower than they were.
  */
 export const LOST_GARDEN_WILDLIFE = wildlife(0.1, [
-  { speciesId: 'oddish', minLevel: 7, maxLevel: 8, weight: 16 },
-  { speciesId: 'bellsprout', minLevel: 7, maxLevel: 8, weight: 16 },
+  { speciesId: 'oddish', minLevel: 6, maxLevel: 7, weight: 16 },
+  { speciesId: 'bellsprout', minLevel: 6, maxLevel: 7, weight: 16 },
   { speciesId: 'paras', minLevel: 7, maxLevel: 9, weight: 28 },
-  { speciesId: 'venonat', minLevel: 7, maxLevel: 9, weight: 24 },
-  { speciesId: 'exeggcute', minLevel: 7, maxLevel: 8, weight: 12 },
+  { speciesId: 'venonat', minLevel: 6, maxLevel: 8, weight: 24 },
+  { speciesId: 'exeggcute', minLevel: 6, maxLevel: 7, weight: 12 },
   { speciesId: 'tangela', minLevel: 8, maxLevel: 9, weight: 8 },
   // The captain's call (13 Oct): a starter met in the wild, once in a hundred
   // of the garden's encounters - the one place in the game a Bulbasaur grows

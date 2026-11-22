@@ -61,14 +61,36 @@ export const experienceAwardForDefeat = (
   return trainer ? Math.floor((share * 150) / 100) : share;
 };
 
+/**
+ * The individual and effort values every Pokemon here has: none. FireRed rolls
+ * an IV of 0-31 per stat and earns EVs in battle; this game keeps neither, so a
+ * species at a level is one stat line, nothing hidden is saved, and the screen
+ * shows the whole truth. A nature would scale a stat by 0.9 or 1.1, and every
+ * Pokemon here is neutral.
+ */
+const INDIVIDUAL_VALUE = 0;
+const EFFORT_VALUE = 0;
+
+/** The part of FireRed's stat that HP and the other five share. */
+const scaledStat = (base: number, level: number): number =>
+  Math.floor(((2 * base + INDIVIDUAL_VALUE + Math.floor(EFFORT_VALUE / 4)) * level) / 100);
+
+/**
+ * FireRed's stat formula, `CalculateMonStats` in pret/pokefirered
+ * (`src/pokemon.c`): HP is `floor((2 * base + IV + EV / 4) * level / 100) +
+ * level + 10`, and every other stat is `floor((2 * base + IV + EV / 4) * level /
+ * 100) + 5`, scaled by the nature. With no IVs, no EVs and a neutral nature that
+ * is FireRed's own floor for the species - a Lv 28 Ivysaur has 71 HP and 39
+ * Attack, as on the cartridge. It replaced the Unity original's
+ * `floor(base * level / 100) + 5`, which put every stat at about half of canon.
+ */
 export const computePokemonStats = (baseStats: PokemonStats, level: number): CombatStats => ({
-  // Ported from Pokemon.cs in the Unity project.
-  hp: Math.floor((baseStats.hp * level) / 100) + level + 10,
-  attack: Math.floor((baseStats.attack * level) / 100) + 5,
-  defense: Math.floor((baseStats.defense * level) / 100) + 5,
-  spAttack: Math.floor((baseStats.spAttack * level) / 100) + 5,
-  spDefense: Math.floor((baseStats.spDefense * level) / 100) + 5,
-  speed: Math.floor((baseStats.speed * level) / 100) + 5,
+  hp: scaledStat(baseStats.hp, level) + level + 10,
+  attack: scaledStat(baseStats.attack, level) + 5,
+  defense: scaledStat(baseStats.defense, level) + 5,
+  spAttack: scaledStat(baseStats.spAttack, level) + 5,
+  spDefense: scaledStat(baseStats.spDefense, level) + 5,
+  speed: scaledStat(baseStats.speed, level) + 5,
 });
 
 /** One species becoming another, in the words the screen needs to announce it. */

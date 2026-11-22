@@ -14,6 +14,7 @@ import { DIRECTION_DELTAS, STEP_DIRECTIONS, type Direction, type GridPosition } 
 import { isInsideRect } from '../world/interiors';
 import { Pokemon, PokemonParty } from '../pokemon';
 import { CHARMANDER } from '../pokemon/species';
+import { evolutionFamily } from '../pokemon/evolution';
 import { RunPhase } from '../run/RunManager';
 import { requireInsertion } from '../run/runGeneration';
 import { getWorldMap } from '../worldMap';
@@ -149,7 +150,10 @@ describe('a gym leader beaten in the raid', () => {
     expect(standIn.id).not.toBe('koga');
     expect(scene.pendingTrainerBattle?.trainer.name).toBe(standIn.name);
     expect(scene.pendingTrainerBattle?.introLines).toEqual(standIn.caught);
-    expect(scene.pendingTrainerBattle?.trainer.party[0].base.id).toBe(standIn.signature);
+    // Led by the stand-in's own signature, evolved as far as its level reaches.
+    expect(evolutionFamily(standIn.signature).map((species) => species.id)).toContain(
+      scene.pendingTrainerBattle?.trainer.party[0].base.id,
+    );
     expect(scene.hunterRival().id).toBe(standIn.id);
   });
 

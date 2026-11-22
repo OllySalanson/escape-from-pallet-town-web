@@ -410,11 +410,12 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       // Potions drunk out of the pack exactly as `battleItems.ts` charges them
       // - a turn each). Both know Tackle and nothing else - FireRed's Pidgey
       // learns Sand-Attack at 5 and both stand under it - so there is no type
-      // in this fight at all and no starter can have been tuned to. At level 5
-      // on full HP with the loadout's three Potions a starter wins 72/84/90%
+      // in this fight at all and no starter can have been tuned to. At level 5,
+      // at the Unity formulas this game used until 22 Nov 2026, on full HP with
+      // the loadout's three Potions a starter won 72/84/90%
       // (Bulbasaur/Charmander/Squirtle); walking in at 60% health 40/66/69%;
-      // with an empty pack 4/16/4%. By level 6 it is 92/94/92% and by level 7
-      // one Potion is the whole price. So the fight is decided by the
+      // with an empty pack 4/16/4%. By level 6 it was 92/94/92% and by level 7
+      // one Potion was the whole price. So the fight is decided by the
       // condition you arrive in and the supplies you are willing to spend on
       // it - both of them things a player chooses - and not by the 6.25%
       // critical roll that decided it when one hit was a third of the bar.
@@ -433,19 +434,33 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       //
       // The lead is the teaching fight's own species: the opening battle is
       // one Pidgey, and the checkpoint is that Pidgey with another behind it.
-      [new Pokemon(PIDGEY, 3), new Pokemon(PIDGEY, 4)],
+      //
+      // And a Sandshrew off the sand of the shore road, since this game took
+      // FireRed's own stat and damage formulas (22 Nov 2026). In whole numbers
+      // a fresh Charmander's Scratch is a point harder than a Tackle into a
+      // Pidgey's Defence of 8 - 5 against 4 - so the two Pidgey alone were free
+      // for the Fire starter (100% healthy, 94% hurt, 84% bare) and a price for
+      // the other two, and no party of Pidgey was a price for all three. A
+      // Sandshrew's Defence of 11 rounds Scratch and Tackle to the same hit,
+      // so the third Pokemon is the one that has to be paid for by everybody.
+      // At level 5 with the pack a starter now wins 97/85/85%
+      // (Charmander/Squirtle/Bulbasaur), at 60% health 82/52/52%, bare 0%; at
+      // level 6 with the pack 100/97/97%. In this rain the Fire starter's
+      // Ember is halved, so at level 7 it wants two Potions (99%) where the
+      // other two want one, and by level 8 one is the whole price for anyone.
+      [new Pokemon(PIDGEY, 4), new Pokemon(PIDGEY, 4), new Pokemon(getSpeciesById('sandshrew')!, 4)],
       'The checkpoint is open. Move before the hunter closes in.',
     ),
     // The first contract meets her a little softer, which is the captain's
     // answer (2026-10-12) to a new player wiping at her on their first raids:
-    // the same two, her lead a level down, at the teaching Pidgey's own level.
-    // A fresh level-5 starter arriving healthy with the pack wins 91/90/95%
-    // (Bulbasaur/Charmander/Squirtle, against 72/84/90% above), at 60% health
-    // 85/88/91%, bare 6/32/7% - still a price, paid in supplies. What the
-    // whole first raid costs, the reeds included, is
+    // the same three, her lead a level down, at the teaching Pidgey's own
+    // level. A fresh level-5 starter arriving healthy with the pack wins
+    // 99/92/92% (Charmander/Squirtle/Bulbasaur, against 97/85/85% above), at
+    // 60% health 90/66/66%, bare 0-1% - still a price, paid in supplies. What
+    // the whole first raid costs, the reeds included, is
     // `tools/encounters/firstRaid.mts`. Every later raid meets the party above,
     // and by then the player is level 6 or more.
-    firstContractParty: [new Pokemon(PIDGEY, 2), new Pokemon(PIDGEY, 4)],
+    firstContractParty: [new Pokemon(PIDGEY, 3), new Pokemon(PIDGEY, 4), new Pokemon(getSpeciesById('sandshrew')!, 4)],
   },
   // The Floodplain's three doors, and who holds each. One fight opens two: the
   // door in front of the player, and a second somewhere they have already been,
@@ -599,8 +614,11 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       //
       // Re-measured on 2026-10-06 against FireRed's rules (see Vance): with its
       // Machop at 11 a lone Charmander 14 won 75%, on the edge of the band, and
-      // at 12 it is 71%, a 79% rung.
-      [new Pokemon(getSpeciesById('geodude')!, 11), quarryMachop(12), new Pokemon(getSpeciesById('sandshrew')!, 12)],
+      // at 12 it is 71%, a 79% rung. At FireRed's stat and damage formulas (22
+      // Nov 2026) it measured a 76% rung against the sluice keeper's 63%, a
+      // rung easier than the door before it, so the Geodude is 12 as well: a
+      // 69% rung, a lone Charmander 14 on 45%.
+      [new Pokemon(getSpeciesById('geodude')!, 12), quarryMachop(12), new Pokemon(getSpeciesById('sandshrew')!, 12)],
       'Take it down, then. The level through the hill is open too - it comes out on the beck.',
     ),
   },
@@ -1255,15 +1273,17 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
         // two). Measured over the real engine (`quarterPuzzle.test.ts`, three
         // Potions, the Coast's reference parties at Misty's lead's level, in
         // the rain): the Psyduck-Pikachu team that beats Misty every time wins
-        // 72% here, each starter with its two catches 52-71%, the
-        // Fire-and-Rock team three levels up 58% and eight up 96% - harder
-        // than Misty over the same parties, and a different lock: the
-        // Magnemite stands up to the Electric her quarter is answered with,
-        // and the Machop to the Water.
+        // 65% here, each starter with its two catches 58-92%, the
+        // Fire-and-Rock team three levels up 75% and eight up 100% - harder
+        // than Misty over the same parties (79% against her 84%), and a
+        // different lock: the Magnemite stands up to the Electric her quarter
+        // is answered with, and the Machop to the Water. The Machop is 17
+        // since this game took FireRed's own stat and damage formulas (22 Nov
+        // 2026): at 16 he measured a point easier than Misty.
         [
           new Pokemon(getSpeciesById('magnemite')!, 16),
           new Pokemon(getSpeciesById('shellder')!, 16),
-          new Pokemon(getSpeciesById('machop')!, 16),
+          new Pokemon(getSpeciesById('machop')!, 17),
         ],
         'The barricades are down, the high street and the shingle both. The old town is yours.',
         2,
@@ -1519,14 +1539,17 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
         // Potions packed) against parties at his lead's level: a Gastly from
         // the Moor Chapel opening with Hypnosis - Normal moves pass through it
         // and Poison does a quarter - with a Ponyta, a Pidgeotto and a
-        // Sandshrew taught Dig, wins 99%; the Grass the Coast was won with,
-        // three levels up, 23%, eight up 87%; each starter with a Gastly and a
-        // Ponyta or Pidgeotto 75% or better (Bulbasaur the 75). A Ground team
+        // Sandshrew taught Dig, wins 100%; the Grass the Coast was won with,
+        // three levels up, 32%, eight up 93%; each starter with a Gastly and a
+        // Ponyta or Pidgeotto 86% or better (Bulbasaur the 86). The Grimer is
+        // 17 since this game took FireRed's own stat and damage formulas (22
+        // Nov 2026): at 19 the Grass three levels up won 14%, a wall rather
+        // than a struggle, and at 18 it was 19%. A Ground team
         // is no trap here, though the plan guessed it: Poison does half to
         // Ground and Rock, and only the Koffing floats.
         [
           gymPokemon('koffing', 20, ['Smog', 'Smokescreen', 'Self-Destruct', 'Poison Gas']),
-          gymPokemon('grimer', 19, ['Sludge', 'Minimize', 'Poison Gas', 'Pound']),
+          gymPokemon('grimer', 17, ['Sludge', 'Minimize', 'Poison Gas', 'Pound']),
           gymPokemon('venonat', 18, ['Supersonic', 'Tackle', 'Poison Powder', 'Leech Life']),
         ],
         // Open, not offered, as Misty says of the Coast.

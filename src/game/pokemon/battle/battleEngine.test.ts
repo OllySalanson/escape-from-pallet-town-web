@@ -191,13 +191,51 @@ describe('damage calculation', () => {
     const emberDamage = calculateDamage(charmander, bulbasaur, EMBER, maximumRandom);
 
     expect(emberDamage).toEqual({
-      damage: 20,
+      damage: 18,
       recoil: 0,
       isStab: true,
       isCritical: false,
       typeEffectiveness: 2,
       abilityNotes: [],
     });
+  });
+
+  /**
+   * FireRed's integer pipeline, worked by hand (`CalculateBaseDamage`, then
+   * `Cmd_damagecalc`, `Cmd_typecalc` and the roll). A Lv 7 Charmander's
+   * Scratch into a Lv 7 Bulbasaur: Attack 12, Defense 11, and the level term is
+   * `2 * 7 / 5 + 2` = 4 in whole numbers. 12 * 40 * 4 = 1920, over 11 is 174,
+   * over 50 is 3, and two more is 5 - which the roll takes down to 4 at its
+   * bottom (85%). The continuous form the Unity original used made it 6 at the
+   * top of its roll, a fifth more than the cartridge.
+   */
+  it("is FireRed's integer damage, floored at every step, with a roll of 85 to 100", () => {
+    const charmander = new Pokemon(CHARMANDER, 7);
+    const bulbasaur = new Pokemon(BULBASAUR, 7);
+    const scratch = MOVE_CATALOGUE.scratch;
+    expect([charmander.stats.attack, bulbasaur.stats.defense]).toEqual([12, 11]);
+
+    const rolls = (...values: number[]) => () => values.shift() ?? 1;
+    // The first draw is the critical roll (50 is no critical), the second the damage roll.
+    expect(calculateDamage(charmander, bulbasaur, scratch, rolls(0.5, 1)).damage).toBe(5);
+    expect(calculateDamage(charmander, bulbasaur, scratch, rolls(0.5, 0)).damage).toBe(4);
+    // Every one of the sixteen rolls lands on a whole step: 5 * 85..100 / 100.
+    const spread = new Set(
+      Array.from({ length: 16 }, (_, step) =>
+        calculateDamage(charmander, bulbasaur, scratch, rolls(0.5, step / 16)).damage,
+      ),
+    );
+    expect([...spread].sort()).toEqual([4, 5]);
+  });
+
+  it('never rounds a hit that lands down to nothing', () => {
+    // A Lv 2 Caterpie's Tackle into a Lv 30 Onix works out to nothing before
+    // the two every hit gets, and a quarter after Rock and the roll - and
+    // FireRed never lets a hit that connects do nothing.
+    const caterpie = new Pokemon(getSpeciesById('caterpie')!, 2);
+    const onix = new Pokemon(getSpeciesById('onix')!, 30);
+    const damage = calculateDamage(caterpie, onix, TACKLE, () => 0.5).damage;
+    expect(damage).toBeGreaterThanOrEqual(1);
   });
 
   it('calculates a non-STAB physical move with exact fixed rolls', () => {
@@ -227,8 +265,8 @@ describe('damage calculation', () => {
     const charmander = new Pokemon(CHARMANDER, 10);
     const bulbasaur = new Pokemon(BULBASAUR, 10);
 
-    expect(calculateDamage(charmander, bulbasaur, physicalFireMove, maximumRandom).damage).toBe(22);
-    expect(calculateDamage(charmander, bulbasaur, EMBER, maximumRandom).damage).toBe(20);
+    expect(calculateDamage(charmander, bulbasaur, physicalFireMove, maximumRandom).damage).toBe(20);
+    expect(calculateDamage(charmander, bulbasaur, EMBER, maximumRandom).damage).toBe(18);
   });
 
   it('does not damage with status moves', () => {
@@ -246,14 +284,14 @@ describe('damage calculation', () => {
     const rolls = [0.0625, 1];
     const criticalDamage = calculateDamage(attacker, defender, EMBER, () => rolls.shift() ?? 1);
 
-    expect(criticalDamage).toMatchObject({ isCritical: true, damage: 40, typeEffectiveness: 2 });
+    expect(criticalDamage).toMatchObject({ isCritical: true, damage: 36, typeEffectiveness: 2 });
   });
 
   it('scales damage with attacker level', () => {
     const defender = new Pokemon(BULBASAUR, 10);
 
     expect(calculateDamage(new Pokemon(CHARMANDER, 5), defender, TACKLE, maximumRandom).damage).toBe(4);
-    expect(calculateDamage(new Pokemon(CHARMANDER, 20), defender, TACKLE, maximumRandom).damage).toBe(13);
+    expect(calculateDamage(new Pokemon(CHARMANDER, 20), defender, TACKLE, maximumRandom).damage).toBe(14);
   });
 
   it('uses a landed stat-lowering move when calculating subsequent damage', () => {
@@ -337,6 +375,9 @@ describe('battle turn resolution', () => {
   it('resolves attacks by speed without mutating the source Pokemon', () => {
     const charmander = new Pokemon(CHARMANDER, 10);
     const bulbasaur = new Pokemon(BULBASAUR, 10);
+    // It comes in already hurt, so that Ember carries it into the third of its
+    // health that turns Overgrow on.
+    bulbasaur.takeDamage(5);
     const state = createBattleState(charmander, bulbasaur);
 
     const result = resolveTurn(state, 2, maximumRandom);
@@ -348,12 +389,12 @@ describe('battle turn resolution', () => {
     expect(result.events.some((event) => event.type === 'used-move' && event.user === 'enemy')).toBe(
       true,
     );
-    expect(result.state.enemy.currentHp).toBe(bulbasaur.maxHp - 20);
-    // Ember leaves Bulbasaur on 4 of 24, which is inside the third that turns
-    // Overgrow on, so the Vine Whip that answers is 1.5x what it would be. The
-    // pinch ability is exactly this: the last of a Pokemon's health is its
-    // most dangerous.
-    expect(result.state.player.currentHp).toBe(charmander.maxHp - 7);
+    expect(result.state.enemy.currentHp).toBe(bulbasaur.maxHp - 5 - 18);
+    // Ember leaves Bulbasaur on 6 of 29, which is inside the third that turns
+    // Overgrow on, so the Vine Whip that answers is 1.5x what it would be (6
+    // rather than 5). The pinch ability is exactly this: the last of a
+    // Pokemon's health is its most dangerous.
+    expect(result.state.player.currentHp).toBe(charmander.maxHp - 6);
     expect(
       result.events.some((event) => event.type === 'ability' && event.effect === 'powered-up'),
     ).toBe(true);
@@ -404,7 +445,9 @@ describe('battle turn resolution', () => {
     const result = resolveTurn(
       createBattleState(butterfree, new Pokemon(getSpeciesById('tangela')!, 10)),
       powderIndex,
-      maximumRandom,
+      // A middling roll: Poison Powder is FireRed's 75% (Compound Eyes makes it
+      // 97), so the top roll every other test here uses would miss.
+      () => 0.5,
     );
     // Butterfree is faster, so its own action is everything before the reply.
     const enemyReplyIndex = result.events.findIndex(
@@ -1027,10 +1070,13 @@ describe('status conditions', () => {
     for (const [enemy, move, status] of statusMoves) {
       const initial = createBattleState(player, enemy);
       const state = { ...initial, enemy: { ...initial.enemy, moves: [{ base: move, pp: move.pp }] } };
-      const applied = resolveEnemyTurn(state, maximumRandom);
+      // A roll that lands FireRed's 55% Sing and Supersonic and 75% Poison
+      // Powder; the top roll every other test here uses is a miss for all three.
+      const landing = () => 0.5;
+      const applied = resolveEnemyTurn(state, landing);
       expect(applied.events).toContainEqual({ type: 'status-applied', user: 'player', name: 'Charmander', status });
 
-      const duplicate = resolveEnemyTurn({ ...applied.state, enemy: state.enemy }, maximumRandom);
+      const duplicate = resolveEnemyTurn({ ...applied.state, enemy: state.enemy }, landing);
       expect(duplicate.events).toContainEqual({ type: 'status-already', user: 'player', name: 'Charmander', status });
     }
   });
@@ -1310,10 +1356,10 @@ describe('a combatant refreshed after a level-up', () => {
   it('adds exactly the HP the raised maximum brought, and never more than the maximum', () => {
     const { combatant, previousMaxHp } = levelledSquirtle();
 
-    expect(previousMaxHp).toBe(18);
-    expect(combatant.pokemon.maxHp).toBe(20);
+    expect(previousMaxHp).toBe(21);
+    expect(combatant.pokemon.maxHp).toBe(23);
     expect(refreshCombatantAfterLevelUp({ ...combatant, currentHp: 7 }, previousMaxHp).currentHp).toBe(9);
-    expect(refreshCombatantAfterLevelUp({ ...combatant, currentHp: 19 }, previousMaxHp).currentHp).toBe(20);
+    expect(refreshCombatantAfterLevelUp({ ...combatant, currentHp: 22 }, previousMaxHp).currentHp).toBe(23);
   });
 
   it('leaves a fainted combatant fainted, because a level is not a revive', () => {

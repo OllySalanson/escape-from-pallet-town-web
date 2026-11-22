@@ -89,20 +89,19 @@ export function survivesKnockout(
 }
 
 /**
- * What the holder's damage is multiplied by: a Life Orb's on every hit, and a
- * Miracle Seed's (and its kind's) on a move of its type - FireRed raises the
- * attacking stat by the item's percent, which is the same multiplier on the
- * damage. One for everything else.
+ * A Miracle Seed's (and its kind's) boost on a move of its type: FireRed raises
+ * the attacking stat by the item's percent (`CalculateBaseDamage`). One for
+ * everything else.
  */
-export function attackMultiplier(holder: GearHolder, moveType?: PokemonType): number {
+export function gearTypeBoost(holder: GearHolder, moveType: PokemonType): number {
   const effect = gearEffect(holder);
-  if (effect?.type === 'power-at-a-price') {
-    return effect.damageMultiplier;
-  }
-  if (effect?.type === 'type-power' && moveType === effect.moveType) {
-    return (100 + effect.powerPercent) / 100;
-  }
-  return 1;
+  return effect?.type === 'type-power' && moveType === effect.moveType ? (100 + effect.powerPercent) / 100 : 1;
+}
+
+/** A Life Orb's multiplier on every hit, and one for everything else. */
+export function lifeOrbMultiplier(holder: GearHolder): number {
+  const effect = gearEffect(holder);
+  return effect?.type === 'power-at-a-price' ? effect.damageMultiplier : 1;
 }
 
 /**

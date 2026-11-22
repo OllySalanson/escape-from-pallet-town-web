@@ -61,17 +61,17 @@ const rungOf = (trainer: TrainerBattle): number =>
  *
  * Quarryman Mott is the deepest door on Viridian Forest and the second of its
  * two, so he is measured after Pell and before the Floodplain's back half -
- * which is where he lands, at 59% against Pell's 70% and Dane's 74%.
+ * which is where he lands, at 66% against Pell's 63% and Dane's 63%.
  *
  * Gatekeeper Ross holds Viridian City's League fence, which opens on the same
  * banked contract as the three small maps, and is measured beside their last
- * door: 65%, with no starter at 14 under 50% - his first party was a Nidorino
+ * door: 69%, with no starter at 14 under 50% - his first party was a Nidorino
  * and a Spearow, and a Bulbasaur won 1% of it.
  *
  * Foreman Rudd is met after the sluice keeper and Banksman Nye is the last
  * door on the Floodplain in walking order; both are on the ladder since the
  * battles playtest found neither held to it. Rudd sits in the band (a lone
- * Charmander 14 on 71%). **Nye is ordered but not banded, on purpose and
+ * Charmander 14 on 45%). **Nye is ordered but not banded, on purpose and
  * flagged:** her team is all Water, which a lone Charmander 14 beats 0% of the
  * time and a Bulbasaur 100% - the starter lottery the band exists to refuse -
  * and changing who she fields is a design call, not a measurement.
@@ -88,6 +88,9 @@ const rungOf = (trainer: TrainerBattle): number =>
  * the turn its predecessor fell, so every party with a second Pokemon was a
  * free hit harder than it was; Vance, Pell, Ross and Rudd were retuned by a
  * level here and there to put each back on its line (`trainers.ts` says which).
+ * They were re-measured again on 2026-11-22, when the stats and the damage
+ * became FireRed's own formulas rather than the Unity original's: Rudd's
+ * Geodude went up a level to keep him off Dane's rung.
  *
  * Two pairs are inside the tie rather than ordered. Vance and Pell unlock
  * together - Pallet Town and Route 1 arrive on the same banked contract - so

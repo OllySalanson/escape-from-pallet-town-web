@@ -42,9 +42,9 @@ import { valeGyms } from './valeQuarters';
  *   Scratch, and learns no Water move before 50; Golduck from 33.
  * - **Lt. Surge's Voltorb**, from his own FireRed team, Electrode from 30. It
  *   learns no Electric attack before Spark at 21.
- * - **Koga's Grimer**, whose line is his FireRed Muk, Muk from 38.
- * - **Sabrina's Venonat**, whose line is her FireRed Venomoth, Venomoth from
- *   31.
+ * - **Koga's Venonat**, whose line is the Venomoth he fields in Gold, Silver
+ *   and Let's Go, Venomoth from 31.
+ * - **Sabrina's Drowzee**, a psychic for a psychic, Hypno from 26.
  *
  * Surge led with his Pikachu, Koga with his Koffing and Sabrina with a Drowzee
  * until every species took FireRed's own learnset (the captain, 2026-10-11),
@@ -58,6 +58,17 @@ import { valeGyms } from './valeQuarters';
  * floor against every lone starter (decided the same day). The
  * Venonat refused above was refused against the old kits, when a Bulbasaur's
  * Vine Whip was its whole answer; with Leech Seed it is one answer of two.
+ *
+ * Koga led his Grimer and Sabrina the Venonat until this game took FireRed's
+ * own stat and damage formulas (22 Nov 2026). The Unity formula it replaced
+ * put every stat at half of canon, which squeezed the species together; at
+ * FireRed's scale a Lv 9 Grimer has 19 Attack and 33 HP to a Lv 10 Squirtle's
+ * 14 and 28, and with FireRed's whole-number damage a lone Squirtle at 8-10
+ * beat it 40-43% of the time on the last rung. His FireRed Koffing was worse
+ * (29%), and his only FireRed Pokemon are those two, so he leads the Venonat
+ * his other Kanto teams field (68% at worst), and Sabrina goes back to the
+ * Drowzee, which clears the floor at FireRed's scale (63% at worst) where it
+ * did not at the old one (`tools/hunter/measure.mts` prints the table).
  *
  * Each rival's ladder is measured on its own, and `hunter.test.ts` holds every
  * one to the floor a lone starter must clear on the last ordinary rung.
@@ -203,7 +214,7 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     design: 'koga',
     personality: 'A ninja master of poison. Patient, theatrical, laughs before he strikes.',
     temperament: 'ordinary',
-    signature: 'grimer',
+    signature: 'venonat',
     caught: ['KOGA: "Fwahahaha! All you have gathered, I shall take."', 'KOGA: "Despair to the creeping horror of poison!"'],
     getaway: 'KOGA: "Hmph. You slip away like smoke... for now."',
     defeat: 'Humph! You have proven your worth. Go, before I change my mind.',
@@ -224,7 +235,7 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     design: 'sabrina',
     personality: 'The psychic of Saffron. Calm, eerie, already knows where you are going.',
     temperament: 'ordinary',
-    signature: 'venonat',
+    signature: 'drowzee',
     caught: ['SABRINA: "I saw what you found. It was always mine."', 'SABRINA: "I foresaw this. I foresaw how it ends."'],
     getaway: 'SABRINA: "I did not foresee that. How interesting."',
     defeat: 'This loss shocks me... Yet somehow I saw it coming.',

@@ -148,34 +148,38 @@ const species = (id: string): PokemonBase => {
  *   at 39 against a Charizard, so every evolved party beat even the enraged
  *   hunter 99-100% and the enrage stopped being one by mid-game.
  * - **Every rung sits below you.** Measured at each offset, all five rivals
- *   together, re-measured once every species took FireRed's own learnset and
- *   Lt. Surge, Koga and Sabrina took the leads `hunters.ts` gives them (the
- *   table before that, in brackets):
+ *   together, re-measured once this game took FireRed's own stat and damage
+ *   formulas and Koga and Sabrina took the leads `hunters.ts` gives them (the
+ *   table at the Unity formula's half-scale stats, in brackets):
  *
  * | rung            | offset | early parties: wins (mean / worst), HP left | late parties: wins, HP left        |
  * | --------------- | ------ | ------------------------------------------- | ---------------------------------- |
- * | 1: 0-120s       | -4     | 100% / 96%, 80% (100% / 93%, 83%)           | 100% / 95%, 82% (100% / 100%, 82%) |
- * | 2: 120-180s     | -3     | 99% / 93%, 76% (100% / 86%, 80%)            | 100% / 98%, 79% (100% / 99%, 79%)  |
- * | 3: 180-240s     | -2     | 98% / 81%, 69% (98% / 73%, 74%)             | 93% / 61%, 68% (95% / 73%, 69%)    |
- * | 4: 240s-end     | -1     | 95% / 63%, 62% (96% / 69%, 65%)             | 91% / 52%, 64% (90% / 32%, 62%)    |
- * | at your level   | 0      | 85% / 36%, 57% (88% / 55%, 58%)             | 89% / 52%, 57% (87% / 19%, 55%)    |
- * | enraged         | +3     | 48% / 0%, 49% (48% / 6%, 46%)               | 76% / 15%, 48% (72% / 5%, 45%)     |
+ * | 1: 0-120s       | -4     | 100% / 98%, 84% (100% / 97%, 80%)           | 93% / 63%, 82% (99% / 96%, 81%)    |
+ * | 2: 120-180s     | -3     | 100% / 96%, 80% (99% / 95%, 76%)            | 91% / 54%, 79% (100% / 98%, 78%)   |
+ * | 3: 180-240s     | -2     | 99% / 82%, 73% (98% / 81%, 69%)             | 92% / 68%, 68% (93% / 59%, 68%)    |
+ * | 4: 240s-end     | -1     | 95% / 63%, 64% (95% / 69%, 62%)             | 90% / 64%, 64% (91% / 51%, 64%)    |
+ * | at your level   | 0      | 79% / 1%, 55% (85% / 36%, 57%)              | 89% / 46%, 56% (89% / 52%, 57%)    |
+ * | enraged         | +3     | 41% / 0%, 45% (48% / 0%, 49%)               | 73% / 1%, 45% (77% / 17%, 47%)     |
  *
- * The means held. The worst early cells moved to a FireRed Squirtle at 8-10,
- * which fights with Tackle and a 20-power Bubble until Water Gun at 13 - a
- * lone one wins rung 4 against Blue's Eevee 77% - and the worst late cell is
- * Lt. Surge's Electrode, from 30, against a team of four before it evolves.
- * When the team first evolved with its level the late ladder got its teeth
- * back, which is what evolving was for: a team of four evolved at 20-25 beat
- * the enrage 51-96% depending on who was hunting, where it had been 99%. The
- * enrage is easier for an early party than it was,
- * because only Blue's Eevee leads with a same-type Tackle as every Rattata did
- * - and it is the one thing a beaten hunter comes back for (`hunterAtEnrage`).
+ * The means held. FireRed's scale spreads the species apart where the old one
+ * squeezed them together, so the worst cells are the pairings that FireRed
+ * itself makes hard: a FireRed Squirtle at 8-13, which fights with Tackle and
+ * a 20-power Bubble until Water Gun at 13 and is slower than nearly every lead
+ * (a lone Lv 10 one wins rung 4 against Blue's Eevee 65%), and a team of four
+ * strong first stages against the two late leads that evolve, Electrode and
+ * Hypno. The late team of six evolved at 20 does worse on the first two rungs
+ * (54-74%) than the last two, which is the measuring harness rather than the
+ * ladder: six status-throwing Lv 16-17 escorts against a player who never
+ * switches. When the team first evolved with its level the late ladder got its
+ * teeth back, which is what evolving was for: a team of four evolved at 20-25
+ * beat the enrage 51-96% depending on who was hunting, where it had been 99%.
+ * The enrage is the one thing a beaten hunter comes back for
+ * (`hunterAtEnrage`).
  *
  * The clock still closes the gap, so staying late still costs, but no
  * ordinary rung is a wall, and `hunter.test.ts` holds every rival's rung 4 to
  * a floor against every lone starter. The three Potions a fresh save deploys
- * with lift rung 4's worst early cell to 85% and its mean to 98%. Level 2 is
+ * with lift rung 4's worst early cell to 81% and its mean to 99%. Level 2 is
  * the floor, which is what a Lv 5 starter meets on rung 1.
  *
  * **The harder hunter is not built.** It is the `temperament` on a rival in
