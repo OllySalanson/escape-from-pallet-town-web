@@ -110,7 +110,12 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
           break;
       }
     }
-    if (first && first.user === 'enemy') {
+    // Only a turn both sides moved in was a race: a turn spent on a Potion, a
+    // ball or a switch is the foe's alone, and counted as theirs it blamed
+    // Speed for a fight the player outsped (veteran playtest, 22 Nov 2026:
+    // 'RATTATA moved first 3 times' where it had once).
+    const raced = turn.some((event) => (event.type === 'used-move' || event.type === 'missed') && event.user === 'player');
+    if (first && first.user === 'enemy' && raced) {
       foeFirst += 1;
       const name = first.name;
       foeFirstNames.set(name, (foeFirstNames.get(name) ?? 0) + 1);
@@ -168,7 +173,10 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
   if (confusionHits >= WHAT_BEAT_YOU_LEAST) {
     facts.push({ line: `Confusion: your Pokémon hurt itself ${times(confusionHits)}.`, weight: confusionHits * 1.25 });
   }
-  const turnsPlayed = turns.filter((turn) => turn.some((event) => event.type === 'used-move' || event.type === 'missed')).length;
+  const turnsPlayed = turns.filter((turn) =>
+    turn.some((event) => (event.type === 'used-move' || event.type === 'missed') && event.user === 'player') &&
+    turn.some((event) => (event.type === 'used-move' || event.type === 'missed') && event.user === 'enemy'),
+  ).length;
   if (facts.length === 0 && foeFirst >= Math.max(3, Math.ceil(turnsPlayed * 0.75))) {
     const [name] = [...foeFirstNames.entries()].sort((a, b) => b[1] - a[1]);
     facts.push({

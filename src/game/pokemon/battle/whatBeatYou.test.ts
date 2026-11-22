@@ -31,6 +31,19 @@ describe('what beat you', () => {
     expect(whatBeatYou(turns, 'rain')).toBe('Rain and Swift Swim: GOLDEEN moved first twice.');
   });
 
+  it('never blames Speed for turns the player spent on something other than a move', () => {
+    // Veteran playtest of 22 Nov 2026: 'Speed: RATTATA moved first 3 times'
+    // when it had once - the turns spent on Potions were the foe's alone.
+    const potion: BattleEvent = { type: 'item-used', user: 'player', name: 'Squirtle', item: 'Potion' } as unknown as BattleEvent;
+    const turns: BattleEvent[][] = [
+      [foeMoves('Rattata', 'Tail Whip'), mine('Squirtle', 'Tackle')],
+      [potion, foeMoves('Rattata', 'Tackle')],
+      [potion, foeMoves('Rattata', 'Tackle')],
+      [mine('Squirtle', 'Tackle'), foeMoves('Rattata', 'Tackle')],
+    ];
+    expect(whatBeatYou(turns)).toBeNull();
+  });
+
   it('names turns lost to sleep and paralysis', () => {
     const turns: BattleEvent[][] = [
       [foeMoves('Poliwag', 'Hypnosis'), { type: 'status-applied', user: 'player', name: 'Pikachu', status: 'sleep' }],
