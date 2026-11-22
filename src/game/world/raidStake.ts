@@ -1,5 +1,5 @@
 import { MATERIAL_IDS, type ItemId } from '../items';
-import type { GridPosition } from '../movement/gridMovement';
+import { STEP_DIRECTIONS, linkKey, nextTileFromDirection, type GridLinks, type GridPosition } from '../movement/gridMovement';
 import type { SeededRng } from '../run/rng';
 import type { WorldMapDefinition, WorldMapId } from '../worldMap';
 import type { WorldLoot } from './loot';
@@ -270,12 +270,25 @@ const WAY_AHEAD_STEPS = 8;
  * Where a walk to a tile has got to `WAY_AHEAD_STEPS` from here, down a field of
  * steps to that tile: a straight line at it can point into a wall. The tile itself
  * from anywhere the field does not reach.
+ *
+ * A field grown over the map's doorways (`stepDistances` with `links`) is
+ * walked through them too: where the next step of the walk is a doorway, the
+ * answer is the tile the press goes into, which is where to head. Grown
+ * without them, a walk that only goes through a cave - High Moor's way north
+ * to SURVEY STAKE 1 - did not reach the player at all, and the arrow pointed
+ * straight at the stake across the cliffs (veteran playtest, 20 Nov 2026).
  */
-export function aheadOnWalk(field: readonly Int32Array[], from: GridPosition, target: GridPosition): GridPosition {
+export function aheadOnWalk(
+  field: readonly Int32Array[],
+  from: GridPosition,
+  target: GridPosition,
+  links?: GridLinks,
+): GridPosition {
   let at = from;
   if ((field[at.y]?.[at.x] ?? -1) < 0) {
     return target;
   }
+  const width = field[0]?.length ?? 0;
   for (let step = 0; step < WAY_AHEAD_STEPS; step += 1) {
     const walk = field[at.y][at.x];
     const next = [
@@ -285,9 +298,28 @@ export function aheadOnWalk(field: readonly Int32Array[], from: GridPosition, ta
       { x: at.x - 1, y: at.y },
     ].find((tile) => (field[tile.y]?.[tile.x] ?? -1) >= 0 && field[tile.y][tile.x] === walk - 1);
     if (!next) {
-      return at;
+      const through = links ? doorwayOnWalk(field, links, width, at, walk) : undefined;
+      return through ?? at;
     }
     at = next;
   }
   return at;
+}
+
+/** The tile pressed into from `at` to go through a doorway one step nearer, if the walk goes through one there. */
+function doorwayOnWalk(
+  field: readonly Int32Array[],
+  links: GridLinks,
+  width: number,
+  at: GridPosition,
+  walk: number,
+): GridPosition | undefined {
+  const here = at.y * width + at.x;
+  for (let direction = 0; direction < STEP_DIRECTIONS.length; direction += 1) {
+    const to = links.get(linkKey(here, direction));
+    if (to !== undefined && field[Math.floor(to / width)]?.[to % width] === walk - 1) {
+      return nextTileFromDirection(at, STEP_DIRECTIONS[direction]);
+    }
+  }
+  return undefined;
 }

@@ -4,6 +4,8 @@ import { hunterThreatFor } from './hunterThreat';
 import { getWorldMap } from '../worldMap';
 import { isStake, isStakeMoney, isStakeTrail, prizesLeftBehind, prizeWords } from './loot';
 import { stepDistances } from './mapStructure';
+import { playerLinks } from './sailing';
+import { linkKey } from '../movement/gridMovement';
 import {
   IN_SIGHT,
   STAKE_LEAST_WALK,
@@ -149,5 +151,55 @@ describe('what a raid on the vale is for', () => {
     expect(aheadOnWalk(field, { x: 0, y: 0 }, { x: 0, y: 2 })).toEqual({ x: 2, y: 2 });
     // Off the field altogether it can only point at the thing itself.
     expect(aheadOnWalk(field, { x: 0, y: 1 }, { x: 0, y: 2 })).toEqual({ x: 0, y: 2 });
+  });
+});
+
+describe('the way to a stop the walk only reaches through a doorway', () => {
+  /**
+   * Veteran playtest (20 Nov 2026): SURVEY STAKE 1 at 184,42 is reached from
+   * the Stone Carts (171,90) only through a doorway on the way. Walked over a
+   * field without the map's doorways, the arrow's next step was the stake
+   * itself, straight across the cliffs, and following it dead-ended.
+   */
+  const stake = { x: 184, y: 42 };
+  const stoneCarts = { x: 171, y: 90 };
+
+  it('is walked through the doorway rather than pointed straight at the stop', () => {
+    const vale = getWorldMap(MAP_ID);
+    const links = playerLinks(vale);
+    expect(stepDistances(vale.collision, stake)[stoneCarts.y][stoneCarts.x]).toBe(-1);
+
+    const field = stepDistances(vale.collision, stake, new Set(), links);
+    expect(field[stoneCarts.y][stoneCarts.x]).toBeGreaterThan(0);
+    // Down the walk however far it goes, and never off it: every tile the arrow
+    // aims at from here on is one the player can walk to the stake from.
+    let at = stoneCarts;
+    for (let guard = 0; guard < 400 && !(at.x === stake.x && at.y === stake.y); guard += 1) {
+      const ahead = aheadOnWalk(field, at, stake, links);
+      expect(ahead, `from ${at.x},${at.y}`).not.toEqual(at);
+      const reached = field[ahead.y]?.[ahead.x] ?? -1;
+      if (reached < 0) {
+        // A doorway: the press is made from the tile beside it, and the walk
+        // carries on from the far side, one step nearer than that tile.
+        const width = field[0].length;
+        const steps = [[0, 1], [0, -1], [1, 0], [-1, 0]] as const;
+        const far = [0, 1, 2, 3]
+          .map((direction) => {
+            const from = { x: ahead.x + steps[direction][0], y: ahead.y + steps[direction][1] };
+            const index = links?.get(linkKey(from.y * width + from.x, direction));
+            const fromWalk = field[from.y]?.[from.x] ?? -1;
+            return index !== undefined && fromWalk >= 0 && field[Math.floor(index / width)][index % width] === fromWalk - 1
+              ? { x: index % width, y: Math.floor(index / width) }
+              : undefined;
+          })
+          .find((tile) => tile !== undefined);
+        expect(far, `a doorway at ${ahead.x},${ahead.y}`).toBeDefined();
+        at = far!;
+      } else {
+        expect(reached).toBeLessThan(field[at.y][at.x]);
+        at = ahead;
+      }
+    }
+    expect(at).toEqual(stake);
   });
 });
