@@ -6332,6 +6332,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       ...this.nearestOpenExitHere(),
       stepsTo: walkingStepsFrom(this.currentTile, this.collisionData, playerLinks(this.currentMap)),
       defeatedTrainerIds: new Set(this.defeatedTrainerIds),
+      nextStop: (stops) => nearestByWalk(this.currentMap, this.currentTile, stops),
     });
     audioManager.play('menuOpen');
     this.player.stop();
@@ -6531,6 +6532,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       ...this.nearestOpenExitHere(),
       stepsTo: walkingStepsFrom(this.currentTile, this.collisionData, playerLinks(this.currentMap)),
       defeatedTrainerIds: [...this.defeatedTrainerIds],
+      nextStop: <Stop extends { readonly position: GridPosition }>(stops: readonly Stop[]) => nearestByWalk(this.currentMap, this.currentTile, stops),
       pausedWorld: true,
     });
   }

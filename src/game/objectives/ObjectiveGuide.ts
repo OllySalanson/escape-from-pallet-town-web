@@ -43,6 +43,14 @@ export interface ObjectiveGuideContext {
   readonly stepsTo?: (target: GridPosition) => number | undefined;
   /** The trainers beaten this raid. A toll stands up again next raid, but not in this one. */
   readonly defeatedTrainerIds?: ReadonlySet<string>;
+  /**
+   * Which of a job's stops to name next: the one the gold arrow is after
+   * (`WorldScene.contractTarget`, the nearest by the walk). Absent is the job's
+   * own order. Oak named the first stop in the list while the arrow led to the
+   * nearest, and a new player was sent two ways at once on their first job
+   * (AI playtest, 20 Nov 2026).
+   */
+  readonly nextStop?: <Stop extends { readonly position: GridPosition }>(stops: readonly Stop[]) => Stop | undefined;
 }
 
 export interface ObjectiveGuideObjective {
@@ -349,7 +357,7 @@ function contractHints(
   // Unnumbered: the field guide renders these in an ordered list, and hints
   // that numbered themselves as well came out as "1. 1. You are in ...".
   return [
-    `You are in ${locationHint(contract, session, context, outstanding[0].position)}.`,
+    `You are in ${locationHint(contract, session, context, (context.nextStop?.(outstanding) ?? outstanding[0]).position)}.`,
     ...(contract.markers.length > 1
       ? [`${contractStopsDone(contract, contractSteps)} of ${contract.markers.length} stops made.`]
       : []),

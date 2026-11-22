@@ -110,6 +110,28 @@ describe('objective field guide', () => {
     expect(laterGuide.hints).toHaveLength(2);
   });
 
+  it('names the stop the gold arrow is after, not the first in the job\'s list', () => {
+    const base = createFirstContractSession();
+    const map = getWorldMap('floodplain-relay', []);
+    const [first] = base.plan!.contract!.markers;
+    const door = RUN_INSERTIONS['floodplain-relay'].position;
+    const second = { ...first, id: `${first.id}-second`, position: door };
+    const contract = { ...base.plan!.contract!, markers: [first, second] };
+    const session = { ...base, plan: { ...base.plan!, contract } };
+    const stepsTo = walkingStepsFrom(door, map.collision, map.links);
+    const hint = (nextStop?: (stops: readonly { readonly position: { x: number; y: number } }[]) => unknown) =>
+      buildObjectiveGuide(session, {
+        currentMapId: 'floodplain-relay',
+        currentPosition: door,
+        activatedPoiIds: new Set(),
+        stepsTo,
+        ...(nextStop ? { nextStop: nextStop as never } : {}),
+      }).hints[0];
+    // Without a chooser it is the job's own order; with one, the stop it chooses.
+    expect(hint()).toContain(`${stepsTo(first.position)} steps away`);
+    expect(hint((stops) => stops[1])).toMatch(/The next stop is right here\.$/);
+  });
+
   it('says how far the next stop is by the walk from where the player stands, not from the front door', () => {
     const session = createFirstContractSession();
     const map = getWorldMap('floodplain-relay', []);

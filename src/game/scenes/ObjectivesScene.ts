@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
-import { buildObjectiveGuide } from '../objectives/ObjectiveGuide';
+import { buildObjectiveGuide, type ObjectiveGuideContext } from '../objectives/ObjectiveGuide';
 import type { GridPosition } from '../movement/gridMovement';
 import type { ActiveRunSession } from '../run/RunSession';
 import type { WorldMapId } from '../worldMap';
@@ -30,6 +30,8 @@ export interface ObjectivesSceneData {
   readonly stepsTo?: (target: GridPosition) => number | undefined;
   /** The trainers beaten this raid. */
   readonly defeatedTrainerIds?: readonly string[];
+  /** Which of a job's stops the gold arrow is after (`ObjectiveGuideContext.nextStop`). */
+  readonly nextStop?: ObjectiveGuideContext['nextStop'];
   /** Only resume WorldScene when this overlay paused it. */
   readonly pausedWorld: boolean;
 }
@@ -67,6 +69,7 @@ export class ObjectivesScene extends Phaser.Scene {
       ...(data.nearestOpenExit ? { nearestOpenExit: data.nearestOpenExit } : {}),
       ...(data.stepsTo ? { stepsTo: data.stepsTo } : {}),
       ...(data.defeatedTrainerIds ? { defeatedTrainerIds: new Set(data.defeatedTrainerIds) } : {}),
+      ...(data.nextStop ? { nextStop: data.nextStop } : {}),
     });
     this.createOverlay(guide);
   }
