@@ -89,7 +89,7 @@ describe('Bill on a thing on his shelves', () => {
 
   it('names a barter in goods, and it opens on NOT NOW because it cannot be taken back', () => {
     const quote = billQuote(counter({ 'lamp-oil': 2, 'parts-crate': 2, 'radio-valve': 1 }, PARTNER), fire);
-    expect(quote.lines[1]).toBe('I want 2 Lamp oils, 2 Parts crates and 1 Radio valve. Money does not buy this.');
+    expect(quote.lines[1]).toBe("I want 2 Lamp oils, 2 Parts crates and 1 Radio valve. Money won't buy this one.");
     expect(quote.spendsForGood).toBe(true);
   });
 

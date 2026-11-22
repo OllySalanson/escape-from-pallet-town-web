@@ -337,7 +337,7 @@ export function theCrossing(): MapcraftResult {
         { x: 45, y: 56, name: 'Burner’s Wife', look: 'worker-woman', facing: 'right', lines: ['Everything I own smells of smoke. That is why I married him. It was the smell or nothing.'], beat: { everyMs: 3800, glances: ['up'] }, calls: ['Your dinner is cold!'] },
       ],
       trainers: [
-        { x: 41, y: 37, name: 'Netter Bryn', team: 'netter', look: 'fisherman', facing: 'down', sight: 0, lines: ['The bridge is my spot!', 'Let us see what you have caught.'] },
+        { x: 41, y: 37, name: 'Netter Bryn', team: 'netter', look: 'fisherman', facing: 'down', sight: 0, lines: ['The bridge is my spot!', "Let's see what you've caught."] },
         { x: 50, y: 15 - 5, name: 'Breaker Dunn', team: 'breaker', look: 'black-belt', facing: 'left', sight: 0, lines: ["I break rocks all day. Put your Pokémon down there and let's see."] },
         { x: 59, y: 49, name: 'Collier Osk', team: 'collier', look: 'bald-man', facing: 'left', sight: 0, lines: ['Six days I have sat up with this stack. I could do with the company!'] },
       ],

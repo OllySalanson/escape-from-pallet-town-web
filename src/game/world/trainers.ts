@@ -1453,7 +1453,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
         // Open, not offered: a landing in the Coast goes on the rim once a raid
         // has reached it (`availableInsertionIds`), so the line says so (the midgame bug hunt of 11 Nov
         // 2026 found the rim unchanged after a badge and nothing saying why).
-        'Wow! You are too much. Here is the CASCADE BADGE. The jetty and the reed trail are open. Reach a drop-in point past them, and you can start a raid from it.',
+        "Wow! You're too much! Fine, take the CASCADE BADGE. The jetty and the reed trail are open now. Get to a drop-in point past them and you can start a raid from there.",
         2,
       ),
       ai: 'gym',

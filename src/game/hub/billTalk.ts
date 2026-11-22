@@ -74,7 +74,7 @@ const READS_YOU: Readonly<Record<TraderStandingId, string>> = {
  * "I do not know you" to somebody who has banked two of Oak's jobs reads as if
  * he had not counted them (the overnight playtest of 20 Nov 2026).
  */
-export const STRANGER_STARTED = 'I have heard of you. Not enough yet.';
+export const STRANGER_STARTED = "I've heard of you. Not enough yet.";
 
 /**
  * How a stranger gets on his books, counted. Money cannot start it - he sells a
@@ -88,10 +88,10 @@ export function strangerWayIn(pointsShort: number, started = false): string {
 }
 
 /** What he says to NOT NOW. */
-export const NOT_DEALT_LINE = 'It will be here. Most things are.';
+export const NOT_DEALT_LINE = "It'll be here. Most things are.";
 
 /** What he says when the save would not take it. */
-export const DEAL_NOT_SAVED_LINE = 'It would not save, so the deal is off and you have lost nothing.';
+export const DEAL_NOT_SAVED_LINE = "It wouldn't save, so the deal's off and you've lost nothing.";
 
 /** The question on the mat: his whole list is the PC's. */
 export const SEE_THE_LIST_QUESTION = 'See my whole list?';
@@ -151,7 +151,7 @@ function barterQuote(counter: TraderCounter, barterId: string): BillQuote {
       };
     default:
       return {
-        lines: [what, `I want ${takes}. Money does not buy this.`],
+        lines: [what, `I want ${takes}. Money won't buy this one.`],
         question: 'Hand them over, for good?',
         spendsForGood: true,
       };
@@ -164,7 +164,7 @@ function berthQuote(counter: TraderCounter): BillQuote {
   const what = 'A berth in my hold: one more column of your secure container, this raid only.';
   switch (offer.refusal) {
     case 'already-paid':
-      return { lines: ['Your berth is paid for. It is yours until the raid is over.'] };
+      return { lines: ["Your berth's paid for. It's yours till the raid's over."] };
     case 'standing-short':
       return { lines: [keptBack('A berth in the hold', TRADER_BERTH_STANDING)] };
     case 'money-short':
@@ -213,9 +213,9 @@ export function billFromTheMat(counter: TraderCounter): BillQuote {
 /** Said once a deal is struck: `SaveManager`'s own message is written for a status bar. */
 export function dealtLine(good: BillGood): string {
   if (good.kind === 'stock') {
-    return 'Yours. It is in your vault.';
+    return "Yours. It's in your vault.";
   }
   return good.kind === 'barter'
-    ? 'Done! It is in your vault, and what you gave me goes on my shelves.'
+    ? "Done! It's in your vault, and what you gave me goes on my shelves."
     : 'Paid. The extra column is yours for the coming raid.';
 }

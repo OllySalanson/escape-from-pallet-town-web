@@ -897,9 +897,9 @@ const LIBRARY_DESK: GridPosition = { x: 6, y: 3 };
 
 /** What the librarian says when spoken to across her desk. */
 export const LIBRARIAN_LINES: readonly string[] = [
-  `Welcome to the ${GREAT_LIBRARY_NAME}. Every book here teaches one part of the harbour, and more are being written.`,
-  resolveBookText('Face a lectern and press {key:interact} to read its book. Turn the pages with {key:walk}, or click either page.'),
-  'Nothing here is lent out, so read as often as you like.',
+  `Welcome to the ${GREAT_LIBRARY_NAME}. Each book here is about one part of the harbour, and I've more on order.`,
+  resolveBookText("Step up to a lectern and have a read. {key:walk} turn the pages, or just click the one you want."),
+  "Nothing's lent out, so read as often as you like.",
 ];
 
 /**

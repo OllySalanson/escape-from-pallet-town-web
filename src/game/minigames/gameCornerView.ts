@@ -15,7 +15,7 @@ import { Pokemon } from '../pokemon/Pokemon';
 import { EVOLUTIONS } from '../pokemon/evolution';
 import { getSpeciesById } from '../pokemon/species';
 import { MAX_JUMPERS, type JumpType } from './pokemonJump';
-import { PRIZE_WINDOW_NOTE } from './gameCornerTalk';
+import { cabinetRates, PRIZE_WINDOW_NOTE } from './gameCornerTalk';
 import {
   payoutWords,
   prizeItemId,
@@ -115,6 +115,7 @@ export function jumpTeamMarkup(state: JumpTeamState): string {
     lines: [
       ...last,
       `<small class="px-wrap">${number(state.tickets)} tickets · best ${number(state.best)}. One key jumps everyone on the ground; a team of one kind lands together.</small>`,
+      `<small class="px-wrap">${cabinetRates('pokemon-jump')}</small>`,
     ],
     actions: `<button class="px-window px-button" data-close data-help="Back to the arcade.">Done</button>${play}`,
   })}</main>`;
@@ -330,6 +331,7 @@ export function berryTeamMarkup(state: BerryTeamState): string {
     lines: [
       ...(state.last ? resultLines(state.last) : []),
       `<small class="px-wrap">${number(state.tickets)} tickets · best ${number(state.best)}. Blue 10, green 30, gold 50; every one that lands costs 50.</small>`,
+      `<small class="px-wrap">${cabinetRates('berry-picking')}</small>`,
     ],
     actions: `<button class="px-window px-button" data-close data-help="Back to the arcade.">Done</button>${play}`,
   })}</main>`;

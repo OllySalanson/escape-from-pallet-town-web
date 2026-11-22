@@ -194,7 +194,7 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     // Her Goldeen from the show, then Cerulean's own water. Not her Staryu: it
     // takes a Water Stone, which no FireRed trainer has given a level here yet.
     escorts: ['goldeen', 'horsea', 'krabby', 'tentacool', 'seel'],
-    caught: ['MISTY: "Got you! Whatever\'s in that pack is mine now."', 'MISTY: "My policy is an all-out offensive!"'],
+    caught: ['MISTY: "Got you! Don\'t you dare ignore me - I\'ll take that pack!"', 'MISTY: "My policy is an all-out offensive!"'],
     getaway: 'MISTY: "Ugh! Get back here, you little shrimp!"',
     defeat: 'Wow, you\'re too much! ...Fine. Go on, get out of here.',
     hall: {
@@ -268,7 +268,7 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     // Saffron's Silph Porygon. Not her Kadabra (no move until 16) nor her
     // Mr. Mime (only Barrier at the floor), because an escort can hurt.
     escorts: ['slowpoke', 'jynx', 'gastly', 'venonat', 'porygon'],
-    caught: ['SABRINA: "I saw what you found. It was always mine."', 'SABRINA: "I foresaw this. I foresaw how it ends."'],
+    caught: ['SABRINA: "Everything you found, I saw first. It is mine."', 'SABRINA: "I foresaw this. I foresaw how it ends."'],
     getaway: 'SABRINA: "I did not foresee that. How interesting."',
     defeat: 'This loss shocks me... Yet somehow I saw it coming.',
     hall: {
