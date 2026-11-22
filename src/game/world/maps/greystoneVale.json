@@ -10230,9 +10230,9 @@
    "look": "gym-guide",
    "facing": "right",
    "lines": [
-    "Yo! Champ in the making! MISTY holds the jetty and the reed trail, the two ways into the Coast.",
-    "She makes it rain, and in the rain her Horsea moves first. Water hits harder and Fire goes soft.",
-    "Bring Electric or Grass. And a Psyduck: while one is out, the weather goes still.",
+    "Yo, champ! MISTY holds the jetty and the reed trail into the Coast. In her rain, HORSEA moves first.",
+    "Water hits harder in it and Fire goes soft. Bring Electric or Grass, and a Psyduck to still the weather.",
+    "PIKACHU play in PINE HOLLOW's glade. ODDISH and BELLSPROUT stand in REEDMERE. Walk up, press SPACE and catch one!",
     "Beat her and both ways open for good, and the CASCADE BADGE is yours."
    ],
    "afterBeating": [
@@ -17126,6 +17126,7 @@
    "x": 248,
    "y": 106,
    "species": "pikachu",
+   "level": 8,
    "beat": {
     "everyMs": 1200,
     "roam": [
@@ -17520,7 +17521,8 @@
   {
    "x": 214,
    "y": 132,
-   "species": "oddish"
+   "species": "oddish",
+   "level": 8
   },
   {
    "x": 216,
@@ -17609,6 +17611,7 @@
    "x": 236,
    "y": 159,
    "species": "oddish",
+   "level": 8,
    "beat": {
     "everyMs": 3100,
     "roam": [
@@ -17934,7 +17937,8 @@
   {
    "x": 72,
    "y": 206,
-   "species": "oddish"
+   "species": "oddish",
+   "level": 7
   },
   {
    "x": 104,
@@ -18661,6 +18665,7 @@
    "x": 293,
    "y": 101,
    "species": "pikachu",
+   "level": 11,
    "beat": {
     "everyMs": 1500,
     "roam": [
@@ -18792,7 +18797,8 @@
   {
    "x": 265,
    "y": 75,
-   "species": "oddish"
+   "species": "oddish",
+   "level": 11
   },
   {
    "x": 312,
@@ -19331,7 +19337,8 @@
   {
    "x": 301,
    "y": 212,
-   "species": "bellsprout"
+   "species": "bellsprout",
+   "level": 15
   },
   {
    "x": 298,
@@ -19357,7 +19364,8 @@
   {
    "x": 267,
    "y": 220,
-   "species": "oddish"
+   "species": "oddish",
+   "level": 15
   },
   {
    "x": 7,
@@ -19721,7 +19729,8 @@
   {
    "x": 370,
    "y": 118,
-   "species": "oddish"
+   "species": "oddish",
+   "level": 11
   },
   {
    "x": 326,

@@ -356,7 +356,7 @@ export function tanglewood(): MapcraftResult {
         ...life.people,
       ],
       pokemon: [
-        { x: 22, y: 4, species: 'oddish' },
+        { x: 22, y: 4, species: 'oddish', level: 8 },
         // The lost picnic: a Drowzee dozes by the bench all day, and after dark
         // the Hypno it will be one day stands over it
         // (`world/secrets.ts`, THE LOST PICNIC). Both at the back of the glade,
@@ -375,7 +375,7 @@ export function tanglewood(): MapcraftResult {
         { x: 36, y: 17, species: 'pidgey', beat: { everyMs: 1500, roam: [[1, 0]] } },
         // The shrine's guest: it comes to the stones and nobody has said it may not.
         { x: 45, y: 30, species: 'clefairy', level: 9 },
-        { x: 44, y: 31, species: 'oddish', beat: { everyMs: 3100, roam: [[1, 0]] } },
+        { x: 44, y: 31, species: 'oddish', level: 8, beat: { everyMs: 3100, roam: [[1, 0]] } },
         // Under the cave mouth.
         { x: 48, y: 23, species: 'zubat', beat: { everyMs: 1200, roam: [[0, -1]] } },
         { x: 49, y: 27, species: 'geodude', level: 9 },

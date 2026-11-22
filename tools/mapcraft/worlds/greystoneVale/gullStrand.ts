@@ -420,9 +420,13 @@ function withInsides(file: MapFile): MapFile {
       look: 'gym-guide',
       facing: 'right',
       lines: [
-        'Yo! Champ in the making! MISTY holds the jetty and the reed trail, the two ways into the Coast.',
-        'She makes it rain, and in the rain her Horsea moves first. Water hits harder and Fire goes soft.',
-        'Bring Electric or Grass. And a Psyduck: while one is out, the weather goes still.',
+        // Four boxes at most, so the rain, the counters and where they live
+        // share them: the newcomers who were told only the types quit not
+        // knowing which Pokémon those were or where they lived (AI playtests
+        // 3 and 5, 22 Nov 2026).
+        'Yo, champ! MISTY holds the jetty and the reed trail into the Coast. In her rain, HORSEA moves first.',
+        'Water hits harder in it and Fire goes soft. Bring Electric or Grass, and a Psyduck to still the weather.',
+        "PIKACHU play in PINE HOLLOW's glade. ODDISH and BELLSPROUT stand in REEDMERE. Walk up, press SPACE and catch one!",
         'Beat her and both ways open for good, and the CASCADE BADGE is yours.',
       ],
       // Once she is beaten, this raid or before, he says so (`linesSpoken`).

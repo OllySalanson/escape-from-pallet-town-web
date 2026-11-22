@@ -125,6 +125,7 @@ export const VALE_QUARTERS: readonly ValeQuarter[] = [
       advice: [
         'Next gym: CERULEAN GYM on GULL STRAND. MISTY holds THE COAST.',
         'Her Water types swim fast in her rain. Electric and Grass hit hard!',
+        'Catch PIKACHU in PINE HOLLOW, ODDISH or BELLSPROUT in REEDMERE!',
       ],
       practice: {
         offer: 'MISTY: "Try my gym team? Same Pokémon, same rain, no stakes."',

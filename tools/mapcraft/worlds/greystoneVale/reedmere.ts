@@ -379,7 +379,7 @@ export function reedmere(): MapcraftResult {
         { x: 29, y: 13, species: 'psyduck', beat: { everyMs: 2700, roam: [[0, -1]] } },
         // What the reeds are full of, standing where a raid wading them meets it.
         { x: 24, y: 19, species: 'venonat', level: 8 },
-        { x: 8, y: 14, species: 'oddish' },
+        { x: 8, y: 14, species: 'oddish', level: 7 },
         { x: 40, y: 18, species: 'venonat', beat: { everyMs: 2100, roam: [[0, 1]] } },
         // Pond Boy's Poliwag, and the Drain's Slowpoke, who has not moved since the Drain was dug.
         { x: 56, y: 11, species: 'poliwag', beat: { everyMs: 1900, roam: [[-1, 0]] } },
