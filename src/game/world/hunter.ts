@@ -140,27 +140,32 @@ const species = (id: string): PokemonBase => {
  *   hits it hard is a starter lottery: a Pidgey a level under a Lv 10
  *   Bulbasaur wins every time, and against the Charmander and the Squirtle
  *   almost never. Each rival leads with their own Pokemon (`hunters.ts` says
- *   which and why), chosen from the ones that measure fair to all three, and
- *   the escorts behind it - Rattata, then Jigglypuff and Meowth - cover nobody
- *   and check nobody; Pidgey, Pikachu and Spearow only arrive in a party big
- *   enough to answer a type.
+ *   which and why), chosen from the ones that measure fair to all three. The
+ *   escorts behind it are the rival's own and typed like them (the captain,
+ *   22 Nov 2026), because they never meet a lone starter: only a party of
+ *   two or more, which already has a second Pokemon to answer a type with.
  * - **The team evolves with its level** (`hunterSpeciesAt`), the captain's
  *   answer to playtest 33: a team that stayed first stages fielded a Rattata
  *   at 39 against a Charizard, so every evolved party beat even the enraged
  *   hunter 99-100% and the enrage stopped being one by mid-game.
  * - **Every rung sits below you.** Measured at each offset, all five rivals
- *   together, re-measured once this game took FireRed's own stat and damage
- *   formulas and Koga and Sabrina took the leads `hunters.ts` gives them (the
- *   table at the Unity formula's half-scale stats, in brackets):
+ *   together, re-measured once each rival took their own escorts (the captain,
+ *   22 Nov 2026; the table with the shared Rattata-led escorts, in brackets):
  *
  * | rung            | offset | early parties: wins (mean / worst), HP left | late parties: wins, HP left        |
  * | --------------- | ------ | ------------------------------------------- | ---------------------------------- |
- * | 1: 0-120s       | -4     | 100% / 98%, 84% (100% / 97%, 80%)           | 93% / 63%, 82% (99% / 96%, 81%)    |
- * | 2: 120-180s     | -3     | 100% / 96%, 80% (99% / 95%, 76%)            | 91% / 54%, 79% (100% / 98%, 78%)   |
- * | 3: 180-240s     | -2     | 99% / 82%, 73% (98% / 81%, 69%)             | 92% / 68%, 68% (93% / 59%, 68%)    |
- * | 4: 240s-end     | -1     | 95% / 63%, 64% (95% / 69%, 62%)             | 90% / 64%, 64% (91% / 51%, 64%)    |
- * | at your level   | 0      | 79% / 1%, 55% (85% / 36%, 57%)              | 89% / 46%, 56% (89% / 52%, 57%)    |
- * | enraged         | +3     | 41% / 0%, 45% (48% / 0%, 49%)               | 73% / 1%, 45% (77% / 17%, 47%)     |
+ * | 1: 0-120s       | -4     | 100% / 98%, 84% (100% / 98%, 84%)           | 94% / 46%, 76% (93% / 63%, 82%)    |
+ * | 2: 120-180s     | -3     | 100% / 96%, 80% (100% / 96%, 80%)           | 95% / 70%, 72% (91% / 54%, 79%)    |
+ * | 3: 180-240s     | -2     | 99% / 82%, 72% (99% / 82%, 73%)             | 92% / 45%, 66% (92% / 68%, 68%)    |
+ * | 4: 240s-end     | -1     | 95% / 63%, 64% (95% / 63%, 64%)             | 91% / 40%, 62% (90% / 64%, 64%)    |
+ * | at your level   | 0      | 79% / 1%, 55% (79% / 1%, 55%)               | 84% / 19%, 55% (89% / 46%, 56%)    |
+ * | enraged         | +3     | 43% / 0%, 46% (41% / 0%, 45%)               | 63% / 0%, 43% (73% / 1%, 45%)      |
+ *
+ * Typed escorts moved only the late parties, and only where a type now lands:
+ * LT. SURGE's Pikachu against a team with a Pidgey in it is the worst late
+ * cell (40% on rung 4), KOGA's Ekans behind a Lv 16 Venonat against six at 20
+ * is the first rung's (46%; a Koffing or Grimer there was 10%), and the
+ * enrage against late teams is harder, which is what the enrage is for.
  *
  * The means held. FireRed's scale spreads the species apart where the old one
  * squeezed them together, so the worst cells are the pairings that FireRed
@@ -196,36 +201,20 @@ export const HUNTER_TIERS = [
 ] as const;
 
 /**
- * Who follows the rival's own lead, in order: a team of N is the signature
- * and the first N - 1 of these, skipping the signature's own line should
- * one of them ever lead (none does today). The first three are
- * Normal for the reason above; the rest arrive only against a party of four or
- * more, which already has the types to meet them. All first stages, because
- * `hunterSpeciesAt` evolves each to the level it is fielded at.
- */
-export const HUNTER_ROSTER: readonly PokemonBase[] = [
-  'rattata',
-  'jigglypuff',
-  'meowth',
-  'pidgey',
-  'pikachu',
-  'spearow',
-].map(species);
-
-/**
  * The level a hunter's Pokemon takes an evolution that FireRed does not give
  * a level - a stone - at: the lowest level at which any FireRed trainer
  * fields the evolved form (pret/pokefirered `src/data/trainer_parties.h` at
- * 037335f: Lt. Surge's own Raichu at 24, Beauty Grace's Wigglytuff at 29). A
+ * 037335f: Lt. Surge's own Raichu at 24). A
  * trainer's team is the game's own answer to "when does somebody who could
  * have used the stone have used it", so it is the number taken rather than one
  * chosen. A stone evolution with no row is never taken: Blue's Eevee is the
- * one, because no FireRed trainer fields an Eeveelution. `hunter.test.ts`
- * holds the table to exactly the stone evolutions a hunter line has.
+ * one, because no FireRed trainer fields an Eeveelution. A trade evolution
+ * is never taken either - a hunter trades with nobody - so Sabrina's Haunter
+ * and Lt. Surge's Graveler stay as they are. `hunter.test.ts` holds the table
+ * to exactly the stone evolutions a hunter line has.
  */
 export const HUNTER_STONE_EVOLUTION_LEVELS: Readonly<Record<string, number>> = {
   raichu: 24,
-  wigglytuff: 29,
 };
 
 /**
@@ -257,10 +246,15 @@ export function hunterSpeciesAt(firstStage: PokemonBase, level: number): Pokemon
 const sameLine = (a: PokemonBase, b: PokemonBase): boolean =>
   a.id === b.id || EVOLUTIONS.some((rule) => (rule.from === a.id && rule.to === b.id) || (rule.from === b.id && rule.to === a.id));
 
-/** A rival's team before levels: their signature, then the shared escorts. */
+/**
+ * A rival's team before levels: their signature, then their own escorts
+ * (`HunterRival.escorts`), skipping the signature's own line should one of
+ * them ever be it (none is today).
+ */
 export function hunterLineupFor(rivalId: HunterRivalId): readonly PokemonBase[] {
-  const signature = species(hunterRival(rivalId).signature);
-  return [signature, ...HUNTER_ROSTER.filter((escort) => !sameLine(escort, signature))];
+  const rival = hunterRival(rivalId);
+  const signature = species(rival.signature);
+  return [signature, ...rival.escorts.map(species).filter((escort) => !sameLine(escort, signature))];
 }
 
 /** The lowest level the hunter fields, which is what a Lv 5 starter meets on rung 1. */

@@ -20,7 +20,12 @@ import { valeGyms } from './valeQuarters';
  * its `signature`: the captain, 2026-10-11, answering playtest 33 - "each
  * rival leads with a signature Pokemon instead of the shared Rattata", because
  * five rivals who all sent out the same Rattata were one hunter with five
- * names. The signature leads; the shared escorts in `HUNTER_ROSTER` follow it.
+ * names. The signature leads, and the rival's own `escorts` follow it (the
+ * captain, 22 Nov 2026: "give each hunter its own type-true second Pokemon",
+ * because a shared Raticate behind every lead was the same enemy in a
+ * different hat - the 20 Nov playtest met it behind BLUE, LT. SURGE and MISTY
+ * alike). An escort is typed like the person, which a signature may not be:
+ * it never meets a lone starter, only the party's second strongest and on.
  *
  * A signature has to be two things, and the second is measured
  * (`tools/hunter/measure.mts`): somebody's own Pokemon, and no starter's
@@ -104,6 +109,15 @@ export interface HunterRival {
    */
   readonly signature: string;
   /**
+   * The first stages that follow the signature, in order: a team of N is the
+   * signature and the first N - 1 of these. Five, so a full party of six is
+   * met one for one. Each is the person's own type, and the first is one
+   * they field in FireRed or another Kanto game where there is one. All of
+   * them can attack by Lv 8, and none needs a stone
+   * `HUNTER_STONE_EVOLUTION_LEVELS` has no row for (`hunter.test.ts`).
+   */
+  readonly escorts: readonly string[];
+  /**
    * Said as they catch you, before the fight: always two lines, like the beat
    * it replaced, and the first of them is about your loot. Nothing else a rival
    * says is said out loud until then - the arrival is a red glow at the screen's
@@ -152,6 +166,10 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     personality: 'Your rival. Cocky, always one step ahead in his own head, never lets you forget it.',
     temperament: 'ordinary',
     signature: 'eevee',
+    // FireRed's own: his Rattata at Cerulean (the only hunter with one now)
+    // and his Pidgey from Route 22, then the other birds and the Normal types a
+    // rival with no type of his own fields.
+    escorts: ['rattata', 'pidgey', 'spearow', 'doduo', 'meowth'],
     caught: ['BLUE: "Whatever you found, loser, it\'s mine!"', 'BLUE: "Hand it over. Smell ya later!"'],
     getaway: 'BLUE: "Run, then! I\'ll catch you before the clock does!"',
     defeat: 'What?! I was just warming up... Smell ya later!',
@@ -173,6 +191,9 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     personality: 'The tomboyish mermaid of Cerulean. Quick temper, all-out offence, hates being ignored.',
     temperament: 'ordinary',
     signature: 'psyduck',
+    // Her Goldeen from the show, then Cerulean's own water. Not her Staryu: it
+    // takes a Water Stone, which no FireRed trainer has given a level here yet.
+    escorts: ['goldeen', 'horsea', 'krabby', 'tentacool', 'seel'],
     caught: ['MISTY: "Got you! Whatever\'s in that pack is mine now."', 'MISTY: "My policy is an all-out offensive!"'],
     getaway: 'MISTY: "Ugh! Get back here, you little shrimp!"',
     defeat: 'Wow, you\'re too much! ...Fine. Go on, get out of here.',
@@ -194,6 +215,9 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     personality: 'The Lightning American. Loud, a soldier first, calls everyone kid, respects a fighter.',
     temperament: 'ordinary',
     signature: 'voltorb',
+    // His FireRed Pikachu (a Raichu at 24, as his own is), then the Power
+    // Plant's Electric types, then the Ground types an army man digs in with.
+    escorts: ['pikachu', 'magnemite', 'electabuzz', 'diglett', 'geodude'],
     caught: ['LT. SURGE: "Caught you red-handed, kid! That loot\'s mine!"', 'LT. SURGE: "You won\'t live long in combat!"'],
     getaway: 'LT. SURGE: "Tactical retreat, huh? Smart move, soldier!"',
     defeat: 'Whoa! You\'re the real deal, kid! Dismissed!',
@@ -215,6 +239,10 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     personality: 'A ninja master of poison. Patient, theatrical, laughs before he strikes.',
     temperament: 'ordinary',
     signature: 'venonat',
+    // Fuchsia's poison: Ekans first, then his FireRed Koffing. Koffing or
+    // Grimer second measured a wall against a team of six at 20 on the first
+    // rung (10% where Rattata was 67%, `tools/hunter/measure.mts`); Ekans 50%.
+    escorts: ['ekans', 'koffing', 'grimer', 'zubat', 'paras'],
     caught: ['KOGA: "Fwahahaha! All you have gathered, I shall take."', 'KOGA: "Despair to the creeping horror of poison!"'],
     getaway: 'KOGA: "Hmph. You slip away like smoke... for now."',
     defeat: 'Humph! You have proven your worth. Go, before I change my mind.',
@@ -236,6 +264,10 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     personality: 'The psychic of Saffron. Calm, eerie, already knows where you are going.',
     temperament: 'ordinary',
     signature: 'drowzee',
+    // Psychic first, then the show's Haunter, her FireRed Venomoth and
+    // Saffron's Silph Porygon. Not her Kadabra (no move until 16) nor her
+    // Mr. Mime (only Barrier at the floor), because an escort can hurt.
+    escorts: ['slowpoke', 'jynx', 'gastly', 'venonat', 'porygon'],
     caught: ['SABRINA: "I saw what you found. It was always mine."', 'SABRINA: "I foresaw this. I foresaw how it ends."'],
     getaway: 'SABRINA: "I did not foresee that. How interesting."',
     defeat: 'This loss shocks me... Yet somehow I saw it coming.',

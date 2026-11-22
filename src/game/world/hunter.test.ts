@@ -8,7 +8,8 @@ import { RUN_INSERTIONS } from '../run/runGeneration';
 import { createActiveRunSession } from '../run/RunSession';
 import { WORLD_MAPS, type WorldMapId, getWorldMap } from '../worldMap';
 import { extractionPointsOn } from './extractionPoints';
-import { FIRST_HUNTER_RIVAL, HUNTER_RIVALS } from './hunters';
+import { FIRST_HUNTER_RIVAL, HUNTER_RIVALS, type HunterRivalId } from './hunters';
+import { PokemonType } from '../pokemon/PokemonType';
 import { partyOf, trainerMeasure } from './trainerMeasure';
 import {
   collisionBlocker,
@@ -34,7 +35,6 @@ import {
   DEFAULT_HUNTER_TUNING,
   HUNTER_IDLE_STEP_MS,
   HUNTER_MINIMUM_LEVEL,
-  HUNTER_ROSTER,
   HUNTER_STONE_EVOLUTION_LEVELS,
   HUNTER_TIERS,
   type HunterState,
@@ -452,7 +452,7 @@ describe('hunterTeamFor', () => {
    * The captain, 2026-10-11 (playtest 33): each rival leads with a signature
    * Pokemon instead of the shared Rattata, and the rest of the team follows.
    */
-  it("leads with each rival's own Pokemon, then the shared escorts, never one line twice", () => {
+  it("leads with each rival's own Pokemon, then their own escorts, never one line twice", () => {
     const leads = HUNTER_RIVALS.map((rival) => hunterLineupFor(rival.id)[0].id);
     expect(leads).toEqual(HUNTER_RIVALS.map((rival) => rival.signature));
     expect(new Set(leads).size).toBe(HUNTER_RIVALS.length);
@@ -463,11 +463,34 @@ describe('hunterTeamFor', () => {
       expect(lineup.length).toBeGreaterThanOrEqual(6);
       const families = lineup.map((species) => evolutionFamilyKey(species.id));
       expect(new Set(families).size).toBe(lineup.length);
-      expect(lineup.slice(1).every((escort) => HUNTER_ROSTER.includes(escort))).toBe(true);
+      expect(lineup.slice(1).map((escort) => escort.id)).toEqual(rival.escorts);
     }
-    // An escort is fielded once, and a lead never again behind itself.
-    expect(hunterLineupFor('lt-surge').filter((species) => species.id === 'pikachu')).toHaveLength(1);
-    expect(hunterLineupFor('lt-surge').filter((species) => species.id === 'voltorb')).toHaveLength(1);
+    // The captain, 22 Nov 2026: each hunter its own second Pokemon, typed like
+    // them. The 20 Nov playtest met the same Raticate behind BLUE, LT. SURGE
+    // and MISTY, and a water gym leader with a Raticate read as Blue's team.
+    const seconds = HUNTER_RIVALS.map((rival) => hunterLineupFor(rival.id)[1]);
+    expect(new Set(seconds.map((second) => evolutionFamilyKey(second.id))).size).toBe(HUNTER_RIVALS.length);
+    const typeOf = (id: HunterRivalId) => [hunterLineupFor(id)[1].primaryType, hunterLineupFor(id)[1].secondaryType];
+    expect(typeOf('misty')).toContain(PokemonType.Water);
+    expect(typeOf('lt-surge')).toContain(PokemonType.Electric);
+    expect(typeOf('koga')).toContain(PokemonType.Poison);
+    expect(typeOf('sabrina')).toContain(PokemonType.Psychic);
+  });
+
+  /**
+   * An escort meets the party's second strongest and on, and one that knows
+   * only Barrier or Splash is a Pokemon there for nothing. Every escort can
+   * hurt by Lv 8, which is about where FireRed's first trainers field theirs
+   * (KOGA's Ekans has only Leer until its Poison Sting at 8, and measured the
+   * fairest Poison second he has, `hunters.ts`).
+   */
+  it('fields nobody who cannot attack by Lv 8', () => {
+    const faults = HUNTER_RIVALS.flatMap((rival) =>
+      hunterLineupFor(rival.id)
+        .filter((first) => !new Pokemon(first, 8).moves.some((move) => move.base.power > 0))
+        .map((first) => `${rival.name}'s ${first.name}`),
+    );
+    expect(faults).toEqual([]);
   });
 
   it('builds the fight with the rival of this raid, led by their signature', () => {
@@ -548,21 +571,22 @@ describe('hunterSpeciesAt', () => {
   it('takes a stone at the lowest level a FireRed trainer fields the evolved form', () => {
     expect(at('pikachu', 23)).toBe('pikachu');
     expect(at('pikachu', 24)).toBe('raichu');
-    expect(at('jigglypuff', 28)).toBe('jigglypuff');
-    expect(at('jigglypuff', 29)).toBe('wigglytuff');
+    // A trade evolution is never taken: a hunter trades with nobody.
+    expect(at('gastly', 60)).toBe('haunter');
+    expect(at('geodude', 60)).toBe('graveler');
     // No FireRed trainer fields an Eeveelution, and which stone is a choice.
     expect(at('eevee', 100)).toBe('eevee');
   });
 
   /** A row with no hunter line behind it is a number nobody reads, and a stone line with no row never evolves. */
   it('holds the stone table to exactly the stone evolutions a hunter line has, bar Eevee', () => {
-    const lines = [...HUNTER_ROSTER, ...HUNTER_RIVALS.map((rival) => getSpeciesById(rival.signature)!)];
+    const lines = HUNTER_RIVALS.flatMap((rival) => hunterLineupFor(rival.id));
     const stoneSteps = new Set<string>();
     let frontier = lines.map((species) => species.id);
     while (frontier.length > 0) {
       const rules = EVOLUTIONS.filter((rule) => frontier.includes(rule.from));
       rules
-        .filter((rule) => rule.trigger.kind !== 'level' && rule.from !== 'eevee')
+        .filter((rule) => rule.trigger.kind === 'stone' && rule.from !== 'eevee')
         .forEach((rule) => stoneSteps.add(rule.to));
       frontier = rules.map((rule) => rule.to);
     }
@@ -581,8 +605,8 @@ describe('hunterSpeciesAt', () => {
     ], 'lt-surge');
     expect(team.map((member) => `${member.species.id} ${member.level}`)).toEqual([
       'electrode 35',
-      'raticate 29',
-      'wigglytuff 29',
+      'raichu 29',
+      'magnemite 29',
     ]);
   });
 });
