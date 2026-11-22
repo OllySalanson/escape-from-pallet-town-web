@@ -149,12 +149,12 @@ export const ERRANDS: readonly Errand[] = [
     // road starts from, with a Poké Mart on its forecourt.
     place: 'MILLBROOK',
     asks: [
-      'Before you go! I have a parcel waiting at the Millbrook Poké Mart.',
-      'It is somewhere in MILLBROOK. It takes 2 squares of your pack.',
+      "Before you go! A parcel for me never made it from Millbrook.",
+      "It's somewhere in MILLBROOK. It'll want 2 squares of your pack.",
     ],
     question: 'Will you bring it to me?',
-    accepted: 'Splendid! Walk out with it, and I will make it worth your while.',
-    declined: 'Not to worry. I will ask again after your next raid.',
+    accepted: "Splendid! Walk out with it, and I'll make it worth your while.",
+    declined: "Not to worry. I'll ask again after your next raid.",
     // The first line is FireRed's own, when the parcel is delivered.
     thanks: ['Ah! It’s the custom Poké Ball! I had it on order. Thank you!', 'Now, these are for you.'],
     lost: [
@@ -180,11 +180,11 @@ export const ERRANDS: readonly Errand[] = [
     place: 'ORCHARD TERRACES',
     asks: [
       'Could I ask a favour? We lent our medicine bag to the farm.',
-      'It is at ORCHARD TERRACES, and it takes 2 squares of your pack.',
+      "It's down at ORCHARD TERRACES. It'll want 2 squares of your pack.",
     ],
     question: 'Will you bring it home for us?',
     accepted: 'Thank you so much! Do come back safe.',
-    declined: 'Of course. I will ask again after your next raid.',
+    declined: "Of course. I'll ask again after your next raid.",
     thanks: [
       'Our medicine bag! Thank you so much - everything is still in it.',
       'Take these Leftovers. A Pokémon holding them heals every turn.',
@@ -212,11 +212,11 @@ export const ERRANDS: readonly Errand[] = [
     place: 'GREYSTONE PEAKS',
     asks: [
       'I left a crate of my tools at the quarry up in GREYSTONE PEAKS.',
-      'It is heavy: 4 squares of your pack, and loot you leave behind.',
+      "It's heavy: 4 squares of your pack. Something else stays behind.",
     ],
     question: 'Will you bring it back for me?',
-    accepted: 'Thanks. I will make it worth your while.',
-    declined: 'Fair enough. I will ask again after your next raid.',
+    accepted: "Thanks. There's something in it for you.",
+    declined: "Fair enough. I'll ask again after your next raid.",
     // What FireRed's Brock says as he hands TM39 over, and then which kinds can
     // read it: FireRed's table, on which none of the three starters is, so
     // Brock says so rather than letting the disc be found useless in the pack
@@ -246,14 +246,14 @@ export const ERRANDS: readonly Errand[] = [
     // Amber is old tree resin, and this is the vale's pine wood.
     place: 'PINE HOLLOW',
     asks: [
-      'There is a lump of OLD AMBER under the pines in PINE HOLLOW.',
-      'It takes 1 square of your pack. It would make my cabinet!',
+      "There's a lump of OLD AMBER under the pines in PINE HOLLOW.",
+      "It's only 1 square of your pack, and it'd make my cabinet!",
     ],
     question: 'Will you fetch it for me?',
     accepted: 'Great! Bring it back, and you get something good for it.',
-    declined: 'No problem. I will ask again after your next raid.',
+    declined: "No problem. I'll ask again after your next raid.",
     thanks: [
-      'That is it! There is something inside! It is going right on my desk.',
+      "That's it! There's something inside! It's going right on my desk.",
       'A deal is a deal. This Eevee has been with me for years. Take it.',
     ],
     lost: [
@@ -282,11 +282,11 @@ export const ERRANDS: readonly Errand[] = [
     place: 'THE WRECK',
     asks: [
       'THE WRECK was my first ship. Her log went down with her.',
-      'It is still out at THE WRECK. It takes 2 squares of your pack.',
+      "It's still out at THE WRECK. It'll want 2 squares of your pack.",
     ],
     question: 'Will you bring it home to me?',
     accepted: 'Thank you. I would know her pages anywhere.',
-    declined: 'Aye, no hurry. I will ask again after your next raid.',
+    declined: "Aye, no hurry. I'll ask again after your next raid.",
     // FireRed's captain hands over HM01 once he is feeling better.
     thanks: [
       'Her log! Every voyage, in my own hand. Thank you, truly.',

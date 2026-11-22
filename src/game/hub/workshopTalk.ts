@@ -26,7 +26,7 @@ export interface BrockQuote {
 }
 
 /** Said over a question that takes one row of the box (`errands.test.ts`). */
-export const BUILD_QUESTION = 'Build it? That is for good.';
+export const BUILD_QUESTION = "Build it? It can't come down.";
 
 /** What he says to NOT NOW. */
 export const NOT_BUILT_LINE = 'Suit yourself. The chalk will keep.';
@@ -39,7 +39,7 @@ export const BUILD_NOT_SAVED_LINE = 'It would not save, so I have not touched yo
 
 /** His word on a rung once it is up, with the thing standing behind him. */
 export function builtLine(name: string): string {
-  return `${name} is in. It stands for good.`;
+  return `${name} is in, and it's staying.`;
 }
 
 /** What he says about one rung that is still chalk. */
@@ -63,7 +63,7 @@ export function brockQuote(offer: WorkshopOffer): BrockQuote {
       ],
     };
   }
-  return { lines: [what, `That takes ${price}. You have it.`], question: BUILD_QUESTION, upgradeId: upgrade.id };
+  return { lines: [what, `That takes ${price}, and you've got it.`], question: BUILD_QUESTION, upgradeId: upgrade.id };
 }
 
 /** What he says about the bay it stands for, against this vault. */

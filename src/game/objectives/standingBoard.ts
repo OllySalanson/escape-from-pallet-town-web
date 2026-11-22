@@ -811,7 +811,7 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
       })),
       briefing: [
         `${SURVEY_STAKES} stakes, in any order: ${regions(ground.map, stakes)}.`,
-        'No two are close, so the raid is a circuit rather than an errand.',
+        "They're spread out, so it's the long way round.",
         'Any exit banks it, once all of them are read.',
       ],
       deploymentBriefing: `${SURVEY_STAKES} survey stakes ${where}: ${regions(ground.map, stakes)}.`,

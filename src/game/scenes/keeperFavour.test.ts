@@ -74,7 +74,7 @@ class MemoryStorage implements StorageLike {
 
 const BROCK = errandOf('workshop')!;
 /** What he says next with nothing in the vault: the first rung on his ladder, and what it wants. */
-const NEXT_RUNG = 'Radio mast. The hunter’s team, on the raid HUD.';
+const NEXT_RUNG = 'Radio mast. You hear the hunter’s team on the radio, before it reaches you.';
 
 /**
  * Brock's workshop with the player on its mat: a save that has opened his

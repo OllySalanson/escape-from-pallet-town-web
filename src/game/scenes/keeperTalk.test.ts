@@ -316,7 +316,7 @@ describe('Brock, from the mat', () => {
     const after = manager.load()!;
     expect(after.raidProgress.workshopUpgrades).toEqual(['recovery-bay-1']);
     expect(after.stash.itemCount('linen-roll')).toBe(0);
-    expect(brock.went[0].said?.[0]).toBe('Healing machine I is in. It stands for good.');
+    expect(brock.went[0].said?.[0]).toBe("Healing machine I is in, and it's staying.");
   });
 });
 

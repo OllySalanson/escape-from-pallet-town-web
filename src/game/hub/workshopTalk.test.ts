@@ -16,7 +16,7 @@ describe('Brock on a rung', () => {
   it('says what it does and what it takes, and asks only if it can be paid for', () => {
     const quote = brockQuoteFor(vaultHolding({ 'parts-crate': 4 }), [], 'secure-locker-1');
     expect(quote.lines[0]).toBe('Secure locker I. One more column of the secure container.');
-    expect(quote.lines[1]).toBe('That takes 4 Parts crates. You have it.');
+    expect(quote.lines[1]).toBe("That takes 4 Parts crates, and you've got it.");
     expect(quote.question).toBe(BUILD_QUESTION);
     expect(quote.upgradeId).toBe('secure-locker-1');
   });
