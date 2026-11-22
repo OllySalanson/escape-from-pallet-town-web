@@ -10,7 +10,7 @@ import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { pixelScreen, pixelTag } from '../ui/pixelUi';
 import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
 import { pickerEntries, wirePickerFind } from '../ui/boxPicker';
-import { LAST_ONE_STAYS, teamBody, teamRowHelp } from '../ui/teamView';
+import { LAST_ONE_STAYS, leadLine, TEAM_HINTS, teamBody, teamRowHelp } from '../ui/teamView';
 
 export interface TeamSceneData {
   /** Only resume the harbour when this screen paused it. */
@@ -117,7 +117,7 @@ export class TeamScene extends Phaser.Scene implements ProvidesFeedbackContext {
         back: { label: 'Close', attribute: 'data-close' },
         aside: pixelTag(`${going} of ${MAX_RUN_PARTY}`, going > 0 ? 'good' : 'risk'),
         body,
-        hints: 'ARROWS move · ENTER take or leave · FIND a name · P close',
+        hints: TEAM_HINTS,
         ...(status ? { status } : {}),
       }),
     );
@@ -146,9 +146,51 @@ export class TeamScene extends Phaser.Scene implements ProvidesFeedbackContext {
       this.close();
       return;
     }
+    // L puts the one under the cursor in front - never while a name is being typed into FIND.
+    const typing = event.target instanceof HTMLInputElement;
+    const under = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('[data-member]')?.dataset.member;
+    if (!typing && !event.repeat && event.key.toLowerCase() === 'l' && under) {
+      event.preventDefault();
+      this.lead(under);
+      return;
+    }
     if (this.overlay?.moveCursor(event.key)) {
       event.preventDefault();
     }
+  }
+
+  /** L on a slot: that one leads, written as the next raid's bench in its new order. */
+  private lead(pokemonId: string): void {
+    const game = this.game_;
+    const flow = this.flow;
+    if (!game || !flow) {
+      return;
+    }
+    const before = flow.party.map((stored) => stored.id);
+    const entry = pickerEntries(game.stash).find((one) => one.id === pokemonId);
+    if (!entry || before[0] === pokemonId) {
+      return;
+    }
+    const refusal = flow.leadWith(pokemonId);
+    if (refusal) {
+      audioManager.play('denied');
+      this.status = refusal;
+      this.render([`[data-member="${pokemonId}"]`]);
+      return;
+    }
+    if (!this.saveManager.chooseBench(flow.party.map((stored) => stored.id))) {
+      // Not written: the old lead goes back in front, so the panel never shows a lead the save does not hold.
+      flow.leadWith(before[0]);
+      audioManager.play('denied');
+      this.status = 'The team could not be saved.';
+      this.render([`[data-member="${pokemonId}"]`]);
+      return;
+    }
+    this.game_ = this.saveManager.load() ?? game;
+    audioManager.play('select');
+    recordAction(`Put ${entry.pokemon.name} in front`);
+    this.status = leadLine(entry.pokemon.name);
+    this.render([`[data-member="${pokemonId}"]`]);
   }
 
   /** ENTER on a row: in or out of the team, written as the next raid's bench. */

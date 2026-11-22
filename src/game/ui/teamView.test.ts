@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Pokemon, getSpeciesById } from '../pokemon';
 import { Stash } from '../stash';
 import { pickerEntries } from './boxPicker';
-import { teamBody, teamRows } from './teamView';
+import { leadLine, TEAM_HINTS, teamBody, teamRowHelp, teamRows } from './teamView';
 
 const stashOf = (...members: readonly (readonly [string, number])[]): Stash => {
   const stash = new Stash();
@@ -58,5 +58,16 @@ describe('YOUR TEAM', () => {
     expect(html).toContain('6 of 6');
     expect(html).toMatch(/data-member="diglett-6"[^>]*aria-disabled="true"/);
     expect(html).toContain('The team is full (6)');
+  });
+});
+
+describe("YOUR TEAM's lead", () => {
+  it('says L puts one of the team in front, on every slot but the lead, and on the hint bar', () => {
+    const stash = stashOf(['charmander', 10], ['squirtle', 9]);
+    const [first, second] = pickerEntries(stash);
+    expect(teamRowHelp(first, true, true, 2)).toBe(`${first.pokemon.name} leads. ENTER leaves it at home.`);
+    expect(teamRowHelp(second, true, false, 2)).toBe(`${second.pokemon.name} is going. ENTER leaves it at home, L puts it in front.`);
+    expect(TEAM_HINTS).toContain('L lead');
+    expect(leadLine('IVYSAUR')).toBe('IVYSAUR leads now: out first in every fight.');
   });
 });

@@ -56,6 +56,14 @@ export function teamRows(state: TeamViewState): { readonly team: readonly Picker
   return { team, boxes: pickerOrder(state.entries.filter((entry) => !going.has(entry.id)), ABLE_TO_FIGHT) };
 }
 
+/** The keys the panel answers, on its hint bar: L is the lead (`TeamScene.lead`). */
+export const TEAM_HINTS = 'ARROWS move · ENTER take or leave · L lead · FIND a name · P close';
+
+/** Said once a Pokémon is put in front. */
+export function leadLine(name: string): string {
+  return `${name} leads now: out first in every fight.`;
+}
+
 /** Said when ENTER would leave the team empty: nobody is ever left with no team (playtest wave 3, finding 11). */
 export const LAST_ONE_STAYS = 'Somebody has to go. Take another first.';
 
@@ -66,7 +74,7 @@ export function teamRowHelp(entry: PickerEntry, going: boolean, lead: boolean, s
     return `${name} is the whole team. Take another first.`;
   }
   if (going) {
-    return `${name} ${lead ? 'leads' : 'is going'}. ENTER leaves it at home.`;
+    return lead ? `${name} leads. ENTER leaves it at home.` : `${name} is going. ENTER leaves it at home, L puts it in front.`;
   }
   if (entry.pokemon.isFainted) {
     return faintedRefusal(name);
