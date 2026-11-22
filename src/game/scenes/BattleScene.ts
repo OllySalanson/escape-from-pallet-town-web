@@ -497,6 +497,9 @@ interface CombatantPlate {
 /** How a slot is keyed on screen, which is the only thing the map needs. */
 const plateKey = (side: BattleSide, slot: number): string => `${side}${slot}`;
 
+/** How long a catch's shake line ("1...") stands before it moves on by itself: the wobble, and a beat. */
+export const CATCH_SHAKE_LINE_MS = 700;
+
 export class BattleScene extends Phaser.Scene {
   private state!: BattleState;
   private dialog!: DialogBox;
@@ -524,6 +527,8 @@ export class BattleScene extends Phaser.Scene {
   private commandTexts: Phaser.GameObjects.Text[] = [];
   private moveGuidanceTexts: Phaser.GameObjects.Text[] = [];
   private mode: CommandMode = 'main';
+  /** Combat lines put up this fight, so a timer set for one line never moves on another. */
+  private combatLinesShown = 0;
   private selectedCommand = 0;
   /**
    * Where the cursor was left, for the length of one battle, as FireRed keeps
@@ -4217,6 +4222,20 @@ export class BattleScene extends Phaser.Scene {
     this.playCries(next.cries ?? []);
     this.moveOffer = next.offerMove ?? null;
     this.dialog.showMessage(next.message);
+    this.combatLinesShown += 1;
+    if (next.event?.type === 'catch-shake') {
+      // A shake is watched, not read: FireRed's ball wobbles and the catch
+      // carries on by itself. Held for a press, "1..." stood still and a new
+      // player thought the game had frozen on their first catch (AI playtest,
+      // 20 Nov 2026). A press still moves it on sooner; the timer moves on only
+      // the line it was set for.
+      const line = this.combatLinesShown;
+      this.time.delayedCall(CATCH_SHAKE_LINE_MS, () => {
+        if (this.combatLinesShown === line && this.isPresentingCombatEvents) {
+          this.dialog.advance();
+        }
+      });
+    }
   }
 
   private advanceStatusLabel(event: BattleEvent): void {
