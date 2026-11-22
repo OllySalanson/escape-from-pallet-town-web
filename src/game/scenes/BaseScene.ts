@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { thingLine } from '../base/thingLine';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
 import {
   nextTileFromDirection,
@@ -5490,7 +5491,7 @@ export class BaseScene extends Phaser.Scene {
         return;
       }
       if (thing) {
-        this.say(thing.lines ?? [`${thing.name} - ${thing.note.toLowerCase()}.`], [target]);
+        this.say(thing.lines ?? [thingLine(thing.name, thing.note)], [target]);
       }
       return;
     }
@@ -5584,7 +5585,7 @@ export class BaseScene extends Phaser.Scene {
       (standing) => standing.at.x === target.x && standing.at.y === target.y,
     );
     if (fixture) {
-      this.say([`${fixture.name} - ${fixture.note.toLowerCase()}.`], [target]);
+      this.say([thingLine(fixture.name, fixture.note)], [target]);
       return;
     }
     // THE FIELD-MOVE COURSE's gate runs the course, and its TIME BOARD is read.
@@ -5603,7 +5604,7 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     if (landmark) {
-      this.say([`${landmark.name} - ${landmark.note.toLowerCase()}.`], [target]);
+      this.say([thingLine(landmark.name, landmark.note)], [target]);
       return;
     }
     if (this.canFishAt(target)) {

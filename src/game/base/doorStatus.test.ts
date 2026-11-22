@@ -179,6 +179,10 @@ describe("what each of the base's doors says", () => {
     expect(
       doorStatusLine(home, baseGame({ progress: { defeatedBosses: ['overlook-warden', 'pallet-mill-keeper'] } })),
     ).toMatch(/^Your things · your Pokémon · 2 (of \d+ )?badges$/);
+    // One is a badge, never "1 badges" (veteran playtest, 20 Nov 2026).
+    expect(doorStatusLine(home, baseGame({ progress: { defeatedBosses: ['overlook-warden'] } }))).toMatch(
+      /^Your things · your Pokémon · 1 (of \d+ badges|badge)$/,
+    );
   });
 
   /** The name is over the door (`home/houseName.ts`), so the line under it never says it again. */

@@ -77,7 +77,11 @@ export function boutiqueMarkup(state: BoutiqueState): string {
     `${jumps}<div class="px-list px-scroll boutique-shelves" data-shelves ${pixelColumns(COLUMN_MEASURES.wearable)}>${shelves}</div>`,
     {
       heading: shop ? 'The shelves' : 'Your clothes',
-      note: shop ? `${count} pieces` : `${count} piece${count === 1 ? '' : 's'} of ${WEARABLES.length}`,
+      // The shelves' MORE strip counts every card on them, whole looks
+      // included, so the heading counts the looks too: "209 PIECES" over
+      // "240 MORE" read as two counts that could not both be right (veteran
+      // playtest, 20 Nov 2026). The classic look is a card of its own.
+      note: shop ? `${WHOLE_LOOKS.length + 1} looks · ${count} pieces` : `${count} piece${count === 1 ? '' : 's'} of ${WEARABLES.length}`,
       className: 'boutique-shelves-window',
     },
   )}</div>${commitBar(state)}</main>`;
