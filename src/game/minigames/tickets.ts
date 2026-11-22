@@ -450,6 +450,14 @@ export function withBerriesSent(record: GameCornerRecord, source: TicketSource, 
 
 // --- THE PRIZE WINDOW ---------------------------------------------------------
 
+/**
+ * What the window says once a rumour is bought: where its slip went. "Kept with
+ * every rumour you have heard" did not say where that was, and a player found
+ * it only by walking to Oak's Lab (AI playtest, 20 Nov 2026). Oak's board pins
+ * every rumour heard (`base/labBoard.ts`, `rumourNotices`).
+ */
+export const RUMOUR_BOUGHT_LINE = 'Heard. The slip is pinned on THE BOARD in OAK’S LAB, with every rumour you have heard.';
+
 /** What a prize is: a thing for the vault, a Pokémon for the boxes, or a rumour said there and then. */
 export type PrizeGives =
   | { readonly kind: 'item'; readonly itemId: string }
