@@ -7,6 +7,7 @@ import { getSpeciesById } from '../pokemon/species';
 import { partyOf, trainerWinRate } from '../world/trainerMeasure';
 import { createRunTrainerEncounters } from '../world/trainers';
 import { MISTY_BOSS_ID } from '../world/valeQuarters';
+import { conditionHolds, raidConditions, SECRETS } from '../world/secrets';
 import { DERBY_LEVELS, derbyScore } from './derby';
 import { prizeMovesNote } from './gameCornerView';
 import {
@@ -14,6 +15,7 @@ import {
   buyPrize,
   isoWeekKey,
   prizeById,
+  prizeName,
   prizeItemId,
   DAILY_TICKET_CEILING,
   DERBY_SOURCES,
@@ -213,7 +215,28 @@ describe('the prize window', () => {
     expect(buyPrize(had, 'porygon', NOON, NOTHING_HELD)).not.toBeNull();
   });
 
-  it.each(TICKET_PRIZES.flatMap((prize) => (prize.gives.kind === 'pokemon' ? [[prize.id, prize.gives] as const] : [])))(
+  /**
+   * The one shiny on sale is a second route to what waits on a shiny lead -
+   * THE LIGHT THAT ANSWERS - for a save that never had the one-in-500 luck
+   * (the AI playtest, #35, #96, #152). It is for being seen, not for fighting.
+   */
+  it('sells one shiny, once a save, for days of tickets rather than a lucky afternoon', () => {
+    const shiny = TICKET_PRIZES.filter((prize) => prize.gives.kind === 'pokemon' && prize.gives.shiny);
+    expect(shiny.map((prize) => [prize.id, prizeName(prize), prize.once, prize.tickets])).toEqual([
+      ['shiny-magikarp', 'SHINY MAGIKARP', true, 1200],
+    ]);
+    // More than three days at the day's ceiling, less than DRATINI.
+    expect(shiny[0].tickets).toBeGreaterThan(DAILY_TICKET_CEILING * 3);
+    expect(shiny[0].tickets).toBeLessThan(prizeById('dratini')!.tickets);
+    // Bought and walked in front, it is what THE LIGHT THAT ANSWERS waits for.
+    const gives = shiny[0].gives as { speciesId: string; level: number };
+    const karp = new Pokemon(getSpeciesById(gives.speciesId)!, gives.level);
+    karp.shiny = true;
+    const light = SECRETS.find((secret) => secret.id === 'the-light-that-answers')!;
+    expect(light.when.every((condition) => conditionHolds(condition, raidConditions(new Date(), [karp], [], false, [])))).toBe(true);
+  });
+
+  it.each(TICKET_PRIZES.flatMap((prize) => (prize.gives.kind === 'pokemon' && !prize.gives.shiny ? [[prize.id, prize.gives] as const] : [])))(
     '%s is FireRed’s, can fight from the day it is had, and is a partner against Misty, never the answer alone',
     (_id, gives) => {
       // FireRed's Celadon prize room sells these (pret/pokefirered,

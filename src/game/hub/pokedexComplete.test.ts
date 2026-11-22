@@ -134,7 +134,8 @@ describe('the Pokédex, on the maps a player is offered', () => {
     expect(sourceLines(sourcesOf('lickitung'))).toEqual(['One of the vale’s secrets', 'The TRADER gives one for a GOLDUCK']);
     expect(sourceLines(sourcesOf('mew'))).toEqual(['A legend, standing in THE CAIRN']);
     expect(sourceLines(sourcesOf('bulbasaur')).at(-1)).toBe('One of the three on Professor Oak’s table');
-    expect(sourceLines(sourcesOf('magikarp')).at(-1)).toBe('Fished from rivers and ponds with any rod');
+    // And the gold one the window sells (`minigames/tickets.ts`, `shiny-magikarp`).
+    expect(sourceLines(sourcesOf('magikarp')).slice(-2)).toEqual(['Fished from rivers and ponds with any rod', 'A prize at THE GAME CORNER']);
     // A kind in dozens of places names three and counts the rest.
     expect(sourceLines(sourcesOf('pidgey'))[0]).toMatch(/^Wild in [^,]+, [^,]+, .+ and \d+ more places$/);
     expect(sourceLines(sourcesOf('clefairy'))[0]).toMatch(/^Wild at night in /);

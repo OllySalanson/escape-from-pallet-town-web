@@ -2983,6 +2983,11 @@ describe("THE GAME CORNER's tickets, kept at home", () => {
     expect(reloaded.raidProgress.pokedexOwned).toContain(147);
     expect(saves.buyTicketPrize('dratini', NEXT_DAY)).toBeNull();
 
+    // The one shiny on sale comes home shiny, and stays so in the box.
+    expect(saves.buyTicketPrize('shiny-magikarp', NOON)?.pokemon?.shiny).toBe(true);
+    const boxed = new SaveManager(storage).load()!.stash.listPokemon().find((stored) => stored.pokemon.base.id === 'magikarp');
+    expect(boxed?.pokemon.shiny).toBe(true);
+
     const rumour = saves.buyTicketPrize('rumour', NOON);
     expect(rumour?.rumour?.source).toBe('mill');
     expect(new SaveManager(storage).load()?.raidProgress.rumoursHeard).toEqual([rumour!.rumour!.id]);
