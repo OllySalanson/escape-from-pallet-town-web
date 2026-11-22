@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PanelLean, sidePanelCover, type LeaningCamera } from './sidePanel';
+import { bodySpills, PanelLean, sidePanelCover, type LeaningCamera } from './sidePanel';
 
 /** A camera that remembers what it was last told. */
 function camera(width = 1000): LeaningCamera & { bounds: { x: number; y: number; width: number; height: number }; offsetX: number } {
@@ -95,5 +95,17 @@ describe('the camera moving over for a side panel', () => {
       throw new Error('asked for a camera');
     });
     expect(lean.settle(16)).toBe(false);
+  });
+});
+
+describe('a column too short for its screen', () => {
+  it('spills when the body holds more than it shows and does not scroll', () => {
+    // YOUR TEAM at 1024x600: 574 pixels of team in a 500-pixel column.
+    expect(bodySpills({ scrollHeight: 574, clientHeight: 500 }, 'visible')).toBe(true);
+    expect(bodySpills({ scrollHeight: 500, clientHeight: 500 }, 'visible')).toBe(false);
+    // Rounding is not spilling.
+    expect(bodySpills({ scrollHeight: 501, clientHeight: 500 }, 'visible')).toBe(false);
+    // A body that scrolls is long, not spilling.
+    expect(bodySpills({ scrollHeight: 900, clientHeight: 500 }, 'auto')).toBe(false);
   });
 });
