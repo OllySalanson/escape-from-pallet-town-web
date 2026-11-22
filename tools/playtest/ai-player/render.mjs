@@ -27,6 +27,8 @@ function renderField(key, field) {
     if (glass.card) lines.push(`THE GLASS SAYS: "${glass.card.title}${glass.card.body ? ` - ${glass.card.body}` : ''}"`);
     if (glass.keys.length) lines.push(`TELESCOPE KEYS: ${glass.keys.join(' · ')}`);
   }
+  // THE BOLTHOLE being decorated: its panel says what is in hand and why it will not go down.
+  if (field.decorating) lines.push(`DECORATING: ${field.decorating.title} - ${field.decorating.status}${field.decorating.holding ? ' (holding it)' : ''}`);
   const raid = field.raid;
   if (raid) {
     lines.push(`RAID: ${clock(raid.remainingMs)} left${raid.enraged ? ` (ENRAGED: ${clock(raid.enrageGraceMs ?? 0)} to get out)` : ''}${raid.contract ? ` - job: ${raid.contract}` : ''}`);

@@ -1041,6 +1041,8 @@ export class BaseScene extends Phaser.Scene {
       hint: this.hintText?.visible ? this.hintText.text.replace(/\s+/g, ' ').trim() : null,
       // THE RAID ARENA's telescope, while somebody is looking through it.
       telescope: this.telescope?.describeForTest() ?? null,
+      // THE BOLTHOLE while it is being decorated: what is in hand, and why it will not go down.
+      decorating: this.decor?.describeForTest() ?? null,
       near: {
         doors: room
           ? []
