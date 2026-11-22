@@ -175,6 +175,8 @@ export const EMPTY_LOADOUT_ARRANGEMENTS: LoadoutArrangements = {
 export class DeploymentFlow {
   private stash: Stash;
   private selectedPokemonIds: string[] = [];
+  /** Who `packSomebodyIfBenchEmpty` stood on an empty bench, until the player changes it. */
+  private standInId: string | undefined;
   private readonly selectedItems = new Map<ItemId, number>();
   private securedPokemonIds: string[] = [];
   /** How many of each kind is in the secure container, by id. */
@@ -355,7 +357,17 @@ export class DeploymentFlow {
         : [...fit].sort((one, other) => other.pokemon.level - one.pokemon.level)[0];
     if (first) {
       this.togglePokemon(first.id);
+      this.standInId = first.id;
     }
+  }
+
+  /**
+   * Whether the bench holds only the one the hall stood there because nobody
+   * else could (`packSomebodyIfBenchEmpty`), untouched since. That is not a team
+   * the player chose, so it is never written back as one.
+   */
+  public get benchIsStandIn(): boolean {
+    return this.standInId !== undefined && this.selectedPokemonIds.length === 1 && this.selectedPokemonIds[0] === this.standInId;
   }
 
   private packLonePokemon(): void {
@@ -800,6 +812,7 @@ export class DeploymentFlow {
 
   /** @returns A message when the change was refused, otherwise undefined. */
   public togglePokemon(id: string): string | undefined {
+    this.standInId = undefined;
     if (this.selectedPokemonIds.includes(id)) {
       this.selectedPokemonIds = this.selectedPokemonIds.filter((selected) => selected !== id);
       this.securedPokemonIds = this.securedPokemonIds.filter((secured) => secured !== id);
