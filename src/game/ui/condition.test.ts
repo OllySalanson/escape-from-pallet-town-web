@@ -90,6 +90,13 @@ describe('what the base says of the whole team', () => {
     expect(teamConditionLine([member('Bulbasaur', fainted), member('Pidgey')])).toBe('Bulbasaur fainted');
   });
 
+  it('calls the second of two of one kind the other one', () => {
+    // 'Squirtle fainted and Squirtle came home hurt' read as a typo (AI playtest, 22 Nov 2026).
+    expect(teamConditionLine([member('Squirtle', fainted), member('Squirtle', hurt)])).toBe(
+      'Squirtle fainted and the other Squirtle came home hurt',
+    );
+  });
+
   it('never calls a faint hurt, and counts the two apart', () => {
     expect(teamConditionLine([member('Bulbasaur', fainted), member('Pidgey', hurt), member('Rattata')])).toBe(
       'Bulbasaur fainted and Pidgey came home hurt',
