@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createRunTrainerEncounters } from './trainers';
 import {
   BACK_AWAY_OPTION,
+  TRAINER_DOUBLE_COMMITMENT_LINE,
   CHALLENGE_OPTION,
   TRAINER_COMMITMENT_LINE,
   TRAINER_WATCH_WARNING,
@@ -33,6 +34,52 @@ describe('the question put before a trainer fight', () => {
     const prompt = trainerChallengePrompt('SCOUT LEE');
 
     expect(prompt.options[prompt.selected]).toBe(BACK_AWAY_OPTION);
+  });
+
+  it('says how strong the trainer is against the player before the fight is taken', () => {
+    const prompt = trainerChallengePrompt('SCOUT TAM', {
+      trainerParty: [
+        { level: 5, isFainted: false },
+        { level: 6, isFainted: false },
+      ],
+      playerParty: [{ level: 5, isFainted: false }],
+    });
+
+    expect(prompt.lines).toEqual([
+      'SCOUT TAM: 2 Pokémon, lead Lv 5 to your Lv 5.',
+      TRAINER_COMMITMENT_LINE,
+    ]);
+  });
+
+  it('counts the player from the first Pokemon able to fight', () => {
+    const prompt = trainerChallengePrompt('MISTY', {
+      trainerParty: [{ level: 15, isFainted: false }],
+      playerParty: [
+        { level: 20, isFainted: true },
+        { level: 9, isFainted: false },
+      ],
+    });
+
+    expect(prompt.lines[0]).toBe('MISTY: 1 Pokémon, lead Lv 15 to your Lv 9.');
+  });
+
+  it('warns of a double battle only when the engine would make one', () => {
+    const misty = [
+      { level: 15, isFainted: false },
+      { level: 15, isFainted: false },
+      { level: 18, isFainted: false },
+    ];
+    const two = [
+      { level: 10, isFainted: false },
+      { level: 3, isFainted: false },
+    ];
+    const asked = (playerParty: typeof two, trainerUnitCount?: number) =>
+      trainerChallengePrompt('MISTY', { trainerParty: misty, trainerUnitCount, playerParty }).lines[1];
+
+    expect(asked(two, 2)).toBe(TRAINER_DOUBLE_COMMITMENT_LINE);
+    // One able Pokemon a side is a single battle, whatever the trainer asks for.
+    expect(asked([two[0], { level: 3, isFainted: true }], 2)).toBe(TRAINER_COMMITMENT_LINE);
+    expect(asked(two)).toBe(TRAINER_COMMITMENT_LINE);
   });
 
   it('says so when the player walks away, so declining is visibly a decision', () => {
@@ -80,6 +127,8 @@ describe('every road into an authored trainer fight', () => {
     // And nothing else may start one: the only place a spoken trainer becomes
     // a pending battle is behind the prompt.
     expect(worldSceneSource).toContain('this.askForTrainerChallenge(trainer);');
+    // And the question it asks carries the fight's odds, not just its name.
+    expect(worldSceneSource).toContain('trainerChallengePrompt(encounter.trainer.name, {');
     expect(worldSceneSource.match(/isHunter: false,/g)).toHaveLength(2);
   });
 
