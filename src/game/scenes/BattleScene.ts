@@ -1057,6 +1057,12 @@ export class BattleScene extends Phaser.Scene {
   public update(_time: number, delta: number): void {
     this.advanceSlides();
     this.updateRain(delta);
+    // A press is an answer to the line as it stood when the frame began. Typed
+    // first, a line whose last letters landed in the frame of the press counted
+    // that press as "next" rather than "finish", and the line the player was
+    // reading was gone before it was whole - 'Foe KRABBY used L' and straight on
+    // to 'Your SQUIRTLE's Defense fell!' (every AI playtest, 22 Nov 2026).
+    const lineWasTyping = this.dialog.visible && !this.dialog.isCurrentMessageComplete;
     this.dialog.update(delta);
     // The naming screen owns the keyboard; the fight waits on its answer.
     if (this.mode === 'naming') {
@@ -1071,7 +1077,12 @@ export class BattleScene extends Phaser.Scene {
     }
     if (this.mode === 'events' || this.mode === 'finished') {
       if (this.keyPresses.justPressed(this.confirmKey)) {
-        this.confirm();
+        if (lineWasTyping) {
+          audioManager.play('confirm');
+          this.dialog.skip();
+        } else {
+          this.confirm();
+        }
       }
       return;
     }
