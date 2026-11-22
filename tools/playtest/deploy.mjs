@@ -313,7 +313,9 @@ export async function startExplorerRun(page, { press, until }) {
  * a paused loop without one).
  */
 export async function deploy(page, url, { press, click, until, wait, paused = false, insertion, offered = false, explorer = false, beaten = [], opened = [], completed = [], banked, debt, hp, level, moves = [], starter = 'Bulbasaur', lead, team = [], stash = [], pack = [], secure = [], errands = [], hunt = [], heard = [] }) {
-  const title = async () => { await page.waitFor(sceneIs('title')); if (paused) await page.evaluate(`${GAME}.pauseLoop()`); };
+  // A minute, not `waitFor`'s fifteen seconds: on a machine other workers are
+  // loading, the title of a freshly reloaded page takes ten to twenty seconds.
+  const title = async () => { await page.waitFor(sceneIs('title'), { timeoutMs: 60_000 }); if (paused) await page.evaluate(`${GAME}.pauseLoop()`); };
   await title();
   // --explorer is the explorer run (PLAYTEST on the title, beside MAKE A MAP):
   // its own save, every map's landings offered - the one way to a map not yet

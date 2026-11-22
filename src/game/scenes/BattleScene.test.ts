@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
 
 vi.mock('phaser', () => ({
   default: {
@@ -2392,6 +2393,9 @@ function createFakeClock() {
       }),
     },
     time: {
+      get now(): number {
+        return now;
+      },
       delayedCall: vi.fn((delayMs: number, callback: () => void) => {
         timers.push({ at: now + delayMs, callback });
       }),
@@ -2637,8 +2641,39 @@ describe('the blink a blow lands with', () => {
       (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
       clock.advance(400);
     }
-    return { blinked, shake, dialog };
+    return { blinked, shake, dialog, scene, clock };
   };
+
+  /**
+   * SPACE pressed to read on through a turn's last line, landing on the menu
+   * the line brought back, answered it with whatever was under the cursor -
+   * BALL, after a throw - and the overnight playtest of 20 Nov 2026 threw two
+   * balls it meant as reading. The menu waits out one double-tap first.
+   */
+  it('takes no key on the command menu until a read-on press could no longer be meant for the lines', () => {
+    const { scene, clock } = fight(GROWL, TAIL_WHIP);
+    const battle = scene as unknown as {
+      mode: string;
+      confirmKey: unknown;
+      keyPresses: { justPressed(key: unknown): boolean };
+      update(time: number, delta: number): void;
+    };
+    expect(battle.mode).toBe('main');
+    // The harness has no keyboard, so each key is a token of its own.
+    for (const key of ['confirmKey', 'backKey', 'leftKey', 'rightKey', 'upKey', 'downKey']) {
+      Object.assign(battle, { [key]: { key } });
+    }
+    battle.keyPresses = { justPressed: (key) => key === battle.confirmKey };
+    // The harness's box is a recorder; the frame's typing is not what is asked.
+    Object.assign((scene as unknown as { dialog: object }).dialog, { update: () => undefined });
+
+    battle.update(0, 16);
+    expect(battle.mode).toBe('main');
+
+    clock.advance(RELEASE_ARMING_MS);
+    battle.update(0, 16);
+    expect(battle.mode).toBe('moves');
+  });
 
   it('does not blink or shake for a move that only lowers a stat', () => {
     const { blinked, shake, dialog } = fight(GROWL, TAIL_WHIP);
