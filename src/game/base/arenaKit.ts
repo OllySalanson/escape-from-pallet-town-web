@@ -83,3 +83,20 @@ export function flowForGame(game: RestoredGame): DeploymentFlow {
     game.raidProgress.lastBench,
   );
 }
+
+/**
+ * The team the hall's bench should write back to the save as it is put away,
+ * or null when the save already holds exactly that team in that order. The
+ * hall builds its bench from `lastBench` each time it is walked into, so a
+ * bench left unwritten came back without whoever was added (veteran
+ * playtest, 20 Nov 2026).
+ */
+export function benchToKeep(
+  flow: Pick<DeploymentFlow, 'party'>,
+  saved: readonly string[] | undefined,
+): readonly string[] | null {
+  const chosen = flow.party.map((one) => one.id);
+  const before = saved ?? [];
+  const same = chosen.length === before.length && chosen.every((id, index) => id === before[index]);
+  return same ? null : chosen;
+}
