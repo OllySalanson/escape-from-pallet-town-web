@@ -28,7 +28,9 @@ describe('hunterThreatFor', () => {
       const party = Array.from({ length: size }, (_, index) => new Pokemon(PIDGEY, 6 + index));
       const { openingTeam } = hunterThreatFor(party);
       expect(openingTeam).toHaveLength(size);
-      openingTeam.forEach((member, index) => expect(member.level).toBeLessThan(party[index].level));
+      // Paired strongest first, so its first answers the last and strongest Pidgey here.
+      const strongestFirst = [...party].sort((a, b) => b.level - a.level);
+      openingTeam.forEach((member, index) => expect(member.level).toBeLessThan(strongestFirst[index].level));
     }
   });
 
@@ -59,10 +61,10 @@ describe('hunterThreatFor', () => {
     expect(veteran.arrivesSoonerMs).toBe(rookie.arrivesSoonerMs);
   });
 
-  it("names the party's lead as the one its lead answers, not the strongest behind it", () => {
+  it("names the party's strongest as the one its lead answers, not whoever walks in front", () => {
     const threat = hunterThreatFor([new Pokemon(SQUIRTLE, 10), new Pokemon(IVYSAUR, 16)]);
-    expect(threat.matchedTo).toEqual({ name: 'Squirtle', level: 10 });
-    expect(threat.openingTeam.map((member) => member.level)).toEqual([6, 12]);
+    expect(threat.matchedTo).toEqual({ name: 'Ivysaur', level: 16 });
+    expect(threat.openingTeam.map((member) => member.level)).toEqual([12, 6]);
   });
 
   it('does not answer a Pokemon that came along fainted', () => {
