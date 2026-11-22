@@ -638,7 +638,10 @@ const toCombatant = (pokemon: Pokemon): BattleCombatant => ({
   currentHp: pokemon.currentHp,
   moves: pokemon.moves.map((move) => ({ base: move.base, pp: move.pp })),
   primaryStatus: pokemon.primaryStatus,
-  sleepTurns: 0,
+  // A Pokemon sent back out asleep sleeps on for what its counter had left;
+  // starting it at nothing woke it the moment it came back (veteran playtest,
+  // 22 Nov 2026: Hypnosis, a switch out and back, and no sleep at all).
+  sleepTurns: pokemon.primaryStatus === PrimaryStatus.Sleep ? pokemon.sleepTurns : 0,
   confusionTurns: 0,
   statStages: createStatStages(),
   heldItemSpent: false,
@@ -1419,6 +1422,7 @@ export const playerCombatants = (state: BattleState): readonly BattleCombatant[]
 export const persistCombatantToPokemon = (combatant: BattleCombatant): void => {
   combatant.pokemon.currentHp = combatant.currentHp;
   combatant.pokemon.primaryStatus = combatant.primaryStatus;
+  combatant.pokemon.sleepTurns = combatant.primaryStatus === PrimaryStatus.Sleep ? combatant.sleepTurns : 0;
   combatant.pokemon.moves.forEach((move, index) => {
     const battleMove =
       combatant.moves.find((candidate) => candidate.base === move.base) ?? combatant.moves[index];
