@@ -19,7 +19,8 @@ describe('the card beside a way in', () => {
   it('names it and says where it is', () => {
     const [door] = VALE;
     const card = wayInCard(landing(door), NOBODY, false);
-    expect(card.title).toBe(door.label.toUpperCase());
+    // The place, not the map: the front door is Mill Square at the rim (veteran playtest, 20 Nov 2026).
+    expect(card.title).toBe('MILL SQUARE');
     expect(door.description.startsWith(card.lines[0].slice(0, -1))).toBe(true);
   });
 
