@@ -5225,6 +5225,29 @@ button {
   grid-column: 2;
   align-self: end;
 }
+:where(.pixel-ui[data-short]) .team-card > .px-portrait {
+  /* A screen short of height (`data-short`, `isShortRoom`): at 800x512 the
+     card ran past its frame, its name and HP under it and its LEAD tick on the
+     hint line. The words are the card; the slot above already shows who it is. */
+  display: none;
+}
+:where(.pixel-ui[data-short]) .team-card:not([hidden]) {
+  /* The name and the bar across, then the type badges and where it lives side
+     by side on one line: three lines are what a short screen has room for. */
+  grid-template-columns: auto minmax(0, 1fr);
+}
+:where(.pixel-ui[data-short]) .team-card > .team-card-words > .team-card-types {
+  grid-row: 3;
+  grid-column: 1;
+  flex-direction: row;
+  align-self: center;
+  margin-top: 0;
+}
+:where(.pixel-ui[data-short]) .team-card > .team-card-words > .team-card-where {
+  grid-row: 3;
+  grid-column: 2;
+  align-self: center;
+}
 @media (prefers-reduced-motion: reduce) {
   .pixel-ui .px-mon-icon {
     animation: none;
