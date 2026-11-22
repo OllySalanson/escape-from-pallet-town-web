@@ -17,6 +17,7 @@ import { hunterFleePenaltyMs } from './fleePenalty';
 import { survivingSecureItems } from './raidSettlement';
 import { formatElapsedClock, formatRaidClock } from './raidClock';
 import { errandForItem } from '../hub/errands';
+import { recoveryStillOwedLine } from '../hub/recovery';
 import { BADGES } from '../base/badgeCase';
 
 /**
@@ -248,6 +249,11 @@ export interface ExtractionReport {
    * over a team that cannot deploy sent the player to a lab that refused them.
    */
   readonly baseNote: string | null;
+  /**
+   * A raid home too soon to pay for the healing it owed (`DAY_CARE_LEAST_RAID_MS`)
+   * says so, and what the next raid's clock still is. Absent when nothing is owed.
+   */
+  readonly recoveryStillOwed?: string;
   readonly saved: boolean;
   /**
    * Another tab settled this raid before it ended - it was taken for
@@ -317,6 +323,12 @@ export interface ExtractionReportInput {
    * the old claim; only a caller that looked can say otherwise.
    */
   readonly fitToRaid?: boolean;
+  /**
+   * The healing still owed after a survived raid that was out too soon to pay
+   * for it, read off the save the caller just wrote. Absent or zero when the
+   * raid paid, or nothing was owed.
+   */
+  readonly recoveryStillOwedMs?: number;
   readonly saved: boolean;
   /**
    * The keepers (`trainers.ts`' `bossId`) this raid beat, whose badges it won.
@@ -493,6 +505,9 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     ...badgeLines(input.bossesBeaten ?? []),
     ...(snapshot.secureFilledForYou ? { secureFilledForYou: true } : {}),
     baseNote: escaped ? null : wipedBaseNote(input.fitToRaid ?? true),
+    ...(escaped && (input.recoveryStillOwedMs ?? 0) > 0
+      ? { recoveryStillOwed: recoveryStillOwedLine(input.recoveryStillOwedMs ?? 0) }
+      : {}),
     saved: input.saved,
     ...(input.settledElsewhere ? { settledElsewhere: true } : {}),
   };

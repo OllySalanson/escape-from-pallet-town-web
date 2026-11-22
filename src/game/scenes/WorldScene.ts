@@ -345,6 +345,7 @@ import {
 } from '../world/trainerEngagement';
 import { hasHunterIntel } from '../hub/workshop';
 import { anyoneFitToRaid } from '../hub/recovery';
+import { DAY_CARE_LEAST_RAID_MS } from '../hub/dayCare';
 import { errandForItem, favoursInHand } from '../hub/errands';
 import { BEACON_EXIT_LABEL } from '../run/runGeneration';
 import {
@@ -8584,6 +8585,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           }
           : {}),
         carriedOut: this.bag.toJSON(),
+        // Out before the first hunter could have come pays for no healing
+        // (`SaveManager.resolvedBy`), and the player is told so.
+        ...(snapshot.elapsedMs < DAY_CARE_LEAST_RAID_MS
+          ? { recoveryStillOwedMs: new SaveManager().load()?.pendingRecoveryMs ?? 0 }
+          : {}),
         saved: contractResult.saved,
         ...(settledElsewhere ? { settledElsewhere } : {}),
       }),

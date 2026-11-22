@@ -664,6 +664,9 @@ export class ExtractionScene extends Phaser.Scene {
     if (this.report.baseNote !== null) {
       return this.report.baseNote;
     }
+    if (this.report.recoveryStillOwed) {
+      return this.report.recoveryStillOwed;
+    }
     // Promising a stash full of new supplies after an empty raid is the one way
     // this screen could lie about a result the player can see for themselves -
     // and so is calling a raid that levelled a Pokemon "nothing new to bank".

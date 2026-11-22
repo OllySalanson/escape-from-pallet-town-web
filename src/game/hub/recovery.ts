@@ -331,6 +331,19 @@ export function clampPendingRecoveryMs(value: unknown): number {
   return Math.min(MAX_PENDING_RECOVERY_MS, Math.floor(value));
 }
 
+/**
+ * Said when a raid came home too soon to pay for the healing it owed
+ * (`DAY_CARE_LEAST_RAID_MS`): the debt stands for the next raid, and a player
+ * who is not told reads the next short clock as the heal charged twice (the
+ * overnight playtest of 20 Nov 2026, twice).
+ */
+export function recoveryStillOwedLine(pendingRecoveryMs: number): string {
+  const pending = clampPendingRecoveryMs(pendingRecoveryMs);
+  return `Out too soon to pay for Nurse Joy's healing: your next raid still runs ${formatRecoveryClock(
+    raidClockAfterRecovery(RAID_DURATION_MS, pending),
+  )}.`;
+}
+
 /** Raid clocks and their costs read as M:SS everywhere in the lobby. */
 export function formatRecoveryClock(ms: number): string {
   const totalSeconds = Math.max(0, Math.round(ms / 1_000));
