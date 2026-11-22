@@ -6,7 +6,8 @@ harbour says it (`WorldScene.hintHere()`, `ui/hintLine.ts`).
 - `gate-faced-before.png` / `gate-faced.png`: standing on 286,105 facing down
   onto the Power Station's SERVICE GATE with a Card Key packed. Before, nothing
   said which tile the caption's gate answered SPACE from. The "before" is the
-  same frame with the line hidden.
+  same spot with the line hidden, a frame later (the townsfolk along the foot
+  have moved on a step).
 - `beside-the-gate.png`: 285,107 facing up, where the 20 Nov playtester pressed
   SPACE and nothing happened. No line here, because a press does nothing here.
 - `cache-faced.png`: Millbrook's TOOL SHED faced from below.
