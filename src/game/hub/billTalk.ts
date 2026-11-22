@@ -13,6 +13,7 @@ import {
   nextTraderStanding,
   rationLeft,
   traderStanding,
+  traderStandingPoints,
   type TraderCounter,
   type TraderStandingId,
 } from './trader';
@@ -67,13 +68,21 @@ const READS_YOU: Readonly<Record<TraderStandingId, string>> = {
 };
 
 /**
+ * How he reads a stranger who has made a start: jobs banked but not yet enough.
+ * "I do not know you" to somebody who has banked two of Oak's jobs reads as if
+ * he had not counted them (the overnight playtest of 20 Nov 2026).
+ */
+export const STRANGER_STARTED = 'I have heard of you. Not enough yet.';
+
+/**
  * How a stranger gets on his books, counted. Money cannot start it - he sells a
  * stranger nothing to spend it on - so it is said as jobs, the one way in a
  * newcomer has (`STANDING_PER_CONTRACT`), with a beaten boss as the other.
  */
-export function strangerWayIn(pointsShort: number): string {
+export function strangerWayIn(pointsShort: number, started = false): string {
   const jobs = Math.ceil(pointsShort / STANDING_PER_CONTRACT);
-  return `Bank ${jobs} ${jobs === 1 ? 'job' : 'jobs'} off Oak's board, or beat a boss, and I open the deck to you.`;
+  const more = started ? ' more' : '';
+  return `Bank ${jobs}${more} ${jobs === 1 ? 'job' : 'jobs'} off Oak's board, or beat a boss, and I open the deck to you.`;
 }
 
 /** What he says to NOT NOW. */
@@ -176,16 +185,17 @@ export function billFromTheMat(counter: TraderCounter): BillQuote {
   const tier = traderStanding(counter.progress);
   const left = rationLeft(counter);
   const next = nextTraderStanding(counter.progress);
+  const started = tier.id === 'stranger' && traderStandingPoints(counter.progress) > 0;
   const trip =
     tier.ration === 0
       ? `You have ${formatMoney(moneyHeld(counter.stash))}, and I am selling you nothing yet.`
       : `You have ${formatMoney(moneyHeld(counter.stash))}, and ${left} of ${tier.ration} left off the deck this trip.`;
   return {
     lines: [
-      READS_YOU[tier.id],
+      started ? STRANGER_STARTED : READS_YOU[tier.id],
       trip,
       ...(next && tier.ration === 0
-        ? [strangerWayIn(next.pointsShort)]
+        ? [strangerWayIn(next.pointsShort, started)]
         : next && !meetsStanding(counter.progress, 'trusted')
           ? ['Bank a contract, beat a boss or spend with me, and I show you more.']
           : []),
