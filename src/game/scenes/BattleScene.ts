@@ -104,7 +104,7 @@ import {
   clearPackRoomForPokemon,
   packCouldEverHoldPokemon,
   packNeverFitsPokemonLine,
-  packHasRoomForPokemon,
+  packHasRoomOnceThrown,
   packRoomChoices,
   syncPackCargo,
   type PackRoomChoice,
@@ -2013,7 +2013,7 @@ export class BattleScene extends Phaser.Scene {
       );
     }
     audioManager.play('menuClose');
-    if (packHasRoomForPokemon(this.bag, this.state.enemy.pokemon)) {
+    if (packHasRoomOnceThrown(this.bag, this.state.enemy.pokemon, this.heldBallId)) {
       const ballIndex = Math.max(
         0,
         carriedBalls(this.bag).findIndex((ball) => ball.id === this.heldBallId),
@@ -2897,10 +2897,10 @@ export class BattleScene extends Phaser.Scene {
     // Only the arrangement in the way is not "no room": the pack re-packs
     // itself and the ball is thrown, because a refusal a player cannot act on
     // from inside a fight is the whole fault this screen exists to answer.
-    if (!clearPackRoomForPokemon(this.bag, this.state.enemy.pokemon).fits) {
-      const held = carriedBalls(this.bag)[ballIndex]?.id;
+    const held = carriedBalls(this.bag)[ballIndex]?.id;
+    if (!packHasRoomOnceThrown(this.bag, this.state.enemy.pokemon, held) && !clearPackRoomForPokemon(this.bag, this.state.enemy.pokemon).fits) {
       // With things to put down that would never be enough, none is offered.
-      if (this.makeRoomChoices(held).length > 0 && !packCouldEverHoldPokemon(this.bag, this.state.enemy.pokemon, held)) {
+      if (this.makeRoomChoices(held).length > 0 && !packCouldEverHoldPokemon(this.bag, this.state.enemy.pokemon)) {
         // Said once, and the ball kept.
         this.mode = 'events';
         this.commandContainer.setVisible(false);
@@ -2934,6 +2934,8 @@ export class BattleScene extends Phaser.Scene {
       this.dialog.showMessage(NO_BALLS_MESSAGE);
       return;
     }
+    // The room the ball leaves is the room a catch may need: seat it now.
+    clearPackRoomForPokemon(this.bag, this.state.enemy.pokemon);
 
     this.thrownBallId = ball.id;
     if (this.legendThrow === 'offered') {

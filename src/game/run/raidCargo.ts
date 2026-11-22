@@ -29,6 +29,33 @@ export function packHasRoomForPokemon(bag: Bag, pokemon: Pokemon): boolean {
   return bag.fitsCargo(pokemonCargo('incoming', pokemon));
 }
 
+/** The pack's contents once one of `thrown` has left it: the ball the catch is thrown with. */
+function contentsOnceThrown(bag: Bag, thrown: string | undefined): Readonly<Record<string, number>> {
+  const contents = bag.toJSON();
+  if (!thrown || !(contents[thrown] > 0)) {
+    return contents;
+  }
+  return { ...contents, [thrown]: contents[thrown] - 1 };
+}
+
+/**
+ * Whether the pack will have room for this Pokemon once the ball it is caught
+ * with has been thrown. The ball is one of the pack's squares and is gone
+ * before anything is caught, so it is room: counted in, a Pidgey needing four
+ * squares beside three free and the ball made the player put a Pecha Berry
+ * down for nothing (AI playtests, 22 Nov 2026).
+ */
+export function packHasRoomOnceThrown(bag: Bag, pokemon: Pokemon, thrown?: string): boolean {
+  if (packHasRoomForPokemon(bag, pokemon)) {
+    return true;
+  }
+  const capacity = bag.capacity;
+  return (
+    capacity === null ||
+    (thrown !== undefined && fitsInGrid(contentsOnceThrown(bag, thrown), capacity, [...bag.cargo, pokemonCargo('incoming', pokemon)]))
+  );
+}
+
 /**
  * Makes room for one more Pokemon where the squares are there and only the
  * arrangement is in the way.
@@ -128,6 +155,8 @@ export function packRoomChoices(
 ): readonly PackRoomChoice[] {
   const incoming = pokemonCargo('incoming', pokemon);
   const contents = bag.toJSON();
+  // What is put down is weighed against the pack the throw leaves behind.
+  const afterThrow = contentsOnceThrown(bag, keepOne);
   const capacity = bag.capacity;
   return ITEM_DEFINITIONS.filter(
     (item) => (contents[item.id] ?? 0) > (item.id === keepOne ? 1 : 0),
@@ -142,7 +171,7 @@ export function packRoomChoices(
       squares: item.footprint.width * item.footprint.height,
       freesEnough:
         capacity === null ||
-        fitsInGrid({ ...contents, [item.id]: carried - drops }, capacity, [...bag.cargo, incoming]),
+        fitsInGrid({ ...afterThrow, [item.id]: (afterThrow[item.id] ?? 0) - drops }, capacity, [...bag.cargo, incoming]),
     };
   });
 }
@@ -150,16 +179,17 @@ export function packRoomChoices(
 /**
  * Whether the pack could hold this Pokemon at all, with everything that can be
  * put down put down: only the Pokemon already carried and the one ball being
- * thrown (`keepOne`) left in. When it cannot, the make-room panel has nothing
+ * thrown gone, as it is by the time anything is caught. When it cannot, the make-room panel has nothing
  * to offer - a 12-square Satchel carrying a 6-square Ivysaur can never seat a
  * 9-square Alakazam, and the panel took four items off a veteran one at a
  * time before the throw was given up (playtest, 20 Nov 2026).
  */
-export function packCouldEverHoldPokemon(bag: Bag, pokemon: Pokemon, keepOne?: string): boolean {
+export function packCouldEverHoldPokemon(bag: Bag, pokemon: Pokemon): boolean {
   const capacity = bag.capacity;
   return (
     capacity === null ||
-    fitsInGrid(keepOne ? { [keepOne]: 1 } : {}, capacity, [...bag.cargo, pokemonCargo('incoming', pokemon)])
+    // The ball kept for the throw has left the pack by the time anything is caught.
+    fitsInGrid({}, capacity, [...bag.cargo, pokemonCargo('incoming', pokemon)])
   );
 }
 
