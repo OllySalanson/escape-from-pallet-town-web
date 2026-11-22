@@ -50,6 +50,9 @@ const EARLY_PARTIES: readonly MeasuredParty[] = [
   partyOf('charmander 10 + pidgey 8', ['charmander', 10], ['pidgey', 8]),
   partyOf('squirtle 10 + rattata 8', ['squirtle', 10], ['rattata', 8]),
   partyOf('trio 8-10', ['bulbasaur', 10], ['pidgey', 9], ['caterpie', 8]),
+  // A weak Pokemon walking in front of a strong one: the 20 Nov playtest's
+  // Lv 4 Drowzee leading a Lv 20 Ivysaur, which the hunter used to answer at Lv 2.
+  partyOf('weak lead + ivysaur 20', ['drowzee', 4], ['ivysaur', 20]),
   partyOf('veteran + five', ['charmeleon', 18], ['pidgey', 10], ['rattata', 10], ['caterpie', 10], ['weedle', 10], ['spearow', 10]),
 ];
 

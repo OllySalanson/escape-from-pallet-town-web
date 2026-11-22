@@ -108,18 +108,19 @@ const species = (id: string): PokemonBase => {
  * introduce one who's harder to beat and keep everyone else easy."
  *
  * So the ladder is a mirror. The hunter fields as many Pokemon as the player
- * can fight with at the moment it catches them, and pairs them off in the
- * party's own order: its first against your lead, its second against your
+ * can fight with at the moment it catches them, and pairs them off
+ * strongest first: its first against your strongest, its second against your
  * next, and so on, each a rung's `levelOffset` below the one it is paired
  * with. A lone starter meets one Pokemon; a veteran with two weak escorts
  * meets one strong Pokemon and two weak ones, never three strong ones.
  *
- * Paired highest level first, as it was until 29 Oct, a strong Pokemon kept
- * in reserve set the level of the hunter's lead: the explorer run's Lv 99
- * Charizard behind a Lv 50 Blastoise had Blue open with a Lv 95 Eevee
- * against the Blastoise. In party order a high level only answers the
- * Pokemon that brought it. Every party measured below is listed lead first
- * and highest first, so the table did not move.
+ * From 29 Oct to 22 Nov it paired in the party's own order, so that a strong
+ * Pokemon in reserve (the explorer run's Lv 99 Charizard behind a Lv 50
+ * Blastoise) did not set the hunter's lead. That made the order a way round
+ * the hunter: a veteran led with a Lv 4 Drowzee, met a Lv 2 lead and switched
+ * the Lv 20 Ivysaur in (the 20 Nov playtest), and the captain's answer was to
+ * scale to the strongest. Every party measured below is listed highest
+ * first, so the table did not move.
  *
  * The ladder it replaced grew the team instead - one Pokemon, then two, three
  * and four as the clock ran - and read only the strongest Pokemon deployed, so
@@ -374,9 +375,14 @@ export function hunterTeamFor(
   rivalId: HunterRivalId = FIRST_HUNTER_RIVAL,
 ): readonly HunterTeamMember[] {
   const lineup = hunterLineupFor(rivalId);
+  // Strongest first: the hunter's lead answers the party's strongest, whoever
+  // walks in front. Paired in the party's own order, a Lv 4 Drowzee leading a
+  // Lv 20 Ivysaur met a Lv 2 lead and the Ivysaur was switched in against it
+  // (the 20 Nov playtest), so the order of the party was a way round the hunter.
   const levels = opponents
     .filter((pokemon) => !pokemon.isFainted)
     .map((pokemon) => pokemon.level)
+    .sort((a, b) => b - a)
     .slice(0, lineup.length);
   const paired = levels.length > 0 ? levels : [UNKNOWN_OPPONENT_LEVEL];
   return paired.map((opponentLevel, index) => {
