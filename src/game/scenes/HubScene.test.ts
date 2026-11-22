@@ -2531,7 +2531,7 @@ describe('HubScene - Bill', () => {
     expect(boat).toContain('Bank a contract +2, beat a boss +3, spend ₽200 +1.');
   });
 
-  it('offers a stranger nothing, and keeps every shut row reachable by the cursor', () => {
+  it('offers a stranger Potions and Poké Balls only, and keeps every shut row reachable by the cursor', () => {
     const storage = new MemoryStorage();
     const stash = createStartingStash(CHARMANDER);
     stash.addItem('money', 5_000);
@@ -2548,10 +2548,10 @@ describe('HubScene - Bill', () => {
     hub.setView('trader');
     const boat = markupOf(hub);
 
-    // ₽5000 and he sells nothing: standing is the first gate, and
-    // money can never open it.
-    expect(boat).not.toContain('data-buy=');
-    expect(boat).toContain('Nothing for you yet');
+    // ₽5000 buys Potions and Poké Balls and nothing else: standing is the
+    // first gate to the rest, and money can never open it.
+    expect([...boat.matchAll(/data-buy="([^"]+)"/g)].map((match) => match[1]).sort()).toEqual(['poke-ball', 'potion']);
+    expect(boat).toContain('Potions and Balls for now');
     // Not `disabled`: a cursor has to reach a shut row to be told why.
     expect(boat).not.toMatch(/<button[^>]* disabled/);
     expect(boat).toMatch(/aria-disabled="true"/);
@@ -2694,6 +2694,7 @@ describe('HubScene - Bill', () => {
     hub.setView('trader');
     hub.render();
     expect(markupOf(hub)).toMatch(/of 2 left till you raid/);
+    // A Potion is off that ration, so buying one leaves it as it was.
 
     // ENTER twice on the row: the first asks, the second asks again, and
     // nothing is spent either time.
@@ -2728,7 +2729,7 @@ describe('HubScene - Bill', () => {
     expect(internals.traderArmed).toBeUndefined();
     const after = markupOf(hub);
     expect(after).toContain('Bought one for ₽120.');
-    expect(after).toMatch(/1 of 2 left till you raid/);
+    expect(after).toMatch(/2 of 2 left till you raid/);
     vi.restoreAllMocks();
   });
 
@@ -2736,11 +2737,15 @@ describe('HubScene - Bill', () => {
     const { hub } = createTraderHub();
     const internals = hub as unknown as { traderArmed: string | undefined; counterCounts: Map<string, number> };
     hub.setView('trader');
+    internals.counterCounts.set('buy:antidote', 2);
+    internals.traderArmed = 'stock:antidote';
+    const asking = markupOf(hub);
+    expect(asking).toContain("Pay ₽160 for 2 Antidotes? That's your last till you raid.");
+    expect(asking).toContain('data-buy-confirm="antidote"');
+    // A Potion is off the ration, so two of them are never the last.
     internals.counterCounts.set('buy:potion', 2);
     internals.traderArmed = 'stock:potion';
-    const asking = markupOf(hub);
-    expect(asking).toContain("Pay ₽240 for 2 Potions? That's your last till you raid.");
-    expect(asking).toContain('data-buy-confirm="potion"');
+    expect(markupOf(hub)).toContain('Pay ₽240 for 2 Potions?</');
   });
 
   it('forgets a deal it had asked about the moment the screen changes', () => {

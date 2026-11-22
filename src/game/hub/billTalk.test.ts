@@ -33,6 +33,7 @@ const PARTNER = { traderMoneySpent: 5200 };
 const REGULAR = { traderMoneySpent: 1200 };
 
 const potion: BillGood = { kind: 'stock', itemId: 'potion' };
+const antidote: BillGood = { kind: 'stock', itemId: 'antidote' };
 const fire: BillGood = { kind: 'barter', barterId: 'barter-fire-stone' };
 const claw: BillGood = { kind: 'barter', barterId: 'barter-quick-claw' };
 
@@ -49,8 +50,10 @@ describe("everything Bill deals in stands on his shelves", () => {
   });
 
   it('keeps under a sheet what the player has not earned, and leaves a gap for what he only had one of', () => {
-    expect(shelfState(counter(), potion)).toBe('sheeted');
-    expect(shelfState(counter({}, REGULAR), potion)).toBe('out');
+    expect(shelfState(counter(), antidote)).toBe('sheeted');
+    expect(shelfState(counter({}, REGULAR), antidote)).toBe('out');
+    // Potions and Poké Balls are out for anybody (AI playtest 3, 22 Nov 2026).
+    expect(shelfState(counter(), potion)).toBe('out');
     expect(shelfState(counter({}, { ...REGULAR, traderBarters: ['barter-quick-claw'] }), claw)).toBe('gone');
     // An HM comes back while the vault holds none: it is out again, not a gap.
     const hm: BillGood = { kind: 'barter', barterId: 'barter-hm01' };
@@ -67,23 +70,28 @@ describe("everything Bill deals in stands on his shelves", () => {
 
 describe('Bill on a thing on his shelves', () => {
   it('names a shelf price, and opens on NOT NOW: a double press on his price must not buy', () => {
-    const quote = billQuote(counter({ money: 500 }, REGULAR), potion);
-    expect(quote.lines[1]).toBe('₽120, and 1 more for you till you raid.');
-    expect(quote.question).toBe('Buy one for ₽120?');
+    const quote = billQuote(counter({ money: 500 }, REGULAR), antidote);
+    expect(quote.lines[1]).toBe('₽80, and 1 more for you till you raid.');
+    expect(quote.question).toBe('Buy one for ₽80?');
     expect(quote.spendsForGood).toBe(true);
+    // Off the ration, a stranger's Potion is priced and nothing more.
+    const anybody = billQuote(counter({ money: 500 }), potion);
+    expect(anybody.lines[1]).toBe('₽120 each, and as many as you can pay for.');
+    expect(anybody.question).toBe('Buy one for ₽120?');
+    expect(anybody.spendsForGood).toBe(true);
   });
 
   it('says so when the purse is short, or the ration spent, and asks nothing', () => {
     expect(billQuote(counter({ money: 50 }, REGULAR), potion).question).toBeUndefined();
     expect(billQuote(counter({ money: 50 }, REGULAR), potion).lines[1]).toContain('you have ₽50');
-    const spent = billQuote(counter({ money: 500 }, REGULAR, { rationUsed: 1 }), potion);
+    const spent = billQuote(counter({ money: 500 }, REGULAR, { rationUsed: 1 }), antidote);
     expect(spent.question).toBeUndefined();
     expect(spent.lines[1]).toContain('your lot till you raid again');
   });
 
   it('says what is under a sheet and what would take it off', () => {
-    const quote = billQuote(counter(), potion);
-    expect(quote.lines[0]).toBe('Under the sheet? Potion. I keep it back until you are regular.');
+    const quote = billQuote(counter(), antidote);
+    expect(quote.lines[0]).toBe('Under the sheet? Antidote. I keep it back until you are regular.');
     expect(quote.question).toBeUndefined();
   });
 
@@ -128,9 +136,9 @@ describe('Bill from the mat', () => {
   it('reads the player, says what is left till the next raid, and offers the whole list', () => {
     const stranger = billFromTheMat(counter({ money: 40 }));
     expect(stranger.lines[0]).toContain("I don't know you");
-    expect(stranger.lines[1]).toBe("You have ₽40, and I'm selling you nothing yet.");
-    // Money cannot start it, so he says what does, counted.
-    expect(stranger.lines[2]).toBe("Bank 3 jobs off Oak's board, or beat a boss, and I'll start selling to you.");
+    expect(stranger.lines[1]).toBe('You have ₽40. Potions and Poké Balls I sell anybody, the rest once I know you.');
+    // What gets him to sell more, counted.
+    expect(stranger.lines[2]).toBe("Bank 3 jobs off Oak's board, or beat a boss, and I'll sell you more.");
     expect(stranger.question).toBe('See my whole list?');
     // One count of jobs, not 'a job' and then '3 jobs' (AI playtest, 22 Nov 2026).
     expect(stranger.lines.join(' ').match(/\bjobs?\b/g)).toHaveLength(1);
@@ -138,13 +146,13 @@ describe('Bill from the mat', () => {
     // Two jobs banked is not yet a regular, and he says he has counted them.
     const started = billFromTheMat(counter({ money: 40 }, { standingContractsBanked: 2 }));
     expect(started.lines[0]).not.toContain("I don't know you");
-    expect(started.lines[2]).toBe("Bank 1 more job off Oak's board, or beat a boss, and I'll start selling to you.");
+    expect(started.lines[2]).toBe("Bank 1 more job off Oak's board, or beat a boss, and I'll sell you more.");
 
     const partner = billFromTheMat(counter({ money: 40 }, PARTNER, { rationUsed: 1 }));
     expect(partner.lines).toHaveLength(2);
-    expect(partner.lines[1]).toBe("You have ₽40. I'll sell you 2 more things till you raid again.");
+    expect(partner.lines[1]).toBe('You have ₽40. Potions and Poké Balls any time, and 2 other things till you raid again.');
     // Never 'I'll sell you 0 more things' (AI playtest, 22 Nov 2026).
     const spent = billFromTheMat(counter({ money: 0 }, PARTNER, { rationUsed: 3 }));
-    expect(spent.lines[1]).toBe("You have ₽0. That's your lot till you raid again.");
+    expect(spent.lines[1]).toBe('You have ₽0. Potions and Poké Balls any time. The rest waits till you raid again.');
   });
 });

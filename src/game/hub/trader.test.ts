@@ -163,10 +163,15 @@ describe('trader standing', () => {
 
   it('starts every save as a stranger and is derived, never stored', () => {
     expect(traderStanding(NO_PROGRESS).id).toBe('stranger');
-    // A stranger is sold nothing at all, which is the second constraint's
-    // first gate: a fresh save cannot buy a supply at any price.
+    // A stranger is sold Potions and Poke Balls for money and nothing else:
+    // money bought nothing in a newcomer's first hour (AI playtest 3, 22 Nov
+    // 2026). Those two are off the ration, and the ration starts at regular.
     expect(traderStanding(NO_PROGRESS).ration).toBe(0);
-    expect(TRADER_STOCK.every((item) => item.standing !== 'stranger')).toBe(true);
+    expect(TRADER_STOCK.filter((item) => item.standing === 'stranger').map((item) => item.itemId).sort()).toEqual([
+      'poke-ball',
+      'potion',
+    ]);
+    expect(TRADER_STOCK.filter((item) => !item.rationed).map((item) => item.itemId).sort()).toEqual(['poke-ball', 'potion']);
   });
 
   it('opens each tier in turn, and the top one is reachable', () => {
@@ -211,9 +216,23 @@ describe('the shelf', () => {
     expect(Math.min(...TRADER_STOCK.map((item) => item.price))).toBeGreaterThan(70);
   });
 
-  it('refuses a stranger before it looks at the money', () => {
-    const offer = checkPurchase(counter(), 'potion');
-    expect(offer?.refusal).toBe('standing-short');
+  it('refuses a stranger the back shelf before it looks at the money', () => {
+    expect(checkPurchase(counter(), 'antidote')?.refusal).toBe('standing-short');
+  });
+
+  it('sells anybody Potions and Poke Balls, as many as the purse covers, off the ration', () => {
+    const stash = new Stash();
+    stash.addItem('money', 500);
+    const stranger = counter({ stash });
+    const potion = TRADER_STOCK.find((item) => item.itemId === 'potion')!;
+    expect(traderStockLimit(stranger, potion)).toBe(Math.floor(500 / potion.price));
+    expect(checkPurchase(stranger, 'potion', 4)?.refusal).toBeUndefined();
+    expect(checkPurchase(stranger, 'potion', 5)?.refusal).toBe('money-short');
+    expect(traderStockLimitReason(stranger, potion)).toMatch(/covers at/);
+    // A spent ration shuts the back shelf and leaves these open.
+    const spent = counter({ progress: PARTNER, rationUsed: traderStanding(PARTNER).ration });
+    expect(checkPurchase(spent, 'poke-ball')?.refusal).toBeUndefined();
+    expect(checkPurchase(spent, 'great-ball')?.refusal).toBe('ration-spent');
   });
 
   it('sells several at once, up to the smaller of the ration and the purse', () => {
@@ -221,15 +240,15 @@ describe('the shelf', () => {
     const stash = new Stash();
     stash.addItem('money', 500);
     const rich = counter({ progress: trusted, stash });
-    const potion = TRADER_STOCK.find((item) => item.itemId === 'potion')!;
-    const limit = traderStockLimit(rich, potion);
+    const antidote = TRADER_STOCK.find((item) => item.itemId === 'antidote')!;
+    const limit = traderStockLimit(rich, antidote);
 
-    expect(limit).toBe(Math.min(rationLeft(rich), Math.floor(500 / potion.price)));
-    expect(checkPurchase(rich, 'potion', limit)?.refusal).toBeUndefined();
-    expect(checkPurchase(rich, 'potion', limit + 1)?.refusal).toBeDefined();
-    expect(checkPurchase(rich, 'potion', 0)).toBeUndefined();
-    expect(traderStockLimitReason(rich, potion)).toMatch(/covers at|till you raid/);
-    expect(traderStockLimit(counter(), potion)).toBe(0);
+    expect(limit).toBe(Math.min(rationLeft(rich), Math.floor(500 / antidote.price)));
+    expect(checkPurchase(rich, 'antidote', limit)?.refusal).toBeUndefined();
+    expect(checkPurchase(rich, 'antidote', limit + 1)?.refusal).toBeDefined();
+    expect(checkPurchase(rich, 'antidote', 0)).toBeUndefined();
+    expect(traderStockLimitReason(rich, antidote)).toMatch(/covers at|till you raid/);
+    expect(traderStockLimit(counter(), antidote)).toBe(0);
   });
 
   it('offers a barter as many times as the goods cover, and a once-only one just once', () => {
@@ -252,7 +271,7 @@ describe('the shelf', () => {
   it('sells to a regular, and only what the tier has opened', () => {
     const regular = counter({ progress: progress({ completedContracts: ['a', 'b', 'c'] }) });
     expect(traderStanding(regular.progress).id).toBe('regular');
-    expect(checkPurchase(regular, 'potion')?.refusal).toBeUndefined();
+    expect(checkPurchase(regular, 'antidote')?.refusal).toBeUndefined();
     expect(checkPurchase(regular, 'super-potion')?.refusal).toBe('standing-short');
     expect(checkPurchase(regular, 'great-ball')?.refusal).toBe('standing-short');
   });
@@ -266,7 +285,7 @@ describe('the shelf', () => {
     // ₽1000 and the deal is still refused: the ration is the gate
     // that a hoard cannot buy its way past.
     expect(moneyHeld(spent.stash)).toBeGreaterThan(1_000 - 1);
-    expect(checkPurchase(spent, 'potion')?.refusal).toBe('ration-spent');
+    expect(checkPurchase(spent, 'super-potion')?.refusal).toBe('ration-spent');
   });
 
   it('refuses what the vault cannot pay for', () => {

@@ -95,28 +95,28 @@ export const TRADER_STANDINGS: readonly TraderStanding[] = [
     id: 'stranger',
     name: 'Stranger',
     points: 0,
-    note: 'He will take your money and sell you nothing.',
+    note: 'Potions and Poké Balls for money, and nothing else yet.',
     ration: 0,
   },
   {
     id: 'regular',
     name: 'Regular',
     points: 6,
-    note: 'One thing a raid, and the first of the barters.',
+    note: 'One other thing a raid, and the first of the barters.',
     ration: 1,
   },
   {
     id: 'trusted',
     name: 'Trusted',
     points: 14,
-    note: 'Two things a raid, the good medicine, and most of the hold.',
+    note: 'Two other things a raid, the good medicine, and most of the hold.',
     ration: 2,
   },
   {
     id: 'partner',
     name: 'Partner',
     points: 26,
-    note: 'Three things a raid, and nothing on the boat is held back.',
+    note: 'Three other things a raid, and nothing on the boat is held back.',
     ration: 3,
   },
 ];
@@ -198,14 +198,23 @@ export interface TraderStockItem {
   readonly itemId: SupplyItemId;
   readonly price: number;
   readonly standing: TraderStandingId;
+  /**
+   * Whether a unit spends one of the raid's ration. Potions and Poke Balls do
+   * not: they are his everyday stock, sold to anybody, as many as the purse
+   * covers - money bought nothing for a newcomer's first hour while he sold a
+   * stranger nothing and a regular one thing a raid (AI playtest 3, 22 Nov
+   * 2026). The price is still the brake the paragraph above sets it as.
+   */
+  readonly rationed: boolean;
 }
 
 export const TRADER_STOCK: readonly TraderStockItem[] = [
-  { itemId: 'poke-ball', price: 90, standing: 'regular' },
-  { itemId: 'potion', price: 120, standing: 'regular' },
-  { itemId: 'antidote', price: 80, standing: 'trusted' },
-  { itemId: 'super-potion', price: 260, standing: 'trusted' },
-  { itemId: 'great-ball', price: 220, standing: 'partner' },
+  { itemId: 'poke-ball', price: 90, standing: 'stranger', rationed: false },
+  { itemId: 'potion', price: 120, standing: 'stranger', rationed: false },
+  // The Antidote is a regular's one other thing a raid, now Potions and Balls are off the ration.
+  { itemId: 'antidote', price: 80, standing: 'regular', rationed: true },
+  { itemId: 'super-potion', price: 260, standing: 'trusted', rationed: true },
+  { itemId: 'great-ball', price: 220, standing: 'partner', rationed: true },
 ];
 
 /**
@@ -644,6 +653,11 @@ function judgePurchase(counter: TraderCounter, item: TraderStockItem, quantity =
   if (!meetsStanding(counter.progress, item.standing)) {
     return standingRefusal(item.standing);
   }
+  if (!item.rationed) {
+    return moneyHeld(counter.stash) < item.price * quantity
+      ? refuse('money-short', `${formatMoney(item.price * quantity)}, and you have ${formatMoney(moneyHeld(counter.stash))}.`)
+      : {};
+  }
   if (quantity > rationLeft(counter) && rationLeft(counter) > 0) {
     return refuse('ration-spent', `He has ${rationLeft(counter)} left to sell you till you raid, not ${quantity}.`);
   }
@@ -683,7 +697,8 @@ export function traderStockLimit(counter: TraderCounter, item: TraderStockItem):
   if (!meetsStanding(counter.progress, item.standing)) {
     return 0;
   }
-  return Math.max(0, Math.min(rationLeft(counter), Math.floor(moneyHeld(counter.stash) / item.price)));
+  const affordable = Math.floor(moneyHeld(counter.stash) / item.price);
+  return Math.max(0, item.rationed ? Math.min(rationLeft(counter), affordable) : affordable);
 }
 
 /**
@@ -694,7 +709,7 @@ export function traderStockLimit(counter: TraderCounter, item: TraderStockItem):
 export function traderStockLimitReason(counter: TraderCounter, item: TraderStockItem): string {
   const ration = rationLeft(counter);
   const affordable = Math.floor(moneyHeld(counter.stash) / item.price);
-  return affordable <= ration
+  return !item.rationed || affordable <= ration
     ? `${affordable} is what your ${formatMoney(moneyHeld(counter.stash))} covers at ${formatMoney(item.price)} each.`
     : `${ration} left till you raid.`;
 }

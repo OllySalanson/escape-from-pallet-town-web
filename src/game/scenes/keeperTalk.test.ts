@@ -343,7 +343,8 @@ describe('Bill, at his cottage', () => {
     names(bill.stand, { kind: 'stock', itemId: 'potion' });
     const after = manager.load()!;
     expect(after.stash.itemCount('money')).toBe(380);
-    expect(after.traderRationUsed).toBe(1);
+    // Off the ration: he sells Potions to anybody, as many as they can pay for.
+    expect(after.traderRationUsed).toBe(0);
     expect(bill.went).toEqual([]);
     expect(bill.said.at(-1)).toContain('in your vault');
   });

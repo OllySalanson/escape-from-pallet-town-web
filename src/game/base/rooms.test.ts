@@ -626,9 +626,13 @@ describe('THE BOLTHOLE, the player\'s own house', () => {
     for (const errand of keepers) {
       const display = ERRAND_DISPLAY[errand.id];
       const room = BASE_ROOMS.find((each) => each.id === display.room)!;
-      expect(buildRoom(room, baseGame()).icons).toEqual([]);
+      // What else a room shows a fresh save (Bill's Potions and Poké Balls,
+      // out for anybody) is there either way; the errand's thing is the change.
+      const before = buildRoom(room, baseGame()).icons;
+      expect(before).not.toContainEqual({ itemId: errand.itemId, x: display.x, y: display.y });
       const built = buildRoom(room, baseGame({ progress: { errands } }));
-      expect(built.icons).toEqual([{ itemId: errand.itemId, x: display.x, y: display.y }]);
+      expect(built.icons).toHaveLength(before.length + 1);
+      expect(built.icons).toEqual(expect.arrayContaining([...before, { itemId: errand.itemId, x: display.x, y: display.y }]));
       // Set on something solid, which is what makes it a thing on a table.
       const tile = { x: Math.floor((display.x + 8) / TILE_SIZE), y: Math.floor((display.y + 8) / TILE_SIZE) };
       expect(built.collision[tile.y][tile.x], `${errand.id} stands on the floor`).toBe(true);

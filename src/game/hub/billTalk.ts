@@ -64,9 +64,9 @@ const READS_YOU: Readonly<Record<TraderStandingId, string>> = {
   // No count here: the next line says how many jobs, and 'Bank a job and I
   // might' over 'Bank 3 jobs' read as two rules (AI playtest, 22 Nov 2026).
   stranger: "I don't know you yet.",
-  regular: "You keep coming home. I'll sell you one thing a raid, and the first of the barters.",
-  trusted: 'I trust you. Two things a raid, the good medicine, and most of the hold.',
-  partner: 'Partner! Three things a raid, and nothing on the boat is held back.',
+  regular: "You keep coming home. I'll sell you one other thing a raid, and the first of the barters.",
+  trusted: 'I trust you. Two other things a raid, the good medicine, and most of the hold.',
+  partner: 'Partner! Three other things a raid, and nothing on the boat is held back.',
 };
 
 /**
@@ -77,14 +77,15 @@ const READS_YOU: Readonly<Record<TraderStandingId, string>> = {
 export const STRANGER_STARTED = "I've heard of you. Not enough yet.";
 
 /**
- * How a stranger gets on his books, counted. Money cannot start it - he sells a
- * stranger nothing to spend it on - so it is said as jobs, the one way in a
- * newcomer has (`STANDING_PER_CONTRACT`), with a beaten boss as the other.
+ * How a stranger gets on his books, counted. It is said as jobs, the one quick
+ * way in a newcomer has (`STANDING_PER_CONTRACT`), with a beaten boss as the
+ * other: Potions and Poke Balls bought count too, but slowly
+ * (`POKEDOLLARS_PER_STANDING`).
  */
 export function strangerWayIn(pointsShort: number, started = false): string {
   const jobs = Math.ceil(pointsShort / STANDING_PER_CONTRACT);
   const more = started ? ' more' : '';
-  return `Bank ${jobs}${more} ${jobs === 1 ? 'job' : 'jobs'} off Oak's board, or beat a boss, and I'll start selling to you.`;
+  return `Bank ${jobs}${more} ${jobs === 1 ? 'job' : 'jobs'} off Oak's board, or beat a boss, and I'll sell you more.`;
 }
 
 /** What he says to NOT NOW. */
@@ -124,7 +125,12 @@ function stockQuote(counter: TraderCounter, itemId: string): BillQuote {
       return { lines: [what, `${price}, and you have ${formatMoney(moneyHeld(counter.stash))}.`] };
     default:
       return {
-        lines: [what, `${price}, and ${rationLeft(counter)} more for you till you raid.`],
+        lines: [
+          what,
+          offer.item.rationed
+            ? `${price}, and ${rationLeft(counter)} more for you till you raid.`
+            : `${price} each, and as many as you can pay for.`,
+        ],
         question: `Buy one for ${price}?`,
         spendsForGood: true,
       };
@@ -190,11 +196,13 @@ export function billFromTheMat(counter: TraderCounter): BillQuote {
   const started = tier.id === 'stranger' && traderStandingPoints(counter.progress) > 0;
   const trip =
     tier.ration === 0
-      ? `You have ${formatMoney(moneyHeld(counter.stash))}, and I'm selling you nothing yet.`
+      ? `You have ${formatMoney(moneyHeld(counter.stash))}. Potions and Poké Balls I sell anybody, the rest once I know you.`
       : // A raid, not a trip or the deck: 'one thing off the deck a trip' was read
         // twice and still not understood (AI playtest, 22 Nov 2026).
         `You have ${formatMoney(moneyHeld(counter.stash))}. ${
-          left === 0 ? "That's your lot till you raid again." : `I'll sell you ${left} more ${left === 1 ? 'thing' : 'things'} till you raid again.`
+          left === 0
+            ? 'Potions and Poké Balls any time. The rest waits till you raid again.'
+            : `Potions and Poké Balls any time, and ${left} other ${left === 1 ? 'thing' : 'things'} till you raid again.`
         }`;
   return {
     lines: [

@@ -3589,7 +3589,7 @@ export class HubScene extends Phaser.Scene {
             id: offer.item.itemId,
             icon: itemIcon(offer.item.itemId, name),
             name: count > 1 ? `${name} ×${count}` : name,
-            question: `Pay ${total} for ${count === 1 ? withArticle(name) : `${count} ${name}s`}?${count === left ? " That's your last till you raid." : ''}`,
+            question: `Pay ${total} for ${count === 1 ? withArticle(name) : `${count} ${name}s`}?${offer.item.rationed && count === left ? " That's your last till you raid." : ''}`,
             confirm: `data-buy-confirm="${offer.item.itemId}"`,
             confirmLabel: 'Buy',
             confirmHelp: `Spends ${total} of your ${formatMoney(moneyHeld(this.stash))}.`,
@@ -3597,7 +3597,15 @@ export class HubScene extends Phaser.Scene {
           });
         }
         if (open) {
-          const help = `Buy ${count} ${name} for ${formatMoney(offer.item.price * count)}. ${limit === 1 ? 'That is all till you raid' : `Up to ${limit} till you raid`}. He asks again.`;
+          // Off the ration, the ceiling is the purse, not the raid.
+          const ceiling = offer.item.rationed
+            ? limit === 1
+              ? 'That is all till you raid'
+              : `Up to ${limit} till you raid`
+            : limit === 1
+              ? 'That is all your money covers'
+              : `Your money covers ${limit}`;
+          const help = `Buy ${count} ${name} for ${formatMoney(offer.item.price * count)}. ${ceiling}. He asks again.`;
           // The row is a pair, because a quantity is a control of its own: the
           // row still buys, and the selector beside it says how many. What the
           // thing *does* is the row's own line either way - a shelf that only
@@ -3622,8 +3630,8 @@ export class HubScene extends Phaser.Scene {
         // A heading bar's note clips at about the width of the longest one that
         // has to fit, and this pane is the narrow half of the screen: "He sells
         // a stranger nothing" came out as "HE SELLS A STRANGER NOTHIN". Why he
-        // is selling nothing is the standing pane's line, right above it.
-        note: standing.ration === 0 ? 'Nothing for you yet' : `${left} of ${standing.ration} left till you raid`,
+        // is selling no more is the standing pane's line, right above it.
+        note: standing.ration === 0 ? 'Potions and Balls for now' : `${left} of ${standing.ration} left till you raid`,
       },
     );
 
@@ -3765,14 +3773,19 @@ export class HubScene extends Phaser.Scene {
           short: held < item.price,
           icon: itemIcon(CURRENCY_ITEM_ID, this.itemName(CURRENCY_ITEM_ID)),
         },
-        {
-          ask: '1 of his ration',
-          held: ration === 0 ? 'he sells you nothing yet' : `${left} of ${ration} left till you raid`,
-          short: left <= 0,
-        },
+        // Potions and Poke Balls are off the ration (`TraderStockItem.rationed`).
+        ...(item.rationed
+          ? [
+              {
+                ask: '1 of his ration',
+                held: ration === 0 ? 'he sells you nothing yet' : `${left} of ${ration} left till you raid`,
+                short: left <= 0,
+              },
+            ]
+          : []),
       ],
       ...(offer.refusal === undefined
-        ? { note: 'A ration not spent is gone with the trip.' }
+        ? { note: item.rationed ? 'A ration not spent is gone with the trip.' : 'As many as you can pay for.' }
         : { blocked: offer.message ?? '' }),
     });
   }

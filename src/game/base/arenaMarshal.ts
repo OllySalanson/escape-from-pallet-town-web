@@ -38,8 +38,9 @@ export function marshalLines(
     if (flow.ballAtBase) {
       return ['No Poké Balls on your rack. You will not catch anything like that.'];
     }
-    // Bill keeps his balls back from a stranger, so sending a newcomer to him
-    // was sending them to a refusal (the first-hour bug hunt, 11 Nov 2026).
+    // Asked of his shelf rather than assumed: when he kept his balls back from a
+    // stranger, sending a newcomer to him was sending them to a refusal (the
+    // first-hour bug hunt, 11 Nov 2026). He sells them to anybody now.
     return billSellsBalls(bill)
       ? ['You have no Poké Balls at all. Bill sells them, on the quay.']
       : ['You have no Poké Balls at all, and Bill sells none to a stranger.', 'Pick them up out there, and bank a few jobs until he trusts you.'];
