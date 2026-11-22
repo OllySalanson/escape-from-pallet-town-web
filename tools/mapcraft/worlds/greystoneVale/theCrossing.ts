@@ -338,7 +338,7 @@ export function theCrossing(): MapcraftResult {
       ],
       trainers: [
         { x: 41, y: 37, name: 'Netter Bryn', team: 'netter', look: 'fisherman', facing: 'down', sight: 0, lines: ['The bridge is my spot!', 'Let us see what you have caught.'] },
-        { x: 50, y: 15 - 5, name: 'Breaker Dunn', team: 'breaker', look: 'black-belt', facing: 'left', sight: 0, lines: ['I break rocks all day. Put your Pokemon down there and let us see.'] },
+        { x: 50, y: 15 - 5, name: 'Breaker Dunn', team: 'breaker', look: 'black-belt', facing: 'left', sight: 0, lines: ["I break rocks all day. Put your Pokémon down there and let's see."] },
         { x: 59, y: 49, name: 'Collier Osk', team: 'collier', look: 'bald-man', facing: 'left', sight: 0, lines: ['Six days I have sat up with this stack. I could do with the company!'] },
       ],
       berryTrees: [

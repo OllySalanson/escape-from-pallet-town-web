@@ -6640,7 +6640,7 @@
    "facing": "left",
    "lines": [
     "A proper axe would clear that little tree by the garden in one go.",
-    "I have a blunt one and a bad back. You want a Pokemon that knows Cut."
+    "I have a blunt one and a bad back. You want a Pokémon that knows Cut."
    ],
    "beat": {
     "everyMs": 3200,
@@ -11331,7 +11331,7 @@
    "facing": "left",
    "lines": [
     "Welcome to the reserve.",
-    "Pokemon live in these reeds that you will not find anywhere else in the vale."
+    "Pokémon live in these reeds that you will not find anywhere else in the vale."
    ],
    "beat": {
     "everyMs": 3500,
@@ -16006,7 +16006,7 @@
    "sight": 0,
    "lines": [
     "This road is for the herd!",
-    "Show me your Pokemon if you want to pass."
+    "Show me your Pokémon if you want to pass."
    ]
   },
   {
@@ -16104,7 +16104,7 @@
    "facing": "left",
    "sight": 0,
    "lines": [
-    "I break rocks all day. Put your Pokemon down there and let us see."
+    "I break rocks all day. Put your Pokémon down there and let's see."
    ]
   },
   {

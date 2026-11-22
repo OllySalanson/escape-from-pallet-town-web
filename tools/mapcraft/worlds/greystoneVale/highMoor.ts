@@ -274,7 +274,7 @@ export function highMoor(): MapcraftResult {
         { x: 52, y: 13, name: 'Old Hob', look: 'camper', facing: 'left', lines: ['A boulder came down in my grandad’s day and the fold was shut and everybody forgot.', 'I did not forget. I just live here now. It is very quiet. Thank you for moving it.'] },
       ],
       trainers: [
-        { x: 31, y: 30, name: 'Drover Hale', team: 'drover', look: 'hiker', facing: 'left', sight: 0, lines: ['This road is for the herd!', 'Show me your Pokemon if you want to pass.'] },
+        { x: 31, y: 30, name: 'Drover Hale', team: 'drover', look: 'hiker', facing: 'left', sight: 0, lines: ['This road is for the herd!', 'Show me your Pokémon if you want to pass.'] },
       ],
       landmarks: [
         { x: 50, y: 35, name: 'Moor Spring', kind: 'spring' },

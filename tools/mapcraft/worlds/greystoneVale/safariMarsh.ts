@@ -296,7 +296,7 @@ export function safariMarsh(): MapcraftResult {
           name: 'Warden',
           look: 'gentleman',
           facing: 'left',
-          lines: ['Welcome to the reserve.', 'Pokemon live in these reeds that you will not find anywhere else in the vale.'],
+          lines: ['Welcome to the reserve.', 'Pokémon live in these reeds that you will not find anywhere else in the vale.'],
           beat: { everyMs: 3500, glances: ['left', 'right'] },
           calls: ['Keep to the paths!'],
         },
