@@ -31,6 +31,7 @@ import { districtFile } from '../../stitch';
 import { planLimits, startDistrict } from '../../worldPlan';
 import { INN_ROOM, withInside } from './insides';
 import { GREYSTONE_VALE } from './plan';
+import { MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
 
 /** The basin, a letter a lattice cell: T the wood round it, g the reeds that are its floor. */
 const BASIN = [
@@ -435,7 +436,10 @@ export function reedmere(): MapcraftResult {
       people: [
         // The guard at Misty's bar, as FireRed's Route 23 keeps its badge gates:
         // he says which badge opens it, and stands to one side of the way.
-        { x: 21, y: 62, name: 'Coast Guard', look: 'policeman', facing: 'left', lines: ['Past these sandbags is THE COAST, and MISTY keeps them. Only a trainer with her CASCADE BADGE goes through.', 'Beat her at Cerulean Gym on the strand and they come down for good. Mind the rain past them. It never stops.'] },
+        { x: 21, y: 62, name: 'Coast Guard', look: 'policeman', facing: 'left', lines: ['Past these sandbags is THE COAST, and MISTY keeps them. Only a trainer with her CASCADE BADGE goes through.', 'Beat her at Cerulean Gym on the strand and they come down for good. Mind the rain past them. It never stops.'],
+          // His words follow the badge (`linesSpoken`): straight after Misty he
+          // still turned a holder of hers back (the newcomer's AI playtest, 20 Nov 2026).
+          afterBeating: [{ boss: MISTY_BOSS_ID, lines: ['That is MISTY’s CASCADE BADGE. The sandbags are down: THE COAST is open to you.', 'Mind the rain past here. It never stops.'] }] },
         // -- The reed yard and the road down ------------------------------------------
         { x: 37, y: 8, name: 'Thatcher', look: 'straw-hat', facing: 'up', lines: ['Half of Millbrook sleeps under this marsh. It keeps the rain off, mostly.', 'If you are in a hurry, do not wade. It only feels quicker.'], beat: { everyMs: 3100, roam: [[-1, 0], [-2, 0]], glances: ['left'] }, calls: ['Mind the bundles!'] },
         { x: 44, y: 14, name: 'Reed Boy', look: 'boy', facing: 'right', lines: ['I carry the bundles up to the yard. Then they give me more bundles.', 'That is the whole job. I thought there would be more to it.'], beat: { everyMs: 2800, roam: [[0, 1]], glances: ['up', 'down'] }, calls: ['Coming through!'] },
