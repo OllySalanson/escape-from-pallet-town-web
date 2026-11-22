@@ -112,6 +112,7 @@ import {
   withRoomLoot,
   type RunInsertion,
   type RunInsertionId,
+  landingPlace,
   requireInsertion,
 } from '../run/runGeneration';
 import {
@@ -2862,7 +2863,8 @@ export class HubScene extends Phaser.Scene {
   }
 
   private rimTitle(insertionId: RunInsertionId): string {
-    return `Jump in at ${requireInsertion(insertionId).label}`;
+    // The place, among its map's other ways in (`landingPlace`): "Jump in at Greystone Vale" beside "Jump in at Old Quay" (veteran playtest, 20 Nov 2026).
+    return `Jump in at ${landingPlace(requireInsertion(insertionId))}`;
   }
 
   /**

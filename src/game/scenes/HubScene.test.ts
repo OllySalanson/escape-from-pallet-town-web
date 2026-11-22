@@ -1057,6 +1057,10 @@ describe('hub deployment route', () => {
     hub.setView('rim');
     expect(markupOf(hub)).toContain('Jump in at Floodplain Relay');
     expect(() => hub.flow.deploy()).toThrow(/confirmed loadout/);
+    // A front door that names its place says the place at the rim.
+    hub.flow.chooseInsertion('greystone-vale');
+    hub.setView('rim');
+    expect(markupOf(hub)).toContain('Jump in at Mill Square');
   });
 
   it('says on Oak\'s wall what is known of a place, and counts what is not', () => {
