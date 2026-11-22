@@ -1,22 +1,47 @@
 #!/usr/bin/env node
 // The AI playtesters' dashboard: serves dashboard.html beside this, the state
-// of every run under tools/playtest/ai-player/runs, and the machine's memory
-// and processor, for the page to poll.
+// of every runner's runs, and the machine's memory and processor, for the page
+// to poll.
 //
-//   node tools/playtest/dashboard.mjs [--port=4719]      then open http://127.0.0.1:4719/
+//   node tools/playtest/dashboard.mjs [--port=4719] [--runs=<folder>]...   then open http://127.0.0.1:4719/
+//
+// A runner is one runs folder (tools/playtest/ai-player/runs, or EPTW_AI_RUNS):
+// one overnight runner writes its runs and its overnight.json there. Several
+// runners playing side by side are shown on one page by naming each folder with
+// its own `--runs=`; a folder that does not exist yet is shown as not started.
 //
 // Local only (127.0.0.1), read only, no dependencies.
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { cpus, loadavg } from 'node:os';
-import { dirname, join, normalize, resolve } from 'node:path';
+import { basename, dirname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { listRuns, readFindings, runDir, runsDir } from './ai-player/runs.mjs';
+import { listRuns, readFindings, readLines, runDir, runsDir } from './ai-player/runs.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.argv.find((a) => a.startsWith('--port='))?.split('=')[1] ?? process.env.PORT ?? 4719);
 /** How many findings of each kind the page is sent. */
 const FINDINGS_PER_KIND = 40;
+/** The runs folders this dashboard shows, one a runner. */
+const ROOTS = (() => {
+  const named = process.argv.filter((a) => a.startsWith('--runs=')).map((a) => resolve(a.slice('--runs='.length)));
+  return named.length > 0 ? named : [runsDir()];
+})();
+
+/**
+ * A runner's name is its folder's, or the folder above when the folder is just
+ * `runs`: /data/eptw-ai-playtest-3/runs is `eptw-ai-playtest-3`.
+ */
+export const runnerName = (root) => (basename(root) === 'runs' ? basename(dirname(root)) : basename(root));
+
+/**
+ * A finding that could stop a release: a bug that says the game stopped,
+ * crashed, froze, lost something or left the player with no way on. Read off
+ * the words, so it is a count to look at first, not a verdict.
+ */
+const BLOCKER_WORDS =
+  /\b(crash\w*|fro(ze|zen)|freez\w*|hang(s|ing)?|hung|soft-?lock\w*|stuck|error|exception|lost|los(e|es|ing)|wiped (out )?(my|the|all)|disappear\w*|vanish\w*|unresponsive|(did not|didn't|does not|doesn't|never) (respond|load|open|close|work)|no way (out|on|back|forward)|(cannot|can't|could not|couldn't) (continue|leave|move|get out|go on|progress|start)|black screen|blank screen)\b/i;
+export const isReleaseBlocker = (finding) => finding.kind === 'bug' && BLOCKER_WORDS.test(finding.text ?? '');
 
 /** Memory as the kernel counts it: what is in use is what is not available. */
 export function memory(meminfo = readFileSync('/proc/meminfo', 'utf8')) {
@@ -55,35 +80,74 @@ const readJson = (path) => {
   }
 };
 
-/** Everything the page shows, in one answer. */
-export function dashboardState(root = runsDir(), now = Date.now()) {
+/** How many sessions a runner has played: the log each one leaves in its run's folder. */
+const countSessions = (root, runs) =>
+  runs.reduce((sum, run) => {
+    try {
+      return sum + readdirSync(runDir(run.runId, root)).filter((name) => /^session-\d+\.(json|log)$/.test(name)).length;
+    } catch {
+      return sum;
+    }
+  }, 0);
+
+/** Goals a run gave up on: its STUCKs. */
+const countGiveUps = (root, run) => readLines(join(runDir(run.runId, root), 'actions.jsonl')).filter((entry) => entry.action === 'giveup').length;
+
+/** One runner: its overnight state, each persona's newest run and totals, and its findings. */
+export function runnerState(root, index = 0) {
   const runs = listRuns(root).map(({ signature, ...status }) => status);
-  const findings = runs
-    .flatMap((run) => readFindings(run.runId, root).map((finding) => ({ ...finding, shot: finding.shot ? `/shots/${run.runId}/${finding.shot.replace(/^shots\//, '')}` : null })))
-    .sort((a, b) => b.at - a.at);
-  const byKind = Object.fromEntries(['bug', 'confusing', 'ai-feel'].map((kind) => {
-    const all = findings.filter((finding) => finding.kind === kind);
-    return [kind, { count: all.length, newest: all.slice(0, FINDINGS_PER_KIND) }];
-  }));
-  const personas = ['veteran', 'newcomer'].map((persona) => {
+  const name = runnerName(root);
+  const findings = runs.flatMap((run) =>
+    readFindings(run.runId, root).map((finding) => ({
+      ...finding,
+      runner: name,
+      shot: finding.shot ? `/shots/${index}/${run.runId}/${finding.shot.replace(/^shots\//, '')}` : null,
+    })),
+  );
+  const overnight = readJson(join(root, 'overnight.json'));
+  const played = ['veteran', 'newcomer'].filter((persona) => runs.some((run) => run.persona === persona) || overnight?.personas?.includes(persona));
+  const personas = (played.length > 0 ? played : ['veteran', 'newcomer']).map((persona) => {
     const theirs = runs.filter((run) => run.persona === persona);
-    const current = theirs[0] ?? null;
     return {
       persona,
-      current,
+      current: theirs[0] ?? null,
       runs: theirs.length,
       finishedRuns: theirs.filter((run) => run.finished).length,
       raids: theirs.reduce((sum, run) => sum + (run.raids ?? 0), 0),
       wipes: theirs.reduce((sum, run) => sum + (run.wipes ?? 0), 0),
       extractions: theirs.reduce((sum, run) => sum + (run.extractions ?? 0), 0),
+      giveUps: theirs.reduce((sum, run) => sum + countGiveUps(root, run), 0),
       findings: theirs.reduce((sum, run) => sum + Object.values(run.findings ?? {}).reduce((a, b) => a + b, 0), 0),
     };
   });
+  const counts = Object.fromEntries(['bug', 'confusing', 'ai-feel'].map((kind) => [kind, findings.filter((finding) => finding.kind === kind).length]));
+  return {
+    name,
+    started: existsSync(root),
+    overnight,
+    sessions: countSessions(root, runs),
+    runs: runs.length,
+    personas,
+    counts,
+    releaseBlockers: findings.filter(isReleaseBlocker).length,
+    findings,
+  };
+}
+
+/** Everything the page shows, in one answer: every runner, and their findings together, newest first. */
+export function dashboardState(roots = ROOTS, now = Date.now()) {
+  const runners = [roots].flat().map((root, index) => runnerState(root, index));
+  const findings = runners.flatMap((runner) => runner.findings).sort((a, b) => b.at - a.at);
+  const byKind = Object.fromEntries(['bug', 'confusing', 'ai-feel'].map((kind) => {
+    const all = findings.filter((finding) => finding.kind === kind);
+    return [kind, { count: all.length, newest: all.slice(0, FINDINGS_PER_KIND) }];
+  }));
+  const blockers = findings.filter(isReleaseBlocker);
   return {
     now,
     machine: { ...memory(), processorPercent: lastBusy, load: Math.round(loadavg()[0] * 10) / 10, cores: cpus().length },
-    overnight: readJson(join(root, 'overnight.json')),
-    personas,
+    runners: runners.map(({ findings: _all, ...runner }) => runner),
+    releaseBlockers: { count: blockers.length, newest: blockers.slice(0, FINDINGS_PER_KIND) },
     findings: byKind,
   };
 }
@@ -103,10 +167,10 @@ const server = createServer((request, response) => {
     send(response, 200, 'application/json', JSON.stringify(dashboardState()));
     return;
   }
-  const shot = /^\/shots\/([\w-]+)\/([\w.-]+\.png)$/.exec(url.pathname);
-  if (shot) {
-    const folder = resolve(runDir(shot[1]), 'shots');
-    const path = normalize(join(folder, shot[2]));
+  const shot = /^\/shots\/(\d+)\/([\w-]+)\/([\w.-]+\.png)$/.exec(url.pathname);
+  if (shot && ROOTS[Number(shot[1])]) {
+    const folder = resolve(runDir(shot[2], ROOTS[Number(shot[1])]), 'shots');
+    const path = normalize(join(folder, shot[3]));
     if (path.startsWith(folder) && existsSync(path)) {
       send(response, 200, 'image/png', readFileSync(path));
       return;
