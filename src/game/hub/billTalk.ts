@@ -191,7 +191,9 @@ export function billFromTheMat(counter: TraderCounter): BillQuote {
       ? `You have ${formatMoney(moneyHeld(counter.stash))}, and I'm selling you nothing yet.`
       : // A raid, not a trip or the deck: 'one thing off the deck a trip' was read
         // twice and still not understood (AI playtest, 22 Nov 2026).
-        `You have ${formatMoney(moneyHeld(counter.stash))}. I'll sell you ${left} more ${left === 1 ? 'thing' : 'things'} till you raid again.`;
+        `You have ${formatMoney(moneyHeld(counter.stash))}. ${
+          left === 0 ? "That's your lot till you raid again." : `I'll sell you ${left} more ${left === 1 ? 'thing' : 'things'} till you raid again.`
+        }`;
   return {
     lines: [
       started ? STRANGER_STARTED : READS_YOU[tier.id],

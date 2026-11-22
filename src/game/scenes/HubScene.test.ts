@@ -816,7 +816,7 @@ describe('hub deployment route', () => {
     expect(hub.flow.itemQuantity('poke-ball')).toBeGreaterThan(0);
     expect(loadout()).not.toContain('you can only catch with a ball you find');
     hub.flow.setItemQuantity('poke-ball', 0);
-    expect(loadout()).toContain('No Poké Balls on the rack, so you can only catch with a ball you find out there.');
+    expect(loadout()).toContain('No Poké Balls packed, so you can only catch with a ball you find out there.');
 
     // Packing one is the answer, and the warning goes.
     hub.flow.adjustItem('poke-ball', 1);

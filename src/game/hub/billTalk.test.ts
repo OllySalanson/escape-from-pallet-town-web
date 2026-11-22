@@ -141,5 +141,8 @@ describe('Bill from the mat', () => {
     const partner = billFromTheMat(counter({ money: 40 }, PARTNER, { rationUsed: 1 }));
     expect(partner.lines).toHaveLength(2);
     expect(partner.lines[1]).toBe("You have ₽40. I'll sell you 2 more things till you raid again.");
+    // Never 'I'll sell you 0 more things' (AI playtest, 22 Nov 2026).
+    const spent = billFromTheMat(counter({ money: 0 }, PARTNER, { rationUsed: 3 }));
+    expect(spent.lines[1]).toBe("You have ₽0. That's your lot till you raid again.");
   });
 });
