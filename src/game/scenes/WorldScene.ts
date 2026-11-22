@@ -5170,6 +5170,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       choice: this.trainerPrompt
         ? { question: this.trainerPrompt.question.join(' '), options: this.trainerPrompt.optionLabels, selected: this.trainerPrompt.selected }
         : null,
+      // A cache being searched: its panel is canvas text over the map, which
+      // the AI playtester's screen did not show in the world, so it waited on
+      // caches it never knew to take from (veteran playtest, 20 Nov 2026).
+      search: this.search ? this.searchForTest(this.search) : null,
       raid:
         session && snapshot
           ? {
@@ -8225,6 +8229,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /** Draws the search panel as the search now stands, or nothing while none is open. */
+  /** The search panel's words, for `describeForTest`: what `renderSearch` draws. */
+  private searchForTest(search: NonNullable<WorldScene['search']>): { readonly title: string; readonly rows: readonly string[]; readonly footer: readonly string[] } {
+    const state = this.searchStateOf(search.poi);
+    return {
+      title: search.poi.label,
+      rows: searchRows(state, search.pieces).map((row) => (row.key ? `[${row.key}] ${row.text}` : row.text)),
+      footer: searchFooter(state, search.pieces, search.takingAll, search.said),
+    };
+  }
+
   private renderSearch(): void {
     const search = this.search;
     // A side panel stands over the same corner: a sliver of the search showing

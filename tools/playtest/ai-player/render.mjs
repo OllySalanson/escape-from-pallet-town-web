@@ -17,6 +17,7 @@ function renderField(key, field) {
     : [field.place, field.room ? `room ${field.room}` : null].filter(Boolean).join(' / ');
   lines.push(`HERE: ${key === 'world' ? 'raid' : 'harbour'} - ${where || '?'} - tile ${tile(field.tile)} facing ${field.facing}${field.walking ? ' (walking)' : ''}`);
   if (field.dialogue) lines.push(`SAYS: "${field.dialogue.text}"${field.dialogue.complete ? '' : ' (still typing)'}${field.dialogue.boxesLeft > 1 ? ` (+${field.dialogue.boxesLeft - 1} more)` : ''}`);
+  if (field.search) lines.push(`SEARCHING ${field.search.title}: ${field.search.rows.join('; ') || 'nothing found yet'} | ${field.search.footer.join(' · ')}`);
   if (field.choice) lines.push(`QUESTION: ${field.choice.question ? `"${field.choice.question}" ` : ''}${field.choice.options.map((o, i) => (i === field.choice.selected ? `[${o}]` : o)).join(' / ')}`);
   if (field.hint) lines.push(`HINT: ${field.hint}`);
   const raid = field.raid;
