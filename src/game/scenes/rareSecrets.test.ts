@@ -311,7 +311,7 @@ describe('THE ELEVENTH STONE', () => {
     });
     internals.tryInteract();
     expect(dialogBox.shownMessages[0]).toBe(stone.foundLine);
-    expect(internals.pendingWildBattle).toEqual({ speciesId: 'alakazam', level: 22, secret: 'the-eleventh-stone/alakazam' });
+    expect(internals.pendingWildBattle).toEqual({ speciesId: 'alakazam', level: 18, secret: 'the-eleventh-stone/alakazam' });
   });
 });
 
