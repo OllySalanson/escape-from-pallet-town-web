@@ -700,7 +700,7 @@ describe('extraction loop integration', () => {
       { itemId: 'poke-ball', label: 'Poké Ball', quantity: 4 },
     ]);
     expect(report.spent).toEqual([{ itemId: 'poke-ball', label: 'Poké Ball', quantity: 1 }]);
-    expect(report.clockLabel).toBe('1:34 of 5:00');
+    expect(report.clockLabel).toBe('1:34 used of 5:00');
   });
 
   it('reports exactly the stash losses a wiped raid produced', () => {

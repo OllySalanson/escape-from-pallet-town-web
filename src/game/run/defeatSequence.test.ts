@@ -89,7 +89,7 @@ describe('the defeat sequence a lost raid opens on', () => {
     );
 
     expect(sequence?.beats[0].headline).toBe('CHARMANDER FAINTED.');
-    expect(sequence?.beats[0].detail).toContain('The last of 2');
+    expect(sequence?.beats[0].detail).toBe('The last of your 2 to fall. You went down beside it.');
   });
 
   it('draws the whole deployed party, at the levels the player raised them to', () => {

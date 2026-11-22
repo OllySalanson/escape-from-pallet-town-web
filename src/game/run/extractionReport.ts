@@ -428,7 +428,11 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       : 'Raid lost',
     headline: escaped
       ? (relicHeadline(ledgerFound, input.favoursInHand) ??
-        escapeHeadline(haulTier, isEmptyGroup(ledger) && !contractBanked && !gear.some((piece) => piece.fate === 'found')))
+        escapeHeadline(
+          haulTier,
+          isEmptyGroup(ledger) && !contractBanked && !gear.some((piece) => piece.fate === 'found'),
+          progress.some((entry) => entry.toLevel > entry.fromLevel),
+        ))
       : wipeHeadline(input.cause, secured, partner),
     summary: escaped
       ? escapeSummary(
@@ -441,7 +445,8 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       )
       : wipeSummary(input.cause, stakes, secured, partner),
     haulTier,
-    clockLabel: `${formatElapsedClock(snapshot.elapsedMs)} of ${formatRaidClock(input.durationMs)}`,
+    // 'used': '1:32 of 5:00' was read as time left as often as time taken (AI playtest, 22 Nov 2026).
+    clockLabel: `${formatElapsedClock(snapshot.elapsedMs)} used of ${formatRaidClock(input.durationMs)}`,
     elapsedMs: snapshot.elapsedMs,
     durationMs: input.durationMs,
     ledger,
@@ -590,9 +595,11 @@ function isRelic(itemId: string): boolean {
  * earned. "You got out with the goods." over "BANKED 0 ENTRIES" read as a
  * contradiction (veteran playtest, 20 Nov 2026), so it says what it did earn.
  */
-function escapeHeadline(tier: HaulTier, emptyHanded: boolean): string {
+function escapeHeadline(tier: HaulTier, emptyHanded: boolean, levelled: boolean): string {
   if (emptyHanded && tier !== 'empty') {
-    return 'You came back stronger, if empty-handed.';
+    // 'Stronger' only when somebody levelled: over 'Nobody levelled.' it read
+    // as the screen contradicting itself (AI playtest, 22 Nov 2026, six times).
+    return levelled ? 'You came back stronger, if empty-handed.' : 'Nothing banked, but the experience came home.';
   }
   switch (tier) {
     case 'loaded':

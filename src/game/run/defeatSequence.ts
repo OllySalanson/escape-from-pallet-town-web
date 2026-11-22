@@ -146,7 +146,9 @@ export function buildDefeatSequence(report: ExtractionReport): DefeatSequence | 
       detail:
         fallen.length === 1
           ? 'The only one you brought. You went down beside it.'
-          : `The last of ${fallen.length} still standing. You went down beside it.`,
+          // Not 'the last of 3 still standing', which over 'FAINTED.' read as
+          // though it still stood (AI playtest, 22 Nov 2026).
+          : `The last of your ${fallen.length} to fall. You went down beside it.`,
       prompt: ADVANCE_PROMPT,
     },
     report.lostTo === 'wild' ? lostToTheWild(takenNames) : strippedByTrainer(takenNames),
