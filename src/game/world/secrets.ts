@@ -563,13 +563,14 @@ export const SECRETS: readonly Secret[] = [
     // it is had (`shutLines`), and opens them only for somebody who came up
     // alone - one Pokemon in the party, which is a raid with nobody to switch
     // to. A Kadabra becomes one only by trade, so nothing in the vale's grass
-    // rolls one. Lv 22 is an earned fight before MISTY.
+    // rolls one. Lv 18 knows CONFUSION and not yet PSYBEAM (Lv 21), so it is a
+    // fight a lone partner can live through the first turn of, still earned before MISTY.
     id: 'the-eleventh-stone',
     name: 'THE ELEVENTH STONE',
     place: 'THE LITTLE STONES',
     nook: 'figure',
     when: [{ kind: 'alone' }],
-    rewards: [{ kind: 'meet', speciesId: 'alakazam', level: 22 }],
+    rewards: [{ kind: 'meet', speciesId: 'alakazam', level: 18 }],
     foundLine: 'The stone opens its eyes. It has been counting you. ALAKAZAM lifts both spoons!',
     shutLines: [
       'A stone among the stones, sitting very upright with its eyes shut. It is breathing.',

@@ -611,9 +611,23 @@ describe("the vale's secrets", () => {
       expect(plan(7, dusk).secrets.map((secret) => secret.id)).not.toContain(stone);
       const alone = plan(7, { ...dusk, partySize: 1 });
       expect(alone.sleeping ?? []).not.toContain(stone);
-      expect(alone.secrets.find((secret) => secret.id === stone)?.reward).toEqual({ kind: 'meet', speciesId: 'alakazam', level: 22 });
+      expect(alone.secrets.find((secret) => secret.id === stone)?.reward).toEqual({ kind: 'meet', speciesId: 'alakazam', level: 18 });
       expect(plan(7, { ...dusk, partySize: 3 }).secrets.map((secret) => secret.id)).not.toContain(stone);
       expect(plan(7, { ...dusk, partySize: 1 }, [`${stone}/alakazam`]).sleeping ?? []).not.toContain(stone);
+    });
+
+    /**
+     * The stone is met alone, so it must not end a raid on its first move
+     * (playtest 20 Nov, three times: a Lv 22 one opened with PSYBEAM for 48 to
+     * a full-HP Lv 24 Ivysaur). Lv 18 is below PSYBEAM's 21, so CONFUSION is
+     * the hardest thing it knows.
+     */
+    it('meets the eleventh stone at a level that has not learned PSYBEAM yet', () => {
+      const reward = SECRETS.find((secret) => secret.id === 'the-eleventh-stone')!.rewards[0];
+      if (reward.kind !== 'meet') throw new Error('the eleventh stone is met');
+      const moves = new Pokemon(getSpeciesById(reward.speciesId)!, reward.level).moves.map((move) => move.base.name);
+      expect(moves).toContain('Confusion');
+      expect(moves).not.toContain('Psybeam');
     });
 
     it('brings the pink one down the ride only for a Bug in front, in its other colours', () => {
