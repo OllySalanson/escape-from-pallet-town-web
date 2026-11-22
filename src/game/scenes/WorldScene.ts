@@ -6848,7 +6848,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * and what is added is the sentence before it.
    */
   private askForTrainerChallenge(encounter: RunTrainerEncounter): void {
-    const prompt = trainerChallengePrompt(encounter.trainer.name);
+    const prompt = trainerChallengePrompt(encounter.trainer.name, {
+      trainerParty: encounter.trainer.party,
+      trainerUnitCount: encounter.trainer.unitCount,
+      playerParty: this.party.pokemon,
+    });
     this.trainerPrompt = new ChoicePrompt(this, {
       x: Math.round((this.scale.width - DIALOG_WIDTH) / 2),
       y: this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,

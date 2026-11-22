@@ -44,6 +44,7 @@ vi.mock('phaser', () => {
 
 import { KeyPresses } from '../input/KeyPresses';
 import { Bag } from '../items';
+import { CHARMANDER, Pokemon, PokemonParty } from '../pokemon';
 import { getWorldMap } from '../worldMap';
 import { createRunTrainerEncounters } from '../world/trainers';
 import {
@@ -119,6 +120,8 @@ function facingMaya() {
     poiSprites: new Map(),
     poiLabels: new Map(),
     bag: new Bag(),
+    // A class field too: the prompt weighs the trainer's party against it.
+    party: new PokemonParty([new Pokemon(CHARMANDER, 5)]),
     runSession: undefined,
     controls,
     dialogBox,
@@ -183,6 +186,8 @@ describe('speaking to an authored trainer', () => {
     expect(harness.internals.pendingTrainerBattle).toBeUndefined();
     expect(harness.dialogBox.showMessages).not.toHaveBeenCalled();
     expect(promptText(harness.renderedTexts)).toContain('RAIDER MAYA');
+    // And what is in the fight, against the player's own lead.
+    expect(promptText(harness.renderedTexts)).toMatch(/RAIDER MAYA: \d Pokémon, lead Lv \d+ to your Lv 5\./);
     expect(promptText(harness.renderedTexts)).toContain(TRAINER_COMMITMENT_LINE);
     expect(promptText(harness.renderedTexts)).toContain(CHALLENGE_OPTION);
     expect(promptText(harness.renderedTexts)).toContain(BACK_AWAY_OPTION);
