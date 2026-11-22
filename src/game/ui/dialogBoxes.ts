@@ -24,7 +24,12 @@ const STRONG_CLAUSE_END = /[;:-]["'’”)]*$/;
 export const STRAY_BOX_CHARACTERS = 16;
 
 /** What a cut costs, by where it falls: nothing at a sentence's end, a little at a clause's, more mid-clause, and most inside a name. */
-const CUT_COST = { sentence: 0, strongClause: 1, clause: 2, word: 4, name: 12 } as const;
+const CUT_COST = { sentence: 0, strongClause: 1, clause: 2, word: 4, joiningWord: 8, name: 12 } as const;
+/**
+ * Words that lean on the word after them: a box ending on one reads broken -
+ * the ice cream seller's 'The lad with the' (AI playtest, 22 Nov 2026).
+ */
+const JOINING_WORDS = new Set(['a', 'an', 'the', 'of', 'to', 'with', 'in', 'on', 'at', 'for', 'from', 'by', 'and', 'or', 'my', 'your', 'his', 'her', 'its', 'their', 'our']);
 /** A word that starts with a capital: one half of a name like 'Greystone Vale' or 'Deer Gap'. */
 const CAPITALISED = /^["'‘“(]*\p{Lu}/u;
 /** What a box left as a stray tail costs: more than any other way of cutting the line. */
@@ -90,6 +95,7 @@ export function shareLine(text: string, rows: number, wrap: (text: string) => re
     // Two capitals with nothing between them are one name, read as one: Oak's
     // board was cut 'in Greystone' / 'Vale out through Deer Gap' (AI
     // playtests, 22 Nov 2026).
+    if (JOINING_WORDS.has(word.toLowerCase())) return CUT_COST.joiningWord;
     return CAPITALISED.test(word) && CAPITALISED.test(words[at]) ? CUT_COST.name : CUT_COST.word;
   };
 
