@@ -196,6 +196,20 @@ the commit that script names. Each folder carries the game's `LICENSE` and a
   The vendored build is byte-identical to the module its GitHub Pages publishes
   at that commit.
 
+## Site icons and link preview (`public/`, beside this folder)
+
+- `favicon.svg`, `favicon-32.png` and `apple-touch-icon.png` are `icons/poke-ball.png`
+  (below) scaled by whole numbers, one square per pixel, by
+  `scripts/draw-site-icons.mjs`; the touch icon sits on the title's cream
+  (`#f8f5d7`) because iOS paints transparency black. Same authorship and licence
+  as the icon.
+- `social-preview.png` is byte-identical to `docs/readme/social-preview.png`,
+  which `tools/readme/drawArt.mjs` draws from the game's own banner parts and
+  sheets and writes to both places; it carries the provenance of the sheets it
+  draws from (the title plate and font as authored here, the figures from
+  `characters/*.png`). It is what a shared link to the published game unfurls
+  as (`index.html`'s `og:image`).
+
 ## Pixel icons, authored for this repository
 
 `icons/*.png` - the item, objective and raid-marker icons - were drawn for this

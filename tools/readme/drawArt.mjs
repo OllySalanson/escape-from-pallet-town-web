@@ -231,6 +231,8 @@ try {
   const bytes = (data) => Buffer.from(data.split(',')[1], 'base64');
   writeFileSync(new URL('docs/readme/cast.png', root), bytes(art.cast));
   writeFileSync(new URL('docs/readme/social-preview.png', root), bytes(art.social));
+  // The same picture is the published page's link preview (index.html's og:image).
+  writeFileSync(new URL('public/social-preview.png', root), bytes(art.social));
 
   // The banner, in game pixels, shown at 800 wide.
   const W = 400, H = 224;
