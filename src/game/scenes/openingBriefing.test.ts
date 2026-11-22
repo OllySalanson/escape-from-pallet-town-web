@@ -11,6 +11,7 @@ vi.mock('phaser', () => ({
 import { BASE_STAGE_HEIGHT } from '../display/stage';
 import { Bag } from '../items';
 import { getContract } from '../objectives/contracts';
+import { FIRST_RAID_BRIEFING } from '../hub/firstRaid';
 import { WorldScene } from './WorldScene';
 
 /**
@@ -19,8 +20,11 @@ import { WorldScene } from './WorldScene';
  * the drop was or what to press (playtest 47): the briefing comes first, the
  * warning after it.
  */
-function openBriefing(potions: number, playerScreenRow = 6): { shown: string[][]; seatedAt: number[] } {
-  const contract = getContract('wardens-resupply')!;
+function openBriefing(
+  potions: number,
+  playerScreenRow = 6,
+  plan: object = { contract: getContract('wardens-resupply')! },
+): { shown: string[][]; seatedAt: number[] } {
   const bag = new Bag();
   if (potions > 0) {
     bag.add('potion', potions);
@@ -32,7 +36,7 @@ function openBriefing(potions: number, playerScreenRow = 6): { shown: string[][]
   Object.assign(scene as object, {
     bag,
     currentTile: player,
-    runSession: { plan: { contract }, firstDeploymentBriefingShown: false },
+    runSession: { plan, firstDeploymentBriefingShown: false },
     // The first frame: `startFollow` has set the scroll, and the worldView is
     // still whatever it was before the camera was first drawn.
     cameras: {
@@ -79,5 +83,25 @@ describe('the opening briefing', () => {
     // In the middle of the screen the box stays where every line is said.
     const centred = openBriefing(2, 6).seatedAt;
     expect(centred.at(-1) ?? BASE_STAGE_HEIGHT).toBeGreaterThan(BASE_STAGE_HEIGHT / 2);
+  });
+});
+
+describe("a new save's first raid", () => {
+  it('is told what a raid is as it lands, in two short boxes, though it carries no job', () => {
+    // The 22 Nov 2026 AI playtest: the first jump said nothing of the job, the
+    // clock or the risk, and the second raid's briefing was the first word.
+    const { shown } = openBriefing(0, 6, { stagedChase: true });
+    expect(shown).toEqual([[...FIRST_RAID_BRIEFING]]);
+    expect(FIRST_RAID_BRIEFING).toHaveLength(2);
+    for (const line of FIRST_RAID_BRIEFING) {
+      expect(line.length).toBeLessThanOrEqual(120);
+    }
+    expect(FIRST_RAID_BRIEFING.join(' ')).toMatch(/gold arrow/);
+    expect(FIRST_RAID_BRIEFING.join(' ')).toMatch(/clock/);
+    expect(FIRST_RAID_BRIEFING.join(' ')).toMatch(/pack is lost/);
+  });
+
+  it('says nothing on a later raid without a job', () => {
+    expect(openBriefing(0, 6, {}).shown).toEqual([]);
   });
 });

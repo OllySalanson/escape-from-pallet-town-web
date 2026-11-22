@@ -30,3 +30,16 @@ export function isFirstRaid(progress: {
 export function goesStraightOver(firstRaid: boolean, waysIn: number, notReady: string | undefined, inARoom: boolean): boolean {
   return firstRaid && waysIn <= 1 && notReady === undefined && !inARoom;
 }
+
+/**
+ * What a new save is told as its first raid lands, in the dialogue box the
+ * raids after it open with their job (`WorldScene.showFirstDeploymentBriefing`).
+ * Nothing stands between the title and the fall, so this is the first time the
+ * game says what a raid is: the 22 Nov 2026 AI playtest's newcomers jumped
+ * without being told the job, the clock or the risk, which a first-time player
+ * needs most (tester 3's confusing 9). Two short boxes, no more.
+ */
+export const FIRST_RAID_BRIEFING: readonly string[] = [
+  'Your first raid! Follow the gold arrow, grab what you can, and get out before the clock hits 0:00.',
+  'Get out and you keep it all. Faint, or run out of time, and the pack is lost. And keep moving: a hunter is coming.',
+];

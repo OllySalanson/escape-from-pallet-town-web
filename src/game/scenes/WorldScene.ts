@@ -1,3 +1,4 @@
+import { FIRST_RAID_BRIEFING } from '../hub/firstRaid';
 import { rewardKey, secretById, secretOpenAt, type SecretReward } from '../world/secrets';
 import { CHEST_ITEM_ID, TREASURE_SECRET_ID } from '../treasure/treasureMap';
 import type { OpenSecret } from '../run/runGeneration';
@@ -6823,16 +6824,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private showFirstDeploymentBriefing(): void {
     const session = this.runSession;
     const contract = session?.plan?.contract;
-    if (!contract || session.firstDeploymentBriefingShown) {
+    // A new save's first raid carries no job and is the one raid staged with a
+    // chase (`RunPlan.stagedChase`): it is told what a raid is instead.
+    const firstRaid = session?.plan?.stagedChase === true;
+    if (!session || (!contract && !firstRaid) || session.firstDeploymentBriefingShown) {
       return;
     }
     session.firstDeploymentBriefingShown = true;
     this.openingBriefingOpen = true;
-    // A contract that needs supplies out of the pack says so before the first
-    // step, because arriving at the drop without them wastes the whole raid -
-    // after the briefing, never instead of it, or the raid opens without saying
-    // where the drop is or which key is the field guide (playtest 47).
-    const missing = missingCarryIn(contractCarryIn(contract), (itemId) => this.bag.count(itemId));
     // Clear of the player, who is read against it: a landing by the map's
     // bottom edge (THE STRAND) stands where the camera cannot centre them, and
     // the box at the bottom hid them for the whole briefing. The camera's own
@@ -6840,6 +6839,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // only brought up to date when it is first drawn.
     const camera = this.cameras.main;
     this.seatDialog([this.currentTile], { left: camera.scrollX, top: camera.scrollY });
+    if (!contract) {
+      this.dialogBox.showMessages([...FIRST_RAID_BRIEFING]);
+      return;
+    }
+    // A contract that needs supplies out of the pack says so before the first
+    // step, because arriving at the drop without them wastes the whole raid -
+    // after the briefing, never instead of it, or the raid opens without saying
+    // where the drop is or which key is the field guide (playtest 47).
+    const missing = missingCarryIn(contractCarryIn(contract), (itemId) => this.bag.count(itemId));
     this.dialogBox.showMessages(
       missing.length === 0
         ? [contract.deploymentBriefing]

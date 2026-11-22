@@ -139,6 +139,7 @@ import {
   BATTLE_PANEL,
   NO_BATTLE_ITEMS_MESSAGE,
   lowHpItemHint,
+  typeLesson,
   CATCH_TIP_LINE,
   earnsCatchTip,
   PARTY_COLUMNS,
@@ -609,6 +610,8 @@ export class BattleScene extends Phaser.Scene {
   private victoryRewardsGranted = false;
   /** Whether this fight has said that medicine can be used in it (`lowHpItemHint`): once a fight. */
   private lowHpHintSaid = false;
+  /** Whether this fight has taught a line of the type chart (`typeLesson`): once a fight. */
+  private typeLessonSaid = false;
   /** Whether this fight has said a hurt Pokémon is easier to catch (`CATCH_TIP_LINE`): once a fight. */
   private catchTipSaid = false;
   /**
@@ -843,6 +846,7 @@ export class BattleScene extends Phaser.Scene {
     this.thrownBallId = undefined;
     this.victoryRewardsGranted = false;
     this.lowHpHintSaid = false;
+    this.typeLessonSaid = false;
     this.catchTipSaid = false;
     this.party = data.party ?? new PokemonParty([new Pokemon(CHARMANDER, 10)]);
     this.bag = data.bag ?? new Bag({ 'poke-ball': STARTING_POKE_BALLS });
@@ -2815,7 +2819,7 @@ export class BattleScene extends Phaser.Scene {
     this.persistActivePokemonHp();
     this.noteWhoFacesWhom();
     this.refreshStatusLabels();
-    const rewardMessages = this.awardTrainerDefeatExperience(previousState, result.events);
+    const rewardMessages = this.withTypeLesson(previousState, result.events, this.awardTrainerDefeatExperience(previousState, result.events));
     this.pendingChoices = [];
     this.choosingSlot = 0;
     this.prepareForcedReplacement();
@@ -4318,6 +4322,32 @@ export class BattleScene extends Phaser.Scene {
       }
     });
     return rewards;
+  }
+
+  /**
+   * The lines after a turn's events, with the fight's first type lesson added
+   * after the hit it is about (`typeLesson`), read from who stood where before
+   * the turn - a foe that fainted to the hit is gone from the state after it.
+   */
+  private withTypeLesson(
+    before: BattleState,
+    events: readonly BattleEvent[],
+    after: ReadonlyMap<number, readonly StagedNote[]>,
+  ): ReadonlyMap<number, readonly StagedNote[]> {
+    if (this.typeLessonSaid) {
+      return after;
+    }
+    const lesson = typeLesson(events, (side, slot) => {
+      const unit = unitAt(before, slotRef(side, slot));
+      return unit ? { types: getCombatantTypes(unit), moves: unit.pokemon.moves.map((move) => move.base) } : null;
+    });
+    if (!lesson) {
+      return after;
+    }
+    this.typeLessonSaid = true;
+    const lines = new Map(after);
+    lines.set(lesson.index, [lesson.line, ...(after.get(lesson.index) ?? [])]);
+    return lines;
   }
 
   /** The fight's first events, kept as its first turn for the line that says what beat you. */
