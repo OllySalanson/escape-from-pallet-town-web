@@ -196,6 +196,13 @@ describe('hunterThreatLine', () => {
     });
   });
 
+  it('says a raid alone is hunted by a pack, and who keeps the landing', () => {
+    expect(hunterThreatLine(hunterThreatFor([new Pokemon(CHARMANDER, 12)], 0, 'sabrina'), true)).toEqual({
+      heading: 'Hunters: one a district, SABRINA where you land',
+      detail: '1 Pokémon to your 1 · lead Lv 8 to your Lv 12 Charmander',
+    });
+  });
+
   it('says what the contract added', () => {
     expect(hunterThreatLine(hunterThreatFor([new Pokemon(CHARMANDER, 12)], 1))).toEqual({
       heading: 'Hunter: BLUE',

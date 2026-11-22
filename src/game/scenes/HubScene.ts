@@ -2896,7 +2896,9 @@ export class HubScene extends Phaser.Scene {
       ...securedItems.map(stack),
     ];
     const threat = this.hunterThreatAt(insertionId, this.flow.party);
-    const hunter = hunterThreatLine(threat);
+    // A raid alone meets a pack; a room shares one hunter (`WorldScene.hunterPackHere`).
+    const pack = !friendRoom()?.room;
+    const hunter = hunterThreatLine(threat, pack);
     const contract = this.contractFor(insertionId);
     const required = contract ? contractCarryIn(contract) : [];
     const short = required.length === 0 ? [] : missingCarryIn(required, (itemId) => this.flow.itemQuantity(itemId));
@@ -2939,7 +2941,7 @@ export class HubScene extends Phaser.Scene {
       : line('Safe', kept.length === 0 ? 'nothing: a wipe costs everything you take' : kept.join(', '), kept.length === 0);
     return `<dl class="dropin-facts rim-stakes">${hurt ? line('Hurt', hurt.line, true) : ''}${line('At risk', lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', '))}${goneForGood.length === 0 ? '' : line('A wipe', `${goneForGood.join(', ')}: lost for good`, true)}${safe}${
       job === undefined ? '' : line('Job', job, short.length > 0)
-    }${line('Hunter', `<span data-hunter-tier="${threat.tierOffset + 1}">${hunter.heading.replace(/^Hunter: /, '')}: ${hunter.detail}</span>`, threat.tierOffset > 0)}${this.clockIsNews ? line('Clock', this.clockNote()) : ''}</dl>`;
+    }${line(pack ? 'Hunters' : 'Hunter', `<span data-hunter-tier="${threat.tierOffset + 1}">${hunter.heading.replace(/^Hunters?: /, '')}: ${hunter.detail}</span>`, threat.tierOffset > 0)}${this.clockIsNews ? line('Clock', this.clockNote()) : ''}</dl>`;
   }
 
   /** Whether the clock is worth a line: it is on the title bar, and only a night or a shortened one has more to say. */

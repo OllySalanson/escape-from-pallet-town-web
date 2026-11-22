@@ -40,7 +40,9 @@ const TONIGHT: Readonly<Record<HunterRivalId, string>> = {
 
 export function tellyLines(game: RestoredGame): readonly string[] {
   const rival = hunterRival(nextRival(game));
-  return [TONIGHT[rival.id], `Next raid, the one on your trail will be ${rival.name}.`];
+  // A raid alone is hunted by one to every district, and this rival keeps the
+  // landing (`hunterPack.ts`): "the one on your trail" promised a single hunter.
+  return [TONIGHT[rival.id], `Next raid, ${rival.name} hunts where you land, and there is one in every district.`];
 }
 
 /** The raids this save has gone on, map by map, read off the save's own record. */
