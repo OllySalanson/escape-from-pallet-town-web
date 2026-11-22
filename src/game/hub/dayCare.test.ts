@@ -210,6 +210,9 @@ describe('taking it back', () => {
     });
     stash.leaveAtDayCare('charmander-1', 4);
     expect(checkOnLines(dayCareReport(stash.dayCare()!, 4))[0]).toMatch(/^You’re back already\?/);
+    // What counts, and how far it has come, are said (AI playtest, 22 Nov 2026).
+    expect(checkOnLines(dayCareReport(stash.dayCare()!, 4))[1]).toBe(`Only a raid of ${DAY_CARE_LEAST_RAID_MS / 1000} seconds or more counts.`);
+    expect(checkOnLines(dayCareReport(stash.dayCare()!, 5))).toEqual(['Your Charmander’s coming along: half a level a raid, and it’s had one.']);
     expect(dayCareStatusLine(stash, 6)).toBe('Raising Charmander · Lv 7');
 
     const taken = takeBack(stash, 6)!;
