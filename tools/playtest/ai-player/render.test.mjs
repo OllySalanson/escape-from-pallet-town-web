@@ -23,3 +23,28 @@ describe('renderScreen', () => {
     expect(long).toContain('talked: line 6\n');
   });
 });
+
+describe('a cache being searched', () => {
+  it('is shown, with the keys that take from it and why a take was refused', () => {
+    // The veteran run (20 Nov 2026) stood on four caches and waited, never
+    // knowing a search panel was up: its words were canvas text the world's
+    // screen did not show, and it reported the caches as paying nothing.
+    const world = {
+      scenes: ['world'],
+      texts: [],
+      scene: {
+        world: {
+          mapName: 'Greystone Vale',
+          place: "THE BURNERS' ROAD",
+          tile: { x: 177, y: 185 },
+          facing: 'up',
+          search: { title: 'CHARCOAL STACK', rows: ['[1] Lamp oil'], footer: ['No room for Lamp oil.', '[1] TAKE [SPACE] ALL', 'WALK AWAY TO LEAVE'] },
+        },
+      },
+    };
+
+    const shown = renderScreen(world, { events: [] });
+
+    expect(shown).toContain('SEARCHING CHARCOAL STACK: [1] Lamp oil | No room for Lamp oil. · [1] TAKE [SPACE] ALL · WALK AWAY TO LEAVE');
+  });
+});
