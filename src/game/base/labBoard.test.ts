@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { baseGame } from './baseGames.testkit';
-import { BARE_BOARD_LINE, RUMOURS_PINNED_LINE, bankedJobsLine, SCRAP_HEIGHT, SCRAP_WIDTH, boardLines, boardNote, boardNotices, boardPoster, scrapSeats, slipSeats } from './labBoard';
+import { BARE_BOARD_LINE, RUMOURS_PINNED_LINE, bankedJobsLine, SCRAP_HEIGHT, SCRAP_WIDTH, boardLines, boardNote, boardNotices, boardPoster, oakNews, scrapSeats, slipSeats } from './labBoard';
+import { createStartingStash } from '../stash';
 import { BOARD_TILES, OAK_BOARD, OAK_CHART_TABLE, OAK_WALL_MAP, buildRoom, roomNamed } from './rooms';
 import { RUMOURS } from '../world/rumours';
 import { RUMOUR_BOUGHT_LINE } from '../minigames/tickets';
@@ -183,5 +184,22 @@ describe("Oak's cork board", () => {
         expect(poster.data[at]).toBe(255);
       }
     });
+  });
+});
+
+describe("Oak's news of healing a raid was too short to pay for", () => {
+  /**
+   * Eight playtest reports of 22 Nov 2026 called it healing 'charged twice': a
+   * dash home left the heal owed, and Oak read it out as '1:40 went on recovery'.
+   */
+  it('says the last raid was too short to pay, and what the next one runs', () => {
+    const stash = createStartingStash();
+    const carried = oakNews({ stash, pendingRecoveryMs: 100_000, recoveryCarried: true });
+    expect(carried.join(' ')).toContain('Your last raid was too short to pay for NURSE JOY');
+    expect(carried.join(' ')).toContain('a raid has to last 0:55');
+    expect(carried.join(' ')).not.toContain('went on recovery');
+
+    const fresh = oakNews({ stash, pendingRecoveryMs: 100_000 });
+    expect(fresh.join(' ')).toContain('went on recovery');
   });
 });

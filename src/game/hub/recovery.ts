@@ -349,9 +349,22 @@ export function clampPendingRecoveryMs(value: unknown): number {
  * who is not told reads the next short clock as the heal charged twice (the
  * overnight playtest of 20 Nov 2026, twice).
  */
-export function recoveryStillOwedLine(pendingRecoveryMs: number): string {
+export function recoveryStillOwedLine(pendingRecoveryMs: number, leastRaidMs?: number): string {
   const pending = clampPendingRecoveryMs(pendingRecoveryMs);
-  return `Out too soon to pay for Nurse Joy's healing: your next raid still runs ${formatRecoveryClock(
+  const least = leastRaidMs === undefined ? '' : ` (a raid has to last ${formatRecoveryClock(leastRaidMs)})`;
+  return `Out too soon to pay for Nurse Joy's healing${least}: your next raid still runs ${formatRecoveryClock(
+    raidClockAfterRecovery(RAID_DURATION_MS, pending),
+  )}.`;
+}
+
+/**
+ * Oak's line, back at base, about healing a raid was too short to pay for. It
+ * is the same debt as before, not a fresh charge, and said as one it was taken
+ * for healing 'charged twice' (eight playtest reports, 22 Nov 2026).
+ */
+export function carriedRecoveryLine(pendingRecoveryMs: number, leastRaidMs: number): string {
+  const pending = clampPendingRecoveryMs(pendingRecoveryMs);
+  return `Your last raid was too short to pay for NURSE JOY's healing - a raid has to last ${formatRecoveryClock(leastRaidMs)}. So your next raid still runs ${formatRecoveryClock(
     raidClockAfterRecovery(RAID_DURATION_MS, pending),
   )}.`;
 }

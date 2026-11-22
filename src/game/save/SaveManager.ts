@@ -676,6 +676,13 @@ export interface SaveData {
    */
   readonly pendingRecoveryMs: number;
   /**
+   * The healing owed was owed by a raid too short to pay it
+   * (`DAY_CARE_LEAST_RAID_MS`), so Oak, the rim and the arena say so rather
+   * than reading the same debt as a fresh charge: eight playtest reports took
+   * it for healing 'charged twice' (22 Nov 2026). Written only while true.
+   */
+  readonly recoveryCarried?: boolean;
+  /**
    * Quarantine ward beds already used before the coming raid. It is cleared
    * with `pendingRecoveryMs`, when that raid resolves, for the same reason: a
    * page reload must not hand the bed back. Absent on older saves, which have
@@ -714,6 +721,7 @@ export interface RestoredGame {
   readonly raidProgress: RaidProgress;
   readonly starterSpeciesId: StarterSpeciesId | null;
   readonly pendingRecoveryMs: number;
+  readonly recoveryCarried?: boolean;
   readonly wardTreatmentsUsed: number;
   readonly traderRationUsed: number;
   readonly traderBerthPaid: boolean;
@@ -730,6 +738,7 @@ export interface SaveGameState {
   readonly raidProgress?: RaidProgress;
   readonly starterSpeciesId?: StarterSpeciesId | null;
   readonly pendingRecoveryMs?: number;
+  readonly recoveryCarried?: boolean;
   readonly wardTreatmentsUsed?: number;
   readonly traderRationUsed?: number;
   readonly traderBerthPaid?: boolean;
@@ -760,6 +769,7 @@ function withGiftsReceived(game: RestoredGame, result: RunResult): RestoredGame 
 /** What every raid ending clears: the recovery a resolved raid has now paid for. */
 const RAID_RESOLVED = {
   pendingRecoveryMs: 0,
+  recoveryCarried: false,
   wardTreatmentsUsed: 0,
   traderRationUsed: 0,
   traderBerthPaid: false,
@@ -770,6 +780,7 @@ const RAID_RESOLVED = {
 /** What an ending writes: the raid's mark gone, its berth used, and what it paid off. */
 interface RaidResolution {
   readonly pendingRecoveryMs?: number;
+  readonly recoveryCarried: boolean;
   readonly wardTreatmentsUsed?: number;
   readonly traderRationUsed?: number;
   readonly traderBerthPaid: boolean;
@@ -799,7 +810,7 @@ function resolvedBy(game: RestoredGame, elapsedMs: number | undefined): RaidReso
 function paidOff(game: RestoredGame, paid: boolean): RaidResolution {
   const owed = game.raidInFlight?.owed;
   if (owed === undefined) {
-    return paid ? RAID_RESOLVED : { traderBerthPaid: false, raidInFlight: null };
+    return paid ? RAID_RESOLVED : { traderBerthPaid: false, raidInFlight: null, recoveryCarried: game.pendingRecoveryMs > 0 };
   }
   return {
     ...(paid
@@ -811,6 +822,7 @@ function paidOff(game: RestoredGame, paid: boolean): RaidResolution {
       : {}),
     traderBerthPaid: owed.traderBerthPaid ? false : game.traderBerthPaid,
     raidInFlight: null,
+    recoveryCarried: !paid && owed.recoveryMs > 0 && game.pendingRecoveryMs > 0,
   };
 }
 
@@ -2829,6 +2841,7 @@ export function serializeGame(state: SaveGameState): SaveData {
     raidProgress: withVaultRegistered(state.raidProgress ?? DEFAULT_RAID_PROGRESS, state.stash),
     starterSpeciesId: state.starterSpeciesId ?? inferStarterSpeciesId(state.stash),
     pendingRecoveryMs: clampPendingRecoveryMs(state.pendingRecoveryMs),
+    ...(state.recoveryCarried === true && clampPendingRecoveryMs(state.pendingRecoveryMs) > 0 ? { recoveryCarried: true } : {}),
     wardTreatmentsUsed: clampWardTreatmentsUsed(state.wardTreatmentsUsed),
     traderRationUsed: clampTraderCount(state.traderRationUsed),
     traderBerthPaid: state.traderBerthPaid === true,
@@ -2942,6 +2955,7 @@ export function deserializeGame(value: unknown): RestoredGame | null {
     raidProgress: partnerOutOfTheContainer(deserializeRaidProgress(value.raidProgress), stash.partnerId()),
     starterSpeciesId,
     pendingRecoveryMs: clampPendingRecoveryMs(value.pendingRecoveryMs),
+    recoveryCarried: value.recoveryCarried === true && clampPendingRecoveryMs(value.pendingRecoveryMs) > 0,
     wardTreatmentsUsed: clampWardTreatmentsUsed(value.wardTreatmentsUsed),
     traderRationUsed: clampTraderCount(value.traderRationUsed),
     traderBerthPaid: value.traderBerthPaid === true,

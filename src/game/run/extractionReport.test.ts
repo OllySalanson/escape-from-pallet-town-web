@@ -812,7 +812,7 @@ describe('extraction report after a lost raid', () => {
       }).recoveryStillOwed;
     };
 
-    expect(escaped(150_000)).toBe("Out too soon to pay for Nurse Joy's healing: your next raid still runs 2:30.");
+    expect(escaped(150_000)).toBe("Out too soon to pay for Nurse Joy's healing (a raid has to last 0:55): your next raid still runs 2:30.");
     expect(escaped(0)).toBeUndefined();
     expect(escaped()).toBeUndefined();
   });
