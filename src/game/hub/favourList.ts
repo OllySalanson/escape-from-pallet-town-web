@@ -113,7 +113,9 @@ function detail(entry: FavourEntry): string {
     case 'in-hand':
       return `${errand.name} asked you for ${thing}. It lies in ${errandWhere(errand)}, laid there every raid until it comes home. Walk out with it and speak to ${errand.name}. Reward: ${errand.reward.summary}. Lost with the pack if you wipe.`;
     case 'ask':
-      return `${errand.name} has a favour to ask. Find them at ${favourGiverWhere(errand)} and speak to them: they say what it is, and you say yes or not now.`;
+      // No pronoun for a named person: 'Find them... they say' for Professor Oak
+      // read as a template filled in (AI playtest, 22 Nov 2026).
+      return `${errand.name} has a favour to ask. Speak to ${errand.name} at ${favourGiverWhere(errand)} to hear it, then say yes or not now.`;
     case 'ask-later':
       return `${errand.name} will ask again after your next raid, at ${favourGiverWhere(errand)}.`;
     case 'done':

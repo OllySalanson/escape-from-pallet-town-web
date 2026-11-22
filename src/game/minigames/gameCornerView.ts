@@ -74,7 +74,7 @@ const JUMP_WORDS: Readonly<Record<JumpType, { readonly label: string; readonly h
  * one shape - Pidgey and Diglett are off it, Oddish and Psyduck on - so the
  * line names kinds on it that the vale's grass holds rather than a rule.
  */
-export const JUMPERS_ARE = 'Only some kinds can jump, as in FireRed: RATTATA, ODDISH, PSYDUCK, PIKACHU and the like.';
+export const JUMPERS_ARE = 'Only some kinds can jump: RATTATA, ODDISH, PSYDUCK, PIKACHU and the like.';
 
 /** The cabinet's own screen: pick up to three jumpers, then play. */
 export function jumpTeamMarkup(state: JumpTeamState): string {

@@ -2587,7 +2587,7 @@ export class HubScene extends Phaser.Scene {
     // still the player's to choose; the panel says what it cannot do.
     if (balls && party.length > 0 && !this.flow.packsABall) {
       return this.flow.ballAtBase
-        ? 'No Poké Balls on the rack, so you can only catch with a ball you find out there.'
+        ? 'No Poké Balls packed, so you can only catch with a ball you find out there.'
         : 'No Poké Balls at base, so you can only catch with a ball you find out there.';
     }
     return '';
