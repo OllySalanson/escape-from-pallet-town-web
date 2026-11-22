@@ -641,7 +641,7 @@ describe('THE BOLTHOLE, the player\'s own house', () => {
 describe('THE END BOOKCASE, open', () => {
   it('sends the player to the gap on its left, which is the way through, and not into its solid door', () => {
     const opened = baseGame({ progress: { treasureHunt: { roomOpen: true, pinned: [], chestOpened: false } } });
-    const built = buildRoom(roomNamed('great-library'), opened);
+    const built = buildRoom(roomNamed('great-library')!, opened);
     const bookcase = built.things.find((thing) => thing.name === 'THE END BOOKCASE');
     const door = bookcase?.tiles[0];
     expect(door).toBeDefined();
