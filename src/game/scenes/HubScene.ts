@@ -1303,6 +1303,7 @@ export class HubScene extends Phaser.Scene {
     // the player chose and a raid that goes badly chose it too.
     new SaveManager().recordSecurePreference(deployment.securePreference);
     new SaveManager().recordBench(deployment.party.map((stored) => stored.id));
+    new SaveManager().choosePack(Object.fromEntries(items.map(({ itemId, quantity }) => [itemId, quantity])));
     // The same moment, for the same reason: it is what the player chose, and a
     // raid that goes badly chose it too.
     new SaveManager().recordContainerArrangements(

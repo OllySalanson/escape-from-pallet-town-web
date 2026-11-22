@@ -2263,6 +2263,8 @@ export class BaseScene extends Phaser.Scene {
     if (changed) {
       this.saveManager.chooseBench(changed);
     }
+    // The pack, for the same reason: the rack is built afresh from the save too.
+    this.saveManager.choosePack(flow.packedContents);
   }
 
   /** Back from a panel: what was chosen in it now stands in the room. */

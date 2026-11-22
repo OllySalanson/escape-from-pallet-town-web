@@ -488,6 +488,15 @@ export interface RaidProgress {
    */
   readonly lastBench?: readonly string[];
   /**
+   * What was in the pack, by kind and count, when it was last laid out at the
+   * ARMOURY RACK or taken down, so the next loadout packs it again
+   * (`DeploymentFlow`). The rack packed only its default every time, and a
+   * player who added the Old Rod found it back on the shelf after one raid (the
+   * overnight playtest of 20 Nov 2026). Absent reads as never laid out - so no
+   * version bump.
+   */
+  readonly lastPack?: BagContents;
+  /**
    * Who walks about THE BOLTHOLE's garden, by stash id, once a PC has been used
    * to choose (`base/homeGarden.ts`). Absent reads as the default - the six
    * highest level not going on the next raid - so no version bump.
@@ -2367,6 +2376,29 @@ export class SaveManager {
   }
 
   /**
+   * What the pack holds as the player left it, written at the door and as the
+   * ARMOURY RACK is put away, so the next loadout packs it again
+   * (`DeploymentFlow`'s `packLastPack`). Nothing is written when it is
+   * already what the save holds.
+   */
+  public choosePack(contents: Readonly<Record<string, number>>): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    const kept = bagContents(contents);
+    const before = game.raidProgress.lastPack;
+    const same =
+      before !== undefined &&
+      Object.keys(before).length === Object.keys(kept).length &&
+      Object.entries(kept).every(([itemId, quantity]) => before[itemId] === quantity);
+    if (same) {
+      return true;
+    }
+    return this.save({ ...game, raidProgress: { ...game.raidProgress, lastPack: kept } });
+  }
+
+  /**
    * The next raid's team, chosen outside the hall: YOUR TEAM on P
    * (`scenes/TeamScene.ts`). It writes the same `lastBench` the hall's bench
    * opens on, so the bench holds who was chosen in the yard. No raid has gone
@@ -3034,6 +3066,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // the default is exactly what such a player wants: lead with the Pokemon.
     securePreference: readSecurePreference(value.securePreference),
     ...(value.lastBench === undefined ? {} : { lastBench: uniqueStrings(value.lastBench) }),
+    ...(value.lastPack === undefined ? {} : { lastPack: bagContents(value.lastPack) }),
     ...(value.garden === undefined ? {} : { garden: uniqueStrings(value.garden) }),
     ...(Number.isInteger(value.benchRaids) && (value.benchRaids as number) > 0 ? { benchRaids: value.benchRaids as number } : {}),
     ...(Number.isInteger(value.shortRaids) && (value.shortRaids as number) > 0 ? { shortRaids: value.shortRaids as number } : {}),

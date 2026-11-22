@@ -2465,6 +2465,25 @@ describe('SaveManager', () => {
     });
   });
 
+  describe('what the pack held as it was left', () => {
+    it('is remembered, and a save that never laid one out has none', () => {
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      expect(new SaveManager(storage).load()?.raidProgress.lastPack).toBeUndefined();
+
+      expect(saves.choosePack({ 'old-rod': 1, 'poke-ball': 3 })).toBe(true);
+
+      expect(new SaveManager(storage).load()?.raidProgress.lastPack).toEqual({ 'old-rod': 1, 'poke-ball': 3 });
+    });
+
+    it('keeps only whole counts of things, as a bag does', () => {
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      saves.choosePack({ potion: 2, 'poke-ball': 0, 'great-ball': 1.5 });
+      expect(new SaveManager(storage).load()?.raidProgress.lastPack).toEqual({ potion: 2 });
+    });
+  });
+
   /**
    * A pack the player laid out comes back the way they left it - across
    * screens, across a save and across a raid. It is seats rather than a grid,

@@ -162,6 +162,42 @@ describe('deployment flow', () => {
     expect(flow.party).toEqual([]);
   });
 
+  /**
+   * The overnight playtest of 20 Nov 2026 added three Poke Balls and the Old Rod
+   * at the ARMOURY RACK, raided, and found them back on the shelf: the rack
+   * packed only its default each time it was built.
+   */
+  describe('the pack as it was left', () => {
+    const packOf = (stash: Stash, lastPack: Readonly<Record<string, number>>): DeploymentFlow =>
+      new DeploymentFlow(stash, undefined, undefined, undefined, undefined, null, [], lastPack);
+
+    it('packs again what the player laid out, with the default filling in around it', () => {
+      const { stash } = seedFlow();
+      stash.addItem('old-rod', 1);
+      stash.addItem('poke-ball', 10);
+      const flow = packOf(stash, { 'old-rod': 1, 'poke-ball': 6 });
+
+      expect(flow.itemQuantity('old-rod')).toBe(1);
+      expect(flow.itemQuantity('poke-ball')).toBe(6);
+      expect(flow.isPrepacked('poke-ball')).toBe(false);
+      // The medicine the default packs is still packed beside it.
+      expect(flow.items.some(({ itemId }) => itemId === 'potion')).toBe(true);
+    });
+
+    it('packs only what the vault still holds of it', () => {
+      const { stash } = seedFlow();
+      const flow = packOf(stash, { 'old-rod': 1, 'card-key': 1 });
+
+      expect(flow.itemQuantity('old-rod')).toBe(0);
+      expect(flow.itemQuantity('card-key')).toBe(0);
+    });
+
+    it('is the default exactly, for a save that never laid one out', () => {
+      const { stash } = seedFlow();
+      expect(packOf(stash, {}).packedContents).toEqual(new DeploymentFlow(stash).packedContents);
+    });
+  });
+
   describe('the bench as it was left', () => {
     const benchOf = (stash: Stash, lastBench: readonly string[]): readonly string[] =>
       new DeploymentFlow(stash, undefined, undefined, undefined, undefined, null, lastBench).party.map(({ id }) => id);
