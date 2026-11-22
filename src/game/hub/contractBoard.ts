@@ -68,7 +68,8 @@ export function contractBoardRow(contract: RaidContract): ContractBoardRow {
         : []),
       ...(contract.requiredExitLabel ? [`Banks only through ${contract.requiredExitLabel}`] : []),
       ...(carryIn.length > 0 ? [`Pack ${formatStacks(carryIn)}`] : []),
-      ...(pressure > 0 ? [`Hunter +${pressure} tier${pressure === 1 ? '' : 's'}`] : []),
+      // Not 'Hunter +1 tier', a designer's stat line nobody could read (AI playtest, 22 Nov 2026).
+      ...(pressure > 0 ? [pressure === 1 ? 'A stronger hunter' : 'A much stronger hunter'] : []),
     ].join(' · '),
     reward: contract.reward.summary,
     hunterPressure: pressure,

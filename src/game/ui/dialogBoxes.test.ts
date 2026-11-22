@@ -80,7 +80,7 @@ describe('a line shared out between dialogue boxes', () => {
   it('never cuts a name in two', () => {
     // Oak's board (AI playtests, 22 Nov 2026) read 'SEALED DISPATCH: Carry the
     // dispatch case in Greystone' and then 'Vale out through Deer Gap. ...'.
-    const line = 'SEALED DISPATCH: Carry the dispatch case in Greystone Vale out through Deer Gap. Banks only through DEER GAP · Hunter +1 tier.';
+    const line = 'SEALED DISPATCH: Carry the dispatch case in Greystone Vale out through Deer Gap. Banks only through DEER GAP · A stronger hunter.';
     const boxes = shareLine(line, ROWS, wrap);
     expect(boxes.join(' ')).toBe(line);
     for (const [first, second] of [['Greystone', 'Vale'], ['Deer', 'Gap.'], ['DEER', 'GAP']]) {

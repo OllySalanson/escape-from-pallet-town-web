@@ -211,7 +211,7 @@ export function chartTableLines(facts: ChartTableFacts, itemName: (itemId: strin
     );
   }
   if (here.length === 0 && traced === 0 && !hunt.roomOpen) {
-    lines.push('OAK: I keep it for charts, and nobody has brought me one. The sea throws old things up on THE BEACH, now and then.');
+    lines.push('OAK: I keep it for charts, and nobody has brought me one. The sea throws old things up on THE BEACH, below THE PROMENADE at the harbour\'s east end.');
   }
   return lines;
 }

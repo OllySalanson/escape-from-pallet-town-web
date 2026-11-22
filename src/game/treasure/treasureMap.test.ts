@@ -175,7 +175,7 @@ describe('the treasure map', () => {
       const first = pinnedLines(CHART_PIECES[0], { ...NO_TREASURE_HUNT, roomOpen: true, pinned: ['shore'] }, 'Bottled chart', 'CHARMANDER').join(' ');
       expect(first).toContain('you and CHARMANDER');
       expect(first.toLowerCase()).toContain('mighty');
-      expect(first).toContain('It is yours');
+      expect(first).toContain("It's yours");
       const last = pinnedLines(CHART_PIECES[3], { ...NO_TREASURE_HUNT, roomOpen: true, pinned: CHART_PIECES.map((piece) => piece.id) }, 'Torn chart (fold)').join(' ');
       expect(last).toContain(TREASURE_PLACE);
       expect(marlowLibraryLines('no-chart').join(' ')).toContain('THE BEACH');

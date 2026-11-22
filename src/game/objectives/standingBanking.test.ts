@@ -185,7 +185,7 @@ describe('the lobby’s contract board', () => {
       sealedBehind: { gateLabel: 'OVERLOOK GATE', bossName: 'WARDEN WREN' },
     });
     expect(row.asks).toBe(
-      'Behind OVERLOOK GATE, held by WARDEN WREN · Banks only through OVERLOOK STILE · Pack 2× Potion · Hunter +2 tiers',
+      'Behind OVERLOOK GATE, held by WARDEN WREN · Banks only through OVERLOOK STILE · Pack 2× Potion · A much stronger hunter',
     );
     expect(row.reward).toBe(RAID_CONTRACTS[3].reward.summary);
     expect(contractBoardRow(RAID_CONTRACTS[0]).asks).toBe('');
