@@ -278,6 +278,7 @@ export const RUN_INSERTIONS = {
   'greystone-vale': {
     id: 'greystone-vale',
     label: 'Greystone Vale',
+    place: 'Mill Square',
     mapId: 'greystone-vale',
     position: { x: 96, y: 161 },
     description: 'Mill Square in Millbrook, where every road in the vale starts: down from the moor, east to The Crossing, south to the marsh, and out by the Westward Road.',
@@ -362,6 +363,7 @@ interface BuiltInInsertion {
   readonly position: GridPosition;
   readonly description: string;
   readonly whileHeld?: RunInsertion['whileHeld'];
+  readonly place?: string;
 }
 
 /** A shipped landing's id. */
@@ -375,7 +377,20 @@ export type RunInsertionId = BuiltInInsertionId | PlayerMapId;
 
 export interface RunInsertion {
   readonly id: RunInsertionId;
+  /**
+   * What lists of maps call it. A map's front door carries the map's own name
+   * (playtest 47: a list of landings must name Pallet Town), so a front door
+   * may also give `place`.
+   */
   readonly label: string;
+  /**
+   * Where on the map it actually drops you, for a front door named after its
+   * map. Standing at the pit's rim, where every landing of one map is side by
+   * side, "JUMP IN AT GREYSTONE VALE" beside "JUMP IN AT OLD QUAY" read as
+   * dropping in somewhere in the vale (veteran playtest, 20 Nov 2026); the rim
+   * and the telescope say this instead (`landingPlace`).
+   */
+  readonly place?: string;
   readonly mapId: WorldMapId;
   readonly position: GridPosition;
   /** What is always true of the place, whatever this save has beaten. */
@@ -387,6 +402,11 @@ export interface RunInsertion {
    * `insertionDescription` adds the line while any of these bosses stands.
    */
   readonly whileHeld?: { readonly bossIds: readonly string[]; readonly line: string };
+}
+
+/** What the landing is called among the other landings of its own map: its place, where it names one. */
+export function landingPlace(insertion: RunInsertion): string {
+  return insertion.place ?? insertion.label;
 }
 
 /** The place's description as this save would find it. */

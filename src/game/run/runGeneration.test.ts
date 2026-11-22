@@ -20,6 +20,7 @@ import {
   generateRunPlan,
   insertionAt,
   isDropInPoint,
+  landingPlace,
   RUN_GENERATION_BOUNDS,
   RUN_INSERTIONS,
   type RunInsertionId,
@@ -674,5 +675,20 @@ describe('a raid the Pokemon Center cut short', () => {
     // Nothing else about the raid moves: the same seed lays the same ground.
     expect(short.loot).toEqual(full.loot);
     expect(short.hunter).toEqual(full.hunter);
+  });
+});
+
+describe("Greystone Vale's landings", () => {
+  it('are each called by the place they drop you among the others at the rim', () => {
+    // The rim read "JUMP IN AT GREYSTONE VALE" beside "JUMP IN AT OLD QUAY"
+    // (veteran playtest, 20 Nov 2026): the front door is Mill Square there,
+    // and keeps the map's name in lists of maps (playtest 47).
+    const vale = Object.values(RUN_INSERTIONS).filter((insertion) => insertion.mapId === 'greystone-vale');
+    expect(vale.length).toBeGreaterThan(1);
+    for (const insertion of vale) {
+      expect(landingPlace(insertion), insertion.id).not.toBe(WORLD_MAP_NAMES['greystone-vale']);
+    }
+    expect(landingPlace(RUN_INSERTIONS['greystone-vale'])).toBe('Mill Square');
+    expect(RUN_INSERTIONS['greystone-vale'].label).toBe('Greystone Vale');
   });
 });

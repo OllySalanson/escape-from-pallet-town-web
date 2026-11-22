@@ -1,5 +1,5 @@
 import { getSpeciesById } from '../pokemon/species';
-import { runInsertion } from '../run/runGeneration';
+import { landingPlace, runInsertion } from '../run/runGeneration';
 import type { RaidProgress } from '../save/SaveManager';
 import { districtAt } from '../world/districts';
 import { districtTableFor } from '../world/nightRaids';
@@ -51,7 +51,7 @@ export function wayInCard(
       lines.push(`${night ? 'By night' : 'Wild'}: ${named}${rest > 0 ? ` +${rest}` : ''}`);
     }
   }
-  return { title: insertion.label.toUpperCase(), lines };
+  return { title: landingPlace(insertion).toUpperCase(), lines };
 }
 
 /** The same, remembered for one look through the glass: a card is asked for on every frame the cursor is on it. */

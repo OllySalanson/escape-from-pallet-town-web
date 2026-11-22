@@ -317,7 +317,7 @@ import {
 } from '../base/arenaDive';
 import { marshalLines } from '../base/arenaMarshal';
 import { wallMapPicture } from '../base/wallMap';
-import { requireInsertion, runInsertion, type RunInsertionId } from '../run/runGeneration';
+import { landingPlace, requireInsertion, runInsertion, type RunInsertionId } from '../run/runGeneration';
 import type { ArenaPanel } from './HubScene';
 import type { WorldSceneData } from './WorldScene';
 import { worldMapName, type WorldMapId } from '../worldMap';
@@ -1998,7 +1998,8 @@ export class BaseScene extends Phaser.Scene {
 
   /** What the way in under this player is called on screen. */
   private landingName(landing: RimLanding): string {
-    return (runInsertion(landing.id)?.label ?? '').toUpperCase();
+    const insertion = runInsertion(landing.id);
+    return (insertion ? landingPlace(insertion) : '').toUpperCase();
   }
 
   /**
@@ -2203,9 +2204,14 @@ export class BaseScene extends Phaser.Scene {
     audioManager.play('menuClose');
     this.spentPresses.spendHeld(this.directionKeys());
     if (ended.kind === 'go') {
-      // Round to the rail beside the telescope, which is where a raid is looked over and started from.
+      // Round to the stretch of rim over the way in chosen, because the rim is
+      // where a way in is chosen: stood at the rail beside the telescope, the
+      // way in under the player took over from the one picked through the
+      // glass, and THE ARMOURY RACK and back - or ENTER on Mill Square - left
+      // the rim on OLD QUAY (veteran playtest, 20 Nov 2026).
       const here = ARENA_TELESCOPES.find((each) => sameTile(each.stance, this.currentTile) || this.adjacent(each.tile));
-      const rail = here ? railBeside(here) : [this.currentTile];
+      const over = this.arena ? rimTileOver(ended.landing.id, this.arena.share, this.currentTile) : null;
+      const rail = over ? [over] : here ? railBeside(here) : [this.currentTile];
       this.walkThen(rail, null, () => {
         this.kit?.flow.chooseInsertion(ended.landing.id as RunInsertionId);
         this.lookDown();
