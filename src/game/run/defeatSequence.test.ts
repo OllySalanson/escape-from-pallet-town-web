@@ -170,7 +170,7 @@ describe('the defeat sequence a lost raid opens on', () => {
       )?.beats[2].detail;
     };
 
-    expect(held(true)).toBe('Charmander came home with you. The container filled itself before you deployed.');
+    expect(held(true)).toBe('Charmander came home with you. THE LOCKER packed itself before you jumped in.');
     expect(held(true)).not.toContain('call you made');
     expect(held(false)).toBe('Charmander came home with you. That was the call you made before you deployed.');
   });
@@ -196,7 +196,7 @@ describe('the defeat sequence a lost raid opens on', () => {
     );
     expect(both?.beats[2].headline).toBe('THE SECURE SLOT HELD.');
     expect(both?.beats[2].detail).toBe(
-      'Squirtle came home with you. The container filled itself before you deployed. Charmeleon is your partner, and a wipe never takes your partner.',
+      'Squirtle came home with you. THE LOCKER packed itself before you jumped in. Charmeleon is your partner, and a wipe never takes your partner.',
     );
   });
 
