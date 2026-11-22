@@ -16,7 +16,7 @@
 // vault. Photographs each beat and fails loudly when one is not what it promises.
 import { mkdirSync, readFileSync } from 'node:fs';
 import { attachBrowser, launchBrowser, sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase, openHallPanel } from './deploy.mjs';
+import { GAME, SAVE_KEY, sceneIs, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
@@ -146,6 +146,9 @@ try {
     const p = save.raidProgress;
     p.firstWordsHeard = ['lab', 'loadout', 'check', 'center'];
     p.keysLearned = ['walk', 'look'];
+    // Nobody asks a favour of a save that has never raided (\`errandOpen\`,
+    // \`isFirstRaid\`), so this one has been out once.
+    if (!raid) p.raidRecord = { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } };
     if (!raid) {
       p.errands = [{ id: 'brocks-crate', status: 'started', found: 1, lossesHeard: 0 }];
       save.stash.items['brocks-crate'] = 1;
@@ -181,7 +184,7 @@ try {
   await press('ArrowDown', 900);
   await intoRoom('bills-cottage');
   await press('Space', 300);
-  expectSaid(await readOn(), 'There is a lump of OLD AMBER', 'Bill asks');
+  expectSaid(await readOn(), "There's a lump of OLD AMBER", 'Bill asks');
   await press('Space', 300);
   expectSaid(await readOn(), 'Great!', 'Bill hears YES');
   if ((await progress()).errands.find((e) => e.id === 'old-amber')?.status !== 'started') throw new Error('YES took nothing on');
@@ -215,18 +218,10 @@ try {
   if (!oakSaid.some((line) => /parcel/i.test(line) && !line.startsWith('My parcel'))) throw new Error(`the board has no errands: ${JSON.stringify(oakSaid).slice(0, 300)}`);
   await page.screenshot(`${out}/lab-board.png`);
 
-  // The rim's panel names the errands on the map being looked at. Raids start
-  // at the Raid Arena, so out of the lab and across the yard to it.
-  await press('Escape');
-  await press('ArrowDown', 900);
-  await walkIntoBase(page, 'raid-arena');
-  await page.waitFor(takePokemon(), { what: 'a Pokémon for the raid' });
-  await openHallPanel(page, 'rim');
-  await sleep(600);
-  const pane = await page.evaluate(`document.querySelector('.rim-layout, .px-body')?.innerText ?? ''`);
-  if (!/OLD AMBER/i.test(pane) || !/PINE HOLLOW/.test(pane)) throw new Error(`the rim's panel does not name Bill's amber: ${pane.slice(0, 400)}`);
-  await page.screenshot(`${out}/dropin-errand.png`);
-  console.log('rim: names the Old Amber in PINE HOLLOW');
+  // The rim's card no longer lists errands: it says only what a raid has at
+  // stake, and what is waiting on a map is on Oak's wall map (`HubScene.placeWorth`)
+  // and, in the raid, Oak's radio (#626). So the board above is the last beat.
+  console.log('errands: asked, turned down, taken, handed over and lost, as the keepers say them');
 } finally {
   await page.close();
   await browser.close();
