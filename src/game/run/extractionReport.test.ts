@@ -391,7 +391,7 @@ describe('extraction report after a survived raid', () => {
     };
 
     expect(haulOf(40).haulTier).toBe('thin');
-    expect(haulOf(40).headline).toBe('You scraped out.');
+    expect(haulOf(40).headline).toBe('You got out with a little.');
     expect(haulOf(120).haulTier).toBe('solid');
     expect(haulOf(400).haulTier).toBe('loaded');
   });
@@ -416,7 +416,7 @@ describe('extraction report after a survived raid', () => {
     const chest = haulOf([{ itemId: 'sea-chest', quantity: 1 }, { itemId: 'money', quantity: 10 }]);
     expect(chest.headline).toBe("You dug up the smugglers' chest!");
     expect(chest.haulTier).toBe('solid');
-    expect(haulOf([{ itemId: 'money', quantity: 10 }]).headline).toBe('You scraped out.');
+    expect(haulOf([{ itemId: 'money', quantity: 10 }]).headline).toBe('You got out with a little.');
     expect(haulOf([{ itemId: 'chart-piece-1', quantity: 1 }]).headline).toBe('You found a piece of the old sea chart!');
     expect(haulOf([{ itemId: 'helix-fossil', quantity: 1 }]).headline).toBe('You brought a fossil home!');
     // The chest is the headline over a chart piece found on the same raid.
@@ -442,7 +442,7 @@ describe('extraction report after a survived raid', () => {
     });
 
     expect(report.haulTier).toBe('thin');
-    expect(report.headline).toBe('You scraped out.');
+    expect(report.headline).toBe('You got out with a little.');
     expect(report.summary).toContain('Banked 1 Antidote');
     // Nothing was protected, so every entry was exposed and the screen says so -
     // but the three Potions were drunk, and a wipe cannot take what is gone.

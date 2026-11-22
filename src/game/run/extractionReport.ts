@@ -600,7 +600,10 @@ function escapeHeadline(tier: HaulTier, emptyHanded: boolean): string {
     case 'solid':
       return 'You got out with the goods.';
     case 'thin':
-      return 'You scraped out.';
+      // Not "You scraped out.", which reads as a narrow escape: both AI
+      // playtesters took it for a near miss on raids with minutes still on the
+      // clock (20 Nov 2026). A thin haul is a small one, and the line says so.
+      return 'You got out with a little.';
     case 'empty':
       return 'You got out clean, and empty.';
   }
