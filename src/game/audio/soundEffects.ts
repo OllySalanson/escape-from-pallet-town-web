@@ -727,6 +727,13 @@ export const SOUND_EFFECTS = {
       tri(1047, 0.36, 0.075, 0.6),
     ],
   },
+  repelSpray: {
+    channel: 'world',
+    moment: 'A Repel sprayed from the raid pack',
+    // A spray is a hiss: a bright burst of noise that thins as it goes, with a
+    // second shorter puff, so it reads as an aerosol rather than as grass.
+    tones: [sweep(noise(5200, 0.22, 0.05), 3600), noise(5800, 0.08, 0.035, 0.26)],
+  },
   bellToll: {
     channel: 'fanfare',
     moment: 'The drowned bell tolls under the water, and something comes up',

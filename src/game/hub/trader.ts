@@ -471,6 +471,21 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     standing: 'regular',
     once: false,
   },
+  // FireRed's Repel (`../world/repel.ts`): the paths and caves keep their own
+  // encounter rate, and a raid that wants a quiet walk through them pays for it
+  // in lamp oil. Repeating because a spray is spent, and one material each so it
+  // is a choice a regular makes every raid rather than a saving-up.
+  {
+    id: 'barter-repel',
+    name: 'Repel',
+    detail:
+      'He boils it down from lamp oil and something he will not name. Spray it in a raid and wild Pokémon weaker than your lead keep away for 100 steps. As many as you can pay for.',
+    icon: 'repel',
+    gives: { itemId: 'repel', quantity: 1 },
+    takes: [{ itemId: 'lamp-oil', quantity: 1 }],
+    standing: 'regular',
+    once: false,
+  },
   // FireRed's two lower rods, which is how anything that lives in the water is
   // met (`../world/fishing.ts`). Repeating for the Pickaxe's reason: a rod is
   // carried in the pack and lost with it. The Old Rod is a Fishing Guru's gift

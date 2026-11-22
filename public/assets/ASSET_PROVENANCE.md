@@ -226,8 +226,8 @@ game.
   `rubble` a buried exit is drawn as, the two fishing rods `old-rod` and
   `good-rod`, the `lockpick`, the five keys `weir-key`, `paddock-key`,
   `forester-key`, `garden-key` and `market-key`, the `card-key`, and the `locked-gate` and
-  `locked-crate` a keyed exit and a locked cache are drawn as, and the
-  `bicycle`.
+  `locked-crate` a keyed exit and a locked cache are drawn as, the
+  `bicycle`, and the `repel`.
   The materials are
   drawn in code by `scripts/draw-material-icons.mjs` and the held items by
   `scripts/draw-gear-icons.mjs` (character art and small shapes on the same
@@ -323,6 +323,11 @@ game.
   `037335f`): the dusky red frame `#b46262` with its pale highlight `#f6acac`,
   grey rims `#b4b4b4` and hubs `#626262`. Original drawing in FireRed's
   colours, not a cut of its pixels.
+  The `repel` is `scripts/draw-repel-icon.mjs`: drawn by hand at 16x16 on the
+  set's own palette, a spray can (`#2c6c78`, `#48a4b0`, `#9cdce0`) with a white
+  label, a grey nozzle and a puff of mist off it. Teal rather than FireRed's
+  colours so it is never taken for the purple `antidote` in the same pack.
+  Original drawing, nothing cut.
   The `lockpick`, the five keys, the `card-key`, the `locked-gate` and the `locked-crate` are
   `scripts/draw-lock-icons.mjs`, on the set's own palette: a hooked steel pick
   on a bound violet grip; **one brass key drawn five times** (`#f1d27a`,

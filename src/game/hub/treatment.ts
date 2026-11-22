@@ -113,6 +113,8 @@ function describeEffect(
       return { effect: 'Ridden in a raid', usable: false };
     case 'flute':
       return { effect: 'Played in a raid', usable: false };
+    case 'repel':
+      return { effect: 'Sprayed in a raid', usable: false };
     case 'lockpick':
       return { effect: 'Picks a lock in a raid', usable: false };
     case 'key':

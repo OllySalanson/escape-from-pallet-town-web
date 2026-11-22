@@ -119,3 +119,49 @@ describe('a double press in the raid pack', () => {
     expect(bag.count('tm23-iron-tail')).toBe(0);
   });
 });
+
+/**
+ * A Repel is sprayed straight from its row, as FireRed's is used from the bag:
+ * there is nobody to choose. The raid says whether it took (`world/repel.ts`),
+ * and only a spray that took spends one - a second press while it works is
+ * refused and keeps the can.
+ */
+describe('a Repel sprayed from the raid pack', () => {
+  function packWithRepel(spray: ReturnType<typeof vi.fn>): BagInternals & { bag: Bag } {
+    const scene = Object.create(BagScene.prototype) as BagInternals & { bag: Bag };
+    Object.assign(scene as unknown as Record<string, unknown>, {
+      bag: new Bag({ repel: 2 }),
+      party: new PokemonParty([new Pokemon(getSpeciesById('pikachu')!, 12)]),
+      onItemUsed: vi.fn(),
+      repel: { spray },
+      time: { now: 0, delayedCall: vi.fn() },
+      menuOverlay: {
+        root: { innerHTML: '', querySelector: () => ({}), querySelectorAll: () => [] },
+        refocus: vi.fn(),
+        focus: vi.fn(),
+      },
+    });
+    return scene;
+  }
+
+  it('sprays on the row’s own press, spends one, and says what it keeps away', () => {
+    const spray = vi.fn(() => ({ used: true, message: 'Used the Repel.' }));
+    const scene = packWithRepel(spray);
+
+    scene.pressItem('repel');
+
+    expect(spray).toHaveBeenCalledWith(expect.objectContaining({ id: 'repel' }));
+    expect(scene.bag.count('repel')).toBe(1);
+    expect(scene.menuOverlay.root.innerHTML).toContain('Used the Repel.');
+    expect(scene.usingItemId).toBeUndefined();
+  });
+
+  it('keeps the can when the raid refuses it', () => {
+    const scene = packWithRepel(vi.fn(() => ({ used: false, message: 'But the effects of a Repel lingered from earlier.' })));
+
+    scene.pressItem('repel');
+
+    expect(scene.bag.count('repel')).toBe(2);
+    expect(scene.menuOverlay.root.innerHTML).toContain('But the effects of a Repel lingered from earlier.');
+  });
+});
