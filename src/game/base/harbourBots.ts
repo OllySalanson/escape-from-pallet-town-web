@@ -6,7 +6,7 @@ import { BASE_FIXTURES } from './fixtures';
 import { HARBOUR_LANDMARKS } from './landmarks';
 import { LOITER_SPOTS } from './generated/harbourBotSpots';
 import { DAY_CARE_KEEPER } from './dayCarePen';
-import { BASE_DOORS } from './doors';
+import { BASE_DOORS, isHouseDoor } from './doors';
 import type { SHARED_HARBOUR_ROOMS } from '../harbour/harbourProtocol';
 import { harbourBeatTiles, harbourLifeAt, onLand } from './harbourLife';
 import type { PartnerSpeciesId } from './partner';
@@ -292,7 +292,7 @@ export interface BotGate {
 export const BOT_GATES: readonly BotGate[] = [
   { id: 'seagallop', tile: { x: 11, y: 21 } },
   { id: 'ss-anne', tile: { x: 29, y: 26 } },
-  ...BASE_DOORS.filter((door) => door.id !== 'bolthole').map((door) => ({ id: door.id, tile: door.tiles[0] })),
+  ...BASE_DOORS.filter((door) => !isHouseDoor(door)).map((door) => ({ id: door.id, tile: door.tiles[0] })),
 ];
 
 interface BotGround {

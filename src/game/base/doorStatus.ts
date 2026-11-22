@@ -11,7 +11,8 @@ import {
   type TraderCounter,
 } from '../hub/trader';
 import { formatMoney } from '../items';
-import type { BaseDoor, BaseScreen } from './doors';
+import { isHouseDoor, type BaseDoor, type BaseScreen } from './doors';
+import { LIBRARY_BOOKS } from '../library/books';
 import { errandBeat, errandThing } from '../hub/errands';
 import { isFirstRaid } from '../hub/firstRaid';
 import { caseBadges, wonBadges } from './badgeCase';
@@ -48,6 +49,12 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
   const errand = door.screen === null ? undefined : errandLine(door.screen, game);
   switch (door.screen) {
     case null: {
+      // A door with no keeper's screen and no house behind it is THE GREAT
+      // LIBRARY, which says what is inside. It said the house's line once,
+      // "Your things · your Pokémon" (the overnight playtest of 20 Nov 2026).
+      if (!isHouseDoor(door)) {
+        return door.id === 'great-library' ? `${LIBRARY_BOOKS.length} books to read` : '';
+      }
       // The player's own house, which says from the yard what is kept in it -
       // their things and their Pokémon, on MY PC - under their name, which is
       // the caption's first line (`home/houseName.ts`), and how full its badge

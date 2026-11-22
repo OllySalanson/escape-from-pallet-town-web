@@ -10,7 +10,8 @@ import {
   type StorageLike,
 } from '../save/SaveManager';
 import { FIRST_CONTRACT_ID } from '../objectives';
-import { BASE_DOORS } from './doors';
+import { BASE_DOORS, isHouseDoor } from './doors';
+import { LIBRARY_BOOKS } from '../library/books';
 import { doorStatusLine } from './doorStatus';
 import { baseGame as newGame } from './baseGames.testkit';
 import { BADGES } from './badgeCase';
@@ -183,6 +184,18 @@ describe("what each of the base's doors says", () => {
     expect(doorStatusLine(home, baseGame({ progress: { defeatedBosses: ['overlook-warden'] } }))).toMatch(
       /^Your things · your Pokémon · 1 (of \d+ badges|badge)$/,
     );
+  });
+
+  /**
+   * THE GREAT LIBRARY has no keeper's screen either, and it was captioned as the
+   * house: "Your things · your Pokémon" (the overnight playtest of 20 Nov 2026).
+   */
+  it("never gives THE GREAT LIBRARY's door the house's line", () => {
+    const library = doorNamed('great-library');
+    expect(isHouseDoor(library)).toBe(false);
+    expect(isHouseDoor(doorNamed('bolthole'))).toBe(true);
+    expect(doorStatusLine(library, baseGame())).toBe(`${LIBRARY_BOOKS.length} books to read`);
+    expect(BASE_DOORS.filter(isHouseDoor).map((door) => door.id)).toEqual(['bolthole']);
   });
 
   /** The name is over the door (`home/houseName.ts`), so the line under it never says it again. */

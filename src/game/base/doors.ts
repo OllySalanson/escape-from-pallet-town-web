@@ -60,10 +60,18 @@ export interface BaseBuilding {
   readonly y: number;
 }
 
+/** The player's own house. It is not the one door without a keeper's screen: THE GREAT LIBRARY has none either. */
+export const HOUSE_DOOR_ID = 'bolthole';
+
+/** Whether a door is the player's own house, which is captioned with their name and what they keep there. */
+export function isHouseDoor(door: Pick<BaseDoor, 'id'>): boolean {
+  return door.id === HOUSE_DOOR_ID;
+}
+
 export interface BaseDoor {
   /** Also the id of the room behind it (`rooms.ts`). */
   readonly id: string;
-  /** The keeper's screen behind it, or null for the player's own house. */
+  /** The keeper's screen behind it, or null for a door with none (the player's own house, THE GREAT LIBRARY). */
   readonly screen: BaseScreen | null;
   /**
    * The name over it, which is also the name of the room and the screen behind
@@ -146,7 +154,7 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     // its window boxes and its own patch of garden. It is not on the way to
     // re-kitting, so it is not held to the keepers' walk; it is a stroll up
     // the yard, and in view from the middle of it.
-    id: 'bolthole',
+    id: HOUSE_DOOR_ID,
     screen: null,
     name: 'THE BOLTHOLE',
     building: { prop: 'bolthole', x: 36, y: 7 },
