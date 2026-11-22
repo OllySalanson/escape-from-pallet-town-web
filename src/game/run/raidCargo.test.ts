@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { Bag, RAID_BAG_GRID } from '../items';
 import { Pokemon } from '../pokemon';
-import { BULBASAUR, IVYSAUR, PIDGEY } from '../pokemon/species';
+import { BULBASAUR, IVYSAUR, PIDGEY, getSpeciesById } from '../pokemon/species';
+import { pokemonCargo } from '../pokemon/pokemonCargo';
 import { RunManager } from './RunManager';
 import {
+  packCouldEverHoldPokemon,
   packFullForPokemonLine,
   packHasRoomForPokemon,
+  packNeverFitsPokemonLine,
   packRoomChoices,
   raidPackCargo,
   syncPackCargo,
@@ -136,5 +139,31 @@ describe('what the pack could put down to make room', () => {
 
     expect(packHasRoomForPokemon(bag, new Pokemon(PIDGEY, 4))).toBe(false);
     expect(packRoomChoices(bag, new Pokemon(PIDGEY, 4), 'poke-ball')).toEqual([]);
+  });
+});
+
+describe('a catch no amount of putting down would make room for', () => {
+  /**
+   * Veteran playtest (20 Nov 2026): a 12-square Satchel carrying a 6-square
+   * Ivysaur, and an Alakazam that needs 9. The make-room panel let four items
+   * be put down one at a time without ever reaching 9.
+   */
+  const satchel = (): Bag => {
+    const bag = new Bag({ potion: 2, 'poke-ball': 2 }, { width: 4, height: 3 });
+    bag.setCargo([pokemonCargo('ivysaur-1', new Pokemon(IVYSAUR, 28))]);
+    return bag;
+  };
+
+  it('is known before anything is put down', () => {
+    const alakazam = new Pokemon(getSpeciesById('alakazam')!, 22);
+    expect(packHasRoomForPokemon(satchel(), alakazam)).toBe(false);
+    expect(packCouldEverHoldPokemon(satchel(), alakazam, 'poke-ball')).toBe(false);
+    expect(packNeverFitsPokemonLine(alakazam)).toBe(
+      `${packFullForPokemonLine(alakazam)} Even with everything else put down, this pack cannot hold it.`,
+    );
+  });
+
+  it('still offers the panel where putting things down would make room', () => {
+    expect(packCouldEverHoldPokemon(satchel(), new Pokemon(PIDGEY, 4), 'poke-ball')).toBe(true);
   });
 });

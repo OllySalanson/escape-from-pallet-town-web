@@ -2283,6 +2283,23 @@ describe('a catch the pack has no room for', () => {
     expect((scene as unknown as { mode: string }).mode).toBe('main');
     expect(bag.count('poke-ball')).toBe(1);
   });
+
+  it('says up front when nothing put down could make room, and offers nothing to put down', () => {
+    // Veteran playtest (20 Nov 2026): a 12-square Satchel carrying a 6-square
+    // Ivysaur, and a 9-square Alakazam. The panel took a Super Potion, an
+    // Antidote, a Cheri Berry and a ball one at a time without ever reaching 9.
+    const bag = new Bag({ potion: 2, 'poke-ball': 2 }, { width: 4, height: 3 });
+    bag.setCargo([pokemonCargo('ivysaur-1', new Pokemon(getSpeciesById('ivysaur')!, 28))]);
+    const harness = createBattleSceneHarness({ bag, wild: new Pokemon(getSpeciesById('alakazam')!, 22) });
+    (harness.scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    harness.renderedTexts.filter(({ text }) => text.includes('BALL x2')).at(-1)!.handlers.pointerdown();
+
+    expect(harness.dialog.shownMessages[0]).toContain('Even with everything else put down, this pack cannot hold it.');
+    (harness.scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    expect((harness.scene as unknown as { mode: string }).mode).toBe('main');
+    expect(bag.count('potion')).toBe(2);
+    expect(bag.count('poke-ball')).toBe(2);
+  });
 });
 
 /**
