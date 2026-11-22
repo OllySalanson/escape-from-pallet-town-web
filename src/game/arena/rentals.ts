@@ -1,7 +1,7 @@
 import { knowableMoves, Move, Pokemon } from '../pokemon';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
 import { SPECIES_BY_ID } from '../pokemon/species';
-import { payGame, ticketDayKey, type GameCornerRecord } from '../minigames/tickets';
+import { payGame, RENTAL_RUN_COMPLETE_TICKETS, ticketDayKey, type GameCornerRecord } from '../minigames/tickets';
 import { DOJO_LEVEL } from './boutRules';
 import { stagedTeam } from './classes';
 import { DOJO_REGULARS } from './dojoCounter';
@@ -26,8 +26,8 @@ export type { RentalRecord, RentalRun } from './runRecords';
  * - **After each win, one swap**: one of yours for one of the team just beaten,
  *   the Battle Factory's own rule.
  * - **The run ends at the first loss.** One scored run a day pays five
- *   tickets a win (`minigames/tickets.ts`, under the day's ceiling); runs after
- *   it are practice. A run is for its day: a run left at midnight is over.
+ *   tickets a win, and fifty more for winning all seven (`minigames/tickets.ts`,
+ *   under the day's ceiling); runs after it are practice. A run is for its day: a run left at midnight is over.
  * - **Nothing is the player's.** A rental is built fresh for each bout; it is
  *   never in the vault and the fight writes nothing (`boutRules.ts`).
  */
@@ -304,7 +304,12 @@ export function rentalSettlementLine(foe: RentalFoe, won: boolean, settled: Rent
     return `${foe.name} took that one. Your rental run ended at ${settled.ended ?? 0} of ${RUN_BOUTS}${practice}.`;
   }
   if (settled.complete) {
-    return `You beat ${foe.name}! Seven in a row on loan${practice}.${paid}`;
+    // The whole run's own pay is said apart from the bout's, so it reads as a prize.
+    const whole =
+      settled.tickets > RENTAL_RUN_COMPLETE_TICKETS
+        ? ` ${settled.tickets} tickets: ${settled.tickets - RENTAL_RUN_COMPLETE_TICKETS} for the bout and ${RENTAL_RUN_COMPLETE_TICKETS} for the whole run!`
+        : paid;
+    return `You beat ${foe.name}! Seven in a row on loan: the whole run${practice}.${whole}`;
   }
   return `You beat ${foe.name}! ${settled.run?.won ?? 0} of ${RUN_BOUTS}${practice}. You may swap one for one of theirs.${paid}`;
 }

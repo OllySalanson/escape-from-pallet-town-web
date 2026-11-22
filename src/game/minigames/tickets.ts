@@ -205,9 +205,18 @@ export const DOJO_PAID_WINS_A_DAY = 5;
  */
 export const RENTAL_WIN_TICKETS = 5;
 export const RENTAL_RUN_BOUTS = 7;
+/**
+ * What finishing the whole run pays on top, on the seventh win: seven bouts on
+ * loan paid the same five tickets as the first, and a run won to the end said
+ * nothing more than a bout (the 20 Nov AI playtest, #193; Olly's pick of 22
+ * Nov). Under a class promotion's 110 to 200, because a class is for good and a
+ * run is for the day.
+ */
+export const RENTAL_RUN_COMPLETE_TICKETS = 50;
 
 export function rentalRunTickets(won: number): number {
-  return Math.max(0, Math.min(RENTAL_RUN_BOUTS, won)) * RENTAL_WIN_TICKETS;
+  const bouts = Math.max(0, Math.min(RENTAL_RUN_BOUTS, won));
+  return bouts * RENTAL_WIN_TICKETS + (bouts >= RENTAL_RUN_BOUTS ? RENTAL_RUN_COMPLETE_TICKETS : 0);
 }
 
 /** The tickets a day's bout wins are worth. */
