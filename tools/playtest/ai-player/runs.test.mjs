@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   GIVE_UP_AFTER,
+  RELOAD_SAFE_SCENES,
   STUCK_AFTER,
   createRun,
   foldAction,
@@ -109,5 +110,13 @@ describe('foldAction', () => {
     const { status: after, advice } = fold(status, screen({ done: 7 }));
     expect(after).toMatchObject({ finished: true, state: 'finished' });
     expect(advice).toMatch(/^FINISHED/);
+  });
+});
+
+describe('reloading for memory', () => {
+  it("never reloads off a raid's result screen, which says what no other screen does", () => {
+    expect(RELOAD_SAFE_SCENES.has('extraction')).toBe(false);
+    expect(RELOAD_SAFE_SCENES.has('world')).toBe(false);
+    expect(RELOAD_SAFE_SCENES.has('base')).toBe(true);
   });
 });

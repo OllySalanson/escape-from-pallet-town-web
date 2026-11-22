@@ -37,6 +37,7 @@ import {
   readSession,
   readStatus,
   recordAction,
+  RELOAD_SAFE_SCENES,
   recordFinding,
   runDir,
   runsDir,
@@ -63,8 +64,6 @@ const TOUCH_BROWSER_EVERY_MS = 10 * 60_000;
 const RELOAD_OVER_MB = Number(process.env.EPTW_AI_RELOAD_MB ?? 1300);
 /** Actions between two reloads at least, so a game that is simply that big is not reloaded on every one. */
 const RELOAD_EVERY_ACTIONS = 25;
-const RELOAD_SAFE_SCENES = new Set(['base', 'title', 'hub', 'extraction']);
-
 const argv = process.argv.slice(2);
 const flags = Object.fromEntries(argv.filter((a) => a.startsWith('--')).map((a) => {
   const [k, ...v] = a.slice(2).split('=');
