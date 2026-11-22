@@ -61,8 +61,10 @@ export function raidClockView(
   // dusk raid says so too, because secrets wait for one (`world/secrets.ts`)
   // and nothing else in the raid confirms it is one (playtest 51, finding 11).
   light: WindowLight = 'day',
+  /** The twilight is the morning's (`isDawn`): the chip says DAWN, not DUSK. */
+  dawn = false,
 ): RaidClockView {
-  const hour = light === 'night' ? 'NIGHT' : light === 'dusk' ? 'DUSK' : null;
+  const hour = light === 'night' ? 'NIGHT' : light === 'dusk' ? (dawn ? 'DAWN' : 'DUSK') : null;
   // An explorer run's clock is eight hours long, which is a number nobody
   // wants counted down in the corner of a map they are looking at. The chip
   // says which game this is instead - the one thing about the corner of the

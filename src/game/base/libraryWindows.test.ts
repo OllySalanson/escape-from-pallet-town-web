@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { baseGame } from './baseGames.testkit';
-import { windowLight, type WindowLight } from './homeClock';
+import { isDawn, windowLight, type WindowLight } from './homeClock';
 import { LIBRARY_PIECES, LIBRARY_SHEET } from './librarySheet';
 import { buildRoom, LIBRARY_WINDOW_LINES, LIBRARY_WINDOW_PIECES, LIBRARY_WINDOWS, roomNamed } from './rooms';
 
@@ -48,6 +48,19 @@ describe('THE GREAT LIBRARY’s windows', () => {
     expect(windowLight(at(5))).toBe('dusk');
     expect(windowTiles(at(5), LIBRARY_WINDOWS[0])).toBe(windowTiles(at(19), LIBRARY_WINDOWS[0]));
     expect(windowTiles(at(2), LIBRARY_WINDOWS[0])).toBe(windowTiles(at(23), LIBRARY_WINDOWS[0]));
+  });
+
+  /**
+   * The morning's twilight is drawn as dusk's, but it is the sun coming up: at
+   * six in the morning the window said the sun was going down (the overnight
+   * playtest of 20 Nov 2026).
+   */
+  it('says the sun is coming up in the morning twilight, and going down in the evening', () => {
+    const said = (hour: number) => library(at(hour)).things.find((thing) => thing.name === 'THE WINDOW')!.lines;
+    expect(isDawn(at(6))).toBe(true);
+    expect(isDawn(at(19))).toBe(false);
+    expect(said(6)).toEqual(['The sun is coming up behind the trees.']);
+    expect(said(19)).toEqual(['The sun is going down behind the trees.']);
   });
 
   it('has a piece of the sheet for every hour the clock keeps, each its own', () => {

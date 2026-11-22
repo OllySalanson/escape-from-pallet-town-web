@@ -60,8 +60,18 @@ export const SPYGLASS_SIGHTS: Readonly<Record<WindowLight, readonly SpyglassSigh
 };
 
 /** What the captain says, lending his glass, and the `look`th sight at this hour. */
-export function spyglassLines(light: WindowLight, look: number): readonly string[] {
-  const sights = SPYGLASS_SIGHTS[light];
+/**
+ * The far coast in the morning's twilight (`isDawn`): the lights going out, not
+ * coming on. "Wait for full dark" at six in the morning sent a player waiting
+ * for a night that was over (the overnight playtest of 20 Nov 2026).
+ */
+export const SPYGLASS_DAWN_SIGHTS: readonly SpyglassSight[] = [
+  { line: 'The sun coming up behind GREYSTONE VALE. Every raid goes out there.' },
+  { line: 'The last lights going out along the far coast. Come back after dark tonight, and they will tell you more.' },
+];
+
+export function spyglassLines(light: WindowLight, look: number, dawn = false): readonly string[] {
+  const sights = light === 'dusk' && dawn ? SPYGLASS_DAWN_SIGHTS : SPYGLASS_SIGHTS[light];
   const sight = sights[((look % sights.length) + sights.length) % sights.length];
   const lend =
     look === 0

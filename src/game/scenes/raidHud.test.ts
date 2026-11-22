@@ -10,6 +10,7 @@ import {
   prizeChipView,
   openRaidCue,
   placePlateLine,
+  raidClockView,
   weatherChipLine,
 } from './raidHud';
 import { WeatherId } from '../pokemon/battle/weather';
@@ -230,5 +231,12 @@ describe('the prize chip', () => {
     const view = prizeChipView({ name: longest, direction: 'NW', distance: 128 })!;
     expect(view.label.length).toBeLessThanOrEqual('EXTRACT WITH YOUR HAUL'.length);
     expect(view.detail.length).toBeLessThanOrEqual(view.label.length);
+  });
+});
+
+describe('the raid clock at twilight', () => {
+  it('says DAWN for the morning twilight and DUSK for the evening', () => {
+    expect(raidClockView(300_000, false, 0, false, 'dusk', true).label).toMatch(/^DAWN /);
+    expect(raidClockView(300_000, false, 0, false, 'dusk').label).toMatch(/^DUSK /);
   });
 });

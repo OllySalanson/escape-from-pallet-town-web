@@ -45,3 +45,13 @@ describe('the captain\'s spyglass', () => {
     expect(SPYGLASS_SIGHTS.day.some((sight) => sight.line.includes('after dark'))).toBe(true);
   });
 });
+
+/** The morning's twilight is the lights going out: "wait for full dark" at six in the morning waited for nothing. */
+describe("the captain's glass at dawn", () => {
+  it('says the sun is coming up, and never to wait for the dark', () => {
+    const dawn = [0, 1].map((look) => spyglassLines('dusk', look, true)[1]);
+    expect(dawn[0]).toContain('coming up');
+    expect(dawn.join(' ')).not.toMatch(/wait for full dark|going down/i);
+    expect(spyglassLines('dusk', 1)[1]).toContain('Wait for full dark');
+  });
+});
