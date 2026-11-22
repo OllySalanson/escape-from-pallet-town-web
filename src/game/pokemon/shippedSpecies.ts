@@ -28,7 +28,7 @@ export interface SpeciesDeviation {
  * The import brought in all 151 from the snapshots, and the seventeen species
  * that were already here kept the learnsets they shipped with until the
  * captain ruled on 2026-10-11 that they match FireRed exactly: Bulbasaur's
- * level-1 Super Sonic and level-7 Vine Whip, Squirtle's level-7 Water Gun,
+ * level-1 Supersonic and level-7 Vine Whip, Squirtle's level-7 Water Gun,
  * Pidgey with nothing but Tackle until 13, Pikachu with no Electric attack and
  * Butterfree with no Confusion are all canon's now. The early fights they
  * changed were re-measured in the PR that emptied this list.
@@ -44,7 +44,7 @@ export const SHIPPED_DEVIATIONS: Readonly<Record<string, SpeciesDeviation>> = {}
 /**
  * What the seventeen were taught before they took FireRed's own learnsets,
  * by move, so a save made then keeps every move its Pokemon already know. A save is wire format: a
- * Bulbasaur that learned Super Sonic, or a Pikachu that knows Tackle, learned
+ * Bulbasaur that learned Supersonic, or a Pikachu that knows Tackle, learned
  * them in a game that taught them, and deleting a known move on load is the
  * quiet loss playtest 21 found with machines (`save/machineMovePersistence`).
  * Nothing is *taught* from this table - a new Pokemon, and every level-up,

@@ -696,6 +696,17 @@ const occupiedSlots = (state: BattleState): readonly SlotRef[] =>
  * it on rather than the ones its Pokemon was saved with, because a pinch
  * ability is about the HP it is standing on now.
  */
+/**
+ * The ability, in capitals, that will take this move without being hurt or
+ * touched by it - Levitate, the absorbing four, Soundproof - or undefined
+ * where nothing refuses it. The same question `applyMove` asks before the
+ * accuracy roll (step 6a), put where the move panel can ask it first.
+ */
+export const abilityRefusing = (combatant: BattleCombatant, move: MoveBase): string | undefined =>
+  targetsTheOtherSide(move.target) && absorbs(abilityCarrier(combatant), move)
+    ? abilityLabel(abilityCarrier(combatant))
+    : undefined;
+
 export const abilityCarrier = (combatant: BattleCombatant): AbilityCarrier => ({
   abilityId: combatant.pokemon.base.abilityId,
   currentHp: combatant.currentHp,
@@ -1876,7 +1887,15 @@ const applyMove = (
       attackerNow().statStages.accuracy,
       defenderNow().statStages.evasion,
     );
-    if (!move.base.alwaysHits && clampRandom(random()) * 100 >= accuracy) {
+    // A status move whose status this target cannot take is refused before it
+    // is aimed: FireRed's `BattleScript_EffectSleep` (and Poison's, Paralyze's
+    // and Confuse's) jump to "already asleep", "It doesn't affect..." or the
+    // ability's refusal ahead of `accuracycheck`. Rolled first, a Sleep Powder
+    // on a sleeping foe read "attack missed", which blames the dice for a
+    // wasted move (playtest 20 Nov). A move that also moves a stat - Swagger -
+    // is aimed first, as FireRed's is.
+    const refusedUnaimed = statusMoveRefusedBeforeAim(nextState, ref, targetRef, move.base);
+    if (!move.base.alwaysHits && !refusedUnaimed && clampRandom(random()) * 100 >= accuracy) {
       if (!spread) {
         events.push({ type: 'used-move', user, ...inSlot(ref), name: attackerName, move: move.base.name });
       }
@@ -2831,6 +2850,33 @@ const weatherStilledBy = (state: BattleState): SlotRef | null =>
  */
 const sunPreventsFreeze = (state: BattleState, status: StatusName): boolean =>
   status === PrimaryStatus.Freeze && effectiveWeather(state) === WeatherId.HarshSunlight;
+
+/**
+ * Whether this move is a pure status move (no stat change with it) that the
+ * target at `targetRef` will refuse whatever the dice say: it already has a
+ * status, its type or ability will not take this one, or the move's type cannot
+ * touch it at all. `applyMove` skips the accuracy roll for it, so the refusal
+ * is what the log says rather than a miss.
+ */
+const statusMoveRefusedBeforeAim = (
+  state: BattleState,
+  ref: SlotRef,
+  targetRef: SlotRef,
+  move: MoveBase,
+): boolean => {
+  const status = move.effects.status;
+  if (move.category !== MoveCategory.Status || !status || move.effects.boosts.length > 0 || sameSlot(ref, targetRef)) {
+    return false;
+  }
+  const target = unitAt(state, targetRef);
+  if (!isEngaged(target)) {
+    return false;
+  }
+  return (
+    getTypeEffectiveness(move.type, getCombatantTypes(target)) === 0 ||
+    !wouldTakeStatus(state, targetRef, status, ref)
+  );
+};
 
 /**
  * Whether a status sent at this slot would land, asked before anything is said

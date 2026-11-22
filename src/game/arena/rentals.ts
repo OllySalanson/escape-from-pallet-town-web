@@ -55,7 +55,7 @@ export const RENTALS: readonly Rental[] = [
   { species: 'ponyta', moves: ['Stomp', 'Ember', 'Quick Attack', 'Tail Whip'], role: 'Quick and hot.' },
   { species: 'pidgeotto', moves: ['Wing Attack', 'Quick Attack', 'Gust', 'Sand Attack'], role: 'Flies over a Ground type.' },
   { species: 'kadabra', moves: ['Psybeam', 'Confusion', 'Recover', 'Kinesis'], role: 'Hits from range and heals itself.' },
-  { species: 'magneton', moves: ['Spark', 'Thunder Wave', 'Thunder Shock', 'Super Sonic'], role: 'Paralyses and shrugs off Normal hits.' },
+  { species: 'magneton', moves: ['Spark', 'Thunder Wave', 'Thunder Shock', 'Supersonic'], role: 'Paralyses and shrugs off Normal hits.' },
   { species: 'golbat', moves: ['Wing Attack', 'Bite', 'Confuse Ray', 'Leech Life'], role: 'Confuses, then bites.' },
   { species: 'poliwhirl', moves: ['Hypnosis', 'Water Gun', 'Double Slap', 'Rain Dance'], role: 'Sleep, or rain for its Water Gun.' },
 ];

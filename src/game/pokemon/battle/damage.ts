@@ -152,13 +152,6 @@ export const calculateDamage = (
 
   const attackStat = move.category === MoveCategory.Physical ? 'attack' : 'spAttack';
   const defenseStat = move.category === MoveCategory.Physical ? 'defense' : 'spDefense';
-  const attack = getStagedStat(attacker.stats[attackStat], attackerStages[attackStat]);
-  // Self-Destruct and Explosion halve the defense they meet before its stages
-  // are applied, as FireRed's `CalculateBaseDamage` does for `EFFECT_EXPLOSION`.
-  const unstagedDefense = move.userFaints
-    ? Math.max(1, Math.floor(defender.stats[defenseStat] / 2))
-    : defender.stats[defenseStat];
-  const defense = getStagedStat(unstagedDefense, defenderStages[defenseStat]);
   // The roll is spent whether or not the defender's armour turns it aside, so
   // Shell Armor changes what a hit costs and never what the next roll is.
   const rolledCritical = clampRandom(random) * 100 <= criticalHitChancePercent(move.critStage);
@@ -168,6 +161,21 @@ export const calculateDamage = (
     abilityNotes.push({ side: 'defender', effect: 'hardened' });
   }
   const criticalMultiplier = rolledCritical && !criticalBlocked ? CRITICAL_HIT_MULTIPLIER : 1;
+  // A critical hit looks past every stage that would weaken it: the attacker's
+  // own lowered Attack and the defender's raised Defense, as FireRed's
+  // `CalculateBaseDamage` reads the stat unstaged on `gCritMultiplier == 2`
+  // unless the stage helps. Staged both ways, a crit into a Grimer that had
+  // Hardened twice did less than the plain Tackles before it (playtest, 20 Nov).
+  const critical = criticalMultiplier === CRITICAL_HIT_MULTIPLIER;
+  const attackStage = critical ? Math.max(0, attackerStages[attackStat]) : attackerStages[attackStat];
+  const defenseStage = critical ? Math.min(0, defenderStages[defenseStat]) : defenderStages[defenseStat];
+  const attack = getStagedStat(attacker.stats[attackStat], attackStage);
+  // Self-Destruct and Explosion halve the defense they meet before its stages
+  // are applied, as FireRed's `CalculateBaseDamage` does for `EFFECT_EXPLOSION`.
+  const unstagedDefense = move.userFaints
+    ? Math.max(1, Math.floor(defender.stats[defenseStat] / 2))
+    : defender.stats[defenseStat];
+  const defense = getStagedStat(unstagedDefense, defenseStage);
   // Blaze and the three like it, Guts, and a charged Flash Fire on one side;
   // Thick Fat on the other. Both are multipliers on the one number, which is
   // where generation III puts the first and close enough for the second that

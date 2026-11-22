@@ -633,11 +633,25 @@ export const formatTypeList = (types: readonly PokemonType[]): string =>
 export const describeMoveGuidance = (
   move: { readonly base: MoveBase; readonly pp: number },
   attackerTypes: readonly PokemonType[],
-  defender: { readonly name: string; readonly types: readonly PokemonType[] },
+  defender: {
+    readonly name: string;
+    readonly types: readonly PokemonType[];
+    /**
+     * The defender's ability, in capitals, when it will not take this move at
+     * all - Levitate against a Ground move, Water Absorb against a Water one,
+     * Soundproof against a sound. The type chart alone called Mud Shot "SUPER
+     * EFFECTIVE x2" on a Levitate Koffing, and a veteran spent the turn on it
+     * (playtest, 20 Nov 2026).
+     */
+    readonly refusedBy?: string;
+  },
 ): MoveGuidance => {
   const isStab = attackerTypes.includes(move.base.type);
   const stabSuffix = isStab ? ` · SAME-TYPE ${formatMultiplier(STAB_MULTIPLIER)}` : '';
   const pp = `PP ${move.pp}/${move.base.pp}`;
+  const refused = defender.refusedBy
+    ? { matchup: `vs ${defender.name.toUpperCase()}: NO EFFECT (${defender.refusedBy})`, tone: matchupTone(0), effectiveness: 0 }
+    : null;
 
   if (move.base.category === MoveCategory.Status || move.base.power <= 0) {
     return {
@@ -649,6 +663,7 @@ export const describeMoveGuidance = (
         move.base.description.replace(/^An? \w+ status move\.\s*/, '') || 'No direct damage.',
       tone: 'neutral',
       effectiveness: 1,
+      ...refused,
     };
   }
 
@@ -659,6 +674,7 @@ export const describeMoveGuidance = (
     matchup: `vs ${defender.name.toUpperCase()}: ${effectivenessLabel(effectiveness)} ${formatMultiplier(effectiveness)}`,
     tone: matchupTone(effectiveness),
     effectiveness,
+    ...refused,
   };
 };
 
@@ -1315,8 +1331,10 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
       return 'A critical hit!';
     case 'effectiveness':
       if (event.multiplier === 0) {
+        // Mid-line, the player's own is "your", as `statusGivenBy` writes it:
+        // "It doesn't affect Your BULBASAUR..." read as a typo (playtest, 20 Nov).
         return event.name && event.user
-          ? `It doesn't affect ${combatantName({ user: event.user, name: event.name }, foe)}...`
+          ? `It doesn't affect ${event.user === 'player' ? `your ${event.name.toUpperCase()}` : combatantName({ user: event.user, name: event.name }, foe)}...`
           : "It doesn't affect the target...";
       }
       return event.multiplier > 1 ? "It's super effective!" : "It's not very effective...";
