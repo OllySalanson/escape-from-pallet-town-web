@@ -319,6 +319,11 @@ export type BattleEvent =
       readonly target?: 'player' | 'enemy';
       /** Which of the target side's slots the hit landed in. */
       readonly targetSlot?: number;
+      /**
+       * Who it landed on, named only in a double battle: there "Foe STARYU used
+       * TACKLE! -6 HP" did not say which of two Pokémon lost the six.
+       */
+      readonly targetName?: string;
       readonly name: string;
       readonly move: string;
       /**
@@ -2037,6 +2042,7 @@ const applyMove = (
         ...inSlot(ref),
         target: targetRef.side,
         ...atSlot(targetRef),
+        ...(nextState.unitCount > 1 ? { targetName: defenderName } : {}),
         name: attackerName,
         move: move.base.name,
         damage: damageHere,

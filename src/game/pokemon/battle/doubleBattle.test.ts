@@ -215,6 +215,23 @@ describe('the order four actions are taken in', () => {
     ]);
   });
 
+  it("names who each single-target hit landed on, because two stand on each side", () => {
+    const result = resolveTurn(
+      mixedField(),
+      [
+        { slot: 0, moveIndex: 0 },
+        { slot: 1, moveIndex: 0 },
+      ],
+      steady,
+    );
+    const hits = of(result.events, 'used-move').filter((event) => (event.damage ?? 0) > 0);
+
+    expect(hits.length).toBeGreaterThan(0);
+    for (const hit of hits) {
+      expect(hit.targetName).toBe(unitAt(result.state, slotRef(hit.target!, hit.targetSlot ?? 0))!.pokemon.name);
+    }
+  });
+
   it('puts a priority move in front of everything faster than it', () => {
     const state = holding(mixedField(), slotRef('player', 1), QUICK_ATTACK);
     const result = resolveTurn(
