@@ -93,6 +93,7 @@ import { captionBoundsOverRoom, placeCaptions, placeDialog, seatedOver, type Rec
 import { advanceLookMs, isLooking } from '../ui/captionReveal';
 import { GAME_FONT } from '../ui/gameFont';
 import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
+import { HINT_MARGIN, HINT_PADDING_X, HINT_PADDING_Y } from '../ui/hintLine';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import {
   CANOPY_BAND,
@@ -498,9 +499,6 @@ const PHRASE_LIST_HINT = `[ARROWS] CHOOSE   [SPACE] SAY   [${ROOM_KEY_LETTERS.ta
 const DIALOG_WIDTH = 232;
 const DIALOG_HEIGHT = 56;
 const DIALOG_MARGIN = 8;
-const HINT_MARGIN = 6;
-const HINT_PADDING_X = 5;
-const HINT_PADDING_Y = 2;
 const figureRect = (tile: GridPosition): Rect => ({
   x: tile.x * TILE_SIZE,
   y: tile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET + CHARACTER_HEAD_PIXEL_Y,
