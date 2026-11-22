@@ -983,7 +983,7 @@ function drawLibrary(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
       name: 'THE END BOOKCASE',
       note: OPEN_BOOKCASE_NOTE,
       tiles: [{ x: END_BOOKCASE.x + 1, y: END_BOOKCASE.y + 1 }],
-      lines: [`The end bookcase stands open on its hinge. ${CHART_ROOM_NAME} is through it.`],
+      lines: [`The end bookcase stands open on its hinge. ${CHART_ROOM_NAME} is through the gap on its left.`],
     });
     return { sketch, catalogue: LIBRARY, things, sprites: [], people, solid: [LIBRARIAN_TILE] };
   }
