@@ -72,16 +72,21 @@ export interface RaidConditions {
   readonly leadShiny: boolean;
 }
 
-/** Read as the raid deploys. A party with nobody in it leads with no type. */
+/**
+ * Read as the raid deploys. A party with nobody in it leads with no type.
+ * `sky` is a darker one the rim waited for (`base/raidSky.ts`); without it the
+ * hour is the player's own clock.
+ */
 export function raidConditions(
   now: Date,
   party: readonly Pokemon[],
   packed: readonly { readonly itemId: string; readonly quantity: number }[],
   chartWhole: boolean,
   defeatedBosses: readonly string[],
+  sky: WindowLight = windowLight(now),
 ): RaidConditions {
   return {
-    hour: windowLight(now),
+    hour: sky,
     weekday: now.getDay(),
     month: now.getMonth(),
     leadTypes: party[0] ? [party[0].base.primaryType, ...(party[0].base.secondaryType ? [party[0].base.secondaryType] : [])] : [],

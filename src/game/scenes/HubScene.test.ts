@@ -959,6 +959,81 @@ describe('hub deployment route', () => {
   });
 
   /**
+   * A raid can wait on the rim for a darker sky (`base/raidSky.ts`): THE LONG
+   * SHADOW's dusk and THE LOST FOLD's night are two pieces of the treasure map,
+   * and a player whose own clock never gets there could never have them (the
+   * 20 Nov AI playtest, #39, #63, #95). The wait is a minute of the raid clock.
+   */
+  describe('waiting on the rim for a darker sky', () => {
+    const rimAt = (hour: number) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 9, 12, hour, 0));
+      const made = createHub();
+      made.hub.flow.togglePokemon('charmander-1');
+      made.hub.setView('rim');
+      readyToDeploy(made.hub);
+      const rim = () => {
+        made.hub.render();
+        return (made.hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+      };
+      return { ...made, rim, wait: (sky: string | undefined) => ((made.hub as unknown as { waitedSky: string | undefined }).waitedSky = sky) };
+    };
+
+    it.each([
+      { hour: 12, offered: ['Wait for dusk', 'Wait for dark'] },
+      { hour: 19, offered: ['Wait for dark'] },
+      { hour: 23, offered: [] },
+    ])('offers at $hour:00 only the skies still to come: $offered', ({ hour, offered }) => {
+      try {
+        const { rim } = rimAt(hour);
+        const html = rim();
+        for (const label of ['Wait for dusk', 'Wait for dark']) {
+          expect(html.includes(`>${label}</button>`)).toBe(offered.includes(label));
+        }
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('sends the raid out under the sky waited for, a minute short, and says both on the rim', () => {
+      try {
+        const { hub, start, rim, wait } = rimAt(12);
+        wait('night');
+        const html = rim();
+        expect(html).toContain('night: you wait on the rim for it. It costs 1:00 of the raid clock');
+        expect(html).toContain('night raid clock 4:00 (5:00 base − 1:00 waiting)');
+        expect(html).toContain('>Go now</button>');
+
+        deploy(hub, start);
+        const { runSession } = start.mock.calls[0][1] as WorldSceneData;
+        expect(runSession.plan?.night).toBe(true);
+        expect(runSession.plan?.conditions?.hour).toBe('night');
+        expect(runSession.manager.snapshot().durationMs).toBe(4 * 60_000);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('waits for dusk as the moor wants it, and goes now again for nothing', () => {
+      try {
+        const { hub, start, rim, wait } = rimAt(12);
+        wait('dusk');
+        expect(rim()).toContain('dusk: you wait on the rim for it.');
+        wait(undefined);
+        expect(rim()).not.toContain('you wait on the rim');
+
+        wait('dusk');
+        deploy(hub, start);
+        const { runSession } = start.mock.calls[0][1] as WorldSceneData;
+        expect(runSession.plan?.night).toBe(false);
+        expect(runSession.plan?.conditions?.hour).toBe('dusk');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  /**
    * An explorer run's clock is eight hours and its chip says PLAYTEST rather
    * than count them, so the final check says what that means: it printed
    * `night raid clock 480:00` (the owner's playtest, 2026-10-13).

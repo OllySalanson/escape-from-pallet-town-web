@@ -4729,6 +4729,17 @@ button {
 :where(.pixel-ui) .rim-stakes dd {
   white-space: normal;
 }
+/* The Sky line's wait buttons (`base/raidSky.ts`) stand on the line itself, a
+   line of text tall, so the row is no taller than the others and its label
+   still reads level with what it labels. */
+:where(.pixel-ui) .rim-stakes > div {
+  align-items: baseline;
+}
+:where(.pixel-ui) .rim-stakes .rim-sky-wait {
+  margin-left: calc(var(--u) * 2);
+  padding-top: 0;
+  padding-bottom: 0;
+}
 
 /* In a side column a card is too narrow for two moves abreast, and wrapping
    them by width laid each card's four out differently (wave 1's playtest):

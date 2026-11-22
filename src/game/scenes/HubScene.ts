@@ -148,6 +148,8 @@ import { iconMarkup, itemIcon } from '../ui/icons';
 import { hunterThreatFor, hunterThreatLine, type HunterThreat } from '../world/hunterThreat';
 import { rivalForRaid } from '../world/hunters';
 import { isNightRaid } from '../world/nightRaids';
+import { clockAfterWaiting, raidSky, waitableSkies, waitButtonLabel, waitedSkyNote, WAIT_FOR_DARK_MS } from '../base/raidSky';
+import { windowLight, type WindowLight } from '../base/homeClock';
 import type { GridPosition } from '../movement/gridMovement';
 import { type WorldMapId, worldMapIds, worldMapMaker, worldMapName } from '../worldMap';
 import { MINIMAP_PALETTE, type Minimap } from '../world/minimap';
@@ -404,6 +406,12 @@ export class HubScene extends Phaser.Scene {
    */
   private straightOver = false;
   private justHome = false;
+  /**
+   * A darker sky the rim was asked to wait for (`base/raidSky.ts`): the moor's
+   * dusk or the fold's night for a player whose own clock is not there. It is
+   * this visit's choice only, and costs the raid a minute of its clock.
+   */
+  private waitedSky: WindowLight | undefined;
   /** Whether the browser is being asked if another window's raid is still there. */
   private askingElsewhere = false;
   private deploying = false;
@@ -461,6 +469,7 @@ export class HubScene extends Phaser.Scene {
     this.enteredAt = data.at;
     this.straightOver = data.straightOver === true;
     this.justHome = data.justHome === true;
+    this.waitedSky = undefined;
     // Looking down from the rim is looking the plan over, as far as it can be.
     if (this.view === 'rim') {
       this.pointAtHeldRoom();
@@ -726,7 +735,17 @@ export class HubScene extends Phaser.Scene {
   private get raidClockMs(): number {
     return isPlaytestRun()
       ? PLAYTEST_RAID_DURATION_MS
-      : raidClockAfterRecovery(RAID_DURATION_MS, this.pendingRecoveryMs);
+      : clockAfterWaiting(raidClockAfterRecovery(RAID_DURATION_MS, this.pendingRecoveryMs), this.waitingForSky);
+  }
+
+  /** Whether this raid waits on the rim for a darker sky, and can: an explorer run never waits. */
+  private get waitingForSky(): boolean {
+    return !isPlaytestRun() && this.waitedSky !== undefined && waitableSkies(new Date()).includes(this.waitedSky);
+  }
+
+  /** The sky a raid jumped now will have: the one waited for, else the player's own clock. */
+  private get raidLight(): WindowLight {
+    return this.waitingForSky ? raidSky(new Date(), this.waitedSky) : windowLight(new Date());
   }
 
   /** Every workshop upgrade standing at base, by id. */
@@ -1340,8 +1359,9 @@ export class HubScene extends Phaser.Scene {
       // of this raid's collision as a beaten boss's are.
       this.savedGame.raidProgress.openedGates ?? [],
       // Night by the player's own clock, read as the raid leaves - the same
-      // reading the drop-in screen's wildlife was just shown in.
-      isNightRaid(new Date()),
+      // reading the drop-in screen's wildlife was just shown in - or the night
+      // the rim was asked to wait for.
+      this.raidLight === 'night',
       // The legends the Pokedex owns, which stand nowhere this raid.
       caughtLegends(pokedexOwned(this.savedGame.raidProgress.pokedexOwned, this.stash)),
       // What the people at base are waiting on, each laid in its own place.
@@ -1356,6 +1376,7 @@ export class HubScene extends Phaser.Scene {
           items,
           chartWhole(this.savedGame.raidProgress.treasureHunt ?? NO_TREASURE_HUNT),
           this.savedGame.raidProgress.defeatedBosses,
+          this.raidLight,
         ),
         known: {
           secretsFound: this.savedGame.raidProgress.secretsFound ?? [],
@@ -1741,6 +1762,11 @@ export class HubScene extends Phaser.Scene {
       this.render();
     });
     on('[data-back]', () => this.goBack());
+    on('[data-wait-sky]', (button) =>
+      rerender(() => {
+        this.waitedSky = (button.dataset.waitSky || undefined) as WindowLight | undefined;
+      }),
+    );
     on('[data-view]', (button) => rerender(() => this.setView(button.dataset.view as HubView)));
     on('[data-starter]', (button) =>
       rerender(() => {
@@ -2947,12 +2973,36 @@ export class HubScene extends Phaser.Scene {
       : line('Safe', kept.length === 0 ? 'nothing: a wipe costs everything you take' : kept.join(', '), kept.length === 0);
     return `<dl class="dropin-facts rim-stakes">${hurt ? line('Hurt', hurt.line, true) : ''}${line('At risk', lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', '))}${goneForGood.length === 0 ? '' : line('A wipe', `${goneForGood.join(', ')}: lost for good`, true)}${safe}${
       job === undefined ? '' : line('Job', job, short.length > 0)
-    }${isPlaytestRun() ? '' : line('Sky', skyNote(new Date()))}${line(pack ? 'Hunters' : 'Hunter', `<span data-hunter-tier="${threat.tierOffset + 1}">${hunter.heading.replace(/^Hunters?: /, '')}: ${hunter.detail}</span>`, threat.tierOffset > 0)}${this.clockIsNews ? line('Clock', this.clockNote()) : ''}</dl>`;
+    }${isPlaytestRun() ? '' : line('Sky', this.skyLine())}${line(pack ? 'Hunters' : 'Hunter', `<span data-hunter-tier="${threat.tierOffset + 1}">${hunter.heading.replace(/^Hunters?: /, '')}: ${hunter.detail}</span>`, threat.tierOffset > 0)}${this.clockIsNews ? line('Clock', this.clockNote()) : ''}</dl>`;
   }
 
   /** Whether the clock is worth a line: it is on the title bar, and only a night or a shortened one has more to say. */
   private get clockIsNews(): boolean {
-    return this.pendingRecoveryMs > 0 || isPlaytestRun() || isNightRaid(new Date());
+    return this.pendingRecoveryMs > 0 || isPlaytestRun() || this.raidLight === 'night' || this.waitingForSky;
+  }
+
+  /**
+   * The rim's Sky line: what the clock gives, and a button for each darker
+   * sky the raid could wait for instead (`base/raidSky.ts`) - or, waited, what
+   * it costs and the button that goes now after all.
+   */
+  private skyLine(): string {
+    const now = new Date();
+    const button = (sky: string, label: string, help: string): string =>
+      `<button class="px-window px-button rim-sky-wait" data-wait-sky="${sky}" data-help="${escapeAttribute(help)}">${label}</button>`;
+    if (this.waitingForSky) {
+      return `${waitedSkyNote(this.raidLight)} ${button('', 'Go now', `Jump under the sky your own clock has, and keep the ${formatRecoveryClock(WAIT_FOR_DARK_MS)}.`)}`;
+    }
+    const waits = waitableSkies(now)
+      .map((sky) =>
+        button(
+          sky,
+          waitButtonLabel(sky),
+          `Wait on the rim until ${sky === 'night' ? 'full dark' : 'dusk'}: some things in the vale only happen then. It costs ${formatRecoveryClock(WAIT_FOR_DARK_MS)} of the raid clock.`,
+        ),
+      )
+      .join('');
+    return `${skyNote(now)}${waits ? ` ${waits}` : ''}`;
   }
 
   /**
@@ -3415,19 +3465,20 @@ export class HubScene extends Phaser.Scene {
    * takes nothing off for recovery, because `raidClockMs` does not.
    */
   private clockNote(): string {
-    const night = isNightRaid(new Date());
+    const night = this.raidLight === 'night';
     if (isPlaytestRun()) {
       return `${night ? 'night raid' : 'raid'} with no clock to beat: an explorer run lasts ${PLAYTEST_RAID_DURATION_MS / 3_600_000} hours`;
     }
     const clock = `${night ? 'night raid clock' : 'raid clock'} ${formatRecoveryClock(this.raidClockMs)}`;
+    const waited = this.waitingForSky ? ` − ${formatRecoveryClock(WAIT_FOR_DARK_MS)} waiting` : '';
     if (this.pendingRecoveryMs === 0) {
-      return clock;
+      return waited ? `${clock} (${formatRecoveryClock(RAID_DURATION_MS)} base${waited})` : clock;
     }
     // A debt a raid was too short to pay is the same healing, still owed: said
     // as plain recovery it read as Nurse Joy charging twice.
     return this.savedGame.recoveryCarried
-      ? `${clock}: Nurse Joy's healing is still unpaid - your last raid was under ${formatRecoveryClock(DAY_CARE_LEAST_RAID_MS)}`
-      : `${clock} (${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery)`;
+      ? `${clock}: Nurse Joy's healing is still unpaid - your last raid was under ${formatRecoveryClock(DAY_CARE_LEAST_RAID_MS)}${waited ? `, and ${formatRecoveryClock(WAIT_FOR_DARK_MS)} is the wait` : ''}`
+      : `${clock} (${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery${waited})`;
   }
 
   /**
