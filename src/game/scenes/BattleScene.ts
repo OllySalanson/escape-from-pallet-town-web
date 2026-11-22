@@ -2038,7 +2038,13 @@ export class BattleScene extends Phaser.Scene {
       this.throwBall(ballIndex);
       return;
     }
-    this.selectedCommand = Math.min(this.selectedCommand, this.makeRoomRows().length - 1);
+    // The cursor stays on the kind just put down while some is left, and goes
+    // back to KEEP THE PACK when none is - never onto another kind. Kept at its
+    // index, it slid onto the next row when a kind ran out, which was often
+    // POKéDOLLARS at the foot of the list, and the next SPACE put all the
+    // money down (AI playtest, 22 Nov 2026).
+    const same = this.makeRoomRows().findIndex((row) => row?.itemId === choice.itemId);
+    this.selectedCommand = Math.max(0, same);
     this.showCommands();
   }
 
