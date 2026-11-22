@@ -27,7 +27,7 @@ import {
   workshopOffers,
   pokemonNeedingRecovery,
   raidClockAfterRecovery,
-  recoveryCostMs,
+  quoteRecovery,
   spendableSupply,
   buildDropInBriefing,
   doorHolder,
@@ -818,10 +818,14 @@ export class HubScene extends Phaser.Scene {
     return wardBedIds(this.injuredPokemon, this.recoveryTerms).has(stored.id);
   }
 
-  /** What treating this one Pokemon at the bay costs right now. */
+  /**
+   * What treating this one Pokemon at the bay costs right now: what
+   * `applyRecovery` would charge, today's free heal and the cap on the debt
+   * both counted. Quoted before the cap, a row said CENTER -1:40 and the heal
+   * then took 0:50 (AI playtest, 22 Nov 2026).
+   */
   private recoveryPriceMs(stored: StashedPokemon): number {
-    // Today's free heal costs nothing, as `applyRecovery` charges it.
-    return this.recoveryTerms.freeToday ? 0 : recoveryCostMs(stored.pokemon, this.recoveryTerms, this.inWardBed(stored));
+    return quoteRecovery(this.stash, this.pendingRecoveryMs, [stored.id], this.recoveryTerms);
   }
 
   /**
