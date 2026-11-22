@@ -40,6 +40,7 @@ function renderField(key, field) {
     ...(near.landmarks ?? []).map((l) => `landmark ${l.label} ${tile(l.tile)}${l.searched ? ' (searched)' : ''}`),
   ];
   if (near.exit) seen.push(`way out of the room ${tile(near.exit)}`);
+  for (const way of near.ways ?? []) seen.push(`way through to ${way.to} ${tile(way.tile)}`);
   if (near.rim) seen.push(`the rim (jump in from here) ${tile(near.rim)}`);
   if (seen.length) lines.push(`ON SCREEN: ${list(seen, 24)}`);
   const captions = (near.captions ?? []).map((c) => c.text).filter(Boolean);

@@ -48,3 +48,25 @@ describe('a cache being searched', () => {
     expect(shown).toContain('SEARCHING CHARCOAL STACK: [1] Lamp oil | No room for Lamp oil. · [1] TAKE [SPACE] ALL · WALK AWAY TO LEAVE');
   });
 });
+
+describe('a room with an arch in it', () => {
+  it('names the way through it, beside the way out', () => {
+    // The veteran run pushed at THE END BOOKCASE (14,1) for the chart room it
+    // had opened, while the arch beside it (13,1) went unlisted.
+    const library = {
+      scenes: ['base'],
+      texts: [],
+      scene: {
+        base: {
+          place: 'GREAT LIBRARY',
+          room: 'great-library',
+          tile: { x: 13, y: 2 },
+          facing: 'up',
+          near: { exit: { x: 7, y: 11 }, ways: [{ to: 'THE CHART ROOM', tile: { x: 13, y: 1 }, push: 'up' }] },
+        },
+      },
+    };
+
+    expect(renderScreen(library, { events: [] })).toContain('way out of the room 7,11; way through to THE CHART ROOM 13,1');
+  });
+});
