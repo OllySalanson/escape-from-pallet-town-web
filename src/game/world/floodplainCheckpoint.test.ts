@@ -87,11 +87,12 @@ const firstRaidMaya = mayaAmong(trainersForContract(createRunTrainerEncounters()
 
 describe('the price of the Floodplain checkpoint', () => {
   it('is paid by a fresh level-5 starter that arrives healthy and spends the pack', () => {
-    // Every starter, because her two know nothing but Tackle - there is no
-    // type in this fight at all, so a spread between the three is a spread in
-    // nothing but stats: a fresh Bulbasaur's Defence is 7 where a Squirtle's is
-    // 8, and FireRed's Tackle is 35 power and misses one time in twenty, so the
-    // Bulbasaur pays most (72/84/90%, Bulbasaur/Charmander/Squirtle).
+    // Every starter, because her three know nothing typed - Tackle and
+    // Scratch - so a spread between the three is a spread in nothing but stats
+    // and kits: FireRed's Tackle is 35 power and misses one time in twenty
+    // where Scratch is 40 and never misses, so the Fire starter pays least
+    // (97/85/85%, Charmander/Squirtle/Bulbasaur), and her Sandshrew is what
+    // stops it paying nothing (`trainers.ts`).
     const paid = STARTERS.map((starter) => `${starter} ${rate(starter, 5, PACK) >= 0.7}`);
     expect(paid).toEqual(STARTERS.map((starter) => `${starter} true`));
   });
@@ -102,8 +103,7 @@ describe('the price of the Floodplain checkpoint', () => {
     // watch is shaded and captioned CANNOT BE FLED, and the junction one step
     // above it is outside her sight.
     // Charmander's Scratch is the one 40-power, never-missing attack a fresh
-    // starter has in FireRed, so it is the one that sometimes wins it bare
-    // (4/16/4%).
+    // starter has in FireRed, and even it does not get through three bare (0%).
     const bare = STARTERS.map((starter) => `${starter} ${rate(starter, 5, 0) <= 0.2}`);
     expect(bare).toEqual(STARTERS.map((starter) => `${starter} true`));
   });
@@ -123,13 +123,15 @@ describe('the price of the Floodplain checkpoint', () => {
   it('opens by the second raid, which is the only thing beating her buys', () => {
     // She is not a door and there is no permanent reward for her, so the road
     // has to come free with the levels a player earns anyway. A level-6 starter
-    // with the pack wins comfortably; by level 7 - one signature move later -
-    // a single Potion is the whole price. Bare at 7 is deliberately not asked:
-    // in this rain a Charmander's Ember is halved, so it is still fighting with
-    // Scratch, and that is the weather doing its job rather than the toll.
+    // with the pack wins comfortably; at level 7 - one signature move later -
+    // two Potions are the whole price, and by level 8 one. Bare at 7 is
+    // deliberately not asked, and one Potion at 7 is not either: in this rain a
+    // Charmander's Ember is halved (69% on one Potion, where the other two win
+    // every time), and that is the weather doing its job rather than the toll.
     for (const starter of STARTERS) {
       expect(`${starter} at 6 ${rate(starter, 6, PACK) >= 0.9}`).toBe(`${starter} at 6 true`);
-      expect(`${starter} at 7 ${rate(starter, 7, 1) >= 0.9}`).toBe(`${starter} at 7 true`);
+      expect(`${starter} at 7 ${rate(starter, 7, 2) >= 0.9}`).toBe(`${starter} at 7 true`);
+      expect(`${starter} at 8 ${rate(starter, 8, 1) >= 0.9}`).toBe(`${starter} at 8 true`);
       expect(`${starter} at 10 ${rate(starter, 10, 0) >= 0.9}`).toBe(`${starter} at 10 true`);
     }
   });
@@ -169,7 +171,8 @@ describe('the price of the Floodplain checkpoint on the first contract', () => {
     for (const starter of STARTERS) {
       expect(`${starter} paid ${rate(starter, 5, PACK, 1, firstRaidMaya) >= 0.85}`).toBe(`${starter} paid true`);
       // Charmander's Scratch is the one fresh attack that never misses, so it
-      // is the starter that most often gets through bare (6/32/7%).
+      // is the starter that most often gets through bare - and at 1% it is
+      // barely ever.
       expect(`${starter} bare ${rate(starter, 5, 0, 1, firstRaidMaya) <= 0.35}`).toBe(`${starter} bare true`);
     }
   });

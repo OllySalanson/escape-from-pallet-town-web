@@ -260,14 +260,15 @@ describe('what the game decided, against what canon says', () => {
    * The moves this game wrote by hand win over the generated ones, so the
    * places they disagree with FireRed are a decision rather than a drift.
    *
-   * Six of them, over four moves. Tackle and Vine Whip were two more, on a
-   * later generation's numbers, until the captain ruled on 2026-10-12 that
-   * they match FireRed exactly; they are the import's own rows now. **PP is
-   * shorter** here, which is a raid game's answer rather than an overworld
-   * one, and the three **accuracies of 100** - Sing, Supersonic and Poison
-   * Powder - are the loud ones: canon pitches all three between 55 and 75.
-   * Adopting canon there is a balance change with measurements, not part of
-   * an import.
+   * Three of them, over three moves, and all three are PP. Tackle and Vine
+   * Whip were two more, on a later generation's numbers, until the captain
+   * ruled on 2026-10-12 that they match FireRed exactly; they are the import's
+   * own rows now. Sing, Supersonic and Poison Powder carried the Unity
+   * original's accuracy of 100 until this game took FireRed's own formulas
+   * (22 Nov 2026), and now carry FireRed's 55, 55 and 75, re-measured with
+   * everything else. **PP is shorter** here, which is a raid game's answer
+   * rather than an overworld one - except Sing's, which is the Unity
+   * original's 20 to FireRed's 15, and is left for the captain to rule on.
    */
   it('names every authored move that does not match its own dex entry', () => {
     const differs: string[] = [];
@@ -284,11 +285,8 @@ describe('what the game decided, against what canon says', () => {
     }
     expect(differs.sort()).toEqual([
       'growl.pp: 30 not 40',
-      'poison-powder.accuracy: 100 not 75',
       'poison-powder.pp: 20 not 35',
-      'sing.accuracy: 100 not 55',
       'sing.pp: 20 not 15',
-      'supersonic.accuracy: 100 not 55',
     ]);
   });
 });

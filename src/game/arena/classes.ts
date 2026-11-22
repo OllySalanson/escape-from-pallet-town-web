@@ -19,7 +19,8 @@ import { afterDojoBout, classOf, DOJO_CLASS_IDS, type DojoClassId, type DojoReco
  *   beat him and you are in the next class. FireRed's own dojo four stand at
  *   the heads of the four classes - HIDEKI, MIKE, HITOSHI and AARON (pret
  *   `SaffronCity_Dojo`), fielding the dojo's own Fighting lines (Machop and
- *   Mankey's, as FireRed's four do, then Poliwrath and Hitmonchan at the top)
+ *   Mankey's, as FireRed's four do, with a Poliwrath, and the dojo's two prize
+ *   Pokemon, Hitmonlee and Hitmonchan, leading at the top)
  *   - and beating AARON tops the ladder.
  * - **A class is who you meet.** The regulars bring their own teams at the
  *   class's stage of evolution: first stages in POKé BALL, second in GREAT,
@@ -78,9 +79,20 @@ export interface DojoClass {
  * The four Black Belts, measured (`tools/arena/ladder.mts`) to stand a step
  * above the regulars of their own class and below the next: against the
  * reference teams (`arenaReferences.ts`) the regulars of POKé BALL class are
- * won about 89% of the time, HIDEKI 68%, GREAT BALL's regulars 62%, MIKE 53%,
- * ULTRA BALL's 45%, HITOSHI 29% and AARON 20%. MASTER BALL's regulars are the
+ * won about 89% of the time, HIDEKI 71%, GREAT BALL's regulars 53%, MIKE 44%,
+ * ULTRA BALL's 36%, HITOSHI 23% and AARON 12%. MASTER BALL's regulars are the
  * end of every line, as ULTRA's are: what is harder there is AARON.
+ *
+ * The three above HIDEKI were re-chosen when this game took FireRed's own stat
+ * and damage formulas (22 Nov 2026), which spread the species apart: MIKE's
+ * Mankey-Machoke-Primeape measured easier than his own class's regulars, and
+ * AARON's Machamp at Lv 30 left the best reference team 3%. Every lineup of
+ * three different Fighting kinds the dojo has was measured, and these are the
+ * ones that sit on the ladder with room either side: MIKE brings the Machop
+ * line and a Poliwrath, and the two masters at the top lead with the prize
+ * each hands over - HITOSHI his Hitmonlee, AARON his Hitmonchan, with a
+ * Primeape and a Poliwrath behind it, which the raid team beats 35% of the
+ * time.
  */
 export const BLACK_BELTS: readonly BlackBelt[] = [
   {
@@ -93,14 +105,14 @@ export const BLACK_BELTS: readonly BlackBelt[] = [
   {
     id: 'belt:mike',
     name: 'MIKE',
-    team: ['mankey', 'machoke', 'primeape'],
+    team: ['machop', 'machoke', 'poliwrath'],
     greeting: 'GREAT BALL class is mine to guard. Come on!',
     beaten: 'Whew! Go on up to ULTRA BALL.',
   },
   {
     id: 'belt:hitoshi',
     name: 'HITOSHI',
-    team: ['primeape', 'machoke', 'poliwrath'],
+    team: ['hitmonlee', 'primeape', 'mankey'],
     greeting: 'Only MASTER BALL class is above me. Not you. Not yet.',
     beaten: 'Hmph. MASTER BALL class it is.',
     prize: 'hitmonlee',
@@ -108,7 +120,7 @@ export const BLACK_BELTS: readonly BlackBelt[] = [
   {
     id: 'belt:aaron',
     name: 'AARON',
-    team: ['primeape', 'machamp', 'hitmonchan'],
+    team: ['hitmonchan', 'primeape', 'poliwrath'],
     greeting: 'Nobody here is above AARON. Prove me wrong.',
     beaten: 'I bow to you. There is nobody left in this dojo to beat.',
     prize: 'hitmonchan',

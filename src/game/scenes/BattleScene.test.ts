@@ -712,8 +712,8 @@ describe('escaping the hunter', () => {
 });
 
 describe('escaping a wild encounter', () => {
-  // A level-20 Pidgey (Speed 16) outruns a level-12 Charmander (Speed 12), so the
-  // escape is FireRed's roll: floor(12 * 128 / 16) = 96 of 256.
+  // A level-20 Pidgey (Speed 27) outruns a level-12 Charmander (Speed 20), so the
+  // escape is FireRed's roll: floor(20 * 128 / 27) = 94 of 256.
   const fasterWild = () => new Pokemon(PIDGEY, 20);
 
   it('keeps the fight going on a failed roll instead of closing the exit', () => {
@@ -721,7 +721,7 @@ describe('escaping a wild encounter', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    expect(read(renderedTexts)[4].text).toBe('  RUN 38%');
+    expect(read(renderedTexts)[4].text).toBe('  RUN 37%');
     read(renderedTexts)[4].handlers.pointerdown();
 
     // FireRed's own line, which names nobody (`sText_CantEscape2`).
@@ -740,8 +740,8 @@ describe('escaping a wild encounter', () => {
     (scene as unknown as { mode: string }).mode = 'main';
     (scene as unknown as { showCommands(): void }).showCommands();
 
-    // 96 + 30 = 126 of 256.
-    expect(read(renderedTexts).at(-1)?.text).toBe('▶ RUN 49%');
+    // 94 + 30 = 124 of 256.
+    expect(read(renderedTexts).at(-1)?.text).toBe('▶ RUN 48%');
   });
 
   it('always gets away when the player is the faster, whatever the roll (playtest 45)', () => {
@@ -1527,8 +1527,8 @@ describe('a level reached in the middle of a trainer battle', () => {
     knockOutTheLead(scene, renderedTexts);
 
     const { player } = (scene as unknown as { state: BattleState }).state;
-    expect(maxHpBefore).toBe(18);
-    expect(player.pokemon.maxHp).toBe(20);
+    expect(maxHpBefore).toBe(21);
+    expect(player.pokemon.maxHp).toBe(23);
     // `Pokemon.gainExperience` grants the two points the new maximum brings.
     // The battle's own count is what is written back to the party on the way
     // out, so if it does not pick the same two up they are quietly lost.

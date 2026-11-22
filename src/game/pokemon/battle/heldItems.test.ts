@@ -23,7 +23,8 @@ import {
   type BattleEvent,
 } from './battleEngine';
 import {
-  attackMultiplier,
+  gearTypeBoost,
+  lifeOrbMultiplier,
   attackRecoil,
   berryBite,
   endOfTurnHeal,
@@ -98,8 +99,8 @@ describe('what each piece of gear does', () => {
   });
 
   it('Life Orb multiplies the hit and charges the holder for it, only when it lands', () => {
-    expect(attackMultiplier(holding('life-orb'))).toBe(1.3);
-    expect(attackMultiplier(holding(null))).toBe(1);
+    expect(lifeOrbMultiplier(holding('life-orb'))).toBe(1.3);
+    expect(lifeOrbMultiplier(holding(null))).toBe(1);
     expect(attackRecoil(holding('life-orb', 30), 7)).toBe(3);
     // A missed or nil-damage hit is not a hit, so it costs nothing.
     expect(attackRecoil(holding('life-orb', 30), 0)).toBe(0);
@@ -107,10 +108,10 @@ describe('what each piece of gear does', () => {
   });
 
   it('Spell Tag raises Ghost moves by a tenth, as FireRed’s does, and nothing else', () => {
-    expect(attackMultiplier(holding('spell-tag'), 'Ghost')).toBe(1.1);
-    expect(attackMultiplier(holding('spell-tag'), 'Normal')).toBe(1);
-    expect(attackMultiplier(holding('spell-tag'))).toBe(1);
-    expect(attackMultiplier(holding('life-orb'), 'Ghost')).toBe(1.3);
+    expect(gearTypeBoost(holding('spell-tag'), 'Ghost')).toBe(1.1);
+    expect(gearTypeBoost(holding('spell-tag'), 'Normal')).toBe(1);
+    expect(lifeOrbMultiplier(holding('spell-tag'))).toBe(1);
+    expect(gearTypeBoost(holding('life-orb'), 'Ghost')).toBe(1);
   });
 
   it('Quick Claw is a quarter of the time, and only for its holder', () => {
@@ -122,16 +123,16 @@ describe('what each piece of gear does', () => {
 
   it("NeverMeltIce raises an ICE move's power by FireRed's ten per cent, and nothing else's", () => {
     const ice = holding('never-melt-ice');
-    expect(attackMultiplier(ice, PokemonType.Ice)).toBeCloseTo(1.1);
-    expect(attackMultiplier(ice, PokemonType.Water)).toBe(1);
-    expect(attackMultiplier(ice)).toBe(1);
+    expect(gearTypeBoost(ice, PokemonType.Ice)).toBeCloseTo(1.1);
+    expect(gearTypeBoost(ice, PokemonType.Water)).toBe(1);
+    expect(lifeOrbMultiplier(ice)).toBe(1);
   });
 
   it("Charcoal raises a FIRE move's power by FireRed's ten per cent, and nothing else's", () => {
     const charcoal = holding('charcoal');
-    expect(attackMultiplier(charcoal, PokemonType.Fire)).toBeCloseTo(1.1);
-    expect(attackMultiplier(charcoal, PokemonType.Grass)).toBe(1);
-    expect(attackMultiplier(charcoal)).toBe(1);
+    expect(gearTypeBoost(charcoal, PokemonType.Fire)).toBeCloseTo(1.1);
+    expect(gearTypeBoost(charcoal, PokemonType.Grass)).toBe(1);
+    expect(lifeOrbMultiplier(charcoal)).toBe(1);
   });
 
   it('names itself in the battle log', () => {
@@ -281,9 +282,9 @@ describe('gear in a real fight', () => {
 describe('the Miracle Seed', () => {
   it("raises a GRASS move's power by FireRed's ten per cent, and nothing else's", () => {
     const seed = holding('miracle-seed');
-    expect(attackMultiplier(seed, PokemonType.Grass)).toBeCloseTo(1.1);
-    expect(attackMultiplier(seed, PokemonType.Fire)).toBe(1);
-    expect(attackMultiplier(seed)).toBe(1);
+    expect(gearTypeBoost(seed, PokemonType.Grass)).toBeCloseTo(1.1);
+    expect(gearTypeBoost(seed, PokemonType.Fire)).toBe(1);
+    expect(lifeOrbMultiplier(seed)).toBe(1);
     expect(attackRecoil(seed, 10)).toBe(0);
   });
 

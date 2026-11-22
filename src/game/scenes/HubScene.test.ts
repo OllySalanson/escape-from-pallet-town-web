@@ -1537,12 +1537,12 @@ describe('what the base screen leads with', () => {
 
     hub.setView('reselect');
     swapping.reselectStarterId = 'charmander';
-    expect(markupOf(hub)).toContain('Level 5 · 1/16\u00a0HP');
+    expect(markupOf(hub)).toContain('Level 5 · 1/18\u00a0HP');
 
     swapping.swapArmed = true;
     const armed = markupOf(hub);
     expect(armed).toContain('data-swap-confirm');
-    expect(armed).toContain('Level 5 · 1/16\u00a0HP');
+    expect(armed).toContain('Level 5 · 1/18\u00a0HP');
   });
 
   it('cannot be released by double-clicking SWAP FOR X', () => {

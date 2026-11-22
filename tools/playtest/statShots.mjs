@@ -53,10 +53,12 @@ try {
   await walkIntoBase(page, 'pokemon-centre');
   await sleep(600);
   for (const [index, id] of species.entries()) {
-    // Point at the row by its place in the list rather than by pressing into
-    // whatever the screen starts its cursor on.
+    // Point at the tile by its place in the collection rather than by pressing
+    // into whatever the screen starts its cursor on. Each Pokemon is a tile that
+    // names the detail it shows (`data-shows`); the list of rows this once read
+    // is gone, and pointing at nothing left every picture on the first Pokemon.
     await page.evaluate(`(() => {
-      const rows = [...document.querySelectorAll('.stash-roster .px-list > button')];
+      const rows = [...document.querySelectorAll('.stash-roster [data-shows]')];
       rows[${index}]?.focus();
       rows[${index}]?.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }));
     })()`);

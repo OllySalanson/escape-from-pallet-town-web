@@ -339,7 +339,9 @@ async function connectPage(port, target, window, url, { save, init, project = fa
       }
       await keyUp(code);
     },
-    async waitFor(expression, { timeoutMs = 15_000, pollMs = 50, what = expression } = {}) {
+    // `EPTW_WAIT_MS` raises the default on a loaded machine, whose watchdog can
+    // pause a browser ten seconds at a time; a call that names its own wait keeps it.
+    async waitFor(expression, { timeoutMs = Number(process.env.EPTW_WAIT_MS) || 15_000, pollMs = 50, what = expression } = {}) {
       const deadline = Date.now() + timeoutMs;
       for (;;) {
         const value = await evaluate(expression);

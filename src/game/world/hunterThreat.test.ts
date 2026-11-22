@@ -42,7 +42,7 @@ describe('hunterThreatFor', () => {
 
   it("names the team this raid's rival will lead, so the final check and the raid agree", () => {
     const threat = hunterThreatFor([new Pokemon(BULBASAUR, 5)], 0, 'koga');
-    expect(threat.openingTeam[0].species.id).toBe('grimer');
+    expect(threat.openingTeam[0].species.id).toBe('venonat');
   });
 
   /**

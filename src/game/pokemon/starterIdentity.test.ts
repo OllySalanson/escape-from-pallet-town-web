@@ -15,18 +15,26 @@ const moveNames = (level: number, species: (typeof STARTERS)[number]): string[] 
 
 describe('starter identity', () => {
   /**
-   * Unity's stat formula is `floor(base * level / 100) + 5`, so at level 5 a 43
-   * and a 65 in the same stat are one point apart. Nothing about the starter
-   * choice can be carried by stats at the level the player picks, which is why
-   * the movesets below have to carry it instead. If this ever stops holding,
-   * the differentiation argument needs re-measuring rather than patching.
+   * FireRed's stat formula with no IVs or EVs is `floor(2 * base * level / 100)
+   * + 5`, so at level 5 a stat is a tenth of its base plus five, and the three
+   * starters' lines sit within two points of each other. The two-point gaps are
+   * each starter's own shape, as on the cartridge - Charmander is the fastest
+   * and Squirtle the toughest - and nothing else about the choice is carried by
+   * stats at the level the player picks, which is why the movesets below have
+   * to carry it instead. If this ever stops holding, the differentiation
+   * argument needs re-measuring rather than patching.
    */
-  it('cannot express the choice through level-5 stats', () => {
+  it("carries FireRed's level-5 stat lines, two points apart at most", () => {
     const stats = STARTERS.map((species) => new Pokemon(species, STARTER_LEVEL).stats);
+    expect(stats).toEqual([
+      { hp: 19, attack: 9, defense: 9, spAttack: 11, spDefense: 11, speed: 9 },
+      { hp: 18, attack: 10, defense: 9, spAttack: 11, spDefense: 10, speed: 11 },
+      { hp: 19, attack: 9, defense: 11, spAttack: 10, spDefense: 11, speed: 9 },
+    ]);
 
     for (const stat of ['hp', 'attack', 'defense', 'spAttack', 'spDefense', 'speed'] as const) {
       const values = stats.map((entry) => entry[stat]);
-      expect(Math.max(...values) - Math.min(...values)).toBeLessThanOrEqual(1);
+      expect(Math.max(...values) - Math.min(...values)).toBeLessThanOrEqual(2);
     }
   });
 

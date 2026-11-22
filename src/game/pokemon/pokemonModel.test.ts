@@ -9,10 +9,6 @@ import { POISON_POWDER, TACKLE, VINE_WHIP, WATER_GUN } from './moves';
 import { ALL_SPECIES, BULBASAUR, BUTTERFREE, CHARMANDER, PIDGEY, SQUIRTLE, getSpeciesById } from './species';
 import { createBattleState } from './battle/battleEngine';
 
-const expectedHp = (baseHp: number, level: number): number =>
-  Math.floor((baseHp * level) / 100) + level + 10;
-const expectedBattleStat = (baseStat: number, level: number): number =>
-  Math.floor((baseStat * level) / 100) + 5;
 
 describe('Unity Pokemon data port', () => {
   it('preserves the authored species stats and learnsets', () => {
@@ -80,26 +76,38 @@ describe('Unity Pokemon data port', () => {
   });
 });
 
+/**
+ * FireRed's own numbers for a Pokemon with no IVs, no EVs and a neutral nature
+ * (`CalculateMonStats`, pret/pokefirered `src/pokemon.c`), worked by hand rather
+ * than through the formula under test. The Lv 100 lines are the bottom of
+ * Bulbapedia's neutral-nature stat ranges - Chansey's 610 HP, Mewtwo's 225
+ * Attack and 313 Sp. Atk - and the Lv 28 Ivysaur is the veteran's from playtest
+ * finding 123, which the Unity formula showed as 54 HP and 22 Attack.
+ */
 describe('Pokemon stat computation', () => {
-  it('matches the documented formulas at low and mid levels', () => {
-    const lowLevelBulbasaur = new Pokemon(BULBASAUR, 5);
-    const midLevelBulbasaur = new Pokemon(BULBASAUR, 50);
+  const stats = (speciesId: string, level: number) => new Pokemon(getSpeciesById(speciesId)!, level).stats;
 
-    expect(lowLevelBulbasaur.stats.hp).toBe(expectedHp(BULBASAUR.baseStats.hp, 5));
-    expect(lowLevelBulbasaur.stats.attack).toBe(expectedBattleStat(BULBASAUR.baseStats.attack, 5));
-    expect(lowLevelBulbasaur.stats.speed).toBe(expectedBattleStat(BULBASAUR.baseStats.speed, 5));
-
-    expect(midLevelBulbasaur.stats.hp).toBe(expectedHp(BULBASAUR.baseStats.hp, 50));
-    expect(midLevelBulbasaur.stats.spAttack).toBe(
-      expectedBattleStat(BULBASAUR.baseStats.spAttack, 50),
-    );
+  it("is FireRed's formula with no IVs, no EVs and a neutral nature", () => {
+    expect(stats('bulbasaur', 5)).toEqual({ hp: 19, attack: 9, defense: 9, spAttack: 11, spDefense: 11, speed: 9 });
+    expect(stats('bulbasaur', 50)).toEqual({ hp: 105, attack: 54, defense: 54, spAttack: 70, spDefense: 70, speed: 50 });
+    expect(stats('ivysaur', 28)).toEqual({ hp: 71, attack: 39, defense: 40, spAttack: 49, spDefense: 49, speed: 38 });
+    expect(stats('mewtwo', 100)).toEqual({
+      hp: 322,
+      attack: 225,
+      defense: 185,
+      spAttack: 313,
+      spDefense: 185,
+      speed: 265,
+    });
+    expect(stats('chansey', 100).hp).toBe(610);
   });
 
-  it('keeps HP scaling distinct from non-HP stats', () => {
+  it('gives HP its own level and ten on top of the shared part', () => {
+    // Bulbasaur's HP and Speed are both base 45: the same doubled stat, but HP
+    // adds the level and ten where every other stat adds five.
     const bulbasaur = new Pokemon(BULBASAUR, 12);
-
-    expect(bulbasaur.stats.hp).toBe(expectedHp(BULBASAUR.baseStats.hp, 12));
-    expect(bulbasaur.stats.hp).not.toBe(expectedBattleStat(BULBASAUR.baseStats.hp, 12));
+    expect(bulbasaur.stats.hp).toBe(Math.floor((2 * 45 * 12) / 100) + 12 + 10);
+    expect(bulbasaur.stats.speed).toBe(Math.floor((2 * 45 * 12) / 100) + 5);
   });
 });
 
@@ -153,14 +161,8 @@ describe('Pokemon experience and leveling', () => {
 
     expect(result.levelsGained).toEqual([6]);
     expect(charmander.level).toBe(6);
-    expect(charmander.stats).toEqual({
-      hp: expectedHp(CHARMANDER.baseStats.hp, 6),
-      attack: expectedBattleStat(CHARMANDER.baseStats.attack, 6),
-      defense: expectedBattleStat(CHARMANDER.baseStats.defense, 6),
-      spAttack: expectedBattleStat(CHARMANDER.baseStats.spAttack, 6),
-      spDefense: expectedBattleStat(CHARMANDER.baseStats.spDefense, 6),
-      speed: expectedBattleStat(CHARMANDER.baseStats.speed, 6),
-    });
+    // FireRed's Lv 6 Charmander with no IVs or EVs.
+    expect(charmander.stats).toEqual({ hp: 20, attack: 11, defense: 10, spAttack: 12, spDefense: 11, speed: 12 });
     expect(charmander.currentHp).toBe(charmander.maxHp - 3);
     expect(charmander.maxHp).toBeGreaterThan(initialMaxHp);
   });
