@@ -73,6 +73,16 @@ describe('what a raid is carrying home', () => {
       'No room in the pack! PIDGEY needs 4 squares.',
     );
     expect(packFullForPokemonLine(new Pokemon(IVYSAUR, 16))).toContain('6 squares');
+    // In a fight it says how many squares are free beside what the catch needs.
+    // Four squares are free here, scattered: enough of them, not in a Pidgey's shape.
+    const { cellsUsed, cellsTotal } = bag.layout();
+    expect(cellsTotal - cellsUsed).toBe(4);
+    expect(packFullForPokemonLine(new Pokemon(PIDGEY, 4), bag)).toBe(
+      'No room in the pack! PIDGEY needs 4 squares, and 4 are free, but not in its shape.',
+    );
+    expect(packFullForPokemonLine(new Pokemon(IVYSAUR, 16), bag)).toBe(
+      'No room in the pack! IVYSAUR needs 6 squares, and 4 are free.',
+    );
   });
 
   it('names every carried Pokemon separately, so two of a species are two pieces', () => {

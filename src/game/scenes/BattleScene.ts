@@ -2904,7 +2904,7 @@ export class BattleScene extends Phaser.Scene {
       this.pendingMakeRoom = choices.length > 0;
       this.makeRoomPage = 0;
       this.dialog.showMessage(
-        `${packFullForPokemonLine(this.state.enemy.pokemon)} ${
+        `${packFullForPokemonLine(this.state.enemy.pokemon, this.bag)} ${
           choices.length > 0 ? MAKE_ROOM_INVITE : NOTHING_TO_DROP_MESSAGE
         }`,
       );

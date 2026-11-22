@@ -63,9 +63,24 @@ export function clearPackRoomForPokemon(
  * promise is that a refusal tells the player exactly what they would have to
  * put down - "the pack is full" on its own is a wall, not a decision.
  */
-export function packFullForPokemonLine(pokemon: Pokemon): string {
+export function packFullForPokemonLine(pokemon: Pokemon, bag?: Pick<Bag, 'layout'>): string {
   const squares = cargoSquaresLabel(pokemonCargoCells(pokemon.base.id));
-  return `No room in the pack! ${pokemon.name.toUpperCase()} needs ${squares}.`;
+  return `No room in the pack! ${pokemon.name.toUpperCase()} needs ${squares}${bag ? `, and ${freeSquaresLabel(bag, pokemonCargoCells(pokemon.base.id))}` : ''}.`;
+}
+
+/**
+ * How many of the pack's squares are empty, as the refusal says it beside what
+ * the catch needs. Without it a player putting things down one at a time could
+ * not tell how far off they were, and dropped Potions they needed (AI
+ * playtest, 20 Nov 2026). Free squares may still be the wrong shape, which the
+ * rows below say drop by drop (`packRoomPrompt`).
+ */
+function freeSquaresLabel(bag: Pick<Bag, 'layout'>, needed: number): string {
+  const { cellsUsed, cellsTotal } = bag.layout();
+  const free = Math.max(0, cellsTotal - cellsUsed);
+  const count = free === 0 ? 'none are free' : free === 1 ? '1 is free' : `${free} are free`;
+  // Enough squares that are not in its shape: said, or "needs 4, and 4 are free" reads as a fault.
+  return free >= needed ? `${count}, but not in its shape` : count;
 }
 
 /**
