@@ -35,6 +35,10 @@ export {
 
 export {
   boardContractForMap,
+  jobChoice,
+  jobsForMap,
+  mayTurnJobDown,
+  noJobChoice,
   boardContracts,
   isStandingBoardOpen,
   isStandingContractId,

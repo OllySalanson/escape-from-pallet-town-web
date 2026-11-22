@@ -330,7 +330,7 @@ A few things worth knowing before you go:
 - **The vale keeps secrets.** A Snorlax asleep across a glade who wants a particular tune. A shadow on a crypt floor with nothing to cast it. Somebody standing near each one, or a notice, will tell you part of what it's waiting for, and the gossips back at the harbour know a bit more. Nobody will tell you all of it.
 - **Now and then a great shadow crosses the vale.** About one raid in three, a legendary bird you haven't caught yet flies over on its way home. Ask Professor Oak afterwards and he'll tell you which bird it was, which way it went and where they say it roosts.
 - **The pit is cloud where you haven't been.** Walk it, come home, and watch the cloud lift.
-- **Contracts change how a raid goes:** survey three stakes, carry a sealed case out through one particular exit, or spend your own supplies resupplying an outpost.
+- **Contracts change how a raid goes:** survey three stakes, carry a sealed case out through one particular exit, or spend your own supplies resupplying an outpost. Two are on offer at the rim, and you can turn both down.
 
 ## Draw your own map
 
