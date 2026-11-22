@@ -32,32 +32,45 @@ export const routeTo = (world, goal) => `(() => {
   if (w.isHunterOnCurrentMap()) stand(w.hunterState.position);
   for (const hunter of w.hunterPackHere()?.hunters ?? []) stand(hunter.position);
   blocked[id(goal.x, goal.y)] = 0;
-  const from = new Int32Array(W * H).fill(-1);
-  const via = new Uint8Array(W * H);
-  const start = id(s.x, s.y);
-  from[start] = start;
+  // An open exit is ground, and the step that finishes on it ends the raid: a
+  // walk to somewhere else goes round it, and crosses one only where nothing
+  // else gets through. The AI playtester walked the Tanglewood road down the
+  // edge of its lane onto DEER GAP twice and was sent home (the overnight
+  // playtest of 20 Nov 2026).
+  const exits = new Uint8Array(W * H);
+  for (const exit of w.extractionPointsForCurrentMap?.() ?? []) {
+    const at = exit.position;
+    if (at && at.x >= 0 && at.y >= 0 && at.x < W && at.y < H && !(at.x === goal.x && at.y === goal.y)) exits[id(at.x, at.y)] = 1;
+  }
   const steps = [[0, -1], [0, 1], [-1, 0], [1, 0]];
   const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-  const queue = new Int32Array(W * H);
-  let head = 0, tail = 0;
-  queue[tail++] = start;
-  while (head < tail) {
-    const here = queue[head++];
-    const x = here % W, y = (here - x) / W;
-    for (let d = 0; d < 4; d += 1) {
-      const nx = x + steps[d][0], ny = y + steps[d][1];
-      if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
-      const next = id(nx, ny);
-      if (from[next] !== -1 || blocked[next]) continue;
-      from[next] = here;
-      via[next] = d;
-      if (nx === goal.x && ny === goal.y) {
-        const route = [];
-        for (let at = next; at !== start; at = from[at]) route.push(keys[via[at]]);
-        return route.reverse();
+  const start = id(s.x, s.y);
+  const search = (avoidExits) => {
+    const from = new Int32Array(W * H).fill(-1);
+    const via = new Uint8Array(W * H);
+    from[start] = start;
+    const queue = new Int32Array(W * H);
+    let head = 0, tail = 0;
+    queue[tail++] = start;
+    while (head < tail) {
+      const here = queue[head++];
+      const x = here % W, y = (here - x) / W;
+      for (let d = 0; d < 4; d += 1) {
+        const nx = x + steps[d][0], ny = y + steps[d][1];
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const next = id(nx, ny);
+        if (from[next] !== -1 || blocked[next] || (avoidExits && exits[next])) continue;
+        from[next] = here;
+        via[next] = d;
+        if (nx === goal.x && ny === goal.y) {
+          const route = [];
+          for (let at = next; at !== start; at = from[at]) route.push(keys[via[at]]);
+          return route.reverse();
+        }
+        queue[tail++] = next;
       }
-      queue[tail++] = next;
     }
-  }
-  return null;
+    return null;
+  };
+  return search(true) ?? search(false);
 })()`;
