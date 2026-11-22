@@ -75,7 +75,9 @@ import {
   withErrandCompleted,
   withErrandFound,
   withErrandLossesHeard,
+  errandRewardFor,
   type Errand,
+  type ErrandReward,
   type ErrandRecord,
 } from '../hub/errands';
 import {
@@ -2122,7 +2124,7 @@ export class SaveManager {
    * nothing when the thing is not in the vault, the errand is not in hand, or
    * nothing could be saved.
    */
-  public completeErrand(id: string): Errand | undefined {
+  public completeErrand(id: string): { readonly errand: Errand; readonly reward: ErrandReward } | undefined {
     const errand = getErrand(id);
     const game = this.load();
     if (
@@ -2133,18 +2135,20 @@ export class SaveManager {
     ) {
       return undefined;
     }
+    // An HM the vault already holds is paid as its worth at Bill's instead (`errandRewardFor`).
+    const reward = errandRewardFor(errand, (itemId) => game.stash.itemCount(itemId) > 0);
     game.stash.removeItem(errand.itemId, 1);
-    for (const { itemId, quantity } of errand.reward.items) {
+    for (const { itemId, quantity } of reward.items) {
       game.stash.addItem(itemId, quantity);
     }
-    for (const pokemon of rewardPokemon({ summary: errand.reward.summary, items: [], pokemon: errand.reward.pokemon })) {
+    for (const pokemon of rewardPokemon({ summary: reward.summary, items: [], pokemon: reward.pokemon })) {
       game.stash.addPokemon(pokemon);
     }
     const raidProgress: RaidProgress = {
       ...game.raidProgress,
       errands: withErrandCompleted(game.raidProgress.errands, id),
     };
-    return this.save({ ...game, raidProgress }) ? errand : undefined;
+    return this.save({ ...game, raidProgress }) ? { errand, reward } : undefined;
   }
 
   /** The first contract's banking path, named for the one raid that uses it. */

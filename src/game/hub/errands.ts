@@ -1,5 +1,7 @@
 import type { BaseScreen } from '../base/doors';
-import { getItemById, type ErrandItemId, type ItemId } from '../items';
+import { getItemById, itemAmountsFor, type ErrandItemId, type ItemId } from '../items';
+import { MACHINES } from '../pokemon/machines';
+import { TRADER_BARTERS } from './trader';
 import { isFirstRaid } from './firstRaid';
 import type { ContractPokemon } from '../objectives/contracts';
 import { availableInsertionIds, frontDoorFor } from '../run/runGeneration';
@@ -49,6 +51,32 @@ export interface ErrandReward {
   readonly received: string;
   /** The reward in a few words, for the drop-in screen and the field guide. */
   readonly summary: string;
+}
+
+/**
+ * What an errand pays this save. An HM is never used up, so a second copy does
+ * nothing: Captain Hale's HM01 handed to a player who had bartered one off Bill
+ * was a reward that was no reward (the 20 Nov AI playtest, #92). Olly's pick of
+ * 22 Nov: a swap reward when the HM is already owned. The swap is what the disc
+ * is worth across Bill's counter - the materials his barter for it asks
+ * (`trader.ts`) - so a favour done is never worth less for being done late.
+ * `holds` is whether the vault has one, as Bill reads it for his own HMs.
+ */
+export function errandRewardFor(errand: Errand, holds: (itemId: ItemId) => boolean): ErrandReward {
+  const owned = errand.reward.items.filter(({ itemId }) => MACHINES[itemId]?.reusable === true && holds(itemId));
+  if (owned.length === 0) {
+    return errand.reward;
+  }
+  const worth = (itemId: ItemId) => TRADER_BARTERS.find((barter) => barter.gives.itemId === itemId)?.takes ?? [];
+  const items = errand.reward.items.flatMap((stack) => (owned.includes(stack) ? worth(stack.itemId) : [stack]));
+  const had = owned.map(({ itemId }) => getItemById(itemId)?.displayName ?? itemId).join(' and ');
+  const instead = itemAmountsFor(items);
+  return {
+    ...errand.reward,
+    items,
+    received: `You already have ${had}, so ${errand.name} gave you ${instead} instead.`,
+    summary: `${instead}, as you already have ${had}`,
+  };
 }
 
 /**
@@ -516,13 +544,13 @@ export const FAVOUR_ANSWERS = ['YES', 'NOT NOW'] as const;
  * question follows with the answers under it), the hand-over with what came
  * back for it, or the loss.
  */
-export function errandLines(beat: ErrandBeat): readonly string[] {
+export function errandLines(beat: ErrandBeat, reward: ErrandReward = beat.errand.reward): readonly string[] {
   const { errand } = beat;
   switch (beat.kind) {
     case 'ask':
       return errand.asks;
     case 'thanks':
-      return [`You handed over ${errandThing(errand)}.`, ...errand.thanks, errand.reward.received];
+      return [`You handed over ${errandThing(errand)}.`, ...errand.thanks, reward.received];
     case 'lost':
       return errand.lost;
   }

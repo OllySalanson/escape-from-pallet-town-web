@@ -7328,12 +7328,14 @@ export class BaseScene extends Phaser.Scene {
     }
     answered();
     if (beat.kind === 'thanks') {
-      if (!this.saveManager.completeErrand(errand.id)) {
+      const done = this.saveManager.completeErrand(errand.id);
+      if (!done) {
         then();
         return;
       }
       this.savedGame = this.saveManager.load() ?? this.savedGame;
-      const lines = errandLines(beat);
+      // What was paid: an HM already owned comes as its worth at Bill's.
+      const lines = errandLines(beat, done.reward);
       this.say(lines, about, then, (index) => {
         if (index === lines.length - 1) {
           audioManager.play('itemObtained');

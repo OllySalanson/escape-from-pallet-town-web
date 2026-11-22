@@ -8,6 +8,7 @@ import {
   ERRANDS,
   errandBeat,
   errandOpen,
+  errandRewardFor,
   errandRecord,
   errandSquares,
   errandThing,
@@ -15,6 +16,7 @@ import {
   errandWhere,
   type Errand,
   type ErrandProgress,
+  type ErrandReward,
 } from './errands';
 
 /**
@@ -39,6 +41,11 @@ export type FavourStanding = 'home' | 'in-hand' | 'ask' | 'ask-later' | 'done';
 export interface FavourEntry {
   readonly errand: Errand;
   readonly standing: FavourStanding;
+  /**
+   * What it pays this save (`errandRewardFor`): an HM already owned is paid as
+   * its worth at Bill's, and the list says so before the favour is done.
+   */
+  readonly reward: ErrandReward;
 }
 
 const ORDER: readonly FavourStanding[] = ['home', 'in-hand', 'ask', 'ask-later', 'done'];
@@ -51,18 +58,20 @@ export function favourEntries(
 ): readonly FavourEntry[] {
   const entries = ERRANDS.flatMap((errand): FavourEntry[] => {
     const status = errandRecord(progress.errands, errand.id)?.status;
+    // A favour done paid what it paid; one still to do pays what it would today.
+    const reward = status === 'completed' ? errand.reward : errandRewardFor(errand, (itemId) => held(itemId) > 0);
     if (status === 'completed') {
-      return [{ errand, standing: 'done' }];
+      return [{ errand, standing: 'done', reward }];
     }
     if (status === 'started') {
-      return [{ errand, standing: held(errand.itemId) > 0 ? 'home' : 'in-hand' }];
+      return [{ errand, standing: held(errand.itemId) > 0 ? 'home' : 'in-hand', reward }];
     }
     if (!errandOpen(errand, progress) || errandBeat(errand.giver, progress, held)?.kind !== 'ask') {
       return [];
     }
     // Turned down since the last raid: still theirs to ask, after the next one.
     const asking = errandToSay(errand.giver, progress, held, raidsDeployed)?.kind === 'ask';
-    return [{ errand, standing: asking ? 'ask' : 'ask-later' }];
+    return [{ errand, standing: asking ? 'ask' : 'ask-later', reward }];
   });
   return [...entries].sort((a, b) => ORDER.indexOf(a.standing) - ORDER.indexOf(b.standing));
 }
@@ -99,7 +108,7 @@ function rowLine(entry: FavourEntry): string {
     case 'ask-later':
       return `At ${favourGiverWhere(errand)}. You said not now.`;
     case 'done':
-      return `Done. ${errand.reward.summary}.`;
+      return `Done. ${entry.reward.summary}.`;
   }
 }
 
@@ -109,9 +118,9 @@ function detail(entry: FavourEntry): string {
   const thing = errandThing(errand);
   switch (entry.standing) {
     case 'home':
-      return `${thing} is on BILL’S PC. Speak to ${errand.name} at ${favourGiverWhere(errand)} and it is handed over. Reward: ${errand.reward.summary}.`;
+      return `${thing} is on BILL’S PC. Speak to ${errand.name} at ${favourGiverWhere(errand)} and it is handed over. Reward: ${entry.reward.summary}.`;
     case 'in-hand':
-      return `${errand.name} asked you for ${thing}. It lies in ${errandWhere(errand)}, laid there every raid until it comes home. Walk out with it and speak to ${errand.name}. Reward: ${errand.reward.summary}. Lost with the pack if you wipe.`;
+      return `${errand.name} asked you for ${thing}. It lies in ${errandWhere(errand)}, laid there every raid until it comes home. Walk out with it and speak to ${errand.name}. Reward: ${entry.reward.summary}. Lost with the pack if you wipe.`;
     case 'ask':
       // No pronoun for a named person: 'Find them... they say' for Professor Oak
       // read as a template filled in (AI playtest, 22 Nov 2026).
@@ -119,7 +128,7 @@ function detail(entry: FavourEntry): string {
     case 'ask-later':
       return `${errand.name} will ask again after your next raid, at ${favourGiverWhere(errand)}.`;
     case 'done':
-      return `You brought ${errand.name} ${thing}. Reward: ${errand.reward.summary}.`;
+      return `You brought ${errand.name} ${thing}. Reward: ${entry.reward.summary}.`;
   }
 }
 

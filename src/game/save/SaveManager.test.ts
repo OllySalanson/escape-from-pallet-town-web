@@ -2852,7 +2852,7 @@ describe('errands (hub/errands.ts)', () => {
     expect(askedSave(storage).completeErrand('brocks-crate')).toBeUndefined();
 
     const saves = askedSave(new MemoryStorage(), { 'brocks-crate': 1 });
-    expect(saves.completeErrand('brocks-crate')?.id).toBe('brocks-crate');
+    expect(saves.completeErrand('brocks-crate')?.errand.id).toBe('brocks-crate');
     const game = saves.load()!;
     expect(game.stash.itemCount('brocks-crate')).toBe(0);
     expect(game.stash.itemCount('tm39-rock-tomb')).toBe(1);
@@ -2868,9 +2868,26 @@ describe('errands (hub/errands.ts)', () => {
     stash.addItem('old-amber', 1);
     saves.save({ party: new PokemonParty(), mapId: 'pallet-town', position: { x: 6, y: 8 }, bag: new Bag(), stash });
     saves.askErrand('old-amber');
-    expect(saves.completeErrand('old-amber')?.id).toBe('old-amber');
+    expect(saves.completeErrand('old-amber')?.errand.id).toBe('old-amber');
     const eevee = saves.load()!.stash.listPokemon().find((stored) => stored.pokemon.base.id === 'eevee');
     expect(eevee?.pokemon.level).toBe(5);
+  });
+  // An HM is never used up: one already owned is paid as its worth at Bill's
+  // (`errandRewardFor`), and the hand-over says what came instead.
+  it('pays Captain Hale’s HM01 as its worth at Bill’s to a save that already has one', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addItem('ships-log', 1);
+    stash.addItem('hm01-cut', 1);
+    saves.save({ party: new PokemonParty(), mapId: 'pallet-town', position: { x: 6, y: 8 }, bag: new Bag(), stash });
+    saves.askErrand('ships-log');
+    const done = saves.completeErrand('ships-log');
+    expect(done?.reward.received).toBe('You already have HM01 Cut, so Captain Hale gave you 1 Linen roll and 1 Parts crate instead.');
+    const vault = saves.load()!.stash;
+    expect(vault.itemCount('hm01-cut')).toBe(1);
+    expect(vault.itemCount('linen-roll')).toBe(1);
+    expect(vault.itemCount('parts-crate')).toBe(1);
   });
 });
 
