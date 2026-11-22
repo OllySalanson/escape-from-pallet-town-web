@@ -2986,6 +2986,9 @@ export class HubScene extends Phaser.Scene {
           entry.signs.length === 0
             ? `<small class="wallmap-none">${entry.held === 0 ? 'Nobody holds a door here' : `${entry.held} keeper${entry.held === 1 ? '' : 's'} still holding doors`}</small>`
             : entry.signs.map((sign) => this.wallSign(sign.keeper)).join('');
+        const gym = entry.nextGym
+          ? `<small class="wallmap-none wallmap-next-gym">Next gym: ${entry.nextGym.building}, ${entry.nextGym.standsIn}</small>`
+          : '';
         const help = `${entry.name}: ${known}% of it known, ${entry.districtsKnown} of ${entry.districts} places reached${entry.signs.length === 0 ? '' : `, ${entry.signs.length} keeper${entry.signs.length === 1 ? '' : 's'} beaten`}. ENTER reads it close up.`;
         return `<button class="px-window px-card wallmap-card" data-wall-map="${entry.mapId}" data-help="${escapeAttribute(help)}"><span class="wallmap-card-head"><strong>${entry.name}</strong><small>${entry.walked ? `${known}% known` : 'never walked'}</small></span>${mapPictureFrame({
           key: `wall:${entry.mapId}`,
@@ -2993,7 +2996,7 @@ export class HubScene extends Phaser.Scene {
           size: entry.size,
           mode: 'shared',
           className: 'wallmap-picture',
-        })}<span class="wallmap-signs">${signs}</span></button>`;
+        })}<span class="wallmap-signs">${signs}${gym}</span></button>`;
       })
       .join('');
     // Each card as wide as its map is, beside the others, plus its own frame
@@ -3037,7 +3040,10 @@ export class HubScene extends Phaser.Scene {
         return `<button class="px-row${chosen ? ' is-selected' : ''}" data-wall-map="${other.mapId}" data-help="${escapeAttribute(`${other.name}: ${Math.round(other.known * 100)}% known.`)}"><span class="px-row-main"><strong class="px-name">${other.name}</strong><small>${other.walked ? `${Math.round(other.known * 100)}% known · ${other.districtsKnown}/${other.districts} places` : 'never walked'}</small></span>${chosen ? pixelTag('', 'good', true) : ''}</button>`;
       })
       .join('');
-    const signs = `<h3 class="px-subheading">Signs pinned here</h3>${
+    const gym = entry.nextGym
+      ? `<p class="px-empty px-wrap">Next gym: ${entry.nextGym.building} on ${entry.nextGym.standsIn}, where ${entry.nextGym.leader} holds the doors.</p>`
+      : '';
+    const signs = `<h3 class="px-subheading">Signs pinned here</h3>${gym}${
       entry.signs.length === 0
         ? `<p class="px-empty px-wrap">${entry.held === 0 ? 'Nobody holds a door on this map.' : `No keeper beaten here yet. Beat one and their sign goes up.`}</p>`
         : entry.signs

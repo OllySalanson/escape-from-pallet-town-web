@@ -2375,6 +2375,10 @@ button {
   color: var(--ink-soft);
   text-align: center;
 }
+/* The gym to beat next, on a line of its own under the signs. */
+:where(.pixel-ui) .wallmap-next-gym {
+  flex-basis: 100%;
+}
 :where(.pixel-ui) .wallmap-sign {
   display: inline-flex;
   align-items: center;

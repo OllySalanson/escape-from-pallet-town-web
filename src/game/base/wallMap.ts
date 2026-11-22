@@ -16,6 +16,7 @@ import {
   type PictureSize,
 } from '../world/minimap';
 import { surveyedTiles } from '../world/survey';
+import { nextGym } from '../world/valeQuarters';
 import { bossEncounters, createRunTrainerEncounters } from '../world/trainers';
 import { getWorldMap, isMapOffered, type WorldMapDefinition, type WorldMapId, worldMapName } from '../worldMap';
 
@@ -94,6 +95,14 @@ export interface WallMapEntry {
   readonly signs: readonly WallSign[];
   /** How many keepers still hold doors on this map. */
   readonly held: number;
+  /**
+   * The gym to beat next, when its leader holds doors on this map: who, the
+   * building and where it stands. "3 keepers still holding doors" named nobody,
+   * and both AI playtesters raided for hours without learning a gym existed or
+   * where MISTY or KOGA were (20 Nov 2026); the Gym Guide said it, but only to
+   * a player who stopped to talk to him.
+   */
+  readonly nextGym?: { readonly leader: string; readonly building: string; readonly standsIn: string };
 }
 
 /** What a picture of one map is drawn from, for this save. */
@@ -158,7 +167,17 @@ export function wallMapEntry(game: RestoredGame, mapId: WorldMapId): WallMapEntr
     ...districtsReached(context.map, surveyed, mapId),
     signs,
     held: keepersOf(mapId).length - signs.length,
+    ...gymNextOn(game, mapId),
   };
+}
+
+/** The next gym, if its leader is one of this map's keepers (`WallMapEntry.nextGym`). */
+function gymNextOn(game: RestoredGame, mapId: WorldMapId): Pick<WallMapEntry, 'nextGym'> {
+  const gym = nextGym(game.raidProgress.defeatedBosses);
+  if (!gym || !keepersOf(mapId).some((keeper) => keeper.bossId === gym.bossId)) {
+    return {};
+  }
+  return { nextGym: { leader: gym.leader.toUpperCase(), building: gym.building.toUpperCase(), standsIn: gym.standsIn } };
 }
 
 function districtsReached(

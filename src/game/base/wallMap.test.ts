@@ -10,11 +10,13 @@ import { RAID_CONTRACTS } from '../objectives/contracts';
 import type { RaidProgress } from '../save/SaveManager';
 import { restoreBase } from './baseGames.testkit';
 import { OAK_WALL_MAP } from './rooms';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../world/valeQuarters';
 import {
   POSTER_TILE,
   WALL_MAP_ORDER,
   posterLayout,
   wallMapEntries,
+  wallMapEntry,
   wallMapOrder,
   wallMapNote,
   wallMapPoster,
@@ -75,6 +77,17 @@ describe('the wall map in Oak’s Lab', () => {
     expect(wallMapNote(game({ defeatedBosses: EVERY_KEEPER }))).toBe('11 of 11 keepers beaten');
     // A field-move door is opened, not beaten: it pins no sign.
     expect(wallMapEntries(game({ openedGates: ['route-1-thorn-gate'] })).some((entry) => entry.signs.length > 0)).toBe(false);
+  });
+
+  it('names the next gym and where it stands on the map its leader holds doors on, and nowhere else', () => {
+    expect(wallMapEntry(game(), 'greystone-vale').nextGym).toEqual({ leader: 'MISTY', building: 'CERULEAN GYM', standsIn: 'GULL STRAND' });
+    expect(wallMapEntry(game({ defeatedBosses: [MISTY_BOSS_ID] }), 'greystone-vale').nextGym).toEqual({
+      leader: 'KOGA',
+      building: 'FUCHSIA GYM',
+      standsIn: 'TANGLEWOOD',
+    });
+    expect(wallMapEntry(game({ defeatedBosses: [MISTY_BOSS_ID, KOGA_BOSS_ID] }), 'greystone-vale').nextGym).toBeUndefined();
+    expect(wallMapEntry(game(), 'route-1').nextGym).toBeUndefined();
   });
 
   it('knows a map by what has been walked on it, not by its doors alone', () => {
