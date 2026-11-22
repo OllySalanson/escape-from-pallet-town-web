@@ -1100,6 +1100,21 @@ describe('hub deployment route', () => {
     expect(markup).toContain(`And ${doors - 1} more to find.`);
   });
 
+  it('says one share known, in the heading and in the facts alike', () => {
+    // AI playtest of 22 Nov 2026: '9% KNOWN' over 'Known 22/204 · 6%' on one
+    // screen - the facts counted walked tiles, the picture walked and lit ones.
+    const { hub } = createHub({
+      ...DEFAULT_RAID_PROGRESS,
+      surveyed: walkedOnto('floodplain-relay', ['TOLL BRIDGE', 'SOUTH GATE']),
+      defeatedBosses: ['floodplain-toll-keeper'],
+    });
+    const markup = onTheWall(hub);
+    const heading = /(\d+)% known/.exec(markup)?.[1];
+    const facts = /<dt>Known<\/dt><dd>[^<]*?(\d+)%<\/dd>/.exec(markup)?.[1];
+    expect(heading).toBeDefined();
+    expect(facts).toBe(heading);
+  });
+
   it('shows a door as yours once its keeper is beaten', () => {
     const { hub } = createHub({
       ...DEFAULT_RAID_PROGRESS,
