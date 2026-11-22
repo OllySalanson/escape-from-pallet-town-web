@@ -103,6 +103,20 @@ describe('what beat you', () => {
     expect(whatBeatYou(even)).toBe('Speed: STARYU moved first 4 times.');
   });
 
+  it('says a lopsided trade over a swimmer that raced only twice', () => {
+    // 'Rain and Swift Swim: HORSEA moved first twice' over a fight Staryu's
+    // Tackles won 8 to 2 (AI playtest, 22 Nov 2026).
+    const hit = (user: 'player' | 'enemy', name: string, damage: number): BattleEvent => ({ type: 'used-move', user, name, move: 'Tackle', damage });
+    const turns: BattleEvent[][] = [
+      [{ type: 'ability', user: 'enemy', name: 'Horsea', ability: 'SWIFT SWIM', effect: 'quickened' }],
+      [foeMoves('Staryu', 'Rain Dance'), { type: 'weather-set', weather: 'rain', byMove: true }, hit('player', 'Bulbasaur', 2)],
+      [hit('enemy', 'Horsea', 3), hit('player', 'Bulbasaur', 2)],
+      [hit('enemy', 'Horsea', 3), hit('player', 'Bulbasaur', 2)],
+      ...Array.from({ length: 4 }, () => [hit('player', 'Bulbasaur', 2), hit('enemy', 'Staryu', 8)]),
+    ];
+    expect(whatBeatYou(turns)).toMatch(/^Damage: they hit for about \d+ a turn, you for about 2\.$/);
+  });
+
   it('names the one foe that kept moving first, and only says "most" of several', () => {
     const lone: BattleEvent[][] = Array.from({ length: 4 }, () => [foeMoves('Staryu', 'Tackle'), mine('Charmander', 'Scratch')]);
     expect(whatBeatYou(lone)).toBe('Speed: STARYU moved first 4 times.');
