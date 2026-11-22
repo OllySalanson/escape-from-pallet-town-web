@@ -635,6 +635,20 @@ describe('hub deployment route', () => {
     }
   });
 
+  // AI playtest, 22 Nov 2026: a row said CENTER -1:40 and the heal took 0:50,
+  // because the debt was near its cap and only the shortfall is charged.
+  it("prices a bench row at what the heal then charges, the debt's cap counted", () => {
+    const { hub, worn } = createWornHub((maxHp) => maxHp - 1);
+    const fullMs = recoveryCostMs(worn.pokemon);
+    const pendingMs = MAX_PENDING_RECOVERY_MS - 5_000;
+    expect(fullMs).toBeGreaterThan(5_000);
+    (hub as unknown as { savedGame: { pendingRecoveryMs: number } }).savedGame.pendingRecoveryMs = pendingMs;
+    const quoted = (hub as unknown as { recoveryPriceMs(stored: StashedPokemon): number }).recoveryPriceMs(worn);
+    expect(quoted).toBe(5_000);
+    hub.recover(['charmander-1']);
+    expect(hub.pendingRecoveryMs - pendingMs).toBe(quoted);
+  });
+
   it('recovers a worn Pokemon at base and takes the cost off the next raid clock', () => {
     const { hub, start, storage, worn } = createWornHub();
     const costMs = recoveryCostMs(worn.pokemon);
