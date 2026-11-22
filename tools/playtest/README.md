@@ -661,6 +661,10 @@ stranger saw and could not name.
 - Logic checks run in `LOGIC_WINDOW` (400x256, 1x zoom); `PIXEL_WINDOW` is 3x
   and nine times the pixels, for screenshots only.
 - Close the browser and stop the dev server when the session ends.
+- A driver's `page.waitFor` gives up after 15 seconds unless the call names its
+  own wait. On a loaded machine whose watchdog pauses the browser ten seconds
+  at a time, `EPTW_WAIT_MS=60000` raises that default for every call that does
+  not, without editing the driver.
 
 ## Memory: photograph a build, not the dev server
 
