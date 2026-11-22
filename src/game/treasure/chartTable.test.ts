@@ -4,8 +4,8 @@ import { CHART_TABLE_TILES, OAK_CHART_TABLE, buildRoom, roomNamed } from '../bas
 import { roomPosterPicture } from '../base/roomPosters';
 import { stepsFrom } from '../base/baseWalks';
 import { CHART_INK, chartPicture } from './chartWall';
-import { chartTableFacts, chartTableLines, chartTableNote, chartTablePicture, chartTablePieces, type ChartTableFacts } from './chartTable';
-import { CHART_GRID, CHART_PIECES, NO_TREASURE_HUNT, TREASURE_PLACE, type TreasureHunt } from './treasureMap';
+import { chartLeads, chartTableFacts, chartTableLines, chartTableNote, chartTablePicture, chartTablePieces, type ChartTableFacts } from './chartTable';
+import { CHART_GRID, CHART_PIECES, NO_TREASURE_HUNT, TREASURE_PLACE, marlowRoomLines, pinnedLines, type TreasureHunt } from './treasureMap';
 
 /**
  * Oak's CHART TABLE (`chartTable.ts`): the lab's half of the treasure map, one
@@ -173,5 +173,26 @@ describe("Oak's chart table", () => {
         }
       }),
     );
+  });
+});
+
+describe('who in the harbour knows of a missing piece', () => {
+  // 'The board, the sailors and BILL hear things' and 'Ask round the harbour'
+  // sent the 22 Nov AI playtesters to Bill, who knows nothing of charts, and
+  // after sailors they could not find.
+  it('names the people whose rumours lead to the pieces still out, and where they stand', () => {
+    expect(chartLeads({ pinned: ['shore'] })).toBe(
+      'the board on THE QUAY, the SAILOR on THE QUAY and the CAPTAIN on THE LONG PIER after dark',
+    );
+    expect(chartLeads({ pinned: ['shore', 'moor', 'hollow'] })).toBe('the CAPTAIN on THE LONG PIER after dark');
+    expect(chartLeads({ pinned: CHART_PIECES.map((piece) => piece.id) })).toBe('');
+  });
+
+  it('is what MARLOW sends you to, in his room and as the first piece goes up', () => {
+    const hunt: TreasureHunt = { ...NO_TREASURE_HUNT, roomOpen: true, pinned: ['shore'] };
+    const leads = chartLeads(hunt);
+    expect(marlowRoomLines('pinning', hunt, true, leads).join(' ')).toContain(`Try ${leads}.`);
+    expect(pinnedLines(CHART_PIECES[0], hunt, 'Bottled chart', 'CHARMANDER', true, leads).join(' ')).toContain(`Try ${leads}.`);
+    expect(marlowRoomLines('pinning', hunt).join(' ')).not.toContain('right sky');
   });
 });
