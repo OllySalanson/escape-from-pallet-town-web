@@ -96,3 +96,24 @@ describe("THE RAID ARENA's telescope", () => {
     expect(shown).toContain('TELESCOPE KEYS: ARROWS MOVE · SPACE BACK');
   });
 });
+
+describe('THE BOLTHOLE being decorated', () => {
+  it('shows what is in hand and why it will not go down', () => {
+    // 22 Nov 2026: PUT DOWN in front of the telly 'did nothing at all - no
+    // message why'. The reason was in the decorating panel, which the AI could not read.
+    const house = {
+      scenes: ['base'],
+      texts: [],
+      scene: {
+        base: {
+          place: 'THE BOLTHOLE',
+          room: 'bolthole',
+          tile: { x: 5, y: 2 },
+          facing: 'up',
+          decorating: { title: 'POT PLANT', status: 'NOT IN FRONT OF THE TELLY', holding: true },
+        },
+      },
+    };
+    expect(renderScreen(house, { events: [] })).toContain('DECORATING: POT PLANT - NOT IN FRONT OF THE TELLY (holding it)');
+  });
+});

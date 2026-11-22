@@ -307,6 +307,16 @@ export class DecorateMode {
       .setDepth(CANOPY_BAND + 0.06);
   }
 
+  /**
+   * The panel at the top as test mode's `describe()` reports it: without it
+   * the AI playtester pressed PUT DOWN on a refused spot and saw nothing, the
+   * reason being in a panel it could not read (22 Nov 2026), as the telescope
+   * was before #618.
+   */
+  public describeForTest(): { readonly title: string; readonly status: string; readonly holding: boolean } {
+    return { title: this.title.text, status: this.status.text, holding: this.state.held !== null };
+  }
+
   /** The panel at the top: what is in hand or under the cursor, and whether it fits. */
   private drawPanel(): void {
     const { held } = this.state;
