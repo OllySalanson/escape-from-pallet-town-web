@@ -70,7 +70,7 @@ import type { ExtractionReport } from '../run/extractionReport';
 import { HUNTER_SEARCH_MS, createHunterState } from '../world/hunter';
 import { SaveManager } from '../save/SaveManager';
 import { BattleScene, CATCH_SHAKE_LINE_MS } from './BattleScene';
-import { combatantSpot, seatedSpriteY } from './battlePresentation';
+import { CATCH_TIP_LINE, combatantSpot, seatedSpriteY } from './battlePresentation';
 import { iconTextureKey, itemIconName } from '../ui/icons';
 import { audioManager } from '../audio/AudioManager';
 
@@ -1699,6 +1699,45 @@ describe('the medicine hint', () => {
     expect(battle.mode).toBe('main');
     battle.onMessagesComplete();
     expect(dialog.shownMessages.filter((line) => line.includes('low on HP'))).toHaveLength(1);
+  });
+});
+
+describe('the catch tip', () => {
+  it('says once a fight, after a healthy Pokémon breaks free, that a hurt one is easier to hold', () => {
+    const { scene, dialog } = createBattleSceneHarness({
+      party: new PokemonParty([new Pokemon(SQUIRTLE, 8)]),
+      wild: new Pokemon(getSpeciesById('caterpie')!, 4),
+    });
+    const battle = scene as unknown as { onMessagesComplete(): void; throwBall(index: number): void; mode: string };
+    // Every shake fails, and Caterpie's Tackle misses.
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    battle.onMessagesComplete();
+    for (let throwNumber = 0; throwNumber < 2; throwNumber += 1) {
+      battle.throwBall(0);
+      dialog.isCurrentMessageComplete = true;
+      for (let step = 0; step < 40 && battle.mode !== 'main'; step += 1) {
+        battle.onMessagesComplete();
+      }
+    }
+
+    const said = dialog.shownMessages;
+    expect(said.filter((line) => line === CATCH_TIP_LINE)).toHaveLength(1);
+    expect(said.indexOf(CATCH_TIP_LINE)).toBe(said.findIndex((line) => line.includes('broke free')) + 1);
+  });
+
+  it('says nothing when the Pokémon was already worn down', () => {
+    const caterpie = new Pokemon(getSpeciesById('caterpie')!, 4);
+    caterpie.currentHp = 3;
+    const { scene, dialog } = createBattleSceneHarness({ party: new PokemonParty([new Pokemon(SQUIRTLE, 8)]), wild: caterpie });
+    const battle = scene as unknown as { onMessagesComplete(): void; throwBall(index: number): void; mode: string };
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    battle.onMessagesComplete();
+    battle.throwBall(0);
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40 && battle.mode !== 'main'; step += 1) {
+      battle.onMessagesComplete();
+    }
+    expect(dialog.shownMessages).not.toContain(CATCH_TIP_LINE);
   });
 });
 
