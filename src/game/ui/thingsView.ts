@@ -221,7 +221,10 @@ function thingRow(view: ThingsView, thing: StoredThing, startsPocket: boolean): 
     use === 'teach' ? 'ENTER chooses who learns it.' : use === 'evolve' ? 'ENTER chooses who it evolves.' : 'nothing to use it on here.'
   } LEFT and RIGHT go a pocket at a time.`;
   const packed = view.packed(item.id);
-  const tag = packed > 0 ? pixelTag('Packed', 'plain') : '';
+  // The tag carries its own count: a bare PACKED beside the storage count read
+  // as "PACKED x10" for ten balls in storage and three in the pack (veteran
+  // playtest, 20 Nov 2026).
+  const tag = packed > 0 ? pixelTag(`${packed} packed`, 'plain') : '';
   return `<button class="px-row has-icon${startsPocket ? ' starts-pocket' : ''}" data-thing="${item.id}" data-pocket="${pocketOf(item)}" data-shows="${item.id}"${
     use ? ` data-use="${use}"` : ''
   } data-help="${escapeAttribute(help)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${item.displayName}</strong>${tag}</span></span><span class="px-tag">${itemCountTag(item.id, count)}</span></button>`;

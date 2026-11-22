@@ -123,6 +123,20 @@ describe('pressMenuControl', () => {
     expect(pressMenuControl(document, 'gold')).toBeNull();
     expect(off.clicks).toBe(0);
   });
+
+  it('scrolls a control into view before pressing it, as a player would have to', () => {
+    // A row below a list's fold was focused and pressed out of sight (veteran playtest, 20 Nov 2026).
+    const calls: string[] = [];
+    const row = {
+      ...element('button', { text: 'LEFTOVERS' }),
+      scrollIntoView: () => calls.push('scroll'),
+      focus: () => calls.push('focus'),
+      click: () => calls.push('click'),
+    };
+    const menu = element('div', { classes: ['menu-overlay'], children: [row] });
+    expect(pressMenuControl(documentOf(element('body', { children: [menu] })), 'leftovers')).toBe('LEFTOVERS');
+    expect(calls).toEqual(['scroll', 'focus', 'click']);
+  });
 });
 
 // --- Canvas text. ------------------------------------------------------------

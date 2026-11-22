@@ -71,6 +71,18 @@ describe('the body', () => {
     expect(html).toContain('1 of yours it would evolve');
     expect(html).not.toMatch(/data-drop|Drop one/);
   });
+
+  it('says how many of a thing are packed, apart from how many are in storage', () => {
+    // Read as "POKÉ BALL PACKED ×10" with three packed of ten (veteran playtest, 20 Nov 2026).
+    const html = thingsBody({
+      contents: { 'poke-ball': 10 },
+      pokemon: [],
+      packed: (itemId) => (itemId === 'poke-ball' ? 3 : 0),
+      pack: { name: 'Satchel', layout: packContents({ 'poke-ball': 3 }, { width: 4, height: 3 }), used: 3, total: 12 },
+    });
+    const row = html.slice(html.indexOf('data-thing="poke-ball"'), html.indexOf('</button>', html.indexOf('data-thing="poke-ball"')));
+    expect(row).toMatch(/px-tag-plain">3 packed</);
+  });
 });
 
 describe('a pocket at a time', () => {
