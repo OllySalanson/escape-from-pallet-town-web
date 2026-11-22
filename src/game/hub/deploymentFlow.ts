@@ -28,7 +28,7 @@ import {
   type PackItemId,
 } from '../items';
 import { evolutionFamily } from '../pokemon/evolution';
-import { cargoSquaresLabel, pokemonCargo } from '../pokemon/pokemonCargo';
+import { cargoSquaresLabel, POKEMON_STAGE_FOOTPRINTS, pokemonCargo } from '../pokemon/pokemonCargo';
 import {
   autofillSecureSlot,
   DEFAULT_SECURE_PREFERENCE,
@@ -743,6 +743,22 @@ export class DeploymentFlow {
    */
   public get packsABall(): boolean {
     return this.items.some(({ itemId }) => isBallItem(itemId));
+  }
+
+  /**
+   * Whether the pack as laid out would still take the smallest Pokémon a catch
+   * can be (four squares). A Satchel packed with ten Poké Balls carries them
+   * out and has nowhere to put what they catch, and the first anybody heard of
+   * it was "No room in the pack!" in the fight (scenario loop, 22 Nov 2026).
+   */
+  public get packHasRoomForACatch(): boolean {
+    const smallest = POKEMON_STAGE_FOOTPRINTS[0];
+    return fitsInGrid(
+      this.packedContents,
+      this.bagGrid,
+      // Tidied, not as laid out: said only when no layout of this pack has the room.
+      [{ cargoId: 'a-catch', name: 'a catch', width: smallest.width, height: smallest.height }],
+    );
   }
 
   public get packsMedicine(): boolean {
