@@ -86,7 +86,7 @@ export const NOTICE_BOARD: BaseSign = {
   y: 17,
   lines: [
     `${BASE_PLACE_NAME.toUpperCase()} - what the raids are run out of.`,
-    'THE SEAGALLOP at the jetty takes every raid out and brings it home. Every raid starts at the RAID ARENA, west of the yard. OAK keeps the board of work. JOY patches the team up. BROCK builds onto the base, and BILL takes what you drag home.',
+    'Every raid starts at the RAID ARENA, west of the yard, and THE SEAGALLOP at the jetty brings it home. OAK keeps the board of work. JOY patches the team up. BROCK builds onto the base, and BILL takes what you drag home.',
     'THE BOLTHOLE, at the end of the row, is yours. Past it, the DAY-CARE MAN raises one Pokémon while you raid.',
     'Past THE GREEN, THE PROMENADE: the GAME CORNER pays TICKETS for POKéMON JUMP and BERRY PICKING, the FIELD-MOVE COURSE past it pays them for a quick time, and the PRIZE WINDOW takes them.',
   ],
