@@ -29,7 +29,7 @@ function renderField(key, field) {
   }
   const raid = field.raid;
   if (raid) {
-    lines.push(`RAID: ${clock(raid.remainingMs)} left${raid.enraged ? ' (ENRAGED)' : ''}${raid.contract ? ` - job: ${raid.contract}` : ''}`);
+    lines.push(`RAID: ${clock(raid.remainingMs)} left${raid.enraged ? ` (ENRAGED: ${clock(raid.enrageGraceMs ?? 0)} to get out)` : ''}${raid.contract ? ` - job: ${raid.contract}` : ''}`);
     if (raid.way) lines.push(`ARROW: ${raid.way.cue ?? ''}${raid.way.toward ? ` -> ${tile(raid.way.toward)}${raid.way.out ? ' (way out)' : ''}` : ''}`);
     if (raid.stopsLeft.length) lines.push(`STOPS LEFT: ${list(raid.stopsLeft.map((s) => `${s.label}${s.tile ? ` ${tile(s.tile)}` : ''}`))}`);
     if (raid.exits.length) lines.push(`NEAREST EXITS: ${list(raid.exits.map((e) => `${e.label} ${tile(e.tile)} ${e.open ? 'open' : 'shut'}`), 4)}`);

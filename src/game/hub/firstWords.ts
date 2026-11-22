@@ -1,3 +1,4 @@
+import { ENRAGE_GRACE_MS } from '../run/RunManager';
 import type { CharacterDesignId } from '../world/characterDesigns';
 import { isMapRetired } from '../world/mapRoster';
 import { landingsHeldBack, quarterOfLanding } from '../world/valeQuarters';
@@ -52,7 +53,10 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
     greeting: 'there you are!',
     lines: [
       'On a raid, grab what you can and walk out through an exit.',
-      'Faint, or run out of clock, and the pack is lost.',
+      // What happens at 0:00 is said here, where the rule is: four AI
+      // newcomers waited out the clock expecting the raid to end, met an
+      // ENRAGED hunter instead, and nothing had said what that was (22 Nov 2026).
+      `Faint, and the pack is lost. At 0:00 the hunters turn ENRAGED, and you've ${ENRAGE_GRACE_MS / 1000} seconds to get out.`,
       'Every raid starts at the RAID ARENA, west across the yard.',
     ],
   },
