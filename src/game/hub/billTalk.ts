@@ -2,6 +2,8 @@ import { formatMoney, getItemById, itemAmountsFor } from '../items';
 import {
   TRADER_BERTH_PRICE,
   STANDING_PER_CONTRACT,
+  STANDING_PER_BOSS,
+  POKEDOLLARS_PER_STANDING,
   TRADER_BERTH_STANDING,
   barterShortfall,
   checkBerth,
@@ -86,6 +88,17 @@ export function strangerWayIn(pointsShort: number, started = false): string {
   const jobs = Math.ceil(pointsShort / STANDING_PER_CONTRACT);
   const more = started ? ' more' : '';
   return `Bank ${jobs}${more} ${jobs === 1 ? 'job' : 'jobs'} off Oak's board, or beat a boss, and I'll sell you more.`;
+}
+
+/**
+ * How a regular gets further on his books, counted: 'beat a boss and I show
+ * you more' was said to a player who had just beaten MISTY and found every
+ * locked row still locked, because a boss is three points and the next tier
+ * was five away (AI playtest, 22 Nov 2026). So he says how far, and what each
+ * thing is worth to him.
+ */
+export function standingWayOn(pointsShort: number): string {
+  return `${pointsShort} more ${pointsShort === 1 ? 'point' : 'points'} and I'll show you more. A job's worth ${STANDING_PER_CONTRACT}, a boss ${STANDING_PER_BOSS}, and every ${formatMoney(POKEDOLLARS_PER_STANDING)} you spend with me 1.`;
 }
 
 /** What he says to NOT NOW. */
@@ -211,7 +224,7 @@ export function billFromTheMat(counter: TraderCounter): BillQuote {
       ...(next && tier.ration === 0
         ? [strangerWayIn(next.pointsShort, started)]
         : next && !meetsStanding(counter.progress, 'trusted')
-          ? ['Bank a contract, beat a boss or spend with me, and I show you more.']
+          ? [standingWayOn(next.pointsShort)]
           : []),
     ],
     question: SEE_THE_LIST_QUESTION,
