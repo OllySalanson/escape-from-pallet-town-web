@@ -239,7 +239,7 @@ export function highMoor(): MapcraftResult {
         // above the notice: out of the way across the ring to it and the cut to the
         // Lost Fold under it. In the gap at the ring's north it shut the ground
         // inside off from everything, which a raid found and `secrets.test.ts` holds.
-        { x: 39, y: 10, species: 'alakazam', level: 22, secret: 'the-eleventh-stone' },
+        { x: 39, y: 10, species: 'alakazam', level: 18, secret: 'the-eleventh-stone' },
         // The fold, and the Lost Fold's old bull, who has been on his own a long time.
         { x: 21, y: 30, species: 'tauros', beat: { everyMs: 2600, glances: ['right'] } },
         { x: 47, y: 13, species: 'tauros', level: 13, beat: { everyMs: 3100, roam: [[1, 0]] } },
