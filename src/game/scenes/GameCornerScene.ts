@@ -267,7 +267,7 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
 
   /**
    * A press on a prize asks before it spends: the row becomes the question,
-   * with the cursor on KEEP THEM, as Bill's barters do. A prize that cannot be
+   * with the cursor on NOT NOW, as Bill's barters do. A prize that cannot be
    * had says why at once, with nothing to answer.
    */
   private ask(id: string): void {

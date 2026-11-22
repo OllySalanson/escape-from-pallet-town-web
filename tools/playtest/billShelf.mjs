@@ -140,7 +140,7 @@ try {
   const start = await purse();
   await press('Space');
   await until(`${GAME}.scene.getScene('base').dialogBox.visible`, 'Bill on the Potion');
-  const lastLine = `(() => { const d = ${GAME}.scene.getScene('base').dialogBox; return d.visible && d.isCurrentMessageComplete && /left for you this trip/.test(d.textObject.text); })()`;
+  const lastLine = `(() => { const d = ${GAME}.scene.getScene('base').dialogBox; return d.visible && d.isCurrentMessageComplete && /more for you till you raid/.test(d.textObject.text); })()`;
   for (let guard = 0; guard < 8 && !(await page.evaluate(lastLine)); guard += 1) {
     if (await page.evaluate(`${GAME}.scene.getScene('base').dialogBox.isCurrentMessageComplete`)) await press('Space');
     else await wait(200);
@@ -193,7 +193,7 @@ try {
   const focused = await page.evaluate(`document.activeElement?.textContent?.trim() ?? ''`);
   const status = await page.evaluate(`document.querySelector('.px-status-line')?.textContent ?? ''`);
   console.log(`  list: ${JSON.stringify(listStart)} -> ${JSON.stringify(list)}; cursor on "${focused}"; status "${status}"`);
-  // The first ENTER asked and the second landed on KEEP THEM, which puts the
+  // The first ENTER asked and the second landed on NOT NOW, which puts the
   // question down with the cursor back on the Potion.
   expect('a double ENTER on the row buys nothing', list.money === listStart.money && list.potions === listStart.potions && list.ration === listStart.ration);
   if (!before) {
@@ -202,7 +202,7 @@ try {
     await wait(300);
     await shoot('4b-list-asks');
     const asked = await page.evaluate(`document.activeElement?.textContent?.trim() ?? ''`);
-    expect('one ENTER asks, with the cursor on KEEP THEM', /keep them/i.test(asked), asked);
+    expect('one ENTER asks, with the cursor on NOT NOW', /not now/i.test(asked), asked);
     await press('ArrowRight');
     await wait(100);
     await shoot('5-list-on-buy');

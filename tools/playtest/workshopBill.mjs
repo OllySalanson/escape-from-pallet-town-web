@@ -223,7 +223,7 @@ try {
   await until(sceneIs('base'), 'back in the room');
   await settled();
   expect('backed out in front of it', (await base('b.currentTile.y')) === foot.y + 1 && (await base('b.currentTile.x')) === foot.x);
-  // The playtest's listed fault: Left from KEEP THEM found the screen's back
+  // The playtest's listed fault: Left from NOT NOW found the screen's back
   // button. Goods for a rung, so the ladder has one to ask about.
   await editSave((save) => {
     save.stash.items['lamp-oil'] = 4;
@@ -237,9 +237,9 @@ try {
   await sleep(300);
   await shot('10-ladder-asked');
   const focused = () => page.evaluate('document.activeElement?.textContent?.trim()');
-  expect('the confirm starts on KEEP THEM', /keep/i.test(await focused()), `${armed} ${await focused()}`);
+  expect('the confirm starts on NOT NOW', /not now/i.test(await focused()), `${armed} ${await focused()}`);
   await press('ArrowLeft', 200);
-  expect('Left from KEEP THEM stays on it: the fault is gone', /keep/i.test(await focused()), await focused());
+  expect('Left from NOT NOW stays on it: the fault is gone', /not now/i.test(await focused()), await focused());
   await press('ArrowRight', 200);
   expect('Right is the build', /build/i.test(await focused()), await focused());
   await press('Escape', 300);

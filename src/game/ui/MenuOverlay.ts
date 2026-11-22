@@ -896,7 +896,7 @@ export function scrollEntries<Entry>(
  *
  * `.px-window` is the frame, and a button or a chip wears it too (a window that
  * is also a button keeps its frame). So `closest('.px-window')` from a chip or
- * from the KEEP THEM button on Bill's armed deal returns *that control*,
+ * from the NOT NOW button on Bill's armed deal returns *that control*,
  * whose own subtree holds no panes at all - and the pane under the list stopped
  * answering for the thing being asked about. Walking up until a window with a
  * pane in it is found skips the control-shaped ones; a screen with no panes at

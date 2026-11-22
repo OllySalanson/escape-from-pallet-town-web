@@ -68,7 +68,7 @@ describe("everything Bill deals in stands on his shelves", () => {
 describe('Bill on a thing on his shelves', () => {
   it('names a shelf price, and opens on NOT NOW: a double press on his price must not buy', () => {
     const quote = billQuote(counter({ money: 500 }, REGULAR), potion);
-    expect(quote.lines[1]).toBe('₽120, and 1 left for you this trip.');
+    expect(quote.lines[1]).toBe('₽120, and 1 more for you till you raid.');
     expect(quote.question).toBe('Buy one for ₽120?');
     expect(quote.spendsForGood).toBe(true);
   });
@@ -78,7 +78,7 @@ describe('Bill on a thing on his shelves', () => {
     expect(billQuote(counter({ money: 50 }, REGULAR), potion).lines[1]).toContain('you have ₽50');
     const spent = billQuote(counter({ money: 500 }, REGULAR, { rationUsed: 1 }), potion);
     expect(spent.question).toBeUndefined();
-    expect(spent.lines[1]).toContain('your lot this trip');
+    expect(spent.lines[1]).toContain('your lot till you raid again');
   });
 
   it('says what is under a sheet and what would take it off', () => {
@@ -125,21 +125,21 @@ describe('Bill on a thing on his shelves', () => {
 });
 
 describe('Bill from the mat', () => {
-  it('reads the player, says what is left this trip, and offers the whole list', () => {
+  it('reads the player, says what is left till the next raid, and offers the whole list', () => {
     const stranger = billFromTheMat(counter({ money: 40 }));
-    expect(stranger.lines[0]).toContain('I do not know you');
-    expect(stranger.lines[1]).toBe('You have ₽40, and I am selling you nothing yet.');
+    expect(stranger.lines[0]).toContain("I don't know you");
+    expect(stranger.lines[1]).toBe("You have ₽40, and I'm selling you nothing yet.");
     // Money cannot start it, so he says what does, counted.
-    expect(stranger.lines[2]).toBe("Bank 3 jobs off Oak's board, or beat a boss, and I open the deck to you.");
+    expect(stranger.lines[2]).toBe("Bank 3 jobs off Oak's board, or beat a boss, and I'll start selling to you.");
     expect(stranger.question).toBe('See my whole list?');
 
     // Two jobs banked is not yet a regular, and he says he has counted them.
     const started = billFromTheMat(counter({ money: 40 }, { standingContractsBanked: 2 }));
-    expect(started.lines[0]).not.toContain('I do not know you');
-    expect(started.lines[2]).toBe("Bank 1 more job off Oak's board, or beat a boss, and I open the deck to you.");
+    expect(started.lines[0]).not.toContain("I don't know you");
+    expect(started.lines[2]).toBe("Bank 1 more job off Oak's board, or beat a boss, and I'll start selling to you.");
 
     const partner = billFromTheMat(counter({ money: 40 }, PARTNER, { rationUsed: 1 }));
     expect(partner.lines).toHaveLength(2);
-    expect(partner.lines[1]).toBe('You have ₽40, and 2 of 3 left off the deck this trip.');
+    expect(partner.lines[1]).toBe("You have ₽40. I'll sell you 2 more things till you raid again.");
   });
 });

@@ -49,7 +49,7 @@ export function focusDirectionForKey(key: string): FocusDirection | undefined {
 /**
  * Where an arrow key takes the cursor on a deal being asked again: a YES/NO box
  * does not wrap and nothing else can be reached from it, FireRed's
- * `Menu_ProcessInputNoWrap`. Left from KEEP THEM found the screen's back button,
+ * `Menu_ProcessInputNoWrap`. Left from NOT NOW found the screen's back button,
  * the nearest thing that way, with BUILD IT sitting on the right (playtest of
  * 31 Oct).
  */
