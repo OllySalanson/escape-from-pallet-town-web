@@ -126,6 +126,9 @@ export function tanglewood(): MapcraftResult {
   p.building('crate-pair', 8, 36);
   p.flowers([7, 35]);
   p.building('shed', 2, 38);
+  // The deer path's gap is the back of its pocket, behind a bush, so the way
+  // up the lane from the road never crosses it: a raid only leaves by turning in.
+  p.bushes([6, 31]);
   // The saw pit is beside the road where it turns, its log rolled off below it.
   p.block(8, 40, 3, 2, ','); // the saw pit
   stand('log', 8, 42);
@@ -262,6 +265,7 @@ export function tanglewood(): MapcraftResult {
     dropIns: [],
     // A way out in a pocket beside the road just inside the wood, for whoever
     // is lost in the maze: the road's own way out is at the wood's far east end.
+    // The pocket has one way in, past the bush, so no walk up the lane crosses it.
     exits: [{ x: 6, y: 30, name: 'Deer Gap', opens: { when: 'always' } }],
     itemSpots: [
       { x: 14, y: 56 },
