@@ -447,6 +447,18 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
 }
 
 describe('BattleScene command presentation', () => {
+  it("tells test mode a status move is STATUS, not 'NORMAL DAMAGE'", () => {
+    // AI playtest of 22 Nov 2026: 'Tail Whip Normal pow 0 ... NORMAL DAMAGE'.
+    const { scene } = createBattleSceneHarness();
+    Object.assign(scene as object, { commandTexts: [] });
+    const moves = (scene.describeForTest() as { moves: { name: string; power: number; against: string }[] }).moves;
+
+    for (const move of moves) {
+      expect(move.against === 'STATUS').toBe(move.power <= 0);
+    }
+    expect(moves.some((move) => move.against === 'STATUS')).toBe(true);
+  });
+
   it('renders the opening main commands, then restores them after move selection', () => {
     const { scene, renderedTexts, dialog } = createBattleSceneHarness();
 

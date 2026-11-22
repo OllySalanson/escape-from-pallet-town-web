@@ -66,7 +66,7 @@ import { iconTextureKey, itemIconName } from '../ui/icons';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { openNamingScreen } from '../ui/NamingScreenOverlay';
 import { moveChoiceMessage } from '../ui/moveChooser';
-import { MoveTarget, type MoveBase } from '../pokemon/MoveBase';
+import { MoveCategory, MoveTarget, type MoveBase } from '../pokemon/MoveBase';
 import { layDroppedPiece, prizesLeftBehind } from '../world/loot';
 import type { WildEncounter } from '../world/wildEncounters';
 import { legendFledLine, legendOneThrowLine, legendTooStrongLine } from '../world/legends';
@@ -763,13 +763,18 @@ export class BattleScene extends Phaser.Scene {
         power: move.base.power,
         pp: move.pp,
         maxPp: move.base.pp,
-        against: effectivenessLabel(
-          describeMoveGuidance(move, getCombatantTypes(this.state.player), {
-            name: this.state.enemy.pokemon.name,
-            types: getCombatantTypes(this.state.enemy),
-            refusedBy: abilityRefusing(this.state.enemy, move.base),
-          }).effectiveness,
-        ),
+        // A status move deals no damage, so it is not 'NORMAL DAMAGE' either:
+        // the AI playtester read Tail Whip's tag as an attack (22 Nov 2026).
+        against:
+          move.base.category === MoveCategory.Status || move.base.power <= 0
+            ? 'STATUS'
+            : effectivenessLabel(
+                describeMoveGuidance(move, getCombatantTypes(this.state.player), {
+                  name: this.state.enemy.pokemon.name,
+                  types: getCombatantTypes(this.state.enemy),
+                  refusedBy: abilityRefusing(this.state.enemy, move.base),
+                }).effectiveness,
+              ),
       })),
       foe: side(this.state.enemy),
       foePartner: side(this.state.enemyPartner),
