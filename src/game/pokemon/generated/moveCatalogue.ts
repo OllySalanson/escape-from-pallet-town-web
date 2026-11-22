@@ -476,13 +476,14 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'dream-eater': new MoveBase({
     name: 'Dream Eater',
-    description: 'A Psychic special attack. Heals the user for 50% of the damage dealt.',
+    description: 'A Psychic special attack. Heals the user for 50% of the damage dealt. Only works on a sleeping target.',
     type: PokemonType.Psychic,
     power: 100,
     accuracy: 100,
     pp: 15,
     category: MoveCategory.Special,
     drain: 0.5,
+    onlyAsleep: true,
   }),
   'drill-peck': new MoveBase({
     name: 'Drill Peck',

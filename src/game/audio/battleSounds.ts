@@ -121,6 +121,7 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
       return withLine('statusDamage');
     case 'no-pp':
     case 'catch-disabled':
+    case 'unaffected':
     case 'status-prevented':
     case 'status-already':
       return withLine('denied');

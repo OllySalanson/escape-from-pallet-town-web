@@ -1355,6 +1355,9 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
       return event.held === undefined
         ? `${combatantName(event, foe)} ${statusAlready(event.status)}`
         : 'But it failed!';
+    case 'unaffected':
+      // FireRed's `sText_PkmnWasntAffected`: Dream Eater on somebody awake.
+      return `${combatantName(event, foe)} wasn't affected!`;
     case 'status-prevented':
       return `${combatantName(event, foe)} ${statusHolds(event.status)}`;
     case 'status-damage':

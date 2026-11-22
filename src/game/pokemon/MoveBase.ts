@@ -163,6 +163,13 @@ export interface MoveBaseInit {
    * `CalculateBaseDamage` halves the defense before its stages.
    */
   readonly userFaints?: boolean;
+  /**
+   * Only a sleeping target can be hit by it: anything awake "wasn't affected",
+   * asked before the accuracy roll - FireRed's `EFFECT_DREAM_EATER`
+   * (`BattleScript_EffectDreamEater` jumps to `BattleScript_DreamEaterNoEffect`
+   * on a target that is not asleep).
+   */
+  readonly onlyAsleep?: boolean;
   /** Applied every time the move connects. */
   readonly effects?: MoveEffects;
   /** Each rolled on its own chance, after the hit. */
@@ -216,6 +223,7 @@ export class MoveBase {
   public readonly healing: number;
   public readonly charge: MoveCharge | null;
   public readonly userFaints: boolean;
+  public readonly onlyAsleep: boolean;
   public readonly effects: NormalizedMoveEffects;
   public readonly secondaries: readonly NormalizedSecondaryEffect[];
   public readonly flags: readonly MoveFlag[];
@@ -239,6 +247,7 @@ export class MoveBase {
     this.healing = init.healing ?? 0;
     this.charge = init.charge ?? null;
     this.userFaints = init.userFaints ?? false;
+    this.onlyAsleep = init.onlyAsleep ?? false;
     this.effects = normalizeEffects(init.effects);
     // A secondary with no target of its own follows the move's, which is what
     // makes "30% chance to lower the target's Speed" the default reading and
