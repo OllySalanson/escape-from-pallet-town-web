@@ -144,8 +144,8 @@ export const SING = new MoveBase({
   flags: [MoveFlag.Sound],
 });
 
-export const SUPER_SONIC = new MoveBase({
-  name: 'Super Sonic',
+export const SUPERSONIC = new MoveBase({
+  name: 'Supersonic',
   description: 'Confuses the target. It may hurt itself.',
   type: PokemonType.Normal,
   power: 0,

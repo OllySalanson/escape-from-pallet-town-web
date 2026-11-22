@@ -660,7 +660,7 @@ describe('SaveManager', () => {
 
     expect(restored?.party.pokemon[0]?.moves.map((move) => move.base.name)).toEqual([
       'Tackle',
-      'Super Sonic',
+      'Supersonic',
       'Growl',
       'Vine Whip',
     ]);
@@ -696,7 +696,7 @@ describe('SaveManager', () => {
     );
 
     expect(new SaveManager(storage).load()?.party.pokemon[0]?.moves.map((move) => move.base.name)).toEqual([
-      'Super Sonic',
+      'Supersonic',
       'Growl',
       'Vine Whip',
       'Tackle',

@@ -18,6 +18,7 @@ import {
 } from '../pokemon';
 import { BULBASAUR, CHARMANDER, getSpeciesById } from '../pokemon/species';
 import {
+  abilityRefusing,
   createBattleState,
   createTrainerBattleState,
   persistCombatantToPokemon,
@@ -750,6 +751,7 @@ export class BattleScene extends Phaser.Scene {
           describeMoveGuidance(move, getCombatantTypes(this.state.player), {
             name: this.state.enemy.pokemon.name,
             types: getCombatantTypes(this.state.enemy),
+            refusedBy: abilityRefusing(this.state.enemy, move.base),
           }).effectiveness,
         ),
       })),
@@ -2201,6 +2203,7 @@ export class BattleScene extends Phaser.Scene {
     const guidance = describeMoveGuidance(move, getCombatantTypes(chooser), {
       name: against?.pokemon.name ?? '',
       types: against ? getCombatantTypes(against) : [],
+      refusedBy: against ? abilityRefusing(against, move.base) : undefined,
     });
     this.moveGuidanceTexts[0]
       ?.setText(

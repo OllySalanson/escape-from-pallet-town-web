@@ -10,8 +10,9 @@ import {
   ICE_BEAM,
   METAL_CLAW,
   POISON_POWDER,
+  SLEEP_POWDER,
   SING,
-  SUPER_SONIC,
+  SUPERSONIC,
   TACKLE,
   TAIL_WHIP,
   THUNDER_WAVE,
@@ -45,6 +46,7 @@ import { calculateDamage } from './damage';
 import { applyStatBoost, createStatStages, getStagedStat } from './statStages';
 import { getTypeEffectiveness } from './typeChart';
 import { WeatherId } from './weather';
+import { MOVE_CATALOGUE } from '../moveCatalogue';
 
 const maximumRandom = (): number => 1;
 /**
@@ -1018,7 +1020,7 @@ describe('status conditions', () => {
       [new Pokemon(BUTTERFREE, 10), POISON_POWDER, 'poison'],
       [new Pokemon(JIGGLYPUFF, 10), SING, 'sleep'],
       [new Pokemon(PIKACHU, 10), THUNDER_WAVE, 'paralysis'],
-      [new Pokemon(BULBASAUR, 10), SUPER_SONIC, 'confusion'],
+      [new Pokemon(BULBASAUR, 10), SUPERSONIC, 'confusion'],
     ] as const;
 
     for (const [enemy, move, status] of statusMoves) {
@@ -1359,5 +1361,82 @@ describe('a rolled side effect on a target that already carries a status', () =>
     const asked = createBattleState(pikachu, new Pokemon(PIDGEY, 15));
     const paralysed = { ...asked, enemy: { ...asked.enemy, primaryStatus: PrimaryStatus.Paralysis, moves: [] } };
     expect(resolveTurn(paralysed, 0, () => 0.08).events.some((event) => event.type === 'status-already')).toBe(true);
+  });
+});
+
+describe('a status move the target cannot take is refused before it is aimed', () => {
+  /**
+   * The veteran playtest (20 Nov 2026) used Sleep Powder on a Venonat already
+   * asleep and read "Your IVYSAUR's attack missed!", and Poison Gas at a
+   * Poison-type Ivysaur read "Foe GRIMER's attack missed!". FireRed's status
+   * scripts check the status, the type and the ability ahead of
+   * `accuracycheck`, so neither can miss: the dice here would miss any aimed
+   * move, and the log still says why it did nothing.
+   */
+  const missingRoll = (): number => 0.99;
+
+  it('says the target is already asleep rather than that the move missed', () => {
+    const bulbasaur = new Pokemon(BULBASAUR, 20);
+    bulbasaur.moves.splice(0, bulbasaur.moves.length, new Move(SLEEP_POWDER));
+    const state = createBattleState(bulbasaur, new Pokemon(PIDGEY, 20));
+    const asleep = { ...state, enemy: { ...state.enemy, primaryStatus: PrimaryStatus.Sleep, sleepTurns: 3, moves: [] } };
+
+    const events = resolveTurn(asleep, 0, missingRoll).events;
+
+    expect(events.some((event) => event.type === 'missed')).toBe(false);
+    expect(events).toContainEqual({ type: 'status-already', user: 'enemy', name: 'Pidgey', status: PrimaryStatus.Sleep });
+  });
+
+  it("says a Poison type is not affected by Poison Gas rather than that it missed", () => {
+    const grimer = new Pokemon(getSpeciesById('grimer')!, 18);
+    grimer.moves.splice(0, grimer.moves.length, new Move(MOVE_CATALOGUE['poison-gas']));
+    const state = createBattleState(new Pokemon(BULBASAUR, 18), grimer);
+    const gassed = { ...state, enemy: { ...state.enemy, moves: [{ base: MOVE_CATALOGUE['poison-gas'], pp: 40 }] } };
+
+    const events = resolveEnemyTurn(gassed, missingRoll).events;
+
+    expect(events.some((event) => event.type === 'missed')).toBe(false);
+    expect(events).toContainEqual({ type: 'effectiveness', multiplier: 0, user: 'player', name: 'Bulbasaur' });
+  });
+
+  it('still aims a status move at a target that can take it, so it can miss', () => {
+    const bulbasaur = new Pokemon(BULBASAUR, 20);
+    bulbasaur.moves.splice(0, bulbasaur.moves.length, new Move(SLEEP_POWDER));
+    const state = createBattleState(bulbasaur, new Pokemon(PIDGEY, 20));
+
+    const events = resolveTurn({ ...state, enemy: { ...state.enemy, moves: [] } }, 0, missingRoll).events;
+
+    expect(events.some((event) => event.type === 'missed')).toBe(true);
+  });
+});
+
+describe('a critical hit looks past the stages that would weaken it', () => {
+  /**
+   * Veteran playtest (20 Nov 2026): Tackles on a Grimer that had Hardened
+   * twice did -7 each, then a critical hit did -4. FireRed's
+   * `CalculateBaseDamage` reads a crit's Attack unstaged when it was lowered
+   * and its Defense unstaged when it was raised, so a crit never lands for
+   * less than the hit the stages allowed.
+   */
+  const crit = (): number => 0; // every roll at its bottom: a crit, the lowest damage roll
+  const plain = (): number => 0.5;
+
+  it("ignores the defender's raised Defense and the attacker's lowered Attack, and keeps the stages that help", () => {
+    const attacker = new Pokemon(BULBASAUR, 18);
+    const defender = new Pokemon(getSpeciesById('grimer')!, 18);
+    const hardened = applyStatBoost(createStatStages(), { stat: 'defense', stages: 2 });
+    const growled = applyStatBoost(createStatStages(), { stat: 'attack', stages: -2 });
+    const flat = calculateDamage(attacker, defender, TACKLE, crit).damage;
+
+    expect(calculateDamage(attacker, defender, TACKLE, crit, createStatStages(), hardened).damage).toBe(flat);
+    expect(calculateDamage(attacker, defender, TACKLE, crit, growled).damage).toBe(flat);
+    expect(calculateDamage(attacker, defender, TACKLE, plain, createStatStages(), hardened).damage).toBeLessThan(
+      calculateDamage(attacker, defender, TACKLE, plain).damage,
+    );
+
+    const sharpened = applyStatBoost(createStatStages(), { stat: 'attack', stages: 2 });
+    const softened = applyStatBoost(createStatStages(), { stat: 'defense', stages: -2 });
+    expect(calculateDamage(attacker, defender, TACKLE, crit, sharpened).damage).toBeGreaterThan(flat);
+    expect(calculateDamage(attacker, defender, TACKLE, crit, createStatStages(), softened).damage).toBeGreaterThan(flat);
   });
 });

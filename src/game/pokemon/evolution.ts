@@ -99,7 +99,7 @@ export function evolvesInto(fromId: string, speciesId: string): boolean {
  * A save stores the moves a Pokemon knows by name and looks each one up in its
  * species' own learnset, which is the right rule right up until a species can
  * change: an Ivysaur that evolved out of this game's Bulbasaur still knows the
- * Super Sonic that only Bulbasaur teaches, and looking in Ivysaur's learnset
+ * Supersonic that only Bulbasaur teaches, and looking in Ivysaur's learnset
  * alone would have quietly deleted it on the next load. The lookup is widened
  * to the line rather than to every move in the game, so a corrupt save still
  * cannot hand a Pidgey a Hydro Pump.

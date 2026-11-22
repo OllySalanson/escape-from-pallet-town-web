@@ -5,7 +5,7 @@ import type { PokemonBase, PokemonStats } from './PokemonBase';
 import type { GrowthRate } from './generated/speciesCatalogue';
 import { evolutionFamily, evolutionOnLevel, evolvesInto } from './evolution';
 import { machineMovesFor } from './machines';
-import { MOVE_CATALOGUE } from './moveCatalogue';
+import { LEGACY_MOVE_NAMES, MOVE_CATALOGUE } from './moveCatalogue';
 import { RETIRED_LEARNSETS } from './shippedSpecies';
 import type { PrimaryStatus } from './battle/status';
 import { tidyNickname } from './nickname';
@@ -85,8 +85,8 @@ export const computePokemonStats = (baseStats: PokemonStats, level: number): Com
  * no wider than the line, which is what stops a corrupt save handing a Pidgey a
  * Hydro Pump.
  */
-export const knowableMoves = (species: PokemonBase): ReadonlyMap<string, MoveBase> =>
-  new Map(
+export const knowableMoves = (species: PokemonBase): ReadonlyMap<string, MoveBase> => {
+  const byName = new Map(
     [species, ...evolutionFamily(species.id)].flatMap((member) =>
       [
         ...member.learnset.map((entry) => entry.move),
@@ -95,6 +95,13 @@ export const knowableMoves = (species: PokemonBase): ReadonlyMap<string, MoveBas
       ].map((move) => [move.name, move] as const),
     ),
   );
+  // A name a save wrote before the move was renamed still finds it.
+  for (const [legacy, current] of Object.entries(LEGACY_MOVE_NAMES)) {
+    const move = byName.get(current);
+    if (move) byName.set(legacy, move);
+  }
+  return byName;
+};
 
 export interface SpeciesEvolution {
   readonly from: PokemonBase;

@@ -1,10 +1,13 @@
 import { readFile } from 'node:fs/promises';
+import { abilityRefusing, createBattleState } from '../pokemon/battle/battleEngine';
+import { Pokemon } from '../pokemon/Pokemon';
+import { getSpeciesById } from '../pokemon/species';
 import { describe, expect, it } from 'vitest';
 import {
   EMBER,
   GROWL,
   POISON_POWDER,
-  SUPER_SONIC,
+  SUPERSONIC,
   TACKLE,
   THUNDER_WAVE,
   VINE_WHIP,
@@ -73,7 +76,7 @@ const battleSceneSource = await readFile(new URL('./BattleScene.ts', import.meta
 
 describe('battle presentation', () => {
   it('keeps every move row and both guidance lines inside the command panel', () => {
-    for (const [index, move] of [POISON_POWDER, SUPER_SONIC, THUNDER_WAVE, GROWL].entries()) {
+    for (const [index, move] of [POISON_POWDER, SUPERSONIC, THUNDER_WAVE, GROWL].entries()) {
       const layout = moveCommandLayout(index);
       expect(formatMoveCommand({ base: move, pp: move.pp })).toBe(move.name.toUpperCase());
       expect(layout.x).toBeGreaterThanOrEqual(0);
@@ -244,14 +247,30 @@ describe('battle presentation', () => {
   });
 
   it('describes what a status move does instead of a damage matchup', () => {
-    const guidance = describeMoveGuidance({ base: SUPER_SONIC, pp: 20 }, [PokemonType.Grass], {
+    const guidance = describeMoveGuidance({ base: SUPERSONIC, pp: 20 }, [PokemonType.Grass], {
       name: 'Pidgey',
       types: [PokemonType.Normal, PokemonType.Flying],
     });
 
     expect(guidance.summary).toBe('NORMAL · STATUS · PP 20/20');
-    expect(guidance.matchup).toBe(SUPER_SONIC.description);
-    expect(SUPER_SONIC.description).not.toBe('');
+    expect(guidance.matchup).toBe(SUPERSONIC.description);
+    expect(SUPERSONIC.description).not.toBe('');
+  });
+
+  it("says a move the foe's ability refuses has no effect, whatever the type chart says", () => {
+    // Mud Shot read "SUPER EFFECTIVE x2" on a Levitate Koffing, and the log
+    // then said Levitate made it miss (veteran playtest, 20 Nov 2026).
+    const koffing = createBattleState(new Pokemon(getSpeciesById('kabutops')!, 30), new Pokemon(getSpeciesById('koffing')!, 20));
+    const mudShot = MOVE_CATALOGUE['mud-shot'];
+    const guidance = describeMoveGuidance({ base: mudShot, pp: 15 }, [PokemonType.Rock, PokemonType.Water], {
+      name: 'Koffing',
+      types: [PokemonType.Poison],
+      refusedBy: abilityRefusing(koffing.enemy, mudShot),
+    });
+
+    expect(guidance.matchup).toBe('vs KOFFING: NO EFFECT (LEVITATE)');
+    expect(guidance.tone).toBe('none');
+    expect(abilityRefusing(koffing.enemy, MOVE_CATALOGUE['tackle'])).toBeUndefined();
   });
 
   it('names the typing of both sides in the HUD banners', () => {
@@ -735,6 +754,10 @@ describe('the small wording faults the battles playtest found', () => {
     expect(
       eventToMessage({ type: 'effectiveness', multiplier: 0, user: 'enemy', name: 'Geodude' }),
     ).toBe("It doesn't affect Foe GEODUDE...");
+    // Mid-line the player's own is "your", never "Your" (playtest, 20 Nov 2026).
+    expect(
+      eventToMessage({ type: 'effectiveness', multiplier: 0, user: 'player', name: 'Bulbasaur' }),
+    ).toBe("It doesn't affect your BULBASAUR...");
   });
 });
 

@@ -1331,7 +1331,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     'up',
     'swimmer-woman',
     ['I dive the mansion cellars. Finders keepers!'],
-    [gymPokemon('poliwag', 14, ['Hypnosis', 'Water Gun', 'Bubble']), gymPokemon('shellder', 14, ['Icicle Spear', 'Super Sonic', 'Withdraw'])],
+    [gymPokemon('poliwag', 14, ['Hypnosis', 'Water Gun', 'Bubble']), gymPokemon('shellder', 14, ['Icicle Spear', 'Supersonic', 'Withdraw'])],
     'Keep it, then. The cellars go deeper than the town does.',
   ),
   // The rates man on the high street: a Slowpoke that will not be hurried beside a quick Staryu.
@@ -1355,7 +1355,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     'up',
     'rocket-grunt',
     ['Hey! That cargo is spoken for!'],
-    [gymPokemon('zubat', 14, ['Super Sonic', 'Leech Life', 'Bite']), gymPokemon('krabby', 14, ['Vise Grip', 'Bubble', 'Leer'])],
+    [gymPokemon('zubat', 14, ['Supersonic', 'Leech Life', 'Bite']), gymPokemon('krabby', 14, ['Vise Grip', 'Bubble', 'Leer'])],
     'Fine! Take a crate! They are all full of sand anyway!',
   ),
   // The carter with the cart nobody saw: an Ekans that bites, and a Goldeen that swims first in the rain.
@@ -1366,7 +1366,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     'up',
     'rocket-grunt-woman',
     ['You never saw this cart. You never saw me. You are about to not see my Pokémon!'],
-    [gymPokemon('ekans', 14, ['Leer', 'Poison Sting', 'Bite']), gymPokemon('goldeen', 14, ['Horn Attack', 'Super Sonic', 'Peck'])],
+    [gymPokemon('ekans', 14, ['Leer', 'Poison Sting', 'Bite']), gymPokemon('goldeen', 14, ['Horn Attack', 'Supersonic', 'Peck'])],
     'Right. You saw all of it. Now forget all of it.',
   ),
   // The wrecker with the false light: a Voltorb to be the lamp, and a Staryu to follow it in, dry as the rates man's.
@@ -1452,7 +1452,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
         'PICNICKER DIANA',
         [
           gymPokemon('staryu', 12, ['Rain Dance', 'Tackle', 'Rapid Spin']),
-          gymPokemon('goldeen', 12, ['Peck', 'Tail Whip', 'Super Sonic']),
+          gymPokemon('goldeen', 12, ['Peck', 'Tail Whip', 'Supersonic']),
         ],
         'Rain and a swimmer. Remember that when you get to Misty!',
         2,
@@ -1527,7 +1527,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
         [
           gymPokemon('koffing', 20, ['Smog', 'Smokescreen', 'Self-Destruct', 'Poison Gas']),
           gymPokemon('grimer', 19, ['Sludge', 'Minimize', 'Poison Gas', 'Pound']),
-          gymPokemon('venonat', 18, ['Super Sonic', 'Tackle', 'Poison Powder', 'Leech Life']),
+          gymPokemon('venonat', 18, ['Supersonic', 'Tackle', 'Poison Powder', 'Leech Life']),
         ],
         // Open, not offered, as Misty says of the Coast.
         'Humph! You have proven your worth! Here is the SOUL BADGE. The ways into the Marsh are open to you. Reach a drop-in point in it, and you may start a raid from there.',
@@ -1552,7 +1552,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
         'JUGGLER NATE',
         [
           gymPokemon('koffing', 17, ['Smokescreen', 'Smog', 'Tackle']),
-          gymPokemon('venonat', 17, ['Poison Powder', 'Super Sonic', 'Tackle']),
+          gymPokemon('venonat', 17, ['Poison Powder', 'Supersonic', 'Tackle']),
         ],
         'Smoke and poison, and you walked through both. Koga does it better.',
         2,
@@ -1626,7 +1626,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     'right',
     'worker-woman',
     ['A lantern? On a cliff? I have no idea what you mean. Give me that.'],
-    [gymPokemon('koffing', 18, ['Smokescreen', 'Smog', 'Tackle']), gymPokemon('tentacool', 18, ['Poison Sting', 'Acid', 'Super Sonic'])],
+    [gymPokemon('koffing', 18, ['Smokescreen', 'Smog', 'Tackle']), gymPokemon('tentacool', 18, ['Poison Sting', 'Acid', 'Supersonic'])],
     'Keep the lantern. There is always another cliff.',
   ),
 ];

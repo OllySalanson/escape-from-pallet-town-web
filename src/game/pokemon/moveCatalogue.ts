@@ -3,18 +3,17 @@ import { GENERATED_MOVES } from './generated/moveCatalogue';
 import * as AUTHORED from './moves';
 
 /**
- * The one move this game spells differently from its own dex entry. Canon calls
- * it Supersonic; it has been Super Sonic here since Unity, and renaming a move
- * the player already knows is a change to the game rather than to the import.
+ * Move names a save may still hold from before the game spelt the move as
+ * canon does, and the name it has now. Unity called Supersonic "Super Sonic",
+ * and this game kept that until a playtest read it off the battle log (20 Nov
+ * 2026); a stored name is resolved through `knowableMoves`, which reads this,
+ * so a Pokemon saved knowing the old spelling still knows the move.
  */
-const RENAMED: Readonly<Record<string, string>> = { 'super-sonic': 'supersonic' };
+export const LEGACY_MOVE_NAMES: Readonly<Record<string, string>> = { 'Super Sonic': 'Supersonic' };
 
 const GENERATED: ReadonlySet<MoveBase> = new Set(Object.values(GENERATED_MOVES));
 
-const identifierOf = (move: MoveBase): string => {
-  const slug = move.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  return RENAMED[slug] ?? slug;
-};
+const identifierOf = (move: MoveBase): string => move.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
 /**
  * The moves `moves.ts` writes out by hand, by the identifier canon knows them

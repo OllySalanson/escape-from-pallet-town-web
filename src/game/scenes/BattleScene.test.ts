@@ -56,7 +56,7 @@ import {
 } from '../pokemon/battle/battleEngine';
 import { BULBASAUR, PIDGEY, SQUIRTLE, getSpeciesById } from '../pokemon/species';
 import { Move } from '../pokemon/Move';
-import { GROWL, SUPER_SONIC, TACKLE, TAIL_WHIP } from '../pokemon/moves';
+import { GROWL, SUPERSONIC, TACKLE, TAIL_WHIP } from '../pokemon/moves';
 import { GENERATED_MOVES } from '../pokemon/generated/moveCatalogue';
 import type { MoveBase } from '../pokemon/MoveBase';
 import { pokemonCargo } from '../pokemon/pokemonCargo';
@@ -762,7 +762,7 @@ describe('escaping a wild encounter', () => {
 describe('a status tag on a plate', () => {
   it('changes on the line that says so, never before the turn is read', () => {
     const player = new Pokemon(BULBASAUR, 12);
-    player.moves.splice(0, player.moves.length, new Move(SUPER_SONIC));
+    player.moves.splice(0, player.moves.length, new Move(SUPERSONIC));
     const foe = new Pokemon(PIDGEY, 3);
     // A Pokemon that knows no move stands still, so the foe's turn says nothing.
     foe.moves.splice(0, foe.moves.length);
@@ -776,7 +776,7 @@ describe('a status tag on a plate', () => {
 
     // The turn is already resolved and the foe already confused, but the line
     // up is the move being used: the tag waits for the line that confuses it.
-    expect(dialog.visibleText).toBe('Your BULBASAUR used SUPER SONIC!');
+    expect(dialog.visibleText).toBe('Your BULBASAUR used SUPERSONIC!');
     expect(tagNow()).toBe('');
 
     for (let guard = 0; guard < 10 && !dialog.visibleText.includes('confused'); guard += 1) {
@@ -1438,7 +1438,7 @@ describe('a level reached in the middle of a trainer battle', () => {
   it("asks about a fifth move in FireRed's two lines, and opens the chooser only after the second", () => {
     const { scene, renderedTexts, dialog, squirtle } = levellingBattle();
     // Four moves already, so Bubble at level 7 has nowhere to go.
-    squirtle.moves.push(new Move(GROWL), new Move(SUPER_SONIC));
+    squirtle.moves.push(new Move(GROWL), new Move(SUPERSONIC));
     expect(squirtle.moves).toHaveLength(4);
 
     knockOutTheLead(scene, renderedTexts);
@@ -1465,7 +1465,7 @@ describe('a level reached in the middle of a trainer battle', () => {
 
   it("says a forgotten move in FireRed's four boxes, the fanfare on the last", () => {
     const { scene, renderedTexts, dialog, squirtle } = levellingBattle();
-    squirtle.moves.push(new Move(GROWL), new Move(SUPER_SONIC));
+    squirtle.moves.push(new Move(GROWL), new Move(SUPERSONIC));
     knockOutTheLead(scene, renderedTexts);
     const internals = scene as unknown as { onMessagesComplete(): void };
     chooser.answers.length = 0;
