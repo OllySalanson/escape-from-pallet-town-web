@@ -122,7 +122,17 @@ export function applyHunterThreat(tuning: HunterTuning, threat: HunterThreat): H
  * The count is the one the playtest asked for ("it does not say *and it will
  * field three against your one*"), which is why it leads.
  */
-export function hunterThreatLine(threat: HunterThreat): { readonly heading: string; readonly detail: string } {
+export function hunterThreatLine(
+  threat: HunterThreat,
+  /**
+   * A raid alone is hunted by a pack, a hunter to every district
+   * (`hunterPack.ts`), and the raid's own rival only keeps the district it lands
+   * in. "Hunter SABRINA" over a raid where KOGA caught the player two districts
+   * on read as the rim naming the wrong hunter (the overnight playtest of 20
+   * Nov 2026), so a pack is said as one. A room shares one hunter, named alone.
+   */
+  pack = false,
+): { readonly heading: string; readonly detail: string } {
   const { openingTeam, matchedTo, contractTiers } = threat;
   const lead = openingTeam[0];
   // With nobody on the bench yet there is no count to give: the hunter fields one for each of yours.
@@ -137,8 +147,9 @@ export function hunterThreatLine(threat: HunterThreat): { readonly heading: stri
   const contract = contractTiers > 0
     ? ` · this job: ${Math.round(threat.arrivesSoonerMs / 1_000)}s sooner, ${contractTiers > 1 ? 'much ' : ''}stronger`
     : '';
+  const name = hunterRival(threat.rival).name;
   return {
-    heading: `Hunter: ${hunterRival(threat.rival).name}`,
+    heading: pack ? `Hunters: one a district, ${name} where you land` : `Hunter: ${name}`,
     detail: `${[count, against].filter(Boolean).join(' · ')}${contract}`,
   };
 }

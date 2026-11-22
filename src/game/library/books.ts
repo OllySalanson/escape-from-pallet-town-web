@@ -65,7 +65,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'Downstairs',
-        text: 'THE BADGE CASE holds a badge for each boss you beat. THE TELLY says which hunter will be on your trail next raid. THE WINDOW keeps your own clock: day, dusk or night.',
+        text: 'THE BADGE CASE holds a badge for each boss you beat. THE TELLY says which hunter will be waiting where you land next raid. THE WINDOW keeps your own clock: day, dusk or night.',
       },
       {
         heading: 'Upstairs',
