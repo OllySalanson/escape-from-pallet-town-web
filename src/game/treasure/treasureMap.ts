@@ -297,6 +297,8 @@ export function pinnedLines(
   itemName: string,
   partnerName?: string,
   coastOpen = true,
+  /** Who in the harbour knows of a missing piece (`chartTable.ts`'s `chartLeads`); empty is 'round the harbour'. */
+  leads = '',
 ): readonly string[] {
   const first = after.pinned.length === 1;
   const left = CHART_PIECES.length - after.pinned.length;
@@ -310,7 +312,7 @@ export function pinnedLines(
       'By rights this belongs to the library. But the sea gave it to you.',
       `And look at ${company}. Mighty! It is yours to finish.`,
       // "the vale", not its name in capitals: with it the line ran to a second box.
-      `${piecesLeftSentence(left)} are out in the vale. Ask round the harbour.`,
+      `${piecesLeftSentence(left)} are out in the vale. ${leads ? `Try ${leads}.` : 'Ask round the harbour.'}`,
     );
     return lines;
   }
@@ -343,7 +345,7 @@ export function wholeChartLines(coastOpen = true): readonly string[] {
 export const WHOLE_CHART_LINES: readonly string[] = wholeChartLines();
 
 /** What MARLOW says in his room, faced, by where the hunt has got to. */
-export function marlowRoomLines(stage: HuntStage, hunt: TreasureHunt, coastOpen = true): readonly string[] {
+export function marlowRoomLines(stage: HuntStage, hunt: TreasureHunt, coastOpen = true, leads = ''): readonly string[] {
   switch (stage) {
     case 'no-chart':
     case 'first-chart':
@@ -351,7 +353,8 @@ export function marlowRoomLines(stage: HuntStage, hunt: TreasureHunt, coastOpen 
       const left = CHART_PIECES.length - hunt.pinned.length;
       return [
         `MARLOW: ${piecesLeftSentence(left)}, and the chart is whole.`,
-        'They turn up in GREYSTONE VALE, under the right sky. Ask round the harbour.',
+        // 'Under the right sky' read as weather; it is the hour (dusk, night, a Sunday).
+        `They turn up in GREYSTONE VALE, at the right hour. ${leads ? `Try ${leads}.` : 'Ask round the harbour.'}`,
       ];
     }
     case 'whole':

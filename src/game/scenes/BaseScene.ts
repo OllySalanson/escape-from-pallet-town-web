@@ -129,6 +129,7 @@ import {
   PLAYTEST_PIECES_LINE,
   type TreasureHunt,
 } from '../treasure/treasureMap';
+import { chartLeads } from '../treasure/chartTable';
 import { BASE_TILESET, type BasePropName } from '../base/baseTileset';
 import { BASE_DOORS, doorAt, doorNamed, isHouseDoor, type BaseDoor, type BaseScreen } from '../base/doors';
 import type { SceneDescription } from '../dev/testDescribe';
@@ -6900,7 +6901,7 @@ export class BaseScene extends Phaser.Scene {
     this.say(
       piecesToPin(hunt, held).length > 0
         ? ['MARLOW: Is that a piece in your things? Pin it on the board, go on!']
-        : marlowRoomLines(stage, hunt, coastOpen),
+        : marlowRoomLines(stage, hunt, coastOpen, chartLeads(hunt)),
       about,
     );
   }
@@ -6937,7 +6938,7 @@ export class BaseScene extends Phaser.Scene {
           room: 'chart-room',
           at: { ...this.currentTile },
           facing: this.facing,
-          said: pinnedLines(piece, after, name, this.partnerName(), coastOpen),
+          said: pinnedLines(piece, after, name, this.partnerName(), coastOpen, chartLeads(after)),
         },
         'confirm',
       );

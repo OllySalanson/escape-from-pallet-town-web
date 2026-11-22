@@ -1,7 +1,7 @@
 import type { RestoredGame } from '../save/SaveManager';
 import type { PaintedPicture } from '../world/minimap';
 import { openedDoors } from '../world/gates';
-import { RUMOURS } from '../world/rumours';
+import { RUMOURS, type RumourSource } from '../world/rumours';
 import { secretById } from '../world/secrets';
 import { MISTY_BOSS_ID } from '../world/valeQuarters';
 import { CHART_INK, chartPicture } from './chartWall';
@@ -114,6 +114,44 @@ function foundAt(piece: ChartPiece): string {
 }
 
 /**
+ * Who in the harbour knows something about a piece still missing, and where
+ * they stand: the sources of the rumours that lead to each missing piece's
+ * secret (`world/rumours.ts`), as one list. 'The board, the sailors and BILL
+ * hear things' and MARLOW's 'Ask round the harbour' sent the 22 Nov AI
+ * playtesters round the harbour asking Bill, who knows nothing about charts,
+ * and looking for sailors they could not find. Empty when nobody does.
+ */
+const WHO_KNOWS: Readonly<Record<RumourSource, string>> = {
+  board: 'the board on THE QUAY',
+  sailor: 'the SAILOR on THE QUAY',
+  spyglass: 'the CAPTAIN on THE LONG PIER after dark',
+  bill: 'BILL',
+  angler: 'the ANGLER',
+  clerk: 'the prize clerk at THE GAME CORNER',
+  mill: 'THE RUMOUR MILL at THE GAME CORNER',
+};
+
+export function chartLeads(hunt: Pick<TreasureHunt, 'pinned'>): string {
+  const sources: RumourSource[] = [];
+  for (const piece of CHART_PIECES) {
+    if (hunt.pinned.includes(piece.id) || piece.from.kind !== 'secret') {
+      continue;
+    }
+    const secretId = piece.from.secretId;
+    for (const rumour of RUMOURS) {
+      if (rumour.secret === secretId && rumour.source !== 'mill' && !sources.includes(rumour.source)) {
+        sources.push(rumour.source);
+      }
+    }
+  }
+  const named = sources.map((source) => WHO_KNOWS[source]);
+  if (named.length <= 1) {
+    return named[0] ?? '';
+  }
+  return `${named.slice(0, -1).join(', ')} and ${named[named.length - 1]}`;
+}
+
+/**
  * What is said at the table, faced: what lies on it, then Oak. A piece here is
  * sent on to MARLOW - the chart is his to keep and the board is where it goes
  * for good - and a rumoured gap names only the place its rumour named.
@@ -167,7 +205,9 @@ export function chartTableLines(facts: ChartTableFacts, itemName: (itemId: strin
     lines.push(
       rumoured.length > 0
         ? `OAK: And nobody has said a word about the ${missing === 1 ? 'last one' : `other ${NUMBER_WORDS[missing]}`}. Keep your ears open in the harbour.`
-        : `OAK: ${NUMBER_WORDS[missing][0].toUpperCase() + NUMBER_WORDS[missing].slice(1)} still out in GREYSTONE VALE. The board, the sailors and BILL hear things.`,
+        : `OAK: ${NUMBER_WORDS[missing][0].toUpperCase() + NUMBER_WORDS[missing].slice(1)} still out in GREYSTONE VALE.${
+          chartLeads(hunt) ? ` Try ${chartLeads(hunt)}: each has a word a day.` : ''
+        }`,
     );
   }
   if (here.length === 0 && traced === 0 && !hunt.roomOpen) {
