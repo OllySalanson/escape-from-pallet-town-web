@@ -6,6 +6,7 @@ import { TILE_SIZE } from '../worldMap';
 import { BASE_DOORS, PLACES_TO_GO } from './doors';
 import {
   BASE_ROOMS,
+  LIBRARY_CHART_STAIR,
   CENTER_DISPLAY,
   ERRAND_DISPLAY,
   COUNTER_BALLS,
@@ -634,5 +635,19 @@ describe('THE BOLTHOLE, the player\'s own house', () => {
       for (const faced of display.tiles) expect(built.collision[faced.y][faced.x]).toBe(true);
       expect(built.things.some((thing) => thing.note === display.note)).toBe(true);
     }
+  });
+});
+
+describe('THE END BOOKCASE, open', () => {
+  it('sends the player to the gap on its left, which is the way through, and not into its solid door', () => {
+    const opened = baseGame({ progress: { treasureHunt: { roomOpen: true, pinned: [], chestOpened: false } } });
+    const built = buildRoom(roomNamed('great-library'), opened);
+    const bookcase = built.things.find((thing) => thing.name === 'THE END BOOKCASE');
+    const door = bookcase?.tiles[0];
+    expect(door).toBeDefined();
+    expect(built.collision[door!.y][door!.x]).toBe(true);
+    expect(LIBRARY_CHART_STAIR).toEqual({ x: door!.x - 1, y: door!.y });
+    expect(built.collision[LIBRARY_CHART_STAIR.y][LIBRARY_CHART_STAIR.x]).toBe(false);
+    expect([bookcase?.note, ...(bookcase?.lines ?? [])].every((words) => /gap on its left/.test(words ?? ''))).toBe(true);
   });
 });

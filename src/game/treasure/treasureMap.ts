@@ -270,8 +270,12 @@ export const CHART_ROOM_ARRIVAL_LINES: readonly string[] = [
  */
 export const PIN_QUESTION = 'PIN IT ON THE BOARD?';
 
-/** What the bookcase says once it stands open. */
-export const OPEN_BOOKCASE_NOTE = 'Open: THE CHART ROOM is through it';
+/**
+ * What the bookcase says once it stands open. Its swung door is solid and the
+ * gap on its left is the way in (`LIBRARY_CHART_STAIR`): "is through it" had
+ * both AI playtesters pushing at the door itself (20 Nov 2026).
+ */
+export const OPEN_BOOKCASE_NOTE = 'Open: THE CHART ROOM is through the gap on its left';
 
 /** A count of pieces still to find, as a sentence starts with it: "Three more pieces". */
 function piecesLeftSentence(count: number): string {
