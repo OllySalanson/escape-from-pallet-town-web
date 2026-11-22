@@ -271,6 +271,15 @@ export function createHands(page) {
       if (field && field.facing !== direction) {
         await press(key, 2);
         screen = await settle(60);
+        // A direction key only turns the player in place against something in
+        // the way: where the way is open it walks a step, and there was nothing
+        // there to talk to. Said as that, because pressing SPACE on regardless
+        // and reporting "the talking is over" had the overnight playtest of 20
+        // Nov 2026 sure it had faced the Service Gate when it never had.
+        const moved = fieldOf(screen)?.tile;
+        if (moved && field.tile && (moved.x !== field.tile.x || moved.y !== field.tile.y)) {
+          return { ok: false, note: `nothing to face ${direction} of ${field.tile.x},${field.tile.y}: the way was open, so you stepped onto ${moved.x},${moved.y}`, screen };
+        }
       }
     }
     const before = await look();
@@ -285,6 +294,11 @@ export function createHands(page) {
       await step(4);
       await press('Space', 3);
       screen = await readThrough();
+    }
+    const said = (await eventsSince(before.lastEvent)).some((event) => event.kind !== 'moved');
+    if (!said && !interruption(screen)) {
+      const field = fieldOf(screen);
+      return { ok: false, note: `nothing answered${field?.tile ? ` at ${field.tile.x},${field.tile.y} facing ${field.facing}` : ''}`, screen };
     }
     return { ok: true, note: interruption(screen) ?? 'the talking is over (every line is under SINCE LAST ACTION)', screen };
   };
