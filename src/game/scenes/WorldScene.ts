@@ -276,6 +276,7 @@ import { stepDistances } from '../world/mapStructure';
 import { districtAt, districtsForMap, weatherAt } from '../world/districts';
 import { stepDirection } from '../world/npcIdle';
 import { brimRuns, type MapLayers } from '../world/tiles';
+import { chunkKey, chunkTiles, occupiedChunks } from '../world/layerChunks';
 import {
   INTERIOR_COVER_MS,
   interiorAt,
@@ -824,6 +825,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private readonly pokemonSoles = new Map<string, number>();
   /** Every tile layer of the map on screen, for FireRed's moving ground. */
   private animatedLayers: AnimatedLayer[] = [];
+  /**
+   * The tile-to-sheet index every chunk of this map's layers reads
+   * (`TilemapLayer.gidMap`): Phaser builds one per layer, as long as the sheets
+   * have tiles, and the 150-odd chunks of Greystone Vale's layers held 24MB of
+   * copies of it. It is only ever read, so the chunks share the first one.
+   */
+  private sharedTilesetIndex: Phaser.Tilemaps.Tileset[] | null = null;
   private tileAnimator: TileAnimator | null = null;
   private bird: HarbourBird | null = null;
   /** The rain over a place that rains (`ui/rainOverlay.ts`), made the first time it is needed. */
@@ -2535,6 +2543,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   private createMap(): void {
     this.animatedLayers = [];
+    this.sharedTilesetIndex = null;
     this.tileAnimator = null;
     this.collisionData = this.currentMap.collision.map((row) => [...row]);
     this.bounds = {
@@ -2776,8 +2785,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // - keyed per interior: a map with two caves on it lifts the pair for
     // whichever one the player is in, and two caves are never entered at once.
     const lid = [
-      this.createTileLayer(map, sheets, 'roofGround', layers.roofGround, ROOF_BAND),
-      this.createTileLayer(map, sheets, 'roof', layers.roof, ROOF_BAND + 0.01),
+      ...this.createTileLayer(map, sheets, 'roofGround', layers.roofGround, ROOF_BAND),
+      ...this.createTileLayer(map, sheets, 'roof', layers.roof, ROOF_BAND + 0.01),
     ];
     for (const interior of this.currentMap.interiors) {
       this.roofLayers.set(interior.id, lid);
@@ -2927,38 +2936,65 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
   }
 
+  /**
+   * One map layer, made as the 64-tile chunks of it that hold a tile
+   * (`world/layerChunks.ts`): Phaser makes a Tile object for every cell of a
+   * layer, drawn or not, and Greystone Vale's seven whole layers were 1.47
+   * million of them - most of a raid's heap. The chunks share the layer's depth
+   * and never overlap, so the picture is the same.
+   */
   private createTileLayer(
     map: Phaser.Tilemaps.Tilemap,
     sheets: Phaser.Tilemaps.Tileset[],
     name: string,
     layer: TileLayer,
     depth: number,
-  ): Phaser.Tilemaps.TilemapLayer {
-    const created = map.createBlankLayer(name, sheets);
-    if (!created) {
-      throw new Error(`Tilemap layer '${name}' failed to initialize.`);
+  ): Phaser.Tilemaps.TilemapLayer[] {
+    const chunks = new Map<string, { readonly x: number; readonly y: number; readonly layer: Phaser.Tilemaps.TilemapLayer }>();
+    for (const chunk of occupiedChunks(layer.tiles)) {
+      const created = map.createBlankLayer(
+        `${name}@${chunk.x},${chunk.y}`,
+        sheets,
+        chunk.x * TILE_SIZE,
+        chunk.y * TILE_SIZE,
+        chunk.width,
+        chunk.height,
+      );
+      if (!created) {
+        throw new Error(`Tilemap layer '${name}' failed to initialize.`);
+      }
+      if (this.sharedTilesetIndex && created.gidMap) {
+        created.gidMap = this.sharedTilesetIndex;
+      } else {
+        this.sharedTilesetIndex = created.gidMap ?? null;
+      }
+      created.putTilesAt(chunkTiles(layer.tiles, chunk), 0, 0);
+      created.setDepth(depth);
+      // Tints come off the catalogue rather than off a set of tile numbers held
+      // here, because the two sheets need different ones: the classic set has no
+      // water art and its hedge and its tall grass are one drawing.
+      created.forEachTile((tile) => {
+        const x = chunk.x + tile.x;
+        const y = chunk.y + tile.y;
+        const tint = layer.tints[y]?.[x] ?? -1;
+        if (tint >= 0) {
+          tile.tint = tint;
+        }
+        if (layer.flips[y]?.[x]) {
+          tile.flipX = true;
+        }
+      });
+      this.mapObjects.push(created);
+      chunks.set(chunkKey(chunk.x, chunk.y), { x: chunk.x, y: chunk.y, layer: created });
     }
-    created.putTilesAt(
-      layer.tiles.map((row) => [...row]),
-      0,
-      0,
-    );
-    created.setDepth(depth);
-    // Tints come off the catalogue rather than off a set of tile numbers held
-    // here, because the two sheets need different ones: the classic set has no
-    // water art and its hedge and its tall grass are one drawing.
-    created.forEachTile((tile) => {
-      const tint = layer.tints[tile.y]?.[tile.x] ?? -1;
-      if (tint >= 0) {
-        tile.tint = tint;
-      }
-      if (layer.flips[tile.y]?.[tile.x]) {
-        tile.flipX = true;
-      }
+    this.animatedLayers.push({
+      getTileAt: (x, y) => {
+        const chunk = chunks.get(chunkKey(x, y));
+        return chunk ? chunk.layer.getTileAt(x - chunk.x, y - chunk.y, true) : null;
+      },
+      still: layer.tiles,
     });
-    this.mapObjects.push(created);
-    this.animatedLayers.push({ getTileAt: (x, y) => created.getTileAt(x, y, true), still: layer.tiles });
-    return created;
+    return [...chunks.values()].map((chunk) => chunk.layer);
   }
 
   /**

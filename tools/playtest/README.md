@@ -676,7 +676,7 @@ pages, and summed RSS reads 1.1GB on a blank tab. Measured that way at 1x with
 renderer grows 400MB in half a second as the unbundled module graph evaluates,
 on `main` as much as on any branch - while a **test-mode build** of the same
 code sits at 590MB on the title and 700-760MB standing in a raid on any of the
-four maps. A tour at `PIXEL_WINDOW` over `?testmode=pixels` on the dev server is
+four maps (22 Nov 2026, Greystone Vale at 1200x768: 520-550MB on the title, about 1GB in a raid, the raid's JavaScript heap about 200MB once its tile layers were chunked - `world/layerChunks.ts` - against 255MB before; a heap sampling profile, `HeapProfiler.startSampling` over the jump in, is what found them). A tour at `PIXEL_WINDOW` over `?testmode=pixels` on the dev server is
 the one that took the machine down (2026-09-23). So a screenshot session runs
 against a build, one map per launch, with the browser closed between them; a
 dev server is for checking that it serves, not for photographing.
