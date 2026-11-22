@@ -1,6 +1,7 @@
 import { windowLight } from '../base/homeClock';
 import type { WildEncounterTable } from '../pokemon/encounters';
 import type { MapDistrict } from './districts';
+import { EVOLUTIONS } from '../pokemon/evolution';
 import { NIGHT_SWAPS } from './generated/nightSwaps';
 
 /**
@@ -40,11 +41,32 @@ export function nightSpeciesFor(speciesId: string): string {
   return NIGHT_SPECIES.get(speciesId) ?? speciesId;
 }
 
+/**
+ * The stage of a line a slot at `level` holds: never an evolved form below
+ * the level FireRed evolves it at. Crystal's night swaps are Crystal's levels,
+ * and a Raticate taking a Lv 3 Ekans's slot on the Peaks was a Raticate at 3,
+ * which no FireRed grass ever holds (the 20 Nov playtest, twice). It walks
+ * back only across level evolutions; a stone or trade form is left alone.
+ */
+export function stageAtLevel(speciesId: string, level: number): string {
+  let current = speciesId;
+  for (;;) {
+    const rule = EVOLUTIONS.find((each) => each.to === current && each.trigger.kind === 'level');
+    if (rule?.trigger.kind !== 'level' || level >= rule.trigger.level) {
+      return current;
+    }
+    current = rule.from;
+  }
+}
+
 /** A table as it is rolled at night: every slot as it was, its species swapped. */
 export function atNight(table: WildEncounterTable): WildEncounterTable {
   return {
     ...table,
-    entries: table.entries.map((entry) => ({ ...entry, speciesId: nightSpeciesFor(entry.speciesId) })),
+    entries: table.entries.map((entry) => ({
+      ...entry,
+      speciesId: stageAtLevel(nightSpeciesFor(entry.speciesId), entry.minLevel),
+    })),
   };
 }
 

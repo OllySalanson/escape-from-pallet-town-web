@@ -8,7 +8,8 @@ import { generateRunPlan } from '../run/runGeneration';
 import { MAP_DISTRICTS } from './districts';
 import { KEPT_BY_NIGHT, NIGHT_SWAPS } from './generated/nightSwaps';
 import { districtEncounterTables } from './localEncounters';
-import { atNight, districtTableFor, isNightRaid, nightSpeciesFor } from './nightRaids';
+import { EVOLUTIONS } from '../pokemon/evolution';
+import { atNight, districtTableFor, isNightRaid, nightSpeciesFor, stageAtLevel } from './nightRaids';
 
 interface CrystalPlace {
   readonly place: string;
@@ -107,6 +108,34 @@ describe('wildlife at night', () => {
       (id) => speciesOf(day[id]).join() !== speciesOf(tables[id]).join(),
     );
     expect(changed.length).toBeGreaterThan(30);
+  });
+
+  /**
+   * Crystal's night swaps carry Crystal's species into this game's levels, and
+   * a Raticate took a Lv 3 Ekans's slot on GREYSTONE PEAKS (the 20 Nov
+   * playtest, twice: "Rattata only evolves at 20"). A slot below the level
+   * its species evolves at holds the stage before.
+   */
+  it('never holds an evolved form below the level FireRed evolves it at', () => {
+    const faults: string[] = [];
+    // The vale's own districts come in only with its map id.
+    const day = districtEncounterTables('greystone-vale', false);
+    for (const [id, table] of Object.entries(districtEncounterTables('greystone-vale', true))) {
+      for (const [index, entry] of (table?.entries ?? []).entries()) {
+        // Only what the night put there: a day table is its own map's to answer for.
+        if (day[id]?.entries[index]?.speciesId === entry.speciesId) continue;
+        const rule = EVOLUTIONS.find((each) => each.to === entry.speciesId && each.trigger.kind === 'level');
+        if (rule?.trigger.kind === 'level' && entry.minLevel < rule.trigger.level) {
+          faults.push(`${id}: ${entry.speciesId} ${entry.minLevel}`);
+        }
+      }
+    }
+    expect(faults).toEqual([]);
+    expect(stageAtLevel('raticate', 3)).toBe('rattata');
+    expect(stageAtLevel('raticate', 20)).toBe('raticate');
+    expect(stageAtLevel('golbat', 10)).toBe('zubat');
+    // A stone form is nobody's level, so it stays what Crystal says.
+    expect(stageAtLevel('clefairy', 3)).toBe('clefairy');
   });
 
   it("lets a place keep its own night where the rule would take it past its difficulty", () => {
