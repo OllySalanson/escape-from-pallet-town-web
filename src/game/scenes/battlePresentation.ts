@@ -1345,7 +1345,12 @@ export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string
         return opening;
       }
       const stab = event.isStab ? ` · SAME-TYPE ${formatMultiplier(STAB_MULTIPLIER)}` : '';
-      return `${opening} -${event.damage} HP${stab}`;
+      // In a double battle the hit says whose HP it took, as a spread move's lines do.
+      const struck =
+        event.targetName !== undefined && event.target !== undefined
+          ? `${combatantName({ user: event.target, name: event.targetName }, foe)} `
+          : '';
+      return `${opening} ${struck}-${event.damage} HP${stab}`;
     }
     case 'spread-damage': {
       // The move named itself on the line above; this says what it took off

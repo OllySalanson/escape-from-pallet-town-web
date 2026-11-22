@@ -1034,3 +1034,11 @@ describe('the one line that teaches the type chart', () => {
     expect(line.split(' ').length).toBeLessThanOrEqual(5);
   });
 });
+
+describe('a single-target hit in a double battle', () => {
+  it('says whose HP it took, and a single battle says nothing more', () => {
+    const hit = { type: 'used-move', user: 'enemy', target: 'player', name: 'Staryu', move: 'Tackle', damage: 6 } as const;
+    expect(eventToMessage({ ...hit, targetName: 'Bulbasaur' })).toBe('Foe STARYU used TACKLE! Your BULBASAUR -6 HP');
+    expect(eventToMessage(hit)).toBe('Foe STARYU used TACKLE! -6 HP');
+  });
+});
