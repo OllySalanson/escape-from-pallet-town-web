@@ -584,6 +584,15 @@ export class BattleScene extends Phaser.Scene {
   private thrownBallId?: string;
   /** "X has no moves left!" for each slot that is about to Struggle this turn. */
   private struggleLines: string[] = [];
+  /**
+   * The slots that spent this turn on an item, in a double battle, and what
+   * the item said: the other slot still chooses, and the turn is taken with
+   * the item's line first. Taken at once, the partner never acted - a Rattata
+   * stood still while the Squirtle beside it drank a Super Potion (AI
+   * playtest, 22 Nov 2026).
+   */
+  private itemSlotsThisTurn = new Set<number>();
+  private itemLinesThisTurn: StagedNote[] = [];
   private victoryRewardsGranted = false;
   /**
    * The bag the raid is carrying, not the persisted overworld bag. They are
@@ -935,6 +944,8 @@ export class BattleScene extends Phaser.Scene {
     this.shownStatus.clear();
     this.fallen.clear();
     this.pendingChoices = [];
+    this.itemSlotsThisTurn = new Set();
+    this.itemLinesThisTurn = [];
     this.choosingSlot = 0;
     this.replacementSlot = 0;
     this.lastMainCommand = 0;
@@ -2355,7 +2366,9 @@ export class BattleScene extends Phaser.Scene {
         this.pendingChoices = this.lockedChoices();
         this.choosingSlot =
           this.choosingSlots().find(
-            (ref) => !this.pendingChoices.some((choice) => (choice.slot ?? 0) === ref.slot),
+            (ref) =>
+              !(this.itemSlotsThisTurn?.has(ref.slot) ?? false) &&
+              !this.pendingChoices.some((choice) => (choice.slot ?? 0) === ref.slot),
           )?.slot ?? 0;
         this.struggleLines = [];
         if (this.struggleIfStuck()) {
@@ -2489,6 +2502,11 @@ export class BattleScene extends Phaser.Scene {
     // In a double battle, backing out of the second Pokemon's move list goes to
     // the first one's, not to the main commands: the turn is one decision made
     // twice, and undoing half of it is what B is for.
+    // An item is spent the moment it is given, so the slot that gave it has
+    // nothing left to undo: backing out would only hand it a second action.
+    if (this.mode === 'moves' && this.pendingChoices.length === 0 && (this.itemSlotsThisTurn?.size ?? 0) > 0) {
+      return;
+    }
     if (this.mode === 'moves' && this.pendingChoices.length > 0) {
       const previous = this.pendingChoices.pop()!;
       this.choosingSlot = previous.slot ?? 0;
@@ -2720,7 +2738,7 @@ export class BattleScene extends Phaser.Scene {
       ...this.pendingChoices.filter((existing) => (existing.slot ?? 0) !== (choice.slot ?? 0)),
       choice,
     ];
-    const answered = new Set(this.pendingChoices.map((existing) => existing.slot ?? 0));
+    const answered = new Set([...this.pendingChoices.map((existing) => existing.slot ?? 0), ...(this.itemSlotsThisTurn ?? [])]);
     const next = this.choosingSlots().find((ref) => !answered.has(ref.slot));
     if (next) {
       this.choosingSlot = next.slot;
@@ -2778,8 +2796,10 @@ export class BattleScene extends Phaser.Scene {
     this.prepareForcedReplacement();
     this.mode = 'events';
     this.commandContainer.setVisible(false);
-    const leading = this.struggleLines;
+    const leading = [...(this.itemLinesThisTurn ?? []), ...(this.struggleLines ?? [])];
     this.struggleLines = [];
+    this.itemSlotsThisTurn = new Set();
+    this.itemLinesThisTurn = [];
     this.showCombatEvents(result.events, leading, this.itemLesson(), rewardMessages);
   }
 
@@ -3161,6 +3181,36 @@ export class BattleScene extends Phaser.Scene {
       this.refreshPlayerHpDisplay(healedSlot);
     }
     this.refreshStatusLabels();
+    // In a double battle the item is this slot's action, not the side's turn:
+    // the other slot is still asked, and the turn is taken with this line first.
+    const itemLine: StagedNote = { message: use.message, sound: 'heal' };
+    (this.itemSlotsThisTurn ??= new Set()).add(this.choosingSlot);
+    // A partner locked into a two-turn move has nothing to be asked, as FIGHT has it.
+    if (this.pendingChoices.length === 0) {
+      this.pendingChoices = this.lockedChoices().filter((choice) => !this.itemSlotsThisTurn.has(choice.slot ?? 0));
+    }
+    const answered = new Set([...this.pendingChoices.map((choice) => choice.slot ?? 0), ...(this.itemSlotsThisTurn ?? [])]);
+    const next = this.choosingSlots().find((ref) => !answered.has(ref.slot));
+    if (next) {
+      (this.itemLinesThisTurn ??= []).push(itemLine);
+      this.choosingSlot = next.slot;
+      if (this.struggleIfStuck()) {
+        return;
+      }
+      this.mode = 'moves';
+      this.selectedCommand = this.rememberedMove();
+      this.showCommands();
+      return;
+    }
+    if (this.pendingChoices.length > 0) {
+      (this.itemLinesThisTurn ??= []).push(itemLine);
+      this.useMove(this.pendingChoices);
+      return;
+    }
+    const itemLines = [...(this.itemLinesThisTurn ?? []), itemLine];
+    this.itemSlotsThisTurn = new Set();
+    this.itemLinesThisTurn = [];
+    this.choosingSlot = 0;
     const beforeEnemy = this.state;
     const enemyResult = resolveEnemyTurn(this.state, () => Math.random());
     this.state = enemyResult.state;
@@ -3173,7 +3223,7 @@ export class BattleScene extends Phaser.Scene {
     this.prepareForcedReplacement();
     this.mode = 'events';
     this.commandContainer.setVisible(false);
-    this.showCombatEvents(enemyResult.events, [{ message: use.message, sound: 'heal' }], [], rewards);
+    this.showCombatEvents(enemyResult.events, itemLines, [], rewards);
   }
 
   /**
