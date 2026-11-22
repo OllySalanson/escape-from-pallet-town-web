@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { knowableMoves } from '../pokemon';
 import { MoveCategory } from '../pokemon/MoveBase';
 import { SPECIES_BY_ID } from '../pokemon/species';
-import { NO_GAME_CORNER, ticketDayKey } from '../minigames/tickets';
+import { NO_GAME_CORNER, RENTAL_RUN_COMPLETE_TICKETS, ticketDayKey } from '../minigames/tickets';
 import { DOJO_BANNED_SPECIES, DOJO_LEVEL } from './boutRules';
 import { readDojoRecord } from './dojoRecord';
 import { readDojoRun, runBout, runFoe, settleRunBout, stampRun } from './arenaRuns';
@@ -15,6 +15,7 @@ import {
   rentalsToday,
   rentalTeamProblem,
   settleRentalBout,
+  rentalSettlementLine,
 } from './rentals';
 import { RUN_BOUTS } from './runRecords';
 
@@ -103,9 +104,14 @@ describe('a rental run', () => {
       if (bout === RUN_BOUTS) {
         expect(settled.complete).toBe(true);
         expect(settled.run).toBeUndefined();
+        // The whole run is said as a prize of its own (the 20 Nov AI playtest, #193).
+        expect(rentalSettlementLine(rentalFoe(bout, now), true, settled)).toMatch(
+          /Seven in a row on loan: the whole run\. 55 tickets: 5 for the bout and 50 for the whole run!$/,
+        );
       }
     }
-    expect(paid).toEqual([5, 5, 5, 5, 5, 5, 5]);
+    // Five a win, and the seventh pays the whole run's fifty on top.
+    expect(paid).toEqual([5, 5, 5, 5, 5, 5, 5 + RENTAL_RUN_COMPLETE_TICKETS]);
     expect(record!.best).toBe(7);
     expect(record!.scoredDay).toBe(ticketDayKey(now));
     // A second run the same day is practice: it pays nothing.

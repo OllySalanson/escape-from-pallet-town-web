@@ -7,6 +7,7 @@
  */
 import type { Pokemon } from '../pokemon';
 import { SPECIES_BY_ID } from '../pokemon/species';
+import { RENTAL_RUN_COMPLETE_TICKETS, RENTAL_WIN_TICKETS } from '../minigames/tickets';
 import { pickerFindField, pickerOrder, pickerRowAttributes, pickerRowNote, type PickerEntry } from '../ui/boxPicker';
 import {
   COLUMN_MEASURES,
@@ -55,7 +56,7 @@ export function modesBody(record: DojoRecord | undefined, cup: Cup, now: Date): 
       'RENTALS',
       rentalLine,
       pixelTag(live ? `${live.won}/${RUN_BOUTS}` : 'Today', live ? 'good' : 'plain', live !== undefined),
-      `Borrow three Pokémon, fight seven in a row, swap one after each win. Today's pair: ${pairToday(now).why}`,
+      `Borrow three Pokémon, fight seven in a row, swap one after each win. A win pays ${RENTAL_WIN_TICKETS} tickets, and all seven ${RENTAL_RUN_COMPLETE_TICKETS} more. Today's pair: ${pairToday(now).why}`,
       false,
     ),
   ].join('');
