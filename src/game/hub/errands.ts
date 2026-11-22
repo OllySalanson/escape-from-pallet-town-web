@@ -239,8 +239,10 @@ export const ERRANDS: readonly Errand[] = [
     // The pass climbs past quarry benches to the caves: Brock's kind of rock.
     place: 'GREYSTONE PEAKS',
     asks: [
-      'I left a crate of my tools at the quarry up in GREYSTONE PEAKS.',
-      "It's heavy: 4 squares of your pack. Something else stays behind.",
+      // Named as the pack names it, and told apart from the PARTS CRATEs the
+      // ground holds: a newcomer took one of those for his (AI playtest, 22 Nov 2026).
+      "My tools are in BROCK'S CRATE, stencilled PEWTER, up at the quarry.",
+      "It's in GREYSTONE PEAKS, and heavy: 4 squares. Something stays put.",
     ],
     question: 'Will you bring it back for me?',
     accepted: "Thanks. There's something in it for you.",
@@ -254,8 +256,8 @@ export const ERRANDS: readonly Errand[] = [
       `${TM39_NAMED_READERS.join(', ').replace(/, ([^,]*)$/, ' and $1')} can learn it. No starter can.`,
     ],
     lost: [
-      'My crate never made it home? You came back. That is what counts.',
-      'There is another crate of mine up in GREYSTONE PEAKS.',
+      "My crate never made it home? You came back. That's what counts.",
+      "There's another crate of mine up in GREYSTONE PEAKS.",
     ],
     // FireRed's own: Brock hands TM39 to whoever beats him.
     reward: {
