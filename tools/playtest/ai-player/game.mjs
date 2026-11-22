@@ -15,6 +15,16 @@ export const GAME = 'window.__escapeFromPalletTownGame__';
 const FRAMES_PER_STEP = 4;
 /** The most a single settle steps before giving the screen back as it is. */
 const SETTLE_LIMIT_FRAMES = 600;
+/**
+ * Game time a player takes between one decision and the next. The loop is
+ * paused while the AI thinks, so without this its next press lands a few
+ * stepped frames after the last - inside the guards that keep one held or
+ * doubled key from answering the question it just asked (`RELEASE_ARMING_MS`,
+ * 500ms), which no person is ever quick enough to hit. The overnight playtest
+ * of 20 Nov 2026 reported "the first press on USE POTION ON does nothing"
+ * three times for exactly that reason.
+ */
+export const HUMAN_BEAT_FRAMES = 6;
 /** Boxes `talk` and `next` read through before handing back. */
 const READ_LIMIT = 40;
 
@@ -24,6 +34,8 @@ export function createHands(page) {
   const evaluate = (expression) => page.evaluate(expression);
   const step = (frames = 1) => evaluate(`${GAME}.stepFrames(${Math.max(0, Math.round(frames))})`);
   const look = () => evaluate(`${GAME}.describe()`);
+  /** The player's pause before acting: game time for the decision just taken. */
+  const beat = () => step(HUMAN_BEAT_FRAMES);
   const eventsSince = (since) => evaluate(`${GAME}.eventLog(${Number(since) || 0})`);
   /** One press: down, a frame for the game to take it, up, and a frame or two after. */
   const press = async (code, after = 2) => {
@@ -432,5 +444,5 @@ export function createHands(page) {
     return { ok: false, note: 'the fight did not end in 300 turns of pressing', said, screen: await look() };
   };
 
-  return { look, eventsSince, step, press, settle, walkTo, stroll, talk, readThrough, choose, fight, interruption };
+  return { look, eventsSince, step, beat, press, settle, walkTo, stroll, talk, readThrough, choose, fight, interruption };
 }

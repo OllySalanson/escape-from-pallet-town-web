@@ -234,6 +234,8 @@ async function act(runId) {
     fail(`the game tab is gone (${error.message}). Start the run again with: act.mjs start --resume=${runId}`);
   }
   const hands = createHands(page);
+  // Every action begins after the player's own beat of thinking (`HUMAN_BEAT_FRAMES`).
+  await hands.beat();
   const since = status.lastEvent ?? 0;
   const startedAt = Date.now();
   let result = { ok: true, note: null };
