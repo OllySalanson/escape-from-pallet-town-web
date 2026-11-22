@@ -2637,6 +2637,9 @@ export class HubScene extends Phaser.Scene {
         ? 'No Poké Balls packed, so you can only catch with a ball you find out there.'
         : 'No Poké Balls at base, so you can only catch with a ball you find out there.';
     }
+    if (balls && party.length > 0 && !this.flow.packHasRoomForACatch) {
+      return 'Your pack is full, so a catch has nowhere to go: a Pokémon needs 4 free squares.';
+    }
     return '';
   }
 

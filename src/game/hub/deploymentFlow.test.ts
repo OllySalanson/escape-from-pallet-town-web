@@ -1075,6 +1075,17 @@ describe('deployment flow', () => {
  * empty bag: "put the stash's medicine in the pack by default". A default and
  * never a cage, like the pack worn and the secure container filling itself.
  */
+describe('room for a catch', () => {
+  it('is there in the default pack, and gone once the pack is filled to the brim', () => {
+    const { flow, stash } = seedFlow();
+    stash.addItem('poke-ball', 40);
+    expect(flow.packHasRoomForACatch).toBe(true);
+
+    expect(flow.setItemQuantity('poke-ball', flow.packLimit('poke-ball'))).toBeUndefined();
+    expect(flow.packHasRoomForACatch).toBe(false);
+  });
+});
+
 describe('medicine packed by default', () => {
   it('packs a fresh save\'s Potions, so a first raid is not deployed with an empty bag', () => {
     const { flow } = seedFlow();

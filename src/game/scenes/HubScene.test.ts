@@ -1430,7 +1430,7 @@ describe('the hunter a loadout draws', () => {
     });
     hub.flow.togglePokemon('bulbasaur-1');
 
-    expect(finalCheckOf(hub)).toContain('MISTY where you land: ');
+    expect(finalCheckOf(hub)).toContain('LORELEI where you land: ');
   });
 });
 
