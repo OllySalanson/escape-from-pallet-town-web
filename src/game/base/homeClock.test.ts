@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { houseSeason, windowLight, windowLines } from './homeClock';
+import { houseSeason, skyNote, windowLight, windowLines } from './homeClock';
 
 const at = (month: number, hour: number) => new Date(2026, month, 15, hour, 30);
 
@@ -23,5 +23,14 @@ describe("THE BOLTHOLE by the player's clock", () => {
     for (const month of [0, 1, 2, 3, 4, 5, 6, 7, 8, 10]) {
       expect([month, houseSeason(at(month, 12))]).toEqual([month, null]);
     }
+  });
+});
+
+describe("the rim's word on a raid's sky", () => {
+  it('says the sky is the player\'s own clock, and when it next turns', () => {
+    expect(skyNote(at(5, 12))).toBe('day, by your own clock. Dusk comes at 6 pm, full dark at 9 pm');
+    expect(skyNote(at(5, 19))).toBe('dusk, by your own clock. Full dark comes at 9 pm');
+    expect(skyNote(at(5, 6))).toBe('dawn, by your own clock. Day comes at 7 am');
+    expect(skyNote(at(5, 23))).toBe('night, by your own clock, until 5 am');
   });
 });
