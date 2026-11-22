@@ -489,6 +489,8 @@ const OWN_WAVE_LIFT = 6;
 
 /** What the hint line says facing another player in the shared harbour. */
 const WAVE_HINT = '[SPACE] WAVE';
+/** Said facing the bottle on THE BEACH while it lies there (`placeBeachBottle`). */
+export const BOTTLE_HINT = '[SPACE] A BOTTLE';
 
 /** What the hint line says while the quick-phrase list is open. */
 const PHRASE_LIST_HINT = `[ARROWS] CHOOSE   [SPACE] SAY   [${ROOM_KEY_LETTERS.talk}] CLOSE`;
@@ -4293,6 +4295,12 @@ export class BaseScene extends Phaser.Scene {
       const local = partner ? undefined : this.harbourLife?.at(facing);
       if (local) {
         return `[SPACE] ${local.name}`;
+      }
+      // The bottle answers SPACE faced, as everything else in the yard that
+      // does says so: a small grey shape at the tide line that the hint line
+      // ignored was walked past by both AI playtesters (20 Nov 2026).
+      if (!partner && this.beachBottle.length > 0 && sameTile(facing, BEACH_BOTTLE)) {
+        return BOTTLE_HINT;
       }
       if (!partner && this.canFishAt(facing)) {
         return '[SPACE] FISH';
