@@ -167,7 +167,7 @@ try {
     await wait(300);
     const card = await text('.rim-stakes');
     await shot('rim-job-walk');
-    check('the Job line says how long the job walks', /Walked straight, it takes \d+:\d\d of your \d+:\d\d/.test(card), card.replace(/\n+/g, ' | '));
+    check('the Job line says how long the job walks', /Walked straight with no stops, it takes \d+:\d\d of your \d+:\d\d; allow \d+:\d\d/.test(card), card.replace(/\n+/g, ' | '));
   }
 } catch (error) {
   failed = true;

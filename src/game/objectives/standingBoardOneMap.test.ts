@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { getWorldMap } from '../worldMap';
 import { frontDoorFor } from '../run/runGeneration';
 import { encounterTableAt } from '../world/localEncounters';
+import { placedAreaAt } from '../world/mapAreas';
 import { stepDistances } from '../world/mapStructure';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
 import { unregisterPlayerMap } from '../world/playerMaps';
@@ -46,6 +47,25 @@ describe('a board of one map', () => {
         expect(fromTheDoor[position.y][position.x], `round ${round}`).toBeGreaterThanOrEqual(0);
       }
     }
+  });
+
+  it('never stakes a survey out inside a cave or a room', () => {
+    // Tester 4's release blocker 3 (22 Nov 2026): a stake on GREYSTONE CAVES B5F
+    // could not be read and walked out from in one raid.
+    retireMapsForTests(RETIRED_MAPS);
+    unregisterPlayerMap(PUBLISHED_FIXTURE_MAP_ID);
+    const map = getWorldMap('greystone-vale', []);
+    let surveys = 0;
+    for (let round = 0; round < 24; round += 1) {
+      for (const contract of boardContracts(progressAt(round)).filter((each) => each.name === 'Line survey')) {
+        surveys += 1;
+        for (const { position } of contract.markers) {
+          const place = map.areas ? placedAreaAt(map.areas, position) : undefined;
+          expect(place?.id === undefined ? undefined : place.name, `round ${round} ${position.x},${position.y}`).toBeUndefined();
+        }
+      }
+    }
+    expect(surveys).toBeGreaterThan(0);
   });
 
   it('pays a Pokemon of the place the job went to, not the same four whatever the place', () => {

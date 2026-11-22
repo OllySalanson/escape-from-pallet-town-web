@@ -1451,8 +1451,10 @@ describe('the standing board in the lobby', () => {
     hub.flow.chooseInsertion(insertion.id);
     hub.setView('rim');
 
+    // And what to allow: the straight walk alone is a floor, and players who
+    // trusted it took two to three times as long (tester 4, 22 Nov 2026).
     expect(markupOf(hub)).toContain(
-      `Walked straight, it takes ${formatRecoveryClock(walk * STEP_DURATION_MS)} of your 5:00.`,
+      `Walked straight with no stops, it takes ${formatRecoveryClock(walk * STEP_DURATION_MS)} of your 5:00; allow ${formatRecoveryClock(walk * STEP_DURATION_MS * 2.5)}.`,
     );
   });
 
