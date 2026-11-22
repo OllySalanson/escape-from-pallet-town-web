@@ -122,7 +122,16 @@ export function applyHunterThreat(tuning: HunterTuning, threat: HunterThreat): H
  * The count is the one the playtest asked for ("it does not say *and it will
  * field three against your one*"), which is why it leads.
  */
-export function hunterThreatLine(threat: HunterThreat): { readonly heading: string; readonly detail: string } {
+export function hunterThreatLine(
+  threat: HunterThreat,
+  /**
+   * A raid alone is hunted by a pack, a rival to each district
+   * (`rivalsForGrounds`): the raid's own rival only where it lands. Named as if
+   * it were the one hunter, the rim promised MISTY and sent BLUE, and a
+   * veteran planned types round the wrong name (veteran playtest, 20 Nov 2026).
+   */
+  { pack = false }: { readonly pack?: boolean } = {},
+): { readonly heading: string; readonly detail: string } {
   const { openingTeam, matchedTo, contractTiers } = threat;
   const lead = openingTeam[0];
   // With nobody on the bench yet there is no count to give: the hunter fields one for each of yours.
@@ -138,7 +147,7 @@ export function hunterThreatLine(threat: HunterThreat): { readonly heading: stri
     ? ` · this job: ${Math.round(threat.arrivesSoonerMs / 1_000)}s sooner, ${contractTiers > 1 ? 'much ' : ''}stronger`
     : '';
   return {
-    heading: `Hunter: ${hunterRival(threat.rival).name}`,
-    detail: `${[count, against].filter(Boolean).join(' · ')}${contract}`,
+    heading: `Hunter: ${hunterRival(threat.rival).name}${pack ? ' where you land' : ''}`,
+    detail: `${[count, against].filter(Boolean).join(' · ')}${contract}${pack ? ' · a rival of their own in every district' : ''}`,
   };
 }

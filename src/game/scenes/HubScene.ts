@@ -2896,7 +2896,9 @@ export class HubScene extends Phaser.Scene {
       ...securedItems.map(stack),
     ];
     const threat = this.hunterThreatAt(insertionId, this.flow.party);
-    const hunter = hunterThreatLine(threat);
+    // Alone, a pack hunts the raid and this rival keeps only the landing's
+    // district; a friend room shares one hunter (`WorldScene` builds no pack).
+    const hunter = hunterThreatLine(threat, { pack: !friendRoom()?.room });
     const contract = this.contractFor(insertionId);
     const required = contract ? contractCarryIn(contract) : [];
     const short = required.length === 0 ? [] : missingCarryIn(required, (itemId) => this.flow.itemQuantity(itemId));

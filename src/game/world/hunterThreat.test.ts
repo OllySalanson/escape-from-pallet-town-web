@@ -196,6 +196,15 @@ describe('hunterThreatLine', () => {
     });
   });
 
+  it('names the rival as the one where the raid lands, when a pack hunts every district', () => {
+    // The rim promised MISTY and BLUE caught the player in another district
+    // (veteran playtest, 20 Nov 2026): a raid alone meets a rival a district.
+    expect(hunterThreatLine(hunterThreatFor([new Pokemon(CHARMANDER, 12)], 0, 'misty'), { pack: true })).toEqual({
+      heading: 'Hunter: MISTY where you land',
+      detail: '1 Pokémon to your 1 · lead Lv 8 to your Lv 12 Charmander · a rival of their own in every district',
+    });
+  });
+
   it('says what the contract added', () => {
     expect(hunterThreatLine(hunterThreatFor([new Pokemon(CHARMANDER, 12)], 1))).toEqual({
       heading: 'Hunter: BLUE',
