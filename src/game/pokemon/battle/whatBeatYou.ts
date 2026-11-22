@@ -214,11 +214,15 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
   const average = (side: { total: number; hits: number }): number => (side.hits === 0 ? 0 : side.total / side.hits);
   const theirs = Math.round(average(dealt.enemy));
   const yours = Math.round(average(dealt.player));
-  if (facts.length === 0 && dealt.enemy.hits >= WHAT_BEAT_YOU_LEAST && theirs >= Math.max(2, yours * 2)) {
+  // It competes with every other fact rather than waiting for none: 'Rain and
+  // Swift Swim: HORSEA moved first twice' was said over a fight Staryu's
+  // Tackles won by 8 to 2, with Horsea long since knocked out (AI playtest,
+  // 22 Nov 2026). A hit is a turn's damage, so it weighs a little over a turn.
+  if (dealt.enemy.hits >= WHAT_BEAT_YOU_LEAST && theirs >= Math.max(2, yours * 2)) {
     const [hitter] = [...foeHitters.entries()].sort((a, b) => b[1] - a[1]);
     facts.push({
       line: `Damage: ${foeHitters.size === 1 ? hitter[0].toUpperCase() : 'they'} hit for about ${theirs} a turn, you for about ${yours}.`,
-      weight: dealt.enemy.hits,
+      weight: dealt.enemy.hits * (theirs >= yours * 3 ? 1.5 : 1.1),
     });
   }
   if (facts.length === 0 && foeFirst >= Math.max(3, Math.ceil(turnsPlayed * 0.75))) {
