@@ -6345,6 +6345,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       currentMapId: this.currentMap.id,
       currentPosition: this.currentTile,
       towards: (target: GridPosition) => wayTowards(this.currentMap, this.currentTile, target),
+      favoursInHand: favoursInHand(new SaveManager().load()?.raidProgress),
       activatedPoiIds: new Set(this.activatedPoiIds),
       carried: (itemId: string) => this.bag.count(itemId),
       ...this.nearestOpenExitHere(),
@@ -6546,6 +6547,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       currentPosition: this.currentTile,
       // Headings across a door point at the door (`areaRoutes.ts`).
       towards: (target: GridPosition) => wayTowards(this.currentMap, this.currentTile, target),
+      favoursInHand: favoursInHand(new SaveManager().load()?.raidProgress),
       activatedPoiIds: [...this.activatedPoiIds],
       carried: (itemId: string) => this.bag.count(itemId),
       ...this.nearestOpenExitHere(),
