@@ -47,6 +47,7 @@ import { applyStatBoost, createStatStages, getStagedStat } from './statStages';
 import { getTypeEffectiveness } from './typeChart';
 import { WeatherId } from './weather';
 import { MOVE_CATALOGUE } from '../moveCatalogue';
+import { eventToMessage } from '../../scenes/battlePresentation';
 
 const maximumRandom = (): number => 1;
 /**
@@ -1153,6 +1154,31 @@ describe('status conditions', () => {
     const state = createBattleState(lapras, new Pokemon(PIDGEY, 50), WeatherId.HarshSunlight);
     const result = resolveTurn({ ...state, enemy: { ...state.enemy, moves: [] } }, 0, () => 0);
     expect(result.state.enemy.primaryStatus).toBeNull();
+  });
+
+  /**
+   * FireRed's Dream Eater hits only a sleeping target. It landed on anybody as
+   * a plain 100-power drain, and the overnight playtest of 20 Nov 2026 watched
+   * a Gastly one-hit an awake Gloom with it.
+   */
+  it('lets Dream Eater hit only a sleeping target, and says an awake one was not affected', () => {
+    const dreamEater = MOVE_CATALOGUE['dream-eater'];
+    const eating = (asleep: boolean) => {
+      const state = createBattleState(new Pokemon(getSpeciesById('gastly')!, 30), new Pokemon(CHARMANDER, 30));
+      const enemy = asleep ? { ...state.enemy, primaryStatus: PrimaryStatus.Sleep, sleepTurns: 3 } : state.enemy;
+      const ready = { ...state, player: { ...state.player, currentHp: 1, moves: [{ base: dreamEater, pp: 15 }] }, enemy: { ...enemy, moves: [] } };
+      return resolveTurn(ready, 0, () => 0.5);
+    };
+
+    const awake = eating(false);
+    expect(awake.state.enemy.currentHp).toBe(awake.state.enemy.pokemon.maxHp);
+    expect(awake.state.player.currentHp).toBe(1);
+    expect(awake.events).toContainEqual({ type: 'unaffected', user: 'enemy', name: 'Charmander' });
+    expect(eventToMessage({ type: 'unaffected', user: 'enemy', name: 'Charmander' })).toBe("Foe CHARMANDER wasn't affected!");
+
+    const asleep = eating(true);
+    expect(asleep.state.enemy.currentHp).toBeLessThan(asleep.state.enemy.pokemon.maxHp);
+    expect(asleep.state.player.currentHp).toBeGreaterThan(1);
   });
 
   it('puts a Pokemon to sleep on a counter of two to five, spent before each move', () => {

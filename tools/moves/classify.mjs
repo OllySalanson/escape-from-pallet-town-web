@@ -38,6 +38,8 @@ export const BESPOKE = new Set([
 /** PokeAPI flags neither, so both are named by hand - the audit's own warning. */
 export const CHARGE = new Set(['solar-beam', 'dig', 'fly', 'razor-wind', 'sky-attack', 'skull-bash', 'bounce']);
 export const RECHARGE = new Set(['hyper-beam', 'blast-burn', 'frenzy-plant', 'hydro-cannon']);
+/** Hits only a sleeping target - FireRed's EFFECT_DREAM_EATER. PokeAPI has no field for it. */
+export const ONLY_ASLEEP = new Set(['dream-eater']);
 /** Repeats for two or three turns and then confuses the user. Not modelled. */
 const LOCK_IN = new Set(['thrash', 'petal-dance', 'outrage', 'rollout', 'ice-ball', 'uproar', 'bide']);
 

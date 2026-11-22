@@ -393,6 +393,9 @@ export type BattleEvent =
       readonly slot?: number; readonly name: string; readonly status: StatusName;
       /** The status it already has, when that is not the one just tried: FireRed's "But it failed!". */
       readonly held?: PrimaryStatusType }
+  /** A move only a sleeping target can take, used on one awake: FireRed's `sText_PkmnWasntAffected`. */
+  | { readonly type: 'unaffected'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string }
   | { readonly type: 'status-prevented'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string; readonly status: PrimaryStatusType }
   | { readonly type: 'status-damage'; readonly user: 'player' | 'enemy';
@@ -1853,6 +1856,29 @@ const applyMove = (
         });
         continue;
       }
+    }
+
+    // 6a'. Dream Eater on a Pokemon that is awake: FireRed's
+    // `BattleScript_EffectDreamEater` checks the target's sleep straight after
+    // the attack canceller, so it is never a miss and never a hit - "wasn't
+    // affected", with nothing drained. It used to land as a plain 100-power
+    // drain on anybody (the overnight playtest of 20 Nov 2026, a one-hit KO).
+    if (move.base.onlyAsleep && defenderNow().primaryStatus !== PrimaryStatus.Sleep) {
+      if (!spread) {
+        events.push({ type: 'used-move', user, ...inSlot(ref), name: attackerName, move: move.base.name });
+      }
+      events.push({ type: 'unaffected', user: targetRef.side, ...inSlot(targetRef), name: defenderName });
+      struck.push({
+        ref: targetRef,
+        damage: 0,
+        landedHits: 0,
+        immune: true,
+        missed: false,
+        fainted: false,
+        absorbed: false,
+        recoil: 0,
+      });
+      continue;
     }
 
     // 6b. One accuracy roll per target, read through both stages and through

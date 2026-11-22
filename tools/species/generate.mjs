@@ -22,7 +22,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { classify, CHARGE, RECHARGE, WEATHER } from '../moves/classify.mjs';
+import { classify, CHARGE, ONLY_ASLEEP, RECHARGE, WEATHER } from '../moves/classify.mjs';
 import { withFireRedRules } from '../moves/fireRedRules.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -205,6 +205,7 @@ const describe = (move, effects) => {
   }
   if (CHARGE.has(move.name)) sentences.push('Spends the first turn winding up.');
   if (RECHARGE.has(move.name)) sentences.push('The user must recharge the turn after.');
+  if (ONLY_ASLEEP.has(move.name)) sentences.push('Only works on a sleeping target.');
   if (move.user_faints) sentences.push("The user faints. Halves the target's Defense for the hit.");
   if (sentences.length === 1) sentences.push('No side effect.');
   return sentences.join(' ');
@@ -247,6 +248,7 @@ const renderMove = (move) => {
   if (CHARGE.has(move.name)) lines.push('  charge: MoveCharge.Charge,');
   if (RECHARGE.has(move.name)) lines.push('  charge: MoveCharge.Recharge,');
   if (move.user_faints) lines.push('  userFaints: true,');
+  if (ONLY_ASLEEP.has(move.name)) lines.push('  onlyAsleep: true,');
   if (effects.guaranteed) {
     const parts = [];
     if (effects.guaranteed.boosts.length > 0) parts.push(`boosts: ${boostList(effects.guaranteed.boosts)}`);
