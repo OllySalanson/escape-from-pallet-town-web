@@ -17,7 +17,7 @@ import {
 import { BASE_LOADOUT_CAPACITY, DeploymentFlow } from '../hub/deploymentFlow';
 import { PrimaryStatus } from '../pokemon/battle/status';
 import { Bag, EMPTY_ARRANGEMENT, STARTING_PACK_ID } from '../items';
-import { DEFAULT_RAID_PROGRESS, SAVE_KEY, SaveManager } from './SaveManager';
+import { DEFAULT_RAID_PROGRESS, SAVE_KEY, SaveManager, copyPokemon } from './SaveManager';
 import { TICKET_PRIZES } from '../minigames/tickets';
 import { ownedFurniture } from '../home/arrangement';
 import { FURNITURE } from '../home/furniture';
@@ -3237,5 +3237,18 @@ describe('a secret Pokemon is found by banking that one, never its kind', () => 
   it('takes nothing away from a save that already shows a secret found', () => {
     const loaded = saveWith(new MemoryStorage(), [kind('lapras', 25)], ['the-lapras-doll/lapras']);
     expect(loaded.raidProgress.secretsFound).toEqual(['the-lapras-doll/lapras']);
+  });
+});
+
+describe('a sleeping Pokemon', () => {
+  it('keeps what is left of its sleep through the save, and nothing once awake', () => {
+    const [stored] = createStartingStash().listPokemon();
+    const pokemon = stored.pokemon;
+    pokemon.primaryStatus = PrimaryStatus.Sleep;
+    pokemon.sleepTurns = 2;
+    expect(copyPokemon(pokemon).sleepTurns).toBe(2);
+
+    pokemon.primaryStatus = null;
+    expect(copyPokemon(pokemon).sleepTurns).toBe(0);
   });
 });

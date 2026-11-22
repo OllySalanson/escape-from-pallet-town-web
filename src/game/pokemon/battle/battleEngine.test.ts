@@ -500,6 +500,29 @@ describe('battle turn resolution', () => {
     ]);
   });
 
+  /**
+   * Veteran playtest of 22 Nov 2026: Hypnosis put Wartortle to sleep, it was
+   * switched out and back in, and it attacked at once. FireRed keeps the sleep
+   * counter in the Pokemon's own status, so it sleeps on through a switch.
+   */
+  it('keeps a sleeping Pokemon asleep through a switch out and back', () => {
+    const squirtle = new Pokemon(SQUIRTLE, 10);
+    const pidgey = new Pokemon(PIDGEY, 10);
+    const opening = createBattleState(squirtle, new Pokemon(BULBASAUR, 10));
+    const asleep = { ...opening, player: { ...opening.player, primaryStatus: PrimaryStatus.Sleep, sleepTurns: 3 } };
+    persistCombatantToPokemon(asleep.player);
+
+    const out = replacePlayerPokemon(asleep, pidgey).state;
+    const back = replacePlayerPokemon(out, squirtle).state;
+
+    expect(back.player.pokemon).toBe(squirtle);
+    expect(back.player.primaryStatus).toBe(PrimaryStatus.Sleep);
+    expect(back.player.sleepTurns).toBe(3);
+    // And its first turn back is spent asleep, not on its move.
+    const turn = resolveTurn(back, 0, maximumRandom);
+    expect(turn.events.some((event) => event.type === 'status-prevented' && event.user === 'player')).toBe(true);
+  });
+
   it('allows a healthy replacement and gives the enemy the next move', () => {
     const charmander = new Pokemon(CHARMANDER, 10);
     const pidgey = new Pokemon(PIDGEY, 10);

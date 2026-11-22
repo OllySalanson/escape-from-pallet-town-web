@@ -176,6 +176,13 @@ export class Pokemon {
   public currentHp: number;
   public primaryStatus: PrimaryStatus | null = null;
   /**
+   * What is left of a sleep's counter, as FireRed keeps it in the Pokemon's own
+   * status (`STATUS1_SLEEP`): it goes back to the bench with the Pokemon and
+   * comes out with it again, so switching out is no cure. Meaningless unless
+   * `primaryStatus` is sleep.
+   */
+  public sleepTurns = 0;
+  /**
    * The one piece of gear or berry this Pokemon is carrying, or null for an empty slot.
    *
    * One item, never two: `giveHeldItem` returns whatever was already there, so

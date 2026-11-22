@@ -170,6 +170,8 @@ export interface SavedPokemon {
   /** Moves waiting on the player's choice of what to forget. Absent in older saves. */
   readonly pendingMoves?: readonly string[];
   readonly primaryStatus: PrimaryStatus | null;
+  /** What is left of a sleep's counter (`Pokemon.sleepTurns`). Written only while asleep; absent reads as none. */
+  readonly sleepTurns?: number;
   /**
    * The gear this Pokemon is carrying, or null for an empty slot.
    *
@@ -3221,6 +3223,7 @@ function serializePokemon(pokemon: Pokemon): SavedPokemon {
     moves: pokemon.moves.map((move) => move.base.name),
     pendingMoves: pokemon.pendingMoves.map((move) => move.name),
     primaryStatus: pokemon.primaryStatus,
+    ...(pokemon.primaryStatus === 'sleep' && pokemon.sleepTurns > 0 ? { sleepTurns: pokemon.sleepTurns } : {}),
     heldItemId: pokemon.heldItemId,
     ...(pokemon.shiny ? { shiny: true } : {}),
     ...(pokemon.nickname === null ? {} : { nickname: pokemon.nickname }),
@@ -3247,6 +3250,8 @@ function deserializePokemon(value: unknown, saveVersion = SAVE_VERSION): Pokemon
   const savedStatus = isPrimaryStatus(value.primaryStatus) ? value.primaryStatus : null;
   pokemon.primaryStatus =
     savedStatus !== null && typeRefusesStatus(savedStatus, pokemonTypes(pokemon)) ? null : savedStatus;
+  // FireRed's counter is two to five, so anything else is not a sleep it wrote.
+  pokemon.sleepTurns = pokemon.primaryStatus === 'sleep' ? clampInteger(value.sleepTurns, 0, 5, 0) : 0;
   pokemon.giveHeldItem(typeof value.heldItemId === 'string' ? value.heldItemId : null);
   pokemon.shiny = value.shiny === true;
   // Read through the same rule a name is typed through, so a hand-edited save
