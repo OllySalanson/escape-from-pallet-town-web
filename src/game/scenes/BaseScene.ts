@@ -1056,6 +1056,14 @@ export class BaseScene extends Phaser.Scene {
               .map((thing) => ({ name: thing.name, tile: tileOf(thing.tiles[0]), ...this.usedFrom(thing) }))
           : [],
         exit: room?.room.mat ? tileOf(room.room.mat) : null,
+        // An arch through to another room, as THE CHART ROOM's behind the
+        // library's end bookcase: the AI playtester saw only the mat's way out
+        // and pushed at the bookcase beside the arch (veteran playtest, 20 Nov 2026).
+        ways: room
+          ? room.room.stairs
+              .filter((stair) => onScreen(stair.tile))
+              .map((stair) => ({ to: roomNamed(stair.to)?.name ?? stair.to, tile: tileOf(stair.tile), ...(stair.push ? { push: stair.push.key } : {}) }))
+          : [],
         // THE RAID ARENA's rim, where a raid is jumped into: the nearest tile of it.
         rim:
           room?.room.id === 'raid-arena'
