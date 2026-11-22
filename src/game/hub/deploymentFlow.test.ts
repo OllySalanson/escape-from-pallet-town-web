@@ -1184,3 +1184,40 @@ describe('medicine packed by default', () => {
     expect(flow.itemQuantity('potion')).toBe(2);
   });
 });
+
+/**
+ * YOUR TEAM's L: one of the team put in front, without taking everybody off and
+ * putting them back in order (the 20 Nov AI playtest, #25, #136).
+ */
+describe('choosing who leads', () => {
+  const vault = (): Stash => {
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 10), 'charmander-1');
+    stash.addPokemon(new Pokemon(SQUIRTLE, 9), 'squirtle-1');
+    stash.addPokemon(new Pokemon(IVYSAUR, 18), 'ivysaur-1');
+    return stash;
+  };
+
+  it('puts one of the team in front and keeps everybody else in order', () => {
+    const flow = new DeploymentFlow(vault());
+    for (const id of ['charmander-1', 'squirtle-1', 'ivysaur-1']) flow.togglePokemon(id);
+    expect(flow.leadWith('ivysaur-1')).toBeUndefined();
+    expect(flow.party.map((stored) => stored.id)).toEqual(['ivysaur-1', 'charmander-1', 'squirtle-1']);
+    // Already in front: nothing moves.
+    expect(flow.leadWith('ivysaur-1')).toBeUndefined();
+    expect(flow.party[0].id).toBe('ivysaur-1');
+  });
+
+  it('refuses one that is not on the team', () => {
+    const flow = new DeploymentFlow(vault());
+    flow.togglePokemon('charmander-1');
+    expect(flow.leadWith('squirtle-1')).toBe('Take it on the team first.');
+    expect(flow.party.map((stored) => stored.id)).toEqual(['charmander-1']);
+  });
+
+  it('comes back in front from the bench it was saved as', () => {
+    // `lastBench` is the order `SaveManager.chooseBench` writes, the lead first.
+    const flow = new DeploymentFlow(vault(), undefined, undefined, undefined, undefined, null, ['ivysaur-1', 'charmander-1']);
+    expect(flow.party.map((stored) => stored.id)).toEqual(['ivysaur-1', 'charmander-1']);
+  });
+});

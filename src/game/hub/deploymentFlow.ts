@@ -810,6 +810,22 @@ export class DeploymentFlow {
     return isFoundOnly(itemId) ? held : Math.min(held, this.itemQuantity(itemId));
   }
 
+  /**
+   * Puts one of the team in front: the first in the party is the one sent out
+   * first in every fight. Before YOUR TEAM
+   * had this, choosing a lead was taking everybody off and putting them back
+   * in order (the 20 Nov AI playtest, #25, #136; Olly's pick of 22 Nov).
+   * @returns A message when it was refused, otherwise undefined.
+   */
+  public leadWith(id: string): string | undefined {
+    if (!this.selectedPokemonIds.includes(id)) {
+      return 'Take it on the team first.';
+    }
+    this.standInId = undefined;
+    this.selectedPokemonIds = [id, ...this.selectedPokemonIds.filter((selected) => selected !== id)];
+    return undefined;
+  }
+
   /** @returns A message when the change was refused, otherwise undefined. */
   public togglePokemon(id: string): string | undefined {
     this.standInId = undefined;
