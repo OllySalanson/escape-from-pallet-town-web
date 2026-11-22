@@ -3,6 +3,8 @@ import { RunManager } from '../run';
 import { Pokemon, BULBASAUR } from '../pokemon';
 import { getWorldMap } from '../worldMap';
 import { MISTY_BOSS_ID } from '../world/valeQuarters';
+import { RAID_CONTRACTS } from '../objectives/contracts';
+import { isFirstJobsBanked, NEAR_JOBS } from '../objectives/standingBoard';
 import { WorldScene } from './WorldScene';
 
 vi.mock('phaser', () => ({
@@ -21,7 +23,11 @@ interface Driven {
 /** CERULEAN GYM's door on GULL STRAND, pressed up from the tile below it. */
 const CERULEAN_DOORSTEP = { x: 179, y: 216 };
 
-function standingAt(tile: { readonly x: number; readonly y: number }, beaten: readonly string[] = []): Driven {
+function standingAt(
+  tile: { readonly x: number; readonly y: number },
+  beaten: readonly string[] = [],
+  firstJobsBanked = false,
+): Driven {
   const manager = new RunManager();
   manager.startRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] }, { mapId: 'greystone-vale', durationMs: 60_000 });
   const map = getWorldMap('greystone-vale', beaten);
@@ -33,6 +39,7 @@ function standingAt(tile: { readonly x: number; readonly y: number }, beaten: re
     wayFields: new Map(),
     trainerEncounters: [],
     defeatedTrainerIds: new Set<string>(),
+    firstJobsBanked,
     runSession: { manager, plan: { defeatedBosses: beaten } },
   });
   return scene as unknown as Driven;
@@ -50,5 +57,21 @@ describe('the gold arrow at the next gym', () => {
   it('leaves the arrow to the job from across the strand, and for a gym already beaten', () => {
     expect(standingAt({ x: 140, y: 215 }).gymDoorNear()).toBeUndefined();
     expect(standingAt({ x: 173, y: 217 }, [MISTY_BOSS_ID]).gymDoorNear()?.cue ?? '').not.toMatch(/CERULEAN/);
+  });
+
+  it('leads to the door the whole way once Oak\'s first jobs are banked', () => {
+    // The AI playtest's friends banked the first jobs and then wandered the
+    // vale looking for the gym (22 Nov 2026): with them done the gym is what
+    // the game is for next, so the arrow takes it from across the strand.
+    expect(standingAt({ x: 140, y: 215 }, [], true).gymDoorNear()?.cue).toMatch(/^CERULEAN GYM: /);
+    // Misty beaten, it is the next gym's door instead.
+    expect(standingAt({ x: 140, y: 215 }, [MISTY_BOSS_ID], true).gymDoorNear()?.cue).toMatch(/^FUCHSIA GYM: /);
+  });
+
+  it('counts the first jobs as the finish line does: the chain, then the near jobs', () => {
+    const chain = RAID_CONTRACTS.map((contract) => contract.id);
+    expect(isFirstJobsBanked({ completedContracts: chain, standingContractsBanked: NEAR_JOBS })).toBe(true);
+    expect(isFirstJobsBanked({ completedContracts: chain, standingContractsBanked: NEAR_JOBS - 1 })).toBe(false);
+    expect(isFirstJobsBanked({ completedContracts: chain.slice(1), standingContractsBanked: NEAR_JOBS })).toBe(false);
   });
 });
