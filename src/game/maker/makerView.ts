@@ -747,7 +747,7 @@ function selectedPane(
       const standing = (file.pokemon ?? [])[selected.index];
       heading = 'Pokémon';
       const species = POKEMON_ICON_ORDER.map((id) => [id, pokemonName(id)] as const);
-      body = `${choose('species', 'Which', standing.species, species, 'Which Pokémon stands there. Up and Down step through all of them.')}<label class="maker-field" data-help="The level it fights at when spoken to, once a raid. At 0 it only says its name."><span>Fights</span><input class="px-window px-field" data-field="level" type="number" min="0" max="${MAP_FILE_LIMITS.maxPokemonLevel}" value="${standing.level ?? 0}" /><span class="px-note">at this level when spoken to, once a raid; 0 only says its name</span></label><p class="px-note px-wrap">It stands there, solid as a person, and says ${escapeHtml(pokemonCry(standing.species))} when spoken to.</p>`;
+      body = `${choose('species', 'Which', standing.species, species, 'Which Pokémon stands there. Up and Down step through all of them.')}<label class="maker-field" data-help="The level it fights at when spoken to, once a raid. At 0 it only says its name, and that it is not looking for a fight."><span>Fights</span><input class="px-window px-field" data-field="level" type="number" min="0" max="${MAP_FILE_LIMITS.maxPokemonLevel}" value="${standing.level ?? 0}" /><span class="px-note">at this level when spoken to, once a raid; 0 says its name and will not fight</span></label><p class="px-note px-wrap">It stands there, solid as a person, and says ${escapeHtml(pokemonCry(standing.species))} when spoken to.</p>`;
       break;
     }
     case 'berry-tree': {
