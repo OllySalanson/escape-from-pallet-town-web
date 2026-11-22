@@ -6,7 +6,7 @@ import { districtAt } from './districts';
 import { gateKey } from './gates';
 import { collisionBlocker, findHunterPursuitPath, findHunterSpawnTile } from './hunter';
 import { composeMapFile, doorwayOf } from './mapAreas';
-import { keptRouteFields, nearestByWalk, ROUTE_FIELDS_KEPT, stepsTowards, wayTowards } from './areaRoutes';
+import { doorwayTowards, keptRouteFields, nearestByWalk, ROUTE_FIELDS_KEPT, stepsTowards, wayTowards } from './areaRoutes';
 import { hunterChipView } from '../scenes/raidHud';
 import {
   buildPlayerMap,
@@ -610,3 +610,16 @@ describe('what a cave may not do', () => {
   });
 });
 
+
+describe("a doorway's tile to stand on", () => {
+  it("is where the push is made, never beside a ladder's solid tile", () => {
+    // Greystone Caves B4F's ladder up stands at 410,264 and is climbed by
+    // pressing up from 410,265. Steered at the ladder's own tile, the gold
+    // arrow led round to 411,264, where pressing left does nothing (veteran
+    // playtest, 20 Nov 2026).
+    const vale = getWorldMap('greystone-vale');
+    const doorway = doorwayTowards(vale, { x: 412, y: 264 }, { x: 422, y: 227 });
+    expect(doorway).toEqual({ stand: { x: 410, y: 265 }, into: { x: 410, y: 264 } });
+    expect(wayTowards(vale, { x: 412, y: 264 }, { x: 422, y: 227 })).toEqual({ x: 410, y: 264 });
+  });
+});

@@ -259,7 +259,7 @@ import { SpeechBubble } from '../base/speechBubble';
 import { advanceCalls, NO_CALL, type CallState } from '../world/villageCalls';
 import { TILE_ANIMATION_SOURCE, TileAnimator, type AnimatedLayer } from '../world/tileAnimation';
 import { nearestOpenExit, walkingStepsFrom } from '../world/nearestExit';
-import { nearestByWalk, stepsTowards, wayTowards } from '../world/areaRoutes';
+import { doorwayTowards, nearestByWalk, stepsTowards, wayTowards } from '../world/areaRoutes';
 import { RaidWayMark } from '../base/wayMark';
 import { aheadOnWalk } from '../world/raidStake';
 import { stepDistances } from '../world/mapStructure';
@@ -6451,10 +6451,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       x: at.x * TILE_SIZE + TILE_SIZE / 2,
       y: at.y * TILE_SIZE + TILE_SIZE / 2,
     });
-    const towards = wayTowards(this.currentMap, this.currentTile, tile);
+    // Through another place's doorway, the walk goes to where it is pressed
+    // from, and stood there the arrow points into it (`doorwayTowards`).
+    const doorway = doorwayTowards(this.currentMap, this.currentTile, tile);
+    const aim = !doorway
+      ? aheadOnWalk(this.wayField(tile), this.currentTile, tile)
+      : this.currentTile.x === doorway.stand.x && this.currentTile.y === doorway.stand.y
+        ? doorway.into
+        : aheadOnWalk(this.wayField(doorway.stand), this.currentTile, doorway.stand);
     return {
       target: worldTile(tile),
-      aim: worldTile(aheadOnWalk(this.wayField(towards), this.currentTile, towards)),
+      aim: worldTile(aim),
       out,
     };
   }
