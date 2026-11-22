@@ -290,7 +290,7 @@ import { WAY_IN_CLICK_REACH } from '../base/valeOverview';
 import { isNightRaid } from '../world/nightRaids';
 import { ArenaFurniture } from '../base/arenaFurniture';
 import { MAX_RUN_PARTY } from '../hub/deploymentFlow';
-import { flowForGame, heldRoomMapId, offeredInsertions, type ArenaKit } from '../base/arenaKit';
+import { benchToKeep, flowForGame, heldRoomMapId, offeredInsertions, type ArenaKit } from '../base/arenaKit';
 import { ArenaDiveView } from '../base/arenaDiveView';
 import { RunnerWayMarks, YardWayMark } from '../base/wayMark';
 import { flashScreen } from '../ui/screenFlash';
@@ -2244,6 +2244,21 @@ export class BaseScene extends Phaser.Scene {
     } satisfies HubSceneData);
   }
 
+  /**
+   * Who the bench was left holding is the next raid's team until it is changed,
+   * written as YOUR TEAM and the garden write it (`SaveManager.chooseBench`):
+   * the hall builds its bench afresh from the save each time it is walked into,
+   * so a Pokemon added there and not written was quietly back in its box once
+   * the player stepped out to ARENA SQUARE and in again (veteran playtest,
+   * 20 Nov 2026).
+   */
+  private keepTheBench(flow: DeploymentFlow): void {
+    const changed = benchToKeep(flow, this.saveManager.load()?.raidProgress.lastBench);
+    if (changed) {
+      this.saveManager.chooseBench(changed);
+    }
+  }
+
   /** Back from a panel: what was chosen in it now stands in the room. */
   private closeHallPanel(): void {
     if (!this.arenaPanel) {
@@ -2258,6 +2273,7 @@ export class BaseScene extends Phaser.Scene {
     // opened never came back up here.
     this.input.keyboard?.resetKeys();
     this.spentPresses.spendHeld(this.directionKeys());
+    this.keepTheBench(this.kit.flow);
     this.savedGame = this.saveManager.load() ?? this.kit.game;
     this.furniture?.show(this.kit.flow, partnerOf(this.savedGame.stash)?.id ?? null);
     this.dressPlayer();
