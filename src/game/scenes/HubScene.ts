@@ -119,8 +119,11 @@ import {
 } from '../run/runGeneration';
 import {
   availableContracts,
-  boardContractForMap,
   contractCarryIn,
+  jobChoice,
+  jobsForMap,
+  mayTurnJobDown,
+  noJobChoice,
   formatStacks,
   missingCarryIn,
   objectivesForContract,
@@ -426,6 +429,12 @@ export class HubScene extends Phaser.Scene {
    * this visit's choice only, and costs the raid a minute of its clock.
    */
   private waitedSky: WindowLight | undefined;
+  /**
+   * The job chosen at the rim for this raid (`jobChoice`): a job's id, its
+   * `noJobChoice` to go without one, or undefined for the board's own. This
+   * visit's choice only, as the sky is.
+   */
+  private jobPick: string | undefined;
   /** Whether the browser is being asked if another window's raid is still there. */
   private askingElsewhere = false;
   private deploying = false;
@@ -484,6 +493,7 @@ export class HubScene extends Phaser.Scene {
     this.straightOver = data.straightOver === true;
     this.justHome = data.justHome === true;
     this.waitedSky = undefined;
+    this.jobPick = undefined;
     // Looking down from the rim is looking the plan over, as far as it can be.
     if (this.view === 'rim') {
       this.pointAtHeldRoom();
@@ -681,7 +691,32 @@ export class HubScene extends Phaser.Scene {
     if (isFirstRaid(this.savedGame.raidProgress)) {
       return undefined;
     }
-    return boardContractForMap(requireInsertion(insertionId).mapId, this.savedGame.raidProgress);
+    return jobChoice(this.jobsAt(insertionId), this.jobPick);
+  }
+
+  /** The jobs a raid inserting here may carry (`jobsForMap`), none on a first raid. */
+  private jobsAt(insertionId: RunInsertionId): readonly RaidContract[] {
+    return isFirstRaid(this.savedGame.raidProgress) ? [] : jobsForMap(requireInsertion(insertionId).mapId, this.savedGame.raidProgress);
+  }
+
+  /**
+   * The rim's other jobs, a button each on the Job line, and one to go without
+   * a job; or, turned down, a button for each job. LINE SURVEY was every raid's
+   * job until it was banked, with no way to choose another or none (AI
+   * playtest 4, 22 Nov 2026).
+   */
+  private jobButtons(insertionId: RunInsertionId, contract: RaidContract | undefined): string {
+    const jobs = this.jobsAt(insertionId);
+    const button = (choice: string, label: string, help: string): string =>
+      `<button class="px-window px-button rim-sky-wait" data-job="${escapeAttribute(choice)}" data-help="${escapeAttribute(help)}">${label}</button>`;
+    const others = jobs
+      .filter((job) => job.id !== contract?.id)
+      .map((job) => button(job.id, job.name, `Take ${job.name.toUpperCase()} instead: ${job.description}. It pays ${rewardLine(job.reward)}.`));
+    const none =
+      contract !== undefined && mayTurnJobDown(jobs)
+        ? [button(noJobChoice(jobs)!, 'No job', 'Raid with no job: nothing to fetch and nothing paid for it, and the board keeps its jobs for next time.')]
+        : [];
+    return [...others, ...none].join('');
   }
 
   /**
@@ -1783,6 +1818,11 @@ export class HubScene extends Phaser.Scene {
       this.render();
     });
     on('[data-back]', () => this.goBack());
+    on('[data-job]', (button) =>
+      rerender(() => {
+        this.jobPick = button.dataset.job || undefined;
+      }),
+    );
     on('[data-wait-sky]', (button) =>
       rerender(() => {
         this.waitedSky = (button.dataset.waitSky || undefined) as WindowLight | undefined;
@@ -3011,7 +3051,11 @@ export class HubScene extends Phaser.Scene {
       .map(member);
     const team = this.flow.party.length === 0 ? '' : line('Team', rimTeamLine(this.flow.party.map(member), home));
     return `<dl class="dropin-facts rim-stakes">${team}${hurt ? line('Hurt', hurt.line, true) : ''}${line('At risk', lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', '))}${goneForGood.length === 0 ? '' : line('A wipe', `${goneForGood.join(', ')}: lost for good`, true)}${safe}${
-      job === undefined ? '' : line('Job', job, short.length > 0)
+      job === undefined
+        ? this.jobsAt(insertionId).length > 0
+          ? line('Job', `None this raid: nothing to fetch. ${this.jobButtons(insertionId, contract)}`)
+          : ''
+        : line('Job', `${job} ${this.jobButtons(insertionId, contract)}`, short.length > 0)
     }${isPlaytestRun() ? '' : line('Sky', this.skyLine())}${line(pack ? 'Hunters' : 'Hunter', `<span data-hunter-tier="${threat.tierOffset + 1}">${hunter.heading.replace(/^Hunters?: /, '')}: ${hunter.detail}</span>`, threat.tierOffset > 0)}${this.clockIsNews ? line('Clock', this.clockNote()) : ''}</dl>`;
   }
 

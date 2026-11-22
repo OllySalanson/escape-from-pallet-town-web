@@ -114,6 +114,8 @@ export interface RaidContract {
    * `hunterThreatFor` so the raid has one difficulty system rather than two.
    */
   readonly hunterPressure?: number;
+  /** Which of the standing board's kinds of job this is (`standingBoard.ts`), so a second one offered beside it is another kind. */
+  readonly standingTemplate?: 'survey' | 'dispatch' | 'resupply' | 'sealed';
   /**
    * Set when every stop is behind a gate that was still shut when the contract
    * was offered: the door, and who holds it. The contract is how the board

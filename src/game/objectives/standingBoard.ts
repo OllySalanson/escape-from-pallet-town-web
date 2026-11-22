@@ -143,6 +143,7 @@ const boards = new Map<string, readonly RaidContract[]>();
 export function forgetStandingBoards(): void {
   boards.clear();
   jobWalks.clear();
+  secondJobs.clear();
 }
 
 /**
@@ -197,6 +198,77 @@ export function standingOffers(seed: number, progress: StandingBoardProgress): r
 /** The board as the game sees it for this save. */
 export function standingBoard(progress: StandingBoardProgress): readonly RaidContract[] {
   return standingOffers(standingBoardSeed(progress), progress);
+}
+
+/** What a second job's id ends with, after the board's own: `standing-3-greystone-vale-other`. */
+const SECOND_JOB_SUFFIX = '-other';
+
+const secondJobs = new Map<string, RaidContract | undefined>();
+
+/**
+ * Another job beside the board's, on the same map, for the same round and the
+ * same pressure, and of another kind: the raid's job is chosen from the two at
+ * the rim, or turned down (`jobChoice`). With one map in play the board held
+ * one job, so the same LINE SURVEY was every raid's until it was banked, with
+ * no way out (AI playtest 4, 22 Nov 2026: "pure tedium" by the tenth raid).
+ *
+ * Drawn on a stream of its own, so the board's job is what it always was, and
+ * always on ground already open, so a board that leads with a shut door still
+ * offers a job that can be done without beating its boss. Undefined for an
+ * authored contract, and where the ground holds no other kind.
+ */
+export function secondStandingJob(main: RaidContract, progress: StandingBoardProgress): RaidContract | undefined {
+  const round = standingRoundOf(main.id);
+  if (round === undefined) {
+    return undefined;
+  }
+  const seed = standingBoardSeed(progress);
+  const key = JSON.stringify([seed >>> 0, main.id, [...openedDoors(progress)].sort(), workshopMaterialKinds(progress.workshopUpgrades)]);
+  if (secondJobs.has(key)) {
+    return secondJobs.get(key);
+  }
+  const rng = createSeededRng((seed ^ hashText(`${main.mapId}${SECOND_JOB_SUFFIX}`)) >>> 0);
+  const job = draftContract(rng, main.mapId, round, main.hunterPressure ?? 0, rng.shuffle(OPEN_GROUND_TEMPLATES), progress, false, {
+    besides: main.standingTemplate,
+  });
+  secondJobs.set(key, job);
+  return job;
+}
+
+/**
+ * Every job a raid onto this map may carry, the board's first: an authored
+ * contract alone, or the standing board's and a second of another kind.
+ */
+export function jobsForMap(mapId: WorldMapId, progress: StandingBoardProgress): readonly RaidContract[] {
+  const main = boardContractForMap(mapId, progress);
+  if (!main) {
+    return [];
+  }
+  const second = secondStandingJob(main, progress);
+  return second ? [main, second] : [main];
+}
+
+/** What a player who turned the job down has chosen, for these jobs: it lapses with them. */
+export function noJobChoice(jobs: readonly RaidContract[]): string | undefined {
+  return jobs[0] === undefined ? undefined : `none:${jobs[0].id}`;
+}
+
+/** Whether these jobs may be turned down: a standing job may, the authored chain's may not. */
+export function mayTurnJobDown(jobs: readonly RaidContract[]): boolean {
+  return jobs[0] !== undefined && standingRoundOf(jobs[0].id) !== undefined;
+}
+
+/**
+ * The job a raid carries, out of the jobs on offer and what the player chose
+ * at the rim: the one chosen, nothing if they turned the job down, and the
+ * board's own when they chose nothing that is still on offer - a choice lapses
+ * with the round it was made in.
+ */
+export function jobChoice(jobs: readonly RaidContract[], chosen: string | undefined): RaidContract | undefined {
+  if (chosen !== undefined && chosen === noJobChoice(jobs) && mayTurnJobDown(jobs)) {
+    return undefined;
+  }
+  return jobs.find((job) => job.id === chosen) ?? jobs[0];
 }
 
 /**
@@ -747,6 +819,8 @@ function draftContract(
   templates: readonly StandingTemplate[],
   progress: StandingBoardProgress,
   anotherMapOnTheBoard: boolean,
+  /** The second job offered beside the board's: never the board's kind, and an id of its own. */
+  second?: { readonly besides: StandingTemplate | undefined },
 ): RaidContract | undefined {
   const wholeGround = surveyGround(mapId, progress.defeatedBosses, openedDoors(progress));
   if (!wholeGround) {
@@ -761,20 +835,23 @@ function draftContract(
   // dealt on a board with nothing else on it: that player's contracts would
   // stop dead until they could win the fight.
   const leadsWithTheDoor = ground.districts.length > 0 && rng.chance(SEALED_SHARE) && anotherMapOnTheBoard;
-  const preferred: readonly StandingTemplate[] = leadsWithTheDoor
-    ? ['sealed', ...templates]
-    : round === 0
-      ? [...FIRST_JOB_TEMPLATES, ...templates]
-      : templates;
+  const preferred: readonly StandingTemplate[] = second
+    ? templates.filter((template) => template !== second.besides)
+    : leadsWithTheDoor
+      ? ['sealed', ...templates]
+      : round === 0
+        ? [...FIRST_JOB_TEMPLATES, ...templates]
+        : templates;
   for (const template of preferred) {
     const draft = DRAFTERS[template](rng, ground);
     if (!draft) {
       continue;
     }
-    const id = `${STANDING_ID_PREFIX}-${round}-${mapId}`;
+    const id = `${STANDING_ID_PREFIX}-${round}-${mapId}${second ? SECOND_JOB_SUFFIX : ''}`;
     return {
       id,
       mapId,
+      standingTemplate: draft.template,
       name: draft.name,
       description: draft.description,
       markers: draft.markers.map((marker, index) => ({ ...marker, id: `${id}-${index + 1}` })),

@@ -26,7 +26,7 @@ import { RAID_DURATION_MS } from '../run/raidClock';
 import { flowForGame, type ArenaKit } from '../base/arenaKit';
 import type { RestoredGame } from '../save/SaveManager';
 import { availableInsertionIds, frontDoorFor, requireInsertion, RUN_INSERTIONS } from '../run/runGeneration';
-import { QUICKER_LANDING_MS, standingJobWalk } from '../objectives/standingBoard';
+import { jobsForMap, noJobChoice, QUICKER_LANDING_MS, standingJobWalk } from '../objectives/standingBoard';
 import { formatRecoveryClock, healDayOf } from '../hub/recovery';
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import type { ActiveRunSession } from '../run/RunSession';
@@ -1500,6 +1500,46 @@ describe('the standing board in the lobby', () => {
     expect(markupOf(hub)).toContain(
       `Walked straight with no stops, it takes ${formatRecoveryClock(walk * STEP_DURATION_MS)} of your 5:00; allow ${formatRecoveryClock(walk * STEP_DURATION_MS * 2.5)}.`,
     );
+  });
+
+  /**
+   * The raid's job is chosen at the rim, out of the board's and a second of
+   * another kind, or turned down: LINE SURVEY was every raid's job until it
+   * was banked, with no way out (AI playtest 4, 22 Nov 2026).
+   */
+  it.each([
+    ['the second job', 1],
+    ['no job', 'none'],
+  ] as const)('lets the rim take %s instead, and the raid carries what was chosen', (_name, pick) => {
+    const progress = chainBanked(2);
+    const jobs = jobsForMap('greystone-vale', progress);
+    expect(jobs).toHaveLength(2);
+    const insertion = frontDoorFor('greystone-vale')!;
+    const { hub, start } = createHub(progress);
+    hub.flow.togglePokemon('bulbasaur-1');
+    hub.flow.chooseInsertion(insertion.id);
+    hub.setView('rim');
+    readyToDeploy(hub);
+
+    const rim = markupOf(hub);
+    expect(rim).toContain(`data-job="${jobs[1].id}"`);
+    expect(rim).toContain(`data-job="${noJobChoice(jobs)}"`);
+    expect(rim).toContain(`${jobs[0].name}: `);
+
+    const choice = pick === 'none' ? noJobChoice(jobs)! : jobs[pick].id;
+    (hub as unknown as { jobPick: string | undefined }).jobPick = choice;
+    const chosen = markupOf(hub);
+    if (pick === 'none') {
+      expect(chosen).toContain('None this raid: nothing to fetch.');
+      expect(chosen).toContain(`data-job="${jobs[0].id}"`);
+    } else {
+      expect(chosen).toContain(`${jobs[1].name}: `);
+      expect(chosen).toContain(`data-job="${jobs[0].id}"`);
+    }
+
+    deploy(hub, start);
+    const { runSession } = start.mock.calls[0][1] as WorldSceneData;
+    expect(runSession.plan?.contract?.id).toBe(pick === 'none' ? undefined : jobs[1].id);
   });
 
   /**
