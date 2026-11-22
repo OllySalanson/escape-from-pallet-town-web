@@ -131,6 +131,7 @@ import { WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/
 import { GAME_FONT } from '../ui/gameFont';
 import { CAPTION_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { KeyPresses } from '../input/KeyPresses';
+import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
 import { anyoneFitToRaid } from '../hub/recovery';
 import {
   BATTLE_PANEL,
@@ -529,6 +530,14 @@ export class BattleScene extends Phaser.Scene {
    * attack, and lost a raid (playtest 45).
    */
   private lastMainCommand = 0;
+  /**
+   * When the command menu last came back after a turn's lines (scene time). A
+   * key pressed to read on through "Oh, no! The POKéMON broke free!" that lands
+   * on the menu instead would answer it with the command under the cursor -
+   * still BALL after a throw - so the menu takes no key until `RELEASE_ARMING_MS`
+   * has passed (the overnight playtest of 20 Nov 2026 threw two balls that way).
+   */
+  private commandsBackAt = Number.NEGATIVE_INFINITY;
   private readonly lastMoveOf = new Map<Pokemon, number>();
   private commandContainer!: Phaser.GameObjects.Container;
   /** Every `JustDown` this scene would ask goes through here - see `KeyPresses`. */
@@ -917,6 +926,7 @@ export class BattleScene extends Phaser.Scene {
     this.choosingSlot = 0;
     this.replacementSlot = 0;
     this.lastMainCommand = 0;
+    this.commandsBackAt = Number.NEGATIVE_INFINITY;
     this.lastMoveOf.clear();
     this.drawCombatants();
     this.drawStatusBoxes();
@@ -1070,6 +1080,11 @@ export class BattleScene extends Phaser.Scene {
     } else if (this.keyPresses.justPressed(this.downKey)) {
       this.moveSelection('down');
     } else if (this.keyPresses.justPressed(this.confirmKey)) {
+      // The key that read the turn's last line on is not an answer to the menu
+      // it brought back (`commandsBackAt`).
+      if (this.mode === 'main' && this.time.now - this.commandsBackAt < RELEASE_ARMING_MS) {
+        return;
+      }
       this.confirm();
     }
   }
@@ -3728,6 +3743,7 @@ export class BattleScene extends Phaser.Scene {
       }
       this.mode = 'main';
       this.selectedCommand = this.lastMainCommand;
+      this.commandsBackAt = this.time.now;
       this.showCommands();
       return;
     }
