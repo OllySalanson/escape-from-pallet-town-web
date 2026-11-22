@@ -84,7 +84,8 @@ export interface ObjectiveGuideModel {
   readonly hints: readonly string[];
   /**
    * What Professor Oak says on the radio: where to go next, and how to get out,
-   * and then which way the next gym is while there is one to beat. The things a
+   * then which way a favour still lying out here is, and which way the next gym
+   * is while there is one to beat. The things a
    * raid asks of the key, in the box; `hints` is everything, for the full list.
    */
   readonly radio: readonly string[];
@@ -115,6 +116,7 @@ export function buildObjectiveGuide(
     : laterRunHints(session, context, currentExit?.label);
   const treasure = treasureHints(session, context, snapshot.foundItems);
   const gym = nextGymHint(context);
+  const errands = errandHints(session, context, snapshot.foundItems);
 
   return {
     isFirstContract,
@@ -122,14 +124,21 @@ export function buildObjectiveGuide(
     // a heading that repeats the line above it is a rank of nothing.
     contractLabel: contract ? contractLabel(contract, isFirstContract) : 'No contract on this raid',
     objectives,
-    radio: [...radioLines(contract !== undefined, route, session, context, treasure?.radio), ...(gym ? [gym] : [])],
+    radio: [
+      ...radioLines(contract !== undefined, route, session, context, treasure?.radio),
+      // A favour still lying out here, by its bearing: 'somewhere in MILLBROOK'
+      // and a gold arrow that only follows the job lost nineteen favours in the
+      // 22 Nov AI playtest, and the radio is where players asked.
+      ...errands.filter((errand) => !errand.found).map((errand) => errand.line),
+      ...(gym ? [gym] : []),
+    ],
     hints: [
       // First, because a raid that set out with the whole chart set out for this.
       ...(treasure ? [treasure.hint] : []),
       ...route,
       ...barredExitHints(session, context),
       ...lockedCacheHints(session, context),
-      ...errandHints(session, context, snapshot.foundItems),
+      ...errands.map((errand) => errand.line),
       ...shimmerHints(session, context),
       ...omenHints(session, context),
       ...shinyHints(snapshot.caughtPokemon),
@@ -150,8 +159,8 @@ function nextGymHint(context: ObjectiveGuideContext): string | undefined {
   if (!gym) {
     return undefined;
   }
-  const where = directionTo(context.currentPosition, context.towards?.(gym.inside) ?? gym.inside);
-  return `The next gym is ${gym.building.toUpperCase()}, ${where} on ${gym.standsIn}: the big building with GYM on its front. ${gym.leader.toUpperCase()} is inside.`;
+  const where = `${directionTo(context.currentPosition, context.towards?.(gym.inside) ?? gym.inside)}${stepsAway(context.stepsTo?.(gym.inside))}`;
+  return `The next gym is ${gym.building.toUpperCase()}, ${where}, on ${gym.standsIn}: the big building with GYM on its front. ${gym.leader.toUpperCase()} is inside.`;
 }
 
 /**
@@ -207,7 +216,7 @@ function treasureHints(
   }
   const where = directionTo(context.currentPosition, context.towards?.(spot.position) ?? spot.position);
   const steps = context.stepsTo?.(spot.position);
-  const away = steps === undefined || steps === 0 ? '' : `, ${steps} ${steps === 1 ? 'step' : 'steps'} away`;
+  const away = stepsAway(steps);
   // A spot nobody can walk to from here is behind MISTY: say so rather than point at a wall.
   const shut = context.stepsTo !== undefined && steps === undefined;
   return {
@@ -227,8 +236,8 @@ function errandHints(
   session: ActiveRunSession,
   context: ObjectiveGuideContext,
   found: readonly { readonly itemId: string }[],
-): string[] {
-  return (session.plan?.loot[context.currentMapId] ?? []).flatMap((piece) => {
+): { readonly line: string; readonly found: boolean }[] {
+  return (session.plan?.loot[context.currentMapId] ?? []).flatMap((piece): { readonly line: string; readonly found: boolean }[] => {
     const errand = errandForItem(piece.itemId);
     if (!errand) {
       return [];
@@ -237,14 +246,23 @@ function errandHints(
     if (found.some((stack) => stack.itemId === piece.itemId)) {
       // Found is not carried: the pack can put it down for good to make room,
       // and then it is not out here this raid any more.
-      return (context.carried?.(piece.itemId) ?? 1) > 0
-        ? [`You are carrying ${thing} for ${errand.name}. Walk out with it and it is theirs; wipe and it is lost with the pack.`]
-        : [`You put ${thing} down. ${errand.name} is still waiting for it, and it will be out here again next raid.`];
+      return [
+        {
+          found: true,
+          line:
+            (context.carried?.(piece.itemId) ?? 1) > 0
+              ? `You are carrying ${thing} for ${errand.name}. Walk out with it and it is theirs; wipe and it is lost with the pack.`
+              : `You put ${thing} down. ${errand.name} is still waiting for it, and it will be out here again next raid.`,
+        },
+      ];
     }
     const squares = errandSquares(errand);
     const heading = context.towards?.(piece.position) ?? piece.position;
     return [
-      `${errand.name}'s errand: ${thing} lies in ${errandPlace(errand)}, ${directionTo(context.currentPosition, heading)}. It takes ${squares} ${squares === 1 ? 'square' : 'squares'} of your pack.`,
+      {
+        found: false,
+        line: `${errand.name}'s errand: ${thing} lies in ${errandPlace(errand)}, ${directionTo(context.currentPosition, heading)}${stepsAway(context.stepsTo?.(piece.position))}. It takes ${squares} ${squares === 1 ? 'square' : 'squares'} of your pack.`,
+      },
     ];
   });
 }
@@ -418,9 +436,13 @@ function locationHint(
   const direction = directionTo(context.currentPosition, heading);
   // Measured from here, by the walk: a job is dealt before the landing is
   // chosen, so the briefing cannot say how far it is from wherever this is.
-  const steps = context.stepsTo?.(nextStop);
-  const away = steps === undefined || steps === 0 ? '' : `, ${steps} ${steps === 1 ? 'step' : 'steps'} away`;
+  const away = stepsAway(context.stepsTo?.(nextStop));
   return `${worldMapName(contract.mapId)}. The next stop is ${direction}${away}`;
+}
+
+/** ', 63 steps away' by the walk, or nothing when the scene did not measure one. */
+function stepsAway(steps: number | undefined): string {
+  return steps === undefined || steps === 0 ? '' : `, ${steps} ${steps === 1 ? 'step' : 'steps'} away`;
 }
 
 function directionTo(from: GridPosition, to: GridPosition): string {

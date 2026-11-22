@@ -681,6 +681,23 @@ describe('an errand in the field guide', () => {
     ]);
   });
 
+  it('is said on the radio while it still lies out here, and not once it is found', () => {
+    // 'Somewhere in MILLBROOK', an arrow that follows only the job and a radio
+    // that never named the favour: nineteen findings in the 22 Nov AI playtest.
+    const session = createErrandSession();
+    const radio = (carried: number) =>
+      buildObjectiveGuide(session, {
+        currentMapId: 'greystone-vale',
+        currentPosition: { x: 94, y: 160 },
+        activatedPoiIds: new Set(),
+        carried: (itemId) => (itemId === 'brocks-crate' ? carried : 0),
+      }).radio;
+
+    expect(radio(0)).toContainEqual(expect.stringMatching(/^Brock's errand: Brock's crate lies in GREYSTONE PEAKS, to the /));
+    session.manager.registerFoundItem('brocks-crate', 1);
+    expect(radio(1).join(' ')).not.toContain("Brock's crate");
+  });
+
   it('never says it is being carried once it has been dropped out of the pack', () => {
     const session = createErrandSession();
     session.manager.registerFoundItem('brocks-crate', 1);
@@ -791,7 +808,7 @@ describe('the way to the next gym', () => {
 
     expect(guide.radio).toHaveLength(3);
     expect(guide.radio[2]).toBe(
-      'The next gym is CERULEAN GYM, to the south on GULL STRAND: the big building with GYM on its front. MISTY is inside.',
+      'The next gym is CERULEAN GYM, to the south, on GULL STRAND: the big building with GYM on its front. MISTY is inside.',
     );
     expect(guide.hints).toContain(guide.radio[2]);
   });
