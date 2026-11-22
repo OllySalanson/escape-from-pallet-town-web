@@ -61,7 +61,9 @@ function keptBack(name: string, required: TraderStandingId): string {
 const READS_YOU: Readonly<Record<TraderStandingId, string>> = {
   // Not "bring things home": a raid's haul earns no standing (`traderStandingPoints`),
   // and a player who banked twenty hauls on that word was still a stranger to him.
-  stranger: "I don't know you. Bank a job off Oak's board and I might.",
+  // No count here: the next line says how many jobs, and 'Bank a job and I
+  // might' over 'Bank 3 jobs' read as two rules (AI playtest, 22 Nov 2026).
+  stranger: "I don't know you yet.",
   regular: "You keep coming home. I'll sell you one thing a raid, and the first of the barters.",
   trusted: 'I trust you. Two things a raid, the good medicine, and most of the hold.',
   partner: 'Partner! Three things a raid, and nothing on the boat is held back.',
