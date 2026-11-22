@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { baseGame } from './baseGames.testkit';
-import { BARE_BOARD_LINE, RUMOURS_PINNED_LINE, SCRAP_HEIGHT, SCRAP_WIDTH, boardLines, boardNote, boardNotices, boardPoster, scrapSeats, slipSeats } from './labBoard';
+import { BARE_BOARD_LINE, RUMOURS_PINNED_LINE, bankedJobsLine, SCRAP_HEIGHT, SCRAP_WIDTH, boardLines, boardNote, boardNotices, boardPoster, scrapSeats, slipSeats } from './labBoard';
 import { BOARD_TILES, OAK_BOARD, OAK_CHART_TABLE, OAK_WALL_MAP, buildRoom, roomNamed } from './rooms';
 import { RUMOURS } from '../world/rumours';
 import { SECRETS, rewardKey } from '../world/secrets';
 import { buildContractBoard } from '../hub/contractBoard';
+import { RAID_CONTRACTS } from '../objectives/contracts';
 import { getErrand, withErrandAsked } from '../hub/errands';
 
 const lab = roomNamed('oaks-lab')!;
@@ -24,6 +25,17 @@ describe("Oak's cork board", () => {
     if (row.asks) {
       expect(lines[0]).toContain(row.asks);
     }
+  });
+
+  it('says a job dealt after one is banked is a new one, so the same kind of job does not read as the last not counting', () => {
+    const chain = RAID_CONTRACTS.map((contract) => contract.id);
+    const fresh = baseGame({ progress: { ...BEEN_OUT, completedContracts: chain, standingContractsBanked: 0 } });
+    const after = baseGame({ progress: { ...BEEN_OUT, completedContracts: chain, standingContractsBanked: 1 } });
+    expect(buildContractBoard(after.raidProgress).rows.length).toBeGreaterThan(0);
+    expect(boardLines(fresh)).not.toContain(bankedJobsLine(0));
+    expect(boardLines(after)[0]).toBe(bankedJobsLine(1));
+    expect(bankedJobsLine(1)).toBe("You've banked 1 job. What is pinned up now is new, with its stops in new places:");
+    expect(bankedJobsLine(3)).toContain('3 jobs');
   });
 
   it('pins a favour in hand under the contracts, saying where it lies and what it costs the pack', () => {
