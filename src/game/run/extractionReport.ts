@@ -441,6 +441,8 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
           haulTier,
           isEmptyGroup(ledger) && !contractBanked && !gear.some((piece) => piece.fate === 'found'),
           progress.some((entry) => entry.toLevel > entry.fromLevel),
+          lootScore(ledger, gear) <= 2,
+          contractBanked,
         ))
       : wipeHeadline(input.cause, secured, partner),
     summary: escaped
@@ -612,7 +614,18 @@ function isRelic(itemId: string): boolean {
  * earned. "You got out with the goods." over "BANKED 0 ENTRIES" read as a
  * contradiction (veteran playtest, 20 Nov 2026), so it says what it did earn.
  */
-function escapeHeadline(tier: HaulTier, emptyHanded: boolean, levelled: boolean): string {
+function escapeHeadline(tier: HaulTier, emptyHanded: boolean, levelled: boolean, thinLoot = false, contractBanked = false): string {
+  // A raid graded well for its job or its levels, with little carried, says
+  // what earned it: 'You got out with the goods.' over ₽10 read as the grade
+  // measuring something other than the haul (AI playtest, 22 Nov 2026).
+  if (!emptyHanded && thinLoot && (tier === 'solid' || tier === 'loaded')) {
+    if (contractBanked) {
+      return 'You got out with the job done.';
+    }
+    if (levelled) {
+      return 'You got out a little richer, and stronger.';
+    }
+  }
   if (emptyHanded && tier !== 'empty') {
     // 'Stronger' only when somebody levelled: over 'Nobody levelled.' it read
     // as the screen contradicting itself (AI playtest, 22 Nov 2026, six times).
@@ -1012,6 +1025,21 @@ function haulPoints(item: ReportItem): number {
   return item.itemId === CURRENCY_ITEM_ID ? Math.ceil(item.quantity / POKEDOLLARS_TO_A_FIND) : item.quantity;
 }
 
+/** What was carried home, scored as `gradeHaul` scores it, without the job or the experience. */
+function lootScore(ledger: ReportGroup, gear: readonly ReportGear[]): number {
+  // Gear carried out of the field counts, and counts high: it comes off a boss
+  // once per save, so walking one home is the rarest thing a raid can do.
+  const carriedGear = gear.filter((piece) => piece.fate === 'found').length;
+  // A relic counts as gear does, and for the same reason: each one is found once a save.
+  const relics = ledger.items.filter((item) => isRelic(item.itemId)).reduce((total, item) => total + item.quantity, 0);
+  return (
+    ledger.pokemon.length * 3 +
+    ledger.items.filter((item) => !isRelic(item.itemId)).reduce((total, item) => total + haulPoints(item), 0) +
+    relics * 4 +
+    carriedGear * 4
+  );
+}
+
 function gradeHaul(
   ledger: ReportGroup,
   contractComplete: boolean,
@@ -1027,18 +1055,10 @@ function gradeHaul(
   // level 7 - the level the whole early game is priced against - was graded
   // "You got out clean, and empty."
   const levelsGained = progress.reduce((total, entry) => total + entry.toLevel - entry.fromLevel, 0);
-  // Gear carried out of the field counts, and counts high: it comes off a boss
-  // once per save, so walking one home is the rarest thing a raid can do.
-  const carriedGear = gear.filter((piece) => piece.fate === 'found').length;
-  // A relic counts as gear does, and for the same reason: each one is found once a save.
-  const relics = ledger.items.filter((item) => isRelic(item.itemId)).reduce((total, item) => total + item.quantity, 0);
   const score =
-    ledger.pokemon.length * 3 +
-    ledger.items.filter((item) => !isRelic(item.itemId)).reduce((total, item) => total + haulPoints(item), 0) +
-    relics * 4 +
+    lootScore(ledger, gear) +
     (contractComplete ? 4 : 0) +
     levelsGained * 2 +
-    carriedGear * 4 +
     (progress.length > 0 ? 1 : 0);
   if (score === 0) {
     return 'empty';

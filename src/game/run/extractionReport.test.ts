@@ -396,6 +396,30 @@ describe('extraction report after a survived raid', () => {
     expect(haulOf(400).haulTier).toBe('loaded');
   });
 
+  // AI playtest, 22 Nov 2026: P10 with a job banked said 'You got out with the
+  // goods.' while P10 and a Parts crate with no job said 'with a little'.
+  it('says the job earned the grade when little was carried home', () => {
+    const withJob = (complete: boolean) => {
+      const manager = new RunManager();
+      manager.startRun({ party: [new Pokemon(CHARMANDER, 5)], items: [] }, { mapId: 'greystone-vale', durationMs: RAID_DURATION_MS });
+      manager.registerFoundItem('money', 10);
+      manager.resolveEscape();
+      return buildExtractionReport({
+        outcome: 'ESCAPED',
+        snapshot: manager.snapshot(),
+        durationMs: RAID_DURATION_MS,
+        exitLabel: 'WESTWARD ROAD',
+        banked: { pokemon: [], items: [{ itemId: 'money', quantity: 10 }] },
+        carriedOut: { money: 10 },
+        contract: { description: 'Line survey', complete, reward: 'A Linen roll.' },
+        saved: true,
+      });
+    };
+    expect(withJob(true).haulTier).toBe('solid');
+    expect(withJob(true).headline).toBe('You got out with the job done.');
+    expect(withJob(false).headline).toBe('You got out with a little.');
+  });
+
   it('headlines a relic carried home, and grades it as boss gear is graded (playtest 51, finding 2)', () => {
     const haulOf = (items: readonly { itemId: ItemId; quantity: number }[]) => {
       const manager = new RunManager();
