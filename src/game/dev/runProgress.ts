@@ -1,5 +1,4 @@
-import { isChainFinished } from '../objectives/contracts';
-import { NEAR_JOBS } from '../objectives/standingBoard';
+import { isFirstJobsBanked, NEAR_JOBS } from '../objectives/standingBoard';
 import { CHART_PIECES, type TreasureHunt } from '../treasure/treasureMap';
 import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../world/valeQuarters';
 
@@ -78,7 +77,7 @@ export function runProgress(fields: ProgressFields): RunProgress {
     {
       id: 'contract-chain',
       label: 'Contract chain banked',
-      done: isChainFinished(completed) && standing >= NEAR_JOBS,
+      done: isFirstJobsBanked({ completedContracts: completed, standingContractsBanked: standing }),
       finish: true,
       count: { have: Math.min(standing, NEAR_JOBS), need: NEAR_JOBS },
     },

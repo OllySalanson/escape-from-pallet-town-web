@@ -231,6 +231,7 @@ import { rideOnMap } from '../world/exitVehicles';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { RadioChip } from '../ui/RadioChip';
 import { buildObjectiveGuide, type NextGymHere } from '../objectives/ObjectiveGuide';
+import { isFirstJobsBanked } from '../objectives/standingBoard';
 import { PRESS_ARROWS } from '../ui/pressArrows';
 import { openNamingScreen } from '../ui/NamingScreenOverlay';
 import { placeCaptions, placeDialog, seatedOver, type CaptionPlacement, type Rect } from '../ui/labelPlacement';
@@ -1130,6 +1131,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * for the same reason `defeatedBosses` is.
    */
   private completedContracts: readonly string[] = [];
+  /** Whether Oak's first jobs are banked, so the gold arrow leads to the next gym from anywhere (`gymDoorNear`). */
+  private firstJobsBanked = false;
   /**
    * The legends this save has already caught, by entity id, none of which
    * stands this raid (`world/legends.ts`). Off the plan, like the contracts.
@@ -1323,6 +1326,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // what must not survive is this instance's own copy of the list.
     this.defeatedBosses = [];
     this.completedContracts = [];
+    this.firstJobsBanked = false;
     this.caughtLegends = [];
     this.openedGates = [];
     this.knownInsertionIds.clear();
@@ -1584,6 +1588,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.defeatedBosses = [...new Set([...deployedWith, ...beatenThisRaid])];
     this.completedContracts =
       this.runSession?.plan?.completedContracts ?? stored?.completedContracts ?? [];
+    // Read off the save: a job is banked only at extraction, so it cannot move mid-raid.
+    this.firstJobsBanked = isFirstJobsBanked({
+      completedContracts: this.completedContracts,
+      standingContractsBanked: stored?.standingContractsBanked ?? 0,
+    });
     this.caughtLegends =
       this.runSession?.plan?.caughtLegends ?? caughtLegends(stored?.pokedexOwned ?? []);
     for (const id of [...(stored?.unlockedInsertions ?? []), ...(stored?.reachedInsertions ?? [])]) {
@@ -6581,8 +6590,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
-   * The next gym, while its door is a few steps off: what the gold arrow is after
-   * there, whatever else the raid is for, until the player walks on. The radio
+   * The next gym, while its door is a few steps off - or from anywhere it can be
+   * walked to, once Oak's first jobs are banked (`isFirstJobsBanked`): what the gold arrow is after
+   * there, whatever else the raid is for, until the player walks on. With the
+   * first jobs done the gym is what the game is for next, and the AI
+   * playtest's friends who had banked them then wandered the vale looking for
+   * it (22 Nov 2026), so the arrow leads the whole way. The radio
    * names the gym by a compass bearing, and the last of the walk is where it
    * failed: on GULL STRAND the caption over the front showed from several
    * tiles, only one of them is the door, and seven of tester 3's sessions
@@ -6601,7 +6614,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return undefined;
     }
     const steps = this.wayField(doorway.stand)[this.currentTile.y]?.[this.currentTile.x] ?? -1;
-    if (steps < 0 || steps > GYM_DOOR_NEAR_STEPS) {
+    const reach = this.firstJobsBanked ? Number.POSITIVE_INFINITY : GYM_DOOR_NEAR_STEPS;
+    if (steps < 0 || steps > reach) {
       return undefined;
     }
     return { cue: `${gym.building.toUpperCase()}: ${this.headingTo(gym.inside)}`, tile: gym.inside };
