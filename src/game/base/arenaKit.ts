@@ -94,9 +94,14 @@ export function flowForGame(game: RestoredGame): DeploymentFlow {
  * playtest, 20 Nov 2026).
  */
 export function benchToKeep(
-  flow: Pick<DeploymentFlow, 'party'>,
+  flow: Pick<DeploymentFlow, 'party' | 'benchIsStandIn'>,
   saved: readonly string[] | undefined,
 ): readonly string[] | null {
+  // Somebody stood on an empty bench by the hall is not the player's team, and
+  // written back it replaced the fainted partner for good (playtests of 22 Nov 2026).
+  if (flow.benchIsStandIn) {
+    return null;
+  }
   const chosen = flow.party.map((one) => one.id);
   const before = saved ?? [];
   const same = chosen.length === before.length && chosen.every((id, index) => id === before[index]);

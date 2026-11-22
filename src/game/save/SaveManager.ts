@@ -2411,8 +2411,19 @@ export class SaveManager {
       return false;
     }
     const before = game.raidProgress.lastBench ?? [];
-    const sameTeam = before.length === pokemonIds.length && pokemonIds.every((id) => before.includes(id));
-    const raidProgress: RaidProgress = { ...game.raidProgress, lastBench: [...pokemonIds] };
+    // Who on the team is fainted is kept in their place: a fainted Pokemon
+    // cannot sit on the bench, so a bench chosen while one was waiting for Nurse
+    // Joy left them out, and healed they were no longer on the team (playtests
+    // of 22 Nov 2026: a wiped partner was replaced by a Lv 5 Magikarp for good).
+    const team = [...pokemonIds];
+    before.forEach((id, index) => {
+      const stored = game.stash.listPokemon().find((each) => each.id === id);
+      if (stored?.pokemon.isFainted && !team.includes(id)) {
+        team.splice(Math.min(index, team.length), 0, id);
+      }
+    });
+    const sameTeam = before.length === team.length && team.every((id) => before.includes(id));
+    const raidProgress: RaidProgress = { ...game.raidProgress, lastBench: team };
     if (!sameTeam) {
       delete (raidProgress as { benchRaids?: number }).benchRaids;
     }
