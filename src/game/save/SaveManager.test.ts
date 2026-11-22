@@ -1164,6 +1164,17 @@ describe('SaveManager', () => {
       expect(game?.traderBerthPaid).toBe(false);
     });
 
+    it('marks the heal it left owed as carried, so base can say why it still stands', () => {
+      // Eight playtest reports (22 Nov 2026) took the debt a dash left for a
+      // second charge: Oak read it out as fresh recovery.
+      const saves = owing();
+      saves.bankRun(nothing, undefined, DAY_CARE_LEAST_RAID_MS - 1);
+      expect(saves.load()?.recoveryCarried).toBe(true);
+      saves.bankRun(nothing, undefined, DAY_CARE_LEAST_RAID_MS);
+      expect(saves.load()?.recoveryCarried).toBe(false);
+      expect(saves.load()?.pendingRecoveryMs).toBe(0);
+    });
+
     it('settles them once a raid has stayed out', () => {
       const saves = owing();
       expect(saves.bankRun(nothing, undefined, DAY_CARE_LEAST_RAID_MS)).toBe(true);

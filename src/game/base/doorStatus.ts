@@ -76,7 +76,7 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
       // The raid's own number: how long the next one runs, said only when the
       // Pokémon Center has taken some of it, which is when it is news.
       return game.pendingRecoveryMs > 0
-        ? `Next raid ${formatRecoveryClock(raidClockAfterRecovery(RAID_DURATION_MS, game.pendingRecoveryMs))}`
+        ? `Next raid ${formatRecoveryClock(raidClockAfterRecovery(RAID_DURATION_MS, game.pendingRecoveryMs))}${game.recoveryCarried ? ', heal unpaid' : ''}`
         : 'Every raid starts here';
     }
     case 'lab': {

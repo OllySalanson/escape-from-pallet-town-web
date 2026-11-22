@@ -203,7 +203,7 @@ import { hasRaidStake } from '../world/raidStake';
 import { quickerLandingFor, rewardLine, standingJobWalk } from '../objectives/standingBoard';
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import { recoveryTermsFor } from '../hub/centerCounter';
-import { dayCareRefusal, leftLines, raidsCompleted } from '../hub/dayCare';
+import { DAY_CARE_LEAST_RAID_MS, dayCareRefusal, leftLines, raidsCompleted } from '../hub/dayCare';
 import { tradeDealFor, tradeHelp, tradeQuestion, tradeRefusal } from '../hub/trades';
 import { TRADER_POSITION } from '../base/harbourLife';
 import { skyNote } from '../base/homeClock';
@@ -3412,7 +3412,15 @@ export class HubScene extends Phaser.Scene {
     if (isPlaytestRun()) {
       return `${night ? 'night raid' : 'raid'} with no clock to beat: an explorer run lasts ${PLAYTEST_RAID_DURATION_MS / 3_600_000} hours`;
     }
-    return `${night ? 'night raid clock' : 'raid clock'} ${formatRecoveryClock(this.raidClockMs)}${this.pendingRecoveryMs === 0 ? '' : ` (${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery)`}`;
+    const clock = `${night ? 'night raid clock' : 'raid clock'} ${formatRecoveryClock(this.raidClockMs)}`;
+    if (this.pendingRecoveryMs === 0) {
+      return clock;
+    }
+    // A debt a raid was too short to pay is the same healing, still owed: said
+    // as plain recovery it read as Nurse Joy charging twice.
+    return this.savedGame.recoveryCarried
+      ? `${clock}: Nurse Joy's healing is still unpaid - your last raid was under ${formatRecoveryClock(DAY_CARE_LEAST_RAID_MS)}`
+      : `${clock} (${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery)`;
   }
 
   /**

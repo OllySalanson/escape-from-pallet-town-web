@@ -1,7 +1,8 @@
 import { buildContractBoard, type ContractBoardRow } from '../hub/contractBoard';
 import { isStandingBoardOpen } from '../objectives/standingBoard';
 import { errandPlace, errandSquares, errandThing, errandsInHand, type Errand } from '../hub/errands';
-import { formatRecoveryClock, raidClockAfterRecovery, teamCondition } from '../hub/recovery';
+import { carriedRecoveryLine, formatRecoveryClock, raidClockAfterRecovery, teamCondition } from '../hub/recovery';
+import { DAY_CARE_LEAST_RAID_MS } from '../hub/dayCare';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import type { RestoredGame } from '../save/SaveManager';
 import type { Rect } from '../ui/labelPlacement';
@@ -129,14 +130,16 @@ export function boardNote(game: Pick<RestoredGame, 'raidProgress' | 'stash'>): s
  * Center has already taken off the next raid. The screen's two cards used to say
  * so; it is the one fact that decides whether to set off at all.
  */
-export function oakNews(game: Pick<RestoredGame, 'stash' | 'pendingRecoveryMs'>, free = false): readonly string[] {
+export function oakNews(game: Pick<RestoredGame, 'stash' | 'pendingRecoveryMs' | 'recoveryCarried'>, free = false): readonly string[] {
   const condition = teamCondition(game.stash);
   const pending = game.pendingRecoveryMs;
   return [
     ...(condition ? [`${condition}. NURSE JOY is across the yard.`] : []),
     ...(pending > 0 && !free
       ? [
-          `Your next raid runs ${formatRecoveryClock(raidClockAfterRecovery(RAID_DURATION_MS, pending))}: ${formatRecoveryClock(pending)} went on recovery.`,
+          game.recoveryCarried
+            ? carriedRecoveryLine(pending, DAY_CARE_LEAST_RAID_MS)
+            : `Your next raid runs ${formatRecoveryClock(raidClockAfterRecovery(RAID_DURATION_MS, pending))}: ${formatRecoveryClock(pending)} went on recovery.`,
         ]
       : []),
   ];

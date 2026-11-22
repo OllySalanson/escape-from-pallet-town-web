@@ -17,6 +17,7 @@ import { hunterFleePenaltyMs } from './fleePenalty';
 import { survivingSecureItems } from './raidSettlement';
 import { formatElapsedClock, formatRaidClock } from './raidClock';
 import { errandForItem } from '../hub/errands';
+import { DAY_CARE_LEAST_RAID_MS } from '../hub/dayCare';
 import { recoveryStillOwedLine } from '../hub/recovery';
 import { BADGES } from '../base/badgeCase';
 
@@ -519,7 +520,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     ...(snapshot.secureFilledForYou ? { secureFilledForYou: true } : {}),
     baseNote: escaped ? null : wipedBaseNote(input.fitToRaid ?? true, input.restocked ?? []),
     ...(escaped && (input.recoveryStillOwedMs ?? 0) > 0
-      ? { recoveryStillOwed: recoveryStillOwedLine(input.recoveryStillOwedMs ?? 0) }
+      ? { recoveryStillOwed: recoveryStillOwedLine(input.recoveryStillOwedMs ?? 0, DAY_CARE_LEAST_RAID_MS) }
       : {}),
     saved: input.saved,
     ...(input.settledElsewhere ? { settledElsewhere: true } : {}),
