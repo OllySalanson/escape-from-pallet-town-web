@@ -50,6 +50,25 @@ export function isDawn(now: Date): boolean {
   return windowLight(now) === 'dusk' && !playtestHour() && now.getHours() < 12;
 }
 
+/**
+ * The rim's word on the sky a raid jumped now would have, and when it next
+ * turns. A raid's sky is the player's own clock (`windowLight`), and secrets,
+ * rumours and the night's wildlife wait on it, but nothing said so: one AI
+ * playtester sat through a session of dusk raids and the other a session of
+ * day raids, each waiting on a dark that "never comes", with no way to tell it
+ * was the hour on their own clock (overnight playtest, 20 Nov 2026).
+ */
+export function skyNote(now: Date): string {
+  switch (windowLight(now)) {
+    case 'night':
+      return 'night, by your own clock, until 5 am';
+    case 'dusk':
+      return isDawn(now) ? 'dawn, by your own clock. Day comes at 7 am' : 'dusk, by your own clock. Full dark comes at 9 pm';
+    default:
+      return 'day, by your own clock. Dusk comes at 6 pm, full dark at 9 pm';
+  }
+}
+
 export type HouseSeason = 'october' | 'december' | null;
 
 export function houseSeason(now: Date): HouseSeason {
