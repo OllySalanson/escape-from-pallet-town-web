@@ -27,7 +27,7 @@ import { districtFile } from '../../stitch';
 import { planLimits, SEAM_DEPTH, startDistrict } from '../../worldPlan';
 import { withInside } from './insides';
 import { caveLadders, caveMouthLink, greystoneCaves } from './greystoneCaves';
-import { MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
 import { GREYSTONE_VALE } from './plan';
 
 /** The land above the coast, a letter a lattice cell: T the wood, . the heath. */
@@ -340,7 +340,9 @@ export function gullStrand(): MapcraftResult {
       people: [
         // The guard at Misty's bar, as FireRed's Route 23 keeps its badge gates:
         // he says which badge opens it, and stands to one side of the way.
-        { x: 45, y: 62, name: 'Coast Guard', look: 'policeman', facing: 'left', lines: ['Past these sandbags is THE COAST, and MISTY keeps them. Only a trainer with her CASCADE BADGE goes through.', 'Beat her at Cerulean Gym on the strand and they come down for good. Mind the rain past them. It never stops.'] },
+        { x: 45, y: 62, name: 'Coast Guard', look: 'policeman', facing: 'left', lines: ['Past these sandbags is THE COAST, and MISTY keeps them. Only a trainer with her CASCADE BADGE goes through.', 'Beat her at Cerulean Gym on the strand and they come down for good. Mind the rain past them. It never stops.'],
+          // As the reed trail's guard (`reedmere.ts`): his words follow the badge (`linesSpoken`).
+          afterBeating: [{ boss: MISTY_BOSS_ID, lines: ['That is MISTY’s CASCADE BADGE. The sandbags are down: THE COAST is open to you.', 'Mind the rain past here. It never stops.'] }] },
         {
           x: 45,
           y: 58,
@@ -429,6 +431,15 @@ function withInsides(file: MapFile): MapFile {
             'Yo! You beat MISTY! The jetty and the reed trail are open for good.',
             'The CASCADE BADGE is yours, and KOGA will fight you now.',
             'Fuchsia Gym is in Tanglewood, by the road to the Safari Marsh. Bring something that shrugs off poison!',
+          ],
+        },
+        // And once KOGA is beaten too, he stops sending a holder of his badge
+        // to him (the veteran's AI playtest, 20 Nov 2026).
+        {
+          boss: KOGA_BOSS_ID,
+          lines: [
+            'Yo! The CASCADE BADGE and the SOUL BADGE! MISTY and KOGA are both beaten.',
+            'The Coast and the Marsh are open for good. Every way in there is yours.',
           ],
         },
       ],

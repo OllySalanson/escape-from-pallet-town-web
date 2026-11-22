@@ -97,6 +97,19 @@ describe('the Gym Guides say what is true for the badges held', () => {
     const after = linesSpoken(guide, [MISTY_BOSS_ID]).join(' ');
     expect(after).toContain('You beat MISTY!');
     expect(after).toContain('KOGA will fight you now');
+    // Both beaten: he no longer sends a holder of the SOUL BADGE to Koga.
+    const both = linesSpoken(guide, [MISTY_BOSS_ID, KOGA_BOSS_ID]).join(' ');
+    expect(both).toContain('MISTY and KOGA are both beaten');
+    expect(both).not.toContain('will fight you');
+  });
+
+  it("the Coast Guards at Misty's sandbags let a holder of her badge through in words too", () => {
+    const guards = VALE.entities.filter((entity) => entity.dialogLines[0]?.includes('Only a trainer with her CASCADE BADGE goes through'));
+    expect(guards.length).toBeGreaterThan(0);
+    for (const guard of guards) {
+      expect(linesSpoken(guard, [MISTY_BOSS_ID]).join(' ')).toContain('THE COAST is open to you');
+      expect(linesSpoken(guard, [MISTY_BOSS_ID]).join(' ')).not.toContain('Only a trainer');
+    }
   });
 
   it('names only bosses the game has', () => {

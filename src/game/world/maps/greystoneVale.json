@@ -9091,6 +9091,15 @@
    "lines": [
     "Past these sandbags is THE COAST, and MISTY keeps them. Only a trainer with her CASCADE BADGE goes through.",
     "Beat her at Cerulean Gym on the strand and they come down for good. Mind the rain past them. It never stops."
+   ],
+   "afterBeating": [
+    {
+     "boss": "vale-gym-misty",
+     "lines": [
+      "That is MISTY’s CASCADE BADGE. The sandbags are down: THE COAST is open to you.",
+      "Mind the rain past here. It never stops."
+     ]
+    }
    ]
   },
   {
@@ -9749,6 +9758,15 @@
    "lines": [
     "Past these sandbags is THE COAST, and MISTY keeps them. Only a trainer with her CASCADE BADGE goes through.",
     "Beat her at Cerulean Gym on the strand and they come down for good. Mind the rain past them. It never stops."
+   ],
+   "afterBeating": [
+    {
+     "boss": "vale-gym-misty",
+     "lines": [
+      "That is MISTY’s CASCADE BADGE. The sandbags are down: THE COAST is open to you.",
+      "Mind the rain past here. It never stops."
+     ]
+    }
    ]
   },
   {
@@ -10209,6 +10227,13 @@
       "Yo! You beat MISTY! The jetty and the reed trail are open for good.",
       "The CASCADE BADGE is yours, and KOGA will fight you now.",
       "Fuchsia Gym is in Tanglewood, by the road to the Safari Marsh. Bring something that shrugs off poison!"
+     ]
+    },
+    {
+     "boss": "vale-gym-koga",
+     "lines": [
+      "Yo! The CASCADE BADGE and the SOUL BADGE! MISTY and KOGA are both beaten.",
+      "The Coast and the Marsh are open for good. Every way in there is yours."
      ]
     }
    ],
