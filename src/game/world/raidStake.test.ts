@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FIRST_RAID_CHASE_MS, generateRunPlan, insertionsOn, type RunInsertionId } from '../run/runGeneration';
 import { hunterThreatFor } from './hunterThreat';
 import { getWorldMap } from '../worldMap';
-import { isStake, isStakeMoney, isStakeTrail, prizesLeftBehind, prizeWords } from './loot';
+import { isStake, isStakeMoney, isStakeTrail, prizesLeftBehind, prizeWords, stakeWayWords } from './loot';
 import { stepDistances } from './mapStructure';
 import {
   IN_SIGHT,
@@ -136,6 +136,12 @@ describe('what a raid on the vale is for', () => {
     expect(isStakeMoney(money)).toBe(true);
     expect(prizeWords(stake)).toBe('₽90');
     expect(prizesLeftBehind({ [MAP_ID]: [money, stake] }, new Set([money.id, stake.id]), new Set())).toEqual(['₽90']);
+  });
+
+  it('names the money the arrow is leading to on the way to the stake, and the stake alone once it is not', () => {
+    const money = { itemId: 'money', quantity: 10 } as const;
+    expect(stakeWayWords({ itemId: 'money', quantity: 75 }, money)).toBe('TAKE ₽10 ON THE WAY TO ₽75');
+    expect(stakeWayWords({ itemId: 'money', quantity: 75 })).toBe('TAKE ₽75');
   });
 
   it('points along the walk rather than straight at a wall', () => {

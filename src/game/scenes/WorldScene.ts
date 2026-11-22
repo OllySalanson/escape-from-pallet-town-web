@@ -359,6 +359,7 @@ import {
   lootRefusalLine,
   squaresFindNeeds,
   prizeWords,
+  stakeWayWords,
   prizesLeftBehind,
   tryCollectLoot,
   type WorldLoot,
@@ -6417,8 +6418,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       const trail = this.lootForCurrentMap().filter((loot) => isStakeTrail(loot));
       const stake = hunted ? undefined : this.stakeAhead(trail);
       if (stake) {
-        cue = `TAKE ${prizeWords(stake.stake).toUpperCase()}: ${this.headingTo(stake.stake.position)}`;
-        tile = stake.next;
+        cue = `${stakeWayWords(stake.stake, stake.onTheWay)}: ${this.headingTo(stake.stake.position)}`;
+        tile = stake.onTheWay?.position ?? stake.stake.position;
       } else if (hunted || trail.length > 0) {
         tile = exit?.position;
         out = true;
@@ -6434,7 +6435,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * would not go in is never what the arrow is after: it lets go and points out,
    * and the prize chip says how many squares to free (`prizeInMind`).
    */
-  private stakeAhead(trail: readonly WorldLoot[]): { readonly stake: WorldLoot; readonly next: GridPosition } | undefined {
+  private stakeAhead(trail: readonly WorldLoot[]): { readonly stake: WorldLoot; readonly onTheWay?: WorldLoot } | undefined {
     const left = trail.filter((loot) => !this.collectedLootIds.has(loot.id) && this.bag.wouldTakeFind(loot.itemId, loot.quantity));
     const stake = left.find((loot) => isStake(loot));
     if (!stake) {
@@ -6446,7 +6447,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const ahead = left
       .filter((loot) => !isStake(loot) && (field[loot.position.y]?.[loot.position.x] ?? -1) >= 0 && (here < 0 || field[loot.position.y][loot.position.x] < here))
       .sort((one, other) => field[other.position.y][other.position.x] - field[one.position.y][one.position.x]);
-    return { stake, next: ahead[0]?.position ?? stake.position };
+    return ahead[0] ? { stake, onTheWay: ahead[0] } : { stake };
   }
 
   /** The way mark to a tile, from a room or a cave by the door that leads to it; none when the player is on it. */
