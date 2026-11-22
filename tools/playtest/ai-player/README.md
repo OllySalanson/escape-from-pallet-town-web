@@ -68,4 +68,14 @@ node tools/playtest/dashboard.mjs          # http://127.0.0.1:4719/
 ```
 
 It reads the run folders and the machine's memory and processor every 30
-seconds.
+seconds. Several runners playing side by side, each with its own runs folder,
+go on one page by naming each folder:
+
+```bash
+node tools/playtest/dashboard.mjs --runs=/data/night-2/runs --runs=/data/night-3/runs
+```
+
+Each runner gets its own row (its shift, sessions, runs, findings by kind and
+each persona's run), the findings columns hold every runner's, and the release
+blockers card counts the bugs whose words say the game stopped, crashed, froze,
+lost something or left no way on - a list to read first, not a verdict.
