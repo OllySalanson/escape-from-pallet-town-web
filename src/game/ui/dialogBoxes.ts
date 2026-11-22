@@ -21,8 +21,10 @@ const CLAUSE_END = /[,;:-]["'’”)]*$/;
 /** A box shorter than this that does not hold a sentence of its own is a stray tail, in characters. */
 export const STRAY_BOX_CHARACTERS = 16;
 
-/** What a cut costs, by where it falls: nothing at a sentence's end, a little at a clause's, most mid-clause. */
-const CUT_COST = { sentence: 0, clause: 2, word: 4 } as const;
+/** What a cut costs, by where it falls: nothing at a sentence's end, a little at a clause's, more mid-clause, and most inside a name. */
+const CUT_COST = { sentence: 0, clause: 2, word: 4, name: 12 } as const;
+/** A word that starts with a capital: one half of a name like 'Greystone Vale' or 'Deer Gap'. */
+const CAPITALISED = /^["'‘“(]*\p{Lu}/u;
 /** What a box left as a stray tail costs: more than any other way of cutting the line. */
 const STRAY_COST = 50;
 
@@ -77,7 +79,12 @@ export function shareLine(text: string, rows: number, wrap: (text: string) => re
   const cutCost = (at: number): number => {
     if (at === count) return 0;
     const word = words[at - 1];
-    return SENTENCE_END.test(word) ? CUT_COST.sentence : CLAUSE_END.test(word) ? CUT_COST.clause : CUT_COST.word;
+    if (SENTENCE_END.test(word)) return CUT_COST.sentence;
+    if (CLAUSE_END.test(word)) return CUT_COST.clause;
+    // Two capitals with nothing between them are one name, read as one: Oak's
+    // board was cut 'in Greystone' / 'Vale out through Deer Gap' (AI
+    // playtests, 22 Nov 2026).
+    return CAPITALISED.test(word) && CAPITALISED.test(words[at]) ? CUT_COST.name : CUT_COST.word;
   };
 
   // best[boxes][end]: the cheapest way to read the first `end` words in `boxes` boxes.
