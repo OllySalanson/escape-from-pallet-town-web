@@ -124,3 +124,57 @@ describe('the AI player facing something', () => {
     expect(result.note).toBe('nothing answered at 5,5 facing up');
   });
 });
+
+/**
+ * A battle's make-room panel: six rows in two columns, wrapping along each row
+ * as `BattleScene.moveSelection` does, through a fake page.
+ */
+function fakeMakeRoomPanel() {
+  const commands = ['KEEP THE PACK', 'POTION x8', 'SITRUS BERRY x1', 'POKé BALL x4', 'MOORING ROPE x1', 'POKéDOLLARS'];
+  const state = { cursor: 0, chosen: null, key: null };
+  const columns = 2;
+  const rows = Math.ceil(commands.length / columns);
+  const move = (key) => {
+    const row = Math.floor(state.cursor / columns);
+    const column = state.cursor % columns;
+    const nextRow = key === 'ArrowUp' ? (row + rows - 1) % rows : key === 'ArrowDown' ? (row + 1) % rows : row;
+    const nextColumn = key === 'ArrowLeft' ? (column + columns - 1) % columns : key === 'ArrowRight' ? (column + 1) % columns : column;
+    state.cursor = Math.min(nextRow * columns + nextColumn, commands.length - 1);
+  };
+  const page = {
+    evaluate: async (expression) => {
+      if (expression.endsWith('.describe()')) {
+        return { scenes: ['battle'], busy: null, menu: null, lastEvent: 0, scene: { battle: { mode: 'make-room', commands, cursor: state.cursor, message: null } } };
+      }
+      if (expression.includes('.stepFrames(')) {
+        if (state.key === 'Space') state.chosen = commands[state.cursor];
+        else if (state.key) move(state.key);
+        state.key = null;
+        return undefined;
+      }
+      throw new Error(`unexpected expression ${expression}`);
+    },
+    keyDown: async (code) => {
+      state.key = code;
+    },
+    keyUp: async () => {},
+  };
+  return { page, state };
+}
+
+describe('the AI player choosing from a grid', () => {
+  /**
+   * 22 Nov 2026: MOORING ROPE sat one row down and one column left of the
+   * cursor, so no single key brought it nearer; the AI gave up, pressed on by
+   * hand and put its Poke Balls down instead.
+   */
+  it('reaches a row that is two keys away', async () => {
+    const { page, state } = fakeMakeRoomPanel();
+    state.cursor = 3;
+
+    const result = await createHands(page).choose('MOORING ROPE');
+
+    expect(result.ok).toBe(true);
+    expect(state.chosen).toBe('MOORING ROPE x1');
+  });
+});
