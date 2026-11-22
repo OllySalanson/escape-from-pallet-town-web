@@ -1663,6 +1663,17 @@ describe('what the base screen leads with', () => {
     expect(starts[0]).toContain('data-count-dir="1"');
   });
 
+  it('keeps room in the locker for found goods under a heading that says so, and no torn chart before the hunt', () => {
+    // A new save's locker named three torn charts nobody had heard of, with a +
+    // that looked like it gave one (AI playtest, 22 Nov 2026).
+    const { hub } = createHub();
+    hub.setView('locker');
+    const markup = markupOf(hub);
+    expect(markup).toContain('Room for what you find');
+    expect(markup).not.toContain('Torn chart');
+    expect(markup).toContain('Radio valve');
+  });
+
   it('prices a Pokemon in the locker with one tag, ticked once it is secured', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');

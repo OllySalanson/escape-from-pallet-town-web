@@ -1,5 +1,5 @@
 import { raidConditions } from '../world/secrets';
-import { chartWhole, NO_TREASURE_HUNT } from '../treasure/treasureMap';
+import { CHART_PIECES, chartWhole, NO_TREASURE_HUNT } from '../treasure/treasureMap';
 import Phaser from 'phaser';
 import { readLook } from '../look/look';
 import { countPlay, mapDetail } from '../analytics/playCounter';
@@ -3323,8 +3323,15 @@ export class HubScene extends Phaser.Scene {
     );
     // Furniture is found-only too, and the one kind no room is kept for: a
     // trophy comes home in a pack that comes home (`items.ts`, FOUND_ONLY_IDS).
+    // A torn chart is room kept for a hunt that has started: on a new save the
+    // rows named three chart pieces nobody had heard of (AI playtest, 22 Nov 2026).
+    const hunting = (this.savedGame.raidProgress.treasureHunt?.pinned.length ?? 0) > 0;
     const materialRows = FOUND_ONLY_IDS.filter(
-      (itemId) => !isFurniture(itemId) && !isWearableItem(itemId) && (!isErrandItem(itemId) || wanted.includes(itemId)),
+      (itemId) =>
+        !isFurniture(itemId) &&
+        !isWearableItem(itemId) &&
+        (!isErrandItem(itemId) || wanted.includes(itemId)) &&
+        (hunting || !CHART_PIECES.some((piece) => piece.itemId === itemId)),
     ).map((itemId) =>
       secureRow(
         itemId,
@@ -3342,7 +3349,7 @@ export class HubScene extends Phaser.Scene {
         className: 'is-secure',
         label: `Secure container, ${cells.used} of ${cells.total} squares full${this.flow.securedCargo.length ? `, holding ${this.flow.securedCargo.map((piece) => piece.name).join(' and ')}` : ''}`,
         arrange: { name: 'secure', ghost: this.arranging.ghostFor('secure'), help: ARRANGE_AND_REMOVE_HELP },
-      })}${this.arrangeBar('secure')}<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${itemRows ? `${itemRows}<h3 class="px-subheading">Found goods</h3>` : ''}${materialRows}</div></div>`,
+      })}${this.arrangeBar('secure')}<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${itemRows ? `${itemRows}` : ''}<h3 class="px-subheading">Room for what you find</h3>${materialRows}</div></div>`,
       {
         className: 'secure-group',
         heading: 'Container',
