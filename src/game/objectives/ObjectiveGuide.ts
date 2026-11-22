@@ -24,6 +24,8 @@ export interface ObjectiveGuideContext {
    */
   readonly towards?: (target: GridPosition) => GridPosition;
   readonly activatedPoiIds: ReadonlySet<string>;
+  /** The favours asked and not yet done (`hub/errands.ts` `favoursInHand`); absent reads as every laid errand in hand. */
+  readonly favoursInHand?: readonly string[];
   /**
    * How many of an item the raid's pack holds now. A thing picked up can be
    * put down again for good, so what was found is not what is carried.
@@ -243,6 +245,23 @@ function errandHints(
       return [];
     }
     const thing = errandThing(errand);
+    // A favour already done is nobody's errand: what lies out here is laid
+    // again for what it is (Old Amber, for Oak's machine), and called Bill's
+    // errand after he had his it read as a job never handed in (AI playtest,
+    // 22 Nov 2026).
+    const done = context.favoursInHand !== undefined && !context.favoursInHand.includes(errand.id);
+    if (done) {
+      if (found.some((stack) => stack.itemId === piece.itemId)) {
+        return [];
+      }
+      const heading = context.towards?.(piece.position) ?? piece.position;
+      return [
+        {
+          found: false,
+          line: `${capitalised(thing)} lies in ${errandPlace(errand)}, ${directionTo(context.currentPosition, heading)}${stepsAway(context.stepsTo?.(piece.position))}.`,
+        },
+      ];
+    }
     if (found.some((stack) => stack.itemId === piece.itemId)) {
       // Found is not carried: the pack can put it down for good to make room,
       // and then it is not out here this raid any more.
@@ -637,4 +656,8 @@ function bankingHint(
     return `Extract through ${currentExit} on this map to bank the contract and your haul.`;
   }
   return 'Return to a marked extraction gate to bank the contract and your haul.';
+}
+
+function capitalised(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

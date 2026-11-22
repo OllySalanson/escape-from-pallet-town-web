@@ -709,6 +709,40 @@ describe('an errand in the field guide', () => {
   });
 });
 
+describe('a favour already done, laid again for what it is', () => {
+  /**
+   * AI playtest of 22 Nov 2026: after Bill had his Old Amber, the radio still
+   * said 'Bill's errand: Old Amber lies in PINE HOLLOW'. The amber is laid
+   * again for Oak's machine (`afterwards`); it is nobody's errand any more.
+   */
+  it('names the thing and where it lies, never the errand', () => {
+    const manager = new RunManager();
+    manager.startRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] }, { mapId: 'greystone-vale', durationMs: 60_000 });
+    const amber = ERRANDS.find((errand) => errand.id === 'old-amber')!;
+    const session = createActiveRunSession(
+      manager,
+      {},
+      {},
+      [],
+      [],
+      [],
+      generateRunPlan(7, undefined, 'greystone-vale', undefined, undefined, [], {}, [], [], false, [], [errandLoot(amber)]),
+    );
+    const hints = (favoursInHand?: readonly string[]) =>
+      buildObjectiveGuide(session, {
+        currentMapId: 'greystone-vale',
+        currentPosition: { x: 94, y: 160 },
+        activatedPoiIds: new Set(),
+        ...(favoursInHand ? { favoursInHand } : {}),
+      }).hints.filter((hint) => hint.includes('Amber'));
+
+    expect(hints(['old-amber']).join(' ')).toContain("Bill's errand");
+    const done = hints([]);
+    expect(done.join(' ')).not.toContain('errand');
+    expect(done.join(' ')).toMatch(/Old Amber lies in PINE HOLLOW/);
+  });
+});
+
 describe('a barred exit the pack can open', () => {
   const barredHints = (
     session: ReturnType<typeof createUncontractedSession>,
