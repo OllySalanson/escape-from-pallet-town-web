@@ -8,6 +8,7 @@ import {
   raidClockAfterRecovery,
   recoveryHeldBackIds,
   teamCondition,
+  wardBedIdsFor,
   type RecoveryTerms,
 } from './recovery';
 import { recoveryPriceShare, wardTreatmentsPerRaid } from './workshop';
@@ -107,12 +108,40 @@ export function centerOffer(game: CounterGame, free = false): CenterOffer {
       ...outLine,
       `${teamCondition(game.stash, away) ?? 'Somebody needs me'}. ${price}`,
       ...(heldBack.length > 0 ? [`${capped} The rest must wait for a raid.`] : []),
+      ...(free ? [] : wardLines(game, pending, ids, terms)),
     ],
     question: `Shall I heal ${them}?`,
     // With nobody able to raid, the only useful answer is yes: a question opening
     // on NOT NOW sent a newcomer pressing SPACE round her counter for ever.
     spendsForGood: quoteMs > 0 && !nobodyCanRaid(game),
   };
+}
+
+/**
+ * What she says about THE WARD, once it is built: who its bed takes, and what a
+ * bed never waives, or that the bed is used until the next raid. It was counted
+ * in her price and never said, so a player who had built it could not tell
+ * whether it had been used, and read a fainted team's charge as the ward doing
+ * nothing (AI playtest, 20 Nov 2026).
+ */
+function wardLines(game: CounterGame, pending: number, ids: readonly string[], terms: RecoveryTerms): readonly string[] {
+  if (wardTreatmentsPerRaid(game.raidProgress.workshopUpgrades) === 0) {
+    return [];
+  }
+  if (terms.wardTreatments === 0) {
+    return ['THE WARD’s bed is used until your next raid.'];
+  }
+  const bedded = wardBedIdsFor(game.stash, pending, ids, terms).flatMap((id) => {
+    const stored = game.stash.listPokemon().find((each) => each.id === id);
+    return stored ? [stored.pokemon] : [];
+  });
+  if (bedded.length === 0) {
+    return [];
+  }
+  const fainted = bedded.some((pokemon) => pokemon.isFainted);
+  return [
+    `THE WARD takes ${inWords(bedded.map((pokemon) => pokemon.name))}, so ${bedded.length === 1 ? 'its' : 'their'} healing is free.${fainted ? ' Bringing a Pokémon round from a faint never is.' : ''}`,
+  ];
 }
 
 /** Whether everyone at base has fainted, so that she comes first of anything said in her room. */
