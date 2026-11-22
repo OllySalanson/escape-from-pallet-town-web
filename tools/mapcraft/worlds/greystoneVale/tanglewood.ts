@@ -40,6 +40,7 @@ import { caveLife } from './caveLife';
 import { caveLadders, caveMouthLink, greystoneCaves } from './greystoneCaves';
 import { INN_ROOM, withInside } from './insides';
 import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
+import { gymDoorGuide } from '../../../../src/game/world/gymGuide';
 import { GREYSTONE_VALE } from './plan';
 
 /** The wood, a letter a lattice cell: T pines, . lanes and glades, g tall grass, d the road, C rock. */
@@ -422,7 +423,8 @@ export function tanglewood(): MapcraftResult {
         { x: 36, y: 36, lines: ['HALFWAY', 'Cut into the stone, very deep, by somebody who was sure.'] },
         { x: 30, y: 41, lines: ['DIRECTIONS', 'One Potion. All sales final. Refunds in the other direction.'] },
         { x: 55, y: 39, lines: ['THE EASTERN TRACK', 'East: Safari Marsh. West: back into all that. You have been warned.'] },
-        { x: 50, y: 39, lines: ['FUCHSIA GYM', 'Leader: KOGA. The poisonous ninja master!', 'He fights holders of the CASCADE BADGE. Beat him for the SOUL BADGE and the Marsh.'] },
+        // The door sign says how strong to be first, worked out from his team (`world/gymGuide.ts`).
+        { x: 50, y: 39, lines: ['FUCHSIA GYM', 'Leader: KOGA. The poisonous ninja master!', 'He fights holders of the CASCADE BADGE. Beat him for the SOUL BADGE and the Marsh.', gymDoorGuide(KOGA_BOSS_ID)] },
         // THE MARSH's notice, at the bar Koga holds (`world/valeQuarters.ts`):
         // what the quarter does to a team, said before it costs one.
         { x: 60, y: 38, lines: ['THE MARSH. Past the bar at the end of this track.', 'Touch anything in there and it poisons you back.', 'Fire and Flying hit without touching. Held by KOGA: SOUL BADGE.'] },
