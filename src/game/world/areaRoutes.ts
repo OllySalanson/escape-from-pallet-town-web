@@ -23,14 +23,30 @@ export function wayTowards(
   from: GridPosition,
   to: GridPosition,
 ): GridPosition {
+  return doorwayTowards(map, from, to)?.into ?? to;
+}
+
+/**
+ * The doorway the walk to `to` starts through, when `to` is in another place
+ * of the map: `stand`, the tile you press from, and `into`, the tile the press
+ * goes into (`wayTowards`'s answer). A walk is steered to `stand`, never to
+ * `into`: a ladder's tile is solid, and steered at it the gold arrow led round
+ * to whichever side was nearest - the east of Greystone Caves B4F's ladder,
+ * where pressing left does nothing (veteran playtest, 20 Nov 2026).
+ */
+export function doorwayTowards(
+  map: WorldMapDefinition,
+  from: GridPosition,
+  to: GridPosition,
+): { readonly stand: GridPosition; readonly into: GridPosition } | null {
   const areas = map.areas;
   if (!areas || map.warps.length === 0) {
-    return to;
+    return null;
   }
   const here = placedAreaAt(areas, from);
   const there = placedAreaAt(areas, to);
   if (!here || here === there) {
-    return to;
+    return null;
   }
   const field = distancesTo(map, to);
   // A door whose far side walks to the target beats every door whose far side
@@ -38,7 +54,7 @@ export function wayTowards(
   // line. A target nothing reaches today - ground behind a shut gate - is
   // still out of the room, and a straight line across the grid the places are
   // laid out on points at a wall.
-  let best: { readonly doorway: GridPosition; readonly walks: boolean; readonly cost: number } | null = null;
+  let best: { readonly stand: GridPosition; readonly into: GridPosition; readonly walks: boolean; readonly cost: number } | null = null;
   for (const warp of map.warps) {
     if (warp.activation !== 'push' || !warp.toward || placedAreaAt(areas, warp.source) !== here) {
       continue;
@@ -53,10 +69,10 @@ export function wayTowards(
     // keeps this to one search per target rather than one per frame.
     const cost = far + Math.abs(warp.source.x - from.x) + Math.abs(warp.source.y - from.y);
     if (!best || (walks && !best.walks) || (walks === best.walks && cost < best.cost)) {
-      best = { doorway: nextTileFromDirection(warp.source, warp.toward), walks, cost };
+      best = { stand: warp.source, into: nextTileFromDirection(warp.source, warp.toward), walks, cost };
     }
   }
-  return best?.doorway ?? to;
+  return best ? { stand: best.stand, into: best.into } : null;
 }
 
 /**
