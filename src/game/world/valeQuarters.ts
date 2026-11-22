@@ -168,7 +168,7 @@ export const VALE_QUARTERS: readonly ValeQuarter[] = [
     threat: [
       'Touch anything here and it poisons you back.',
       "Koga's Koffing floats over Ground moves, and blows itself up.",
-      'Normal and Poison do little to a Ghost. Fire and Flying never touch.',
+      'Normal and Poison do little to a Ghost. Fire and Flying hit without touching.',
     ],
   },
 ];
