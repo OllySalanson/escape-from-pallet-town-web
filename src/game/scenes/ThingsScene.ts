@@ -21,7 +21,7 @@ import { moveChoiceMessage } from '../ui/moveChooser';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
-import { pixelScreen } from '../ui/pixelUi';
+import { takeDownPixelStatus, pixelScreen } from '../ui/pixelUi';
 import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
 import { canChoosePupil, pupilOutcome, pupilVerdict, teachBody } from '../ui/teachScreen';
 import { EVOLVE_MOMENT_ARMING_MS, evolveMomentBody, type EvolveMomentView } from '../ui/evolveMoment';
@@ -67,6 +67,14 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   private flow: DeploymentFlow | undefined;
   private using: Using | null = null;
   private status: string | undefined;
+  /**
+   * The row a status line was said about, while it is up: moved off that row,
+   * the line is taken down rather than left answering the row the cursor is on
+   * now - 'Potion: Give it to a hurt Pokemon...' stood under the Poke Ball
+   * (AI playtest, 22 Nov 2026).
+   */
+  private statusThing: string | undefined;
+  private shownStatusThing: string | undefined;
   /**
    * The moment a stone has just evolved one of the player's Pokémon
    * (`evolveMomentBody`), held until it has been seen and a key ends it. What
@@ -114,6 +122,11 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     // The pocket strip lights the pocket the cursor is in (`pocketStrip`): a
     // class moved on focus, never a redraw.
     this.overlay.root.addEventListener('focusin', (event) => {
+      const thing = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-thing]')?.dataset.thing : undefined;
+      if (this.shownStatusThing !== undefined && thing !== undefined && thing !== this.shownStatusThing && this.overlay) {
+        takeDownPixelStatus(this.overlay.root);
+        this.shownStatusThing = undefined;
+      }
       const pocket = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-pocket]')?.dataset.pocket : undefined;
       if (!pocket) return;
       this.overlay?.root.querySelectorAll<HTMLElement>('[data-pocket-tab]').forEach((tab) => {
@@ -210,6 +223,8 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     }
     const status = this.status;
     this.status = undefined;
+    this.shownStatusThing = status === undefined ? undefined : this.statusThing;
+    this.statusThing = undefined;
     const item = this.using ? getItemById(this.using.itemId) : undefined;
     const money = itemCountTag('money', game ? spareAtBase(game, 'money') : 0);
     let title = 'Your things';
@@ -375,6 +390,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     if (!use) {
       audioManager.play('denied');
       this.status = `${item.displayName}: ${whereItIsUsed(item)}`;
+      this.statusThing = item.id;
       this.render([`[data-thing="${item.id}"]`]);
       return;
     }
