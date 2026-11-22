@@ -369,6 +369,8 @@ sightseeing.
 | <kbd>O</kbd> | Professor Oak on the radio; again for the whole field guide | Every favour you have been asked, on one screen |
 | <kbd>L</kbd> (hold) | Look: every caption on screen speaks | Look |
 | <kbd>T</kbd> | Raiding with a friend: pick a quick phrase to say | Pick a quick phrase to say |
+| <kbd>M</kbd> | Sound off, and on again. The game remembers which | Sound off, and on again |
+| <kbd>F</kbd> | Call Oak's lab: tell us what just happened, with a picture of it | Call Oak's lab |
 | <kbd>Esc</kbd> | Close a screen, or hang up on Oak | Back out of a screen, or skip somebody's talk |
 
 Every menu works with the mouse as well. The map maker is the other way round: you draw with a mouse or
