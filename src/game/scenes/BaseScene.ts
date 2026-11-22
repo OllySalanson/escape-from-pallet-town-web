@@ -1058,7 +1058,10 @@ export class BaseScene extends Phaser.Scene {
         // and pushed at the bookcase beside the arch (veteran playtest, 20 Nov 2026).
         ways: room
           ? room.room.stairs
-              .filter((stair) => onScreen(stair.tile))
+              // Only an arch that is there: until MARLOW opens it a bookcase
+              // stands on the library's, and listed anyway it sent the AI
+              // playtester pushing at a shut bookcase (22 Nov 2026).
+              .filter((stair) => onScreen(stair.tile) && !this.isBlocked(stair.tile))
               .map((stair) => ({ to: roomNamed(stair.to)?.name ?? stair.to, tile: tileOf(stair.tile), ...(stair.push ? { push: stair.push.key } : {}) }))
           : [],
         // THE RAID ARENA's rim, where a raid is jumped into: the nearest tile of it.
