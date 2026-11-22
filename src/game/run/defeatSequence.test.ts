@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { Bag } from '../items';
+import { Bag, type ItemId } from '../items';
 import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, SPECIES_BY_ID, SQUIRTLE } from '../pokemon';
 import { RunManager, type ItemStack } from './RunManager';
 import { buildDefeatSequence, createBeatGate } from './defeatSequence';
@@ -363,5 +363,58 @@ describe('the pack in the line-up', () => {
     expect(sequence?.figures).toContainEqual(
       expect.objectContaining({ kind: 'item', itemId: 'raid-pack', label: 'Raid pack', fate: 'taken' }),
     );
+  });
+
+  // AI playtest, 22 Nov 2026: RAID PACK ×1 HELD stood beside a line saying the
+  // Raid pack was gone for good - a spare in the container, the worn one taken.
+  it('calls a spare of the lost pack, kept in the container, a spare', () => {
+    const starter = new Pokemon(CHARMANDER, 12);
+    const manager = new RunManager();
+    const secured: ItemStack[] = [{ itemId: 'raid-pack', quantity: 1 }];
+    manager.startRun(
+      { party: [starter], items: secured, packItemId: 'raid-pack' },
+      { mapId: 'floodplain-relay', durationMs: DURATION_MS, secureGrid: { width: 8, height: 8 } },
+      { items: secured },
+    );
+    starter.takeDamage(starter.maxHp);
+    manager.resolveWipe({ items: secured });
+    const report = buildExtractionReport({
+      outcome: 'WIPED',
+      cause: 'defeated',
+      snapshot: manager.snapshot(),
+      durationMs: DURATION_MS,
+      lost: { pokemon: [starter], items: [] },
+      carriedOut: { 'raid-pack': 1 },
+      lastStand: starter,
+      saved: true,
+    });
+    const figures = buildDefeatSequence(report)?.figures ?? [];
+    const packs = figures.filter((figure) => figure.itemId === 'raid-pack').map(({ label, fate }) => ({ label, fate }));
+    expect(packs).toContainEqual({ label: 'Raid pack', fate: 'taken' });
+    expect(packs).toContainEqual({ label: 'Spare raid pack', fate: 'held' });
+  });
+});
+
+describe('a line-up with more than it can stand', () => {
+  // AI playtest, 22 Nov 2026: the sentence under the line-up named a Lamp oil
+  // that had no tile, because the line-up was cut at eight without a word.
+  it('says how many more there are in its last place, rather than leaving them out', () => {
+    const party = [new Pokemon(CHARMANDER, 12), new Pokemon(BULBASAUR, 10), new Pokemon(SQUIRTLE, 9)];
+    const items: ItemStack[] = ['potion', 'poke-ball', 'antidote', 'parts-crate', 'lamp-oil', 'radio-valve', 'cable-coil'].map((itemId) => ({ itemId: itemId as ItemId, quantity: 1 }));
+    const sequence = buildDefeatSequence(wipedReport(party, items, { lastStandIndex: 0 }));
+    const figures = sequence?.figures ?? [];
+    expect(figures).toHaveLength(8);
+    const last = figures[figures.length - 1];
+    expect(last).toMatchObject({ kind: 'item', label: 'More', fate: 'taken' });
+    const standing = figures.filter((figure) => figure.kind === 'item' && figure.label !== 'More').length;
+    expect(standing + (last.quantity ?? 0)).toBe(items.length);
+  });
+
+  it('stands everything when it fits', () => {
+    const party = [new Pokemon(CHARMANDER, 12)];
+    const items: ItemStack[] = ['potion', 'poke-ball'].map((itemId) => ({ itemId: itemId as ItemId, quantity: 2 }));
+    const figures = buildDefeatSequence(wipedReport(party, items, { lastStandIndex: 0 }))?.figures ?? [];
+    expect(figures.map((figure) => figure.label)).not.toContain('More');
+    expect(figures.filter((figure) => figure.kind === 'item')).toHaveLength(2);
   });
 });
