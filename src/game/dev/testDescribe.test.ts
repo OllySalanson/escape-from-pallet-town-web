@@ -82,6 +82,8 @@ describe('describeMenu', () => {
         element('p', { text: 'Where   are you\n dropping in?' }),
         element('button', { text: 'JUMP IN', attributes: { 'aria-pressed': 'true' } }),
         element('div', { attributes: { role: 'option', 'aria-label': 'Mill Square' } }),
+        // A box tile: an icon over the level, named by its label.
+        element('button', { text: '3', attributes: { 'aria-label': 'DIGLETT, level 3' } }),
         element('button', { text: 'LOCKED', disabled: true }),
         element('button', { text: 'GONE', hidden: true }),
         save,
@@ -94,6 +96,7 @@ describe('describeMenu', () => {
     expect(screen?.controls).toEqual([
       { label: 'JUMP IN', kind: 'button', selected: true },
       { label: 'Mill Square', kind: 'option' },
+      { label: 'DIGLETT, level 3', kind: 'button' },
       { label: 'LOCKED', kind: 'button', disabled: true },
       { label: 'SAVE', kind: 'button', focused: true },
     ]);

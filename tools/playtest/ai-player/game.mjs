@@ -277,7 +277,11 @@ export function createHands(page) {
     await press('Space', 3);
     screen = await readThrough();
     // A press the game was not ready for (mid-turn, mid-step) is dropped: one more try.
-    if (!interruption(screen) && screen.scenes.join() === before.scenes.join()) {
+    // Only when nothing at all came of it: talking to somebody changes no scene,
+    // so asking the scene list alone started every conversation a second time,
+    // and the veteran run reported every briefing and sign as said twice.
+    const answered = (await eventsSince(before.lastEvent)).some((event) => event.kind !== 'moved');
+    if (!answered && !interruption(screen) && screen.scenes.join() === before.scenes.join()) {
       await step(4);
       await press('Space', 3);
       screen = await readThrough();

@@ -219,12 +219,18 @@ export const CONTROL_SELECTOR =
 
 const shown = (element: ElementLike): boolean => element.getClientRects().length > 0;
 
-/** What a control is called, as a player would read it or a screen reader would say it. */
+/**
+ * What a control is called, as a screen reader would say it: its `aria-label`
+ * where it has one, which is what the page says the control *is*, and its
+ * words otherwise. A box tile shows a Pokémon's icon over its level, so read
+ * by its words alone a Diglett was a control called "3" (veteran playtest,
+ * 20 Nov 2026), while its label says who it is.
+ */
 export function controlLabel(element: ElementLike): string {
   const text = fold(element.innerText ?? element.textContent ?? '');
   const aria = fold(element.getAttribute('aria-label') ?? '');
   const value = element.tagName === 'INPUT' ? fold(element.value ?? element.getAttribute('placeholder') ?? '') : '';
-  return text || aria || value || fold(element.getAttribute('title') ?? '');
+  return aria || text || value || fold(element.getAttribute('title') ?? '');
 }
 
 function controlKind(element: ElementLike): string {
