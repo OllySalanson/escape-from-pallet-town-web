@@ -61,10 +61,10 @@ function keptBack(name: string, required: TraderStandingId): string {
 const READS_YOU: Readonly<Record<TraderStandingId, string>> = {
   // Not "bring things home": a raid's haul earns no standing (`traderStandingPoints`),
   // and a player who banked twenty hauls on that word was still a stranger to him.
-  stranger: 'I do not know you. Bank a job off Oak\'s board and I might.',
-  regular: 'You keep coming home. One thing off the deck a trip, and the first of the barters.',
-  trusted: 'I trust you. Two a trip, the good medicine, and most of the hold.',
-  partner: 'Partner! Three a trip, and nothing on the boat is held back.',
+  stranger: "I don't know you. Bank a job off Oak's board and I might.",
+  regular: "You keep coming home. I'll sell you one thing a raid, and the first of the barters.",
+  trusted: 'I trust you. Two things a raid, the good medicine, and most of the hold.',
+  partner: 'Partner! Three things a raid, and nothing on the boat is held back.',
 };
 
 /**
@@ -82,7 +82,7 @@ export const STRANGER_STARTED = 'I have heard of you. Not enough yet.';
 export function strangerWayIn(pointsShort: number, started = false): string {
   const jobs = Math.ceil(pointsShort / STANDING_PER_CONTRACT);
   const more = started ? ' more' : '';
-  return `Bank ${jobs}${more} ${jobs === 1 ? 'job' : 'jobs'} off Oak's board, or beat a boss, and I open the deck to you.`;
+  return `Bank ${jobs}${more} ${jobs === 1 ? 'job' : 'jobs'} off Oak's board, or beat a boss, and I'll start selling to you.`;
 }
 
 /** What he says to NOT NOW. */
@@ -116,13 +116,13 @@ function stockQuote(counter: TraderCounter, itemId: string): BillQuote {
       return { lines: [keptBack(name, offer.item.standing)] };
     case 'ration-spent':
       return {
-        lines: [what, `${price}, but that is your lot this trip. Raid, and come back.`],
+        lines: [what, `${price}, but that's your lot till you raid again.`],
       };
     case 'money-short':
       return { lines: [what, `${price}, and you have ${formatMoney(moneyHeld(counter.stash))}.`] };
     default:
       return {
-        lines: [what, `${price}, and ${rationLeft(counter)} left for you this trip.`],
+        lines: [what, `${price}, and ${rationLeft(counter)} more for you till you raid.`],
         question: `Buy one for ${price}?`,
         spendsForGood: true,
       };
@@ -188,8 +188,10 @@ export function billFromTheMat(counter: TraderCounter): BillQuote {
   const started = tier.id === 'stranger' && traderStandingPoints(counter.progress) > 0;
   const trip =
     tier.ration === 0
-      ? `You have ${formatMoney(moneyHeld(counter.stash))}, and I am selling you nothing yet.`
-      : `You have ${formatMoney(moneyHeld(counter.stash))}, and ${left} of ${tier.ration} left off the deck this trip.`;
+      ? `You have ${formatMoney(moneyHeld(counter.stash))}, and I'm selling you nothing yet.`
+      : // A raid, not a trip or the deck: 'one thing off the deck a trip' was read
+        // twice and still not understood (AI playtest, 22 Nov 2026).
+        `You have ${formatMoney(moneyHeld(counter.stash))}. I'll sell you ${left} more ${left === 1 ? 'thing' : 'things'} till you raid again.`;
   return {
     lines: [
       started ? STRANGER_STARTED : READS_YOU[tier.id],

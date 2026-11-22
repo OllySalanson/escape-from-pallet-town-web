@@ -1113,7 +1113,7 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * Answers the asked deal with KEEP THEM: nothing is spent, and the cursor goes
+   * Answers the asked deal with NOT NOW: nothing is spent, and the cursor goes
    * back to the row that asked rather than to the top of the list, because the
    * player was choosing that one and may only have changed the count.
    */
@@ -3449,8 +3449,8 @@ export class HubScene extends Phaser.Scene {
           barters.find((offer) => offer.refusal === undefined));
 
     const standingNote = next
-      ? `${traderStandingPoints(counter.progress)} with him · ${next.pointsShort} more for ${next.tier.name}`
-      : `${traderStandingPoints(counter.progress)} with him · nothing held back`;
+      ? `${traderStandingPoints(counter.progress)} points · ${next.pointsShort} more for ${next.tier.name}`
+      : `${traderStandingPoints(counter.progress)} points · nothing held back`;
     // Two lines at most. What raises standing is said only while there is a
     // tier left to raise it to, and said as the three prices rather than as a
     // sentence about them: the paragraph that was here took a third of the
@@ -3483,7 +3483,7 @@ export class HubScene extends Phaser.Scene {
             id: offer.item.itemId,
             icon: itemIcon(offer.item.itemId, name),
             name: count > 1 ? `${name} ×${count}` : name,
-            question: `Pay ${total} for ${count === 1 ? withArticle(name) : `${count} ${name}s`}?${count === left ? ' It is the rest of this trip.' : ''}`,
+            question: `Pay ${total} for ${count === 1 ? withArticle(name) : `${count} ${name}s`}?${count === left ? " That's your last till you raid." : ''}`,
             confirm: `data-buy-confirm="${offer.item.itemId}"`,
             confirmLabel: 'Buy',
             confirmHelp: `Spends ${total} of your ${formatMoney(moneyHeld(this.stash))}.`,
@@ -3491,14 +3491,14 @@ export class HubScene extends Phaser.Scene {
           });
         }
         if (open) {
-          const help = `Buy ${count} ${name} for ${formatMoney(offer.item.price * count)}. ${limit === 1 ? 'That is all this trip allows' : `Up to ${limit} this trip`}. He asks again.`;
+          const help = `Buy ${count} ${name} for ${formatMoney(offer.item.price * count)}. ${limit === 1 ? 'That is all till you raid' : `Up to ${limit} till you raid`}. He asks again.`;
           // The row is a pair, because a quantity is a control of its own: the
           // row still buys, and the selector beside it says how many. What the
           // thing *does* is the row's own line either way - a shelf that only
           // priced its stock told a player nothing they did not already know.
           return `<div class="px-pair"><button class="px-row has-icon px-tall px-priced" data-buy="${offer.item.itemId}" data-shows="${offer.item.itemId}" data-help="${escapeAttribute(help)}"${offer === first ? ' data-cursor-start' : ''}>${itemIcon(offer.item.itemId, name)}<span class="px-row-main"><strong class="px-name">${name}${count > 1 ? ` ×${count}` : ''}</strong><small class="px-wrap">${what}</small></span>${price}</button>${countSelector({ kind: 'buy', id: offer.item.itemId, label: name, value: count, min: 1, max: limit, help, limit: traderStockLimitReason(counter, offer.item) })}</div>`;
         }
-        const tag = pixelTag(offer.refusal === 'money-short' ? 'Short' : offer.refusal === 'ration-spent' ? 'Spent' : 'Locked');
+        const tag = pixelTag(offer.refusal === 'money-short' ? 'Short' : offer.refusal === 'ration-spent' ? 'Next raid' : 'Locked');
         // Never `disabled`: the cursor has to reach a row to say why it is shut.
         const wiring = `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`;
         return `<button class="px-row has-icon px-tall px-priced" ${wiring} data-shows="${offer.item.itemId}">${itemIcon(offer.item.itemId, name)}<span class="px-row-main"><strong class="px-name">${name}</strong><small class="px-wrap">${what}</small></span>${price}${tag}</button>`;
@@ -3512,12 +3512,12 @@ export class HubScene extends Phaser.Scene {
       `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pricedCounted)}>${shelf}</div>${shelfDetails}${this.berthRow(counter)}`,
       {
         className: 'objectives-panel trader-shelf',
-        heading: 'Off the deck',
+        heading: 'For sale',
         // A heading bar's note clips at about the width of the longest one that
         // has to fit, and this pane is the narrow half of the screen: "He sells
         // a stranger nothing" came out as "HE SELLS A STRANGER NOTHIN". Why he
         // is selling nothing is the standing pane's line, right above it.
-        note: standing.ration === 0 ? 'Nothing for you yet' : `${left} of ${standing.ration} left this trip`,
+        note: standing.ration === 0 ? 'Nothing for you yet' : `${left} of ${standing.ration} left till you raid`,
       },
     );
 
@@ -3661,7 +3661,7 @@ export class HubScene extends Phaser.Scene {
         },
         {
           ask: '1 of his ration',
-          held: ration === 0 ? 'he sells you nothing yet' : `${left} of ${ration} left this trip`,
+          held: ration === 0 ? 'he sells you nothing yet' : `${left} of ${ration} left till you raid`,
           short: left <= 0,
         },
       ],
@@ -3727,7 +3727,7 @@ export class HubScene extends Phaser.Scene {
     readonly confirmHelp: string;
     readonly tone?: 'danger' | 'primary';
   }): string {
-    return `<div class="px-pair px-arming" data-shows="${deal.id}"><div class="px-row has-icon px-tall">${deal.icon}<span class="px-row-main"><strong class="px-name">${deal.name}</strong><small class="px-wrap px-warning">${deal.question}</small></span></div><div class="px-bar-actions"><button class="px-window px-button" data-deal-cancel data-cursor-start data-shows="${deal.id}" data-help="Nothing changes.">Keep them</button><button class="px-window px-button is-${deal.tone ?? 'danger'}" ${deal.confirm} data-shows="${deal.id}" data-help="${deal.confirmHelp}">${deal.confirmLabel}</button></div></div>`;
+    return `<div class="px-pair px-arming" data-shows="${deal.id}"><div class="px-row has-icon px-tall">${deal.icon}<span class="px-row-main"><strong class="px-name">${deal.name}</strong><small class="px-wrap px-warning">${deal.question}</small></span></div><div class="px-bar-actions"><button class="px-window px-button" data-deal-cancel data-cursor-start data-shows="${deal.id}" data-help="Nothing changes.">Not now</button><button class="px-window px-button is-${deal.tone ?? 'danger'}" ${deal.confirm} data-shows="${deal.id}" data-help="${deal.confirmHelp}">${deal.confirmLabel}</button></div></div>`;
   }
 
   /**

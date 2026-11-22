@@ -2065,7 +2065,7 @@ describe('Brock', () => {
     expect(hub.workshopArmed).toBe('secure-locker-1');
     expect(armed).toContain('Spend 4 Parts crates on it for good?');
     expect(armed).toContain('data-outfit-confirm="secure-locker-1"');
-    expect(armed).toMatch(/data-deal-cancel data-cursor-start[^>]*>Keep them</);
+    expect(armed).toMatch(/data-deal-cancel data-cursor-start[^>]*>Not now</);
     expect(armed.match(/data-cursor-start/g)).toHaveLength(1);
     // Nothing about a Pokemon is asked or named.
     expect(armed).not.toContain('release');
@@ -2358,7 +2358,7 @@ describe('HubScene - Bill', () => {
     hub.setView('trader');
     const boat = markupOf(hub);
 
-    expect(boat).toContain('Off the deck');
+    expect(boat).toContain('For sale');
     expect(boat).toContain('Out of the hold');
     expect(boat).toContain('No money buys these');
     // The shelf prices in money; the table prices in found goods.
@@ -2377,7 +2377,7 @@ describe('HubScene - Bill', () => {
     const boat = markupOf(hub);
 
     expect(boat).toContain('Standing · ');
-    expect(boat).toContain('with him');
+    expect(boat).toContain(' points · ');
     // What raises it, as the three prices rather than a paragraph about them -
     // and only while there is a tier left to raise it to.
     expect(boat).toContain('Bank a contract +2, beat a boss +3, spend ₽200 +1.');
@@ -2545,7 +2545,7 @@ describe('HubScene - Bill', () => {
     vi.spyOn(performance, 'now').mockImplementation(() => now);
     hub.setView('trader');
     hub.render();
-    expect(markupOf(hub)).toMatch(/of 2 left this trip/);
+    expect(markupOf(hub)).toMatch(/of 2 left till you raid/);
 
     // ENTER twice on the row: the first asks, the second asks again, and
     // nothing is spent either time.
@@ -2580,7 +2580,7 @@ describe('HubScene - Bill', () => {
     expect(internals.traderArmed).toBeUndefined();
     const after = markupOf(hub);
     expect(after).toContain('Bought one for ₽120.');
-    expect(after).toMatch(/1 of 2 left this trip/);
+    expect(after).toMatch(/1 of 2 left till you raid/);
     vi.restoreAllMocks();
   });
 
@@ -2591,7 +2591,7 @@ describe('HubScene - Bill', () => {
     internals.counterCounts.set('buy:potion', 2);
     internals.traderArmed = 'stock:potion';
     const asking = markupOf(hub);
-    expect(asking).toContain('Pay ₽240 for 2 Potions? It is the rest of this trip.');
+    expect(asking).toContain("Pay ₽240 for 2 Potions? That's your last till you raid.");
     expect(asking).toContain('data-buy-confirm="potion"');
   });
 

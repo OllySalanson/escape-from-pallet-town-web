@@ -228,7 +228,7 @@ describe('the shelf', () => {
     expect(checkPurchase(rich, 'potion', limit)?.refusal).toBeUndefined();
     expect(checkPurchase(rich, 'potion', limit + 1)?.refusal).toBeDefined();
     expect(checkPurchase(rich, 'potion', 0)).toBeUndefined();
-    expect(traderStockLimitReason(rich, potion)).toMatch(/covers at|ration/);
+    expect(traderStockLimitReason(rich, potion)).toMatch(/covers at|till you raid/);
     expect(traderStockLimit(counter(), potion)).toBe(0);
   });
 

@@ -102,21 +102,21 @@ export const TRADER_STANDINGS: readonly TraderStanding[] = [
     id: 'regular',
     name: 'Regular',
     points: 6,
-    note: 'One thing off the deck a trip, and the first of the barters.',
+    note: 'One thing a raid, and the first of the barters.',
     ration: 1,
   },
   {
     id: 'trusted',
     name: 'Trusted',
     points: 14,
-    note: 'Two a trip, the good medicine, and most of the hold.',
+    note: 'Two things a raid, the good medicine, and most of the hold.',
     ration: 2,
   },
   {
     id: 'partner',
     name: 'Partner',
     points: 26,
-    note: 'Three a trip, and nothing on the boat is held back.',
+    note: 'Three things a raid, and nothing on the boat is held back.',
     ration: 3,
   },
 ];
@@ -630,15 +630,15 @@ function judgePurchase(counter: TraderCounter, item: TraderStockItem, quantity =
     return standingRefusal(item.standing);
   }
   if (quantity > rationLeft(counter) && rationLeft(counter) > 0) {
-    return refuse('ration-spent', `He has ${rationLeft(counter)} left to sell you this trip, not ${quantity}.`);
+    return refuse('ration-spent', `He has ${rationLeft(counter)} left to sell you till you raid, not ${quantity}.`);
   }
   if (rationLeft(counter) <= 0) {
     const ration = traderStanding(counter.progress).ration;
     return refuse(
       'ration-spent',
       ration === 0
-        ? 'He is selling you nothing this trip.'
-        : `He sells ${ration} ${ration === 1 ? 'thing' : 'things'} a trip, and this trip is spent. Raid, and come back.`,
+        ? 'He is selling you nothing yet.'
+        : `He sells ${ration} ${ration === 1 ? 'thing' : 'things'} a raid, and you have had ${ration === 1 ? 'it' : 'them'}. Raid, and come back.`,
     );
   }
   if (moneyHeld(counter.stash) < item.price * quantity) {
@@ -681,7 +681,7 @@ export function traderStockLimitReason(counter: TraderCounter, item: TraderStock
   const affordable = Math.floor(moneyHeld(counter.stash) / item.price);
   return affordable <= ration
     ? `${affordable} is what your ${formatMoney(moneyHeld(counter.stash))} covers at ${formatMoney(item.price)} each.`
-    : `${ration} left on this trip's ration.`;
+    : `${ration} left till you raid.`;
 }
 
 /** Every barter, in the order he brings them up, judged against this counter. */
@@ -776,7 +776,7 @@ export function traderBarterLimit(counter: TraderCounter, barter: TraderBarter):
 /** Whether a berth may be taken for the coming raid. */
 export function checkBerth(counter: TraderCounter): TraderOffer {
   if (counter.berthPaid) {
-    return refuse('already-paid', 'Your berth is already paid for this trip.');
+    return refuse('already-paid', 'Your berth is already paid for the next raid.');
   }
   if (!meetsStanding(counter.progress, TRADER_BERTH_STANDING)) {
     return standingRefusal(TRADER_BERTH_STANDING);

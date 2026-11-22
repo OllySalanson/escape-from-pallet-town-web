@@ -91,7 +91,7 @@ describe('THE PRIZE WINDOW asks before it spends tickets', () => {
   it('a double ENTER on a prize buys nothing: the second press lands on KEEP THEM', () => {
     const { scene, clock, markup, tickets, surfMats, focused } = prizeWindow();
     scene.ask('surf-mat');
-    expect(markup()).toMatch(/data-prize-cancel data-cursor-start[^>]*>Keep them</);
+    expect(markup()).toMatch(/data-prize-cancel data-cursor-start[^>]*>Not now</);
     expect(markup()).toContain('Spend 200 of your 1,000 tickets on Surf Mat?');
     expect(focused()).toBe('[data-prize-cancel]');
     clock.now += 80;

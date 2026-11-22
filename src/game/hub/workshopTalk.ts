@@ -12,7 +12,7 @@ import { workshopOffers, type WorkshopOffer, type WorkshopVault } from './worksh
  * does not deal (`trader.ts`).
  *
  * A rung spends materials for good, so its question opens on NOT NOW, as the
- * ladder's own confirm opens on KEEP THEM: the key that finished his last line
+ * ladder's own confirm opens on NOT NOW: the key that finished his last line
  * is still under the player's finger.
  */
 
