@@ -94,12 +94,23 @@ export function homeUseOf(item: ItemDefinition): HomeUse {
 }
 
 /**
+ * Where a medicine is given at base: THE BENCH's care chips are the one place
+ * (`HubScene.careChips`). This screen said 'nothing to use it on here' with a
+ * Pokémon on 2 HP, and players paid Nurse Joy raid time for what a Potion they
+ * owned would have done (AI playtest, 22 Nov 2026).
+ */
+export const MEDICINE_AT_BASE = 'THE BENCH in THE RAID ARENA';
+
+/**
  * Where a thing is used, in one sentence, for every thing that is not used here.
  * Each names the place in the harbour or the raid it goes to, because the
  * vault is read most by somebody who has found a thing and does not know yet
  * what it is for.
  */
 export function whereItIsUsed(item: ItemDefinition): string {
+  if (item.category === ItemCategory.Medicine) {
+    return `Give it to a hurt Pokémon at ${MEDICINE_AT_BASE}, or pack it for a raid.`;
+  }
   switch (item.effect.type) {
     case 'machine':
       return 'Press ENTER to read it to one of your Pokémon, here or in a raid.';
@@ -218,7 +229,13 @@ function thingRow(view: ThingsView, thing: StoredThing, startsPocket: boolean): 
   // the help bar says only what the keys do here (wave 1's playtest: the same
   // sentence twice on one screen).
   const help = `${item.displayName}: ${
-    use === 'teach' ? 'ENTER chooses who learns it.' : use === 'evolve' ? 'ENTER chooses who it evolves.' : 'nothing to use it on here.'
+    use === 'teach'
+      ? 'ENTER chooses who learns it.'
+      : use === 'evolve'
+        ? 'ENTER chooses who it evolves.'
+        : item.category === ItemCategory.Medicine
+          ? `given at ${MEDICINE_AT_BASE}.`
+          : 'not used from this screen.'
   } LEFT and RIGHT go a pocket at a time.`;
   const packed = view.packed(item.id);
   // The tag carries its own count: a bare PACKED beside the storage count read
@@ -235,7 +252,11 @@ function thingDetail(view: ThingsView, thing: StoredThing, first: boolean): stri
   const packed = view.packed(item.id);
   const facts = [`${isCurrency(item.id) ? itemCountTag(item.id, count) : count} in storage`];
   if (packed > 0) {
-    facts.push(`${packed} packed for the next raid`);
+    // Of them: the rack packs out of storage, and '3 in storage · 3 packed'
+    // read as six Potions (AI playtest, 22 Nov 2026).
+    // The pack window beside it is headed NEXT RAID, so 'for the next raid' is
+    // left to it and the line stays one line.
+    facts.push(packed === count ? `all ${count} packed` : `${packed} of them packed`);
   }
   const use = homeUseOf(item);
   if (use) {
