@@ -15,4 +15,4 @@ stat pinned to FireRed (`docs/pokemon/stat-audit.md`).
 | Butterfree | Sp. Atk | 50 | 45 |
 | Jigglypuff | Sp. Def | 15 | 17 |
 
-(Real stats at level 50: `floor(base * level / 100) + 5`.)
+(Real stats at level 50 as the game computed them then: `floor(base * level / 100) + 5`, the Unity original's formula. FireRed's own replaced it on 2026-11-22 - `docs/screens/firered-formulas/`.)

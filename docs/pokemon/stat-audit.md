@@ -49,9 +49,10 @@ site is wrong for this game for all of them.
 
 ## Did the balance move?
 
-Barely. At the levels this game is played at, a stat is
-`floor(base * level / 100) + 5`, so ten base points is one point of real stat
-at level 10. The same seeded measurements were run on `main` and on this
+Barely. At the levels this game is played at, a stat was then
+`floor(base * level / 100) + 5` (the Unity original's formula, replaced by
+FireRed's own on 2026-11-22 - `firered-formulas.md`), so ten base points was
+one point of real stat at level 10. The same seeded measurements were run on `main` and on this
 change, **2000 fights a cell** so that a shift is a shift and not noise
 (`tools/trainers/report.mts -- --trials=2000`,
 `tools/abilities/measure.mts -- --trials=2000`). Dugtrio is on no wild table

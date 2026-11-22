@@ -86,8 +86,9 @@ const wildlife = (
  * vale's fields (the endgame bug hunt, 12 Nov 2026: neither had one anywhere).
  * Ekans at these levels knows only Leer, Wrap being one of the moves the
  * engine leaves out: a free catch rather than a fight. Against a level-5
- * starter (400 fights) the two take the field from 70/89/82% to 74/90/84%
- * won for Bulbasaur, Charmander and Squirtle.
+ * starter (400 fights) the two took the field from 70/89/82% to 74/90/84%
+ * won for Bulbasaur, Charmander and Squirtle; at FireRed's own stat and
+ * damage formulas (22 Nov 2026) the field is 81/93/92%.
  */
 export const PALLET_FIELD_WILDLIFE = wildlife(0.08, [
   { speciesId: 'rattata', minLevel: 3, maxLevel: 5, weight: 4 },
@@ -121,7 +122,8 @@ export const PALLET_ALLOTMENT_WILDLIFE = wildlife(0.08, [
  * to. So the caterpillars give way to Venonat instead - Crystal's other answer
  * for a Caterpie by night, in the National Park and on Route 24 - and the
  * Oddish keep the share they have by day. Measured back at 68% for that
- * Squirtle (`world/encounterMeasure.ts`), against 70% by day.
+ * Squirtle (`world/encounterMeasure.ts`), against 70% by day; 65% against 72%
+ * at FireRed's own stat and damage formulas (22 Nov 2026).
  */
 export const PALLET_ALLOTMENT_NIGHT_WILDLIFE = wildlife(0.08, [
   { speciesId: 'venonat', minLevel: 3, maxLevel: 5, weight: 4 },
@@ -193,10 +195,12 @@ export const PALLET_MARSH_WILDLIFE = wildlife(0.08, [
  * that cannot be finished, and the only move left to a player who meets one is
  * to flee - which is the trap `PALLET_TALL_GRASS`'s own header was written
  * about. A rock-type cave belongs on a map whose starters are past level 7 with
- * a typed move in hand; this one is Zubat, Diglett and a Sandshrew. Measured
- * against a level-5 starter it wins 80-88% over the table, and its worst roll
- * is a Sandshrew at 5 on 15-28% - a fight that can be lost, which is what the
- * rock types were not.
+ * a typed move in hand; this one is Zubat, Diglett and a Sandshrew. At
+ * FireRed's own stat and damage formulas (22 Nov 2026) a level-5 Sandshrew's
+ * Defence of 13 turned a fresh starter's Tackle into the same wall - 0-2% for
+ * all three - so it stands at 3-4, and its worst roll is a Sandshrew at 4 on
+ * 72% for every starter: a fight that can be lost, which is what the rock
+ * types were not.
  *
  * The rate is lower than any grass table because a cave floor rolls on **every
  * step** (`MapInterior.floorRolls`), not only on tall grass: at 0.05 over the
@@ -208,7 +212,7 @@ export const PALLET_MARSH_WILDLIFE = wildlife(0.08, [
 export const PALLET_DELVE_WILDLIFE = wildlife(0.05, [
   { speciesId: 'zubat', minLevel: 3, maxLevel: 5, weight: 4 },
   { speciesId: 'diglett', minLevel: 3, maxLevel: 5, weight: 3 },
-  { speciesId: 'sandshrew', minLevel: 4, maxLevel: 5, weight: 2 },
+  { speciesId: 'sandshrew', minLevel: 3, maxLevel: 4, weight: 2 },
   { speciesId: 'zubat', minLevel: 6, maxLevel: 6, weight: 1 },
 ]);
 
@@ -522,8 +526,9 @@ export const FOREST_BEECH_WILDLIFE = wildlife(0.09, [
  * rolls of eight beside a Butterfree that knows Confusion: a level-8 Squirtle
  * won 10% over the real engine, under the forest's floor. Venonat take the
  * caterpillars' slot instead - Crystal's other answer for a Caterpie by night,
- * as in the allotments - and the Squirtle is back on 26%, the Oddish keeping
- * the share they have by day.
+ * as in the allotments - and the Squirtle is back on 26% (22% at FireRed's
+ * own stat and damage formulas, 22 Nov 2026), the Oddish keeping the share
+ * they have by day.
  */
 export const FOREST_BEECH_NIGHT_WILDLIFE = wildlife(0.09, [
   { speciesId: 'venonat', minLevel: 7, maxLevel: 9, weight: 3 },
@@ -565,7 +570,8 @@ export const FLOODPLAIN_VAULT_WILDLIFE = wildlife(0.09, [
   // at level 1, and a level-5 Squirtle won 43% here - under the floor again,
   // and a Water starter's lottery on the first map. A level-3 Pikachu, met
   // less often than the Rattata, puts the three starters on 55/73/54%
-  // (Bulbasaur/Charmander/Squirtle): still the hardest grass on the map, and
+  // (Bulbasaur/Charmander/Squirtle; 52/67/52% at FireRed's own stat and
+  // damage formulas, 22 Nov 2026): still the hardest grass on the map, and
   // still a Pikachu worth catching.
   { speciesId: 'pikachu', minLevel: 3, maxLevel: 3, weight: 2 },
   { speciesId: 'rattata', minLevel: 4, maxLevel: 5, weight: 3 },
@@ -709,7 +715,8 @@ export const VIRIDIAN_RANGER_WILDLIFE = wildlife(0.09, [
  *
  * It is a Water starter's hard ground and is meant to be - every Electric hit
  * is 2x on Squirtle and Bubble is resisted by Magnemite's Steel - measured at
- * 54% for a level-8 Squirtle against 87% and 95% for the other two, which is
+ * 59% for a level-8 Squirtle against 93% and 94% for the other two (55, 87
+ * and 95% at the Unity formulas this game used until 22 Nov 2026), which is
  * above the floor `districtEncounters.test.ts` holds the later maps to.
  */
 export const POWER_PLANT_WILDLIFE = wildlife(0.1, [
@@ -726,8 +733,10 @@ export const POWER_PLANT_WILDLIFE = wildlife(0.1, [
  * from its 30s and 40s to a route's levels, as the Power Plant is. Dewgong is
  * the one of Seafoam's own left out: it becomes one at level 34, and nothing
  * is fielded below the level it evolves at. Measured over the real engine
- * with a level-8 starter of each kind (`tools/encounters/report.mts`): 73% to
- * 90%, the vale's own band, because what is hard about the ice is getting
+ * with a level-8 starter of each kind (`tools/encounters/report.mts`): 67% to
+ * 91% (Charmander the 67, its Ember resisted by the Water here, since this
+ * game took FireRed's own stat and damage formulas on 22 Nov 2026; 74-90%
+ * before), the vale's own band, because what is hard about the ice is getting
  * there and getting across it, never the fights.
  */
 export const ICEFALL_WILDLIFE = wildlife(0.1, [
@@ -751,7 +760,8 @@ export const ICEFALL_WILDLIFE = wildlife(0.1, [
  *
  * Ponyta and Magmar live nowhere else in the game. Measured over the real
  * engine with a level-8 starter of each kind (`tools/encounters/report.mts`,
- * `volcanoHabitat.test.ts`): Bulbasaur 59%, Charmander 62% and Squirtle 82%
+ * `volcanoHabitat.test.ts`): Bulbasaur 63%, Charmander 53% and Squirtle 79%
+ * at FireRed's own stat and damage formulas (58/62/82% at the Unity ones)
  * - Ember on a Grass starter and Geodude and Machop on a Fire one, and the
  * Water starter's ground, as a volcano should be.
  */
@@ -818,10 +828,11 @@ export const SAFARI_ZONE_WILDLIFE = wildlife(0.1, [
  * Raticate (`nightRaids.ts`) fielded far below the level a Rattata becomes one.
  *
  * It is the deepest ground in the vale and is fought in the rain (Stormcrown),
- * measured: a level-8 Bulbasaur wins 58%, Charmander 91% and Squirtle 75% in
- * the clear; in the rain Charmander falls to 57%, and by night, when Rattata
- * take Spearow's slots, to 43% - the storm is the place's price, and the Water
- * starter's ground.
+ * measured at FireRed's own stat and damage formulas (22 Nov 2026): a level-8
+ * Bulbasaur wins 74%, Charmander 88% and Squirtle 77% in the clear; in the
+ * rain Charmander falls to 47%, and by night, when Rattata take Spearow's
+ * slots, to 37% (at the Unity formulas: 58/91/75%, then 57% and 43%) - the
+ * storm is the place's price, and the Water starter's ground.
  */
 export const SUMMIT_WILDLIFE = wildlife(0.1, [
   { speciesId: 'spearow', minLevel: 8, maxLevel: 9, weight: 7 },
@@ -893,9 +904,10 @@ export const HAUNTED_WILDLIFE = wildlife(0.07, [
  * Transform is one the engine leaves out - so it only stands there, a free
  * catch, as a cocoon is (`districtEncounters.test.ts`). Measured over the
  * real engine with a level-8 starter of each kind (`world/encounterMeasure.ts`,
- * 400 fights): Bulbasaur 83%, Charmander 91%, Squirtle 70% - the Power Plant's
- * own band (87%, 95%, 54%), the Mansion's Growlithe a Grass starter's hard
- * roll, on floors reached only behind the Card Key.
+ * 400 fights): Bulbasaur 86%, Charmander 90%, Squirtle 53% at FireRed's own
+ * stat and damage formulas (83/91/70% at the Unity ones, until 22 Nov 2026) -
+ * the Power Plant's own band (93%, 94%, 59%), the Mansion's Growlithe a Grass
+ * starter's hard roll, on floors reached only behind the Card Key.
  */
 export const HIDEOUT_WILDLIFE = wildlife(0.1, [
   { speciesId: 'grimer', minLevel: 7, maxLevel: 9, weight: 6 },
@@ -924,8 +936,9 @@ export const HIDEOUT_WILDLIFE = wildlife(0.1, [
  *
  * It is a Fire starter's hard ground and is meant to be (the plan's "no
  * starter is good everywhere"): measured over the real engine in the rain, a
- * level-15 starter alone wins Bulbasaur 93%, Charmander 52% and Squirtle 74%
- * of what it meets (`coastHabitat.test.ts`, `districtEncounters.test.ts` holds a
+ * level-15 starter alone wins Bulbasaur 98%, Charmander 67% and Squirtle 78%
+ * of what it meets at FireRed's own stat and damage formulas (92/52/74% at
+ * the Unity ones, until 22 Nov 2026) (`coastHabitat.test.ts`, `districtEncounters.test.ts` holds a
  * gym's quarter at its leader's level). The team that beat Misty walks it.
  */
 export const COAST_WILDLIFE = wildlife(0.1, [
@@ -957,7 +970,8 @@ export const COAST_WILDLIFE = wildlife(0.1, [
  *
  * Measured over the real engine at Koga's lead's level, a starter alone
  * (`marshHabitat.test.ts`; `districtEncounters.test.ts` holds a gym's quarter
- * at its leader's level): Bulbasaur 84%, Charmander 94%, Squirtle 93% a fight.
+ * at its leader's level): Bulbasaur 84%, Charmander 93%, Squirtle 93% a fight,
+ * at FireRed's own stat and damage formulas as at the Unity ones.
  * One fight is never the danger here; the poison carried out of each one into
  * the next is.
  */
