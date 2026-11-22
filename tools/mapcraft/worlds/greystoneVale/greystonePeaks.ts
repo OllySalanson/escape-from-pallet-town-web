@@ -306,7 +306,7 @@ export function greystonePeaks(): MapcraftResult {
       berryTrees: [{ x: 45, y: 5, berry: 'oran' }],
       trainers: [
         { x: 56, y: 15, name: 'Breaker Finn', team: 'breaker', look: 'black-belt', facing: 'left', sight: 0, lines: ['This quarry is closed to visitors!', 'Unless you can break through me.'] },
-        { x: 21, y: 32, name: 'Hiker Pell', team: 'drover', look: 'hiker', facing: 'left', sight: 0, lines: ['It is all uphill from here. It was all uphill from there too. Fight me while I get my breath.'] },
+        { x: 21, y: 32, name: 'Hiker Pell', team: 'breaker', look: 'hiker', facing: 'left', sight: 0, lines: ['It is all uphill from here. It was all uphill from there too. Fight me while I get my breath.'] },
         { x: 57, y: 21, name: 'Walker Oona', team: 'scout', look: 'picnicker', facing: 'left', sight: 0, lines: ['This is not on any map, this path. How did you find it? Tell me after!'] },
       ],
       landmarks: [{ x: 55, y: 15, name: 'Quarry Hut', kind: 'shed' }],

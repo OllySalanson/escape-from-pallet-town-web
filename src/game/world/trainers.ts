@@ -764,8 +764,11 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       // Held to the toll band (`TOLL_BAND`): a Rattata of 8 knows FireRed's
       // Quick Attack, and against Bulbasaur's and Squirtle's FireRed kits it
       // was 27/78/27% (Bulbasaur/Charmander/Squirtle, level 8, the pack). At
-      // 6, under its Quick Attack, it is 72/97/75%.
-      [new Pokemon(DIGLETT, 7), new Pokemon(RATTATA, 6)],
+      // 6, under its Quick Attack, it is 72/97/75%. A Geodude of 6 in its place
+      // (22 Nov 2026), because this is the team every hiker and breaker on the
+      // vale fields and a FireRed Hiker is Rock and Ground: 99/99/100% at the
+      // same seed, with the pack, where the Rattata was 89/99/91%.
+      [new Pokemon(DIGLETT, 7), new Pokemon(getSpeciesById('geodude')!, 6)],
       'Level is yours. Mind the pit - it is deeper than it looks.',
     ),
   },
