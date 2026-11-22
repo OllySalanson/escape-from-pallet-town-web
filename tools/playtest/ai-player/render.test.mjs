@@ -70,3 +70,29 @@ describe('a room with an arch in it', () => {
     expect(renderScreen(library, { events: [] })).toContain('way out of the room 7,11; way through to THE CHART ROOM 13,1');
   });
 });
+
+describe("THE RAID ARENA's telescope", () => {
+  it('is shown while somebody is looking through it, with what it says and its keys', () => {
+    // 22 Nov 2026: four AI runs reported the telescope as never opening and the
+    // player as stuck after SPACE - the glass was up, and nothing said so.
+    const hall = {
+      scenes: ['base'],
+      texts: [],
+      scene: {
+        base: {
+          place: 'THE RAID ARENA',
+          room: 'raid-arena',
+          tile: { x: 30, y: 53 },
+          facing: 'up',
+          telescope: { open: true, wayIn: 'millbrook', card: { title: 'MILLBROOK', body: 'Walked 40%' }, keys: ['ARROWS MOVE', 'SPACE BACK'] },
+        },
+      },
+    };
+
+    const shown = renderScreen(hall, { events: [] });
+
+    expect(shown).toContain('LOOKING THROUGH THE TELESCOPE: the cursor is on the way in millbrook');
+    expect(shown).toContain('THE GLASS SAYS: "MILLBROOK - Walked 40%"');
+    expect(shown).toContain('TELESCOPE KEYS: ARROWS MOVE · SPACE BACK');
+  });
+});
