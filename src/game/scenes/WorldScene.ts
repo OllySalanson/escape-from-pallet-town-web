@@ -196,6 +196,8 @@ import {
 } from '../audio/worldSounds';
 import { DEFAULT_RAID_PROGRESS, SaveManager, raidsDeployed, type RestoredGame } from '../save/SaveManager';
 import { gymOf, nextGym } from '../world/valeQuarters';
+import { fieldHealHint } from '../world/fieldHealHint';
+import { usableBattleItems } from '../pokemon/battle/battleItems';
 import { Bag, ITEMS, formatMoney, getItemById, isCurrency, itemAmountsFor, type ItemDefinition, type ItemId } from '../items';
 import {
   areContractStopsComplete,
@@ -1543,6 +1545,24 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // Said on the return from the fight that won it, and raised as an
       // interruption so the key already held walks the player at the door.
       this.interrupt(openedGates);
+    } else if (data.returnLocation !== undefined) {
+      this.sayFieldHealHint();
+    }
+  }
+
+  /** Oak on the radio after a fight that left somebody worn out, until the pack is known (`world/fieldHealHint.ts`). */
+  private sayFieldHealHint(): void {
+    if (isPlaytestRun()) {
+      return;
+    }
+    const healer = usableBattleItems(this.bag).find((item) => item.effect.type === 'heal' && this.bag.count(item.id) > 0);
+    const line = fieldHealHint(
+      this.party.pokemon.map((pokemon) => ({ name: pokemon.name, currentHp: pokemon.currentHp, maxHp: pokemon.maxHp })),
+      healer?.displayName ?? null,
+      this.keysLearned.has('bag'),
+    );
+    if (line !== null) {
+      this.interrupt([line]);
     }
   }
 
