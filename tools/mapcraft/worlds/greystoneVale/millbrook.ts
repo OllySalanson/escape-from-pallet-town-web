@@ -377,7 +377,7 @@ export function millbrook(): MapcraftResult {
       ],
       // Two you can walk up to and fight, for anybody who stops to.
       trainers: [
-        { x: 16, y: 36, name: 'Scout Tam', team: 'scout', look: 'bug-catcher', facing: 'right', sight: 0, lines: ['You look like you have got a minute. You have not. Battle me anyway!'] },
+        { x: 16, y: 36, name: 'Scout Tam', team: 'scout', look: 'bug-catcher', facing: 'right', sight: 0, lines: ["You look like you've got a minute. You haven't. Battle me anyway!"] },
         { x: 56, y: 57, name: 'Orchardist Bea', team: 'orchardist', look: 'picnicker', facing: 'left', sight: 0, lines: ['Those are my apples, and that is my good ladder.'] },
       ],
       landmarks: [

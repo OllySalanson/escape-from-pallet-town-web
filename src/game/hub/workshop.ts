@@ -117,7 +117,7 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     id: 'radio-mast',
     icon: 'radio-mast',
     name: 'Radio mast',
-    effect: 'The hunter’s team, on the raid HUD.',
+    effect: 'You hear the hunter’s team on the radio, before it reaches you.',
     detail:
       'The raid HUD names the hunter’s current team and counts down to the next, stronger one. Information only: the hunter is not slowed.',
     cost: {
@@ -132,7 +132,7 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     id: 'beacon',
     icon: 'extraction-open',
     name: 'Beacon',
-    effect: 'Your landing is a late extra exit.',
+    effect: 'Late in a raid, the spot you landed on is a way out too.',
     detail: 'It marks where you land on every map, and opens halfway through the raid clock.',
     cost: {
       supplies: [

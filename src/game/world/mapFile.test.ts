@@ -28,6 +28,7 @@ import {
   MAP_FILE_TRAINER_TEAMS,
   plainText,
   readMapFile,
+  trainerDefeatLine,
   RESERVED_MAP_FILE_IDS,
   trainerTemplate,
   type MapFile,
@@ -720,5 +721,17 @@ describe('a drop-in keeps its id', () => {
       const twice = reading(keepPublishedIds(once, fix));
       expect(insertionIds(twice)).toEqual([...insertionIds(published), 'player-sample-lane-2/mill-gate']);
     });
+  });
+});
+
+describe("a map file trainer's defeat line", () => {
+  it('is one of several, the same every time for one trainer', () => {
+    // Every one said 'You win. The way is yours.', and three in one raid read
+    // as a system message (AI playtest, 22 Nov 2026).
+    const names = ['SCOUT TAM', 'WALKER OONA', 'BREAKER FINN', 'COLLIER BRAM', 'RAIDER KIT', 'NETTER BRYN'];
+    const lines = names.map(trainerDefeatLine);
+    expect(new Set(lines).size).toBeGreaterThan(1);
+    expect(names.map(trainerDefeatLine)).toEqual(lines);
+    expect(lines).not.toContain('You win. The way is yours.');
   });
 });

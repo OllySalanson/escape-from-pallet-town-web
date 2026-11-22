@@ -3447,7 +3447,7 @@ export function buildFileMap(
               fresh.moves = pokemon.moves.map((move) => new Move(move.base));
               return fresh;
             }),
-            defeatText: 'You win. The way is yours.',
+            defeatText: trainerDefeatLine(name),
             unitCount: template.trainer.unitCount,
           },
         };
@@ -3472,4 +3472,25 @@ export function buildFileMap(
       };
     }),
   };
+}
+
+/**
+ * What a map file's trainer says on losing, one of a few by their name: every
+ * one of them said 'You win. The way is yours.', and three trainers in one
+ * raid saying it word for word read as a system message (AI playtest, 22 Nov
+ * 2026). Picked by name so a trainer says the same thing every time.
+ */
+const TRAINER_DEFEAT_LINES = [
+  "You win. On you go, then.",
+  "Well fought. The road's yours.",
+  "That's me beaten. Go on through.",
+  "Fine, fine. You've earned the way.",
+] as const;
+
+export function trainerDefeatLine(name: string): string {
+  let hash = 0;
+  for (const letter of name) {
+    hash = (hash * 31 + letter.charCodeAt(0)) >>> 0;
+  }
+  return TRAINER_DEFEAT_LINES[hash % TRAINER_DEFEAT_LINES.length];
 }
