@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AudioManager, DUCK_LEVEL, RETRIGGER_GUARD_S } from './AudioManager';
+import { AudioManager, DUCK_LEVEL, MUTE_STORAGE_KEY, RETRIGGER_GUARD_S } from './AudioManager';
 import { createStubAudioContext } from './audioTestStub';
 import { SOUND_EFFECTS, SOUND_EFFECT_NAMES, isCryEffect, soundEffectLength } from './soundEffects';
 
@@ -310,5 +310,39 @@ describe('AudioManager', () => {
       expect(stub.sources.filter((source) => source.kind === 'oscillator' && source.frequency === 392)).toHaveLength(0);
       expect(stub.sources).toHaveLength(SOUND_EFFECTS.victory.tones.length);
     });
+  });
+});
+
+describe('the mute', () => {
+  const memory = () => {
+    const kept = new Map<string, string>();
+    return { getItem: (key: string) => kept.get(key) ?? null, setItem: (key: string, value: string) => void kept.set(key, value) };
+  };
+
+  it('is remembered by the browser, so the next visit starts muted', () => {
+    const store = memory();
+    const first = new AudioManager(() => null, undefined, store);
+    expect(first.isMuted).toBe(false);
+    first.toggleMute();
+    expect(store.getItem(MUTE_STORAGE_KEY)).toBe('true');
+
+    const next = new AudioManager(() => null, undefined, store);
+    expect(next.isMuted).toBe(true);
+    next.toggleMute();
+    expect(new AudioManager(() => null, undefined, store).isMuted).toBe(false);
+  });
+
+  it('starts with sound, and still mutes, in a browser that stores nothing', () => {
+    const refusing = {
+      getItem: () => {
+        throw new Error('blocked');
+      },
+      setItem: () => {
+        throw new Error('blocked');
+      },
+    };
+    const audio = new AudioManager(() => null, undefined, refusing);
+    expect(audio.isMuted).toBe(false);
+    expect(audio.toggleMute()).toBe(true);
   });
 });

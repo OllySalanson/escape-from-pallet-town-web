@@ -98,6 +98,27 @@ const DEFAULT_VOLUME = 0.55;
 const SILENCE_BACKGROUND_THEMES: boolean = true;
 
 /**
+ * Where M's choice is kept, so a player who muted the game is not met by its
+ * sounds again on every visit (scenario loop, 22 Nov 2026: the mute was
+ * forgotten on each reload). A per-browser convenience, never part of the save:
+ * a browser that stores nothing simply starts with sound, as it always did.
+ */
+export const MUTE_STORAGE_KEY = 'escape-from-pallet-town.muted';
+
+export interface MuteStore {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+
+function browserMuteStore(): MuteStore | null {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * A small Web Audio wrapper for the game's synthesized music and effects.
  * Call activate from a user input handler before requesting audio playback.
  */
@@ -126,12 +147,21 @@ export class AudioManager {
   /** Everything the themes sound goes through this, so a sting can duck it as one. */
   private musicGain: GainNode | null = null;
 
+  private readonly muteStore: MuteStore | null;
+
   public constructor(
     contextFactory: AudioContextFactory = createBrowserAudioContext,
     cryFetcher: CryFetcher = fetchCry,
+    muteStore: MuteStore | null = browserMuteStore(),
   ) {
     this.contextFactory = contextFactory;
     this.cryFetcher = cryFetcher;
+    this.muteStore = muteStore;
+    try {
+      this.muted = muteStore?.getItem(MUTE_STORAGE_KEY) === 'true';
+    } catch {
+      this.muted = false;
+    }
   }
 
   public get isMuted(): boolean {
@@ -157,6 +187,11 @@ export class AudioManager {
 
   public toggleMute(): boolean {
     this.setMuted(!this.muted);
+    try {
+      this.muteStore?.setItem(MUTE_STORAGE_KEY, String(this.muted));
+    } catch {
+      // A browser that refuses to store anything keeps the choice for this visit only.
+    }
     if (!this.muted) {
       void this.startTheme();
     }
