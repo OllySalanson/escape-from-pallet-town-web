@@ -138,6 +138,7 @@ import { anyoneFitToRaid } from '../hub/recovery';
 import {
   BATTLE_PANEL,
   NO_BATTLE_ITEMS_MESSAGE,
+  lowHpItemHint,
   PARTY_COLUMNS,
   formatPartyRow,
   levelLabel,
@@ -594,6 +595,8 @@ export class BattleScene extends Phaser.Scene {
   private itemSlotsThisTurn = new Set<number>();
   private itemLinesThisTurn: StagedNote[] = [];
   private victoryRewardsGranted = false;
+  /** Whether this fight has said that medicine can be used in it (`lowHpItemHint`): once a fight. */
+  private lowHpHintSaid = false;
   /**
    * The bag the raid is carrying, not the persisted overworld bag. They are
    * different inventories, and reading the wrong one is how a wipe report came
@@ -825,6 +828,7 @@ export class BattleScene extends Phaser.Scene {
     this.ballSprite = undefined;
     this.thrownBallId = undefined;
     this.victoryRewardsGranted = false;
+    this.lowHpHintSaid = false;
     this.party = data.party ?? new PokemonParty([new Pokemon(CHARMANDER, 10)]);
     this.bag = data.bag ?? new Bag({ 'poke-ball': STARTING_POKE_BALLS });
     // Phaser reuses this scene, so a medicine chosen in the last fight and never
@@ -3749,6 +3753,32 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * Says, once a fight, that medicine can be used in it, when one of yours is
+   * low and the pack holds something to heal it (`lowHpItemHint`). The line is
+   * read like any other, and its end brings the commands back.
+   */
+  private sayLowHpHint(): boolean {
+    if (this.lowHpHintSaid || this.exhibition) {
+      return false;
+    }
+    const healer = usableBattleItems(this.bag).find((item) => item.effect.type === 'heal' && this.bag.count(item.id) > 0);
+    const line = lowHpItemHint(
+      [this.state.player, this.state.playerPartner]
+        .filter((unit): unit is BattleCombatant => unit !== null)
+        .map((unit) => ({ name: unit.pokemon.name, hp: unit.currentHp, maxHp: unit.pokemon.maxHp })),
+      healer?.displayName ?? null,
+    );
+    if (line === null) {
+      return false;
+    }
+    this.lowHpHintSaid = true;
+    this.mode = 'events';
+    this.commandContainer.setVisible(false);
+    this.dialog.showMessages([line]);
+    return true;
+  }
+
   private onMessagesComplete(): void {
     if (this.pendingBattleExit) {
       this.pendingBattleExit = false;
@@ -3834,6 +3864,9 @@ export class BattleScene extends Phaser.Scene {
       const locked = this.lockedChoices();
       if (locked.length > 0 && locked.length === this.choosingSlots().length) {
         this.useMove(locked);
+        return;
+      }
+      if (this.sayLowHpHint()) {
         return;
       }
       this.mode = 'main';
