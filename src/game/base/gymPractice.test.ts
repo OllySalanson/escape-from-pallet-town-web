@@ -1,54 +1,33 @@
 import { describe, expect, it } from 'vitest';
-import type { GridPosition } from '../movement/gridMovement';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { bossEncounters, createRunTrainerEncounters } from '../world/trainers';
-import { HUNTER_RIVALS } from '../world/hunters';
 import { KOGA_BOSS_ID, leadersMet, MISTY_BOSS_ID } from '../world/valeQuarters';
 import { arenaCollision, isOuterWall } from './arenaHall';
 import { RIVAL_TILE } from './arenaBouts';
-import { LEADER_TILES, leaderBehindRival, nobodyToSparLine, practiceLeaders, practiceTrainer, rivalTile } from './gymPractice';
+import { LEADER_TILES, nobodyToSparLine, practiceLeaders, practiceTrainer } from './gymPractice';
 
 describe('practice against a gym leader', () => {
   it('is offered by nobody until the leader has been met in a raid, or beaten', () => {
-    expect(practiceLeaders(DEFAULT_RAID_PROGRESS, null)).toEqual([]);
+    expect(practiceLeaders(DEFAULT_RAID_PROGRESS)).toEqual([]);
     expect(leadersMet({ ...DEFAULT_RAID_PROGRESS, gymsMet: [MISTY_BOSS_ID] }).map((gym) => gym.leader)).toEqual(['Misty']);
     expect(leadersMet({ ...DEFAULT_RAID_PROGRESS, defeatedBosses: [MISTY_BOSS_ID] }).map((gym) => gym.leader)).toEqual(['Misty']);
   });
 
-  it('stands the leader on the far floor, or lets the rival there offer it when they are the same person', () => {
-    const met = { ...DEFAULT_RAID_PROGRESS, gymsMet: [MISTY_BOSS_ID] };
-    expect(practiceLeaders(met, 'blue').map((leader) => leader.tile)).toEqual([LEADER_TILES[0]]);
-    expect(practiceLeaders(met, 'misty')).toEqual([]);
-    expect(leaderBehindRival(met, 'misty')?.bossId).toBe(MISTY_BOSS_ID);
-    expect(leaderBehindRival(DEFAULT_RAID_PROGRESS, 'misty')).toBeUndefined();
-  });
-
-  it('stands everybody in one place, so a bout that moves the ladder on moves nobody who stays (the owner, 12 Nov 2026)', () => {
-    // Beaten in a bout, Misty stepped off the rival's tile onto her own and Lt.
-    // Surge, up next, took the one she had stood on: "Misty and the green NPC
-    // had swapped places." A leader met is on their own tile every day, the
-    // day they are the rival too.
+  it('stands each leader met on their own tile, never the rival\'s, whoever is up (the owner, 12 Nov 2026)', () => {
+    // A leader once stepped off the rival's tile onto their own and the next
+    // rival took the one they had stood on: "Misty and the green NPC had
+    // swapped places." The rival is a hunter and never a leader now, so each
+    // stands in one place every day.
     const met = { ...DEFAULT_RAID_PROGRESS, gymsMet: [MISTY_BOSS_ID, KOGA_BOSS_ID] };
-    const farFloor = (rival: string) =>
-      new Map<string, GridPosition>([[rival, rivalTile(met, rival)], ...practiceLeaders(met, rival).map((leader) => [leader.gym.rival, leader.tile] as const)]);
-    for (const before of HUNTER_RIVALS) {
-      const was = farFloor(before.id);
-      expect(new Set([...was.values()].map((tile) => `${tile.x},${tile.y}`)).size, `nobody shares a tile with ${before.id} up`).toBe(was.size);
-      for (const after of HUNTER_RIVALS) {
-        for (const [who, tile] of farFloor(after.id)) {
-          if (was.has(who)) {
-            expect(tile, `${who}, ${before.id} up and then ${after.id}`).toEqual(was.get(who));
-          }
-        }
-      }
-    }
-    expect(rivalTile(met, 'misty')).toEqual(LEADER_TILES[0]);
-    expect(rivalTile(met, 'lt-surge')).toEqual(RIVAL_TILE);
+    const tiles = practiceLeaders(met).map((leader) => leader.tile);
+    expect(tiles).toEqual([LEADER_TILES[0], LEADER_TILES[1]]);
+    expect(tiles).not.toContainEqual(RIVAL_TILE);
+    expect(practiceLeaders({ ...DEFAULT_RAID_PROGRESS, gymsMet: [MISTY_BOSS_ID] }).map((leader) => leader.tile)).toEqual([LEADER_TILES[0]]);
   });
 
   it("keeps a leader's tile their own whoever else has been met", () => {
-    const kogaAlone = practiceLeaders({ ...DEFAULT_RAID_PROGRESS, gymsMet: [KOGA_BOSS_ID] }, null);
-    const both = practiceLeaders({ ...DEFAULT_RAID_PROGRESS, gymsMet: [MISTY_BOSS_ID, KOGA_BOSS_ID] }, null);
+    const kogaAlone = practiceLeaders({ ...DEFAULT_RAID_PROGRESS, gymsMet: [KOGA_BOSS_ID] });
+    const both = practiceLeaders({ ...DEFAULT_RAID_PROGRESS, gymsMet: [MISTY_BOSS_ID, KOGA_BOSS_ID] });
     expect(kogaAlone.map((leader) => leader.tile)).toEqual([both.find((leader) => leader.gym.bossId === KOGA_BOSS_ID)!.tile]);
   });
 

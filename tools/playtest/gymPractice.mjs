@@ -30,7 +30,7 @@ const save = JSON.parse(readFileSync(savePath, 'utf8'));
 for (const { pokemon } of save.stash.pokemon) {
   pokemon.currentHp = 9999;
 }
-// Two raids gone: the rival up is Lt. Surge, so Misty stands on her own tile.
+// Two raids gone: the rival up is Bruno, under the banner, and Misty on her own tile.
 save.raidProgress.raidRecord = { 'greystone-vale': { deployed: 2, extracted: 1, wiped: 1 } };
 save.raidProgress.arenaIntroSeen = true;
 

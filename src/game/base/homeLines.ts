@@ -32,10 +32,10 @@ export function nextRival(game: RestoredGame): HunterRivalId {
  */
 const TONIGHT: Readonly<Record<HunterRivalId, string>> = {
   blue: 'KANTO TONIGHT: BLUE, grandson of PROFESSOR OAK, tells our reporter he is "never more than one step behind you, loser."',
-  misty: 'KANTO TONIGHT: the Cerulean Gym is shut today. Its leader MISTY was last seen "going after somebody who ignored her."',
-  'lt-surge': 'KANTO TONIGHT: storm warning over Vermilion. LT. SURGE says he is shipping out to "settle a score with a kid."',
-  koga: 'KANTO TONIGHT: there have been no sightings of KOGA of Fuchsia all week. That, our reporter says, is what worries her.',
-  sabrina: 'KANTO TONIGHT: SABRINA of Saffron predicts "a visitor, on the next raid." She would not tell us who. We think she meant you.',
+  lorelei: 'KANTO TONIGHT: a cold snap over the vale. LORELEI of the ELITE FOUR says it will "freeze the next one who comes out."',
+  bruno: 'KANTO TONIGHT: BRUNO of the ELITE FOUR has been training in the caves of the vale all week. "Hoo hah!" was all he would tell us.',
+  agatha: 'KANTO TONIGHT: AGATHA of the ELITE FOUR says PROFESSOR OAK is "an old duff" and his new helper "a child." We think she means you.',
+  lance: 'KANTO TONIGHT: something with wings was seen over the vale. LANCE of the ELITE FOUR would only say "dragons never miss."',
 };
 
 export function tellyLines(game: RestoredGame): readonly string[] {

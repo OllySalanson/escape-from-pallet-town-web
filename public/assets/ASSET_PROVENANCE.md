@@ -514,6 +514,16 @@ ruling, same rights holders.
 | `characters/worker-woman.png` | `worker_f.png` |
 | `characters/man.png` | `man.png` |
 | `characters/cameraman.png` | `cameraman.png` |
+| `characters/lorelei.png` | `lorelei.png` |
+| `characters/bruno.png` | `bruno.png` |
+| `characters/agatha.png` | `agatha.png` |
+| `characters/lance.png` | `lance.png` |
+
+The last four were added on 2026-11-22, when the Elite Four took over from the
+gym leaders as the four hunters after Blue (`src/game/world/hunters.ts`). They
+are named people, and pret's file is that person by construction. Lorelei
+walks; Bruno, Agatha and Lance are three frames, one a facing, because FireRed
+only ever stands them in their rooms, so the cut repeats each as its own step.
 
 Seventeen of the file names describe what the figure looks like on screen. They
 are this repository's labels, not a claim about what the game calls that sprite.
@@ -536,7 +546,9 @@ named people, so each row was matched frame for frame against
 `pret/pokefirered`'s `blue`, `misty`, `lt_surge`, `koga` and `sabrina`
 object-event graphics, and again nothing of the decompilation ships. Blue is
 the rival and walks; the four gym leaders stand in their gyms all game and are
-*standing* figures like the two below.
+*standing* figures like the two below. Since 2026-11-22 the hunters after Blue
+are the Elite Four (above); Misty and Koga still stand in their gyms, and Lt.
+Surge and Sabrina wait for theirs.
 
 Two of the four are marked *standing*: the sheet gives them four cells, one a
 facing, and no walk cycle, because the game draws them at a counter all day. The

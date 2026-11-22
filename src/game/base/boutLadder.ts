@@ -1,4 +1,4 @@
-import { HUNTER_RIVALS, type HunterRivalId } from '../world/hunters';
+import { HUNTER_RIVALS, storedRivalId, type HunterRivalId } from '../world/hunters';
 
 /**
  * The one thing a bout for show in THE RAID ARENA leaves behind it, written by the
@@ -33,9 +33,10 @@ export function readBouts(value: unknown): BoutRecord | undefined {
     return undefined;
   }
   const { beaten, ladders } = value as { beaten?: unknown; ladders?: unknown };
-  const known = new Set<string>(HUNTER_RIVALS.map((rival) => rival.id));
   return {
-    beaten: Array.isArray(beaten) ? [...new Set(beaten.filter((id): id is HunterRivalId => typeof id === 'string' && known.has(id)))] : [],
+    beaten: Array.isArray(beaten)
+      ? [...new Set(beaten.map(storedRivalId).filter((id): id is HunterRivalId => id !== undefined))]
+      : [],
     ladders: Number.isInteger(ladders) && (ladders as number) >= 0 ? (ladders as number) : 0,
   };
 }

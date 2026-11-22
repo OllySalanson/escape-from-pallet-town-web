@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getCharacterDesign } from './characterDesigns';
-import { FIRST_HUNTER_RIVAL, HUNTER_RIVALS, hunterRival, ownGymRooms, rivalForRaid, rivalsStoodDown } from './hunters';
-import { getWorldMap } from '../worldMap';
-import { KOGA_BOSS_ID, MISTY_BOSS_ID, valeGyms } from './valeQuarters';
+import { FIRST_HUNTER_RIVAL, HUNTER_RIVALS, hunterRival, rivalForRaid, storedRivalId } from './hunters';
+import { valeGyms } from './valeQuarters';
 
 describe('the five hunters', () => {
   it('opens with Blue, as the captain asked', () => {
@@ -69,35 +68,35 @@ describe('the five hunters', () => {
   });
 });
 
-describe('a gym leader beaten in the raid', () => {
-  it('is a rival, for every gym, so beating any of them can stand one down', () => {
-    for (const gym of valeGyms()) {
-      expect(HUNTER_RIVALS.map((rival) => rival.id)).toContain(gym.rival);
-      expect(rivalsStoodDown([gym.bossId])).toEqual([gym.rival]);
+describe('a hunter is never a gym leader', () => {
+  /**
+   * 13 of 19 first-time players in the 22 Nov 2026 playtest beat a Lv 2
+   * "MISTY" on their first raid and took the real one at Cerulean Gym for
+   * somebody already beaten. No hunter shares a name with anybody who leads a
+   * gym, in the vale or in Kanto, so the next gym is never one of them.
+   */
+  it('shares a name with no gym leader', () => {
+    const leaders = [
+      ...valeGyms().map((gym) => gym.leader.toUpperCase()),
+      ...['BROCK', 'MISTY', 'LT. SURGE', 'ERIKA', 'KOGA', 'SABRINA', 'BLAINE', 'GIOVANNI'],
+    ];
+    for (const rival of HUNTER_RIVALS) {
+      expect(leaders).not.toContain(rival.name);
+      for (const line of [...rival.caught, rival.getaway, rival.defeat, ...Object.values(rival.hall)]) {
+        expect(leaders.filter((leader) => line.includes(leader)), line).toEqual([]);
+      }
     }
   });
 
-  it('stands down only for the gyms won in this raid, and for nothing else beaten', () => {
-    expect(rivalsStoodDown([])).toEqual([]);
-    expect(rivalsStoodDown(['vale-coast-fisherman-hal'])).toEqual([]);
-    expect(rivalsStoodDown([KOGA_BOSS_ID])).toEqual(['koga']);
-    expect(rivalsStoodDown(new Set([MISTY_BOSS_ID, KOGA_BOSS_ID]))).toEqual(['misty', 'koga']);
-  });
-});
-
-describe('a gym leader hunting', () => {
-  it('keeps out of their own gym room, found by the name the vale gives it, for every gym', () => {
-    const vale = getWorldMap('greystone-vale');
-    const rooms = ownGymRooms(vale.areas);
-    expect([...rooms.keys()]).toEqual(valeGyms().map((gym) => gym.rival));
-    for (const gym of valeGyms()) {
-      const room = vale.areas!.find((area) => area.name === gym.building)!;
-      expect(rooms.get(gym.rival as (typeof HUNTER_RIVALS)[number]['id']), gym.building).toEqual(room.rect);
+  it('reads a save that names a hunter by the name they had before', () => {
+    expect(storedRivalId('misty')).toBe('lorelei');
+    expect(storedRivalId('lt-surge')).toBe('bruno');
+    expect(storedRivalId('koga')).toBe('agatha');
+    expect(storedRivalId('sabrina')).toBe('lance');
+    for (const rival of HUNTER_RIVALS) {
+      expect(storedRivalId(rival.id)).toBe(rival.id);
     }
-  });
-
-  it('keeps nobody out of anywhere on a map without the gyms', () => {
-    expect(ownGymRooms(undefined).size).toBe(0);
-    expect(ownGymRooms(getWorldMap('route-1').areas).size).toBe(0);
+    expect(storedRivalId('giovanni')).toBeUndefined();
+    expect(storedRivalId(7)).toBeUndefined();
   });
 });

@@ -28,7 +28,7 @@ const asset = (path) => dataUrl(new URL(`public/assets/${path}`, root));
 const inputs = {
   map: dataUrl(mapPng),
   sheets: Object.fromEntries(
-    ['protagonist-red', 'blue', 'prof-oak', 'nurse-joy', 'brock', 'bill', 'misty', 'lt-surge', 'koga', 'sabrina'].map((id) => [id, asset(`characters/${id}.png`)]),
+    ['protagonist-red', 'blue', 'prof-oak', 'nurse-joy', 'brock', 'bill', 'lorelei', 'bruno', 'agatha', 'lance'].map((id) => [id, asset(`characters/${id}.png`)]),
   ),
 };
 
@@ -173,7 +173,7 @@ const DRAW = async ({ map, sheets }) => {
       { height: 102, fill: '#ebeac5', ink: '#202020', soft: '#6b6a55', bar: '#202020', barInk: '#ebeac5', title: 'AT HOME IN THE HARBOUR' },
     );
     const rivals = await row(
-      [['blue', 'BLUE'], ['misty', 'MISTY'], ['lt-surge', 'LT. SURGE'], ['koga', 'KOGA'], ['sabrina', 'SABRINA']],
+      [['blue', 'BLUE'], ['lorelei', 'LORELEI'], ['bruno', 'BRUNO'], ['agatha', 'AGATHA'], ['lance', 'LANCE']],
       { height: 110, fill: '#0f1f33', ink: '#f8f5d7', soft: '#9bb4c6', bar: '#8ed4c2', barInk: '#0f1f33', title: 'OUT IN THE FIELD, ON YOUR TRAIL', footer: 'ONE OF THEM HUNTS YOU EVERY RAID' },
     );
     const [c, g] = canvas(W, home.height + 6 + rivals.height);

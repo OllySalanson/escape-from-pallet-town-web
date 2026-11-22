@@ -130,7 +130,7 @@ export function hunterThreatLine(
   /**
    * A raid alone is hunted by a pack, a hunter to every district
    * (`hunterPack.ts`), and the raid's own rival only keeps the district it lands
-   * in. "Hunter SABRINA" over a raid where KOGA caught the player two districts
+   * in. "Hunter LANCE" over a raid where AGATHA caught the player two districts
    * on read as the rim naming the wrong hunter (the overnight playtest of 20
    * Nov 2026), so a pack is said as one. A room shares one hunter, named alone.
    */

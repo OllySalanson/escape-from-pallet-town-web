@@ -25,6 +25,7 @@
  * Deliberately free of imports: the landing filter, the gates and the badge
  * case all read it, and it must sit at the bottom of the graph they share.
  */
+import type { CastCharacterDesignId } from './characterDesigns';
 
 export interface ValeGym {
   /** The leader's boss id (`trainers.ts`), which is what the save keeps. */
@@ -38,10 +39,10 @@ export interface ValeGym {
   /** Where the gym stands, as the map names the place. */
   readonly standsIn: string;
   /**
-   * Who they are when they are hunting (`world/hunters.ts`): the leaders are
-   * the same people as the rivals, so their face in the hall is the hunter's.
+   * How they are drawn: in their gym (`trainers.ts`) and on the hall's far
+   * floor, where once met they wait to spar (`base/gymPractice.ts`).
    */
-  readonly rival: string;
+  readonly design: CastCharacterDesignId;
   /**
    * What the Gym Guide at the Raid Arena's door says about them before the
    * badge is won, in FireRed's Gym Guide's manner: the gym, and the types that
@@ -121,7 +122,7 @@ export const VALE_QUARTERS: readonly ValeQuarter[] = [
       badge: 'CASCADE BADGE',
       building: 'Cerulean Gym',
       standsIn: 'GULL STRAND',
-      rival: 'misty',
+      design: 'misty',
       advice: [
         'Next gym: CERULEAN GYM on GULL STRAND. MISTY holds THE COAST.',
         'Her Water types swim fast in her rain. Electric and Grass hit hard!',
@@ -152,7 +153,7 @@ export const VALE_QUARTERS: readonly ValeQuarter[] = [
       badge: 'SOUL BADGE',
       building: 'Fuchsia Gym',
       standsIn: 'TANGLEWOOD',
-      rival: 'koga',
+      design: 'koga',
       advice: [
         'Next gym: FUCHSIA GYM in TANGLEWOOD. KOGA holds THE MARSH.',
         'His Poison types float and wear you down. A Ghost shrugs them off!',

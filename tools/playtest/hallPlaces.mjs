@@ -5,9 +5,9 @@
 //
 //   node tools/playtest/hallPlaces.mjs <test-mode build url> <out dir> <raids> <rival|leader> [--pixels] [--lose]
 //
-// A fresh save with Misty met at her gym and <raids> raids deployed: 1 makes
-// Misty the rival (the bout), 2 makes Lt. Surge the rival and Misty a leader to
-// practise with (`leader`). The foe is left on 1 HP every turn so the bout is
+// A fresh save with Misty met at her gym and <raids> raids deployed: the rival
+// up (Lorelei after 1, Bruno after 2) under the banner for the bout, and Misty a
+// leader on her own tile to practise with (`leader`). The foe is left on 1 HP every turn so the bout is
 // won and the ladder moves on, unless --lose. --pixels photographs the three
 // moments into <out dir>.
 import { mkdirSync } from 'node:fs';
@@ -64,9 +64,9 @@ try {
   }
   await until(inHall, 'hall'); await step(600);
   const figures = () => base(`({ rival: b.rivalHere?.id ?? null, rivalAt: b.rivalFigure ? { x: b.rivalFigure.x / 16, y: Math.round(b.rivalFigure.y / 16) } : null,
-    leaders: b.leadersHere.map((l) => ({ id: l.gym.rival, tile: l.tile })), leaderSprites: b.leaderFigures.map((f) => ({ x: f.x / 16, key: f.texture.key })), rivalKey: b.rivalFigure?.texture.key, player: { ...b.currentTile } })`);
+    leaders: b.leadersHere.map((l) => ({ id: l.gym.bossId, tile: l.tile })), leaderSprites: b.leaderFigures.map((f) => ({ x: f.x / 16, key: f.texture.key })), rivalKey: b.rivalFigure?.texture.key, player: { ...b.currentTile } })`);
   console.log('hall on entry:', JSON.stringify(await figures()));
-  const target = who === 'rival' ? await base('({ ...(b.rivalAt ?? { x: 35, y: 6 }) })') : (await base('b.leadersHere.find((l) => l.gym.rival === "misty")?.tile'));
+  const target = who === 'rival' ? await base('({ ...(b.rivalAt ?? { x: 35, y: 6 }) })') : (await base('b.leadersHere.find((l) => l.gym.bossId === "vale-gym-misty")?.tile'));
   for (let g = 0; g < 400; g++) {
     if (await base('Boolean(b.dialogBox?.visible)')) { await press('Space', 300); continue; }
     const key = await keyTowards([{ x: target.x, y: target.y + 1 }, { x: target.x + 1, y: target.y }, { x: target.x - 1, y: target.y }]);

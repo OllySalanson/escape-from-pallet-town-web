@@ -47,7 +47,7 @@ function packBeside(mode: PackHunter['mode']) {
     post: beside,
     route: [beside],
   };
-  const hunters = createHunterPack([ground], ['misty']);
+  const hunters = createHunterPack([ground], ['lorelei']);
   Object.assign(hunters[0], { mode, position: beside, lastSeen: player, facing: 'left' });
   const pack = new HunterPack(hunters);
   const dialogBox = { visible: false, showMessages: vi.fn(), showMessage: vi.fn(), setY: vi.fn() };
@@ -158,8 +158,8 @@ describe('the pack in the scene', () => {
   it('catches a player at rest beside a hunter that is after them, with that hunter\'s rival and lines', () => {
     const { scene, pack, hunter } = packBeside('chase');
     expect(scene.tryStartHunterBattle()).toBe(true);
-    expect(scene.pendingTrainerBattle?.trainer.name).toBe(hunterRival('misty').name);
-    expect(scene.pendingTrainerBattle?.introLines).toEqual(hunterRival('misty').caught);
+    expect(scene.pendingTrainerBattle?.trainer.name).toBe(hunterRival('lorelei').name);
+    expect(scene.pendingTrainerBattle?.introLines).toEqual(hunterRival('lorelei').caught);
     expect(scene.cutscene).toBeDefined();
     expect(pack.engagedId).toBe(hunter.id);
   });
@@ -183,7 +183,7 @@ describe('the pack in the scene', () => {
     hunter.mode = 'return';
     scene.onPackEvent({ kind: 'gave-up', hunter });
     expect(scene.hunterShout()).toBe('lost');
-    expect(scene.hunterRival().name).toBe(hunterRival('misty').name);
+    expect(scene.hunterRival().name).toBe(hunterRival('lorelei').name);
     scene.time.now += 5_000;
     expect(scene.hunterShout()).toBeNull();
   });

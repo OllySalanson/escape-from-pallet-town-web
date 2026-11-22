@@ -264,12 +264,9 @@ import {
   nearTheRival,
 } from '../base/arenaBouts';
 import {
-  leaderBehindRival,
   nobodyToSparLine,
   practiceLeaders,
   practiceTrainer,
-  rivalTile,
-  PRACTICE_AFTER_BOUT_QUESTION,
   PRACTICE_QUESTION,
   type PracticeLeader,
 } from '../base/gymPractice';
@@ -279,7 +276,7 @@ import type { BoutRecord } from '../base/boutLadder';
 import type { BattleSceneData } from './BattleScene';
 import { PokemonParty } from '../pokemon';
 import type { DeploymentFlow } from '../hub/deploymentFlow';
-import { HUNTER_RIVALS, hunterRival, type HunterRival, type HunterRivalId } from '../world/hunters';
+import { hunterRival, type HunterRival, type HunterRivalId } from '../world/hunters';
 import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID, getItemById, isFoundOnly, itemCountTag, type ItemId, type PackItemId } from '../items/items';
 import { FALLBACK_PACK_ID, STARTING_PACK_ID, bestPackIn, packSquares } from '../items/packs';
 import { COIN_EVERY_MS, COIN_HINT_AFTER_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIGHT_MS, PIT_GIFT_TILE, giftAt, giftLines, giftWaiting, type PitGift } from '../base/pitCoins';
@@ -886,7 +883,7 @@ export class BaseScene extends Phaser.Scene {
   /** The rival on the far floor, and who it is. */
   private rivalFigure: Phaser.GameObjects.Sprite | null = null;
   private rivalHere: HunterRival | null = null;
-  /** Where they stand: their own tile when they are a leader the player has met (`rivalTile`). */
+  /** Where they stand: under the hall's banner (`RIVAL_TILE`). */
   private rivalAt: GridPosition = RIVAL_TILE;
   /** Gym leaders the player has met, waiting on the far floor to spar with their real team. */
   private leaderFigures: Phaser.GameObjects.Sprite[] = [];
@@ -2662,7 +2659,7 @@ export class BaseScene extends Phaser.Scene {
     }
     const rival = who ?? this.rivalNow();
     const appearance = getWorldCharacterAppearance('npc', rival.design);
-    const at = rivalTile(this.savedGame.raidProgress, rival.id);
+    const at = RIVAL_TILE;
     this.rivalHere = rival;
     this.rivalAt = at;
     this.rivalFigure = this.add
@@ -2675,8 +2672,7 @@ export class BaseScene extends Phaser.Scene {
 
   /**
    * The gym leaders this save has met, each on their own tile of the far floor,
-   * there to spar with their real gym team (`base/gymPractice.ts`) - except one
-   * who is the rival there today, who offers it there instead.
+   * there to spar with their real gym team (`base/gymPractice.ts`).
    */
   private standTheLeaders(): void {
     this.leaderFigures.forEach((figure) => figure.destroy());
@@ -2685,10 +2681,9 @@ export class BaseScene extends Phaser.Scene {
     if (!this.arena || this.visit) {
       return;
     }
-    this.leadersHere = practiceLeaders(this.savedGame.raidProgress, this.rivalHere?.id ?? null);
+    this.leadersHere = practiceLeaders(this.savedGame.raidProgress);
     this.leaderFigures = this.leadersHere.map(({ gym, tile }) => {
-      const design = HUNTER_RIVALS.find((rival) => rival.id === gym.rival)?.design;
-      const appearance = getWorldCharacterAppearance('npc', design);
+      const appearance = getWorldCharacterAppearance('npc', gym.design);
       return this.add
         .sprite(tile.x * TILE_SIZE, tile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET, appearance.textureKey, worldCharacterIdleFrame(appearance, 'down'))
         .setOrigin(0, 0)
@@ -2734,8 +2729,7 @@ export class BaseScene extends Phaser.Scene {
   private startPractice(gym: ValeGym): void {
     const kit = this.kit;
     const trainer = practiceTrainer(gym.bossId);
-    const rival = HUNTER_RIVALS.find((each) => each.id === gym.rival);
-    if (!kit || !trainer || !rival) {
+    if (!kit || !trainer) {
       return;
     }
     const party = boutParty(kit.flow.party.map((stored) => stored.pokemon));
@@ -2744,7 +2738,7 @@ export class BaseScene extends Phaser.Scene {
       bag: boutBag(kit.flow.packedContents),
       trainer,
       hunterBattle: true,
-      exhibition: { rival: rival.id, at: { ...this.currentTile }, facing: this.facing, practice: gym.bossId },
+      exhibition: { at: { ...this.currentTile }, facing: this.facing, practice: gym.bossId },
     };
     flowAcrossABout = kit.flow;
     this.leaving = true;
@@ -2817,20 +2811,6 @@ export class BaseScene extends Phaser.Scene {
       this.askInBox(BOUT_QUESTION, (yes) => {
         if (yes) {
           this.startBout(rival);
-          return;
-        }
-        // A rival who is also a leader the player has met offers their gym team instead.
-        const gym = leaderBehindRival(this.savedGame.raidProgress, rival.id);
-        if (gym) {
-          this.say([gym.practice.offer], [this.rivalAt], () =>
-            this.askInBox(PRACTICE_AFTER_BOUT_QUESTION, (practise) => {
-              if (practise) {
-                this.startPractice(gym);
-              } else {
-                this.say([rival.hall.later], [this.rivalAt]);
-              }
-            }),
-          );
           return;
         }
         this.say([rival.hall.later], [this.rivalAt]);

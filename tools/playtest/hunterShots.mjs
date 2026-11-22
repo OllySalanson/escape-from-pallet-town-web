@@ -54,7 +54,7 @@ try {
   await wait(600);
   for (let i = 0; i < 12; i += 1) { await press('Space'); await wait(200); }
 
-  for (const [index, rival] of ['blue', 'misty', 'lt-surge', 'koga', 'sabrina'].entries()) {
+  for (const [index, rival] of ['blue', 'lorelei', 'bruno', 'agatha', 'lance'].entries()) {
     await page.evaluate(`(() => { const w = ${world}; const s = w.runSession;
       s.plan = { ...s.plan, hunter: { ...s.plan.hunter, rivalId: ${JSON.stringify(rival)}, spawnDelayMs: 0 } };
       s.stepsTaken = 99;
@@ -67,7 +67,7 @@ try {
     for (let i = 0; i < 6 && (await page.evaluate(`${world}.dialogBox.visible`)); i += 1) { await press('Space'); await wait(250); }
   }
 
-  // Sabrina is on the map now; stand her beside the player and walk into her.
+  // Lance is on the map now; stand him beside the player and walk into him.
   await page.evaluate(`(() => { const w = ${world}; const t = w.currentTile;
     const beside = [[0,-1,'up'],[1,0,'right'],[-1,0,'left'],[0,1,'down']].find(([dx, dy]) => w.collisionData[t.y + dy]?.[t.x + dx] === false);
     const [dx, dy, facing] = beside; const p = { x: t.x + dx, y: t.y + dy };
@@ -76,7 +76,7 @@ try {
     w.tryWalkIntoHunter(facing); })()`);
   await until(`${world}.dialogBox.visible`, 'the caught line');
   await wait(3000);
-  await shot('08-caught-sabrina');
+  await shot('08-caught-lance');
   for (let i = 0; i < 8 && !(await page.evaluate(sceneIs('battle'))); i += 1) { await press('Space'); await wait(400); }
   await until(sceneIs('battle'));
   // The entrance is a wall-clock tween, so it is watched at real speed.

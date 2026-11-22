@@ -47,7 +47,7 @@ describe('the ladder', () => {
     // The same rival twice is not two.
     record = afterBout(record, 'blue', true).record;
     expect(record.beaten).toEqual(['blue']);
-    record = afterBout(record, 'misty', false).record;
+    record = afterBout(record, 'lorelei', false).record;
     expect(record).toEqual({ beaten: [], ladders: 0 });
     let done = false;
     for (const rival of HUNTER_RIVALS) {
@@ -64,10 +64,12 @@ describe('the ladder', () => {
   it('reads back only what is one', () => {
     expect(readBouts(undefined)).toBeUndefined();
     expect(readBouts({ beaten: ['blue', 'blue', 'giovanni', 3], ladders: -1 })).toEqual({ beaten: ['blue'], ladders: 0 });
+    // Written before the hunters were renamed (`storedRivalId`).
+    expect(readBouts({ beaten: ['misty', 'koga', 'lorelei'], ladders: 2 })).toEqual({ beaten: ['lorelei', 'agatha'], ladders: 2 });
   });
 
   it('says where the run has got to', () => {
-    expect(ladderLine({ beaten: ['blue', 'misty'], ladders: 0 }, false, true)).toBe('2 OF 5 IN A ROW');
+    expect(ladderLine({ beaten: ['blue', 'lorelei'], ladders: 0 }, false, true)).toBe('2 OF 5 IN A ROW');
     expect(ladderLine({ beaten: [], ladders: 0 }, false, false)).toBe('BACK TO THE START');
     expect(ladderLine({ beaten: [], ladders: 1 }, true, true)).toMatch(/BANNER/);
   });

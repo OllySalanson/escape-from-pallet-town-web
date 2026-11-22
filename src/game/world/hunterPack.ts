@@ -152,11 +152,8 @@ export type HunterMode =
 
 export interface PackHunter {
   readonly id: string;
-  /**
-   * Who keeps this patch. Changed only by `HunterPack.standDown`, when the
-   * rival is a gym leader the player has just beaten in this raid.
-   */
-  rivalId: HunterRivalId;
+  /** Who keeps this patch. */
+  readonly rivalId: HunterRivalId;
   readonly ground: HunterGround;
   mode: HunterMode;
   /** The tile it stands on, or the tile it is stepping from. */
@@ -225,14 +222,6 @@ export interface PackWorld {
   /** Whether two tiles are in the same place (the outdoors, one room, one cave floor). */
   readonly samePlace: (a: GridPosition, b: GridPosition) => boolean;
   readonly enraged: boolean;
-  /**
-   * Where a rival never sets foot as a hunter: a gym leader's own gym room,
-   * where they stand at its head as the leader (`gymRoomsKeptFrom`). The hunter
-   * KOGA followed a player into Fuchsia Gym and fought them there, under the
-   * gym leader KOGA's nose (the second characters hunt of 11 Nov 2026). Absent,
-   * nobody is kept out of anywhere.
-   */
-  readonly keptOut?: (rival: HunterRivalId, index: number) => boolean;
 }
 
 const UNREACHED = -1;
@@ -390,56 +379,6 @@ export function rivalsForGrounds(
   const offset = home ? colour(home.post) : 0;
   const count = HUNTER_RIVALS.length;
   return grounds.map((ground) => HUNTER_RIVALS[(((base + colour(ground.post) - offset) % count) + count) % count].id);
-}
-
-/**
- * The rivals once those who have stood down are taken off the map: each patch
- * kept by one of them goes to whichever rival is left that the fewest patches
- * touching it already have, the next in turn after the one it replaces on a
- * tie, so the colouring above stays as true as five faces less one allow.
- * Every other patch keeps its rival.
- *
- * A rival stands down when they are a gym leader beaten at their gym in this
- * raid (the owner, 11 Nov 2026: a leader who has just handed over a badge does
- * not ambush you outside the door with another team - `rivalsStoodDown` in
- * `hunters.ts`).
- */
-export function withoutStoodDown(
-  grounds: readonly HunterGround[],
-  rivals: readonly HunterRivalId[],
-  stoodDown: readonly HunterRivalId[],
-): readonly HunterRivalId[] {
-  const left = HUNTER_RIVALS.filter((rival) => !stoodDown.includes(rival.id));
-  if (left.length === 0) {
-    return rivals;
-  }
-  const cell = (ground: HunterGround) => ({ x: Math.floor(ground.post.x / 64), y: Math.floor(ground.post.y / 64) });
-  const touching = (a: HunterGround, b: HunterGround): boolean => {
-    const ca = cell(a);
-    const cb = cell(b);
-    return Math.abs(ca.x - cb.x) <= 1 && Math.abs(ca.y - cb.y) <= 1;
-  };
-  const count = HUNTER_RIVALS.length;
-  const turnAfter = (from: HunterRivalId, rival: HunterRivalId): number => {
-    const start = HUNTER_RIVALS.findIndex((each) => each.id === from);
-    const at = HUNTER_RIVALS.findIndex((each) => each.id === rival);
-    return (((at - start) % count) + count) % count;
-  };
-  const result = [...rivals];
-  grounds.forEach((ground, index) => {
-    const was = result[index];
-    if (!stoodDown.includes(was)) {
-      return;
-    }
-    const clashes = (rival: HunterRivalId): number =>
-      grounds.filter((other, otherIndex) => otherIndex !== index && touching(ground, other) && result[otherIndex] === rival)
-        .length;
-    const ranked = [...left].sort(
-      (a, b) => clashes(a.id) - clashes(b.id) || turnAfter(was, a.id) - turnAfter(was, b.id),
-    );
-    result[index] = ranked[0].id;
-  });
-  return result;
 }
 
 export function createHunterPack(grounds: readonly HunterGround[], rivals: readonly HunterRivalId[]): PackHunter[] {
@@ -767,29 +706,6 @@ export class HunterPack {
     this.hunters = hunters;
   }
 
-  /**
-   * Takes rivals who have stood down for the rest of the raid off the map: a
-   * patch one of them kept is kept from now on by another rival
-   * (`withoutStoodDown`), wherever its hunter is and whatever it is doing, so a
-   * hunter beaten or still to come keeps that state under its new face.
-   * Answers whether any patch changed hands.
-   */
-  standDown(stoodDown: readonly HunterRivalId[]): boolean {
-    const next = withoutStoodDown(
-      this.hunters.map((hunter) => hunter.ground),
-      this.hunters.map((hunter) => hunter.rivalId),
-      stoodDown,
-    );
-    let changed = false;
-    this.hunters.forEach((hunter, index) => {
-      if (hunter.rivalId !== next[index]) {
-        hunter.rivalId = next[index];
-        changed = true;
-      }
-    });
-    return changed;
-  }
-
   /** The hunter holding a tile, if any. */
   hunterAt(tile: GridPosition): PackHunter | undefined {
     return this.hunters.find((hunter) => heldTiles(hunter).some((held) => same(held, tile)));
@@ -894,10 +810,7 @@ export class HunterPack {
     const distanceTo = (hunter: PackHunter): number =>
       Math.abs(hunter.position.x - world.player.x) + Math.abs(hunter.position.y - world.player.y);
     // One still to come counts: the arrival leaves a keeper home when its whole loop is close by.
-    // Nobody comes for you where they may not go.
-    const free = this.hunters.filter(
-      (hunter) => hunter.mode !== 'beaten' && hunter.mode !== 'stunned' && !this.keptOutOf(hunter, world, world.player),
-    );
+    const free = this.hunters.filter((hunter) => hunter.mode !== 'beaten' && hunter.mode !== 'stunned');
     const hunter =
       free.find((candidate) => inGround(candidate.ground, world.player)) ??
       [...free].sort((one, other) => distanceTo(one) - distanceTo(other))[0];
@@ -1019,8 +932,7 @@ export class HunterPack {
       if (
         far < HUNTER_ARRIVAL_CLEARANCE ||
         this.hunterAt(tile) ||
-        world.blocked(tile.y * world.width + tile.x) ||
-        this.keptOutOf(hunter, world, tile)
+        world.blocked(tile.y * world.width + tile.x)
       ) {
         return;
       }
@@ -1087,16 +999,7 @@ export class HunterPack {
         }
       }
     }
-    const keptOut = world.keptOut;
-    const rival = hunter.rivalId;
-    return keptOut
-      ? (index) => others.has(index) || world.blocked(index) || keptOut(rival, index)
-      : (index) => others.has(index) || world.blocked(index);
-  }
-
-  /** Whether `hunter` is kept out of `tile` (`PackWorld.keptOut`). */
-  private keptOutOf(hunter: PackHunter, world: PackWorld, tile: GridPosition): boolean {
-    return world.keptOut?.(hunter.rivalId, tile.y * world.width + tile.x) === true;
+    return (index) => others.has(index) || world.blocked(index);
   }
 
   private advanceHunter(hunter: PackHunter, world: PackWorld, deltaMs: number, events: PackEvent[]): void {
@@ -1150,8 +1053,7 @@ export class HunterPack {
     return (
       (hunter.mode === 'chase' || hunter.enraged) &&
       !world.playerMoving &&
-      isTouching(hunter.position, world.player) &&
-      !this.keptOutOf(hunter, world, world.player)
+      isTouching(hunter.position, world.player)
     );
   }
 
