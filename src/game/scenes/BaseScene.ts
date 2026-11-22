@@ -186,7 +186,7 @@ import {
 import { HarbourNight, WASH_DEPTH } from '../base/harbourNight';
 import { lightsAreOn } from '../base/harbourLight';
 import { HarbourBird } from '../base/harbourBird';
-import { windowLight } from '../base/homeClock';
+import { isDawn, windowLight } from '../base/homeClock';
 import { TILE_ANIMATIONS_BY_TILE, animatedTileAt } from '../world/tileAnimation';
 import type { Material } from '../world/tileset/materials';
 import {
@@ -5557,7 +5557,7 @@ export class BaseScene extends Phaser.Scene {
       // After dark the glass also catches something nobody can explain (`world/rumours.ts`).
       const light = windowLight(new Date());
       const sighting = light === 'night' ? this.hearRumour('spyglass') : undefined;
-      const sights = spyglassLines(light, spyglassLooks);
+      const sights = spyglassLines(light, spyglassLooks, isDawn(new Date()));
       this.say(sighting ? [...sights, sighting] : sights, [target]);
       spyglassLooks += 1;
       return;

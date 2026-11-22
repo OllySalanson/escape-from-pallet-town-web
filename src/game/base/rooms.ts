@@ -104,7 +104,7 @@ import {
   tellyLines,
 } from './homeLines';
 import { hunterRival } from '../world/hunters';
-import { houseSeason, windowLight, windowLines, type WindowLight } from './homeClock';
+import { houseSeason, isDawn, windowLight, windowLines, type WindowLight } from './homeClock';
 import {
   arrangeHouse,
   blockedBy,
@@ -971,9 +971,9 @@ function drawLibrary(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
     {
       // Quiet: the sky is the picture, and a caption over a window is a label on the weather.
       name: 'THE WINDOW',
-      note: LIBRARY_WINDOW_LINES[light],
+      note: libraryWindowLine(now),
       tiles: LIBRARY_WINDOWS.map((x) => ({ x, y: 1 })),
-      lines: [LIBRARY_WINDOW_LINES[light]],
+      lines: [libraryWindowLine(now)],
       quiet: true,
     },
   );
@@ -1013,6 +1013,11 @@ export const LIBRARY_WINDOW_LINES: Readonly<Record<WindowLight, string>> = {
   dusk: 'The sun is going down behind the trees.',
   night: 'Stars over the tree tops.',
 };
+
+/** What a library window says now: the dusk picture's words at dawn are the sun coming up (`isDawn`). */
+export function libraryWindowLine(now: Date): string {
+  return isDawn(now) ? 'The sun is coming up behind the trees.' : LIBRARY_WINDOW_LINES[windowLight(now)];
+}
 
 /** The end bookcase of the library's back wall, which swings open onto THE CHART ROOM. */
 export const END_BOOKCASE: GridPosition = { x: 13, y: 0 };

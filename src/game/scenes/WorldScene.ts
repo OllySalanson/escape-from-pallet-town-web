@@ -9,6 +9,7 @@ import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { LEAVE_TRY_PROMPT, currentTry, homeAfterRaid, tryClockLabel } from '../maker/tryIt';
 import { fallFacing } from '../base/arenaDive';
 import { cloudSheet } from '../base/arenaPit';
+import { isDawn } from '../base/homeClock';
 import { clockLine, closeCallLine, newWalk, noteWalked, outLine } from '../world/raidMemory';
 import { ARRIVAL_CLOUD_MS, ARRIVAL_FALL_HEIGHT, ARRIVAL_MS, arrivalPose, cleanLandingLine, dustAt, isCleanLanding, landingRing, ringNamesItsKey, shockwaveAt } from '../world/raidArrival';
 
@@ -5081,6 +5082,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
                 snapshot.enrageGraceRemainingMs,
                 isPlaytestRun(),
                 raidLight(this.runSession?.plan),
+                isDawn(new Date()),
               ).label,
             },
           ]
@@ -5398,6 +5400,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
             snapshot.enrageGraceRemainingMs,
             isPlaytestRun(),
             raidLight(this.runSession?.plan),
+            isDawn(new Date()),
           ),
         ),
         // Beside a side panel the cue alone: the keys it teaches are the raid's, and the panel has its own.

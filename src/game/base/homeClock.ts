@@ -37,6 +37,19 @@ export function windowLight(now: Date): WindowLight {
   return 'dusk';
 }
 
+/**
+ * Whether the twilight `windowLight` calls dusk is the morning's: five until
+ * seven is the sun coming up, not going down. The light is one state either
+ * side of the day (the art and the secrets' hour are the same), but the words
+ * are not: at six in the morning the library window said the sun was going
+ * down and the captain's glass said to wait for full dark, which was never
+ * coming (the overnight playtest of 20 Nov 2026). An hour set on the explorer
+ * run's PLAYTEST BOARD is its evening.
+ */
+export function isDawn(now: Date): boolean {
+  return windowLight(now) === 'dusk' && !playtestHour() && now.getHours() < 12;
+}
+
 export type HouseSeason = 'october' | 'december' | null;
 
 export function houseSeason(now: Date): HouseSeason {
@@ -56,7 +69,9 @@ export function windowLines(now: Date): readonly string[] {
     case 'day':
       return ['The harbour in the sun. Somebody is tying a boat up at the jetty.'];
     case 'dusk':
-      return ['The sun is low over the harbour, and the sea has gone the colour of a Charmander.'];
+      return isDawn(now)
+        ? ['The sun is coming up over the harbour, and the first boats are going out.']
+        : ['The sun is low over the harbour, and the sea has gone the colour of a Charmander.'];
     case 'night':
       return ['Stars over the harbour. Every light out there on the water is somebody else\'s raid.'];
   }
