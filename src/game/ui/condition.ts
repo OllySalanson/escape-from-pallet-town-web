@@ -67,7 +67,13 @@ export function teamConditionLine(team: readonly TeamMember[]): string | null {
   if (fainted.length === 0) {
     return hurt.length === 0 ? null : `${who(hurt, `${hurt.length} Pokémon`)} came home hurt`;
   }
+  // Two of one kind are 'the other': 'Squirtle fainted and Squirtle came
+  // home hurt' read as a typo (AI playtest, 22 Nov 2026).
+  const hurtName =
+    fainted.length === 1 && hurt.length === 1 && hurt[0].name === fainted[0].name
+      ? `the other ${hurt[0].name}`
+      : who(hurt, `${hurt.length}`);
   return `${who(fainted, `${fainted.length} Pokémon`)} fainted${
-    hurt.length > 0 ? ` and ${who(hurt, `${hurt.length}`)} came home hurt` : ''
+    hurt.length > 0 ? ` and ${hurtName} came home hurt` : ''
   }`;
 }
