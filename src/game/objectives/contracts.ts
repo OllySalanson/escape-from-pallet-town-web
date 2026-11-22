@@ -129,6 +129,20 @@ export interface RaidContract {
 
 export const FIRST_CONTRACT_ID = 'recover-lost-field-kit';
 
+/** What every standing contract's id starts with (`standingBoard.ts`): `standing-<round>-<map>`. */
+export const STANDING_ID_PREFIX = 'standing';
+
+/**
+ * Whether a raid carrying this contract is a newcomer's first job: the
+ * authored chain's first contract, or the standing board's round nought - the
+ * job a save whose chain was put away with its maps carries until it banks one,
+ * which on Greystone Vale is every new save's first raid, however many tries it
+ * takes. Its trainers field their `firstContractParty` (`trainersForContract`).
+ */
+export function isFirstJob(id: string | undefined): boolean {
+  return id === FIRST_CONTRACT_ID || (id?.startsWith(`${STANDING_ID_PREFIX}-0-`) ?? false);
+}
+
 /**
  * Floodplain Relay. The teaching contract: one marker, three reed shelves deep,
  * and any exit banks it. Every other contract is a departure from this one.

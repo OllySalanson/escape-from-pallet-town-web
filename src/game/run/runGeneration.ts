@@ -864,11 +864,12 @@ export function generateRunPlan(
       reserve(reservedTiles, poi.mapId, poi.position);
     }
   }
-  // The first contract meets its tolls at a newcomer's price; nothing about
-  // that is rolled, so it moves no seed.
+  // The first raid and the first job meet their tolls at a newcomer's price;
+  // nothing about that is rolled, so it moves no seed.
   const trainers = trainersForContract(
     generateTrainers(content.trainers, content.maps, reservedTiles, rng, isReachable),
     carriedContract?.id,
+    outfitting.firstRaid === true,
   );
   // What this raid is for (`world/raidStake.ts`). The ground it thins moves no
   // roll: the same pieces are laid, on the same stream, somewhere else.

@@ -1,5 +1,5 @@
 import type { HeldItemId } from '../items';
-import { FIRST_CONTRACT_ID } from '../objectives/contracts';
+import { isFirstJob } from '../objectives/contracts';
 import { Pokemon } from '../pokemon';
 import { Move } from '../pokemon/Move';
 import { MOVE_CATALOGUE } from '../pokemon/moveCatalogue';
@@ -154,20 +154,25 @@ export const isChallenging = (trainer: RunTrainerEncounter, defeatedBosses: read
   trainer.challengedAfter === undefined || defeatedBosses.includes(trainer.challengedAfter);
 
 /**
- * A raid's trainers as the contract it carries meets them: on the first
- * contract, every trainer with a `firstContractParty` fields it. That contract
- * is the only one a fresh save can carry and every raid on it is fought at the
- * levels a new starter has, so it is "the first raid" however many tries it
- * takes - the teaching Pidgey repeats on the same rule (`teachingEncounter.ts`).
+ * A raid's trainers as the contract it carries meets them: on a save's first
+ * raid, which carries no job, and on a newcomer's first job (`isFirstJob` - the
+ * chain's first contract, or the standing board's round nought, which is every
+ * new Greystone Vale save's second raid on), every trainer with a
+ * `firstContractParty` fields it. That job is the only one a fresh save can
+ * carry and every raid on it is fought at the levels a new starter has, so it
+ * is "the first raid" however many tries it takes - the teaching Pidgey
+ * repeats on the same rule (`teachingEncounter.ts`).
  * Nothing else about the trainer changes: where they stand, what they watch and
  * what they say are the map's, and the price on the road is still on screen.
  */
 export const trainersForContract = (
   trainers: readonly RunTrainerEncounter[],
   contractId: string | undefined,
+  /** The save's very first raid (`hub/firstRaid.ts`), which carries no job at all. */
+  firstRaid = false,
 ): readonly RunTrainerEncounter[] =>
   trainers.map(({ firstContractParty, ...encounter }) =>
-    contractId === FIRST_CONTRACT_ID && firstContractParty !== undefined
+    (firstRaid || isFirstJob(contractId)) && firstContractParty !== undefined
       ? { ...encounter, trainer: { ...encounter.trainer, party: firstContractParty } }
       : encounter,
   );
@@ -660,6 +665,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       'LENGTHSMAN QUILL HAS THE DROVE IN SIGHT.',
       'Banks, drains and the road between them. All three of them are mine.',
     ],
+    firstContractParty: [new Pokemon(getSpeciesById('psyduck')!, 4)],
     trainer: createTrainer(
       'floodplain-levels-lengthsman-quill',
       'LENGTHSMAN QUILL',
@@ -687,6 +693,13 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     // made the fight a starter lottery at level 7 - 9% for Bulbasaur against
     // 95% for Charmander - because Grass is resisted by the whole early roster.
     // A Squirtle gives every starter a real matchup to read.
+    // A newcomer's first job meets every map-file team softened, so a lone
+    // fresh starter wins about three fights in four bare, without a Potion
+    // drunk: the first trainer by Mill Square wiped five new friends' first
+    // raids out of five (AI playtest 2, 22 Nov 2026), Lee's Pidgey 5 and
+    // Squirtle 6 beating a lone level 5 starter 99 fights in 100. Measured
+    // in `firstJobTrainers.test.ts`.
+    firstContractParty: [new Pokemon(getSpeciesById('pidgey')!, 3), new Pokemon(getSpeciesById('squirtle')!, 3)],
     trainer: createTrainer(
       'grass-scout-lee',
       'SCOUT LEE',
@@ -758,6 +771,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     fixedPosition: true,
     design: 'heavy-man',
     introLines: ['You came up the RIDE for this?', 'There is nothing in that level worth a bruise.', 'Prove me wrong.'],
+    firstContractParty: [new Pokemon(getSpeciesById('diglett')!, 5)],
     trainer: createTrainer(
       'pallet-quarry-breaker-finn',
       'BREAKER FINN',
@@ -802,6 +816,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     facing: 'left',
     fixedPosition: true,
     introLines: ['Waiting on the boat as well?', 'It comes when it comes. Time for one, then.'],
+    firstContractParty: [new Pokemon(getSpeciesById('shellder')!, 4)],
     trainer: createTrainer(
       'pallet-netter-pike',
       'NETTER PIKE',
@@ -915,6 +930,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     fixedPosition: true,
     design: 'woman',
     introLines: ['This is a WORKING drove.', 'Nobody walks it for nothing.'],
+    firstContractParty: [new Pokemon(getSpeciesById('caterpie')!, 4), new Pokemon(getSpeciesById('meowth')!, 3)],
     trainer: createTrainer(
       'route-orchardist-nell',
       'ORCHARDIST NELL',
@@ -941,6 +957,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     sightRange: 1,
     design: 'bald-man',
     introLines: ['FORD TOLL. Beasts and people both.', 'Or take the bridge, three minutes back the way you came.'],
+    firstContractParty: [new Pokemon(getSpeciesById('rattata')!, 4)],
     trainer: createTrainer(
       'route-drover-gil',
       'DROVER GIL',
@@ -963,6 +980,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     fixedPosition: true,
     design: 'old-man',
     introLines: ['You came a long way for a cold kiln.', 'Earn the road out.'],
+    firstContractParty: [new Pokemon(getSpeciesById('zubat')!, 5)],
     trainer: createTrainer(
       'route-collier-osk',
       'COLLIER OSK',
