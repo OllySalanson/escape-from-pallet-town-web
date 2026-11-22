@@ -705,6 +705,35 @@ describe('extraction report after a lost raid', () => {
    * home on 0/17 HP - and the result screen's last word was "a loadout you can
    * deploy with", over a lab that refused to send anyone out.
    */
+  it('says what the restock put back at base, rather than restocking in silence', () => {
+    // 'Your Satchel ... gone for good', and a Satchel and three balls in the
+    // vault at base with nothing said (AI playtest, 22 Nov 2026, eight times).
+    const report = (fitToRaid: boolean, restocked: { itemId: string; quantity: number }[]) => {
+      const partner = new Pokemon(BULBASAUR, 5);
+      const manager = startedRun({ party: [partner], items: [], secure: { pokemon: [partner] } });
+      const result = manager.resolveWipe();
+      return buildExtractionReport({
+        outcome: 'WIPED',
+        cause: 'defeated',
+        snapshot: manager.snapshot(),
+        durationMs: RAID_DURATION_MS,
+        lost: { pokemon: result.lostPokemon, items: result.lostItems },
+        fitToRaid,
+        restocked,
+        saved: true,
+      }).baseNote;
+    };
+    const kit = [
+      { itemId: 'poke-ball', quantity: 3 },
+      { itemId: 'satchel', quantity: 1 },
+    ];
+    expect(report(true, kit)).toMatch(
+      /^What you lost stays lost, but Oak keeps a starter kit for this: 3 Poké Balls and 1 Satchel are waiting at base\.$/,
+    );
+    expect(report(false, kit)).toMatch(/are waiting at base, but nobody is fit to raid: revive a Pokémon/);
+    expect(report(true, [])).toBe('You still have what you need to deploy again.');
+  });
+
   it('never promises a deployable loadout when the wipe left nobody fit to raid', () => {
     const report = (fitToRaid: boolean) => {
       const partner = new Pokemon(BULBASAUR, 5);

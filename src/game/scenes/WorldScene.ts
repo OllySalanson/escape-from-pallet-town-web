@@ -9229,7 +9229,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const wipe = buildWipeSettlement(this.runSession.secureSlot.items ?? [], carriedOut);
     const settledElsewhere = !new SaveManager().ownsRaid(this.runSession.raidId);
     this.recordRaid('wiped');
-    const saved = new SaveManager().applyWipeLoss(
+    const { saved, restocked } = new SaveManager().settleWipe(
       this.runSession.broughtPokemonIds,
       this.runSession.broughtItems,
       { ...this.runSession.stashSecureSlot, items: wipe.securedItems },
@@ -9256,6 +9256,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         lost: { pokemon: result.lostPokemon, items: wipe.destroyedItems },
         carriedOut,
         fitToRaid: anyoneFitToRaid(new SaveManager().load()?.stash),
+        restocked,
         saved,
       }),
     );

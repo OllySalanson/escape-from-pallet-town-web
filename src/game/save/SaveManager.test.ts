@@ -797,10 +797,31 @@ describe('SaveManager', () => {
     // restore, so the Poke Balls this legacy save has none of arrive there.
     expect(swapped?.stash.listItems()).toEqual(withPack({ potion: 3 }));
 
-    expect(saves.applyWipeLoss(['charmander-1'], [{ itemId: 'potion', quantity: 3 }])).toBe(true);
+    // And it says what it put back, so the result screen can name it: the
+    // three Potions the wipe took come back as the kit, and no more than that.
+    const settled = saves.settleWipe(['charmander-1'], [{ itemId: 'potion', quantity: 3 }]);
+    expect(settled.saved).toBe(true);
+    const after = saves.load()?.stash.listItems() ?? {};
+    expect(settled.restocked.length).toBeGreaterThan(0);
+    for (const { itemId, quantity } of settled.restocked) {
+      expect(after[itemId]).toBeGreaterThanOrEqual(quantity);
+    }
     expect(saves.load()?.stash.listPokemon()).toMatchObject([
       { pokemon: { base: { id: 'charmander' }, level: 5 } },
     ]);
+  });
+
+  it('says nothing was restocked when the wipe left a raid-ready vault', () => {
+    const saves = new SaveManager(new MemoryStorage());
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(SQUIRTLE, 5), 'squirtle-1');
+    stash.restockMinimumSupplies();
+    stash.ensureAPack();
+    saves.save({ party: new PokemonParty([]), mapId: 'pallet-town', position: { x: 1, y: 1 }, bag: new Bag(), stash });
+    const stocked = saves.load()?.stash.listItems() ?? {};
+    // Lose nothing at all: the vault can still field a raid, so nothing is added.
+    expect(saves.settleWipe([], []).restocked).toEqual([]);
+    expect(saves.load()?.stash.listItems()).toEqual(stocked);
   });
 
   it('settles a raid into a save written before raid damage was ever persisted', () => {
