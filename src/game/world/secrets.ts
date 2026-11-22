@@ -500,7 +500,9 @@ export const SECRETS: readonly Secret[] = [
     nook: 'figure',
     when: [{ kind: 'carried', items: BERRY_ITEM_IDS }],
     rewards: [{ kind: 'meet', speciesId: 'lickitung', level: 24 }],
-    foundLine: 'Something pink unrolls out of the gap behind the barrels, sniffing at your pack. LICKITUNG wants that berry!',
+    // The berry is what drew it out, not something to hand over: 'wants that
+    // berry!' had three AI players looking for a way to give it one (22 Nov 2026).
+    foundLine: 'Something pink unrolls out of the gap behind the barrels, sniffing at the berry in your pack. A wild LICKITUNG, drawn out by the smell!',
     wave: 3,
   },
   {

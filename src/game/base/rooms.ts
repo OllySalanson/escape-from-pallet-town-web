@@ -2254,7 +2254,7 @@ function drawHome(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
         { x: 0, y: 1 },
         { x: 1, y: 1 },
       ],
-      lines: ['The kettle is always on. Somebody has left a Potion in the fridge again.'],
+      lines: ['The kettle is always on. Somebody has left a sandwich in the fridge again.'],
     },
     {
       name: 'THE CUPBOARD',

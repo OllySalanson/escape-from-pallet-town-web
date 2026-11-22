@@ -245,7 +245,7 @@ Home from your first raid it asks, as FireRed does, **YOUR NAME?** - and it's on
 in Pallet Town can have yours. After that it's your name on the door, over your head in the
 harbour and on every board.
 It's the player's house from FireRed, downstairs and up, and it fills up with what you've done:
-a badge case with a slot for every keeper in Kanto, lit as you beat them; a pennant on your
+a badge case with a slot for every gym leader and boss in Kanto, lit as you beat them; a pennant on your
 bedroom wall for every place you've come home from; a telly whose Kanto Tonight tells you which
 rival is hunting you next; a raid log on your PC; a rug the colour of your starter; a wardrobe to change in; and, under
 the telly, a games console. It plays **Pallet Blocks**, a falling-blocks game of its own, full

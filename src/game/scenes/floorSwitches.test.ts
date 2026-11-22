@@ -40,6 +40,7 @@ interface Driven {
  */
 function inTheFallsCave() {
   played.length = 0;
+  const said: string[] = [];
   const map = getWorldMap('greystone-vale');
   const cave = map.areas!.find((area) => area.id === 'falls-cave')!;
   const at = (x: number, y: number): GridPosition => ({ x: cave.rect.x + x, y: cave.rect.y + y });
@@ -73,8 +74,9 @@ function inTheFallsCave() {
     tweens: { add: vi.fn() },
     time: { delayedCall: (_ms: number, call: () => void) => call() },
     cameras: { main: { shake: vi.fn() } },
+    dialogBox: { showMessage: (line: string) => said.push(line) },
   });
-  return { scene: scene as unknown as Driven, runSession, at, cave };
+  return { scene: scene as unknown as Driven, runSession, at, cave, said };
 }
 
 /** Stands the player behind a boulder and pushes it once. */
@@ -83,6 +85,18 @@ const push = (raid: ReturnType<typeof inTheFallsCave>, [x, y]: readonly [number,
   raid.scene.currentTile = raid.at(x + behind[0], y + behind[1]);
   return raid.scene.tryPushBoulder(toward);
 };
+
+describe('a boulder pushed with STRENGTH', () => {
+  // AI playtest, 22 Nov 2026: the boulder slid without a word, as if the map
+  // moved by itself. The raid's first push says who did it, as FireRed's does.
+  it("says who used STRENGTH on the raid's first push, and only the first", () => {
+    const raid = inTheFallsCave();
+    expect(push(raid, [11, 4], 'down')).toBe(true);
+    expect(raid.said).toEqual(['BULBASAUR used STRENGTH! Walk into a boulder to push it.']);
+    expect(push(raid, [11, 5], 'down')).toBe(true);
+    expect(raid.said).toHaveLength(1);
+  });
+});
 
 describe('the Falls Cave floor switches', () => {
   // The barrier's two tiles, in the cave's own tiles (`fallsCave.ts`).

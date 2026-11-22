@@ -203,13 +203,15 @@ export function badgeCaseLines(game: RestoredGame): readonly string[] {
   if (won.length === 0) {
     return [
       `THE BADGE CASE. ${caseBadges().length} slots, every one of them empty.`,
-      'Every keeper out there holds a door, and every one of them has a badge for whoever beats them.',
+      // 'Keeper' is the base's word for Oak, Joy, Brock and Bill; out there a
+      // badge is a gym leader's or a boss's (AI playtest, 22 Nov 2026).
+      'Every gym leader and boss out there guards a way on, and has a badge for whoever beats them.',
     ];
   }
   const left = caseBadges().length - won.length;
   return [
     left === 0
-      ? `THE BADGE CASE. All ${caseBadges().length} badges. Every keeper in Kanto has been beaten.`
+      ? `THE BADGE CASE. All ${caseBadges().length} badges. Every gym leader and boss in Kanto has been beaten.`
       : `THE BADGE CASE. ${won.length} of ${caseBadges().length} badges, and ${left} slot${left === 1 ? '' : 's'} still empty.`,
     ...won.map((badge) => `${badge.name}: from ${badge.keeper}, who held ${badge.held}.`),
   ];

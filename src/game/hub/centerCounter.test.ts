@@ -73,7 +73,7 @@ describe('Nurse Joy at her counter', () => {
     const name = stored.pokemon.name;
     // Hurt, not fainted: its healing is the bed's, and the bill is nothing.
     expect(centerOffer(ward).lines).toContain(`THE WARD takes ${name}, so its healing is free.`);
-    expect(centerOffer(ward).lines[0]).toContain('Healing will not cost your next raid a second.');
+    expect(centerOffer(ward).lines[0]).toContain("Healing won't cost your next raid a second.");
     // Fainted: the bed still takes it, and she says the faint is not the bed's.
     stored.pokemon.takeDamage(stored.pokemon.currentHp);
     expect(centerOffer(ward).lines).toContain(
@@ -107,7 +107,7 @@ describe('Nurse Joy at her counter', () => {
 
   it('charges an explorer run nothing, whose clock nothing can shorten', () => {
     const { game } = hurtGame();
-    expect(centerOffer(game, true).lines[0]).toContain('Healing will not cost your next raid a second.');
+    expect(centerOffer(game, true).lines[0]).toContain("Healing won't cost your next raid a second.");
     expect(centerOffer(game, true).spendsForGood).toBe(false);
   });
 
