@@ -9,12 +9,28 @@ export const STAT_STAGE_LIMIT = 6;
 export const STAT_STAGE_MULTIPLIERS = [1, 1.5, 2, 2.5, 3, 3.5, 4] as const;
 
 /**
- * Accuracy and evasion are on a **different ladder** - `3/(3-n)`, which is
+ * Accuracy and evasion are on a **different ladder** from the damage stats,
  * gentler at every stage - and reading the damage table for them is the easy
- * mistake. It is the same list the tutorial's `CheckIfMoveHits` uses
- * (`{1, 4/3, 5/3, 2, 7/3, 8/3, 3}`), because it is generation III's.
+ * mistake. It is FireRed's `gAccuracyStageRatios` (pret/pokefirered
+ * `src/battle_script_commands.c`), as whole-number ratios: the accuracy stage
+ * of -6 is 33/100 and +6 is 3/1, each rounded as the cartridge rounds it rather
+ * than the `3/(3-n)` the Unity tutorial's `CheckIfMoveHits` worked out.
  */
-export const ACCURACY_STAGE_MULTIPLIERS = [1, 4 / 3, 5 / 3, 2, 7 / 3, 8 / 3, 3] as const;
+export const ACCURACY_STAGE_RATIOS: readonly (readonly [number, number])[] = [
+  [33, 100],
+  [36, 100],
+  [43, 100],
+  [50, 100],
+  [60, 100],
+  [75, 100],
+  [1, 1],
+  [133, 100],
+  [166, 100],
+  [2, 1],
+  [233, 100],
+  [133, 50],
+  [3, 1],
+];
 
 /** The five stats a Pokemon actually has, which are what damage is computed from. */
 export type BattleStat = Exclude<keyof CombatStats, 'hp'>;
@@ -65,17 +81,19 @@ export const getStagedStat = (stat: number, stage: number): number => {
 
 /**
  * What the attacker's accuracy stage and the defender's evasion stage do to a
- * move's printed accuracy. Both are applied to the one number, as generation III
- * does it: the attacker's stage multiplies, the defender's divides.
+ * move's printed accuracy: FireRed's `Cmd_accuracycheck`. The two are **one**
+ * stage - the attacker's accuracy less the defender's evasion, held to -6..+6 -
+ * read off `ACCURACY_STAGE_RATIOS` and floored, so a raised accuracy cancels a
+ * raised evasion stage for stage. (The Unity tutorial applied each on its own
+ * ladder, so +1 accuracy against -1 evasion came to 16/9 where FireRed has 5/3.)
+ * The answer is the whole-number chance out of 100 that the move lands.
  */
 export const stagedAccuracy = (
   accuracy: number,
   attackerAccuracyStage: number,
   defenderEvasionStage: number,
 ): number => {
-  const step = (value: number, stage: number): number => {
-    const multiplier = ACCURACY_STAGE_MULTIPLIERS[Math.abs(clampStatStage(stage))];
-    return stage >= 0 ? value * multiplier : value / multiplier;
-  };
-  return step(step(accuracy, attackerAccuracyStage), -defenderEvasionStage);
+  const stage = clampStatStage(attackerAccuracyStage - defenderEvasionStage);
+  const [dividend, divisor] = ACCURACY_STAGE_RATIOS[stage + STAT_STAGE_LIMIT];
+  return Math.floor((dividend * accuracy) / divisor);
 };

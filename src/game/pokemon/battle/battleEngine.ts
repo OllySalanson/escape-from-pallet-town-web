@@ -1908,10 +1908,16 @@ const applyMove = (
       nextState = hidden.state;
       events.push(...hidden.events);
     }
-    const accuracy = stagedAccuracy(
-      move.base.accuracy * abilityAccuracy * veiled,
-      attackerNow().statStages.accuracy,
-      defenderNow().statStages.evasion,
+    // FireRed's order: the stages first, then Compound Eyes (130/100) and
+    // Sand Veil (80/100) on the result, each floored.
+    const percentOf = (value: number, multiplier: number): number =>
+      Math.floor((value * Math.round(multiplier * 100)) / 100);
+    const accuracy = percentOf(
+      percentOf(
+        stagedAccuracy(move.base.accuracy, attackerNow().statStages.accuracy, defenderNow().statStages.evasion),
+        abilityAccuracy,
+      ),
+      veiled,
     );
     // A status move whose status this target cannot take is refused before it
     // is aimed: FireRed's `BattleScript_EffectSleep` (and Poison's, Paralyze's
