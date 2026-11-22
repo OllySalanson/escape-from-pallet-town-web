@@ -1,7 +1,4 @@
-import type { PlacedArea } from './areaLayout';
 import type { CastCharacterDesignId } from './characterDesigns';
-import type { Rect } from './interiors';
-import { valeGyms } from './valeQuarters';
 
 /**
  * Who is hunting you this raid.
@@ -23,57 +20,38 @@ import { valeGyms } from './valeQuarters';
  * names. The signature leads, and the rival's own `escorts` follow it (the
  * captain, 22 Nov 2026: "give each hunter its own type-true second Pokemon",
  * because a shared Raticate behind every lead was the same enemy in a
- * different hat - the 20 Nov playtest met it behind BLUE, LT. SURGE and MISTY
+ * different hat - the 20 Nov playtest met it behind three hunters
  * alike). An escort is typed like the person, which a signature may not be:
  * it never meets a lone starter, only the party's second strongest and on.
  *
  * A signature has to be two things, and the second is measured
  * (`tools/hunter/measure.mts`): somebody's own Pokemon, and no starter's
  * lottery. The lead meets a lone starter alone, so a lead whose type answers
- * one starter's own type is the fight `hunter.ts` keeps the Normal lead for -
- * and the first picks were exactly that. Blue's Pidgey resists Vine Whip and
- * hits with a same-type Tackle, and a Lv 10 Bulbasaur beat it 0% of the time a
- * level under; Misty's Staryu learns Water Gun at 9 and a Lv 10 Charmander won
- * 13%; Sabrina's Mr. Mime has Confusion at 5 and took every lone starter to
- * nil at its level; her Kadabra line knows no move this game can play until
- * 16 (Teleport is not one) and then beats a Lv 18 Charmeleon half the time a
- * rung under; her Venonat resists Vine Whip twice over. So the five are:
+ * one starter's own type is the fight `hunter.ts` keeps the Normal lead for.
+ * So the five are:
  *
  * - **Blue's Eevee**, the partner he takes off Oak's table in Yellow. Normal,
  *   so it answers nobody; it never evolves here, because no FireRed trainer
  *   fields any of its evolutions and which stone it would be is a choice
  *   nobody made.
- * - **Misty's Psyduck**, the one that follows her everywhere. It throws
- *   Scratch, and learns no Water move before 50; Golduck from 33.
- * - **Lt. Surge's Voltorb**, from his own FireRed team, Electrode from 30. It
- *   learns no Electric attack before Spark at 21.
- * - **Koga's Venonat**, whose line is the Venomoth he fields in Gold, Silver
- *   and Let's Go, Venomoth from 31.
- * - **Sabrina's Drowzee**, a psychic for a psychic, Hypno from 26.
+ * - **Lorelei's Shellder**, the first stage of her FireRed Cloyster. It
+ *   Tackles, then Icicle Spear from 8. Not her Seel (a lone Lv 8 Squirtle won
+ *   5%) nor her Slowpoke (Water Gun at 13 took a Lv 16 Charmeleon to 10%).
+ * - **Bruno's Mankey**, Scratch and then Low Kick and Karate Chop, which answer
+ *   no starter. Not his Machop: Low Kick is all it has until 13, and this
+ *   game's Low Kick is a weight move a hunter's sums count as nothing.
+ * - **Agatha's Zubat**, the first stage of her FireRed Golbat. Not her Gastly:
+ *   a Ghost cannot be touched by the Tackle and Scratch a Lv 5 starter has.
+ * - **Lance's Ekans**, a serpent for the dragon tamer: his Dratini has only
+ *   Wrap and Leer below 15, and his Horsea's Bubble took a lone Lv 8
+ *   Charmander to 9%.
  *
- * Surge led with his Pikachu, Koga with his Koffing and Sabrina with a Drowzee
- * until every species took FireRed's own learnset (the captain, 2026-10-11),
- * and then all three failed the floor below on the last ordinary rung: a
- * FireRed Pikachu knows Thunder Shock from level 1 and a lone Lv 5 Squirtle
- * beat it 9% of the time; the Koffing took a Lv 10 Squirtle to 53% and the
- * Drowzee's Confusion at 11 a Lv 13 Bulbasaur to 56%, because a FireRed
- * Squirtle has nothing of its own but Bubble before 13 and a Bulbasaur nothing
- * typed before Vine Whip at 10. Each now leads with the first stage of
- * another Pokemon from that leader's own FireRed team, and all three clear the
- * floor against every lone starter (decided the same day). The
- * Venonat refused above was refused against the old kits, when a Bulbasaur's
- * Vine Whip was its whole answer; with Leech Seed it is one answer of two.
- *
- * Koga led his Grimer and Sabrina the Venonat until this game took FireRed's
- * own stat and damage formulas (22 Nov 2026). The Unity formula it replaced
- * put every stat at half of canon, which squeezed the species together; at
- * FireRed's scale a Lv 9 Grimer has 19 Attack and 33 HP to a Lv 10 Squirtle's
- * 14 and 28, and with FireRed's whole-number damage a lone Squirtle at 8-10
- * beat it 40-43% of the time on the last rung. His FireRed Koffing was worse
- * (29%), and his only FireRed Pokemon are those two, so he leads the Venonat
- * his other Kanto teams field (68% at worst), and Sabrina goes back to the
- * Drowzee, which clears the floor at FireRed's scale (63% at worst) where it
- * did not at the old one (`tools/hunter/measure.mts` prints the table).
+ * The four after Blue were the gym leaders MISTY, LT. SURGE, KOGA and SABRINA
+ * until 22 Nov 2026, when 13 of 19 first-time players in that day's playtest
+ * met a Lv 2 "MISTY" on their first raid, beat her, and took the real Misty at
+ * Cerulean Gym for somebody they had already beaten. Two of the four are the
+ * vale's gym leaders and the others will be, so the hunters are now the Elite
+ * Four: people everyone remembers, whom no gym in the vale will ever be.
  *
  * Each rival's ladder is measured on its own, and `hunter.test.ts` holds every
  * one to the floor a lone starter must clear on the last ordinary rung.
@@ -83,10 +61,10 @@ import { valeGyms } from './valeQuarters';
  * easy"): today every rival is `ordinary`, and a `hard` one is a new value
  * here plus the ladder it fights on, not a new system.
  *
- * Blue leads because the captain named him. The other four are the Kanto gym
- * leaders the most people remember and whose FireRed/LeafGreen lines already
- * read as somebody who hunts you - the rival, a temper, a soldier, a ninja and
- * a psychic. Giovanni is kept back on purpose: the boss of Team Rocket is the
+ * Blue leads because the captain named him. The other four are the Elite Four
+ * of FireRed/LeafGreen, whose own lines already read as somebody who hunts
+ * you - the ice queen, a fighter, an old woman with a grudge and a dragon
+ * tamer. Giovanni is kept back on purpose: the boss of Team Rocket is the
  * obvious face for the harder hunter, and spending him on an easy one would
  * leave nobody to be it.
  */
@@ -151,12 +129,12 @@ export interface HunterRival {
   };
 }
 
-export type HunterRivalId = 'blue' | 'misty' | 'lt-surge' | 'koga' | 'sabrina';
+export type HunterRivalId = 'blue' | 'lorelei' | 'bruno' | 'agatha' | 'lance';
 
 /**
  * The five, in the order they come round. Lines stay short enough for one
- * dialogue box each, and each borrows the person's own voice from the game where
- * it can ("Smell ya later!", "Hey, kid!", "Fwahahaha!", "I had a vision").
+ * dialogue box each, and each borrows the person's own voice from FireRed where
+ * it can ("Smell ya later!", "frozen solid", "Hoo hah!", "that old duff", "Dragons are mythical").
  */
 export const HUNTER_RIVALS: readonly HunterRival[] = [
   {
@@ -185,101 +163,105 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     },
   },
   {
-    id: 'misty',
-    name: 'MISTY',
-    design: 'misty',
-    personality: 'The tomboyish mermaid of Cerulean. Quick temper, all-out offence, hates being ignored.',
+    id: 'lorelei',
+    name: 'LORELEI',
+    design: 'lorelei',
+    personality: 'The ice queen of the Elite Four. Cool, poised, amused; freezes you out with a smile.',
     temperament: 'ordinary',
-    signature: 'psyduck',
-    // Her Goldeen from the show, then Cerulean's own water. Not her Staryu: it
-    // takes a Water Stone, which no FireRed trainer has given a level here yet.
-    escorts: ['goldeen', 'horsea', 'krabby', 'tentacool', 'seel'],
-    caught: ['MISTY: "Got you! Don\'t you dare ignore me - I\'ll take that pack!"', 'MISTY: "My policy is an all-out offensive!"'],
-    getaway: 'MISTY: "Ugh! Get back here, you little shrimp!"',
-    defeat: 'Wow, you\'re too much! ...Fine. Go on, get out of here.',
+    signature: 'shellder',
+    // The rest of her FireRed team's first stages - Slowpoke, Seel, Jynx and
+    // Lapras - then the sea she keeps them in.
+    escorts: ['slowpoke', 'seel', 'jynx', 'lapras', 'krabby'],
+    caught: ['LORELEI: "Whatever you found out here is mine now. Hand it over."', 'LORELEI: "Your POKéMON will be at my mercy when they are frozen solid!"'],
+    getaway: 'LORELEI: "Run along, then. You\'ll only catch a chill."',
+    defeat: 'You\'re better than I thought! ...Go on, then. Off you go.',
     hall: {
-      first: 'MISTY: "So you\'re the new one. I\'ll be after you out there."',
-      afterLoss: 'MISTY: "You lost the lot, I heard. Honestly, what a shrimp."',
-      afterOut: 'MISTY: "You got out? Don\'t get cocky. I wasn\'t even trying."',
-      offer: 'MISTY: "Fight me, right here! All-out offensive, no stakes!"',
-      later: 'MISTY: "Ugh! Fine. Ignore me, see if I care."',
-      beaten: 'Wow, you\'re too much! ...In front of everybody, too.',
-      gloat: 'MISTY: "Ha! That\'s my policy for you. Next!"',
-      sulk: 'MISTY: "Ugh! You just got lucky. Do NOT tell anyone."',
+      first: 'LORELEI: "A new face. I\'ll be waiting out there, where it\'s cold."',
+      afterLoss: 'LORELEI: "Lost the lot, I heard. The cold gets everyone in the end."',
+      afterOut: 'LORELEI: "You got out. How refreshing. Don\'t let it go to your head."',
+      offer: 'LORELEI: "A bout, here and now? Nothing at stake but a little frostbite."',
+      later: 'LORELEI: "Suit yourself. I can wait. Ice is patient."',
+      beaten: 'You\'re better than I thought! ...With everyone watching, too.',
+      gloat: 'LORELEI: "Frozen solid. Do warm up before you try again."',
+      sulk: 'LORELEI: "Hmph. Lucky. It won\'t thaw like that out there."',
     },
   },
   {
-    id: 'lt-surge',
-    name: 'LT. SURGE',
-    design: 'lt-surge',
-    personality: 'The Lightning American. Loud, a soldier first, calls everyone kid, respects a fighter.',
+    id: 'bruno',
+    name: 'BRUNO',
+    design: 'bruno',
+    personality: 'The fighter of the Elite Four. Loud, trains without rest, respects anyone who stands their ground.',
     temperament: 'ordinary',
-    signature: 'voltorb',
-    // His FireRed Pikachu (a Raichu at 24, as his own is), then the Power
-    // Plant's Electric types, then the Ground types an army man digs in with.
-    escorts: ['pikachu', 'magnemite', 'electabuzz', 'diglett', 'geodude'],
-    caught: ['LT. SURGE: "Caught you red-handed, kid! That loot\'s mine!"', 'LT. SURGE: "You won\'t live long in combat!"'],
-    getaway: 'LT. SURGE: "Tactical retreat, huh? Smart move, soldier!"',
-    defeat: 'Whoa! You\'re the real deal, kid! Dismissed!',
+    signature: 'mankey',
+    // A Poliwag for the Poliwrath he'd make of it, the Geodude a man who
+    // trains in caves picks up, then his FireRed Hitmonchan, Onix and
+    // Hitmonlee. A Hitmonchan second was a wall (a Lv 10 Squirtle with a
+    // Rattata won 45% on rung 4), and Rock seconds wall a team of Normal and
+    // Flying birds (a Lv 25 Charmander's four, 1%; `measure.mts`).
+    escorts: ['poliwag', 'geodude', 'hitmonchan', 'onix', 'hitmonlee'],
+    caught: ['BRUNO: "That loot you found? It\'s mine now! Hoo hah!"', 'BRUNO: "We will grind you down with our superior power!"'],
+    getaway: 'BRUNO: "Running is training too! I\'ll catch you next lap!"',
+    defeat: 'Why? How could I lose? ...My job is done. Go!',
     hall: {
-      first: 'LT. SURGE: "New recruit, huh? I\'ll be out there, kid."',
-      afterLoss: 'LT. SURGE: "Lost your whole squad, kid? That\'s combat."',
-      afterOut: 'LT. SURGE: "Made it out alive, huh? Not bad, soldier."',
-      offer: 'LT. SURGE: "Hey, kid! Live-fire drill, no casualties. You in?"',
-      later: 'LT. SURGE: "Fall back, then! Dismissed!"',
-      beaten: 'Whoa! You\'re the real deal, kid! Good drill!',
-      gloat: 'LT. SURGE: "You won\'t live long in combat, kid! Drill again!"',
-      sulk: 'LT. SURGE: "Ha! You\'ve got guts, soldier. Don\'t let it show."',
+      first: 'BRUNO: "A new challenger! I\'ll be out there. Train hard!"',
+      afterLoss: 'BRUNO: "You went down out there. Get up. Train harder. Hoo hah!"',
+      afterOut: 'BRUNO: "You got out! Good legs. Now build the arms."',
+      offer: 'BRUNO: "Spar with me! No stakes, just sweat! Hoo hah!"',
+      later: 'BRUNO: "Rest, then. A fighter knows when to rest."',
+      beaten: 'Why? How could I lose? ...In front of the whole hall!',
+      gloat: 'BRUNO: "Superior power! Back to training with you! Hoo hah!"',
+      sulk: 'BRUNO: "Hah! You have real strength. I must train harder."',
     },
   },
   {
-    id: 'koga',
-    name: 'KOGA',
-    design: 'koga',
-    personality: 'A ninja master of poison. Patient, theatrical, laughs before he strikes.',
+    id: 'agatha',
+    name: 'AGATHA',
+    design: 'agatha',
+    personality: "The oldest of the Elite Four. Cackling, cranky, calls you child, and has a lifelong grudge against Oak.",
     temperament: 'ordinary',
-    signature: 'venonat',
-    // Fuchsia's poison: Ekans first, then his FireRed Koffing. Koffing or
-    // Grimer second measured a wall against a team of six at 20 on the first
-    // rung (10% where Rattata was 67%, `tools/hunter/measure.mts`); Ekans 50%.
-    escorts: ['ekans', 'koffing', 'grimer', 'zubat', 'paras'],
-    caught: ['KOGA: "Fwahahaha! All you have gathered, I shall take."', 'KOGA: "Despair to the creeping horror of poison!"'],
-    getaway: 'KOGA: "Hmph. You slip away like smoke... for now."',
-    defeat: 'Humph! You have proven your worth. Go, before I change my mind.',
+    signature: 'zubat',
+    // Her FireRed Arbok's Ekans, then poison and ghosts: the Gastly late,
+    // because a Ghost is no fight for a team whose Pokemon only Tackle.
+    escorts: ['ekans', 'koffing', 'grimer', 'gastly', 'venonat'],
+    caught: ['AGATHA: "Hehehe! All that loot you found, child? I\'ll take it."', 'AGATHA: "That old duff OAK sent you out here alone? Hah!"'],
+    getaway: 'AGATHA: "Run, child, run! I\'m old, not slow. Hehehe!"',
+    defeat: 'Oh, my! You\'re something special, child! ...Shoo, then.',
     hall: {
-      first: 'KOGA: "Fwahahaha! A new face. I shall remember it."',
-      afterLoss: 'KOGA: "Fwahahaha! It went badly for you. Poison is patient."',
-      afterOut: 'KOGA: "You left by the way you meant to. This time."',
-      offer: 'KOGA: "Shall we spar? Nothing is at stake but your pride."',
-      later: 'KOGA: "Hmph. The wise ninja also knows when to wait."',
-      beaten: 'Humph! You have proven your worth. The crowd saw it.',
-      gloat: 'KOGA: "Fwahahaha! You have much to learn of poison."',
-      sulk: 'KOGA: "Humph. In the field, I would not have stood so close."',
+      first: 'AGATHA: "So you\'re OAK\'s new pet. I\'ll be out there, child."',
+      afterLoss: 'AGATHA: "Lost everything, did you? Hehehe! Just like OAK used to."',
+      afterOut: 'AGATHA: "You got out, child. That old duff must be pleased."',
+      offer: 'AGATHA: "A bout with an old woman? No stakes. I\'ll still win."',
+      later: 'AGATHA: "Scared of a granny? Hehehe! Off you go, then."',
+      beaten: 'Oh, my! You\'re something special, child! ...Don\'t tell OAK.',
+      gloat: 'AGATHA: "Hehehe! Tell that old duff who taught you a lesson."',
+      sulk: 'AGATHA: "Hmph! I see what the old duff sees in you, child."',
     },
   },
   {
-    id: 'sabrina',
-    name: 'SABRINA',
-    design: 'sabrina',
-    personality: 'The psychic of Saffron. Calm, eerie, already knows where you are going.',
+    id: 'lance',
+    name: 'LANCE',
+    design: 'lance',
+    personality: 'The dragon tamer who leads the Elite Four. Proud, grand, sure dragons are better than anything you own.',
     temperament: 'ordinary',
-    signature: 'drowzee',
-    // Psychic first, then the show's Haunter, her FireRed Venomoth and
-    // Saffron's Silph Porygon. Not her Kadabra (no move until 16) nor her
-    // Mr. Mime (only Barrier at the floor), because an escort can hurt.
-    escorts: ['slowpoke', 'jynx', 'gastly', 'venonat', 'porygon'],
-    caught: ['SABRINA: "Everything you found, I saw first. It is mine."', 'SABRINA: "I foresaw this. I foresaw how it ends."'],
-    getaway: 'SABRINA: "I did not foresee that. How interesting."',
-    defeat: 'This loss shocks me... Yet somehow I saw it coming.',
+    signature: 'ekans',
+    // Dragons are rare, and neither of his can lead: a Dratini has only Wrap
+    // and Leer below 15, and a Horsea's Bubble is a Charmander's lottery. So a
+    // serpent leads, then the Horsea whose line ends in a dragon, the sea and
+    // sky a Gyarados keeps, and last his FireRed Aerodactyl, which second took
+    // a Lv 10 Charmander with a Pidgey to 3% (`measure.mts`).
+    escorts: ['horsea', 'goldeen', 'spearow', 'tentacool', 'aerodactyl'],
+    caught: ['LANCE: "What you found belongs to a dragon tamer now. It\'s mine."', 'LANCE: "Dragons are mythical POKéMON! Their powers are superior!"'],
+    getaway: 'LANCE: "Fly, then. A dragon always finds its prey."',
+    defeat: 'That\'s it! I hate to admit it, but you\'re good. Go!',
     hall: {
-      first: 'SABRINA: "I knew you would come. I have seen your first raid."',
-      afterLoss: 'SABRINA: "You fell. I saw it. You will walk back to that place."',
-      afterOut: 'SABRINA: "You got out. I had seen that as well."',
-      offer: 'SABRINA: "A bout, for nothing. I already know how it ends."',
-      later: 'SABRINA: "You were always going to say that."',
-      beaten: 'This loss shocks me... Yet somehow I saw it coming.',
-      gloat: 'SABRINA: "As I foresaw. Next time, try surprising me."',
-      sulk: 'SABRINA: "How interesting. I shall look again."',
+      first: 'LANCE: "So you\'re the new one. I\'ll be out there, with my dragons."',
+      afterLoss: 'LANCE: "You lost everything. Dragons never forget a weakness."',
+      afterOut: 'LANCE: "You got out. Impressive, for someone without a dragon."',
+      offer: 'LANCE: "A bout, for nothing? Come and meet a dragon."',
+      later: 'LANCE: "Wise. Not everyone is ready to face a dragon."',
+      beaten: 'That\'s it! I hate to admit it... and in front of everyone.',
+      gloat: 'LANCE: "Dragons are superior. Come back when you know it."',
+      sulk: 'LANCE: "I hate to admit it, but you are a fine trainer."',
     },
   },
 ];
@@ -306,38 +288,22 @@ export const rivalForRaid = (raidsDeployed: number): HunterRivalId =>
   ].id;
 
 /**
- * The rivals who stop hunting a raid because the player beat them at their gym
- * in it (the owner, 11 Nov 2026, answering the hunt report: Koga handed over
- * the SOUL BADGE and was waiting outside on the Safari Road with Grimer and
- * Rattata). A leader is the same person as their rival (`ValeGym.rival`), so
- * once beaten at the gym they are done for the raid, and whatever they were
- * hunting goes to another rival (`HunterPack.standDown`). A leader beaten in an
- * earlier raid hunts as before: only `beatenThisRaid` - the trainers the raid
- * has beaten, which a gym leader's boss id is one of - stands one down.
+ * The four hunters after Blue were MISTY, LT. SURGE, KOGA and SABRINA until
+ * 22 Nov 2026 (see the header), and a save written before then names them in
+ * its bout record. Each is read as the hunter who took their turn, so a ladder
+ * half climbed is still half climbed.
  */
-export function rivalsStoodDown(beatenThisRaid: Iterable<string>): HunterRivalId[] {
-  const beaten = new Set(beatenThisRaid);
-  return valeGyms()
-    .filter((gym) => beaten.has(gym.bossId))
-    .flatMap((gym) => HUNTER_RIVALS.filter((rival) => rival.id === gym.rival).map((rival) => rival.id));
-}
+const RENAMED_RIVALS: Readonly<Record<string, HunterRivalId>> = {
+  misty: 'lorelei',
+  'lt-surge': 'bruno',
+  koga: 'agatha',
+  sabrina: 'lance',
+};
 
-/**
- * The room each gym leader who hunts keeps out of as a hunter: their own gym
- * (the area the map names after `ValeGym.building`), where they stand at its
- * head as the leader waiting for the challenge. The hunter KOGA chased a player
- * through Fuchsia Gym's door and fought them under the gym leader KOGA's nose,
- * with a different team and a win line that sounded like the badge (the second
- * characters hunt of 11 Nov 2026, finding 2). Anybody else still follows you in.
- */
-export function ownGymRooms(areas: readonly PlacedArea[] | undefined): ReadonlyMap<HunterRivalId, Rect> {
-  const rooms = new Map<HunterRivalId, Rect>();
-  for (const gym of valeGyms()) {
-    const rival = HUNTER_RIVALS.find((each) => each.id === gym.rival);
-    const room = areas?.find((area) => area.kind === 'inside' && area.name === gym.building);
-    if (rival && room) {
-      rooms.set(rival.id, room.rect);
-    }
+/** A rival named in a save, under their name today, or undefined if it names nobody. */
+export function storedRivalId(value: unknown): HunterRivalId | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
   }
-  return rooms;
+  return HUNTER_RIVALS.find((rival) => rival.id === value)?.id ?? RENAMED_RIVALS[value];
 }

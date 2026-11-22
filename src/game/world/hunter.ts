@@ -149,23 +149,26 @@ const species = (id: string): PokemonBase => {
  *   at 39 against a Charizard, so every evolved party beat even the enraged
  *   hunter 99-100% and the enrage stopped being one by mid-game.
  * - **Every rung sits below you.** Measured at each offset, all five rivals
- *   together, re-measured once each rival took their own escorts (the captain,
- *   22 Nov 2026; the table with the shared Rattata-led escorts, in brackets;
- *   the early parties now include a Lv 4 Drowzee leading a Lv 20 Ivysaur):
+ *   together, re-measured when the four after Blue became the Elite Four (22
+ *   Nov 2026; the table for the gym leaders they replaced, already with their
+ *   own escorts, in brackets; the early parties include a Lv 4 Drowzee
+ *   leading a Lv 20 Ivysaur):
  *
  * | rung            | offset | early parties: wins (mean / worst), HP left | late parties: wins, HP left        |
  * | --------------- | ------ | ------------------------------------------- | ---------------------------------- |
- * | 1: 0-120s       | -4     | 100% / 98%, 83% (100% / 98%, 84%)           | 94% / 46%, 76% (93% / 63%, 82%)    |
- * | 2: 120-180s     | -3     | 100% / 96%, 79% (100% / 96%, 80%)           | 95% / 70%, 72% (91% / 54%, 79%)    |
- * | 3: 180-240s     | -2     | 99% / 82%, 71% (99% / 82%, 73%)             | 92% / 45%, 66% (92% / 68%, 68%)    |
- * | 4: 240s-end     | -1     | 95% / 63%, 64% (95% / 63%, 64%)             | 91% / 40%, 62% (90% / 64%, 64%)    |
- * | at your level   | 0      | 80% / 1%, 55% (79% / 1%, 55%)               | 84% / 19%, 55% (89% / 46%, 56%)    |
- * | enraged         | +3     | 45% / 0%, 46% (41% / 0%, 45%)               | 63% / 0%, 43% (73% / 1%, 45%)      |
+ * | 1: 0-120s       | -4     | 100% / 99%, 88% (100% / 98%, 83%)           | 95% / 38%, 77% (94% / 46%, 76%)    |
+ * | 2: 120-180s     | -3     | 100% / 83%, 83% (100% / 96%, 79%)           | 92% / 53%, 71% (95% / 70%, 72%)    |
+ * | 3: 180-240s     | -2     | 99% / 87%, 75% (99% / 82%, 71%)             | 88% / 35%, 63% (92% / 45%, 66%)    |
+ * | 4: 240s-end     | -1     | 96% / 58%, 68% (95% / 63%, 64%)             | 87% / 29%, 60% (91% / 40%, 62%)    |
+ * | at your level   | 0      | 84% / 15%, 58% (80% / 1%, 55%)              | 79% / 5%, 51% (84% / 19%, 55%)     |
+ * | enraged         | +3     | 47% / 0%, 43% (45% / 0%, 46%)               | 61% / 1%, 37% (63% / 0%, 43%)      |
  *
- * Typed escorts moved only the late parties, and only where a type now lands:
- * LT. SURGE's Pikachu against a team with a Pidgey in it is the worst late
- * cell (40% on rung 4), KOGA's Ekans behind a Lv 16 Venonat against six at 20
- * is the first rung's (46%; a Koffing or Grimer there was 10%), and the
+ * Typed escorts move only the late parties, and only where a type now lands:
+ * a Lv 25 Charmander with three Normal and Flying birds is the worst late
+ * cell, because Fighting and Rock answer the birds - AGATHA's Golbat-led team
+ * on rung 4 (29%) and BRUNO's (39%), whose Hitmonchan second (45% for a
+ * Squirtle with a Rattata) and Rock seconds (1%) were refused for it - and
+ * LANCE's Aerodactyl is last for the same reason (3% as his second). The
  * enrage against late teams is harder, which is what the enrage is for.
  *
  * The means held. FireRed's scale spreads the species apart where the old one
@@ -173,11 +176,8 @@ const species = (id: string): PokemonBase => {
  * itself makes hard: a FireRed Squirtle at 8-13, which fights with Tackle and
  * a 20-power Bubble until Water Gun at 13 and is slower than nearly every lead
  * (a lone Lv 10 one wins rung 4 against Blue's Eevee 65%), and a team of four
- * strong first stages against the two late leads that evolve, Electrode and
- * Hypno. The late team of six evolved at 20 does worse on the first two rungs
- * (54-74%) than the last two, which is the measuring harness rather than the
- * ladder: six status-throwing Lv 16-17 escorts against a player who never
- * switches. When the team first evolved with its level the late ladder got its
+ * strong first stages against the late leads that evolve, Golbat and Arbok.
+ * When the team first evolved with its level the late ladder got its
  * teeth back, which is what evolving was for: a team of four evolved at 20-25
  * beat the enrage 51-96% depending on who was hunting, where it had been 99%.
  * The enrage is the one thing a beaten hunter comes back for
@@ -205,23 +205,24 @@ export const HUNTER_TIERS = [
  * The level a hunter's Pokemon takes an evolution that FireRed does not give
  * a level - a stone - at: the lowest level at which any FireRed trainer
  * fields the evolved form (pret/pokefirered `src/data/trainer_parties.h` at
- * 037335f: Lt. Surge's own Raichu at 24). A
+ * 037335f: the first Cloyster is a Lv 28 one, the first Poliwrath Lv 49). A
  * trainer's team is the game's own answer to "when does somebody who could
  * have used the stone have used it", so it is the number taken rather than one
  * chosen. A stone evolution with no row is never taken: Blue's Eevee is the
  * one, because no FireRed trainer fields an Eeveelution. A trade evolution
- * is never taken either - a hunter trades with nobody - so Sabrina's Haunter
- * and Lt. Surge's Graveler stay as they are. `hunter.test.ts` holds the table
+ * is never taken either - a hunter trades with nobody - so Agatha's Haunter
+ * and Bruno's Graveler stay as they are. `hunter.test.ts` holds the table
  * to exactly the stone evolutions a hunter line has.
  */
 export const HUNTER_STONE_EVOLUTION_LEVELS: Readonly<Record<string, number>> = {
-  raichu: 24,
+  cloyster: 28,
+  poliwrath: 49,
 };
 
 /**
  * The species a hunter's Pokemon is at a level: its line, taken as far as
  * that level reaches - Rattata 19 and Raticate 20, Pidgeotto 18 and Pidgeot
- * 36, Raichu 24 by the table above. Playtest 33 met a Rattata at 39 against
+ * 36, Cloyster 28 by the table above. Playtest 33 met a Rattata at 39 against
  * a Charizard: a team that never evolved fell further behind every evolved
  * party the higher it was levelled, so that every evolved party measured beat
  * even the enraged hunter, and the clock stopped being a threat by mid-game.

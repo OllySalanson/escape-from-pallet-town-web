@@ -35,8 +35,8 @@ describe('how close a raid out was', () => {
   });
 
   it('names whoever was on its tail, and fits a mark', () => {
-    expect(closeCallLine(left(200_000, '3:20'), 'LT. SURGE')).toBe('OUT WITH LT. SURGE ON YOUR TAIL');
-    expect(closeCallLine(left(200_000, '3:20'), 'LT. SURGE')!.length).toBeLessThanOrEqual(40);
+    expect(closeCallLine(left(200_000, '3:20'), 'LORELEI')).toBe('OUT WITH LORELEI ON YOUR TAIL');
+    expect(closeCallLine(left(200_000, '3:20'), 'LORELEI')!.length).toBeLessThanOrEqual(40);
   });
 });
 

@@ -43,8 +43,8 @@ describe('hunterThreatFor', () => {
   });
 
   it("names the team this raid's rival will lead, so the final check and the raid agree", () => {
-    const threat = hunterThreatFor([new Pokemon(BULBASAUR, 5)], 0, 'koga');
-    expect(threat.openingTeam[0].species.id).toBe('venonat');
+    const threat = hunterThreatFor([new Pokemon(BULBASAUR, 5)], 0, 'agatha');
+    expect(threat.openingTeam[0].species.id).toBe('zubat');
   });
 
   /**
@@ -77,7 +77,7 @@ describe('hunterThreatFor', () => {
 
   it('carries whose turn it is into the raid', () => {
     expect(hunterThreatFor([new Pokemon(SQUIRTLE, 5)]).rival).toBe(FIRST_HUNTER_RIVAL);
-    expect(hunterThreatFor([new Pokemon(SQUIRTLE, 5)], 0, 'koga').rival).toBe('koga');
+    expect(hunterThreatFor([new Pokemon(SQUIRTLE, 5)], 0, 'agatha').rival).toBe('agatha');
   });
 });
 
@@ -105,10 +105,10 @@ describe('a raid generated for a party', () => {
       undefined,
       'floodplain-relay',
       undefined,
-      hunterThreatFor([new Pokemon(SQUIRTLE, 5)], 0, 'sabrina'),
+      hunterThreatFor([new Pokemon(SQUIRTLE, 5)], 0, 'lance'),
     );
     const trainer = createHunterTrainer(0, false, plan.hunter, [new Pokemon(SQUIRTLE, 5)]);
-    expect(trainer.name).toBe('SABRINA');
+    expect(trainer.name).toBe('LANCE');
     expect(trainer.defeatText).toBeTruthy();
     expect(trainer.getawayText).toBeTruthy();
   });
@@ -191,16 +191,16 @@ describe('hunterThreatLine', () => {
       detail: '1 Pokémon to your 1 · lead Lv 8 to your Lv 12 Charmander',
     });
     expect(
-      hunterThreatLine(hunterThreatFor([new Pokemon(BULBASAUR, 5), new Pokemon(PIDGEY, 3)], 0, 'misty')),
+      hunterThreatLine(hunterThreatFor([new Pokemon(BULBASAUR, 5), new Pokemon(PIDGEY, 3)], 0, 'lorelei')),
     ).toEqual({
-      heading: 'Hunter: MISTY',
+      heading: 'Hunter: LORELEI',
       detail: '2 Pokémon to your 2 · lead Lv 2 to your Lv 5 Bulbasaur',
     });
   });
 
   it('says a raid alone is hunted by a pack, and who keeps the landing', () => {
-    expect(hunterThreatLine(hunterThreatFor([new Pokemon(CHARMANDER, 12)], 0, 'sabrina'), true)).toEqual({
-      heading: 'Hunters: one a district, SABRINA where you land',
+    expect(hunterThreatLine(hunterThreatFor([new Pokemon(CHARMANDER, 12)], 0, 'lance'), true)).toEqual({
+      heading: 'Hunters: one a district, LANCE where you land',
       detail: '1 Pokémon to your 1 · lead Lv 8 to your Lv 12 Charmander',
     });
   });

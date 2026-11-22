@@ -5,7 +5,7 @@ const A = '11111111-1111-4111-8111-111111111111';
 const B = '22222222-2222-4222-8222-222222222222';
 const C = '33333333-3333-4333-8333-333333333333';
 
-const hunter: SharedHunter = { spawned: true, defeated: false, position: { x: 40, y: 12 }, facing: 'left', searchMs: 0, rivalId: 'misty', returned: false };
+const hunter: SharedHunter = { spawned: true, defeated: false, position: { x: 40, y: 12 }, facing: 'left', searchMs: 0, rivalId: 'lorelei', returned: false };
 
 describe('the room’s one hunter', () => {
   it('is kept by the lowest id on the map that is not in a fight', () => {

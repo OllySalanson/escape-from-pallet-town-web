@@ -159,13 +159,13 @@ describe('SaveManager', () => {
       const storage = new MemoryStorage();
       const saves = freshSave(storage);
       saves.recordBout('blue', true);
-      saves.startBout({ id: 'bout-3', kind: 'hall', rival: 'misty' });
+      saves.startBout({ id: 'bout-3', kind: 'hall', rival: 'lorelei' });
       expect(saves.settleBoutUnderWay((id) => id === 'bout-3', now)).toBeNull();
       expect(saves.load()!.raidProgress.boutUnderWay?.id).toBe('bout-3');
       const ladder = saves.load()!.raidProgress.bouts;
 
       expect(saves.settleBoutUnderWay(() => false, now)?.kind).toBe('hall');
-      expect(saves.load()!.raidProgress.bouts).toEqual(afterBout(ladder, 'misty', false).record);
+      expect(saves.load()!.raidProgress.bouts).toEqual(afterBout(ladder, 'lorelei', false).record);
     });
   });
 

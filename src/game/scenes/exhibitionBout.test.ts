@@ -153,7 +153,7 @@ describe('a bout for show', () => {
     const beat = () => 'Speed: STARYU moved first 4 times.';
     const told = ['You lost the bout.', 'What beat you? Speed: STARYU moved first 4 times.'];
     expect(boutLostLines({ dojo: 'bot:tess', at: { x: 1, y: 1 } }, beat)).toEqual(told);
-    expect(boutLostLines({ rival: 'misty', at: { x: 1, y: 1 }, practice: 'vale-gym-misty' }, beat)).toEqual(told);
+    expect(boutLostLines({ at: { x: 1, y: 1 }, practice: 'vale-gym-misty' }, beat)).toEqual(told);
     expect(boutLostLines({ rival: 'blue', at: { x: 1, y: 1 } }, beat)).toEqual(['You lost the bout.']);
     expect(boutLostLines({ dojo: 'bot:tess', at: { x: 1, y: 1 } }, () => null)).toEqual(['You lost the bout.']);
   });

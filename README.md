@@ -117,8 +117,8 @@ Pokémon jumping out lets them catch up. And they only chase you out of their pa
 right on your heels, which is lovely until you run straight into the next one.
 
 They bring one Pokémon for each of yours that can still fight, a few levels below it, led by their
-own favourite, backed by their own type, and evolving as they level, so a strong team meets Lt.
-Surge's Raichu, not his Pikachu. Walking into them, or letting them walk into you, means a fight,
+own favourite, backed by their own type, and evolving as they level, so a strong team meets
+Bruno's Primeape, not his Mankey. Walking into them, or letting them walk into you, means a fight,
 and a speech about whose loot that is now.
 Running away always works, but costs you a chunk of the clock, so a raid that runs from everything
 ends up running out of time instead. Beat one and they're gone for good. Well, until the clock runs
@@ -297,7 +297,7 @@ lighthouse flares at "the one walking at your heel", you can see who it means.
 ## The cast
 
 <p align="center">
-  <img src="docs/readme/cast.png" width="800" alt="The cast. At home in the Harbour: Professor Oak sends you out, Nurse Joy patches you up, Brock builds things, Bill does deals. Out in the field, on your trail: Blue, Misty, Lt. Surge, Koga and Sabrina. One of them hunts you every raid.">
+  <img src="docs/readme/cast.png" width="800" alt="The cast. At home in the Harbour: Professor Oak sends you out, Nurse Joy patches you up, Brock builds things, Bill does deals. Out in the field, on your trail: Blue, and the Elite Four - Lorelei, Bruno, Agatha and Lance. One of them hunts you every raid.">
 </p>
 
 The five rivals share the vale's districts between them, never the same face in two districts side

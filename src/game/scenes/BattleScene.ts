@@ -368,18 +368,28 @@ export interface BattleSceneData extends Partial<RaidCarriage> {
   weather?: WeatherId | null;
 }
 
-/** A bout in THE RAID ARENA's hall: against the rival on the far floor, or a practice against a gym leader. */
-export interface HallBout {
-  readonly rival: HunterRivalId;
+/**
+ * A bout in THE RAID ARENA's hall: against the rival on the far floor (`rival`),
+ * or a practice against a gym leader (`practice`), never both.
+ */
+export type HallBout = HallBoutBase &
+  (
+    | { readonly rival: HunterRivalId; readonly practice?: never }
+    | {
+        /**
+         * A practice against a gym leader's real team (`base/gymPractice.ts`):
+         * the leader's boss id. It goes home as a practice, which the hall
+         * writes nothing about, rather than as a bout on the ladder.
+         */
+        readonly practice: string;
+        readonly rival?: never;
+      }
+  );
+
+interface HallBoutBase {
   readonly at: GridPosition;
   /** Which way the player faced the one they fought, so they come home still facing them. */
   readonly facing?: Direction;
-  /**
-   * Set when the bout is a practice against a gym leader's real team
-   * (`base/gymPractice.ts`): the leader's boss id. It goes home as a practice,
-   * which the hall writes nothing about, rather than as a bout on the ladder.
-   */
-  readonly practice?: string;
   /** The bout's mark in the save (`arena/boutUnderWay.ts`), handed back with its result. */
   readonly boutId?: string;
   /** What a loss here throws away, if anything (`arena/yieldStake.ts`): YIELD asks first. */

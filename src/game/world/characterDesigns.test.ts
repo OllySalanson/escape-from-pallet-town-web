@@ -87,14 +87,18 @@ describe('the character design registry', () => {
     expect(count('protagonist')).toBeGreaterThanOrEqual(1);
   });
 
-  it('casts the four people the base is made of and the five hunters, each by name', () => {
+  it('casts the four people the base is made of, the five hunters and the gym leaders, each by name', () => {
     const named = CHARACTER_DESIGN_IDS.filter((id) => getCharacterDesign(id).kind === 'named');
 
     expect(named.sort()).toEqual([
+      'agatha',
       'bill',
       'blue',
       'brock',
+      'bruno',
       'koga',
+      'lance',
+      'lorelei',
       'lt-surge',
       'misty',
       'nurse-joy',

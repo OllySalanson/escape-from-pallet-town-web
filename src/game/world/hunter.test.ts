@@ -466,23 +466,22 @@ describe('hunterTeamFor', () => {
       expect(lineup.slice(1).map((escort) => escort.id)).toEqual(rival.escorts);
     }
     // The captain, 22 Nov 2026: each hunter its own second Pokemon, typed like
-    // them. The 20 Nov playtest met the same Raticate behind BLUE, LT. SURGE
-    // and MISTY, and a water gym leader with a Raticate read as Blue's team.
+    // them. The 20 Nov playtest met the same Raticate behind three hunters, and
+    // a water trainer with a Raticate read as Blue's team.
     const seconds = HUNTER_RIVALS.map((rival) => hunterLineupFor(rival.id)[1]);
     expect(new Set(seconds.map((second) => evolutionFamilyKey(second.id))).size).toBe(HUNTER_RIVALS.length);
     const typeOf = (id: HunterRivalId) => [hunterLineupFor(id)[1].primaryType, hunterLineupFor(id)[1].secondaryType];
-    expect(typeOf('misty')).toContain(PokemonType.Water);
-    expect(typeOf('lt-surge')).toContain(PokemonType.Electric);
-    expect(typeOf('koga')).toContain(PokemonType.Poison);
-    expect(typeOf('sabrina')).toContain(PokemonType.Psychic);
+    expect(typeOf('lorelei')).toContain(PokemonType.Water);
+    expect(typeOf('bruno')).toContain(PokemonType.Water);
+    expect(typeOf('agatha')).toContain(PokemonType.Poison);
+    expect(typeOf('lance')).toContain(PokemonType.Water);
   });
 
   /**
    * An escort meets the party's second strongest and on, and one that knows
    * only Barrier or Splash is a Pokemon there for nothing. Every escort can
    * hurt by Lv 8, which is about where FireRed's first trainers field theirs
-   * (KOGA's Ekans has only Leer until its Poison Sting at 8, and measured the
-   * fairest Poison second he has, `hunters.ts`).
+   * (an Ekans has only Wrap and Leer until its Poison Sting at 8).
    */
   it('fields nobody who cannot attack by Lv 8', () => {
     const faults = HUNTER_RIVALS.flatMap((rival) =>
@@ -569,8 +568,8 @@ describe('hunterSpeciesAt', () => {
   });
 
   it('takes a stone at the lowest level a FireRed trainer fields the evolved form', () => {
-    expect(at('pikachu', 23)).toBe('pikachu');
-    expect(at('pikachu', 24)).toBe('raichu');
+    expect(at('shellder', 27)).toBe('shellder');
+    expect(at('shellder', 28)).toBe('cloyster');
     // A trade evolution is never taken: a hunter trades with nobody.
     expect(at('gastly', 60)).toBe('haunter');
     expect(at('geodude', 60)).toBe('graveler');
@@ -602,11 +601,11 @@ describe('hunterSpeciesAt', () => {
       new Pokemon(getSpeciesById('charizard')!, 36),
       new Pokemon(getSpeciesById('pidgeotto')!, 30),
       new Pokemon(getSpeciesById('raticate')!, 30),
-    ], 'lt-surge');
+    ], 'bruno');
     expect(team.map((member) => `${member.species.id} ${member.level}`)).toEqual([
-      'electrode 35',
-      'raichu 29',
-      'magnemite 29',
+      'primeape 35',
+      'poliwhirl 29',
+      'graveler 29',
     ]);
   });
 });

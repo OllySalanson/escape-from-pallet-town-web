@@ -72,10 +72,18 @@ export const CHARACTER_DESIGNS = {
   bill: { kind: 'named', description: 'Bill, fair hair and a lilac shirt', headPixelY: 8, walks: true },
   brock: { kind: 'named', description: 'Brock, spiked hair and a green work vest', headPixelY: 8, walks: false },
   // The five hunters (`hunters.ts`), each the person the game draws under that
-  // name. Blue is the rival and walks; the four gym leaders are drawn standing
-  // in their gyms in the game, so the sheet gives them a facing each and no
-  // stride - the hunter is placed a tile at a time and never strides anyway.
+  // name. Blue is the rival and walks, and so does Lorelei; FireRed only ever
+  // stands Bruno, Agatha and Lance in their rooms, so pret gives them a facing
+  // each and no stride - the hunter is placed a tile at a time and never
+  // strides anyway (`scripts/cut-frlg-people.mjs`).
   blue: { kind: 'named', description: 'Blue, the rival: spiked hair, dark shirt', headPixelY: 8, walks: true },
+  lorelei: { kind: 'named', description: 'Lorelei, long red hair and glasses', headPixelY: 8, walks: true },
+  bruno: { kind: 'named', description: 'Bruno, a broad fighter in black', headPixelY: 8, walks: false },
+  agatha: { kind: 'named', description: 'Agatha, grey hair in a bun and a purple dress', headPixelY: 9, walks: false },
+  lance: { kind: 'named', description: 'Lance, red spiked hair and a long cape', headPixelY: 8, walks: false },
+  // The gym leaders, drawn standing in their gyms in the game, so the sheet
+  // gives them a facing each and no stride. Lt. Surge and Sabrina wait for
+  // their gyms (`valeQuarters.ts`); they hunted the raids until 22 Nov 2026.
   misty: { kind: 'named', description: 'Misty, tied-back hair and a swimsuit', headPixelY: 9, walks: false },
   'lt-surge': { kind: 'named', description: 'Lt. Surge, blond crop and army greens', headPixelY: 8, walks: false },
   koga: { kind: 'named', description: 'Koga, grey hair and a ninja\'s dark garb', headPixelY: 8, walks: false },

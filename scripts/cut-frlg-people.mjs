@@ -26,7 +26,11 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { deflateSync, inflateSync } from 'node:zlib';
 
-/** Design id: the pret file it is cut from. All of them are a class of person, never somebody. */
+/**
+ * Design id: the pret file it is cut from. All but the last four are a class of
+ * person, never somebody; those four are the Elite Four, who hunt the raids
+ * (`src/game/world/hunters.ts`), each the person FireRed draws under that name.
+ */
 const DESIGNS = {
   'black-belt': 'black_belt',
   camper: 'camper',
@@ -56,6 +60,10 @@ const DESIGNS = {
   'worker-woman': 'worker_f',
   man: 'man',
   cameraman: 'cameraman',
+  lorelei: 'lorelei',
+  bruno: 'bruno',
+  agatha: 'agatha',
+  lance: 'lance',
 };
 
 const FRAME_WIDTH = 16;
@@ -63,6 +71,12 @@ const FRAME_HEIGHT = 32;
 const FEET_PIXEL_Y = 27;
 /** pret's frame for each facing: idle, first step, second step. */
 const SOURCE_FRAMES = { down: [0, 3, 4], up: [1, 5, 6], left: [2, 7, 8] };
+/**
+ * A person FireRed only ever stands in one place (Bruno, Agatha, Lance) is
+ * three frames, one a facing and no stride, so each step is the idle frame
+ * again - as `cut-frlg-characters.mjs` cuts the gym leaders.
+ */
+const STANDING_FRAMES = { down: [0, 0, 0], up: [1, 1, 1], left: [2, 2, 2] };
 const OUTPUT_FACING_ORDER = ['down', 'right', 'up', 'left'];
 const OUTPUT_COLUMN_SOURCES = [0, 1, 0, 2];
 
@@ -181,7 +195,7 @@ for (const [design, file] of Object.entries(DESIGNS)) {
   const output = Buffer.alloc(outputWidth * outputHeight * 4);
   OUTPUT_FACING_ORDER.forEach((facing, outputRow) => {
     const mirrored = facing === 'right';
-    const frames = SOURCE_FRAMES[mirrored ? 'left' : facing];
+    const frames = (source.width === FRAME_WIDTH * 3 ? STANDING_FRAMES : SOURCE_FRAMES)[mirrored ? 'left' : facing];
     OUTPUT_COLUMN_SOURCES.forEach((step, outputColumn) => {
       const frame = frames[step];
       // A stride frame can reach a pixel below the idle frame's soles; it is

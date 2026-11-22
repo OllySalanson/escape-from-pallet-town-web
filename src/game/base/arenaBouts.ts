@@ -30,11 +30,7 @@ import type { PaintedPicture } from '../world/minimap';
  * a look at the face and team that are coming for it. Phaser-free.
  */
 
-/**
- * Where the rival waits: on the far floor, under the hall's own banner - unless
- * they are a gym leader the player has met, who waits on their own tile
- * (`gymPractice.ts`'s `rivalTile`).
- */
+/** Where the rival waits: on the far floor, under the hall's own banner. */
 export const RIVAL_TILE: GridPosition = { x: ARENA_MAT.x, y: 6 };
 
 /**

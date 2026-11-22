@@ -1,4 +1,4 @@
-import { HUNTER_RIVALS, type HunterRivalId } from '../world/hunters';
+import { storedRivalId, type HunterRivalId } from '../world/hunters';
 import { readDojoRun, type DojoRun } from './arenaRuns';
 
 /**
@@ -29,8 +29,9 @@ export function readBoutUnderWay(value: unknown): BoutUnderWay | undefined {
   if (typeof record.id !== 'string' || record.id.length === 0) {
     return undefined;
   }
-  if (record.kind === 'hall' && HUNTER_RIVALS.some((rival) => rival.id === record.rival)) {
-    return { id: record.id, kind: 'hall', rival: record.rival as HunterRivalId };
+  const rival = record.kind === 'hall' ? storedRivalId(record.rival) : undefined;
+  if (rival) {
+    return { id: record.id, kind: 'hall', rival };
   }
   if (record.kind === 'dojo' && typeof record.opponent === 'string') {
     const run = readDojoRun(record.run);

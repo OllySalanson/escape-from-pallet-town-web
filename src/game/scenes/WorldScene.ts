@@ -431,7 +431,7 @@ import {
   type HunterState,
   hunterIntelFor,
 } from '../world/hunter';
-import { FIRST_HUNTER_RIVAL, hunterRival, ownGymRooms, rivalsStoodDown, type HunterRival, type HunterRivalId } from '../world/hunters';
+import { FIRST_HUNTER_RIVAL, hunterRival, type HunterRival } from '../world/hunters';
 import {
   HunterPack,
   createHunterPack,
@@ -9587,18 +9587,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         lost ??
         this.packShouter ??
         pack.hunters.find((hunter) => hunter.mode === 'stunned');
-      // With nobody after you the chip names the raid's own rival, unless they
-      // are a leader beaten at the gym this raid: then whoever took over the
-      // district the raid landed in.
-      const plan = this.runSession?.plan;
-      const raidRival = plan?.hunter.rivalId ?? FIRST_HUNTER_RIVAL;
-      const standIn =
-        plan && rivalsStoodDown(this.defeatedTrainerIds).includes(raidRival)
-          ? (pack.hunters.find(
-              (hunter) => plan.insertion.mapId === this.currentMap.id && inGround(hunter.ground, plan.insertion.position),
-            ) ?? pack.hunters[0])?.rivalId
-          : undefined;
-      return hunterRival(who?.rivalId ?? standIn ?? raidRival);
+      // With nobody after you the chip names the raid's own rival.
+      return hunterRival(who?.rivalId ?? this.runSession?.plan?.hunter.rivalId ?? FIRST_HUNTER_RIVAL);
     }
     // In a room the hunter is everybody's, so it is whoever the room first
     // heard hunting: one face, one set of lines, one lead (`groupHunter.ts`).
@@ -9974,11 +9964,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /**
    * Builds this map's pack the first time a raid alone is on it: a hunter to
    * every big district, each the rival `rivalsForGrounds` gives it, the raid's
-   * own rival keeping the district the raid lands in. And, every time the world
-   * is built, stands down any gym leader beaten at their gym in this raid
-   * (`rivalsStoodDown`), so the leader who has just handed over a badge is not
-   * waiting outside the door: the world is rebuilt from the gym fight, so this
-   * is the first moment after it that the pack is asked about.
+   * own rival keeping the district the raid lands in.
    */
   private ensureHunterPack(): void {
     const session = this.runSession;
@@ -9987,16 +9973,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     const map = this.currentMap;
-    if (!session.hunterPacks?.has(map.id)) {
-      const grounds = huntingGroundsOn(map);
-      const landing = plan.insertion.mapId === map.id ? plan.insertion.position : this.currentTile;
-      session.hunterPacks ??= new Map();
-      session.hunterPacks.set(
-        map.id,
-        new HunterPack(createHunterPack(grounds, rivalsForGrounds(grounds, plan.hunter.rivalId, landing))),
-      );
+    if (session.hunterPacks?.has(map.id)) {
+      return;
     }
-    session.hunterPacks?.get(map.id)?.standDown(rivalsStoodDown(this.defeatedTrainerIds));
+    const grounds = huntingGroundsOn(map);
+    const landing = plan.insertion.mapId === map.id ? plan.insertion.position : this.currentTile;
+    session.hunterPacks ??= new Map();
+    session.hunterPacks.set(
+      map.id,
+      new HunterPack(createHunterPack(grounds, rivalsForGrounds(grounds, plan.hunter.rivalId, landing))),
+    );
   }
 
   /**
@@ -10038,7 +10024,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const areas = map.areas;
     const placeOf = (tile: GridPosition): PlacedArea | null =>
       areas ? placedAreaAt(areas, tile) ?? areas[0] : null;
-    const gymRooms = ownGymRooms(areas);
     const world: PackWorld = {
       width,
       height: map.height,
@@ -10058,15 +10043,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       playerHidden: this.playerIsHidden() || this.runSession?.shoreLeftBehind?.mapId === map.id,
       samePlace: (a, b) => placeOf(a) === placeOf(b),
       enraged: this.runSession?.manager.isEnraged === true,
-      // A gym leader's hunter half stops at their own gym's door.
-      ...(gymRooms.size > 0
-        ? {
-            keptOut: (rival: HunterRivalId, index: number) => {
-              const room = gymRooms.get(rival);
-              return room !== undefined && isInsideRect(room, { x: index % width, y: (index / width) | 0 });
-            },
-          }
-        : {}),
     };
     this.packWorldCache = { frame, world };
     return world;
@@ -10198,10 +10174,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const keeper = pack.hunters.find((hunter) => inGround(hunter.ground, this.currentTile));
     if (!keeper || keeper.mode !== 'beaten') {
       pack.enrageAnswered = true;
-      return;
-    }
-    // Not into their own gym: asked again once the player is out of it.
-    if (world.keptOut?.(keeper.rivalId, this.currentTile.y * world.width + this.currentTile.x)) {
       return;
     }
     const tile = this.findHunterSpawnTile();

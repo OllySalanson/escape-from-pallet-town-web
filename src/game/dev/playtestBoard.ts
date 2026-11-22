@@ -3,9 +3,9 @@ import { BASE_SPAWN, getBaseMap } from '../base/baseMap';
 import { HARBOUR_PLACES, type HarbourPlace } from '../base/harbourPlaces';
 import { BASE_ROOMS, type RoomId } from '../base/rooms';
 import { DOJO_COUNTER_TILES } from '../arena/dojoCounter';
-import { rivalUp } from '../base/arenaBouts';
-import { practiceLeaders, rivalTile } from '../base/gymPractice';
-import { raidsDeployed, type RaidProgress } from '../save/SaveManager';
+import { RIVAL_TILE } from '../base/arenaBouts';
+import { practiceLeaders } from '../base/gymPractice';
+import type { RaidProgress } from '../save/SaveManager';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { PlaytestHour } from './playtestClock';
 import { PLAYTEST_GAMES } from './playtestKit';
@@ -111,14 +111,13 @@ export const STAND_ROWS: readonly PlaytestBoardRow[] = [
 
 /**
  * Where to stand to spar today: beside the first leader waiting on the far
- * floor, on their right facing them, or beside the rival there when every
- * leader met is the rival today - who offers their gym team after the bout for
- * show. Beside, never below: a player a row below is drawn over the leader and
- * hid who was about to be sparred (playtest wave 3, finding 6).
+ * floor, on their right facing them, or beside the rival under the banner when
+ * no leader has been met. Beside, never below: a player a row below is drawn
+ * over the leader and hid who was about to be sparred (playtest wave 3,
+ * finding 6).
  */
 export function practiceSpot(progress: RaidProgress): GridPosition {
-  const rival = rivalUp(progress.bouts, raidsDeployed(progress));
-  const tile = practiceLeaders(progress, rival.id)[0]?.tile ?? rivalTile(progress, rival.id);
+  const tile = practiceLeaders(progress)[0]?.tile ?? RIVAL_TILE;
   return { x: tile.x + 1, y: tile.y };
 }
 
