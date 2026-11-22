@@ -46,7 +46,7 @@ const LANDMARKS: readonly HarbourLandmark[] = [
   {
     id: 'seagallop',
     name: 'THE SEAGALLOP',
-    note: 'Every raid sails on her',
+    note: 'Every raid comes home on her',
     // Tied up against the west side of the jetty, with her stern to the quay.
     props: [{ name: 'raidFerry', x: 7, y: 20 }],
     at: { x: 10, y: 21 },
