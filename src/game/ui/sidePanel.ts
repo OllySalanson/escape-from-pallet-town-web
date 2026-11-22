@@ -56,7 +56,31 @@ export function fitSidePanel(root: HTMLElement): SidePanelLayout {
   const layout = across >= SIDE_PANEL_MIN_LAYER_WIDTH ? 'side' : 'sheet';
   root.dataset.layout = layout;
   root.style.width = '';
+  // A column too short for what the screen holds is a sheet as well: at 1024x600
+  // YOUR TEAM's card ran out of its frame and its portrait was drawn over the
+  // hint line (scenario loop, 22 Nov 2026). The sheet is laid out for short.
+  if (layout === 'side' && spillsOutOfItsFrame(root)) {
+    root.dataset.layout = 'sheet';
+    return 'sheet';
+  }
   return layout;
+}
+
+/**
+ * Whether the screen's body holds more than its frame shows without a scroll
+ * of its own: what does not fit is drawn past the frame's foot, over whatever
+ * is under it. A body that scrolls is only longer than its window, never spilling.
+ */
+export function bodySpills(
+  body: { readonly scrollHeight: number; readonly clientHeight: number },
+  overflowY: string,
+): boolean {
+  return overflowY === 'visible' && body.scrollHeight > body.clientHeight + 1;
+}
+
+function spillsOutOfItsFrame(root: HTMLElement): boolean {
+  const body = root.querySelector<HTMLElement>('.px-body');
+  return body !== null && bodySpills(body, getComputedStyle(body).overflowY);
 }
 
 /**
