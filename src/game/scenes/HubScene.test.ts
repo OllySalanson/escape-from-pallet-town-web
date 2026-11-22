@@ -905,6 +905,17 @@ describe('hub deployment route', () => {
    * arrives short, and the raid is spent by then. The drop-in pane said so and
    * the final check - the last screen before the raid - did not (playtest 47).
    */
+  it('names who comes on the raid on the jump screen', () => {
+    // Tester 3's release blocker 3 (22 Nov 2026): '1 Pokémon to your 1' and nothing else.
+    const { hub } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('rim');
+    readyToDeploy(hub);
+    hub.render();
+    const check = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+    expect(check).toMatch(/<dt>Team<\/dt><dd[^>]*>Charmander Lv \d+[^<]* comes\./);
+  });
+
   it('says on the final check what a delivery contract is still short of', () => {
     const { hub } = createHub({
       ...DEFAULT_RAID_PROGRESS,

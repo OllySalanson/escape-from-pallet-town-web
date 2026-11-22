@@ -1,3 +1,4 @@
+import { rimTeamLine } from '../hub/rimTeam';
 import { raidConditions } from '../world/secrets';
 import { CHART_PIECES, chartWhole, NO_TREASURE_HUNT } from '../treasure/treasureMap';
 import Phaser from 'phaser';
@@ -2971,7 +2972,17 @@ export class HubScene extends Phaser.Scene {
     const safe = !this.flow.isDeployable
       ? ''
       : line('Safe', kept.length === 0 ? 'nothing: a wipe costs everything you take' : kept.join(', '), kept.length === 0);
-    return `<dl class="dropin-facts rim-stakes">${hurt ? line('Hurt', hurt.line, true) : ''}${line('At risk', lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', '))}${goneForGood.length === 0 ? '' : line('A wipe', `${goneForGood.join(', ')}: lost for good`, true)}${safe}${
+    // Who comes and who stays home, named (`hub/rimTeam.ts`): '1 Pokémon to
+    // your 1' left a new catch at home and a hurt partner unremarked.
+    const away = awayOnRaid(this.savedGame);
+    const coming = new Set(this.flow.party.map((stored) => stored.id));
+    const member = ({ pokemon }: StashedPokemon) => ({ name: pokemon.name, level: pokemon.level, currentHp: pokemon.currentHp, maxHp: pokemon.maxHp });
+    const home = this.stash
+      .listPokemon()
+      .filter((stored) => !coming.has(stored.id) && !away.has(stored.id) && !stored.pokemon.isFainted)
+      .map(member);
+    const team = this.flow.party.length === 0 ? '' : line('Team', rimTeamLine(this.flow.party.map(member), home));
+    return `<dl class="dropin-facts rim-stakes">${team}${hurt ? line('Hurt', hurt.line, true) : ''}${line('At risk', lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', '))}${goneForGood.length === 0 ? '' : line('A wipe', `${goneForGood.join(', ')}: lost for good`, true)}${safe}${
       job === undefined ? '' : line('Job', job, short.length > 0)
     }${isPlaytestRun() ? '' : line('Sky', this.skyLine())}${line(pack ? 'Hunters' : 'Hunter', `<span data-hunter-tier="${threat.tierOffset + 1}">${hunter.heading.replace(/^Hunters?: /, '')}: ${hunter.detail}</span>`, threat.tierOffset > 0)}${this.clockIsNews ? line('Clock', this.clockNote()) : ''}</dl>`;
   }
