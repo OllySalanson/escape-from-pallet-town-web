@@ -131,6 +131,7 @@ import {
 } from '../objectives';
 import { deferPendingMoves, nextPendingMoveOffer } from '../hub/pendingMoves';
 import { benchRailWarning, rimOpensOnNotYet, type RailWarning } from '../hub/railWarning';
+import { jobAsks } from '../hub/rimJob';
 import { raidsDeployed, raidsLost, SaveManager, spareAtBase, traderProgressOf, type RestoredGame } from '../save/SaveManager';
 import {
   searchPokemon,
@@ -3031,7 +3032,10 @@ export class HubScene extends Phaser.Scene {
     const job = contract
       ? short.length > 0
         ? `${contract.name} needs ${itemAmountsFor(required)}. Still short: ${itemAmountsFor(short)}`
-        : `${contract.name}: ${required.length > 0 ? `hand over ${itemAmountsFor(required)}, ` : ''}pays ${rewardLine(contract.reward)}.${walking}`
+        : // What the job asks, not only its name: offered SEALED DISPATCH beside
+          // a Line survey, a newcomer could not tell what either meant (scenario
+          // loop, 22 Nov 2026).
+          `${contract.name}: ${jobAsks(contract.description)}. ${required.length > 0 ? `Hand over ${itemAmountsFor(required)}, and it pays` : 'It pays'} ${rewardLine(contract.reward)}.${walking}`
       : undefined;
     // With nobody able to go the foot already says why, and a red "a wipe costs
     // you everything" over a raid that cannot start only frightened; and since
@@ -4460,4 +4464,3 @@ function usedInARaid(item: ItemDefinition): string {
       return '';
   }
 }
-
