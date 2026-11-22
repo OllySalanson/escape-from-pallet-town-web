@@ -1655,6 +1655,8 @@ describe('a replacement sent in after a faint', () => {
 
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    // A lead on 1 HP with Potions in the pack hears the medicine hint first (`lowHpItemHint`).
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
     renderedTexts.filter(({ text }) => text.includes('GROWL')).at(-1)!.handlers.pointerdown();
     dialog.isCurrentMessageComplete = true;
@@ -1680,6 +1682,26 @@ describe('a replacement sent in after a faint', () => {
   });
 });
 
+describe('the medicine hint', () => {
+  it('says once a fight that a Potion can be used, before the commands, when the lead is low', () => {
+    const pidgey = new Pokemon(PIDGEY, 5);
+    pidgey.currentHp = 1;
+    const { scene, dialog } = createBattleSceneHarness({
+      party: new PokemonParty([pidgey]),
+      wild: new Pokemon(getSpeciesById('rattata')!, 3),
+    });
+    const battle = scene as unknown as { onMessagesComplete(): void; mode: string };
+
+    battle.onMessagesComplete();
+    expect(dialog.shownMessages).toContain('PIDGEY is low on HP! Choose ITEM to give it a POTION.');
+    expect(battle.mode).toBe('events');
+    battle.onMessagesComplete();
+    expect(battle.mode).toBe('main');
+    battle.onMessagesComplete();
+    expect(dialog.shownMessages.filter((line) => line.includes('low on HP'))).toHaveLength(1);
+  });
+});
+
 describe('the forced replacement list', () => {
   /** A lead on its last point of HP that only Growls, a bench behind it, and a trainer that will knock it out. */
   const readToTheReplacement = () => {
@@ -1694,6 +1716,8 @@ describe('the forced replacement list', () => {
     });
     const { scene, renderedTexts, dialog } = harness;
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    // A lead on 1 HP with Potions in the pack hears the medicine hint first (`lowHpItemHint`).
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
     renderedTexts.filter(({ text }) => text.includes('GROWL')).at(-1)!.handlers.pointerdown();
@@ -2856,6 +2880,8 @@ describe("a Pokemon's own cry", () => {
 
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     onMessagesComplete(scene);
+    // A lead on 1 HP with Potions in the pack hears the medicine hint first (`lowHpItemHint`).
+    onMessagesComplete(scene);
     renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
     renderedTexts.filter(({ text }) => text.includes('GROWL')).at(-1)!.handlers.pointerdown();
     dialog.isCurrentMessageComplete = true;
@@ -3640,6 +3666,8 @@ describe('both sides fainting on the same turn', () => {
     const before = charmander.experience;
 
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    fight.onMessagesComplete();
+    // A lead on 1 HP with Potions in the pack hears the medicine hint first (`lowHpItemHint`).
     fight.onMessagesComplete();
     renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
     renderedTexts.filter(({ text }) => text.includes('DOUBLE-EDGE')).at(-1)!.handlers.pointerdown();

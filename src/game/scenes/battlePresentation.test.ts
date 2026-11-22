@@ -24,6 +24,7 @@ import {
 import { TypewriterQueue } from '../ui/TypewriterQueue';
 import {
   BATTLE_SCREEN_WIDTH,
+  lowHpItemHint,
   combatantSpot,
   seatedSpriteY,
   STATUS_TAG_GAP,
@@ -975,5 +976,31 @@ describe('where a Pokemon stands on the field', () => {
       expect(spot.ground).toBe(DOUBLE_PLAYER_GROUND);
     }
     expect(combatantSpot('player', 0, 2).x).toBeLessThan(combatantSpot('player', 1, 2).x);
+  });
+});
+
+describe('the medicine hint', () => {
+  it('names the low Pokémon and the medicine to give it', () => {
+    expect(lowHpItemHint([{ name: 'Charmander', hp: 2, maxHp: 18 }], 'Potion')).toBe(
+      'CHARMANDER is low on HP! Choose ITEM to give it a POTION.',
+    );
+  });
+
+  it('finds the low one of two in a double battle', () => {
+    expect(
+      lowHpItemHint(
+        [
+          { name: 'Charmeleon', hp: 40, maxHp: 44 },
+          { name: 'Bulbasaur', hp: 9, maxHp: 39 },
+        ],
+        'Super Potion',
+      ),
+    ).toMatch(/^BULBASAUR is low on HP!/);
+  });
+
+  it('says nothing above a quarter, of a fainted Pokémon, or with nothing to give', () => {
+    expect(lowHpItemHint([{ name: 'Charmander', hp: 5, maxHp: 18 }], 'Potion')).toBeNull();
+    expect(lowHpItemHint([{ name: 'Charmander', hp: 0, maxHp: 18 }], 'Potion')).toBeNull();
+    expect(lowHpItemHint([{ name: 'Charmander', hp: 2, maxHp: 18 }], null)).toBeNull();
   });
 });

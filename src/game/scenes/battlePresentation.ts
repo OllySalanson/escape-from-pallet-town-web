@@ -736,6 +736,28 @@ export const describeItemGuidance = (item: { readonly description: string }): re
 /** Said when the ITEM command is chosen with nothing in the medicine pocket. */
 export const NO_BATTLE_ITEMS_MESSAGE = 'No medicine in your pack!';
 
+/** At or below this share of its HP, a Pokémon is low enough for the medicine hint. */
+export const LOW_HP_HINT_SHARE = 1 / 4;
+
+/**
+ * The one line that says medicine can be used in a fight, said before the
+ * commands when a Pokémon of yours is low and the pack holds something to heal
+ * it. Nothing taught it: a newcomer went down at 2/18 HP with three Potions in
+ * the pack, and 16 of playtest 5's 19 friends never found out a Potion works
+ * mid-fight (scenario loop, 22 Nov 2026). Null when nobody standing is low, or
+ * there is nothing to give them.
+ */
+export const lowHpItemHint = (
+  team: readonly { readonly name: string; readonly hp: number; readonly maxHp: number }[],
+  medicine: string | null,
+): string | null => {
+  const low = team.find((each) => each.hp > 0 && each.hp <= each.maxHp * LOW_HP_HINT_SHARE);
+  if (!low || medicine === null) {
+    return null;
+  }
+  return `${low.name.toUpperCase()} is low on HP! Choose ITEM to give it a ${medicine.toUpperCase()}.`;
+};
+
 /**
  * Making room for a catch, from inside the fight that refused it.
  *
