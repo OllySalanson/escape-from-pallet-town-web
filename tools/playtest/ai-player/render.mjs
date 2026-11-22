@@ -48,6 +48,9 @@ function renderField(key, field) {
 
 const member = (m) => `${m.name} L${m.level} ${m.hp}/${m.maxHp}${m.status ? ` ${m.status}` : ''}`;
 
+/** The most of what happened since the last action that is printed: a long fight's every line. */
+export const STORY_LINES = 120;
+
 export function renderScreen(screen, { events = [], advice = null, note = null } = {}) {
   if (!screen) return 'NO SCREEN';
   const lines = [];
@@ -93,7 +96,16 @@ export function renderScreen(screen, { events = [], advice = null, note = null }
   const story = events.filter((e) => e.kind !== 'scene');
   if (story.length) {
     lines.push('SINCE LAST ACTION:');
-    for (const e of story.slice(-15)) {
+    // A whole fight is one action, and its turns are read as a story: cut to a
+    // short tail, the first line shown was the middle of a turn - "Your
+    // CHARMANDER -11 HP" with the "Foe STARYU used BUBBLE!" above it cut - and
+    // the overnight playtest of 20 Nov 2026 reported the game leaving out the
+    // foe's move four times. What is left out is said, never silently dropped.
+    const shown = story.slice(-STORY_LINES);
+    if (shown.length < story.length) {
+      lines.push(`  (${story.length - shown.length} earlier lines not shown: act.mjs events ${shown[0].n - 1})`);
+    }
+    for (const e of shown) {
       const detail = e.text ?? e.label ?? e.place ?? e.outcome ?? e.foe ?? e.milestone ?? e.message ?? '';
       lines.push(`  ${e.kind}${detail ? `: ${detail}` : ''}`);
     }

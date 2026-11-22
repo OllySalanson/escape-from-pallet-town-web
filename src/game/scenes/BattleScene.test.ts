@@ -2644,6 +2644,11 @@ describe('the blink a blow lands with', () => {
     const { blinked, shake, dialog } = fight(GROWL, TAIL_WHIP);
     expect(dialog.shownMessages).toContain("Wild RATTATA's Attack fell!");
     expect(dialog.shownMessages).toContain("Your PIDGEY's Defense fell!");
+    // The foe's move is named on the line before what it did, so a fall never
+    // reads as the player's own move lowering their own stat (the overnight
+    // playtest of 20 Nov 2026 asked).
+    const fell = dialog.shownMessages.indexOf("Your PIDGEY's Defense fell!");
+    expect(dialog.shownMessages[fell - 1]).toBe('Wild RATTATA used TAIL WHIP!');
     expect(blinked).toEqual([]);
     expect(shake).not.toHaveBeenCalled();
   });
