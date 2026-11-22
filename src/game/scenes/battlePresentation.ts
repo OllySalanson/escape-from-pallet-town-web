@@ -1513,8 +1513,6 @@ const abilityLine = (
   switch (event.effect) {
     case 'powered-up':
       return `${who} is driving it harder!`;
-    case 'sharpened':
-      return `${who} has it in its sights!`;
     case 'shrugged-off':
       return `${who} is soaking that up!`;
     case 'hardened':
@@ -1584,8 +1582,6 @@ const abilityLine = (
         : `${who} sized up the other side!`;
     case 'quickened':
       return `${who} is racing the weather!`;
-    case 'hidden':
-      return `${who} is hard to make out in this!`;
     case 'weathered-out':
       return `${who} is holding the weather off!`;
     default:
