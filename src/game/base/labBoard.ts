@@ -1,4 +1,5 @@
 import { buildContractBoard, type ContractBoardRow } from '../hub/contractBoard';
+import { isStandingBoardOpen } from '../objectives/standingBoard';
 import { errandPlace, errandSquares, errandThing, errandsInHand, type Errand } from '../hub/errands';
 import { formatRecoveryClock, raidClockAfterRecovery, teamCondition } from '../hub/recovery';
 import { RAID_DURATION_MS } from '../run/raidClock';
@@ -89,15 +90,28 @@ export function boardNotices(game: Pick<RestoredGame, 'raidProgress' | 'stash'>)
   ];
 }
 
+/**
+ * Said before the jobs once one has been banked. The standing board deals the
+ * same kinds of job again with their stops in new places, so the next LINE
+ * SURVEY read word for word like the one just banked, and both new players took
+ * it for their first not having counted (AI playtest, 20 Nov 2026).
+ */
+export function bankedJobsLine(banked: number): string {
+  return `You've banked ${banked} ${banked === 1 ? 'job' : 'jobs'}. What's pinned up now is new, with new stops:`;
+}
+
 /** What is read off the board, a line a notice, the rumours after a line saying they are rumours. */
 export function boardLines(game: Pick<RestoredGame, 'raidProgress' | 'stash'>): readonly string[] {
   const notices = boardNotices(game);
   if (notices.length === 0) {
     return [BARE_BOARD_LINE];
   }
+  const jobs = notices.filter((notice) => notice.kind === 'contract').length;
+  const banked = game.raidProgress.standingContractsBanked;
+  const lead = jobs > 0 && banked > 0 && isStandingBoardOpen(game.raidProgress.completedContracts) ? [bankedJobsLine(banked)] : [];
   const work = notices.filter((notice) => notice.kind !== 'rumour').map((notice) => notice.line);
   const rumours = notices.filter((notice) => notice.kind === 'rumour').map((notice) => notice.line);
-  return [...work, ...(rumours.length === 0 ? [] : [RUMOURS_PINNED_LINE, ...rumours])];
+  return [...lead, ...work, ...(rumours.length === 0 ? [] : [RUMOURS_PINNED_LINE, ...rumours])];
 }
 
 /** The line under the board's caption: how much is on it. */
