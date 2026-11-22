@@ -7211,7 +7211,7 @@ export class BaseScene extends Phaser.Scene {
             room,
             at: { ...this.currentTile },
             facing: this.facing,
-            said: [healedLine(outcome.chargedMs, outcome.pendingRecoveryMs, free)],
+            said: [healedLine(outcome.chargedMs, outcome.pendingRecoveryMs, free, outcome.usedFreeHeal)],
           },
           'heal',
         );

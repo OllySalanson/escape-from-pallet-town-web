@@ -6,6 +6,8 @@ import { Stash } from '../stash';
 import {
   applyRecovery,
   formatRecoveryClock,
+  healDayOf,
+  isFreeHealDay,
   MAX_PENDING_RECOVERY_MS,
   needsRecovery,
   pokemonNeedingRecovery,
@@ -21,6 +23,12 @@ import {
   wardBedIds,
   type RecoveryTerms,
 } from './recovery';
+
+function faintedCharmander(): Pokemon {
+  const charmander = new Pokemon(CHARMANDER, 5);
+  charmander.takeDamage(charmander.maxHp);
+  return charmander;
+}
 
 function hurtStash(): { stash: Stash; charmander: Pokemon } {
   const stash = new Stash();
@@ -187,20 +195,49 @@ describe('recovery charges', () => {
 describe('recovery against the raid clock', () => {
   it('takes booked recovery off the next raid and never below zero', () => {
     expect(raidClockAfterRecovery(RAID_DURATION_MS, 0)).toBe(RAID_DURATION_MS);
-    expect(raidClockAfterRecovery(RAID_DURATION_MS, RECOVERY_FULL_BAR_MS)).toBe(
-      RAID_DURATION_MS - RECOVERY_FULL_BAR_MS,
-    );
+    expect(raidClockAfterRecovery(RAID_DURATION_MS, RECOVERY_REVIVE_MS)).toBe(RAID_DURATION_MS - RECOVERY_REVIVE_MS);
     expect(raidClockAfterRecovery(60_000, MAX_PENDING_RECOVERY_MS)).toBe(0);
   });
 
   it('always leaves a raid worth deploying into, however much was booked', () => {
-    // The cap and the clock are the same number halved, so the worst possible
-    // debt still leaves half a raid. An absolute cap written against a longer
-    // clock would hand a fully treated party a raid that enrages on frame one.
-    expect(MAX_PENDING_RECOVERY_MS).toBe(Math.floor(RAID_DURATION_MS / 2));
+    // The cap is a fifth of the clock, so the worst possible debt still leaves
+    // four fifths of a raid. An absolute cap written against a longer clock
+    // would hand a fully treated party a raid that enrages on frame one.
+    expect(MAX_PENDING_RECOVERY_MS).toBe(Math.floor(RAID_DURATION_MS / 5));
     expect(raidClockAfterRecovery(RAID_DURATION_MS, MAX_PENDING_RECOVERY_MS)).toBeGreaterThanOrEqual(
-      RAID_DURATION_MS / 2,
+      (RAID_DURATION_MS * 4) / 5,
     );
+  });
+
+  it('never takes more than 1:00 of the next raid, even for a whole fainted team', () => {
+    // A lost raid already takes the pack; a fainted lone starter cost 1:40 of a
+    // five-minute raid, and the shorter clock lost the next one too (AI playtest 5).
+    expect(MAX_PENDING_RECOVERY_MS).toBe(60_000);
+    const stash = new Stash();
+    stash.addPokemon(faintedCharmander(), 'down-1');
+    stash.addPokemon(faintedCharmander(), 'down-2');
+    const outcome = applyRecovery(stash, 0, ['down-1', 'down-2']);
+    expect(outcome.recoveredIds).toEqual(['down-1', 'down-2']);
+    expect(outcome.chargedMs).toBe(60_000);
+  });
+
+  it("heals free once a day: today's first heal charges nothing and says it was the free one", () => {
+    const stash = new Stash();
+    stash.addPokemon(faintedCharmander(), 'down');
+    const free: RecoveryTerms = { priceShare: 1, wardTreatments: 1, freeToday: true };
+    expect(quoteRecovery(stash, 0, ['down'], free)).toBe(0);
+    const outcome = applyRecovery(stash, MAX_PENDING_RECOVERY_MS, ['down'], free);
+    // Not held back by a debt at the cap, and no ward bed spent on it.
+    expect(outcome.recoveredIds).toEqual(['down']);
+    expect(outcome.chargedMs).toBe(0);
+    expect(outcome.wardTreatmentsUsed).toBe(0);
+    expect(outcome.usedFreeHeal).toBe(true);
+    expect(applyRecovery(new Stash(), 0, [], free).usedFreeHeal).toBe(false);
+    // A day on the player's own clock.
+    expect(healDayOf(new Date(2026, 10, 2, 23, 59))).toBe('2026-11-02');
+    expect(isFreeHealDay('2026-11-02', new Date(2026, 10, 2, 8))).toBe(false);
+    expect(isFreeHealDay('2026-11-02', new Date(2026, 10, 3, 0, 1))).toBe(true);
+    expect(isFreeHealDay(undefined, new Date(2026, 10, 3))).toBe(true);
   });
 
   it('prices every treatment as a whole number of quoting steps', () => {
@@ -307,7 +344,7 @@ describe('what Brock changes about recovery', () => {
     stash.addPokemon(downed(), 'down');
     const used: RecoveryTerms = { priceShare: 1, wardTreatments: 0 };
 
-    expect(quoteRecovery(stash, 0, ['down'], used)).toBe(RECOVERY_FULL_BAR_MS + RECOVERY_REVIVE_MS);
+    expect(quoteRecovery(stash, 0, ['down'], used)).toBe(Math.min(MAX_PENDING_RECOVERY_MS, RECOVERY_FULL_BAR_MS + RECOVERY_REVIVE_MS));
     expect(applyRecovery(stash, 0, ['down'], used).wardTreatmentsUsed).toBe(0);
   });
 
@@ -321,7 +358,7 @@ describe('what Brock changes about recovery', () => {
     const outcome = applyRecovery(stash, 0, ids, WARD);
     expect(outcome.chargedMs).toBe(quoted);
     expect(outcome.wardTreatmentsUsed).toBe(1);
-    expect(quoted).toBe(RECOVERY_FULL_BAR_MS + 2 * RECOVERY_REVIVE_MS);
+    expect(quoted).toBe(Math.min(MAX_PENDING_RECOVERY_MS, RECOVERY_FULL_BAR_MS + 2 * RECOVERY_REVIVE_MS));
   });
 });
 

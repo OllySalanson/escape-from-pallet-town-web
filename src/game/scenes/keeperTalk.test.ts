@@ -23,6 +23,7 @@ import { CHARMANDER, PIDGEY, Pokemon, PokemonParty } from '../pokemon';
 import { ALL_SPECIES } from '../pokemon/species';
 import { Bag } from '../items';
 import { FIRST_WORDS } from '../hub/firstWords';
+import { healDayOf } from '../hub/recovery';
 import type { BillGood } from '../hub/billTalk';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type RaidProgress, type StorageLike } from '../save/SaveManager';
 import { createStartingStash, type Stash } from '../stash';
@@ -141,12 +142,12 @@ describe('Professor Oak, from the mat', () => {
       stash.listPokemon()[0].pokemon.takeDamage(5);
     });
     const game = manager.load()!;
-    manager.save({ ...game, pendingRecoveryMs: 100_000 });
+    manager.save({ ...game, pendingRecoveryMs: 45_000 });
     const oak = room(manager);
     oak.speak('oaks-lab', 'lab');
 
     expect(oak.said[0]).toContain('came home hurt. NURSE JOY is across the yard.');
-    expect(oak.said[1]).toBe('Your next raid runs 3:20: 1:40 went on recovery.');
+    expect(oak.said[1]).toBe('Your next raid runs 4:15: 0:45 went on recovery.');
   });
 
   it('asks his favour after his first words and before the board', () => {
@@ -229,10 +230,16 @@ describe('the Pokédex: Professor Oak rewards each milestone in his lab, once', 
 });
 
 describe('Nurse Joy, at her counter', () => {
-  const hurt = (progress: Partial<RaidProgress> = NOTHING_NEW): SaveManager =>
-    saved(progress, (stash) => {
+  /** Somebody hurt, on a save that has had today's free heal, unless it is to have it still. */
+  const hurt = (progress: Partial<RaidProgress> = NOTHING_NEW, freeHealTaken = true): SaveManager => {
+    const manager = saved(progress, (stash) => {
       stash.listPokemon()[0].pokemon.takeDamage(5);
     });
+    if (freeHealTaken) {
+      manager.save({ ...manager.load()!, freeHealDay: healDayOf(new Date()) });
+    }
+    return manager;
+  };
 
   it('welcomes a newcomer, once, then says the price: moving boxes is not her job', () => {
     const manager = hurt({ firstWordsHeard: ['lab', 'loadout'] });
@@ -270,6 +277,18 @@ describe('Nurse Joy, at her counter', () => {
     expect(joy.went).toHaveLength(1);
     expect(joy.went[0].room).toBe('pokemon-centre');
     expect(joy.went[0].said?.[0]).toContain('fit to raid');
+  });
+
+  it("heals free the first time each day, says so, and charges the next heal that day", () => {
+    const manager = hurt(NOTHING_NEW, false);
+    const joy = room(manager, [true]);
+    joy.speak('pokemon-centre', 'stash');
+    expect(joy.said.join(' ')).toContain('Your first heal today is free');
+    expect(joy.said.join(' ')).toContain('Healing costs at most 1:00 of a raid');
+    const after = manager.load()!;
+    expect(after.pendingRecoveryMs).toBe(0);
+    expect(after.freeHealDay).toBe(healDayOf(new Date()));
+    expect(joy.went[0].said?.[0]).toContain('That was today’s free heal.');
   });
 
   it('asks nothing of a fit team', () => {

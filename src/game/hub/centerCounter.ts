@@ -3,6 +3,8 @@ import { RAID_DURATION_MS } from '../run/raidClock';
 import { awayOnRaid, type RaidInFlight } from '../run/raidInFlight';
 import {
   formatRecoveryClock,
+  isFreeHealDay,
+  MAX_PENDING_RECOVERY_MS,
   pokemonNeedingRecovery,
   quoteRecovery,
   raidClockAfterRecovery,
@@ -23,15 +25,28 @@ import { recoveryPriceShare, wardTreatmentsPerRaid } from './workshop';
  * of the next raid's clock (`recovery.ts`), said before anything is spent.
  */
 
-/** What this save's Center charges (`recovery.ts`): the Workshop's rungs, and the ward's beds still free. */
-export function recoveryTermsFor(workshopUpgrades: readonly string[], wardTreatmentsUsed: number): RecoveryTerms {
+/**
+ * What this save's Center charges (`recovery.ts`): the Workshop's rungs, the
+ * ward's beds still free, and today's free heal, if the save has not had it
+ * (`now` absent asks nothing of the day, and charges as every other heal).
+ */
+export function recoveryTermsFor(
+  workshopUpgrades: readonly string[],
+  wardTreatmentsUsed: number,
+  freeHealDay?: string,
+  now?: Date,
+): RecoveryTerms {
   return {
     priceShare: recoveryPriceShare(workshopUpgrades),
     wardTreatments: Math.max(0, wardTreatmentsPerRaid(workshopUpgrades) - wardTreatmentsUsed),
+    ...(now !== undefined && isFreeHealDay(freeHealDay, now) ? { freeToday: true } : {}),
   };
 }
 
-type CounterGame = Pick<RestoredGame, 'stash' | 'pendingRecoveryMs' | 'wardTreatmentsUsed'> & {
+/** Her plain word on what healing costs, said with every price (AI playtest 5, 22 Nov 2026). */
+export const HEAL_RULE_LINE = `Healing costs at most ${formatRecoveryClock(MAX_PENDING_RECOVERY_MS)} of a raid, and the first each day is free.`;
+
+type CounterGame = Pick<RestoredGame, 'stash' | 'pendingRecoveryMs' | 'wardTreatmentsUsed' | 'freeHealDay'> & {
   readonly raidProgress: Pick<RaidProgress, 'workshopUpgrades'>;
   /** A raid out in another window, whose Pokemon are not hers to heal (`SaveManager.healAtCenter`). */
   readonly raidInFlight?: RaidInFlight | null;
@@ -43,7 +58,7 @@ export interface CenterOffer {
   /** What she asks, with YES and NOT NOW under it. Absent when there is nobody to heal. */
   readonly question?: string;
   /**
-   * Whether YES takes clock off the next raid, up to half of it. A free heal opens
+   * Whether YES takes clock off the next raid, up to 1:00 of it. A free heal opens
    * on YES as FireRed's does; one with a price opens on NOT NOW, because the key
    * mashed through her lines is still under the player's finger.
    */
@@ -59,7 +74,7 @@ function clockAfter(pendingMs: number): string {
  * What she says to whoever walks up. `free` is the explorer run, whose clock
  * nothing can shorten (`dev/playtestMode.ts`).
  */
-export function centerOffer(game: CounterGame, free = false): CenterOffer {
+export function centerOffer(game: CounterGame, free = false, now: Date = new Date()): CenterOffer {
   const away = awayOnRaid(game);
   const everyoneHurt = pokemonNeedingRecovery(game.stash);
   const hurt = everyoneHurt.filter((stored) => !away.has(stored.id));
@@ -81,7 +96,7 @@ export function centerOffer(game: CounterGame, free = false): CenterOffer {
       ],
     };
   }
-  const terms = recoveryTermsFor(game.raidProgress.workshopUpgrades, game.wardTreatmentsUsed);
+  const terms = recoveryTermsFor(game.raidProgress.workshopUpgrades, game.wardTreatmentsUsed, game.freeHealDay, now);
   const ids = hurt.map((stored) => stored.id);
   // A debt already at the cap holds back whatever would cost clock
   // (`recovery.ts`): the next raid is as short as she will make it.
@@ -100,7 +115,9 @@ export function centerOffer(game: CounterGame, free = false): CenterOffer {
         ? treated.length === 2 ? 'both of them' : `all ${treated.length} of them`
         : `${treated.length} of them`;
   const price =
-    quoteMs === 0
+    terms.freeToday && !free
+      ? "Your first heal today is free: it won't cost your next raid a second."
+      : quoteMs === 0
       ? 'Healing will not cost your next raid a second.'
       : // The heal's price, not a charge already made: 'It takes 0:45 off your
         // next raid' before the question read as lost whatever the answer
@@ -111,7 +128,8 @@ export function centerOffer(game: CounterGame, free = false): CenterOffer {
       ...outLine,
       `${teamCondition(game.stash, away) ?? 'Somebody needs me'}. ${price}`,
       ...(heldBack.length > 0 ? [`${capped} The rest must wait for a raid.`] : []),
-      ...(free ? [] : wardLines(game, pending, ids, terms)),
+      ...(free || terms.freeToday ? [] : wardLines(game, pending, ids, terms)),
+      ...(free ? [] : [HEAL_RULE_LINE]),
     ],
     question: `Shall I heal ${them}?`,
     // With nobody able to raid, the only useful answer is yes: a question opening
@@ -154,10 +172,11 @@ export function nobodyCanRaid(game: Pick<RestoredGame, 'stash'>): boolean {
 }
 
 /** What she says with the team back on its feet. */
-export function healedLine(chargedMs: number, pendingMs: number, free = false): string {
+export function healedLine(chargedMs: number, pendingMs: number, free = false, usedFreeHeal = false): string {
   const clock =
     chargedMs > 0 && !free ? ` Your next raid runs ${clockAfter(pendingMs)}.` : '';
-  return `Your Pokémon are fit to raid.${clock} We hope to see you again!`;
+  const today = usedFreeHeal && !free ? ' That was today’s free heal.' : '';
+  return `Your Pokémon are fit to raid.${clock}${today} We hope to see you again!`;
 }
 
 /** What she says to NOT NOW. */

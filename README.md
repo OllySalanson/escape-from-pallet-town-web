@@ -192,8 +192,8 @@ and say yes, you're let in to have a nose round for as long as you like (or unti
   ball if you haven't. Open a page and it's FireRed's own entry, its cry, and where in the vale to
   go and find one. Shinies get a star. Oak's next reward sits at the end of the rail, waiting.
 - **Nurse Joy's Pokémon Center** looks after the team. She heals in full at her counter, and she
-  charges in time: she names what comes off your next raid's clock before you say yes. Your boxes
-  are on the PC beside her.
+  charges in time: she names what comes off your next raid's clock before you say yes, never more
+  than a minute, and your first heal each day is on the house. Your boxes are on the PC beside her.
 - **Brock's Workshop** builds permanent upgrades, paid for in the materials you haul home. Each
   empty bay has what goes there chalked on the floor: walk up, he quotes it, you say yes. And
   every one of them turns up on the map: a radio mast, a beacon, cellar doors in the quay wall.
