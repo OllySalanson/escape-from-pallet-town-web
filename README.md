@@ -117,8 +117,9 @@ Pokémon jumping out lets them catch up. And they only chase you out of their pa
 right on your heels, which is lovely until you run straight into the next one.
 
 They bring one Pokémon for each of yours that can still fight, a few levels below it, led by their
-own favourite and evolving as they level, so a Charizard gets a Raticate, not a Rattata. Walking
-into them, or letting them walk into you, means a fight, and a speech about whose loot that is now.
+own favourite, backed by their own type, and evolving as they level, so a strong team meets Lt.
+Surge's Raichu, not his Pikachu. Walking into them, or letting them walk into you, means a fight,
+and a speech about whose loot that is now.
 Running away always works, but costs you a chunk of the clock, so a raid that runs from everything
 ends up running out of time instead. Beat one and they're gone for good. Well, until the clock runs
 out.
