@@ -28,6 +28,7 @@ import { planLimits, SEAM_DEPTH, startDistrict } from '../../worldPlan';
 import { withInside } from './insides';
 import { caveLadders, caveMouthLink, greystoneCaves } from './greystoneCaves';
 import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
+import { gymDoorGuide } from '../../../../src/game/world/gymGuide';
 import { GREYSTONE_VALE } from './plan';
 
 /** The land above the coast, a letter a lattice cell: T the wood, . the heath. */
@@ -304,7 +305,8 @@ export function gullStrand(): MapcraftResult {
         { x: 48, y: 8, lines: ['THE SAILORS’ REST', 'They went out from the jetty. Some of them came back as far as this.'] },
         { x: 42, y: 29 - 1, lines: ['THE SALT PANS', 'Keep off the pans. Wade if you must. Do not lick anything.'] },
         { x: 53, y: 41, lines: ['THE QUAY', 'Fish off the boats by noon. After noon, ask the cat.'] },
-        { x: 53, y: 24, lines: ['CERULEAN GYM', 'Leader: MISTY. The tomboyish mermaid!', 'Beat her for the CASCADE BADGE and the jetty to the Coast.'] },
+        // The door sign says how strong to be first, worked out from her team (`world/gymGuide.ts`).
+        { x: 53, y: 24, lines: ['CERULEAN GYM', 'Leader: MISTY. The tomboyish mermaid!', 'Beat her for the CASCADE BADGE and the jetty to the Coast.', gymDoorGuide(MISTY_BOSS_ID)] },
         { x: 25, y: 39, lines: ['WRACKERS’ SAND', 'What the sea leaves is yours. What the sea wants back, it takes. Check the tide.'] },
       ],
       // The heath's own: a pair of Doduo on the dry ground, a Psyduck up the
