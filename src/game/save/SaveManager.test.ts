@@ -1785,7 +1785,7 @@ describe('SaveManager', () => {
     const seeded = counterSave(storage);
     const game = seeded.load()!;
     // Two contracts and one boss is seven points - a regular, and a regular's
-    // ration is one thing a trip however much money is on the table.
+    // ration is one thing a raid however much money is on the table.
     seeded.save({
       ...game,
       raidProgress: { ...game.raidProgress, defeatedBosses: ['floodplain-toll-keeper'] },
@@ -1795,7 +1795,7 @@ describe('SaveManager', () => {
     const held = saves.load()!.stash.itemCount('money');
     const refused = saves.buyTraderStock('potion');
     expect(refused.ok).toBe(false);
-    expect(refused.message).toContain('trip');
+    expect(refused.message).toContain('a raid');
     expect(saves.load()!.stash.itemCount('money')).toBe(held);
   });
 
