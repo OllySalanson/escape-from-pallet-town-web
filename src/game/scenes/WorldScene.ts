@@ -284,7 +284,8 @@ import {
 } from '../world/interiors';
 import { WeatherId } from '../pokemon/battle/weather';
 import { SURVEY_RADIUS, tilesAround } from '../world/minimap';
-import { WINDOW_CREAM, drawPixelWindow } from '../ui/pixelWindow';
+import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
+import { HINT_MARGIN, HINT_PADDING_X, HINT_PADDING_Y, spaceHint } from '../ui/hintLine';
 import {
   OBJECTIVE_DETAIL_MS,
   PLACE_PLATE_MS,
@@ -517,6 +518,8 @@ const CHEVRON_HEIGHT = 6;
  */
 /** The way mark stands over the map and every figure, and under the chips. */
 const WAY_MARK_DEPTH = 90;
+/** The hint line stands with the raid's chips (`RaidHud`), over the map and under any box. */
+const HINT_DEPTH = 100;
 /** How many walks to a tile the way mark keeps at once: the stake, the money, a way out or two. */
 const WAY_FIELDS_KEPT = 6;
 
@@ -999,6 +1002,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private readonly prizeLabels = new Map<string, WorldLabel>();
   private readonly prizeGleams = new Map<string, Phaser.GameObjects.Graphics>();
   private readonly activatedPoiIds = new Set<string>();
+  private hintFrame?: Phaser.GameObjects.Graphics;
+  private hintText?: Phaser.GameObjects.Text;
+  /** What the hint line says now: '' when it is hidden. */
+  private hintShown = '';
   /**
    * The cache being searched, while one is (`world/cacheSearch.ts`). Where the
    * search has got to is the raid's (`ActiveRunSession.cachesSearched`); this
@@ -1702,6 +1709,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.updatePartner(deltaMs);
     this.tendFigureGlints(deltaMs);
     this.updateFriend(deltaMs);
+    this.refreshHint();
   }
 
   /**
@@ -5018,6 +5026,108 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
     );
     this.refreshRunTimerHud();
+    const hint = this.hintShown;
+    this.hintShown = '\u0000';
+    this.showHint(hint);
+  }
+
+  /**
+   * The harbour's hint line, in the raid (`ui/hintLine.ts`): what the interact
+   * key works on the tile faced, said only while the player stands with nothing
+   * else on screen to read. A caption seen from beside a gate says what the gate
+   * is; this says which tile it answers SPACE from.
+   */
+  private createHint(): void {
+    this.hintFrame = this.add.graphics().setScrollFactor(0).setDepth(HINT_DEPTH);
+    this.hintText = this.add
+      .text(0, 0, '', { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: WINDOW_INK })
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(HINT_DEPTH + 0.01);
+    this.hintShown = '\u0000';
+    this.showHint('');
+  }
+
+  /** The line for this frame: nothing while walking or while anything else is on screen. */
+  private refreshHint(): void {
+    if (!this.hintText) {
+      return;
+    }
+    const busy = Boolean(
+      this.dialogBox.visible ||
+        this.trainerPrompt ||
+        this.cutscene ||
+        this.fishing ||
+        this.search ||
+        this.isWarping ||
+        this.arrival ||
+        this.targetTile,
+    );
+    this.showHint(busy ? '' : this.hintHere());
+  }
+
+  /**
+   * What SPACE works on the tile faced, named as the harbour names a thing: a
+   * way out with a lock or rubble in it, a night track, a field move's
+   * obstacle, a lever, a door with a card lock, or a cache or landmark that has
+   * something left in it. Asked of the same lookups `tryInteract` answers from,
+   * so the line is never offered where the press would say nothing.
+   */
+  private hintHere(): string {
+    const faced = nextTileFromDirection(this.currentTile, this.facing);
+    const barred = this.barredExitAt(faced);
+    if (barred && itemThatOpens(barred)) {
+      return spaceHint(barred.label);
+    }
+    const gates = this.currentMap.gates;
+    const track = nightGateAt(gates, faced);
+    if (track && !isGateOpen(track, this.openedDoorKeys())) {
+      return spaceHint(track.label);
+    }
+    const gate = fieldMoveGateAt(gates, faced);
+    if (gate && !isGateOpen(gate, this.openedDoorKeys())) {
+      return spaceHint(gate.label);
+    }
+    const lever = switchAt(this.switchesHere(), faced);
+    if (lever?.kind === 'lever' && !this.switchThrown(lever)) {
+      return spaceHint('LEVER');
+    }
+    const poi = this.currentMap.pois.find(
+      (candidate) =>
+        candidate.position.x === faced.x &&
+        candidate.position.y === faced.y &&
+        !isLandmarkWorked(candidate.id, this.completedContracts),
+    );
+    if (poi && this.isLootAvailable() && (!this.activatedPoiIds.has(poi.id) || this.piecesLeftIn(poi) > 0)) {
+      return spaceHint(poi.label);
+    }
+    const door = this.currentMap.entities.find((entity) => entity.barrier && this.entityHolds(entity, faced));
+    const lock = door?.barrier
+      ? this.switchesHere().find((candidate) => candidate.kind === 'key' && candidate.opens === door.barrier!.id)
+      : undefined;
+    if (lock && !this.switchThrown(lock)) {
+      return spaceHint('LOCKED DOOR');
+    }
+    return '';
+  }
+
+  /** The hint centred along the foot of the screen, or hidden when there is nothing to say. */
+  private showHint(text: string): void {
+    if (!this.hintFrame || !this.hintText || text === this.hintShown) {
+      return;
+    }
+    this.hintShown = text;
+    this.hintFrame.clear();
+    this.hintText.setText(text).setVisible(text !== '');
+    if (text === '') {
+      return;
+    }
+    const width = Math.ceil(this.hintText.width) + HINT_PADDING_X * 2;
+    const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
+    const x = Math.round((this.scale.width - width) / 2);
+    const y = this.scale.height - height - HINT_MARGIN;
+    drawPixelWindow(this.hintFrame, { x, y, width, height }, { fill: WINDOW_CREAM });
+    this.hintText.setPosition(x + HINT_PADDING_X, y + HINT_PADDING_Y);
   }
 
   private createRunTimerHud(): void {
@@ -5026,6 +5136,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
 
     this.raidHud = new RaidHud(this);
+    this.createHint();
     this.hunterGlow = new HunterEdgeGlow(this);
     this.searchPanel = new SearchPanel(this);
     // A scene under test has no textures to paint it with, and nothing to look at it.
@@ -5191,6 +5302,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       tile: tileOf(this.currentTile),
       facing: this.facing,
       walking: this.targetTile !== null,
+      // The hint line at the foot: what SPACE works on the tile faced.
+      hint: this.hintShown || null,
       dialogue: this.dialogBox.visible
         ? {
             text: this.dialogBox.shownText.replace(/\s+/g, ' ').trim(),
