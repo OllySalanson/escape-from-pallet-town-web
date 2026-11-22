@@ -150,6 +150,7 @@ import { DialogBox } from '../ui/DialogBox';
 import { flashScreen } from '../ui/screenFlash';
 import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
 import { rollEncounter, type WildEncounter } from '../world/wildEncounters';
+import { tableForStep } from '../world/arrowRoutes';
 import { caughtLegends, legendCaught } from '../world/legends';
 import {
   NOT_EVEN_A_NIBBLE,
@@ -966,6 +967,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private raidWayMark: RaidWayMark | undefined;
   private wayMarkMs = 0;
   private wayCache: RaidWay = NO_WAY;
+  /** Whether the step under way goes onto the tile the gold arrow aims at (`world/arrowRoutes.ts`). */
+  private stepFollowsArrow = false;
   private wayCacheKey = '';
   /** The pack the way was last worked out against: a battle can hand back another. */
   private wayBag: Bag | undefined;
@@ -1270,6 +1273,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   private resetStateFromPreviousRaid(): void {
     this.lookMs = 0;
+    this.stepFollowsArrow = false;
     this.boardedAtMs = null;
     // The marks were destroyed with the scene; the hunters themselves ride the run session.
     this.packMarks.clear();
@@ -6704,6 +6708,22 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     };
   }
 
+  /**
+   * Whether a step onto `next` goes the gold arrow's way: one step shorter on
+   * the walk to what it is after, read off the walk the arrow already keeps
+   * (`wayField`). Asked as the step starts (`world/arrowRoutes.ts`).
+   */
+  private stepShortensArrowWalk(next: GridPosition): boolean {
+    const mark = this.runSession ? this.raidWay().mark : null;
+    if (!mark) {
+      return false;
+    }
+    const field = this.wayField({ x: Math.floor(mark.target.x / TILE_SIZE), y: Math.floor(mark.target.y / TILE_SIZE) });
+    const here = field[this.currentTile.y]?.[this.currentTile.x] ?? -1;
+    const there = field[next.y]?.[next.x] ?? -1;
+    return here > 0 && there >= 0 && there < here;
+  }
+
   /** Walking steps to a tile from anywhere in its place, kept for the raid's handful of targets. */
   private wayField(tile: GridPosition): readonly Int32Array[] {
     const key = `${tile.x},${tile.y}`;
@@ -7251,6 +7271,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   private beginStep(targetTile: GridPosition): void {
+    this.stepFollowsArrow = this.stepShortensArrowWalk(targetTile);
     this.targetTile = targetTile;
     this.stepProgress = 0;
     // A ridden tile is quicker and is still one step: the hunter, the grass
@@ -7447,8 +7468,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // player who lost their first raid met the same Pidgey with the same
       // three lines explaining a screen they had just spent a raid reading.
       const teachingBattle = teaching !== null && new SaveManager().claimBattleLesson();
+      // A step along the gold arrow in the places that were nothing but RUN
+      // rolls at two thirds of their rate (`world/arrowRoutes.ts`).
+      const table = tableForStep(encounters, this.currentMap.id, this.currentTile, this.stepFollowsArrow);
       const rolled =
-        teaching ?? rollEncounter(encounters, rng === undefined ? undefined : () => rng.next());
+        teaching ?? rollEncounter(table, rng === undefined ? undefined : () => rng.next());
       // A Repel turns back what is weaker than the lead; the teaching fight is
       // authored, and is met whatever is sprayed.
       const wild =
