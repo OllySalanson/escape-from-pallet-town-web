@@ -3,6 +3,7 @@ import { baseGame } from './baseGames.testkit';
 import { BARE_BOARD_LINE, RUMOURS_PINNED_LINE, bankedJobsLine, SCRAP_HEIGHT, SCRAP_WIDTH, boardLines, boardNote, boardNotices, boardPoster, scrapSeats, slipSeats } from './labBoard';
 import { BOARD_TILES, OAK_BOARD, OAK_CHART_TABLE, OAK_WALL_MAP, buildRoom, roomNamed } from './rooms';
 import { RUMOURS } from '../world/rumours';
+import { RUMOUR_BOUGHT_LINE } from '../minigames/tickets';
 import { SECRETS, rewardKey } from '../world/secrets';
 import { buildContractBoard } from '../hub/contractBoard';
 import { RAID_CONTRACTS } from '../objectives/contracts';
@@ -108,7 +109,14 @@ describe("Oak's cork board", () => {
     const shadow = SECRETS.find((secret) => secret.id === 'the-long-shadow')!;
     const heard = ['board-long-shadow', 'angler-red-one', 'spyglass-lost-fold'];
 
-    it('pins every rumour heard as a scrap of its own, read after the work under a line saying what they are', () => {
+    it('is where the prize window says a bought rumour went, and it is there', () => {
+    const game = baseGame({ progress: { rumoursHeard: ['angler-red-one'] } });
+    expect(boardNotices(game).some((notice) => notice.kind === 'rumour')).toBe(true);
+    expect(RUMOUR_BOUGHT_LINE).toContain('THE BOARD');
+    expect(RUMOUR_BOUGHT_LINE).toContain('OAK’S LAB');
+  });
+
+  it('pins every rumour heard as a scrap of its own, read after the work under a line saying what they are', () => {
       const game = baseGame({ progress: { ...BEEN_OUT, rumoursHeard: heard } });
       const rumours = boardNotices(game).filter((notice) => notice.kind === 'rumour');
       expect(rumours).toHaveLength(3);

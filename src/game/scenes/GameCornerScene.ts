@@ -21,7 +21,7 @@ import {
   vineTurn,
   type PokemonJumpGame,
 } from '../minigames/pokemonJump';
-import { NO_GAME_CORNER, prizeById, prizeName, prizeRefusal, type GameCornerRecord, type PrizeSituation } from '../minigames/tickets';
+import { NO_GAME_CORNER, prizeById, prizeName, prizeRefusal, RUMOUR_BOUGHT_LINE, type GameCornerRecord, type PrizeSituation } from '../minigames/tickets';
 
 export interface GameCornerSceneData {
   readonly mode: 'jump' | 'prizes';
@@ -340,7 +340,7 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     this.status = bought.pokemon
       ? `${bought.pokemon.name.toUpperCase()} went to your boxes. Put it on the team with P.`
       : bought.rumour
-        ? 'Heard. The slip is kept with every rumour you have heard.'
+        ? RUMOUR_BOUGHT_LINE
         : `${prizeName(prize)} - it is waiting at home.`;
     this.showMenu(`[data-prize="${id}"]`);
   }
