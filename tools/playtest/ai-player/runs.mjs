@@ -20,6 +20,15 @@ export const PERSONAS = {
 
 export const FINDING_KINDS = ['bug', 'confusing', 'ai-feel'];
 
+/**
+ * Where the game may be reloaded from its save to free memory (`act.mjs`):
+ * where a reload loses nothing. Not the raid's result screen - what it says is
+ * on no other screen, and the overnight playtest of 20 Nov 2026 was reloaded
+ * off its first extraction's result before it had read it. The harbour behind
+ * it is one CONTINUE away and reloads as well as anywhere.
+ */
+export const RELOAD_SAFE_SCENES = new Set(['base', 'title', 'hub']);
+
 /** Actions in a row with nothing changing before a run is told it is stuck. */
 export const STUCK_AFTER = 8;
 /** And after this many more, it is told to give the goal up: STUCK is logged for it. */
