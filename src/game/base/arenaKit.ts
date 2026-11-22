@@ -83,6 +83,8 @@ export function flowForGame(game: RestoredGame): DeploymentFlow {
     game.raidProgress.lastBench,
     // And what the pack held as it was left is packed again.
     game.raidProgress.lastPack,
+    // And what was taken out of it stays out.
+    game.raidProgress.packLeftOut,
   );
 }
 
