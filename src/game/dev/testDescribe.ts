@@ -206,6 +206,7 @@ export interface ElementLike {
   getClientRects(): ArrayLike<unknown>;
   click?(): void;
   focus?(): void;
+  scrollIntoView?(options: { readonly block: 'nearest' }): void;
 }
 
 export interface DocumentLike {
@@ -313,6 +314,10 @@ export function pressMenuControl(document: DocumentLike, label: string): string 
   if (!match) {
     return null;
   }
+  // Scrolled to first, as a player scrolls to a row before clicking it: a
+  // click on a row still below a list's fold focused it out of sight, and the
+  // veteran run read its details beside a list that never showed it (20 Nov 2026).
+  match.element.scrollIntoView?.({ block: 'nearest' });
   match.element.focus?.();
   match.element.click?.();
   return match.label;
