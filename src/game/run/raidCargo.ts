@@ -131,3 +131,24 @@ export function packRoomChoices(
     };
   });
 }
+
+/**
+ * Whether the pack could hold this Pokemon at all, with everything that can be
+ * put down put down: only the Pokemon already carried and the one ball being
+ * thrown (`keepOne`) left in. When it cannot, the make-room panel has nothing
+ * to offer - a 12-square Satchel carrying a 6-square Ivysaur can never seat a
+ * 9-square Alakazam, and the panel took four items off a veteran one at a
+ * time before the throw was given up (playtest, 20 Nov 2026).
+ */
+export function packCouldEverHoldPokemon(bag: Bag, pokemon: Pokemon, keepOne?: string): boolean {
+  const capacity = bag.capacity;
+  return (
+    capacity === null ||
+    fitsInGrid(keepOne ? { [keepOne]: 1 } : {}, capacity, [...bag.cargo, pokemonCargo('incoming', pokemon)])
+  );
+}
+
+/** What the raid says when no amount of putting things down would make room. */
+export function packNeverFitsPokemonLine(pokemon: Pokemon): string {
+  return `${packFullForPokemonLine(pokemon)} Even with everything else put down, this pack cannot hold it.`;
+}

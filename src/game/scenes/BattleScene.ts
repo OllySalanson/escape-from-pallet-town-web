@@ -102,6 +102,8 @@ import { buildWipeSettlement, deployedRaidCondition } from '../run/raidSettlemen
 import {
   packFullForPokemonLine,
   clearPackRoomForPokemon,
+  packCouldEverHoldPokemon,
+  packNeverFitsPokemonLine,
   packHasRoomForPokemon,
   packRoomChoices,
   syncPackCargo,
@@ -2880,7 +2882,21 @@ export class BattleScene extends Phaser.Scene {
     // itself and the ball is thrown, because a refusal a player cannot act on
     // from inside a fight is the whole fault this screen exists to answer.
     if (!clearPackRoomForPokemon(this.bag, this.state.enemy.pokemon).fits) {
-      const choices = this.makeRoomChoices(carriedBalls(this.bag)[ballIndex]?.id);
+      const held = carriedBalls(this.bag)[ballIndex]?.id;
+      // With things to put down that would never be enough, none is offered.
+      if (this.makeRoomChoices(held).length > 0 && !packCouldEverHoldPokemon(this.bag, this.state.enemy.pokemon, held)) {
+        // Said once, and the ball kept.
+        this.mode = 'events';
+        this.commandContainer.setVisible(false);
+        audioManager.play('denied');
+        if (this.legendThrow === 'offered') {
+          this.legendGetsAway([packNeverFitsPokemonLine(this.state.enemy.pokemon)]);
+          return;
+        }
+        this.dialog.showMessage(packNeverFitsPokemonLine(this.state.enemy.pokemon));
+        return;
+      }
+      const choices = this.makeRoomChoices(held);
       this.mode = 'events';
       this.commandContainer.setVisible(false);
       audioManager.play('denied');
