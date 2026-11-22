@@ -789,6 +789,19 @@ describe('hub deployment route', () => {
     expect(staleStart).toHaveBeenCalledTimes(1);
   });
 
+  it("says the only one at base is packed, not 'All 1 ... are'", () => {
+    // AI playtest of 22 Nov 2026: one Great Ball packed read 'All 1 at base are packed.'
+    const { hub } = createHub();
+    hub.stash.addItem('great-ball', 1);
+    hub.flow.rebase(hub.stash);
+    hub.flow.setItemQuantity('great-ball', 1);
+    hub.setView('rack');
+    hub.render();
+    const markup = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+    expect(markup).toContain('The only one at base is packed.');
+    expect(markup).not.toContain('All 1 at base are packed.');
+  });
+
   it('says on the loadout when no Poké Ball is packed, once the default has been taken out', () => {
     const { hub } = createHub();
     const loadout = () => {
