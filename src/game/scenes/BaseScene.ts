@@ -2274,7 +2274,7 @@ export class BaseScene extends Phaser.Scene {
       this.saveManager.chooseBench(changed);
     }
     // The pack, for the same reason: the rack is built afresh from the save too.
-    this.saveManager.choosePack(flow.packedContents);
+    this.saveManager.choosePack(flow.packedContents, flow.leftOut);
   }
 
   /** Back from a panel: what was chosen in it now stands in the room. */

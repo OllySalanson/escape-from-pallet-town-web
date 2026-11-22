@@ -192,6 +192,43 @@ describe('deployment flow', () => {
       expect(flow.itemQuantity('card-key')).toBe(0);
     });
 
+    /**
+     * Playtests of 22 Nov 2026: every Potion and Poke Ball taken off THE
+     * ARMOURY RACK, out to ARENA SQUARE and back in, and the rack had packed
+     * three of each again - the default refilled what the player had emptied.
+     */
+    it('leaves out what the player took out, rather than packing the default over it', () => {
+      const { stash } = seedFlow();
+      const first = emptied(packOf(stash, {}));
+      expect(first.packedContents).toEqual({});
+
+      const again = new DeploymentFlow(stash, undefined, undefined, undefined, undefined, null, [], first.packedContents, first.leftOut);
+
+      expect(again.packedContents).toEqual({});
+      expect(again.leftOut).toEqual(expect.arrayContaining(['potion', 'poke-ball']));
+    });
+
+    it('still packs the default of a kind the player never took out', () => {
+      const { stash } = seedFlow();
+      const flow = packOf(stash, {});
+      flow.setItemQuantity('poke-ball', 0);
+
+      const again = new DeploymentFlow(stash, undefined, undefined, undefined, undefined, null, [], flow.packedContents, flow.leftOut);
+
+      expect(again.itemQuantity('poke-ball')).toBe(0);
+      expect(again.itemQuantity('potion')).toBeGreaterThan(0);
+    });
+
+    it('packs a kind again once the player puts it back', () => {
+      const { stash } = seedFlow();
+      const flow = emptied(packOf(stash, {}));
+      flow.setItemQuantity('potion', 1);
+
+      expect(flow.leftOut).not.toContain('potion');
+      const again = new DeploymentFlow(stash, undefined, undefined, undefined, undefined, null, [], flow.packedContents, flow.leftOut);
+      expect(again.itemQuantity('potion')).toBe(1);
+    });
+
     it('is the default exactly, for a save that never laid one out', () => {
       const { stash } = seedFlow();
       expect(packOf(stash, {}).packedContents).toEqual(new DeploymentFlow(stash).packedContents);

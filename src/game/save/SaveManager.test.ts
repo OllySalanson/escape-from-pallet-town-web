@@ -2476,6 +2476,19 @@ describe('SaveManager', () => {
       expect(new SaveManager(storage).load()?.raidProgress.lastPack).toEqual({ 'old-rod': 1, 'poke-ball': 3 });
     });
 
+    it('remembers what was taken out, and forgets a kind that is packed again', () => {
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      expect(saves.choosePack({}, ['potion', 'poke-ball'])).toBe(true);
+      expect(new SaveManager(storage).load()?.raidProgress.packLeftOut).toEqual(['poke-ball', 'potion']);
+
+      saves.choosePack({ potion: 1 }, ['potion', 'poke-ball']);
+      expect(new SaveManager(storage).load()?.raidProgress.packLeftOut).toEqual(['poke-ball']);
+
+      saves.choosePack({ potion: 1, 'poke-ball': 2 });
+      expect(new SaveManager(storage).load()?.raidProgress.packLeftOut).toBeUndefined();
+    });
+
     it('keeps only whole counts of things, as a bag does', () => {
       const storage = new MemoryStorage();
       const saves = freshSave(storage);

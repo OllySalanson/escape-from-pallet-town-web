@@ -497,6 +497,12 @@ export interface RaidProgress {
    */
   readonly lastPack?: BagContents;
   /**
+   * The kinds the player took out of the pack at the rack, so the default
+   * medicine and balls are not packed over that choice next time
+   * (`DeploymentFlow`). Absent reads as nothing taken out - so no version bump.
+   */
+  readonly packLeftOut?: readonly string[];
+  /**
    * Who walks about THE BOLTHOLE's garden, by stash id, once a PC has been used
    * to choose (`base/homeGarden.ts`). Absent reads as the default - the six
    * highest level not going on the next raid - so no version bump.
@@ -2381,21 +2387,29 @@ export class SaveManager {
    * (`DeploymentFlow`'s `packLastPack`). Nothing is written when it is
    * already what the save holds.
    */
-  public choosePack(contents: Readonly<Record<string, number>>): boolean {
+  public choosePack(contents: Readonly<Record<string, number>>, leftOut: readonly string[] = []): boolean {
     const game = this.load();
     if (!game) {
       return false;
     }
     const kept = bagContents(contents);
+    const out = [...new Set(leftOut.map(currentItemId))].filter((itemId) => !(kept[itemId] > 0)).sort();
     const before = game.raidProgress.lastPack;
+    const outBefore = game.raidProgress.packLeftOut ?? [];
     const same =
       before !== undefined &&
       Object.keys(before).length === Object.keys(kept).length &&
-      Object.entries(kept).every(([itemId, quantity]) => before[itemId] === quantity);
+      Object.entries(kept).every(([itemId, quantity]) => before[itemId] === quantity) &&
+      outBefore.length === out.length &&
+      out.every((itemId, index) => outBefore[index] === itemId);
     if (same) {
       return true;
     }
-    return this.save({ ...game, raidProgress: { ...game.raidProgress, lastPack: kept } });
+    const raidProgress: RaidProgress = { ...game.raidProgress, lastPack: kept, packLeftOut: out };
+    if (out.length === 0) {
+      delete (raidProgress as { packLeftOut?: readonly string[] }).packLeftOut;
+    }
+    return this.save({ ...game, raidProgress });
   }
 
   /**
@@ -3067,6 +3081,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     securePreference: readSecurePreference(value.securePreference),
     ...(value.lastBench === undefined ? {} : { lastBench: uniqueStrings(value.lastBench) }),
     ...(value.lastPack === undefined ? {} : { lastPack: bagContents(value.lastPack) }),
+    ...(value.packLeftOut === undefined ? {} : { packLeftOut: uniqueStrings(value.packLeftOut).map(currentItemId) }),
     ...(value.garden === undefined ? {} : { garden: uniqueStrings(value.garden) }),
     ...(Number.isInteger(value.benchRaids) && (value.benchRaids as number) > 0 ? { benchRaids: value.benchRaids as number } : {}),
     ...(Number.isInteger(value.shortRaids) && (value.shortRaids as number) > 0 ? { shortRaids: value.shortRaids as number } : {}),

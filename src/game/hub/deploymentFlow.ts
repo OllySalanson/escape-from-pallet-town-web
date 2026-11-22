@@ -237,6 +237,13 @@ export class DeploymentFlow {
    * player sets a count of that kind themselves.
    */
   private readonly squeezedOut = new Set<ItemId>();
+  /**
+   * Kinds the player took out of the pack themselves. The default never packs
+   * one of them again: it fills in around a choice, and taking every Potion
+   * off the rack is a choice too - the rack put them all back the moment the
+   * hall was walked out of and into again (playtests of 22 Nov 2026).
+   */
+  private readonly takenOut = new Set<ItemId>();
 
   public constructor(
     stash: Stash,
@@ -247,6 +254,7 @@ export class DeploymentFlow {
     partnerSpeciesId: string | null = null,
     lastBench: readonly string[] = [],
     lastPack: Readonly<Record<string, number>> = {},
+    leftOut: readonly string[] = [],
   ) {
     this.stash = stash;
     this.partnerSpecies = new Set(
@@ -263,6 +271,11 @@ export class DeploymentFlow {
     this.bagArranged = arrangements.bag.items.length > 0 || arrangements.bag.cargo.length > 0;
     this.secureArranged =
       arrangements.secure.items.length > 0 || arrangements.secure.cargo.length > 0;
+    for (const itemId of leftOut) {
+      if (!(lastPack[itemId] > 0)) {
+        this.takenOut.add(itemId as ItemId);
+      }
+    }
     this.packLastPack(lastPack);
     this.packMedicine();
     this.packBalls();
@@ -369,8 +382,12 @@ export class DeploymentFlow {
       const { width, height } = footprintOf(itemId);
       return left - this.itemQuantity(itemId) * width * height;
     }, Math.floor(gridCells(this.bagGrid) * MEDICINE_PREPACK_SHARE));
-    for (const itemId of medicine.filter((candidate) => only === undefined || only.includes(candidate))) {
+    for (const itemId of medicine.filter((candidate) => (only === undefined || only.includes(candidate)) && !this.takenOut.has(candidate))) {
       const { width, height } = footprintOf(itemId);
+      // A count the player packed is theirs, and already off the budget.
+      if (this.itemQuantity(itemId) > 0) {
+        continue;
+      }
       const wanted = Math.min(this.stash.itemCount(itemId), Math.floor(budget / (width * height)));
       if (wanted > 0) {
         this.setItemQuantity(itemId, wanted);
@@ -388,7 +405,7 @@ export class DeploymentFlow {
   /** A few of the plainest ball the stash holds, unless the player has packed one of their own. */
   private packBalls(only?: readonly ItemId[]): void {
     const ball = Object.keys(this.stash.listItems()).find((itemId) => isBallItem(itemId) && this.stash.itemCount(itemId) > 0) as ItemId | undefined;
-    if (!ball || this.packsABall || (only !== undefined && !only.includes(ball))) {
+    if (!ball || this.packsABall || this.takenOut.has(ball) || (only !== undefined && !only.includes(ball))) {
       return;
     }
     const room = gridCells(this.bagGrid) - this.bagCells.used;
@@ -731,6 +748,11 @@ export class DeploymentFlow {
     return Object.fromEntries(this.items.map(({ itemId, quantity }) => [itemId, quantity]));
   }
 
+  /** The kinds the player took out of the pack, which the default leaves out next time too. */
+  public get leftOut(): readonly ItemId[] {
+    return [...this.takenOut];
+  }
+
   /** Where the packed supplies sit in the raid pack. */
   public bagLayout(): GridPacking {
     return packContents(this.packedContents, this.bagGrid, [], this.bagSeats);
@@ -878,6 +900,11 @@ export class DeploymentFlow {
     this.squeezedOut.delete(itemId);
     const current = this.itemQuantity(itemId);
     const next = Math.max(0, Math.min(this.packLimit(itemId), target));
+    if (target <= 0) {
+      this.takenOut.add(itemId);
+    } else if (next > 0) {
+      this.takenOut.delete(itemId);
+    }
     if (next === current) {
       return target > current && this.packLimit(itemId) < this.stash.itemCount(itemId)
         ? 'No room in the pack. Take something out first.'
