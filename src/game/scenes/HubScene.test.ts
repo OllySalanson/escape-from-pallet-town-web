@@ -57,7 +57,7 @@ import { encodeSurvey } from '../world/survey';
 import { getWorldMap, type WorldMapId } from '../worldMap';
 import { PUBLISHED_FIXTURE_MAP_ID } from '../world/publishedMapFixture.testkit';
 import { setActiveSaveSlot } from '../dev/playtestMode';
-import { HubScene, RELEASE_ARMING_MS, STALE_SAVE_REFUSAL, type HubSceneData } from './HubScene';
+import { HubScene, RELEASE_ARMING_MS, RIM_REFUSED_TITLE, STALE_SAVE_REFUSAL, type HubSceneData } from './HubScene';
 
 describe('the lobby as a screen of the game', () => {
   function markupOf(hub: HubInternals): string {
@@ -492,6 +492,27 @@ describe('a panel over the hall', () => {
     expect(calls).toEqual([]);
     expect(statusOf(hub)).toBe('Nobody is on the bench. Choose at least one Pokémon to take into the raid.');
     expect(kit.flow.party).toEqual([]);
+  });
+
+  // The captain, 22 Nov 2026: home from a first raid lost in seconds, JUMP IN
+  // was greyed out and the reason was small print at the card's foot.
+  it('heads the card with why nobody can go when the whole team has fainted', () => {
+    const { hub, kit, calls } = panelOn('bench');
+    kit.flow.togglePokemon('charmander-1');
+    for (const { pokemon } of kit.flow.party) {
+      pokemon.currentHp = 0;
+    }
+    hub.init({ view: 'rim', kit });
+    const markup = (hub as unknown as { content(): string }).content();
+    const refusal = kit.flow.notReady ?? '';
+    expect(refusal).toContain('Nurse Joy');
+    const head = markup.slice(0, markup.indexOf('data-rim-about'));
+    expect(head).toContain(RIM_REFUSED_TITLE);
+    expect(head).toContain(refusal);
+    // Said once, at the top, not again in the small print.
+    expect(markup).not.toContain(`<small class="px-wrap px-warning">${refusal}`);
+    hub.startRun();
+    expect(calls).toEqual([]);
   });
 
   it('is one small card: no list, nothing to scroll, no hidden count', () => {

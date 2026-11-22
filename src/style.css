@@ -4711,6 +4711,10 @@ button {
 :where(.pixel-ui) .rim-layout {
   display: block;
 }
+/* Why nobody can go, heading the card (`HubScene.rimView`). */
+:where(.pixel-ui) .rim-refusal {
+  margin: 0 0 calc(var(--u) * 2);
+}
 :where(.pixel-ui) .rim-ways {
   display: flex;
   align-items: center;

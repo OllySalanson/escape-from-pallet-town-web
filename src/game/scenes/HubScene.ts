@@ -288,6 +288,9 @@ type HubView = 'stash' | ArenaPanel | 'reselect' | 'workshop' | 'trader' | 'wall
 const PANEL_MIN_WIDTH = 320;
 const PANEL_SHARE = 0.56;
 /** Which way on the map each arrow key points, on the rim. */
+/** The rim card's heading while nobody can go: what the card is saying, before where it would have gone. */
+export const RIM_REFUSED_TITLE = 'Nobody can jump yet';
+
 const RIM_ARROWS: Readonly<Record<string, { readonly x: number; readonly y: number }>> = {
   ArrowUp: { x: 0, y: -1 },
   ArrowDown: { x: 0, y: 1 },
@@ -2830,13 +2833,18 @@ export class HubScene extends Phaser.Scene {
   private rimView(): string {
     const chosen = this.flow.insertionId;
     const refusal = this.flow.notReady;
-    const warning = refusal ?? this.packWarning();
+    const warning = refusal ? undefined : this.packWarning();
     const ways = this.waysFromHere().length;
     const nextMap = this.nextMapWayIn();
     const stay = rimOpensOnNotYet(this.flow, this.justHome);
+    // Why nobody can go heads the card, in red, where the place's name would
+    // be. At the foot, in the small print under the stakes, it was missed: a
+    // player home from a first raid lost in seconds found JUMP IN greyed out
+    // and could not see why (the captain, 22 Nov 2026).
     return `<main class="px-body rim-layout">${pixelCommitBar({
-      title: `<span data-rim-title>${this.rimTitle(chosen)}</span>`,
+      title: `<span data-rim-title${refusal ? ' class="px-warning"' : ''}>${refusal ? RIM_REFUSED_TITLE : this.rimTitle(chosen)}</span>`,
       lines: [
+        ...(refusal ? [`<p class="px-wrap px-warning rim-refusal">${refusal}</p>`] : []),
         `<div data-rim-about>${this.rimStakes(chosen)}</div>`,
         this.roomNote(),
         ...(this.firstContractActive ? ['<small class="px-wrap">More ways in open up when you bring this contract home.</small>'] : []),
