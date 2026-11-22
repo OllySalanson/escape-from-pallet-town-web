@@ -17,12 +17,14 @@
 const SENTENCE_END = /[.!?…]["'’”)]*$/;
 /** A word that ends a clause: a pause, though a weaker one. */
 const CLAUSE_END = /[,;:-]["'’”)]*$/;
+/** A colon, semicolon or dash: a firmer pause than a comma, so a cut prefers it when the two cost the same otherwise. */
+const STRONG_CLAUSE_END = /[;:-]["'’”)]*$/;
 
 /** A box shorter than this that does not hold a sentence of its own is a stray tail, in characters. */
 export const STRAY_BOX_CHARACTERS = 16;
 
 /** What a cut costs, by where it falls: nothing at a sentence's end, a little at a clause's, more mid-clause, and most inside a name. */
-const CUT_COST = { sentence: 0, clause: 2, word: 4, name: 12 } as const;
+const CUT_COST = { sentence: 0, strongClause: 1, clause: 2, word: 4, name: 12 } as const;
 /** A word that starts with a capital: one half of a name like 'Greystone Vale' or 'Deer Gap'. */
 const CAPITALISED = /^["'‘“(]*\p{Lu}/u;
 /** What a box left as a stray tail costs: more than any other way of cutting the line. */
@@ -80,6 +82,10 @@ export function shareLine(text: string, rows: number, wrap: (text: string) => re
     if (at === count) return 0;
     const word = words[at - 1];
     if (SENTENCE_END.test(word)) return CUT_COST.sentence;
+    // A colon before a comma: Nurse Joy's welcome read 'Poison, paralysis,'
+    // alone and then the rest, when 'Poison, paralysis, a burn:' was the pause
+    // (AI playtest, 22 Nov 2026).
+    if (STRONG_CLAUSE_END.test(word)) return CUT_COST.strongClause;
     if (CLAUSE_END.test(word)) return CUT_COST.clause;
     // Two capitals with nothing between them are one name, read as one: Oak's
     // board was cut 'in Greystone' / 'Vale out through Deer Gap' (AI

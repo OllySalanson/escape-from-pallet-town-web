@@ -88,6 +88,15 @@ describe('a line shared out between dialogue boxes', () => {
     }
   });
 
+  it('pauses at a colon before a comma', () => {
+    // Nurse Joy's welcome (AI playtest, 22 Nov 2026) read 'Poison, paralysis,' in a box of its own.
+    const line = "Poison, paralysis, a burn: they stay on till they're treated, so do come and see me.";
+    const boxes = shareLine(line, ROWS, wrap);
+    expect(boxes.join(' ')).toBe(line);
+    expect(boxes[0]).not.toBe('Poison, paralysis,');
+    expect(boxes[0].endsWith('a burn:')).toBe(true);
+  });
+
   it('keeps a line with its own breaks as it was written', () => {
     const line = 'ONE\nTWO\nTHREE';
     expect(shareLine(line, ROWS, (text) => text.split('\n'))).toEqual(['ONE\nTWO', 'THREE']);
