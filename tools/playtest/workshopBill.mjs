@@ -252,7 +252,7 @@ try {
   await press('Space', 500);
   const bill = await pastAFavour(/whole list/);
   console.log(`  bill: ${bill.join(' | ')}`);
-  expect('Bill reads a stranger from the mat', bill.join(' ').includes('I do not know you'));
+  expect('Bill reads a stranger from the mat', bill.join(' ').includes("I don't know you"));
   expect('and offers his list', await asked());
   await press('ArrowRight', 200);
   await press('Space', 400);

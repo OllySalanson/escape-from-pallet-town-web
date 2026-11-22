@@ -329,7 +329,7 @@ describe('Bill, at his cottage', () => {
   it('reads the player from the mat and offers the list, which is a screen only on YES', () => {
     const bill = room(saved({ firstWordsHeard: ['cottage'] }), [false]);
     bill.speak('bills-cottage', 'trader');
-    expect(bill.said[0]).toContain('I do not know you');
+    expect(bill.said[0]).toContain("I don't know you");
     expect(bill.opened).toEqual([]);
 
     const yes = room(saved({ firstWordsHeard: ['cottage'] }), [true]);
