@@ -1795,3 +1795,63 @@ const statLabel = (stat: string): string =>
     accuracy: 'accuracy',
     evasion: 'evasion',
   })[stat] ?? stat;
+
+/** What `typeLesson` needs to know of a Pokemon on the field before the turn: its types and the moves it knows. */
+export interface LessonUnit {
+  readonly types: readonly PokemonType[];
+  readonly moves: readonly Pick<MoveBase, 'name' | 'type' | 'typeless'>[];
+}
+
+/**
+ * The one line that teaches the type chart, read straight after the fight's
+ * first hit that types changed: "WATER beats FIRE!" after "It's super
+ * effective!", "FIRE does little to WATER." after "It's not very
+ * effective...", "NORMAL can't touch GHOST." after "It doesn't affect". The
+ * 22 Nov 2026 AI playtest's newcomers never learned why a hit landed hard or
+ * soft: the move list's SUPER EFFECTIVE tag was the only thing that taught
+ * any of them, and only the friend who read it. Named by the types, in the
+ * game's capitals, so the next fight can be chosen by them.
+ *
+ * `unit` answers who stood in a slot when the turn began. Undefined when no
+ * hit in `events` was changed by type, or the move cannot be named (Struggle,
+ * a typeless move) - and the scene says it once a fight.
+ */
+export function typeLesson(
+  events: readonly BattleEvent[],
+  unit: (side: 'player' | 'enemy', slot: number) => LessonUnit | null,
+): { readonly index: number; readonly line: string } | undefined {
+  type Hit = { readonly user: 'player' | 'enemy'; readonly slot: number; readonly target: 'player' | 'enemy'; readonly targetSlot: number; readonly move: string };
+  let hit = null as Hit | null;
+  for (const [index, event] of events.entries()) {
+    if (event.type === 'used-move') {
+      hit = event.target
+        ? { user: event.user, slot: event.slot ?? 0, target: event.target, targetSlot: event.targetSlot ?? 0, move: event.move }
+        : null;
+    } else if (event.type === 'spread-damage' && hit) {
+      hit = { user: hit.user, slot: hit.slot, move: hit.move, target: event.target, targetSlot: event.targetSlot ?? 0 };
+    } else if (event.type === 'effectiveness' && hit && event.multiplier !== 1) {
+      const { user, slot, target, targetSlot, move: name } = hit;
+      const move = unit(user, slot)?.moves.find((each) => each.name === name);
+      const defender = unit(target, targetSlot);
+      if (!move || move.typeless || !defender) {
+        continue;
+      }
+      const against = defender.types.find((type) =>
+        event.multiplier > 1 ? getTypeEffectiveness(move.type, [type]) > 1 : getTypeEffectiveness(move.type, [type]) < 1,
+      );
+      if (!against) {
+        continue;
+      }
+      const attacking = move.type.toUpperCase();
+      const defending = against.toUpperCase();
+      const line =
+        event.multiplier > 1
+          ? `${attacking} beats ${defending}!`
+          : event.multiplier === 0
+            ? `${attacking} can't touch ${defending}.`
+            : `${attacking} does little to ${defending}.`;
+      return { index, line };
+    }
+  }
+  return undefined;
+}
