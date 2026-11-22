@@ -371,6 +371,7 @@ import {
   cacheEmptied,
   piecesRevealed,
   piecesToTake,
+  openedCacheLine,
   searchFooter,
   searchOn,
   searchPieces,
@@ -3727,7 +3728,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       text: worked
         ? workedLandmarkCaption(poi, worked)
         : this.activatedPoiIds.has(poi.id)
-          ? `${poi.label}\nSEARCHED: ${this.piecesLeftIn(poi)} LEFT`
+          ? `${poi.label}\n${openedCacheLine(this.piecesLeftIn(poi))}`
           : `${poi.label}\n${poi.effect === 'unlock-extraction'
             ? `${poi.unlockedExtractionLabel ?? 'EXIT'}: SEALED${poi.reward.length > 0 ? ' + CACHE' : ''}`
             : // A locked crate keeps what is in it to itself: the lock is the
