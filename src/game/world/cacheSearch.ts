@@ -43,6 +43,16 @@ export const SEARCH_PIECE_MS = 350;
 /** And for each square it takes in the pack. */
 export const SEARCH_SQUARE_MS = 150;
 
+/**
+ * A cache's caption once a search of it has begun and something is still in it.
+ * It said "SEARCHED: 1 LEFT", which read as "already emptied": players walked
+ * off caches still holding what they had come for, four times in one raid (AI
+ * playtest, 20 Nov 2026).
+ */
+export function openedCacheLine(piecesLeft: number): string {
+  return `OPENED: ${piecesLeft} STILL INSIDE`;
+}
+
 /** What searching a cache comes to, in pieces, in the order they come to light. */
 export function searchPieces(reward: WorldPoi['reward']): SearchPiece[] {
   return reward.flatMap(({ itemId, quantity }) =>

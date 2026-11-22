@@ -12,6 +12,7 @@ import {
   searchPieces,
   searchRows,
   takePiece,
+  openedCacheLine,
 } from './cacheSearch';
 import { MAP_FILE_LANDMARKS } from './mapFile';
 import { WORLD_POIS } from './pois';
@@ -92,5 +93,12 @@ describe('searching a cache', () => {
     const taken = searchRows(takePiece(searchOn(FRESH_SEARCH, HIDE, 10_000), HIDE, 0)!, HIDE);
     expect(taken.map((row) => [row.key, row.status])).toEqual([[null, 'taken'], ['2', 'found']]);
     expect(searchRows(FRESH_SEARCH, STRONGROOM).slice(1).every((row) => row.text === '???')).toBe(true);
+  });
+});
+
+describe('a cache opened and left', () => {
+  it('says what is still inside it rather than that it was searched', () => {
+    expect(openedCacheLine(1)).toBe('OPENED: 1 STILL INSIDE');
+    expect(openedCacheLine(2)).not.toMatch(/SEARCHED/);
   });
 });
