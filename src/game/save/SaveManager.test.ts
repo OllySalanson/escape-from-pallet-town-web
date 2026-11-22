@@ -2495,6 +2495,25 @@ describe('SaveManager', () => {
       saves.recordBench(['pidgey-2']);
       expect(raids()).toBe(1);
     });
+
+    it('keeps a fainted member who sat the raid out in their place on the team', () => {
+      // Tester 2's release blocker 2 (22 Nov 2026): the partner fainted, a raid
+      // went without it, and once Nurse Joy healed it the bench left it at home.
+      const storage = new MemoryStorage();
+      const saves = freshSave(storage);
+      const game = saves.load()!;
+      game.stash.addPokemon(new Pokemon(CHARMANDER, 5), 'charmander-1');
+      game.stash.addPokemon(new Pokemon(PIDGEY, 5), 'pidgey-2');
+      saves.save(game);
+      saves.recordBench(['charmander-1', 'pidgey-2']);
+      const hurt = saves.load()!;
+      hurt.stash.listPokemon().find((stored) => stored.id === 'charmander-1')!.pokemon.currentHp = 0;
+      saves.save(hurt);
+
+      saves.recordBench(['pidgey-2']);
+
+      expect(new SaveManager(storage).load()?.raidProgress.lastBench).toEqual(['charmander-1', 'pidgey-2']);
+    });
   });
 
   describe('what the pack held as it was left', () => {
