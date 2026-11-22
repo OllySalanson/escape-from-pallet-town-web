@@ -142,6 +142,10 @@ export function pineHollow(): MapcraftResult {
   // -- The charcoal track: a burnt-out stack at the back of the nook, clear of
   // the lane down into it ------------------------------------------------------------------------
   stand('dead-stump', 13, 30);
+  // The way out is a gap between two dead stumps at the nook's west side, with
+  // one way in, so nobody crossing the nook steps on it.
+  stand('dead-stump', 6, 33);
+  stand('dead-stump', 6, 35);
   stand('dead-stump', 12, 35);
   p.flowers([11, 31]);
 

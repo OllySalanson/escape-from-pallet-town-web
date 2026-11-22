@@ -78,6 +78,30 @@ describe('Greystone Vale', () => {
     );
   });
 
+  /**
+   * An exit takes whoever steps on it, with no question, so an exit a walk can
+   * pass over ends raids by accident: the 20 Nov playtest walked off the map at
+   * DEER GAP, PICKERS' PATH and CHARCOAL TRACK eight times on the way somewhere
+   * else, each on a way an equal walk took past it. Each stands at the back of a
+   * pocket with one way in, so no walk between two other tiles crosses it.
+   */
+  it.each(['DEER GAP', "PICKERS' PATH", 'CHARCOAL TRACK'])(
+    'stands %s at the back of a pocket with one way in',
+    (label) => {
+      const map = getWorldMap('greystone-vale');
+      const exit = extractionPointsOn('greystone-vale').find((point) => point.label === label);
+      expect(exit).toBeDefined();
+      const { x, y } = exit!.position;
+      const waysIn = [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ].filter(([dx, dy]) => map.collision[y + dy]?.[x + dx] === false);
+      expect(waysIn).toHaveLength(1);
+    },
+  );
+
   describe('opening to a save', () => {
     const banked = (contracts: readonly string[]) => ({
       ...DEFAULT_RAID_PROGRESS,

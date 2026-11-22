@@ -183,6 +183,11 @@ export function orchardTerraces(): MapcraftResult {
   stand('produce-crate', 55, 6);
   stand('produce-crate', 49, 6);
   p.flowers([44, 13], [55, 13], [50, 10]);
+  // The pickers' own way out is a gap cut into the wood off the corner where the
+  // lane past the orchard turns west, with a stump in its mouth, so the walk up
+  // to Tanglewood goes past it and never over it.
+  p.meadow(58, 4, 2, 2);
+  stand('stump', 59, 5);
 
   // -- The cowman's: the shelf road, the churns, the cows ------------------------------
   stand('barrel', 12, 26);
@@ -216,7 +221,7 @@ export function orchardTerraces(): MapcraftResult {
   const file = districtFile(GREYSTONE_VALE, 'orchard-terraces', p, {
     exits: [
       { x: 2, y: 48, name: 'Cockle Path', opens: { when: 'always' } },
-      { x: 57, y: 4, name: "Pickers' Path", opens: { when: 'always' } },
+      { x: 59, y: 4, name: "Pickers' Path", opens: { when: 'always' } },
     ],
     dropIns: [{ x: 24, y: 12, name: 'Farmhouse', description: 'The yard of the farm at Orchard Terraces, at the top of the terraces.' }],
     itemSpots: [
