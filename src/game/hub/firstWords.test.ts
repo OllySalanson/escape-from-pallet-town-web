@@ -1,8 +1,17 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { FIRST_WORDS, mapsMovedNews, spokenLines } from './firstWords';
 import { retireMapsForTests } from '../world/mapRoster';
+import { ENRAGE_GRACE_MS } from '../run/RunManager';
 
 describe("Oak's first words", () => {
+  // Four AI newcomers on 22 Nov 2026 waited the clock out expecting the raid to
+  // end, and met an ENRAGED hunter that nothing had explained.
+  it('say what 0:00 brings: the hunters ENRAGED, and how long there is to get out', () => {
+    const rule = FIRST_WORDS.lab.lines.find((line) => line.includes('0:00'));
+    expect(rule).toContain('ENRAGED');
+    expect(rule).toContain(`${ENRAGE_GRACE_MS / 1000} seconds to get out`);
+  });
+
   it('greet the player by the name they have just given (playtest 47)', () => {
     const lines = spokenLines(FIRST_WORDS.lab, 'ROWAN');
 

@@ -5377,6 +5377,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
               elapsedMs: Math.round(snapshot.elapsedMs),
               remainingMs: Math.round(snapshot.remainingMs),
               enraged: session.manager.isEnraged,
+              enrageGraceMs: Math.round(snapshot.enrageGraceRemainingMs),
               contract: session.plan?.contract?.name ?? null,
               stopsLeft: session.plan?.contract
                 ? remainingMarkers(session.plan.contract, snapshot.contractSteps).map((marker) => ({
