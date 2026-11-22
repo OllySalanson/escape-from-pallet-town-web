@@ -129,7 +129,7 @@ import {
   type TreasureHunt,
 } from '../treasure/treasureMap';
 import { BASE_TILESET, type BasePropName } from '../base/baseTileset';
-import { BASE_DOORS, doorAt, doorNamed, type BaseDoor, type BaseScreen } from '../base/doors';
+import { BASE_DOORS, doorAt, doorNamed, isHouseDoor, type BaseDoor, type BaseScreen } from '../base/doors';
 import type { SceneDescription } from '../dev/testDescribe';
 import { describeBag, describeTeam, inView, tileOf, viewTiles } from '../dev/describeParts';
 import { doorStatusLine } from '../base/doorStatus';
@@ -4091,7 +4091,7 @@ export class BaseScene extends Phaser.Scene {
           // of these speak at once from the middle of it, and at three lines
           // each there was no base left to look at. What each keeper does is
           // said once, on the harbour's own board by the jetty.
-          text: [door.screen === null ? houseTitle(houseName()) : door.name, doorStatusLine(door, this.savedGame)].filter(Boolean).join('\n'),
+          text: [isHouseDoor(door) ? houseTitle(houseName()) : door.name, doorStatusLine(door, this.savedGame)].filter(Boolean).join('\n'),
           tone: DOOR_TONE,
           depth: atRow(CAPTION_BAND, door.tiles[0].y),
           speech: { voice: 'name', tiles: door.tiles },
