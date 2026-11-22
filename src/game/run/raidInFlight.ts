@@ -72,6 +72,8 @@ export interface AbandonedRaid {
   readonly lost: readonly AmountOf[];
   /** What the secure container brought home. */
   readonly kept: readonly AmountOf[];
+  /** What Oak's starter kit put back in the vault afterwards, so nobody is stranded. */
+  readonly restocked?: readonly AmountOf[];
 }
 
 /** A quantity of an item, by id, as a save names one. */
@@ -176,6 +178,10 @@ export function abandonedRaidLines(raid: AbandonedRaid): readonly string[] {
     ...listedOver('It went out with ', 'And with ', raid.lost),
     'Anything caught or found out there went with it.',
     ...listedOver('The secure container kept ', 'It also kept ', raid.kept),
+    // The vault was topped up afterwards; said, or the Satchel still in it reads as a lie.
+    ...((raid.restocked ?? []).length > 0
+      ? ['Oak keeps a starter kit for just this.', ...listedOver('Waiting at base: ', 'And ', raid.restocked ?? [])]
+      : []),
   ];
 }
 
