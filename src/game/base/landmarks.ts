@@ -164,3 +164,17 @@ export function landmarkFaced(landmark: HarbourLandmark, tile: GridPosition): bo
 
 /** Every landmark the harbour stands, the outdoor games' among them. */
 export const HARBOUR_LANDMARKS: readonly HarbourLandmark[] = [...LANDMARKS, ...OUTDOOR_GAME_LANDMARKS];
+
+/**
+ * The yard's hint line facing `tile`: `[SPACE] THE DIG` at a landmark, and the
+ * course at its gate, since SPACE answers at both. THE DIG's sign was walked
+ * round by AI playtesters pressing SPACE everywhere but at it, because the
+ * line under them said only [ARROWS] WALK (22 Nov 2026).
+ */
+export function landmarkHint(tile: GridPosition): string | undefined {
+  if (COURSE_GATE_FRONT.some((each) => each.x === tile.x && each.y === tile.y)) {
+    return '[SPACE] FIELD-MOVE COURSE';
+  }
+  const landmark = HARBOUR_LANDMARKS.find((each) => landmarkFaced(each, tile));
+  return landmark ? `[SPACE] ${landmark.name}` : undefined;
+}

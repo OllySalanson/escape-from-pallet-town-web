@@ -155,7 +155,7 @@ import {
   type RoomThing,
 } from '../base/rooms';
 import { standingFixtures, type BaseFixture } from '../base/fixtures';
-import { COURSE_GATE_FRONT, HARBOUR_LANDMARKS, landmarkFaced, OUTDOOR_GAME_LANDMARKS, type OutdoorGameId } from '../base/landmarks';
+import { COURSE_GATE_FRONT, HARBOUR_LANDMARKS, landmarkFaced, landmarkHint, OUTDOOR_GAME_LANDMARKS, type OutdoorGameId } from '../base/landmarks';
 import { HarbourLifeFigures } from '../base/harbourLifeFigures';
 import { HomeGardenFigures } from '../base/homeGardenFigures';
 import { PEN_GLINT_PLACE, ShinyGlints, glintHeadStart } from '../base/shinyGlint';
@@ -4291,6 +4291,13 @@ export class BaseScene extends Phaser.Scene {
       // ignored was walked past by both AI playtesters (20 Nov 2026).
       if (!partner && this.beachBottle.length > 0 && sameTile(facing, BEACH_BOTTLE)) {
         return BOTTLE_HINT;
+      }
+      // A landmark faced says its name, as a keeper does: THE DIG's sign was
+      // walked round by AI playtesters pressing SPACE everywhere but at it,
+      // because the line under them said only [ARROWS] WALK (22 Nov 2026).
+      const landmark = partner ? undefined : landmarkHint(facing);
+      if (landmark) {
+        return landmark;
       }
       if (!partner && this.canFishAt(facing)) {
         return '[SPACE] FISH';

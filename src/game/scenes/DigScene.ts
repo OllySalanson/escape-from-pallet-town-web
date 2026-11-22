@@ -26,6 +26,8 @@ import { OutdoorGameScene, type OutdoorFit } from './OutdoorGameScene';
 const SQUARE = 24;
 /** How long the last dig is shown before the screen comes back. */
 const END_PAUSE_MS = 1400;
+/** What a dig into a square already turned over says, in the ping's place. */
+export const DUG_ALREADY = 'DUG ALREADY!';
 
 const PING_WORDS: Readonly<Record<Ping, { readonly words: string; readonly colour: string }>> = {
   found: { words: 'FOUND IT!', colour: '#f8e070' },
@@ -186,7 +188,11 @@ export class DigScene extends OutdoorGameScene {
   private dig(): void {
     if (!this.dig_) return;
     if (isDug(this.dig_, this.cursor.x, this.cursor.y)) {
+      // Said, not only buzzed: a Ground type turns over a plus, so the square
+      // next to the last dig is often dug already, and with nothing on screen a
+      // player took the dig for stuck with four digs left (AI playtest, 22 Nov 2026).
       audioManager.play('denied');
+      this.ping?.setText(DUG_ALREADY).setColor('#c09048');
       return;
     }
     const result = digAt(this.dig_, this.cursor.x, this.cursor.y);
