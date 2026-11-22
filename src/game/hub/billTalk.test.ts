@@ -155,4 +155,12 @@ describe('Bill from the mat', () => {
     const spent = billFromTheMat(counter({ money: 0 }, PARTNER, { rationUsed: 3 }));
     expect(spent.lines[1]).toBe('You have ₽0. Potions and Poké Balls any time. The rest waits till you raid again.');
   });
+
+  // AI playtest, 22 Nov 2026: a regular who had just beaten MISTY heard 'beat a
+  // boss and I show you more' and found every locked row still locked.
+  it('tells a regular how far it is to his trust, and what a job, a boss and money are worth', () => {
+    // A boss (3) and three contracts banked (6): 9 points, 5 short of trusted.
+    const regular = billFromTheMat(counter({ money: 40 }, { defeatedBosses: ['vale-gym-misty'], standingContractsBanked: 3 }));
+    expect(regular.lines[2]).toBe("5 more points and I'll show you more. A job's worth 2, a boss 3, and every ₽200 you spend with me 1.");
+  });
 });
