@@ -252,7 +252,7 @@ export function pineHollow(): MapcraftResult {
         { x: 25, y: 43, species: 'caterpie' },
         { x: 37, y: 51, species: 'beedrill', beat: { everyMs: 1000, roam: [[1, 0]] } },
         { x: 40, y: 52, species: 'kakuna', level: 8 },
-        { x: 56, y: 42, species: 'pikachu', beat: { everyMs: 1200, roam: [[0, 1]] } },
+        { x: 56, y: 42, species: 'pikachu', level: 8, beat: { everyMs: 1200, roam: [[0, 1]] } },
         { x: 52, y: 42, species: 'pikachu', level: 9 },
         { x: 21, y: 11, species: 'psyduck', beat: { everyMs: 2500, roam: [[1, 0]] } },
         { x: 13, y: 13, species: 'pidgey', beat: { everyMs: 1500, roam: [[1, 0]] } },

@@ -341,10 +341,10 @@ export function theWreck(): MapcraftResult {
         { x: 13, y: 43, species: 'tentacool', level: 15 },
         { x: 22, y: 7, species: 'rattata', beat: { everyMs: 1500, roam: [[1, 0]] } },
         { x: 27, y: 20, species: 'pidgey', beat: { everyMs: 1700, roam: [[1, 0]] } },
-        { x: 45, y: 20, species: 'bellsprout' },
+        { x: 45, y: 20, species: 'bellsprout', level: 15 },
         { x: 42, y: 26, species: 'pidgeotto', level: 17 },
         { x: 50, y: 28, species: 'rattata', level: 15, beat: { everyMs: 1500, roam: [[0, 1]] } },
-        { x: 11, y: 28, species: 'oddish' },
+        { x: 11, y: 28, species: 'oddish', level: 15 },
       ],
     },
   });

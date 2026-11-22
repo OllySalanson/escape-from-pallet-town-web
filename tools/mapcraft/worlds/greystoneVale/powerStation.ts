@@ -491,7 +491,7 @@ export function powerStation(): MapcraftResult {
         { x: 35, y: 36, species: 'magnemite', level: 12, beat: { everyMs: 1600, roam: [[0, 1]] } },
         { x: 30, y: 35, species: 'voltorb', level: 12 },
         { x: 25, y: 41, species: 'voltorb', beat: { everyMs: 1900, roam: [[1, 0]] } },
-        { x: 37, y: 37, species: 'pikachu', beat: { everyMs: 1500, roam: [[0, 1]] } },
+        { x: 37, y: 37, species: 'pikachu', level: 11, beat: { everyMs: 1500, roam: [[0, 1]] } },
         // The tip's own, and the bird that follows the Rag Man about.
         { x: 20, y: 45, species: 'grimer', level: 12 },
         { x: 16, y: 46, species: 'koffing' },
@@ -507,7 +507,7 @@ export function powerStation(): MapcraftResult {
         // The road, the hamlet and the wood's clearings.
         { x: 17, y: 37, species: 'meowth', beat: { everyMs: 2100, roam: [[1, 0]] } },
         { x: 16, y: 25, species: 'rattata', beat: { everyMs: 1300, roam: [[1, 0]] } },
-        { x: 9, y: 11, species: 'oddish' },
+        { x: 9, y: 11, species: 'oddish', level: 11 },
         { x: 56, y: 44, species: 'pikachu', level: 11 },
         { x: 56, y: 7, species: 'voltorb' },
         { x: 42, y: 56, species: 'zubat', beat: { everyMs: 1100, roam: [[0, 1]] } },

@@ -206,7 +206,7 @@ export function lostGarden(): MapcraftResult {
       // standing in the vale outside the safari marsh.
       pokemon: [
         { x: 41, y: 58, species: 'tangela', level: 12 },
-        { x: 50, y: 54, species: 'oddish' },
+        { x: 50, y: 54, species: 'oddish', level: 11 },
         { x: 6, y: 39, species: 'exeggcute', level: 11 },
         { x: 41, y: 45, species: 'butterfree' },
         { x: 29, y: 12, species: 'scyther', level: 14 },
