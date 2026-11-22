@@ -32,13 +32,35 @@ function coming(member: RimTeamMember): string {
  * 'Squirtle Lv 12 at 16/21 HP comes. Psyduck and Pidgey stay home: THE BENCH
  * chooses.' `home` is everyone else at base fit to go.
  */
-export function rimTeamLine(team: readonly RimTeamMember[], home: readonly RimTeamMember[]): string {
+export function rimTeamLine(
+  team: readonly RimTeamMember[],
+  home: readonly RimTeamMember[],
+  fainted: readonly RimTeamMember[] = [],
+): string {
   const comes = `${listed(team.map(coming))} ${team.length === 1 ? 'comes' : 'come'}.`;
-  if (home.length === 0) {
-    return comes;
+  return [comes, homeLine(home), faintedLine(fainted)].filter((line) => line !== '').join(' ');
+}
+
+function namedOf(members: readonly RimTeamMember[]): string {
+  const named = members.slice(0, HOME_NAMED).map((member) => member.name);
+  const rest = members.length - named.length;
+  return rest > 0 ? `${named.join(', ')} and ${rest} more` : listed(named);
+}
+
+function homeLine(home: readonly RimTeamMember[]): string {
+  return home.length === 0 ? '' : `${namedOf(home)} ${home.length === 1 ? 'stays' : 'stay'} home: THE BENCH chooses.`;
+}
+
+/**
+ * A fainted Pokémon cannot go, and the bench drops it without a word: a player
+ * who put Bulbasaur on the bench read 'Charmander Lv 5 comes.' and nothing
+ * about why Bulbasaur did not (scenario loop, 22 Nov 2026).
+ */
+function faintedLine(fainted: readonly RimTeamMember[]): string {
+  if (fainted.length === 0) {
+    return '';
   }
-  const named = home.slice(0, HOME_NAMED).map((member) => member.name);
-  const rest = home.length - named.length;
-  const who = rest > 0 ? `${named.join(', ')} and ${rest} more` : listed(named);
-  return `${comes} ${who} ${home.length === 1 ? 'stays' : 'stay'} home: THE BENCH chooses.`;
+  return fainted.length === 1
+    ? `${namedOf(fainted)} has fainted and stays home: Nurse Joy can revive it.`
+    : `${namedOf(fainted)} have fainted and stay home: Nurse Joy can revive them.`;
 }

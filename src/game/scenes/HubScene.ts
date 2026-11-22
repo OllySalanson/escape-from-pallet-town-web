@@ -3009,7 +3009,11 @@ export class HubScene extends Phaser.Scene {
       .listPokemon()
       .filter((stored) => !coming.has(stored.id) && !away.has(stored.id) && !stored.pokemon.isFainted)
       .map(member);
-    const team = this.flow.party.length === 0 ? '' : line('Team', rimTeamLine(this.flow.party.map(member), home));
+    const fainted = this.stash
+      .listPokemon()
+      .filter((stored) => !coming.has(stored.id) && !away.has(stored.id) && stored.pokemon.isFainted)
+      .map(member);
+    const team = this.flow.party.length === 0 ? '' : line('Team', rimTeamLine(this.flow.party.map(member), home, fainted));
     return `<dl class="dropin-facts rim-stakes">${team}${hurt ? line('Hurt', hurt.line, true) : ''}${line('At risk', lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', '))}${goneForGood.length === 0 ? '' : line('A wipe', `${goneForGood.join(', ')}: lost for good`, true)}${safe}${
       job === undefined ? '' : line('Job', job, short.length > 0)
     }${isPlaytestRun() ? '' : line('Sky', this.skyLine())}${line(pack ? 'Hunters' : 'Hunter', `<span data-hunter-tier="${threat.tierOffset + 1}">${hunter.heading.replace(/^Hunters?: /, '')}: ${hunter.detail}</span>`, threat.tierOffset > 0)}${this.clockIsNews ? line('Clock', this.clockNote()) : ''}</dl>`;

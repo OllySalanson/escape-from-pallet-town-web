@@ -23,4 +23,13 @@ describe("the jump screen's TEAM line", () => {
     );
     expect(rimTeamLine([mon('Charmander', 9)], [mon('Psyduck', 6)])).toMatch(/Psyduck stays home/);
   });
+
+  it('says who has fainted and why they stay home', () => {
+    expect(rimTeamLine([mon('Charmander', 5)], [], [mon('Bulbasaur', 6, 0, 21)])).toBe(
+      'Charmander Lv 5 comes. Bulbasaur has fainted and stays home: Nurse Joy can revive it.',
+    );
+    expect(rimTeamLine([mon('Charmander', 5)], [mon('Psyduck', 6)], [mon('Bulbasaur', 6, 0, 21), mon('Pidgey', 3, 0, 15)])).toBe(
+      'Charmander Lv 5 comes. Psyduck stays home: THE BENCH chooses. Bulbasaur and Pidgey have fainted and stay home: Nurse Joy can revive them.',
+    );
+  });
 });
