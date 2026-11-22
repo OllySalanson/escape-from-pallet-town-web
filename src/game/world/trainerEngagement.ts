@@ -87,8 +87,13 @@ export function challengeIsDouble(odds: ChallengeOdds): boolean {
   return (odds.trainerUnitCount ?? 1) > 1 && odds.trainerParty.length > 1 && ableOnPlayerSide > 1;
 }
 
-/** Said in place of the commitment line when the fight will be two a side. */
-export const TRAINER_DOUBLE_COMMITMENT_LINE = 'Two on two, and it cannot be fled.';
+/**
+ * Said in place of the commitment line when the fight will be two a side. It
+ * says who goes out, because 'Two on two' left a level-2 catch walked out
+ * beside the starter and knocked out on turn one (AI playtest, 22 Nov 2026):
+ * the answer, a team of one, is the player's to take.
+ */
+export const TRAINER_DOUBLE_COMMITMENT_LINE = 'Your first two go out together. It cannot be fled.';
 
 /** The prompt shown when the player presses the interact key at a trainer. */
 export function trainerChallengePrompt(
