@@ -1253,7 +1253,7 @@ describe('the hunter a loadout draws', () => {
 
     const finalCheck = finalCheckOf(hub);
     expect(finalCheck).toContain('data-hunter-tier="1"');
-    expect(finalCheck).toContain('BLUE: ');
+    expect(finalCheck).toContain('BLUE where you land: ');
     expect(finalCheck).toContain('1 Pokémon to your 1 · lead Lv 12 to your Lv 16 Charmander');
 
     deploy(hub, start);
@@ -1283,7 +1283,7 @@ describe('the hunter a loadout draws', () => {
     });
     hub.flow.togglePokemon('bulbasaur-1');
 
-    expect(finalCheckOf(hub)).toContain('MISTY: ');
+    expect(finalCheckOf(hub)).toContain('MISTY where you land: ');
   });
 });
 
