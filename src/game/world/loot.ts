@@ -81,6 +81,22 @@ export function prizeWords(loot: Pick<WorldLoot, 'itemId' | 'quantity'>): string
     : ITEMS[loot.itemId].displayName;
 }
 
+/**
+ * What the chip says while the gold arrow is after the stake: the stake, and the
+ * little money the arrow is leading to first when it is leading there. Said as
+ * the stake alone, the arrow walked a newcomer to a pile that paid "Found ₽10!"
+ * under a chip that still read TAKE ₽75, and they could not tell whether ₽75 was
+ * a total to collect or what they had picked up was the wrong thing (AI
+ * playtest, 20 Nov 2026, both newcomers on their first raid).
+ */
+export function stakeWayWords(
+  stake: Pick<WorldLoot, 'itemId' | 'quantity'>,
+  onTheWay?: Pick<WorldLoot, 'itemId' | 'quantity'>,
+): string {
+  const words = prizeWords(stake).toUpperCase();
+  return onTheWay ? `TAKE ${prizeWords(onTheWay).toUpperCase()} ON THE WAY TO ${words}` : `TAKE ${words}`;
+}
+
 export type LootPickupResult = 'collected' | 'bag-full' | 'unavailable';
 
 /**
