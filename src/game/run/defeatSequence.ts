@@ -244,12 +244,33 @@ function buildFigures(report: ExtractionReport): DefeatFigure[] {
   const lostGear: ReportItem[] = report.gear
     .filter((piece) => piece.fate === 'lost')
     .map((piece) => ({ itemId: piece.itemId, label: piece.label, quantity: 1 }));
+  // A spare of the pack that went down, kept in the secure container, is
+  // called a spare: two tiles both reading RAID PACK, one HELD and one TAKEN,
+  // read as the screen contradicting its own sentence (AI playtest, 22 Nov 2026).
+  const spare = (item: ReportItem): ReportItem =>
+    lostPack.some((pack) => pack.itemId === item.itemId) ? { ...item, label: `Spare ${item.label.charAt(0).toLowerCase()}${item.label.slice(1)}` } : item;
   const items: DefeatFigure[] = [
     ...[...lostPack, ...lostGear].map((item) => toItemFigure(item, 'taken')),
     ...report.ledger.items.map((item) => toItemFigure(item, 'taken')),
-    ...report.secured.items.map((item) => toItemFigure(item, 'held')),
+    ...report.secured.items.map((item) => toItemFigure(spare(item), 'held')),
   ];
-  return [...pokemon, ...items].slice(0, Math.max(pokemon.length, MAX_FIGURES));
+  const room = Math.max(pokemon.length, MAX_FIGURES) - pokemon.length;
+  if (items.length <= room) {
+    return [...pokemon, ...items];
+  }
+  // Too many to stand in a line: what is taken stands first, and the last
+  // place says how many more there are, rather than a Lamp oil the sentence
+  // underneath names simply never standing up (AI playtest, 22 Nov 2026).
+  const shown = items.slice(0, Math.max(0, room - 1));
+  const rest = items.slice(shown.length);
+  const more: DefeatFigure = {
+    kind: 'item',
+    label: 'More',
+    quantity: rest.length,
+    fate: rest.some((figure) => figure.fate === 'taken') ? 'taken' : 'held',
+    lastStand: false,
+  };
+  return [...pokemon, ...shown, ...(room > 0 ? [more] : [])];
 }
 
 function toItemFigure(item: ReportItem, fate: DefeatFate): DefeatFigure {
