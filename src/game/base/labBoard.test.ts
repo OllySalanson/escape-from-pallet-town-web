@@ -34,7 +34,7 @@ describe("Oak's cork board", () => {
     expect(buildContractBoard(after.raidProgress).rows.length).toBeGreaterThan(0);
     expect(boardLines(fresh)).not.toContain(bankedJobsLine(0));
     expect(boardLines(after)[0]).toBe(bankedJobsLine(1));
-    expect(bankedJobsLine(1)).toBe("You've banked 1 job. What is pinned up now is new, with its stops in new places:");
+    expect(bankedJobsLine(1)).toBe("You've banked 1 job. What's pinned up now is new, with new stops:");
     expect(bankedJobsLine(3)).toContain('3 jobs');
   });
 

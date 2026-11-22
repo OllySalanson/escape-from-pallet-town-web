@@ -97,7 +97,7 @@ export function boardNotices(game: Pick<RestoredGame, 'raidProgress' | 'stash'>)
  * it for their first not having counted (AI playtest, 20 Nov 2026).
  */
 export function bankedJobsLine(banked: number): string {
-  return `You've banked ${banked} ${banked === 1 ? 'job' : 'jobs'}. What is pinned up now is new, with its stops in new places:`;
+  return `You've banked ${banked} ${banked === 1 ? 'job' : 'jobs'}. What's pinned up now is new, with new stops:`;
 }
 
 /** What is read off the board, a line a notice, the rumours after a line saying they are rumours. */
