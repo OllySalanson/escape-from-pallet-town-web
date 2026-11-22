@@ -104,7 +104,7 @@ describe('objective field guide', () => {
     expect(firstGuide.hints.join(' ')).toContain('Floodplain Relay');
     expect(firstGuide.hints.join(' ')).toContain('reeds');
     expect(firstGuide.hints.join(' ')).toContain('lost field kit');
-    expect(firstGuide.hints.join(' ')).toContain('Extract');
+    expect(firstGuide.hints.join(' ')).toMatch(/extract/i);
     expect(firstGuide.hints).toHaveLength(4);
     expect(laterGuide.isFirstContract).toBe(false);
     expect(laterGuide.hints).toHaveLength(2);
@@ -500,9 +500,13 @@ describe('the exit the field guide names', () => {
       nearestOpenExit: { label: southGate.label, position: southGate.position },
     });
 
+    // Not yet, though: the kit is still out there. "Extract there to bank the
+    // contract" with no stop made told a player the job was done (veteran
+    // playtest, 20 Nov 2026), and Oak's radio reads this line out.
     expect(guide.hints).toContain(
-      'The nearest open exit is SOUTH GATE, right here. Extract there to bank the contract and your haul.',
+      'Once every stop is made, extract to bank the contract: the nearest open exit is SOUTH GATE, right here.',
     );
+    expect(guide.radio.join(' ')).not.toContain('Extract there to bank the contract');
   });
 
   it('falls back to the map list when no open exit was measured', () => {
