@@ -56,7 +56,7 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
       const whose = 'Your things · your Pokémon';
       const won = wonBadges(game).length;
       if (won === 0) return whose;
-      const said = [`${whose} · ${won} of ${caseBadges().length} badges`, `${whose} · ${won} badges`];
+      const said = [`${whose} · ${won} of ${caseBadges().length} badges`, `${whose} · ${won} badge${won === 1 ? '' : 's'}`];
       return said.find((line) => line.length <= DOOR_LINE_ROOM) ?? whose;
     }
     case 'boutique': {

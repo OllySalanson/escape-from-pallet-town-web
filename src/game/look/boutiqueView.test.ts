@@ -27,6 +27,15 @@ describe("the boutique's screen", () => {
     expect(markup).toContain('Found on raids');
   });
 
+  it("counts on the shelves' heading every card its MORE strip counts", () => {
+    const markup = boutiqueMarkup(state());
+    // Every piece, every whole look, and the classic look's own card.
+    expect(markup.match(/data-classic /g)).toHaveLength(1);
+    const onShelves = cards(markup, 'data-wear').length + cards(markup, 'data-whole').length + 1;
+    const [, looks, pieces] = /(\d+) looks · (\d+) pieces/.exec(markup) ?? [];
+    expect(Number(looks) + Number(pieces)).toBe(onShelves);
+  });
+
   it('shows the wardrobe only what the save owns, and says how much more there is', () => {
     const markup = boutiqueMarkup(state({ mode: 'wardrobe', owned: ownedWearables(['red-cap']) }));
     expect(cards(markup, 'data-wear').sort()).toEqual(['plain-tee', 'plain-trousers', 'red-cap', 'short-crop']);

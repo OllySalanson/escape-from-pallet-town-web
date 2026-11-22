@@ -829,6 +829,8 @@ describe('what the party earned', () => {
     expect(report.progressSummary).toBe('Bulbasaur at level 7 came home.');
     // The screen used to grade this "You got out clean, and empty."
     expect(report.haulTier).not.toBe('empty');
+    // ...and nothing was banked, so it is not "with the goods" either (veteran playtest, 20 Nov 2026).
+    expect(report.headline).toBe('You came back stronger, if empty-handed.');
     expect(report.summary).toContain('Bulbasaur at level 7 came home.');
     // Said once, at the top of the screen: the panel below lists the rows.
   });

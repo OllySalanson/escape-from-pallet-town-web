@@ -415,7 +415,8 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       ? `Extracted${input.exitLabel ? ` · ${input.exitLabel}` : ''}`
       : 'Raid lost',
     headline: escaped
-      ? (relicHeadline(ledgerFound, input.favoursInHand) ?? escapeHeadline(haulTier))
+      ? (relicHeadline(ledgerFound, input.favoursInHand) ??
+        escapeHeadline(haulTier, isEmptyGroup(ledger) && !contractBanked && !gear.some((piece) => piece.fate === 'found')))
       : wipeHeadline(input.cause, secured, partner),
     summary: escaped
       ? escapeSummary(
@@ -568,7 +569,16 @@ function isRelic(itemId: string): boolean {
   return (RELIC_ITEM_IDS as readonly string[]).includes(itemId);
 }
 
-function escapeHeadline(tier: HaulTier): string {
+/**
+ * `emptyHanded` is a raid that banked nothing - no item, no Pokemon, no
+ * contract, no gear - and is graded above empty only for the experience it
+ * earned. "You got out with the goods." over "BANKED 0 ENTRIES" read as a
+ * contradiction (veteran playtest, 20 Nov 2026), so it says what it did earn.
+ */
+function escapeHeadline(tier: HaulTier, emptyHanded: boolean): string {
+  if (emptyHanded && tier !== 'empty') {
+    return 'You came back stronger, if empty-handed.';
+  }
   switch (tier) {
     case 'loaded':
       return 'You walked out loaded.';
