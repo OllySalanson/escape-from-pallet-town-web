@@ -92,7 +92,9 @@ describe('Nurse Joy at her counter', () => {
     const fresh = { ...game, freeHealDay: undefined };
     const offer = centerOffer(fresh, false, today);
     expect(offer.lines[0]).toContain("Your first heal today is free: it won't cost your next raid a second.");
-    expect(offer.lines).toContain(HEAL_RULE_LINE);
+    // Said once: the free line, and not the rule beside it (retest, 22 Nov 2026).
+    expect(offer.lines).not.toContain(HEAL_RULE_LINE);
+    expect(offer.lines.join(' ').match(/free/g)).toHaveLength(1);
     expect(HEAL_RULE_LINE).toBe('Healing costs at most 1:00 of a raid, and the first each day is free.');
     // A free heal opens on YES, as FireRed's does.
     expect(offer.spendsForGood).toBe(false);
@@ -112,6 +114,5 @@ describe('Nurse Joy at her counter', () => {
   it('says the clock it left, only when it charged one', () => {
     expect(healedLine(30_000, 30_000)).toContain('Your next raid runs 4:30.');
     expect(healedLine(0, 0)).toBe('Your Pokémon are fit to raid. We hope to see you again!');
-    expect(healedLine(0, 0, false, true)).toBe('Your Pokémon are fit to raid. That was today’s free heal. We hope to see you again!');
   });
 });
