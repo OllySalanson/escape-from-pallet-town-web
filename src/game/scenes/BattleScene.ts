@@ -4047,6 +4047,21 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * The player's Pokemon that fainted last, read off this fight's own lines:
+   * in a double battle the first slot is not the last one standing, and the
+   * wipe screen named the Squirtle that fell first while the Oddish beside it
+   * fought on (AI playtests, 22 Nov 2026). Its slot still holds it, because a
+   * wipe sends nobody in after it.
+   */
+  private lastToFall(): PokemonInstance {
+    const fainted = (this.fightTurns ?? [])
+      .flat()
+      .filter((event): event is Extract<BattleEvent, { type: 'fainted' }> => event.type === 'fainted' && event.user === 'player')
+      .at(-1);
+    return (fainted && unitAt(this.state, slotRef('player', fainted.slot ?? 0))?.pokemon) ?? this.state.player.pokemon;
+  }
+
   private awardVictoryExperience(defeatedPokemon: PokemonInstance): StagedNote[] {
     // A bout pays nothing: no experience, so no level, no move and no evolving.
     if (this.exhibition) {
@@ -4629,7 +4644,7 @@ export class BattleScene extends Phaser.Scene {
       // The one that was out when the party ran out. The result screen's defeat
       // sequence names it, and it cannot be recovered afterwards: by then every
       // member of the party is at 0 HP and indistinguishable from every other.
-      lastStand: this.state.player.pokemon,
+      lastStand: this.lastToFall(),
       // Whether anybody was there to go through the bag: a wild Pokemon is not.
       lostTo: this.trainer || this.hunterBattle ? 'trainer' : 'wild',
       // The one thing the other side did that beat you, read off this fight's own lines.
