@@ -11,6 +11,7 @@ import {
   thingsBody,
   THINGS_POCKETS,
   whereItIsUsed,
+  MEDICINE_AT_BASE,
 } from './thingsView';
 
 const item = (id: string) => getItemById(id)!;
@@ -43,6 +44,24 @@ describe('YOUR THINGS sorts storage into pockets', () => {
   it('reads the pockets in their own order, empty ones left out', () => {
     const pockets = storedPockets({ 'fire-stone': 1, potion: 3, money: 120, 'poke-ball': 0, 'no-such-thing': 4 });
     expect(pockets.map(({ pocket }) => pocket)).toEqual(['medicine', 'stones', 'found']);
+  });
+});
+
+describe('medicine at base', () => {
+  it('sends a player to THE BENCH, never says there is nothing to use it on', () => {
+    // A Pokémon on 2 HP, three Potions, and this screen said 'nothing to use
+    // it on here', so players paid Nurse Joy raid time (AI playtest, 22 Nov).
+    for (const id of ['potion', 'super-potion', 'antidote']) {
+      expect(whereItIsUsed(item(id))).toContain(MEDICINE_AT_BASE);
+    }
+    const html = thingsBody({
+      contents: { potion: 2, 'poke-ball': 1 },
+      pokemon: [],
+      packed: () => 0,
+      pack: { name: 'Raid pack', layout: packContents({}, { width: 6, height: 3 }), used: 0, total: 18 },
+    });
+    expect(html).toContain(`Potion: given at ${MEDICINE_AT_BASE}.`);
+    expect(html).not.toContain('nothing to use it on here');
   });
 });
 
@@ -82,6 +101,19 @@ describe('the body', () => {
     });
     const row = html.slice(html.indexOf('data-thing="poke-ball"'), html.indexOf('</button>', html.indexOf('data-thing="poke-ball"')));
     expect(row).toMatch(/px-tag-plain">3 packed</);
+    // And the detail says the packed ones are some of those in storage, not
+    // more besides (AI playtest, 22 Nov 2026: '3 in storage · 3 packed' read as six).
+    expect(html).toContain('10 in storage · 3 of them packed');
+  });
+
+  it('says all of them when every one is packed', () => {
+    const html = thingsBody({
+      contents: { potion: 3 },
+      pokemon: [],
+      packed: () => 3,
+      pack: { name: 'Satchel', layout: packContents({ potion: 3 }, { width: 4, height: 3 }), used: 3, total: 12 },
+    });
+    expect(html).toContain('3 in storage · all 3 packed');
   });
 });
 
