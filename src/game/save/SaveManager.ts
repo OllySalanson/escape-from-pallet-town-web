@@ -2392,10 +2392,15 @@ export class SaveManager {
     if (!game) {
       return false;
     }
+    // A fainted member who could not go is kept in their place, as the bench
+    // keeps them (`chooseBench`): written over at the door, a partner who sat a
+    // raid out fainted was off the team once Nurse Joy healed it (tester 2's
+    // release blocker 2, 22 Nov 2026).
+    const team = withFaintedKept(game.raidProgress.lastBench ?? [], pokemonIds, game.stash);
     const before = new Set(game.raidProgress.lastBench ?? []);
-    const sameTeam = before.size === pokemonIds.length && pokemonIds.every((id) => before.has(id));
+    const sameTeam = before.size === team.length && team.every((id) => before.has(id));
     const benchRaids = sameTeam ? (game.raidProgress.benchRaids ?? 0) + 1 : 1;
-    return this.save({ ...game, raidProgress: { ...game.raidProgress, lastBench: [...pokemonIds], benchRaids } });
+    return this.save({ ...game, raidProgress: { ...game.raidProgress, lastBench: team, benchRaids } });
   }
 
   /**
@@ -2446,13 +2451,7 @@ export class SaveManager {
     // cannot sit on the bench, so a bench chosen while one was waiting for Nurse
     // Joy left them out, and healed they were no longer on the team (playtests
     // of 22 Nov 2026: a wiped partner was replaced by a Lv 5 Magikarp for good).
-    const team = [...pokemonIds];
-    before.forEach((id, index) => {
-      const stored = game.stash.listPokemon().find((each) => each.id === id);
-      if (stored?.pokemon.isFainted && !team.includes(id)) {
-        team.splice(Math.min(index, team.length), 0, id);
-      }
-    });
+    const team = withFaintedKept(before, pokemonIds, game.stash);
     const sameTeam = before.length === team.length && team.every((id) => before.includes(id));
     const raidProgress: RaidProgress = { ...game.raidProgress, lastBench: team };
     if (!sameTeam) {
@@ -2790,6 +2789,18 @@ function withoutBout(progress: RaidProgress): RaidProgress {
 /** Every raid this save has gone on, on every map - what the hunters take turns by. */
 export function raidsDeployed(progress: RaidProgress): number {
   return Object.values(progress.raidRecord ?? {}).reduce((total, record) => total + record.deployed, 0);
+}
+
+/** A team as chosen, with every fainted member of the team before it kept in their place. */
+function withFaintedKept(before: readonly string[], chosen: readonly string[], stash: Stash): string[] {
+  const team = [...chosen];
+  before.forEach((id, index) => {
+    const stored = stash.listPokemon().find((each) => each.id === id);
+    if (stored?.pokemon.isFainted && !team.includes(id)) {
+      team.splice(Math.min(index, team.length), 0, id);
+    }
+  });
+  return team;
 }
 
 function countShortRaid(progress: RaidProgress): RaidProgress {

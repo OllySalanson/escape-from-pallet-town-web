@@ -1331,7 +1331,11 @@ export class HubScene extends Phaser.Scene {
     // Remembered on the way out rather than on the way home, because it is what
     // the player chose and a raid that goes badly chose it too.
     new SaveManager().recordSecurePreference(deployment.securePreference);
-    new SaveManager().recordBench(deployment.party.map((stored) => stored.id));
+    // The one the hall stood on an empty bench is not the team (`benchIsStandIn`):
+    // recorded, the partner it stood in for was left at home once healed.
+    if (!this.flow.benchIsStandIn) {
+      new SaveManager().recordBench(deployment.party.map((stored) => stored.id));
+    }
     new SaveManager().choosePack(Object.fromEntries(items.map(({ itemId, quantity }) => [itemId, quantity])), this.flow.leftOut);
     // The same moment, for the same reason: it is what the player chose, and a
     // raid that goes badly chose it too.
