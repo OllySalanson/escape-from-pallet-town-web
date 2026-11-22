@@ -6,7 +6,7 @@
 // It is stepped at exact 60fps frames on a paused loop (so it needs a test-mode
 // build, `?testmode=pixels` for a picture worth judging) and fails loudly - a
 // thrown error, not a picture - when the partner is ever anywhere but the tile
-// the player has just left, blocks a walk, cannot be faced or spoken to, comes
+// the player has just left, blocks a walk, cannot be spoken to, comes
 // back through a door without its player, or follows a save that lost it.
 // `--clips` also writes three short animated PNGs (walk, talk, door) cropped
 // round the player at 2x, for a pull request or a README.
@@ -156,18 +156,14 @@ try {
   await endClip();
   await page.screenshot(`${out}/walked.png`);
 
-  // Facing it: a tap towards it turns the player and walks nowhere.
-  const atRest = await expectAtHeel('before turning');
+  // Behind the player, with nothing in front, it is who SPACE is for: a step
+  // onto it swaps places, so it is seldom faced (AI playtests, 22 Nov 2026).
+  const atRest = await expectAtHeel('before speaking');
   const towards = { '1,0': 'ArrowRight', '-1,0': 'ArrowLeft', '0,1': 'ArrowDown', '0,-1': 'ArrowUp' }[
     `${atRest.partner.tile.x - atRest.tile.x},${atRest.partner.tile.y - atRest.tile.y}`
   ];
   startClip('clip-turn-and-talk');
   await frames(10);
-  await tap(towards);
-  await frames(12);
-  const turned = await state();
-  if (JSON.stringify(turned.tile) !== JSON.stringify(atRest.tile)) fail('a tap towards the partner walked the player');
-  if (!turned.hint.includes(turned.partner.species.toUpperCase())) fail(`facing the partner, the hint said "${turned.hint}"`);
   await page.screenshot(`${out}/facing.png`);
 
   // Speaking to it: a line in its name, a bubble, and it looks at the player.
@@ -188,12 +184,12 @@ try {
   await frames(60);
   await endClip();
 
-  // Never blocking: holding towards it walks straight through, and it steps back past.
+  // Never blocking: one tap towards it walks straight through, and it steps back past.
   startClip('clip-swap');
-  await hold(towards, 330);
+  await tap(towards);
   await until(`!${GAME}.scene.getScene('base').targetTile`);
   const swapped = await expectAtHeel('after walking through it');
-  if (JSON.stringify(swapped.tile) === JSON.stringify(atRest.tile)) fail('holding towards the partner never walked');
+  if (JSON.stringify(swapped.tile) === JSON.stringify(atRest.tile)) fail('a tap towards the partner never walked through it');
   await frames(40);
   await endClip();
 

@@ -49,8 +49,6 @@ import {
   STANDING_POSE,
   partnerReaction,
   sameTile,
-  turnToPartner,
-  TURN_TO_PARTNER_MS,
   type PartnerPlace,
 } from './partner';
 
@@ -199,45 +197,6 @@ describe('the partner stops when the player stops', () => {
     expect(partnerPose({ moving: true, progress: 0.8, walkPose: 0 })).toBe(1);
     expect(partnerPose({ moving: true, progress: 0.2, walkPose: 1 })).toBe(1);
     expect(partnerPose({ moving: true, progress: 0.8, walkPose: 1 })).toBe(0);
-  });
-});
-
-describe('facing the partner', () => {
-  const partner = { x: 5, y: 6 };
-  const towards = { target: partner, partner, stepFacing: 'down' as const, facing: 'up' as const };
-
-  it('a tap towards it from standing turns the player to face it, and walks nowhere', () => {
-    const first = turnToPartner({ ...towards, holdMs: null, fromStanding: true, deltaMs: 16 });
-    expect(first).toEqual({ turn: true, holdMs: TURN_TO_PARTNER_MS });
-    // Let go: the next frame has no step towards it, and the turn is over.
-    expect(turnToPartner({ ...towards, target: null, holdMs: first.holdMs, fromStanding: true, deltaMs: 16 })).toEqual({
-      turn: false,
-      holdMs: null,
-    });
-  });
-
-  it('a hold walks on through it once the turn is over - it never blocks', () => {
-    let state = turnToPartner({ ...towards, holdMs: null, fromStanding: true, deltaMs: 16 });
-    let frames = 0;
-    while (state.turn) {
-      state = turnToPartner({ ...towards, holdMs: state.holdMs, fromStanding: true, deltaMs: 1000 / 60 });
-      frames += 1;
-    }
-    expect(frames).toBeLessThanOrEqual(Math.ceil(TURN_TO_PARTNER_MS / (1000 / 60)));
-  });
-
-  it('never holds up a walk already under way, or a player already facing it', () => {
-    expect(turnToPartner({ ...towards, holdMs: null, fromStanding: false, deltaMs: 16 }).turn).toBe(false);
-    expect(turnToPartner({ ...towards, facing: 'down', holdMs: null, fromStanding: true, deltaMs: 16 }).turn).toBe(
-      false,
-    );
-  });
-
-  it('is nothing at all for a step anywhere else', () => {
-    expect(turnToPartner({ ...towards, target: { x: 4, y: 5 }, holdMs: null, fromStanding: true, deltaMs: 16 })).toEqual({
-      turn: false,
-      holdMs: null,
-    });
   });
 });
 
