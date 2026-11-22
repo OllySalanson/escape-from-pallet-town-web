@@ -248,46 +248,6 @@ export function facingTowards(partner: GridPosition, player: GridPosition): Dire
   return directionBetween(partner, player);
 }
 
-/**
- * How long a direction pressed towards the partner, from standing, turns the
- * player to face it before it walks them through it. A tap is a turn and a
- * hold is a walk - FireRed's own rule for turning, kept here only for the one
- * tile that is not a wall but is worth stopping to face.
- */
-export const TURN_TO_PARTNER_MS = 110;
-
-/**
- * Whether this frame's step, aimed at `target`, only turns the player to face
- * the partner standing there - and the turn's countdown for the next frame.
- *
- * From standing and not already facing it, a press turns the player, and only
- * one still held once `TURN_TO_PARTNER_MS` has run walks them on through it.
- * Mid-walk, or already facing it, the walk is never held up at all: the
- * partner is a friend to face, not a wall to stop at.
- */
-export function turnToPartner(options: {
-  /** The countdown left from the last frame, or null when no turn is under way. */
-  readonly holdMs: number | null;
-  readonly target: GridPosition | null;
-  readonly partner: GridPosition | null;
-  readonly stepFacing: Direction;
-  readonly facing: Direction;
-  readonly fromStanding: boolean;
-  readonly deltaMs: number;
-}): { readonly turn: boolean; readonly holdMs: number | null } {
-  const { holdMs, target, partner } = options;
-  if (!target || !partner || !sameTile(target, partner)) {
-    return { turn: false, holdMs: null };
-  }
-  if (holdMs === null) {
-    return !options.fromStanding || options.stepFacing === options.facing
-      ? { turn: false, holdMs: null }
-      : { turn: true, holdMs: TURN_TO_PARTNER_MS };
-  }
-  const left = holdMs - options.deltaMs;
-  return left > 0 ? { turn: true, holdMs: left } : { turn: false, holdMs: null };
-}
-
 // -- life ------------------------------------------------------------------
 
 /** The pose a partner stands in: the first of each facing's pair, the other is mid-stride. */

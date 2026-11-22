@@ -214,7 +214,6 @@ import {
   partnerFrame,
   partnerOf,
   partnerReaction,
-  turnToPartner,
   type PartnerEmote,
   type PartnerSpeciesId,
 } from '../base/partner';
@@ -755,8 +754,6 @@ export class BaseScene extends Phaser.Scene {
     tile: GridPosition;
     nextStepMs: number;
   } | null = null;
-  /** Counts down while a tap towards the partner is turning the player rather than walking them. */
-  private turnToPartnerMs: number | null = null;
   /** How long a key has been pressed against a stair of the hall's curve from standing (`roundTheStair`). */
   private pressedAtStairMs = 0;
   /** The place's tiles, kept so a room can be drawn again where it stands - a piece of furniture moved. */
@@ -1178,7 +1175,6 @@ export class BaseScene extends Phaser.Scene {
     this.inspectMark = null;
     this.partner = null;
     this.penPokemon = null;
-    this.turnToPartnerMs = null;
     this.pressedAtStairMs = 0;
     this.tilemap = null;
     this.furnitureImages = [];
@@ -1823,16 +1819,9 @@ export class BaseScene extends Phaser.Scene {
     const decision = round.side
       ? { facing: round.side, target: nextTileFromDirection(this.currentTile, round.side) }
       : planned;
-    // A walk the pointer asked for goes through the partner as a step would: a
-    // turn here would spend a step of the plan on going nowhere, and every step
-    // after it would walk the wrong way.
-    if (this.turnsToFacePartner(decision.target, decision.facing, carriedMs === null && !this.walkPlan, deltaMs)) {
-      this.facing = decision.facing;
-      this.pushingAgainst = null;
-      this.player.stop();
-      this.player.setFrame(getIdleFrame(this.facing));
-      return;
-    }
+    // A step onto the partner swaps places with it, as a follower does: a
+    // first press that only turned the player to face it read as being walled
+    // in, at doors and in THE BEACH's corner (AI playtests, 22 Nov 2026).
     const pushing = input.up || input.down || input.left || input.right;
     const bump = nextBump(this.pushingAgainst, !decision.target && pushing && !round.waiting ? decision.facing : null);
     this.pushingAgainst = bump.pushingAgainst;
@@ -5004,26 +4993,6 @@ export class BaseScene extends Phaser.Scene {
     return !this.choosing && room.screen !== null && room.screen !== 'arena' && room.keeper !== null && this.onMat(room);
   }
 
-  /** Whether this frame's step only turns the player to face the partner (`turnToPartner`). */
-  private turnsToFacePartner(
-    target: GridPosition | null,
-    facing: Direction,
-    fromStanding: boolean,
-    deltaMs: number,
-  ): boolean {
-    const { turn, holdMs } = turnToPartner({
-      holdMs: this.turnToPartnerMs,
-      target,
-      partner: this.partner?.standingTile() ?? null,
-      stepFacing: facing,
-      facing: this.facing,
-      fromStanding,
-      deltaMs,
-    });
-    this.turnToPartnerMs = holdMs;
-    return turn;
-  }
-
   /**
    * Facing the partner and pressing the interact key: it turns to the player,
    * says how it is - in its own words, with the bubble over its head - and
@@ -5377,7 +5346,7 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const room = this.place.room?.room;
-    // The partner first - facing it takes a turn on purpose, so a key pressed
+    // The partner first - facing it is facing it on purpose, so a key pressed
     // at it is meant for it - except on a keeper's mat. The partner arrives in
     // front of the player there, so nobody turned to it, and the keeper is one
     // key from the door: on the prize window's mat the first SPACE went to the
@@ -5667,6 +5636,14 @@ export class BaseScene extends Phaser.Scene {
           ? [`TODAY'S NOTICE: ${noticeFor(new Date())}`, ...(rumour ? [rumour] : []), ...sign.lines]
           : sign.lines;
       this.say(lines, [target]);
+      return;
+    }
+    // Nothing in front, and the partner beside or behind: it is who the key is
+    // for. A step onto it swaps places now rather than turning to face it
+    // (AI playtests, 22 Nov 2026), so it is mostly at the player's back.
+    const partnerTile = this.partner?.standingTile();
+    if (partnerTile && Math.abs(partnerTile.x - this.currentTile.x) + Math.abs(partnerTile.y - this.currentTile.y) === 1) {
+      this.talkToPartner();
     }
   }
 
