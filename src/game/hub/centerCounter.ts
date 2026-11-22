@@ -101,8 +101,11 @@ export function centerOffer(game: CounterGame, free = false): CenterOffer {
         : `${treated.length} of them`;
   const price =
     quoteMs === 0
-      ? 'It will not cost your next raid a second.'
-      : `It takes ${formatRecoveryClock(quoteMs)} off your next raid.`;
+      ? 'Healing will not cost your next raid a second.'
+      : // The heal's price, not a charge already made: 'It takes 0:45 off your
+        // next raid' before the question read as lost whatever the answer
+        // (AI playtest, 22 Nov 2026).
+        `Healing would take ${formatRecoveryClock(quoteMs)} off your next raid.`;
   return {
     lines: [
       ...outLine,
