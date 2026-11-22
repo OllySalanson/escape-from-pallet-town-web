@@ -1312,6 +1312,20 @@ export const changesShownStatus = (
  * four lines (pret/pokefirered `battle_message.c`, `sText_PkmnBrokeFree` to
  * `sText_ShootSoClose`), so a throw that nearly held reads as nearly holding.
  */
+/** Above this share of its HP, a Pokémon that broke free is worth the catch tip. */
+export const CATCH_TIP_ABOVE_SHARE = 1 / 2;
+
+/**
+ * Said once a fight, after a ball a healthy Pokémon broke out of: nothing else
+ * says that a hurt one is easier to hold, so Balls went at full-HP Pokémon one
+ * after another (scenario loop, 22 Nov 2026: three at a full-HP Lv 4 Squirtle;
+ * playtest 5: 8 of 19 friends). FireRed leaves it to the manual; this game has none.
+ */
+export const CATCH_TIP_LINE = 'It still has plenty of fight in it. Wear its HP down first and a ball holds better.';
+
+/** Whether a ball that broke free earns the catch tip: the foe was well above half its HP. */
+export const earnsCatchTip = (hp: number, maxHp: number): boolean => hp > maxHp * CATCH_TIP_ABOVE_SHARE;
+
 export const BROKE_FREE_LINES = [
   'Oh, no! The POKéMON broke free!',
   'Aww! It appeared to be caught!',

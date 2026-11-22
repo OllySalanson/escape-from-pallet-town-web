@@ -139,6 +139,8 @@ import {
   BATTLE_PANEL,
   NO_BATTLE_ITEMS_MESSAGE,
   lowHpItemHint,
+  CATCH_TIP_LINE,
+  earnsCatchTip,
   PARTY_COLUMNS,
   formatPartyRow,
   levelLabel,
@@ -597,6 +599,8 @@ export class BattleScene extends Phaser.Scene {
   private victoryRewardsGranted = false;
   /** Whether this fight has said that medicine can be used in it (`lowHpItemHint`): once a fight. */
   private lowHpHintSaid = false;
+  /** Whether this fight has said a hurt Pokémon is easier to catch (`CATCH_TIP_LINE`): once a fight. */
+  private catchTipSaid = false;
   /**
    * The bag the raid is carrying, not the persisted overworld bag. They are
    * different inventories, and reading the wrong one is how a wipe report came
@@ -829,6 +833,7 @@ export class BattleScene extends Phaser.Scene {
     this.thrownBallId = undefined;
     this.victoryRewardsGranted = false;
     this.lowHpHintSaid = false;
+    this.catchTipSaid = false;
     this.party = data.party ?? new PokemonParty([new Pokemon(CHARMANDER, 10)]);
     this.bag = data.bag ?? new Bag({ 'poke-ball': STARTING_POKE_BALLS });
     // Phaser reuses this scene, so a medicine chosen in the last fight and never
@@ -2977,6 +2982,8 @@ export class BattleScene extends Phaser.Scene {
       this.throwAtBeatenLegend(ball);
       return;
     }
+    const target = this.state.enemy;
+    const healthy = earnsCatchTip(target.currentHp, target.pokemon.maxHp);
     const result = resolveCatchAttempt(
       this.state,
       () => Math.random(),
@@ -2985,6 +2992,12 @@ export class BattleScene extends Phaser.Scene {
     );
     this.state = result.state;
     let events = result.events;
+    const brokeFree = events.findIndex((event) => event.type === 'broke-free');
+    const tip = new Map<number, readonly StagedNote[]>();
+    if (brokeFree >= 0 && healthy && !this.catchTipSaid) {
+      this.catchTipSaid = true;
+      tip.set(brokeFree, [{ message: CATCH_TIP_LINE }]);
+    }
     if (this.state.outcome === 'caught') {
       this.storeCaughtPokemon();
     } else {
@@ -2997,7 +3010,7 @@ export class BattleScene extends Phaser.Scene {
     this.prepareForcedReplacement();
     this.mode = 'events';
     this.commandContainer.setVisible(false);
-    this.showCombatEvents(events);
+    this.showCombatEvents(events, [], [], tip);
   }
 
   /**
