@@ -94,6 +94,21 @@ describe('THE TRADER’s list', () => {
     expect(new SaveManager(storage).load()!.stash.listPokemon().some((stored) => stored.id === ids.abra)).toBe(true);
   });
 
+  it('puts the cursor on KEEP IT once a trade is asked, not on the chip that asked', () => {
+    // The chip stays on the card, scrolled under its MORE; a keyboard player's
+    // second press asked again instead of reaching the bar (scenario loop, 23 Nov 2026).
+    const storage = new MemoryStorage();
+    const ids = seedSave(storage);
+    const hub = speakToHim(storage);
+    const chip: { dataset: Record<string, string>; onclick?: (event: { detail: number }) => void } = { dataset: { trade: ids.kadabra } };
+    const overlay = hub.overlay as unknown as { root: { querySelectorAll(selector: string): unknown[] }; focus: ReturnType<typeof vi.fn> };
+    overlay.root.querySelectorAll = (selector: string) => (selector === '[data-trade]' ? [chip] : []);
+    hub.render();
+    chip.onclick!({ detail: 0 });
+    expect(hub.tradeArmed).toBe(ids.kadabra);
+    expect(overlay.focus).toHaveBeenLastCalledWith('[data-deal-cancel]');
+  });
+
   it('makes the trade in one write and says so back on the lawn, by him', () => {
     const storage = new MemoryStorage();
     const ids = seedSave(storage);
