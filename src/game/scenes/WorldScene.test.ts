@@ -363,10 +363,10 @@ describe('raid resolution hand-off', () => {
     );
     expect(sceneSource).toContain('items: wipe.destroyedItems },');
     expect(battleSceneSource).toContain('items: wipe.destroyedItems },');
-    expect(sceneSource).toContain('{ ...this.runSession.stashSecureSlot, items: wipe.securedItems }');
-    expect(battleSceneSource).toContain(
-      '{ ...this.runSession.stashSecureSlot, items: wipe.securedItems }',
-    );
+    // (`session` is the raid's own session, held so a write storage refused can
+    // be tried again at base - `run/unsavedEnding.ts`.)
+    expect(sceneSource).toContain('{ ...session.stashSecureSlot, items: wipe.securedItems }');
+    expect(battleSceneSource).toContain('{ ...session.stashSecureSlot, items: wipe.securedItems }');
     // And a survived raid banks the settlement's own gain rather than the
     // pickups it recorded: loot found and then drunk left the stash unchanged.
     expect(sceneSource).toContain('...settlement.supplies.filter(({ quantity }) => quantity > 0),');

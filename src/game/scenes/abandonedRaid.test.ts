@@ -25,6 +25,7 @@ import {
 import { createStartingStash } from '../stash';
 import type { DeploymentFlow } from '../hub';
 import { SaveManager, type StorageLike } from '../save/SaveManager';
+import { forgetUnsavedEnding, holdUnsavedEnding, retryUnsavedEnding, settleAtBase } from '../run/unsavedEnding';
 import { HubScene } from './HubScene';
 import { calendarLines } from '../base/homeLines';
 
@@ -581,5 +582,62 @@ describe('a raid abandoned by closing the game', () => {
     for (const word of ['12 Potions', '10 Super Potions', '9 Antidotes', '20 Poké Balls', '11 Great Balls', 'Aerial Ace']) {
       expect(lines.join(' ')).toContain(word);
     }
+  });
+});
+
+describe('an ending storage refused, held by the page that saw it', () => {
+  afterEach(() => forgetUnsavedEnding());
+
+  /**
+   * Break-it test, 23 Nov 2026: storage refused the extraction's write and took
+   * the next one. The result said "You got out clean"; the base then found the
+   * raid in flight and settled it as abandoned, Satchel, Balls and all.
+   */
+  it('is written as it ended when the base opens, and the raid is not settled as abandoned', () => {
+    const storage = new MemoryStorage();
+    seedSave(storage);
+    deployFrom(storage);
+    if (activeRunManager.phase === RunPhase.InRun) {
+      activeRunManager.resolveEscape();
+    }
+    const id = raidId(storage);
+    const write = storage.setItem.bind(storage);
+    let refusing = true;
+    storage.setItem = (key: string, value: string) => {
+      if (refusing) {
+        throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+      }
+      write(key, value);
+    };
+    const bank = () => new SaveManager(storage).bankRun({ pokemon: [], items: [] }, undefined, 15_000, id);
+    expect(bank()).toBe(false);
+    holdUnsavedEnding(bank, () => new SaveManager(storage).ownsRaid(id));
+
+    // Still refusing at base: nothing is settled, and the ending is kept.
+    const settle = vi.fn(() => new SaveManager(storage).settleAbandonedRaid());
+    expect(settleAtBase(settle)).toBeNull();
+    expect(settle).not.toHaveBeenCalled();
+    expect(new SaveManager(storage).load()?.raidInFlight?.id).toBe(id);
+
+    // Storage takes it the next time: the ending is written, and there is no raid left to abandon.
+    refusing = false;
+    expect(settleAtBase(settle)).toBeNull();
+    expect(new SaveManager(storage).load()?.raidInFlight).toBeNull();
+    expect(retryUnsavedEnding()).toBe('none');
+  });
+
+  it('lets go of an ending for a raid the save no longer holds, and settles as before', () => {
+    // Another window settled it, or storage never took its start: there is
+    // nothing to write, and the base must not wait on it for ever.
+    holdUnsavedEnding(() => false, () => false);
+    const settle = vi.fn(() => 'abandoned');
+    expect(settleAtBase(settle)).toBe('abandoned');
+    expect(retryUnsavedEnding()).toBe('none');
+  });
+
+  it('leaves the base to settle a raid as abandoned as before when this page holds nothing', () => {
+    const settle = vi.fn(() => 'abandoned');
+    expect(settleAtBase(settle)).toBe('abandoned');
+    expect(settle).toHaveBeenCalledOnce();
   });
 });

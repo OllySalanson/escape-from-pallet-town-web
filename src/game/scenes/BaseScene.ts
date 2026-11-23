@@ -345,6 +345,7 @@ import { dueMilestone, milestoneWords, pokedexOwned } from '../hub/pokedex';
 import { boardLines, oakNews } from '../base/labBoard';
 import { friendRoom, friendRoomsOffered } from '../raidRoom/friendRoom';
 import { abandonedRaidLines, boutHeartbeat, raidHeartbeat } from '../run/raidInFlight';
+import { settleAtBase } from '../run/unsavedEnding';
 import { ABANDONED_BOUT_LINE, newBoutId, type BoutUnderWay } from '../arena/boutUnderWay';
 import { isHomeRoom, ownedFurniture, type Placement } from '../home/arrangement';
 import { DecorateMode, type DecorateHost } from '../base/decorateMode';
@@ -1135,8 +1136,11 @@ export class BaseScene extends Phaser.Scene {
     // the pack is lost with everything in it and the team comes home
     // (`run/raidInFlight.ts`). One still being played in another tab is left
     // to that tab.
-    const abandoned = this.saveManager.settleAbandonedRaid((raidId) =>
-      raidHeartbeat.liveElsewhere(raidId),
+    // A raid this page saw end, whose ending storage refused, is written now
+    // as it ended - and while storage still refuses it, it is not this page's
+    // to settle as abandoned (`run/unsavedEnding.ts`).
+    const abandoned = settleAtBase(() =>
+      this.saveManager.settleAbandonedRaid((raidId) => raidHeartbeat.liveElsewhere(raidId)),
     );
     if (abandoned && activeSaveSlot() !== 'try-it') {
       countPlay({ kind: 'raid-end', detail: 'abandoned' });

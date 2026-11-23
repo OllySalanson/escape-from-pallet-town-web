@@ -99,6 +99,7 @@ import { favoursInHand } from '../hub/errands';
 import { RunPhase } from '../run/RunManager';
 import { buildExtractionReport } from '../run/extractionReport';
 import { buildWipeSettlement, deployedRaidCondition } from '../run/raidSettlement';
+import { holdUnsavedEnding } from '../run/unsavedEnding';
 import {
   packFullForPokemonLine,
   clearPackRoomForPokemon,
@@ -4780,19 +4781,27 @@ export class BattleScene extends Phaser.Scene {
     // that got home, and a layout that came back only from the endings that
     // happen in the overworld would be a promise kept three times in four.
     new SaveManager().recordContainerArrangements(this.bag.arrangement);
-    const { saved, restocked } = new SaveManager().settleWipe(
-      this.runSession.broughtPokemonIds,
-      this.runSession.broughtItems,
-      { ...this.runSession.stashSecureSlot, items: wipe.securedItems },
-      // A secured Pokemon comes home in the state this battle left it in, which
-      // after a lost raid is almost always fainted.
-      deployedRaidCondition(this.runSession.broughtPokemonIds, snapshot),
-      // The pack the party ran out in goes with the raid. It was never in the bag -
-      // it is the bag - so nothing in the accounting above can name it, and the
-      // secure container cannot protect it either.
-      this.runSession.packItemId,
-      this.runSession.raidId,
-    );
+    const session = this.runSession;
+    const settle = () =>
+      new SaveManager().settleWipe(
+        session.broughtPokemonIds,
+        session.broughtItems,
+        { ...session.stashSecureSlot, items: wipe.securedItems },
+        // A secured Pokemon comes home in the state this battle left it in, which
+        // after a lost raid is almost always fainted.
+        deployedRaidCondition(session.broughtPokemonIds, snapshot),
+        // The pack the party ran out in goes with the raid. It was never in the bag -
+        // it is the bag - so nothing in the accounting above can name it, and the
+        // secure container cannot protect it either.
+        session.packItemId,
+        session.raidId,
+      );
+    const { saved, restocked } = settle();
+    // Storage refused it: tried again at base, so the raid is not settled there
+    // as abandoned when it was lost in this fight (`run/unsavedEnding.ts`).
+    if (!saved && !settledElsewhere) {
+      holdUnsavedEnding(() => settle().saved, () => new SaveManager().ownsRaid(session.raidId));
+    }
     flashScreen(this.cameras.main, 220, [239, 68, 68]);
     this.cameras.main.shake(180, 0.009);
     audioManager.play('wipe');

@@ -659,7 +659,9 @@ export class ExtractionScene extends Phaser.Scene {
       return SETTLED_ELSEWHERE.note;
     }
     if (!this.report.saved) {
-      return 'This result could not be written to storage.';
+      // Tried again as the base opens (`run/unsavedEnding.ts`); said, or a player
+      // reads COULD NOT SAVE as the raid gone.
+      return 'The browser would not save this. It is tried again as you go back.';
     }
     if (this.report.baseNote !== null) {
       return this.report.baseNote;
