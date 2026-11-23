@@ -36,8 +36,9 @@ function removePreviousGameDom(): void {
     return;
   }
   // The canvas lives in `#app` and the DOM screens in the menu layer beside it,
-  // so a remount has two places to sweep rather than one.
+  // so a remount has two places to sweep rather than one. The first mount also
+  // takes away index.html's "loading" line, which only stood in for the canvas.
   document
-    .querySelectorAll('#app > canvas, .menu-overlay')
+    .querySelectorAll('#app > canvas, #app > .boot-wait, .menu-overlay')
     .forEach((element) => element.remove());
 }
