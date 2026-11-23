@@ -387,6 +387,11 @@ export class RaidHeartbeat {
     this.releaseLock = null;
   }
 
+  /** The raid this page is beating for, or null when it is playing none. */
+  public playing(): string | null {
+    return this.raidId;
+  }
+
   /** Whether `raidId` is being played in some other tab right now, by its pulse. */
   public liveElsewhere(raidId: string): boolean {
     return raidLiveElsewhere(this.read(), raidId, this.tab(), this.now());
