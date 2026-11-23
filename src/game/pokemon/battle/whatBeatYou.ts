@@ -56,6 +56,8 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
   let resistedHits = 0;
   const resistedMoves = new Map<string, number>();
   const statusLost = new Map<string, number>();
+  /** HP a status took off the player's side between moves (poison, a burn), by status: ticks and total. */
+  const statusChip = new Map<string, { ticks: number; total: number }>();
   let accuracyDropped: string | null = null;
   let missesAfterDrop = 0;
   let confusionHits = 0;
@@ -119,7 +121,13 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
             statusLost.set(event.status, (statusLost.get(event.status) ?? 0) + 1);
           }
           break;
-        case 'confusion-self-hit':
+        case 'status-damage':
+          if (event.user === 'player') {
+            const before = statusChip.get(event.status) ?? { ticks: 0, total: 0 };
+            statusChip.set(event.status, { ticks: before.ticks + 1, total: before.total + event.damage });
+          }
+          break;
+                case 'confusion-self-hit':
           if (event.user === 'player') {
             confusionHits += 1;
           }
@@ -182,6 +190,17 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
     facts.push({
       line: `${capitalise(joinWords(named))}: your Pokémon lost ${lostTurns} turns.`,
       weight: lostTurns * 1.25,
+    });
+  }
+  // Poison or a burn wearing a Pokémon down between moves. Said as 'Speed:
+  // WEEDLE moved first 4 times' over a Charmander poisoned at 13/22, which told
+  // the friend nothing to do (AI playtest, 23 Nov 2026): the cure is the answer.
+  const [chip] = [...statusChip.entries()].sort((a, b) => b[1].total - a[1].total);
+  if (chip && chip[1].ticks >= WHAT_BEAT_YOU_LEAST) {
+    const cure = STATUS_CURES[chip[0]];
+    facts.push({
+      line: `${capitalise(chip[0])}: it took ${chip[1].total} HP off yours over ${chip[1].ticks} turns.${cure ? ` ${cure} cures it.` : ''}`,
+      weight: chip[1].ticks * 1.2,
     });
   }
   if (accuracyDropped !== null && missesAfterDrop >= WHAT_BEAT_YOU_LEAST) {
@@ -298,6 +317,12 @@ function joinWords(words: readonly string[]): string {
 function weatherWord(weather: WeatherId): string {
   return capitalise(WEATHER_CONDITIONS[weather].label.toLowerCase());
 }
+
+/** What cures a status that wears a Pokémon down, in the pack's own words. */
+const STATUS_CURES: Readonly<Record<string, string>> = {
+  poison: 'An Antidote or a Pecha Berry',
+  burn: 'A Rawst Berry',
+};
 
 function statusWord(status: string): string {
   switch (status) {
