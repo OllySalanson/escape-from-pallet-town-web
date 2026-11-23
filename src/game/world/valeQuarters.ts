@@ -50,6 +50,14 @@ export interface ValeGym {
    */
   readonly advice: readonly string[];
   /**
+   * The level the quarter behind the gym is measured at - its wildlife
+   * (`districtEncounters.test.ts`) and its trainers (`quarterPuzzle.test.ts`)
+   * meet a team at this level. Absent, it is the leader's highest. MISTY came
+   * down three levels for newcomers (22 Nov 2026) and the Coast behind her did
+   * not, so hers says so.
+   */
+  readonly quarterLevel?: number;
+  /**
    * Their words in THE RAID ARENA, where once met they spar with their real gym
    * team for nothing (`base/gymPractice.ts`): the offer, then how it went.
    */
@@ -123,6 +131,7 @@ export const VALE_QUARTERS: readonly ValeQuarter[] = [
       building: 'Cerulean Gym',
       standsIn: 'GULL STRAND',
       design: 'misty',
+      quarterLevel: 15,
       advice: [
         'Next gym: CERULEAN GYM on GULL STRAND. MISTY holds THE COAST.',
         // Her lead's level, as her door sign asks (`gymDoorGuide`, pinned by
