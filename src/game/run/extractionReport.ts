@@ -257,6 +257,15 @@ export interface ExtractionReport {
    */
   readonly baseNote: string | null;
   /**
+   * What Oak's starter kit put back at base after a lost raid, in words ("a
+   * Satchel and 3 Poké Balls"), or absent when the vault needed nothing. The
+   * wipe's own line about the pack says it too (`defeatSequence.ts`): said
+   * only in `baseNote`, under the ledger, five of the overnight retest's
+   * players (23 Nov 2026) read "gone for good" and then found the same Satchel
+   * and balls at base, and took the loss for a lie.
+   */
+  readonly kitAtBase?: string;
+  /**
    * A raid home too soon to pay for the healing it owed (`DAY_CARE_LEAST_RAID_MS`)
    * says so, and what the next raid's clock still is. Absent when nothing is owed.
    */
@@ -528,12 +537,19 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     ...badgeLines(input.bossesBeaten ?? []),
     ...(snapshot.secureFilledForYou ? { secureFilledForYou: true } : {}),
     baseNote: escaped ? null : wipedBaseNote(input.fitToRaid ?? true, input.restocked ?? []),
+    ...(escaped ? {} : kitAtBaseOf(input.restocked ?? [])),
     ...(escaped && (input.recoveryStillOwedMs ?? 0) > 0
       ? { recoveryStillOwed: recoveryStillOwedLine(input.recoveryStillOwedMs ?? 0, DAY_CARE_LEAST_RAID_MS) }
       : {}),
     saved: input.saved,
     ...(input.settledElsewhere ? { settledElsewhere: true } : {}),
   };
+}
+
+/** `ExtractionReport.kitAtBase`, when the restock put anything back. */
+function kitAtBaseOf(restocked: readonly Stack[]): { readonly kitAtBase?: string } {
+  const kit = describeGroup({ pokemon: [], items: toReportItems(restocked) });
+  return kit === null ? {} : { kitAtBase: kit };
 }
 
 /** True of any wipe: the restock adds only what the kit is short of, so a stocked vault is given nothing. */
