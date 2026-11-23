@@ -14,6 +14,7 @@ import { createRaidInFlight } from '../run/raidInFlight';
 import { RUN_GENERATION_BOUNDS } from '../run/runGeneration';
 import {
   DAY_CARE_LEAST_RAID_MS,
+  DAY_CARE_OFFER_LINES,
   DAY_CARE_SHARE_OF_A_LEVEL,
   checkOnLines,
   dayCareExperience,
@@ -52,6 +53,11 @@ const progressAfter = (raids: number): RaidProgress => ({
 });
 
 describe('what the Day-Care pays', () => {
+  it('says the least raid that counts when it offers, not only after', () => {
+    // Two quick dashes paid nothing, and the offer had promised every raid (scenario loop, 23 Nov 2026).
+    expect(DAY_CARE_OFFER_LINES.join(' ')).toContain(`every raid of ${DAY_CARE_LEAST_RAID_MS / 1000} seconds or more`);
+  });
+
   it('pays half a level a raid, so two raids are a level on every growth curve', () => {
     expect(DAY_CARE_SHARE_OF_A_LEVEL).toBe(1 / 2);
     for (const species of ['pidgey', 'rattata', 'charmander', 'geodude', 'clefairy']) {

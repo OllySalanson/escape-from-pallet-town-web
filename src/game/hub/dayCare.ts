@@ -211,7 +211,10 @@ export function checkOnLines(report: DayCareReport): readonly string[] {
 /** What he says to somebody with nobody in his care, before they choose who. */
 export const DAY_CARE_OFFER_LINES: readonly string[] = [
   'I run the DAY-CARE service. Would you like me to raise one of your Pokémon?',
-  'It’s safe here from any wipe, and it grows half a level with every raid you go on.',
+  // The least raid that counts is said up front: two quick dashes out and back
+  // left a Pokémon where it was, and the rule came only afterwards (scenario
+  // loop, 23 Nov 2026).
+  `It’s safe here from any wipe, and it grows half a level with every raid of ${DAY_CARE_LEAST_RAID_MS / 1000} seconds or more.`,
 ];
 
 /** His refusal when there is nobody else at base to battle with. */
@@ -229,7 +232,7 @@ export function dayCareTurnedAway(stash: Stash): readonly string[] | undefined {
     return undefined;
   }
   return [
-    'I run the DAY-CARE service. It’s safe here from any wipe, and a Pokémon grows half a level with every raid you go on.',
+    `I run the DAY-CARE service. It’s safe here from any wipe, and a Pokémon grows half a level with every raid of ${DAY_CARE_LEAST_RAID_MS / 1000} seconds or more.`,
     `${ONLY_ONE_LINE} If I took it, what would you battle with? Come back when you have another.`,
   ];
 }
