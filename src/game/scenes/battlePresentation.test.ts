@@ -448,6 +448,30 @@ describe('battle presentation', () => {
     ).toMatchObject([{ actor: 'enemy', target: 'enemy', hpDelta: 3 }]);
   });
 
+  it('moves the bar back up for a heal, a drain and an absorbing ability, and down for recoil', () => {
+    // RECOVER healed a Kadabra to 64/64 and its plate still read 9/64 (scenario
+    // loop, 23 Nov 2026): every event that changes HP has a bar to walk.
+    expect(
+      combatPresentationSteps([
+        { type: 'healed', user: 'player', name: 'Kadabra', amount: 32 },
+        { type: 'drained', user: 'enemy', slot: 0, name: 'Golbat', amount: 9, from: { user: 'player', name: 'Kadabra' } },
+        { type: 'recoil', user: 'player', name: 'Kadabra', damage: 4 },
+        { type: 'ability', user: 'enemy', name: 'Lapras', ability: 'WATER ABSORB', effect: 'absorbed', amount: 20, move: 'Water Gun' },
+      ]).map(({ target, hpDelta }) => ({ target, hpDelta })),
+    ).toEqual([
+      { target: 'player', hpDelta: -32 },
+      { target: 'enemy', hpDelta: -9 },
+      { target: 'player', hpDelta: 4 },
+      { target: 'enemy', hpDelta: -20 },
+    ]);
+    // An ability that absorbed a move and healed nobody moves no bar.
+    expect(
+      combatPresentationSteps([
+        { type: 'ability', user: 'enemy', name: 'Lapras', ability: 'WATER ABSORB', effect: 'absorbed', amount: 0, move: 'Water Gun', absorbed: 'useless' },
+      ])[0]?.hpDelta,
+    ).toBe(0);
+  });
+
   describe('the price of fleeing the hunter', () => {
     it('is the bare price while the clock can easily afford it', () => {
       expect(formatHunterFleeCommand(40_000, 240_000)).toBe('FLEE -40s');

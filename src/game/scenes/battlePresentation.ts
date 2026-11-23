@@ -1036,7 +1036,8 @@ export const combatPresentationSteps = (
     if (
       event.type === 'confusion-self-hit' ||
       event.type === 'status-damage' ||
-      event.type === 'gear-recoil'
+      event.type === 'gear-recoil' ||
+      event.type === 'recoil'
     ) {
       return {
         event,
@@ -1049,6 +1050,31 @@ export const combatPresentationSteps = (
     }
     // Gear that gives HP back moves the bar the other way, so the delta is
     // negative damage: the bar animation is the same code either direction.
+    // A move's own healing, a drain's take and an absorbing ability's are the
+    // same: the bar comes back up. Without these the plate kept its old HP, so
+    // a Kadabra that had RECOVERed to 64/64 still read 9/64 in red, and the next
+    // hit took the bar to 0 while the Kadabra fought on (scenario loop, 23 Nov
+    // 2026). Recoil, a Liquid Ooze drain among it, is a loss like any other.
+    if (event.type === 'healed' || event.type === 'drained') {
+      return {
+        event,
+        actor: event.user,
+        actorSlot: event.slot ?? 0,
+        target: event.user,
+        targetSlot: event.slot ?? 0,
+        hpDelta: -event.amount,
+      };
+    }
+    if (event.type === 'ability' && event.effect === 'absorbed' && (event.amount ?? 0) > 0) {
+      return {
+        event,
+        actor: event.user,
+        actorSlot: event.slot ?? 0,
+        target: event.user,
+        targetSlot: event.slot ?? 0,
+        hpDelta: -(event.amount ?? 0),
+      };
+    }
     if (event.type === 'gear-heal' || event.type === 'berry-heal') {
       return {
         event,
