@@ -1902,6 +1902,32 @@ describe('what the base screen leads with', () => {
     expect(row).toContain('It needs 6 squares, more than the 2x2 container. To secure it, build Secure locker I at Brock');
   });
 
+  /**
+   * The overnight retest's key masher (23 Nov 2026): a Pokémon put on the
+   * bench sent the cursor back to the first control, the lead's slot, so the
+   * next ENTER took the partner off. The cursor follows the Pokémon pressed.
+   */
+  it('keeps the bench cursor on the Pokémon pressed, so a second ENTER only undoes the first', () => {
+    const { hub } = createHub();
+    const internals = hub as unknown as {
+      overlay: { root: { querySelectorAll(selector: string): unknown[] }; focus: ReturnType<typeof vi.fn> };
+    };
+    const button = {
+      dataset: { pokemon: 'charmander-1' } as Record<string, string>,
+      closest: () => null,
+      onclick: undefined as undefined | ((event: { detail: number }) => void),
+    };
+    internals.overlay.root.querySelectorAll = (selector: string) => (selector === '[data-pokemon]' ? [button] : []);
+    hub.setView('bench');
+    hub.render();
+    button.onclick!({ detail: 0 });
+    expect(hub.flow.includesPokemon('charmander-1')).toBe(true);
+    expect(internals.overlay.focus).toHaveBeenLastCalledWith('[data-pokemon="charmander-1"]');
+    button.onclick!({ detail: 0 });
+    expect(hub.flow.includesPokemon('charmander-1')).toBe(false);
+    expect(internals.overlay.focus).toHaveBeenLastCalledWith('[data-pokemon="charmander-1"]');
+  });
+
   it('says on the bench who is coming, and on the rack what is packed', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');

@@ -1913,7 +1913,14 @@ export class HubScene extends Phaser.Scene {
       const name = this.stashPokemon.find((stored) => stored.id === button.dataset.fit)?.pokemon.name;
       this.setStatus(`${name ?? 'That Pokémon'} is fit. There is nothing to recover.`);
     });
-    on('[data-pokemon]', (button) => this.answer(this.flow.togglePokemon(button.dataset.pokemon!), 'select'));
+    on('[data-pokemon]', (button) => {
+      const after = this.view === 'bench' ? benchCursorAfter(button) : undefined;
+      const refusal = this.flow.togglePokemon(button.dataset.pokemon!);
+      this.answer(refusal, 'select');
+      if (refusal === undefined && after) {
+        this.overlay.focus(...after);
+      }
+    });
     on('[data-pack]', (button) => {
       this.answer(this.flow.choosePack(button.dataset.pack! as PackItemId), 'select');
       this.kit?.dress();
@@ -4467,4 +4474,16 @@ function usedInARaid(item: ItemDefinition): string {
     default:
       return '';
   }
+}
+
+/**
+ * Where THE BENCH's cursor goes once the tile pressed has moved, to the slots
+ * or off them: with the Pokémon pressed, wherever it now stands. Left to the
+ * redraw it fell back to the screen's first control, the lead's slot, so a
+ * second Enter took the partner off the team (the overnight retest's key
+ * masher, 23 Nov 2026). Following the Pokémon, a second Enter only undoes the
+ * first.
+ */
+function benchCursorAfter(button: HTMLElement): readonly string[] {
+  return [`[data-pokemon="${button.dataset.pokemon!}"]`];
 }
