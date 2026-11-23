@@ -53,6 +53,27 @@ describe('routeTo', () => {
     expect(route.at(-1)).toEqual({ x: 1, y: 4 });
   });
 
+  it('goes round a hunter or a roaming figure where it can, and plans through one in a one-tile gap', () => {
+    // A beaten hunter stood beside the X in SMUGGLERS' COVE, in the only way
+    // out, and the walk said "no way" without a frame passing, so it never
+    // moved (scenario loop, 23 Nov 2026). The driver replans a step that does
+    // not land, so a route through somebody who will move is a route.
+    const gap = ['#S..', '###.', '#...'];
+    globalThis.routeWorld = world(gap);
+    globalThis.routeWorld.isHunterOnCurrentMap = () => true;
+    globalThis.routeWorld.hunterState = { position: { x: 2, y: 0 } };
+    const keys = eval(routeTo('globalThis.routeWorld', { x: 1, y: 2 }));
+    expect(keys).toEqual(['ArrowRight', 'ArrowRight', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowLeft']);
+    // With a way round, the figure is gone round.
+    const open = ['#S..#', '#...#', '#...#'];
+    globalThis.routeWorld = world(open);
+    globalThis.routeWorld.currentMap = { entities: [{ id: 'roamer' }] };
+    globalThis.routeWorld.entityHeldTiles = () => [{ x: 2, y: 0 }];
+    const around = eval(routeTo('globalThis.routeWorld', { x: 3, y: 0 }));
+    expect(around).not.toContain(undefined);
+    expect(around[0]).toBe('ArrowDown');
+  });
+
   it('crosses an exit only where nothing else gets through', () => {
     const neck = ['#S#', '#E#', '#.#'];
     expect(walked(neck, { x: 1, y: 2 })).toEqual([{ x: 1, y: 1 }, { x: 1, y: 2 }]);
