@@ -765,16 +765,24 @@ export class BattleScene extends Phaser.Scene {
       return { busy: 'starting' };
     }
     const cursor = this.mode === 'make-room' ? this.selectedCommand - this.makeRoomPage * 6 : this.selectedCommand;
-    const side = (unit: BattleCombatant | null) =>
-      unit
-        ? {
-            name: unit.pokemon.name,
-            level: unit.pokemon.level,
-            hp: unit.currentHp,
-            maxHp: unit.pokemon.maxHp,
-            status: unit.currentHp <= 0 ? 'fainted' : (unit.primaryStatus ?? null),
-          }
-        : null;
+    // The HP the plate shows, not the engine's: a turn is resolved before its
+    // lines are read, so the engine's HP has already fallen while the box still
+    // says "Threw a POKé BALL!", and three AI playtesters on 23 Nov 2026 each
+    // reported the hit landing before it was announced. The plate counts down
+    // with the line (`animateHpDelta`).
+    const side = (unit: BattleCombatant | null, key: string) => {
+      if (!unit) {
+        return null;
+      }
+      const hp = this.displayed.get(key) === unit.pokemon ? (this.displayedHp.get(key) ?? unit.currentHp) : unit.currentHp;
+      return {
+        name: unit.pokemon.name,
+        level: unit.pokemon.level,
+        hp,
+        maxHp: unit.pokemon.maxHp,
+        status: hp <= 0 ? 'fainted' : (unit.primaryStatus ?? null),
+      };
+    };
     const commands = this.commandTexts.filter((text) => text.visible).map((text) => text.text.replace(/\s+/g, ' ').trim());
     return {
       mode: this.mode,
@@ -785,8 +793,8 @@ export class BattleScene extends Phaser.Scene {
         : null,
       trainer: this.trainer?.name ?? null,
       outcome: this.state.outcome,
-      yours: side(this.state.player),
-      yoursPartner: side(this.state.playerPartner),
+      yours: side(this.state.player, plateKey('player', 0)),
+      yoursPartner: side(this.state.playerPartner, plateKey('player', 1)),
       moves: this.state.player.moves.map((move) => ({
         name: move.base.name,
         type: move.base.type,
@@ -806,8 +814,8 @@ export class BattleScene extends Phaser.Scene {
                 }).effectiveness,
               ),
       })),
-      foe: side(this.state.enemy),
-      foePartner: side(this.state.enemyPartner),
+      foe: side(this.state.enemy, plateKey('enemy', 0)),
+      foePartner: side(this.state.enemyPartner, plateKey('enemy', 1)),
       foesLeft: this.trainer ? this.trainer.party.filter((pokemon) => !pokemon.isFainted).length : null,
     };
   }
