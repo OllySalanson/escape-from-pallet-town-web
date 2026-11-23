@@ -89,6 +89,12 @@ game polls (`src/game/input/KeyPresses.ts`); it used not to, at any frame rate -
 movement read `isDown`, and Phaser clears `JustDown` on key up. `raid.mjs --taps`
 plays the whole raid on such presses.
 
+Outside test mode a page playing a raid or a bout asks the browser's "Leave site?"
+before it is reloaded, navigated or closed (`game/run/leaveGuard.ts`): a driver
+that does any of those to a plain build mid-raid gets `Page.javascriptDialogOpening`
+and must answer it with `Page.handleJavaScriptDialog`, or the reload never happens.
+Test mode, the URL flag or a build made with `VITE_EPTW_TEST_MODE`, never asks.
+
 Enter works a focused DOM control, so a driver can play the lobby's screens the
 way a player does rather than calling `.click()`: `keyDescription` gives Enter a
 `text`, which is what makes Chromium run a key's default action.
