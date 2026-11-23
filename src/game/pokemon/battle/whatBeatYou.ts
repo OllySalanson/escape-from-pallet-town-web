@@ -26,6 +26,12 @@ interface Mover {
   readonly move?: string;
 }
 
+interface FoeHit {
+  readonly name: string;
+  readonly move: string;
+  readonly superEffective: boolean;
+}
+
 interface Fact {
   readonly line: string;
   /** How much it cost the player, to choose between facts: turns lost, roughly. */
@@ -58,6 +64,10 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
   /** Damage dealt by each side's hits, to say how lopsided the trade was. */
   const dealt = { player: { total: 0, hits: 0 }, enemy: { total: 0, hits: 0 } };
   const foeHitters = new Map<string, number>();
+  /** The foe's last damaging move, and whether it landed for double. */
+  let lastFoeHit = null as FoeHit | null;
+  /** The hit that knocked out the player's last Pokémon to fall. */
+  let finisher = null as FoeHit | null;
 
   for (const turn of turns) {
     const weatherThisTurn = current;
@@ -77,6 +87,7 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
             dealt[event.user].hits += 1;
             if (event.user === 'enemy') {
               foeHitters.set(event.name, (foeHitters.get(event.name) ?? 0) + event.damage);
+              lastFoeHit = { name: event.name, move: event.move, superEffective: false };
             }
           }
           break;
@@ -88,6 +99,9 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
           break;
         case 'effectiveness':
           if (lastMover?.user === 'enemy' && event.multiplier > 1 && event.name === undefined) {
+            if (lastFoeHit) {
+              lastFoeHit = { ...lastFoeHit, superEffective: true };
+            }
             superHits += 1;
             superMoves.set(lastMover.move ?? '', (superMoves.get(lastMover.move ?? '') ?? 0) + 1);
           }
@@ -118,6 +132,11 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
         case 'missed':
           if (event.user === 'player' && accuracyDropped !== null) {
             missesAfterDrop += 1;
+          }
+          break;
+        case 'fainted':
+          if (event.user === 'player' && lastMover?.user === 'enemy' && lastFoeHit) {
+            finisher = lastFoeHit;
           }
           break;
         case 'weather-set':
@@ -227,13 +246,24 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
   }
   if (facts.length === 0 && foeFirst >= Math.max(3, Math.ceil(turnsPlayed * 0.75))) {
     const [name] = [...foeFirstNames.entries()].sort((a, b) => b[1] - a[1]);
-    facts.push({
-      line:
-        foeFirstNames.size === 1
-          ? `Speed: ${name[0].toUpperCase()} moved first ${times(foeFirst)}.`
-          : `Speed: they moved first ${times(foeFirst)}, ${name[0].toUpperCase()} most.`,
-      weight: foeFirst,
-    });
+    // Who moved first is beside the point when somebody else knocked you out:
+    // 'Speed: STARYU moved first 6 times' was said over a fight whose Staryu the
+    // player had beaten, lost to a Horsea's critical, super-effective Bubble (the
+    // overnight retest, 23 Nov 2026). The hit that ended it is the fact then.
+    if (finisher && finisher.name !== name[0]) {
+      facts.push({
+        line: `Knocked out by ${finisher.name.toUpperCase()}'s ${finisher.move.toUpperCase()}${finisher.superEffective ? ', super effective' : ''}.`,
+        weight: foeFirst,
+      });
+    } else {
+      facts.push({
+        line:
+          foeFirstNames.size === 1
+            ? `Speed: ${name[0].toUpperCase()} moved first ${times(foeFirst)}.`
+            : `Speed: they moved first ${times(foeFirst)}, ${name[0].toUpperCase()} most.`,
+        weight: foeFirst,
+      });
+    }
   }
   const [best] = facts.sort((a, b) => b.weight - a.weight);
   return best?.line ?? null;

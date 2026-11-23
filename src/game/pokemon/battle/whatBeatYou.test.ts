@@ -127,6 +127,28 @@ describe('what beat you', () => {
     expect(whatBeatYou(pair)).toBe('Speed: they moved first 4 times, STARYU most.');
   });
 
+  it('names the hit that knocked you out when another foe did the moving first', () => {
+    // 'Speed: STARYU moved first 6 times' over a fight whose Staryu the player
+    // had beaten, lost to a Horsea's super-effective Bubble (the overnight
+    // retest, 23 Nov 2026).
+    const turns: BattleEvent[][] = [
+      ...Array.from({ length: 5 }, () => [foeMoves('Staryu', 'Tackle'), mine('Charmander', 'Scratch')]),
+      [{ type: 'fainted', user: 'enemy', name: 'Staryu' }],
+      [
+        { type: 'used-move', user: 'enemy', name: 'Horsea', move: 'Bubble', damage: 15 },
+        { type: 'effectiveness', multiplier: 2 },
+        { type: 'fainted', user: 'player', name: 'Charmander' },
+      ],
+    ];
+    expect(whatBeatYou(turns)).toBe("Knocked out by HORSEA's BUBBLE, super effective.");
+    // The one who kept moving first and finished it is still the Speed line.
+    const same: BattleEvent[][] = [
+      ...Array.from({ length: 4 }, () => [foeMoves('Staryu', 'Tackle'), mine('Charmander', 'Scratch')]),
+      [{ type: 'used-move', user: 'enemy', name: 'Staryu', move: 'Tackle', damage: 5 }, { type: 'fainted', user: 'player', name: 'Charmander' }],
+    ];
+    expect(whatBeatYou(same)).toMatch(/^Speed: STARYU moved first/);
+  });
+
   it('names the player\'s hits that were resisted, ahead of who moved first', () => {
     // A lone Charmander into a Water gym: every Ember resisted, and the foe
     // faster too. The matchup is the lesson, not the speed.
