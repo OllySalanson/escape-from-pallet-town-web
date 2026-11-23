@@ -151,7 +151,7 @@ export function buildDefeatSequence(report: ExtractionReport): DefeatSequence | 
           : `The last of your ${fallen.length} to fall. You went down beside it.`,
       prompt: ADVANCE_PROMPT,
     },
-    report.lostTo === 'wild' ? lostToTheWild(takenNames) : strippedByTrainer(takenNames),
+    report.lostTo === 'wild' ? lostToTheWild(takenNames, report.kitAtBase) : strippedByTrainer(takenNames, report.kitAtBase),
     heldBeat(heldNames, report.partner?.name, report.secureFilledForYou === true),
   ];
 
@@ -193,15 +193,23 @@ function heldBeat(heldNames: string | null, partnerName: string | undefined, fil
   };
 }
 
+/**
+ * Said straight after "gone for good" when Oak's starter kit has put things
+ * back at base (`ExtractionReport.kitAtBase`), so finding a Satchel and balls
+ * at home is never the game contradicting itself.
+ */
+const kitLine = (kitAtBase: string | undefined): string =>
+  kitAtBase === undefined ? '' : ` Oak's starter kit puts ${kitAtBase} back at base.`;
+
 /** A trainer won, so somebody was there to go through the bag. */
-function strippedByTrainer(takenNames: string | null): DefeatBeat {
+function strippedByTrainer(takenNames: string | null, kitAtBase: string | undefined): DefeatBeat {
   return {
     id: 'taken',
     headline: takenNames === null ? 'NOTHING LEFT TO TAKE.' : 'THEY STRIPPED YOU.',
     detail:
       takenNames === null
         ? 'Everything you carried out was already protected. They went through your bag for nothing.'
-        : `${capitalise(takenNames)} lifted off you and gone for good.`,
+        : `${capitalise(takenNames)} lifted off you and gone for good.${kitLine(kitAtBase)}`,
     prompt: ADVANCE_PROMPT,
   };
 }
@@ -210,14 +218,14 @@ function strippedByTrainer(takenNames: string | null): DefeatBeat {
  * A wild Pokemon won, and a Rattata goes through nobody's bag (playtest 43
  * B6): the pack is simply lost with the raid, so nobody is blamed for it.
  */
-function lostToTheWild(takenNames: string | null): DefeatBeat {
+function lostToTheWild(takenNames: string | null, kitAtBase: string | undefined): DefeatBeat {
   return {
     id: 'taken',
     headline: takenNames === null ? 'NOTHING WAS LOST.' : 'YOUR PACK IS LOST.',
     detail:
       takenNames === null
         ? 'Everything you carried out was already protected.'
-        : `${capitalise(takenNames)} went down with you, gone for good.`,
+        : `${capitalise(takenNames)} went down with you, gone for good.${kitLine(kitAtBase)}`,
     prompt: ADVANCE_PROMPT,
   };
 }

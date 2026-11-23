@@ -22,6 +22,8 @@ interface WipeOptions {
   readonly lastStand?: Pokemon;
   readonly lostTo?: 'wild' | 'trainer';
   readonly secureFilledForYou?: boolean;
+  /** What Oak's starter kit put back at base. */
+  readonly restocked?: readonly { readonly itemId: string; readonly quantity: number }[];
 }
 
 /**
@@ -77,6 +79,7 @@ function wipedReport(
     ...(options.lastStandIndex === undefined ? {} : { lastStand: party[options.lastStandIndex] }),
     ...(options.lastStand === undefined ? {} : { lastStand: options.lastStand }),
     ...(options.lostTo ? { lostTo: options.lostTo } : {}),
+    ...(options.restocked ? { restocked: options.restocked } : {}),
     saved: true,
   });
 }
@@ -214,6 +217,29 @@ describe('the defeat sequence a lost raid opens on', () => {
     expect(taken?.headline).toBe('YOUR PACK IS LOST.');
     expect(taken?.detail).toBe('Charmander and 2 Potions went down with you, gone for good.');
     expect(`${taken?.headline} ${taken?.detail}`).not.toMatch(/\bthey\b|stripped|lifted/i);
+  });
+
+  /**
+   * Five of the overnight retest's players (23 Nov 2026) read "gone for good"
+   * and then found the same Satchel and Poké Balls at base: the kit that put
+   * them back was named only under the ledger, which nobody read.
+   */
+  it('says, with the loss, what Oak\'s starter kit puts back at base', () => {
+    const party = [new Pokemon(CHARMANDER, 12)];
+    const kit = [
+      { itemId: 'poke-ball', quantity: 3 },
+      { itemId: 'satchel', quantity: 1 },
+    ];
+    const wild = buildDefeatSequence(
+      wipedReport(party, [{ itemId: 'poke-ball', quantity: 3 }], { lastStandIndex: 0, lostTo: 'wild', restocked: kit }),
+    );
+    expect(wild?.beats[1].detail).toBe(
+      "Charmander and 3 Poké Balls went down with you, gone for good. Oak's starter kit puts 3 Poké Balls and 1 Satchel back at base.",
+    );
+    const trainer = buildDefeatSequence(
+      wipedReport(party, [{ itemId: 'poke-ball', quantity: 3 }], { lastStandIndex: 0, lostTo: 'trainer', restocked: kit }),
+    );
+    expect(trainer?.beats[1].detail).toMatch(/gone for good\. Oak's starter kit puts 3 Poké Balls and 1 Satchel back at base\.$/);
   });
 
   it('still says a trainer took it when a trainer won', () => {
