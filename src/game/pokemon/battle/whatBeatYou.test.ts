@@ -44,6 +44,27 @@ describe('what beat you', () => {
     expect(whatBeatYou(turns)).toBeNull();
   });
 
+  it('names poison wearing yours down, and its cure, rather than who moved first', () => {
+    // 'Speed: WEEDLE moved first 4 times' over a Charmander poisoned at 13/22
+    // told the friend nothing to do (AI playtest, 23 Nov 2026).
+    const tick: BattleEvent = { type: 'status-damage', user: 'player', name: 'Charmander', status: 'poison', damage: 2 };
+    const turns: BattleEvent[][] = [
+      [foeMoves('Weedle', 'Poison Sting'), mine('Charmander', 'Scratch')],
+      [foeMoves('Weedle', 'Poison Sting'), mine('Charmander', 'Scratch'), tick],
+      [foeMoves('Weedle', 'Poison Sting'), mine('Charmander', 'Scratch'), tick],
+      [foeMoves('Weedle', 'Poison Sting'), mine('Charmander', 'Scratch'), tick],
+    ];
+    expect(whatBeatYou(turns)).toBe('Poison: it took 6 HP off yours over 3 turns. An Antidote or a Pecha Berry cures it.');
+  });
+
+  it('counts only what a status took off your side, and once is not a reason', () => {
+    const foeTick: BattleEvent = { type: 'status-damage', user: 'enemy', name: 'Weedle', status: 'burn', damage: 3 };
+    const mineTick: BattleEvent = { type: 'status-damage', user: 'player', name: 'Pidgey', status: 'burn', damage: 3 };
+    expect(whatBeatYou([[foeTick], [foeTick], [foeTick]])).toBeNull();
+    expect(whatBeatYou([[mineTick]])).toBeNull();
+    expect(whatBeatYou([[mineTick], [mineTick]])).toBe('Burn: it took 6 HP off yours over 2 turns. A Rawst Berry cures it.');
+  });
+
   it('names turns lost to sleep and paralysis', () => {
     const turns: BattleEvent[][] = [
       [foeMoves('Poliwag', 'Hypnosis'), { type: 'status-applied', user: 'player', name: 'Pikachu', status: 'sleep' }],
