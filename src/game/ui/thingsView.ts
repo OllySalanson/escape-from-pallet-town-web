@@ -26,7 +26,7 @@ import {
   type ItemDefinition,
 } from '../items';
 import { canLearnFromMachine } from '../pokemon/machines';
-import { evolutionByStone, type Pokemon } from '../pokemon';
+import { evolutionByStone, stoneUsers, type Pokemon } from '../pokemon';
 import { itemIcon } from './icons';
 import { escapeAttribute, pixelColumns, pixelGrid, pixelTag, pixelWindow, COLUMN_MEASURES } from './pixelUi';
 
@@ -333,8 +333,18 @@ export function stoneTargetsBody(item: ItemDefinition, pokemon: readonly { reado
     })
     .join('');
   const able = pokemon.filter(({ pokemon: one }) => evolutionByStone(one.base.id, item.id) !== undefined).length;
+  // With nobody able the cursor has no row to stand on, so no row's help is
+  // ever shown and the list just said NOT ABLE twice with no reason (a Fire
+  // Stone with a Charmander and a Raichu, scenario loop, 23 Nov 2026).
+  const users = stoneUsers(item.id).map((species) => species.name.toUpperCase());
+  const whoFor =
+    able === 0 && pokemon.length > 0 && users.length > 0
+      ? `<p class="px-wrap px-empty">Nobody you have can use a ${escapeAttribute(item.displayName)}. It evolves ${
+          users.length === 1 ? users[0] : `${users.slice(0, -1).join(', ')} and ${users[users.length - 1]}`
+        }.</p>`
+      : '';
   return `<main class="px-body raid-party-layout">${pixelWindow(
-    `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${rows || '<p class="px-empty">You have no Pokémon.</p>'}</div>`,
+    `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${rows || '<p class="px-empty">You have no Pokémon.</p>'}</div>${whoFor}`,
     { className: 'raid-pockets', heading: `Use ${item.displayName} on`, note: `${able} able` },
   )}</main>`;
 }
