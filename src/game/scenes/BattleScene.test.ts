@@ -2313,11 +2313,12 @@ describe('a catch the pack has no room for', () => {
     expect(bag.count('potion')).toBe(17);
     expect(bag.count('poke-ball')).toBe(1);
     // Every command is back: fighting on is a way forward, and fleeing is only
-    // one of five.
+    // one of five. The cursor is on BALL, where the player left it: on FIGHT,
+    // a SPACE more than the panel needed attacked the Pokémon being caught.
     expect((scene as unknown as { mode: string }).mode).toBe('main');
     expect(read(renderedTexts).slice(-5).map(({ text }) => text)).toEqual([
-      '\u25b6 FIGHT',
-      '  BALL x1',
+      '  FIGHT',
+      '\u25b6 BALL x1',
       '  POKéMON',
       '  ITEM x17',
       expect.stringContaining('RUN'),

@@ -2099,7 +2099,11 @@ export class BattleScene extends Phaser.Scene {
     this.heldBallId = undefined;
     this.pendingMakeRoom = false;
     this.mode = 'main';
-    this.selectedCommand = 0;
+    // Back on BALL, the command that asked, as every other way back to the
+    // menu is. On FIGHT, one SPACE more than the panel needed used the first
+    // move on the Pokémon the player was trying to catch: a Pikachu on 4 HP
+    // fainted to EMBER (scenario loop, 23 Nov 2026).
+    this.selectedCommand = this.lastMainCommand;
     this.showCommands();
     audioManager.play('cancel');
   }
