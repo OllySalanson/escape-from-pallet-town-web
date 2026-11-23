@@ -781,6 +781,17 @@ export const makeRoomPromptLayout = { x: BATTLE_PANEL.x + PANEL_INSET_X, y: 4 } 
 export const makeRoomRowLayout = partyRowLayout;
 
 /**
+ * The page mark at the prompt's end when the pack is more than one page: '1/2 ▼'.
+ * Without it the first page read as the whole pack, and a catch in SAFARI MARSH
+ * dropped an Antidote before the four-square RAID PACK on the next page was
+ * ever seen (AI playtest, 22 Nov 2026). Empty for a pack that fits.
+ */
+export const makeRoomPageNote = (page: number, rows: number): string => {
+  const pages = Math.ceil(rows / MAKE_ROOM_PAGE);
+  return pages > 1 ? `${page + 1}/${pages} ${page + 1 < pages ? '▼' : '▲'}` : '';
+};
+
+/**
  * The row that changes nothing, spelled out rather than left to Escape.
  *
  * Declining has to be as visible as dropping: it is the answer for a player who

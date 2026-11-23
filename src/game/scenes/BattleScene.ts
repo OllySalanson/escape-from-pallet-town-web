@@ -217,6 +217,7 @@ import {
   MAKE_ROOM_COLUMNS,
   MAKE_ROOM_INVITE,
   MAKE_ROOM_PAGE,
+  makeRoomPageNote,
   ROW_LIST_PAGE,
   rowListPage,
   rowListPageNote,
@@ -1957,15 +1958,19 @@ export class BattleScene extends Phaser.Scene {
     this.selectedCommand = Math.max(0, Math.min(this.selectedCommand, rows.length - 1));
     this.makeRoomPage = Math.floor(this.selectedCommand / MAKE_ROOM_PAGE);
     const start = this.makeRoomPage * MAKE_ROOM_PAGE;
+    // Which page, at the prompt's right end, when the pack runs to more than one.
+    const pageNote = makeRoomPageNote(this.makeRoomPage, rows.length);
+    const noteWidth = pageNote ? this.captionWidth(pageNote) + 6 : 0;
     container.add(
       this.add.text(
         makeRoomPromptLayout.x,
         COMMAND_Y + makeRoomPromptLayout.y,
-        this.fitCaption(
+        fitCaption(
           packRoomPrompt(
             rows[this.selectedCommand],
             this.legendThrow === 'offered' ? this.state.enemy.pokemon.name : undefined,
           ),
+          (line) => this.captionWidth(line) <= CAPTION_LINE_WIDTH - noteWidth,
         ),
         {
           fontFamily: BATTLE_FONT,
@@ -1974,6 +1979,17 @@ export class BattleScene extends Phaser.Scene {
         },
       ),
     );
+    if (pageNote) {
+      container.add(
+        this.add
+          .text(makeRoomPromptLayout.x + CAPTION_LINE_WIDTH, COMMAND_Y + makeRoomPromptLayout.y, pageNote, {
+            fontFamily: BATTLE_FONT,
+            fontSize: CAPTION_FONT_SIZE,
+            color: PANEL_GUIDANCE_INK,
+          })
+          .setOrigin(1, 0),
+      );
+    }
     const page = rows.slice(start, start + MAKE_ROOM_PAGE);
     const form = packRoomRowForm(page, this.cursorGutter(CAPTION_FONT_SIZE), (row) => this.captionWidth(row));
     this.commandTexts = page.map((choice, offset) => {
