@@ -170,6 +170,22 @@ describe('what beat you', () => {
     expect(whatBeatYou(same)).toMatch(/^Speed: STARYU moved first/);
   });
 
+  it('does not blame a swimmer racing in the rain for a fight another foe finished', () => {
+    // 'Rain and Swift Swim: HORSEA moved first twice' over a fight whose Horsea
+    // fell first, lost to Starmie's Swift (the overnight retest, 23 Nov 2026).
+    const turns: BattleEvent[][] = [
+      [{ type: 'ability', user: 'enemy', slot: 1, name: 'Horsea', ability: 'SWIFT SWIM', effect: 'quickened' }],
+      [foeMoves('Staryu', 'Rain Dance'), { type: 'weather-set', weather: 'rain', byMove: true }, mine('Squirtle', 'Tackle')],
+      [foeMoves('Horsea', 'Bubble'), mine('Squirtle', 'Tackle')],
+      [foeMoves('Horsea', 'Bubble'), mine('Squirtle', 'Tackle'), { type: 'fainted', user: 'enemy', name: 'Horsea' }],
+      [
+        { type: 'used-move', user: 'enemy', name: 'Starmie', move: 'Swift', damage: 9 },
+        { type: 'fainted', user: 'player', name: 'Squirtle' },
+      ],
+    ];
+    expect(whatBeatYou(turns)).toBe("Knocked out by STARMIE's SWIFT.");
+  });
+
   it('names the player\'s hits that were resisted, ahead of who moved first', () => {
     // A lone Charmander into a Water gym: every Ember resisted, and the foe
     // faster too. The matchup is the lesson, not the speed.
