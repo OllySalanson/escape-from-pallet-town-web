@@ -4232,7 +4232,7 @@ export class HubScene extends Phaser.Scene {
         const name = escapeAttribute(stored.pokemon.name);
         const wiring =
           refusal === undefined
-            ? `data-day-care-leave="${stored.id}" data-help="Leave ${name} with him. It grows half a level with every raid you go on."`
+            ? `data-day-care-leave="${stored.id}" data-help="Leave ${name} with him. It grows half a level with every raid of ${DAY_CARE_LEAST_RAID_MS / 1000} seconds or more."`
             : `data-refused="${escapeAttribute(refusal)}" aria-disabled="true" data-help="${escapeAttribute(refusal)}"`;
         // FireRed's PC box, as Bill's PC is: the icon at its health's pace over
         // its level and bar, the ones he would take first, its box said to a
