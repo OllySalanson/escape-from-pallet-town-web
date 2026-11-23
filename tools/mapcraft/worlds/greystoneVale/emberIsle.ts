@@ -189,9 +189,15 @@ export function emberIsle(): MapcraftResult {
           name: 'Lookout',
           look: 'rocket-grunt',
           facing: 'left',
+          // The raid clock's own readings, not "half past two", which a player
+          // raiding at night read as the time of day, and the island's own way
+          // off for whoever misses it (scenario loop, 23 Nov 2026). Readings
+          // hold in a raid shortened by a heal too: a sailing is timed against
+          // the clock as drawn (`WorldScene.tideMs`) and a timed exit is moved
+          // by the same shortfall (`authoredTimeIn`).
           lines: [
-            'The skiff runs back to the cove till our boat sails. Half past two, and not a minute after.',
-            'Miss it and you are here till the burners go.',
+            'The skiff runs back to the cove until your clock reads 2:30, and not a second after.',
+            'Miss it and you wait for the CINDER BOAT off the west shore, from when your clock reads 1:40.',
           ],
         },
         {
