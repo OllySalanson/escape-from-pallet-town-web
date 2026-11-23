@@ -21,4 +21,23 @@ describe('game lifecycle', () => {
     expect(game.destroy).toHaveBeenCalledWith(true);
     expect(host).not.toHaveProperty('__escapeFromPalletTownGame__');
   });
+
+  it("takes away index.html's loading line when the game mounts, so it never sits over the canvas", () => {
+    const asked: string[] = [];
+    const removed = vi.fn();
+    vi.stubGlobal('document', {
+      querySelectorAll: (selector: string) => {
+        asked.push(selector);
+        return selector.split(',').some((part) => part.trim() === '#app > .boot-wait') ? [{ remove: removed }] : [];
+      },
+    });
+    try {
+      mountGame(() => ({ destroy: vi.fn() }) as never, {});
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    expect(asked).toHaveLength(1);
+    expect(removed).toHaveBeenCalledTimes(1);
+  });
 });

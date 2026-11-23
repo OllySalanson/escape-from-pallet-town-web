@@ -52,7 +52,10 @@
     />
   </head>
   <body>
-    <div id="app"></div>
+    <!-- Said while the game's script is still on its way: on a slow line that
+         is most of a minute, and an empty frame read as a broken page (break-it
+         test, 23 Nov 2026). Mounting the game sweeps it away (gameLifecycle.ts). -->
+    <div id="app"><p class="boot-wait" role="status">LOADING THE GAME…</p></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

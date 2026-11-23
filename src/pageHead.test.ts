@@ -45,4 +45,10 @@ describe('the page head', () => {
       String(published.readUInt32BE(20)),
     ]);
   });
+
+  it('says the game is loading in the frame before its script arrives', () => {
+    // On a slow line the script is most of a minute behind the stylesheet, and
+    // the frame stood empty all that time (break-it test, 23 Nov 2026).
+    expect(html).toMatch(/<div id="app"><p class="boot-wait" role="status">LOADING THE GAME…<\/p><\/div>/);
+  });
 });

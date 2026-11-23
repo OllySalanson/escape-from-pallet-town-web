@@ -63,6 +63,16 @@ body {
   position: relative;
 }
 
+/* The one thing in the frame before the game's script has arrived (index.html),
+   gone the moment the game mounts. */
+.boot-wait {
+  margin: 0;
+  font-family: 'Orange Kid', monospace;
+  font-size: 32px;
+  letter-spacing: 1px;
+  color: var(--menu-muted);
+}
+
 /* The layer every DOM screen is appended to, sized in script against the
    browser window rather than against the canvas - see display/menuStage.ts for
    why the two boxes are separate, and what each of them is for. It is a sibling
