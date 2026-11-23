@@ -1976,7 +1976,14 @@ export class HubScene extends Phaser.Scene {
     on('[data-day-care-leave]', (button) => this.leaveAtDayCare(button.dataset.dayCareLeave!));
     // A trade of his is for good, so the row asks before it is made, as Bill's
     // barters do: the first press arms it, and the second is a different button.
-    on('[data-trade]', (button) => rerender(() => { this.tradeArmed = button.dataset.trade; this.armRelease(); }));
+    // The chip that asked stays on the card, so the cursor would stay on it,
+    // scrolled out of sight under the card's MORE, and a second press asked
+    // again rather than reaching the bar (scenario loop, 23 Nov 2026). It goes
+    // to KEEP IT, where the shelf's and the barters' own questions leave it.
+    on('[data-trade]', (button) => {
+      rerender(() => { this.tradeArmed = button.dataset.trade; this.armRelease(); });
+      this.overlay.focus('[data-deal-cancel]');
+    });
     on('[data-trade-confirm]', (button, event) => {
       if (!this.clickedTooSoon(event, '[data-deal-cancel]')) this.makeTrade(button.dataset.tradeConfirm!);
     });
