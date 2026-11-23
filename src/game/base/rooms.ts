@@ -304,7 +304,7 @@ function HOME_PROPS(): Record<HomePropName, PropDefinition> {
 /**
  * THE HARBOUR BOUTIQUE is FireRed's own Poké Mart room, dressed as a clothes
  * shop: the wall shelves and racks are where the clothes hang, the glass case
- * holds the dear things, and the clerk keeps the counter by the door. Its
+ * holds the dear things, and the clerk keeps the counter on the left. Its
  * pieces are the Mart's, cut from pret's disassembly onto the areas sheet
  * (`scripts/cut-frlg-areas.mjs`), the same art a player's Poké Mart is.
  */
@@ -1354,7 +1354,7 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
     stairs: [],
   },
   // THE HARBOUR BOUTIQUE (`look/wearables.ts`): a plain shopkeeper behind the
-  // counter by the door, and the shelves and racks of clothes beyond.
+  // counter on the left, and the shelves and racks of clothes beyond.
   {
     id: 'boutique',
     screen: 'boutique',
@@ -1962,7 +1962,7 @@ function drawBoutique(room: BaseRoom): Drawn {
         { x: 8, y: 3 },
         { x: 10, y: 3 },
       ],
-      lines: ['Caps, coats and dresses on every rail - the shopkeeper by the door sells them.'],
+      lines: ['Caps, coats and dresses on every rail - the shopkeeper sells them.'],
     },
     {
       name: 'THE GLASS CASE',
