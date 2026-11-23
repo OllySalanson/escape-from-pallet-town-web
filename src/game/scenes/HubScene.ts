@@ -3713,7 +3713,10 @@ export class HubScene extends Phaser.Scene {
         // has to fit, and this pane is the narrow half of the screen: "He sells
         // a stranger nothing" came out as "HE SELLS A STRANGER NOTHIN". Why he
         // is selling no more is the standing pane's line, right above it.
-        note: standing.ration === 0 ? 'Potions and Balls for now' : `${left} of ${standing.ration} left till you raid`,
+        // Potions and Balls are off the ration, and "2 OF 2 LEFT TILL YOU RAID"
+        // over a shelf that starts with them read as two Balls a raid (break-it
+        // test, 23 Nov 2026). Bill's own words: "and 2 other things till you raid".
+        note: standing.ration === 0 ? 'Potions and Balls for now' : `${left} other${left === 1 ? '' : 's'} till you raid`,
       },
     );
 
