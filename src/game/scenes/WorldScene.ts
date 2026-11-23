@@ -5981,6 +5981,19 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   private handleDialogInput(): void {
+    // ESC is past everything still to be said, as it is at base, where every
+    // talk with more to come says [ESC] SKIP: a friend who learnt it there
+    // pressed it on the first raid's briefing and nothing happened (persona
+    // playtest, 23 Nov 2026). What waits on the box - a trainer's fight, the
+    // hunter's - waits on its closing, not on its last line, so it still starts.
+    if (this.keyPresses.justPressed(this.controls.back)) {
+      this.spentPresses.spendHeld(this.directionKeys);
+      audioManager.play('textAdvance');
+      this.dialogBox.dismiss();
+      this.unsolicitedDialog = false;
+      this.seatDialog([]);
+      return;
+    }
     if (!this.isDialogAdvancePressed()) {
       return;
     }
