@@ -396,7 +396,7 @@ describe("the vale's secrets", () => {
      * A gift costs no fight, so it is held under the gym's own bar: led into
      * Misty alone it wins less often than her best team must (three in four,
      * `quarterPuzzle.test.ts`). It is a strong partner, never the answer on its
-     * own. Measured: the Machamp wins 72% alone at Lv 16, 94% at 18.
+     * own. Measured: the Machamp wins 58% alone at Lv 14, 92% at 16 (against her Lv 12 lead).
      */
     it('a Pokemon handed over with no fight is a partner against Misty, never the answer alone', () => {
       for (const reward of SECRETS.flatMap((secret) => secret.rewards)) {
