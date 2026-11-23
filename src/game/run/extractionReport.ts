@@ -674,7 +674,10 @@ function escapeSummary(
   missedGate?: string,
 ): string {
   const lost = missedGate === undefined ? null : `Job unpaid: ${missedGate}.`;
-  const haul = describeGroup(fieldHaul);
+  // A catch of a kind already in the team: "Banked Pidgey. Pidgey, Rattata
+  // ... rode out" named two Pokémon one way (break-it test, 23 Nov 2026).
+  const twice = namesSeenTwice([...fieldHaul.pokemon, ...risked.pokemon]);
+  const haul = describeStakes(fieldHaul, [], null, twice);
   const carried = gear.filter((piece) => piece.fate === 'found');
   // The pack is never protected, so a raid that wore one never took nothing in
   // exposed. What did ride out is named, never counted: "One entry" was ledger
@@ -684,7 +687,7 @@ function escapeSummary(
     ? pack === null
       ? 'Nothing you took in was ever exposed.'
       : `Nothing you took in was exposed but your ${pack.name}.`
-    : `${capitalise(describeStakes(risked, [], pack) ?? '')} rode out unprotected and came home.`;
+    : `${capitalise(describeStakes(risked, [], pack, twice) ?? '')} rode out unprotected and came home.`;
   if (haul === null) {
     // A raid that levelled a Pokemon, or walked a piece of gear out of the
     // field, is not an empty raid - and saying "no new haul" about it was the
@@ -1092,6 +1095,16 @@ function gradeHaul(
  * Exported so the defeat sequence names a loss in the same words the report
  * beneath it uses; two phrasings of one loss is how they drift apart.
  */
+/** Names more than one of `members` answers to, which a sentence must then tell apart by level. */
+function namesSeenTwice(members: readonly { readonly name: string }[]): ReadonlySet<string> {
+  const seen = new Set<string>();
+  const twice = new Set<string>();
+  for (const { name } of members) {
+    (seen.has(name) ? twice : seen).add(name);
+  }
+  return twice;
+}
+
 export function describeGroup(group: ReportGroup): string | null {
   return describeStakes(group, [], null);
 }
@@ -1104,9 +1117,10 @@ function describeStakes(
   group: ReportGroup,
   gear: readonly ReportGear[],
   pack: ReportPack | null,
+  twice: ReadonlySet<string> = new Set(),
 ): string | null {
   const parts = [
-    ...group.pokemon.map((member) => member.name),
+    ...group.pokemon.map((member) => (twice.has(member.name) ? `${member.name} Lv ${member.level}` : member.name)),
     // The catalogue owns the plural, and money is not counted at all: "₽40",
     // never "40 Scrips", which is what this line printed in a playtest.
     // A pack in the list beside the worn one was found on the raid, and named
