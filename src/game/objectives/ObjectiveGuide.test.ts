@@ -871,6 +871,20 @@ describe('the way to the next gym', () => {
     expect(guide.hints).toContain(guide.radio[2]);
   });
 
+  it('says what the leader leads at, and the best of yours, as the challenge box does', () => {
+    // A Lv 6 newcomer was sent at MISTY on a first raid with nothing said of
+    // her Lv 12 until the CHALLENGE (persona playtest, 23 Nov 2026).
+    const guide = buildObjectiveGuide(createFirstContractSession(), {
+      ...here,
+      nextGym: { ...cerulean, levels: { leads: 12, yours: 6 } },
+    });
+    expect(guide.radio[2]).toBe(
+      'The next gym is CERULEAN GYM, to the south, on GULL STRAND: the big building with GYM on its front. MISTY is inside, leading at Lv 12 to your Lv 6.',
+    );
+    const alone = buildObjectiveGuide(createFirstContractSession(), { ...here, nextGym: { ...cerulean, levels: { leads: 12 } } });
+    expect(alone.radio[2]).toMatch(/MISTY is inside, leading at Lv 12\.$/);
+  });
+
   it('is not said once every gym is beaten', () => {
     const guide = buildObjectiveGuide(createFirstContractSession(), here);
 
