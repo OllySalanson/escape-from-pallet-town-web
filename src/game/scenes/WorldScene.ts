@@ -8998,7 +8998,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Storage refused it: tried again at base, so the raid is not settled there
     // as abandoned when it was walked out of (`run/unsavedEnding.ts`).
     if (!contractResult.saved && !settledElsewhere) {
-      holdUnsavedEnding(() => bank().saved);
+      holdUnsavedEnding(() => bank().saved, () => new SaveManager().ownsRaid(raidId));
     }
     this.pendingHubTransition = true;
     const contractPaid = contractResult.granted
@@ -9661,7 +9661,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Storage refused it: tried again at base, so the raid is not settled there
     // as abandoned when the clock ran out on it (`run/unsavedEnding.ts`).
     if (!saved && !settledElsewhere) {
-      holdUnsavedEnding(() => settle().saved);
+      holdUnsavedEnding(() => settle().saved, () => new SaveManager().ownsRaid(session.raidId));
     }
     this.pendingHubTransition = true;
     this.showRunResult(

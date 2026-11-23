@@ -4800,7 +4800,7 @@ export class BattleScene extends Phaser.Scene {
     // Storage refused it: tried again at base, so the raid is not settled there
     // as abandoned when it was lost in this fight (`run/unsavedEnding.ts`).
     if (!saved && !settledElsewhere) {
-      holdUnsavedEnding(() => settle().saved);
+      holdUnsavedEnding(() => settle().saved, () => new SaveManager().ownsRaid(session.raidId));
     }
     flashScreen(this.cameras.main, 220, [239, 68, 68]);
     this.cameras.main.shake(180, 0.009);

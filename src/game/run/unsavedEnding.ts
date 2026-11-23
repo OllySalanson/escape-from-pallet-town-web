@@ -15,13 +15,27 @@
  * closes takes it away, leaving the raid to be settled as abandoned as before.
  */
 
-/** The write that ended this page's raid, waiting for storage to take it. */
-let waiting: (() => boolean) | null = null;
+/** The write that ended this page's raid, waiting for storage to take it, and whether the save still holds that raid. */
+let waiting: { readonly write: () => boolean; readonly stillOurs: () => boolean } | null = null;
 
-/** Holds an ending whose write failed, to be tried again at base. */
-export function holdUnsavedEnding(write: () => boolean): void {
-  waiting = write;
+/**
+ * Holds an ending whose write failed, to be tried again at base. `stillOurs`
+ * says whether the save still has that raid in flight: once it has not -
+ * another window settled it, or storage never took its start - there is
+ * nothing left to write, and a write that can only refuse would otherwise
+ * keep the base from settling anything for the rest of the page's life.
+ */
+export function holdUnsavedEnding(write: () => boolean, stillOurs: () => boolean = () => true): void {
+  waiting = { write, stillOurs };
 }
+
+const answers = (ask: () => boolean): boolean => {
+  try {
+    return ask();
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Tries a held ending again: `none` with nothing held, `saved` once storage
@@ -31,12 +45,11 @@ export function retryUnsavedEnding(): 'none' | 'saved' | 'unsaved' {
   if (waiting === null) {
     return 'none';
   }
-  let saved: boolean;
-  try {
-    saved = waiting();
-  } catch {
-    saved = false;
+  if (!answers(waiting.stillOurs)) {
+    waiting = null;
+    return 'none';
   }
+  const saved = answers(waiting.write);
   if (saved) {
     waiting = null;
     return 'saved';

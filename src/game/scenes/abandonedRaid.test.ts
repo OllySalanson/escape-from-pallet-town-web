@@ -611,7 +611,7 @@ describe('an ending storage refused, held by the page that saw it', () => {
     };
     const bank = () => new SaveManager(storage).bankRun({ pokemon: [], items: [] }, undefined, 15_000, id);
     expect(bank()).toBe(false);
-    holdUnsavedEnding(bank);
+    holdUnsavedEnding(bank, () => new SaveManager(storage).ownsRaid(id));
 
     // Still refusing at base: nothing is settled, and the ending is kept.
     const settle = vi.fn(() => new SaveManager(storage).settleAbandonedRaid());
@@ -623,6 +623,15 @@ describe('an ending storage refused, held by the page that saw it', () => {
     refusing = false;
     expect(settleAtBase(settle)).toBeNull();
     expect(new SaveManager(storage).load()?.raidInFlight).toBeNull();
+    expect(retryUnsavedEnding()).toBe('none');
+  });
+
+  it('lets go of an ending for a raid the save no longer holds, and settles as before', () => {
+    // Another window settled it, or storage never took its start: there is
+    // nothing to write, and the base must not wait on it for ever.
+    holdUnsavedEnding(() => false, () => false);
+    const settle = vi.fn(() => 'abandoned');
+    expect(settleAtBase(settle)).toBe('abandoned');
     expect(retryUnsavedEnding()).toBe('none');
   });
 
