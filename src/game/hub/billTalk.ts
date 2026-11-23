@@ -87,7 +87,10 @@ export const STRANGER_STARTED = "I've heard of you. Not enough yet.";
 export function strangerWayIn(pointsShort: number, started = false): string {
   const jobs = Math.ceil(pointsShort / STANDING_PER_CONTRACT);
   const more = started ? ' more' : '';
-  return `Bank ${jobs}${more} ${jobs === 1 ? 'job' : 'jobs'} off Oak's board, or beat a boss, and I'll sell you more.`;
+  // In the list's own unit too: its header counts points ('0 POINTS · 6 MORE FOR
+  // REGULAR'), and a friend could not tell whether 3 jobs was 6 points or a
+  // second rule (AI playtest, 23 Nov 2026).
+  return `Bank ${jobs}${more} ${jobs === 1 ? 'job' : 'jobs'} off Oak's board - ${STANDING_PER_CONTRACT} points apiece on my list - or beat a boss, and I'll sell you more.`;
 }
 
 /**

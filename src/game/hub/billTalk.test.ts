@@ -138,7 +138,7 @@ describe('Bill from the mat', () => {
     expect(stranger.lines[0]).toContain("I don't know you");
     expect(stranger.lines[1]).toBe('You have ₽40. Potions and Poké Balls I sell anybody, the rest once I know you.');
     // What gets him to sell more, counted.
-    expect(stranger.lines[2]).toBe("Bank 3 jobs off Oak's board, or beat a boss, and I'll sell you more.");
+    expect(stranger.lines[2]).toBe("Bank 3 jobs off Oak's board - 2 points apiece on my list - or beat a boss, and I'll sell you more.");
     expect(stranger.question).toBe('See my whole list?');
     // One count of jobs, not 'a job' and then '3 jobs' (AI playtest, 22 Nov 2026).
     expect(stranger.lines.join(' ').match(/\bjobs?\b/g)).toHaveLength(1);
@@ -146,7 +146,7 @@ describe('Bill from the mat', () => {
     // Two jobs banked is not yet a regular, and he says he has counted them.
     const started = billFromTheMat(counter({ money: 40 }, { standingContractsBanked: 2 }));
     expect(started.lines[0]).not.toContain("I don't know you");
-    expect(started.lines[2]).toBe("Bank 1 more job off Oak's board, or beat a boss, and I'll sell you more.");
+    expect(started.lines[2]).toBe("Bank 1 more job off Oak's board - 2 points apiece on my list - or beat a boss, and I'll sell you more.");
 
     const partner = billFromTheMat(counter({ money: 40 }, PARTNER, { rationUsed: 1 }));
     expect(partner.lines).toHaveLength(2);
