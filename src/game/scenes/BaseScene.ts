@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { thingLine } from '../base/thingLine';
+import { looksTouchOnly, TOUCH_ONLY_WALK_HINT } from '../input/keyboardSeen';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
 import {
   nextTileFromDirection,
@@ -4303,6 +4304,11 @@ export class BaseScene extends Phaser.Scene {
       }
       if (!partner && this.canFishAt(facing)) {
         return '[SPACE] FISH';
+      }
+      // A touch-only device is told it needs a keyboard, over the partner too:
+      // it cannot press SPACE either, and CONTINUE stands the partner in front.
+      if (looksTouchOnly()) {
+        return TOUCH_ONLY_WALK_HINT;
       }
       return partner ?? yardKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []), isFirstRaid(this.savedGame.raidProgress));
     }
