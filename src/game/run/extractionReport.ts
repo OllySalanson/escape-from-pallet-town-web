@@ -806,9 +806,12 @@ function pressureLines(
   // what it was for and that you did not get it.
   if (leftBehind.length > 0) {
     const named = [...new Set(leftBehind)].map((name) => name.toUpperCase());
+    // One name can be several things: '2 Parts crates' is a prize of two, and
+    // "2 PARTS CRATES - you walked out past it" read wrong (persona playtest, 23 Nov 2026).
+    const several = leftBehind.length > 1 || /^([2-9]|\d{2,}) /.test(leftBehind[0]);
     lines.push(
       `Left on the ground: ${named.join(', ')}${
-        escaped ? ` - you walked out past ${leftBehind.length === 1 ? 'it' : 'them'}` : ''
+        escaped ? ` - you walked out past ${several ? 'them' : 'it'}` : ''
       }`,
     );
   }

@@ -829,6 +829,30 @@ describe('Professor Oak on the radio', () => {
     expect(guide.radio[0]).toMatch(/^Oak here! The nearest landmark still to work is [^.]+\.$/);
     expect(guide.radio[1]).toMatch(/exit|gate/i);
   });
+
+  it('names the stake the gold arrow is after on a raid with no job, ahead of the nearest landmark', () => {
+    // A newcomer's first raid: the arrow pointed east at ₽75 and Oak sent them
+    // west to the village pump (persona playtest, 23 Nov 2026).
+    const guide = buildObjectiveGuide(createUncontractedSession('town-square'), {
+      ...here,
+      currentMapId: 'pallet-town',
+      stake: { words: '₽75', position: { x: 40, y: 10 } },
+      stepsTo: () => 30,
+    });
+    const line = "This raid's prize is ₽75, to the east, 30 steps away: the gold arrow leads to it. Taking it brings a hunter, so grab it and head for a way out.";
+    expect(guide.radio[0]).toBe(`Oak here! ${line}`);
+    expect(guide.radio[1]).toMatch(/exit|gate/i);
+    expect(guide.hints[0]).toBe(line);
+    expect(guide.hints.some((hint) => hint.startsWith('The nearest landmark still to work is'))).toBe(true);
+  });
+
+  it('leaves the stake to the arrow on a raid that carries a job', () => {
+    const guide = buildObjectiveGuide(createFirstContractSession(), {
+      ...here,
+      stake: { words: '₽75', position: { x: 40, y: 10 } },
+    });
+    expect([...guide.radio, ...guide.hints].join(' ')).not.toContain("This raid's prize");
+  });
 });
 
 describe('the way to the next gym', () => {
@@ -852,6 +876,30 @@ describe('the way to the next gym', () => {
 
     expect(guide.radio.join(' ')).not.toContain('next gym');
     expect(guide.hints.join(' ')).not.toContain('next gym');
+  });
+
+  it('leads the radio, once, on a raid with no job whose gold arrow is after it', () => {
+    // NO JOB on the rim: the arrow pointed at MISTY and Oak opened on the
+    // village pump the other way (persona playtest, 23 Nov 2026).
+    const guide = buildObjectiveGuide(createUncontractedSession('town-square'), {
+      ...here,
+      currentMapId: 'pallet-town',
+      nextGym: cerulean,
+      gymLeads: true,
+    });
+    expect(guide.radio).toHaveLength(2);
+    expect(guide.radio[0]).toBe(
+      'Oak here! The next gym is CERULEAN GYM, to the south, on GULL STRAND: the big building with GYM on its front. MISTY is inside.',
+    );
+    expect(guide.radio[1]).toMatch(/exit|gate/i);
+    expect(guide.hints[0]).toBe(guide.radio[0].replace('Oak here! ', ''));
+    expect(guide.hints.filter((hint) => hint.includes('next gym'))).toHaveLength(1);
+  });
+
+  it('stays last on a raid with a job, wherever the arrow is', () => {
+    const guide = buildObjectiveGuide(createFirstContractSession(), { ...here, nextGym: cerulean, gymLeads: true });
+    expect(guide.radio[0].startsWith('Oak here! You are in')).toBe(true);
+    expect(guide.radio[2]).toContain('The next gym is CERULEAN GYM');
   });
 
   it('has a room on the vale to point at for every gym the wall map can name', () => {
