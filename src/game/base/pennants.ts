@@ -78,10 +78,26 @@ export function earnedPennants(game: RestoredGame): readonly Pennant[] {
   return STRUNG_PENNANTS.filter((pennant) => homecomings(game, pennant.mapId) > 0);
 }
 
+/**
+ * The words that count the string, apart so they are said right for a string
+ * of one: with only Greystone Vale offered, the wall read "1 bare pins on a
+ * string" (scenario loop, 23 Nov 2026).
+ */
+export function barePinsLine(strung: number): string {
+  return `PENNANTS. ${strung} bare ${strung === 1 ? 'pin' : 'pins'} on a string along the wall.`;
+}
+
+export function placesOf(earned: number, strung: number): string {
+  return `${earned} of ${strung} ${strung === 1 ? 'place' : 'places'}`;
+}
+
 /** The caption's second line. */
 export function pennantsNote(game: RestoredGame): string {
   const earned = earnedPennants(game).length;
-  return earned === 0 ? 'Bare pins, waiting' : `${earned} of ${STRUNG_PENNANTS.length} places come home from`;
+  if (earned === 0) {
+    return STRUNG_PENNANTS.length === 1 ? 'A bare pin, waiting' : 'Bare pins, waiting';
+  }
+  return `${placesOf(earned, STRUNG_PENNANTS.length)} come home from`;
 }
 
 /** What the string says when it is faced: one line for every pennant on it. */
@@ -89,12 +105,12 @@ export function pennantLines(game: RestoredGame): readonly string[] {
   const earned = earnedPennants(game);
   if (earned.length === 0) {
     return [
-      `PENNANTS. ${STRUNG_PENNANTS.length} bare pins on a string along the wall.`,
+      barePinsLine(STRUNG_PENNANTS.length),
       'Come home from a place - alive, with the pack on your back - and its pennant goes up.',
     ];
   }
   return [
-    `PENNANTS. ${earned.length} of ${STRUNG_PENNANTS.length} places you have come home from.`,
+    `PENNANTS. ${placesOf(earned.length, STRUNG_PENNANTS.length)} you have come home from.`,
     ...earned.map((pennant) => {
       const times = homecomings(game, pennant.mapId);
       return `${WORLD_MAP_NAMES[pennant.mapId].toUpperCase()}: home ${times === 1 ? 'once' : times === 2 ? 'twice' : `${times} times`}.`;

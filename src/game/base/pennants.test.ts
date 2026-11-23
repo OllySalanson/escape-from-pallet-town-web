@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { MapRaidRecord } from '../save/SaveManager';
 import { isMapInProgress, WORLD_MAP_NAMES, TILE_SIZE } from '../worldMap';
 import { baseGame } from './baseGames.testkit';
-import { PENNANTS, PENNANT_WIDTH, STRUNG_PENNANTS, earnedPennants, pennantLines, pennantsNote, pennantsPoster } from './pennants';
+import { PENNANTS, PENNANT_WIDTH, STRUNG_PENNANTS, barePinsLine, earnedPennants, pennantLines, pennantsNote, pennantsPoster, placesOf } from './pennants';
 import { PENNANT_WALL } from './rooms';
 
 const raids = (record: Record<string, MapRaidRecord>) => baseGame({ progress: { raidRecord: record } });
@@ -65,5 +65,12 @@ describe('the pennants along the bedroom wall', () => {
     // The Floodplain's pennant hangs below the string; Route 1's place is bare.
     expect(paintedIn(0)).toBeGreaterThan(40);
     expect(paintedIn(1)).toBe(0);
+  });
+
+  it('counts a string of one in the singular, as the shipped wall with only the vale is', () => {
+    expect(barePinsLine(1)).toBe('PENNANTS. 1 bare pin on a string along the wall.');
+    expect(barePinsLine(6)).toBe('PENNANTS. 6 bare pins on a string along the wall.');
+    expect(placesOf(1, 1)).toBe('1 of 1 place');
+    expect(placesOf(2, 6)).toBe('2 of 6 places');
   });
 });
