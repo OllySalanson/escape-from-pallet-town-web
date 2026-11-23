@@ -447,6 +447,26 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
 }
 
 describe('BattleScene command presentation', () => {
+  it('tells test mode the HP the plate shows, which falls with the line that says so', () => {
+    // Three AI playtesters on 23 Nov 2026 read the hit landing before it was
+    // announced: the turn is resolved before its lines, and test mode read the
+    // engine's HP rather than the plate's.
+    const { scene } = createBattleSceneHarness();
+    Object.assign(scene as object, { commandTexts: [] });
+    const internals = scene as unknown as {
+      state: { player: { currentHp: number; pokemon: { maxHp: number } } };
+      displayed: Map<string, unknown>;
+      displayedHp: Map<string, number>;
+    };
+    const shown = internals.state.player.pokemon.maxHp;
+    internals.displayed.set('player0', internals.state.player.pokemon);
+    internals.displayedHp.set('player0', shown);
+    internals.state.player.currentHp = 0;
+    const yours = (scene.describeForTest() as { yours: { hp: number; status: string | null } }).yours;
+    expect(yours.hp).toBe(shown);
+    expect(yours.status).not.toBe('fainted');
+  });
+
   it("tells test mode a status move is STATUS, not 'NORMAL DAMAGE'", () => {
     // AI playtest of 22 Nov 2026: 'Tail Whip Normal pow 0 ... NORMAL DAMAGE'.
     const { scene } = createBattleSceneHarness();
