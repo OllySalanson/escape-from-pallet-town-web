@@ -8,7 +8,10 @@
  * took the raid before a command was asked for (scenario loop, 22 Nov 2026).
  * Nothing between fights said a Potion can be given from the pack. This says
  * it, after a fight, until the player has opened the pack once (B is learned):
- * then they know where the Potions are. Phaser-free, so it is tested here.
+ * then they know where the Potions are - and once a raid at most
+ * (`ActiveRunSession.fieldHealHintSaid`), because a player who heals in fights
+ * and never presses B heard it after every fight (the overnight retest's
+ * veteran, 23 Nov 2026). Phaser-free, so it is tested here.
  */
 
 /**
