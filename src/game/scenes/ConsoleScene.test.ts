@@ -23,6 +23,8 @@ class FakeMenu {
   public destroyed = false;
   public html = '';
   public readonly buttons = new Map<string, FakeElement>();
+  /** The name box, while the name form is up: where its caret was put. */
+  public readonly nameField = { value: 'BREAKER', select: vi.fn(), setSelectionRange: vi.fn() };
   public readonly root = {
     setAttribute: () => undefined,
     set innerHTML(value: string) {
@@ -32,7 +34,7 @@ class FakeMenu {
       return this.owner.html;
     },
     owner: this as FakeMenu,
-    querySelector: (selector: string) => this.button(selector),
+    querySelector: (selector: string) => (selector === '[data-name-form] .px-field' ? this.nameField : this.button(selector)),
     querySelectorAll: (selector: string) => (selector === '[data-play]' ? [this.button('[data-play]', { play: 'pallet-blocks' })] : []),
   };
 
@@ -135,6 +137,36 @@ describe('the console in the player\'s room', () => {
     expect(FakeMenu.made).toHaveLength(2);
     expect(FakeMenu.made[1].destroyed).toBe(false);
     expect(FakeMenu.made[1].html).toContain('PALLET BLOCKS');
+  });
+
+  // Break-it test, 23 Nov 2026: the box opened with the caret at the start of
+  // the old name, so 'SAM' pasted over BREAKER made 'SAMBREAKER'.
+  it('selects the name when CHANGE NAME opens, so what is typed or pasted replaces it', () => {
+    const { scene, open } = consoleScene();
+    open();
+    (scene as unknown as { playerName: string }).playerName = 'BREAKER';
+    (scene as unknown as { render(): void }).render();
+    FakeMenu.made[0].buttons.get('[data-name]')!.onclick!();
+
+    expect(FakeMenu.made[0].html).toContain('data-name-form');
+    expect(FakeMenu.made[0].nameField.select).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the caret at the end of a name handed back, to go on typing', () => {
+    const { scene, open } = consoleScene();
+    open();
+    (scene as unknown as { playerName: string }).playerName = 'BREAKER';
+    (scene as unknown as { render(): void }).render();
+    FakeMenu.made[0].buttons.get('[data-name]')!.onclick!();
+    const field = FakeMenu.made[0].nameField;
+    field.select.mockClear();
+
+    // Nothing typed is not a name: the form is drawn again with it.
+    (scene as unknown as { submitName(raw: string): void }).submitName('');
+
+    expect(FakeMenu.made[0].html).toContain('data-name-form');
+    expect(field.select).not.toHaveBeenCalled();
+    expect(field.setSelectionRange).toHaveBeenLastCalledWith(field.value.length, field.value.length);
   });
 
   it('asks for a name before a first game, rather than starting one nameless', () => {
