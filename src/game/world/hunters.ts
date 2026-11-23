@@ -104,6 +104,15 @@ export interface HunterRival {
    * 2026-10-29: "whatever you found, loser, it's mine").
    */
   readonly caught: readonly [string, string];
+  /**
+   * What they say instead when they catch you after the raid clock has hit
+   * 0:00, when every hunter comes stronger (`RunManager.isEnraged`). Said in the
+   * caught lines, a hunter beaten earlier in the raid came back with a team
+   * twice the level and the same words, and nothing said why (the overnight
+   * retest, 23 Nov 2026). About the clock, never "I'm back", because the
+   * hunter who catches you then may be one you never met.
+   */
+  readonly lateCaught: readonly [string, string];
   /** Shouted after you as you break away from them. */
   readonly getaway: string;
   /** What they say when their last Pokemon faints. */
@@ -149,6 +158,7 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     // rival with no type of his own fields.
     escorts: ['rattata', 'pidgey', 'spearow', 'doduo', 'meowth'],
     caught: ['BLUE: "Whatever you found, loser, it\'s mine!"', 'BLUE: "Hand it over. Smell ya later!"'],
+    lateCaught: ['BLUE: "Time\'s up, loser! Now you get my best team."', 'BLUE: "Should\'ve left when you had the chance!"'],
     getaway: 'BLUE: "Run, then! I\'ll catch you before the clock does!"',
     defeat: 'What?! I was just warming up... Smell ya later!',
     hall: {
@@ -173,6 +183,7 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     // Lapras - then the sea she keeps them in.
     escorts: ['slowpoke', 'seel', 'jynx', 'lapras', 'krabby'],
     caught: ['LORELEI: "Whatever you found out here is mine now. Hand it over."', 'LORELEI: "Your POKéMON will be at my mercy when they are frozen solid!"'],
+    lateCaught: ['LORELEI: "Your time ran out. I\'ve brought my coldest now."', 'LORELEI: "You should have left before the frost set in."'],
     getaway: 'LORELEI: "Run along, then. You\'ll only catch a chill."',
     defeat: 'You\'re better than I thought! ...Go on, then. Off you go.',
     hall: {
@@ -200,6 +211,7 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     // Flying birds (a Lv 25 Charmander's four, 1%; `measure.mts`).
     escorts: ['poliwag', 'geodude', 'hitmonchan', 'onix', 'hitmonlee'],
     caught: ['BRUNO: "That loot you found? It\'s mine now! Hoo hah!"', 'BRUNO: "We will grind you down with our superior power!"'],
+    lateCaught: ['BRUNO: "Time\'s up! Now I fight at full strength! Hoo hah!"', 'BRUNO: "You stayed out too long. Brace yourself!"'],
     getaway: 'BRUNO: "Running is training too! I\'ll catch you next lap!"',
     defeat: 'Why? How could I lose? ...My job is done. Go!',
     hall: {
@@ -224,6 +236,7 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     // because a Ghost is no fight for a team whose Pokemon only Tackle.
     escorts: ['ekans', 'koffing', 'grimer', 'gastly', 'venonat'],
     caught: ['AGATHA: "Hehehe! All that loot you found, child? I\'ll take it."', 'AGATHA: "That old duff OAK sent you out here alone? Hah!"'],
+    lateCaught: ['AGATHA: "Hehehe! Out of time, child. Now you meet my nasty ones."', 'AGATHA: "Should\'ve gone home when the clock said so!"'],
     getaway: 'AGATHA: "Run, child, run! I\'m old, not slow. Hehehe!"',
     defeat: 'Oh, my! You\'re something special, child! ...Shoo, then.',
     hall: {
@@ -251,6 +264,7 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     // a Lv 10 Charmander with a Pidgey to 3% (`measure.mts`).
     escorts: ['horsea', 'goldeen', 'spearow', 'tentacool', 'aerodactyl'],
     caught: ['LANCE: "What you found belongs to a dragon tamer now. It\'s mine."', 'LANCE: "Dragons are mythical POKéMON! Their powers are superior!"'],
+    lateCaught: ['LANCE: "Your time is up. Now my dragons fight for real."', 'LANCE: "You lingered too long. That was your mistake."'],
     getaway: 'LANCE: "Fly, then. A dragon always finds its prey."',
     defeat: 'That\'s it! I hate to admit it, but you\'re good. Go!',
     hall: {
@@ -271,6 +285,10 @@ export const FIRST_HUNTER_RIVAL: HunterRivalId = 'blue';
 
 export const hunterRival = (id: HunterRivalId): HunterRival =>
   HUNTER_RIVALS.find((rival) => rival.id === id) ?? HUNTER_RIVALS[0];
+
+/** What a hunter says as they catch you: past 0:00, their late lines (`HunterRival.lateCaught`). */
+export const caughtLines = (rival: HunterRival, enraged: boolean): readonly [string, string] =>
+  enraged ? rival.lateCaught : rival.caught;
 
 /**
  * Who hunts the next raid: one each, in turn, counted in raids deployed.
