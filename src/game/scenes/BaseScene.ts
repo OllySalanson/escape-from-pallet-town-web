@@ -4579,6 +4579,10 @@ export class BaseScene extends Phaser.Scene {
           ...(this.hintShown ? [this.hintRect(view)] : []),
           ...this.placeSignIn(view),
           ...this.feedbackTabIn(view),
+          // The quick-phrase list (T), drawn over the corner: THE RAID ARENA's
+          // door caption came out under it, cut at "Every raid starts her"
+          // (persona playtest, 23 Nov 2026).
+          ...(this.phrasePicker ? [{ ...this.phrasePicker.rect, x: this.phrasePicker.rect.x + view.left, y: this.phrasePicker.rect.y + view.top }] : []),
           // The favours' side panel, so a caption is never half under it.
           ...(this.panelLean.covering > 0
             ? [{ x: view.right - this.panelLean.covering, y: view.top, width: this.panelLean.covering, height: view.height }]

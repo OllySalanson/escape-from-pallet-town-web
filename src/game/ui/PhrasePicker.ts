@@ -32,6 +32,8 @@ export class PhrasePicker {
   private readonly cursor: Phaser.GameObjects.Text;
   private readonly onSay: (index: number) => void;
   private selected: number;
+  /** Where the list is drawn, on the screen: ground no caption may take (`BaseScene.containWorldLabels`). */
+  public readonly rect: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
 
   public constructor(scene: Phaser.Scene, phrases: readonly string[], onSay: (index: number) => void) {
     this.onSay = onSay;
@@ -63,7 +65,8 @@ export class PhrasePicker {
     const height = PAD * 2 + Math.min(ROWS, phrases.length) * ROW_HEIGHT;
     const x = scene.scale.width - width - MARGIN;
     const y = MARGIN;
-    drawPixelWindow(this.frame, { x, y, width, height }, { fill: WINDOW_CREAM });
+    this.rect = { x, y, width, height };
+    drawPixelWindow(this.frame, this.rect, { fill: WINDOW_CREAM });
     this.rows.forEach((row, index) =>
       row.setPosition(
         x + PAD + GUTTER + Math.floor(index / ROWS) * (columnWidth + COLUMN_GAP),
