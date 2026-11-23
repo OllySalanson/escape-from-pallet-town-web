@@ -437,7 +437,7 @@ import {
   type HunterState,
   hunterIntelFor,
 } from '../world/hunter';
-import { FIRST_HUNTER_RIVAL, hunterRival, type HunterRival } from '../world/hunters';
+import { caughtLines, FIRST_HUNTER_RIVAL, hunterRival, type HunterRival } from '../world/hunters';
 import {
   HunterPack,
   createHunterPack,
@@ -10358,12 +10358,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         { ...(session.plan?.hunter ?? DEFAULT_HUNTER_TUNING), rivalId: rival.id },
         this.party.pokemon,
       ),
-      introLines: rival.caught,
+      introLines: caughtLines(rival, session.manager.isEnraged),
       isHunter: true,
     };
     this.drawHunterPack();
     this.playCutscene(
-      hunterCatchCutscene(hunter.id, hunter.position, this.currentTile, this.facing, rival.caught),
+      hunterCatchCutscene(hunter.id, hunter.position, this.currentTile, this.facing, caughtLines(rival, session.manager.isEnraged)),
     );
   }
 
@@ -10464,7 +10464,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.runSession!.plan?.hunter && { ...this.runSession!.plan.hunter, rivalId: this.hunterRival().id },
         this.party.pokemon,
       ),
-      introLines: this.hunterRival().caught,
+      introLines: caughtLines(this.hunterRival(), this.runSession!.manager.isEnraged),
       isHunter: true,
     };
     this.playCutscene(

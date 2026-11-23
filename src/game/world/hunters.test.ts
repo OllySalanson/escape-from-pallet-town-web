@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getCharacterDesign } from './characterDesigns';
-import { FIRST_HUNTER_RIVAL, HUNTER_RIVALS, hunterRival, rivalForRaid, storedRivalId } from './hunters';
+import { caughtLines, FIRST_HUNTER_RIVAL, HUNTER_RIVALS, hunterRival, rivalForRaid, storedRivalId } from './hunters';
 import { valeGyms } from './valeQuarters';
 
 describe('the five hunters', () => {
@@ -66,6 +66,23 @@ describe('the five hunters', () => {
       expect(rival.caught[0]).toMatch(/mine|take/i);
     }
   });
+
+  /**
+   * Past 0:00 every hunter comes stronger. Said in the caught lines, a hunter
+   * beaten earlier in the raid came back with twice the level and the same
+   * words, and nothing said why (the overnight retest, 23 Nov 2026).
+   */
+  it('says the clock ran out when they catch you after 0:00, in their own voice', () => {
+    for (const rival of HUNTER_RIVALS) {
+      expect(rival.lateCaught).toHaveLength(2);
+      rival.lateCaught.forEach((line) => expect(line.startsWith(`${rival.name}: "`)).toBe(true));
+      expect(rival.lateCaught.join(' ')).toMatch(/time|clock|too long|lingered|frost set in/i);
+      expect(rival.lateCaught.filter((line) => rival.caught.includes(line))).toEqual([]);
+      expect(caughtLines(rival, false)).toBe(rival.caught);
+      expect(caughtLines(rival, true)).toBe(rival.lateCaught);
+    }
+    expect(new Set(HUNTER_RIVALS.map((rival) => rival.lateCaught[0])).size).toBe(HUNTER_RIVALS.length);
+  });
 });
 
 describe('a hunter is never a gym leader', () => {
@@ -82,7 +99,7 @@ describe('a hunter is never a gym leader', () => {
     ];
     for (const rival of HUNTER_RIVALS) {
       expect(leaders).not.toContain(rival.name);
-      for (const line of [...rival.caught, rival.getaway, rival.defeat, ...Object.values(rival.hall)]) {
+      for (const line of [...rival.caught, ...rival.lateCaught, rival.getaway, rival.defeat, ...Object.values(rival.hall)]) {
         expect(leaders.filter((leader) => line.includes(leader)), line).toEqual([]);
       }
     }
