@@ -829,6 +829,30 @@ describe('Professor Oak on the radio', () => {
     expect(guide.radio[0]).toMatch(/^Oak here! The nearest landmark still to work is [^.]+\.$/);
     expect(guide.radio[1]).toMatch(/exit|gate/i);
   });
+
+  it('names the stake the gold arrow is after on a raid with no job, ahead of the nearest landmark', () => {
+    // A newcomer's first raid: the arrow pointed east at ₽75 and Oak sent them
+    // west to the village pump (persona playtest, 23 Nov 2026).
+    const guide = buildObjectiveGuide(createUncontractedSession('town-square'), {
+      ...here,
+      currentMapId: 'pallet-town',
+      stake: { words: '₽75', position: { x: 40, y: 10 } },
+      stepsTo: () => 30,
+    });
+    const line = "This raid's prize is ₽75, to the east, 30 steps away: the gold arrow leads to it. Taking it brings a hunter, so grab it and head for a way out.";
+    expect(guide.radio[0]).toBe(`Oak here! ${line}`);
+    expect(guide.radio[1]).toMatch(/exit|gate/i);
+    expect(guide.hints[0]).toBe(line);
+    expect(guide.hints.some((hint) => hint.startsWith('The nearest landmark still to work is'))).toBe(true);
+  });
+
+  it('leaves the stake to the arrow on a raid that carries a job', () => {
+    const guide = buildObjectiveGuide(createFirstContractSession(), {
+      ...here,
+      stake: { words: '₽75', position: { x: 40, y: 10 } },
+    });
+    expect([...guide.radio, ...guide.hints].join(' ')).not.toContain("This raid's prize");
+  });
 });
 
 describe('the way to the next gym', () => {
