@@ -32,6 +32,8 @@ describe('how close a raid out was', () => {
   it('names the clock once it has gone red, and that before anybody on its tail', () => {
     expect(closeCallLine(left(8000, '0:08'), null)).toBe('OUT WITH 0:08 LEFT');
     expect(closeCallLine(left(CLOSE_CALL_CLOCK_MS, '0:30'), 'Blue')).toBe('OUT WITH 0:30 LEFT');
+    // Out after 0:00, in the hunters' grace: there is no clock left to name.
+    expect(closeCallLine({ ms: 0, reads: '0:00', pastTheEnd: true }, 'Blue')).toBe('OUT AFTER THE CLOCK RAN OUT');
   });
 
   it('names whoever was on its tail, and fits a mark', () => {

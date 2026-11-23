@@ -71,7 +71,17 @@ export const CLOSE_CALL_CLOCK_MS = 30_000;
  * What a raid out said of how close it was, if it was: the clock nearly gone, or
  * a hunter on its tail, whichever it was. In capitals, as a mark's line is.
  */
-export function closeCallLine(clockLeft: { readonly ms: number; readonly reads: string }, onTail: string | null): string | null {
+export function closeCallLine(
+  clockLeft: { readonly ms: number; readonly reads: string; readonly pastTheEnd?: boolean },
+  onTail: string | null,
+): string | null {
+  // Out in the moments after 0:00, the clock has nothing left to read: what is
+  // left is the hunters' grace, and "OUT WITH 0:15 LEFT" over a result saying
+  // "5:00 used of 5:00" read as the game contradicting itself (the overnight
+  // retest's dawdler, 23 Nov 2026).
+  if (clockLeft.pastTheEnd) {
+    return 'OUT AFTER THE CLOCK RAN OUT';
+  }
   if (clockLeft.ms <= CLOSE_CALL_CLOCK_MS) {
     return `OUT WITH ${clockLeft.reads} LEFT`;
   }
