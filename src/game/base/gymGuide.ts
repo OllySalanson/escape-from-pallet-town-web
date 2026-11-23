@@ -47,7 +47,10 @@ export function gymGuideLines(
  * The next gym and the types that do well there, in FireRed's Gym Guide's own
  * manner - the facts, never the answer - once a raid has been gone on (a first
  * raid has nothing on its way that the fall does not need, `hub/firstRaid.ts`).
- * Once the leader has been met, he says they will spar in the hall for nothing.
+ * Once the leader has been met, he says they will spar in the hall for nothing
+ * - THE RAID ARENA's, by name: "the hall" alone sent a
+ * first-time friend looking round the harbour for a hall (the overnight
+ * retest, 23 Nov 2026).
  */
 export function gymAdvice(progress: {
   readonly defeatedBosses: readonly string[];
@@ -63,8 +66,8 @@ export function gymAdvice(progress: {
   return [
     ...gym.advice,
     met
-      ? `You've met ${gym.leader.toUpperCase()}. Now you can spar in the hall for free!`
-      : `Meet ${gym.leader.toUpperCase()} once, and you can spar in the hall for free.`,
+      ? `You've met ${gym.leader.toUpperCase()}. Spar for free in THE RAID ARENA's hall!`
+      : `Meet ${gym.leader.toUpperCase()} once to spar for free in THE RAID ARENA's hall.`,
   ];
 }
 
