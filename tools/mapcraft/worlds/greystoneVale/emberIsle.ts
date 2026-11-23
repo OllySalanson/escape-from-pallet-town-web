@@ -189,14 +189,15 @@ export function emberIsle(): MapcraftResult {
           name: 'Lookout',
           look: 'rocket-grunt',
           facing: 'left',
-          // Counted from the raid's start, which is what a sailing runs by, not
-          // "half past two", which a player raiding at night read as the time of
-          // day - nor a clock reading, which a raid shortened by a heal never
-          // shows at that moment. And the island's own way off for whoever
-          // misses it (scenario loop, 23 Nov 2026).
+          // The raid clock's own readings, not "half past two", which a player
+          // raiding at night read as the time of day, and the island's own way
+          // off for whoever misses it (scenario loop, 23 Nov 2026). Readings
+          // hold in a raid shortened by a heal too: a sailing is timed against
+          // the clock as drawn (`WorldScene.tideMs`) and a timed exit is moved
+          // by the same shortfall (`authoredTimeIn`).
           lines: [
-            'The skiff runs back to the cove until two and a half minutes into the raid, and not a second after.',
-            'Miss it and you wait for the CINDER BOAT off the west shore, from three minutes twenty in.',
+            'The skiff runs back to the cove until your clock reads 2:30, and not a second after.',
+            'Miss it and you wait for the CINDER BOAT off the west shore, from when your clock reads 1:40.',
           ],
         },
         {
