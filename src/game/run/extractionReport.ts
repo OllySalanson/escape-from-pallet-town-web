@@ -532,15 +532,18 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
 /** True of any wipe: the restock adds only what the kit is short of, so a stocked vault is given nothing. */
 function wipedBaseNote(fitToRaid: boolean, restocked: readonly Stack[]): string {
   const kit = describeGroup({ pokemon: [], items: toReportItems(restocked) });
-  const notFit = 'nobody is fit to raid: revive a Pokémon at the Pokémon Center first.';
+  // The note is the screen's two-line help bar, which clips: "...waiting at
+  // base, but nobody is fit to raid: revive a Pokémon at the Pokémon Center
+  // first." needed three, and a friend whose only Pokémon had fainted read it
+  // stop at "revive a Pokémon at the" (persona playtest, 23 Nov 2026).
+  const notFit = 'Nurse Joy must revive somebody before you can raid.';
   if (kit !== null) {
     // What was lost stays lost; the kit is the last resort a wipe always leaves.
-    const given = `What you lost stays lost, but Oak keeps a starter kit for this: ${kit} ${restocked.length === 1 && restocked[0].quantity === 1 ? 'is' : 'are'} waiting at base`;
-    return fitToRaid ? `${given}.` : `${given}, but ${notFit}`;
+    return fitToRaid
+      ? `What you lost stays lost, but Oak keeps a starter kit for this: ${kit} ${restocked.length === 1 && restocked[0].quantity === 1 ? 'is' : 'are'} waiting at base.`
+      : `Oak's starter kit is at base: ${kit}. ${notFit}`;
   }
-  return fitToRaid
-    ? 'You still have what you need to deploy again.'
-    : `You have the supplies to deploy again, but ${notFit}`;
+  return fitToRaid ? 'You still have what you need to deploy again.' : `You have the supplies to deploy again. ${notFit}`;
 }
 
 

@@ -754,7 +754,7 @@ describe('extraction report after a lost raid', () => {
     expect(report(true, kit)).toMatch(
       /^What you lost stays lost, but Oak keeps a starter kit for this: 3 Poké Balls and 1 Satchel are waiting at base\.$/,
     );
-    expect(report(false, kit)).toMatch(/are waiting at base, but nobody is fit to raid: revive a Pokémon/);
+    expect(report(false, kit)).toBe("Oak's starter kit is at base: 3 Poké Balls and 1 Satchel. Nurse Joy must revive somebody before you can raid.");
     expect(report(true, [])).toBe('You still have what you need to deploy again.');
   });
 
@@ -775,7 +775,7 @@ describe('extraction report after a lost raid', () => {
     };
 
     expect(report(false).baseNote).toBe(
-      'You have the supplies to deploy again, but nobody is fit to raid: revive a Pokémon at the Pokémon Center first.',
+      'You have the supplies to deploy again. Nurse Joy must revive somebody before you can raid.',
     );
     expect(report(true).baseNote).toBe(
       'You still have what you need to deploy again.',
