@@ -959,11 +959,17 @@ export const hunterFleeMessages = (
   getaway: string | undefined,
   penaltyMs: number,
   searchMs: number,
+  // A flee the command already named FLEE: RAID LOST ends the raid as the
+  // player steps back on to the map, so a hunter "holding off" for 20s was a
+  // promise about a raid that was over (scenario loop, 23 Nov 2026).
+  endsRaid = false,
 ): readonly string[] => [
   `You broke away from ${hunterName}!`,
   ...(getaway ? [getaway] : []),
-  `${hunterName} lost your trail and holds off for ${formatSeconds(searchMs)}.`,
-  `Breaking contact cost ${formatSeconds(penaltyMs)} of raid time.`,
+  ...(endsRaid ? [] : [`${hunterName} lost your trail and holds off for ${formatSeconds(searchMs)}.`]),
+  endsRaid
+    ? `Breaking contact cost ${formatSeconds(penaltyMs)} of raid time, and that was the last of it.`
+    : `Breaking contact cost ${formatSeconds(penaltyMs)} of raid time.`,
 ];
 
 export const WILD_ESCAPE_SUCCESS_MESSAGE = 'Got away safely!';

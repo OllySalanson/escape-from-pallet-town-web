@@ -2651,6 +2651,8 @@ export class BattleScene extends Phaser.Scene {
       this.yieldTheBout();
       return;
     }
+    // Asked before the price is paid, with the numbers the command was labelled by.
+    const endsRaid = this.hunterFleeLabel() === 'FLEE: RAID LOST';
     const penaltyMs = this.runSession?.manager.registerHunterFlee().penaltyMs;
     if (this.hunterState) {
       this.hunterState = beginHunterDisengage(this.hunterState);
@@ -2668,6 +2670,7 @@ export class BattleScene extends Phaser.Scene {
             this.trainer?.getawayText,
             penaltyMs,
             HUNTER_SEARCH_MS,
+            endsRaid,
           ),
         ],
     );
