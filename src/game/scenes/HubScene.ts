@@ -356,6 +356,9 @@ function tagWords(tag: string): string {
  */
 const JOB_WALK_ALLOWANCE = 2.5;
 
+/** What the rim says of a raid another window is playing, on the card and on the press. */
+const RAID_ELSEWHERE_LINE = 'A raid is already under way in another window. Finish it there first.';
+
 export class HubScene extends Phaser.Scene {
   private readonly saveManager = new SaveManager();
   private stash!: Stash;
@@ -1510,7 +1513,7 @@ export class HubScene extends Phaser.Scene {
         return;
       }
       if (live) {
-        this.refuse('A raid is already under way in another window. Finish it there first.');
+        this.refuse(RAID_ELSEWHERE_LINE);
       } else {
         this.startRun();
       }
@@ -2893,6 +2896,12 @@ export class HubScene extends Phaser.Scene {
   private rimView(): string {
     const chosen = this.flow.insertionId;
     const refusal = this.flow.notReady;
+    // A raid another window is playing is said before JUMP IN is pressed, not
+    // only after: a second tab's card offered the jump as usual and refused it
+    // on the press (break-it test, 23 Nov 2026). The button stays live, because
+    // a crashed window leaves a pulse too and the press asks the browser.
+    const underWay = this.saveManager.load()?.raidInFlight;
+    const elsewhere = underWay ? raidHeartbeat.liveElsewhere(underWay.id) : false;
     const warning = refusal ? undefined : this.packWarning();
     const ways = this.waysFromHere().length;
     const nextMap = this.nextMapWayIn();
@@ -2904,7 +2913,11 @@ export class HubScene extends Phaser.Scene {
     return `<main class="px-body rim-layout">${pixelCommitBar({
       title: `<span data-rim-title${refusal ? ' class="px-warning"' : ''}>${refusal ? RIM_REFUSED_TITLE : this.rimTitle(chosen)}</span>`,
       lines: [
-        ...(refusal ? [`<p class="px-wrap px-warning rim-refusal">${refusal}</p>`] : []),
+        ...(refusal
+          ? [`<p class="px-wrap px-warning rim-refusal">${refusal}</p>`]
+          : elsewhere
+            ? [`<p class="px-wrap px-warning rim-refusal">${RAID_ELSEWHERE_LINE}</p>`]
+            : []),
         `<div data-rim-about>${this.rimStakes(chosen)}</div>`,
         this.roomNote(),
         ...(this.firstContractActive ? ['<small class="px-wrap">More ways in open up when you bring this contract home.</small>'] : []),

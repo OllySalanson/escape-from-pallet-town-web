@@ -25,6 +25,7 @@ import { activeRunManager, RunPhase } from '../run';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { flowForGame, type ArenaKit } from '../base/arenaKit';
 import type { RestoredGame } from '../save/SaveManager';
+import { raidHeartbeat } from '../run/raidInFlight';
 import { availableInsertionIds, frontDoorFor, requireInsertion, RUN_INSERTIONS } from '../run/runGeneration';
 import { jobsForMap, noJobChoice, QUICKER_LANDING_MS, standingJobWalk } from '../objectives/standingBoard';
 import { formatRecoveryClock, healDayOf } from '../hub/recovery';
@@ -495,6 +496,31 @@ describe('a panel over the hall', () => {
     expect(calls).toEqual([]);
     expect(statusOf(hub)).toBe('Nobody is on the bench. Choose at least one Pokémon to take into the raid.');
     expect(kit.flow.party).toEqual([]);
+  });
+
+  // Break-it test, 23 Nov 2026: a second tab's card offered JUMP IN as usual
+  // while the first tab's raid went on, and said why not only on the press.
+  it('heads the card with a raid another window is playing, and leaves JUMP IN to ask the browser', () => {
+    const { hub, kit } = panelOn('bench');
+    kit.flow.togglePokemon('charmander-1');
+    hub.init({ view: 'rim', kit });
+    const internals = hub as unknown as { saveManager: SaveManager; content(): string };
+    const stored = internals.saveManager.load.bind(internals.saveManager);
+    const load = vi
+      .spyOn(internals.saveManager, 'load')
+      .mockImplementation(() => ({ ...stored(), raidInFlight: { id: 'raid-elsewhere' } }) as unknown as RestoredGame);
+    const live = vi.spyOn(raidHeartbeat, 'liveElsewhere').mockReturnValue(true);
+    try {
+      const markup = internals.content();
+      const head = markup.slice(0, markup.indexOf('data-rim-about'));
+      expect(head).toContain('A raid is already under way in another window. Finish it there first.');
+      expect(markup).not.toMatch(/data-start[^>]*aria-disabled/);
+      live.mockReturnValue(false);
+      expect(internals.content()).not.toContain('another window');
+    } finally {
+      live.mockRestore();
+      load.mockRestore();
+    }
   });
 
   // The captain, 22 Nov 2026: home from a first raid lost in seconds, JUMP IN
