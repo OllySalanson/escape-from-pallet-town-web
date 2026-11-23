@@ -761,7 +761,8 @@ export class BagScene extends Phaser.Scene {
     this.usingItemId = itemId;
     this.askedAt = this.time.now;
     this.status = undefined;
-    this.render();
+    const first = firstTargetFor(this.party.pokemon, item);
+    this.render(first === undefined ? [] : [`[data-target="${first}"]`]);
   }
 
   /**
@@ -1055,3 +1056,30 @@ export class BagScene extends Phaser.Scene {
     return footprint.width * footprint.height;
   }
 }
+
+/**
+ * Who the recipient list opens on: the one the item would do most for - the
+ * most hurt for medicine that heals, the first it would cure or evolve
+ * otherwise - and the lead when it would do nothing for anybody. It opened on
+ * the lead whatever the item, so Oak's "give MEOWTH a POTION" and two presses
+ * of SPACE spent it on a Charmander 4 HP down (the overnight retest's key
+ * masher, 23 Nov 2026).
+ */
+export function firstTargetFor(party: readonly Pokemon[], item: ItemDefinition): number | undefined {
+  const effect = item.effect;
+  const able = party.map((pokemon, index) => ({ pokemon, index })).filter(({ pokemon }) => !pokemon.isFainted);
+  if (effect.type === 'heal') {
+    const hurt = able.filter(({ pokemon }) => pokemon.currentHp < pokemon.maxHp);
+    hurt.sort((one, other) => one.pokemon.currentHp / one.pokemon.maxHp - other.pokemon.currentHp / other.pokemon.maxHp);
+    return hurt[0]?.index;
+  }
+  if (effect.type === 'cure-status') {
+    return able.find(({ pokemon }) => pokemon.primaryStatus === effect.status)?.index;
+  }
+  if (effect.type === 'evolution-stone') {
+    const evolves = party.findIndex((pokemon) => evolutionByStone(pokemon.base.id, item.id) !== undefined);
+    return evolves < 0 ? undefined : evolves;
+  }
+  return undefined;
+}
+
