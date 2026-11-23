@@ -8921,9 +8921,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Written before the banking, which reloads the save it writes back: the
     // record and the survey are part of what this raid did, and banking must
     // carry them out rather than overwrite them.
-    // The clock it read, which past the raid's end is the enrage's own.
-    const clockLeftMs = snapshot.remainingMs > 0 ? snapshot.remainingMs : snapshot.enrageGraceRemainingMs;
-    const closeCall = closeCallLine({ ms: clockLeftMs, reads: formatRaidClock(clockLeftMs) }, this.hunterOnTail());
+    // Past the raid's end there is no clock left to read, only the hunters' grace.
+    const clockLeftMs = Math.max(0, snapshot.remainingMs);
+    const closeCall = closeCallLine(
+      { ms: clockLeftMs, reads: formatRaidClock(clockLeftMs), pastTheEnd: snapshot.remainingMs <= 0 },
+      this.hunterOnTail(),
+    );
     // Asked before anything is written: a raid another tab has already settled
     // has nothing to bank, and every write below refuses it anyway.
     const raidId = this.runSession.raidId;
