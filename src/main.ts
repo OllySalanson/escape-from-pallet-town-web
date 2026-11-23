@@ -14,7 +14,7 @@ import { pausesForWindow, watchWindowFocus } from './game/world/windowPause';
 import { keepSavesSafe } from './game/save/keepSavesSafe';
 import { SaveManager } from './game/save/SaveManager';
 import { guardLeavingDuringRaid } from './game/run/leaveGuard';
-import { raidHeartbeat } from './game/run/raidInFlight';
+import { boutHeartbeat, raidHeartbeat } from './game/run/raidInFlight';
 
 const developmentScenes = import.meta.env.DEV && isTestLabRequested()
   ? [(await import('./game/scenes/TestLabScene')).TestLabScene]
@@ -83,14 +83,19 @@ const stopWatchingFocus =
         },
       )
     : () => undefined;
-// Leaving the page mid-raid costs the pack, so the browser asks first - only
-// while this page is playing the raid the save holds, and never in test mode,
-// whose drivers reload mid-raid on purpose. See `game/run/leaveGuard.ts`.
+// Leaving the page mid-raid costs the pack, and mid-bout the bout, so the
+// browser asks first - only while this page is playing the raid or the bout the
+// save holds, and never in test mode, whose drivers reload mid-raid on purpose.
+// See `game/run/leaveGuard.ts`.
 const stopGuardingLeave =
   testMode === 'off'
     ? guardLeavingDuringRaid(window, () => {
-        const playing = raidHeartbeat.playing();
-        return playing !== null && new SaveManager().raidInFlightId() === playing;
+        const saves = new SaveManager();
+        const raid = raidHeartbeat.playing();
+        // A bout left half way counts as lost, and a rental's lost bout is the
+        // day's paying run gone (break-it test, 23 Nov 2026), so it is asked too.
+        const bout = boutHeartbeat.playing();
+        return (raid !== null && saves.raidInFlightId() === raid) || (bout !== null && saves.boutUnderWayId() === bout);
       })
     : () => undefined;
 if (import.meta.env.DEV) {

@@ -15,8 +15,12 @@
  * playing is that tab's to guard. Never in test mode, whose drivers reload and
  * close pages mid-raid on purpose and could not answer the browser's question.
  *
+ * A bout on THE BATTLE ARENA's sand is asked about the same way: left half way
+ * it counts as lost, and a rental's lost bout is that day's paying run.
+ *
  * Phaser-free, so the rule is tested on a stand-in window; `main.ts` installs
- * it, asking `raidHeartbeat` and the save whether a raid is being played here.
+ * it, asking `raidHeartbeat`, `boutHeartbeat` and the save whether a raid or a
+ * bout is being played here.
  */
 
 /** The part of `window` the guard needs. */
