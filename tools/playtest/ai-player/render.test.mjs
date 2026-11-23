@@ -145,3 +145,23 @@ describe('THE BOLTHOLE being decorated', () => {
     expect(renderScreen(house, { events: [] })).toContain('DECORATING: POT PLANT - NOT IN FRONT OF THE TELLY (holding it)');
   });
 });
+
+describe('a raid with a catch riding home', () => {
+  it('names what was caught beside what was found', () => {
+    // Break-it test, 23 Nov 2026: a Pidgey caught with six already out rode
+    // home in the pack, and nothing the AI was shown said so.
+    const raid = {
+      scenes: ['world'],
+      texts: [],
+      scene: {
+        world: {
+          tile: { x: 96, y: 161 },
+          raid: { remainingMs: 200_000, enraged: false, stopsLeft: [], exits: [], hunter: { coming: false, beaten: false }, found: ['Pokédollars x25'], caught: ['Pidgey'] },
+        },
+      },
+    };
+    const shown = renderScreen(raid, { events: [] });
+    expect(shown).toContain('FOUND THIS RAID: Pokédollars x25');
+    expect(shown).toContain('CAUGHT THIS RAID: Pidgey');
+  });
+});

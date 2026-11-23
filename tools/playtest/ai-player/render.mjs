@@ -38,6 +38,7 @@ function renderField(key, field) {
     const hunter = raid.hunter;
     if (hunter.coming || hunter.here) lines.push(`HUNTER: ${hunter.here ? `on screen at ${hunter.here.map(tile).join(', ')}` : 'coming'}`);
     if (raid.found.length) lines.push(`FOUND THIS RAID: ${list(raid.found)}`);
+    if (raid.caught?.length) lines.push(`CAUGHT THIS RAID: ${list(raid.caught)}`);
   }
   const near = field.near ?? {};
   const seen = [
