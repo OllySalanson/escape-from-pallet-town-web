@@ -11,6 +11,7 @@ import { generateRunPlan, runInsertions } from '../run/runGeneration';
 import { createSeededRng } from '../run/rng';
 import { getWorldMap } from '../worldMap';
 import { districtAt } from './districts';
+import { forANewcomer } from './firstRaidWildlife';
 import { MAP_FILE_HABITATS } from './mapFile';
 import { atNight, districtTableFor } from './nightRaids';
 import { builtInFileMap } from './playerMaps';
@@ -293,7 +294,10 @@ describe('the shimmering grass on Greystone Vale', () => {
       later.trainers.map((trainer) => [trainer.trainer.id, trainer.position]),
     );
     expect(first.extractionPoints).toEqual(later.extractionPoints);
-    expect(first.districtEncounters).toEqual(later.districtEncounters);
+    // Its wildlife is the same roll, capped for a newcomer (`firstRaidWildlife.ts`).
+    expect(first.districtEncounters).toEqual(
+      Object.fromEntries(Object.entries(later.districtEncounters).map(([id, table]) => [id, forANewcomer(table)])),
+    );
   });
 
   it('holds what comes out at night on a night raid', () => {
