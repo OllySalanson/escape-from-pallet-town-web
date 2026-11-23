@@ -215,6 +215,7 @@ import {
 } from '../objectives';
 import { RunPhase } from '../run/RunManager';
 import { formatRaidClock } from '../run/raidClock';
+import { holdUnsavedEnding } from '../run/unsavedEnding';
 import { compassBearing } from '../world/bearing';
 import { buildExtractionReport, type ExtractionReport } from '../run/extractionReport';
 import { clearPackRoomForPokemon, packFullForPokemonLine, syncPackCargo } from '../run/raidCargo';
@@ -8989,9 +8990,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const raidId = this.runSession.raidId;
     const settledElsewhere = !new SaveManager().ownsRaid(raidId);
     this.recordRaid('extracted', point.label, closeCall);
-    const contractResult = banksContract
-      ? new SaveManager().bankContract(contract, runResult, settlement, snapshot.elapsedMs, raidId)
-      : { saved: new SaveManager().bankRun(runResult, settlement, snapshot.elapsedMs, raidId), granted: false };
+    const bank = () =>
+      banksContract
+        ? new SaveManager().bankContract(contract, runResult, settlement, snapshot.elapsedMs, raidId)
+        : { saved: new SaveManager().bankRun(runResult, settlement, snapshot.elapsedMs, raidId), granted: false };
+    const contractResult = bank();
+    // Storage refused it: tried again at base, so the raid is not settled there
+    // as abandoned when it was walked out of (`run/unsavedEnding.ts`).
+    if (!contractResult.saved && !settledElsewhere) {
+      holdUnsavedEnding(() => bank().saved);
+    }
     this.pendingHubTransition = true;
     const contractPaid = contractResult.granted
       ? { pokemon: rewardPokemon(contract!.reward), items: contract!.reward.items }
@@ -9635,18 +9643,26 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const wipe = buildWipeSettlement(this.runSession.secureSlot.items ?? [], carriedOut);
     const settledElsewhere = !new SaveManager().ownsRaid(this.runSession.raidId);
     this.recordRaid('wiped');
-    const { saved, restocked } = new SaveManager().settleWipe(
-      this.runSession.broughtPokemonIds,
-      this.runSession.broughtItems,
-      { ...this.runSession.stashSecureSlot, items: wipe.securedItems },
-      // A secured Pokemon comes home in the state the raid left it in.
-      deployedRaidCondition(this.runSession.broughtPokemonIds, snapshot),
-      // The pack the clock ran out on goes with the raid. It was never in the bag -
-      // it is the bag - so nothing in the accounting above can name it, and the
-      // secure container cannot protect it either.
-      this.runSession.packItemId,
-      this.runSession.raidId,
-    );
+    const session = this.runSession;
+    const settle = () =>
+      new SaveManager().settleWipe(
+        session.broughtPokemonIds,
+        session.broughtItems,
+        { ...session.stashSecureSlot, items: wipe.securedItems },
+        // A secured Pokemon comes home in the state the raid left it in.
+        deployedRaidCondition(session.broughtPokemonIds, snapshot),
+        // The pack the clock ran out on goes with the raid. It was never in the bag -
+        // it is the bag - so nothing in the accounting above can name it, and the
+        // secure container cannot protect it either.
+        session.packItemId,
+        session.raidId,
+      );
+    const { saved, restocked } = settle();
+    // Storage refused it: tried again at base, so the raid is not settled there
+    // as abandoned when the clock ran out on it (`run/unsavedEnding.ts`).
+    if (!saved && !settledElsewhere) {
+      holdUnsavedEnding(() => settle().saved);
+    }
     this.pendingHubTransition = true;
     this.showRunResult(
       buildExtractionReport({
