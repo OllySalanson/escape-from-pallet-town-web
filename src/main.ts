@@ -13,6 +13,8 @@ import { watchForKeyboard } from './game/input/keyboardSeen';
 import { pausesForWindow, watchWindowFocus } from './game/world/windowPause';
 import { keepSavesSafe } from './game/save/keepSavesSafe';
 import { SaveManager } from './game/save/SaveManager';
+import { guardLeavingDuringRaid } from './game/run/leaveGuard';
+import { raidHeartbeat } from './game/run/raidInFlight';
 
 const developmentScenes = import.meta.env.DEV && isTestLabRequested()
   ? [(await import('./game/scenes/TestLabScene')).TestLabScene]
@@ -81,6 +83,16 @@ const stopWatchingFocus =
         },
       )
     : () => undefined;
+// Leaving the page mid-raid costs the pack, so the browser asks first - only
+// while this page is playing the raid the save holds, and never in test mode,
+// whose drivers reload mid-raid on purpose. See `game/run/leaveGuard.ts`.
+const stopGuardingLeave =
+  testMode === 'off'
+    ? guardLeavingDuringRaid(window, () => {
+        const playing = raidHeartbeat.playing();
+        return playing !== null && new SaveManager().raidInFlightId() === playing;
+      })
+    : () => undefined;
 if (import.meta.env.DEV) {
   (window as unknown as { __game: Phaser.Game }).__game = game;
 }
@@ -91,6 +103,7 @@ if (import.meta.hot) {
     stopWatchingForKeyboard();
     feedbackDesk.destroy();
     stopWatchingFocus();
+    stopGuardingLeave();
     stopCountingPlay();
     unmountGame();
   });
