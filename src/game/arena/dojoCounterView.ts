@@ -7,7 +7,7 @@
  * tested without a browser.
  */
 import type { Pokemon } from '../pokemon';
-import { pickerFindField, pickerOrder, pickerRowAttributes, pickerRowNote, type PickerEntry } from '../ui/boxPicker';
+import { kindIfNicknamed, pickerFindField, pickerOrder, pickerRowAttributes, pickerRowNote, type PickerEntry } from '../ui/boxPicker';
 import {
   COLUMN_MEASURES,
   escapeAttribute,
@@ -123,7 +123,7 @@ export function teamBody(
       first ? ' data-cursor-start' : ''
     }${refusal ? ' aria-disabled="true"' : ''} data-help="${escapeAttribute(memberHelp(entry, inTeam, refusal))}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(
       entry.pokemon,
-    )}</span><small>${pickerRowNote(entry, entry.pokemon.base.name.toUpperCase())}</small></span>${tag}</button>`;
+    )}</span><small>${pickerRowNote(entry, kindIfNicknamed(entry.pokemon))}</small></span>${tag}</button>`;
   };
   const yours =
     chosen.length > 0
