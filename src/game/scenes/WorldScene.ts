@@ -1578,11 +1578,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!gym || !room || this.currentArea() === room) {
       return undefined;
     }
+    const boss = this.trainerEncounters.find((encounter) => encounter.trainer.id === gym.bossId);
+    const leads = boss?.trainer.party[0]?.level;
+    const standing = (this.party?.pokemon ?? []).filter((pokemon) => !pokemon.isFainted).map((pokemon) => pokemon.level);
     return {
       building: gym.building,
       standsIn: gym.standsIn,
       leader: gym.leader,
       inside: { x: room.rect.x + Math.floor(room.rect.width / 2), y: room.rect.y + Math.floor(room.rect.height / 2) },
+      ...(leads === undefined ? {} : { levels: { leads, ...(standing.length === 0 ? {} : { yours: Math.max(...standing) }) } }),
     };
   }
 

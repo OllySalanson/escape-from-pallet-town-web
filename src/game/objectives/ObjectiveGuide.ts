@@ -88,6 +88,12 @@ export interface NextGymHere {
   readonly standsIn: string;
   readonly leader: string;
   readonly inside: GridPosition;
+  /**
+   * The level the leader's team leads at, and the highest of the player's
+   * standing team, in the challenge box's own words ('lead Lv 12 to your Lv
+   * 6'). Absent, the line says neither.
+   */
+  readonly levels?: { readonly leads: number; readonly yours?: number };
 }
 
 export interface ObjectiveGuideObjective {
@@ -188,7 +194,14 @@ function nextGymHint(context: ObjectiveGuideContext): string | undefined {
     return undefined;
   }
   const where = `${directionTo(context.currentPosition, context.towards?.(gym.inside) ?? gym.inside)}${stepsAway(context.stepsTo?.(gym.inside))}`;
-  return `The next gym is ${gym.building.toUpperCase()}, ${where}, on ${gym.standsIn}: the big building with GYM on its front. ${gym.leader.toUpperCase()} is inside.`;
+  // The leader's level, as the challenge box gives it at the door: a newcomer
+  // was sent at MISTY on a first raid at Lv 6, against a team leading at Lv 12,
+  // with nothing said until the CHALLENGE (persona playtest and an AI veteran,
+  // 23 Nov 2026).
+  const levels = gym.levels
+    ? `, leading at Lv ${gym.levels.leads}${gym.levels.yours === undefined ? '' : ` to your Lv ${gym.levels.yours}`}`
+    : '';
+  return `The next gym is ${gym.building.toUpperCase()}, ${where}, on ${gym.standsIn}: the big building with GYM on its front. ${gym.leader.toUpperCase()} is inside${levels}.`;
 }
 
 /** Where the stake the gold arrow is after lies, and what taking it brings. */
