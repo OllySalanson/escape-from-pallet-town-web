@@ -126,6 +126,22 @@ export function isShortRoom(gamePixelsHigh: number): boolean {
   return gamePixelsHigh < TIGHT_MENU_HEIGHT;
 }
 
+/**
+ * Below this a screen is too low for a row of BROCK'S WORKSHOP's cards over its
+ * detail band, whatever its width: a card is the building, its name, what it
+ * does and its price, 221 game pixels, and the band under the row is a fixed 88
+ * (`.shop-detail`). At 1366x768, the most common laptop window, the screen is
+ * 376 high and the row's pane 209, so every card was cut through its price
+ * above the MORE strip (break-it test, 23 Nov 2026). Measured there: 376 plus
+ * the 12 the card was short, and a little over. A short screen is always low.
+ */
+export const CARD_ROW_MENU_HEIGHT = 390;
+
+/** Whether a screen is too low for a row of cards over a band (`data-low`). */
+export function isLowRoom(gamePixelsHigh: number): boolean {
+  return gamePixelsHigh < CARD_ROW_MENU_HEIGHT;
+}
+
 export function roomFor(gamePixelsWide: number, gamePixelsHigh: number): MenuRoom {
   if (gamePixelsWide >= WIDE_MENU_WIDTH && gamePixelsHigh >= WIDE_MENU_HEIGHT) {
     return 'wide';

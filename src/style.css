@@ -5340,20 +5340,21 @@ button {
 :where(.pixel-ui) .workshop-skyline > * {
   scroll-snap-align: start;
 }
-/* In a window short of height (800x600) a card is the building, its name and
-   its price: what it does is the pane's first line, for the card under the
-   cursor, or no card fitted whole at all. */
-:where(.pixel-ui[data-short]) .workshop-card > .workshop-effect,
-:where(.pixel-ui[data-short]) .workshop-card > .px-tag {
+/* In a window too low for a whole card over the detail band (`data-low`:
+   800x600, and 1366x768 too, where every card was cut through its price) a
+   card is the building, its name and its price: what it does is the detail
+   band's first line, for the card under the cursor, or no card fitted whole. */
+:where(.pixel-ui[data-low]) .workshop-card > .workshop-effect,
+:where(.pixel-ui[data-low]) .workshop-card > .px-tag {
   display: none;
 }
-:where(.pixel-ui[data-short]) .workshop-skyline {
+:where(.pixel-ui[data-low]) .workshop-skyline {
   padding-top: 0;
 }
-:where(.pixel-ui[data-short]) .workshop-skyline > .workshop-card.px-card {
+:where(.pixel-ui[data-low]) .workshop-skyline > .workshop-card.px-card {
   padding-top: 0;
 }
-:where(.pixel-ui[data-short]) .workshop-skyline .workshop-card > .px-name {
+:where(.pixel-ui[data-low]) .workshop-skyline .workshop-card > .px-name {
   min-height: calc(var(--u) * 12);
 }
 /* The rung being asked about stays in its own place on the skyline: its

@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
-import { columnTracks, isShortRoom, planColumns, roomFor } from './columnLayout';
+import { CARD_ROW_MENU_HEIGHT, TIGHT_MENU_HEIGHT, columnTracks, isLowRoom, isShortRoom, planColumns, roomFor } from './columnLayout';
 
 const GAP = 4;
 
@@ -136,5 +136,22 @@ describe('a screen short of height', () => {
     expect(isShortRoom(292)).toBe(true);
     expect(isShortRoom(392)).toBe(false);
     expect(roomFor(320, 392)).toBe('tight');
+  });
+});
+
+describe('a screen too low for a row of cards', () => {
+  // Break-it test, 23 Nov 2026: BROCK'S WORKSHOP at 1366x768 (376 game pixels
+  // high) cut every card through its price above the MORE strip.
+  it('is 1366x768 and 800x600, and not 1920x1080', () => {
+    expect(isLowRoom(376)).toBe(true);
+    expect(isLowRoom(292)).toBe(true);
+    expect(isLowRoom(532)).toBe(false);
+  });
+
+  it('takes in every screen that is short', () => {
+    expect(CARD_ROW_MENU_HEIGHT).toBeGreaterThan(TIGHT_MENU_HEIGHT);
+    for (let high = 200; high < 600; high += 1) {
+      if (isShortRoom(high)) expect(isLowRoom(high)).toBe(true);
+    }
   });
 });
