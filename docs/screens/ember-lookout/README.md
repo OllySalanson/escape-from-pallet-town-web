@@ -1,8 +1,8 @@
-# EMBER ISLE's lookout says when the skiff stops, counted from the raid's start
+# EMBER ISLE's lookout says when the skiff stops, on the raid clock
 
-The lookout by SMUGGLERS' LANDING said "The skiff runs back to the cove till our boat sails. Half past two, and not a minute after. Miss it and you are here till the burners go." On a night raid ("NIGHT RAID" in the corner) "half past two" reads as a time of day. As a clock reading it would only be right for a full 5:00 raid: sailings run by time since the raid began, and a raid shortened by a heal never shows 2:30 at that moment. "Our boat" and "the burners" left the way off the island unnamed.
+The lookout by SMUGGLERS' LANDING said "The skiff runs back to the cove till our boat sails. Half past two, and not a minute after. Miss it and you are here till the burners go." On a night raid ("NIGHT RAID" in the corner) "half past two" reads as a time of day, and "our boat" and "the burners" left the way off the island unnamed.
 
-Now: "The skiff runs back to the cove until two and a half minutes into the raid, and not a second after." and "Miss it and you wait for the CINDER BOAT off the west shore, from three minutes twenty in." (The skiff sails until 150 s; the Cinder Boat exit opens after 200 s.)
+Now: "The skiff runs back to the cove until your clock reads 2:30, and not a second after." and "Miss it and you wait for the CINDER BOAT off the west shore, from when your clock reads 1:40." The readings hold in a raid shortened by a heal as well: a sailing is timed against the clock as drawn (`WorldScene.tideMs`), and a timed exit is moved by the same shortfall (`authoredTimeIn`). In a 4:00 raid the skiff was already sailing on arrival at the jetty, as it is from 4:00 on in a full one.
 
 | Before | After |
 |---|---|
