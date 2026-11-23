@@ -94,10 +94,11 @@ import {
 } from '../audio/battleSounds';
 import type { SoundEffectName } from '../audio/soundEffects';
 import { getWorldMap } from '../worldMap';
-import { SaveManager } from '../save/SaveManager';
+import { DEFAULT_RAID_PROGRESS, SaveManager } from '../save/SaveManager';
 import { favoursInHand } from '../hub/errands';
 import { RunPhase } from '../run/RunManager';
 import { buildExtractionReport } from '../run/extractionReport';
+import { wipedContractReport } from '../objectives/contractReport';
 import { buildWipeSettlement, deployedRaidCondition } from '../run/raidSettlement';
 import { holdUnsavedEnding } from '../run/unsavedEnding';
 import {
@@ -4814,9 +4815,18 @@ export class BattleScene extends Phaser.Scene {
     this.commandContainer.setVisible(false);
     // A lost raid is accounted for on the same screen a survived one is, so the
     // secure-slot decision reads the same either way.
+    const contract = this.runSession?.plan?.contract;
     const report = buildExtractionReport({
       outcome: 'WIPED',
       cause: 'defeated',
+      ...(contract
+        ? {
+            contract: wipedContractReport(
+              contract,
+              new SaveManager().load()?.raidProgress ?? DEFAULT_RAID_PROGRESS,
+            ),
+          }
+        : {}),
       snapshot,
       durationMs: snapshot.durationMs,
       // A thing found for a favour that is done is nobody's errand (`favoursInHand`).

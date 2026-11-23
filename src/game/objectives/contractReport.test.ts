@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { gatesForMap } from '../world/gates';
 import { FIRST_CONTRACT, RAID_CONTRACTS } from './contracts';
-import { contractReportLine, isStillOnBoard, missedGate } from './contractReport';
+import { contractReportLine, isStillOnBoard, missedGate, wipedContractReport } from './contractReport';
 import { standingBoard, type StandingBoardProgress } from './standingBoard';
 
 const CHAIN_BANKED: StandingBoardProgress = {
@@ -84,3 +84,24 @@ describe('the way a job was lost at its very last step', () => {
     expect(missedGate(RAID_CONTRACTS.find((contract) => !contract.requiredExitLabel)!, outcome)).toBe(null);
   });
 });
+
+describe('a job lost with the raid', () => {
+  /**
+   * The overnight retest's job chaser (23 Nov 2026) went down carrying the
+   * Sealed dispatch, and none of the wipe screens said a word about the job:
+   * they learned it was still open when the rim offered it again.
+   */
+  it('is named on the result as unpaid, and says whether the board still has it', () => {
+    const { progress, sealed } = firstSealedBoard();
+    const row = wipedContractReport(sealed, progress);
+    expect(row).toEqual({
+      description: sealed.description,
+      complete: false,
+      reward: 'Lost with the raid, so it went unpaid. It stays on the board for the next raid.',
+    });
+    const keeper = gatesForMap(sealed.mapId).find((gate) => gate.label === sealed.sealedBehind!.gateLabel)!.bossId!;
+    const moved = { ...progress, defeatedBosses: [...progress.defeatedBosses, keeper] };
+    expect(wipedContractReport(sealed, moved).reward).toBe('Lost with the raid, so it went unpaid, and the board has moved on.');
+  });
+});
+

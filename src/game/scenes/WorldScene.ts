@@ -205,6 +205,7 @@ import {
   contractCarryIn,
   contractReportLine,
   missedGate,
+  wipedContractReport,
   contractStopMessage,
   isContractBankable,
   missingCarryIn,
@@ -9669,6 +9670,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         outcome: 'WIPED',
         cause: 'timer',
         ...(settledElsewhere ? { settledElsewhere } : {}),
+        ...(this.runSession?.plan?.contract
+          ? { contract: wipedContractReport(this.runSession.plan.contract, this.progressAfterRaid()) }
+          : {}),
         snapshot,
         durationMs: snapshot.durationMs,
         // A thing found for a favour that is done is nobody's errand (`favoursInHand`).
