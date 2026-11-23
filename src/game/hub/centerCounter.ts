@@ -76,6 +76,29 @@ function clockAfter(pendingMs: number): string {
 }
 
 /**
+ * Whether she would turn every hurt Pokémon at base away today: the next raid
+ * is already as short as she will make it (`recoveryHeldBackIds`), so it is
+ * "Raid first, then come and see me". The rim's card asks it, because it said
+ * "Nurse Joy can help" straight after she had said she could not (the
+ * first-time-friend retest, 23 Nov 2026). `free` is the explorer run's, as for
+ * `centerOffer`.
+ */
+export function joyTurnsHurtAway(game: CounterGame, free = false, now: Date = new Date()): boolean {
+  if (free) {
+    return false;
+  }
+  const away = awayOnRaid(game);
+  const ids = pokemonNeedingRecovery(game.stash)
+    .filter((stored) => !away.has(stored.id))
+    .map((stored) => stored.id);
+  if (ids.length === 0) {
+    return false;
+  }
+  const terms = recoveryTermsFor(game.raidProgress.workshopUpgrades, game.wardTreatmentsUsed, game.freeHealDay, now);
+  return recoveryHeldBackIds(game.stash, game.pendingRecoveryMs, ids, terms).length === ids.length;
+}
+
+/**
  * What she says to whoever walks up. `free` is the explorer run, whose clock
  * nothing can shorten (`dev/playtestMode.ts`).
  */
