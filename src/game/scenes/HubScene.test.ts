@@ -487,6 +487,21 @@ describe('a panel over the hall', () => {
     expect(flowForGame(home).party.map(({ id }) => id)).toEqual(['charmander-1']);
   });
 
+  it('says of the partner, at the bench, that a wipe never takes it', () => {
+    // A friend with only their starter took it off the bench and read "Lost on
+    // a wipe unless it is in the locker" over it (persona playtest, 23 Nov 2026).
+    const { hub } = createHub();
+    const partnerId = hub.stash.partner()!.id;
+    for (const stored of hub.stash.listPokemon()) {
+      if (hub.flow.includesPokemon(stored.id)) hub.flow.togglePokemon(stored.id);
+    }
+    hub.setView('bench');
+    const markup = (hub as unknown as { content(): string }).content();
+    const helpOf = (id: string): string => markup.match(new RegExp(`data-pokemon="${id}"[^>]*data-help="([^"]*)"`))?.[1] ?? '';
+    expect(helpOf(partnerId)).toContain('Your partner: a wipe never takes it.');
+    expect(helpOf('charmander-1')).toContain('Lost on a wipe unless it is in the locker.');
+  });
+
   it('will not jump with nobody on the bench, and says so', () => {
     const { hub, kit, calls } = panelOn('rim');
     expect(hub.flow.step).toBe('loadout');

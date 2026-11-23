@@ -2744,6 +2744,10 @@ export class HubScene extends Phaser.Scene {
         : pixelEmptyPartySlot();
     }).join('');
     const atBase = this.findablePokemon.filter((stored) => !this.flow.includesPokemon(stored.id));
+    // The partner is never lost on a wipe, and saying it was contradicted every
+    // other screen: a friend with only their starter read "Lost on a wipe unless
+    // it is in the locker" over it (persona playtest, 23 Nov 2026).
+    const partnerId = this.savedGame.stash.partnerId();
     const pokemonRows = atBase
       .map((stored, index) => {
         const name = escapeAttribute(stored.pokemon.name);
@@ -2755,7 +2759,7 @@ export class HubScene extends Phaser.Scene {
         const full = party.length >= MAX_RUN_PARTY;
         const boxed = boxNames[this.stash.boxIndexOf(stored.id)] ?? '';
         return pixelMonTile(stored.pokemon, {
-          attributes: `data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 && party.length === 0 ? ' data-cursor-start' : ''}${fainted || full ? ' aria-disabled="true"' : ''} data-box-name="${escapeAttribute(boxed)}" aria-label="${escapeAttribute(`${stored.pokemon.name}, level ${stored.pokemon.level}, ${boxed}`)}" data-help="${fainted ? faintedRefusal(name, single) : full ? `The bench is full (${MAX_RUN_PARTY}). Take somebody off first.` : `Put ${name}${single ? ', your only Pokémon,' : ''} on the bench. Lost on a wipe unless it is in the locker.`}"`,
+          attributes: `data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 && party.length === 0 ? ' data-cursor-start' : ''}${fainted || full ? ' aria-disabled="true"' : ''} data-box-name="${escapeAttribute(boxed)}" aria-label="${escapeAttribute(`${stored.pokemon.name}, level ${stored.pokemon.level}, ${boxed}`)}" data-help="${fainted ? faintedRefusal(name, single) : full ? `The bench is full (${MAX_RUN_PARTY}). Take somebody off first.` : `Put ${name}${single ? ', your only Pokémon,' : ''} on the bench. ${stored.id === partnerId ? 'Your partner: a wipe never takes it.' : 'Lost on a wipe unless it is in the locker.'}`}"`,
         });
       })
       .join('');
