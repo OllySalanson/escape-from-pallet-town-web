@@ -92,6 +92,13 @@ export interface ActiveRunSession {
   readonly shinyRng?: SeededRng;
   /** Kept in the live session so battle returns do not replay onboarding. */
   firstDeploymentBriefingShown?: boolean;
+  /**
+   * Whether Oak has said this raid that a worn-out Pokémon can be given a
+   * Potion from the pack (`world/fieldHealHint.ts`). Once a raid: a player who
+   * heals in fights and never presses B heard it after every fight (the
+   * overnight retest's veteran, 23 Nov 2026).
+   */
+  fieldHealHintSaid?: boolean;
   /** Set once the authored teaching encounter has been handed to BattleScene. */
   teachingEncounterUsed?: boolean;
   /**

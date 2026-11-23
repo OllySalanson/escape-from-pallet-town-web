@@ -1554,7 +1554,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /** Oak on the radio after a fight that left somebody worn out, until the pack is known (`world/fieldHealHint.ts`). */
   private sayFieldHealHint(): void {
-    if (isPlaytestRun()) {
+    if (isPlaytestRun() || !this.runSession || this.runSession.fieldHealHintSaid) {
       return;
     }
     const healer = usableBattleItems(this.bag).find((item) => item.effect.type === 'heal' && this.bag.count(item.id) > 0);
@@ -1564,6 +1564,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.keysLearned.has('bag'),
     );
     if (line !== null) {
+      this.runSession.fieldHealHintSaid = true;
       this.interrupt([line]);
     }
   }
