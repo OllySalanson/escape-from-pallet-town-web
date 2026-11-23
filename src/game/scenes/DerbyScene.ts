@@ -95,12 +95,17 @@ function localDay(now: Date): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
-/** The arrow a key is, for choosing a line, or null. */
-function arrowOf(key: string): 'up' | 'down' | 'left' | 'right' | null {
-  if (key === 'ArrowUp' || key === 'w') return 'up';
-  if (key === 'ArrowDown' || key === 's') return 'down';
-  if (key === 'ArrowLeft' || key === 'a') return 'left';
-  if (key === 'ArrowRight' || key === 'd') return 'right';
+/**
+ * The arrow a key is, for choosing a line, or null. A letter is either case:
+ * with Caps Lock on, W A S D arrive as capitals, and berry picking already took
+ * both (break-it test, 23 Nov 2026).
+ */
+export function arrowOf(key: string): 'up' | 'down' | 'left' | 'right' | null {
+  const letter = key.length === 1 ? key.toLowerCase() : key;
+  if (letter === 'ArrowUp' || letter === 'w') return 'up';
+  if (letter === 'ArrowDown' || letter === 's') return 'down';
+  if (letter === 'ArrowLeft' || letter === 'a') return 'left';
+  if (letter === 'ArrowRight' || letter === 'd') return 'right';
   return null;
 }
 
