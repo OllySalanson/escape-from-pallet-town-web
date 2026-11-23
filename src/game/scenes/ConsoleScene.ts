@@ -54,6 +54,8 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
   private boards = new Map<string, Board>();
   private playerName: string | null = null;
   private naming: { value: string; then?: string } | null = null;
+  /** The next draw of the name form selects the name: it was just opened. */
+  private selectName = false;
   private status: string | undefined;
   private session!: ConsoleSession;
   private leaderboards!: Leaderboards;
@@ -71,6 +73,7 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
     this.boards = new Map();
     this.playerName = loadPlayerName();
     this.naming = null;
+    this.selectName = false;
     this.status = undefined;
     const storage = deviceStorage();
     this.leaderboards = new Leaderboards(palletTownBoards, new DeviceBoard(storage), Date.now, new WaitingScores(storage));
@@ -178,6 +181,17 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
     this.wireNameForm(root);
     if (this.naming) {
       overlay.focus('.px-field');
+      // A name opened to be changed is selected, so what is typed or pasted
+      // replaces it; one handed back (too short, or taken) keeps the caret at
+      // its end, to go on typing. Focused as drawn, the caret sat at the start
+      // and 'SAM' pasted over BREAKER made 'SAMBREAKER' (break-it test, 23 Nov 2026).
+      const field = root.querySelector<HTMLInputElement>('[data-name-form] .px-field');
+      if (this.selectName) {
+        field?.select();
+      } else {
+        field?.setSelectionRange(field.value.length, field.value.length);
+      }
+      this.selectName = false;
     } else {
       overlay.refocus('[data-cursor-start]', '[data-play]');
     }
@@ -244,6 +258,7 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
     }
     this.naming = { value: this.playerName ?? '', ...(then ? { then } : {}) };
     this.status = undefined;
+    this.selectName = true;
     this.render();
   }
 
