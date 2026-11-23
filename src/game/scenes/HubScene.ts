@@ -3046,12 +3046,17 @@ export class HubScene extends Phaser.Scene {
             this.savedGame.raidProgress,
           )
         : undefined;
+    // An allowance past the whole clock is said in red, beside the figures: a
+    // Line survey reading "2:45 of your 4:00; allow 6:52" was offered first and
+    // taken, by a friend who had not done the sum (AI playtest, 23 Nov 2026).
+    const tooLong =
+      walk !== undefined && !isPlaytestRun() && walk * STEP_DURATION_MS * JOB_WALK_ALLOWANCE > this.raidClockMs;
     const walking =
       walk === undefined
         ? ''
         : ` Walked straight with no stops, it takes ${formatRecoveryClock(walk * STEP_DURATION_MS)}${isPlaytestRun() ? ' of walking' : ` of your ${formatRecoveryClock(this.raidClockMs)}`}; allow ${formatRecoveryClock(walk * STEP_DURATION_MS * JOB_WALK_ALLOWANCE)}.${
-            quicker ? ` From ${quicker.landing.label} it takes ${formatRecoveryClock(quicker.walk * STEP_DURATION_MS)}.` : ''
-          }`;
+            tooLong ? ' That is longer than this raid.' : ''
+          }${quicker ? ` From ${quicker.landing.label} it takes ${formatRecoveryClock(quicker.walk * STEP_DURATION_MS)}.` : ''}`;
     const job = contract
       ? short.length > 0
         ? `${contract.name} needs ${itemAmountsFor(required)}. Still short: ${itemAmountsFor(short)}`
@@ -3086,7 +3091,7 @@ export class HubScene extends Phaser.Scene {
         ? this.jobsAt(insertionId).length > 0
           ? line('Job', `None this raid: nothing to fetch.${this.noJobArrow()} ${this.jobButtons(insertionId, contract)}`)
           : ''
-        : line('Job', `${job} ${this.jobButtons(insertionId, contract)}`, short.length > 0)
+        : line('Job', `${job} ${this.jobButtons(insertionId, contract)}`, short.length > 0 || tooLong)
     }${isPlaytestRun() ? '' : line('Sky', this.skyLine())}${line(pack ? 'Hunters' : 'Hunter', `<span data-hunter-tier="${threat.tierOffset + 1}">${hunter.heading.replace(/^Hunters?: /, '')}: ${hunter.detail}</span>`, threat.tierOffset > 0)}${this.clockIsNews ? line('Clock', this.clockNote()) : ''}</dl>`;
   }
 
