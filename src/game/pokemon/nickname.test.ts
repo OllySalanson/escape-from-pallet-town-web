@@ -23,7 +23,16 @@ describe('a nickname, on FireRed rules', () => {
   it('takes out what a screen could read as markup, and anything the typeface cannot draw', () => {
     expect(tidyNickname('<b>Sky</b>', 'Pidgey')).toBe('bSky/b');
     expect(tidyNickname('Ace & "Co"', 'Pidgey')).toBe('Ace Co');
-    expect(tidyNickname('Pipé♂', 'Pidgey')).toBe('Pip');
+    expect(tidyNickname('Pipé♂', 'Pidgey')).toBe('Pipe');
+    expect(tidyNickname('😀Sky', 'Pidgey')).toBe('Sky');
+  });
+
+  it('keeps an accented letter as its plain letter, so a name typed with one is not cut short', () => {
+    expect(tidyNickname('Zoë', 'Pidgey')).toBe('Zoe');
+    expect(tidyNickname('José', 'Pidgey')).toBe('Jose');
+    expect(tidyNickname('Ñandú', 'Pidgey')).toBe('Nandu');
+    // Typed a letter at a time, the naming screen keeps each one as it comes.
+    expect(nicknameCharacters('Zoë')).toBe('Zoe');
     expect(tidyNickname("  Mr.  O'Hare ", 'Pidgey')).toBe("Mr. O'Hare");
   });
 
