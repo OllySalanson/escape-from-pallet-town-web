@@ -6606,12 +6606,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return NO_WAY;
     }
     const hunted = this.hunterPackHere()?.lead(this.currentTile) !== undefined;
+    // At 0:00 the hunters are ENRAGED and there are 15 seconds to get out: no
+    // job, stake or gym can be finished in that, and the arrow kept pointing at
+    // them - from one step beside WESTWARD ROAD it said STAKE 1: E, away from
+    // the exit, while the red chip counted down (scenario loop, 23 Nov 2026).
+    const enraged = this.runSession.manager.isEnraged;
     const exit = this.nearestExitCue();
     const contractSteps = this.runSession.manager.snapshot().contractSteps;
     const key = [
       this.currentMap.id,
       `${this.currentTile.x},${this.currentTile.y}`,
       hunted,
+      enraged,
       this.collectedLootIds.size,
       exit?.label,
       contractSteps.length,
@@ -6631,8 +6637,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     let cue: string | undefined;
     let tile: GridPosition | undefined;
     let out = false;
-    const gymDoor = hunted ? undefined : this.gymDoorNear();
-    if (gymDoor) {
+    const gymDoor = hunted || enraged ? undefined : this.gymDoorNear();
+    if (enraged) {
+      cue = exit ? `OUT NOW VIA ${exit.label.toUpperCase()}: ${exit.heading}` : undefined;
+      tile = exit?.position;
+      out = true;
+    } else if (gymDoor) {
       ({ cue, tile } = gymDoor);
     } else if (job) {
       ({ cue, tile, out } = job);
