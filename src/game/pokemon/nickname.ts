@@ -18,7 +18,16 @@
 /** FireRed's `POKEMON_NAME_LENGTH`. */
 export const NICKNAME_LENGTH = 10;
 
-const withoutUnsafe = (value: string): string => value.replace(/[^\x20-\x7e]|[<>&"]/g, '');
+// An accented letter is its plain letter with the accent dropped, not dropped
+// itself: typed one letter at a time, the e of "Zoë" simply never appeared, so
+// a friend naming a Pokémon after somebody saw "Zo" and no reason (scenario
+// loop, 23 Nov 2026). NFD splits a letter from its accents, which go with the
+// rest of what the typeface cannot draw.
+const withoutUnsafe = (value: string): string =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\x20-\x7e]|[<>&"]/g, '');
 
 /** A typed name with the characters a nickname cannot hold taken out, as it is typed. */
 export function nicknameCharacters(value: string): string {
