@@ -177,10 +177,24 @@ async function start() {
   // A new tab's event log starts again at 1.
   const status = previous ? { ...previous, state: 'playing', lastEvent: 0, sameFor: 0, stuck: false } : createRun({ persona: persona ?? fail('--persona=veteran or --persona=newcomer') });
   const runId = status.runId;
+  // One game open at a time. A start used to leave the last run's tab running
+  // and its server serving, so a night of starts held a tab and a server for
+  // each (nine servers and three live tabs by 02:00 on 23 Nov 2026, on a box the
+  // watchdog was already pausing). The run that was current is stopped first,
+  // its save copied out as `stop` does; this run's own old tab is closed.
+  const before = currentRunId();
+  if (before && before !== runId && readSession(before) && readStatus(before)?.state === 'playing') {
+    await stopRun(before, `${runId} started`);
+  }
   const old = readSession(runId);
+  if (old?.targetId) {
+    await fetch(`http://127.0.0.1:${old.cdpPort}/json/close/${old.targetId}`).catch(() => undefined);
+  }
   const cdpPort = flags.port ? Number(flags.port) : startBrowser();
-  // The same server port as before keeps the page's origin, and so its storage.
-  const serverPort = old?.serverPort && !(await portAnswers(old.serverPort)) ? old.serverPort : await freePort();
+  // The same server port as before keeps the page's origin, and so its storage:
+  // its own server if that is still serving, else a new one on that port.
+  const ownServer = old?.serverPid && alive(old.serverPid) && (await portAnswers(old.serverPort));
+  const serverPort = ownServer || (old?.serverPort && !(await portAnswers(old.serverPort))) ? old.serverPort : await freePort();
   const serverPid = (await portAnswers(serverPort)) ? old?.serverPid : await startServer(serverPort);
   const url = `http://127.0.0.1:${serverPort}/escape-from-pallet-town-web/?testmode=1`;
   const savePath = join(runDir(runId), 'save.json');
