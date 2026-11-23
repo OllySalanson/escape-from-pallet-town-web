@@ -52,13 +52,22 @@ const PIKACHU: MeasuredMember = {
  * (Pine Hollow), paralysing a swimmer and hitting Water twice as hard; a
  * Bellsprout; and a Poliwag, whose Water Absorb drinks what is thrown at it.
  */
-const BEST = partyOf(
-  `Psyduck, Pikachu, Bellsprout, Poliwag ${LEVEL}`,
-  ['psyduck', LEVEL],
-  ['pikachu', LEVEL, PIKACHU],
-  ['bellsprout', LEVEL],
-  ['poliwag', LEVEL],
-);
+const bestAt = (level: number): MeasuredParty =>
+  partyOf(
+    `Psyduck, Pikachu, Bellsprout, Poliwag ${level}`,
+    ['psyduck', level],
+    ['pikachu', level, PIKACHU],
+    ['bellsprout', level],
+    ['poliwag', level],
+  );
+const BEST = bestAt(LEVEL);
+
+/**
+ * The level the quarter past her doors is held to. It was her lead's until she
+ * came down three levels for newcomers (22 Nov 2026, the first-time-friend
+ * retest), and the Coast behind her did not: whoever walks it has trained on.
+ */
+const QUARTER_LEVEL = 15;
 
 /**
  * Strong on paper and wrong: Fire the rain halves, and Ground and Rock that
@@ -66,26 +75,42 @@ const BEST = partyOf(
  * Sandshrew, as anybody would: a Geodude led into her loses at every level
  * measured, which is the lesson rather than the puzzle.
  */
-const wrong = (up: number): MeasuredParty =>
+const wrongAt = (level: number, up: number): MeasuredParty =>
   partyOf(
-    `Charmeleon ${LEVEL + up + 1}, Sandshrew ${LEVEL + up}, Geodude ${LEVEL + up}`,
-    ['charmeleon', LEVEL + up + 1],
-    ['sandshrew', LEVEL + up],
-    ['geodude', LEVEL + up],
+    `Charmeleon ${level + up + 1}, Sandshrew ${level + up}, Geodude ${level + up}`,
+    ['charmeleon', level + up + 1],
+    ['sandshrew', level + up],
+    ['geodude', level + up],
   );
+const wrong = (up: number): MeasuredParty => wrongAt(LEVEL, up);
 
-/** Each starter with the two catches that suit it here. */
-const STARTERS: readonly MeasuredParty[] = [
-  partyOf(`Bulbasaur, Pikachu, Psyduck ${LEVEL}`, ['bulbasaur', LEVEL], ['pikachu', LEVEL, PIKACHU], ['psyduck', LEVEL]),
-  partyOf(`Charmander, Pikachu, Psyduck ${LEVEL}`, ['charmander', LEVEL], ['pikachu', LEVEL, PIKACHU], ['psyduck', LEVEL]),
-  partyOf(`Squirtle, Pikachu, Bellsprout ${LEVEL}`, ['squirtle', LEVEL], ['pikachu', LEVEL, PIKACHU], ['bellsprout', LEVEL]),
+/**
+ * Each starter with the two catches that suit it here. A Charmander at her
+ * lead's level brings an Oddish, the Grass her guide names: at Lv 12 the Fire
+ * starter has too little to bring a Psyduck's stilled rain to bear (46%).
+ */
+const startersAt = (level: number, charmanderGrass: boolean): readonly MeasuredParty[] => [
+  partyOf(`Bulbasaur, Pikachu, Psyduck ${level}`, ['bulbasaur', level], ['pikachu', level, PIKACHU], ['psyduck', level]),
+  charmanderGrass
+    ? partyOf(`Charmander, Pikachu, Oddish ${level}`, ['charmander', level], ['pikachu', level, PIKACHU], ['oddish', level])
+    : partyOf(`Charmander, Pikachu, Psyduck ${level}`, ['charmander', level], ['pikachu', level, PIKACHU], ['psyduck', level]),
+  partyOf(`Squirtle, Pikachu, Bellsprout ${level}`, ['squirtle', level], ['pikachu', level, PIKACHU], ['bellsprout', level]),
 ];
+const STARTERS = startersAt(LEVEL, true);
+/** The quarter's reference parties, at its own level (`QUARTER_LEVEL`). */
+const QUARTER_BEST = bestAt(QUARTER_LEVEL);
+const QUARTER_STARTERS = startersAt(QUARTER_LEVEL, false);
 
 const rate = (party: MeasuredParty, trainer: TrainerBattle = misty(), weather: WeatherId | null = null): number =>
   trainerWinRate(party, trainer, TRIALS, 0x51ede, weather, POTIONS);
 
-/** Every reference party the Coast is measured against, the best team first. */
-const COAST_PARTIES: readonly MeasuredParty[] = [BEST, ...STARTERS, wrong(3), wrong(8)];
+/** Every reference party the Coast is measured against, the best team first, at the quarter's level. */
+const COAST_PARTIES: readonly MeasuredParty[] = [
+  QUARTER_BEST,
+  ...QUARTER_STARTERS,
+  wrongAt(QUARTER_LEVEL, 3),
+  wrongAt(QUARTER_LEVEL, 8),
+];
 const meanRate = (trainer: TrainerBattle, weather: WeatherId | null): number =>
   COAST_PARTIES.reduce((total, party) => total + rate(party, trainer, weather), 0) / COAST_PARTIES.length;
 
@@ -124,9 +149,12 @@ describe('THE COAST: Misty, two on two in the rain', () => {
   });
 
   it('makes a wrong team three levels up struggle, and lets one eight levels up through', () => {
+    // Up to 0.7, from 0.45, since she came down three levels for newcomers
+    // (22 Nov 2026): a lone starter still loses to her, and a team of the
+    // wrong types three up is a coin flip rather than a wall.
     const three = rate(wrong(3));
     expect(three).toBeGreaterThanOrEqual(0.2);
-    expect(three).toBeLessThanOrEqual(0.45);
+    expect(three).toBeLessThanOrEqual(0.7);
     expect(rate(wrong(8))).toBeGreaterThanOrEqual(0.65);
   });
 
@@ -168,11 +196,11 @@ describe('THE COAST: Misty, two on two in the rain', () => {
     for (const id of COAST_QUARTER_TRAINERS) {
       const trainer = trainerOf(id);
       expect(`${trainer.name} ${trainer.ai} ${trainer.unitCount}`).toBe(`${trainer.name} gym 2`);
-      expect(rate(BEST, trainer, WeatherId.Rain)).toBeGreaterThanOrEqual(0.9);
-      const starters = STARTERS.map((party) => rate(party, trainer, WeatherId.Rain));
+      expect(rate(QUARTER_BEST, trainer, WeatherId.Rain)).toBeGreaterThanOrEqual(0.9);
+      const starters = QUARTER_STARTERS.map((party) => rate(party, trainer, WeatherId.Rain));
       expect(Math.min(...starters), trainer.name).toBeGreaterThanOrEqual(0.6);
       expect(Math.max(...starters) - Math.min(...starters), trainer.name).toBeLessThanOrEqual(0.35);
-      expect(rate(wrong(3), trainer, WeatherId.Rain)).toBeGreaterThan(rate(wrong(3)));
+      expect(rate(wrongAt(QUARTER_LEVEL, 3), trainer, WeatherId.Rain)).toBeGreaterThan(rate(wrong(3)));
     }
   });
 
@@ -185,11 +213,11 @@ describe('THE COAST: Misty, two on two in the rain', () => {
   it('puts Boatswain Cragg above her, fought in the Coast’s rain', () => {
     const cragg = trainerOf('vale-quay-keeper-cragg');
     expect(meanRate(cragg, WeatherId.Rain)).toBeLessThan(meanRate(misty(), null));
-    expect(rate(BEST, cragg, WeatherId.Rain)).toBeGreaterThanOrEqual(0.6);
-    for (const party of STARTERS) {
+    expect(rate(QUARTER_BEST, cragg, WeatherId.Rain)).toBeGreaterThanOrEqual(0.6);
+    for (const party of QUARTER_STARTERS) {
       expect(`${party.name} ${rate(party, cragg, WeatherId.Rain) >= 0.45}`).toBe(`${party.name} true`);
     }
-    expect(rate(wrong(8), cragg, WeatherId.Rain)).toBeGreaterThanOrEqual(0.65);
+    expect(rate(wrongAt(QUARTER_LEVEL, 8), cragg, WeatherId.Rain)).toBeGreaterThanOrEqual(0.65);
   });
 });
 

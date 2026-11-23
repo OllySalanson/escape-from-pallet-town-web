@@ -28,7 +28,7 @@ import { planLimits, SEAM_DEPTH, startDistrict } from '../../worldPlan';
 import { withInside } from './insides';
 import { caveLadders, caveMouthLink, greystoneCaves } from './greystoneCaves';
 import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
-import { gymDoorGuide } from '../../../../src/game/world/gymGuide';
+import { gymDoorGuide, gymLeadLevel } from '../../../../src/game/world/gymGuide';
 import { GREYSTONE_VALE } from './plan';
 
 /** The land above the coast, a letter a lattice cell: T the wood, . the heath. */
@@ -423,9 +423,10 @@ function withInsides(file: MapFile): MapFile {
         // Four boxes at most, so the rain, the counters and where they live
         // share them: the newcomers who were told only the types quit not
         // knowing which Pokémon those were or where they lived (AI playtests
-        // 3 and 5, 22 Nov 2026).
-        'Yo, champ! MISTY holds the jetty and the reed trail into the Coast. In her rain, HORSEA moves first.',
-        'Water hits harder in it and Fire goes soft. Bring Electric or Grass, and a Psyduck to still the weather.',
+        // 3 and 5, 22 Nov 2026). The level is her lead's, as her door sign
+        // asks: the retest's friends all walked in alone at Lv 8 to 11.
+        `Yo, champ! MISTY holds the way into the Coast. Train to about Lv ${gymLeadLevel(MISTY_BOSS_ID)} and bring two Pokémon, not one.`,
+        'In her rain HORSEA moves first and Fire goes soft. Bring Grass or Electric, and a Psyduck stills the weather.',
         "PIKACHU play in PINE HOLLOW's glade. ODDISH and BELLSPROUT stand in REEDMERE. Walk up, press SPACE and catch one!",
         'Beat her and both ways open for good, and the CASCADE BADGE is yours.',
       ],

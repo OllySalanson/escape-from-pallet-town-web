@@ -125,6 +125,10 @@ export const VALE_QUARTERS: readonly ValeQuarter[] = [
       design: 'misty',
       advice: [
         'Next gym: CERULEAN GYM on GULL STRAND. MISTY holds THE COAST.',
+        // Her lead's level, as her door sign asks (`gymDoorGuide`, pinned by
+        // `mistyCounters.test.ts`): every friend of the 22 Nov retest walked in
+        // alone at Lv 8 to 11, and none beat her.
+        'Train to about Lv 12 and bring two Pokémon, not one!',
         'Her Water types swim fast in her rain. Electric and Grass hit hard!',
         'Catch PIKACHU in PINE HOLLOW, ODDISH or BELLSPROUT in REEDMERE!',
       ],

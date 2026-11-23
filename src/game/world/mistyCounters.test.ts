@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { districtAt } from './districts';
 import { entitiesForMap } from './npcs';
+import { gymLeadLevel } from './gymGuide';
 import { MISTY_BOSS_ID, valeGyms } from './valeQuarters';
 import vale from './maps/greystoneVale.json';
 
@@ -51,5 +52,17 @@ describe("MISTY's counters on the map", () => {
   it('are named by the Gym Guide at the Raid Arena door too', () => {
     const misty = valeGyms().find((gym) => gym.bossId === MISTY_BOSS_ID)!;
     expect(misty.advice.join(' ')).toMatch(/PIKACHU.*PINE HOLLOW.*ODDISH.*BELLSPROUT.*REEDMERE/);
+  });
+
+  it('say plainly how strong to be: her lead\'s level, and two Pokémon', () => {
+    // Every friend of the 22 Nov retest walked in alone at Lv 8 to 11 and none
+    // beat her; her door sign asked for her lead's level, and nothing inside did.
+    const plainly = new RegExp(`about Lv ${gymLeadLevel(MISTY_BOSS_ID)} and bring two Pokémon`);
+    const guide = vale.people.find(
+      (person) => person.name === 'Gym Guide' && person.lines.some((line) => line.includes('MISTY')),
+    );
+    expect(guide!.lines.join(' ')).toMatch(plainly);
+    const misty = valeGyms().find((gym) => gym.bossId === MISTY_BOSS_ID)!;
+    expect(misty.advice.join(' ')).toMatch(plainly);
   });
 });
