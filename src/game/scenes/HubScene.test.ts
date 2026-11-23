@@ -2989,6 +2989,29 @@ describe('what the stash says about the Pokémon under the cursor', () => {
     expect(stash).not.toContain('data-summary=');
   });
 
+  // Break-it test, 23 Nov 2026: RENAME opened with the old name unselected and
+  // the caret at its start, so a pasted name went in front of it.
+  it('selects the old name when RENAME opens, so what is typed or pasted replaces it', () => {
+    const { hub } = createHub(DEFAULT_RAID_PROGRESS, new MemoryStorage());
+    const internals = hub as unknown as {
+      boxScope: number;
+      boxEditing: string | undefined;
+      overlay: { root: { querySelectorAll(selector: string): unknown[]; querySelector(selector: string): unknown } };
+    };
+    hub.setView('stash');
+    internals.boxScope = 0;
+    const rename = { dataset: {} as Record<string, string>, onclick: undefined as undefined | ((event: { detail: number }) => void) };
+    const field = { select: vi.fn() };
+    internals.overlay.root.querySelectorAll = (selector: string) => (selector === '[data-box-rename]' ? [rename] : []);
+    internals.overlay.root.querySelector = (selector: string) =>
+      selector === '[data-box-form="rename"] .px-field' && internals.boxEditing === 'rename' ? field : null;
+    hub.render();
+    rename.onclick!({ detail: 0 });
+
+    expect(internals.boxEditing).toBe('rename');
+    expect(field.select).toHaveBeenCalledOnce();
+  });
+
   it.each(['<!--', '<i>Keep</i>'])('prints a box named %s as words, never as markup', (typed) => {
     // A box named `<!--` once commented out the rest of the Pokemon Center.
     const { hub } = createHub(DEFAULT_RAID_PROGRESS, new MemoryStorage());

@@ -1849,7 +1849,14 @@ export class HubScene extends Phaser.Scene {
     on('[data-box-sort]', () => rerender(() => { this.stashSort = nextStashSort(this.stashSort); }));
     on('[data-box-find]', () => rerender(() => { this.boxEditing = 'find'; }));
     on('[data-box-clear]', () => rerender(() => { this.stashSearch = ''; }));
-    on('[data-box-rename]', () => rerender(() => { this.boxEditing = 'rename'; }));
+    on('[data-box-rename]', () => {
+      rerender(() => { this.boxEditing = 'rename'; });
+      // Renaming is replacing: the old name is selected, so what is typed or
+      // pasted takes its place. Left unselected with the caret at its start, a
+      // pasted name was put in front of it - 'MY TEAMBox 1' (break-it test,
+      // 23 Nov 2026).
+      this.overlay.root.querySelector<HTMLInputElement>('[data-box-form="rename"] .px-field')?.select();
+    });
     on('[data-box-new]', () => this.addBoxAndShow());
     on('[data-box-delete]', () => this.deleteBox());
     on('[data-box-move]', (button) =>
