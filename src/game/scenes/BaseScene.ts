@@ -4305,12 +4305,12 @@ export class BaseScene extends Phaser.Scene {
       if (!partner && this.canFishAt(facing)) {
         return '[SPACE] FISH';
       }
-      return (
-        partner ??
-        (looksTouchOnly()
-          ? TOUCH_ONLY_WALK_HINT
-          : yardKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []), isFirstRaid(this.savedGame.raidProgress)))
-      );
+      // A touch-only device is told it needs a keyboard, over the partner too:
+      // it cannot press SPACE either, and CONTINUE stands the partner in front.
+      if (looksTouchOnly()) {
+        return TOUCH_ONLY_WALK_HINT;
+      }
+      return partner ?? yardKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []), isFirstRaid(this.savedGame.raidProgress));
     }
     const keeper = room.keeper ? `[SPACE] ${room.keeper.name}` : '';
     // Stood in an arch, the way through it is said as a mat's way out is.
