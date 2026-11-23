@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { RunManager } from '../run';
 import { Pokemon, BULBASAUR } from '../pokemon';
 import { getWorldMap } from '../worldMap';
-import { MISTY_BOSS_ID } from '../world/valeQuarters';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../world/valeQuarters';
+import { createRunTrainerEncounters } from '../world/trainers';
 import { RAID_CONTRACTS } from '../objectives/contracts';
 import { isFirstJobsBanked, NEAR_JOBS } from '../objectives/standingBoard';
 import { WorldScene } from './WorldScene';
@@ -18,6 +19,7 @@ vi.mock('phaser', () => ({
 /** What the gold arrow asks of the real scene near a gym. */
 interface Driven {
   gymDoorNear(): { readonly cue: string; readonly tile: { readonly x: number; readonly y: number } } | undefined;
+  leaderHere(): string | undefined;
 }
 
 /** CERULEAN GYM's door on GULL STRAND, pressed up from the tile below it. */
@@ -30,6 +32,7 @@ function standingAt(
   tile: { readonly x: number; readonly y: number },
   beaten: readonly string[] = [],
   outFor: OutFor = 'job',
+  beatenHere: readonly string[] = [],
 ): Driven {
   const manager = new RunManager();
   manager.startRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] }, { mapId: 'greystone-vale', durationMs: 60_000 });
@@ -40,8 +43,8 @@ function standingAt(
     collisionData: map.collision,
     currentTile: tile,
     wayFields: new Map(),
-    trainerEncounters: [],
-    defeatedTrainerIds: new Set<string>(),
+    trainerEncounters: createRunTrainerEncounters().filter((encounter) => encounter.mapId === 'greystone-vale'),
+    defeatedTrainerIds: new Set<string>(beatenHere),
     runSession: {
       manager,
       plan: {
@@ -83,6 +86,20 @@ describe('the gold arrow at the next gym', () => {
     expect(standingAt({ x: 140, y: 215 }, [], 'job').gymDoorNear()).toBeUndefined();
     expect(standingAt({ x: 140, y: 215 }, [], 'first raid').gymDoorNear()).toBeUndefined();
     expect(standingAt({ x: 173, y: 217 }, [], 'first raid').gymDoorNear()?.cue).toMatch(/^CERULEAN GYM: /);
+  });
+
+  it('names the leader inside the gym, rather than turning green for the door it came in by', () => {
+    // FUCHSIA GYM's floor, a few steps in: KOGA is at the north end. The arrow
+    // led a friend to the door and then pointed back out to the nearest exit
+    // (persona playtest, 23 Nov 2026).
+    const inside = { x: 392, y: 380 };
+    expect(standingAt(inside, [MISTY_BOSS_ID], 'no job').leaderHere()).toBe('KOGA: N');
+    expect(standingAt(inside, [MISTY_BOSS_ID], 'job').leaderHere()).toBe('KOGA: N');
+    // Beaten on this raid, or the gym already won: nothing to name.
+    expect(standingAt(inside, [MISTY_BOSS_ID], 'no job', [KOGA_BOSS_ID]).leaderHere()).toBeUndefined();
+    expect(standingAt(inside, [MISTY_BOSS_ID, KOGA_BOSS_ID], 'no job').leaderHere()).toBeUndefined();
+    // Outdoors, it is the door's to say.
+    expect(standingAt({ x: 140, y: 215 }, [MISTY_BOSS_ID], 'no job').leaderHere()).toBeUndefined();
   });
 
   it('counts the first jobs as the finish line does: the chain, then the near jobs', () => {

@@ -40,6 +40,7 @@ function holdingAJob(elapsedMs: number): Driven {
     nearestExitCue: () => EXIT,
     contractTarget: () => STAKE,
     gymDoorNear: () => undefined,
+    leaderHere: () => undefined,
     lootForCurrentMap: () => [],
     wayMarkTo: (tile: { x: number; y: number }, out: boolean) => ({ tile, out }),
   });
