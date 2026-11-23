@@ -241,3 +241,42 @@ describe('the menu screens are laid out against the window', () => {
     expect(FEEDBACK_TAB_STRIP).toBe(32);
   });
 });
+
+describe('the menu screens on a display scaled to 125% or 150%', () => {
+  const RATIOS = [1, 1.25, 1.5, 1.75, 2, 2.25];
+
+  // Break-it test, 23 Nov 2026: at 125%, 2x was 2.5 screen pixels, so every
+  // one-pixel rule and every stroke of the face came out two or three wide.
+  it('draws every game pixel as a whole number of screen pixels, and still fits', () => {
+    for (const ratio of RATIOS) {
+      for (const [width, height] of WINDOWS) {
+        const cssWidth = Math.floor(width / ratio);
+        const cssHeight = Math.floor(height / ratio);
+        if (cssWidth < MENU_MIN_WIDTH * MIN_MENU_SCALE || cssHeight < MENU_MIN_HEIGHT * MIN_MENU_SCALE) {
+          continue; // a phone's 1x layer is wider than its window by design (sidePanel.ts)
+        }
+        const menu = computeMenuStage(cssWidth, cssHeight, ratio);
+        const onScreen = menu.scale * ratio;
+        expect({ ratio, width, whole: Math.abs(onScreen - Math.round(onScreen)) < 1e-9 }).toMatchObject({ whole: true });
+        expect(menu.width * menu.scale).toBeLessThanOrEqual(cssWidth);
+      }
+    }
+  });
+
+  it('lays a display at 1x or 2x out exactly as before', () => {
+    for (const ratio of [1, 2]) {
+      for (const [width, height] of WINDOWS) {
+        expect(computeMenuStage(width, height, ratio)).toEqual(computeMenuStage(width, height));
+      }
+    }
+  });
+
+  it('puts the layer on whole screen pixels', () => {
+    const layer = fakeLayer();
+    const menu = applyMenuStage(layer as unknown as HTMLElement, 1536, 730, 1.25);
+    for (const length of [layer.style.width, layer.style.height, layer.style.left, layer.style.top]) {
+      expect(Number.isInteger(Number.parseFloat(length) * 1.25)).toBe(true);
+    }
+    expect(layer.style['--px']).toBe(`${menu.scale}px`);
+  });
+});

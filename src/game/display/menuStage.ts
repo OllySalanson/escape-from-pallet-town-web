@@ -1,3 +1,5 @@
+import { centredStart, cssLength, onWholeScreenPixels } from './stage';
+
 /**
  * How the DOM screens are fitted into a browser window.
  *
@@ -107,7 +109,7 @@ export interface MenuStage {
   readonly width: number;
   /** Logical screen height in game pixels. */
   readonly height: number;
-  /** Whole-number multiple each game pixel is drawn at. */
+  /** The multiple each game pixel is drawn at, in CSS pixels: a whole number of screen pixels. */
   readonly scale: number;
 }
 
@@ -124,13 +126,13 @@ const toEven = (value: number): number => Math.floor(value / 2) * 2;
  * `MENU_STEP_WIDTH` x `MENU_STEP_HEIGHT` screen at, clamped into the readable
  * band; everything the window has left over becomes logical pixels.
  */
-export function computeMenuStage(viewportWidth: number, viewportHeight: number): MenuStage {
+export function computeMenuStage(viewportWidth: number, viewportHeight: number, pixelRatio = 1): MenuStage {
   const room = menuRoom(viewportWidth, viewportHeight);
   const usableWidth = Math.max(1, room.width - MENU_INSET * 2);
   const usableHeight = Math.max(1, room.height - MENU_INSET * 2);
   const holdsSmallestScreen =
     viewportWidth >= MENU_MIN_WIDTH * MIN_MENU_SCALE && viewportHeight >= MENU_MIN_HEIGHT * MIN_MENU_SCALE;
-  const scale = holdsSmallestScreen
+  const cssScale = holdsSmallestScreen
     ? clamp(
         Math.min(
           Math.floor(usableWidth / MENU_STEP_WIDTH),
@@ -140,6 +142,14 @@ export function computeMenuStage(viewportWidth: number, viewportHeight: number):
         MAX_MENU_SCALE,
       )
     : SMALL_WINDOW_MENU_SCALE;
+  // On whole screen pixels, as the canvas is (`onWholeScreenPixels`): at 125%
+  // display scaling 2x was 2.5 screen pixels, and every one-pixel rule and every
+  // stroke of the face came out two or three wide by turns.
+  const scale = onWholeScreenPixels(
+    cssScale,
+    pixelRatio,
+    (candidate) => MENU_MIN_WIDTH * candidate <= usableWidth && MENU_MIN_HEIGHT * candidate <= usableHeight,
+  );
 
   return {
     width: clamp(toEven(usableWidth / scale), MENU_MIN_WIDTH, MENU_MAX_WIDTH),
@@ -160,11 +170,12 @@ export function applyMenuStage(
   layer: HTMLElement | null,
   viewportWidth: number,
   viewportHeight: number,
+  pixelRatio = 1,
 ): MenuStage {
-  const stage = computeMenuStage(viewportWidth, viewportHeight);
+  const stage = computeMenuStage(viewportWidth, viewportHeight, pixelRatio);
   if (layer) {
-    const width = stage.width * stage.scale;
-    const height = stage.height * stage.scale;
+    const width = cssLength(stage.width, stage.scale, pixelRatio);
+    const height = cssLength(stage.height, stage.scale, pixelRatio);
     layer.style.width = `${width}px`;
     layer.style.height = `${height}px`;
     layer.style.position = 'fixed';
@@ -172,8 +183,8 @@ export function applyMenuStage(
     // it is even, and half of an odd number stands every one-pixel border on a
     // half pixel, which the browser resolves by blurring all of it.
     const room = menuRoom(viewportWidth, viewportHeight);
-    layer.style.left = `${Math.max(0, Math.floor((room.width - width) / 2))}px`;
-    layer.style.top = `${Math.max(0, Math.floor((room.height - height) / 2))}px`;
+    layer.style.left = `${centredStart(room.width, width, pixelRatio)}px`;
+    layer.style.top = `${centredStart(room.height, height, pixelRatio)}px`;
     // One game pixel, in CSS pixels: `--u` on a pixel-ui screen, and the unit
     // every border, gap and glyph on it is a whole multiple of.
     layer.style.setProperty('--px', `${stage.scale}px`);

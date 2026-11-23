@@ -84,3 +84,17 @@ describe('applyStage', () => {
     }
   });
 });
+
+describe('applyStage on a display scaled to 125%', () => {
+  it('sizes and places the canvas box on whole screen pixels', () => {
+    const parent = fakeParent();
+
+    const stage = applyStage(game(), parent as unknown as HTMLElement, 1536, 730, 1.25);
+
+    expect(stage.zoom).toBe(2.4);
+    expect(parent.style.width).toBe(`${(stage.width * 3) / 1.25}px`);
+    for (const length of [parent.style.width, parent.style.height, parent.style.left, parent.style.top]) {
+      expect(Number.isInteger(Number.parseFloat(length) * 1.25)).toBe(true);
+    }
+  });
+});

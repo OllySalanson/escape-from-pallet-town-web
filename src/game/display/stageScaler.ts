@@ -1,5 +1,5 @@
 import { applyMenuStage, menuLayer } from './menuStage';
-import { computeStage, type StageSize } from './stage';
+import { centredStart, computeStage, cssLength, type StageSize } from './stage';
 
 /**
  * Keeps the running game's screen matched to the browser window.
@@ -8,7 +8,8 @@ import { computeStage, type StageSize } from './stage';
  * it to whatever was left: the canvas backing store never changed size, so a
  * large display got a small screen and a short one got fractional pixels. The
  * screen is instead resized and re-zoomed here, in whole pixels, whenever the
- * window changes.
+ * window changes - whole pixels of the screen, not of CSS, which on a display
+ * scaled to 125% are not the same thing (`onWholeScreenPixels`).
  */
 
 interface ScalableGame {
@@ -23,8 +24,9 @@ export function applyStage(
   parent: HTMLElement | null,
   viewportWidth: number,
   viewportHeight: number,
+  pixelRatio = 1,
 ): StageSize {
-  const stage = computeStage(viewportWidth, viewportHeight);
+  const stage = computeStage(viewportWidth, viewportHeight, pixelRatio);
   // In this order: Phaser writes the canvas's CSS size only when told the zoom
   // afterwards. `resize` tells it for itself at any zoom but 1, so a window that
   // stayed at 1x (a phone) kept the canvas at the size it last was and drew the
@@ -32,16 +34,16 @@ export function applyStage(
   game.scale.resize(stage.width, stage.height);
   game.scale.setZoom(stage.zoom);
   if (parent) {
-    const width = stage.width * stage.zoom;
-    const height = stage.height * stage.zoom;
+    const width = cssLength(stage.width, stage.zoom, pixelRatio);
+    const height = cssLength(stage.height, stage.zoom, pixelRatio);
     parent.style.width = `${width}px`;
     parent.style.height = `${height}px`;
     // Placed, not centred by the page: the room left over is odd as often as it
     // is even, and half of an odd number put the whole screen - canvas and menus
     // alike - on half a pixel, which the browser resolves by blurring all of it.
     parent.style.position = 'absolute';
-    parent.style.left = `${Math.max(0, Math.floor((viewportWidth - width) / 2))}px`;
-    parent.style.top = `${Math.max(0, Math.floor((viewportHeight - height) / 2))}px`;
+    parent.style.left = `${centredStart(viewportWidth, width, pixelRatio)}px`;
+    parent.style.top = `${centredStart(viewportHeight, height, pixelRatio)}px`;
     // One game pixel, in CSS pixels. Anything the scenes hang off the canvas
     // box - the frame around it, and a driver measuring it - reads the same
     // grid the canvas is scaled to. The DOM screens have a box and a pixel of
@@ -63,10 +65,32 @@ export function applyStage(
 export function watchViewport(game: ScalableGame, parentId = 'app'): () => void {
   const parent = () => document.getElementById(parentId);
   const update = () => {
-    applyStage(game, parent(), window.innerWidth, window.innerHeight);
-    applyMenuStage(menuLayer(), window.innerWidth, window.innerHeight);
+    const ratio = window.devicePixelRatio || 1;
+    applyStage(game, parent(), window.innerWidth, window.innerHeight, ratio);
+    applyMenuStage(menuLayer(), window.innerWidth, window.innerHeight, ratio);
+  };
+  // A window dragged onto a display of another pixel ratio is not resized, so
+  // the ratio is watched for itself: a query for the ratio it is now, asked
+  // again for the new one each time it stops matching.
+  let stopWatchingRatio = (): void => undefined;
+  const watchRatio = () => {
+    const query = window.matchMedia?.(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+    if (!query) {
+      return;
+    }
+    const changed = () => {
+      stopWatchingRatio();
+      update();
+      watchRatio();
+    };
+    query.addEventListener('change', changed);
+    stopWatchingRatio = () => query.removeEventListener('change', changed);
   };
   update();
+  watchRatio();
   window.addEventListener('resize', update);
-  return () => window.removeEventListener('resize', update);
+  return () => {
+    window.removeEventListener('resize', update);
+    stopWatchingRatio();
+  };
 }

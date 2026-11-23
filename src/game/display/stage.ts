@@ -38,8 +38,60 @@ export interface StageSize {
   readonly width: number;
   /** Logical screen height in game pixels. */
   readonly height: number;
-  /** Whole-number multiple each game pixel is drawn at. */
+  /**
+   * The multiple each game pixel is drawn at, in CSS pixels: a whole number of
+   * the screen's own pixels (`onWholeScreenPixels`), and so a whole number of
+   * CSS pixels wherever the pixel ratio is.
+   */
   readonly zoom: number;
+}
+
+/**
+ * A CSS zoom moved onto the screen's own pixels.
+ *
+ * Every zoom here is picked in CSS pixels, and on most displays a CSS pixel is
+ * one screen pixel (or two, on a Mac): a whole CSS zoom is a whole number of
+ * screen pixels and the art is crisp. On a Windows laptop at 125% or 150%
+ * display scaling - most of the 1080p ones - a CSS pixel is 1.25 or 1.5 screen
+ * pixels, so 3x was 3.75 screen pixels a game pixel: some columns three wide and
+ * some four, every stroke of every letter a different weight (break-it test,
+ * 23 Nov 2026). The browser's zoom (Ctrl +) does the same at any display.
+ *
+ * Such a zoom is moved to the nearest whole number of screen pixels, up when
+ * the screen still `fits` there and down when it does not. A zoom that already
+ * is whole on screen - every zoom at a pixel ratio of 1 or 2 - is returned as it
+ * is, so those displays are drawn exactly as they always were.
+ */
+export function onWholeScreenPixels(zoom: number, pixelRatio: number, fits: (zoom: number) => boolean): number {
+  if (!Number.isFinite(pixelRatio) || pixelRatio <= 0) {
+    return zoom;
+  }
+  const onScreen = zoom * pixelRatio;
+  if (Math.abs(onScreen - Math.round(onScreen)) < 1e-6) {
+    return zoom;
+  }
+  const up = Math.ceil(onScreen) / pixelRatio;
+  return fits(up) ? up : Math.max(1, Math.floor(onScreen)) / pixelRatio;
+}
+
+/**
+ * A length of `count` game pixels at `zoom`, in CSS pixels, landed exactly on
+ * the screen's pixel grid: `400 * 3.2` is 1280.0000000000002 in floating point,
+ * and a box that size starts its last column a sliver past a screen pixel.
+ */
+export function cssLength(count: number, zoom: number, pixelRatio = 1): number {
+  const ratio = Number.isFinite(pixelRatio) && pixelRatio > 0 ? pixelRatio : 1;
+  return Math.round(count * zoom * ratio) / ratio;
+}
+
+/**
+ * Where to start a box of `length` CSS pixels so it is centred in `room` - floored
+ * onto a whole screen pixel, never on half of one, which the browser resolves
+ * by blurring everything in the box.
+ */
+export function centredStart(room: number, length: number, pixelRatio = 1): number {
+  const ratio = Number.isFinite(pixelRatio) && pixelRatio > 0 ? pixelRatio : 1;
+  return Math.max(0, Math.floor(((room - length) / 2) * ratio) / ratio);
 }
 
 const clamp = (value: number, min: number, max: number): number =>
@@ -50,18 +102,24 @@ const toEven = (value: number): number => Math.floor(value / 2) * 2;
 
 /**
  * Picks the largest whole-number zoom the window can hold at the base size,
- * then spends whatever is left over on logical pixels rather than on margin.
+ * moves it onto whole screen pixels for the display's `pixelRatio`, then spends
+ * whatever is left over on logical pixels rather than on margin.
  */
-export function computeStage(viewportWidth: number, viewportHeight: number): StageSize {
+export function computeStage(viewportWidth: number, viewportHeight: number, pixelRatio = 1): StageSize {
   const usableWidth = Math.max(1, Math.floor(viewportWidth));
   const usableHeight = Math.max(1, Math.floor(viewportHeight));
-  const zoom = clamp(
+  const cssZoom = clamp(
     Math.min(
       Math.floor(usableWidth / BASE_STAGE_WIDTH),
       Math.floor(usableHeight / BASE_STAGE_HEIGHT),
     ),
     MIN_STAGE_ZOOM,
     MAX_STAGE_ZOOM,
+  );
+  const zoom = onWholeScreenPixels(
+    cssZoom,
+    pixelRatio,
+    (candidate) => BASE_STAGE_WIDTH * candidate <= usableWidth && BASE_STAGE_HEIGHT * candidate <= usableHeight,
   );
 
   return {
