@@ -5309,6 +5309,20 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
+   * Where every hunter on this map stands that a player could meet: the one
+   * hunter, and each of the pack's that is out. A pack hunter still waiting to
+   * come out stands at its post undrawn, and test mode's readout called it "on
+   * screen" beside every landing on the vale, so the AI playtesters were told a
+   * hunter stood two tiles off from the first second (break-it test, 23 Nov 2026).
+   */
+  private huntersOnTheMap(): GridPosition[] {
+    return [
+      ...(this.isHunterOnCurrentMap() && this.hunterState.position ? [this.hunterState.position] : []),
+      ...(this.hunterPackHere()?.hunters ?? []).filter(isAbroad).map((hunter) => hunter.position),
+    ];
+  }
+
+  /**
    * The raid as a program playing it reads it, in test mode only
    * (`dev/testDescribe.ts`): where the player stands, what is on screen near
    * them, what the box says, the clock, the way the arrow points, the team and
@@ -5367,10 +5381,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const captions = this.worldLabels
       .filter((label) => label.shown() !== undefined)
       .map((label) => ({ text: label.caption.replace(/\s+/g, ' ').trim(), tile: label.tiles[0] ? tileOf(label.tiles[0]) : null }));
-    const hunters = [
-      ...(this.isHunterOnCurrentMap() && this.hunterState.position ? [tileOf(this.hunterState.position)] : []),
-      ...(this.hunterPackHere()?.hunters ?? []).map((hunter) => tileOf(hunter.position)),
-    ].filter(onScreen);
+    const hunters = this.huntersOnTheMap().map(tileOf).filter(onScreen);
     return {
       busy,
       map: this.currentMap.id,

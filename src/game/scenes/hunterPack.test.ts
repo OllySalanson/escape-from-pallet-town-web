@@ -103,6 +103,7 @@ function packBeside(mode: PackHunter['mode']) {
       currentTile: GridPosition;
       runSession: { plan: unknown; stagedChaseCome?: boolean; stepsTaken?: number };
       hunterShout(): string | null;
+      huntersOnTheMap(): GridPosition[];
       hunterRival(): { name: string };
       time: { now: number };
       hunterState: HunterState;
@@ -150,6 +151,14 @@ describe('a hunter coming for the player', () => {
 });
 
 describe('the pack in the scene', () => {
+  it('names as on the map only a hunter that has come out, never one still waiting at its post', () => {
+    // Test mode's readout said a waiting hunter was on screen beside every
+    // landing on the vale, where nothing is drawn (break-it test, 23 Nov 2026).
+    expect(packBeside('waiting').scene.huntersOnTheMap()).toEqual([]);
+    const { scene, hunter } = packBeside('patrol');
+    expect(scene.huntersOnTheMap()).toEqual([hunter.position]);
+  });
+
   it('stands solid where its hunters stand', () => {
     const { scene, hunter } = packBeside('patrol');
     expect(scene.isBlocked(hunter.position)).toBe(true);
