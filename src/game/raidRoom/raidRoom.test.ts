@@ -22,6 +22,10 @@ describe('a raid room code', () => {
     expect(typedRoomCode('bh rk!')).toBe('BHRK');
     expect(typedRoomCode('aeiou')).toBe('');
     expect(typedRoomCode('bcdfg')).toBe('BCDF');
+    // Pasted out of a chat: spaces round it, or a label in front.
+    expect(typedRoomCode(' bhrk\n')).toBe('BHRK');
+    expect(typedRoomCode('Room: BHRK')).toBe('BHRK');
+    expect(typedRoomCode('Code is bhrk, see you there')).toBe('BHRK');
     expect(isRoomCode('BHRK')).toBe(true);
     expect(isRoomCode('BHR')).toBe(false);
     expect(isRoomCode('BARK')).toBe(false);

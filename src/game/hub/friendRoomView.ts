@@ -1,5 +1,5 @@
 import { COLUMN_MEASURES, escapeAttribute, pixelColumns, pixelCommitBar, pixelWindow } from '../ui/pixelUi';
-import { ROOM_CODE_LENGTH, ROOM_SIZE } from '../raidRoom/roomCode';
+import { ROOM_SIZE } from '../raidRoom/roomCode';
 import type { RaidPlace } from '../raidRoom/raidProtocol';
 
 /**
@@ -76,7 +76,7 @@ function choosingView(screen: FriendRoomScreen): string {
     { className: 'friend-make', heading: 'Make a room', note: 'on a map you know' },
   );
   const join = pixelWindow(
-    `<form class="box-bar box-form friend-join" data-room-form><input class="px-window px-field" name="code" value="${escapeAttribute(screen.typed)}" maxlength="${ROOM_CODE_LENGTH}" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Room code" placeholder="CODE" /><button type="submit" class="px-window px-chip"${disabled} data-help="Join the room with this code.">Join</button></form><p class="px-note px-wrap">Four letters, read out by whoever made the room.</p>`,
+    `<form class="box-bar box-form friend-join" data-room-form><input class="px-window px-field" name="code" value="${escapeAttribute(screen.typed)}" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Room code" placeholder="CODE" /><button type="submit" class="px-window px-chip"${disabled} data-help="Join the room with this code.">Join</button></form><p class="px-note px-wrap">Four letters, read out by whoever made the room.</p>`,
     { className: 'friend-join-window', heading: 'Join a friend' },
   );
   return `<main class="px-body friend-layout">${make}${join}${pixelWindow(

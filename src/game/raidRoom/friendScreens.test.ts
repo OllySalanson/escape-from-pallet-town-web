@@ -84,7 +84,10 @@ describe('the lab’s raid-with-a-friend screen', () => {
     const html = friendRoomView({ ...base, room: null });
     expect(html).toContain('data-room-map="floodplain-relay"');
     expect(html).toContain('data-room-form');
-    expect(html).toContain('maxlength="4"');
+    // The box takes a paste whole and the code is tidied out of it as it
+    // lands (`typedRoomCode`): a four-letter limit cut ' BHRK' to ' BHR'
+    // before anything could tidy it (break-it test, 23 Nov 2026).
+    expect(html).not.toContain('maxlength');
   });
 
   it('says what a room shares as the raid plays it: first-step loot, one hunter, a keeper’s doors', () => {

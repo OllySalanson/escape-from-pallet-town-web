@@ -15,8 +15,21 @@ export const ROOM_CODE_LENGTH = 4;
 /** The most players a room holds: whoever made it and three friends. The database holds the same number. */
 export const ROOM_SIZE = 4;
 
-/** What is typed, as a code: capitals, only the letters a code is made of, at most four. */
+/**
+ * What is typed, as a code: capitals, only the letters a code is made of, at
+ * most four. A code pasted with words round it - 'Room: BHRK', copied out of a
+ * chat - is the word in it that is a code, not the first four consonants of
+ * the lot ('RMBH').
+ */
 export function typedRoomCode(raw: string): string {
+  const word = raw
+    .toUpperCase()
+    .split(/[^A-Z]+/)
+    .reverse()
+    .find((one) => isRoomCode(one));
+  if (word) {
+    return word;
+  }
   return [...raw.toUpperCase()]
     .filter((letter) => ROOM_CODE_LETTERS.includes(letter))
     .join('')
