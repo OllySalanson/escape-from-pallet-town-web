@@ -4,7 +4,7 @@ import { WeatherId } from '../pokemon/battle/weather';
 import { generateRunPlan } from '../run/runGeneration';
 import { partyOf, trainerWinRate, type MeasuredMember, type MeasuredParty } from './trainerMeasure';
 import { createRunTrainerEncounters, isChallenging } from './trainers';
-import { KOGA_BOSS_ID, MISTY_BOSS_ID } from './valeQuarters';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID, valeGyms } from './valeQuarters';
 
 /**
  * A gym is a puzzle with a best team, and that is measured, never argued
@@ -67,7 +67,7 @@ const BEST = bestAt(LEVEL);
  * came down three levels for newcomers (22 Nov 2026, the first-time-friend
  * retest), and the Coast behind her did not: whoever walks it has trained on.
  */
-const QUARTER_LEVEL = 15;
+const QUARTER_LEVEL = valeGyms().find((gym) => gym.bossId === MISTY_BOSS_ID)!.quarterLevel!;
 
 /**
  * Strong on paper and wrong: Fire the rain halves, and Ground and Rock that
