@@ -36,6 +36,20 @@ export function isStillOnBoard(contract: RaidContract, progressAfter: StandingBo
 }
 
 /**
+ * The way a job was lost at the very last step - every stop made, and walked
+ * out of the wrong exit - as `SMUGGLERS' PATH is not DEER GAP`, or null when
+ * that is not what happened. The result screen's summary leads with it: said
+ * only in the contract's own row, which is the last thing in its pane, it was
+ * under the fold, under a verdict of "You got out with a little.", on the one
+ * raid where the player most needed telling (break-it test, 23 Nov 2026).
+ */
+export function missedGate(contract: RaidContract, outcome: ContractOutcome): string | null {
+  return !outcome.banked && outcome.stopsComplete && contract.requiredExitLabel
+    ? `${outcome.exitLabel} is not ${contract.requiredExitLabel}`
+    : null;
+}
+
+/**
  * The result screen's line for a contract. It promises the contract back only
  * when the board that will be dealt holds it: "stays on the board" was once said
  * of a sealed contract to a player who had just beaten its boss, and the board
@@ -52,8 +66,9 @@ export function contractReportLine(contract: RaidContract, outcome: ContractOutc
       : 'Already banked on an earlier raid, so there is no new unlock this time.';
   }
   const stays = isStillOnBoard(contract, outcome.progressAfter);
-  if (outcome.stopsComplete && contract.requiredExitLabel) {
-    const missed = `You had it, and ${outcome.exitLabel} is not ${contract.requiredExitLabel}. It came home unpaid`;
+  const gate = missedGate(contract, outcome);
+  if (gate !== null) {
+    const missed = `You had it, and ${gate}. It came home unpaid`;
     return stays
       ? `${missed} and stays on the board.`
       : `${missed}, and the board has moved on: what you opened out there stays open.`;

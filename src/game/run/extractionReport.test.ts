@@ -314,11 +314,15 @@ describe('extraction report after a survived raid', () => {
         description: 'Carry the cordon ledger out of Pallet Town through the West Culvert',
         complete: false,
         reward: 'You had it, and SOUTH GATE is not WEST CULVERT.',
+        missedGate: 'SOUTH GATE is not WEST CULVERT',
       },
       saved: true,
     });
 
     expect(report.contract).toMatchObject({ complete: false });
+    // Said first, at the top: the contract's own row is the last thing in its
+    // pane and was under the fold (break-it test, 23 Nov 2026).
+    expect(report.summary.startsWith('Job unpaid: SOUTH GATE is not WEST CULVERT. Banked ')).toBe(true);
     // The haul is graded on what was actually banked, so an unpaid contract
     // cannot flatter the headline.
     expect(report.summary.startsWith('Contract banked')).toBe(false);
