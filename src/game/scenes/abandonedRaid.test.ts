@@ -539,7 +539,7 @@ describe('a raid abandoned by closing the game', () => {
       'Your team made it home, but your Raid pack was left out there.',
       'It went out with 4 Potions, 1 Super Potion and 5 Poké Balls.',
       'Anything caught or found out there went with it.',
-      'The secure container kept 1 Potion.',
+      'THE LOCKER kept 1 Potion.',
     ]);
   });
 
