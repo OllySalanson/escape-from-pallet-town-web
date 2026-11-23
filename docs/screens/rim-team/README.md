@@ -13,3 +13,5 @@ it said "THE BENCH chooses" until 23 Nov 2026).
 
 A new save with only its starter, from `tools/playtest/headingShots.mjs`
 against a test-mode build (no heading cut), 22 Nov 2026.
+
+`bench-words-before.png` and `bench-words-after.png` (23 Nov 2026): the same card on a 15-Pokémon save, saying "THE BENCH chooses" and then "pick who comes at THE BENCH". The line keeps its three rows.
