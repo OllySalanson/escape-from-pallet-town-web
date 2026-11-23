@@ -1516,6 +1516,26 @@ describe('the standing board in the lobby', () => {
     );
   });
 
+  it('says in red when what to allow for the job is longer than the raid (AI playtest, 23 Nov 2026)', () => {
+    // "2:45 of your 4:00; allow 6:52" was offered first and taken by a friend
+    // who had not done the sum.
+    const progress = chainBanked(2);
+    const contract = standingBoard(progress)[0];
+    const insertion = frontDoorFor(contract.mapId)!;
+    const allowMs = standingJobWalk(contract, insertion.position, progress)! * STEP_DURATION_MS * 2.5;
+    const { hub } = createHub(progress);
+    hub.flow.togglePokemon('bulbasaur-1');
+    hub.flow.chooseInsertion(insertion.id);
+    hub.setView('rim');
+    expect(markupOf(hub)).not.toContain('That is longer than this raid.');
+
+    Object.defineProperty(hub, 'raidClockMs', { get: () => allowMs - 1_000 });
+    hub.setView('rim');
+    const markup = markupOf(hub);
+    expect(markup).toContain('That is longer than this raid.');
+    expect(markup).toMatch(/<dt>Job<\/dt><dd class="px-wrap px-warning">/);
+  });
+
   /**
    * The raid's job is chosen at the rim, out of the board's and a second of
    * another kind, or turned down: LINE SURVEY was every raid's job until it
