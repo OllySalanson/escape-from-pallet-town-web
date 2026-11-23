@@ -177,7 +177,8 @@ export function abandonedRaidLines(raid: AbandonedRaid): readonly string[] {
     `Your team made it home, but ${pack} was left out there.`,
     ...listedOver('It went out with ', 'And with ', raid.lost),
     'Anything caught or found out there went with it.',
-    ...listedOver('The secure container kept ', 'It also kept ', raid.kept),
+    // By the name the hall gives it, as the wipe's line-up does (#706).
+    ...listedOver('THE LOCKER kept ', 'It also kept ', raid.kept),
     // The vault was topped up afterwards; said, or the Satchel still in it reads as a lie.
     ...((raid.restocked ?? []).length > 0
       ? ['Oak keeps a starter kit for just this.', ...listedOver('Waiting at base: ', 'And ', raid.restocked ?? [])]
