@@ -249,6 +249,14 @@ export class BagScene extends Phaser.Scene {
   /** Said once, over the help bar, about what just happened. */
   private status?: string;
   /**
+   * The thing X put the last of down, until the cursor moves: the row it was
+   * on is gone and the cursor has landed on whatever came next, which the
+   * player never pointed at. X again does nothing until they do (the
+   * overnight retest's key masher, 23 Nov 2026: two X presses put down the
+   * last Potion and then every Pokédollar).
+   */
+  private droppedLastOf?: string;
+  /**
    * The moment a disc has just been read (`teachMomentBody`): the move tried
    * once at a practice post, for `TEACH_MOMENT_MS` or until any key. What the
    * pack says afterwards waits in `said`.
@@ -298,6 +306,7 @@ export class BagScene extends Phaser.Scene {
     this.party = data.party;
     this.onItemUsed = data.onItemUsed;
     this.onItemDropped = data.onItemDropped;
+    this.droppedLastOf = undefined;
     this.bike = data.bike;
     this.repel = data.repel;
     this.view = data.view;
@@ -387,12 +396,13 @@ export class BagScene extends Phaser.Scene {
       const itemId = this.cursorItem();
       if (itemId) {
         event.preventDefault();
-        this.dropOne(itemId);
+        this.dropByKey(itemId);
         return;
       }
     }
     if (this.menuOverlay?.moveCursor(event.key)) {
       event.preventDefault();
+      this.droppedLastOf = undefined;
     }
   }
 
@@ -1005,6 +1015,25 @@ export class BagScene extends Phaser.Scene {
   private spend(item: ItemDefinition): void {
     this.bag.remove(item.id);
     this.onItemUsed();
+  }
+
+  /**
+   * X on the row under the cursor - unless X has just put the last of
+   * something down, and the cursor is on a row the player has not pointed at
+   * since (`droppedLastOf`).
+   */
+  private dropByKey(itemId: string): void {
+    if (this.droppedLastOf !== undefined) {
+      audioManager.play('denied');
+      this.status = `That was the last ${this.droppedLastOf}. Point at what to drop next, then press X.`;
+      this.render([`[data-item="${itemId}"]`]);
+      return;
+    }
+    const item = this.itemById(itemId);
+    this.dropOne(itemId);
+    if (item && this.bag.count(itemId) === 0) {
+      this.droppedLastOf = isCurrency(itemId) ? 'of your money' : item.displayName;
+    }
   }
 
   /** Puts one of the chosen item on the ground, and says the room it bought. */
