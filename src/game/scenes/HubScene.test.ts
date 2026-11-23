@@ -58,7 +58,7 @@ import { encodeSurvey } from '../world/survey';
 import { getWorldMap, type WorldMapId } from '../worldMap';
 import { PUBLISHED_FIXTURE_MAP_ID } from '../world/publishedMapFixture.testkit';
 import { setActiveSaveSlot } from '../dev/playtestMode';
-import { HubScene, RELEASE_ARMING_MS, RIM_REFUSED_TITLE, roomKeptFor, STALE_SAVE_REFUSAL, type HubSceneData } from './HubScene';
+import { HubScene, RELEASE_ARMING_MS, RIM_REFUSED_TITLE, roomKeptFor, STALE_SAVE_REFUSAL, type HubSceneData, wildlifeKinds } from './HubScene';
 
 describe('the lobby as a screen of the game', () => {
   function markupOf(hub: HubInternals): string {
@@ -3254,3 +3254,10 @@ describe("the rim's Safe line", () => {
   });
 });
 
+describe("Oak's wall's wildlife line", () => {
+  it('keeps each kind and its level range together, and breaks only between kinds', () => {
+    expect(wildlifeKinds([{ name: 'Pidgey', min: 3, max: 4 }, { name: 'Charmander', min: 4, max: 6 }])).toBe(
+      '<span class="wildlife-kind">Pidgey 3-4</span> · <span class="wildlife-kind">Charmander 4-6</span>',
+    );
+  });
+});

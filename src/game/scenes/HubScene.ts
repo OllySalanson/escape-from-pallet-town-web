@@ -3421,8 +3421,9 @@ export class HubScene extends Phaser.Scene {
             const living = place.species
               .map((entry) => `${entry.name} ${entry.min}-${entry.max}`)
               .join(' · ');
+            const shown = wildlifeKinds(place.species);
             return told(
-              `<span class="px-row-main"><strong>${place.place}</strong><small class="px-wrap">${living}</small></span>`,
+              `<span class="px-row-main"><strong>${place.place}</strong><small class="px-wrap">${shown}</small></span>`,
               `${place.place}: ${living}. Rolled for on every step through that place's tall grass${
                 briefing.night ? ', and it is night: some of it only comes out after dark' : ''
               }.`,
@@ -4547,4 +4548,13 @@ export function roomKeptFor(item: { readonly itemId: string; readonly quantity: 
   return isCurrency(item.itemId)
     ? `room for ${itemCountTag(item.itemId, item.quantity)}`
     : `room for ${item.quantity === 1 ? 'a' : item.quantity} ${name}`;
+}
+
+/**
+ * A place's wildlife on Oak's wall, each kind and its levels kept as one unit:
+ * the line broke "Pidgey 3-" from its "4" at 1366x768 (scenario loop, 23 Nov
+ * 2026). It wraps between kinds (`.wildlife-kind` in `style.css`).
+ */
+export function wildlifeKinds(species: readonly { readonly name: string; readonly min: number; readonly max: number }[]): string {
+  return species.map((entry) => `<span class="wildlife-kind">${entry.name} ${entry.min}-${entry.max}</span>`).join(' · ');
 }
