@@ -8,7 +8,7 @@
 import type { Pokemon } from '../pokemon';
 import { SPECIES_BY_ID } from '../pokemon/species';
 import { RENTAL_RUN_COMPLETE_TICKETS, RENTAL_WIN_TICKETS } from '../minigames/tickets';
-import { pickerFindField, pickerOrder, pickerRowAttributes, pickerRowNote, type PickerEntry } from '../ui/boxPicker';
+import { kindIfNicknamed, pickerFindField, pickerOrder, pickerRowAttributes, pickerRowNote, type PickerEntry } from '../ui/boxPicker';
 import {
   COLUMN_MEASURES,
   escapeAttribute,
@@ -100,7 +100,7 @@ export function cupBody(entries: readonly PickerEntry[], team: readonly string[]
       first ? ' data-cursor-start' : ''
     }${refusal ? ' aria-disabled="true"' : ''} data-help="${escapeAttribute(cupMemberHelp(entry, inTeam, refusal, cup))}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(
       entry.pokemon,
-    )}</span><small>${pickerRowNote(entry, entry.pokemon.base.name.toUpperCase())}</small></span>${tag}</button>`;
+    )}</span><small>${pickerRowNote(entry, kindIfNicknamed(entry.pokemon))}</small></span>${tag}</button>`;
   };
   const yours =
     chosen.length > 0

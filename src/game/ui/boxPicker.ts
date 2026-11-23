@@ -121,6 +121,15 @@ export function pickerRowNote(entry: Pick<PickerEntry, 'pokemon' | 'box'>, what 
   return [`Lv ${entry.pokemon.level}`, what, entry.box].filter(Boolean).map(escapeAttribute).join(' · ');
 }
 
+/**
+ * A row's kind, said under its name only when the name is a nickname: a
+ * Pokémon called PIDGEY read 'PIDGEY / Lv 6 · PIDGEY · Box 1' in THE BATTLE
+ * ARENA's pickers (break-it test, 23 Nov 2026).
+ */
+export function kindIfNicknamed(pokemon: { readonly name: string; readonly base: { readonly name: string } }): string {
+  return pokemon.name.toUpperCase() === pokemon.base.name.toUpperCase() ? '' : pokemon.base.name.toUpperCase();
+}
+
 /** The find field that leads a picker's list. */
 export function pickerFindField(label = 'Find a Pokémon'): string {
   return `<div class="box-bar picker-find"><input class="px-window px-field" data-picker-find type="search" maxlength="16" autocomplete="off" spellcheck="false" aria-label="${escapeAttribute(label)}" placeholder="Find: a name or a box" data-help="Type to narrow the list: a name, a kind, or a box (&quot;box 2&quot;). ESC or the arrows step out."/></div>`;

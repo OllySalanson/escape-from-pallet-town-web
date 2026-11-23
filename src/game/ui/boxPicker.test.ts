@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Pokemon, getSpeciesById } from '../pokemon';
 import { Stash } from '../stash';
-import { answersFind, applyPickerFind, findWords, pickerEntries, pickerOrder, pickerRowAttributes } from './boxPicker';
+import { answersFind, applyPickerFind, findWords, kindIfNicknamed, pickerEntries, pickerOrder, pickerRowAttributes } from './boxPicker';
 
 const pokemon = (species: string, level: number): Pokemon => new Pokemon(getSpeciesById(species)!, level);
 
@@ -63,5 +63,15 @@ describe('the one picker from your boxes', () => {
     expect(headings).toEqual([true, false]);
     applyPickerFind(root, '');
     expect([...root.querySelectorAll<HTMLElement>('[hidden]')]).toHaveLength(0);
+  });
+});
+
+describe("a picker row's kind", () => {
+  // Break-it test, 23 Nov 2026: 'PIDGEY / Lv 6 · PIDGEY · Box 1' in THE BATTLE ARENA.
+  it('is said only under a nickname', () => {
+    const pidgey = new Pokemon(getSpeciesById('pidgey')!, 6);
+    expect(kindIfNicknamed(pidgey)).toBe('');
+    pidgey.giveNickname('Zoe');
+    expect(kindIfNicknamed(pidgey)).toBe('PIDGEY');
   });
 });
