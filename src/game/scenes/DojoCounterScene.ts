@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
-import { dojoRefusal } from '../arena/boutRules';
+import { DOJO_TEAM_SIZE, dojoRefusal } from '../arena/boutRules';
 import { dojoRegularsToday } from '../arena/dojoCounter';
 import { beltFoe, dojoClass, dojoFoe, headRefusal, regularFoe, type DojoFoe } from '../arena/classes';
 import { classOf } from '../arena/dojoRecord';
@@ -326,8 +326,7 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
       this.render([`[data-member="${pokemonId}"]`]);
       return;
     }
-    const refusal =
-      this.mode === 'cup' ? cupRefusal(entry.pokemon, this.chosenTeam(), cupOfTheWeek(this.now)) : dojoRefusal(entry.pokemon, this.chosenTeam());
+    const refusal = this.refusalFor(entry.pokemon);
     if (refusal) {
       audioManager.play('denied');
       this.status = refusal;
@@ -336,7 +335,22 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
     }
     this.team = [...this.team, pokemonId];
     audioManager.play('select');
-    this.render([`[data-member="${pokemonId}"]`]);
+    // With nobody left who could join, the next press is FIGHT: left on the
+    // row, ENTER took the one Pokémon off again and back on for ever (the
+    // overnight retest's key masher, 23 Nov 2026).
+    const full =
+      this.team.length >= DOJO_TEAM_SIZE ||
+      this.entries().every((other) => this.team.includes(other.id) || this.refusalFor(other.pokemon) !== null);
+    this.render(full ? ['[data-fight]:not([aria-disabled])', `[data-member="${pokemonId}"]`] : [`[data-member="${pokemonId}"]`]);
+  }
+
+  /** Why this Pokémon cannot join the side as it stands, by the mode's clauses; null when it can. */
+  private refusalFor(pokemon: Pokemon): string | null {
+    return (
+      (this.mode === 'cup'
+        ? cupRefusal(pokemon, this.chosenTeam(), cupOfTheWeek(this.now))
+        : dojoRefusal(pokemon, this.chosenTeam())) ?? null
+    );
   }
 
   private startFight(): void {
