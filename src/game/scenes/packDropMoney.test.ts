@@ -12,6 +12,8 @@ import { BagScene } from './BagScene';
 interface PackHarness {
   itemDetail(item: { id: string }, first: boolean): string;
   dropOne(itemId: string): void;
+  dropByKey(itemId: string): void;
+  droppedLastOf?: string;
   itemById(itemId: string): { id: string } | undefined;
   status?: string;
 }
@@ -96,5 +98,34 @@ describe('what a drop tells the raid', () => {
       ['parts-crate', 1],
       ['money', 50],
     ]);
+  });
+});
+
+describe('X after the last of something is put down', () => {
+  /**
+   * The overnight retest's key masher (23 Nov 2026): X put down the last
+   * Potion, its row went, the cursor landed on the money, and the next X put
+   * down every Pokédollar - two things for one meant drop.
+   */
+  it('does nothing until the cursor is moved, so a second press never drops the next row', () => {
+    const { scene, bag } = packHolding({ potion: 1, money: 35 });
+    scene.dropByKey('potion');
+    expect(bag.count('potion')).toBe(0);
+    // The cursor is on the money now, which nobody pointed at.
+    scene.dropByKey('money');
+    expect(bag.count('money')).toBe(35);
+    expect(scene.status).toBe('That was the last Potion. Point at what to drop next, then press X.');
+    // Pointed at, it drops.
+    scene.droppedLastOf = undefined;
+    scene.dropByKey('money');
+    expect(bag.count('money')).toBe(0);
+  });
+
+  it('keeps dropping one at a time while some of the same thing is left', () => {
+    const { scene, bag } = packHolding({ potion: 3, money: 35 });
+    scene.dropByKey('potion');
+    scene.dropByKey('potion');
+    expect(bag.count('potion')).toBe(1);
+    expect(scene.droppedLastOf).toBeUndefined();
   });
 });
