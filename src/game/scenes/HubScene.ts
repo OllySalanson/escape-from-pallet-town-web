@@ -715,7 +715,7 @@ export class HubScene extends Phaser.Scene {
       .map((job) => button(job.id, job.name, `Take ${job.name.toUpperCase()} instead: ${job.description}. It pays ${rewardLine(job.reward)}.`));
     const none =
       contract !== undefined && mayTurnJobDown(jobs)
-        ? [button(noJobChoice(jobs)!, 'No job', 'Raid with no job: nothing to fetch and nothing paid for it, and the board keeps its jobs for next time.')]
+        ? [button(noJobChoice(jobs)!, 'No job', 'Raid with no job: nothing to fetch and nothing paid for it, and the board keeps its jobs for next time. The gold arrow leads to the next gym.')]
         : [];
     return [...others, ...none].join('');
   }
