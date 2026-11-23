@@ -61,6 +61,7 @@ import {
   moveGuidanceLayout,
   HUNTER_FLEE_WARNING_SHARE,
   formatHunterFleeCommand,
+  hunterFleeMessages,
   formatItemRow,
   itemTargetPrompt,
   captionWords,
@@ -477,6 +478,16 @@ describe('battle presentation', () => {
       // Already ENRAGED, with ten seconds of it left.
       expect(formatHunterFleeCommand(40_000, 0, 10_000)).toBe('FLEE: RAID LOST');
       expect(formatHunterFleeCommand(40_000, 60_000, ENRAGE_GRACE_MS)).toBe('FLEE -40s OF 60s');
+    });
+
+    it('promises no breathing space after a flee that ends the raid', () => {
+      // FLEE: RAID LOST, pressed: "LORELEI lost your trail and holds off for
+      // 20s" came just before the raid was lost (scenario loop, 23 Nov 2026).
+      const lost = hunterFleeMessages('LORELEI', undefined, 80_000, 20_000, true);
+      expect(lost).toEqual(['You broke away from LORELEI!', 'Breaking contact cost 80s of raid time, and that was the last of it.']);
+      const away = hunterFleeMessages('LORELEI', undefined, 40_000, 20_000);
+      expect(away).toContain('LORELEI lost your trail and holds off for 20s.');
+      expect(away.at(-1)).toBe('Breaking contact cost 40s of raid time.');
     });
   });
 });
