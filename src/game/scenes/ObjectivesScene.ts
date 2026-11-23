@@ -36,6 +36,8 @@ export interface ObjectivesSceneData {
   readonly nextGym?: ObjectiveGuideContext['nextGym'];
   /** The stake the gold arrow is after (`ObjectiveGuideContext.stake`). */
   readonly stake?: ObjectiveGuideContext['stake'];
+  /** Whether the gold arrow is after the next gym (`ObjectiveGuideContext.gymLeads`). */
+  readonly gymLeads?: ObjectiveGuideContext['gymLeads'];
   /** The favours asked and not yet done (`ObjectiveGuideContext.favoursInHand`). */
   readonly favoursInHand?: ObjectiveGuideContext['favoursInHand'];
   /** Only resume WorldScene when this overlay paused it. */
@@ -78,6 +80,7 @@ export class ObjectivesScene extends Phaser.Scene {
       ...(data.nextStop ? { nextStop: data.nextStop } : {}),
       ...(data.nextGym ? { nextGym: data.nextGym } : {}),
       ...(data.stake ? { stake: data.stake } : {}),
+      ...(data.gymLeads ? { gymLeads: data.gymLeads } : {}),
       ...(data.favoursInHand ? { favoursInHand: data.favoursInHand } : {}),
     });
     this.createOverlay(guide);

@@ -878,6 +878,30 @@ describe('the way to the next gym', () => {
     expect(guide.hints.join(' ')).not.toContain('next gym');
   });
 
+  it('leads the radio, once, on a raid with no job whose gold arrow is after it', () => {
+    // NO JOB on the rim: the arrow pointed at MISTY and Oak opened on the
+    // village pump the other way (persona playtest, 23 Nov 2026).
+    const guide = buildObjectiveGuide(createUncontractedSession('town-square'), {
+      ...here,
+      currentMapId: 'pallet-town',
+      nextGym: cerulean,
+      gymLeads: true,
+    });
+    expect(guide.radio).toHaveLength(2);
+    expect(guide.radio[0]).toBe(
+      'Oak here! The next gym is CERULEAN GYM, to the south, on GULL STRAND: the big building with GYM on its front. MISTY is inside.',
+    );
+    expect(guide.radio[1]).toMatch(/exit|gate/i);
+    expect(guide.hints[0]).toBe(guide.radio[0].replace('Oak here! ', ''));
+    expect(guide.hints.filter((hint) => hint.includes('next gym'))).toHaveLength(1);
+  });
+
+  it('stays last on a raid with a job, wherever the arrow is', () => {
+    const guide = buildObjectiveGuide(createFirstContractSession(), { ...here, nextGym: cerulean, gymLeads: true });
+    expect(guide.radio[0].startsWith('Oak here! You are in')).toBe(true);
+    expect(guide.radio[2]).toContain('The next gym is CERULEAN GYM');
+  });
+
   it('has a room on the vale to point at for every gym the wall map can name', () => {
     const vale = getWorldMap('greystone-vale');
     for (const gym of valeGyms()) {

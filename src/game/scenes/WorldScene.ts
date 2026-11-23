@@ -537,6 +537,8 @@ interface RaidWay {
   readonly mark: { readonly target: GridPosition; readonly aim: GridPosition; readonly out: boolean } | null;
   /** The stake, when it is what the arrow is after: Oak's radio names it too (`ObjectiveGuideContext.stake`). */
   readonly stake?: WorldLoot;
+  /** Whether the arrow is after the next gym's door, which Oak's radio then leads with (`ObjectiveGuideContext.gymLeads`). */
+  readonly gym?: true;
 }
 
 /** How near the next gym's door, in walking steps, the gold arrow turns to it (`gymDoorNear`). */
@@ -6552,7 +6554,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       defeatedTrainerIds: new Set(this.defeatedTrainerIds),
       nextStop: (stops) => nearestByWalk(this.currentMap, this.currentTile, stops),
       nextGym: this.nextGymHere(),
-      ...this.stakeForGuide(),
+      ...this.arrowForGuide(),
     });
     audioManager.play('menuOpen');
     this.player.stop();
@@ -6641,6 +6643,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     let tile: GridPosition | undefined;
     let out = false;
     let after: WorldLoot | undefined;
+    let toGym = false;
     const gymDoor = hunted || enraged ? undefined : this.gymDoorNear();
     if (enraged) {
       cue = exit ? `OUT NOW VIA ${exit.label.toUpperCase()}: ${exit.heading}` : undefined;
@@ -6648,6 +6651,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       out = true;
     } else if (gymDoor) {
       ({ cue, tile } = gymDoor);
+      toGym = true;
     } else if (job) {
       ({ cue, tile, out } = job);
     } else {
@@ -6666,6 +6670,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       ...(cue === undefined ? {} : { cue }),
       mark: tile ? this.wayMarkTo(tile, out) : null,
       ...(after === undefined ? {} : { stake: after }),
+      ...(toGym ? { gym: true as const } : {}),
     };
     return this.wayCache;
   }
@@ -6797,10 +6802,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
   }
 
-  /** The stake the gold arrow is after, for Oak to name the same thing (`ObjectiveGuideContext.stake`). */
-  private stakeForGuide(): { readonly stake?: StakeHere } {
-    const stake = this.raidWay().stake;
-    return stake ? { stake: { words: prizeWords(stake), position: stake.position } } : {};
+  /** What the gold arrow is after, for Oak to lead with the same thing (`ObjectiveGuideContext.stake`, `gymLeads`). */
+  private arrowForGuide(): { readonly stake?: StakeHere; readonly gymLeads?: true } {
+    const way = this.raidWay();
+    if (way.gym) {
+      return { gymLeads: true };
+    }
+    return way.stake ? { stake: { words: prizeWords(way.stake), position: way.stake.position } } : {};
   }
 
   /** ESC, or on to the whole list: his lines go at once. */
@@ -6834,7 +6842,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       defeatedTrainerIds: [...this.defeatedTrainerIds],
       nextStop: <Stop extends { readonly position: GridPosition }>(stops: readonly Stop[]) => nearestByWalk(this.currentMap, this.currentTile, stops),
       nextGym: this.nextGymHere(),
-      ...this.stakeForGuide(),
+      ...this.arrowForGuide(),
       pausedWorld: true,
     });
   }

@@ -131,6 +131,7 @@ import {
 } from '../objectives';
 import { deferPendingMoves, nextPendingMoveOffer } from '../hub/pendingMoves';
 import { benchRailWarning, rimOpensOnNotYet, type RailWarning } from '../hub/railWarning';
+import { nextGym } from '../world/valeQuarters';
 import { jobAsks } from '../hub/rimJob';
 import { raidsDeployed, raidsLost, SaveManager, spareAtBase, traderProgressOf, type RestoredGame } from '../save/SaveManager';
 import {
@@ -2918,6 +2919,17 @@ export class HubScene extends Phaser.Scene {
     })}</main>`;
   }
 
+  /**
+   * Where the gold arrow leads a raid with no job: the next gym
+   * (`WorldScene.gymDoorNear`). The card said only "nothing to fetch", and a
+   * friend who chose NO JOB landed to an arrow pointing at MISTY with no word of
+   * why (persona playtest, 23 Nov 2026).
+   */
+  private noJobArrow(): string {
+    const gym = nextGym(this.savedGame.raidProgress.defeatedBosses);
+    return gym ? ` The gold arrow leads to ${gym.building.toUpperCase()}, where ${gym.leader.toUpperCase()} waits.` : '';
+  }
+
   /** What the rail says of a hurt team (`hub/railWarning.ts`). A team that cannot lose has nothing to be told. */
   private railHurt(): RailWarning | null {
     return benchRailWarning(this.flow, joyTurnsHurtAway(this.savedGame));
@@ -3065,7 +3077,7 @@ export class HubScene extends Phaser.Scene {
     return `<dl class="dropin-facts rim-stakes">${team}${hurt ? line('Hurt', hurt.line, true) : ''}${line('At risk', lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', '))}${goneForGood.length === 0 ? '' : line('A wipe', `${goneForGood.join(', ')}: lost for good`, true)}${safe}${
       job === undefined
         ? this.jobsAt(insertionId).length > 0
-          ? line('Job', `None this raid: nothing to fetch. ${this.jobButtons(insertionId, contract)}`)
+          ? line('Job', `None this raid: nothing to fetch.${this.noJobArrow()} ${this.jobButtons(insertionId, contract)}`)
           : ''
         : line('Job', `${job} ${this.jobButtons(insertionId, contract)}`, short.length > 0)
     }${isPlaytestRun() ? '' : line('Sky', this.skyLine())}${line(pack ? 'Hunters' : 'Hunter', `<span data-hunter-tier="${threat.tierOffset + 1}">${hunter.heading.replace(/^Hunters?: /, '')}: ${hunter.detail}</span>`, threat.tierOffset > 0)}${this.clockIsNews ? line('Clock', this.clockNote()) : ''}</dl>`;

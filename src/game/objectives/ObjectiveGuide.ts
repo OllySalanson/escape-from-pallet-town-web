@@ -66,6 +66,12 @@ export interface ObjectiveGuideContext {
    * job, a gym or a way out, or the stake is taken.
    */
   readonly stake?: StakeHere;
+  /**
+   * Whether the gold arrow is leading to the next gym (`WorldScene.raidWay`):
+   * a raid with no job is out for it, and the radio then leads with it rather
+   * than ending on it.
+   */
+  readonly gymLeads?: boolean;
 }
 
 /** The stake as the guide names it, and where it lies. */
@@ -136,6 +142,8 @@ export function buildObjectiveGuide(
   // raid had the arrow pointing east at ₽75 and Oak sending them west to a pump
   // (persona playtest, 23 Nov 2026).
   const stake = contract || treasure ? undefined : stakeHint(context);
+  // The arrow after the gym is the radio's first line, said once.
+  const gymFirst = gym !== undefined && context.gymLeads === true && !contract && !treasure;
 
   return {
     isFirstContract,
@@ -144,17 +152,17 @@ export function buildObjectiveGuide(
     contractLabel: contract ? contractLabel(contract, isFirstContract) : 'No contract on this raid',
     objectives,
     radio: [
-      ...radioLines(contract !== undefined, route, session, context, treasure?.radio ?? stake),
+      ...radioLines(contract !== undefined, route, session, context, treasure?.radio ?? (gymFirst ? gym : stake)),
       // A favour still lying out here, by its bearing: 'somewhere in MILLBROOK'
       // and a gold arrow that only follows the job lost nineteen favours in the
       // 22 Nov AI playtest, and the radio is where players asked.
       ...errands.filter((errand) => !errand.found).map((errand) => errand.line),
-      ...(gym ? [gym] : []),
+      ...(gym && !gymFirst ? [gym] : []),
     ],
     hints: [
       // First, because a raid that set out with the whole chart set out for this.
       ...(treasure ? [treasure.hint] : []),
-      ...(stake ? [stake] : []),
+      ...(gymFirst ? [gym] : stake ? [stake] : []),
       ...route,
       ...barredExitHints(session, context),
       ...lockedCacheHints(session, context),
@@ -162,7 +170,7 @@ export function buildObjectiveGuide(
       ...shimmerHints(session, context),
       ...omenHints(session, context),
       ...shinyHints(snapshot.caughtPokemon),
-      ...(gym ? [gym] : []),
+      ...(gym && !gymFirst ? [gym] : []),
     ],
   };
 }
@@ -206,13 +214,14 @@ function radioLines(
   session: ActiveRunSession,
   context: ObjectiveGuideContext,
   /**
-   * The treasure's X while its chest is still under it (a whole chart outranks
-   * a board job), or else the stake on a raid with no job: what the raid is for.
+   * What the raid is for, when it is not the route's: the treasure's X while its
+   * chest is still under it (a whole chart outranks a board job), or on a raid
+   * with no job whatever the gold arrow is after - the next gym or the stake.
    */
-  treasure?: string,
+  first?: string,
 ): readonly [string, string] {
-  const landmark = hasContract || treasure ? undefined : nearestLandmarkToWork(session, context);
-  const next = treasure ?? (landmark ? landmarkWhere(landmark, context) : route[0]);
+  const landmark = hasContract || first ? undefined : nearestLandmarkToWork(session, context);
+  const next = first ?? (landmark ? landmarkWhere(landmark, context) : route[0]);
   return [`Oak here! ${next}`, route[route.length - 1]];
 }
 
