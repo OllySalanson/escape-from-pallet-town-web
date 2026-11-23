@@ -6645,6 +6645,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     let after: WorldLoot | undefined;
     let toGym = false;
     const gymDoor = hunted || enraged ? undefined : this.gymDoorNear();
+    const leader = hunted || enraged || gymDoor ? undefined : this.leaderHere();
     if (enraged) {
       cue = exit ? `OUT NOW VIA ${exit.label.toUpperCase()}: ${exit.heading}` : undefined;
       tile = exit?.position;
@@ -6652,6 +6653,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     } else if (gymDoor) {
       ({ cue, tile } = gymDoor);
       toGym = true;
+    } else if (leader) {
+      // Inside, the leader is what the walk here was for. No arrow: the room is
+      // the gym's own puzzle, and its trainers stand on the ways through it.
+      cue = leader;
     } else if (job) {
       ({ cue, tile, out } = job);
     } else {
@@ -6673,6 +6678,28 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       ...(toGym ? { gym: true as const } : {}),
     };
     return this.wayCache;
+  }
+
+  /**
+   * The chip's line inside the next gym, while its leader is still to beat: who
+   * to find and which way. The arrow led a friend up to FUCHSIA GYM and, the
+   * moment they were through the door, turned green and pointed back out of it
+   * to the nearest exit, with KOGA standing at the end of the room (persona
+   * playtest, 23 Nov 2026).
+   */
+  private leaderHere(): string | undefined {
+    const gym = nextGym([...(this.runSession?.plan?.defeatedBosses ?? []), ...this.bossesBeatenThisRaid()]);
+    const room = gym && this.currentMap.areas?.find((area) => area.name === gym.building);
+    if (!gym || !room || this.currentArea() !== room) {
+      return undefined;
+    }
+    const boss = this.trainerEncounters.find(
+      (encounter) => encounter.trainer.id === gym.bossId && encounter.mapId === this.currentMap.id,
+    );
+    if (!boss || this.defeatedTrainerIds.has(boss.trainer.id)) {
+      return undefined;
+    }
+    return `${gym.leader.toUpperCase()}: ${this.headingTo(boss.position)}`;
   }
 
   /**
