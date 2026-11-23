@@ -47,6 +47,9 @@ export interface FieldMove {
   readonly worked: (pokemonName: string) => string;
 }
 
+// Each refusal names the move before the disc: "Something that reads HM01"
+// asked a newcomer to know that a Pokémon reads a disc to learn from it, and
+// what HM01 is (scenario loop, 23 Nov 2026).
 export const FIELD_MOVES: Readonly<Record<FieldMoveId, FieldMove>> = {
   cut: {
     id: 'cut',
@@ -54,7 +57,7 @@ export const FIELD_MOVES: Readonly<Record<FieldMoveId, FieldMove>> = {
     label: 'CUT',
     doorNote: 'NEEDS CUT',
     obstacle: 'Growth has closed the ride. Thick, old and shoulder high.',
-    refusal: 'Nothing in the party can cut it. Something that reads HM01 could.',
+    refusal: 'Nothing in the party can cut it. A Pokémon that knows CUT could - HM01 teaches it.',
     worked: (name) => `${name} cut the growth away.`,
   },
   surf: {
@@ -63,7 +66,7 @@ export const FIELD_MOVES: Readonly<Record<FieldMoveId, FieldMove>> = {
     label: 'SURF',
     doorNote: 'NEEDS SURF',
     obstacle: 'The water is deep here, and moving.',
-    refusal: 'Nothing in the party can carry you over it. Something that reads HM03 could.',
+    refusal: 'Nothing in the party can carry you over it. A Pokémon that knows SURF could - HM03 teaches it.',
     worked: (name) => `${name} carried you across.`,
   },
   // The third, for the map maker's cracked rocks: FireRed's own Rock Smash
@@ -74,7 +77,7 @@ export const FIELD_MOVES: Readonly<Record<FieldMoveId, FieldMove>> = {
     label: 'ROCK SMASH',
     doorNote: 'NEEDS ROCK SMASH',
     obstacle: 'A cracked rock is in the way. It looks like it could be broken.',
-    refusal: 'Nothing in the party can break it. Something that reads HM06 could.',
+    refusal: 'Nothing in the party can break it. A Pokémon that knows ROCK SMASH could - HM06 teaches it.',
     worked: (name) => `${name} smashed the rock to pieces.`,
   },
   // The fourth, and the one that is not a door: a map maker's boulders
@@ -86,7 +89,7 @@ export const FIELD_MOVES: Readonly<Record<FieldMoveId, FieldMove>> = {
     label: 'STRENGTH',
     doorNote: 'NEEDS STRENGTH',
     obstacle: "It's a big boulder.",
-    refusal: 'Nothing in the party can move it. Something that reads HM04 could.',
+    refusal: 'Nothing in the party can move it. A Pokémon that knows STRENGTH could - HM04 teaches it.',
     worked: (name) => `${name} is ready to push it. Walk into the boulder to move it.`,
   },
 };

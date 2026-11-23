@@ -49,7 +49,7 @@ describe('a move that is also a route', () => {
 
     expect(fieldMoveLines('cut', undefined)).toEqual([
       'Growth has closed the ride. Thick, old and shoulder high.',
-      'Nothing in the party can cut it. Something that reads HM01 could.',
+      'Nothing in the party can cut it. A Pokémon that knows CUT could - HM01 teaches it.',
     ]);
     expect(fieldMoveLines('cut', cutter)).toEqual([
       'Growth has closed the ride. Thick, old and shoulder high.',
