@@ -13,6 +13,7 @@ import {
   VINE_WHIP,
 } from '../pokemon/moves';
 import { PokemonType } from '../pokemon/PokemonType';
+import { ENRAGE_GRACE_MS } from '../run/RunManager';
 import { MOVE_CATALOGUE } from '../pokemon/moveCatalogue';
 import type { PrimaryStatus, StatusName } from '../pokemon/battle/status';
 import {
@@ -465,6 +466,17 @@ describe('battle presentation', () => {
     it('says what the escape does when it costs everything that is left', () => {
       expect(formatHunterFleeCommand(60_000, 60_000)).toBe('FLEE: CLOCK OUT');
       expect(formatHunterFleeCommand(60_000, 24_000)).toBe('FLEE: CLOCK OUT');
+    });
+
+    it('says the raid is lost when the price is past the clock and the fifteen seconds after it', () => {
+      // 0:30 left: 0:40 runs the clock out and leaves five seconds of the enrage to get away in.
+      expect(formatHunterFleeCommand(40_000, 30_000, ENRAGE_GRACE_MS)).toBe('FLEE: CLOCK OUT');
+      // 0:25 left uses all fifteen, and the grace is over the moment it is used up.
+      expect(formatHunterFleeCommand(40_000, 25_000, ENRAGE_GRACE_MS)).toBe('FLEE: RAID LOST');
+      expect(formatHunterFleeCommand(40_000, 10_000, ENRAGE_GRACE_MS)).toBe('FLEE: RAID LOST');
+      // Already ENRAGED, with ten seconds of it left.
+      expect(formatHunterFleeCommand(40_000, 0, 10_000)).toBe('FLEE: RAID LOST');
+      expect(formatHunterFleeCommand(40_000, 60_000, ENRAGE_GRACE_MS)).toBe('FLEE -40s OF 60s');
     });
   });
 });
