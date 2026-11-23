@@ -469,6 +469,16 @@ describe('Stash boxes', () => {
     expect(stash.renameBox(second, '   ')).toBe(false);
   });
 
+  it('keeps only what the typeface draws in a box name: no emoji, accents kept', () => {
+    const stash = new Stash();
+    const second = stash.addBox();
+    expect(stash.renameBox(second, 'Fire 🔥🔥 box')).toBe(true);
+    expect(stash.listBoxes()[second].name).toBe('Fire box');
+    expect(stash.renameBox(second, 'Zoë’s')).toBe(true);
+    expect(stash.listBoxes()[second].name).toBe('Zoë’s');
+    expect(stash.renameBox(second, '🔥🔥')).toBe(false);
+  });
+
   it('takes markup out of a box name, typed or saved', () => {
     // The name is printed into the Pokemon Center's page: `<i>` rendered, and a
     // box named `<!--` commented out everything after it.

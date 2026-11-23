@@ -13,6 +13,7 @@ import {
 } from '../items';
 import { BULBASAUR, CHARMANDER, Pokemon, SQUIRTLE, getSpeciesById, type PokemonBase } from '../pokemon';
 import type { PrimaryStatus } from '../pokemon/battle/status';
+import { typedMapText } from '../world/mapText';
 
 export const STARTER_SPECIES = [BULBASAUR, CHARMANDER, SQUIRTLE] as const;
 export type StarterSpeciesId = (typeof STARTER_SPECIES)[number]['id'];
@@ -993,9 +994,12 @@ function clampHp(value: number, maxHp: number): number {
  * Pokemon Center. The characters are taken out here, where every name is made
  * and every saved one is read, rather than escaped at each of the dozen places
  * a name is printed - the same rule a map file's text keeps (`UNSAFE_TEXT`).
+ * And like a map's words it keeps only what the game's one typeface draws
+ * (`world/mapText.ts`): a box named with an emoji was drawn as two empty boxes,
+ * "FIRE ⍰⍰ BO", at the top of MY PC (scenario loop, 23 Nov 2026).
  */
 function tidyBoxName(name: string): string {
-  return name.replace(/[<>&"]/g, '').replace(/\s+/g, ' ').trim().slice(0, MAX_BOX_NAME_LENGTH).trim();
+  return typedMapText(name).text.replace(/\s+/g, ' ').trim().slice(0, MAX_BOX_NAME_LENGTH).trim();
 }
 
 function sameName(a: string, b: string): boolean {
