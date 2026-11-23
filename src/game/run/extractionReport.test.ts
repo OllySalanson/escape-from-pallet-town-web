@@ -1185,6 +1185,11 @@ describe('what the raid left on the ground', () => {
     );
   });
 
+  it('says "them" of one prize that is several things, and "it" of one sum of money', () => {
+    expect(raid(['2 Parts crates']).pressure[0]).toBe('Left on the ground: 2 PARTS CRATES - you walked out past them');
+    expect(raid(['₽40']).pressure[0]).toBe('Left on the ground: ₽40 - you walked out past it');
+  });
+
   it('says it of a raid that was lost too, without the walking out', () => {
     expect(raid(['Moon Stone'], 'WIPED').pressure[0]).toBe('Left on the ground: MOON STONE');
   });
