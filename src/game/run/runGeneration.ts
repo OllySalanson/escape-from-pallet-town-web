@@ -17,6 +17,7 @@ import type { GridPosition } from '../movement/gridMovement';
 import { nightDoors, openedDoors } from '../world/gates';
 import { stepDistances } from '../world/mapStructure';
 import { districtEncounterTables } from '../world/localEncounters';
+import { forANewcomer } from '../world/firstRaidWildlife';
 import { districtAt, districtsForMap, type DistrictArea } from '../world/districts';
 import { extractionPointsOn, type ExtractionPoint } from '../world/extractionPoints';
 import { withWorkedExitsOpen } from '../world/workedLandmarks';
@@ -34,6 +35,7 @@ import {
 import {
   FIRST_CONTRACT_ID,
   isChainFinished,
+  isFirstJob,
   MAPS_OPENED_BY_THE_FINISHED_CHAIN,
   type RaidContract,
 } from '../objectives/contracts';
@@ -807,11 +809,15 @@ export function generateRunPlan(
   // Districts are varied on a stream of their own, so giving a place its own
   // wildlife does not move a single loot, trainer or hunter roll of any seed.
   const districtRng = createSeededRng((seed ^ DISTRICT_ENCOUNTER_STREAM) >>> 0);
+  // A newcomer's first raid and first job meet the near ground's wildlife a
+  // level below a fresh starter (`world/firstRaidWildlife.ts`); varied first,
+  // so the stream spends the same draws either way.
+  const newcomer = outfitting.firstRaid === true || isFirstJob(contract?.id);
   const districtEncounters = Object.fromEntries(
-    Object.entries(districtEncounterTables(insertion.mapId, night)).map(([id, table]) => [
-      id,
-      varyEncounterTable(table, districtRng),
-    ]),
+    Object.entries(districtEncounterTables(insertion.mapId, night)).map(([id, table]) => {
+      const varied = varyEncounterTable(table, districtRng);
+      return [id, newcomer ? forANewcomer(varied) : varied];
+    }),
   );
 
   // A contract the insertion cannot walk to is worse than no contract, so the
