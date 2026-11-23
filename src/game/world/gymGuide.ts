@@ -37,6 +37,19 @@ export function gymDoorGuide(bossId: string): string {
   return `${name}: ${count(party.length)} Pokémon, ${spread}${atOnce}. Bring ${bring} at Lv ${party[0].level} or more.${warning}`;
 }
 
+/**
+ * The level a gym's leader leads with, the level its door sign asks the player
+ * to bring (`gymDoorGuide`), for anybody else who says it - the Gym Guide in
+ * the hall.
+ */
+export function gymLeadLevel(bossId: string): number {
+  const leader = createRunTrainerEncounters().find((encounter) => encounter.bossId === bossId);
+  if (!leader) {
+    throw new Error(`No gym leader ${bossId}.`);
+  }
+  return leader.trainer.party[0].level;
+}
+
 /** A small number as a sign spells it. */
 const count = (n: number): string => NUMBER_WORDS[n] ?? String(n);
 

@@ -9,7 +9,7 @@ import vale from './maps/greystoneVale.json';
  */
 describe('the level guide at a gym door', () => {
   it('words the team from the team itself: how many, their levels, two at once, and the lead to match', () => {
-    expect(gymDoorGuide(MISTY_BOSS_ID)).toBe('MISTY: three Pokémon, Lv 13 to 15, two out at once. Bring two at Lv 15 or more.');
+    expect(gymDoorGuide(MISTY_BOSS_ID)).toBe('MISTY: three Pokémon, Lv 10 to 12, two out at once. Bring two at Lv 12 or more.');
     // KOGA's KOFFING Self-Destructs, and took a lone partner and the raid with it.
     expect(gymDoorGuide(KOGA_BOSS_ID)).toBe(
       'KOGA: three Pokémon, Lv 17 to 20, two out at once. Bring two at Lv 20 or more. KOFFING knows SELF-DESTRUCT!',

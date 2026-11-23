@@ -1462,11 +1462,17 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
         // know Water Gun, and with it the Fire-and-Rock team was a wall at
         // every level measured, a Geodude in the rain taking Water four times
         // over every turn; and a Geodude led into her is a loss at any level
-        // measured, which is the lesson the gym teaches.
+        // measured, which is the lesson the gym teaches. Three levels down
+        // since the retest of 22 Nov 2026, where every first-time friend
+        // reached her alone at Lv 8 to 11 and none beat her: at 15/14/13 a
+        // Bulbasaur 10 alone won 20% and a Squirtle 12 with an Oddish 8%; at
+        // 12/11/10, 80% and 81%, and a Charmander 12 with an Oddish and a
+        // Pikachu 73% (22%), and the Fire-and-Rock team three up 65%. A lone Charmander or Squirtle still loses to her
+        // at any level measured: two Pokémon is what her guide asks for.
         [
-          gymPokemon('staryu', 15, ['Rain Dance', 'Tackle', 'Rapid Spin']),
-          gymPokemon('horsea', 14, ['Bubble', 'Smokescreen']),
-          gymPokemon('starmie', 13, ['Swift', 'Rapid Spin', 'Recover']),
+          gymPokemon('staryu', 12, ['Rain Dance', 'Tackle', 'Rapid Spin']),
+          gymPokemon('horsea', 11, ['Bubble', 'Smokescreen']),
+          gymPokemon('starmie', 10, ['Swift', 'Rapid Spin', 'Recover']),
         ],
         // Open, not offered: a landing in the Coast goes on the rim once a raid
         // has reached it (`availableInsertionIds`), so the line says so (the midgame bug hunt of 11 Nov
@@ -1479,7 +1485,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
   },
   {
     // A gym trainer: the rain-and-swimmer half of Misty's combo, three levels
-    // under her. She stands off the walk up the middle of the hall to Misty and
+    // under her lead. She stands off the walk up the middle of the hall to Misty and
     // watches nothing, so a fight with her is asked for, by speaking to her.
     mapId: 'greystone-vale',
     position: inMistysHall(MISTY_GYM_SPOTS.diana),
@@ -1492,8 +1498,8 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
         'vale-gym-misty-diana',
         'PICNICKER DIANA',
         [
-          gymPokemon('staryu', 12, ['Rain Dance', 'Tackle', 'Rapid Spin']),
-          gymPokemon('goldeen', 12, ['Peck', 'Tail Whip', 'Supersonic']),
+          gymPokemon('staryu', 9, ['Rain Dance', 'Tackle', 'Rapid Spin']),
+          gymPokemon('goldeen', 9, ['Peck', 'Tail Whip', 'Supersonic']),
         ],
         'Rain and a swimmer. Remember that when you get to Misty!',
         2,
@@ -1515,8 +1521,8 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
         'vale-gym-misty-luis',
         'SWIMMER LUIS',
         [
-          gymPokemon('poliwag', 12, ['Hypnosis', 'Bubble']),
-          gymPokemon('horsea', 12, ['Bubble', 'Smokescreen']),
+          gymPokemon('poliwag', 9, ['Hypnosis', 'Bubble']),
+          gymPokemon('horsea', 9, ['Bubble', 'Smokescreen']),
         ],
         'Asleep or not, you got me. Misty is tougher, mind.',
         2,
