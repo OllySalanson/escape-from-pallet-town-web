@@ -29,8 +29,8 @@ function coming(member: RimTeamMember): string {
 }
 
 /**
- * 'Squirtle Lv 12 at 16/21 HP comes. Psyduck and Pidgey stay home: THE BENCH
- * chooses.' `home` is everyone else at base fit to go.
+ * 'Squirtle Lv 12 at 16/21 HP comes. Psyduck and Pidgey stay home: pick who
+ * comes at THE BENCH.' `home` is everyone else at base fit to go.
  */
 export function rimTeamLine(
   team: readonly RimTeamMember[],
@@ -65,8 +65,11 @@ function namedOf(members: readonly RimTeamMember[], twice: ReadonlySet<string> =
   return rest > 0 ? `${named.join(', ')} and ${rest} more` : listed(named);
 }
 
+// What to do about it, not only who decides: "THE BENCH chooses" left an AI
+// friend with a new Meowth asking what the bench was and how to change it
+// (AI playtest, 23 Nov 2026).
 function homeLine(home: readonly RimTeamMember[], twice: ReadonlySet<string>): string {
-  return home.length === 0 ? '' : `${namedOf(home, twice)} ${home.length === 1 ? 'stays' : 'stay'} home: THE BENCH chooses.`;
+  return home.length === 0 ? '' : `${namedOf(home, twice)} ${home.length === 1 ? 'stays' : 'stay'} home: pick who comes at THE BENCH.`;
 }
 
 /**
