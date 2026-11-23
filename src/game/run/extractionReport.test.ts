@@ -1392,6 +1392,29 @@ describe('what the raid had at stake', () => {
     expect(report.summary).toContain('Bulbasaur, 2 Potions and 1 Poké Ball rode out unprotected and came home.');
   });
 
+  // Break-it test, 23 Nov 2026: 'Banked Pidgey and ₽25. Pidgey, Rattata ...
+  // rode out unprotected' - a catch of a kind already in the team.
+  it('tells a catch apart by level from one of its kind that rode out with it', () => {
+    const starter = new Pokemon(CHARMANDER, 5);
+    const pidgey = new Pokemon(PIDGEY, 6);
+    const manager = startedRun({ party: [starter, pidgey], items: [], secure: { pokemon: [starter] } });
+    const caught = new Pokemon(PIDGEY, 4);
+    manager.registerCaughtPokemon(caught);
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      banked: { pokemon: [caught], items: [] },
+      carriedOut: {},
+      saved: true,
+    });
+
+    expect(report.summary).toContain('Banked Pidgey Lv 4.');
+    expect(report.summary).toContain('Pidgey Lv 6 rode out unprotected and came home.');
+  });
+
   it('says a protected party was still a gamble on the pack', () => {
     const starter = new Pokemon(BULBASAUR, 5);
     const manager = startedRun({

@@ -38,17 +38,35 @@ export function rimTeamLine(
   fainted: readonly RimTeamMember[] = [],
 ): string {
   const comes = `${listed(team.map(coming))} ${team.length === 1 ? 'comes' : 'come'}.`;
-  return [comes, homeLine(home), faintedLine(fainted)].filter((line) => line !== '').join(' ');
+  const twice = namesSeenTwice([...team, ...home, ...fainted]);
+  return [comes, homeLine(home, twice), faintedLine(fainted, twice)].filter((line) => line !== '').join(' ');
 }
 
-function namedOf(members: readonly RimTeamMember[]): string {
-  const named = members.slice(0, HOME_NAMED).map((member) => member.name);
+/**
+ * Names more than one Pokémon on this screen answers to. Two of a kind left
+ * 'Pidgey Lv 6 ... come. Pidgey stays home', which reads as the screen
+ * contradicting itself (break-it test, 23 Nov 2026); one staying home is then
+ * named with its level too, as the one coming already is.
+ */
+function namesSeenTwice(members: readonly RimTeamMember[]): ReadonlySet<string> {
+  const seen = new Set<string>();
+  const twice = new Set<string>();
+  for (const { name } of members) {
+    (seen.has(name) ? twice : seen).add(name);
+  }
+  return twice;
+}
+
+function namedOf(members: readonly RimTeamMember[], twice: ReadonlySet<string> = new Set()): string {
+  const named = members
+    .slice(0, HOME_NAMED)
+    .map((member) => (twice.has(member.name) ? `${member.name} Lv ${member.level}` : member.name));
   const rest = members.length - named.length;
   return rest > 0 ? `${named.join(', ')} and ${rest} more` : listed(named);
 }
 
-function homeLine(home: readonly RimTeamMember[]): string {
-  return home.length === 0 ? '' : `${namedOf(home)} ${home.length === 1 ? 'stays' : 'stay'} home: THE BENCH chooses.`;
+function homeLine(home: readonly RimTeamMember[], twice: ReadonlySet<string>): string {
+  return home.length === 0 ? '' : `${namedOf(home, twice)} ${home.length === 1 ? 'stays' : 'stay'} home: THE BENCH chooses.`;
 }
 
 /**
@@ -56,11 +74,11 @@ function homeLine(home: readonly RimTeamMember[]): string {
  * who put Bulbasaur on the bench read 'Charmander Lv 5 comes.' and nothing
  * about why Bulbasaur did not (scenario loop, 22 Nov 2026).
  */
-function faintedLine(fainted: readonly RimTeamMember[]): string {
+function faintedLine(fainted: readonly RimTeamMember[], twice: ReadonlySet<string>): string {
   if (fainted.length === 0) {
     return '';
   }
   return fainted.length === 1
-    ? `${namedOf(fainted)} has fainted and stays home: Nurse Joy can revive it.`
-    : `${namedOf(fainted)} have fainted and stay home: Nurse Joy can revive them.`;
+    ? `${namedOf(fainted, twice)} has fainted and stays home: Nurse Joy can revive it.`
+    : `${namedOf(fainted, twice)} have fainted and stay home: Nurse Joy can revive them.`;
 }

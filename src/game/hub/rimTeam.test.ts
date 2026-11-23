@@ -32,4 +32,18 @@ describe("the jump screen's TEAM line", () => {
       'Charmander Lv 5 comes. Psyduck stays home: THE BENCH chooses. Bulbasaur and Pidgey have fainted and stay home: Nurse Joy can revive them.',
     );
   });
+
+  // Break-it test, 23 Nov 2026: a Pidgey Lv 6 on the bench and a new catch at
+  // home read 'Pidgey Lv 6 ... come. Pidgey stays home'.
+  it('names one of two of a kind by its level too, wherever the other is', () => {
+    expect(rimTeamLine([mon('Charmander', 5), mon('Pidgey', 6)], [mon('Pidgey', 4), mon('Psyduck', 6)])).toBe(
+      'Charmander Lv 5 and Pidgey Lv 6 come. Pidgey Lv 4 and Psyduck stay home: THE BENCH chooses.',
+    );
+    expect(rimTeamLine([mon('Charmander', 5)], [mon('Rattata', 3), mon('Rattata', 7)])).toBe(
+      'Charmander Lv 5 comes. Rattata Lv 3 and Rattata Lv 7 stay home: THE BENCH chooses.',
+    );
+    expect(rimTeamLine([mon('Pidgey', 6)], [], [mon('Pidgey', 4, 0, 17)])).toBe(
+      'Pidgey Lv 6 comes. Pidgey Lv 4 has fainted and stays home: Nurse Joy can revive it.',
+    );
+  });
 });
