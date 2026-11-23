@@ -1720,6 +1720,28 @@ describe('the medicine hint', () => {
     battle.onMessagesComplete();
     expect(dialog.shownMessages.filter((line) => line.includes('low on HP'))).toHaveLength(1);
   });
+
+  it('brings the commands back on ITEM, the command it names, so a SPACE too many does not attack', () => {
+    // The SPACE that read the line on opened FIGHT and the next fired the
+    // first move (AI playtest, 23 Nov 2026).
+    const pidgey = new Pokemon(PIDGEY, 5);
+    pidgey.currentHp = 1;
+    const { scene } = createBattleSceneHarness({
+      party: new PokemonParty([pidgey]),
+      wild: new Pokemon(getSpeciesById('rattata')!, 3),
+    });
+    const battle = scene as unknown as {
+      onMessagesComplete(): void;
+      mode: string;
+      selectedCommand: number;
+      mainActions(): readonly { readonly type: string }[];
+    };
+
+    battle.onMessagesComplete();
+    battle.onMessagesComplete();
+    expect(battle.mode).toBe('main');
+    expect(battle.mainActions()[battle.selectedCommand]?.type).toBe('choose-item');
+  });
 });
 
 describe('the catch tip', () => {
