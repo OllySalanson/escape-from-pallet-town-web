@@ -10,7 +10,7 @@ vi.mock('phaser', () => ({
 
 import { Pokemon } from '../pokemon';
 import { getSpeciesById } from '../pokemon/species';
-import { foldedRows, headingsOrphanedInColumn, headsWhatFollows, scrollCoverHeight } from './MenuOverlay';
+import { contentBottom, foldedRows, headingsOrphanedInColumn, headsWhatFollows, scrollCoverHeight } from './MenuOverlay';
 import { pokemonDossier } from './pokemonDossier';
 
 const stylesheet = await readFile(new URL('../../style.css', import.meta.url), 'utf8');
@@ -176,5 +176,40 @@ describe("the dossier's fold at the smallest stage", () => {
     const folded = foldedRows(pane, rows, fold);
     expect(folded.map((row) => row.name)).toEqual(['radio valve']);
     expect(headingsOrphanedInColumn(pane, rows, fold, folded).map((heading) => heading.name)).toEqual(['PRICE']);
+  });
+});
+
+describe("a row whose padding only reaches the MORE strip's band", () => {
+  /**
+   * Break-it test, 23 Nov 2026: Bill's shelf at 960x600, measured in the game.
+   * The pane is 137 pixels at 2 a game pixel; POKé BALL's row is 122-178,
+   * POTION's 180-236 with its text ending at 232 and 4 pixels of padding under
+   * it, ANTIDOTE's from 238. The strip's own line is 26 pixels up, at 233.
+   */
+  const pane = { top: 122, bottom: 259 };
+  const unit = 2;
+
+  it('was raised over the whole row, leaving a band of nothing, when measured to the edge of its box', () => {
+    const boxes = [{ top: 122, bottom: 178 }, { top: 180, bottom: 236 }, { top: 238, bottom: 294 }];
+    expect(scrollCoverHeight(pane, boxes, unit)).toBe(80);
+  });
+
+  it('stays its own height over a row measured to where its content ends', () => {
+    const content = [{ top: 122, bottom: 174 }, { top: 180, bottom: 232 }, { top: 238, bottom: 290 }];
+    expect(scrollCoverHeight(pane, content, unit)).toBe(26);
+  });
+
+  it('measures a row to where its content ends: less the padding and border under it', () => {
+    const style = { paddingBottom: '4px', borderBottomWidth: '2px' };
+    const real = globalThis.getComputedStyle;
+    globalThis.getComputedStyle = (() => style) as unknown as typeof getComputedStyle;
+    try {
+      expect(contentBottom({} as Element, { bottom: 236 })).toBe(230);
+      style.paddingBottom = '';
+      style.borderBottomWidth = '';
+      expect(contentBottom({} as Element, { bottom: 236 })).toBe(236);
+    } finally {
+      globalThis.getComputedStyle = real;
+    }
   });
 });

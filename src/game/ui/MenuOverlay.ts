@@ -578,7 +578,7 @@ export class MenuOverlay {
         pane,
         (entry, selector) => entry.closest(selector),
         (outer, inner) => outer.contains(inner),
-      ).map((row) => row.getBoundingClientRect());
+      ).map((row) => ({ bottom: entryBottom(row) }));
       pane.setAttribute('data-more', moreLabel(entries, box.bottom - cover));
     });
   }
@@ -788,9 +788,35 @@ interface RowBox {
   right: number;
 }
 
-/** An element measured whole as one row, its text's reach included. */
+/**
+ * Where an element's content ends: its box less the padding and border under
+ * it. A row is cut only where what is in it is, and a row whose text ends above
+ * the strip's line had only its padding in the strip's band - yet measured to
+ * the edge of its box it was counted as cut and the strip was raised over it
+ * whole. Bill's shelf at 960x600 showed POKé BALL, then a blank band a row deep
+ * over the POTION it hid, then 4 MORE (break-it test, 23 Nov 2026).
+ */
+export function contentBottom(element: Element, box: { readonly bottom: number } = element.getBoundingClientRect()): number {
+  const style = getComputedStyle(element);
+  const under = (Number.parseFloat(style.paddingBottom) || 0) + (Number.parseFloat(style.borderBottomWidth) || 0);
+  return box.bottom - under;
+}
+
+/**
+ * Where an entry's content ends, for the strip's count: a row of Bill's shelf
+ * is a pair - the row's button and its counter - in a wrapper with no padding
+ * of its own, so it is measured by the buttons in it.
+ */
+function entryBottom(entry: Element): number {
+  const buttons = entry.matches('button') ? [entry] : [...entry.querySelectorAll('button')];
+  return buttons.length > 0 ? Math.max(...buttons.map((button) => contentBottom(button))) : contentBottom(entry);
+}
+
+/** An element measured whole as one row - to where its content ends - its text's reach included. */
 function elementBox(element: HTMLElement): RowBox {
-  const { top, bottom, left, right } = element.getBoundingClientRect();
+  const box = element.getBoundingClientRect();
+  const { top, left, right } = box;
+  const bottom = contentBottom(element, box);
   // Only text that is drawn: an icon's name for a screen reader is clipped to
   // nothing, but its line box still hangs below the icon, and counted as ink
   // it made every row with an icon reach half a row lower than it does - so a
