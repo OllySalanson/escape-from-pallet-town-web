@@ -58,10 +58,12 @@ function described(member: RailMember): string {
 
 /**
  * What the card says of this team, or null when nobody on it is in a bad way.
- * `joyTurnsAway` is whether Nurse Joy would send them away until the next raid
+ * `joy` is what Nurse Joy would do for them (`joyRailLine` in
+ * `hub/centerCounter.ts`): her price, or that she heals again after this raid.
+ * Absent, the card says only that she can help.
  * (`joyTurnsHurtAway`), when the card must not send the player to her.
  */
-export function railWarning(team: readonly RailMember[], medicinePacked: boolean, joyTurnsAway = false): RailWarning | null {
+export function railWarning(team: readonly RailMember[], medicinePacked: boolean, joy = 'Nurse Joy can help.'): RailWarning | null {
   const standing = team.filter((member) => member.currentHp > 0);
   const hurt = standing.filter(isHurt);
   if (hurt.length === 0) {
@@ -73,7 +75,7 @@ export function railWarning(team: readonly RailMember[], medicinePacked: boolean
   const health = standing.reduce((sum, member) => sum + member.currentHp, 0);
   const whole = standing.reduce((sum, member) => sum + member.maxHp, 0);
   return {
-    line: `${who}${medicinePacked ? '' : ', with no medicine packed'}. ${joyTurnsAway ? 'Nurse Joy heals again after this raid.' : 'Nurse Joy can help.'}`,
+    line: `${who}${medicinePacked ? '' : ', with no medicine packed'}. ${joy}`,
     stops: health < whole * STOPS_BELOW_SHARE,
   };
 }
@@ -87,7 +89,7 @@ export interface RailBench {
 }
 
 /** What the rail says of the bench. The explorer run cannot lose, so it has nothing to be told. */
-export function benchRailWarning(bench: RailBench, joyTurnsAway = false): RailWarning | null {
+export function benchRailWarning(bench: RailBench, joy?: string): RailWarning | null {
   return isPlaytestRun()
     ? null
     : railWarning(
@@ -98,7 +100,7 @@ export function benchRailWarning(bench: RailBench, joyTurnsAway = false): RailWa
           primaryStatus: pokemon.primaryStatus,
         })),
         bench.packsMedicine,
-        joyTurnsAway,
+        joy,
       );
 }
 

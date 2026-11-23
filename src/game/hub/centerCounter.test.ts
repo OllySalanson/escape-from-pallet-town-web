@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { baseGame } from '../base/baseGames.testkit';
-import { centerOffer, HEAL_RULE_LINE, healedLine, joyTurnsHurtAway, nobodyCanRaid, recoveryTermsFor } from './centerCounter';
+import { centerOffer, HEAL_RULE_LINE, healedLine, joyRailLine, joyTurnsHurtAway, nobodyCanRaid, recoveryTermsFor } from './centerCounter';
 import { formatRecoveryClock, healDayOf, MAX_PENDING_RECOVERY_MS, quoteRecovery } from './recovery';
 
 /** A save that has had today's free heal, so a heal is charged as every other is. */
@@ -129,3 +129,20 @@ describe('Nurse Joy at her counter', () => {
     expect(healedLine(0, 0)).toBe('Your Pokémon are fit to raid. We hope to see you again!');
   });
 });
+
+describe("the rim's word on Nurse Joy", () => {
+  /**
+   * "Nurse Joy can help" with no price was where an impatient player chose to
+   * go out hurt (the overnight retest, 23 Nov 2026): the card says her price,
+   * in the words of her own quote.
+   */
+  it('says her price, the free heal, or that she heals again after this raid', () => {
+    const { game, stored } = hurtGame();
+    const quote = quoteRecovery(game.stash, 0, [stored.id], recoveryTermsFor([], 0, game.freeHealDay));
+    expect(joyRailLine(game)).toBe(`Nurse Joy can heal them for ${formatRecoveryClock(quote)} of your next raid.`);
+    expect(joyRailLine({ ...game, freeHealDay: undefined })).toBe("Nurse Joy's first heal today is free.");
+    expect(joyRailLine({ ...game, pendingRecoveryMs: MAX_PENDING_RECOVERY_MS })).toBe('Nurse Joy heals again after this raid.');
+    expect(joyRailLine(baseGame())).toBe('Nurse Joy can help.');
+  });
+});
+

@@ -99,6 +99,33 @@ export function joyTurnsHurtAway(game: CounterGame, free = false, now: Date = ne
 }
 
 /**
+ * What the rim's card says Nurse Joy would do for a hurt team: her price, as
+ * she would quote it, or that she heals again after this raid. "Nurse Joy can
+ * help" with no price was where an impatient player chose to go out hurt and
+ * lost a gym fight at 6/29 (the overnight retest, 23 Nov 2026).
+ */
+export function joyRailLine(game: CounterGame, free = false, now: Date = new Date()): string {
+  if (joyTurnsHurtAway(game, free, now)) {
+    return 'Nurse Joy heals again after this raid.';
+  }
+  const away = awayOnRaid(game);
+  const ids = pokemonNeedingRecovery(game.stash)
+    .filter((stored) => !away.has(stored.id))
+    .map((stored) => stored.id);
+  if (ids.length === 0 || free) {
+    return 'Nurse Joy can help.';
+  }
+  const terms = recoveryTermsFor(game.raidProgress.workshopUpgrades, game.wardTreatmentsUsed, game.freeHealDay, now);
+  if (terms.freeToday) {
+    return "Nurse Joy's first heal today is free.";
+  }
+  const quoteMs = quoteRecovery(game.stash, game.pendingRecoveryMs, ids, terms);
+  return quoteMs === 0
+    ? 'Nurse Joy can heal them without costing your next raid a second.'
+    : `Nurse Joy can heal them for ${formatRecoveryClock(quoteMs)} of your next raid.`;
+}
+
+/**
  * What she says to whoever walks up. `free` is the explorer run, whose clock
  * nothing can shorten (`dev/playtestMode.ts`).
  */
