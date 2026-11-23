@@ -467,6 +467,22 @@ describe('BattleScene command presentation', () => {
     expect(yours.status).not.toBe('fainted');
   });
 
+  it('tells test mode how many of a trainer\'s Pokémon are left, counting down as they fall', () => {
+    // "(3 left)" read the same all the way to Misty's last Pokémon (the
+    // overnight retest's veteran, 23 Nov 2026): it counted the trainer's own
+    // party, which never faints, rather than the fight's.
+    const party = [new Pokemon(SQUIRTLE, 5), new Pokemon(SQUIRTLE, 5), new Pokemon(SQUIRTLE, 5)];
+    const { scene } = createBattleSceneHarness({ authoredTrainer: true, trainerParty: party });
+    Object.assign(scene as object, { commandTexts: [] });
+    const left = (): number | null => (scene.describeForTest() as { foesLeft: number | null }).foesLeft;
+    expect(left()).toBe(3);
+    const internals = scene as unknown as { state: { enemy: { currentHp: number }; enemySentOut: number } };
+    internals.state.enemy.currentHp = 0;
+    expect(left()).toBe(2);
+    internals.state.enemySentOut = 3;
+    expect(left()).toBe(0);
+  });
+
   it("tells test mode a status move is STATUS, not 'NORMAL DAMAGE'", () => {
     // AI playtest of 22 Nov 2026: 'Tail Whip Normal pow 0 ... NORMAL DAMAGE'.
     const { scene } = createBattleSceneHarness();

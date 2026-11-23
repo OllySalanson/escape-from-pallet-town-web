@@ -818,7 +818,14 @@ export class BattleScene extends Phaser.Scene {
       })),
       foe: side(this.state.enemy, plateKey('enemy', 0)),
       foePartner: side(this.state.enemyPartner, plateKey('enemy', 1)),
-      foesLeft: this.trainer ? this.trainer.party.filter((pokemon) => !pokemon.isFainted).length : null,
+      // The trainer's own party never faints - the fight is fought on its
+      // copies - so counted off it, "(3 left)" read the same to Misty's last
+      // Pokémon (the overnight retest's veteran, 23 Nov 2026). What is left is
+      // whoever still stands on the field and whoever has not been sent out.
+      foesLeft: this.trainer
+        ? [this.state.enemy, this.state.enemyPartner].filter((unit) => unit !== null && unit.currentHp > 0).length +
+          Math.max(0, this.trainer.party.length - this.state.enemySentOut)
+        : null,
     };
   }
 
