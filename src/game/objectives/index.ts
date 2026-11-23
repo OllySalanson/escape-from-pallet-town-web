@@ -49,4 +49,4 @@ export {
   type StandingBoardProgress,
 } from './standingBoard';
 
-export { contractReportLine, isStillOnBoard, type ContractOutcome } from './contractReport';
+export { contractReportLine, isStillOnBoard, missedGate, type ContractOutcome } from './contractReport';

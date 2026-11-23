@@ -144,6 +144,12 @@ export interface ReportContract {
   readonly description: string;
   readonly complete: boolean;
   readonly reward: string;
+  /**
+   * Every stop was made and the job walked out of the wrong exit, as
+   * `SMUGGLERS' PATH is not DEER GAP` (`missedGate` in
+   * `objectives/contractReport.ts`); the summary leads with it.
+   */
+  readonly missedGate?: string;
 }
 
 export interface ExtractionReport {
@@ -453,6 +459,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
         progress,
         gear,
         pack,
+        contract?.missedGate,
       )
       : wipeSummary(input.cause, stakes, secured, partner),
     haulTier,
@@ -661,7 +668,9 @@ function escapeSummary(
   progress: readonly ReportProgress[],
   gear: readonly ReportGear[],
   pack: ReportPack | null,
+  missedGate?: string,
 ): string {
+  const lost = missedGate === undefined ? null : `Job unpaid: ${missedGate}.`;
   const haul = describeGroup(fieldHaul);
   const carried = gear.filter((piece) => piece.fate === 'found');
   // The pack is never protected, so a raid that wore one never took nothing in
@@ -682,9 +691,11 @@ function escapeSummary(
         ? `${listNames(carried)} came out of the field with you.`
         : progressSummary(progress);
     const opening = contractComplete ? 'Contract banked.' : earned === null ? 'No new haul.' : null;
-    return [opening, earned, riskLine].filter((part) => part !== null).join(' ');
+    return [lost, opening, earned, riskLine].filter((part) => part !== null).join(' ');
   }
-  return `${contractComplete ? 'Contract banked, plus ' : 'Banked '}${haul}. ${riskLine}`;
+  return [lost, `${contractComplete ? 'Contract banked, plus ' : 'Banked '}${haul}. ${riskLine}`]
+    .filter((part) => part !== null)
+    .join(' ');
 }
 
 function wipeSummary(

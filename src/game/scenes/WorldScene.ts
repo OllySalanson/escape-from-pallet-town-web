@@ -204,6 +204,7 @@ import {
   completedObjectiveRewards,
   contractCarryIn,
   contractReportLine,
+  missedGate,
   contractStopMessage,
   isContractBankable,
   missingCarryIn,
@@ -8969,17 +8970,21 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         contractPaid,
         ...(contract
           ? {
-            contract: {
-              description: contract.description,
-              complete: banksContract,
-              reward: contractReportLine(contract, {
-                banked: banksContract,
-                granted: contractResult.granted,
-                stopsComplete: areContractStopsComplete(contract, snapshot.contractSteps),
-                exitLabel: point.label,
-                progressAfter: this.progressAfterRaid(),
-              }),
-            },
+            contract: ((outcome) => {
+              const gate = missedGate(contract, outcome);
+              return {
+                description: contract.description,
+                complete: banksContract,
+                reward: contractReportLine(contract, outcome),
+                ...(gate === null ? {} : { missedGate: gate }),
+              };
+            })({
+              banked: banksContract,
+              granted: contractResult.granted,
+              stopsComplete: areContractStopsComplete(contract, snapshot.contractSteps),
+              exitLabel: point.label,
+              progressAfter: this.progressAfterRaid(),
+            }),
           }
           : {}),
         carriedOut: this.bag.toJSON(),

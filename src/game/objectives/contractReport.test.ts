@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { gatesForMap } from '../world/gates';
 import { FIRST_CONTRACT, RAID_CONTRACTS } from './contracts';
-import { contractReportLine, isStillOnBoard } from './contractReport';
+import { contractReportLine, isStillOnBoard, missedGate } from './contractReport';
 import { standingBoard, type StandingBoardProgress } from './standingBoard';
 
 const CHAIN_BANKED: StandingBoardProgress = {
@@ -61,5 +61,26 @@ describe('the result screen\'s line for a contract that was not banked', () => {
     expect(
       contractReportLine(sealed, { ...outcome, stopsComplete: false, progressAfter: progress }),
     ).toContain('stays on the board');
+  });
+});
+
+describe('the way a job was lost at its very last step', () => {
+  /** Break-it test, 23 Nov 2026: the sealed dispatch carried out of SMUGGLERS' PATH, not DEER GAP. */
+  it('names the exit taken and the one it needed, only when every stop was made', () => {
+    const carried = RAID_CONTRACTS.find((contract) => contract.requiredExitLabel)!;
+    const outcome = {
+      banked: false,
+      granted: false,
+      stopsComplete: true,
+      exitLabel: 'SOUTH GATE',
+      progressAfter: DEFAULT_RAID_PROGRESS,
+    };
+
+    expect(missedGate(carried, outcome)).toBe(`SOUTH GATE is not ${carried.requiredExitLabel}`);
+    expect(contractReportLine(carried, outcome)).toContain(`You had it, and SOUTH GATE is not ${carried.requiredExitLabel}.`);
+    expect(missedGate(carried, { ...outcome, stopsComplete: false })).toBe(null);
+    expect(missedGate(carried, { ...outcome, banked: true, granted: true })).toBe(null);
+    // A job any exit banks is never lost at the gate.
+    expect(missedGate(RAID_CONTRACTS.find((contract) => !contract.requiredExitLabel)!, outcome)).toBe(null);
   });
 });
