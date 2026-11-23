@@ -75,6 +75,15 @@ export function evolutionByStone(speciesId: string, itemId: string): PokemonBase
   return rule ? getSpeciesById(rule.to) : undefined;
 }
 
+/** Every species a stone evolves, in the Pokédex's order: who a stone is for. */
+export function stoneUsers(itemId: string): readonly PokemonBase[] {
+  const from = EVOLUTIONS.filter((rule) => rule.trigger.kind === 'stone' && rule.trigger.itemId === itemId).map((rule) => rule.from);
+  return [...new Set(from)]
+    .map((id) => getSpeciesById(id))
+    .filter((species): species is PokemonBase => species !== undefined)
+    .sort((one, other) => one.dexId - other.dexId);
+}
+
 /** Whether `speciesId` is somewhere further along the same line than `fromId`. */
 export function evolvesInto(fromId: string, speciesId: string): boolean {
   if (fromId === speciesId) {

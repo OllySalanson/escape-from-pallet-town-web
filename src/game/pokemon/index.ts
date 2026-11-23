@@ -24,6 +24,7 @@ export {
   evolutionFamily,
   evolutionOnLevel,
   evolvesInto,
+  stoneUsers,
 } from './evolution';
 export {
   MACHINES,
