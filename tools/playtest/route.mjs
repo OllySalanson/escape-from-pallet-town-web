@@ -35,10 +35,18 @@ export const routeTo = (world, goal) => `(() => {
   // X in SMUGGLERS' COVE, a roamer in FISHER'S ROW (scenario loop, 23 Nov 2026).
   // They are gone round where something else gets through, and walked through
   // where nothing does: a step that does not land is replanned by the driver.
+  // A sign or a tree never moves on, so only people and Pokemon (both npc) count as movers.
   const moving = new Uint8Array(W * H);
-  for (const entity of w.currentMap.entities) for (const t of w.entityHeldTiles(entity)) stand(t, moving);
+  for (const entity of w.currentMap.entities) {
+    const mover = entity.kind === 'npc';
+    for (const t of w.entityHeldTiles(entity)) stand(t, mover ? moving : blocked);
+  }
   if (w.isHunterOnCurrentMap()) stand(w.hunterState.position, moving);
-  for (const hunter of w.hunterPackHere()?.hunters ?? []) stand(hunter.position, moving);
+  // As the scene's own isBlocked asks the pack: a hunter beaten, fled or not yet
+  // out holds no tile, and one listed anyway walled the player into the X's
+  // nook in SMUGGLERS' COVE.
+  const pack = w.hunterPackHere();
+  for (const hunter of pack?.hunters ?? []) if (pack.hunterAt(hunter.position)) stand(hunter.position, moving);
   moving[id(goal.x, goal.y)] = 0;
   // An open exit is ground, and the step that finishes on it ends the raid: a
   // walk to somewhere else goes round it, and crosses one only where nothing
