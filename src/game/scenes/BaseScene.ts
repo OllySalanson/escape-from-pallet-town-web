@@ -1054,6 +1054,19 @@ export class BaseScene extends Phaser.Scene {
               .filter((thing) => thing.tiles.some(onScreen))
               .map((thing) => ({ name: thing.name, tile: tileOf(thing.tiles[0]), ...this.usedFrom(thing) }))
           : [],
+        // The harbour's own people and Pokémon out of doors: the SAILOR, the
+        // GYM GUIDE and the rest give errands and the chart's leads, and the AI
+        // playtester could not see a single one of them (scenario loop, 23 Nov 2026).
+        people: room
+          ? []
+          : (this.harbourLife?.present() ?? [])
+              .filter((figure) => onScreen(figure.tile))
+              .map((figure) => ({
+                kind: figure.kind,
+                name: figure.name,
+                ...(figure.species ? { pokemon: figure.species } : {}),
+                tile: tileOf(figure.tile),
+              })),
         exit: room?.room.mat ? tileOf(room.room.mat) : null,
         // An arch through to another room, as THE CHART ROOM's behind the
         // library's end bookcase: the AI playtester saw only the mat's way out
