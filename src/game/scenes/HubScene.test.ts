@@ -58,7 +58,7 @@ import { encodeSurvey } from '../world/survey';
 import { getWorldMap, type WorldMapId } from '../worldMap';
 import { PUBLISHED_FIXTURE_MAP_ID } from '../world/publishedMapFixture.testkit';
 import { setActiveSaveSlot } from '../dev/playtestMode';
-import { HubScene, RELEASE_ARMING_MS, RIM_REFUSED_TITLE, STALE_SAVE_REFUSAL, type HubSceneData } from './HubScene';
+import { HubScene, RELEASE_ARMING_MS, RIM_REFUSED_TITLE, roomKeptFor, STALE_SAVE_REFUSAL, type HubSceneData } from './HubScene';
 
 describe('the lobby as a screen of the game', () => {
   function markupOf(hub: HubInternals): string {
@@ -3185,3 +3185,17 @@ describe('the lab with only Greystone Vale in play', () => {
     expect(offered.map(([id]) => id)).not.toContain('route-1');
   });
 });
+
+describe("the rim's Safe line", () => {
+  /**
+   * The overnight retest's explorer (23 Nov 2026) pressed + on a torn chart
+   * in the locker's "Room for what you find", and every raid's card then said
+   * "Safe: ... Torn chart (moor) x1": a chart they had never found.
+   */
+  it('names room kept for a found good as room, not as a thing carried', () => {
+    expect(roomKeptFor({ itemId: 'torn-chart-moor', quantity: 1 }, 'Torn chart (moor)')).toBe('room for a Torn chart (moor)');
+    expect(roomKeptFor({ itemId: 'radio-valve', quantity: 2 }, 'Radio valve')).toBe('room for 2 Radio valve');
+    expect(roomKeptFor({ itemId: 'money', quantity: 250 }, 'Pokédollars')).toBe('room for ₽250');
+  });
+});
+
