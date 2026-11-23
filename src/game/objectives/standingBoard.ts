@@ -685,9 +685,7 @@ export const NEAR_JOB_MOST_WALK = 130;
 /**
  * Whether Oak's first jobs are done: the authored chain banked and the near
  * jobs after it. It is the finish line's "Contract chain banked"
- * (`dev/runProgress.ts`), and from it on the gold arrow leads to the next gym
- * the whole way (`WorldScene.gymDoorNear`), because the gym is what the game is
- * for next.
+ * (`dev/runProgress.ts`).
  */
 export function isFirstJobsBanked(progress: Pick<StandingBoardProgress, 'completedContracts' | 'standingContractsBanked'>): boolean {
   return isChainFinished(progress.completedContracts) && progress.standingContractsBanked >= NEAR_JOBS;

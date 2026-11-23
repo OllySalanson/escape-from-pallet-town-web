@@ -235,7 +235,6 @@ import { rideOnMap } from '../world/exitVehicles';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { RadioChip } from '../ui/RadioChip';
 import { buildObjectiveGuide, type NextGymHere } from '../objectives/ObjectiveGuide';
-import { isFirstJobsBanked } from '../objectives/standingBoard';
 import { PRESS_ARROWS } from '../ui/pressArrows';
 import { openNamingScreen } from '../ui/NamingScreenOverlay';
 import { placeCaptions, placeDialog, seatedOver, type CaptionPlacement, type Rect } from '../ui/labelPlacement';
@@ -1146,8 +1145,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * for the same reason `defeatedBosses` is.
    */
   private completedContracts: readonly string[] = [];
-  /** Whether Oak's first jobs are banked, so the gold arrow leads to the next gym from anywhere (`gymDoorNear`). */
-  private firstJobsBanked = false;
   /**
    * The legends this save has already caught, by entity id, none of which
    * stands this raid (`world/legends.ts`). Off the plan, like the contracts.
@@ -1342,7 +1339,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // what must not survive is this instance's own copy of the list.
     this.defeatedBosses = [];
     this.completedContracts = [];
-    this.firstJobsBanked = false;
     this.caughtLegends = [];
     this.openedGates = [];
     this.knownInsertionIds.clear();
@@ -1622,11 +1618,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.defeatedBosses = [...new Set([...deployedWith, ...beatenThisRaid])];
     this.completedContracts =
       this.runSession?.plan?.completedContracts ?? stored?.completedContracts ?? [];
-    // Read off the save: a job is banked only at extraction, so it cannot move mid-raid.
-    this.firstJobsBanked = isFirstJobsBanked({
-      completedContracts: this.completedContracts,
-      standingContractsBanked: stored?.standingContractsBanked ?? 0,
-    });
     this.caughtLegends =
       this.runSession?.plan?.caughtLegends ?? caughtLegends(stored?.pokedexOwned ?? []);
     for (const id of [...(stored?.unlockedInsertions ?? []), ...(stored?.reachedInsertions ?? [])]) {
@@ -6662,11 +6653,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /**
    * The next gym, while its door is a few steps off - or from anywhere it can be
-   * walked to, once Oak's first jobs are banked (`isFirstJobsBanked`): what the gold arrow is after
-   * there, whatever else the raid is for, until the player walks on. With the
-   * first jobs done the gym is what the game is for next, and the AI
-   * playtest's friends who had banked them then wandered the vale looking for
-   * it (22 Nov 2026), so the arrow leads the whole way. The radio
+   * walked to, on a raid that carries no job: what the gold arrow is after
+   * there, whatever else the raid is for, until the player walks on. A raid
+   * with no job is out for the gym, and the friends of the 22 Nov AI playtests
+   * who went out with NO JOB were sent after coins while they hunted for it.
+   * A raid that carries a job keeps the arrow on the job until the door is
+   * near: led to the gym the whole way once the first jobs were banked (#688),
+   * three of the retest's five friends were walked off a job they held, a
+   * sealed dispatch among them. A new save's first raid carries no job and is
+   * Oak's walk-through (`RunPlan.stagedChase`), so it is left to its stake. The radio
    * names the gym by a compass bearing, and the last of the walk is where it
    * failed: on GULL STRAND the caption over the front showed from several
    * tiles, only one of them is the door, and seven of tester 3's sessions
@@ -6685,7 +6680,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return undefined;
     }
     const steps = this.wayField(doorway.stand)[this.currentTile.y]?.[this.currentTile.x] ?? -1;
-    const reach = this.firstJobsBanked ? Number.POSITIVE_INFINITY : GYM_DOOR_NEAR_STEPS;
+    const plan = this.runSession?.plan;
+    const outForTheGym = plan !== undefined && !plan.contract && plan.stagedChase !== true;
+    const reach = outForTheGym ? Number.POSITIVE_INFINITY : GYM_DOOR_NEAR_STEPS;
     if (steps < 0 || steps > reach) {
       return undefined;
     }

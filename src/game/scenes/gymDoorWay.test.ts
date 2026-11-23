@@ -23,10 +23,13 @@ interface Driven {
 /** CERULEAN GYM's door on GULL STRAND, pressed up from the tile below it. */
 const CERULEAN_DOORSTEP = { x: 179, y: 216 };
 
+/** What the raid is out for: a job (the board's first), no job, or a new save's first raid. */
+type OutFor = 'job' | 'no job' | 'first raid';
+
 function standingAt(
   tile: { readonly x: number; readonly y: number },
   beaten: readonly string[] = [],
-  firstJobsBanked = false,
+  outFor: OutFor = 'job',
 ): Driven {
   const manager = new RunManager();
   manager.startRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] }, { mapId: 'greystone-vale', durationMs: 60_000 });
@@ -39,8 +42,14 @@ function standingAt(
     wayFields: new Map(),
     trainerEncounters: [],
     defeatedTrainerIds: new Set<string>(),
-    firstJobsBanked,
-    runSession: { manager, plan: { defeatedBosses: beaten } },
+    runSession: {
+      manager,
+      plan: {
+        defeatedBosses: beaten,
+        ...(outFor === 'job' ? { contract: RAID_CONTRACTS[0] } : {}),
+        ...(outFor === 'first raid' ? { stagedChase: true } : {}),
+      },
+    },
   });
   return scene as unknown as Driven;
 }
@@ -59,13 +68,21 @@ describe('the gold arrow at the next gym', () => {
     expect(standingAt({ x: 173, y: 217 }, [MISTY_BOSS_ID]).gymDoorNear()?.cue ?? '').not.toMatch(/CERULEAN/);
   });
 
-  it('leads to the door the whole way once Oak\'s first jobs are banked', () => {
-    // The AI playtest's friends banked the first jobs and then wandered the
-    // vale looking for the gym (22 Nov 2026): with them done the gym is what
-    // the game is for next, so the arrow takes it from across the strand.
-    expect(standingAt({ x: 140, y: 215 }, [], true).gymDoorNear()?.cue).toMatch(/^CERULEAN GYM: /);
+  it('leads to the door the whole way on a raid that carries no job', () => {
+    // The AI playtest's friends went out with NO JOB to find the gym and were
+    // sent after coins (22 Nov 2026): a raid with no job is out for the gym, so
+    // the arrow takes it from across the strand.
+    expect(standingAt({ x: 140, y: 215 }, [], 'no job').gymDoorNear()?.cue).toMatch(/^CERULEAN GYM: /);
     // Misty beaten, it is the next gym's door instead.
-    expect(standingAt({ x: 140, y: 215 }, [MISTY_BOSS_ID], true).gymDoorNear()?.cue).toMatch(/^FUCHSIA GYM: /);
+    expect(standingAt({ x: 140, y: 215 }, [MISTY_BOSS_ID], 'no job').gymDoorNear()?.cue).toMatch(/^FUCHSIA GYM: /);
+  });
+
+  it('keeps a job ahead of the gym until the door is near, and leaves a first raid to its stake', () => {
+    // Led to the gym the whole way once the first jobs were banked, three of
+    // the 22 Nov retest's five friends were walked off a job they carried.
+    expect(standingAt({ x: 140, y: 215 }, [], 'job').gymDoorNear()).toBeUndefined();
+    expect(standingAt({ x: 140, y: 215 }, [], 'first raid').gymDoorNear()).toBeUndefined();
+    expect(standingAt({ x: 173, y: 217 }, [], 'first raid').gymDoorNear()?.cue).toMatch(/^CERULEAN GYM: /);
   });
 
   it('counts the first jobs as the finish line does: the chain, then the near jobs', () => {
