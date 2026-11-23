@@ -13281,7 +13281,7 @@
    "x": 77,
    "y": 90,
    "lines": [
-    "THE SHEPHERD’S",
+    "SHEPHERD’S FIELDS",
     "Mind the flock. Nothing here is a sheep. We do not discuss it."
    ]
   },
@@ -14916,7 +14916,7 @@
    "wildlife": "meadow"
   },
   {
-   "name": "THE SHEPHERD’S",
+   "name": "SHEPHERD’S FIELDS",
    "x": 68,
    "y": 76,
    "width": 16,
