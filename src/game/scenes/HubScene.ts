@@ -79,6 +79,7 @@ import {
   getHeldItem,
   getItemById,
   gridCells,
+  isCurrency,
   isFoundOnly,
   isFurniture,
   isWearableItem,
@@ -3018,7 +3019,10 @@ export class HubScene extends Phaser.Scene {
     const kept = [
       ...(partner === undefined ? [] : [`${partner.pokemon.name} (your partner)`]),
       ...securedPokemon.map((stored) => stored.pokemon.name),
-      ...securedItems.map(stack),
+      // A found good is never packed, so what the locker holds for it is room:
+      // listed as a stack, "Torn chart (moor) x1" told an explorer they carried
+      // a chart they had never found (the overnight retest, 23 Nov 2026).
+      ...securedItems.map((item) => (isFoundOnly(item.itemId) ? roomKeptFor(item, this.itemName(item.itemId)) : stack(item))),
     ];
     const threat = this.hunterThreatAt(insertionId, this.flow.party);
     // A raid alone meets a pack; a room shares one hunter (`WorldScene.hunterPackHere`).
@@ -4506,4 +4510,14 @@ function usedInARaid(item: ItemDefinition): string {
  */
 function benchCursorAfter(button: HTMLElement): readonly string[] {
   return [`[data-pokemon="${button.dataset.pokemon!}"]`];
+}
+
+/**
+ * What the rim's Safe line says of room the locker keeps for a found good: it
+ * is never packed, so it is room, not a thing carried.
+ */
+export function roomKeptFor(item: { readonly itemId: string; readonly quantity: number }, name: string): string {
+  return isCurrency(item.itemId)
+    ? `room for ${itemCountTag(item.itemId, item.quantity)}`
+    : `room for ${item.quantity === 1 ? 'a' : item.quantity} ${name}`;
 }
