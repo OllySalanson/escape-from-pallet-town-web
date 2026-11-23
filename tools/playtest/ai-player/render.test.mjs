@@ -71,6 +71,34 @@ describe('a room with an arch in it', () => {
   });
 });
 
+describe("the harbour's people", () => {
+  it('names each by what they are called, so one can be walked to and spoken to', () => {
+    // The SAILOR gives a chart lead and the harbour's people give errands, and
+    // until 23 Nov 2026 the harbour's screen listed only its doors.
+    const quay = {
+      scenes: ['base'],
+      texts: [],
+      scene: {
+        base: {
+          place: 'THE QUAY',
+          room: null,
+          tile: { x: 12, y: 20 },
+          facing: 'left',
+          near: {
+            doors: [],
+            people: [
+              { kind: 'person', name: 'SAILOR', tile: { x: 9, y: 19 } },
+              { kind: 'pokemon', name: 'SLOWPOKE', pokemon: 'slowpoke', tile: { x: 7, y: 19 } },
+            ],
+          },
+        },
+      },
+    };
+
+    expect(renderScreen(quay, { events: [] })).toContain('person SAILOR 9,19; pokemon slowpoke SLOWPOKE 7,19');
+  });
+});
+
 describe("THE RAID ARENA's telescope", () => {
   it('is shown while somebody is looking through it, with what it says and its keys', () => {
     // 22 Nov 2026: four AI runs reported the telescope as never opening and the

@@ -90,6 +90,19 @@ export class HarbourLifeFigures {
   }
 
   /**
+   * Everybody out this frame, by name and where they stand, for test mode's
+   * description of the screen (`BaseScene.describeForTest`).
+   */
+  public present(): readonly { readonly name: string; readonly kind: HarbourFigure['kind']; readonly species?: string; readonly tile: GridPosition }[] {
+    return idleFrames(this.figures).flatMap((frame) => {
+      const figure = this.byId.get(frame.id);
+      if (!figure) return [];
+      const tile = { x: Math.round(frame.x), y: Math.round(frame.y) };
+      return [figure.kind === 'pokemon' ? { name: figure.name, kind: figure.kind, species: figure.species, tile } : { name: figure.name, kind: figure.kind, tile }];
+    });
+  }
+
+  /**
    * Where somebody's sprite is drawn this frame, its top-left in world pixels,
    * for a mark hung over their head to follow them about their beat.
    */

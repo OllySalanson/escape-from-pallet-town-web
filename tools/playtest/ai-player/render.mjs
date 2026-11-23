@@ -44,7 +44,7 @@ function renderField(key, field) {
     ...(near.doors ?? []).map((d) => `door ${d.name} ${tile(d.tile)}`),
     ...(near.things ?? []).map((t) => `${t.name} ${tile(t.tile)}`),
     ...(near.trainers ?? []).map((t) => `trainer ${t.name} ${tile(t.tile)}${t.beaten ? ' (beaten)' : ''}${t.boss ? ' (boss)' : ''}`),
-    ...(near.people ?? []).map((p) => `${p.pokemon ? `pokemon ${p.pokemon}` : p.kind} ${tile(p.tile)}`),
+    ...(near.people ?? []).map((p) => `${p.pokemon ? `pokemon ${p.pokemon}` : p.kind}${p.name ? ` ${p.name}` : ''} ${tile(p.tile)}`),
     ...(near.loot ?? []).map((l) => `item ${l.item} ${tile(l.tile)}`),
     ...(near.landmarks ?? []).map((l) => `landmark ${l.label} ${tile(l.tile)}${l.searched ? ' (searched)' : ''}`),
   ];

@@ -131,7 +131,7 @@ export function createHands(page) {
       // A room is left by stepping down off its door mat.
       ...(field.near?.exit ? [{ name: 'way out', tile: field.near.exit, leave: 'ArrowDown', what: 'the' }, { name: 'out', tile: field.near.exit, leave: 'ArrowDown', what: 'the way' }] : []),
       ...(field.near?.captions ?? []).filter((each) => each.tile).map((each) => ({ name: each.text, tile: each.tile, what: 'caption' })),
-      ...(field.near?.people ?? []).map((each) => ({ name: each.pokemon ?? each.kind, tile: each.tile, what: each.kind })),
+      ...(field.near?.people ?? []).map((each) => ({ name: each.name ?? each.pokemon ?? each.kind, tile: each.tile, what: each.kind })),
     ];
     const match =
       named.find((each) => each.name?.toLowerCase() === wanted) ??
