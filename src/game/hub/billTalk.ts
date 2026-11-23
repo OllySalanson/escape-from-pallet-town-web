@@ -9,7 +9,7 @@ import {
   checkBerth,
   checkBarter,
   checkPurchase,
-  getTraderStanding,
+  standingWithArticle,
   meetsStanding,
   moneyHeld,
   nextTraderStanding,
@@ -53,7 +53,7 @@ export interface BillQuote {
 
 /** Why a thing is under a sheet: his own word on what the player has not earned. */
 function keptBack(name: string, required: TraderStandingId): string {
-  return `Under the sheet? ${name}. I keep it back until you are ${getTraderStanding(required).name.toLowerCase()}.`;
+  return `Under the sheet? ${name}. I keep it back until you are ${standingWithArticle(required)}.`;
 }
 
 /**

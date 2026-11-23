@@ -2754,7 +2754,7 @@ describe('HubScene - Bill', () => {
     const boat = markupOf(hub);
     const pane = boat.slice(boat.indexOf('data-shown-by="barter-life-orb"'));
 
-    expect(pane).toContain('<span class="px-wrap px-warning">He keeps that back until you are partner.</span>');
+    expect(pane).toContain('<span class="px-wrap px-warning">He keeps that back until you are a partner.</span>');
   });
 
   /**

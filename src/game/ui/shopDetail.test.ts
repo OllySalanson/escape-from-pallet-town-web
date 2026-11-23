@@ -94,8 +94,8 @@ describe('the pane under a shelf', () => {
    * refusal written in a `small` came out grey - the opposite of what it is for.
    */
   it('writes what is stopping the deal in the ink a refusal is written in', () => {
-    expect(pane({ blocked: 'He keeps that back until you are partner.' })).toContain(
-      '<span class="px-wrap px-warning">He keeps that back until you are partner.</span>',
+    expect(pane({ blocked: 'He keeps that back until you are a partner.' })).toContain(
+      '<span class="px-wrap px-warning">He keeps that back until you are a partner.</span>',
     );
   });
 

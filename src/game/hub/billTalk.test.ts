@@ -91,7 +91,7 @@ describe('Bill on a thing on his shelves', () => {
 
   it('says what is under a sheet and what would take it off', () => {
     const quote = billQuote(counter(), antidote);
-    expect(quote.lines[0]).toBe('Under the sheet? Antidote. I keep it back until you are regular.');
+    expect(quote.lines[0]).toBe('Under the sheet? Antidote. I keep it back until you are a regular.');
     expect(quote.question).toBeUndefined();
   });
 

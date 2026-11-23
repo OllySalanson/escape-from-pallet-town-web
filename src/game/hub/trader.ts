@@ -177,6 +177,16 @@ export function meetsStanding(progress: TraderProgress, required: TraderStanding
   return standingRank(traderStanding(progress).id) >= standingRank(required);
 }
 
+/**
+ * A standing as said in a sentence: "a regular", "a partner", but "trusted".
+ * "Until you are partner" read as broken English to two of the overnight
+ * retest's players (23 Nov 2026).
+ */
+export function standingWithArticle(id: TraderStandingId): string {
+  const name = getTraderStanding(id).name.toLowerCase();
+  return name === 'trusted' ? name : `a ${name}`;
+}
+
 export function getTraderStanding(id: TraderStandingId): TraderStanding {
   return TRADER_STANDINGS[standingRank(id)];
 }
@@ -641,7 +651,7 @@ function refuse(refusal: TraderRefusal, message: string): TraderOffer {
 }
 
 function standingRefusal(required: TraderStandingId): TraderOffer {
-  return refuse('standing-short', `He keeps that back until you are ${getTraderStanding(required).name.toLowerCase()}.`);
+  return refuse('standing-short', `He keeps that back until you are ${standingWithArticle(required)}.`);
 }
 
 /** Every shelf item, in price order, judged against this counter. */
