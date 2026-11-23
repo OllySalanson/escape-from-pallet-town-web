@@ -3861,6 +3861,12 @@ button {
   color: var(--ink-soft);
 }
 
+/* A kind and its level range on Oak's wall, kept on one line: the list wraps
+   between kinds, never inside "Pidgey 3-4" (`HubScene.placeWildlife`). */
+:where(.pixel-ui) .wildlife-kind {
+  white-space: nowrap;
+}
+
 /* --- The map maker ---------------------------------------------------------
    Three columns: what to paint with, the map, and what the map is. The map
    column takes every pixel the other two leave, because it is the screen; the
