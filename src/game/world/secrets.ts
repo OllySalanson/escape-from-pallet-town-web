@@ -293,14 +293,15 @@ export interface Secret {
  * a party led by a Fighting type, and its level is measured against the first
  * gym (`secrets.test.ts`): handed over with no fight to pay for it, led into
  * Misty alone it must win less often than her best team has to (72% at Lv 16;
- * at 18 it was 94%, and the gym was its).
+ * at 18 it was 94%, and the gym was its). Down two to 14 when Misty came down
+ * three (22 Nov 2026): at 16 it won 92% against her new team alone, at 14 58%.
  */
 export const NAVVIES_MACHAMP: PokemonGift = {
   id: 'navvies-machamp',
   giverId: 'secret:the-navvies-wager',
   mapId: 'greystone-vale',
   speciesId: 'machamp',
-  level: 16,
+  level: 14,
   offer: [
     'You lead with a fighter. Right. Sleeves up.',
     'One... two... THREE! ...Well. Nobody has put my arm down in twenty years.',

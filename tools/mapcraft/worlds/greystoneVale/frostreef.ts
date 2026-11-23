@@ -1,8 +1,8 @@
 /**
  * FROSTREEF, an island of ice out on the outer reef, south-east of the vale.
  *
- * The one idea: an island nobody walks to. The salvage launch puts in at the
- * Wreck's pier on the flood tide and runs out to the reef - The Ice Run - and
+ * The one idea: an island nobody walks to. The Ice Run puts in at the
+ * Wreck's pier on the flood tide and runs out to the reef, and
  * lands at the Ice Jetty on the island's north shore, and that is the only
  * way here. From the shore the berg stands over everything, and the ridge
  * behind it walls off the frozen lagoon, which is the island's best ground:
@@ -10,7 +10,7 @@
  * The only way into the lagoon is under the berg, through Berg Cave, whose
  * floors are FireRed's sliding ice; the only way off the lagoon is the
  * whalers' boat that puts in at its channel late in a raid, or back the way
- * you came, under the berg and out on the launch before the tide turns.
+ * you came, under the berg and out on The Ice Run before the tide turns.
  *
  * Drawn letter for letter, because a sheet of ice is a puzzle and a puzzle is
  * the drawing: `I` is ice, which carries a step on until something stops it
@@ -136,7 +136,15 @@ export function frostreef(): MapcraftResult {
         {
           x: 33,
           y: 16,
-          lines: ['FROSTREEF', 'The launch puts in on the flood tide. When the tide turns, it does not.'],
+          // THE ICE RUN by name, and its hours: "the launch" here was the
+          // SALVAGE LAUNCH to a player who had just read the pier's sign say
+          // that one only goes home (scenario loop, 23 Nov 2026), and a player
+          // on the island needs to know when the last sailing back is.
+          lines: [
+            'FROSTREEF',
+            'THE ICE RUN puts in at the ICE JETTY on the flood tide. When the tide turns, it does not.',
+            'It sails back until your clock reads 1:00.',
+          ],
         },
       ],
       people: [

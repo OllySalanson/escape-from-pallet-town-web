@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { baseGame } from '../base/baseGames.testkit';
-import { centerOffer, HEAL_RULE_LINE, healedLine, nobodyCanRaid, recoveryTermsFor } from './centerCounter';
+import { centerOffer, HEAL_RULE_LINE, healedLine, joyTurnsHurtAway, nobodyCanRaid, recoveryTermsFor } from './centerCounter';
 import { formatRecoveryClock, healDayOf, MAX_PENDING_RECOVERY_MS, quoteRecovery } from './recovery';
 
 /** A save that has had today's free heal, so a heal is charged as every other is. */
@@ -55,6 +55,19 @@ describe('Nurse Joy at her counter', () => {
     expect(offer.lines[0]).toContain('as short as I will make it');
     expect(offer.lines[1]).toBe('Raid first, then come and see me.');
     expect(stored.pokemon.currentHp).toBe(1);
+  });
+
+  it('says she turns the hurt away exactly when her offer does, so the rim never sends the player to her', () => {
+    // The rim's card said "Nurse Joy can help" straight after she had said
+    // "Raid first, then come and see me" (first-time-friend retest, 23 Nov 2026).
+    const { game } = hurtGame();
+    const capped = { ...game, pendingRecoveryMs: MAX_PENDING_RECOVERY_MS };
+    expect(joyTurnsHurtAway(capped)).toBe(true);
+    expect(centerOffer(capped).question).toBeUndefined();
+    expect(joyTurnsHurtAway(game)).toBe(false);
+    expect(centerOffer(game).question).toBeDefined();
+    // The explorer run's clock cannot be shortened, so she never turns it away.
+    expect(joyTurnsHurtAway(capped, true)).toBe(false);
   });
 
   it('charges the workshop-built Center as the workshop-built Center', () => {

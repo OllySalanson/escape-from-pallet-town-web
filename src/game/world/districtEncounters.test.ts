@@ -214,7 +214,8 @@ describe('wildlife authored per place', () => {
     /**
      * A place behind a gym is met by a team that beat its leader, so it is
      * measured as that team meets it (the gyms plan: each gated quarter has its
-     * own band): a partner at the leader's highest level rather than the vale's
+     * own band): a partner at the quarter's level (`ValeGym.quarterLevel`, else the
+     * leader's highest) rather than the vale's
      * eight, and in the weather the quarter is fought in - the Coast's rain is
      * the quarter's threat, not a footnote to it. Everywhere else is measured in
      * the clear as it always was (Stormcrown's storm is the summit table's
@@ -224,7 +225,10 @@ describe('wildlife authored per place', () => {
       const gym = quarterOfPlace(district, districtsForMap(mapId))?.gym;
       const leader = gym && createRunTrainerEncounters().find((encounter) => encounter.bossId === gym.bossId);
       return leader
-        ? { level: Math.max(...leader.trainer.party.map((pokemon) => pokemon.level)), weather: district.weather ?? null }
+        ? {
+            level: gym.quarterLevel ?? Math.max(...leader.trainer.party.map((pokemon) => pokemon.level)),
+            weather: district.weather ?? null,
+          }
         : { level: partnerLevel(mapId), weather: null };
     };
 
