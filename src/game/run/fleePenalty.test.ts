@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Pokemon } from '../pokemon';
 import { CHARMANDER } from '../pokemon/species';
 import { RunManager } from './RunManager';
+import { formatHunterFleeCommand } from '../scenes/battlePresentation';
 import {
   HUNTER_FLEE_BASE_PENALTY_MS,
   HUNTER_FLEE_PENALTY_CAP_MS,
@@ -90,5 +91,34 @@ describe('charging an escape to the raid clock', () => {
 
     expect(manager.nextHunterFleePenaltyMs()).toBe(HUNTER_FLEE_BASE_PENALTY_MS);
     expect(manager.snapshot().hunterFlees).toBe(0);
+  });
+});
+
+describe('a flee priced past the clock and the enrage after it', () => {
+  // The label the battle prints must say what the escape does: with 0:25 left
+  // a 0:40 escape uses up the clock and all fifteen seconds of the enrage, and
+  // the raid is over the moment the world comes back (break-it test, 23 Nov 2026).
+  it.each([
+    [30_000, false, 'FLEE: CLOCK OUT'],
+    [25_000, true, 'FLEE: RAID LOST'],
+    [5_000, true, 'FLEE: RAID LOST'],
+  ])('with %ims left, the raid is lost: %s, and the command says %s', (left, lost, label) => {
+    const manager = startedRun();
+    manager.tick(RAID_DURATION_MS - left);
+    const before = manager.snapshot();
+
+    expect(formatHunterFleeCommand(manager.nextHunterFleePenaltyMs(), before.durationMs - before.elapsedMs, manager.enrageGraceRemainingMs())).toBe(label);
+    manager.registerHunterFlee();
+    expect(manager.isEnrageGraceExpired).toBe(lost);
+  });
+
+  it('is always lost once ENRAGED', () => {
+    const manager = startedRun();
+    manager.tick(RAID_DURATION_MS + 3_000);
+    const before = manager.snapshot();
+
+    expect(formatHunterFleeCommand(manager.nextHunterFleePenaltyMs(), before.durationMs - before.elapsedMs, manager.enrageGraceRemainingMs())).toBe('FLEE: RAID LOST');
+    manager.registerHunterFlee();
+    expect(manager.isEnrageGraceExpired).toBe(true);
   });
 });

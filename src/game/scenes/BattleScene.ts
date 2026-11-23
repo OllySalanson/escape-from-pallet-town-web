@@ -2602,6 +2602,7 @@ export class BattleScene extends Phaser.Scene {
     return formatHunterFleeCommand(
       manager?.nextHunterFleePenaltyMs() ?? 0,
       snapshot ? snapshot.durationMs - snapshot.elapsedMs : undefined,
+      manager?.enrageGraceRemainingMs(),
     );
   }
 

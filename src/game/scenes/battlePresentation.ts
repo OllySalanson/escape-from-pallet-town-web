@@ -921,7 +921,15 @@ export const HUNTER_FLEE_WARNING_SHARE = 0.5;
 export const formatHunterFleeCommand = (
   penaltyMs: number,
   remainingMs: number = Number.POSITIVE_INFINITY,
+  enrageGraceMs: number = Number.POSITIVE_INFINITY,
 ): string => {
+  // A price past the clock *and* the fifteen seconds the enrage leaves to get
+  // out is not a getaway: back on the map the raid is lost on the spot, straight
+  // after "You broke away". CLOCK OUT promised the run for the exit, which with
+  // 0:10 left or already ENRAGED was never there (break-it test, 23 Nov 2026).
+  if (penaltyMs >= remainingMs + enrageGraceMs) {
+    return 'FLEE: RAID LOST';
+  }
   if (penaltyMs >= remainingMs) {
     return 'FLEE: CLOCK OUT';
   }
