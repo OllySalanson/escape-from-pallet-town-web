@@ -29,12 +29,14 @@ function sceneWithHunterWarning() {
     up: key(), down: key(), left: key(), right: key(),
     w: key(), a: key(), s: key(), d: key(),
     interact: [key()],
+    back: key(),
   };
   const dialogBox = {
     visible: true,
     isCurrentMessageComplete: true,
     advance: vi.fn(() => { dialogBox.visible = false; }),
     skip: vi.fn(),
+    dismiss: vi.fn(() => { dialogBox.visible = false; }),
   };
   const scene = Object.create(WorldScene.prototype) as WorldScene;
   Object.assign(scene as object, {
@@ -46,6 +48,7 @@ function sceneWithHunterWarning() {
     directionPresses: new PressLatch(),
     keyPresses: new KeyPresses(() => 0),
     game: { loop: { frame: 0 } },
+    seatDialog: vi.fn(),
   });
   const internals = scene as unknown as {
     handleDialogInput(): void;
@@ -55,6 +58,19 @@ function sceneWithHunterWarning() {
 }
 
 describe('dismissing a dialogue the world raised', () => {
+  it('goes past every line still to come on ESC, as it does at base', () => {
+    // A friend who learnt [ESC] SKIP at base pressed it on the first raid's
+    // briefing and nothing happened (persona playtest, 23 Nov 2026).
+    const { internals, controls, dialogBox } = sceneWithHunterWarning();
+
+    controls.back.justDown = true;
+    internals.handleDialogInput();
+
+    expect(dialogBox.dismiss).toHaveBeenCalledOnce();
+    expect(dialogBox.advance).not.toHaveBeenCalled();
+    expect(dialogBox.visible).toBe(false);
+  });
+
   it('answers to the direction key, and does not also walk on that press', () => {
     const { internals, controls, dialogBox } = sceneWithHunterWarning();
 
