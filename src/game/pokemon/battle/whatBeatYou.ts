@@ -175,7 +175,11 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
 
   const facts: Fact[] = [];
   const [racer] = [...racedInWeather.entries()].sort((a, b) => b[1].count - a[1].count);
-  if (racer && racer[1].count >= WHAT_BEAT_YOU_LEAST) {
+  // A swimmer racing in the rain is no lesson about a fight somebody else won:
+  // 'Rain and Swift Swim: HORSEA moved first twice' was said over a Misty fight
+  // whose Horsea fell first, lost to her Starmie's Swift (the overnight retest's
+  // literal reader, 23 Nov 2026).
+  if (racer && racer[1].count >= WHAT_BEAT_YOU_LEAST && (finisher === null || finisher.name === racer[0])) {
     const [name, { count, weather: raced }] = racer;
     facts.push({
       line: `${weatherWord(raced)} and ${quickened.get(name)}: ${name.toUpperCase()} moved first ${times(count)}.`,
@@ -271,7 +275,7 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
     // overnight retest, 23 Nov 2026). The hit that ended it is the fact then.
     if (finisher && finisher.name !== name[0]) {
       facts.push({
-        line: `Knocked out by ${finisher.name.toUpperCase()}'s ${finisher.move.toUpperCase()}${finisher.superEffective ? ', super effective' : ''}.`,
+        line: knockedOutBy(finisher),
         weight: foeFirst,
       });
     } else {
@@ -284,8 +288,16 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
       });
     }
   }
+  if (facts.length === 0 && finisher) {
+    facts.push({ line: knockedOutBy(finisher), weight: 1 });
+  }
   const [best] = facts.sort((a, b) => b.weight - a.weight);
   return best?.line ?? null;
+}
+
+/** The hit that ended the fight, as a fact. */
+function knockedOutBy(finisher: FoeHit): string {
+  return `Knocked out by ${finisher.name.toUpperCase()}'s ${finisher.move.toUpperCase()}${finisher.superEffective ? ', super effective' : ''}.`;
 }
 
 /** The last mover, if it was on this side. */
