@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   dismissKeyboardNotice,
   keyboardSeen,
+  looksTouchOnly,
   needsKeyboardNotice,
   resetKeyboardSeen,
   watchForKeyboard,
@@ -30,5 +31,18 @@ describe('the needs-a-keyboard notice', () => {
     dismissKeyboardNotice();
     // No window in the suite reads as no coarse pointer, so ask the rule directly.
     expect(needsKeyboardNotice()).toBe(false);
+  });
+
+  it('still looks touch-only in the harbour after the notice is waved past, until a key goes down', () => {
+    // A tablet tapped past the notice and through Oak's lab and stood in the
+    // yard under "[ARROWS] WALK" (persona playtest, 23 Nov 2026).
+    dismissKeyboardNotice();
+    expect(looksTouchOnly(true)).toBe(true);
+    expect(looksTouchOnly(false)).toBe(false);
+    const target = new EventTarget();
+    const stop = watchForKeyboard(target);
+    target.dispatchEvent(new Event('keydown'));
+    expect(looksTouchOnly(true)).toBe(false);
+    stop();
   });
 });

@@ -54,6 +54,19 @@ export function needsKeyboardNotice(
   return state.coarsePointer && !state.keyboardSeen && !state.dismissed;
 }
 
+/**
+ * The harbour's walking hint on a device that has shown no keyboard: a tablet
+ * waved past the title's notice, tapped through Oak's lab (a tapped ball walks
+ * there) and stood in the yard under "[ARROWS] WALK", with nothing to press
+ * (persona playtest, 23 Nov 2026). Gone the moment a key goes down.
+ */
+export const TOUCH_ONLY_WALK_HINT = 'PLUG IN A KEYBOARD TO WALK';
+
+/** Whether this page still looks touch-only: a finger for a pointer and no key seen. */
+export function looksTouchOnly(coarsePointer: boolean = primaryPointerIsCoarse()): boolean {
+  return coarsePointer && !seen;
+}
+
 /** For tests: back to a page that has seen nothing. */
 export function resetKeyboardSeen(): void {
   seen = false;
