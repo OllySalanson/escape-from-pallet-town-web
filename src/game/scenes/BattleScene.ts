@@ -3829,6 +3829,14 @@ export class BattleScene extends Phaser.Scene {
       return false;
     }
     this.lowHpHintSaid = true;
+    // The menu comes back on ITEM, the command the line names. On FIGHT, the
+    // SPACE that read the line on opened FIGHT and the next fired the first
+    // move, and a Bulbasaur on 5/32 went down to Starmie with Potions packed
+    // (AI playtest, 23 Nov 2026) - as KEEP THE PACK returns to BALL (#718).
+    const item = this.mainActions().findIndex((action) => action.type === 'choose-item');
+    if (item >= 0) {
+      this.lastMainCommand = item;
+    }
     this.mode = 'events';
     this.commandContainer.setVisible(false);
     this.dialog.showMessages([line]);
