@@ -77,3 +77,23 @@ export function contractReportLine(contract: RaidContract, outcome: ContractOutc
     ? 'Unfinished, so it stays on the board for the next raid.'
     : 'Unfinished, and the board has moved on: what you opened out there stays open.';
 }
+
+/**
+ * The result screen's contract row for a raid lost with a job in hand. A wipe
+ * said nothing about the job at all: a player who went down carrying the
+ * Sealed dispatch learned it was still open only when the rim offered it again
+ * (the overnight retest's job chaser, 23 Nov 2026).
+ */
+export function wipedContractReport(
+  contract: RaidContract,
+  progressAfter: StandingBoardProgress,
+): { readonly description: string; readonly complete: false; readonly reward: string } {
+  return {
+    description: contract.description,
+    complete: false,
+    reward: isStillOnBoard(contract, progressAfter)
+      ? 'Lost with the raid, so it went unpaid. It stays on the board for the next raid.'
+      : 'Lost with the raid, so it went unpaid, and the board has moved on.',
+  };
+}
+
