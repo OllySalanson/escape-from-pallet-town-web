@@ -213,7 +213,7 @@ import { isFirstRaid } from '../hub/firstRaid';
 import { hasRaidStake } from '../world/raidStake';
 import { quickerLandingFor, rewardLine, standingJobWalk } from '../objectives/standingBoard';
 import { STEP_DURATION_MS } from '../movement/stepClock';
-import { joyTurnsHurtAway, recoveryTermsFor } from '../hub/centerCounter';
+import { joyRailLine, recoveryTermsFor } from '../hub/centerCounter';
 import { DAY_CARE_LEAST_RAID_MS, dayCareRefusal, leftLines, raidsCompleted } from '../hub/dayCare';
 import { tradeDealFor, tradeHelp, tradeQuestion, tradeRefusal } from '../hub/trades';
 import { TRADER_POSITION } from '../base/harbourLife';
@@ -2960,7 +2960,7 @@ export class HubScene extends Phaser.Scene {
 
   /** What the rail says of a hurt team (`hub/railWarning.ts`). A team that cannot lose has nothing to be told. */
   private railHurt(): RailWarning | null {
-    return benchRailWarning(this.flow, joyTurnsHurtAway(this.savedGame));
+    return benchRailWarning(this.flow, joyRailLine(this.savedGame));
   }
 
   /** Every way in on offer, while a room is held only those on its map. */

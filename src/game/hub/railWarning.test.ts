@@ -23,7 +23,7 @@ describe('what the rail says of a hurt team', () => {
   });
 
   it('does not send the player to Nurse Joy when she would turn them away until the next raid', () => {
-    expect(railWarning([member('Charmander', 10, 22)], true, true)?.line).toBe(
+    expect(railWarning([member('Charmander', 10, 22)], true, 'Nurse Joy heals again after this raid.')?.line).toBe(
       'Charmander is at 10/22. Nurse Joy heals again after this raid.',
     );
   });
