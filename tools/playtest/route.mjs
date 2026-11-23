@@ -25,13 +25,29 @@ export const routeTo = (world, goal) => `(() => {
   if (s.x === goal.x && s.y === goal.y) return [];
   const blocked = new Uint8Array(W * H);
   for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) if (c[y][x]) blocked[id(x, y)] = 1;
-  const stand = (t) => { if (t && t.x >= 0 && t.y >= 0 && t.x < W && t.y < H) blocked[id(t.x, t.y)] = 1; };
-  for (const entity of w.currentMap.entities) for (const t of w.entityHeldTiles(entity)) stand(t);
+  const stand = (t, into = blocked) => { if (t && t.x >= 0 && t.y >= 0 && t.x < W && t.y < H) into[id(t.x, t.y)] = 1; };
   for (const trainer of w.trainersForCurrentMap()) stand(trainer.position);
   for (const exit of w.barredExitsHere()) stand(exit.position);
-  if (w.isHunterOnCurrentMap()) stand(w.hunterState.position);
-  for (const hunter of w.hunterPackHere()?.hunters ?? []) stand(hunter.position);
   blocked[id(goal.x, goal.y)] = 0;
+  // Whoever moves - a figure on its beat, a hunter - stands in the way only for
+  // now. Read as walls, one in a one-tile gap made a walk say "no way" and give
+  // up without a frame passing, so it never moved on: a beaten hunter beside the
+  // X in SMUGGLERS' COVE, a roamer in FISHER'S ROW (scenario loop, 23 Nov 2026).
+  // They are gone round where something else gets through, and walked through
+  // where nothing does: a step that does not land is replanned by the driver.
+  // A sign or a tree never moves on, so only people and Pokemon (both npc) count as movers.
+  const moving = new Uint8Array(W * H);
+  for (const entity of w.currentMap.entities) {
+    const mover = entity.kind === 'npc';
+    for (const t of w.entityHeldTiles(entity)) stand(t, mover ? moving : blocked);
+  }
+  if (w.isHunterOnCurrentMap()) stand(w.hunterState.position, moving);
+  // As the scene's own isBlocked asks the pack: a hunter beaten, fled or not yet
+  // out holds no tile, and one listed anyway walled the player into the X's
+  // nook in SMUGGLERS' COVE.
+  const pack = w.hunterPackHere();
+  for (const hunter of pack?.hunters ?? []) if (pack.hunterAt(hunter.position)) stand(hunter.position, moving);
+  moving[id(goal.x, goal.y)] = 0;
   // An open exit is ground, and the step that finishes on it ends the raid: a
   // walk to somewhere else goes round it, and crosses one only where nothing
   // else gets through. The AI playtester walked the Tanglewood road down the
@@ -45,7 +61,7 @@ export const routeTo = (world, goal) => `(() => {
   const steps = [[0, -1], [0, 1], [-1, 0], [1, 0]];
   const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
   const start = id(s.x, s.y);
-  const search = (avoidExits) => {
+  const search = (avoidExits, avoidMoving = true) => {
     const from = new Int32Array(W * H).fill(-1);
     const via = new Uint8Array(W * H);
     from[start] = start;
@@ -59,7 +75,7 @@ export const routeTo = (world, goal) => `(() => {
         const nx = x + steps[d][0], ny = y + steps[d][1];
         if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
         const next = id(nx, ny);
-        if (from[next] !== -1 || blocked[next] || (avoidExits && exits[next])) continue;
+        if (from[next] !== -1 || blocked[next] || (avoidMoving && moving[next]) || (avoidExits && exits[next])) continue;
         from[next] = here;
         via[next] = d;
         if (nx === goal.x && ny === goal.y) {
@@ -72,5 +88,5 @@ export const routeTo = (world, goal) => `(() => {
     }
     return null;
   };
-  return search(true) ?? search(false);
+  return search(true) ?? search(false) ?? search(true, false) ?? search(false, false);
 })()`;

@@ -53,6 +53,43 @@ describe('routeTo', () => {
     expect(route.at(-1)).toEqual({ x: 1, y: 4 });
   });
 
+  it('goes round a hunter or a roaming figure where it can, and plans through one in a one-tile gap', () => {
+    // A beaten hunter stood beside the X in SMUGGLERS' COVE, in the only way
+    // out, and the walk said "no way" without a frame passing, so it never
+    // moved (scenario loop, 23 Nov 2026). The driver replans a step that does
+    // not land, so a route through somebody who will move is a route.
+    const gap = ['#S..', '###.', '#...'];
+    globalThis.routeWorld = world(gap);
+    globalThis.routeWorld.isHunterOnCurrentMap = () => true;
+    globalThis.routeWorld.hunterState = { position: { x: 2, y: 0 } };
+    const keys = eval(routeTo('globalThis.routeWorld', { x: 1, y: 2 }));
+    expect(keys).toEqual(['ArrowRight', 'ArrowRight', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowLeft']);
+    // With a way round, the figure is gone round.
+    const open = ['#S..#', '#...#', '#...#'];
+    globalThis.routeWorld = world(open);
+    globalThis.routeWorld.currentMap = { entities: [{ id: 'roamer', kind: 'npc' }] };
+    globalThis.routeWorld.entityHeldTiles = () => [{ x: 2, y: 0 }];
+    const around = eval(routeTo('globalThis.routeWorld', { x: 3, y: 0 }));
+    expect(around).not.toContain(undefined);
+    expect(around[0]).toBe('ArrowDown');
+  });
+
+  it('walks past a beaten hunter, which the scene no longer counts as standing anywhere', () => {
+    const nook = ['#S..', '####'];
+    globalThis.routeWorld = world(nook);
+    globalThis.routeWorld.hunterPackHere = () => ({ hunters: [{ position: { x: 2, y: 0 } }], hunterAt: () => undefined });
+    expect(eval(routeTo('globalThis.routeWorld', { x: 3, y: 0 }))).toEqual(['ArrowRight', 'ArrowRight']);
+  });
+
+  it('never plans through a sign, which does not move on', () => {
+    const lane = ['#S.#'];
+    globalThis.routeWorld = world([...lane, '####']);
+    globalThis.routeWorld.currentMap = { entities: [{ id: 'sign', kind: 'sign' }] };
+    globalThis.routeWorld.entityHeldTiles = () => [{ x: 2, y: 0 }];
+    globalThis.routeWorld.collisionData[0][3] = false;
+    expect(eval(routeTo('globalThis.routeWorld', { x: 3, y: 0 }))).toBeNull();
+  });
+
   it('crosses an exit only where nothing else gets through', () => {
     const neck = ['#S#', '#E#', '#.#'];
     expect(walked(neck, { x: 1, y: 2 })).toEqual([{ x: 1, y: 1 }, { x: 1, y: 2 }]);
