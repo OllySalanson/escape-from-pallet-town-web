@@ -634,7 +634,7 @@ describe('a field-move gate in a live raid', () => {
     expect(reachesCoppice(scene)).toBe(false);
     expect(internalsOf(scene).tryFieldMoveAt(RIDE_TILE)).toEqual([
       'Growth has closed the ride. Thick, old and shoulder high.',
-      'Nothing in the party can cut it. Something that reads HM01 could.',
+      'Nothing in the party can cut it. A Pokémon that knows CUT could - HM01 teaches it.',
     ]);
     // Refused and still shut, and nothing written: a door the player could not
     // open is not a door they have opened.
@@ -677,7 +677,7 @@ describe('a field-move gate in a live raid', () => {
     expect(internalsOf(scene).isBlocked(tree.tiles[0])).toBe(true);
     expect(internalsOf(scene).tryFieldMoveAt(tree.tiles[0])).toEqual([
       'This tree looks like it can be CUT down!',
-      'Nothing in the party can cut it. Something that reads HM01 could.',
+      'Nothing in the party can cut it. A Pokémon that knows CUT could - HM01 teaches it.',
     ]);
   });
 

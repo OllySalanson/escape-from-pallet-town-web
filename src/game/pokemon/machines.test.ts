@@ -303,7 +303,7 @@ describe('what a disc says about itself', () => {
   });
 
   // A disc whose move works in the field says so in the pack, or the refusal
-  // at a cracked rock ("Something that reads HM06 could.") points at a disc
+  // at a cracked rock ("A Pokémon that knows ROCK SMASH could - HM06 teaches it.") points at a disc
   // the pack calls a weak blow and nothing more.
   it.each(FIELD_MOVE_LIST.map((fieldMove) => fieldMove.id))('the disc that teaches %s says what it works on', (id) => {
     const worksOn = { cut: 'growth', surf: 'water', 'rock-smash': 'rock', strength: 'boulder' }[id];
