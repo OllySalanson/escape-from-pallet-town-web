@@ -48,7 +48,7 @@ export function rimTeamLine(
  * contradicting itself (break-it test, 23 Nov 2026); one staying home is then
  * named with its level too, as the one coming already is.
  */
-function namesSeenTwice(members: readonly RimTeamMember[]): ReadonlySet<string> {
+export function namesSeenTwice(members: readonly Pick<RimTeamMember, 'name'>[]): ReadonlySet<string> {
   const seen = new Set<string>();
   const twice = new Set<string>();
   for (const { name } of members) {
@@ -57,10 +57,20 @@ function namesSeenTwice(members: readonly RimTeamMember[]): ReadonlySet<string> 
   return twice;
 }
 
+/**
+ * One Pokémon as the rest of the jump screen names it: with its level when
+ * another on the screen shares its name. The Safe line read 'Pidgey' under
+ * 'Pidgey Lv 6 comes. Pidgey Lv 4 stays home', and said neither which one the
+ * locker keeps nor which a wipe would lose (scenario loop, 23 Nov 2026).
+ */
+export function rimNameOf(member: Pick<RimTeamMember, 'name' | 'level'>, twice: ReadonlySet<string>): string {
+  return twice.has(member.name) ? `${member.name} Lv ${member.level}` : member.name;
+}
+
 function namedOf(members: readonly RimTeamMember[], twice: ReadonlySet<string> = new Set()): string {
   const named = members
     .slice(0, HOME_NAMED)
-    .map((member) => (twice.has(member.name) ? `${member.name} Lv ${member.level}` : member.name));
+    .map((member) => rimNameOf(member, twice));
   const rest = members.length - named.length;
   return rest > 0 ? `${named.join(', ')} and ${rest} more` : listed(named);
 }

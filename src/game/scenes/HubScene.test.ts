@@ -2007,6 +2007,23 @@ describe('what the base screen leads with', () => {
     expect(rim).toMatch(/<dt>Safe<\/dt><dd[^>]*>Charmander/);
   });
 
+  it('tells two of a kind apart by level on the Safe line, as the Team line does', () => {
+    // 'Pidgey Lv 6 comes. Pidgey Lv 4 stays home' over 'Safe: Pidgey' said
+    // neither which one the locker keeps (scenario loop, 23 Nov 2026).
+    const { hub } = createHub();
+    const stash = (hub as unknown as { stash: { addPokemon(pokemon: Pokemon, id: string): void } }).stash;
+    stash.addPokemon(new Pokemon(PIDGEY, 6), 'pidgey-6');
+    stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-4');
+    hub.flow.togglePokemon('pidgey-6');
+    hub.setView('rim');
+    readyToDeploy(hub);
+    const rim = markupOf(hub);
+    expect(rim).toContain('Pidgey Lv 6 comes.');
+    // One of a kind keeps its bare name.
+    expect(rim).toContain('Charmander and Pidgey Lv 4 stay home');
+    expect(rim).toMatch(/<dt>Safe<\/dt><dd[^>]*>Pidgey Lv 6<\/dd>/);
+  });
+
   it('says at the rim who a wipe would lose for good, and never the partner, which is always safe', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');

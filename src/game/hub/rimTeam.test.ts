@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rimTeamLine } from './rimTeam';
+import { namesSeenTwice, rimNameOf, rimTeamLine } from './rimTeam';
 
 const mon = (name: string, level: number, currentHp = 20, maxHp = 20) => ({ name, level, currentHp, maxHp });
 
@@ -45,5 +45,13 @@ describe("the jump screen's TEAM line", () => {
     expect(rimTeamLine([mon('Pidgey', 6)], [], [mon('Pidgey', 4, 0, 17)])).toBe(
       'Pidgey Lv 6 comes. Pidgey Lv 4 has fainted and stays home: Nurse Joy can revive it.',
     );
+  });
+});
+
+describe('one Pokémon named on the jump screen', () => {
+  it('carries its level only when another on the screen shares its name', () => {
+    const twice = namesSeenTwice([{ name: 'Pidgey' }, { name: 'Pidgey' }, { name: 'Charmander' }]);
+    expect(rimNameOf({ name: 'Pidgey', level: 6 }, twice)).toBe('Pidgey Lv 6');
+    expect(rimNameOf({ name: 'Charmander', level: 9 }, twice)).toBe('Charmander');
   });
 });

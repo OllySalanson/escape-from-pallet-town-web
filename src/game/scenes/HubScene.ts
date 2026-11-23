@@ -1,4 +1,4 @@
-import { rimTeamLine } from '../hub/rimTeam';
+import { namesSeenTwice, rimNameOf, rimTeamLine } from '../hub/rimTeam';
 import { raidConditions } from '../world/secrets';
 import { CHART_PIECES, chartWhole, NO_TREASURE_HUNT } from '../treasure/treasureMap';
 import Phaser from 'phaser';
@@ -3022,16 +3022,32 @@ export class HubScene extends Phaser.Scene {
       ...(this.flow.packItemId === undefined ? [] : [`the ${this.flow.packName}`]),
       ...this.flow.riskedItems.map(stack),
     ];
+    // Who comes and who stays home, named (`hub/rimTeam.ts`): '1 Pokémon to
+    // your 1' left a new catch at home and a hurt partner unremarked.
+    const away = awayOnRaid(this.savedGame);
+    const coming = new Set(this.flow.party.map((stored) => stored.id));
+    const member = ({ pokemon }: StashedPokemon) => ({ name: pokemon.name, level: pokemon.level, currentHp: pokemon.currentHp, maxHp: pokemon.maxHp });
+    const home = this.stash
+      .listPokemon()
+      .filter((stored) => !coming.has(stored.id) && !away.has(stored.id) && !stored.pokemon.isFainted)
+      .map(member);
+    const fainted = this.stash
+      .listPokemon()
+      .filter((stored) => !coming.has(stored.id) && !away.has(stored.id) && stored.pokemon.isFainted)
+      .map(member);
+    // Two of a kind are told apart by level on every line here, as the Team line does.
+    const twice = namesSeenTwice([...this.flow.party.map(member), ...home, ...fainted]);
+    const named = ({ pokemon }: StashedPokemon): string => rimNameOf(pokemon, twice);
     // Said apart and said plainly, because "at risk" never told a FireRed player
     // that a Pokémon lost here is not coming back.
     // The partner is never among them: it has a place of its own that no wipe
     // can touch, so it leads what is safe instead.
-    const goneForGood = this.flow.riskedPokemon.map((stored) => stored.pokemon.name);
+    const goneForGood = this.flow.riskedPokemon.map(named);
     const hurt = this.railHurt();
     const partner = this.flow.partnerOnRaid;
     const kept = [
-      ...(partner === undefined ? [] : [`${partner.pokemon.name} (your partner)`]),
-      ...securedPokemon.map((stored) => stored.pokemon.name),
+      ...(partner === undefined ? [] : [`${named(partner)} (your partner)`]),
+      ...securedPokemon.map(named),
       // A found good is never packed, so what the locker holds for it is room:
       // listed as a stack, "Torn chart (moor) x1" told an explorer they carried
       // a chart they had never found (the overnight retest, 23 Nov 2026).
@@ -3089,19 +3105,6 @@ export class HubScene extends Phaser.Scene {
     const safe = !this.flow.isDeployable
       ? ''
       : line('Safe', kept.length === 0 ? 'nothing: a wipe costs everything you take' : kept.join(', '), kept.length === 0);
-    // Who comes and who stays home, named (`hub/rimTeam.ts`): '1 Pokémon to
-    // your 1' left a new catch at home and a hurt partner unremarked.
-    const away = awayOnRaid(this.savedGame);
-    const coming = new Set(this.flow.party.map((stored) => stored.id));
-    const member = ({ pokemon }: StashedPokemon) => ({ name: pokemon.name, level: pokemon.level, currentHp: pokemon.currentHp, maxHp: pokemon.maxHp });
-    const home = this.stash
-      .listPokemon()
-      .filter((stored) => !coming.has(stored.id) && !away.has(stored.id) && !stored.pokemon.isFainted)
-      .map(member);
-    const fainted = this.stash
-      .listPokemon()
-      .filter((stored) => !coming.has(stored.id) && !away.has(stored.id) && stored.pokemon.isFainted)
-      .map(member);
     const team = this.flow.party.length === 0 ? '' : line('Team', rimTeamLine(this.flow.party.map(member), home, fainted));
     return `<dl class="dropin-facts rim-stakes">${team}${hurt ? line('Hurt', hurt.line, true) : ''}${line('At risk', lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', '))}${goneForGood.length === 0 ? '' : line('A wipe', `${goneForGood.join(', ')}: lost for good`, true)}${safe}${
       job === undefined
