@@ -1339,6 +1339,31 @@ describe('what the raid had at stake', () => {
     );
   });
 
+  it('says, after what rode out at risk, what came home in THE LOCKER', () => {
+    // "5 Poké Balls and your Raid pack rode out unprotected and came home" read
+    // as the Potions in the locker being lost (the overnight retest, 23 Nov 2026).
+    const starter = new Pokemon(BULBASAUR, 5);
+    const manager = startedRun({
+      party: [starter],
+      items: [
+        { itemId: 'poke-ball', quantity: 5 },
+        { itemId: 'potion', quantity: 2 },
+      ],
+      secure: { items: [{ itemId: 'potion', quantity: 2 }] },
+      packItemId: 'raid-pack',
+    });
+    manager.resolveEscape();
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      banked: { pokemon: [], items: [] },
+      carriedOut: { 'poke-ball': 5, potion: 2 },
+      saved: true,
+    });
+    expect(report.summary).toMatch(/rode out unprotected and came home\. 2 Potions came home in THE LOCKER\.$/);
+  });
+
   it('names the pack beside what else rode out unprotected and came home', () => {
     const starter = new Pokemon(BULBASAUR, 5);
     const manager = startedRun({

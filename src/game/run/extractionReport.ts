@@ -469,6 +469,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
         gear,
         pack,
         contract?.missedGate,
+        secured,
       )
       : wipeSummary(input.cause, stakes, secured, partner),
     haulTier,
@@ -680,6 +681,17 @@ function wipeHeadline(cause: WipeCause | undefined, secured: ReportGroup, partne
 }
 
 /** `fieldHaul` is the ledger less whatever the contract paid. */
+/**
+ * What came home in THE LOCKER, said after what rode out at risk: said only
+ * lower on the screen, "5 Poké Balls and your Raid pack rode out unprotected
+ * and came home" read as the Potions in the locker being lost (the overnight
+ * retest's tidy packer, 23 Nov 2026).
+ */
+function lockerLine(secured: ReportGroup | undefined): string {
+  const held = secured === undefined ? null : describeGroup(secured);
+  return held === null ? '' : ` ${capitalise(held)} came home in THE LOCKER.`;
+}
+
 function escapeSummary(
   fieldHaul: ReportGroup,
   risked: ReportGroup,
@@ -688,6 +700,7 @@ function escapeSummary(
   gear: readonly ReportGear[],
   pack: ReportPack | null,
   missedGate?: string,
+  secured?: ReportGroup,
 ): string {
   const lost = missedGate === undefined ? null : `Job unpaid: ${missedGate}.`;
   // A catch of a kind already in the team: "Banked Pidgey. Pidgey, Rattata
@@ -703,7 +716,7 @@ function escapeSummary(
     ? pack === null
       ? 'Nothing you took in was ever exposed.'
       : `Nothing you took in was exposed but your ${pack.name}.`
-    : `${capitalise(describeStakes(risked, [], pack, twice) ?? '')} rode out unprotected and came home.`;
+    : `${capitalise(describeStakes(risked, [], pack, twice) ?? '')} rode out unprotected and came home.${lockerLine(secured)}`;
   if (haul === null) {
     // A raid that levelled a Pokemon, or walked a piece of gear out of the
     // field, is not an empty raid - and saying "no new haul" about it was the
