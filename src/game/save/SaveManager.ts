@@ -135,7 +135,7 @@ import {
   type PokedexMilestone,
 } from '../hub/pokedex';
 import { isLearnableKey, type LearnableKeyId } from '../input/keyBindings';
-import { awayOnRaid, readRaidInFlight, type AbandonedRaid, type RaidInFlight } from '../run/raidInFlight';
+import { awayOnRaid, raidRoot, readRaidInFlight, type AbandonedRaid, type RaidInFlight } from '../run/raidInFlight';
 import { secretsHeldBy } from '../world/secrets';
 import { isRumourId, millRumour, type Rumour } from '../world/rumours';
 import { fossilAwake, isFossil, revivedPokemon, type FossilItemId, type FossilOnMachine } from '../hub/fossils';
@@ -1108,6 +1108,16 @@ export class SaveManager {
     }
     const game = this.load();
     return game !== null && game.raidInFlight?.id === raidId;
+  }
+
+  /**
+   * Whether the raid `raidId` was taken up by another page after this one
+   * went quiet (`run/raidResume.ts`), rather than settled there: the save's
+   * raid in flight is the same raid under a newer id.
+   */
+  public raidTakenUpElsewhere(raidId: string | undefined): boolean {
+    const now = this.raidInFlightId();
+    return raidId !== undefined && now !== null && now !== raidId && raidRoot(now) === raidRoot(raidId);
   }
 
   /** The id of the raid the stored save has in flight, read without restoring the game. */

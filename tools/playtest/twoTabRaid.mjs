@@ -19,9 +19,10 @@
 //
 // `--frozen` plays the vale hunt's case instead: tab A is frozen mid-raid and
 // its pulse goes stale (taken away here rather than waited ninety seconds
-// for), tab B opens the base and settles the raid as abandoned, and tab A
-// then wakes and walks out. Its ending must write nothing - no Raid Pack back,
-// no mark of another raid cleared - and its result screen must say so.
+// for), tab B opens the game and takes the raid up where tab A left it
+// (`run/raidResume.ts`) under a new id, and tab A then wakes and walks out.
+// Its ending must write nothing - no Raid Pack back, nothing banked, the raid
+// tab B is playing still out - and its result screen must say so.
 import { mkdirSync } from 'node:fs';
 import { attachBrowser, launchBrowser, sleep } from './browser.mjs';
 import { GAME, SAVE_KEY, jumpIn, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
@@ -70,9 +71,9 @@ const patient = (tab) => {
  * Past the title onto the base. At real speed the title can still be fading in
  * when the first key lands, so the key is pressed again until it takes.
  */
-const throughTitle = async (tab) => {
+const throughTitle = async (tab, to = 'base') => {
   await tab.waitFor(sceneIs('title'));
-  for (let guard = 0; guard < 60 && !(await tab.evaluate(sceneIs('base'))); guard += 1) {
+  for (let guard = 0; guard < 60 && !(await tab.evaluate(sceneIs(to))); guard += 1) {
     // A plain build asks a name the first time (`TitleScene.startGame`): LATER.
     const later = await tab.evaluate(
       `(() => { const b = [...document.querySelectorAll('button')].find((each) => each.innerText.trim().toUpperCase() === 'LATER'); if (!b) return false; b.click(); return true; })()`,
@@ -82,9 +83,9 @@ const throughTitle = async (tab) => {
     }
     await sleep(1500);
   }
-  if (!(await tab.evaluate(sceneIs('base')))) {
+  if (!(await tab.evaluate(sceneIs(to)))) {
     await tab.screenshot(`${out}/stuck-on-the-title.png`);
-    throw new Error(`the title never opened the base: ${await tab.evaluate(`${GAME}.scene.getScenes(true).map((s) => s.scene.key).join(', ')`)}`);
+    throw new Error(`the title never opened the ${to}: ${await tab.evaluate(`${GAME}.scene.getScenes(true).map((s) => s.scene.key).join(', ')`)}`);
   }
 };
 
@@ -124,14 +125,15 @@ const play = async () => {
     await tabB.waitFor(sceneIs('title'));
     // Its pulse goes stale after ninety seconds; taken away here instead of waited for.
     await tabB.evaluate(`localStorage.removeItem('escape-from-pallet-town.raid-pulse')`);
-    await throughTitle(tabB);
-    await tabB.waitFor(`${BASE}.ready && ${BASE}.dialogBox.visible`, { what: 'the abandoned raid said' });
+    await throughTitle(tabB, 'world');
     await sleep(1500);
-    await tabB.screenshot(`${out}/1-tab-b-settles.png`);
+    await tabB.screenshot(`${out}/1-tab-b-takes-it-up.png`);
+    // Tab B's page goes quiet too, so only tab A is playing anything.
+    await tabB.evaluate(`${GAME}.pauseLoop?.()`);
     const settled = await saved(tabB);
     const packs = (save) => save.stash.items['raid-pack'] ?? 0;
-    console.log(`tab B settled it: raid in flight ${settled.raidInFlight ? 'still set' : 'cleared'}, Raid Packs ${packs(settled)}`);
-    await tabB.close();
+    console.log(`tab B took it up: raid in flight ${settled.raidInFlight?.id ?? 'cleared'} (was ${deployed.raidInFlight?.id}), Raid Packs ${packs(settled)}`);
+    expect(before || (settled.raidInFlight && settled.raidInFlight.id !== deployed.raidInFlight?.id), 'tab B plays the raid under a new id');
     // Tab A wakes and walks out by the first exit on its map.
     await tabA.thaw();
     await tabA.send('Page.bringToFront');
@@ -145,9 +147,11 @@ const play = async () => {
     const footer = await tabA.evaluate(`document.querySelector('.px-commit, [data-continue]')?.closest('section, div')?.textContent?.replace(/\\s+/g, ' ').trim() ?? ''`);
     console.log(`tab A's result: ${footer.slice(0, 200)}`);
     console.log(`after tab A came home: Raid Packs ${packs(after)}, raid in flight ${after.raidInFlight ? 'set' : 'cleared'}`);
-    expect(before || packs(after) === packs(settled), 'the Raid Pack the abandoned raid lost stays lost');
+    expect(before || packs(after) === packs(settled), 'tab A banks no Raid Pack');
     expect(before || JSON.stringify(after.stash) === JSON.stringify(settled.stash), 'the vault is as tab B left it');
+    expect(before || after.raidInFlight?.id === settled.raidInFlight?.id, 'and the raid tab B is playing is still out');
     await tabA.close();
+    await tabB.close();
     return;
   }
 

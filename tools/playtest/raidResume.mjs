@@ -51,7 +51,7 @@ async function deployFrom(page) {
   await page.waitFor(takePokemon('Charmander'), { what: 'Charmander in the raid party' });
   await jumpIn(page, { until: (expression, what) => page.waitFor(expression, { what }) });
   await page.waitFor(sceneIs('world'));
-  await page.waitFor(`${world}.raidWrittenAt > 0`, { what: 'the raid written down' });
+  await page.waitFor(`${world}.raidWritten === true`, { what: 'the raid written down' });
 }
 
 /** Reloads, and presses CONTINUE on the title. */
@@ -125,9 +125,12 @@ try {
   await reloadAndContinue(tab);
   await tab.waitFor(sceneIs('world'), { what: 'the raid taken up', timeoutMs: 60_000 });
   const back = await where(tab);
+  if (shots) {
+    await sleep(2500);
+    await tab.screenshot(`${shots}/resume-walk.png`);
+  }
   const box = await readWorldBox(tab);
   console.log(`  left at ${JSON.stringify(left.tile)} ${left.remainingMs}ms, back at ${JSON.stringify(back.tile)} ${back.remainingMs}ms; it says: ${box.join(' | ')}`);
-  if (shots) await tab.screenshot(`${shots}/resume-walk.png`);
   check(back.map === left.map && back.tile.x === left.tile.x && back.tile.y === left.tile.y, 'a reload mid-walk puts the player back on the tile they left');
   check(Math.abs(back.remainingMs - left.remainingMs) <= 1500, 'with the clock where it was');
   check(JSON.stringify(back.bag) === JSON.stringify(left.bag), `and the pack as it was (${JSON.stringify(back.bag)})`);

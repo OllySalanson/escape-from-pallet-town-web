@@ -149,6 +149,21 @@ function readOwed(value: unknown): RaidOwed | undefined {
   };
 }
 
+/**
+ * The raid an id belongs to, across the pages that have played it: a page
+ * taking a raid up after a reload gives it a new id (`run/raidResume.ts`) that
+ * keeps this part, so the page it was taken from can tell its raid went on
+ * elsewhere from its raid being settled there.
+ */
+export function raidRoot(raidId: string): string {
+  return raidId.split('~')[0] ?? raidId;
+}
+
+/** The id a page taking a raid up plays it under. */
+export function takenUpRaidId(raidId: string, now: number = Date.now()): string {
+  return `${raidRoot(raidId)}~${now.toString(36)}`;
+}
+
 /** The Pokemon the raid in flight took, by stash id: none between raids. */
 export function awayOnRaid(game: { readonly raidInFlight?: RaidInFlight | null }): ReadonlySet<string> {
   return new Set(game.raidInFlight?.pokemonIds ?? []);

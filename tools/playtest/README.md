@@ -470,13 +470,23 @@ vault that could fill it (`--stash`) and then a wild fight to be standing in.
 Center left open in one while the other deploys a raid, then NEW BOX pressed in
 the stale one. It fails if the stale tab wrote over the raid the other recorded.
 
+`raidResume.mjs <url> [--shot=dir]` plays a raid surviving its page
+(`src/game/run/raidResume.ts`): a reload mid-walk is the same tile, clock and
+pack; mid-fight, the same fight as the last turn left it; after the turn that
+lost it, the wipe; twice in a row, still held; and a second tab takes up
+nothing the first is playing. `abandonRaid.mjs` plays the raid that cannot be
+taken up, with storage refusing its record (`NO_RAID_RESUME` in `deploy.mjs`),
+and so does `pokedexMet.mjs`. `docs/screens/raid-survives-reload/` is what
+`--shot` photographs.
+
 `twoTabRaid.mjs <test-mode build url> <out dir> [--port=N] [--before] [--frozen]`
 is the other two-tab case: a fresh second tab, whose copy of the save is
 current, at the base while a raid is out in the first. It leaves the deployed
 Pidgey at the Day-Care and takes the deployed Charmander's Leftovers at BILL'S
 PC, then runs tab A's clock out, and fails if the base touched either or the
 wipe did not take the Pidgey. `--frozen` freezes tab A mid-raid instead, lets
-tab B settle it as abandoned and then walks tab A out; nothing may be banked.
+tab B take the raid up (`run/raidResume.ts`) and then walks tab A out; nothing
+may be banked and tab B's raid must still be out.
 `--before` reports what a build without the fix does rather than failing. A
 plain build asks a name on the title, which it answers LATER.
 `docs/screens/two-tab-raid/` is what it photographs.

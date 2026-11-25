@@ -13,11 +13,13 @@ import { CHARMANDER, Pokemon, PokemonParty } from '../pokemon';
 import { activeRunManager, RunPhase } from '../run';
 import type { RaidCarriage } from '../run/raidCarriage';
 import { raidHeartbeat } from '../run/raidInFlight';
-import { RAID_RESUME_VERSION, takeUpRaid, writeRaidResume } from '../run/raidResume';
+import { elsewhereFacts, RAID_RESUME_VERSION, takeUpRaid, writeRaidResume } from '../run/raidResume';
 import { createStartingStash } from '../stash';
 import type { DeploymentFlow } from '../hub';
 import { RAID_RESUME_SUFFIX, SAVE_KEY, SaveManager, type StorageLike } from '../save/SaveManager';
 import { HubScene } from './HubScene';
+import { RAID_CONTRACTS } from '../objectives/contracts';
+import { objectivesForContract } from '../objectives/RunObjectives';
 
 /**
  * A raid survives the page it is played in (`run/raidResume.ts`): written down
@@ -155,6 +157,19 @@ describe('a raid taken up after the page it was in went', () => {
     expect(after.raidInFlight?.pokemonIds).toEqual(['charmander-1']);
   });
 
+  it('carries a contract, whose objectives are read back from it rather than written', () => {
+    const storage = new MemoryStorage();
+    seedSave(storage);
+    const deployed = deploy(storage);
+    const contract = RAID_CONTRACTS[0];
+    const session = { ...deployed.runSession!, plan: { ...deployed.runSession!.plan!, contract }, objectives: objectivesForContract(contract) };
+    expect(writeRaidResume(new SaveManager(storage), 'world', { ...deployed, runSession: session })).toBe(true);
+    const taken = takeUpRaid(new SaveManager(storage), nobodyElse);
+    expect(taken?.data.runSession.plan?.contract?.id).toBe(contract.id);
+    expect(taken?.data.runSession.objectives.map((objective) => objective.id)).toEqual(session.objectives.map((objective) => objective.id));
+    expect(taken?.data.runSession.objectives[0]?.progress(taken.data.runSession.manager.snapshot())).toBeDefined();
+  });
+
   it('takes a raid up again and again, never settling it', () => {
     const storage = new MemoryStorage();
     seedSave(storage);
@@ -181,6 +196,11 @@ describe('a raid taken up after the page it was in went', () => {
     expect(storage.getItem(recordKey)).toBe(record);
     expect(new SaveManager(storage).ownsRaid(oldId)).toBe(false);
     expect(new SaveManager(storage).ownsRaid(taken.data.runSession.raidId)).toBe(true);
+    // And its result screen says the raid went on elsewhere, not that it was lost.
+    expect(elsewhereFacts(true, oldId, new SaveManager(storage))).toEqual({ settledElsewhere: true, takenUpElsewhere: true });
+    new SaveManager(storage).settleAbandonedRaid();
+    expect(elsewhereFacts(true, oldId, new SaveManager(storage))).toEqual({ settledElsewhere: true });
+    expect(elsewhereFacts(false, oldId, new SaveManager(storage))).toEqual({});
   });
 
   it('is not taken up while another window is playing it', () => {

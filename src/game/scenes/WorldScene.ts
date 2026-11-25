@@ -277,7 +277,7 @@ import {
 import { RunPhase } from '../run/RunManager';
 import { formatRaidClock } from '../run/raidClock';
 import { holdUnsavedEnding } from '../run/unsavedEnding';
-import { clearRaidResumeWriter, RAID_RESUME_EVERY_MS, setRaidResumeWriter, writeRaidResume } from '../run/raidResume';
+import { clearRaidResumeWriter, elsewhereFacts, RAID_RESUME_EVERY_MS, setRaidResumeWriter, writeRaidResume } from '../run/raidResume';
 import { compassBearing } from '../world/bearing';
 import { buildExtractionReport, type ExtractionReport } from '../run/extractionReport';
 import { clearPackRoomForPokemon, packFullForPokemonLine, syncPackCargo } from '../run/raidCargo';
@@ -1009,6 +1009,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private isWarping = false;
   /** When this raid was last written down (`run/raidResume.ts`), by the page's clock. */
   private raidWrittenAt = Number.NEGATIVE_INFINITY;
+  /** Whether that write was taken: a driver reads it, as nothing on screen says. */
+  private raidWritten: boolean | null = null;
   /** Writes the raid down when the page goes. */
   private readonly resumeWriter = (): void => this.writeRaid();
   /** The boats moored at this map's jetties, each drawn while it sails (`sailing.ts`). */
@@ -1421,6 +1423,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.bagsFalling = [];
     this.trainerGlints.clear();
     this.raidWrittenAt = Number.NEGATIVE_INFINITY;
+    this.raidWritten = null;
     this.pendingRaceAsk = undefined;
     this.pendingRacePurse = false;
     this.raceWord = undefined;
@@ -1740,7 +1743,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     this.raidWrittenAt = Date.now();
-    writeRaidResume(new SaveManager(), 'world', this.raidCarriage());
+    this.raidWritten = writeRaidResume(new SaveManager(), 'world', this.raidCarriage());
   }
 
   /** Oak on the radio after a fight that left somebody worn out, until the pack is known (`world/fieldHealHint.ts`). */
@@ -6629,6 +6632,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const hunters = this.huntersOnTheMap().map(tileOf).filter(onScreen);
     return {
       busy,
+      // Whether the last time this raid was written down it was (`run/raidResume.ts`).
+      raidWritten: this.raidWritten,
       map: this.currentMap.id,
       mapName: worldMapName(this.currentMap.id),
       place: this.placeName,
@@ -10463,7 +10468,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           ? { recoveryStillOwedMs: new SaveManager().load()?.pendingRecoveryMs ?? 0 }
           : {}),
         saved: contractResult.saved,
-        ...(settledElsewhere ? { settledElsewhere } : {}),
+        ...elsewhereFacts(settledElsewhere, raidId, new SaveManager()),
       }),
     );
   }
@@ -11072,7 +11077,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       buildExtractionReport({
         outcome: 'WIPED',
         cause: 'timer',
-        ...(settledElsewhere ? { settledElsewhere } : {}),
+        ...elsewhereFacts(settledElsewhere, session.raidId, new SaveManager()),
         ...(this.runSession?.plan?.contract
           ? { contract: wipedContractReport(this.runSession.plan.contract, this.progressAfterRaid()) }
           : {}),

@@ -11,6 +11,13 @@ import { sleep } from './browser.mjs';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
 export const GAME = 'window.__escapeFromPalletTownGame__';
+/**
+ * An `openPage` `init` for a driver that plays what becomes of a raid that
+ * cannot be taken up after a reload: storage refuses the raid's record
+ * (`run/raidResume.ts`), so a reload mid-raid is settled as abandoned, as it
+ * was before raids were written down.
+ */
+export const NO_RAID_RESUME = `(() => { const set = Storage.prototype.setItem; Storage.prototype.setItem = function (key, value) { if (String(key).includes('.raid-resume')) throw new DOMException('refused', 'QuotaExceededError'); return set.call(this, key, value); }; })();`;
 export const sceneIs = (key) => `${GAME}?.scene.getScenes(true).some((s) => s.scene.key === '${key}')`;
 /** True from the moment a jump over the fence has begun until the raid is under way. */
 const GOING_OVER = `(() => { const scenes = ${GAME}.scene.getScenes(true).map((s) => s.scene.key); return scenes.includes('world') || Boolean(${GAME}.scene.getScene('base')?.jump); })()`;

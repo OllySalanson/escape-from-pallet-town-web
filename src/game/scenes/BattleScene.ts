@@ -104,7 +104,7 @@ import { buildExtractionReport } from '../run/extractionReport';
 import { wipedContractReport } from '../objectives/contractReport';
 import { buildWipeSettlement, deployedRaidCondition } from '../run/raidSettlement';
 import { holdUnsavedEnding } from '../run/unsavedEnding';
-import { clearRaidResumeWriter, setRaidResumeWriter, writeRaidResume, type FoeState } from '../run/raidResume';
+import { clearRaidResumeWriter, elsewhereFacts, setRaidResumeWriter, writeRaidResume, type FoeState } from '../run/raidResume';
 import {
   packFullForPokemonLine,
   clearPackRoomForPokemon,
@@ -5072,7 +5072,7 @@ export class BattleScene extends Phaser.Scene {
       fitToRaid: anyoneFitToRaid(new SaveManager().load()?.stash),
       restocked,
       saved,
-      ...(settledElsewhere ? { settledElsewhere } : {}),
+      ...elsewhereFacts(settledElsewhere, session.raidId, new SaveManager()),
     });
     this.time.delayedCall(RUN_RESULT_DELAY_MS, () => {
       if (this.scene.manager.keys.extraction) {

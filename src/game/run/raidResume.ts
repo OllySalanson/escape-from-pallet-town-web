@@ -3,7 +3,9 @@ import { raidResumePlanPrefix } from '../save/SaveManager';
 import type { PrimaryStatus } from '../pokemon/battle/status';
 import type { ActiveRunSession } from './RunSession';
 import type { RaidCarriage } from './raidCarriage';
-import { raidHeartbeat } from './raidInFlight';
+import { raidHeartbeat, takenUpRaidId } from './raidInFlight';
+import { objectivesForContract } from '../objectives/RunObjectives';
+import type { RunPlan } from './runGeneration';
 import { decodeRaidSnapshot, encodeRaidSnapshot, type RaidSnapshotGraph } from './raidSnapshot';
 
 /**
@@ -105,7 +107,15 @@ export function writeRaidResume(
   }
   try {
     const plan = session.plan;
-    const named = new Map<object, string>(plan ? [[plan, 'plan']] : []);
+    // The plan is written once a raid, and the objectives - which carry the
+    // rule each is measured by - are the plan's contract's, read back from it.
+    if (!sameIds(session.objectives, objectivesOf(plan))) {
+      throw new Error('This raid\'s objectives are not its contract\'s, and could not be read back.');
+    }
+    const named = new Map<object, string>([
+      ...(plan ? [[plan, 'plan'] as const] : []),
+      [session.objectives, 'objectives'] as const,
+    ]);
     const record: RaidResumeRecord = {
       v: RAID_RESUME_VERSION,
       raidId,
@@ -150,7 +160,7 @@ export function takeUpRaid(saves: SaveManager, liveElsewhere: (raidId: string) =
     saves.clearRaidResume();
     return null;
   }
-  const newId = `${raid.id.split('~')[0]}~${Date.now().toString(36)}`;
+  const newId = takenUpRaidId(raid.id);
   if (!saves.handOverRaidInFlight(raid.id, newId)) {
     return null;
   }
@@ -161,6 +171,30 @@ export function takeUpRaid(saves: SaveManager, liveElsewhere: (raidId: string) =
   // Written again at once under the new id, so a second reload takes this up.
   writeRaidResume(saves, read.scene, read.data, read.foes);
   return read;
+}
+
+/**
+ * What a raid's ending tells its result screen when the save no longer holds
+ * it: settled elsewhere, and whether that was another window taking it up
+ * where this one left it rather than settling it as abandoned.
+ */
+export function elsewhereFacts(
+  settledElsewhere: boolean,
+  raidId: string | undefined,
+  saves: SaveManager,
+): { settledElsewhere?: true; takenUpElsewhere?: true } {
+  if (!settledElsewhere) {
+    return {};
+  }
+  return saves.raidTakenUpElsewhere(raidId) ? { settledElsewhere: true, takenUpElsewhere: true } : { settledElsewhere: true };
+}
+
+function objectivesOf(plan: RunPlan | undefined): ActiveRunSession['objectives'] {
+  return plan?.contract ? objectivesForContract(plan.contract) : [];
+}
+
+function sameIds(a: readonly { readonly id: string }[], b: readonly { readonly id: string }[]): boolean {
+  return a.length === b.length && a.every((each, index) => each.id === b[index]?.id);
 }
 
 function readRecords(recordText: string, planText: string, raidId: string): TakenUpRaid | null {
@@ -179,8 +213,11 @@ function readRecords(recordText: string, planText: string, raidId: string): Take
       return null;
     }
     const plan = JSON.parse(planText) as RaidPlanRecord;
-    const decodedPlan = decodeRaidSnapshot(plan.graph);
-    const data = decodeRaidSnapshot(record.data, { plan: decodedPlan }) as RaidPayload;
+    const decodedPlan = decodeRaidSnapshot(plan.graph) as RunPlan | null;
+    const data = decodeRaidSnapshot(record.data, {
+      plan: decodedPlan,
+      objectives: objectivesOf(decodedPlan ?? undefined),
+    }) as RaidPayload;
     const session = data.runSession;
     if (!session || session.raidId !== raidId || !data.party || !data.bag || !data.returnLocation) {
       return null;
