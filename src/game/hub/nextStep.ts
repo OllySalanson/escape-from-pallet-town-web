@@ -37,15 +37,49 @@ export type NextStepProgress = StandingBoardProgress & ErrandProgress & {
  * done: the three birds, then Mew, then Mewtwo at the bottom of the Bunker,
  * the highest of them. Where each stands is the stitched map's own (`pokemon`
  * marked `legendary` in `world/maps/greystoneVale.json`), said in the words its
- * districts use; `nextStep.test.ts` holds that every one is on the map.
+ * districts use; `nextStep.test.ts` holds that every one is on the map, at
+ * the level given here.
  */
-export const VALE_LEGENDS: readonly { readonly name: string; readonly dexId: number; readonly speciesId: string; readonly where: string }[] = [
-  { name: 'ZAPDOS', dexId: 145, speciesId: 'zapdos', where: 'sleeps in the TURBINE HALL under the POWER STATION' },
-  { name: 'ARTICUNO', dexId: 144, speciesId: 'articuno', where: 'roosts on THE FROZEN LAGOON, out on FROSTREEF' },
-  { name: 'MOLTRES', dexId: 146, speciesId: 'moltres', where: 'nests in THE CRATER on EMBER ISLE' },
-  { name: 'MEW', dexId: 151, speciesId: 'mew', where: 'has been seen at THE CAIRN on top of STORMCROWN' },
-  { name: 'MEWTWO', dexId: 150, speciesId: 'mewtwo', where: 'waits four floors down THE BUNKER' },
+export const VALE_LEGENDS: readonly {
+  readonly name: string;
+  readonly dexId: number;
+  readonly speciesId: string;
+  readonly level: number;
+  readonly where: string;
+}[] = [
+  { name: 'ZAPDOS', dexId: 145, speciesId: 'zapdos', level: 50, where: 'sleeps in the TURBINE HALL under the POWER STATION' },
+  { name: 'ARTICUNO', dexId: 144, speciesId: 'articuno', level: 50, where: 'roosts on THE FROZEN LAGOON, out on FROSTREEF' },
+  { name: 'MOLTRES', dexId: 146, speciesId: 'moltres', level: 50, where: 'nests in THE CRATER on EMBER ISLE' },
+  { name: 'MEW', dexId: 151, speciesId: 'mew', level: 50, where: 'has been seen at THE CAIRN on top of STORMCROWN' },
+  { name: 'MEWTWO', dexId: 150, speciesId: 'mewtwo', level: 70, where: 'waits four floors down THE BUNKER' },
 ];
+
+/**
+ * How far below a legend a team can stand and still be told to go for it.
+ * Further than this and Oak says the gap instead: a two-badge team stalls
+ * near Lv 18, and sending it at a Lv 50 bird with "Beat it" was a wall with a
+ * signpost on it (the fresh critic, 25 Nov 2026).
+ */
+export const LEGEND_REACH_LEVELS = 10;
+
+/** What Oak reads off the vault, besides the save's progress. */
+export interface NextStepVault {
+  /** What the vault holds of an item, which the treasure map's stage reads. */
+  readonly held?: (itemId: string) => number;
+  /** The highest level of any Pokémon the player keeps. */
+  readonly bestLevel?: number;
+}
+
+/** The vault as `nextStepLines` reads it, from a stash. */
+export function vaultOf(stash: {
+  itemCount(itemId: string): number;
+  listPokemon(): readonly { readonly pokemon: { readonly level: number } }[];
+}): NextStepVault {
+  return {
+    held: (itemId) => stash.itemCount(itemId),
+    bestLevel: Math.max(0, ...stash.listPokemon().map((stored) => stored.pokemon.level)),
+  };
+}
 
 /**
  * The named thing to chase once both gyms are beaten (the overnight critic's
@@ -54,9 +88,9 @@ export const VALE_LEGENDS: readonly { readonly name: string; readonly dexId: num
  * two-badge team can finish in an evening; then the legends not yet caught,
  * a different one each raid, which it has to grow into. Undefined once there is nothing left to name.
  */
-export function chaseLine(progress: NextStepProgress, held: (itemId: string) => number = () => 0): string | undefined {
+export function chaseLine(progress: NextStepProgress, vault: NextStepVault = {}): string | undefined {
   const hunt = progress.treasureHunt ?? NO_TREASURE_HUNT;
-  switch (huntStage(hunt, held)) {
+  switch (huntStage(hunt, vault.held ?? (() => 0))) {
     case 'no-chart':
       return 'Next, a treasure: a bottle has washed up on THE BEACH past the pier, with a chart in it. Nobody has looked.';
     case 'first-chart':
@@ -79,9 +113,13 @@ export function chaseLine(progress: NextStepProgress, held: (itemId: string) => 
   // a signpost on it (the fresh critic, 25 Nov 2026).
   const raids = Object.values(progress.raidRecord ?? {}).reduce((total, record) => total + record.deployed, 0);
   const legend = left[raids % Math.max(1, left.length)];
-  return legend
-    ? `Next, a legend: ${legend.name} ${legend.where}. Beat it, and you get one throw.`
-    : undefined;
+  if (!legend) {
+    return undefined;
+  }
+  const best = vault.bestLevel;
+  return best !== undefined && best > 0 && best < legend.level - LEGEND_REACH_LEVELS
+    ? `Next, a legend: ${legend.name} ${legend.where}, at Lv ${legend.level}. Your best is Lv ${best}. Grow into it - it isn't going anywhere.`
+    : `Next, a legend: ${legend.name} ${legend.where}, at Lv ${legend.level}. Beat it, and you get one throw.`;
 }
 
 /** Jobs banked, of either kind: the authored chain's and the standing board's. */
@@ -114,10 +152,11 @@ export function jobsNamed(progress: NextStepProgress): number {
 
 /**
  * What Oak says is next, or nothing on a save that has not been on a raid.
- * `held` is what the vault holds of an item, which the treasure map's stage
- * reads (a bottled chart in hand is a different next step from one on the sand).
+ * `vault` is what the player keeps (`vaultOf`): the treasure map's stage reads
+ * what it holds (a bottled chart in hand is a different next step from one on
+ * the sand), and a legend is told against the best level in it.
  */
-export function nextStepLines(progress: NextStepProgress, held: (itemId: string) => number = () => 0): readonly string[] {
+export function nextStepLines(progress: NextStepProgress, vault: NextStepVault = {}): readonly string[] {
   if (isFirstRaid(progress)) {
     return [];
   }
@@ -141,6 +180,6 @@ export function nextStepLines(progress: NextStepProgress, held: (itemId: string)
       : []),
     ...(gym
       ? [`And when you're ready, the next gym: ${gym.leader.toUpperCase()}, at ${gym.building.toUpperCase()} in ${gym.standsIn.toUpperCase()}.`]
-      : [chaseLine(progress, held)].filter((line): line is string => line !== undefined)),
+      : [chaseLine(progress, vault)].filter((line): line is string => line !== undefined)),
   ];
 }

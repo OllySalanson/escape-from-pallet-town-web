@@ -10,7 +10,7 @@ import { countPlay, raidEnding } from '../analytics/playCounter';
 import { friendRoom } from '../raidRoom/friendRoom';
 import { audioManager } from '../audio/AudioManager';
 import { isPlaytestRun } from '../dev/playtestMode';
-import { nextStepLines } from '../hub/nextStep';
+import { nextStepLines, vaultOf } from '../hub/nextStep';
 import { RAID_KEY_LETTERS } from '../input/keyBindings';
 import { resultMoment, STOW_LABEL, type HaulStow, type ResultMoment } from '../run/resultMoment';
 import { SaveManager } from '../save/SaveManager';
@@ -598,8 +598,8 @@ export class ExtractionScene extends Phaser.Scene {
     if (currentTry() || isPlaytestRun()) {
       return undefined;
     }
-    const progress = new SaveManager().load()?.raidProgress;
-    const [line] = progress ? nextStepLines(progress) : [];
+    const game = new SaveManager().load();
+    const [line] = game ? nextStepLines(game.raidProgress, vaultOf(game.stash)) : [];
     return line;
   }
 

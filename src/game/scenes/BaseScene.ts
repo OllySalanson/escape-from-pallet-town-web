@@ -352,7 +352,7 @@ import { roomPosterPicture } from '../base/roomPosters';
 import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
 import { dueMilestone, milestoneWords, pokedexOwned } from '../hub/pokedex';
 import { boardLines, boardPointer, oakNews } from '../base/labBoard';
-import { jobsBanked, jobsNamed, nextStepLines } from '../hub/nextStep';
+import { jobsBanked, jobsNamed, nextStepLines, vaultOf } from '../hub/nextStep';
 import { NEAR_JOBS } from '../objectives/standingBoard';
 import { friendRoom, friendRoomsOffered } from '../raidRoom/friendRoom';
 import { abandonedRaidLines, boutHeartbeat, raidHeartbeat } from '../run/raidInFlight';
@@ -7334,7 +7334,7 @@ export class BaseScene extends Phaser.Scene {
   private oakSaysWhatIsNext(room: BaseRoom, about: readonly GridPosition[]): void {
     const game = this.savedGame;
     const speak = (): void => {
-      const lines = [...oakNews(game, isPlaytestRun()), ...nextStepLines(game.raidProgress, (itemId) => game.stash.itemCount(itemId)), ...boardPointer(game, jobsNamed(game.raidProgress))];
+      const lines = [...oakNews(game, isPlaytestRun()), ...nextStepLines(game.raidProgress, vaultOf(game.stash)), ...boardPointer(game, jobsNamed(game.raidProgress))];
       if (lines.length === 0) {
         this.offerFriendRoom(room);
         return;
