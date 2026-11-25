@@ -30,7 +30,8 @@ import type { WorldPoi } from '../world/pois';
 import { SpentPresses } from '../world/spentPresses';
 import { BAG_GLINT_LINE, bagIdFor, kitFor, travellingLightLine, type TrainerBag } from '../world/trainerBags';
 import type { RunTrainerEncounter } from '../world/trainers';
-import { getWorldMap } from '../worldMap';
+import { interiorsForMap } from '../world/interiors';
+import { BUILT_IN_MAP_IDS, getWorldMap } from '../worldMap';
 import { WorldScene } from './WorldScene';
 
 /** The parts of the scene these tests drive, which are private to it. */
@@ -305,12 +306,11 @@ describe("a beaten trainer's bag in a raid", () => {
       scene.defeatedTrainerIds.add(hiker.trainer.id);
       scene.dropBeatenTrainersBags();
       const bag = scene.runSession.trainerBags![bagIdFor(hiker.trainer.id)];
-      if (bag) {
-        bags += 1;
-        expect(bag.best, `seed ${seed}`).not.toBe('basic');
-      }
+      expect(bag, `seed ${seed}: travelling light on a first raid`).not.toBeNull();
+      bags += 1;
+      expect(bag!.best, `seed ${seed}`).not.toBe('basic');
     }
-    expect(bags).toBeGreaterThan(40);
+    expect(bags).toBe(79);
   });
 
   it('keeps saying SOMETHING GLINTS INSIDE on an opened bag until its prize is taken, not only before it is opened', () => {
@@ -364,7 +364,12 @@ describe("a beaten trainer's bag in a raid", () => {
   it('rolls only the first hunter a raid beats at a hunter\'s odds, and every later one at a veteran\'s', () => {
     const { scene } = besideATrainer(hiker, 1);
     expect(scene.hunterBagOwner({ id: 'hunter:a', rivalId: 'blue' }).standing).toBe('hunter');
+    // A first hunter whose bag found nowhere to fall did not use the raid's hunter-odds bag up.
     scene.runSession.trainerBags = { [bagIdFor('hunter:a')]: null };
+    expect(scene.hunterBagOwner({ id: 'hunter:b', rivalId: 'lorelei' }).standing).toBe('hunter');
+    scene.runSession.trainerBags = {
+      [bagIdFor('hunter:a')]: { id: bagIdFor('hunter:a'), mapId: VALE, position: { x: 0, y: 0 }, label: 'BLUE', reward: [], best: 'basic' },
+    };
     expect(scene.hunterBagOwner({ id: 'hunter:b', rivalId: 'lorelei' }).standing).toBe('veteran');
   });
 
@@ -372,10 +377,52 @@ describe("a beaten trainer's bag in a raid", () => {
     const { scene } = besideATrainer(hiker, 1);
     // Spoken to from beside them: the bag is on their own tile.
     expect(scene.whereTrainerFell(hiker)).toEqual(hiker.position);
-    // Caught three tiles down their line: they walked up, and fell beside the player.
-    scene.currentTile = { x: hiker.position.x, y: hiker.position.y + 3 };
-    const fell = scene.whereTrainerFell(hiker)!;
-    expect(Math.abs(fell.x - scene.currentTile.x) + Math.abs(fell.y - scene.currentTile.y)).toBeLessThanOrEqual(2);
-    expect(fell).not.toEqual(scene.currentTile);
+    // Caught down their line: they walked up, and fell on the tile between the
+    // player and their post - not behind the player, not back at the post.
+    const map = getWorldMap(VALE);
+    const open = (tile: GridPosition): boolean => map.collision[tile.y]?.[tile.x] === false;
+    const line = [1, 2, 3, 4, 5]
+      .flatMap((d) => [{ x: hiker.position.x, y: hiker.position.y + d }, { x: hiker.position.x, y: hiker.position.y - d }, { x: hiker.position.x + d, y: hiker.position.y }, { x: hiker.position.x - d, y: hiker.position.y }])
+      .find((tile) => {
+        const away = Math.abs(tile.x - hiker.position.x) + Math.abs(tile.y - hiker.position.y);
+        const toward = { x: tile.x + Math.sign(hiker.position.x - tile.x), y: tile.y + Math.sign(hiker.position.y - tile.y) };
+        return away >= 3 && open(tile) && open(toward);
+      })!;
+    scene.currentTile = line;
+    const toward = { x: line.x + Math.sign(hiker.position.x - line.x), y: line.y + Math.sign(hiker.position.y - line.y) };
+    expect(scene.whereTrainerFell(hiker)).toEqual(toward);
+    // That tile taken (an exit, a piece of loot), it falls on the nearest free one instead.
+    (scene as unknown as { boulderMayRest: (tile: GridPosition) => boolean }).boulderMayRest = (tile) =>
+      open(tile) && !(tile.x === toward.x && tile.y === toward.y);
+    const moved = scene.whereTrainerFell(hiker)!;
+    expect(moved).not.toEqual(toward);
+    expect(moved).not.toEqual(line);
+    expect(Math.max(Math.abs(moved.x - toward.x), Math.abs(moved.y - toward.y))).toBeLessThanOrEqual(2);
+  });
+
+  it("keeps the mark of a trainer under a roof hidden from outside it, and shows it under that roof", () => {
+    // The vale is roofed nowhere today; a shipped map with a cave stands in, as a map that gains one would.
+    const roofedMap = BUILT_IN_MAP_IDS.find((id) => interiorsForMap(id).length > 0)!;
+    const interior = interiorsForMap(roofedMap)[0];
+    const map = getWorldMap(roofedMap);
+    const inside = Array.from({ length: interior.roof.width * interior.roof.height }, (_, index) => ({
+      x: interior.roof.x + (index % interior.roof.width),
+      y: interior.roof.y + Math.floor(index / interior.roof.width),
+    })).filter((tile) => map.collision[tile.y]?.[tile.x] === false);
+    const post = inside[0];
+    const standing = inside.find((tile) => Math.abs(tile.x - post.x) + Math.abs(tile.y - post.y) >= 3)!;
+    const roofed = { ...hiker, mapId: roofedMap, position: post };
+    const { scene } = besideATrainer(roofed, 1);
+    (scene as unknown as { currentMap: unknown }).currentMap = map;
+    scene.createTrainerGlint(roofed);
+    const mark = scene.trainerGlints.get(roofed.trainer.id)!;
+    scene.currentTile = { x: interior.roof.x - 6, y: interior.roof.y - 6 };
+    (scene as unknown as { currentInterior: unknown }).currentInterior = null;
+    scene.tendTrainerGlints();
+    expect(mark.visible).toBe(false);
+    scene.currentTile = standing;
+    (scene as unknown as { currentInterior: unknown }).currentInterior = interior;
+    scene.tendTrainerGlints();
+    expect(mark.visible).toBe(true);
   });
 });

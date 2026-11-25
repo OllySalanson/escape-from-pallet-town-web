@@ -4005,7 +4005,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * raid's danger its vending machine.
    */
   private hunterBagOwner(hunter: Pick<PackHunter, 'id' | 'rivalId'>): BagOwner {
-    const huntersBagged = Object.keys(this.runSession?.trainerBags ?? {}).some((id) => isHunterBagId(id));
+    // A hunter's bag that found no tile to fall on is not one: the raid's
+    // hunter-odds bag is still to come.
+    const huntersBagged = Object.entries(this.runSession?.trainerBags ?? {}).some(([id, bag]) => bag !== null && isHunterBagId(id));
     return {
       id: hunter.id,
       name: hunterRival(hunter.rivalId).name,

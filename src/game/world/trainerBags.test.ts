@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { ITEMS, type ItemId } from '../items/items';
 import { SEARCH_ROWS } from './cacheSearch';
 import { RACE_COURSES } from './races';
+import { MAP_FILE_LANDMARKS } from './mapFile';
+import { WORLD_POIS } from './pois';
+import { STAKE_SUPPLIES } from './raidStake';
+import { getWorldMap } from '../worldMap';
 import { builtInFileMaps } from './playerMaps';
 import { createRunTrainerEncounters } from './trainers';
 import {
@@ -109,11 +113,26 @@ describe("a beaten trainer's bag", () => {
     expect(bagSeed(42, 'a')).not.toBe(bagSeed(43, 'a'));
   });
 
+  it("never names a crate's own thing as a rare find or a treasure: the bag worth the fight is not a cache's Great Balls", () => {
+    const vale = getWorldMap('greystone-vale');
+    const crateItems = new Set<string>([
+      ...[...WORLD_POIS, ...vale.pois, ...Object.values(MAP_FILE_LANDMARKS)].flatMap((poi) => poi.reward.map((row) => row.itemId)),
+      ...STAKE_SUPPLIES.map((row) => row.itemId),
+    ]);
+    for (const kit of KITS) {
+      for (const row of [...kit.finds.rare, ...kit.finds.treasure]) {
+        expect(crateItems.has(row.itemId), `${kit.id} prizes ${row.itemId}, which a crate gives`).toBe(false);
+      }
+    }
+  });
+
   it('is carried as often as the kit says, and always by a boss and a hunter', () => {
     const swimmer = bagsOver(owner(BAG_KITS.beach, 'rookie'));
     expect(swimmer.filter(Boolean).length / swimmer.length).toBeCloseTo(BAG_KITS.beach.carried, 1);
     expect(bagsOver(owner(BAG_KITS.beach, 'boss')).every(Boolean)).toBe(true);
     expect(bagsOver(owner(HUNTER_KITS.agatha, 'hunter')).every(Boolean)).toBe(true);
+    // Nor does a trainer on a new save's first raid travel light: no way to meet bags.
+    expect(bagsOver(owner(BAG_KITS.beach, 'newcomer')).every(Boolean)).toBe(true);
   });
 
   it('turns up a find of each tier at its standing\'s odds, and always the signature piece first', () => {

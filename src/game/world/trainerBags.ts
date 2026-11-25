@@ -181,7 +181,7 @@ export const BAG_KITS = {
     extras: rows({ itemId: 'antidote' }),
     finds: {
       uncommon: rows({ itemId: 'great-ball', weight: 3 }, { itemId: 'repel' }),
-      rare: rows({ itemId: 'great-ball', quantity: 2 }),
+      rare: rows({ itemId: 'repel', quantity: 2 }, { itemId: 'pecha-berry', quantity: 2 }),
       treasure: rows({ itemId: 'miracle-seed', weight: 2 }, { itemId: 'tm09-bullet-seed' }),
     },
   },
@@ -229,7 +229,7 @@ export const BAG_KITS = {
     extras: rows({ itemId: 'potion' }),
     finds: {
       uncommon: rows({ itemId: 'lockpick', weight: 3 }, { itemId: 'great-ball', weight: 2 }, { itemId: 'super-potion', weight: 2 }),
-      rare: rows({ itemId: 'lockpick', quantity: 2, weight: 2 }, { itemId: 'great-ball', quantity: 3 }),
+      rare: rows({ itemId: 'lockpick', quantity: 2 }),
       treasure: rows({ itemId: 'smoke-ball' }),
     },
   },
@@ -265,7 +265,7 @@ export const BAG_KITS = {
     extras: rows({ itemId: 'great-ball' }),
     finds: {
       uncommon: rows({ itemId: 'radio-valve', weight: 2 }, { itemId: 'great-ball', quantity: 2, weight: 2 }, { itemId: 'repel', quantity: 2 }),
-      rare: rows({ itemId: 'lockpick' }, { itemId: 'great-ball', quantity: 3 }),
+      rare: rows({ itemId: 'lockpick' }, { itemId: 'chesto-berry', quantity: 2 }),
       treasure: rows({ itemId: 'tm40-aerial-ace' }, { itemId: 'tm23-iron-tail' }, { itemId: 'tm13-ice-beam' }),
     },
   },
@@ -580,7 +580,9 @@ export function rollBagContents(
   raidSeed: number,
 ): { readonly reward: readonly BagPiece[]; readonly best: BagTier } | null {
   const rng = createSeededRng(bagSeed(raidSeed, owner.id));
-  const carried = owner.standing === 'boss' || owner.standing === 'hunter' ? 1 : owner.kit.carried;
+  // A boss and a hunter always carry theirs, and so does every trainer on a
+  // new save's first raid: "travelling light" is no way to meet bags.
+  const carried = owner.standing === 'boss' || owner.standing === 'hunter' || owner.standing === 'newcomer' ? 1 : owner.kit.carried;
   if (!rng.chance(carried)) {
     return null;
   }
