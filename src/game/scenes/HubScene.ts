@@ -3101,14 +3101,16 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * Where the gold arrow leads a raid with no job: the next gym
-   * (`WorldScene.gymDoorNear`). The card said only "nothing to fetch", and a
-   * friend who chose NO JOB landed to an arrow pointing at MISTY with no word of
-   * why (persona playtest, 23 Nov 2026).
+   * Where a raid with no job is going: the next gym (`WorldScene.gymDoorNear`).
+   * The card said only "nothing to fetch", and a friend who chose NO JOB landed
+   * to an arrow pointing at MISTY with no word of why (persona playtest, 23 Nov
+   * 2026). The card is only ever read before a later raid, which draws no arrow
+   * until its last thirty seconds (`world/raidArrow.ts`), so it names the gym
+   * and leaves the way to the chip and Oak.
    */
   private noJobArrow(): string {
     const gym = nextGym(this.savedGame.raidProgress.defeatedBosses);
-    return gym ? ` The gold arrow leads to ${gym.building.toUpperCase()}, where ${gym.leader.toUpperCase()} waits.` : '';
+    return gym ? ` The next gym is ${gym.building.toUpperCase()}, where ${gym.leader.toUpperCase()} waits.` : '';
   }
 
   /** What the rail says of a hurt team (`hub/railWarning.ts`). A team that cannot lose has nothing to be told. */
@@ -3304,12 +3306,12 @@ export class HubScene extends Phaser.Scene {
           format: formatRecoveryClock,
         })
       : this.jobsAt(insertionId).length > 0 || this.rimJobChoices(insertionId).length > 0
-        ? rimJobTile({ kind: 'none', ...(this.noJobGym() ? { arrowTo: this.noJobGym() } : {}), help: job.sentence })
+        ? rimJobTile({ kind: 'none', ...(this.noJobGym() ? { nextGym: this.noJobGym() } : {}), help: job.sentence })
         : rimJobTile({ kind: 'none', help: 'No job this raid: nothing to fetch. Walk it, find what it has, and get out.' });
     return `${team}${hunters}${risk}${jobTile}`;
   }
 
-  /** The gym the gold arrow leads a raid with no job to, by its leader's name. */
+  /** The gym a raid with no job is out for, by its leader's name. */
   private noJobGym(): string | undefined {
     return nextGym(this.savedGame.raidProgress.defeatedBosses)?.leader.toUpperCase();
   }

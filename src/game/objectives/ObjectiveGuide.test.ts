@@ -847,6 +847,16 @@ describe('Professor Oak on the radio', () => {
     expect(guide.hints.some((hint) => hint.startsWith('The nearest landmark still to work is'))).toBe(true);
   });
 
+  it('names no arrow for the stake on a later raid, where none is drawn', () => {
+    const guide = buildObjectiveGuide(createUncontractedSession('town-square'), {
+      ...here,
+      currentMapId: 'pallet-town',
+      stake: { words: '₽75', position: { x: 40, y: 10 }, unmarked: true },
+      stepsTo: () => 30,
+    });
+    expect(guide.hints[0]).toBe("This raid's prize is ₽75, to the east, 30 steps away. Taking it brings a hunter, so grab it and head for a way out.");
+  });
+
   it('leaves the stake to the arrow on a raid that carries a job', () => {
     const guide = buildObjectiveGuide(createFirstContractSession(), {
       ...here,

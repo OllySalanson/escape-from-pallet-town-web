@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chevronRoundFigure, chevronTowards, runnerChevrons } from './wayMark';
+import { WAY_OUT_POP_MS, chevronRoundFigure, chevronTowards, runnerChevrons, wayOutPopScale } from './wayMark';
 
 const VIEW = { left: 100, top: 200, width: 400, height: 256 };
 
@@ -128,5 +128,17 @@ describe('the way shown to a first raid', () => {
 
   it('holds still for anybody who asked for less movement', () => {
     expect(runnerChevrons(500, 1000, 850, true)).toEqual(runnerChevrons(9000, 1000, 850, true));
+  });
+});
+
+describe('the arrow come back for the way out', () => {
+  it('lands from twice its size in whole steps, beats twice, and settles at its own', () => {
+    const scales = Array.from({ length: WAY_OUT_POP_MS / 50 + 4 }, (_, index) => wayOutPopScale(index * 50));
+    expect(scales.slice(0, 5)).toEqual([4, 4, 3, 3, 3]);
+    expect(scales.every((scale) => Number.isInteger(scale) && scale >= 2 && scale <= 4)).toBe(true);
+    // Lands, then two beats of 3 with 2 between.
+    expect(scales.slice(5).join('')).toMatch(/^2+33(2+)33(2+)$/);
+    expect(wayOutPopScale(WAY_OUT_POP_MS)).toBe(2);
+    expect(wayOutPopScale(-1)).toBe(2);
   });
 });

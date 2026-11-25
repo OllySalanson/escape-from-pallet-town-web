@@ -79,6 +79,8 @@ export interface ObjectiveGuideContext {
 export interface StakeHere {
   readonly words: string;
   readonly position: GridPosition;
+  /** No arrow is drawn to it: a later raid's is away until its last thirty seconds (`world/raidArrow.ts`). */
+  readonly unmarked?: true;
 }
 
 /** The next gym as the guide names it, and somewhere inside it to head for. */
@@ -205,14 +207,15 @@ function nextGymHint(context: ObjectiveGuideContext): string | undefined {
   return `The next gym is ${gym.building.toUpperCase()}, ${where}, on ${gym.standsIn}: the big building with GYM on its front. ${gym.leader.toUpperCase()} is inside${levels}.`;
 }
 
-/** Where the stake the gold arrow is after lies, and what taking it brings. */
+/** Where the stake the way is after lies, what taking it brings, and that the gold arrow leads to it when one is drawn. */
 function stakeHint(context: ObjectiveGuideContext): string | undefined {
   const stake = context.stake;
   if (!stake) {
     return undefined;
   }
   const where = `${directionTo(context.currentPosition, context.towards?.(stake.position) ?? stake.position)}${stepsAway(context.stepsTo?.(stake.position))}`;
-  return `This raid's prize is ${stake.words}, ${where}: the gold arrow leads to it. Taking it brings a hunter, so grab it and head for a way out.`;
+  const arrow = stake.unmarked ? '' : ': the gold arrow leads to it';
+  return `This raid's prize is ${stake.words}, ${where}${arrow}. Taking it brings a hunter, so grab it and head for a way out.`;
 }
 
 /**

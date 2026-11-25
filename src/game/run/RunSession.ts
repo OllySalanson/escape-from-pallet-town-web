@@ -125,6 +125,8 @@ export interface ActiveRunSession {
   enrageWarned?: boolean;
   /** A new save's first chase has come (`RunPlan.stagedChase`), so a fight does not bring it twice. */
   stagedChaseCome?: boolean;
+  /** A later raid's arrow has come back for the way out (`world/raidArrow.ts`), so a fight does not bring its pop twice. */
+  wayOutShown?: boolean;
   /**
    * A new save's first catch (`world/firstCatch.ts`): which of the square's
    * Pidgey have been fought, how many catches the raid held before the last
