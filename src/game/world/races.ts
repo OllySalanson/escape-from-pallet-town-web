@@ -371,6 +371,12 @@ export interface RaceState {
   countdownMs: number;
   /** The race clock (`raceClock.ts`). */
   clockMs: number;
+  /**
+   * The racer's line, fixed when the race is agreed: the world is rebuilt after
+   * every fight, and a line worked out again then - a trainer beaten, a door
+   * cut - would move them mid-run.
+   */
+  readonly line: readonly GridPosition[];
   /** When the racer reaches the line, worked out from their line at GO. */
   racerMs: number;
   outcome?: RaceOutcome;
@@ -389,8 +395,10 @@ export interface RaceState {
 }
 
 /** A race the player has just said yes to. */
-export function newRace(course: RaceCourse, racerMs: number): RaceState {
-  return { courseId: course.id, phase: 'countdown', countdownMs: 0, clockMs: 0, racerMs, held: [], purseToPick: false, bank: {}, fightMs: 0, offRoad: false };
+export function newRace(course: RaceCourse, line: readonly GridPosition[]): RaceState {
+  const crossing = line.findIndex((tile) => crossesLine(course, tile));
+  const racerMs = racerTimeMs((crossing < 0 ? line.length - 1 : crossing) + 1);
+  return { courseId: course.id, phase: 'countdown', countdownMs: 0, clockMs: 0, line, racerMs, held: [], purseToPick: false, bank: {}, fightMs: 0, offRoad: false };
 }
 
 /** Charged game time while a fight is on: the racer runs on (`BattleScene` asks this). */

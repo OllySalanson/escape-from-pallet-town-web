@@ -41,7 +41,8 @@ describe('the countdown and the clock', () => {
   });
 
   it('charges a fight to a race that is running, and to nothing else', () => {
-    const race = newRace(MERE_DASH, 22_800);
+    const race = newRace(MERE_DASH, [{ x: 0, y: 0 }, ...MERE_DASH.finish.tiles]);
+    expect(race.racerMs).toBe(150);
     chargeFight(race, 500);
     expect(race.clockMs).toBe(0);
     race.phase = 'running';

@@ -167,7 +167,6 @@ import {
   racePrize,
   raceQuestion,
   raceResultLines,
-  racerTimeMs,
   trophyLine,
   type RaceCourse,
   type RaceOutcome,
@@ -1102,8 +1101,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private pendingRaceAsk: RaceCourse | undefined;
   /** The result is being read and the day's purse follows it. */
   private pendingRacePurse = false;
-  /** The racer's line this world: worked out once, since it is the same map until a door opens. */
-  private raceLine: readonly GridPosition[] | null = null;
   /** The countdown's big word, and which it is. */
   private raceWord: Phaser.GameObjects.Text | undefined;
   private countdownWordShown: string | null = null;
@@ -1328,7 +1325,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.lookMs = 0;
     this.pendingRaceAsk = undefined;
     this.pendingRacePurse = false;
-    this.raceLine = null;
     this.raceWord = undefined;
     this.countdownWordShown = null;
     this.raceBestMs = undefined;
@@ -4158,25 +4154,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     return course !== undefined && (!this.racersStand() || this.runSession?.race?.courseId === course.id);
   }
 
-  /** The racer's line, worked out once a world: it is the same map until a door opens. */
-  private raceLineFor(course: RaceCourse): readonly GridPosition[] {
-    if (this.raceLine) {
-      return this.raceLine;
-    }
+  /** The racer's line from where they stand, over this map as it is now (`raceLine.ts`). */
+  private freshRaceLine(course: RaceCourse): readonly GridPosition[] {
     const figures = [
       ...this.currentMap.entities.flatMap((entity) => [entity.position, ...(entity.idle?.roam ?? [])]),
       ...this.trainersForCurrentMap().map((encounter) => encounter.position),
     ].filter((tile) => !(tile.x === course.racer.stands.x && tile.y === course.racer.stands.y));
-    this.raceLine = racerLine(raceGround(this.currentMap, figures), course.racer.stands, course.finish.tiles, course.racer.waits) ?? [
-      course.racer.stands,
-    ];
-    return this.raceLine;
-  }
-
-  /** Where in the racer's line they cross. */
-  private raceCrossingIndex(course: RaceCourse, line: readonly GridPosition[]): number {
-    const index = line.findIndex((tile) => crossesLine(course, tile));
-    return index < 0 ? line.length - 1 : index;
+    return (
+      racerLine(raceGround(this.currentMap, figures), course.racer.stands, course.finish.tiles, course.racer.waits) ?? [
+        course.racer.stands,
+      ]
+    );
   }
 
   /** The racer's figure and the line on the planks, drawn as a world is built. */
@@ -4190,7 +4178,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const here = this.raceHere();
     if (here) {
       this.raceBestMs = new SaveManager().load()?.raidProgress.races?.[here.course.id]?.bestMs;
-      const place = this.racerNow(here.race, here.course);
+      const place = this.racerNow(here.race);
       this.createFigure(RACER_FIGURE_ID, place.tile, place.facing, 'npc', here.course.racer.design);
     }
   }
@@ -4212,9 +4200,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /** Where the racer is now: at the start until GO, on their line after. */
-  private racerNow(race: RaceState, course: RaceCourse): RacerPlace {
-    const line = this.raceLineFor(course);
-    return racerPlace(line, STEP_DURATION_MS, race.phase === 'countdown' ? 0 : race.clockMs);
+  private racerNow(race: RaceState): RacerPlace {
+    return racerPlace(race.line, STEP_DURATION_MS, race.phase === 'countdown' ? 0 : race.clockMs);
   }
 
   /** Every frame: the racer where the clock puts them, striding while they run. */
@@ -4223,7 +4210,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!here || !this.npcSprites.has(RACER_FIGURE_ID)) {
       return;
     }
-    const place = this.racerNow(here.race, here.course);
+    const place = this.racerNow(here.race);
     const x = place.tile.x + (place.next.x - place.tile.x) * place.between;
     const y = place.tile.y + (place.next.y - place.tile.y) * place.between;
     // A stride on the first half of every other tile: a run, not a glide.
@@ -4237,7 +4224,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!here) {
       return false;
     }
-    const place = this.racerNow(here.race, here.course);
+    const place = this.racerNow(here.race);
     return (here.race.phase === 'countdown' || place.home) && place.tile.x === tile.x && place.tile.y === tile.y;
   }
 
@@ -4281,9 +4268,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!this.runSession || this.runSession.race) {
       return;
     }
-    this.raceLine = null;
-    const line = this.raceLineFor(course);
-    this.runSession.race = newRace(course, racerTimeMs(this.raceCrossingIndex(course, line) + 1));
+    this.runSession.race = newRace(course, this.freshRaceLine(course));
     this.setRiding(false);
     const person = this.currentMap.entities.find((entity) => this.courseOfPerson(entity) === course);
     if (person) {
@@ -4496,7 +4481,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return null;
     }
     const { race, course } = here;
-    const place = this.racerNow(race, course);
+    const place = this.racerNow(race);
     const home = race.phase === 'running' && race.clockMs >= race.racerMs;
     const bearing = compassBearing(this.currentTile, course.finish.tiles[0]);
     return raceChipLines({
@@ -5893,7 +5878,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       race: (() => {
         const here = this.raceHere();
         if (!here) return null;
-        const place = this.racerNow(here.race, here.course);
+        const place = this.racerNow(here.race);
         return {
           course: here.course.id,
           phase: here.race.phase,
