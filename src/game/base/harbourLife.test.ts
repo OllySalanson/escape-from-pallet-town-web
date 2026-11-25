@@ -10,7 +10,7 @@ import { DAY_CARE_KEEPER, penTiles } from './dayCarePen';
 import { BASE_DOORS } from './doors';
 import { BASE_FIXTURES } from './fixtures';
 import { HARBOUR_LANDMARKS } from './landmarks';
-import { HARBOUR_LIFE, HARBOUR_SPECIES, harbourBeatTiles, harbourLifeAt, onLand, type HarbourFigure } from './harbourLife';
+import { HARBOUR_LIFE, HARBOUR_PEOPLE, HARBOUR_SPECIES, PORTER_ID, harbourBeatTiles, harbourLifeAt, onLand, porterHasNews, porterLines, type HarbourFigure } from './harbourLife';
 
 const EVERY_RUNG = WORKSHOP_UPGRADES.map((upgrade) => upgrade.id);
 const key = (tile: GridPosition): string => `${tile.x},${tile.y}`;
@@ -148,5 +148,25 @@ describe.each(['day', 'night'] as const)('the harbour\'s people and Pokemon by %
     }
     const provenance = readFileSync(join(__dirname, '../../../public/assets/ASSET_PROVENANCE.md'), 'utf8');
     expect(provenance).toContain('harbour-pokemon/');
+  });
+});
+
+describe("the porter and the bottle on THE BEACH (the critic's problem 21)", () => {
+  it('says first where the bottle lies, while it lies there and once a raid has been gone on', () => {
+    const lines = porterLines(true, 1);
+    expect(lines[0]).toMatch(/bottle .*THE BEACH\. East of THE PLEASURE PIER, by the rocks\./);
+    expect(lines.length).toBeGreaterThan(1);
+  });
+
+  it('wears the "!" exactly while he has the bottle to tell of', () => {
+    expect(porterHasNews(true, 1)).toBe(true);
+    expect(porterHasNews(true, 0)).toBe(false);
+    expect(porterHasNews(false, 5)).toBe(false);
+  });
+
+  it('keeps to his crates before a first raid and once the bottle is gone', () => {
+    const crates = HARBOUR_PEOPLE.find((person) => person.id === PORTER_ID)?.lines;
+    expect(porterLines(true, 0)).toEqual(crates);
+    expect(porterLines(false, 3)).toEqual(crates);
   });
 });
