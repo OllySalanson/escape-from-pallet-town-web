@@ -63,7 +63,6 @@ export function openMoveChooser(
       event.preventDefault();
     }
   });
-  overlay.pointerRule = 'previews';
   overlay.root.setAttribute('aria-label', 'Learn a move');
   if (view.beside) {
     overlay.onMeasure = () => fitSidePanel(overlay.root);

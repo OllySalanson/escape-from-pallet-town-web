@@ -5,7 +5,7 @@ import { menuLayer } from '../display/menuStage';
 import { columnTracks, isLowRoom, isShortRoom, planColumns, roomFor } from './columnLayout';
 import { CURSOR_CONTROLS, firstMatching, READING_PANES } from './menuFocus';
 import { claimOverlayKeyboard } from './overlayKeyboard';
-import { PointerPreview, type PointerRule } from './pointerPreview';
+import { PointerPreview } from './pointerPreview';
 import {
   detailStepIndex,
   focusDirectionForKey,
@@ -39,18 +39,12 @@ export class MenuOverlay {
   public onMeasure: ((unit: number) => void) | undefined;
 
   /**
-   * Whether the pointer moves this screen's cursor or only previews what it is
-   * over. See `pointerPreview.ts`: a screen whose rows are a choice of who
-   * receives something says 'previews'.
+   * The pointer has come to rest on a control, or left it (`null`: the
+   * cursor's control answers again). The pointer never moves the cursor
+   * (`pointerPreview.ts`), so a screen whose card follows its cursor listens
+   * here as well, to answer the pointed thing the same way.
    */
-  public get pointerRule(): PointerRule {
-    return this.pointer.rule;
-  }
-
-  public set pointerRule(rule: PointerRule) {
-    this.pointer.rule = rule;
-    this.root.dataset.pointer = rule;
-  }
+  public onPointed: ((control: HTMLElement | null) => void) | undefined;
 
   public constructor(
     scene: Phaser.Scene,
@@ -105,12 +99,14 @@ export class MenuOverlay {
       this.pointer.cursorMoved();
       this.showHelpFor(control);
     };
-    // A pixel-ui screen has one cursor, as the games it is dressed as do. On
-    // most screens the pointer moves it; on a screen that sets `pointerRule` to
-    // 'previews' it only lights what it is over and reads its help, because the
-    // cursor there is the thing about to be chosen (`ui/pointerPreview.ts`).
+    // A pixel-ui screen has one cursor, as the games it is dressed as do, and
+    // the pointer never moves it: it lights what it is over and reads its help
+    // (`ui/pointerPreview.ts`).
     this.pointer = new PointerPreview<HTMLElement>({
-      help: (control) => this.writeHelp(control),
+      // The pane a row shows and the help bar both answer what is pointed at,
+      // and the cursor's again once the pointer leaves: pointing is a question.
+      help: (control) => this.showHelpFor(control),
+      pointed: (control) => this.onPointed?.(control),
       cursor: () => {
         const active = document.activeElement;
         return active instanceof HTMLElement && this.root.contains(active) ? active : null;

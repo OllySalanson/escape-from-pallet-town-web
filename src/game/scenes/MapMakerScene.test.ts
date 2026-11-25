@@ -126,7 +126,7 @@ function drawScreen(markup: string): void {
 vi.mock('../ui/MenuOverlay', () => ({
   MenuOverlay: class {
     public readonly clicks = new Map<string, () => void>();
-    public pointerRule = 'moves';
+    public onPointed: unknown = undefined;
     public readonly root = {
       get innerHTML(): string {
         return this.held;

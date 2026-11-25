@@ -326,10 +326,6 @@ export class BagScene extends Phaser.Scene {
     this.menuOverlay.root.setAttribute('aria-label', 'Raid pack');
     dockSidePanel(this, this.menuOverlay, this.view);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.view?.covers(0));
-    // Every Enter on this screen gives something to somebody, so the pointer
-    // only previews: resting it on a Pokemon must never make that Pokemon the
-    // one the Potion or the disc is about to go to (`ui/pointerPreview.ts`).
-    this.menuOverlay.pointerRule = 'previews';
     // Lighting the pointed-at item's squares is a class on a block, not a
     // render: the cursor moves on every arrow key and a rebuilt screen would
     // cost the player a beat each time.

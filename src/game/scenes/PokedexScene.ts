@@ -86,6 +86,10 @@ export class PokedexScene extends Phaser.Scene implements ProvidesFeedbackContex
         this.showCard(Number(tile.dataset.dex));
       }
     });
+    // A tile pointed at is answered on the card too, and the cursor's again
+    // once the pointer leaves it; pointing never moves the cursor
+    // (`ui/pointerPreview.ts`).
+    overlay.onPointed = (control) => this.answerPointed(control);
     if (this.pausedBase) {
       hideHarbourUnder(this);
     }
@@ -195,6 +199,21 @@ export class PokedexScene extends Phaser.Scene implements ProvidesFeedbackContex
       takeDownPixelStatus(overlay.root);
     }
     this.cursor = dexId;
+    this.writeCard(dexId, again);
+  }
+
+  /** The pointer rests on a tile (or has left one, `null`): the card answers it, and the cursor stays. */
+  private answerPointed(control: HTMLElement | null): void {
+    const tile = control?.closest<HTMLElement>('[data-dex]');
+    this.writeCard(tile ? Number(tile.dataset.dex) : this.cursor);
+  }
+
+  /** Writes the card beside the grid for one kind, which the cursor or the pointer is on. */
+  private writeCard(dexId: number, again = false): void {
+    const overlay = this.overlay;
+    if (!overlay || this.openPage !== null) {
+      return;
+    }
     const pane = overlay.root.querySelector<HTMLElement>('[data-dex-card]');
     // Only where the card is on screen: a window too narrow for it hides it,
     // and the help bar is what names the tile there.

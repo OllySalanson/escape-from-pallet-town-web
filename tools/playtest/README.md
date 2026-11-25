@@ -131,6 +131,11 @@ opening lines with mouse clicks alone, rests the pointer on ITEM (lit, the curso
 still on FIGHT), moves with D and runs Right past the end of the row, which must
 stop there (`docs/screens/battle-keys/`).
 
+`pointerOnly.mjs <test-mode build url> <dir> [--window=WxH] [--port=N]` rests
+the mouse on a Pokédex tile: the highlight must stay where it opened, the help bar
+must answer the tile pointed at and the cursor's again once the pointer leaves,
+and a click must still press (`docs/screens/pointer-only/`).
+
 `slowLoad.mjs <cdp port> <build url> <dir> [kbit/s] [latency ms]` opens the game
 on a throttled line with the cache off and photographs the first load until the
 title is up, for what a friend on poor wifi sees before the game can draw

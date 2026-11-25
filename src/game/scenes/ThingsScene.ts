@@ -115,9 +115,6 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   public create(): void {
     this.overlay = new MenuOverlay(this, 'things-menu side-panel pixel-ui', (event) => this.onKey(event));
     this.overlay.root.setAttribute('aria-label', 'Your things');
-    // Every ENTER here gives something to somebody, so resting the pointer on a
-    // Pokémon never makes it the one the stone is about to go to.
-    this.overlay.pointerRule = 'previews';
     dockSidePanel(this, this.overlay, this.view);
     // The pocket strip lights the pocket the cursor is in (`pocketStrip`): a
     // class moved on focus, never a redraw.
