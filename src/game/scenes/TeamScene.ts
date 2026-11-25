@@ -126,7 +126,7 @@ export class TeamScene extends Phaser.Scene implements ProvidesFeedbackContext {
     overlay.redraw(
       pixelScreen({
         title: 'Your team',
-        back: { label: 'Close', attribute: 'data-close' },
+        close: { attribute: 'data-close' },
         body,
         hints: TEAM_HINTS,
         ...(status ? { status } : {}),

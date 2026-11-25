@@ -132,7 +132,7 @@ import {
   type RaidContract,
 } from '../objectives';
 import { deferPendingMoves, nextPendingMoveOffer } from '../hub/pendingMoves';
-import { benchRailWarning, rimOpensOnNotYet, type RailWarning } from '../hub/railWarning';
+import { benchRailWarning, rimOpensAwayFromJumpIn, type RailWarning } from '../hub/railWarning';
 import {
   cycleChoice,
   isRimArrow,
@@ -1589,8 +1589,8 @@ export class HubScene extends Phaser.Scene {
       }
     }
     // On the rim an arrow does one thing (`hub/rimCard.ts`): Up and Down go
-    // between the card's rows, Left and Right change the row's value or step
-    // between NOT YET and JUMP IN. It used to point at the map first and fall
+    // between the card's rows and on down to JUMP IN, Left and Right change
+    // the row's value. It used to point at the map first and fall
     // back to the buttons where no landing lay that way, so the same key did
     // two jobs by where the lights happened to sit (the captain, 25 Nov 2026).
     if (this.view === 'rim' && isRimArrow(event.key)) {
@@ -1702,19 +1702,15 @@ export class HubScene extends Phaser.Scene {
     return 'The rim';
   }
 
-  private get backLabel(): string {
-    if (this.view === 'reselect') return 'Center';
-    // Out of a screen is back into the room it is kept in (`base/rooms.ts`),
-    // so the label names the room that puts you in.
-    if (this.view === 'stash') return this.atHome ? 'Upstairs' : 'Center';
-    if (this.view === 'workshop') return 'Workshop';
-    if (this.view === 'trader') return 'Cottage';
-    if (this.view === 'wallmap') return this.wallMapInspect ? 'Wall map' : 'Lab';
-    // He stands in the yard, so out of his screen is out into it.
-    if (this.view === 'daycare') return 'Yard';
-    if (this.view === 'trades') return 'Yard';
-    if (this.view === 'friend') return 'Lab';
-    return 'Hall';
+  /**
+   * A step back up inside the screen, named for where it goes: the partner
+   * swap is reached from the PC, and one map close up from all four. Every
+   * other view's only way out is the X, back into the room it is kept in.
+   */
+  private get stepBack(): { readonly label: string; readonly attribute: string } | undefined {
+    if (this.view === 'reselect') return { label: 'Bill’s PC', attribute: 'data-back' };
+    if (this.view === 'wallmap' && this.wallMapInspect) return { label: 'Wall map', attribute: 'data-back' };
+    return undefined;
   }
 
   /** What the keys do, said once along the bottom of every screen. */
@@ -1744,9 +1740,10 @@ export class HubScene extends Phaser.Scene {
       // both places it read `THE HARBOUR THE HARBOUR OAK'S LAB`.
       place: isPlaytestRun() ? PLAYTEST_PLACE_LABEL : undefined,
       title: this.heading,
-      // Every room has a way out now, Oak's Lab included: it is a building the
-      // player walked into rather than the screen everything else hangs off.
-      back: { label: this.backLabel, attribute: 'data-back' },
+      // Every room has a way out, Oak's Lab included: the X puts the screen
+      // away and leaves the player in the room it is kept in.
+      ...(this.stepBack ? { back: this.stepBack } : {}),
+      close: { attribute: 'data-close' },
       aside:
         this.isPanel || ARENA_PANELS.includes(this.view)
           ? this.panelAside()
@@ -1815,8 +1812,16 @@ export class HubScene extends Phaser.Scene {
       this.render();
     });
     on('[data-back]', () => this.goBack());
+    on('[data-close]', () => this.leaveToBase());
     // A value row on the rim's card: its left arrow goes back, anywhere else on it goes on.
     on('[data-rim-row]', (button, event) => {
+      // A key on a row is a bump: Left and Right change it, and SPACE mashed
+      // through the result screen must never move the landing. Only a click
+      // (a pointer's click has a count; a key's has none) steps it.
+      if (event.detail === 0) {
+        audioManager.play('bump');
+        return;
+      }
       const back = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-rim-step]')?.dataset.rimStep === '-1';
       if (button.classList.contains('is-fixed')) {
         audioManager.play('bump');
@@ -2793,7 +2798,7 @@ export class HubScene extends Phaser.Scene {
         ...(party.length === 0 ? [`<span class="px-wrap">${summary}</span>`] : []),
         ...(warning ? [`<small class="px-wrap px-warning">${warning}</small>`] : []),
       ],
-      actions: `<button class="px-window px-button is-primary" data-back data-help="Back to the hall.">Done</button>`,
+      actions: '',
     })}</main>`;
   }
 
@@ -2868,8 +2873,7 @@ export class HubScene extends Phaser.Scene {
       lines: [
         `<small class="px-wrap${warning ? ' px-warning' : ''}">${warning || `${supplies} ${supplies === 1 ? 'supply' : 'supplies'} packed. Lost on a wipe unless they are in the locker. The ${this.flow.packName} is lost on a wipe either way.`}</small>`,
       ],
-      // The cursor starts on what the rack is for, never on the way out.
-      actions: `<button class="px-window px-button is-primary" data-back${firstCount < 0 ? ' data-cursor-start' : ''} data-help="Back to the hall.">Done</button>`,
+      actions: '',
     })}</main>`;
   }
 
@@ -2930,7 +2934,7 @@ export class HubScene extends Phaser.Scene {
     const underWay = this.saveManager.load()?.raidInFlight;
     const elsewhere = underWay ? raidHeartbeat.liveElsewhere(underWay.id) : false;
     const warning = refusal ? undefined : this.packWarning();
-    const stay = rimOpensOnNotYet(this.flow, this.justHome);
+    const stay = rimOpensAwayFromJumpIn(this.flow, this.justHome);
     const rows = this.rimRows(chosen);
     // Why nobody can go heads the card, in red, where the eye starts. At the
     // foot, in the small print under the stakes, it was missed: a player home
@@ -2948,12 +2952,15 @@ export class HubScene extends Phaser.Scene {
     ].filter((line) => line !== '');
     // With nobody able to go, a team about to be finished by the first thing
     // it meets, or a player only just home and still pressing through the
-    // result, the cursor is on the way back and SPACE does not spend the raid.
-    const actions = `<div class="px-bar-actions rim-actions"><button class="px-window px-button" data-back${stay ? ' data-cursor-start' : ''} data-help="Stay on the rim. Everything you have chosen stays as it is.">Not yet</button><button class="px-window px-button is-primary" data-start${stay ? '' : ' data-cursor-start'}${refusal ? ` aria-disabled="true" data-help="${escapeAttribute(refusal)}"` : ` data-help="${escapeAttribute(this.rimJumpHelp(chosen))}"`}>Jump in</button></div>`;
+    // result, the cursor starts on the card's first row rather than on JUMP
+    // IN, so SPACE does not spend the raid. The X and ESC are the way back.
+    const actions = `<div class="px-bar-actions rim-actions"><button class="px-window px-button is-primary" data-start${stay ? '' : ' data-cursor-start'}${refusal ? ` aria-disabled="true" data-help="${escapeAttribute(refusal)}"` : ` data-help="${escapeAttribute(this.rimJumpHelp(chosen))}"`}>Jump in</button></div>`;
     const landing = requireInsertion(chosen);
     const keys = keyHint('ARROWS', 'CHOOSE');
     const card = pixelWindow(
-      `${head.join('')}<div class="rim-grid"><div class="rim-controls">${rows.map((row) => rimChoiceRow(row)).join('')}${this.rimClockView()}${actions}</div><div class="rim-board" data-rim-about>${this.rimBoard(chosen)}</div></div><p class="rim-foot"><small class="rim-keys">${keys}</small><span class="rim-help" data-help-text data-help-default="${escapeAttribute(landing.description)}">${landing.description}</span></p>`,
+      // The card has no title bar, so its X stands in its own top corner, on
+      // the line with whatever heads the card.
+      `<div class="rim-top"><div class="rim-top-lines">${head.join('')}</div><button class="px-close rim-close" data-close aria-label="Close"></button></div><div class="rim-grid"><div class="rim-controls">${rows.map((row, index) => (index === 0 && stay ? rimChoiceRow(row).replace('<button ', '<button data-cursor-start ') : rimChoiceRow(row))).join('')}${this.rimClockView()}${actions}</div><div class="rim-board" data-rim-about>${this.rimBoard(chosen)}</div></div><p class="rim-foot"><small class="rim-keys">${keys}</small><span class="rim-help" data-help-text data-help-default="${escapeAttribute(landing.description)}">${landing.description}</span></p>`,
       { className: 'confirm-bar rim-card', tag: 'div' },
     );
     return `<main class="px-body rim-layout">${card}</main>`;
@@ -3727,7 +3734,7 @@ export class HubScene extends Phaser.Scene {
         // this line says only what the counting does not: the rest is gone.
         '<span class="px-wrap">Everything else you take is lost on a wipe.</span>',
       ],
-      actions: `<button class="px-window px-button is-primary" data-back data-help="Back to the hall.">Done</button>`,
+      actions: '',
     })}</main>`;
   }
 

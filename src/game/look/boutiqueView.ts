@@ -95,7 +95,7 @@ export function boutiqueMarkup(state: BoutiqueState): string {
   return pixelScreen({
     title: shop ? BOUTIQUE_NAME : 'Your wardrobe',
     place: shop ? 'The Docks' : 'The Bolthole',
-    back: { label: shop ? 'Shop' : 'Bedroom', attribute: 'data-close' },
+    close: { attribute: 'data-close' },
     aside: `${formatMoney(state.held('money'))} in YOUR THINGS`,
     body,
     hints: shop ? BOUTIQUE_HINTS : WARDROBE_HINTS,

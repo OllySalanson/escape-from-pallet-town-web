@@ -105,11 +105,11 @@ export function benchRailWarning(bench: RailBench, joy?: string): RailWarning | 
 }
 
 /**
- * Whether the rim's card opens with the cursor on NOT YET rather than JUMP IN:
+ * Whether the rim's card opens with the cursor on its first row rather than JUMP IN:
  * nobody can go, the team together is close to done, or the player is only
  * just home and may still be pressing through the result. The floor asks it
  * too, so it never promises SPACE jumps when SPACE only opens the card.
  */
-export function rimOpensOnNotYet(bench: RailBench, justHome: boolean): boolean {
+export function rimOpensAwayFromJumpIn(bench: RailBench, justHome: boolean): boolean {
   return bench.notReady !== undefined || justHome || benchRailWarning(bench)?.stops === true;
 }

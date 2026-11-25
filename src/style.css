@@ -1666,6 +1666,7 @@ body.touch-play .feedback-tab {
   --px-more: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 3' shape-rendering='crispEdges'%3E%3Cpath fill='%235d5c47' d='M0 0h5v1h-1v1h-1v1h-1v-1h-1v-1h-1z'/%3E%3C/svg%3E");
   --px-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 5' shape-rendering='crispEdges'%3E%3Cpath d='M6 0h1v1h-1zM5 1h1v1h-1zM4 2h1v1h-1zM0 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM2 4h1v1h-1z'/%3E%3C/svg%3E");
   --px-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h-1zM4 0h1v1h-1zM1 1h1v1h-1zM3 1h1v1h-1zM2 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM0 4h1v1h-1zM4 4h1v1h-1z'/%3E%3C/svg%3E");
+  --px-close: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h-1zM1 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM3 3h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1z'/%3E%3C/svg%3E");
   --px-hollow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h5v5h-5zM1 1v3h3v-3z' fill-rule='evenodd'/%3E%3C/svg%3E");
   overflow: hidden;
   /* A calm checker of two blues, eight pixels a square, the way the party
@@ -1840,6 +1841,34 @@ body.touch-play .feedback-tab {
   mask: var(--px-cursor) center / 100% 100% no-repeat;
   -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
   transform: scaleX(-1);
+}
+/* The way out of a screen is a little X at the right end of its title bar
+   (the captain, 25 Nov 2026), drawn rather than typed, in the bar's own muted
+   ink until the cursor is on it. Square, so a thumb has a whole tile to hit. */
+.pixel-ui .px-close {
+  flex: 0 0 auto;
+  position: relative;
+  width: calc(var(--u) * 14);
+  height: calc(var(--u) * 14);
+  margin: 0 calc(var(--u) * -3) 0 0;
+  padding: 0;
+  color: var(--bar-muted);
+}
+:where(.pixel-ui) .px-close::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 7);
+  background: currentColor;
+  mask: var(--px-close) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-close) center / 100% 100% no-repeat;
+}
+:where(.pixel-ui) .px-close:focus,
+:where(.pixel-ui[data-pointer='previews']) .px-close:hover:not(:focus) {
+  color: var(--cream-lit);
+  background: var(--cursor);
 }
 :where(.pixel-ui) .px-back:focus::before {
   background: var(--cursor);
@@ -5296,6 +5325,27 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .rim-card.px-window {
   gap: calc(var(--u) * 3);
+}
+/* The card's top line: what heads it on the left and its X on the right, in
+   the card's own ink because it stands on paper, not on a title bar. */
+:where(.pixel-ui) .rim-top {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .rim-top-lines {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: calc(var(--u) * 3);
+}
+.pixel-ui .rim-card .rim-close {
+  margin: calc(var(--u) * -2) calc(var(--u) * -2) 0 0;
+  color: var(--ink-soft);
+}
+.pixel-ui .rim-card .rim-close:focus,
+:where(.pixel-ui[data-pointer='previews']) .rim-card .rim-close:hover:not(:focus) {
+  color: var(--cream-lit);
 }
 /* Why nobody can go, heading the card (`HubScene.rimView`). */
 :where(.pixel-ui) .rim-refusal {

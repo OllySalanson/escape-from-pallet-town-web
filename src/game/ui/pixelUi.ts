@@ -92,7 +92,17 @@ export interface PixelScreenOptions {
   readonly title: string;
   /** Where the player is, said once and small, ahead of the title. */
   readonly place?: string;
-  /** The way back, if this screen has one: its label and the attribute that wires it. */
+  /**
+   * The little X at the top right that puts the screen away, and the attribute
+   * that wires it. It is what Escape does, so a screen that has one answers
+   * Escape the same way. A screen never also carries a Done or Back button that
+   * only closes it (the captain, 25 Nov 2026: "just that little X or escape").
+   */
+  readonly close?: { readonly attribute: string };
+  /**
+   * A step back up inside the screen - from a Pokédex entry to the list - with
+   * the name of where it goes. Never a way out of the screen: that is `close`.
+   */
   readonly back?: { readonly label: string; readonly attribute: string };
   /** Right-hand side of the title bar: a count, or the route's progress rail. */
   readonly aside?: string;
@@ -150,6 +160,9 @@ export function pixelScreen(options: PixelScreenOptions): string {
     ? `<span class="px-place">${options.place}</span><span class="visually-hidden"> - </span>`
     : '';
   const aside = options.aside ? `<div class="px-title-aside">${options.aside}</div>` : '';
+  const close = options.close
+    ? `<button class="px-close" ${options.close.attribute} aria-label="Close"></button>`
+    : '';
   // The status line stands over the help text rather than replacing it, so it
   // can be taken down by removing it - no re-render, and so no rebuilding the
   // buttons under the pointer - and the help for the focused control is there
@@ -158,7 +171,7 @@ export function pixelScreen(options: PixelScreenOptions): string {
     ? `<span class="px-status-line" role="status">${options.status}</span>`
     : '';
   const help = `<p class="px-help${status ? ' has-status' : ''}"><span data-help-text data-help-default="${escapeAttribute(options.hints)}">${options.hints}</span>${status}</p>`;
-  return `<div class="px-screen"><header class="px-title">${back}<h1>${place}${options.title}</h1>${aside}</header>${options.body}${help}</div>`;
+  return `<div class="px-screen"><header class="px-title">${back}<h1>${place}${options.title}</h1>${aside}${close}</header>${options.body}${help}</div>`;
 }
 
 /**

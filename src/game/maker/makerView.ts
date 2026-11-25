@@ -1455,7 +1455,7 @@ export function makerScreen(state: MakerViewState): string {
   return pixelScreen({
     place: 'Map maker',
     title: escapeHtml(state.file.name || 'Untitled map'),
-    back: { label: 'TITLE', attribute: 'data-back' },
+    close: { attribute: 'data-back' },
     aside: `<span>${state.checks.every((check) => check.passed) ? 'READY' : works ? 'WORKS · WALK IT' : 'NOT FINISHED'}</span>`,
     hints: 'CLICK the map to paint · CTRL+Z undo · ESC cancel',
     ...(state.status ? { status: escapeHtml(state.status) } : {}),

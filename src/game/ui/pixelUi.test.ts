@@ -95,6 +95,14 @@ describe('pixelScreen', () => {
       }),
     ).toContain('<button class="px-back" data-back>Base</button>');
   });
+
+  it('puts the way out at the right end of the title bar as a little X, after everything else on it', () => {
+    const markup = pixelScreen({ title: 'Stash', aside: '3 of 6', body: '', hints: '', close: { attribute: 'data-close' } });
+    const bar = markup.slice(0, markup.indexOf('</header>'));
+    expect(bar).toMatch(/<button class="px-close" data-close aria-label="Close"><\/button>$/);
+    expect(bar.indexOf('px-title-aside')).toBeLessThan(bar.indexOf('px-close'));
+    expect(screen()).not.toContain('px-close');
+  });
 });
 
 describe('pixelCommitBar', () => {

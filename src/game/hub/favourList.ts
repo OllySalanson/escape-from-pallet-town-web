@@ -170,7 +170,7 @@ export function favourListMarkup(entries: readonly FavourEntry[]): string {
   return pixelScreen({
     title: 'Favours',
     place: 'The harbour',
-    back: { label: 'Back', attribute: 'data-favours-close' },
+    close: { attribute: 'data-favours-close' },
     body: `<main class="px-body favour-list">${pixelWindow(pane, { heading: 'Favours', note: `${inHand} in hand · ${done} done` })}</main>`,
     hints: 'ARROWS read · ESC or O back',
   });

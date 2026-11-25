@@ -102,7 +102,7 @@ export class PartyScene extends Phaser.Scene {
     this.status = undefined;
     root.innerHTML = pixelScreen({
       title: 'Party',
-      back: { label: 'Raid', attribute: 'data-close' },
+      close: { attribute: 'data-close' },
       aside: CLOCK_STOPPED,
       body: this.body(),
       // A lone Pokemon has nobody to swap with, so the screen does not offer

@@ -269,7 +269,7 @@ export function statsScreen(state: StatsState, status?: string): string {
   }
   return pixelScreen({
     title: 'Play stats',
-    back: { label: 'Title', attribute: 'data-close' },
+    close: { attribute: 'data-close' },
     ...(aside ? { aside } : {}),
     body,
     hints: STATS_HINTS,

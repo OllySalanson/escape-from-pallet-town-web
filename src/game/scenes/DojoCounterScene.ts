@@ -219,7 +219,12 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
     overlay.redraw(
       pixelScreen({
         title: 'Battle Arena',
-        back: { label: this.mode === null ? 'Dojo' : 'Back', attribute: 'data-close' },
+        // Inside a mode the left of the bar steps back a page; the X always
+        // puts the counter away, wherever in it the player is.
+        ...(this.swapTake || this.opponent || this.mode !== null
+          ? { back: { label: 'Back', attribute: 'data-step-back' } }
+          : {}),
+        close: { attribute: 'data-close' },
         aside: picking ? pixelTag(`${this.team.length} of 3`, this.team.length > 0 ? 'good' : 'risk') : undefined,
         body,
         hints: picking
@@ -232,8 +237,11 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
         ...(status ? { status } : {}),
       }),
     );
-    overlay.root.querySelectorAll<HTMLButtonElement>('[data-close]').forEach((button) => {
+    overlay.root.querySelectorAll<HTMLButtonElement>('[data-step-back]').forEach((button) => {
       button.onclick = () => this.back();
+    });
+    overlay.root.querySelectorAll<HTMLButtonElement>('[data-close]').forEach((button) => {
+      button.onclick = () => this.close(true);
     });
     overlay.root.querySelectorAll<HTMLButtonElement>('[data-opponent]').forEach((button) => {
       button.onclick = () => this.chooseOpponent(button.dataset.opponent!);

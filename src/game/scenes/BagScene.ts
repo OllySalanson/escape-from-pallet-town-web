@@ -446,6 +446,7 @@ export class BagScene extends Phaser.Scene {
         ? {
             title: 'Teach a move',
             back: { label: 'Pack', attribute: 'data-teach-back' },
+            close: { attribute: 'data-close' },
             aside: CLOCK_STOPPED,
             body: teachBody({
               item: using,
@@ -462,7 +463,7 @@ export class BagScene extends Phaser.Scene {
           }
         : {
             title: 'Pack',
-            back: { label: 'Raid', attribute: 'data-close' },
+            close: { attribute: 'data-close' },
             aside: CLOCK_STOPPED,
             body: using ? this.recipientBody(using) : this.pocketBody(),
             hints: using
