@@ -204,7 +204,7 @@ describe('Professor Oak, from the mat', () => {
 
       expect(oak.asked).toHaveLength(1);
       const favour = oak.said.findIndex((line) => line.includes('Before you go!'));
-      expect(favour).toBeGreaterThan(oak.said.indexOf(FIRST_WORDS.lab.lines[2]));
+      expect(favour).toBeGreaterThan(oak.said.indexOf(FIRST_WORDS.lab.lines[1]));
       expect(favour).toBeLessThan(oak.said.findIndex((line) => line.includes('is on the rail')));
     } finally {
       retireMapsForTests([]);
@@ -577,7 +577,7 @@ describe('at the rail', () => {
     });
     const first = lookDown(manager);
     expect(first.said).toEqual([FIRST_WORDS.benchCatch.lines]);
-    expect(first.asked.map(({ question }) => question)).toEqual(['Take PIDGEY along too?']);
+    expect(first.asked.map(({ question }) => question)).toEqual(['Take PIDGEY along?']);
     expect(first.toggled).toEqual(['pidgey-1']);
     expect(first.opened).toEqual([['rim']]);
 

@@ -43,7 +43,7 @@ describe("the first raid's catch", () => {
     expect(FIRST_CATCH_LANDING_LINES[0]).toContain('PIDGEY');
     expect(FIRST_CATCH_LANDING_LINES[0]).not.toMatch(/ENRAGED|pack|hunter/);
     const lines = firstCatchCaughtLines('Pidgey', 'Westward Road', 18);
-    expect(lines[0]).toBe("OAK: Got it! PIDGEY is in your pack, taking 4 of its 18 squares. Get out of the vale and it's yours.");
+    expect(lines[0]).toBe("OAK: Got it! PIDGEY is in your pack. It takes 4 of the 18 squares. Get out of the vale and it's yours.");
     // Hurt, the Potion comes straight after: the hunter is next.
     expect(firstCatchCaughtLines('Pidgey', 'Westward Road', 18, 'POTION LINE')[1]).toBe('POTION LINE');
     expect(lines.join(' ')).toContain('WESTWARD ROAD');

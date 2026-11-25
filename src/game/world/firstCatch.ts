@@ -82,9 +82,9 @@ export function firstCatchCaughtLines(
 ): readonly string[] {
   const squares = pokemonCargoCells(FIRST_CATCH_SPECIES);
   const exit = exitLabel ? exitLabel.toUpperCase() : 'the nearest exit';
-  const room = packSquares ? `taking ${squares} of its ${packSquares} squares` : `taking ${squares} squares`;
+  const room = packSquares ? `It takes ${squares} of the ${packSquares} squares.` : `It takes ${squares} squares.`;
   return [
-    `OAK: Got it! ${name.toUpperCase()} is in your pack, ${room}. Get out of the vale and it's yours.`,
+    `OAK: Got it! ${name.toUpperCase()} is in your pack. ${room} Get out of the vale and it's yours.`,
     ...(heal ? [heal] : []),
     `Faint before you're out, and it's lost. And a hunter will have heard that fight...`,
     `The quickest way out is ${exit}. Or go on for the money, with a hunter about. Your call!`,

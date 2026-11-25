@@ -121,6 +121,8 @@ export interface ActiveRunSession {
    * the same hunters it took the player from.
    */
   hunterPacks?: Map<WorldMapId, HunterPack>;
+  /** Whether this raid has had its minute-left word about the enrage (`WorldScene.warnOfEnrage`). */
+  enrageWarned?: boolean;
   /** A new save's first chase has come (`RunPlan.stagedChase`), so a fight does not bring it twice. */
   stagedChaseCome?: boolean;
   /**

@@ -24,7 +24,7 @@ import type {
   ReportItem,
   ReportPokemon,
 } from '../run/extractionReport';
-import { itemCountTag } from '../items';
+import { formatMoney, isCurrency, itemCountTag } from '../items';
 import { publicAssetUrl } from '../publicAssetUrl';
 import { pokemonSpritePath } from '../pokemon/pokemonSprites';
 import { iconUrl, itemIcon, itemIconName, objectiveIcon } from '../ui/icons';
@@ -422,7 +422,9 @@ export class ExtractionScene extends Phaser.Scene {
       place: escapeHtml(report.eyebrow),
       title: '',
       aside: escapeHtml(this.clockAside()),
-      hints: escapeHtml('L FULL REPORT'),
+      // The help strip says what becomes of the result, as the full report's
+      // does; the key for the report is on its button (the critic's third pass).
+      hints: escapeHtml(this.footerNote()),
       body: `<main class="px-body extraction-moment-layout">${pixelWindow(
         `${picture}<strong class="px-name moment-headline" data-moment-headline>${escapeHtml(moment.headline)}</strong>${
           report.closeCall ? `<span class="px-wrap">${escapeHtml(report.closeCall)}</span>` : ''
@@ -431,11 +433,25 @@ export class ExtractionScene extends Phaser.Scene {
         }`,
         { className: 'extraction-moment px-tone-primary', tag: 'div' },
       )}${pixelCommitBar({
-        title: escapeHtml(this.footerTitle()),
+        title: escapeHtml(this.momentFooterTitle()),
         lines: [],
-        actions: `<button class="px-window px-button" data-full-report>Full report</button><button class="px-window px-button is-primary" data-continue>${currentTry() ? 'Back to the map maker' : 'Back to the Arena'}</button>`,
+        actions: `<button class="px-window px-button" data-full-report>Full report [L]</button><button class="px-window px-button is-primary" data-continue>${currentTry() ? 'Back to the map maker' : 'Back to the Arena'}</button>`,
       })}</main>`,
     });
+  }
+
+  /**
+   * The moment's bar: "BANKED" alone, beside two buttons, read as a word left
+   * over from the ledger (the critic's third pass), so it says the money banked,
+   * or that the raid is saved.
+   */
+  private momentFooterTitle(): string {
+    const title = this.footerTitle();
+    if (title !== 'Banked') {
+      return title;
+    }
+    const money = this.report.ledger.items.filter((item) => isCurrency(item.itemId)).reduce((sum, item) => sum + item.quantity, 0);
+    return money > 0 ? `${formatMoney(money)} banked` : 'Saved';
   }
 
   /** Oak's one next thing (`hub/nextStep.ts`), read off the save this raid was just banked into. */
