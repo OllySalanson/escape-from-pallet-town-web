@@ -39,6 +39,19 @@ export interface TouchShortcutSource {
   touchShortcuts(): readonly TouchShortcut[];
 }
 
+/**
+ * A scene with no keys of its own for the tray that stands over the scene it
+ * came from - a battle over a raid - and so leaves that scene's keys where
+ * they were, dimmed, rather than taking the whole tray away (`ui/touchPad.ts`).
+ */
+export interface DimsTouchTray {
+  readonly dimsTouchTray: true;
+}
+
+export function dimsTouchTray(scene: unknown): scene is DimsTouchTray {
+  return (scene as Partial<DimsTouchTray> | null)?.dimsTouchTray === true;
+}
+
 export function hasTouchShortcuts(scene: unknown): scene is TouchShortcutSource {
   return typeof (scene as Partial<TouchShortcutSource> | null)?.touchShortcuts === 'function';
 }

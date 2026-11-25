@@ -667,7 +667,7 @@ real touches through `Input.dispatchTouchEvent`. A step is `{ "tap": [x, y] }`,
 `touchTap` and `centreOf` are exported for a driver of its own.
 `phoneTour.mjs <url> <dir> --device=...` photographs every screen the touch pad
 changes - the title, the harbour, YOUR THINGS and YOUR TEAM opened from the pad,
-a raid and its pack - pressing everything after the deploy with a finger.
+a raid and its pack, DROP pressed, and a fight out of the raid with its tray - pressing everything after the deploy with a finger.
 `phonePause.mjs <plain build url> <dir>` hides a raid's page as a phone does going
 to another app, photographs the pause plate and taps OK to play on; it needs a
 build that is not in test mode, which never pauses.
