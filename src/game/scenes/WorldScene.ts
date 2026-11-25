@@ -3241,7 +3241,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private advanceVillageCalls(deltaMs: number): void {
     const { x, y } = this.currentTile;
     const callers = this.currentMap.entities
-      .filter((entity) => entity.calls && this.npcSprites.has(entity.id))
+      .filter((entity) => entity.calls && this.npcSprites.has(entity.id) && !this.judgeTiming(entity))
       .map((entity) => {
         const sprite = this.npcSprites.get(entity.id) as Phaser.GameObjects.Sprite;
         const across = sprite.x / TILE_SIZE - x;
@@ -4530,6 +4530,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const race = this.runSession?.race;
     const course = race ? courseById(race.courseId) : undefined;
     return race && course && course.mapId === this.currentMap.id ? { race, course } : null;
+  }
+
+  /**
+   * A judge holding the stopwatch keeps quiet from the agreement to the line:
+   * his bubble would stand over the finish just as the player runs in.
+   */
+  private judgeTiming(entity: WorldEntity): boolean {
+    const here = this.raceHere();
+    if (!here || here.race.phase === 'over') return false;
+    const at = here.course.judge.at;
+    return entity.position.x === at.x && entity.position.y === at.y;
   }
 
   /**

@@ -336,7 +336,7 @@ describe('what LINNET says', () => {
     const late = racerArrivesLines(course, { ...near, steps: 62, startLagMs: 350, cornerLossMs: 0, timeMs: 9_650 }).join(' ');
     expect(late).toContain('GOLD again. 0:09.3 is PERFECT - standing still at GO cost you 3 tenths');
     const round = racerArrivesLines(course, { ...near, steps: 68, startLagMs: 17, cornerLossMs: 0, timeMs: 10_217 }).join(' ');
-    expect(round).toContain('you took 68 steps where 62 will do');
+    expect(round).toContain('you took 68 steps where 62 will do. Out of the ride, wade straight down to the door');
     expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 60, cornerLossMs: 0, timeMs: 9_420 }).join(' ')).toContain('standing still at GO cost you a tenth');
     expect(racerArrivesLines(course, { ...near, fightMs: 1500, timeMs: 10_800 }).join(' ')).toContain('Spray a Repel');
     // "So close!" by the tenths shown: two runs that both read 0:09.5 hear the same.
@@ -347,6 +347,12 @@ describe('what LINNET says', () => {
     expect(holder).toContain("You've run it in 0:10.3");
     expect(holder).not.toContain('is in there');
     expect(gaveUpWaitingLine(course)).toBe('LINNET gave up waiting at the chalk mark.');
+    // The judge stands where his figure does, so his stopwatch silence finds him.
+    const reeve = getWorldMap('greystone-vale').entities.find((entity) => entity.dialogLines.some((line) => line.includes('the stopwatch was the toll')));
+    expect(reeve?.position).toEqual(course.judge.at);
+    // The hints never send a player 'through the reeds' for the floor: that is the lane side's way.
+    expect(course.hints.shortcut).toContain('from the lane');
+    expect(course.hints.shortcutOpen).toContain('from the lane');
     // A ride run lost by seconds stood about on the way; only a whisker is "by a hair".
     const lostRide = (timeMs: number) =>
       racerWonLines(course, { ...input, outcome: 'lost', medal: null, tookShortcut: true, fightMs: 0, timeMs, racerMs: 15_450 }).join(' ');

@@ -172,9 +172,9 @@ export const MERE_DASH: RaceCourse = {
     fights: "The reeds are quick - but I don't stop while you fight in them. Find the dry way, or pack a Repel.",
     longWay: 'You left my boardwalk and still came in behind me? The dry way through the reeds is straighter than that.',
     shortcut:
-      "Nobody gets under 0:11.0 through the reeds. There's an old ride through the pines behind the woodcutter's - grown shut. Bill trades a Cut disc for a linen roll and a parts crate.",
+      "Nobody gets under 0:11.0 from the lane. There's an old ride through the pines behind the woodcutter's - grown shut. Bill trades a Cut disc for a linen roll and a parts crate.",
     shortcutOpen:
-      "Nobody gets under 0:11.0 through the reeds. The woodcutter's ride's open now, mind - straight down through the pines.",
+      "Nobody gets under 0:11.0 from the lane. The woodcutter's ride's open now, mind - straight down through the pines.",
     learned:
       "My dry way now, too! Through the reeds you'll never beat me. The woodcutter's ride - that one's yours.",
   },
@@ -601,7 +601,7 @@ function perfectTip(course: RaceCourse, input: RaceResultInput): string | null {
   if (input.medal !== 'gold' || input.fightMs > 0 || isPerfect(course, input.timeMs)) return null;
   const perfect = `${formatRaceTime(course.perfectMs)} is PERFECT`;
   if (input.steps !== undefined && input.steps > floorSteps(course) + 1) {
-    return `${perfect} - you took ${input.steps} steps where ${floorSteps(course)} will do. Straight through the reeds is shorter - spray a Repel first.`;
+    return `${perfect} - you took ${input.steps} steps where ${floorSteps(course)} will do. Out of the ride, wade straight down to the door instead of round by the dry way - spray a Repel first.`;
   }
   if (input.steps !== undefined && input.steps > floorSteps(course)) {
     return `${perfect} - and a step too many kept you off it: ${input.steps} where ${floorSteps(course)} will do.`;
