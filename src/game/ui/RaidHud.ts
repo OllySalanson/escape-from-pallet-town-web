@@ -13,6 +13,7 @@ import {
 import { GAME_FONT } from './gameFont';
 import { CHIP_FONT_SIZE, CLOCK_FONT_SIZE } from './screenType';
 import { overlaps, type Rect } from './labelPlacement';
+import { iconTextureKey, itemIconName } from './icons';
 import type {
   HunterChipTone,
   HunterChipView,
@@ -77,12 +78,19 @@ const HUNTER_STYLES: Readonly<Record<HunterChipTone, ChipStyle>> = {
 const WEATHER_STYLE: ChipStyle = { fill: 0xa9c3d6, ink: 0x14232e };
 
 /**
- * The prize chip: gold, because it is the one chip on the screen that is not a
- * fact about where you are or what is chasing you - it is an offer, and it is
- * meant to catch the eye every time it is glanced past. It is the only warm
- * chip in the set, which is what stops it reading as another hunter warning.
+ * The prize chip: the furniture's cream, the find's own icon at its left and a
+ * gold edge down that side, because it is the one chip on the screen that is
+ * an offer rather than a fact about where you are or what is chasing you. It
+ * was a slab of mustard with the find spelled out in it (the captain, 25 Nov
+ * 2026: "the big yellow square saying two parts crates"); the picture says what
+ * it is before the words do, and the gold still marks it out from every other
+ * chip. NO ROOM is the pop-ups' red, on a line of its own.
  */
-const PRIZE_STYLE: ChipStyle = { fill: 0xe8b43c, ink: 0x2e1f00 };
+const PRIZE_EDGE = 0xe8b43c;
+const PRIZE_EDGE_WIDTH = 2;
+const PRIZE_ICON = 16;
+const PRIZE_ICON_GAP = 3;
+const PRIZE_ROOM_INK = 0xb0201c;
 
 /**
  * A race (`world/races.ts`): chalk white under a heavy frame, the starter's
@@ -123,6 +131,8 @@ export class RaidHud {
   private readonly placeText: Phaser.GameObjects.Text;
   private readonly weatherText: Phaser.GameObjects.Text;
   private readonly prizeText: Phaser.GameObjects.Text;
+  private readonly prizeRoomText: Phaser.GameObjects.Text;
+  private readonly prizeIcon: Phaser.GameObjects.Image;
   private readonly friendText: Phaser.GameObjects.Text;
   private readonly raceText: Phaser.GameObjects.Text;
 
@@ -137,6 +147,8 @@ export class RaidHud {
     this.placeText = this.createText(CHIP_FONT_SIZE);
     this.weatherText = this.createText(CHIP_FONT_SIZE);
     this.prizeText = this.createText(CHIP_FONT_SIZE);
+    this.prizeRoomText = this.createText(CHIP_FONT_SIZE);
+    this.prizeIcon = scene.add.image(0, 0, '__MISSING').setOrigin(0, 0).setScrollFactor(0).setDepth(HUD_DEPTH + 1).setVisible(false);
     this.friendText = this.createText(CHIP_FONT_SIZE);
     this.raceText = this.createText(CHIP_FONT_SIZE);
   }
@@ -267,18 +279,11 @@ export class RaidHud {
     }
 
     if (state.prize) {
-      this.placeChip(
-        this.prizeText,
-        state.prize.room ? [state.prize.label, state.prize.detail, state.prize.room] : [state.prize.label, state.prize.detail],
-        PRIZE_STYLE,
-        1,
-        (width) => ({
-          x: stageWidth - EDGE_MARGIN - width,
-          y: right.y + right.height + CHIP_GAP,
-        }),
-      );
+      this.placePrize(state.prize, stageWidth, right.y + right.height + CHIP_GAP);
     } else {
       this.prizeText.setVisible(false);
+      this.prizeRoomText.setVisible(false);
+      this.prizeIcon.setVisible(false);
     }
   }
 
@@ -290,6 +295,8 @@ export class RaidHud {
     this.placeText.destroy();
     this.weatherText.destroy();
     this.prizeText.destroy();
+    this.prizeRoomText.destroy();
+    this.prizeIcon.destroy();
     this.friendText.destroy();
     this.raceText.destroy();
   }
@@ -352,6 +359,47 @@ export class RaidHud {
       .setPosition(rect.x + TEXT_PADDING_X + cursorInset, rect.y + TEXT_PADDING_Y)
       .setAlpha(alpha);
     return rect;
+  }
+
+  /**
+   * The prize chip (`PRIZE_EDGE`): cream, a gold edge, the find's icon, its
+   * name and way in ink and, when it would not go in, the room it needs in red
+   * under them. Right-aligned under the column it stands in, as every chip there is.
+   */
+  private placePrize(prize: PrizeChipView, stageWidth: number, top: number): void {
+    const iconKey = prize.itemId ? iconTextureKey(itemIconName(prize.itemId)) : null;
+    const hasIcon = iconKey !== null && this.scene.textures.exists(iconKey);
+    this.prizeText.setVisible(true).setColor(toCssColor(WINDOW_INK_VALUE)).setText([prize.label, prize.detail]);
+    this.prizeRoomText.setVisible(prize.room !== undefined).setColor(toCssColor(PRIZE_ROOM_INK)).setText([prize.room ?? '']);
+    const lead = PRIZE_EDGE_WIDTH + (hasIcon ? PRIZE_ICON + PRIZE_ICON_GAP : 0);
+    const wordsWidth = Math.max(Math.ceil(this.prizeText.width), prize.room ? Math.ceil(this.prizeRoomText.width) : 0);
+    const wordsHeight = Math.ceil(this.prizeText.height) + (prize.room ? Math.ceil(this.prizeRoomText.height) : 0);
+    const width = TEXT_PADDING_X * 2 + lead + wordsWidth;
+    const height = TEXT_PADDING_Y * 2 + Math.max(wordsHeight, hasIcon ? PRIZE_ICON : 0);
+    const rect = { x: Math.round(stageWidth - EDGE_MARGIN - width), y: Math.round(top), width, height };
+    if (this.under && overlaps(rect, this.under)) {
+      this.prizeText.setVisible(false);
+      this.prizeRoomText.setVisible(false);
+      this.prizeIcon.setVisible(false);
+      return;
+    }
+    this.covered.push(rect);
+    drawPixelWindow(this.frames, rect, { fill: WINDOW_CREAM });
+    // The gold edge, inside the frame down the left.
+    this.frames.fillStyle(PRIZE_EDGE, 1);
+    this.frames.fillRect(rect.x + 1, rect.y + 1, PRIZE_EDGE_WIDTH, rect.height - 2);
+    const wordsLeft = rect.x + TEXT_PADDING_X + lead;
+    if (hasIcon && iconKey) {
+      this.prizeIcon
+        .setTexture(iconKey)
+        .setDisplaySize(PRIZE_ICON, PRIZE_ICON)
+        .setPosition(rect.x + TEXT_PADDING_X + PRIZE_EDGE_WIDTH, rect.y + Math.round((height - PRIZE_ICON) / 2))
+        .setVisible(true);
+    } else {
+      this.prizeIcon.setVisible(false);
+    }
+    this.prizeText.setPosition(wordsLeft, rect.y + TEXT_PADDING_Y);
+    this.prizeRoomText.setPosition(wordsLeft, rect.y + TEXT_PADDING_Y + Math.ceil(this.prizeText.height));
   }
 
   /** Height of one line, so the cursor sits on the first one and not the block. */

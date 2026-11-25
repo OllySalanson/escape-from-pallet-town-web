@@ -88,3 +88,15 @@ the pocket holds (`pocketStrip` in `ui/thingsView.ts`).
 | Before | After |
 |---|---|
 | ![](before-things-pockets.png) | ![](after-things-pockets.png) |
+
+## 5. The raid's prize chip is a picture of the find
+
+The captain: "the big yellow square saying two parts crates". The chip that
+names a find seen and not yet picked up was a slab of mustard with the find
+spelled out in it. It is the HUD's cream now, like every chip beside it, with
+the find's own icon, a gold edge down its left to keep it marked as an offer,
+and NO ROOM in red on a line of its own (`RaidHud.placePrize`).
+
+| Before | After |
+|---|---|
+| ![](before-prize-chip.png) | ![](after-prize-chip.png) |
