@@ -1105,3 +1105,19 @@ describe('the make-room list run to more than one page', () => {
     expect(makeRoomPageNote(1, MAKE_ROOM_PAGE + 1)).toBe('2/2 ▲');
   });
 });
+
+describe("HEAL, the wild fight's sixth command", () => {
+  it('uses the weakest medicine that makes the missing HP up, else the strongest', async () => {
+    const { quickHealChoice, formatHealCommand } = await import('./battlePresentation');
+    const potions = [
+      { id: 'super-potion', amount: 50 },
+      { id: 'potion', amount: 20 },
+      { id: 'fresh-water', amount: 30 },
+    ];
+    expect(quickHealChoice(potions, 15)?.id).toBe('potion');
+    expect(quickHealChoice(potions, 25)?.id).toBe('fresh-water');
+    expect(quickHealChoice(potions, 80)?.id).toBe('super-potion');
+    expect(quickHealChoice([], 10)).toBeNull();
+    expect(formatHealCommand(3)).toBe('HEAL x3');
+  });
+});
