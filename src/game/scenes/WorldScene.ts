@@ -147,6 +147,35 @@ import {
 } from '../world/ledges';
 import { PARTY_LIMIT, Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
 import { createGiftPokemon, giftGivenBy, giftNicknamePrompt, isGiftSpoken, type PokemonGift } from '../world/gifts';
+import {
+  PURSE_STONES,
+  RACE_ANSWERS,
+  RACE_COURSES,
+  afterRaceLines,
+  courseById,
+  courseStartedAt,
+  crossesLine,
+  goneHomeLine,
+  heldPrizeLine,
+  newRace,
+  pursePickLine,
+  raceChipLines,
+  raceDay,
+  raceDeclinedLine,
+  raceMedal,
+  raceOfferLines,
+  racePrize,
+  raceQuestion,
+  raceResultLines,
+  racerTimeMs,
+  trophyLine,
+  type RaceCourse,
+  type RaceOutcome,
+  type RaceRecord,
+  type RaceState,
+} from '../world/races';
+import { FINISH_WAIT_MS, GO_SHOWN_MS, countdownWord, formatRaceTime, racerPlace, type RacerPlace } from '../world/raceClock';
+import { RACER_GROUND, raceGround, racerLine } from '../world/raceLine';
 import { DialogBox } from '../ui/DialogBox';
 import { flashScreen } from '../ui/screenFlash';
 import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
@@ -473,6 +502,10 @@ const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 /** Hair to soles, inclusive: the part of a figure's frame that is drawn on. */
 const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
 const HUNTER_FIGURE_ID = 'rival-hunter';
+/** The racer's own figure once a race is agreed (`world/races.ts`). */
+const RACER_FIGURE_ID = 'race-racer';
+/** The countdown's word: over the raid's chips, under nothing. */
+const RACE_WORD_DEPTH = 120;
 /** Ground a hunter sees across though it cannot walk it: low, or flat. */
 const SEE_THROUGH: ReadonlySet<string> = new Set(['water', 'ford', 'fence', 'ice']);
 /** How far from the player a hunter of the pack is drawn at all - past a screen's half-width either way. */
@@ -1065,6 +1098,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * question the map has, and it owns the keyboard the same way.
    */
   private pendingGiftNickname: Pokemon | undefined;
+  /** A racer's offer is being read; the question follows it (`world/races.ts`). */
+  private pendingRaceAsk: RaceCourse | undefined;
+  /** The result is being read and the day's purse follows it. */
+  private pendingRacePurse = false;
+  /** The racer's line this world: worked out once, since it is the same map until a door opens. */
+  private raceLine: readonly GridPosition[] | null = null;
+  /** The countdown's big word, and which it is. */
+  private raceWord: Phaser.GameObjects.Text | undefined;
+  private countdownWordShown: string | null = null;
+  /** The best time on the course being raced, read once rather than every frame. */
+  private raceBestMs: number | undefined;
   /**
    * The authored beat playing over the map: a watch catching the player, the
    * hunter running them down. Driven from `update()` by elapsed time - see
@@ -1282,6 +1326,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   private resetStateFromPreviousRaid(): void {
     this.lookMs = 0;
+    this.pendingRaceAsk = undefined;
+    this.pendingRacePurse = false;
+    this.raceLine = null;
+    this.raceWord = undefined;
+    this.countdownWordShown = null;
+    this.raceBestMs = undefined;
     this.stepFollowsArrow = false;
     this.boardedAtMs = null;
     // The marks were destroyed with the scene; the hunters themselves ride the run session.
@@ -1752,6 +1802,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // room shares (`raidRoom/groupHunter.ts`).
     this.updateGroupHunter();
     this.updateRaid(deltaMs);
+    this.drawRace();
     this.animateExitRides();
     this.drawHunterPack();
     this.settleHeadMark();
@@ -2339,6 +2390,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
 
+    // A race's countdown holds everybody on the line, the player included.
+    const countingDown = this.raceHere();
+    if (countingDown?.race.phase === 'countdown' && !this.dialogBox.visible) {
+      this.advanceRaceCountdown(countingDown.race, deltaMs);
+      return;
+    }
+
     // A figure coming for the player is not something to walk away from: the
     // map is theirs until they have arrived and spoken. While a cutscene waits
     // on a line to be read it hands the frame back, so the dialogue box below
@@ -2426,6 +2484,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
 
     if (this.tryExtractWhereStanding()) {
+      return;
+    }
+
+    if (this.tryCrossRaceLine()) {
       return;
     }
 
@@ -3293,7 +3355,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.createLedgeLabels();
     this.idleFigures = createIdleFigures(this.currentMap.entities, Math.random);
     for (const entity of this.currentMap.entities) {
-      if (this.wasMet(entity)) {
+      if (this.wasMet(entity) || this.racerAway(entity)) {
         continue;
       }
       if (entity.kind === 'sign') {
@@ -3341,6 +3403,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
 
     this.createHunterSprite();
+    this.createRaceFigures();
   }
 
   /**
@@ -4064,6 +4127,397 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
   }
 
+  // -- races ---------------------------------------------------------------------
+  // A townsperson who races the player across the map (`world/races.ts`). The
+  // rules and the words are there; this is only the figure, the countdown, the
+  // line and the pay.
+
+  /** The race this raid, and its course, while either is on this map. */
+  private raceHere(): { readonly race: RaceState; readonly course: RaceCourse } | null {
+    const race = this.runSession?.race;
+    const course = race ? courseById(race.courseId) : undefined;
+    return race && course && course.mapId === this.currentMap.id ? { race, course } : null;
+  }
+
+  /** Whether the racers stand this raid: from a save's second raid on, and never in a maker's try. */
+  private racersStand(): boolean {
+    return this.runSession !== undefined && this.runSession.plan?.stagedChase !== true && !currentTry();
+  }
+
+  /** The course a map person is the racer for, if they are one and stand this raid. */
+  private courseOfPerson(entity: WorldEntity): RaceCourse | undefined {
+    return entity.kind === 'npc' && !entity.pokemon ? courseStartedAt(this.currentMap.id, entity.position) : undefined;
+  }
+
+  /**
+   * A racer's map figure is out of the way: on a raid they do not stand, and on
+   * one whose race has been agreed, when the race's own figure stands in for them.
+   */
+  private racerAway(entity: WorldEntity): boolean {
+    const course = this.courseOfPerson(entity);
+    return course !== undefined && (!this.racersStand() || this.runSession?.race?.courseId === course.id);
+  }
+
+  /** The racer's line, worked out once a world: it is the same map until a door opens. */
+  private raceLineFor(course: RaceCourse): readonly GridPosition[] {
+    if (this.raceLine) {
+      return this.raceLine;
+    }
+    const figures = [
+      ...this.currentMap.entities.flatMap((entity) => [entity.position, ...(entity.idle?.roam ?? [])]),
+      ...this.trainersForCurrentMap().map((encounter) => encounter.position),
+    ].filter((tile) => !(tile.x === course.racer.stands.x && tile.y === course.racer.stands.y));
+    this.raceLine = racerLine(raceGround(this.currentMap, figures), course.racer.stands, course.finish.tiles, course.racer.waits) ?? [
+      course.racer.stands,
+    ];
+    return this.raceLine;
+  }
+
+  /** Where in the racer's line they cross. */
+  private raceCrossingIndex(course: RaceCourse, line: readonly GridPosition[]): number {
+    const index = line.findIndex((tile) => crossesLine(course, tile));
+    return index < 0 ? line.length - 1 : index;
+  }
+
+  /** The racer's figure and the line on the planks, drawn as a world is built. */
+  private createRaceFigures(): void {
+    if (!this.racersStand()) {
+      return;
+    }
+    for (const course of RACE_COURSES.filter((one) => one.mapId === this.currentMap.id)) {
+      this.drawFinishLine(course);
+    }
+    const here = this.raceHere();
+    if (here) {
+      this.raceBestMs = new SaveManager().load()?.raidProgress.races?.[here.course.id]?.bestMs;
+      const place = this.racerNow(here.race, here.course);
+      this.createFigure(RACER_FIGURE_ID, place.tile, place.facing, 'npc', here.course.racer.design);
+    }
+  }
+
+  /** A chequered strip across the planks at the line, under every figure. */
+  private drawFinishLine(course: RaceCourse): void {
+    const mark = this.add.graphics().setDepth(MARKER_BAND);
+    for (const tile of course.finish.tiles) {
+      const left = tile.x * TILE_SIZE + 4;
+      const top = tile.y * TILE_SIZE;
+      for (let row = 0; row < TILE_SIZE / 4; row += 1) {
+        for (let column = 0; column < 2; column += 1) {
+          mark.fillStyle((row + column) % 2 === 0 ? 0xf8f8f0 : 0x1c2028, 0.9);
+          mark.fillRect(left + column * 4, top + row * 4, 4, 4);
+        }
+      }
+    }
+    this.mapObjects.push(mark);
+  }
+
+  /** Where the racer is now: at the start until GO, on their line after. */
+  private racerNow(race: RaceState, course: RaceCourse): RacerPlace {
+    const line = this.raceLineFor(course);
+    return racerPlace(line, STEP_DURATION_MS, race.phase === 'countdown' ? 0 : race.clockMs);
+  }
+
+  /** Every frame: the racer where the clock puts them, striding while they run. */
+  private drawRace(): void {
+    const here = this.raceHere();
+    if (!here || !this.npcSprites.has(RACER_FIGURE_ID)) {
+      return;
+    }
+    const place = this.racerNow(here.race, here.course);
+    const x = place.tile.x + (place.next.x - place.tile.x) * place.between;
+    const y = place.tile.y + (place.next.y - place.tile.y) * place.between;
+    // A stride on the first half of every other tile: a run, not a glide.
+    const striding = !place.home && place.between < 0.5;
+    this.placeFigure(RACER_FIGURE_ID, x, y, place.home ? 'down' : place.facing, { striding });
+  }
+
+  /** Whether the racer is standing on this tile, and so in the way: at the start, or home. */
+  private racerStandsOn(tile: GridPosition): boolean {
+    const here = this.raceHere();
+    if (!here) {
+      return false;
+    }
+    const place = this.racerNow(here.race, here.course);
+    return (here.race.phase === 'countdown' || place.home) && place.tile.x === tile.x && place.tile.y === tile.y;
+  }
+
+  /** The racer asks: who, where, what for - and then the captain's question. */
+  private offerRace(course: RaceCourse): void {
+    const record = new SaveManager().load()?.raidProgress.races?.[course.id];
+    this.dialogBox.showMessages(raceOfferLines(course, record, this.purseTakenToday(record)));
+    this.pendingRaceAsk = course;
+  }
+
+  private purseTakenToday(record: RaceRecord | undefined): boolean {
+    return record?.purseDay === raceDay(new Date());
+  }
+
+  private askToRace(course: RaceCourse): void {
+    this.trainerPrompt = new ChoicePrompt(this, {
+      x: Math.round((this.scale.width - DIALOG_WIDTH) / 2),
+      y: this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
+      width: DIALOG_WIDTH,
+      height: DIALOG_HEIGHT,
+      padding: 10,
+      lines: [raceQuestion(course)],
+      options: RACE_ANSWERS,
+      selected: 0,
+      clickArmingMs: 300,
+      onChoose: (index) => {
+        this.trainerPrompt?.destroy();
+        this.trainerPrompt = undefined;
+        if (index !== 0) {
+          audioManager.play('cancel');
+          this.dialogBox.showMessage(raceDeclinedLine(course));
+          return;
+        }
+        this.startRace(course);
+      },
+    });
+  }
+
+  /** YES: the racer's map figure becomes the race's, off the bike, and the countdown. */
+  private startRace(course: RaceCourse): void {
+    if (!this.runSession || this.runSession.race) {
+      return;
+    }
+    this.raceLine = null;
+    const line = this.raceLineFor(course);
+    this.runSession.race = newRace(course, racerTimeMs(this.raceCrossingIndex(course, line) + 1));
+    this.setRiding(false);
+    const person = this.currentMap.entities.find((entity) => this.courseOfPerson(entity) === course);
+    if (person) {
+      this.npcSprites.get(person.id)?.destroy();
+      this.npcSprites.delete(person.id);
+      this.npcAppearances.delete(person.id);
+    }
+    this.createFigure(RACER_FIGURE_ID, course.racer.stands, 'down', 'npc', course.racer.design);
+    this.countdownWordShown = null;
+    this.raceBestMs = new SaveManager().load()?.raidProgress.races?.[course.id]?.bestMs;
+    recordAction(`Agreed to race ${course.racer.name}`);
+  }
+
+  /** The countdown owns the frame: nothing moves, nobody's clock runs. */
+  private advanceRaceCountdown(race: RaceState, deltaMs: number): void {
+    race.countdownMs += deltaMs;
+    const word = countdownWord(race.countdownMs);
+    if (word === null) {
+      race.phase = 'running';
+      race.clockMs = 0;
+      this.showRaceWord('GO!');
+      audioManager.play('raceGo');
+      this.time.delayedCall(GO_SHOWN_MS, () => this.showRaceWord(null));
+      return;
+    }
+    if (word !== this.countdownWordShown) {
+      this.showRaceWord(word);
+      audioManager.play('raceBeep');
+    }
+  }
+
+  /** The big word over the middle of the screen, or none. */
+  private showRaceWord(word: string | null): void {
+    this.countdownWordShown = word;
+    if (word === null) {
+      this.raceWord?.destroy();
+      this.raceWord = undefined;
+      return;
+    }
+    if (!this.raceWord) {
+      this.raceWord = this.add
+        .text(Math.round(this.scale.width / 2), Math.round(this.scale.height / 2) - 24, '', {
+          fontFamily: GAME_FONT,
+          fontSize: '32px',
+          color: '#fbfbf4',
+          stroke: '#101418',
+          strokeThickness: 6,
+        })
+        .setOrigin(0.5, 0.5)
+        .setScrollFactor(0)
+        .setDepth(RACE_WORD_DEPTH);
+    }
+    this.raceWord.setText(word);
+  }
+
+  /** The race clock, charged what the raid clock is (`advanceRunClock`); and the racer giving up. */
+  private chargeRace(clockMs: number): void {
+    const here = this.raceHere();
+    if (!here || here.race.phase !== 'running') {
+      return;
+    }
+    here.race.clockMs += clockMs;
+    // Off made ground, bar the verge the race was asked from: off her road.
+    const { x, y } = this.currentTile;
+    const atStart = Math.abs(x - here.course.racer.stands.x) + Math.abs(y - here.course.racer.stands.y) <= 1;
+    if (!atStart && !RACER_GROUND.has(this.currentMap.terrain[y]?.[x] ?? 'grass')) {
+      here.race.offRoad = true;
+    }
+    if (here.race.clockMs >= here.race.racerMs + FINISH_WAIT_MS) {
+      here.race.phase = 'over';
+      here.race.outcome = 'late';
+      if (!this.dialogBox.visible && !this.trainerPrompt) {
+        this.dialogBox.showMessage(goneHomeLine(here.course));
+      }
+    }
+  }
+
+  /**
+   * Over the line, at rest on it: who was first, the mark, and the pay. Asked
+   * where the player comes to rest with nothing on screen, as an exit is.
+   */
+  private tryCrossRaceLine(): boolean {
+    const here = this.raceHere();
+    if (!here || here.race.phase !== 'running' || !crossesLine(here.course, this.currentTile)) {
+      return false;
+    }
+    const { race, course } = here;
+    const timeMs = race.clockMs;
+    const outcome: RaceOutcome = timeMs < race.racerMs ? 'won' : 'lost';
+    const medal = raceMedal(course, timeMs, outcome === 'won');
+    const was = new SaveManager().recordRace(course.id, timeMs, outcome === 'won', medal);
+    const prize = racePrize(outcome, medal, {
+      purseTakenToday: this.purseTakenToday(was),
+      trophyBanked: was?.trophy === true,
+    });
+    race.phase = 'over';
+    race.outcome = outcome;
+    race.playerMs = timeMs;
+    race.purseToPick = prize.purse;
+    audioManager.play(outcome === 'won' ? 'raceWon' : 'raceLost');
+    recordAction(`Crossed ${course.finish.name} ${outcome === 'won' ? 'first' : 'second'} in ${formatRaceTime(timeMs)}`);
+    const lines = raceResultLines(course, {
+      outcome,
+      timeMs,
+      racerMs: race.racerMs,
+      fightMs: race.fightMs,
+      offRoad: race.offRoad,
+      medal,
+      // A first run is not a best of anything: it is the time to beat.
+      newBest: was?.bestMs !== undefined && timeMs < was.bestMs,
+      prize,
+    });
+    const handed: { itemId: ItemId; quantity: number }[] = [
+      { itemId: 'money', quantity: prize.money },
+      ...(prize.trophy ? [{ itemId: course.trophy, quantity: 1 }] : []),
+    ];
+    if (prize.trophy) {
+      lines.push(trophyLine(course, getItemById(course.trophy)?.displayName ?? course.trophy));
+    }
+    if (!this.handOver(race, course, handed)) {
+      lines.push(heldPrizeLine(course));
+    }
+    this.dialogBox.showMessages(lines);
+    this.pendingRacePurse = prize.purse;
+    return true;
+  }
+
+  /** Into the pack what will go; the rest the racer holds. False when anything is held. */
+  private handOver(race: RaceState, course: RaceCourse, prizes: readonly { itemId: ItemId; quantity: number }[]): boolean {
+    let all = true;
+    for (const prize of prizes) {
+      if (prize.quantity <= 0) continue;
+      if (this.collectRunItem(prize.itemId, prize.quantity)) {
+        this.bankRacePrize(race, course, prize.itemId);
+        continue;
+      }
+      all = false;
+      race.held.push({ ...prize });
+    }
+    return all;
+  }
+
+  /** A purse stone or the trophy in the pack is written down if the raid gets it home. */
+  private bankRacePrize(race: RaceState, course: RaceCourse, itemId: ItemId): void {
+    if (PURSE_STONES.includes(itemId)) {
+      race.bank.purseDay = raceDay(new Date());
+    }
+    if (itemId === course.trophy) {
+      race.bank.trophy = true;
+    }
+  }
+
+  /** The day's purse: the player names the stone. */
+  private askPurseStone(course: RaceCourse): void {
+    this.trainerPrompt = new ChoicePrompt(this, {
+      x: Math.round((this.scale.width - DIALOG_WIDTH) / 2),
+      y: this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
+      width: DIALOG_WIDTH,
+      height: DIALOG_HEIGHT,
+      padding: 10,
+      lines: [pursePickLine(course)],
+      options: PURSE_STONES.map((stone) => (getItemById(stone)?.displayName ?? stone).replace(/ Stone$/, '').toUpperCase()),
+      selected: 0,
+      clickArmingMs: 300,
+      onChoose: (index) => {
+        this.trainerPrompt?.destroy();
+        this.trainerPrompt = undefined;
+        const here = this.raceHere();
+        if (!here) return;
+        here.race.purseToPick = false;
+        const stone = PURSE_STONES[index];
+        const name = getItemById(stone)?.displayName ?? stone;
+        if (this.handOver(here.race, course, [{ itemId: stone, quantity: 1 }])) {
+          audioManager.play('itemObtained');
+          this.dialogBox.showMessage(`You received a ${name.toUpperCase()}!${this.reseatNote()}`);
+        } else {
+          this.dialogBox.showMessages([`${course.racer.name} holds a ${name.toUpperCase()} for you.`, heldPrizeLine(course)]);
+        }
+      },
+    });
+  }
+
+  /** Spoken to once the race is run: the purse to choose, a held prize, or a word. */
+  private talkToRacerAfter(course: RaceCourse, race: RaceState): void {
+    this.faceFigure(RACER_FIGURE_ID, OPPOSITE_DIRECTION[this.facing]);
+    if (race.purseToPick) {
+      this.askPurseStone(course);
+      return;
+    }
+    if (race.held.length > 0) {
+      const held = race.held.splice(0);
+      const names = held.map((prize) =>
+        prize.itemId === 'money' ? formatMoney(prize.quantity) : getItemById(prize.itemId)?.displayName ?? prize.itemId,
+      );
+      if (this.handOver(race, course, held)) {
+        audioManager.play('itemObtained');
+        this.dialogBox.showMessage(`${course.racer.name} hands over ${names.join(' and ')}.${this.reseatNote()}`);
+      } else {
+        this.dialogBox.showMessage(heldPrizeLine(course));
+      }
+      return;
+    }
+    this.dialogBox.showMessages(afterRaceLines(course, race.outcome ?? null));
+  }
+
+  /** The race chip, while the race is on. */
+  private raceChip(): readonly string[] | null {
+    const here = this.raceHere();
+    if (!here || here.race.phase === 'over') {
+      return null;
+    }
+    const { race, course } = here;
+    const place = this.racerNow(race, course);
+    const home = race.phase === 'running' && race.clockMs >= race.racerMs;
+    const bearing = compassBearing(this.currentTile, course.finish.tiles[0]);
+    return raceChipLines({
+      course,
+      clockMs: race.phase === 'countdown' ? 0 : race.clockMs,
+      racerPlace: districtAt(this.currentMap.id, place.tile)?.name ?? null,
+      racerHomeMs: home ? race.racerMs : null,
+      waitLeftMs: home ? race.racerMs + FINISH_WAIT_MS - race.clockMs : null,
+      bearing,
+      bestMs: this.raceBestMs,
+    });
+  }
+
+  /** On the way out: what the race paid that is only won by getting it home. */
+  private bankRace(): void {
+    const race = this.runSession?.race;
+    if (race) {
+      new SaveManager().bankRaceWinnings(race.courseId, race.bank);
+    }
+  }
+
   private warpArrow(warp: MapWarp): string {
     if (warp.source.y === 0) return PRESS_ARROWS.up;
     if (warp.source.y === this.currentMap.height - 1) return PRESS_ARROWS.down;
@@ -4129,7 +4583,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /** Every tile a figure stands on now: none once it is out of the way, two mid-step. */
   private entityHeldTiles(entity: WorldEntity): readonly GridPosition[] {
-    if (this.wasMet(entity)) {
+    if (this.wasMet(entity) || this.racerAway(entity)) {
       return [];
     }
     if (entity.boulder) {
@@ -5434,6 +5888,24 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // the AI playtester's screen did not show in the world, so it waited on
       // caches it never knew to take from (veteran playtest, 20 Nov 2026).
       search: this.search ? this.searchForTest(this.search) : null,
+      // A race under way or run this raid (`world/races.ts`): where the racer is
+      // and what the clock says, which the chip shows a player.
+      race: (() => {
+        const here = this.raceHere();
+        if (!here) return null;
+        const place = this.racerNow(here.race, here.course);
+        return {
+          course: here.course.id,
+          phase: here.race.phase,
+          clockMs: Math.round(here.race.clockMs),
+          racerMs: here.race.racerMs,
+          racer: tileOf(place.tile),
+          ...(here.race.outcome ? { outcome: here.race.outcome } : {}),
+          ...(here.race.playerMs !== undefined ? { playerMs: Math.round(here.race.playerMs) } : {}),
+          held: here.race.held.length,
+          purseToPick: here.race.purseToPick,
+        };
+      })(),
       raid:
         session && snapshot
           ? {
@@ -5676,6 +6148,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         // actually been laid eyes on, which is most raids.
         prize: prizeChipView(this.prizeInMind()),
         friend: this.friendChip(),
+        race: this.raceChip(),
         hunter: hunterChipView({
           who: this.hunterRival().name,
           shout: this.hunterShout(),
@@ -6154,6 +6627,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const trainer = this.trainersForCurrentMap().find(
       (candidate) => candidate.position.x === targetTile.x && candidate.position.y === targetTile.y,
     );
+    const race = this.raceHere();
+    if (!entity && !trainer && race && this.racerStandsOn(targetTile)) {
+      if (race.race.phase === 'over') {
+        this.talkToRacerAfter(race.course, race.race);
+      } else if (race.race.phase === 'running') {
+        this.faceFigure(RACER_FIGURE_ID, OPPOSITE_DIRECTION[this.facing]);
+        this.dialogBox.showMessage(`${race.course.racer.name}: Over the line first, then talk!`);
+      }
+      return;
+    }
     if (!entity && !trainer) {
       this.tryFishAt(targetTile);
       return;
@@ -6167,6 +6650,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     if (entity?.kind === 'npc') {
       this.faceFigure(entity.id, OPPOSITE_DIRECTION[this.facing]);
+    }
+    const raceOffered = entity ? this.courseOfPerson(entity) : undefined;
+    if (raceOffered && this.racersStand() && !this.runSession?.race) {
+      this.offerRace(raceOffered);
+      return;
     }
 
     // A Pokemon spoken to cries as its line goes up, as one stood in FireRed's
@@ -7395,7 +7883,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       (this.isHunterOnCurrentMap() &&
         this.hunterState.position!.x === tile.x &&
         this.hunterState.position!.y === tile.y) ||
-      this.hunterPackHere()?.hunterAt(tile) !== undefined
+      this.hunterPackHere()?.hunterAt(tile) !== undefined ||
+      this.racerStandsOn(tile)
     );
   }
 
@@ -7754,6 +8243,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * should close, as FireRed's does; otherwise the line to say there.
    */
   private toggleBike(): string | null {
+    const racing = this.runSession?.race;
+    if (!this.riding && racing && racing.phase !== 'over') {
+      return 'On foot, no wheels - not until the race is over.';
+    }
     const answer = toggleBike(this.rideState());
     if (answer.kind === 'refused') {
       return answer.message;
@@ -9016,6 +9509,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         ? new SaveManager().bankContract(contract, runResult, settlement, snapshot.elapsedMs, raidId)
         : { saved: new SaveManager().bankRun(runResult, settlement, snapshot.elapsedMs, raidId), granted: false };
     const contractResult = bank();
+    if (contractResult.saved && !settledElsewhere) {
+      this.bankRace();
+    }
     // Storage refused it: tried again at base, so the raid is not settled there
     // as abandoned when it was walked out of (`run/unsavedEnding.ts`).
     if (!contractResult.saved && !settledElsewhere) {
@@ -9155,10 +9651,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.pendingWildBattle ||
       this.openingBriefingOpen ||
       this.onRadio ||
-      cutsceneRunning
+      cutsceneRunning ||
+      this.runSession.race?.phase === 'countdown'
         ? 0
         : deltaMs;
     const snapshot = this.runSession.manager.tick(clockMs);
+    this.chargeRace(clockMs);
     this.advanceSearch(clockMs);
     if (snapshot.isEnraged) {
       this.hunterState = hunterAtEnrage(this.hunterState);
@@ -9730,6 +10228,22 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     if (this.pendingGiftNickname) {
       this.askGiftNickname(this.pendingGiftNickname);
+      return;
+    }
+
+    if (this.pendingRaceAsk) {
+      const course = this.pendingRaceAsk;
+      this.pendingRaceAsk = undefined;
+      this.askToRace(course);
+      return;
+    }
+
+    if (this.pendingRacePurse) {
+      this.pendingRacePurse = false;
+      const here = this.raceHere();
+      if (here?.race.purseToPick) {
+        this.askPurseStone(here.course);
+      }
       return;
     }
 

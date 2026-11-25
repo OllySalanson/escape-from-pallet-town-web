@@ -153,6 +153,7 @@ import {
   type TreasureHunt,
 } from '../treasure/treasureMap';
 import { readHomeLayout, type Placement } from '../home/arrangement';
+import { betterMedal, courseById, type RaceMedal, type RaceRecord } from '../world/races';
 import { saveWritten } from './keepSavesSafe';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
@@ -309,6 +310,13 @@ export interface RaidProgress {
    * for anything. Absent on a save that has never stuck one.
    */
   readonly landings?: LandingRecord;
+  /**
+   * Races against townsfolk (`world/races.ts`), by course id: how many run and
+   * won, the best time and mark, and - written only when a raid banks them -
+   * the day the purse last went home and whether the trophy has. Absent on a
+   * save that has never raced.
+   */
+  readonly races?: Readonly<Record<string, RaceRecord>>;
   /** Bouts for show in THE RAID ARENA: who has been beaten in a row (`base/arenaBouts.ts`). */
   readonly bouts?: BoutRecord;
   /** Bouts in THE BATTLE ARENA: won, lost, and which of its regulars have been beaten (`arena/dojoRecord.ts`). */
@@ -1455,6 +1463,58 @@ export class SaveManager {
       raidProgress: { ...game.raidProgress, landings: { streak, best: Math.max(streak, held?.best ?? 0) } },
     });
     return streak;
+  }
+
+  /**
+   * A race crossed (`world/races.ts`): counted, and its time and mark kept if
+   * they are the best. Written at the line rather than at extraction, because
+   * a time is not loot - nothing of it rides in the pack. Returns the record
+   * as it stood before, so the line can say whether this was a new best.
+   */
+  public recordRace(courseId: string, timeMs: number, won: boolean, medal: RaceMedal | null): RaceRecord | undefined {
+    const game = this.load();
+    if (!game) {
+      return undefined;
+    }
+    const was = game.raidProgress.races?.[courseId];
+    const best = was?.bestMs === undefined ? timeMs : Math.min(was.bestMs, timeMs);
+    const record: RaceRecord = {
+      ...was,
+      runs: (was?.runs ?? 0) + 1,
+      wins: (was?.wins ?? 0) + (won ? 1 : 0),
+      bestMs: Math.round(best),
+      ...(betterMedal(was?.medal, medal) ? { medal: betterMedal(was?.medal, medal) } : {}),
+    };
+    this.save({
+      ...game,
+      raidProgress: { ...game.raidProgress, races: { ...game.raidProgress.races, [courseId]: record } },
+    });
+    return was;
+  }
+
+  /**
+   * What a race paid that is written down only once a raid has carried it home:
+   * the day's purse, and the trophy. A raid lost with them in the pack has not
+   * won them, and the racer offers them again.
+   */
+  public bankRaceWinnings(courseId: string, bank: { readonly purseDay?: string; readonly trophy?: boolean }): void {
+    if (!bank.purseDay && !bank.trophy) {
+      return;
+    }
+    const game = this.load();
+    if (!game) {
+      return;
+    }
+    const was = game.raidProgress.races?.[courseId] ?? { runs: 0, wins: 0 };
+    const record: RaceRecord = {
+      ...was,
+      ...(bank.purseDay ? { purseDay: bank.purseDay } : {}),
+      ...(bank.trophy || was.trophy ? { trophy: true as const } : {}),
+    };
+    this.save({
+      ...game,
+      raidProgress: { ...game.raidProgress, races: { ...game.raidProgress.races, [courseId]: record } },
+    });
   }
 
   public watchArenaIntro(): boolean {
@@ -3122,6 +3182,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     ...(value.battleLessonGiven === true ? { battleLessonGiven: true } : {}),
     ...(value.arenaIntroSeen === true ? { arenaIntroSeen: true } : {}),
     ...(readLandings(value.landings) ?? {}),
+    ...(readRaces(value.races) ?? {}),
     ...(readOutRun(value.outRun) ?? {}),
     ...(readPit(value.pit) ?? {}),
     ...(value.bouts === undefined ? {} : { bouts: readBouts(value.bouts) }),
@@ -3218,6 +3279,31 @@ function readOutRun(value: unknown): { readonly outRun: OutRun } | null {
   }
   const count = (entry: unknown): number => (Number.isInteger(entry) && (entry as number) > 0 ? (entry as number) : 0);
   return { outRun: { now: count(value.now), broke: count(value.broke) } };
+}
+
+/** Only courses that still exist, with whole counts and a sane time. */
+function readRaces(value: unknown): { readonly races: Readonly<Record<string, RaceRecord>> } | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const whole = (count: unknown): number => (Number.isInteger(count) && (count as number) > 0 ? (count as number) : 0);
+  const races: Record<string, RaceRecord> = {};
+  for (const [id, held] of Object.entries(value)) {
+    if (!courseById(id) || !isRecord(held)) {
+      continue;
+    }
+    const best = held.bestMs;
+    const medal = held.medal;
+    races[id] = {
+      runs: whole(held.runs),
+      wins: whole(held.wins),
+      ...(typeof best === 'number' && Number.isFinite(best) && best > 0 ? { bestMs: Math.round(best) } : {}),
+      ...(medal === 'gold' || medal === 'silver' || medal === 'bronze' ? { medal } : {}),
+      ...(typeof held.purseDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(held.purseDay) ? { purseDay: held.purseDay } : {}),
+      ...(held.trophy === true ? { trophy: true as const } : {}),
+    };
+  }
+  return Object.keys(races).length > 0 ? { races } : null;
 }
 
 function readLandings(value: unknown): { readonly landings: LandingRecord } | null {

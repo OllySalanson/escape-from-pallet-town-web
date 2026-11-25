@@ -1,4 +1,5 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
+import { chargeFight } from '../world/races';
 import type { HunterRivalId } from '../world/hunters';
 import { fellLine } from '../world/raidMemory';
 import { bossesBeatenOnRaid } from '../world/trainers';
@@ -1112,6 +1113,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   public update(_time: number, delta: number): void {
+    // A race the player is in goes on while they fight: the racer does not stop
+    // (`world/races.ts`), and the fight's own game time is what it costs.
+    chargeFight(this.runSession?.race, delta);
     this.advanceSlides();
     this.updateRain(delta);
     // A press is an answer to the line as it stood when the frame began. Typed

@@ -103,6 +103,15 @@ way a player does rather than calling `.click()`: `keyDescription` gives Enter a
 the title until the first raid is the player's, as somebody who does not read, and
 prints every barrier in order with its presses and seconds.
 
+`race.mjs <url> [--line=road|dry|wade|cut] [--ask-from=west|east|south] [--slow=ms] [--stone=N] [--shot=dir]`
+races LINNET from Mill Square to THE LAST HOUSE (`src/game/world/races.ts`) on a save
+past its first raid: walks to her, asks, says YES, sits the countdown and runs the
+line asked for on 60fps stepped frames, holding the keys a player holds and turning
+a beat before each corner. `road` is a first-timer following her, `dry` the reeds'
+dry way, `wade` the fewest steps through the grass, and `cut` with
+`--opened=greystone-vale/door-2` the woodcutter's ride; it prints the clock, who
+crossed first, every line at the finish, the pack and the save's record.
+
 `slowLoad.mjs <cdp port> <build url> <dir> [kbit/s] [latency ms]` opens the game
 on a throttled line with the cache off and photographs the first load until the
 title is up, for what a friend on poor wifi sees before the game can draw

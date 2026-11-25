@@ -69,8 +69,8 @@ const OUTLINE = [
   'TTTTT...T........T...T.......TTT',
   'TTTTT................T.......TTT',
   'TTTTT...T........T...T.......TTT',
-  'TTTTTTTTTTTTTTTTTTTT.TTTTTTTTTTT',
-  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTT.TTTTTTTTTT.TTTTTTTTTTT',
+  'TTTTTTTTT.TTTTTTTTTTTTTTTTTTTTTT',
 ];
 
 
@@ -289,6 +289,11 @@ export function millbrook(): MapcraftResult {
   p.flowers([10, 56], [15, 57], [10, 59], [15, 59]);
   stand('bench', 11, 54);
 
+  // -- The woodcutter's ride: a gap in the wood out of the glade, grown shut --------------------
+  // A small tree in it and a bush beside it; past them the ride runs south through
+  // the pines into the reeds (Reedmere draws the rest).
+  p.put(19, 60, 'o');
+
   // -- The camp on the Westward Road ----------------------------------------------------------
   stand('log', 5, 26);
   stand('stump', 8, 27);
@@ -310,10 +315,15 @@ export function millbrook(): MapcraftResult {
       { x: 23, y: 50 + 8, hidden: true }, // under the woodcutter's window
     ],
     extra: {
-      doors: [{ kind: 'cut-tree', x: 16, y: 56, width: 1, height: 1 }],
+      doors: [
+        { kind: 'cut-tree', x: 16, y: 56, width: 1, height: 1 },
+        // The woodcutter's ride, out of the glade south into the reeds: LINNET's
+        // race's shortcut, for whoever brings a Cut (`world/races.ts`).
+        { kind: 'cut-tree', x: 18, y: 60, width: 1, height: 1 },
+      ],
       signs: [
         { x: 9, y: 29, lines: ['MILLBROOK', 'Where every road in the vale starts.'] },
-        { x: 37, y: 29, lines: ['MILL SQUARE', 'West: the Westward Road. North: the moor. East: The Crossing. South: Reedmere.'] },
+        { x: 37, y: 29, lines: ['MILL SQUARE', 'West: the Westward Road. North: the moor. East: The Crossing. South: Reedmere.', 'RACES: ask LINNET, by the alley off the south street. Nobody has beaten her yet.'] },
         { x: 39, y: 47, lines: ['South to REEDMERE', 'Down the lane, past the pool and the woodcutter.'] },
         { x: 33, y: 8, lines: ['North to HIGH MOOR', 'Up the drove road, past the Grey Stones.'] },
         { x: 27, y: 26, lines: ['NOTICES', 'LOST: one coin purse, at the mill, on Tuesday. Reward. Ask nobody. They will only look for it.', 'FOR SALE: pond. Slightly used.', 'WANTED: somebody with a Cut to do Hazel’s hedge. It has been years.'] },
@@ -325,7 +335,7 @@ export function millbrook(): MapcraftResult {
         // -- The square --------------------------------------------------------
         { x: 33, y: 25, name: 'Trader', look: 'woman', facing: 'down', lines: ['Fresh from the orchards over the river. Well. Over the road.', 'The road east takes you on to The Crossing.'], beat: { everyMs: 3100, glances: ['down', 'left'] }, calls: ['Fresh apples!', 'Best in the vale!'] },
         { x: 25, y: 33, name: 'Ada', look: 'little-girl', facing: 'right', lines: ['There is a cave up in the peaks. Mum says it goes all the way to the sea.'], beat: { everyMs: 1700, roam: [[0, 1], [0, 2]], glances: ['right', 'up'] }, calls: ['Pip! Wait for me!', 'Not fair!'] },
-        { x: 24, y: 34, name: 'Pip', look: 'little-boy', facing: 'right', lines: ['Race you to the fountain!', 'I always win. Ada says that does not count because I start closer.'], beat: { everyMs: 1900, roam: [[0, -1], [0, 1]], glances: ['up'] }, calls: ['Can\u2019t catch me!', 'Race you!'] },
+        { x: 24, y: 34, name: 'Pip', look: 'little-boy', facing: 'right', lines: ['Race you to the fountain!', 'I always win. Ada says that does not count because I start closer.', 'My big sister LINNET races grown-ups, down by the alley. All the way to the mere. She always wins.'], beat: { everyMs: 1900, roam: [[0, -1], [0, 1]], glances: ['up'] }, calls: ['Can\u2019t catch me!', 'Race you!'] },
         { x: 34, y: 29, name: 'Old Peg', look: 'old-woman', facing: 'up', lines: ['Everything on that stall was cheaper before you got here.', 'Everything was cheaper before anybody got here.'], beat: { everyMs: 2900, roam: [[1, 0], [-1, 0]], glances: ['up', 'left'] }, calls: ['Daylight robbery.', 'How much for that?'] },
         { x: 36, y: 25, name: 'Stallholder', look: 'straw-hat', facing: 'down', lines: ['Apples from the orchard, down the lane past the brook.', 'Or pick them yourself. Everybody else does.'], beat: { everyMs: 3700, glances: ['left', 'right'] }, calls: ['Lovely carrots!', 'Turnips! Get your turnips!'] },
         // -- The mill and the lane -----------------------------------------------
@@ -340,6 +350,9 @@ export function millbrook(): MapcraftResult {
         // -- The green and the south street -----------------------------------------
         { x: 18, y: 35, name: 'Nan Birch', look: 'old-woman', facing: 'right', lines: ['Sit down, you look terrible.', "Everybody who comes through here looks terrible. It's the raids."], beat: { everyMs: 4300, glances: ['up'] }, calls: ['Sit down a minute, love.'] },
         { x: 13, y: 41, name: 'Bram', look: 'boy', facing: 'right', lines: ['My mum says never to go down to the pool on your own.', 'Tom goes down there on his own. Tom is ten.'], beat: { everyMs: 2500, roam: [[-1, 0]], glances: ['down'] }, calls: ['Tam always wins.'] },
+        // LINNET races anybody to THE LAST HOUSE (`src/game/world/races.ts`), and is
+        // stood here from a save's second raid on: what she says is the race's.
+        { x: 20, y: 41, name: 'Linnet', look: 'picnicker', facing: 'down', lines: ['I race people. Ask me when you have the legs for it.'], calls: ['I\u2019ll race you!', 'Race you to the mere!', 'Nobody beats me!'] },
         { x: 40, y: 37, name: 'Gardener', look: 'woman', facing: 'left', lines: ['Every Pidgey in the vale nests in my roof.', 'East of the village the road goes over the bridge at The Crossing.'], beat: { everyMs: 3000, roam: [[1, 0]], glances: ['down', 'up'] }, calls: ['Get off my roof!', 'Shoo, Pidgey!'] },
         { x: 56, y: 38, name: 'Mrs Lark', look: 'beauty', facing: 'left', lines: ['Best in show, nine years running. There is no show. I started it. I judge it.'], beat: { everyMs: 3300, roam: [[1, 0]], glances: ['down'] }, calls: ['Mind my dahlias!'] },
         // -- The ends of the village ---------------------------------------------------
@@ -348,7 +361,7 @@ export function millbrook(): MapcraftResult {
         { x: 58, y: 32, name: 'Gatekeeper', look: 'gentleman', facing: 'down', lines: ['I keep the gate. There is no gate. It is a very quiet job.', 'East: The Crossing, and the only bridge for miles.'], beat: { everyMs: 3600, glances: ['left', 'right'] }, calls: ['Mind the gate. There is none.'] },
         { x: 6, y: 28, name: 'Wayfarer', look: 'picnicker', facing: 'right', lines: ['The Westward Road goes out of the vale, if you need to go out in a hurry.', 'Most people who come through do.'], beat: { everyMs: 3800, glances: ['down'] }, calls: ['Long road out.'] },
         { x: 47, y: 58, name: 'Picker', look: 'picnicker', facing: 'up', lines: ['The berries grow back by the next raid. Do not ask me how. I just pick.'], beat: { everyMs: 2600, roam: [[1, 0], [2, 0]], glances: ['left'] }, calls: ['Berries! Help yourself!', 'They grow back, you know.'] },
-        { x: 28, y: 58, name: 'Woodcutter', look: 'black-belt', facing: 'left', lines: ['A proper axe would clear that little tree by the garden in one go.', 'I have a blunt one and a bad back. You want a Pokémon that knows Cut.'], beat: { everyMs: 3200, roam: [[1, 0]], glances: ['up'] }, calls: ['Timber!', 'Mind your feet.'] },
+        { x: 28, y: 58, name: 'Woodcutter', look: 'black-belt', facing: 'left', lines: ['A proper axe would clear that little tree by the garden in one go.', 'The ride at the back of my glade ran straight down to the reeds, once. Quickest way to the mere there was.', 'I have a blunt one and a bad back. You want a Pokémon that knows Cut.'], beat: { everyMs: 3200, roam: [[1, 0]], glances: ['up'] }, calls: ['Timber!', 'Mind your feet.', 'LINNET never comes this way.'] },
         { x: 12, y: 45, name: 'Tom', look: 'youngster', facing: 'right', lines: ['The pool is full of Magikarp!', 'Nobody believes me. There is something on the island too. Mind the gaps.'], calls: ['Magikarp! Loads of them!', 'There IS something out there!'] },
       ],
       pokemon: [
