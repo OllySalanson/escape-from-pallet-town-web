@@ -18,6 +18,13 @@ export interface TouchShortcut {
   readonly code: string;
   /** What it does, as the screen words it: PACK, TOSS A COIN. */
   readonly label: string;
+  /**
+   * A key the moment or the screen up adds - DECORATE in the house, DROP on
+   * the pack - rather than one the scene always has. The pad sets these after
+   * the standing keys, drawn apart, so a standing key never moves under a
+   * thumb that has learned where it is.
+   */
+  readonly extra?: boolean;
 }
 
 /** A scene with keys of its own for the pad. */
@@ -69,10 +76,15 @@ export function withMoment(standing: readonly TouchShortcut[], moment: readonly 
   for (const shortcut of moment) {
     if (!seen.has(shortcut.code)) {
       seen.add(shortcut.code);
-      merged.push(shortcut);
+      merged.push({ ...shortcut, extra: true });
     }
   }
   return merged;
+}
+
+/** Keys that are all the moment's: a scene in a moment with none of its standing keys. */
+export function asExtra(keys: readonly TouchShortcut[]): TouchShortcut[] {
+  return keys.map((key) => ({ ...key, extra: true }));
 }
 
 /** One letter key and its word, as the pad offers it. */
@@ -82,5 +94,8 @@ export function letterShortcut(letter: string, label: string): TouchShortcut {
 
 /** Two lists the pad would draw the same. */
 export function sameShortcuts(a: readonly TouchShortcut[], b: readonly TouchShortcut[]): boolean {
-  return a.length === b.length && a.every((each, index) => each.code === b[index].code && each.label === b[index].label);
+  return (
+    a.length === b.length &&
+    a.every((each, index) => each.code === b[index].code && each.label === b[index].label && Boolean(each.extra) === Boolean(b[index].extra))
+  );
 }

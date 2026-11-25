@@ -402,8 +402,9 @@ import { HarbourFigures } from '../base/harbourFigures';
 import { OWN_SPEAKER, harbourTalk } from '../base/harbourTalk';
 import { SpeechBubble } from '../base/speechBubble';
 import { HARBOUR_PHRASES, type HarbourPhraseId } from '../harbour/harbourPhrases';
-import { letterShortcut, shortcutsInHint, withMoment, type TouchShortcut } from '../input/touchShortcuts';
+import { asExtra, letterShortcut, shortcutsInHint, withMoment, type TouchShortcut } from '../input/touchShortcuts';
 import { sourceText } from '../input/touchWords';
+import { touchPlay } from '../input/touchPlay';
 import { PhrasePicker } from '../ui/PhrasePicker';
 import { harbourRegulars, regularsClock, type RegularsWatcher } from '../base/harbourRegulars';
 import { requestedTestMode } from '../dev/testMode';
@@ -1047,7 +1048,7 @@ export class BaseScene extends Phaser.Scene {
   public touchShortcuts(): readonly TouchShortcut[] {
     const moment = shortcutsInHint(this.hintText?.visible ? sourceText(this.hintText) : '');
     if (this.choosing || this.decor || this.phrasePicker) {
-      return moment;
+      return asExtra(moment);
     }
     const standing = YARD_KEY_WORDS.filter(([id]) => id !== 'walk').map(([, key, word]) => letterShortcut(key, word));
     return withMoment(standing, moment);
@@ -4391,7 +4392,8 @@ export class BaseScene extends Phaser.Scene {
       if (!partner && this.canFishAt(facing)) {
         return '[SPACE] FISH';
       }
-      return partner ?? yardKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []), isFirstRaid(this.savedGame.raidProgress));
+      // On the touch pad the yard's keys are its tray, so the line teaches only the d-pad.
+      return partner ?? yardKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []), isFirstRaid(this.savedGame.raidProgress) || touchPlay());
     }
     const keeper = room.keeper ? `[SPACE] ${room.keeper.name}` : '';
     // Stood in an arch, the way through it is said as a mat's way out is.

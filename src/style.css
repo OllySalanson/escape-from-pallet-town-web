@@ -1440,7 +1440,8 @@ body.touch-play .feedback-tab {
   top: 0;
 }
 .tp-buttons .tp-back {
-  left: 0;
+  /* In from the d-pad's side, so a thumb on its right arm never finds BACK. */
+  left: calc(var(--tp-unit) * 4);
   bottom: 0;
 }
 .tp-button .tp-label {
@@ -1486,16 +1487,13 @@ body.touch-play .feedback-tab {
 .tp-tray {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  /* Every key in a fixed column of its own from the left edge, so a key
+     never moves because another came or went (`shareKeys`). */
+  justify-content: flex-start;
   /* From the top: the menu over the game meets the first row, and a tray of
      one row leaves its spare room above the d-pad, clear of a thumb's reach. */
   align-content: flex-start;
   gap: 8px;
-}
-/* On its side a tray is a fixed grid of two across, filled in reading order,
-   so a key keeps its place from the harbour to a raid. */
-.touch-pad[data-orientation='landscape'] .tp-tray {
-  justify-content: flex-start;
 }
 .tp-chip {
   display: grid;
@@ -1519,6 +1517,12 @@ body.touch-play .feedback-tab {
   border-color: #171717;
   background: #ebeac5;
   color: #202020;
+}
+/* A key the moment or the screen up adds (DROP on the pack, DECORATE in the
+   house): framed teal, apart from the scene's own, and set after them. */
+.tp-chip.is-extra {
+  border-color: #55d6be;
+  color: #bfe6cf;
 }
 .tp-chip.is-pressed {
   background: #2b3e59;
