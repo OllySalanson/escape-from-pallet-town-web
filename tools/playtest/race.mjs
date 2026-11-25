@@ -18,6 +18,7 @@
 // --line=cut    as dry, which with --opened=greystone-vale/door-2 (or a Cut) takes
 //               the woodcutter's ride
 // --slow=N      a slow starter: N ms late off the line after GO
+// --hold        the first way held down through the count, for a start on GO itself
 // --first       a save on its first raid: LINNET is there and wants you home first
 // --record-out=file  writes the course's record (best time, mark, best run) after the race
 // --record-in=file   puts that record in the save before asking, so the race is run
@@ -234,12 +235,19 @@ try {
     if (toMark) await run(toMark);
     await clear();
   }
+  // --hold: the first way of the line held down through the count, as a player
+  // going for PERFECT holds it - the step should start on GO itself.
+  let holdPath = null;
+  if (flag('hold')) {
+    holdPath = await plan(FINISH, line === 'cut' ? 'cut' : line);
+    if (holdPath && holdPath.length > 1) await page.keyDown(KEY(holdPath[0], holdPath[1]));
+  }
   await until(`${W}.describeForTest().race?.phase === 'running'`, 'GO');
   const go = await state();
   note(`GO at raid clock ${go.elapsedMs}ms from ${JSON.stringify(go.tile)}, LINNET due ${go.race.racerMs}ms`);
   if (shots) await page.screenshot(`${shots}/3-go.png`);
   if (slowMs > 0) await wait(slowMs);
-  const path = await plan(FINISH, line === 'cut' ? 'cut' : line);
+  const path = holdPath ?? (await plan(FINISH, line === 'cut' ? 'cut' : line));
   if (!path) throw new Error(`no ${line} line from ${JSON.stringify(go.tile)}`);
   const wild = await page.evaluate(`(() => { const g = ${W}.currentMap.tallGrass; return ${JSON.stringify(path)}.filter((t) => g[t.y][t.x]).length; })()`);
   note(`line ${line}: ${path.length - 1} steps, ${wild} wild`);
@@ -252,6 +260,7 @@ try {
     },
   });
   note(`walk: ${JSON.stringify(result)}, fights ${fights}`);
+  note(`first arrivals: ${await page.evaluate(`JSON.stringify((${W}.runSession.race?.trail ?? []).slice(0, 9))`)}`);
   // Over the line: the result is read as it is said.
   const over = await state();
   if (shots) await page.screenshot(`${shots}/5-over-the-line.png`);

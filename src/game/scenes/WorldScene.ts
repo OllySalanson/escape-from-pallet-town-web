@@ -4362,6 +4362,19 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.mapObjects.push(this.raceMark);
   }
 
+  /**
+   * A step arrived on, at the moment it arrived: the race clock was charged the
+   * whole frame before the step was walked, and the step ended `overflowMs`
+   * before the frame did. Stamped here rather than read on the next frame, so a
+   * run's trail - and its time over the line - is the same at any frame rate.
+   */
+  private noteRaceArrival(overflowMs: number): void {
+    const race = this.raceHere()?.race;
+    if (race?.phase === 'running') {
+      race.trail = trailWith(race.trail, this.currentTile, Math.max(0, race.clockMs - overflowMs));
+    }
+  }
+
   /** On the chalk mark with nothing on screen: "On your marks..." and the count. */
   private tryToeTheMark(): boolean {
     const here = this.raceHere();
@@ -4597,7 +4610,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     here.race.clockMs += clockMs;
-    here.race.trail = trailWith(here.race.trail, this.currentTile, here.race.clockMs);
     // Off made ground, bar the verge the race was asked from: off her road.
     const { x, y } = this.currentTile;
     const atStart = Math.abs(x - here.course.racer.stands.x) + Math.abs(y - here.course.racer.stands.y) <= 1;
@@ -4659,7 +4671,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return false;
     }
     const { race, course } = here;
-    const timeMs = race.clockMs;
+    // Over the line at the moment the step onto it arrived, not at the end of the frame.
+    const last = race.trail.length - 3;
+    const arrived = last >= 0 && race.trail[last] === this.currentTile.x && race.trail[last + 1] === this.currentTile.y;
+    const timeMs = arrived ? race.trail[last + 2] : race.clockMs;
     const outcome: RaceOutcome = raceOutcome(timeMs, race.racerMs);
     const medal = raceMedal(course, timeMs, outcome === 'won');
     const trail = trailWith(race.trail, this.currentTile, timeMs);
@@ -8388,6 +8403,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const steppedFrom = this.currentTile;
     this.currentTile = { ...this.targetTile };
     this.targetTile = null;
+    this.noteRaceArrival(tick.overflowMs);
     this.boatAwayToldAt = null;
     this.partner?.arrived();
     if (this.runSession) {
@@ -8639,7 +8655,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private toggleBike(): string | null {
     const racing = this.runSession?.race;
     if (!this.riding && racing?.phase === 'lining-up') {
-      return `${courseById(racing.courseId)?.racer.name ?? 'The racer'}'s waiting on the chalk mark. Call the race off first.`;
+      return `${courseById(racing.courseId)?.racer.name ?? 'The racer'}'s waiting for you at the chalk mark. Talk to them to call the race off first.`;
     }
     if (!this.riding && racing && racing.phase !== 'over') {
       return 'On foot, no wheels - not until the race is over.';

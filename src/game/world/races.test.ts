@@ -295,13 +295,16 @@ describe('what LINNET says', () => {
     // A GOLD a tenth or two off the floor is told it was the start.
     // What kept it off PERFECT, read off the run: a stand at GO, or a step too many - and never in place of a first GOLD's line.
     const near = { ...input, medal: 'gold' as const, timeMs: 9_450, firstGold: false };
-    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 150 }).join(' ')).toContain('Hold your way through my count');
-    expect(racerArrivesLines(course, { ...near, steps: 63, startLagMs: 20 }).join(' ')).toContain('A step too many - 63 where 62 will do');
-    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 20 }).join(' ')).toContain('GOLD again');
-    const first = racerArrivesLines(course, { ...near, firstGold: true, steps: 62, startLagMs: 150 });
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 150, stalls: 0 }).join(' ')).toContain('Keep the direction held down through my count');
+    expect(racerArrivesLines(course, { ...near, steps: 63, startLagMs: 20, stalls: 0 }).join(' ')).toContain('63 where 62 will do');
+    // The likeliest miss: a prompt start, the floor's steps, and a stand at a corner or two.
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 20, stalls: 2 }).join(' ')).toContain('you stopped 2 times on the way');
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 20, stalls: 0 }).join(' ')).toContain('GOLD again');
+    // A first GOLD has never been told PERFECT is there: the tip says what it is.
+    const first = racerArrivesLines(course, { ...near, firstGold: true, steps: 62, startLagMs: 150, stalls: 0 });
     expect(first[0]).toContain('best run');
-    expect(first[1]).toContain('Hold your way');
-    expect(raceRunShape([83, 169, 0, 82, 169, 210, 81, 169, 360])).toEqual({ steps: 2, startLagMs: 60 });
+    expect(first[1]).toContain('0:09.3 is PERFECT');
+    expect(raceRunShape([83, 169, 0, 82, 169, 210, 81, 169, 360, 80, 169, 600])).toEqual({ steps: 3, startLagMs: 60, stalls: 1 });
     expect(gaveUpWaitingLine(course)).toBe('LINNET gave up waiting at the chalk mark.');
     // The gap she quotes is the gap between the times on screen.
     expect(racerWonLines(course, { ...input, outcome: 'lost', medal: null, timeMs: 23_000, racerMs: 22_800 }).join(' ')).toContain('Beat you by 0.2s!');
