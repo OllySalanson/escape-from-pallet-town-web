@@ -251,3 +251,13 @@ RIGHT (or a tab, clicked) open the next (`ThingsScene.showPocket`).
 | Before | After |
 |---|---|
 | ![](before-pocket-filter.png) | ![](after-pocket-filter.png) |
+
+## 19. All seven of Brock's rungs at a laptop's size
+
+At 1280x800 the workshop held six of its seven cards over a 1 MORE strip and
+a band of empty paper. A card is two game pixels narrower and all seven stand
+in one row.
+
+| Before | After |
+|---|---|
+| ![](before-workshop-seven.png) | ![](after-workshop-seven.png) |

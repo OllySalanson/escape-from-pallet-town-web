@@ -5685,9 +5685,11 @@ body.touch-play .feedback-tab {
    own sheets at its own size (`ui/fixturePicture.ts`) on a stage as tall as the
    mast, its name, and its price as the salvage's icons, counted. Built is gold
    and in colour; not yet is a grey blueprint, a ready one framed in teal. */
+/* Eighty a card: at 82, seven came to 586 game pixels and the 600-pixel menu
+   of a 1280x800 window held six over a "1 MORE" strip (critic sweep, 25 Nov 2026). */
 :where(.pixel-ui) .workshop-skyline {
   display: grid;
-  grid-template-columns: repeat(auto-fill, calc(var(--u) * 82));
+  grid-template-columns: repeat(auto-fill, calc(var(--u) * 80));
   justify-content: center;
   gap: calc(var(--u) * 2);
   padding-top: calc(var(--u) * 2);
