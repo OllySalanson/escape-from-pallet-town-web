@@ -1725,6 +1725,24 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
+   * Writes down a wild fight promised behind a line - a standing Pokemon's
+   * cry, a bite on the line, a secret found - as the fight it is: the Pokemon
+   * is marked met as the fight is promised, so a reload while the line is read
+   * must be that fight, never the world without it. Its shininess is rolled
+   * now, once, and the fight is started with the same roll.
+   */
+  private writeQueuedWild(): void {
+    const queued = this.pendingWildBattle;
+    if (!queued || this.runSession?.raidId === undefined) {
+      return;
+    }
+    const wild = { ...queued, shiny: queued.shiny ?? rollShiny(this.runSession.shinyRng) };
+    this.pendingWildBattle = wild;
+    const fight: BattleSceneData = { ...this.raidCarriage(), wild, teachingBattle: false, weather: this.currentWeather() };
+    writeRaidResume(new SaveManager(), 'battle', fight);
+  }
+
+  /**
    * Writes the raid down as it stands (`run/raidResume.ts`), as the world a
    * fight would hand back to. Not while it is changing hands - on the way into
    * a fight (which wrote itself down as it was started), out of the raid, or
@@ -1738,7 +1756,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.pendingHubTransition ||
       this.pendingResultScreen ||
       this.voyaging !== undefined ||
-      this.pendingVoyage !== undefined
+      this.pendingVoyage !== undefined ||
+      // A fight promised behind a line was written down as it was promised.
+      this.pendingWildBattle !== undefined
     ) {
       return;
     }
@@ -6082,6 +6102,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // first, and the fight follows it as a standing Pokemon's does.
     this.mapObjects.push(cast.float);
     this.pendingWildBattle = wild ?? undefined;
+    this.writeQueuedWild();
     this.dialogBox.showMessages(cast.secret ? [secretById(cast.secret.id)!.foundLine] : [ON_THE_HOOK]);
   }
 
@@ -7553,6 +7574,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       ...(secret?.reward?.kind === 'meet' && secret.reward.shiny ? { shiny: true } : {}),
       ...(secret?.reward?.kind === 'meet' ? { secret: rewardKey(secretById(secret.id)!, secret.reward) } : {}),
     };
+    this.writeQueuedWild();
     // A secret's Pokemon is met with the words of finding it.
     const found = secret ? secretById(secret.id)?.foundLine : undefined;
     // The square's Pidgey is scenery on any other raid, whose second line says
@@ -7659,6 +7681,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       ...(reward.shiny ? { shiny: true } : {}),
       secret: rewardKey(secret, reward),
     };
+    this.writeQueuedWild();
     if (secret.foundSound) {
       audioManager.play(secret.foundSound);
     }

@@ -25,11 +25,16 @@ import { decodeRaidSnapshot, encodeRaidSnapshot, type RaidSnapshotGraph } from '
  *    reload meets what it met before. It is written beside the save, never in
  *    it, and only while the save still holds that raid in flight.
  * 2. **It is never behind anything that cannot be taken back.** A fight is
- *    written as it starts, so a reload in the grass puts the player back in
- *    that fight, never on the tile before it. Each turn is written the moment
- *    it is resolved, before a line of it is shown, so a turn seen going badly
- *    cannot be chosen again. A turn that loses the fight is written as lost,
- *    and taken up it is the wipe it was. The walk between is written about once
+ *    written as it starts - or as it is promised behind a line, a standing
+ *    Pokemon's cry or a bite - so a reload puts the player back in that fight,
+ *    never on the tile before it. Each turn is written the moment it is
+ *    resolved, before a line of it is shown, with every foe as last seen and
+ *    whoever was out, so a turn seen going badly cannot be chosen again and a
+ *    foe knocked out stays knocked out. A turn that loses the fight is written
+ *    as lost, and taken up it is the wipe it was; one that wins it is written
+ *    as won, and taken up it is that win, its experience paid once. A catch, a
+ *    legend's one throw and a getaway are written as the world they hand back
+ *    to, the getaway's price paid. The walk between is written about once
  *    a second and whenever the page is hidden, reloaded or frozen, so the most a
  *    crash costs is a second of walking - and it costs the clock that second
  *    back with it, so nothing is gained.
@@ -43,8 +48,10 @@ import { decodeRaidSnapshot, encodeRaidSnapshot, type RaidSnapshotGraph } from '
  *    then) is settled as abandoned, exactly as before there was a record.
  *
  * What a fight taken up cannot keep is what lives only on the field: stat
- * stages, confusion, a seed sown. Both sides lose those alike, and both come
- * back with the HP, status and PP the last resolved turn left them.
+ * stages, confusion, a seed sown, how many times a getaway was tried. Both
+ * sides lose those alike, and both come back with the HP, status and PP the
+ * last resolved turn left them. And time away from the page is not charged to
+ * the clock, as time in the pack or the team screen is not.
  */
 
 /** The shape of the record. A record of any other shape is not taken up. */
@@ -61,6 +68,16 @@ export interface FoeState {
   readonly pp: readonly number[];
 }
 
+/** A fight as the last resolved turn left it, beyond what its payload names. */
+export interface FightState {
+  /** The other side, in the order the fight holds it. */
+  readonly foes: readonly FoeState[];
+  /** Which of the party was out, when it was not the first that can stand. */
+  readonly lead?: number;
+  /** A won fight whose reward was already paid. */
+  readonly rewarded?: boolean;
+}
+
 /** Which screen the raid was on, and so which one it is taken up on. */
 export type ResumeScene = 'world' | 'battle';
 
@@ -69,8 +86,8 @@ interface RaidResumeRecord {
   readonly raidId: string;
   readonly scene: ResumeScene;
   readonly data: RaidSnapshotGraph;
-  /** The other side of a fight, in the order the fight holds it. */
-  readonly foes?: readonly FoeState[];
+  /** A fight's own state, for a record on the battle. */
+  readonly fight?: FightState;
 }
 
 interface RaidPlanRecord {
@@ -85,7 +102,7 @@ type RaidPayload = Partial<RaidCarriage> & object;
 export interface TakenUpRaid {
   readonly scene: ResumeScene;
   readonly data: RaidPayload & { readonly runSession: ActiveRunSession };
-  readonly foes?: readonly FoeState[];
+  readonly fight?: FightState;
 }
 
 /**
@@ -98,7 +115,7 @@ export function writeRaidResume(
   saves: SaveManager,
   scene: ResumeScene,
   data: RaidPayload,
-  foes?: readonly FoeState[],
+  fight?: FightState,
 ): boolean {
   const session = data.runSession;
   const raidId = session?.raidId;
@@ -121,7 +138,7 @@ export function writeRaidResume(
       raidId,
       scene,
       data: encodeRaidSnapshot(data, named),
-      ...(foes === undefined ? {} : { foes }),
+      ...(fight === undefined ? {} : { fight }),
     };
     return saves.writeRaidResume(raidId, JSON.stringify(record), () => {
       const written: RaidPlanRecord = { raidId, graph: encodeRaidSnapshot(plan ?? null) };
@@ -169,7 +186,7 @@ export function takeUpRaid(saves: SaveManager, liveElsewhere: (raidId: string) =
   (read.data.runSession as { raidId?: string }).raidId = newId;
   raidHeartbeat.start(newId, () => saves.raidInFlightId() === newId);
   // Written again at once under the new id, so a second reload takes this up.
-  writeRaidResume(saves, read.scene, read.data, read.foes);
+  writeRaidResume(saves, read.scene, read.data, read.fight);
   return read;
 }
 
@@ -225,7 +242,7 @@ function readRecords(recordText: string, planText: string, raidId: string): Take
     return {
       scene: record.scene,
       data: data as TakenUpRaid['data'],
-      ...(Array.isArray(record.foes) ? { foes: record.foes } : {}),
+      ...(record.fight && Array.isArray(record.fight.foes) ? { fight: record.fight } : {}),
     };
   } catch (error) {
     console.error(error);

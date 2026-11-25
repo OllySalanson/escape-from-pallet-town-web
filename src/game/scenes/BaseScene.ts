@@ -1196,7 +1196,7 @@ export class BaseScene extends Phaser.Scene {
       if (taken) {
         this.leaving = true;
         if (taken.scene === 'battle') {
-          this.scene.start('battle', { ...taken.data, resumed: taken.foes ? { foes: taken.foes } : {} });
+          this.scene.start('battle', { ...taken.data, resumed: taken.fight ?? {} });
         } else {
           this.scene.start('world', { ...taken.data, resumed: true });
         }

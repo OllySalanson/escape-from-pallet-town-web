@@ -216,12 +216,12 @@ describe('a raid taken up after the page it was in went', () => {
     const storage = new MemoryStorage();
     seedSave(storage);
     const raid = deploy(storage);
-    const foes = [{ hp: 4, status: 'poison' as const, sleepTurns: 0, pp: [30, 20] }];
-    writeRaidResume(new SaveManager(storage), 'battle', { ...raid, wild: { speciesId: 'pidgey', level: 3, shiny: false } } as RaidCarriage, foes);
+    const fight = { foes: [{ hp: 4, status: 'poison' as const, sleepTurns: 0, pp: [30, 20] }], lead: 1, rewarded: true };
+    writeRaidResume(new SaveManager(storage), 'battle', { ...raid, wild: { speciesId: 'pidgey', level: 3, shiny: false } } as RaidCarriage, fight);
     const taken = takeUpRaid(new SaveManager(storage), nobodyElse);
     expect(taken?.scene).toBe('battle');
     expect((taken?.data as { wild?: unknown }).wild).toEqual({ speciesId: 'pidgey', level: 3, shiny: false });
-    expect(taken?.foes).toEqual(foes);
+    expect(taken?.fight).toEqual(fight);
   });
 
   it('is not taken up from a record it cannot trust, which is taken away', () => {

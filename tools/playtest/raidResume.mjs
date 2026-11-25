@@ -179,9 +179,116 @@ try {
   const afterFight = await where(tab);
   check(afterFight.tile.x === left.tile.x && afterFight.tile.y === left.tile.y, 'the fight hands back to the tile it started on');
 
+  // 2b. A trainer's foe knocked out stays knocked out, and its experience is paid once.
+  await tab.evaluate(`(() => { const p = ${world}.party.pokemon[0]; p.gainExperience(60000, { evolve: false }); p.currentHp = p.maxHp; p.pendingMoves.length = 0; })()`);
+  const trainerName = await tab.evaluate(`(() => { const w = ${world}; const t = w.trainerEncounters.find((e) => !w.defeatedTrainerIds.has(e.trainer.id) && e.trainer.party.length > 1 && (e.trainer.unitCount ?? 1) === 1); if (!t) return null; void w.transitionToBattle({ trainer: t.trainer }); return t.trainer.name; })()`);
+  if (trainerName) {
+    await tab.waitFor(sceneIs('battle'), { what: 'the trainer fight' });
+    check(await untilCommands(tab), `${trainerName}'s fight asks for a command`);
+    const firstFoe = await tab.evaluate(`${battle}.state.enemy.pokemon.name`);
+    for (let turn = 0; turn < 6 && (await tab.evaluate(`${battle}.state.enemy.currentHp > 0 && ${battle}.state.enemy.pokemon.name === ${JSON.stringify(firstFoe)}`)); turn += 1) {
+      if (turn > 0) await untilCommands(tab);
+      await fightOneTurn(tab);
+    }
+    check(await untilCommands(tab), 'the next foe is out');
+    const expAfterKo = await tab.evaluate(`${battle}.party.pokemon[0].experience`);
+    const foesAfterKo = await tab.evaluate(`${battle}.trainer.party.map((p) => p.name + ':' + (p === ${battle}.state.enemy.pokemon ? ${battle}.state.enemy.currentHp : 'off'))`);
+    await reloadAndContinue(tab);
+    await tab.waitFor(sceneIs('battle'), { what: 'the trainer fight taken up', timeoutMs: 60_000 });
+    await sleep(1000);
+    const expBack = await tab.evaluate(`${battle}.party.pokemon[0].experience`);
+    const facing = await tab.evaluate(`${battle}.state.enemy`).catch(() => null);
+    const foesBack = await tab.evaluate(`${battle}.trainer.party.map((p) => p.name + ':' + p.currentHp)`);
+    const facingHp = await tab.evaluate(`${battle}.state.enemy.currentHp`);
+    console.log(`  after the knock-out: ${foesAfterKo.join(' ')}, exp ${expAfterKo}; taken up: ${foesBack.join(' ')}, facing hp ${facingHp}, exp ${expBack}`);
+    void facing;
+    check(expBack === expAfterKo, 'the knock-out\'s experience is kept, not paid again');
+    check(foesBack.some((each) => each.endsWith(':0')) && facingHp > 0, 'and the foe it knocked out stays down');
+    // Fought out, back to the world.
+    for (let turn = 0; turn < 30 && (await tab.evaluate(sceneIs('battle'))); turn += 1) {
+      if (await tab.evaluate(`${battle}.mode === 'main'`)) await fightOneTurn(tab);
+      await tab.tap('Space', 60);
+      await sleep(300);
+    }
+    await tab.waitFor(sceneIs('world'), { what: 'the world after the trainer', timeoutMs: 60_000 });
+    await readWorldBox(tab);
+  } else {
+    console.log('  (no trainer on the map to try)');
+  }
+
+  // 2d. A standing Pokemon's fight, promised behind its cry, is that fight after a reload.
+  const met = await tab.evaluate(`(() => { const w = ${world}; const e = (w.currentMap.entities ?? []).find((each) => each.pokemon && !(w.runSession.pokemonMet ?? []).includes(each.id)); if (!e) return null; w.meetPokemon(e, e.pokemon, e.wildLevel ?? 5); return e.pokemon; })()`);
+  if (met) {
+    await sleep(1200);
+    await reloadAndContinue(tab);
+    await tab.waitFor(`${sceneIs('battle')} || ${sceneIs('world')}`, { what: 'the promised fight taken up', timeoutMs: 60_000 });
+    await sleep(1000);
+    const species = await tab.evaluate(`${sceneIs('battle')} ? ${battle}.state.enemy.pokemon.base.id : null`);
+    check(species === met, `a reload while a standing ${met} cries is its fight (${species})`);
+    for (let turn = 0; turn < 30 && (await tab.evaluate(sceneIs('battle'))); turn += 1) {
+      if (await tab.evaluate(`${battle}.mode === 'main'`)) await fightOneTurn(tab);
+      await tab.tap('Space', 60);
+      await sleep(300);
+    }
+    await tab.waitFor(sceneIs('world'), { what: 'the world after the standing Pokemon', timeoutMs: 60_000 });
+    await readWorldBox(tab);
+  } else {
+    console.log('  (no standing Pokemon on the map to try)');
+  }
+
+  // 2e. A getaway reloaded while "Got away safely!" is read is a getaway.
+  await startWildFight(tab, 'rattata', 2);
+  await tab.waitFor(sceneIs('battle'), { what: 'the rattata' });
+  await untilCommands(tab);
+  for (let guard = 0; guard < 40 && !(await tab.evaluate(`${battle}.pendingBattleExit`)); guard += 1) {
+    const b = await tab.evaluate(`(() => { const b = ${battle}; return { mode: b.mode, selected: b.commandTexts?.[b.selectedCommand]?.text ?? '' }; })()`);
+    if (b.mode === 'main' && !b.selected.includes('RUN')) {
+      await tab.tap(guard % 2 === 0 ? 'ArrowRight' : 'ArrowDown', 60);
+    } else {
+      await tab.tap('Space', 60);
+    }
+    await sleep(250);
+  }
+  await reloadAndContinue(tab);
+  await tab.waitFor(`${sceneIs('battle')} || ${sceneIs('world')}`, { what: 'the getaway taken up', timeoutMs: 60_000 });
+  await sleep(800);
+  check(await tab.evaluate(sceneIs('world')), 'a reload while getting away is the world it got away to');
+  await readWorldBox(tab);
+
+  // 2c. A win reloaded before its lines are read is that win, paid once.
+  const expOf = () => tab.evaluate(`${world}.party.pokemon[0].experience`);
+  const winOnce = async (reload) => {
+    const before = await expOf();
+    await startWildFight(tab, 'caterpie', 2);
+    await tab.waitFor(sceneIs('battle'), { what: 'the caterpie' });
+    await untilCommands(tab);
+    await fightOneTurn(tab);
+    const won = await tab.evaluate(`${battle}.state.outcome`);
+    if (reload) {
+      await reloadAndContinue(tab);
+      await tab.waitFor(`${sceneIs('battle')} || ${sceneIs('world')}`, { what: 'the win taken up', timeoutMs: 60_000 });
+      await sleep(1000);
+      if (await tab.evaluate(sceneIs('battle'))) {
+        console.log(`  the won fight says: ${await said(tab)}`);
+        check((await tab.evaluate(`${battle}.state.enemy.currentHp`)) === 0, 'a win taken up does not stand the foe back up');
+      }
+    }
+    for (let guard = 0; guard < 30 && (await tab.evaluate(sceneIs('battle'))); guard += 1) {
+      await tab.tap('Space', 60);
+      await sleep(300);
+    }
+    await tab.waitFor(sceneIs('world'), { what: 'the world after the caterpie', timeoutMs: 60_000 });
+    await readWorldBox(tab);
+    return { won, gained: (await expOf()) - before };
+  };
+  const plain = await winOnce(false);
+  const reloaded = await winOnce(true);
+  console.log(`  a win pays ${plain.gained}; reloaded mid-win it paid ${reloaded.gained} (${plain.won}/${reloaded.won})`);
+  check(plain.won === 'victory' && reloaded.won === 'victory' && reloaded.gained === plain.gained, 'a win reloaded before its lines is paid exactly once');
+
   // 3. The turn that lost the fight.
   await tab.evaluate(`(() => { const w = ${world}; for (const p of w.party.pokemon) p.currentHp = 1; })()`);
-  await startWildFight(tab, 'mankey', 30);
+  await startWildFight(tab, 'mankey', 90);
   await tab.waitFor(sceneIs('battle'), { what: 'the losing fight' });
   check(await untilCommands(tab), 'the losing fight asks for a command');
   // Fought until a turn loses it - a wild Pokemon's first move need not hurt.
