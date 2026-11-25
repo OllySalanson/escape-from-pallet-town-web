@@ -217,7 +217,8 @@ import {
   type RodItemId,
 } from '../world/fishing';
 import { paintFloat } from '../world/fishingFloat';
-import { rollShiny } from '../pokemon/shiny';
+import { rollShiny, shinyTexturesFor } from '../pokemon/shiny';
+import { fetchTextures } from '../pokemon/shinyTextureFetch';
 import { rollShimmerShiny } from '../world/shimmer';
 import { OMEN_SHADOW_SCALE, omenShadowAt } from '../world/omens';
 import { omenRoost } from '../objectives/ObjectiveGuide';
@@ -1684,6 +1685,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (data.caughtPokemonStash) {
       this.caughtPokemonStash = data.caughtPokemonStash;
     }
+    // A shiny in the party is fought in its own colours, which are not loaded
+    // at boot: they are fetched now, in the background, so the first fight of
+    // the raid has them rather than drawing without them (`fetchTextures`).
+    void fetchTextures(this.textures, shinyTexturesFor(this.party.pokemon));
     // The world is rebuilt after every fight, so the pack is re-told what the
     // raid is carrying rather than trusting a count it kept across the tear-down.
     if (this.runSession) {
@@ -9646,6 +9651,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const cast = [...this.party.pokemon, ...(data.trainer?.party ?? [])].map((pokemon) => pokemon.base.dexId);
     const wildDexId = data.wild ? getSpeciesById(data.wild.speciesId)?.dexId : undefined;
     void audioManager.loadCries(wildDexId === undefined ? cast : [...cast, wildDexId]);
+    // And a wild shiny's colours, the moment it is rolled one: the battle draws
+    // without waiting for them, so the fade is their head start.
+    const wildSpecies = data.wild?.shiny ? getSpeciesById(data.wild.speciesId) : undefined;
+    if (wildSpecies) {
+      void fetchTextures(this.textures, shinyTexturesFor([{ shiny: true, base: wildSpecies }]));
+    }
     // Written down before the fade, shininess and all: a reload from here on
     // is this fight, never the tile before it.
     writeRaidResume(new SaveManager(), 'battle', data);

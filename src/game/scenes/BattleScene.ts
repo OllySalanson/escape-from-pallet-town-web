@@ -75,9 +75,9 @@ import type { WildEncounter } from '../world/wildEncounters';
 import { legendFledLine, legendOneThrowLine, legendTooStrongLine } from '../world/legends';
 import { owesItemLesson } from '../world/teachingEncounter';
 import { audioManager } from '../audio/AudioManager';
-import { publicAssetUrl } from '../publicAssetUrl';
 import { pokemonTextureKey } from '../pokemon/pokemonSprites';
 import { shinyTexturesFor } from '../pokemon/shiny';
+import { fetchTextures } from '../pokemon/shinyTextureFetch';
 import {
   SHINY_SPARKLE_TEXTURE,
   SPARKLE_FRAME_MS,
@@ -926,27 +926,6 @@ export class BattleScene extends Phaser.Scene {
     };
   }
 
-  /**
-   * A shiny's colours are fetched by the fight that meets one, rather than all
-   * 302 at boot for a roll that comes up one encounter in five hundred: Phaser
-   * runs this before `create`, and starts the battle once they have arrived.
-   * Ordinary sprites were loaded at boot, and a shiny texture that never
-   * arrives is drawn in its ordinary colours (`spriteTexture`).
-   */
-  public preload(): void {
-    const data = (this.sys.settings.data ?? {}) as BattleSceneData;
-    const wild = data.wild?.shiny ? getSpeciesById(data.wild.speciesId) : undefined;
-    const fielded = [
-      ...(data.party?.pokemon ?? []),
-      ...(wild ? [{ shiny: true, base: wild }] : []),
-    ];
-    for (const { key, path } of shinyTexturesFor(fielded)) {
-      if (!this.textures.exists(key)) {
-        this.load.image(key, publicAssetUrl(path));
-      }
-    }
-  }
-
   public create(payload: BattleSceneData = {}): void {
     const data = takeUpFight(payload);
     void audioManager.startTheme('battle');
@@ -1094,6 +1073,19 @@ export class BattleScene extends Phaser.Scene {
       [...this.party.pokemon, ...(data.trainer?.party ?? [this.state.enemy.pokemon])].map(
         (pokemon) => pokemon.base.dexId,
       ),
+    );
+    // A shiny's colours are fetched while the fight is already on screen, never
+    // before it: a scene's preload holds its first frame, and a fight that
+    // waited on them was a black screen for as long as the line took
+    // (`pokemon/shinyTextureFetch.ts`). The world asked for them first; until
+    // they come, the ordinary colours stand in.
+    const fight = this.fight;
+    void fetchTextures(this.textures, shinyTexturesFor([...this.party.pokemon, ...(data.trainer?.party ?? [wildPokemon])])).then(
+      (arrived) => {
+        if (arrived && this.fight === fight) {
+          this.recolourShinies();
+        }
+      },
     );
     recordAction(
       data.trainer
@@ -4003,9 +3995,19 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
+  /** Redraws whoever stands on the field from the textures there are now: a shiny's colours arrived. */
+  private recolourShinies(): void {
+    for (const [key, sprite] of this.sprites) {
+      const pokemon = this.displayed.get(key);
+      if (pokemon?.shiny && sprite.active) {
+        sprite.setTexture(this.spriteTexture(key.startsWith('player') ? 'player' : 'enemy', pokemon));
+      }
+    }
+  }
+
   /**
    * The texture a Pokemon is drawn from on its side of the field: its shiny
-   * colours when it is shiny and they have arrived (`preload`), its own
+   * colours when it is shiny and they have arrived (`fetchTextures`), its own
    * otherwise - never Phaser's missing-texture square.
    */
   private spriteTexture(side: 'player' | 'enemy', pokemon: PokemonInstance): string {
