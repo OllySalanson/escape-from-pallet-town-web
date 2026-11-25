@@ -152,3 +152,15 @@ as the yard does round a question.
 |---|---|---|
 | Knock on a door | ![](before-knock-panel.png) | ![](after-knock-panel.png) |
 | Your name | ![](before-name-popup.png) | ![](after-name-popup.png) |
+
+## 10. The jump-in card reads as a briefing, and a warning is red
+
+The card at the rim was a wall of grey: its labels the soft ink of a note, and
+its warning grey too - every warning set small was, because `.pixel-ui small`'s
+soft ink outweighed `.px-warning`'s red. Warnings are red again everywhere, and
+the card's labels are the headings' blue capitals, each row ruled off from the
+next.
+
+| Before | After |
+|---|---|
+| ![](before-rim.png) | ![](after-rim.png) |

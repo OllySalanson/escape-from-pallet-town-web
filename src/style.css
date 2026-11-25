@@ -2034,6 +2034,12 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .px-warning {
   color: var(--red);
 }
+/* A warning set small is still a warning: `.pixel-ui small`'s soft ink weighed
+   more than the rule above, so every one of them - the rim's "Your pack is
+   full", the bench's - was drawn grey, the colour of a note. */
+.pixel-ui small.px-warning {
+  color: var(--red);
+}
 :where(.pixel-ui) .px-empty {
   padding: calc(var(--u) * 2) calc(var(--u) * 2);
   color: var(--ink-soft);
@@ -5043,14 +5049,24 @@ body.touch-play .feedback-tab {
   justify-content: space-between;
   gap: calc(var(--u) * 6);
 }
-/* What a raid has at stake: a line each, the label in its own column. */
+/* What a raid has at stake: a line each, the label in its own column, in the
+   headings' blue capitals and ruled off from the next, so the card reads as a
+   briefing rather than a wall of sentences (critic sweep, 25 Nov 2026). */
 :where(.pixel-ui) .rim-stakes {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
 }
+:where(.pixel-ui) .rim-stakes dt {
+  color: var(--heading);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .rim-stakes > div + div {
+  box-shadow: inset 0 var(--u) 0 rgb(36 52 76 / 15%);
+}
 :where(.pixel-ui) .rim-stakes > div {
   display: grid;
-  grid-template-columns: calc(var(--u) * 36) minmax(0, 1fr);
+  /* Wide enough for HUNTERS in capitals and a gap after it. */
+  grid-template-columns: calc(var(--u) * 42) minmax(0, 1fr);
 }
 :where(.pixel-ui) .rim-stakes dd {
   white-space: normal;
