@@ -314,7 +314,11 @@ describe('what LINNET says', () => {
     expect(ride).not.toContain('Bill');
     // The tenth identical win is not met with the first one's surprise.
     expect(racerArrivesLines(course, { ...input, beatenBefore: true }).join(' ')).toContain('Again?!');
-    expect(racerArrivesLines(course, { ...input, medal: 'gold', timeMs: 10_500, firstGold: false, hadPerfect: true }).join(' ')).toContain("You've done it in 0:09.3");
+    // A PERFECT holder grinding the purse down the dry ride, run as the game hands it over (with its shape):
+    // reminded of their own floor, never taught it.
+    const perfectHolder = racerArrivesLines(course, { ...input, medal: 'gold', tookShortcut: true, shortcutOpen: true, timeMs: 10_200, firstGold: false, hadPerfect: true, steps: 68, startLagMs: 0, cornerLossMs: 0, fightMs: 0 }).join(' ');
+    expect(perfectHolder).toContain("You've done it in 0:09.3");
+    expect(perfectHolder).not.toContain('steps where');
     expect(racerArrivesLines(course, { ...input, medal: 'gold', timeMs: 9_300 }).join(' ')).toBe("LINNET: REEVE says not a step wasted. Not ONE. I'm going to be sick.");
     // Once the ride is cut it is no longer grown shut.
     expect(racerArrivesLines(course, { ...input, shortcutOpen: true }).join(' ')).toContain('open now');

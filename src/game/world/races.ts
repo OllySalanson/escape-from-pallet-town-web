@@ -621,7 +621,8 @@ function floorSteps(course: RaceCourse): number {
 function perfectTip(course: RaceCourse, input: RaceResultInput): string | null {
   // Any fight-free GOLD short of PERFECT is told why, however far short:
   // the Repel line is for a run that met something in the reeds.
-  if (input.medal !== 'gold' || input.fightMs > 0 || isPerfect(course, input.timeMs)) return null;
+  // A save that has run the floor is never taught it again.
+  if (input.medal !== 'gold' || input.fightMs > 0 || input.hadPerfect || isPerfect(course, input.timeMs)) return null;
   const perfect = `${formatRaceTime(course.perfectMs)} is PERFECT`;
   if (input.steps !== undefined && input.steps > floorSteps(course) + 1) {
     return `${perfect} - you took ${input.steps} steps where ${floorSteps(course)} will do. Out of the ride, wade straight down to the door instead of round by the dry way - spray a Repel first.`;
