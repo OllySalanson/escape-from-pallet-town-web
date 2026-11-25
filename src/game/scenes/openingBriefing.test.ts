@@ -13,6 +13,9 @@ import { Bag } from '../items';
 import { getContract } from '../objectives/contracts';
 import { FIRST_RAID_BRIEFING } from '../hub/firstRaid';
 import { WorldScene } from './WorldScene';
+import { RUN_INSERTIONS } from '../run/runGeneration';
+import { getWorldMap } from '../worldMap';
+import { FIRST_CATCH_LANDING_LINES } from '../world/firstCatch';
 
 /**
  * The raid's opening box. A delivery contract the pack cannot supply used to
@@ -24,6 +27,7 @@ function openBriefing(
   potions: number,
   playerScreenRow = 6,
   plan: object = { contract: getContract('wardens-resupply')! },
+  currentMap?: object,
 ): { shown: string[][]; seatedAt: number[] } {
   const bag = new Bag();
   if (potions > 0) {
@@ -37,6 +41,8 @@ function openBriefing(
     bag,
     currentTile: player,
     runSession: { plan, firstDeploymentBriefingShown: false },
+    currentMap,
+    idleFigures: [],
     // The first frame: `startFollow` has set the scroll, and the worldView is
     // still whatever it was before the camera was first drawn.
     cameras: {
@@ -87,7 +93,7 @@ describe('the opening briefing', () => {
 });
 
 describe("a new save's first raid", () => {
-  it('is told what a raid is as it lands, in two short boxes, though it carries no job', () => {
+  it('is told what a raid is as it lands, in two short boxes, where there is no catch to begin with', () => {
     // The 22 Nov 2026 AI playtest: the first jump said nothing of the job, the
     // clock or the risk, and the second raid's briefing was the first word.
     const { shown } = openBriefing(0, 6, { stagedChase: true });
@@ -99,6 +105,13 @@ describe("a new save's first raid", () => {
     expect(FIRST_RAID_BRIEFING.join(' ')).toMatch(/gold arrow/);
     expect(FIRST_RAID_BRIEFING.join(' ')).toMatch(/clock/);
     expect(FIRST_RAID_BRIEFING.join(' ')).toMatch(/pack is lost/);
+  });
+
+  it("opens on the catch where the landing has the square's Pidgey: one box, the one thing to do", () => {
+    const vale = getWorldMap('greystone-vale');
+    const insertion = RUN_INSERTIONS['greystone-vale'];
+    const { shown } = openBriefing(0, 6, { stagedChase: true, insertion }, vale);
+    expect(shown).toEqual([[...FIRST_CATCH_LANDING_LINES]]);
   });
 
   it('says nothing on a later raid without a job', () => {

@@ -60,6 +60,35 @@ export function teachingBattleMessages(playerName: string, enemyName: string): s
 }
 
 /**
+ * The first raid's catch (`world/firstCatch.ts`) explains itself on the way in:
+ * what a ball is for and when to throw it. Short enough for two text lines a box.
+ */
+export function catchLessonOpening(enemyName: string): string[] {
+  return [
+    `Wild ${enemyName.toUpperCase()} appeared!`,
+    'Wear it down with FIGHT, then throw a BALL to keep it.',
+    "FIGHT shows each move's POWER and type matchup.",
+  ];
+}
+
+/**
+ * Said once in the first raid's catch, the first turn that leaves the wild one
+ * under half its HP and still up: the moment a ball holds, and the one rule a
+ * newcomer has to know, said while it is true (the overnight critic: teach the
+ * real rule, never rig the fight).
+ */
+export function catchLessonMessage(facts: {
+  readonly enemyHp: number;
+  readonly enemyMaxHp: number;
+  readonly fightGoesOn: boolean;
+}): string | null {
+  if (!facts.fightGoesOn || facts.enemyHp <= 0 || facts.enemyHp * 2 >= facts.enemyMaxHp) {
+    return null;
+  }
+  return "It's weak! Throw a BALL now. Knock it out and it's gone.";
+}
+
+/**
  * The teaching fight's last lesson, said once, after the first turn that left
  * the player's Pokemon hurt and still standing with medicine in the pack. The
  * opening lines teach FIGHT; nothing taught ITEM, and the toll on the road

@@ -22,6 +22,12 @@ export interface WildEncounter {
    * finds the secret.
    */
   secret?: string;
+  /**
+   * The lesson this fight teaches: `'catch'` is the first raid's Pidgey on
+   * Mill Square (`world/firstCatch.ts`), whose fight says how a catch is made
+   * and says "throw a BALL now" the moment it is weak enough to hold.
+   */
+  lesson?: 'catch';
 }
 
 export type EncounterRng = () => number;

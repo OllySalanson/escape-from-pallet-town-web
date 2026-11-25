@@ -53,6 +53,8 @@ import {
   itemLessonMessage,
   sendOutLine,
   teachingBattleMessages,
+  catchLessonMessage,
+  catchLessonOpening,
   withdrawLine,
 } from '../pokemon/battle/battleFlow';
 import { WeatherId } from '../pokemon/battle/weather';
@@ -663,6 +665,8 @@ export class BattleScene extends Phaser.Scene {
   private trainer: TrainerBattle | undefined;
   private hunterBattle = false;
   private teachingBattle = false;
+  /** The first raid's catch (`WildEncounter.lesson`): whether its "throw a BALL now" is still to say. */
+  private catchLesson: 'owed' | 'said' | null = null;
   /** Whether the teaching fight has said what ITEM does (`itemLessonMessage`). */
   private itemLessonGiven = false;
   private hunterState: HunterState | undefined;
@@ -897,6 +901,7 @@ export class BattleScene extends Phaser.Scene {
     this.trainer = data.trainer;
     this.hunterBattle = data.hunterBattle ?? false;
     this.teachingBattle = data.teachingBattle ?? false;
+    this.catchLesson = data.wild?.lesson === 'catch' ? 'owed' : null;
     this.itemLessonGiven = false;
     this.hunterState = data.hunterState;
     this.returnLocation = data.returnLocation;
@@ -1069,7 +1074,9 @@ export class BattleScene extends Phaser.Scene {
     // `createBattleState` applied it - so these are the words for what is
     // already true, read after the opening lines that named both sides.
     this.dialog.showMessages([
-      ...(this.teachingBattle
+      ...(this.catchLesson !== null
+        ? catchLessonOpening(this.state.enemy.pokemon.name)
+        : this.teachingBattle
         ? teachingBattleMessages(
             this.state.player.pokemon.name,
             this.state.enemy.pokemon.name,
@@ -2885,7 +2892,7 @@ export class BattleScene extends Phaser.Scene {
     this.struggleLines = [];
     this.itemSlotsThisTurn = new Set();
     this.itemLinesThisTurn = [];
-    this.showCombatEvents(result.events, leading, this.itemLesson(), rewardMessages);
+    this.showCombatEvents(result.events, leading, [...this.itemLesson(), ...this.catchLessonLine()], rewardMessages);
   }
 
   /**
@@ -2911,6 +2918,24 @@ export class BattleScene extends Phaser.Scene {
     if (this.runSession) {
       this.runSession.itemLessonSaid = true;
     }
+    return [line];
+  }
+
+  /** The first raid's catch: "throw a BALL now", once, the turn it drops under half (`catchLessonMessage`). */
+  private catchLessonLine(): string[] {
+    if (this.catchLesson !== 'owed') {
+      return [];
+    }
+    const foe = this.state.enemy;
+    const line = catchLessonMessage({
+      enemyHp: foe.currentHp,
+      enemyMaxHp: foe.pokemon.maxHp,
+      fightGoesOn: this.state.outcome === 'active',
+    });
+    if (!line) {
+      return [];
+    }
+    this.catchLesson = 'said';
     return [line];
   }
 
