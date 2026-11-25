@@ -12,9 +12,10 @@
  * `scenes/BoutiqueScene.ts` draws it and wires the keys.
  */
 import { formatMoney } from '../items/items';
+import { itemIcon } from '../ui/icons';
 import { COLUMN_MEASURES, escapeAttribute, pixelColumns, pixelCommitBar, pixelScreen, pixelTag, pixelWindow } from '../ui/pixelUi';
 import { lookKey, LOOK_SLOTS, sameLook, wearing, type LookSlot, type PlayerLook } from './look';
-import { billFor, billLine, checkBill, lookPriceLine, priceLine, SHELF_ORDER, shelfPieces, unownedIn, WHOLE_LOOKS, type WholeLook } from './wardrobe';
+import { billFor, billLine, checkBill, lookPriceLine, priceLine, SHELF_ORDER, shelfPieces, unownedIn, WHOLE_LOOKS, type WearableBill, type WholeLook } from './wardrobe';
 import { BOUTIQUE_NAME, wearableById, WEARABLES, type Wearable } from './wearables';
 
 export type BoutiqueMode = 'shop' | 'wardrobe';
@@ -199,20 +200,43 @@ function classicCard(state: BoutiqueState): string {
   return `<button class="px-window px-card boutique-card${on ? ' is-selected' : ''}" data-classic data-cursor-start data-help="${escapeAttribute(help)}">${lookFigure(state.sheet(null), { label: 'The classic look' })}<strong>The classic look</strong><small class="px-wrap">${on ? 'On in the mirror' : 'Free'}</small></button>`;
 }
 
+/**
+ * A card's price as the things themselves: the money, then each material as
+ * its icon and a count, as the workshop's cards show theirs. Said in words it
+ * ran to three centred lines on a card ("₽400 and 10 Linen rolls, 6 Mooring
+ * ropes and 4 Radio valves"); the words stay on the help bar and for a reader.
+ */
+function priceChips(bill: WearableBill): string {
+  const parts = [
+    ...(bill.money > 0 ? [`<span class="boutique-cost">${formatMoney(bill.money)}</span>`] : []),
+    ...Object.entries(bill.goods).map(
+      ([itemId, quantity]) => `<span class="boutique-cost">${itemIcon(itemId)}<small>×${quantity}</small></span>`,
+    ),
+  ];
+  if (bill.raidOnly.length > 0) {
+    const finds = bill.raidOnly.length === 1 ? 'a raid find' : `${bill.raidOnly.length} raid finds`;
+    parts.push(`<span class="boutique-cost">${parts.length === 0 ? `Needs ${finds}` : `+ ${finds}`}</span>`);
+  }
+  return `<span class="boutique-costs" role="img" aria-label="${escapeAttribute(lookPriceLine(bill))}">${parts.join('')}</span>`;
+}
+
 function wholeCard(state: BoutiqueState, entry: WholeLook): string {
   const on = sameLook(state.trying, entry.look);
   const missing = unownedIn(entry.look, state.owned);
-  const price = missing.length === 0 ? 'All yours' : lookPriceLine(billFor(missing));
-  return `<button class="px-window px-card boutique-card${on ? ' is-selected' : ''}" data-whole="${entry.id}" data-help="${escapeAttribute(`${entry.name}: ${entry.note}`)}">${lookFigure(state.sheet(entry.look), { label: entry.name })}<strong>${entry.name}</strong><small class="px-wrap">${price}</small></button>`;
+  const bill = billFor(missing);
+  const price = missing.length === 0 ? '<small class="px-wrap">All yours</small>' : priceChips(bill);
+  const said = missing.length === 0 ? '' : ` ${lookPriceLine(bill)}.`;
+  return `<button class="px-window px-card boutique-card${on ? ' is-selected' : ''}" data-whole="${entry.id}" data-help="${escapeAttribute(`${entry.name}: ${entry.note}${said}`)}">${lookFigure(state.sheet(entry.look), { label: entry.name })}<strong>${entry.name}</strong>${price}</button>`;
 }
 
 function pieceCard(state: BoutiqueState, piece: Wearable): string {
   const look = wearing(state.wearing, piece.id);
   const on = state.trying !== null && Object.values(state.trying).includes(piece.id);
   const owned = state.owned.has(piece.id);
+  const sold = !owned && piece.rarity !== 'raid' && piece.rarity !== 'starter';
   const line = owned ? 'Yours' : priceLine(piece);
   const help = `${piece.name}: ${piece.note}${owned ? '' : piece.rarity === 'raid' ? ' Only ever found on a raid.' : ` ${priceLine(piece)}.`}`;
-  return `<button class="px-window px-card boutique-card${on ? ' is-selected' : ''}${piece.rarity === 'raid' ? ' is-raid' : ''}" data-wear="${piece.id}" data-help="${escapeAttribute(help)}">${lookFigure(state.sheet(look), { label: piece.name })}<strong>${piece.name}</strong><small class="px-wrap${owned ? ' px-note' : ''}">${line}</small></button>`;
+  return `<button class="px-window px-card boutique-card${on ? ' is-selected' : ''}${piece.rarity === 'raid' ? ' is-raid' : ''}" data-wear="${piece.id}" data-help="${escapeAttribute(help)}">${lookFigure(state.sheet(look), { label: piece.name })}<strong>${piece.name}</strong>${sold ? priceChips(billFor([piece])) : `<small class="px-wrap${owned ? ' px-note' : ''}">${line}</small>`}</button>`;
 }
 
 /** The bar along the foot: what the try-on costs, and the one thing to do about it. */

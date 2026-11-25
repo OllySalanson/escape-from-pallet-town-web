@@ -6313,3 +6313,19 @@ body.touch-play .feedback-tab {
 .pixel-ui.player-name-menu .px-body {
   background: none;
 }
+
+/* A boutique card's price as the things themselves (`priceChips` in
+   `look/boutiqueView.ts`): the money, then each material's icon and count,
+   on one line where they fit - as the workshop's cards show theirs. */
+:where(.pixel-ui) .boutique-costs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0 calc(var(--u) * 3);
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .boutique-cost {
+  display: flex;
+  align-items: center;
+}

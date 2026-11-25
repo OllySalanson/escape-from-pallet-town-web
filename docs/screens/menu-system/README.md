@@ -196,3 +196,15 @@ between them now (`.px-place::after`).
 | Before | After |
 |---|---|
 | ![](before-breadcrumb.png) | ![](after-breadcrumb.png) |
+
+## 14. A price is the things themselves
+
+A boutique card's price was said in words, three centred lines of them
+("₽400 and 10 Linen rolls, 6 Mooring ropes and 4 Radio valves"). It is the
+money, then each material's icon and count, as the workshop's cards show
+theirs; the words stay on the help bar and for a reader (`priceChips` in
+`look/boutiqueView.ts`).
+
+| Before | After |
+|---|---|
+| ![](before-boutique-prices.png) | ![](after-boutique-prices.png) |
