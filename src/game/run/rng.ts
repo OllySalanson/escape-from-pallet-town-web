@@ -13,7 +13,7 @@ export interface SeededRng {
  * stream rather than a sixth call of `SeededRng`, so every roll in the game is
  * still made through the five - and never a side table: the harbour's planner
  * makes streams by the hundred thousand, and a `WeakMap` entry each made one of
- * its sweeps ten times slower.
+ * its sweeps ten times slower, and a symbol in the literal still doubled it.
  */
 const POSITION = Symbol('seeded-rng-position');
 
@@ -37,8 +37,7 @@ export function createSeededRng(seed: number, at?: number): SeededRng {
     return ((value ^ (value >>> 14)) >>> 0) / 4_294_967_296;
   };
 
-  const rng: SeededRng & { readonly [POSITION]: () => number } = {
-    [POSITION]: () => state >>> 0,
+  const rng: SeededRng = {
     next,
     int: (minInclusive, maxInclusive) =>
       minInclusive + Math.floor(next() * (maxInclusive - minInclusive + 1)),
@@ -58,5 +57,9 @@ export function createSeededRng(seed: number, at?: number): SeededRng {
       return shuffled;
     },
   };
+  // Where it has got to is read off the stream itself (`seededRngPosition`),
+  // through a symbol added after the stream is made, so a stream is built
+  // exactly as fast as it always was.
+  (rng as { [POSITION]?: () => number })[POSITION] = () => state >>> 0;
   return rng;
 }
