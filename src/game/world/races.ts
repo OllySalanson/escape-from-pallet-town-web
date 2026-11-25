@@ -419,6 +419,10 @@ export interface RaceResultInput {
   readonly firstGold: boolean;
   /** Whether the save has run a PERFECT before. */
   readonly hadPerfect: boolean;
+  /** Steps the run took, from its trail (`raceRunShape`). */
+  readonly steps?: number;
+  /** How long the player stood still after GO before their first step. */
+  readonly startLagMs?: number;
   /** Whether the save had beaten the racer before. */
   readonly beatenBefore: boolean;
   readonly timeMs: number;
@@ -478,12 +482,16 @@ export function racerArrivesLines(course: RaceCourse, input: RaceResultInput): s
   if (input.medal === 'gold' && isPerfect(course, input.timeMs)) {
     return [`${racer}: Not a step wasted. I watched. I'm going to be sick.`];
   }
-  if (input.medal === 'gold' && input.timeMs - course.perfectMs <= NEAR_PERFECT_MS && input.fightMs === 0) {
-    return [`${racer}: So close to PERFECT! You stood still at GO. Hold your way through my count - go the instant I say it.`];
-  }
+  const tip = perfectTip(course, input);
   if (input.medal === 'gold') {
     if (input.firstGold) {
-      return [`${racer}: Through the woodcutter's ride?! Nobody's been up there in years. That's the best run I've ever seen.`];
+      return [
+        `${racer}: Through the woodcutter's ride?! Nobody's been up there in years. That's the best run I've ever seen.`,
+        ...(tip ? [`${racer}: ${tip}`] : []),
+      ];
+    }
+    if (tip) {
+      return [`${racer}: So close to PERFECT! ${tip}`];
     }
     return [
       input.hadPerfect
@@ -554,8 +562,44 @@ export function offTheBikeLine(course: RaceCourse): string {
   return `${course.racer.name}: Off the bike! On foot, like everybody.`;
 }
 
-/** How far a GOLD may miss PERFECT and still be told it was only the start. */
+/** How far a GOLD may miss PERFECT and still be told what it was. */
 export const NEAR_PERFECT_MS = 200;
+
+/** A start slower than this, after GO, is standing still: a held key goes in a frame or two. */
+export const SLOW_START_MS = 60;
+
+/** The floor in steps, which PERFECT is. */
+function floorSteps(course: RaceCourse): number {
+  return Math.round(course.perfectMs / STEP_DURATION_MS);
+}
+
+/**
+ * What kept a near GOLD off PERFECT, read off the run rather than guessed: a
+ * step over the floor, or a stand at GO. Null when it was neither, or not near.
+ */
+function perfectTip(course: RaceCourse, input: RaceResultInput): string | null {
+  if (input.medal !== 'gold' || input.fightMs > 0 || isPerfect(course, input.timeMs)) return null;
+  if (input.timeMs - course.perfectMs > NEAR_PERFECT_MS) return null;
+  if (input.steps !== undefined && input.steps > floorSteps(course)) {
+    return `A step too many - ${input.steps} where ${floorSteps(course)} will do.`;
+  }
+  if (input.startLagMs !== undefined && input.startLagMs > SLOW_START_MS) {
+    return 'You stood still at GO. Hold your way through my count - go the instant I say it.';
+  }
+  return null;
+}
+
+/** How a run went, from its trail: how many steps, and how long it stood before the first. */
+export function raceRunShape(trail: readonly number[]): { steps?: number; startLagMs?: number } {
+  const points = trail.length / 3;
+  if (points < 2) return {};
+  return { steps: points - 1, startLagMs: Math.max(0, trail[5] - STEP_DURATION_MS) };
+}
+
+/** A wandered-off line-up, said as what happened: the racer is out of sight. */
+export function gaveUpWaitingLine(course: RaceCourse): string {
+  return `${course.racer.name} gave up waiting at the chalk mark.`;
+}
 
 /** Said when the purse is handed over, before the stone is chosen. */
 export function pursePickLine(course: RaceCourse): string {

@@ -217,4 +217,12 @@ describe('the answer window', () => {
     expect(bounds.y).toBe(4);
     expect(bounds.y + bounds.height).toBeGreaterThan(4 + 60);
   });
+
+  it('says where its box and its answers are apart, so a chip beside the answers is not stood aside for nothing', () => {
+    const { prompt } = ask(['FLOOR 1', 'FLOOR 2', 'FLOOR 3', 'EXIT'], 0);
+    const [box, answers] = prompt.rects;
+    expect(box).toMatchObject({ x: 0, y: 200, width: 300, height: 60 });
+    expect(answers.y + answers.height).toBe(201);
+    expect(answers.width).toBeLessThan(300);
+  });
 });

@@ -131,7 +131,7 @@ export class RaidHud {
    */
   private covered: Rect[] = [];
   /** What this render is drawn under, if anything (see `render`). */
-  private under: Rect | null = null;
+  private under: readonly Rect[] = [];
   private readonly clockText: Phaser.GameObjects.Text;
   private readonly objectiveText: Phaser.GameObjects.Text;
   private readonly hunterText: Phaser.GameObjects.Text;
@@ -175,11 +175,13 @@ export class RaidHud {
    * (`ui/sidePanel.ts`). The right column moves over to stay beside it, because
    * the clock and the hunter are what the panel is opened with an eye on.
    */
-  public render(state: RaidHudState, timeMs: number, under: Rect | null = null, covered = 0): void {
+  public render(state: RaidHudState, timeMs: number, under: Rect | readonly Rect[] | null = null, covered = 0): void {
     const stageWidth = this.scene.scale.width - covered;
     this.frames.clear();
     this.covered = [];
-    this.under = under;
+    // A question is two boxes - its own and its answers' - and a chip is only
+    // under it where it is under one of them.
+    this.under = under === null ? [] : Array.isArray(under) ? under : [under as Rect];
 
     const objective = this.placeChip(
       this.objectiveText,
@@ -341,7 +343,7 @@ export class RaidHud {
     const rect = { x: Math.round(x), y: Math.round(y), width, height };
     // Still measured and seated, so the chip under it in the column keeps its
     // place; only the drawing is withheld.
-    if (this.under && overlaps(rect, this.under)) {
+    if (this.under.some((box) => overlaps(rect, box))) {
       text.setVisible(false);
       return rect;
     }
@@ -384,7 +386,7 @@ export class RaidHud {
     const width = TEXT_PADDING_X * 2 + lead + wordsWidth;
     const height = TEXT_PADDING_Y * 2 + Math.max(wordsHeight, hasIcon ? PRIZE_ICON : 0);
     const rect = { x: Math.round(stageWidth - EDGE_MARGIN - width), y: Math.round(top), width, height };
-    if (this.under && overlaps(rect, this.under)) {
+    if (this.under.some((box) => overlaps(rect, box))) {
       this.prizeText.setVisible(false);
       this.prizeRoomText.setVisible(false);
       this.prizeIcon.setVisible(false);
