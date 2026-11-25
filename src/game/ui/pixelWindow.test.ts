@@ -79,13 +79,13 @@ describe('the drawn window frame', () => {
     }
   });
 
-  it('draws the battle dialogue in the same cream window as the rest of the game', async () => {
+  it('draws the battle dialogue in the same framed window as every pop-up in the game', async () => {
     const battle = await readFile(new URL('BattleScene.ts', SCENES), 'utf8');
     const dialogue = battle.slice(battle.indexOf('this.dialog = new DialogBox('));
 
-    expect(dialogue).toContain('pixelWindow: true');
-    expect(dialogue).toContain('backgroundColor: WINDOW_CREAM');
-    expect(dialogue).toContain('borderColor: WINDOW_BORDER');
+    expect(dialogue).toContain('framedWindow: true');
+    expect(dialogue).toContain('backgroundColor: UI.paper.value');
+    expect(battle).not.toContain('drawPixelWindow(');
     expect(dialogue).toContain('color: WINDOW_INK');
     // The 22px text inset only existed to clear the stretched texture's painted
     // edge, so it goes with the texture rather than living on as a magic number.

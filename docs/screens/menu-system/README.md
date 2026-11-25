@@ -100,3 +100,16 @@ and NO ROOM in red on a line of its own (`RaidHud.placePrize`).
 | Before | After |
 |---|---|
 | ![](before-prize-chip.png) | ![](after-prize-chip.png) |
+
+## 6. A fight is the same game
+
+The battle was the one screen still in the old flat cream boxes with a black
+typed cursor. Its panel and HP plates are the pop-ups' framed window now, the
+cursor and the prompt to read on are the pop-ups' red, the field's bezel is the
+frame's navy, and the move rows and the two guidance lines stand inside the
+deeper frame.
+
+| | Before | After |
+|---|---|---|
+| Commands | ![](before-battle.png) | ![](after-battle.png) |
+| Moves | ![](before-battle-moves.png) | ![](after-battle-moves.png) |
