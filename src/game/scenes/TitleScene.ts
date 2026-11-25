@@ -43,6 +43,7 @@ import { openNameScreen } from '../ui/PlayerNameOverlay';
 import { forgetStatsRequest, isReviewReturn, isStatsRequest, takeSignInDestination } from '../maker/review';
 import { createPlaytestGame, withPlaytestCurrent } from '../dev/playtestSave';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
+import { letterGap } from '../ui/pixelText';
 import { TILE_SIZE, WORLD_MAPS, type WorldMapDefinition } from '../worldMap';
 import { characterDesignTextureKey, getCharacterDesign } from '../world/characterDesigns';
 import { CHARACTER_FEET_PIXEL_Y, CHARACTER_FRAME_HEIGHT } from '../playerFrames';
@@ -81,6 +82,10 @@ const SHADOW_ALPHA = 0.55;
  */
 const DETAIL_LABEL_Y = 11;
 const DETAIL_LINE_Y = 23;
+/** The hint's dark band: see `TitleScene.promptPlate`. */
+const PROMPT_PLATE_ALPHA = 0.8;
+const PROMPT_PLATE_PAD_X = 4;
+const PROMPT_PLATE_PAD_Y = 1;
 
 /** The name, set at four times Orange Kid's own grid so every stem is a whole four pixels. */
 const NAME_SIZE = '50px';
@@ -122,6 +127,13 @@ export class TitleScene extends Phaser.Scene {
   private naming: MenuOverlay | null = null;
   /** The key hint under the menu; it pulses until something is chosen. */
   private prompt: Phaser.GameObjects.Text[] = [];
+  /**
+   * The dark band the hint is set on. Over the drifting town its pale words
+   * were lost on the pale roofs and paths, worst as the touch pad's D-PAD
+   * CHOOSES · OK SELECTS (the mobile lane, 25 Nov 2026). Dusk, not the
+   * buttons' cream, and with no rim, so it never reads as a fifth button.
+   */
+  private promptPlate: Phaser.GameObjects.Graphics | null = null;
   private built: Phaser.GameObjects.GameObject[] = [];
   /** The menu's own objects, so moving the cursor redraws the menu and nothing under it. */
   private menuBuilt: Phaser.GameObjects.GameObject[] = [];
@@ -281,6 +293,7 @@ export class TitleScene extends Phaser.Scene {
     for (const words of this.prompt) {
       words.setText(text);
     }
+    this.drawPromptPlate();
   }
 
   private rebuild(): void {
@@ -730,7 +743,26 @@ export class TitleScene extends Phaser.Scene {
         this.trackMenu(hit);
       }
     }
+    this.promptPlate = keep(this.add.graphics().setDepth(11));
     this.prompt = this.edgedWords(layout.hint.x, layout.hint.y - 6, titleHint(this.menu, this.choice), TAGLINE, CHIP_FONT_SIZE, 11, keep);
+    this.drawPromptPlate();
+  }
+
+  /** The hint's band, as wide as its words and a little more. */
+  private drawPromptPlate(): void {
+    const words = this.prompt[this.prompt.length - 1];
+    if (!this.promptPlate || !words) {
+      return;
+    }
+    // A line's measured width ends with the gap after its last letter, which
+    // left the band a few pixels wider on the right than on the left.
+    const left = Math.round(words.x - words.width / 2);
+    const inked = Math.round(words.width) - letterGap(Number.parseInt(CHIP_FONT_SIZE, 10));
+    const height = Math.ceil(words.height) + PROMPT_PLATE_PAD_Y * 2;
+    this.promptPlate
+      .clear()
+      .fillStyle(DUSK, PROMPT_PLATE_ALPHA)
+      .fillRect(left - PROMPT_PLATE_PAD_X, Math.round(words.y) - PROMPT_PLATE_PAD_Y, inked + PROMPT_PLATE_PAD_X * 2, height);
   }
 
   private pointTo(choice: TitleChoiceId): void {
