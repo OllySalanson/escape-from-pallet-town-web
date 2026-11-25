@@ -278,11 +278,15 @@ export function pocketStrip(pockets: readonly { readonly pocket: ThingsPocket; r
   if (pockets.length < 2) {
     return '';
   }
-  // The icons, then every pocket's name, of which only the lit pocket's shows.
-  return `<div class="things-pockets" aria-hidden="true">${pockets
+  // The pockets as tabs - the lit one raised and joined to the list under it,
+  // as a bag's pockets are - then every pocket's name and how many kinds it
+  // holds, of which only the lit pocket's shows. The name stood alone beside
+  // a row of grey icons and read as a stray word ("Medicine", the captain,
+  // 25 Nov 2026); on a tab, counted, it is the section the list is in.
+  return `<div class="things-pockets" aria-hidden="true"><div class="things-pocket-tabs">${pockets
     .map(({ pocket, things }, index) => `<span class="things-pocket${index === 0 ? ' is-here' : ''}" data-pocket-tab="${pocket}" title="${escapeAttribute(THINGS_POCKET_LABELS[pocket])}">${itemIcon(things[0].item.id)}</span>`)
-    .join('')}${pockets
-    .map(({ pocket }, index) => `<span class="things-pocket-name${index === 0 ? ' is-here' : ''}" data-pocket-tab="${pocket}">${THINGS_POCKET_LABELS[pocket]}</span>`)
+    .join('')}</div>${pockets
+    .map(({ pocket, things }, index) => `<span class="things-pocket-name${index === 0 ? ' is-here' : ''}" data-pocket-tab="${pocket}">${THINGS_POCKET_LABELS[pocket]}<small>${things.length} ${things.length === 1 ? 'kind' : 'kinds'}</small></span>`)
     .join('')}</div>`;
 }
 

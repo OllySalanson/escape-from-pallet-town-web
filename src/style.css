@@ -5790,27 +5790,48 @@ body.touch-play .feedback-tab {
    pocket lit and raised, the rest dim - a picture of where LEFT and RIGHT go. */
 :where(.pixel-ui) .things-pockets {
   display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--u) * 2);
-  padding: calc(var(--u) * 2) calc(var(--u) * 2) calc(var(--u) * 3);
-  border-bottom: var(--u) solid var(--frame);
+  align-items: flex-end;
+  gap: calc(var(--u) * 4);
+  padding: calc(var(--u) * 2) calc(var(--u) * 2) 0;
+  /* The line the tabs stand on; the lit tab's paper runs over it into the list. */
+  box-shadow: inset 0 calc(var(--u) * -1) 0 var(--frame);
 }
+:where(.pixel-ui) .things-pocket-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--u);
+  min-width: 0;
+}
+/* A pocket is a tab: a frame on three sides with its corners clear, sunk while
+   it is not the one the cursor is in. */
 :where(.pixel-ui) .things-pocket {
   display: grid;
   place-items: center;
-  width: calc(var(--u) * 20);
+  width: calc(var(--u) * 22);
   height: calc(var(--u) * 20);
-  background: var(--cream-dim);
-  box-shadow: inset 0 0 0 var(--u) var(--ink-soft);
+  background:
+    linear-gradient(var(--frame), var(--frame)) var(--u) 0 / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--frame), var(--frame)) 0 var(--u) / var(--u) 100% no-repeat,
+    linear-gradient(var(--frame), var(--frame)) 100% var(--u) / var(--u) 100% no-repeat,
+    linear-gradient(var(--cream-dim), var(--cream-dim));
 }
 .pixel-ui .things-pocket:not(.is-here) > .item-icon {
   filter: grayscale(1);
-  opacity: 0.5;
+  opacity: 0.55;
 }
+/* The lit pocket: paper, two pixels taller, its foot over the line it stands on
+   so it is one piece with the list under it. A red mark along its top says
+   which, for an eye that sees no difference in the paper. */
 .pixel-ui .things-pocket.is-here {
-  background: var(--cream-lit);
-  box-shadow: inset 0 0 0 var(--u) var(--red);
-  transform: translateY(calc(var(--u) * -1));
+  position: relative;
+  height: calc(var(--u) * 23);
+  margin-bottom: calc(var(--u) * -1);
+  background:
+    linear-gradient(var(--cursor), var(--cursor)) var(--u) 0 / calc(100% - var(--u) * 2) calc(var(--u) * 2) no-repeat,
+    linear-gradient(var(--frame), var(--frame)) 0 var(--u) / var(--u) 100% no-repeat,
+    linear-gradient(var(--frame), var(--frame)) 100% var(--u) / var(--u) 100% no-repeat,
+    linear-gradient(var(--cream), var(--cream));
 }
 /* The strip is a row of its own between the heading and the list: the window's
    grid had rows for a heading, a list and a pane, and the strip took the list's
@@ -5818,11 +5839,19 @@ body.touch-play .feedback-tab {
 .pixel-ui .raid-bag-layout > .px-window.things-storage:has(.things-pockets) {
   grid-template-rows: auto auto minmax(0, 1fr) auto;
 }
-/* The lit pocket's name beside the strip; the others' stand hidden. */
+/* The lit pocket's name and how many kinds it holds, beside the tabs; the
+   others' stand hidden. */
 :where(.pixel-ui) .things-pocket-name {
+  display: flex;
+  flex-direction: column;
   align-self: center;
-  margin-left: calc(var(--u) * 2);
+  min-width: 0;
+  padding-bottom: calc(var(--u) * 2);
   text-transform: uppercase;
+  white-space: nowrap;
+}
+:where(.pixel-ui) .things-pocket-name > small {
+  color: var(--ink-soft);
 }
 :where(.pixel-ui) .things-pocket-name:not(.is-here) {
   display: none;

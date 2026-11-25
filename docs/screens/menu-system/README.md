@@ -76,3 +76,15 @@ layout.
 The bench at 2560x1440 and Bill's PC at 1920x1080:
 
 ![](after-in-frame-bench-2560x1440.png) ![](after-in-frame-stash-1920x1080.png)
+
+## 4. YOUR THINGS's pockets are tabs
+
+The captain could not tell why the top row of storage said "Medicine": the
+pocket's name stood alone beside a row of grey icons. The pockets are tabs
+now - the one the cursor is in raised, in paper, marked red along its top and
+joined to the list under it, the others sunk - and the name says how many kinds
+the pocket holds (`pocketStrip` in `ui/thingsView.ts`).
+
+| Before | After |
+|---|---|
+| ![](before-things-pockets.png) | ![](after-things-pockets.png) |
