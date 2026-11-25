@@ -113,3 +113,17 @@ deeper frame.
 |---|---|---|
 | Commands | ![](before-battle.png) | ![](after-battle.png) |
 | Moves | ![](before-battle-moves.png) | ![](after-battle-moves.png) |
+
+## 7. The title's buttons and the yard's door captions
+
+The title's choices were cream with a mint one under the cursor and a khaki one
+for CONTINUE with no game - two colours no other window used. They are the
+pop-ups' framed window now: lit paper under the red cursor, sunk paper and soft
+ink for a choice that would do nothing. And a door's caption on the yard was a
+brown box with a gold line, the one window of another game beside the cream
+questions it stands over; it is paper and the navy line.
+
+| | Before | After |
+|---|---|---|
+| The title | ![](before-title.png) | ![](after-title.png) |
+| A door's caption under a question | ![](before-door-caption.png) | ![](after-door-caption.png) |

@@ -4,7 +4,8 @@ import { SaveManager, type SaveSummary } from '../save/SaveManager';
 import { getStarterSpecies } from '../stash';
 import { GAME_FONT } from '../ui/gameFont';
 import { letteringMask, stampMask, tintedMask } from '../ui/stampedLettering';
-import { drawMenuCursor, drawPixelWindow, WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK } from '../ui/pixelWindow';
+import { drawFramedWindow, drawMenuCursor, WINDOW_BORDER, WINDOW_INK } from '../ui/pixelWindow';
+import { UI } from '../ui/uiPalette';
 import {
   eraseMenu,
   layoutTitleMenu,
@@ -64,14 +65,10 @@ import type { SceneDescription } from '../dev/testDescribe';
  */
 
 const DUSK = 0x0a1428;
-const MINT = 0x8ed4c2;
 const RAID_RED = 0xb0201c;
 
 const TITLE_MAIN = '#f8f5d7';
 const TAGLINE = '#cfdce6';
-/** A choice that would do nothing: dimmer than the cream window, and its words with it. */
-const DISABLED_FILL = 0xc3c29d;
-const DISABLED_INK = '#75745f';
 /** What a window casts on the town under it. */
 const SHADOW_ALPHA = 0.55;
 
@@ -671,15 +668,19 @@ export class TitleScene extends Phaser.Scene {
       this.trackMenu(shadow);
       const bar = this.add.graphics().setDepth(10);
       const raised: TitleRow = { ...row, y: row.y - lift };
-      drawPixelWindow(bar, raised, { fill: !choice.enabled ? DISABLED_FILL : selected ? MINT : WINDOW_CREAM });
+      // The pop-ups' framed window: lit paper under the cursor, sunk paper for
+      // a choice that would do nothing. The chosen one was mint and the dim one
+      // khaki, two colours no other window in the game used (critic sweep,
+      // 25 Nov 2026).
+      drawFramedWindow(bar, raised, !choice.enabled ? UI.paperSunk.value : selected ? UI.paperLit.value : UI.paper.value);
       this.trackMenu(bar);
       if (selected) {
         const cursor = this.add.graphics().setDepth(11);
         const cursorY = raised.y + (choice.detail ? 9 : Math.round(raised.height / 2)) - 2;
-        drawMenuCursor(cursor, raised.x + 6, cursorY, 0x202020);
+        drawMenuCursor(cursor, raised.x + 6, cursorY, UI.cursor.value);
         this.cursor = { graphics: this.trackMenu(cursor), x: raised.x + 6, y: cursorY };
       }
-      const ink = choice.enabled ? WINDOW_INK : DISABLED_INK;
+      const ink = choice.enabled ? WINDOW_INK : UI.inkSoft.css;
       const labelY = choice.detail ? raised.y + 11 : raised.y + Math.round(raised.height / 2);
       this.trackMenu(
         this.add
