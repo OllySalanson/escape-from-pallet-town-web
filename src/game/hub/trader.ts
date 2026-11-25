@@ -48,9 +48,13 @@ import type { Stash } from '../stash';
  *    amount of money buys one. `TraderStockItem` is typed to `SupplyItemId`,
  *    which is derived from the catalogue rather than listed, so the compiler
  *    refuses a price tag on a piece of gear.
- * 4. **Sinks outweigh the faucet.** A raid finds roughly ₽40-70
- *    (`worldMap.ts`). His stock is an unbounded drain at 80-260 a unit, and the
- *    berth is 250 every raid a player wants one. A player cannot out-earn him.
+ * 4. **Sinks outweigh the faucet.** A raid finds roughly ₽40-70 on the ground
+ *    (`worldMap.ts`) and the stake trail more, and every trainer beaten pays
+ *    FireRed's prize money (`../world/prizeMoney.ts`: ₽60-180 for the vale's
+ *    early trainers), so a raid that fights for it buys two or three things
+ *    here and one that walks straight out buys nothing. His stock is an
+ *    unbounded drain at 80-260 a unit, and the berth is 250 every raid a player
+ *    wants one. A player cannot out-earn him.
  *
  * Everything here is a pure function over the stash and the save's own record,
  * so the rules are testable without Phaser; `HubScene` renders them and

@@ -3867,3 +3867,54 @@ describe('what a fight tells the Pokédex it met', () => {
     expect(registered).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * The overnight critic, problem 16 (25 Nov 2026): "Trainers pay nothing when
+ * you beat them." A win pays FireRed's prize into the raid's own pack
+ * (`world/prizeMoney.ts`), and what the pack has no room for is put down where
+ * the fight began rather than lost.
+ */
+describe('prize money for a win', () => {
+  type Payer = { prizeMoney: number; returnLocation?: { mapId: string; position: { x: number; y: number } }; payPrizeMoney(): { message: string }[] };
+
+  it('puts the prize in the pack and says so, once', () => {
+    const bag = new Bag({ potion: 2 });
+    const { scene } = createBattleSceneHarness({ authoredTrainer: true, bag });
+    const payer = scene as unknown as Payer;
+    payer.prizeMoney = 80;
+    expect(payer.payPrizeMoney().map(({ message }) => message)).toEqual(['You got ₽80 for winning!']);
+    expect(bag.count('money')).toBe(80);
+    expect(payer.payPrizeMoney()).toEqual([]);
+    expect(bag.count('money')).toBe(80);
+  });
+
+  it('takes what the pack has room for and lays the rest on the ground', () => {
+    // Eighteen squares: seventeen Potions and one free, which holds ₽250.
+    const bag = new Bag({ potion: 17 });
+    const runSession = startedRunSession();
+    const { scene } = createBattleSceneHarness({ authoredTrainer: true, bag, runSession });
+    const payer = scene as unknown as Payer;
+    payer.prizeMoney = 1_000;
+    payer.returnLocation = { mapId: 'greystone-vale', position: { x: 3, y: 4 } };
+    expect(payer.payPrizeMoney().map(({ message }) => message)).toEqual([
+      'You got ₽250 for winning!',
+      'Your pack had room for ₽250. The other ₽750 is on the ground.',
+    ]);
+    expect(bag.count('money')).toBe(250);
+    expect(runSession.droppedOnTheGround?.['greystone-vale']).toMatchObject([
+      { itemId: 'money', quantity: 750, position: { x: 3, y: 4 } },
+    ]);
+    // Counted as found in full, and the part on the ground as put down.
+    expect(runSession.manager.snapshot().foundItems).toEqual([{ itemId: 'money', quantity: 1_000 }]);
+    expect(runSession.manager.snapshot().droppedItems).toEqual([{ itemId: 'money', quantity: 750 }]);
+  });
+
+  it('pays only the first hunter a raid beats', () => {
+    const runSession = startedRunSession();
+    const { scene } = createBattleSceneHarness({ hunterBattle: true, runSession });
+    const payer = scene as unknown as Payer;
+    payer.prizeMoney = 28;
+    payer.payPrizeMoney();
+    expect(runSession.hunterPrizePaid).toBe(true);
+  });
+});
