@@ -63,11 +63,11 @@ describe('rimOpensAwayFromJumpIn', () => {
     expect(rimOpensAwayFromJumpIn(bench(47), false)).toBe(false);
   });
 
-  it('opens on NOT YET for a team close to done, medicine packed or not', () => {
+  it('opens off JUMP IN for a team close to done, medicine packed or not', () => {
     expect(rimOpensAwayFromJumpIn(bench(5), false)).toBe(true);
   });
 
-  it('opens on NOT YET for a player just home, and for a bench nobody can take', () => {
+  it('opens off JUMP IN for a player just home, and for a bench nobody can take', () => {
     expect(rimOpensAwayFromJumpIn(bench(47), true)).toBe(true);
     expect(rimOpensAwayFromJumpIn(bench(47, 'Nobody is on the bench.'), false)).toBe(true);
   });

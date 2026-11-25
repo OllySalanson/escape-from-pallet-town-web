@@ -169,7 +169,7 @@ describe('a way in chosen before the rim has been explained', () => {
     expect(flow.insertionId).toBe(under.id);
   });
 
-  it('is still chosen after NOT YET, until the player takes a step', () => {
+  it('is still chosen after the card is put away, until the player takes a step', () => {
     const { scene, flow, frame } = atTheRail(false);
     scene.arenaPanel = 'rim';
     frame();

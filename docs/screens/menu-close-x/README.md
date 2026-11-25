@@ -27,3 +27,7 @@ Each pair is `<screen>-before.png` (main at bbc46b0d) and `<screen>-after.png`
 `team`, `things`, `pokedex` and `pokedex-page` are `node extraShots.mjs <build
 url> <dir>` (beside this file), which also closes YOUR TEAM and the Pokédex by
 clicking the X and YOUR THINGS by ESC, and fails if any of them stays open.
+
+Along the way: the jump-in card's TEAM tile cut its notes to PARTNER BULBASAU
+and +22 AT BAS beside two icons; they now drop under the icons when they do not
+fit beside them (`rim-after.png`).

@@ -2162,7 +2162,7 @@ describe('what the base screen leads with', () => {
       root.querySelectorAll = saved.all;
       root.querySelector = saved.one;
     }
-    return (document.activeElement as { name: string }).name;
+    return (document.activeElement as { name: string } | undefined)?.name ?? 'nothing';
   }
 
   // The second characters hunt of 11 Nov 2026, finding 1: a hurt team's card
@@ -2180,6 +2180,20 @@ describe('what the base screen leads with', () => {
     expect(last).not.toBe('start');
     expect(pressOnTheRim(hub, last, 'ArrowDown')).toBe('start');
     expect(hub.flow.insertionId).toBe(landing);
+  });
+
+  // The critic's pass on the X, 25 Nov 2026: with NOT YET gone, a click on a
+  // tile left nothing focused and the next arrow fell back on JUMP IN.
+  it('puts a lost highlight on a hurt team’s card back on its first row, never on JUMP IN', () => {
+    const { hub } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    const { pokemon } = hub.flow.party[0];
+    pokemon.takeDamage(pokemon.currentHp - 1);
+    hub.setView('rim');
+    readyToDeploy(hub);
+    for (const key of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) {
+      expect(pressOnTheRim(hub, 'nothing', key)).toBe('landing');
+    }
   });
 
   it('has nothing beside JUMP IN for Left and Right to reach: the way back is the X', () => {

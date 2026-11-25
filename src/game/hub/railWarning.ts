@@ -7,7 +7,7 @@
  * nothing in FireRed stops somebody walking out of a town hurt, but FireRed's
  * player can see the party's HP and a card about to spend the raid has to say
  * it. So the rim's card names who is hurt and, when the whole team together
- * is close to done, opens with the cursor on NOT YET.
+ * is close to done, opens with the cursor on its first row, off JUMP IN.
  *
  * Phaser-free, so all of it can be asked of a number.
  */
@@ -16,7 +16,7 @@ import { isPlaytestRun } from '../dev/playtestMode';
 
 /** Below this share of their HP somebody is named on the card. */
 const NAMED_BELOW_SHARE = 1 / 2;
-/** Below this share of the whole team's HP, the card opens on NOT YET. */
+/** Below this share of the whole team's HP, the card opens off JUMP IN. */
 const STOPS_BELOW_SHARE = 1 / 3;
 /** How many are spelt out before the rest are counted: the card has only so many lines. */
 const MOST_NAMED = 2;
@@ -31,7 +31,7 @@ export interface RailMember {
 export interface RailWarning {
   /** The words on the card. */
   readonly line: string;
-  /** Whether the cursor should open on NOT YET rather than on JUMP IN. */
+  /** Whether the cursor should open on the card's first row rather than on JUMP IN. */
   readonly stops: boolean;
 }
 

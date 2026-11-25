@@ -5569,16 +5569,21 @@ body.touch-play .feedback-tab {
   gap: var(--u);
   min-width: 0;
 }
+/* The notes stand right of the icons while they fit and drop under them when
+   they do not: squeezed beside two icons they were cut to PARTNER BULBASAU and
+   +22 AT BAS (the critic's pass, 25 Nov 2026). */
 :where(.pixel-ui) .rim-team {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: calc(var(--u) * 4);
+  column-gap: calc(var(--u) * 4);
 }
 :where(.pixel-ui) .rim-team-notes {
   display: grid;
   align-content: start;
   justify-items: end;
-  min-width: 0;
+  margin-left: auto;
+  white-space: nowrap;
 }
 :where(.pixel-ui) .rim-mons {
   display: flex;

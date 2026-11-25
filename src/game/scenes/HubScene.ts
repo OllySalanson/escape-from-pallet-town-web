@@ -285,7 +285,7 @@ export interface HubSceneData {
   readonly straightOver?: boolean;
   /**
    * The rim's card opened by a player just home from a raid, who has not taken
-   * a step: the cursor starts on NOT YET, so SPACE pressed through the result
+   * a step: the cursor starts on the card's first row, so SPACE pressed through the result
    * screen does not carry on over the fence (`BaseScene.homeOnTheRail`).
    */
   readonly justHome?: boolean;
@@ -3083,6 +3083,14 @@ export class HubScene extends Phaser.Scene {
     const active = document.activeElement as HTMLElement | null;
     const row = active?.dataset.rimRow as RimRowId | undefined;
     const button = active ? buttons.indexOf(active) : -1;
+    // A card that opened off JUMP IN (a hurt team, a player just home) puts a
+    // lost highlight back on its first row, never on the jump: a click on a
+    // tile or the X leaves nothing on the card focused, and the next arrow then
+    // SPACE must not spend the raid.
+    if (!row && button < 0 && rimOpensAwayFromJumpIn(this.flow, this.justHome) && rows.length > 0) {
+      this.overlay.root.querySelector<HTMLElement>(`[data-rim-row="${rows[0].id}"]`)?.focus();
+      return;
+    }
     const start = Math.max(0, buttons.findIndex((each) => each.hasAttribute('data-cursor-start')));
     const move = rimKeyMove(key, rows, row ? { row } : button >= 0 ? { button } : null, buttons.length, start);
     if (move.kind === 'step') {

@@ -88,8 +88,8 @@ try {
     return false;
   };
   /**
-   * To the rail, by way of a real step: the rim's card opens on NOT YET for somebody just home from a
-   * raid who has not moved (`BaseScene.homeOnTheRail`), so ENTER on it would close it, as it would for a player.
+   * To the rail, by way of a real step: the rim's card opens off JUMP IN for somebody just home from a
+   * raid who has not moved (`BaseScene.homeOnTheRail`), so ENTER on it would not jump, as it would not for a player.
    */
   const toTheRail = async () => {
     const rail = { x: 35, y: 53 };
