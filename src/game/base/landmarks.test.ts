@@ -6,7 +6,7 @@ describe('the hint line at a landmark', () => {
   // pressing SPACE in every direction, because the line under them said only
   // [ARROWS] WALK, even while they faced the sign.
   it('names THE DIG when facing its sign from where the AI players stood', () => {
-    expect(landmarkHint({ x: 68, y: 19 })).toBe('[SPACE] THE DIG');
+    expect(landmarkHint({ x: 70, y: 19 })).toBe('[SPACE] THE DIG');
   });
 
   it('names every landmark on every tile that answers SPACE', () => {

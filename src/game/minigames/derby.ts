@@ -2,7 +2,7 @@ import { GENERATED_EVOLUTIONS } from '../pokemon/generated/evolutionRules';
 import { DERBY_LEVELS } from './derbyLevels';
 import { daySeed, hasAbility, hasType, PokemonType, roller, traits, type PokemonTraits } from './traits';
 
-export { DERBY_LEVELS, THE_FRONT, START_X } from './derbyLevels';
+export { DERBY_LEVELS, SHIPPED_FRONT, THE_FRONT, START_X } from './derbyLevels';
 
 /**
  * THE PROMENADE DERBY (the harbour arenas plan, section 3.5): this game's own

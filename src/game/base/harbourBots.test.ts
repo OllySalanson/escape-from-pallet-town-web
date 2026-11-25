@@ -259,7 +259,10 @@ describe('regulars calling on the keepers', () => {
         calls.set(leg.room, [...(calls.get(leg.room) ?? []), { from: leg.from, to: leg.to, bot: visitPlan(visit).bot.id }]);
       }
     }
-    expect(calling / visits).toBeGreaterThan(0.15);
+    // One visit in seven: it was over 0.15 before THE PROMENADE ran on east
+    // round its bay (25 Nov 2026), and a regular out at THE POINT has further
+    // to walk back to a keeper's door inside a room's window.
+    expect(calling / visits).toBeGreaterThan(0.14);
     expect([...calls.keys()].sort()).toEqual(ROOM_CALLS.map((call) => call.room).sort());
     for (const list of calls.values()) {
       const sorted = [...list].sort((a, b) => a.from - b.from);

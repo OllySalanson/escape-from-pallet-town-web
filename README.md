@@ -247,7 +247,8 @@ night, every window lights up, the lamps come on along the quay and the front, t
 beacon, its beam sweeps the bay. Every part of the harbour has a name, and like a
 FireRed town it tells you on a little board at the top of the screen as you walk into it - Arena
 Square, Keepers' Row, Harbour Square with its fountain and its town map, the Quay, the Docks, the
-Long Pier, the Cove and the Green. And the board on the quay has a new notice pinned up every day.
+Long Pier, the Cove and the Green, and out along the front, Pier Square, the Gardens (there's a bandstand) and the
+Point. And the board on the quay has a new notice pinned up every day.
 
 At the end of the row, behind the window boxes, is one more: **The Bolthole**, which is yours.
 Home from your first raid it asks, as FireRed does, **YOUR NAME?** - and it's one each: nobody else

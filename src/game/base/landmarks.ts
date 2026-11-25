@@ -85,7 +85,7 @@ const LANDMARKS: readonly HarbourLandmark[] = [
     // the drying net at their east end.
     near: Array.from({ length: 7 }, (_, index) => ({ x: 36 + index, y: 19 })),
   },
-  // THE PROMENADE's east end: THE FIELD-MOVE COURSE's gate, COURSE painted
+  // THE POINT, at THE PROMENADE's east end: THE FIELD-MOVE COURSE's gate, COURSE painted
   // over it with the four field moves it asks for, and the chalk board its
   // times are kept on (`minigames/fieldCourse.ts`). Facing either runs or
   // reads the course rather than saying the note (`BaseScene`).
@@ -93,20 +93,20 @@ const LANDMARKS: readonly HarbourLandmark[] = [
     id: 'field-course',
     name: 'FIELD-MOVE COURSE',
     note: 'CUT, SMASH, PUSH and SURF it',
-    props: [{ name: 'courseGate', x: 84, y: 7 }],
-    at: { x: 85, y: 9 },
-    near: [83, 84, 85, 86].map((x) => ({ x, y: 10 })),
+    props: [{ name: 'courseGate', x: 117, y: 5 }],
+    at: { x: 118, y: 7 },
+    near: [116, 117, 118, 119].map((x) => ({ x, y: 8 })),
   },
   {
     id: 'time-board',
     name: 'TIME BOARD',
     note: "The course's best times",
     // Flush with the gate's top, so no lawn is left shut in behind it.
-    props: [{ name: 'timeBoard', x: 83, y: 7 }],
-    at: { x: 83, y: 8 },
+    props: [{ name: 'timeBoard', x: 116, y: 5 }],
+    at: { x: 116, y: 6 },
     near: [
-      { x: 82, y: 9 },
-      { x: 83, y: 9 },
+      { x: 115, y: 7 },
+      { x: 116, y: 7 },
     ],
   },
 ];
@@ -134,20 +134,21 @@ export const OUTDOOR_GAME_LANDMARKS: readonly HarbourLandmark[] = [
     id: 'dig',
     name: 'THE DIG',
     note: 'Ten digs: what is buried is yours',
-    props: [{ name: 'digSign', x: 68, y: 19 }],
-    at: { x: 68, y: 19 },
-    near: [{ x: 67, y: 19 }, { x: 67, y: 20 }, { x: 68, y: 21 }, { x: 69, y: 21 }],
-    faced: [68, 69].flatMap((x) => [{ x, y: 19 }, { x, y: 20 }]),
+    props: [{ name: 'digSign', x: 70, y: 19 }],
+    at: { x: 70, y: 19 },
+    near: [{ x: 69, y: 19 }, { x: 69, y: 20 }, { x: 70, y: 21 }, { x: 71, y: 21 }],
+    faced: [70, 71].flatMap((x) => [{ x, y: 19 }, { x, y: 20 }]),
   },
   {
-    // At the pier head, where the deep water is.
+    // At the pier head on the pier's own line, so the view down it from THE
+    // GAME CORNER's door ends on it - and where the deep water is.
     id: 'fishing-derby',
     name: 'FISHING DERBY',
     note: 'Two minutes off the deep end',
-    props: [{ name: 'fishingBoard', x: 76, y: 28 }],
-    at: { x: 77, y: 29 },
-    near: [78, 79].flatMap((x) => [{ x, y: 28 }, { x, y: 29 }]),
-    faced: [76, 77].flatMap((x) => [{ x, y: 28 }, { x, y: 29 }]),
+    props: [{ name: 'fishingBoard', x: 84, y: 29 }],
+    at: { x: 85, y: 30 },
+    near: [86, 87].flatMap((x) => [{ x, y: 29 }, { x, y: 30 }]),
+    faced: [84, 85].flatMap((x) => [{ x, y: 29 }, { x, y: 30 }]),
   },
 ];
 
@@ -155,7 +156,7 @@ export const OUTDOOR_GAME_LANDMARKS: readonly HarbourLandmark[] = [
 export type OutdoorGameId = 'derby' | 'dig' | 'fishing-derby';
 
 /** The gate's front tiles: facing any of them from below runs the course. */
-export const COURSE_GATE_FRONT: readonly GridPosition[] = [84, 85, 86].map((x) => ({ x, y: 9 }));
+export const COURSE_GATE_FRONT: readonly GridPosition[] = [117, 118, 119].map((x) => ({ x, y: 7 }));
 
 /** Whether facing `tile` is facing the landmark: any tile of it that answers. */
 export function landmarkFaced(landmark: HarbourLandmark, tile: GridPosition): boolean {

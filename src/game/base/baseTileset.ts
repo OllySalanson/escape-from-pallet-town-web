@@ -17,7 +17,8 @@ import {
   RAID_ARENA_SHEET_SOURCE,
   RAID_ARENA_STATUE,
 } from './raidArenaSheet';
-import { BATTLE_ARENA_BUILDING, GAME_CORNER_HALL, PRIZE_WINDOW_BUILDING, PROMENADE_SHEET_SOURCE, promenadeLeanTo, promenadePost, promenadeProp } from './promenadeSheet';
+import { BATTLE_ARENA_BUILDING, GAME_CORNER_HALL, PRIZE_WINDOW_BUILDING, PROMENADE_SHEET_SOURCE, promenadeArch,
+  promenadeLeanTo, promenadePost, promenadeProp } from './promenadeSheet';
 import { BOARDS, BOARDS_SHEET_SOURCE } from '../world/tileset/boardsSheet';
 import { GREAT_LIBRARY_BUILDING, LIBRARY_SHEET_SOURCE } from './librarySheet';
 
@@ -120,7 +121,11 @@ export type QuayPropName =
   | 'rowBoatGreen'
   | 'netRack'
   | 'fishStall'
-  | 'seaBench';
+  | 'seaBench'
+  | 'startLine'
+  | 'bandstand'
+  | 'pierArch'
+  | 'coinTelescope';
 
 const PROMENADE_PROPS: Readonly<Record<PromenadePropName, PropDefinition>> = {
   // 7x6. THE GAME CORNER: Celadon's own, with GAME CORNER lit across its
@@ -181,6 +186,15 @@ const PROMENADE_PROPS: Readonly<Record<PromenadePropName, PropDefinition>> = {
   netRack: promenadeLeanTo('netRack', 'drying net'),
   fishStall: promenadeLeanTo('fishStall', 'fish stall'),
   seaBench: promenadeProp('seaBench', 'bench'),
+  // THE PROMENADE DERBY's chequered start line across the walk, walked over.
+  startLine: promenadeProp('startLine', 'start line', ['.']),
+  // 4x4. THE GARDENS' bandstand: solid, but for the two corners its roof's
+  // point leaves bare, which would be walls nobody could see.
+  bandstand: promenadeProp('bandstand', 'bandstand', ['.##.', '####', '####', '####']),
+  // 5 wide, on its two posts, its crown over the gate walked under (`promenadeArch`).
+  pierArch: promenadeArch('pierArch', 'pier arch'),
+  // On its post alone, its brass tube drawn above it (`promenadePost`).
+  coinTelescope: promenadePost('coinTelescope', 'telescope'),
 };
 
 /**

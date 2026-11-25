@@ -17,7 +17,7 @@ import type { CourseLeg, CoursePoint, DerbyLevel, DerbyLine, DerbyStretch, Derby
  *
  * The levels grow out of each other, as the course at a real meeting does:
  *
- * 1. THE FRONT - the race as it shipped, tile for tile, field for field.
+ * 1. THE FRONT - along the front to PIER SQUARE, down the pier and home.
  * 2. THE SANDS - the front, then home along the beach to a finish on the
  *    west sand: sand (a Ground type's own going) and a crate on the pier and
  *    the stone, leapt at a sprint.
@@ -55,26 +55,30 @@ const line = (id: string, key: DerbyLine['key'], legs: readonly CourseLeg[], nee
   ...(needs ? { needs } : {}),
 });
 
-// --- 1. THE FRONT, exactly as it shipped -------------------------------------------
+// --- 1. THE FRONT ------------------------------------------------------------------
 
-/** The start and finish of THE FRONT: one line across the stone. */
+/** The start and finish of THE FRONT: one line across the stone, chequered under the DERBY's gantry. */
 export const START_X = 64;
 
-const FRONT_OUT = leg('out', 'land', [at(START_X, 13), at(77, 13)]);
-// Down the steps beside the pier's foot: short, and a tight turn onto it.
-const INSIDE = leg('inside', 'land', [at(77, 13), at(80, 13), at(80, 20)], { tight: [1] });
-// Out past the steps and round onto the pier in a sweep: longer, no tight turn.
-const WIDE = leg('wide', 'land', [at(77, 13), at(82, 13), at(82, 16), at(81, 18), at(80, 20)]);
-const PIER = leg('pier', 'land', [at(80, 20), at(80, 28)]);
-// Round the pier head and back: two tight turns, at the head and at the pier's foot.
-const BACK = leg('back', 'land', [at(80, 28), at(81, 29), at(79, 29), at(80, 28), at(80, 14), at(START_X, 14)], { tight: [2, 4] });
-// Off the west end of the pier head and in to the beach, wide of the rock.
-const BAY_SWIM = leg('bay-swim', 'water', [at(80, 28), at(77, 27), at(74, 25), at(73, 22)]);
-// Out of the water up the sand - a scramble, and a tight one for a big swimmer - and between the huts.
-const BAY_RUN = leg('bay-run', 'land', [at(73, 22), at(73, 21), at(73, 14), at(START_X, 14)], { tight: [1, 2] });
-const AIR = leg('air', 'air', [at(80, 28), at(START_X, 14)]);
+/** The pier's own line, down from PIER SQUARE on THE GAME CORNER's door. */
+const PIER_X = 85;
 
-/** The first fork, at the pier's foot: the tight inside turn, or the wide sweep. */
+const FRONT_OUT = leg('out', 'land', [at(START_X, 12), at(82, 12)]);
+// Down through the pier's gate from the near side of the square: short, and a tight turn onto it.
+const INSIDE = leg('inside', 'land', [at(82, 12), at(84, 12), at(84, 19), at(PIER_X, 20)], { tight: [1] });
+// Out across the square and round under the arch in a sweep: longer, no tight turn.
+const WIDE = leg('wide', 'land', [at(82, 12), at(87, 13), at(86, 16), at(PIER_X, 20)]);
+const PIER = leg('pier', 'land', [at(PIER_X, 20), at(PIER_X, 27)]);
+// Round the pier head and back: two tight turns, at the head and at the pier's foot.
+const BACK = leg('back', 'land', [at(PIER_X, 27), at(86, 28), at(84, 28), at(PIER_X, 27), at(PIER_X, 13), at(START_X, 13)], { tight: [2, 4] });
+// Off the head's landward edge and across the bay to the beach under THE DIG, between the rocks.
+const HEAD_WEST = leg('head-west', 'land', [at(PIER_X, 27), at(83, 27)]);
+const BAY_SWIM = leg('bay-swim', 'water', [at(83, 27), at(82, 26), at(77, 26), at(71, 25), at(70, 23)]);
+// Out of the water up the sand - a scramble, and a tight one for a big swimmer - and up the steps.
+const BAY_RUN = leg('bay-run', 'land', [at(70, 23), at(69, 22), at(69, 13), at(START_X, 13)], { tight: [1, 2] });
+const AIR = leg('air', 'air', [at(PIER_X, 27), at(START_X, 13)]);
+
+/** The first fork, at the pier's gate: the tight inside turn, or the wide sweep. */
 const FIRST_FORK: DerbyStretch = { id: 'first', lines: [line('inside', 'down', [INSIDE]), line('wide', 'right', [WIDE])] };
 
 export const THE_FRONT: DerbyLevel = {
@@ -89,23 +93,51 @@ export const THE_FRONT: DerbyLevel = {
     road('pier', PIER),
     {
       id: 'second',
-      lines: [line('pier', 'up', [BACK]), line('bay', 'left', [BAY_SWIM, BAY_RUN], 'water'), line('air', 'right', [AIR], 'flying')],
+      lines: [line('pier', 'up', [BACK]), line('bay', 'left', [HEAD_WEST, BAY_SWIM, BAY_RUN], 'water'), line('air', 'right', [AIR], 'flying')],
     },
   ],
-  start: { x: START_X, from: 13, to: 14 },
-  finish: { x: START_X, from: 13, to: 14 },
-  view: { x: 59, y: 11, width: 28, height: 21 },
+  start: { x: START_X, from: 12, to: 13 },
+  finish: { x: START_X, from: 12, to: 13 },
+  view: { x: 59, y: 11, width: 33, height: 21 },
   field: { rivals: 5, skill: 0, stages: 0 },
   longestMs: 60_000,
 };
+
+/**
+ * THE FRONT as the race first shipped, on the front before the bay was laid out
+ * (`docs/screens/promenade-bay/`): no longer run, and kept so the engine can be
+ * held frame for frame to every race it ran (`derbyFront.fixture.json`).
+ */
+export const SHIPPED_FRONT: DerbyLevel = (() => {
+  const out = leg('out', 'land', [at(64, 13), at(77, 13)]);
+  const inside = leg('inside', 'land', [at(77, 13), at(80, 13), at(80, 20)], { tight: [1] });
+  const wide = leg('wide', 'land', [at(77, 13), at(82, 13), at(82, 16), at(81, 18), at(80, 20)]);
+  const pier = leg('pier', 'land', [at(80, 20), at(80, 28)]);
+  const back = leg('back', 'land', [at(80, 28), at(81, 29), at(79, 29), at(80, 28), at(80, 14), at(64, 14)], { tight: [2, 4] });
+  const swim = leg('bay-swim', 'water', [at(80, 28), at(77, 27), at(74, 25), at(73, 22)]);
+  const run = leg('bay-run', 'land', [at(73, 22), at(73, 21), at(73, 14), at(64, 14)], { tight: [1, 2] });
+  const air = leg('air', 'air', [at(80, 28), at(64, 14)]);
+  return {
+    ...THE_FRONT,
+    stretches: [
+      road('out', out),
+      { id: 'first', lines: [line('inside', 'down', [inside]), line('wide', 'right', [wide])] },
+      road('pier', pier),
+      { id: 'second', lines: [line('pier', 'up', [back]), line('bay', 'left', [swim, run], 'water'), line('air', 'right', [air], 'flying')] },
+    ],
+    start: { x: 64, from: 13, to: 14 },
+    finish: { x: 64, from: 13, to: 14 },
+    view: { x: 59, y: 11, width: 28, height: 21 },
+  };
+})();
 
 // --- what the later courses share ------------------------------------------------
 
 /** The west beach's finish line, on the sand below THE GREEN. */
 const WEST_LINE = { x: 55, from: 17, to: 19 } as const;
 
-// The pier with a crate on it, at (80,24): leapt going down and again coming back.
-const PIER_CRATE = leg('pier-crate', 'land', [at(80, 20), at(80, 24), at(80, 28)], { hurdles: [1] });
+// The pier with a crate on it, at (85,24): leapt going down and again coming back.
+const PIER_CRATE = leg('pier-crate', 'land', [at(PIER_X, 20), at(PIER_X, 24), at(PIER_X, 27)], { hurdles: [1] });
 
 /**
  * The second fork from the pier head to the foot of THE GREEN at `x 60`, row
@@ -121,17 +153,17 @@ function homeFork(end: number): DerbyStretch {
     id: 'second',
     lines: [
       line('pier', 'up', [
-        leg('home-pier', 'land', [at(80, 28), at(81, 29), at(79, 29), at(80, 28), at(80, 24), at(80, 14), at(70, 14), at(60, 14), at(60, end)], {
+        leg('home-pier', 'land', [at(PIER_X, 27), at(86, 28), at(84, 28), at(PIER_X, 27), at(PIER_X, 24), at(PIER_X, 13), at(72, 13), at(60, 13), at(60, end)], {
           tight: [2, 5, 7],
           hurdles: [4, 6],
         }),
       ]),
       line('sands', 'down', [
-        leg('off-pier', 'land', [at(80, 28), at(81, 29), at(79, 29), at(80, 28), at(80, 24), at(80, 22), at(78, 22)], { tight: [2, 5], hurdles: [4] }),
-        leg('the-sands', 'sand', [at(78, 22), at(61, 22), ...sandTail]),
+        leg('off-pier', 'land', [at(PIER_X, 27), at(86, 28), at(84, 28), at(PIER_X, 27), at(PIER_X, 24), at(PIER_X, 21), at(81, 21)], { tight: [2, 5], hurdles: [4] }),
+        leg('the-sands', 'sand', [at(81, 21), at(80, 22), at(66, 22), at(63, 21), ...sandTail]),
       ]),
-      line('bay', 'left', [leg('bay-cross', 'water', [at(80, 28), at(76, 24), at(62, 23), at(61, 22)]), leg('bay-climb', 'land', [at(61, 22), ...tail])], 'water'),
-      line('air', 'right', [leg('air-home', 'air', [at(80, 28), at(60, end)])], 'flying'),
+      line('bay', 'left', [HEAD_WEST, leg('bay-cross', 'water', [at(83, 27), at(82, 26), at(79, 26), at(70, 26), at(64, 25), at(62, 23), at(61, 22)]), leg('bay-climb', 'land', [at(61, 22), ...tail])], 'water'),
+      line('air', 'right', [leg('air-home', 'air', [at(PIER_X, 27), at(60, end)])], 'flying'),
     ],
   };
 }
@@ -186,9 +218,9 @@ export const THE_SANDS: DerbyLevel = {
     homeFork(18),
     road('run-in', leg('run-in', 'sand', [at(60, 18), at(WEST_LINE.x, 18)])),
   ],
-  start: { x: START_X, from: 13, to: 14 },
+  start: { x: START_X, from: 12, to: 13 },
   finish: WEST_LINE,
-  view: { x: 49, y: 11, width: 38, height: 21 },
+  view: { x: 49, y: 11, width: 43, height: 21 },
   field: { rivals: 5, skill: 0.1, stages: 0 },
   longestMs: 75_000,
 };
@@ -202,9 +234,9 @@ export const THE_BREAKWATER: DerbyLevel = {
   blurb: 'The sands, then out along the breakwater and round its end.',
   news: ['Waves break over the breakwater', 'sprint through before one breaks'],
   stretches: [road('out', FRONT_OUT), FIRST_FORK, road('pier', PIER_CRATE), homeFork(21), MOLE_OUT, MOLE_HOME],
-  start: { x: START_X, from: 13, to: 14 },
+  start: { x: START_X, from: 12, to: 13 },
   finish: WEST_LINE,
-  view: { x: 38, y: 11, width: 49, height: 23 },
+  view: { x: 38, y: 11, width: 54, height: 23 },
   field: { rivals: 6, skill: 0.2, stages: 1 },
   longestMs: 100_000,
 };
@@ -215,8 +247,8 @@ export const THE_BREAKWATER: DerbyLevel = {
 const START_FORK: DerbyStretch = {
   id: 'start',
   lines: [
-    line('green', 'up', [leg('the-green', 'land', [at(55, 18), at(55, 16), at(59, 16), at(61, 13)], { tight: [1, 2] })]),
-    line('shore', 'down', [leg('the-shore', 'sand', [at(55, 18), at(59, 18), at(60, 17)]), leg('shore-climb', 'land', [at(60, 17), at(60, 14), at(61, 13)])]),
+    line('green', 'up', [leg('the-green', 'land', [at(55, 18), at(55, 16), at(59, 16), at(61, 12)], { tight: [1, 2] })]),
+    line('shore', 'down', [leg('the-shore', 'sand', [at(55, 18), at(59, 18), at(60, 17)]), leg('shore-climb', 'land', [at(60, 17), at(60, 14), at(61, 12)])]),
   ],
 };
 
@@ -228,7 +260,7 @@ export const THE_GRAND_DERBY: DerbyLevel = {
   news: ['Crates down the front', 'seven riders on their best'],
   stretches: [
     START_FORK,
-    road('front', leg('the-front', 'land', [at(61, 13), at(68, 13), at(74, 13), at(77, 13)], { hurdles: [1, 2] })),
+    road('front', leg('the-front', 'land', [at(61, 12), at(68, 12), at(74, 12), at(82, 12)], { hurdles: [1, 2] })),
     FIRST_FORK,
     road('pier', PIER_CRATE),
     homeFork(21),
@@ -237,7 +269,7 @@ export const THE_GRAND_DERBY: DerbyLevel = {
   ],
   start: WEST_LINE,
   finish: WEST_LINE,
-  view: { x: 38, y: 11, width: 49, height: 23 },
+  view: { x: 38, y: 11, width: 54, height: 23 },
   field: { rivals: 7, skill: 0.3, stages: 2 },
   longestMs: 120_000,
 };

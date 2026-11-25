@@ -208,7 +208,7 @@ describe('the harbour door captions', () => {
     expect(named).toContain('oaks-lab');
   });
 
-  it('writes no door name under the FEEDBACK tab, from the spawn or any doorstep', () => {
+  it('writes no door name under the FEEDBACK tab, from the spawn, any doorstep or the way east', () => {
     // The yard at 1200x768, drawn three to the pixel: the tab stands half way
     // down the window's right edge, 30 by 112 (`style.css`), over the map. THE
     // BOLTHOLE's name was seated against the screen's edge and read THE BOLTHOL.
@@ -218,7 +218,9 @@ describe('the harbour door captions', () => {
       const view = viewOn(tile);
       return { ...tab!, x: tab!.x + view.x, y: tab!.y + view.y };
     };
-    const walks = [BASE_SPAWN, ...BASE_DOORS.map((door) => door.returnTo)];
+    // And every step along the straight way east, past every door on the front.
+    const alongTheFront = Array.from({ length: 99 }, (_, index) => ({ x: 14 + index, y: 13 }));
+    const walks = [BASE_SPAWN, ...BASE_DOORS.map((door) => door.returnTo), ...alongTheFront];
     const underTheTab = (withTab: boolean) =>
       walks.flatMap((tile) =>
         seatedFrom(tile, true, withTab ? [tab!] : [])

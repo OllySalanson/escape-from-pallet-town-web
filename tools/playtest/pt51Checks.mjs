@@ -120,12 +120,12 @@ try {
   await until(baseReady, 'the harbour');
 
   // --- #12 and #10: THE BEACH, before a first raid --------------------------------------
-  await walkTo({ x: 83, y: 21 }, 'the beach by the bottle');
+  await walkTo({ x: 108, y: 19 }, 'the beach by the bottle');
   await wait(600);
   const chevron = await page.evaluate(`(() => { const b = ${base}; const m = b.yardWayMark; if (!m) return null; const i = m.image; const v = b.cameras.main.worldView;
     return { x: i.x + v.left, y: i.y + v.top, visible: i.visible }; })()`);
-  // THE DIG's sign, 2x2 tiles at 66,20.
-  const sign = { left: 66 * 16, top: 20 * 16, right: 68 * 16, bottom: 22 * 16 };
+  // THE DIG's sign, 2x2 tiles at 70,19.
+  const sign = { left: 70 * 16, top: 19 * 16, right: 72 * 16, bottom: 21 * 16 };
   const over = chevron && chevron.x + 11 > sign.left && chevron.x - 11 < sign.right && chevron.y + 11 > sign.top && chevron.y - 11 < sign.bottom;
   expect(`the way-mark is up on THE BEACH (${JSON.stringify(chevron)})`, chevron?.visible === true);
   expect(`and stands clear of THE DIG's sign`, !over);

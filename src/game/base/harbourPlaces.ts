@@ -23,19 +23,37 @@ export const HARBOUR_PLACES: readonly HarbourPlace[] = [
     id: 'pleasure-pier',
     name: 'THE PLEASURE PIER',
     areas: [
-      { x: 79, y: 17, width: 3, height: 11 },
-      { x: 76, y: 28, width: 9, height: 3 },
+      { x: 84, y: 17, width: 3, height: 10 },
+      { x: 82, y: 21, width: 8, height: 2 },
+      { x: 80, y: 27, width: 11, height: 5 },
     ],
   },
   {
     id: 'beach',
     name: 'THE BEACH',
-    areas: [{ x: 61, y: 17, width: 26, height: 6 }],
+    areas: [{ x: 61, y: 17, width: 52, height: 8 }],
+  },
+  {
+    // THE PROMENADE's four places, each a screen of the front from the
+    // gravel to the point (`baseMap.ts`, `plantPromenade`).
+    id: 'pier-square',
+    name: 'PIER SQUARE',
+    areas: [{ x: 80, y: 3, width: 16, height: 14 }],
+  },
+  {
+    id: 'gardens',
+    name: 'THE GARDENS',
+    areas: [{ x: 96, y: 3, width: 17, height: 14 }],
+  },
+  {
+    id: 'point',
+    name: 'THE POINT',
+    areas: [{ x: 113, y: 3, width: 14, height: 14 }],
   },
   {
     id: 'promenade',
     name: 'THE PROMENADE',
-    areas: [{ x: 61, y: 4, width: 26, height: 13 }],
+    areas: [{ x: 61, y: 3, width: 19, height: 14 }],
   },
   {
     id: 'long-pier',

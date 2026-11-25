@@ -86,21 +86,29 @@ describe('THE PROMENADE DERBY', () => {
   });
 
   it('plays the same race at any frame rate', () => {
-    const play = (frameMs: number): number | null => {
-      let race = startDerby(THE_FRONT, { name: 'YOU', racer: traits('ponyta') }, fieldFor(3), false, 3);
-      let clock = 0;
-      while (!race.over) {
-        // A tap every 100 ms, from the gun.
-        const tap = clock >= COUNTDOWN_MS && Math.floor(clock / 100) !== Math.floor((clock + frameMs) / 100);
-        race = advanceDerby(race, frameMs, { tap });
-        clock += frameMs;
-      }
-      return race.runners[0].finishedMs;
-    };
-    const sixty = play(1000 / 60);
-    expect(sixty).not.toBeNull();
-    // A 100 ms frame plays the same frames; the taps land on the same 100 ms marks.
-    expect(Math.abs((play(100) ?? 0) - (sixty ?? 0))).toBeLessThan(400);
+    // A tap every 100 ms from the gun, played in 100 ms frames; then the same
+    // taps, at the same moments of the race, played at sixty frames a second.
+    // A tap is taken on the frame it is pressed in, so a race is chaotic to a
+    // tap a frame early or late (a sprint into a tight corner is a stumble):
+    // what must hold is that the same presses at the same moments are the same
+    // race, whatever the frames are cut into.
+    const tappedAt: number[] = [];
+    let coarse = startDerby(THE_FRONT, { name: 'YOU', racer: traits('ponyta') }, fieldFor(3), false, 3);
+    let clock = 0;
+    while (!coarse.over) {
+      const tap = clock >= COUNTDOWN_MS;
+      if (tap) tappedAt.push(coarse.clock);
+      coarse = advanceDerby(coarse, 100, { tap });
+      clock += 100;
+    }
+    let fine = startDerby(THE_FRONT, { name: 'YOU', racer: traits('ponyta') }, fieldFor(3), false, 3);
+    while (!fine.over) {
+      const tap = tappedAt.some((at) => Math.abs(at - fine.clock) < 1e-6);
+      fine = advanceDerby(fine, 1000 / 60, { tap });
+    }
+    expect(coarse.runners[0].finishedMs).not.toBeNull();
+    expect(Math.abs((fine.runners[0].finishedMs ?? 0) - (coarse.runners[0].finishedMs ?? 0))).toBeLessThan(1000 / 60 + 1);
+    expect(fine.finishers).toEqual(coarse.finishers);
   });
 
   it('stumbles a racer that sprints through a tight corner, and knocks a bumper off its line', () => {
