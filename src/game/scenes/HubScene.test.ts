@@ -1773,7 +1773,7 @@ describe('what the base screen leads with', () => {
     hub.setView('stash');
     // The price is the tag on the hurt Pokémon's own row.
     const priceOn = (id: string): string | undefined =>
-      new RegExp(`data-recover="${id}"[^>]*>.*?px-tag-risk">([^<]+)<`).exec(markupOf(hub))?.[1];
+      new RegExp(`data-recover="${id}"[^>]*>.*?px-tag-(?:risk|good)">([^<]+)<`).exec(markupOf(hub))?.[1];
     const price = priceOn('squirtle-1');
     expect(price).toBeDefined();
 

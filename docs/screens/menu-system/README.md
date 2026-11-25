@@ -127,3 +127,15 @@ questions it stands over; it is paper and the navy line.
 |---|---|---|
 | The title | ![](before-title.png) | ![](after-title.png) |
 | A door's caption under a question | ![](before-door-caption.png) | ![](after-door-caption.png) |
+
+## 8. Good news in green
+
+A free treatment at the Center said FREE in red under the Pokémon, which read
+as a fault; it is green now, and a priced one stays red. Oak's waiting reward on
+the Pokédex was mustard and is green too. And what a party slot's Pokémon holds
+sits on its icon's own corner, as FireRed's held-item mark does, rather than
+two pixels into the level beside it.
+
+| Before | After |
+|---|---|
+| ![](before-free-treatment.png) | ![](after-free-treatment.png) |
