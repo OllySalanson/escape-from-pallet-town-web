@@ -493,7 +493,7 @@ export function racerArrivesLines(course: RaceCourse, input: RaceResultInput): s
       ];
     }
     if (tip) {
-      return [`${racer}: So close! ${tip}`];
+      return [`${racer}: ${input.timeMs - course.perfectMs <= NEAR_PERFECT_MS ? 'So close! ' : 'GOLD again. '}${tip}`];
     }
     return [
       input.hadPerfect
@@ -584,9 +584,13 @@ function floorSteps(course: RaceCourse): number {
  * step over the floor, or a stand at GO. Null when it was neither, or not near.
  */
 function perfectTip(course: RaceCourse, input: RaceResultInput): string | null {
+  // Any fight-free GOLD short of PERFECT is told why, however far short:
+  // the Repel line is for a run that met something in the reeds.
   if (input.medal !== 'gold' || input.fightMs > 0 || isPerfect(course, input.timeMs)) return null;
-  if (input.timeMs - course.perfectMs > NEAR_PERFECT_MS) return null;
   const perfect = `${formatRaceTime(course.perfectMs)} is PERFECT`;
+  if (input.steps !== undefined && input.steps > floorSteps(course) + 1) {
+    return `${perfect} - you took ${input.steps} steps where ${floorSteps(course)} will do. Straight through the reeds is shorter - spray a Repel first.`;
+  }
   if (input.steps !== undefined && input.steps > floorSteps(course)) {
     return `${perfect} - and a step too many kept you off it: ${input.steps} where ${floorSteps(course)} will do.`;
   }
@@ -596,7 +600,7 @@ function perfectTip(course: RaceCourse, input: RaceResultInput): string | null {
   const atGo = Math.max(0, (input.startLagMs ?? 0) - GO_FRAME_MS);
   const atCorners = Math.max(0, input.cornerLossMs ?? 0);
   if (atGo === 0 && atCorners === 0) return null;
-  const cost = (ms: number) => (ms < 100 ? 'a hair' : formatGap(ms));
+  const cost = (ms: number) => (ms < 100 ? 'a few hundredths' : formatGap(ms));
   return atGo >= atCorners
     ? `${perfect} - and you lost ${cost(atGo)} standing at GO. Keep the direction held down through my count.`
     : `${perfect} - and you lost ${cost(atCorners)} on the corners. Let go of the old way and press the next one just before each turn.`;

@@ -310,6 +310,13 @@ describe('what LINNET says', () => {
     expect(first[0]).toContain('best run');
     expect(first[1]).toContain('0:09.3 is PERFECT');
     expect(raceRunShape([83, 169, 0, 82, 169, 210, 81, 169, 360, 80, 169, 600])).toEqual({ steps: 3, startLagMs: 60, cornerLossMs: 90 });
+    // Far off PERFECT and fight-free is still told why - never the Repel line meant for a fight.
+    const late = racerArrivesLines(course, { ...near, steps: 62, startLagMs: 250, cornerLossMs: 0, timeMs: 9_550 }).join(' ');
+    expect(late).toContain('GOLD again. 0:09.3 is PERFECT - and you lost 0.2s standing at GO');
+    const round = racerArrivesLines(course, { ...near, steps: 68, startLagMs: 17, cornerLossMs: 0, timeMs: 10_217 }).join(' ');
+    expect(round).toContain('you took 68 steps where 62 will do');
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 60, cornerLossMs: 0, timeMs: 9_420 }).join(' ')).toContain('a few hundredths');
+    expect(racerArrivesLines(course, { ...near, fightMs: 1500, timeMs: 10_800 }).join(' ')).toContain('Spray a Repel');
     expect(gaveUpWaitingLine(course)).toBe('LINNET gave up waiting at the chalk mark.');
     // The gap she quotes is the gap between the times on screen.
     expect(racerWonLines(course, { ...input, outcome: 'lost', medal: null, timeMs: 23_000, racerMs: 22_800 }).join(' ')).toContain('Beat you by 0.2s!');

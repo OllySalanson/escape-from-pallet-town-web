@@ -2521,13 +2521,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       frameLeftMs = 0;
     }
 
-    // Over a race's line on this step: the crossing came first, before any
-    // hunter could reach a player standing on it, so it is called first and the
-    // fight follows the result rather than being counted into it.
-    if (this.tryCrossRaceLine()) {
-      return;
-    }
-
     // A hunter that walked up to a player standing still - its idle step, or
     // a step taken while a box was being read - catches them here, the first
     // moment there is nothing on screen to read. Before the exit, because it
@@ -2547,7 +2540,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.dialogBox.showMessage(gaveUpWaitingLine(liningUp.course));
       return;
     }
-    if (this.tryToeTheMark() || this.sayRaceNotice()) {
+    if (this.tryToeTheMark() || this.tryCrossRaceLine() || this.sayRaceNotice()) {
       return;
     }
 
@@ -4627,7 +4620,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (x >= off.x && y >= off.y && x < off.x + off.width && y < off.y + off.height) {
       here.race.tookShortcut = true;
     }
-    if (here.race.clockMs >= here.race.racerMs + FINISH_WAIT_MS) {
+    // Never gone home on a player standing on the line: they are over it, whatever the clock says.
+    if (here.race.clockMs >= here.race.racerMs + FINISH_WAIT_MS && !crossesLine(here.course, this.currentTile)) {
       // Gone home, and gone: their figure with them.
       here.race.phase = 'over';
       here.race.outcome = 'late';
@@ -8424,6 +8418,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.showIdlePose();
     this.saveGame();
     this.soundFootstep(steppedFrom);
+
+    // A race's line is crossed the moment the step onto it lands - before the
+    // hunter's catch below, which this same step would otherwise make first and
+    // charge to the race (its fight is game time the racer runs on).
+    if (this.tryCrossRaceLine()) {
+      return;
+    }
 
     const warp = getWarpAt(this.currentMap, this.currentTile, 'step');
     if (warp) {
