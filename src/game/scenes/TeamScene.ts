@@ -10,7 +10,7 @@ import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { pixelScreen } from '../ui/pixelUi';
 import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
 import { pickerEntries, wirePickerFind } from '../ui/boxPicker';
-import { LAST_ONE_STAYS, leadLine, TEAM_HINTS, teamBody, teamRowHelp } from '../ui/teamView';
+import { LAST_ONE_STAYS, leadLine, TEAM_HINTS, TEAM_HINTS_NO_LEAD, teamBody, teamRowHelp } from '../ui/teamView';
 
 export interface TeamSceneData {
   /** Only resume the harbour when this screen paused it. */
@@ -74,7 +74,20 @@ export class TeamScene extends Phaser.Scene implements ProvidesFeedbackContext {
     this.overlay = new MenuOverlay(this, 'team-menu side-panel pixel-ui', (event) => this.onKey(event));
     this.overlay.root.setAttribute('aria-label', 'Your team');
     dockSidePanel(this, this.overlay, this.view);
+    // The help line names L only where L would put somebody in front.
+    this.overlay.root.addEventListener('focusin', () => this.teachLeadWhereItWorks());
     this.render();
+  }
+
+  /** `TEAM_HINTS` with L, or without it on the lead already and off any Pokémon (`TEAM_HINTS_NO_LEAD`). */
+  private teachLeadWhereItWorks(): void {
+    const line = this.overlay?.root.querySelector<HTMLElement>('[data-help-default]');
+    if (!line) {
+      return;
+    }
+    const under = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('[data-member]')?.dataset.member;
+    const leads = under !== undefined && this.flow?.party[0]?.id !== under;
+    line.dataset.helpDefault = leads ? TEAM_HINTS : TEAM_HINTS_NO_LEAD;
   }
 
   public update(_time: number, deltaMs: number): void {
