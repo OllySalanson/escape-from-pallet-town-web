@@ -386,6 +386,16 @@ export class RaidHud {
     const width = TEXT_PADDING_X * 2 + lead + wordsWidth;
     const height = TEXT_PADDING_Y * 2 + Math.max(wordsHeight, hasIcon ? PRIZE_ICON : 0);
     const rect = { x: Math.round(stageWidth - EDGE_MARGIN - width), y: Math.round(top), width, height };
+    // Beside a panel the two columns close up, and the prize, as wide as its
+    // find's name, landed on the place chip (critic sweep, 25 Nov 2026): it
+    // steps down under whatever it would touch, a chip's gap clear of it.
+    for (let guard = 0; guard < this.covered.length; guard += 1) {
+      const hit = this.covered.find((chip) => overlaps({ ...rect, height: rect.height + CHIP_GAP, y: rect.y - CHIP_GAP }, chip));
+      if (!hit) {
+        break;
+      }
+      rect.y = hit.y + hit.height + CHIP_GAP;
+    }
     if (this.under.some((box) => overlaps(rect, box))) {
       this.prizeText.setVisible(false);
       this.prizeRoomText.setVisible(false);

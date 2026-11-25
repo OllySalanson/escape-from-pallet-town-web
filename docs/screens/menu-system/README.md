@@ -228,3 +228,15 @@ plate's top edge now, as a panel's heading is a strip over its window.
 | Before | After |
 |---|---|
 | ![](before-type-tabs.png) | ![](after-type-tabs.png) |
+
+## 17. Two loose ends from the third sweep
+
+The name pop-up's question and its bar stood a see-through strip apart, the
+title's buttons showing in it; they are one pop-up now. And beside a panel the
+raid's prize chip could lie on the place chip; it steps down under any chip it
+would touch.
+
+| | Before | After |
+|---|---|---|
+| Your name | ![](before-name-join.png) | ![](after-name-join.png) |
+| The prize chip beside the pack | ![](before-prize-clear.png) | ![](after-prize-clear.png) |
