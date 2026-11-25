@@ -359,7 +359,9 @@ const SINGLE_ENEMY_PLATE: PlateLayout = {
  * stands just above this plate's banner, and every pixel the plate gives up is
  * a pixel more of the foe's platform the foe can stand on.
  */
-const SINGLE_PLAYER_PLATE: PlateLayout = { ...SINGLE_ENEMY_PLATE, x: 150, y: 114, height: 58 };
+// The numbers' row stands clear of the plate's four-pixel frame (`drawFramedWindow`):
+// at 44 the 13-pixel numbers ended on the frame's bottom edge.
+const SINGLE_PLAYER_PLATE: PlateLayout = { ...SINGLE_ENEMY_PLATE, x: 150, y: 114, height: 58, detailY: 40 };
 
 /** The double battle's plate: two of these a side, side by side. */
 const DOUBLE_PLATE_WIDTH = 148;

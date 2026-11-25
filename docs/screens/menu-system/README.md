@@ -175,3 +175,14 @@ question under them are one set.
 | Before | After |
 |---|---|
 | ![](before-hud-chips.png) | ![](after-hud-chips.png) |
+
+## 12. Two loose ends from the second sweep
+
+Your HP plate's numbers ended on the plate's deeper frame since the battle
+joined the family; they stand four pixels higher, clear of it. And YOUR TEAM
+said 1 OF 6 twice, in its title bar and its first panel's heading; the heading
+keeps it.
+
+| Before | After |
+|---|---|
+| ![](before-hp-numbers.png) | ![](after-hp-numbers.png) |
