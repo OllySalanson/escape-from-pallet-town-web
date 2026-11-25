@@ -153,10 +153,62 @@ describe('what a raid on the vale is for', () => {
       [false, false, false, false, false],
     ];
     const field = stepDistances(open, { x: 0, y: 2 });
-    // Straight down is a wall: the walk goes right, round the end of it.
-    expect(aheadOnWalk(field, { x: 0, y: 0 }, { x: 0, y: 2 })).toEqual({ x: 2, y: 2 });
+    // Straight down is a wall: the walk goes right, round the end of it, and
+    // the mark shows that straight run to its end rather than a spot beyond the bend.
+    expect(aheadOnWalk(field, { x: 0, y: 0 }, { x: 0, y: 2 })).toEqual({ x: 4, y: 0 });
     // Off the field altogether it can only point at the thing itself.
     expect(aheadOnWalk(field, { x: 0, y: 1 }, { x: 0, y: 2 })).toEqual({ x: 0, y: 2 });
+  });
+});
+
+describe('the way mark shows a key that moves you', () => {
+  // The critic held the key the chevron showed and walked into a bank where
+  // the road jogged: the mark aimed eight steps along the walk, a diagonal,
+  // and the chevron rounded it to the wrong key (review, problem 12).
+  const open = [
+    [false, false, false, false, false, false],
+    [true, false, false, false, false, false],
+    [true, true, true, false, false, false],
+  ];
+  const goal = { x: 5, y: 2 };
+  const field = stepDistances(open, goal);
+
+  it('points along the first straight run of the walk, never on a diagonal', () => {
+    expect(aheadOnWalk(field, { x: 0, y: 0 }, goal)).toEqual({ x: 5, y: 0 });
+  });
+
+  it('keeps to the way the player faces while that still shortens the walk', () => {
+    expect(aheadOnWalk(field, { x: 3, y: 0 }, goal, undefined, 'down')).toEqual({ x: 3, y: 2 });
+    expect(aheadOnWalk(field, { x: 3, y: 0 }, goal, undefined, 'right')).toEqual({ x: 5, y: 0 });
+    // Facing a way that does not shorten it (into the wall) is no reason to point there.
+    expect(aheadOnWalk(field, { x: 1, y: 1 }, goal, undefined, 'down')).toEqual({ x: 5, y: 1 });
+  });
+
+  it('shows a key that steps nearer from every tile round THE QUARRY landing', () => {
+    // The critic's own case: landed at THE QUARRY (184,77), the mark aimed at
+    // (180,81) and the chevron said LEFT, into the rock.
+    const vale = getWorldMap(MAP_ID);
+    const links = playerLinks(vale);
+    const caveMouth = { x: 170, y: 86 };
+    const walk = stepDistances(vale.collision, caveMouth, new Set(), links);
+    let checked = 0;
+    for (let y = 60; y <= 100; y += 1) {
+      for (let x = 160; x <= 200; x += 1) {
+        const here = walk[y]?.[x] ?? -1;
+        if (here <= 0) {
+          continue;
+        }
+        const ahead = aheadOnWalk(walk, { x, y }, caveMouth, links);
+        const dx = Math.sign(ahead.x - x);
+        const dy = Math.sign(ahead.y - y);
+        expect(dx === 0 || dy === 0, `diagonal from ${x},${y}`).toBe(true);
+        const step = walk[y + dy]?.[x + dx] ?? -1;
+        // A step onto a doorway's tile is the press through it; anything else steps nearer.
+        expect(step === here - 1 || step < 0, `from ${x},${y}`).toBe(true);
+        checked += 1;
+      }
+    }
+    expect(checked).toBeGreaterThan(100);
   });
 });
 
