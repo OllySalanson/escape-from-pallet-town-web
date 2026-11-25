@@ -1,3 +1,4 @@
+import { HONOUR_PIP_GAP, HONOUR_PIP_SIZE, honourPipPixels, honourPipsWidth, honoursKey, orderedHonours, type HonourId } from '../look/gymHonours';
 import type Phaser from 'phaser';
 import type { HarbourFigure } from '../harbour/harbourCrowd';
 import type { NamedFigure } from '../harbour/harbourLink';
@@ -138,6 +139,8 @@ interface Drawn {
   readonly name: Phaser.GameObjects.Text;
   /** The class ball in front of the name (`../arena/classBall`), if they have fought in THE BATTLE ARENA. */
   ball: DojoClassId | null;
+  /** The gym honours they wear (`../look/gymHonours`), a badge pip each after the name. */
+  pips: readonly HonourId[];
   walking: string | null;
   heel: Heel | null;
   /** The hand up over their head while they wave. */
@@ -252,8 +255,13 @@ export class HarbourFigures {
       if (drawn.ball !== ball) {
         // The ball sits in the plate before the name, so the name is padded along to make room.
         drawn.ball = ball;
-        drawn.name.setPadding(ball ? CLASS_BALL_SIZE + BALL_GAP : 0, 0, 0, 0);
-        drawPlate(drawn);
+        padName(drawn);
+      }
+      const pips = orderedHonours(figure.honours ?? []);
+      if (honoursKey(pips) !== honoursKey(drawn.pips)) {
+        // A badge pip each after the name, so a crowd can be counted from behind.
+        drawn.pips = pips;
+        padName(drawn);
       }
       // The partner first: a tall one walking behind its player stands
       // where the plate would go, and the plate is lifted over it.
@@ -487,7 +495,7 @@ export class HarbourFigures {
     const sprite = this.scene.add.sprite(0, 0, texture, getIdleFrame(figure.facing)).setOrigin(0, 0);
     const plate = this.scene.add.graphics();
     const name = this.scene.add.text(0, 0, figure.name, NAME_STYLE);
-    const drawn: Drawn = { sprite, texture, plate, name, ball: null, walking: null, heel: null, wave: null, bubble: null, bubbleBox: null };
+    const drawn: Drawn = { sprite, texture, plate, name, ball: null, pips: [], walking: null, heel: null, wave: null, bubble: null, bubbleBox: null };
     drawPlate(drawn);
     this.drawn.set(figure.id, drawn);
     return drawn;
@@ -662,6 +670,13 @@ const plateHeightOf = (name: Phaser.GameObjects.Text): number => Math.ceil(name.
 /** Where a figure's head starts in its frame: the classic one's, or lower for a look's (`look/lookTexture.ts`). */
 const headOf = (drawn: Drawn): number => CHARACTER_HEAD_PIXEL_Y + lookHeadDrop(drawn.texture);
 
+/** Room in the plate for the class ball before the name and the badge pips after it. */
+function padName(drawn: Drawn): void {
+  const after = drawn.pips.length > 0 ? BALL_GAP + honourPipsWidth(drawn.pips.length) : 0;
+  drawn.name.setPadding(drawn.ball ? CLASS_BALL_SIZE + BALL_GAP : 0, 0, after, 0);
+  drawPlate(drawn);
+}
+
 /** The plate behind a name: the game's own one-pixel framed window, sized to the name. */
 function drawPlate(drawn: Drawn): void {
   drawn.plate.clear();
@@ -674,6 +689,16 @@ function drawPlate(drawn: Drawn): void {
     const top = Math.max(1, Math.round((plateHeightOf(drawn.name) - CLASS_BALL_SIZE) / 2));
     for (const pixel of classBallPixels(drawn.ball)) {
       drawn.plate.fillStyle(Number.parseInt(pixel.ink.slice(1), 16), 1).fillRect(PLATE_PAD_X + pixel.x, top + pixel.y, 1, 1);
+    }
+  }
+  if (drawn.pips.length > 0) {
+    const top = Math.max(1, Math.round((plateHeightOf(drawn.name) - HONOUR_PIP_SIZE) / 2));
+    let left = plateWidthOf(drawn.name) - PLATE_PAD_X - honourPipsWidth(drawn.pips.length);
+    for (const id of drawn.pips) {
+      for (const pixel of honourPipPixels(id)) {
+        drawn.plate.fillStyle(Number.parseInt(pixel.ink.slice(1), 16), 1).fillRect(left + pixel.x, top + pixel.y, 1, 1);
+      }
+      left += HONOUR_PIP_SIZE + HONOUR_PIP_GAP;
     }
   }
 }
