@@ -175,17 +175,19 @@ describe('the rain in a fight', () => {
     expect(graphics.visible).toBe(true);
     // Drawn in the field's own pixels, not pinned to a camera that is centred on it.
     expect(graphics.setScrollFactor).toHaveBeenCalledWith(1);
-    // The shade covers the field above the text box, not the box.
-    expect(graphics.fillRect).toHaveBeenCalledWith(0, 0, 320, 180);
-    // And not one drop falls outside it, over the frame round the field: a
-    // streak starting just above its top did, in the first real-game look.
+    // The shade covers the field above the text box, not the box - and the
+    // field runs to the edges of the widest screen (400x256), 40 pixels past
+    // the 320-wide composition each side and 8 above it.
+    expect(graphics.fillRect).toHaveBeenCalledWith(-40, -8, 400, 188);
+    // And not one drop falls outside it: a streak starting just above its top
+    // did, in the first real-game look.
     for (let frame = 0; frame < 40; frame += 1) {
       graphics.fillRect.mockClear();
       update(50);
       for (const [x, y, width, height] of graphics.fillRect.mock.calls) {
-        expect(x).toBeGreaterThanOrEqual(0);
-        expect(y).toBeGreaterThanOrEqual(0);
-        expect(x + width).toBeLessThanOrEqual(320);
+        expect(x).toBeGreaterThanOrEqual(-40);
+        expect(y).toBeGreaterThanOrEqual(-8);
+        expect(x + width).toBeLessThanOrEqual(360);
         expect(y + height).toBeLessThanOrEqual(180);
       }
     }
