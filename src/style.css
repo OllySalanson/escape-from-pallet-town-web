@@ -1510,7 +1510,7 @@ button {
   text-overflow: clip;
 }
 :where(.pixel-ui) .px-place {
-  color: var(--gold);
+  color: var(--bar-muted);
   margin-right: calc(var(--u) * 6);
 }
 :where(.pixel-ui) .px-title-aside {
@@ -1545,6 +1545,13 @@ button {
   background: none;
 }
 :where(.pixel-ui) .px-body {
+  /* The checker again, under the windows: a side panel's root is clear so the
+     map shows beside it, and the gaps between its windows showed the arena's
+     floor through them. On the body, never the screen, which must stay a
+     transparent layer (below). */
+  background:
+    conic-gradient(var(--backdrop-band) 25%, var(--backdrop) 0 50%, var(--backdrop-band) 0 75%, var(--backdrop) 0)
+    0 0 / calc(var(--u) * 16) calc(var(--u) * 16);
   min-height: 0;
   padding: calc(var(--u) * 4);
   display: grid;
@@ -1559,7 +1566,9 @@ button {
   height: calc(var(--u) * 30);
   padding: var(--u) calc(var(--u) * 6) 0;
   background: var(--bar);
-  box-shadow: 0 calc(var(--u) * -1) 0 var(--frame);
+  /* A rule of the rim's shade over it, so it reads as a band of its own and
+     not as the frame's bottom edge grown thick. */
+  box-shadow: 0 calc(var(--u) * -1) 0 var(--heading);
   color: var(--bar-text);
   overflow: hidden;
 }
@@ -1588,9 +1597,6 @@ button {
     linear-gradient(var(--edge), var(--edge)) 100% var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat,
     linear-gradient(var(--fill), var(--fill)) var(--u) var(--u) / calc(100% - var(--u) * 2)
       calc(100% - var(--u) * 2) no-repeat;
-}
-.pixel-ui .px-tone-primary {
-  --fill: var(--cream-lit);
 }
 .pixel-ui .px-tone-care {
   --fill: var(--teal-wash);
@@ -1883,7 +1889,7 @@ button {
   background: var(--cream-lit);
 }
 .pixel-ui button.px-row.is-selected:focus {
-  background: #e8f0fa;
+  background: var(--cream-lit);
 }
 .pixel-ui button.px-row.is-secured:focus {
   background: #f8edbd;
@@ -1921,7 +1927,7 @@ button {
   color: var(--ink-soft);
 }
 :where(.pixel-ui) .px-tag-good {
-  color: #1d6a4f;
+  color: var(--teal-ink);
 }
 :where(.pixel-ui) .px-tag-risk {
   color: var(--red);
@@ -2400,7 +2406,7 @@ button {
   --fill: var(--cream-lit);
 }
 .pixel-ui .px-card.px-tone-primary:focus {
-  --fill: #e8f0fa;
+  --fill: var(--cream-lit);
 }
 
 /* --- The wall map in Oak's Lab ----------------------------------------- */
@@ -2805,7 +2811,7 @@ button {
   padding: calc(var(--u) * 2) calc(var(--u) * 3);
 }
 :where(.pixel-ui) .px-ready {
-  color: #1d6a4f;
+  color: var(--teal-ink);
 }
 /* The roster takes the room and the supplies keep a lane of their own: what the
    screen is for is finding one Pokemon among many, and the supplies are a list
@@ -2930,7 +2936,7 @@ button {
   --fill: var(--teal-wash);
 }
 .pixel-ui .starter-card.is-selected:focus {
-  --fill: #e8f0fa;
+  --fill: var(--cream-lit);
 }
 :where(.pixel-ui) .starter-number {
   position: absolute;
@@ -3628,7 +3634,7 @@ button {
 .pixel-ui button.px-row.teach-pupil.is-selected,
 .pixel-ui button.px-row.teach-pupil.is-selected:focus {
   background: var(--teal-wash);
-  box-shadow: inset 0 0 0 var(--u) #1d6a4f;
+  box-shadow: inset 0 0 0 var(--u) var(--teal-ink);
 }
 /* A card that cannot be chosen still explains itself, so it is dimmed rather
    than taken out: no fill of its own, its words in the soft ink and its
@@ -4779,7 +4785,7 @@ button {
   --fill: var(--teal-wash);
 }
 .pixel-ui .boutique-card.is-selected:focus {
-  --fill: #e8f0fa;
+  --fill: var(--cream-lit);
 }
 .pixel-ui .boutique-card.is-raid {
   --fill: var(--gold-wash);
@@ -5372,7 +5378,7 @@ button {
   right: calc(var(--u) * 2);
   width: calc(var(--u) * 7);
   height: calc(var(--u) * 5);
-  background: #1d6a4f;
+  background: var(--teal-ink);
   mask: var(--px-tick) center / 100% 100% no-repeat;
   -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
 }

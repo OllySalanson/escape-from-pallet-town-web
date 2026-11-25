@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { UI } from './uiPalette';
 
@@ -32,5 +33,28 @@ describe('the pop-up palette', () => {
       expect(Number.parseInt(colour.css.slice(1), 16)).toBe(colour.value);
       expect(colour.css).toMatch(/^#[0-9a-f]{6}$/);
     }
+  });
+});
+
+describe('the menus and the pop-ups', () => {
+  // One surface: a question asked in the yard and the screen it opens are
+  // drawn in the same colours, so the stylesheet's tokens are these.
+  const stylesheet = readFileSync(new URL('../../style.css', import.meta.url), 'utf8');
+  const token = (name: string): string =>
+    new RegExp(`\\.menu-overlay\\.pixel-ui \\{[^}]*--${name}:\\s*(#[0-9a-f]{6});`, 'i').exec(stylesheet)?.[1]?.toLowerCase() ?? '';
+
+  it.each([
+    ['cream', UI.paper],
+    ['cream-lit', UI.paperLit],
+    ['cream-dim', UI.paperSunk],
+    ['ink', UI.ink],
+    ['ink-soft', UI.inkSoft],
+    ['frame', UI.frameLine],
+    ['rim', UI.frameRim],
+    ['rim-light', UI.frameLight],
+    ['rim-shade', UI.frameShade],
+    ['cursor', UI.cursor],
+  ])('paint --%s as the pop-ups do', (name, colour) => {
+    expect(token(name)).toBe(colour.css);
   });
 });
