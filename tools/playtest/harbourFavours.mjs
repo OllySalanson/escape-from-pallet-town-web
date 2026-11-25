@@ -2,7 +2,8 @@
 // the way a player meets them: a "!" over somebody walking the yard, walk up to
 // them, the interact key, the favour in the dialogue box and YES or NOT NOW
 // (`BaseScene.speakForFavour`) - and the Gym Guide's word on the day's work
-// (`base/gymGuide.ts`). Photographs each beat and fails loudly when one is not
+// (`base/gymGuide.ts`), which after a first raid opens with what a survey stake
+// is, under his own "!", before the board deals a survey job. Photographs each beat and fails loudly when one is not
 // what it promises.
 //
 //   node tools/playtest/harbourFavours.mjs <url> <out dir> [--window=1200x768] [--port=N]
@@ -40,7 +41,7 @@ try {
   /** Reads every box until the question comes up or the box goes down, and says what was read. */
   const readOn = async () => {
     const said = [];
-    for (let guard = 0; guard < 12; guard += 1) {
+    for (let guard = 0; guard < 24; guard += 1) {
       const now = await scene();
       if (now.prompt !== null || !now.box) break;
       said.push(await boxText());
@@ -122,9 +123,54 @@ try {
   await press('Space');
   await page.waitFor(sceneIs('base'));
   await sleep(1500);
+  // One raid in and no job banked yet: the Gym Guide alone has a "!", for the
+  // survey stakes, and nobody asks a favour until a job is banked (`mayAskAFavour`).
+  // The porter's is the bottle on THE BEACH (`porterHasNews`).
+  const firstMarks = (await scene()).marks.sort();
+  if (JSON.stringify(firstMarks) !== JSON.stringify(['gym-guide', 'quay-porter'])) throw new Error(`the "!" stands over ${JSON.stringify(firstMarks)}`);
+  console.log(`"!" over, one raid in: ${firstMarks.join(', ')}`);
+
+  // The Gym Guide at the Raid Arena's door: what a survey stake is, once, and
+  // no survey job on the board until he has said it (`objectives/standingBoard.ts`).
+  // The board is asked of the game's own module, as the rim and Oak's board ask it.
+  const boardJobs = () =>
+    page.evaluate(`import('/src/game/objectives/standingBoard.ts').then((m) => m.jobsForMap('greystone-vale', JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress).map((job) => job.name))`);
+  const untold = await boardJobs();
+  if (untold.includes('Line survey')) throw new Error(`a survey is on the board before anybody said what a stake is: ${untold}`);
+  console.log(`jobs before the Gym Guide: ${untold.join(', ')}`);
+  if (!(await scene()).marks.includes('gym-guide')) throw new Error('the Gym Guide has no "!" with the stakes to tell of');
+  await walkUpTo('gym-guide');
+  await page.screenshot(`${out}/7-gym-guide-mark.png`);
+  await press('Space', 400);
+  await shotOfLine('8-gym-guide-stakes');
+  const guide = await readOn();
+  expectSaid(guide, "Yo, champ! Seen PROFESSOR OAK's survey stakes", 'the Gym Guide explains');
+  if (!guide.some((line) => line.startsWith("Today's job:"))) throw new Error('the Gym Guide never said the job');
+  if (!guide.some((line) => line.startsWith('It pays '))) throw new Error('the Gym Guide never said what the job pays');
+  if ((await scene()).marks.includes('gym-guide')) throw new Error('the "!" stayed up over the Gym Guide once he had said it');
+  if (!(await progress()).firstWordsHeard?.includes('stakes')) throw new Error('the save does not remember the stakes explained');
+  const told = await boardJobs();
+  if (!told.includes('Line survey')) throw new Error(`no survey on the board once explained: ${told}`);
+  console.log(`jobs after the Gym Guide: ${told.join(', ')}`);
+  // He offers his trailer again only to somebody who has seen it: not now.
+  if ((await scene()).prompt !== null) {
+    await press('ArrowRight');
+    await press('Space', 400);
+    await readOn();
+  }
+
+  // A job banked, and back to the harbour from the title: now the favours.
+  await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}'));
+    save.raidProgress.standingContractsBanked = 1;
+    localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
+  await page.send('Page.navigate', { url: page_url });
+  await page.waitFor(sceneIs('title'), { timeoutMs: SLOW_MS });
+  await press('Space');
+  await page.waitFor(sceneIs('base'));
+  await sleep(1500);
   const marks = (await scene()).marks.sort();
-  if (JSON.stringify(marks) !== JSON.stringify(['safari-warden', 'ss-anne-captain'])) throw new Error(`the "!" stands over ${JSON.stringify(marks)}`);
-  console.log(`"!" over: ${marks.join(', ')}`);
+  if (JSON.stringify(marks) !== JSON.stringify(['quay-porter', 'safari-warden', 'ss-anne-captain'])) throw new Error(`the "!" stands over ${JSON.stringify(marks)}`);
+  console.log(`"!" over, a job banked: ${marks.join(', ')}`);
 
   // The Safari Warden on the green: he cannot be understood, and NOT NOW takes nothing.
   await walkUpTo('safari-warden');
@@ -176,13 +222,11 @@ try {
   if (vault['ships-log'] || vault['hm01-cut'] !== 1) throw new Error(`the vault holds ${JSON.stringify(vault)}`);
   console.log('HM01 is in the vault');
 
-  // The Gym Guide at the Raid Arena's door says the day's work (`base/gymGuide.ts`).
+  // The Gym Guide, spoken to again: the day's work alone.
   await walkUpTo('gym-guide');
   await press('Space', 400);
-  await shotOfLine('7-gym-guide');
-  const guide = await readOn();
-  expectSaid(guide, "Yo, champ! Today's job:", 'the Gym Guide');
-  if (!guide.some((line) => line.startsWith('It pays '))) throw new Error('the Gym Guide never said what the job pays');
+  const again = await readOn();
+  expectSaid(again, "Yo, champ! Today's job:", 'the Gym Guide, asked already');
 } finally {
   await page.close();
   await browser.close();

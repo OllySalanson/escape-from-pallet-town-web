@@ -1,3 +1,4 @@
+import type { FirstWordsId } from '../hub/firstWords';
 import { workshopMaterialKinds } from '../hub/workshop';
 import { ITEMS, type SupplyItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
@@ -97,6 +98,31 @@ export interface StandingBoardProgress {
   readonly reachedInsertions: readonly string[];
   /** Every raid gone on: a save with none has no job yet (`hub/firstRaid.ts`, `hub/contractBoard.ts`). */
   readonly raidRecord?: Readonly<Record<string, { readonly deployed: number }>>;
+  /**
+   * The first words this save has heard (`hub/firstWords.ts`). A survey job is
+   * dealt only once the Gym Guide has said what a survey stake is
+   * (`surveyStakesExplained`). Optional with none heard, as the save field is.
+   */
+  readonly firstWordsHeard?: readonly string[];
+}
+
+/** The first words that say what a survey stake is: the Gym Guide's (`base/gymGuide.ts`). */
+const STAKES_EXPLAINED: FirstWordsId = 'stakes';
+
+/**
+ * Whether this save has been told what a survey stake is. Until it has, the
+ * board deals no survey: the captain was asked to "read all 3 survey stakes"
+ * from his second raid and only heard what one was on his fifth, from the Gym
+ * Guide outside THE RAID ARENA (25 Nov 2026). The Gym Guide wears the harbour's
+ * "!" until he has said it, so the jobs are never shut away for good.
+ */
+export function surveyStakesExplained(progress: Pick<StandingBoardProgress, 'firstWordsHeard'>): boolean {
+  return progress.firstWordsHeard?.includes(STAKES_EXPLAINED) ?? false;
+}
+
+/** The templates this save may be dealt, of those given: no survey before it has been explained. */
+function dealable(templates: readonly StandingTemplate[], progress: StandingBoardProgress): readonly StandingTemplate[] {
+  return surveyStakesExplained(progress) ? templates : templates.filter((template) => template !== 'survey');
 }
 
 /** How many standing contracts are banked before the board's top offer rises a hunter tier. */
@@ -167,6 +193,7 @@ export function standingOffers(seed: number, progress: StandingBoardProgress): r
     mapIds,
     [...openedDoors(progress)].sort(),
     workshopMaterialKinds(progress.workshopUpgrades),
+    surveyStakesExplained(progress),
   ]);
   const remembered = boards.get(key);
   if (remembered) {
@@ -224,7 +251,13 @@ export function secondStandingJob(main: RaidContract, progress: StandingBoardPro
     return undefined;
   }
   const seed = standingBoardSeed(progress);
-  const key = JSON.stringify([seed >>> 0, main.id, [...openedDoors(progress)].sort(), workshopMaterialKinds(progress.workshopUpgrades)]);
+  const key = JSON.stringify([
+    seed >>> 0,
+    main.id,
+    [...openedDoors(progress)].sort(),
+    workshopMaterialKinds(progress.workshopUpgrades),
+    surveyStakesExplained(progress),
+  ]);
   if (secondJobs.has(key)) {
     return secondJobs.get(key);
   }
@@ -699,8 +732,12 @@ export function isFirstJobsBanked(progress: Pick<StandingBoardProgress, 'complet
   return isChainFinished(progress.completedContracts) && progress.standingContractsBanked >= NEAR_JOBS;
 }
 
-/** The very first asks for nothing out of the pack: it is the one a save learns what a job is from. */
-const FIRST_JOB_TEMPLATES: readonly StandingTemplate[] = ['survey'];
+/**
+ * The very first asks for nothing out of the pack: it is the one a save learns
+ * what a job is from. A survey, once a survey stake has been explained; a
+ * dispatch before then, which says what to do in its own words.
+ */
+const FIRST_JOB_TEMPLATES: readonly StandingTemplate[] = ['survey', 'dispatch'];
 
 /** A stop is "far" when it is at least this share of the map's longest walk from the landing. */
 const FAR_SHARE = 0.45;
@@ -841,13 +878,13 @@ function draftContract(
   // dealt on a board with nothing else on it: that player's contracts would
   // stop dead until they could win the fight.
   const leadsWithTheDoor = ground.districts.length > 0 && rng.chance(SEALED_SHARE) && anotherMapOnTheBoard;
-  const preferred: readonly StandingTemplate[] = second
+  const preferred: readonly StandingTemplate[] = dealable(second
     ? templates.filter((template) => template !== second.besides)
     : leadsWithTheDoor
       ? ['sealed', ...templates]
       : round === 0
         ? [...FIRST_JOB_TEMPLATES, ...templates]
-        : templates;
+        : templates, progress);
   for (const template of preferred) {
     const draft = DRAFTERS[template](rng, ground);
     if (!draft) {

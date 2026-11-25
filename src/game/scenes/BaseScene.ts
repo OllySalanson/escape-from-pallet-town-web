@@ -139,7 +139,7 @@ import { BASE_DOORS, doorAt, doorNamed, isHouseDoor, type BaseDoor, type BaseScr
 import type { SceneDescription } from '../dev/testDescribe';
 import { describeBag, describeTeam, inView, tileOf, viewTiles } from '../dev/describeParts';
 import { doorStatusLine } from '../base/doorStatus';
-import { GYM_GUIDE_REEL_QUESTION, gymGuideLines } from '../base/gymGuide';
+import { GYM_GUIDE_REEL_QUESTION, gymGuideHasStakesNews, gymGuideLines } from '../base/gymGuide';
 import { ARENA_INTRO_ENDS_ON, arenaIntroViewing } from '../cutscene/arenaIntro';
 import { BASE_SHEET_SOURCE } from '../base/baseSheet';
 import { BASE_PIECES } from '../base/generated/basePieces';
@@ -5710,7 +5710,13 @@ export class BaseScene extends Phaser.Scene {
     }
     if (local?.id === GYM_GUIDE_ID) {
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
-      this.say(gymGuideLines(this.savedGame.raidProgress), [target], () => this.offerTheReel());
+      const lines = gymGuideLines(this.savedGame.raidProgress);
+      // Said once he opens his mouth, read to the end or not, as first words
+      // are: from here on the board deals survey jobs, and his "!" goes.
+      if (gymGuideHasStakesNews(this.savedGame.raidProgress)) {
+        this.hearFirstWords('stakes');
+      }
+      this.say(lines, [target], () => this.offerTheReel(), () => this.clearHarbourMark(GYM_GUIDE_ID));
       return;
     }
     if (local?.id === PORTER_ID) {
@@ -7870,7 +7876,9 @@ export class BaseScene extends Phaser.Scene {
    */
   private markHarbourGivers(life: readonly HarbourFigure[]): void {
     for (const figure of life) {
-      const news = figure.id === PORTER_ID && porterHasNews(this.beachBottle.length > 0, this.raidsGoneOn());
+      const news =
+        (figure.id === PORTER_ID && porterHasNews(this.beachBottle.length > 0, this.raidsGoneOn())) ||
+        (figure.id === GYM_GUIDE_ID && gymGuideHasStakesNews(this.savedGame.raidProgress));
       if (figure.kind === 'person' && (news || this.favourHere(harbourGiver(figure.id)))) {
         this.harbourMarks.set(figure.id, drawEmoteBubble(this, 'exclaim'));
       }
