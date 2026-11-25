@@ -26,7 +26,7 @@ import type { CharacterDesignId } from './characterDesigns';
  * "₽9 for winning!" read as the game mocking the player (tried, 25 Nov 2026).
  * Three rules keep it from being a vending machine:
  * - a trainer pays **once a save**, as FireRed's do (`raidProgress.trainersPaid`,
- *   written the moment the prize is paid). A roadside trainer stands back up
+ *   written when the raid is banked, so a prize lost in a wipe is paid again). A roadside trainer stands back up
  *   every raid, and fights cost no raid clock, so paying every time made six
  *   trainers by STEPPING STONES a ₽960 round in forty seconds, raid after raid,
  *   and Bill's unrationed Potions a supply line (the fresh critic, 25 Nov 2026).
