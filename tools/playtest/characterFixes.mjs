@@ -103,7 +103,7 @@ try {
   const card = await page.evaluate(RIM_CARD_WORDS);
   check('the card says who is hurt', /at 1\/\d+ and burned/.test(card), card.replace(/\n+/g, ' | '));
   const cursor = await page.evaluate(`document.activeElement?.innerText ?? ''`);
-  check('the cursor is on NOT YET', /not yet/i.test(cursor), cursor);
+  check('the cursor is off JUMP IN', !/jump in/i.test(cursor), cursor);
   await press('Space');
   await wait(300);
   check('SPACE on it does not jump', await page.evaluate(`!${sceneIs('world')}`));

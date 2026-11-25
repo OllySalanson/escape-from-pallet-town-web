@@ -330,7 +330,7 @@ import { worldMapName, type WorldMapId } from '../worldMap';
 import { FIRST_WORDS, hasHeard, heldLandingNews, mapsMovedNews, spokenLines, type FirstWordsId } from '../hub/firstWords';
 import { FIRST_JUMP_ANSWERS, firstJumpQuestion, goesStraightOver, isFirstRaid } from '../hub/firstRaid';
 import { benchOffer, benchOfferQuestion } from '../hub/benchOffer';
-import { rimOpensOnNotYet } from '../hub/railWarning';
+import { rimOpensAwayFromJumpIn } from '../hub/railWarning';
 import { centerOffer, healedLine, nobodyCanRaid, NOT_HEALED_LINE, SWAP_AT_THE_PC_LINE } from '../hub/centerCounter';
 import {
   BUILD_NOT_SAVED_LINE,
@@ -4488,10 +4488,10 @@ export class BaseScene extends Phaser.Scene {
     if (this.arena && isAtRim(this.currentTile)) {
       // Found by somebody stood looking over the rail, rather than advertised beside the way in.
       const coin = this.canTossACoin() && this.railStandMs >= COIN_HINT_AFTER_MS ? coinKeyHint(new Set(this.savedGame.raidProgress.keysLearned ?? [])) : '';
-      // SPACE jumps only from a card that opens on JUMP IN; one that opens on NOT
-      // YET (a hurt team, or a player just home) is looked down from first.
+      // SPACE jumps only from a card that opens on JUMP IN; one that opens on
+      // its first row (a hurt team, or a player just home) is looked down from first.
       const flow = this.kit?.flow;
-      const stays = flow ? rimOpensOnNotYet(flow, this.homeOnTheRail) : this.homeOnTheRail;
+      const stays = flow ? rimOpensAwayFromJumpIn(flow, this.homeOnTheRail) : this.homeOnTheRail;
       const line = this.aimed && !stays ? `[SPACE] JUMP IN AT ${this.landingName(this.aimed)}` : '[SPACE] LOOK DOWN';
       return coin ? `${line}   ${coin}` : line;
     }

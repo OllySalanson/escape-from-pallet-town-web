@@ -4,8 +4,8 @@
  * Every menu rebuilds its markup on each change, which drops focus, so each
  * render has to say where focus goes next. A comma-separated selector cannot
  * say it: `querySelector('[data-item-index], [data-close]')` returns whichever
- * match comes first *in the document*, and the back button is first in every
- * menu header. That is how every re-render of the raid bag put the keyboard on
+ * match comes first *in the document*, and the X in every menu's title bar
+ * comes before its body. That is how every re-render of the raid bag put the keyboard on
  * "Back to game", and the Enter meant for a recipient closed the bag and
  * restarted the raid clock with nothing used.
  *

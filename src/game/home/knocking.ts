@@ -49,7 +49,7 @@ export function knockScreenMarkup(view: KnockView): string {
   return pixelScreen({
     title: 'Knock on a door',
     place: 'The harbour',
-    back: { label: 'Yard', attribute: 'data-knock-close' },
+    close: { attribute: 'data-knock-close' },
     body,
     hints: view.kind === 'knocking' ? 'ESC stop knocking' : KNOCK_HINTS,
     ...(view.kind === 'houses' && view.status ? { status: view.status } : {}),

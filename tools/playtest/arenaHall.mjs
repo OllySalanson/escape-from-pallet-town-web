@@ -242,7 +242,7 @@ try {
   expect('the cursor is on the jump', await page.evaluate(`document.activeElement?.hasAttribute('data-start') === true`));
   await press('Escape');
   await step(500);
-  expect('NOT YET is back on the rim', await base(`b.currentTile.x === ${mat.x} && b.currentTile.y === 53 && !b.arenaPanel`));
+  expect('ESC is back on the rim', await base(`b.currentTile.x === ${mat.x} && b.currentTile.y === 53 && !b.arenaPanel`));
   await press('Space');
   await until(sceneIs('hub'), 'the rim again');
   await step(500);

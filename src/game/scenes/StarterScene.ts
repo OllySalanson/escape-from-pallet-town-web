@@ -42,18 +42,24 @@ export class StarterScene extends Phaser.Scene {
 
   /** Said plainly instead of starting a game. */
   private renderCannotSave(): void {
-    this.overlay = new MenuOverlay(this, 'starter-menu pixel-ui', () => undefined);
+    this.overlay = new MenuOverlay(this, 'starter-menu pixel-ui', (event) => {
+      if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        this.scene.start('title');
+      }
+    });
     this.overlay.root.innerHTML = pixelScreen({
       place: 'New game',
       title: CANNOT_SAVE_TITLE,
-      hints: 'ENTER back to the title',
+      close: { attribute: 'data-title data-sfx="confirm"' },
+      hints: 'ESC back to the title',
       body: `<main class="px-body starter-shell"><p class="starter-brief">Nothing was started.</p>${pixelWindow(
         `<p class="px-wrap cannot-save">${CANNOT_SAVE_MESSAGE}</p>`,
         { heading: 'Saving is switched off' },
       )}${pixelCommitBar({
         title: 'No game to keep',
         lines: [`<span class="px-wrap">Every raid is kept in the save, so the game needs one to start.</span>`],
-        actions: `<button class="px-window px-button is-primary" data-title data-sfx="confirm" data-help="Back to the title screen.">Back to title</button>`,
+        actions: '',
       })}</main>`,
     });
     this.overlay.root

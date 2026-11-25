@@ -161,7 +161,7 @@ describe('the knock sign in the garden', () => {
     expect(knockScreens).toHaveLength(1);
   });
 
-  it('lists every player by name, and goes back to the yard', () => {
+  it('lists every player by name, and closes back to the yard with the X', () => {
     const markup = knockScreenMarkup({
       kind: 'houses',
       houses: [
@@ -173,7 +173,7 @@ describe('the knock sign in the garden', () => {
     expect(markup).toContain('<strong class="px-name">AMY</strong>');
     expect(markup).toContain('<strong class="px-name">PIP</strong>');
     expect(markup).toContain('2 players');
-    expect(markup).toContain('>Yard</button>');
+    expect(markup).toContain('<button class="px-close" data-knock-close aria-label="Close"></button>');
   });
 });
 

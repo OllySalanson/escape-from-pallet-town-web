@@ -129,8 +129,6 @@ export const KEPT_LINE = "At the lab for 90 days, then gone. Your voice is delet
 /** Beside the tag, on every ending. */
 export const TAG_NOTE = 'Your tag. Quote it if you write again.';
 
-export const BACK_TO_THE_GAME = 'Back to the game';
-
 /**
  * What a SEND tells the player once the bot check has had its say: a message
  * that could not go because the check did not pass, or would not load, says

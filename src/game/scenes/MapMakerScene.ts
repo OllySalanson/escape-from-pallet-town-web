@@ -3561,7 +3561,7 @@ export class MapMakerScene extends Phaser.Scene {
     }
     if (key === 'escape') {
       // Escape is "not that": it drops a stroke half drawn, then the choice,
-      // then a panel. It never leaves - that is the TITLE button - because
+      // then a panel. It never leaves - that is the X on the title bar - because
       // the reflex key for cancelling a box once cost the maker the screen.
       event.preventDefault();
       if (this.stroke) {

@@ -205,6 +205,7 @@ export interface ElementLike {
   querySelectorAll(selector: string): ArrayLike<ElementLike>;
   getClientRects(): ArrayLike<unknown>;
   click?(): void;
+  dispatchEvent?(event: Event): boolean;
   focus?(): void;
   scrollIntoView?(options: { readonly block: 'nearest' }): void;
 }
@@ -319,7 +320,13 @@ export function pressMenuControl(document: DocumentLike, label: string): string 
   // veteran run read its details beside a list that never showed it (20 Nov 2026).
   match.element.scrollIntoView?.({ block: 'nearest' });
   match.element.focus?.();
-  match.element.click?.();
+  // A pointer's click, with a click count, as a player's is: a key's press has
+  // none, and the jump-in card's rows bump on a key (`HubScene`'s rim rows).
+  if (typeof MouseEvent === 'function' && match.element.dispatchEvent) {
+    match.element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
+  } else {
+    match.element.click?.();
+  }
   return match.label;
 }
 

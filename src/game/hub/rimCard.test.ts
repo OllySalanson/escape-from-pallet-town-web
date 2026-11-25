@@ -23,7 +23,7 @@ describe('the jump-in card keys: one key, one job (the captain, 25 Nov 2026)', (
     expect(rimKeyMove('ArrowRight', ROWS, { row: 'sky' }, 2, 1)).toEqual({ kind: 'bump' });
   });
 
-  it('steps between NOT YET and JUMP IN on the buttons row, and never touches the landing there', () => {
+  it('steps between the buttons on the buttons row, and never touches the landing there', () => {
     expect(rimKeyMove('ArrowLeft', ROWS, { button: 1 }, 2, 1)).toEqual({ kind: 'button', index: 0 });
     expect(rimKeyMove('ArrowRight', ROWS, { button: 0 }, 2, 1)).toEqual({ kind: 'button', index: 1 });
     expect(rimKeyMove('ArrowLeft', ROWS, { button: 0 }, 2, 1)).toEqual({ kind: 'bump' });

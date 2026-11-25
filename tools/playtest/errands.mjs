@@ -115,7 +115,7 @@ try {
     throw new Error(`never got into the ${door}`);
   };
   const leave = async () => {
-    await click('[data-back]', 'back out of the screen');
+    await click('[data-close]', 'back out of the screen');
     await page.waitFor(sceneIs('base'));
     await sleep(500);
   };

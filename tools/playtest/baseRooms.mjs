@@ -95,7 +95,7 @@ try {
     await sleep(400);
     await page.screenshot(`${out}/${id}-screen.png`);
     // Backing out of it is back in the room, on the mat.
-    await page.evaluate(`document.querySelector('[data-back]').click()`);
+    await page.evaluate(`document.querySelector('[data-close]').click()`);
     await page.waitFor(`${GAME}.scene.getScene('base').sys.isActive() && ${GAME}.scene.getScene('base').room?.id === ${JSON.stringify(id)}`, {
       what: `back in the ${id} room`,
     });
@@ -113,7 +113,7 @@ try {
   // And the one-call route every other driver uses still reaches every screen.
   for (const id of ROOMS) {
     await walkIntoBase(page, id);
-    await page.evaluate(`document.querySelector('[data-back]').click()`);
+    await page.evaluate(`document.querySelector('[data-close]').click()`);
     await page.waitFor(sceneIs('base'));
     await sleep(400);
   }

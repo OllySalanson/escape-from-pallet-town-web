@@ -154,12 +154,16 @@ export class PokedexScene extends Phaser.Scene implements ProvidesFeedbackContex
       overlay.root.innerHTML = pixelScreen({
         title: 'Pokédex',
         back: { label: 'List', attribute: 'data-dex-list' },
+        close: { attribute: 'data-close' },
         aside: pixelTag(`${dex.owned.length} of ${KANTO_POKEDEX_SIZE}`),
         body: page,
         hints: ENTRY_HINTS,
       });
       overlay.root.querySelectorAll<HTMLButtonElement>('[data-dex-list]').forEach((button) => {
         button.onclick = () => this.backToList();
+      });
+      overlay.root.querySelectorAll<HTMLButtonElement>('[data-close]').forEach((button) => {
+        button.onclick = () => this.close();
       });
       overlay.root.querySelectorAll<HTMLButtonElement>('[data-dex-cry]').forEach((button) => {
         button.onclick = () => this.cry();
@@ -173,7 +177,7 @@ export class PokedexScene extends Phaser.Scene implements ProvidesFeedbackContex
     this.openPage = null;
     overlay.root.innerHTML = pixelScreen({
       title: 'Pokédex',
-      back: { label: 'Close', attribute: 'data-close' },
+      close: { attribute: 'data-close' },
       // Said here only where the band has no room to say it (`.dex-aside`).
       aside: `<span class="dex-aside">${pixelTag(`${dex.owned.length} of ${KANTO_POKEDEX_SIZE}`)}</span>`,
       body: dexListBody(this.state, this.cursor),

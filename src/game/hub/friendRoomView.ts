@@ -93,6 +93,6 @@ function heldView(screen: FriendRoomScreen, room: NonNullable<FriendRoomScreen['
   )}${pixelCommitBar({
     title: `Raid ${room.mapName} together`,
     lines: ['<small class="px-wrap">Get ready at the RAID ARENA, west of the yard, as for any raid. You jump in when you are ready, not together.</small>'],
-    actions: `<button class="px-window px-button" data-room-leave data-help="Leave the room. Anybody else in it raids on without you.">Leave the room</button><button class="px-window px-button is-primary" data-back data-cursor-start data-help="Back to the lab. The room stays yours while you walk to the Raid Arena.">Back to the lab</button>`,
+    actions: `<button class="px-window px-button" data-room-leave data-cursor-start data-help="Leave the room. Anybody else in it raids on without you.">Leave the room</button>`,
   })}</main>`;
 }

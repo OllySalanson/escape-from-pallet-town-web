@@ -28,7 +28,7 @@ export function playtestBoardMarkup(hour: PlaytestHour | null): string {
   return pixelScreen({
     title: PLAYTEST_BOARD_NAME,
     place: 'Playtest',
-    back: { label: 'Back', attribute: 'data-board-close' },
+    close: { attribute: 'data-board-close' },
     body: `<main class="px-body playtest-board-body">${pixelWindow(
       `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.brief)}>${rows}</div>`,
       { heading: 'Go, set, play', note: `Hour: ${now}` },

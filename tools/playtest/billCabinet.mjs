@@ -95,7 +95,7 @@ try {
   // Into the cottage, and one key from the mat is Bill's table - but first a
   // look at the cabinet as it stands before this run's deal.
   await walkIntoBase(page, 'bills-cottage');
-  await page.evaluate(`document.querySelector('[data-back]').click()`);
+  await page.evaluate(`document.querySelector('[data-close]').click()`);
   await page.waitFor(`${base}.sys.isActive() && ${base}.ready && ${base}.room?.id === 'bills-cottage'`, { what: 'the cottage' });
   await shoot('before');
   await press('Space');
@@ -112,7 +112,7 @@ try {
 
   // Back out of his screen: in the cottage, on the mat, and the four things
   // just paid are on the shelf.
-  await page.evaluate(`document.querySelector('[data-back]').click()`);
+  await page.evaluate(`document.querySelector('[data-close]').click()`);
   await page.waitFor(`${base}.sys.isActive() && ${base}.ready && ${base}.room?.id === 'bills-cottage'`, { what: 'back in the cottage' });
   await sleep(300);
   const back = await page.evaluate(state());

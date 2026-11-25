@@ -1894,13 +1894,14 @@ describe('what the base screen leads with', () => {
     expect(markupOf(hub)).not.toContain('swap-panel');
   });
 
-  it('lets each panel of the hall be left from a bar at its foot, never from the bottom of a column', () => {
+  it('lets each panel of the hall be left by the X on its title bar, with no Done button beside it', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');
     for (const panel of ['bench', 'rack', 'locker'] as const) {
       hub.setView(panel);
       const markup = markupOf(hub);
-      expect(markup.slice(markup.indexOf('confirm-bar'))).toContain('>Done<');
+      expect(markup.slice(0, markup.indexOf('</header>'))).toContain('class="px-close" data-close');
+      expect(markup).not.toContain('>Done<');
     }
     hub.setView('rim');
     const rim = markupOf(hub);
@@ -2099,7 +2100,7 @@ describe('what the base screen leads with', () => {
     expect(rimSays(markupOf(hub), 'team')).toContain('Safe: nothing: a wipe costs everything you take');
   });
 
-  it('warns on the card of a badly hurt team, with the cursor on NOT YET', () => {
+  it('warns on the card of a badly hurt team, with the cursor on its first row', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');
     const { pokemon } = hub.flow.party[0];
@@ -2109,11 +2110,11 @@ describe('what the base screen leads with', () => {
     readyToDeploy(hub);
     const rim = markupOf(hub);
     expect(rimSays(rim, 'team')).toMatch(/Hurt: .* is at 1\/\d+ and burned/);
-    expect(rim).toMatch(/data-back data-cursor-start/);
+    expect(rim).toMatch(/<button data-cursor-start class="rim-choice[^"]*" data-rim-row="landing"/);
     expect(rim).not.toMatch(/data-start data-cursor-start/);
   });
 
-  it('starts on NOT YET for a fit team just home from a raid, so SPACE through the result does not jump', () => {
+  it('starts on the first row for a fit team just home from a raid, so SPACE through the result does not jump', () => {
     const { hub } = createHub();
     const savedGame = (hub as unknown as { savedGame: RestoredGame }).savedGame;
     hub.init({ view: 'rim', justHome: true, savedGame });
@@ -2122,13 +2123,13 @@ describe('what the base screen leads with', () => {
     expect(hub.flow.notReady).toBeUndefined();
     const rim = markupOf(hub);
     expect(rim).not.toContain('Hurt:');
-    expect(rim).toMatch(/data-back data-cursor-start/);
+    expect(rim).toMatch(/<button data-cursor-start class="rim-choice[^"]*" data-rim-row="landing"/);
     expect(rim).not.toMatch(/data-start data-cursor-start/);
   });
 
   /**
-   * Presses `key` on the rim with the highlight on `on` - a button, `back` or
-   * `start`, or one of the card's rows - and answers where the highlight is
+   * Presses `key` on the rim with the highlight on `on` - JUMP IN (`start`) or
+   * one of the card's rows - and answers where the highlight is
    * afterwards (`HubScene.rimArrow`).
    */
   function pressOnTheRim(hub: HubInternals, on: string, key: string): string {
@@ -2136,7 +2137,7 @@ describe('what the base screen leads with', () => {
     const make = (name: string) => {
       const control = {
         name,
-        dataset: name === 'back' || name === 'start' ? {} : { rimRow: name },
+        dataset: name === 'start' ? {} : { rimRow: name },
         hasAttribute: () => false,
         matches: () => false,
         closest: () => null,
@@ -2146,14 +2147,13 @@ describe('what the base screen leads with', () => {
       };
       return control;
     };
-    const back = make('back');
     const start = make('start');
     const rows = new Map(['landing', 'job', 'sky'].map((name) => [name, make(name)]));
     const root = (hub as unknown as { overlay: { root: { querySelectorAll: (selector: string) => unknown[]; querySelector: (selector: string) => unknown } } }).overlay.root;
     const saved = { all: root.querySelectorAll, one: root.querySelector };
-    root.querySelectorAll = (selector) => (selector === '.rim-actions button' ? [back, start] : saved.all(selector));
+    root.querySelectorAll = (selector) => (selector === '.rim-actions button' ? [start] : saved.all(selector));
     root.querySelector = (selector) => rows.get(/data-rim-row="(\w+)"/.exec(selector)?.[1] ?? '') ?? null;
-    document.activeElement = on === 'back' ? back : on === 'start' ? start : rows.get(on);
+    document.activeElement = on === 'start' ? start : rows.get(on);
     vi.stubGlobal('document', document);
     try {
       (hub as unknown as { handleKey(event: KeyboardEvent): void }).handleKey({ key, preventDefault: () => undefined } as KeyboardEvent);
@@ -2162,41 +2162,49 @@ describe('what the base screen leads with', () => {
       root.querySelectorAll = saved.all;
       root.querySelector = saved.one;
     }
-    return (document.activeElement as { name: string }).name;
+    return (document.activeElement as { name: string } | undefined)?.name ?? 'nothing';
   }
 
   // The second characters hunt of 11 Nov 2026, finding 1: a hurt team's card
-  // opened on NOT YET, every arrow went to the map and bumped, and only TAB -
-  // said nowhere - reached JUMP IN. Nothing stops the player, keyboard or not.
-  it('lets a hurt team reach JUMP IN from NOT YET with Right, and choose nothing on the map by it', () => {
+  // opened away from JUMP IN, every arrow went to the map and bumped, and only
+  // TAB - said nowhere - reached JUMP IN. Nothing stops the player, keyboard or not.
+  it('lets a hurt team walk down the card to JUMP IN, and choose nothing on the map by it', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');
     const { pokemon } = hub.flow.party[0];
     pokemon.takeDamage(pokemon.currentHp - 1);
     hub.setView('rim');
     readyToDeploy(hub);
-    expect(markupOf(hub)).toMatch(/data-back data-cursor-start/);
     const landing = hub.flow.insertionId;
-    expect(pressOnTheRim(hub, 'back', 'ArrowRight')).toBe('start');
+    const last = pressOnTheRim(hub, 'start', 'ArrowUp');
+    expect(last).not.toBe('start');
+    expect(pressOnTheRim(hub, last, 'ArrowDown')).toBe('start');
     expect(hub.flow.insertionId).toBe(landing);
   });
 
-  it('starts a player just home on NOT YET, and Right still reaches JUMP IN', () => {
+  // The critic's pass on the X, 25 Nov 2026: with NOT YET gone, a click on a
+  // tile left nothing focused and the next arrow fell back on JUMP IN.
+  it('puts a lost highlight on a hurt team’s card back on its first row, never on JUMP IN', () => {
     const { hub } = createHub();
-    const savedGame = (hub as unknown as { savedGame: RestoredGame }).savedGame;
-    hub.init({ view: 'rim', justHome: true, savedGame });
     hub.flow.togglePokemon('charmander-1');
+    const { pokemon } = hub.flow.party[0];
+    pokemon.takeDamage(pokemon.currentHp - 1);
+    hub.setView('rim');
     readyToDeploy(hub);
-    expect(pressOnTheRim(hub, 'back', 'ArrowRight')).toBe('start');
+    for (const key of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) {
+      expect(pressOnTheRim(hub, 'nothing', key)).toBe('landing');
+    }
   });
 
-  it('moves between the buttons with Left and Right', () => {
+  it('has nothing beside JUMP IN for Left and Right to reach: the way back is the X', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');
     hub.setView('rim');
     readyToDeploy(hub);
-    expect(pressOnTheRim(hub, 'start', 'ArrowLeft')).toBe('back');
-    expect(pressOnTheRim(hub, 'back', 'ArrowRight')).toBe('start');
+    expect(pressOnTheRim(hub, 'start', 'ArrowLeft')).toBe('start');
+    expect(pressOnTheRim(hub, 'start', 'ArrowRight')).toBe('start');
+    expect(markupOf(hub)).not.toContain('Not yet');
+    expect(markupOf(hub)).toContain('class="px-close" data-close');
   });
 
   // The captain, 25 Nov 2026: the same arrow moved the map's pointer on one
@@ -2216,9 +2224,9 @@ describe('what the base screen leads with', () => {
     hub.flow.chooseInsertion('route-1');
     const toward = RUN_INSERTIONS['route-1-overlook'].position.x > RUN_INSERTIONS['route-1'].position.x ? 'ArrowRight' : 'ArrowLeft';
     const away = toward === 'ArrowRight' ? 'ArrowLeft' : 'ArrowRight';
-    // On the buttons the arrows are the buttons', with a landing that way or not.
-    expect(pressOnTheRim(hub, 'start', away)).toBe('back');
-    expect(pressOnTheRim(hub, 'back', toward)).toBe('start');
+    // On JUMP IN the arrows move nothing, with a landing that way or not.
+    expect(pressOnTheRim(hub, 'start', away)).toBe('start');
+    expect(pressOnTheRim(hub, 'start', toward)).toBe('start');
     expect(hub.flow.insertionId).toBe('route-1');
     // Up goes to the rows above; on the LAND row the same key moves the landing and keeps the highlight.
     expect(pressOnTheRim(hub, 'start', 'ArrowUp')).not.toBe('start');

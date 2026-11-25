@@ -9,7 +9,7 @@
 // next repeat started the raid; and the raid pack's Potion opened its
 // recipient list and the repeats gave the Potion away, then the next one.
 //
-// It takes a fresh save to the rim, holds Enter on `Not yet` and reports which
+// It takes a fresh save to the rim, holds Enter on the card's LAND row and reports which
 // screen it ended on; then, in the raid, holds Enter on a Potion and reports
 // how many were drunk, then taps Enter once more and expects exactly one.
 // Exit code 1 is the bug.
@@ -61,10 +61,10 @@ try {
   // button that jumps goes once at most, and only because it was pressed.
   await page.evaluate(`document.querySelector('[data-speech-done]')?.click()`);
   await sleep(300);
-  await focus('Not yet');
+  await until(`(() => { const b = document.querySelector('[data-rim-row="landing"]'); b?.focus(); return document.activeElement === b; })()`, 'the LAND row to focus');
   await holdEnter(page, 12);
   const inRaid = await page.evaluate(sceneIs('world'));
-  console.log(`held Enter on Not yet: ${inRaid ? 'RAN INTO THE RAID' : 'stayed in the hall'}`);
+  console.log(`held Enter on the LAND row: ${inRaid ? 'RAN INTO THE RAID' : 'stayed in the hall'}`);
   failed ||= inRaid;
 
   await openHallPanel(page, 'rim', { press, until });

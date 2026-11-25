@@ -71,7 +71,7 @@ try {
 
   const state = `(() => { const hub = ${GAME}.scene.getScene('hub'); const a = document.activeElement;
     // Which control, by what it is rather than what it says: a row's words change with its value.
-    return JSON.stringify({ landing: hub.flow.insertionId, focus: a ? a.dataset.rimRow ?? (a.hasAttribute('data-start') ? 'jump' : a.hasAttribute('data-back') ? 'not-yet' : a.tagName) : null }); })()`;
+    return JSON.stringify({ landing: hub.flow.insertionId, focus: a ? a.dataset.rimRow ?? (a.hasAttribute('data-start') ? 'jump' : a.hasAttribute('data-close') ? 'close' : a.tagName) : null }); })()`;
   const read = async () => JSON.parse(await page.evaluate(state));
 
   if (!keysOnly) {

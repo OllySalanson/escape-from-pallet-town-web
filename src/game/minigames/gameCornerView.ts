@@ -117,12 +117,12 @@ export function jumpTeamMarkup(state: JumpTeamState): string {
       `<small class="px-wrap">${number(state.tickets)} tickets · best ${number(state.best)}. One key jumps everyone on the ground; a team of one kind lands together.</small>`,
       `<small class="px-wrap">${cabinetRates('pokemon-jump')}</small>`,
     ],
-    actions: `<button class="px-window px-button" data-close data-help="Back to the arcade.">Done</button>${play}`,
+    actions: play,
   })}</main>`;
   return pixelScreen({
     title: 'POKéMON JUMP',
     place: 'Game Corner · ',
-    back: { label: 'Done', attribute: 'data-close' },
+    close: { attribute: 'data-close' },
     aside: pixelTag(`${number(state.tickets)} tickets`, 'secure'),
     body,
     hints: 'Arrows choose · ENTER takes one in or out · ESC leaves',
@@ -266,12 +266,12 @@ export function prizeWindowMarkup(state: PrizeWindowState): string {
   })}${pixelCommitBar({
     title: state.rumour ? 'THE RUMOUR MILL says' : `${number(state.record.tickets)} tickets`,
     lines,
-    actions: '<button class="px-window px-button" data-close data-help="Back to the promenade.">Done</button>',
+    actions: '',
   })}</main>`;
   return pixelScreen({
     title: 'PRIZE WINDOW',
     place: 'Game Corner · ',
-    back: { label: 'Done', attribute: 'data-close' },
+    close: { attribute: 'data-close' },
     aside: pixelTag(`${number(state.record.tickets)} tickets`, 'secure'),
     body,
     hints: 'Arrows choose · ENTER asks to buy one · ESC leaves',
@@ -333,12 +333,12 @@ export function berryTeamMarkup(state: BerryTeamState): string {
       `<small class="px-wrap">${number(state.tickets)} tickets · best ${number(state.best)}. Blue 10, green 30, gold 50; every one that lands costs 50.</small>`,
       `<small class="px-wrap">${cabinetRates('berry-picking')}</small>`,
     ],
-    actions: `<button class="px-window px-button" data-close data-help="Back to the arcade.">Done</button>${play}`,
+    actions: play,
   })}</main>`;
   return pixelScreen({
     title: 'BERRY PICKING',
     place: 'Game Corner · ',
-    back: { label: 'Done', attribute: 'data-close' },
+    close: { attribute: 'data-close' },
     aside: pixelTag(`${number(state.tickets)} tickets`, 'secure'),
     body,
     hints: 'Arrows choose · ENTER picks this one · ESC leaves',
@@ -396,12 +396,12 @@ export function courseTeamMarkup(state: CourseTeamState): string {
       ...(state.last ? resultLines({ score: 1, payout: state.last.payout, berries: [] }) : []),
       `<small class="px-wrap">${ready ? `This team: ${moves}.${state.fastest ? ` Its fastest round is ${state.fastest}.` : ''}` : `Choose up to ${state.most} to go round with.`}${state.best ? ` Your best round is ${state.best}.` : ''}</small>`,
     ],
-    actions: `<button class="px-window px-button" data-close data-help="Back to the promenade.">Done</button>${play}`,
+    actions: play,
   })}</main>`;
   return pixelScreen({
     title: 'FIELD-MOVE COURSE',
     place: 'Promenade · ',
-    back: { label: 'Done', attribute: 'data-close' },
+    close: { attribute: 'data-close' },
     aside: pixelTag(`${number(state.tickets)} tickets`, 'secure'),
     body,
     hints: 'Arrows choose · ENTER takes one in or out · ESC leaves',

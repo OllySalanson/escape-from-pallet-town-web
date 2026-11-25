@@ -127,12 +127,12 @@ export function outdoorPickMarkup(state: OutdoorPickState): string {
       // What the player holds, said as held: under a result line, a bare "10 tickets" read as what the game had just paid (playtest 51, finding 6).
       `<small class="px-wrap">You hold ${number(state.tickets)} tickets${state.best ? ` · today’s best ${escapeAttribute(state.best)}` : ''}. ${escapeAttribute(state.rules)}${state.today ? ` ${escapeAttribute(state.today)}` : ''}</small>`,
     ],
-    actions: `<button class="px-window px-button" data-close data-help="Back to the promenade.">Done</button>${play}`,
+    actions: play,
   })}</main>`;
   return pixelScreen({
     title: state.title,
     place: state.place,
-    back: { label: 'Done', attribute: 'data-close' },
+    close: { attribute: 'data-close' },
     aside: pixelTag(`${number(state.tickets)} tickets`, 'secure'),
     body,
     hints: 'Arrows choose · ENTER picks this one · ESC leaves',

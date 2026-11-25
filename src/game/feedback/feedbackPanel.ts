@@ -4,7 +4,6 @@ import type { FeedbackDetail } from './feedbackContext';
 import { MAX_FEEDBACK_TEXT } from './feedbackNote';
 import { MAX_VOICE_MS, tapeIsLow, tapeTime } from './voiceTape';
 import {
-  BACK_TO_THE_GAME,
   KEEP_WRITING,
   KEPT_LINE,
   MIC_MISSING_LINE,
@@ -81,7 +80,7 @@ export function panelMarkup(view: PanelView): string {
   const body = `<main class="px-body feedback-body">${message}${attached}<div data-commit>${commitBar('writing')}</div></main>`;
   return pixelScreen({
     title: PANEL_TITLE,
-    back: { label: 'Game', attribute: 'data-close' },
+    close: { attribute: 'data-close' },
     aside: PANEL_PAUSED,
     body,
     hints: PANEL_HINTS,
@@ -166,7 +165,7 @@ export function commitBar(phase: 'writing' | 'scrapping'): string {
       })
     : pixelCommitBar({
         title: 'Send to the lab',
-        actions: `<button class="px-window px-button" data-cancel data-help="Close without sending.">Cancel</button><button class="px-window px-button is-primary" data-send data-help="Send your message to Oak's Lab.">Send</button>`,
+        actions: `<button class="px-window px-button is-primary" data-send data-help="Send your message to Oak's Lab.">Send</button>`,
       });
 }
 
@@ -179,10 +178,10 @@ export function outcomeMarkup(outcome: FeedbackOutcome, tag: string, retrying = 
       ? `<button class="px-window px-button" data-retry-check aria-disabled="true" data-help="The bot check is being taken again.">${TRY_THE_CHECK_AGAIN}</button>`
       : `<button class="px-window px-button" data-retry-check data-help="Take the bot check again and send what is waiting in your pack.">${TRY_THE_CHECK_AGAIN}</button>`;
   const body = `<main class="px-body feedback-outcome-body">${pixelWindow(
-    `<p class="px-wrap">${words.line}</p><p class="feedback-tag-row"><span class="feedback-tag">${tag}</span><span class="px-wrap">${TAG_NOTE}</span></p>${retry}<button class="px-window px-button is-primary" data-close data-help="Close the radio and carry on.">${BACK_TO_THE_GAME}</button>`,
+    `<p class="px-wrap">${words.line}</p><p class="feedback-tag-row"><span class="feedback-tag">${tag}</span><span class="px-wrap">${TAG_NOTE}</span></p>${retry}`,
     { heading: words.headline, className: `feedback-outcome is-${outcome}` },
   )}</main>`;
-  return pixelScreen({ title: PANEL_TITLE, aside: PANEL_PAUSED, body, hints: 'ENTER or ESC back to the game' });
+  return pixelScreen({ title: PANEL_TITLE, close: { attribute: 'data-close' }, aside: PANEL_PAUSED, body, hints: 'ESC back to the game' });
 }
 
 function escapeHtml(value: string): string {

@@ -608,7 +608,7 @@ describe('at the rail', () => {
 describe('the rim card opened just home from a raid', () => {
   // SPACE mashed through the result screen landed on the rail, opened the rim
   // card and jumped (raids bug hunt, fault 4). Every card opened before a step
-  // is taken is asked to start on NOT YET, so mashing only opens and closes it.
+  // is taken is asked to start off JUMP IN, so mashing only bumps on its first row.
   const hall = (homeOnTheRail: boolean) => {
     const launched: Record<string, unknown>[] = [];
     const scene = BaseScene.prototype as unknown as Record<string, unknown>;
@@ -639,7 +639,7 @@ describe('the rim card opened just home from a raid', () => {
     return { open, launched, step };
   };
 
-  it('asks for the cursor on NOT YET every time until a step is taken', () => {
+  it('asks for the cursor off JUMP IN every time until a step is taken', () => {
     const { open, launched, step } = hall(true);
     open('rim');
     open('rim');

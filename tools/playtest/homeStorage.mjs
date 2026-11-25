@@ -171,7 +171,7 @@ try {
   const chosen = (await saved()).raidProgress.garden ?? [];
   if (chosen.includes(inGarden.id) || !chosen.includes(inBox.id)) fail(`the garden saved as ${chosen.join(', ')}`);
   console.log(`brought ${inGarden.id} in and put ${inBox.id} out: ${chosen.join(', ')}`);
-  await page.evaluate(`document.querySelector('#screens [data-back]').click()`);
+  await page.evaluate(`document.querySelector('#screens [data-close]').click()`);
   await until(`${baseReady} && ${base}.room?.id === 'bolthole-upstairs'`, 'upstairs again');
 
   // The garden as chosen.

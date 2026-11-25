@@ -141,7 +141,7 @@ export class ObjectivesScene extends Phaser.Scene {
     })}</main>`;
     this.menuOverlay.root.innerHTML = pixelScreen({
       title: escapeHtml(guide.contractLabel),
-      back: { label: 'Raid', attribute: 'data-close' },
+      close: { attribute: 'data-close' },
       aside: 'Raid paused',
       body,
       hints: 'ARROWS read · O or ESC back to the raid',

@@ -223,7 +223,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     const item = this.using ? getItemById(this.using.itemId) : undefined;
     const money = itemCountTag('money', game ? spareAtBase(game, 'money') : 0);
     let title = 'Your things';
-    let back = { label: 'Close', attribute: 'data-close' };
+    let back: { label: string; attribute: string } | undefined;
     let body: string;
     let hints = 'ARROWS move · LEFT/RIGHT a pocket · ENTER use a disc or stone · B close';
     const machine = item ? machineForItem(item) : undefined;
@@ -253,7 +253,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     } else {
       body = this.flow && game ? this.listBody(game, this.flow) : '<main class="px-body"><p class="px-empty">There is no saved game.</p></main>';
     }
-    overlay.root.innerHTML = pixelScreen({ title, back, aside: money, body, hints, status });
+    overlay.root.innerHTML = pixelScreen({ title, back, close: { attribute: 'data-close' }, aside: money, body, hints, status });
     const on = (selector: string, act: (button: HTMLButtonElement) => void): void => {
       overlay.root.querySelectorAll<HTMLButtonElement>(selector).forEach((button) => {
         button.onclick = () => act(button);

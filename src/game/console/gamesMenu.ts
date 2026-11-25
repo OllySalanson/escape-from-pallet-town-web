@@ -58,7 +58,7 @@ export function gamesMenuMarkup(state: GamesMenuState): string {
   return pixelScreen({
     title: 'Games',
     place: 'The console',
-    back: { label: 'House', attribute: 'data-close' },
+    close: { attribute: 'data-close' },
     aside: state.playerName ? `Playing as ${state.playerName}` : 'No name yet',
     body,
     hints: state.naming ? namingHints(waitingGame(state)) : GAMES_MENU_HINTS,
