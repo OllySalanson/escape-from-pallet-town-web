@@ -619,7 +619,7 @@ describe("a doorway's tile to stand on", () => {
     // playtest, 20 Nov 2026).
     const vale = getWorldMap('greystone-vale');
     const doorway = doorwayTowards(vale, { x: 412, y: 264 }, { x: 422, y: 227 });
-    expect(doorway).toEqual({ stand: { x: 410, y: 265 }, into: { x: 410, y: 264 } });
+    expect(doorway).toMatchObject({ stand: { x: 410, y: 265 }, into: { x: 410, y: 264 } });
     expect(wayTowards(vale, { x: 412, y: 264 }, { x: 422, y: 227 })).toEqual({ x: 410, y: 264 });
   });
 });

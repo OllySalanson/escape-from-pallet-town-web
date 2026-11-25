@@ -88,6 +88,16 @@ describe('the gold arrow at the next gym', () => {
     expect(standingAt({ x: 173, y: 217 }, [], 'first raid').gymDoorNear()?.cue).toMatch(/^CERULEAN GYM: /);
   });
 
+  it('keeps a job ahead at a cave mouth on the walk to the gym, and walks a raid with no job on through the cave', () => {
+    // GREYSTONE CAVES' mouth is the first door on the walk from THE QUARRY to
+    // FUCHSIA GYM. Counted as the gym's door, it won outside the cave and the
+    // job won inside, so the arrow walked the critic in and out until the
+    // clock ran out (critic's review, 6.12, 25 Nov 2026).
+    const caveMouth = { x: 170, y: 86 };
+    expect(standingAt(caveMouth, [MISTY_BOSS_ID], 'job').gymDoorNear()).toBeUndefined();
+    expect(standingAt(caveMouth, [MISTY_BOSS_ID], 'no job').gymDoorNear()?.cue).toMatch(/^FUCHSIA GYM: /);
+  });
+
   it('names the leader inside the gym, rather than turning green for the door it came in by', () => {
     // FUCHSIA GYM's floor, a few steps in: KOGA is at the north end. The arrow
     // led a friend to the door and then pointed back out to the nearest exit
