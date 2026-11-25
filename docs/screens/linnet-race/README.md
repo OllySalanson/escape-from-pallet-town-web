@@ -13,7 +13,7 @@ runs her road - the lane and the whole boardwalk round the mere - at the player'
 | `4-gold-and-the-purse.png` | over the chequered line at THE LAST HOUSE's door in 0:10.2: GOLD, and the day's purse - a stone of the player's choosing |
 
 There is no before: nothing stood here. Made on a test-mode build of this branch
-(`VITE_EPTW_TEST_MODE=pixels npx vite build`, served under `/escape-from-pallet-town-web/`)
+(`VITE_EPTW_TEST_MODE=1 npx vite build`, served under `/escape-from-pallet-town-web/`)
 at `?testmode=pixels`, 1200x768, stepped at 60 frames a second by
 
 ```sh
