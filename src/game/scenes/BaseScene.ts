@@ -556,7 +556,12 @@ function boxRect(boxes: readonly { x: number; y: number; right: number; bottom: 
 /** The texture the wall map is painted into, one per visit to the lab. */
 const WALL_MAP_TEXTURE = 'base-wall-map';
 
-const DOOR_TONE: WorldLabelTone = { fill: 0x3a2408, border: 0xf1bf63, ink: '#fef3c7' };
+/**
+ * A door, in the pop-ups' own paper and navy line: the menus it opens onto are
+ * that cream, and the brown-and-gold box it was stood beside them on the yard
+ * as the one window of another game (critic sweep, 25 Nov 2026).
+ */
+const DOOR_TONE: WorldLabelTone = { fill: UI.paper.value, border: UI.frameLine.value, ink: UI.ink.css };
 /** The least time between two waves heard lapping at the quay; the most is twice it. */
 const WAVE_EVERY_MS = 4200;
 /** How many steps off the sea can still be heard. */
