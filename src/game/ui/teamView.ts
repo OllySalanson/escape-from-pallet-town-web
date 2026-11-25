@@ -58,6 +58,13 @@ export function teamRows(state: TeamViewState): { readonly team: readonly Picker
 
 /** The keys the panel answers, on its hint bar: L is the lead (`TeamScene.lead`). */
 export const TEAM_HINTS = 'ARROWS move · ENTER take or leave · L lead · FIND a name · P close';
+/**
+ * The same line where L would do nothing - the cursor on the lead already, or
+ * on no Pokémon - so it is not taught there: the touch pad offers a screen's
+ * letter keys as its help line names them, and LEAD stood on the pad doing
+ * nothing (the mobile lane, 25 Nov 2026).
+ */
+export const TEAM_HINTS_NO_LEAD = 'ARROWS move · ENTER take or leave · FIND a name · P close';
 
 /** Said once a Pokémon is put in front. */
 export function leadLine(name: string): string {
