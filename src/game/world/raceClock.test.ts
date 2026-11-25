@@ -26,9 +26,11 @@ describe('the racer on their line', () => {
 });
 
 describe('the countdown and the clock', () => {
-  it('counts 3, 2, 1 and is over at its end', () => {
-    expect(countdownWord(0)).toBe('3');
-    expect(countdownWord(COUNTDOWN_MS / 3)).toBe('2');
+  it('says ON YOUR MARKS, counts 3, 2, 1 and is over at its end', () => {
+    const each = COUNTDOWN_MS / 4;
+    expect(countdownWord(0)).toBe('ON YOUR MARKS');
+    expect(countdownWord(each)).toBe('3');
+    expect(countdownWord(each * 2)).toBe('2');
     expect(countdownWord(COUNTDOWN_MS - 1)).toBe('1');
     expect(countdownWord(COUNTDOWN_MS)).toBeNull();
   });

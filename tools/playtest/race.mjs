@@ -212,6 +212,22 @@ try {
   // "On your marks..." is read before the count - or "Toe the chalk mark", and
   // the walk on to it first.
   await clear();
+  if ((await state()).race?.phase === 'lining-up' && shots) await page.screenshot(`${shots}/3-toe-the-mark.png`);
+  if (flag('call-off')) {
+    // Asked again while lining up: the mark, or call it off.
+    await press(ASK.face, 30);
+    await press('Space');
+    const asked2 = await clear();
+    note(`  asks: ${asked2.choice?.question} [${asked2.choice?.options.join(' / ')}]`);
+    await press('ArrowRight');
+    await press('Space');
+    const after = await clear();
+    note(`called off: race ${JSON.stringify(after.race)}`);
+    await press('Space');
+    const again = await clear();
+    note(`asked again: ${again.choice ? again.choice.question : 'no question'}`);
+    process.exit(0);
+  }
   if ((await state()).race?.phase === 'lining-up') {
     note('lining up on the chalk mark');
     const toMark = await plan([{ x: 83, y: 169 }], 'wade');

@@ -27,10 +27,10 @@ import type { GridPosition } from '../movement/gridMovement';
 export const FINISH_WAIT_MS = 30_000;
 
 /** The countdown before GO: the world waits, and nobody's clock runs. */
-export const COUNTDOWN_MS = 1800;
+export const COUNTDOWN_MS = 2400;
 
 /** The words of the countdown, in order, each up for an equal share of it. */
-export const COUNTDOWN_WORDS: readonly string[] = ['3', '2', '1'];
+export const COUNTDOWN_WORDS: readonly string[] = ['ON YOUR MARKS', '3', '2', '1'];
 
 /** How long GO! stays up once the race has begun: it is said running. */
 export const GO_SHOWN_MS = 700;
