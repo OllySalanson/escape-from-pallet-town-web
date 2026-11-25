@@ -3,7 +3,9 @@
 //
 //   node tools/playtest/arenaTelescope.mjs <dev-url> <out-dir> [--window=1200x768] [--port=N] [--new] [--still] [--clock=day|dusk|night]
 //
-// `--new` plays a save that has walked nothing, with the one way in a new game has;
+// `--new` plays a save that has walked nothing, with the one way in a new game has,
+// whose first raid is asked in the dialogue box rather than on the rim's card, and
+// needs no dev server: a test-mode build serves;
 // otherwise the save holds every way in on the vale, some walked ground and a few
 // raids' marks. It is pointed at the dev server, because it imports the game's own
 // map to lay that ground. `--still` asks for reduced motion: no round of the glass
@@ -383,71 +385,82 @@ try {
   const backOn = await base('({ ...b.currentTile })');
   expect('stood where they looked from', backOn.x === east.x && backOn.y === east.y + 1);
   await shot('stepped-back');
-  await press('Space');
-  await until(`${GAME}.scene.getScene('base').telescope?.isOpen === true`, 'the glass again');
-  await step(200);
-  await press('Space');
-  await step(800);
-  expect('the interact key steps back too', (await state()) === null);
 
-  // ENTER on a way in goes round to the rail and opens the rim's card on it, and there is no list on it.
+  // OK on a way in - SPACE, the key that opened the glass and the pad's one OK,
+  // as ENTER is - goes round to the rail and opens the rim's card on it, and
+  // there is no list on it. SPACE used to step back, and the pad could not drop.
   await press('Space');
   await until(`${GAME}.scene.getScene('base').telescope?.isOpen === true`, 'the glass again');
   await step(200);
   const going = (await state()).way;
-  await press('Enter');
-  for (let guard = 0; guard < 60 && !(await page.evaluate(sceneIs('hub'))); guard += 1) {
-    await step(200);
-    if (await base('b.dialogBox.visible')) {
-      await page.tap('Escape', 0);
-      await step(300);
+  await shot('keys-along-the-foot');
+  const foot = await base(`b.telescope.describeForTest().keys.join('  ')`);
+  expect(`the foot names OK to drop and BACK to step back (${foot})`, /\[SPACE\] DROP/.test(foot) && /\[ESC\] BACK/.test(foot));
+  await press('Space');
+  if (brandNew) {
+    // A new game's first raid is asked in the dialogue box at the rail, not on the card.
+    for (let guard = 0; guard < 60 && !(await base('Boolean(b.boxQuestion)')); guard += 1) {
+      await step(200);
     }
-  }
-  expect('ENTER opens the rim on the way in pointed at', (await page.evaluate(sceneIs('hub'))) && (await base('b.kit.flow.insertionId')) === going);
-  await step(800);
-  await shot('rim-card');
-  const rimCard = await page.evaluate(`(() => {
-    const root = document.querySelector('#screens .arena-panel.is-rim');
-    const box = root.getBoundingClientRect();
-    const canvas = ${GAME}.canvas.getBoundingClientRect();
-    return {
-      top: box.top, bottom: box.bottom, windowHeight: window.innerHeight,
-      lists: root.querySelectorAll('.px-scroll, .px-list, .px-row, [data-more]').length,
-      overflow: root.scrollHeight > root.clientHeight + 1,
-      pitLeft: box.top - canvas.top,
-      focused: document.activeElement?.hasAttribute('data-start') === true,
-    };
-  })()`);
-  expect('the rim is one card: no list and nothing to scroll', rimCard.lists === 0 && !rimCard.overflow);
-  expect('whole on the screen, with the pit above it', rimCard.bottom <= rimCard.windowHeight && rimCard.pitLeft > 80);
-  expect('and the cursor on JUMP IN, for the second press', rimCard.focused);
-  expect('with the player round at the rail', await base(`b.arenaRim.some((tile) => tile.x === b.currentTile.x && tile.y === b.currentTile.y)`));
-  if (landings > 1) {
-    const way = () => base('b.kit.flow.insertionId');
-    const from = await way();
-    const seen = new Set([from]);
-    for (const key of ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft']) {
-      await page.tap(key, 0);
-      await step(300);
-      seen.add(await way());
+    expect('SPACE goes round to the rail and asks to jump in on the way in pointed at', (await base('Boolean(b.boxQuestion)')) && (await base('b.kit.flow.insertionId')) === going);
+    await step(800);
+    await shot('first-raid-asks');
+    await page.tap('Escape', 0);
+    await step(800);
+  } else {
+    for (let guard = 0; guard < 60 && !(await page.evaluate(sceneIs('hub'))); guard += 1) {
+      await step(200);
+      if (await base('b.dialogBox.visible')) {
+        await page.tap('Escape', 0);
+        await step(300);
+      }
     }
-    expect('the arrows point at other ways in on the map', seen.size > 1);
-    await step(1200);
-    await shot('rim-another-way-in');
-    const stillOnJump = await page.evaluate(`document.activeElement?.hasAttribute('data-start') === true`);
-    expect('and leave the cursor on JUMP IN', stillOnJump);
-    // A click on a light in the pit points at it too.
-    const light = await base(`(() => { const a = b.arena; const flow = b.kit.flow; const c = b.cameras.main; const seen = a.share.landings.filter((l) => l.id !== flow.insertionId).map((l) => { const p = a.pointOfLanding(l); return { id: l.id, x: p.x - c.scrollX, y: p.y - c.scrollY }; }).filter((p) => p.x > 8 && p.x < b.scale.width - 8 && p.y > 8 && p.y < ${Math.floor((rimCard.top - (await page.evaluate(`${GAME}.canvas.getBoundingClientRect().top`))) / canvasScale.scale) - 8}); return seen[0] ?? null; })()`);
-    if (light) {
-      await click(light.x, light.y);
-      await step(300);
-      expect('a click on a light in the pit points at it', (await way()) === light.id);
+    expect('SPACE opens the rim on the way in pointed at', (await page.evaluate(sceneIs('hub'))) && (await base('b.kit.flow.insertionId')) === going);
+    await step(800);
+    await shot('rim-card');
+    const rimCard = await page.evaluate(`(() => {
+      const root = document.querySelector('#screens .arena-panel.is-rim');
+      const box = root.getBoundingClientRect();
+      const canvas = ${GAME}.canvas.getBoundingClientRect();
+      return {
+        top: box.top, bottom: box.bottom, windowHeight: window.innerHeight,
+        lists: root.querySelectorAll('.px-scroll, .px-list, .px-row, [data-more]').length,
+        overflow: root.scrollHeight > root.clientHeight + 1,
+        pitLeft: box.top - canvas.top,
+        focused: document.activeElement?.hasAttribute('data-start') === true,
+      };
+    })()`);
+    expect('the rim is one card: no list and nothing to scroll', rimCard.lists === 0 && !rimCard.overflow);
+    expect('whole on the screen, with the pit above it', rimCard.bottom <= rimCard.windowHeight && rimCard.pitLeft > 80);
+    expect('and the cursor on JUMP IN, for the second press', rimCard.focused);
+    expect('with the player round at the rail', await base(`b.arenaRim.some((tile) => tile.x === b.currentTile.x && tile.y === b.currentTile.y)`));
+    if (landings > 1) {
+      const way = () => base('b.kit.flow.insertionId');
+      const from = await way();
+      const seen = new Set([from]);
+      for (const key of ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft']) {
+        await page.tap(key, 0);
+        await step(300);
+        seen.add(await way());
+      }
+      expect('the arrows point at other ways in on the map', seen.size > 1);
       await step(1200);
-      await shot('rim-clicked-a-light');
+      await shot('rim-another-way-in');
+      const stillOnJump = await page.evaluate(`document.activeElement?.hasAttribute('data-start') === true`);
+      expect('and leave the cursor on JUMP IN', stillOnJump);
+      // A click on a light in the pit points at it too.
+      const light = await base(`(() => { const a = b.arena; const flow = b.kit.flow; const c = b.cameras.main; const seen = a.share.landings.filter((l) => l.id !== flow.insertionId).map((l) => { const p = a.pointOfLanding(l); return { id: l.id, x: p.x - c.scrollX, y: p.y - c.scrollY }; }).filter((p) => p.x > 8 && p.x < b.scale.width - 8 && p.y > 8 && p.y < ${Math.floor((rimCard.top - (await page.evaluate(`${GAME}.canvas.getBoundingClientRect().top`))) / canvasScale.scale) - 8}); return seen[0] ?? null; })()`);
+      if (light) {
+        await click(light.x, light.y);
+        await step(300);
+        expect('a click on a light in the pit points at it', (await way()) === light.id);
+        await step(1200);
+        await shot('rim-clicked-a-light');
+      }
     }
+    await page.tap('Escape', 0);
+    await step(500);
   }
-  await page.tap('Escape', 0);
-  await step(500);
 
   // The mouse walks up to it and looks too.
   await walk({ x: west.x - 3, y: west.y });
@@ -458,7 +471,7 @@ try {
   await until(`${GAME}.scene.getScene('base').telescope?.isOpen === true`, 'the glass, by mouse');
   expect('a click on it walks up and looks', true);
   await shot('west-telescope-by-mouse');
-  await press('Space');
+  await page.tap('Escape', 0);
   await step(800);
 
   // The fast route never passes through it: up the runner, SPACE, ENTER.
@@ -466,13 +479,20 @@ try {
   await walk({ x: mat.x, y: 53 });
   await step(300);
   await press('Space');
-  for (let guard = 0; guard < 8 && (await base('b.dialogBox.visible')); guard += 1) {
-    await page.tap('Escape', 0);
-    await step(300);
+  if (brandNew) {
+    // A new game's first raid is asked in the dialogue box, JUMP IN first.
+    await until(`Boolean(${GAME}.scene.getScene('base').boxQuestion)`, 'the first raid asked');
+    expect('the two presses at the rail never touch the telescope', !(await base('Boolean(b.telescope)')));
+    await step(600);
+  } else {
+    for (let guard = 0; guard < 8 && (await base('b.dialogBox.visible')); guard += 1) {
+      await page.tap('Escape', 0);
+      await step(300);
+    }
+    await until(sceneIs('hub'), 'the rim');
+    expect('the two presses at the rail never touch the telescope', !(await base('Boolean(b.telescope)')));
+    await step(400);
   }
-  await until(sceneIs('hub'), 'the rim');
-  expect('the two presses at the rail never touch the telescope', !(await base('Boolean(b.telescope)')));
-  await step(400);
   await page.tap('Enter', 0);
   await until(sceneIs('world'), 'the raid');
   expect('and the second press jumps', true);

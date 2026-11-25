@@ -1046,6 +1046,11 @@ export class BaseScene extends Phaser.Scene {
    * own and none of the yard's.
    */
   public touchShortcuts(): readonly TouchShortcut[] {
+    // The glass is a moment with keys of its own and none of the yard's: the
+    // pad offered LOOK, FAVOURS and the rest, dead, and no ZOOM or NEXT.
+    if (this.telescope) {
+      return asExtra(shortcutsInHint(this.telescope.padKeys()));
+    }
     const moment = shortcutsInHint(this.hintText?.visible ? sourceText(this.hintText) : '');
     if (this.choosing || this.decor || this.phrasePicker) {
       return asExtra(moment);
@@ -2305,8 +2310,11 @@ export class BaseScene extends Phaser.Scene {
         x: Number(controls.right.isDown || controls.d.isDown) - Number(controls.left.isDown || controls.a.isDown),
         y: Number(controls.down.isDown || controls.s.isDown) - Number(controls.up.isDown || controls.w.isDown),
       },
-      stepBack: pressed(space, controls.back),
-      go: pressed(enter),
+      // OK drops and BACK steps back, as OK and BACK mean everywhere else. SPACE
+      // used to step back and only ENTER dropped, and the pad, whose one OK is
+      // SPACE, could not drop at all (the navigation audit, 25 Nov 2026).
+      stepBack: pressed(controls.back),
+      go: pressed(space, enter),
       wayBack: pressed(controls.boxBack),
       wayNext: pressed(controls.boxNext),
       closer: pressed(controls.closer),
