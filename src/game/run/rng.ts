@@ -8,16 +8,19 @@ export interface SeededRng {
 }
 
 /**
- * Where each stream has got to, by stream, so a raid in progress can be written
- * down and taken up again on the very same rolls (`run/raidResume.ts`). Kept
- * beside the streams rather than on them, so `SeededRng` stays the five calls
- * every roll in the game is made through.
+ * Where a stream has got to, so a raid in progress can be written down and
+ * taken up again on the very same rolls (`run/raidResume.ts`). A symbol on the
+ * stream rather than a sixth call of `SeededRng`, so every roll in the game is
+ * still made through the five - and never a side table: the harbour's planner
+ * makes streams by the hundred thousand, and a `WeakMap` entry each made one of
+ * its sweeps ten times slower.
  */
-const positions = new WeakMap<SeededRng, () => number>();
+const POSITION = Symbol('seeded-rng-position');
 
 /** Where `rng` has got to, for `createSeededRng(seed, at)` to carry on from; null for a stream not made here. */
 export function seededRngPosition(rng: SeededRng): number | null {
-  return positions.get(rng)?.() ?? null;
+  const position = (rng as { [POSITION]?: () => number })[POSITION];
+  return typeof position === 'function' ? position() : null;
 }
 
 /**
@@ -34,7 +37,8 @@ export function createSeededRng(seed: number, at?: number): SeededRng {
     return ((value ^ (value >>> 14)) >>> 0) / 4_294_967_296;
   };
 
-  const rng: SeededRng = {
+  const rng: SeededRng & { readonly [POSITION]: () => number } = {
+    [POSITION]: () => state >>> 0,
     next,
     int: (minInclusive, maxInclusive) =>
       minInclusive + Math.floor(next() * (maxInclusive - minInclusive + 1)),
@@ -54,6 +58,5 @@ export function createSeededRng(seed: number, at?: number): SeededRng {
       return shuffled;
     },
   };
-  positions.set(rng, () => state >>> 0);
   return rng;
 }
