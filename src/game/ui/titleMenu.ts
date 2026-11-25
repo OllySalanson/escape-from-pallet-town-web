@@ -212,7 +212,7 @@ export interface TitleMenuLayout {
 export const TITLE_ROW_WIDTH = 200;
 /** A row with a detail line is taller than one without. */
 export const TITLE_ROW_HEIGHT = 22;
-export const TITLE_ROW_HEIGHT_WITH_DETAIL = 32;
+export const TITLE_ROW_HEIGHT_WITH_DETAIL = 34;
 const ROW_GAP = 5;
 /** Between two choices that share a row. */
 const PAIR_GAP = 6;
