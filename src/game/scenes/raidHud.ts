@@ -384,7 +384,7 @@ export interface PrizeChipView {
   readonly label: string;
   /** The item it is, for its icon on the chip. */
   readonly itemId?: string;
-  /** The line under it: how far, and which way. */
+  /** The line under it: which way, and how far - `SE · 7 STEPS`. */
   readonly detail: string;
   /** A third line, when it would not go in: how much room to make. */
   readonly room?: string;
@@ -405,7 +405,9 @@ export function prizeChipView(input: PrizeChipInput | null): PrizeChipView | nul
   return {
     label: input.name.toUpperCase(),
     ...(input.itemId === undefined ? {} : { itemId: input.itemId }),
-    detail: `${input.direction} ${input.distance}`,
+    // The way first, as the objective chip says it ("STAKE 3: N"), then how
+    // far with its unit: a bare "SE 7" read as a grid reference.
+    detail: `${input.direction} · ${input.distance} ${input.distance === 1 ? 'STEP' : 'STEPS'}`,
     ...(input.noRoomSquares === undefined
       ? {}
       : { room: `NO ROOM: NEEDS ${input.noRoomSquares} ${input.noRoomSquares === 1 ? 'SQUARE' : 'SQUARES'}` }),
