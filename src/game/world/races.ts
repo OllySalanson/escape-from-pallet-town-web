@@ -423,6 +423,8 @@ export interface RaceResultInput {
   readonly steps?: number;
   /** How long the player stood still after GO before their first step. */
   readonly startLagMs?: number;
+  /** How many times the run stood still between steps, with no fight to blame. */
+  readonly stalls?: number;
   /** Whether the save had beaten the racer before. */
   readonly beatenBefore: boolean;
   readonly timeMs: number;
@@ -491,7 +493,7 @@ export function racerArrivesLines(course: RaceCourse, input: RaceResultInput): s
       ];
     }
     if (tip) {
-      return [`${racer}: So close to PERFECT! ${tip}`];
+      return [`${racer}: So close! ${tip}`];
     }
     return [
       input.hadPerfect
@@ -565,8 +567,16 @@ export function offTheBikeLine(course: RaceCourse): string {
 /** How far a GOLD may miss PERFECT and still be told what it was. */
 export const NEAR_PERFECT_MS = 200;
 
-/** A start slower than this, after GO, is standing still: a held key goes in a frame or two. */
-export const SLOW_START_MS = 60;
+/**
+ * A start slower than this, after GO, is standing still: a held key goes in a
+ * frame or two, and the GO frame itself is one - so two frames at 30fps and a
+ * margin, never a reaction (`SLOW_START_MS` against a held key is played by
+ * `tools/playtest/race.mjs --hold`).
+ */
+export const SLOW_START_MS = 120;
+
+/** A gap between two arrivals longer than a step by this is a stop: a key let go before the next was pressed. */
+export const STALL_MS = 40;
 
 /** The floor in steps, which PERFECT is. */
 function floorSteps(course: RaceCourse): number {
@@ -580,20 +590,28 @@ function floorSteps(course: RaceCourse): number {
 function perfectTip(course: RaceCourse, input: RaceResultInput): string | null {
   if (input.medal !== 'gold' || input.fightMs > 0 || isPerfect(course, input.timeMs)) return null;
   if (input.timeMs - course.perfectMs > NEAR_PERFECT_MS) return null;
+  const perfect = `${formatRaceTime(course.perfectMs)} is PERFECT`;
   if (input.steps !== undefined && input.steps > floorSteps(course)) {
-    return `A step too many - ${input.steps} where ${floorSteps(course)} will do.`;
+    return `${perfect} - and a step too many kept you off it: ${input.steps} where ${floorSteps(course)} will do.`;
   }
   if (input.startLagMs !== undefined && input.startLagMs > SLOW_START_MS) {
-    return 'You stood still at GO. Hold your way through my count - go the instant I say it.';
+    return `${perfect} - and you stood still at GO. Keep the direction held down through my count.`;
+  }
+  if (input.stalls !== undefined && input.stalls > 0) {
+    return `${perfect} - and you stopped ${input.stalls === 1 ? 'once' : `${input.stalls} times`} on the way. Press the next way before your step ends.`;
   }
   return null;
 }
 
 /** How a run went, from its trail: how many steps, and how long it stood before the first. */
-export function raceRunShape(trail: readonly number[]): { steps?: number; startLagMs?: number } {
+export function raceRunShape(trail: readonly number[]): { steps?: number; startLagMs?: number; stalls?: number } {
   const points = trail.length / 3;
   if (points < 2) return {};
-  return { steps: points - 1, startLagMs: Math.max(0, trail[5] - STEP_DURATION_MS) };
+  let stalls = 0;
+  for (let index = 2; index < points; index += 1) {
+    if (trail[index * 3 + 2] - trail[(index - 1) * 3 + 2] > STEP_DURATION_MS + STALL_MS) stalls += 1;
+  }
+  return { steps: points - 1, startLagMs: Math.max(0, trail[5] - STEP_DURATION_MS), stalls };
 }
 
 /** A wandered-off line-up, said as what happened: the racer is out of sight. */
