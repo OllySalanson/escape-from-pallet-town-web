@@ -1187,8 +1187,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private raceAsked = false;
   /** The save's race records as this world was built, for the racers' calls. */
   private raceRecordsSeen: Readonly<Record<string, RaceRecord>> | undefined;
-  /** A race's word to be said the first moment nothing is on screen: the racer giving up. */
-  private raceNotice: string[] | undefined;
   /** The best run on it, raced again as a see-through you (`world/raceGhost.ts`). */
   private raceGhost: RaceTrail | undefined;
   private raceGhostSprite: Phaser.GameObjects.Sprite | undefined;
@@ -1419,7 +1417,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.raceBestMs = undefined;
     this.raceGhost = undefined;
     this.raceGhostSprite = undefined;
-    this.raceNotice = undefined;
     this.raceRecordsSeen = undefined;
     this.raceMedalHeld = undefined;
     this.raceAsked = false;
@@ -4997,7 +4994,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.npcSprites.get(RACER_FIGURE_ID)?.destroy();
       this.npcSprites.delete(RACER_FIGURE_ID);
       this.npcAppearances.delete(RACER_FIGURE_ID);
-      this.raceNotice = [goneHomeLine(here.course)];
+      here.race.notice = [goneHomeLine(here.course)];
     }
   }
 
@@ -5011,9 +5008,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (this.dialogBox.visible || this.trainerPrompt || this.targetTile) {
       return false;
     }
-    if (this.raceNotice) {
-      this.dialogBox.showMessages(this.raceNotice);
-      this.raceNotice = undefined;
+    if (here?.race.notice) {
+      this.dialogBox.showMessages(here.race.notice);
+      here.race.notice = undefined;
       return true;
     }
     if (!here?.race.arrivalWords || !this.racerNow(here.race).home) {
@@ -5065,6 +5062,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       timeMs,
       racerMs: race.racerMs,
       fightMs: race.fightMs,
+      foughtWild: race.foughtWild,
       offRoad: race.offRoad,
       racerKnew: race.racerKnew,
       tookShortcut: race.tookShortcut,

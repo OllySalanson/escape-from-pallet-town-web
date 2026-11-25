@@ -18,6 +18,8 @@ import {
   judgeLines,
   racerArrivesLines,
   racerWonLines,
+  newRace,
+  chargeFight,
   raceGossipAt,
   racerKnowsTheWay,
   raceLineWord,
@@ -271,6 +273,9 @@ describe('what LINNET says', () => {
     expect(back[0]).toContain('Your best: 0:14.2 SILVER');
     expect(back[0]).toContain("I know the reeds' dry way now");
     expect(back[1]).toContain('come back tomorrow');
+    // Every offer says what each mark pays, every raid - a GOLD holder still has P60 to race for.
+    expect(back[1]).toContain('Beat me: ₽30 - ₽40 under 0:16.5, ₽60 under 0:11.0.');
+    expect(offer).toContain('₽60 under 0:11.0');
     // The ride still shut: she has not learned anything to wall them out with.
     expect(raceOfferLines(course, { runs: 2, wins: 1, bestMs: 14_200, medal: 'silver' }, true, false)[0]).not.toContain('dry way');
     // Asked again the same raid after a NO: short.
@@ -401,6 +406,27 @@ describe('what LINNET says', () => {
     expect(lost(0, true, false)).toContain('straighter');
     expect(lost(0, true, true)).toContain('My dry way now');
     expect(lost(0, true, true)).toContain('never beat me');
+  });
+
+  it('tells a fight on a dry line for what it was: a hunter, which no Repel keeps off', () => {
+    const base = { outcome: 'lost' as const, fightMs: 4000, offRoad: true, racerKnew: false, tookShortcut: false, shortcutOpen: false, firstGold: true, hadPerfect: false, beatenBefore: false, timeMs: 23_400, racerMs: 22_800, medal: null, newBest: false, prize: { money: 10, purse: false, trophy: false } };
+    expect(racerWonLines(course, { ...base, foughtWild: true }).join(' ')).toContain('pack a Repel');
+    expect(racerWonLines(course, { ...base, foughtWild: false }).join(' ')).toContain('Run from them, and keep running');
+    expect(racerWonLines(course, { ...base, foughtWild: false }).join(' ')).not.toContain('Repel');
+    const gold = { ...base, outcome: 'won' as const, medal: 'gold' as const, tookShortcut: true, shortcutOpen: true, timeMs: 10_600, racerMs: 15_450, firstGold: false, beatenBefore: true, prize: { money: 60, purse: false, trophy: false } };
+    expect(racerArrivesLines(course, { ...gold, foughtWild: false }).join(' ')).toContain("out of the ride and straight down through the reeds to the door. And don't stop for anybody");
+    expect(racerArrivesLines(course, { ...gold, foughtWild: true }).join(' ')).toContain('Spray a Repel first');
+  });
+
+  it('remembers whether a fight in the race was wild, and only a running race', () => {
+    const race = newRace(course, [{ x: 0, y: 0 }, ...course.finish.tiles]);
+    chargeFight(race, 100, true);
+    expect(race.foughtWild).toBe(false);
+    race.phase = 'running';
+    chargeFight(race, 100, false);
+    expect(race.foughtWild).toBe(false);
+    chargeFight(race, 100, true);
+    expect(race.foughtWild).toBe(true);
   });
 
   it('calls a dead heat the player\u2019s, on the tenth the screen shows', () => {
