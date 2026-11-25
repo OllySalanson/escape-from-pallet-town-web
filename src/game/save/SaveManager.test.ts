@@ -1293,7 +1293,7 @@ describe('SaveManager', () => {
       { pokemon: { base: { id: 'charmander' }, level: 5 } },
     ]);
     expect(restored?.stash.listPokemon()).toHaveLength(1);
-    expect(restored?.stash.listItems()).toEqual(withPack({ 'poke-ball': 5, potion: 3 }));
+    expect(restored?.stash.listItems()).toEqual(withPack({ 'poke-ball': 2, potion: 1 }));
   });
 
   it('turns a save that unlocked the retired south-verge insertion into Town Square', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Pokemon } from '../pokemon';
 import { getSpeciesById } from '../pokemon/species';
-import { MINIMUM_SUPPLIES } from '../stash/Stash';
+import { STARTING_SUPPLIES } from '../stash/Stash';
 import { weatherAt } from './districts';
 import { FIRST_CONTRACT_ID, RAID_CONTRACTS } from '../objectives/contracts';
 import { createRunTrainerEncounters, trainersForContract, type RunTrainerEncounter } from './trainers';
@@ -36,7 +36,7 @@ const maya = createRunTrainerEncounters().find(
 const STARTERS = ['charmander', 'squirtle', 'bulbasaur'] as const;
 
 /** What a fresh save deploys with, read off the kit rather than typed here. */
-const PACK = MINIMUM_SUPPLIES.potion;
+const PACK = STARTING_SUPPLIES.potion;
 
 /**
  * She stands in THE REEDBEDS, which is one of the game's three rain districts,

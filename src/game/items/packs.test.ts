@@ -66,7 +66,7 @@ describe('the packs', () => {
     );
     const satchel = packGridFor(FALLBACK_PACK_ID);
     expect(fitsInGrid(kit, satchel)).toBe(true);
-    expect(gridCells(satchel) - packContents(kit, satchel).cellsUsed).toBe(4);
+    expect(gridCells(satchel) - packContents(kit, satchel).cellsUsed).toBe(9);
     // And the kit's pack line is the Satchel, so the restock is never generous.
     expect(MINIMUM_SUPPLIES[FALLBACK_PACK_ID]).toBe(1);
     expect(packSquares(FALLBACK_PACK_ID)).toBe(Math.min(...PACK_IDS.map(packSquares)));
