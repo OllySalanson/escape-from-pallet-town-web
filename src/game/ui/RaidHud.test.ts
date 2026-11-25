@@ -53,11 +53,34 @@ function stubScene(width: number) {
     };
     return text;
   };
+  const images: { visible: boolean; texture: string }[] = [];
+  const makeImage = () => {
+    const record = { visible: true, texture: '' };
+    images.push(record);
+    const image = {
+      setOrigin: vi.fn(() => image),
+      setScrollFactor: vi.fn(() => image),
+      setDepth: vi.fn(() => image),
+      setDisplaySize: vi.fn(() => image),
+      setPosition: vi.fn(() => image),
+      setTexture: vi.fn((key: string) => {
+        record.texture = key;
+        return image;
+      }),
+      setVisible: vi.fn((visible: boolean) => {
+        record.visible = visible;
+        return image;
+      }),
+      destroy: vi.fn(),
+    };
+    return image;
+  };
   const scene = {
     scale: { width },
-    add: { graphics: () => graphics, text: makeText },
+    add: { graphics: () => graphics, text: makeText, image: makeImage },
+    textures: { exists: () => true },
   };
-  return { scene: scene as unknown as Phaser.Scene, fills, texts };
+  return { scene: scene as unknown as Phaser.Scene, fills, texts, images };
 }
 
 const STATE: RaidHudState = {
@@ -181,5 +204,25 @@ describe('RaidHud clock in the last minute', () => {
     expect(calmClock.width).toBe(cautionClock.width);
     expect(ruleCount(calm.fills, calmClock)).toBe(2);
     expect(ruleCount(caution.fills, cautionClock)).toBe(4);
+  });
+});
+
+describe('RaidHud prize chip', () => {
+  // The captain, 25 Nov 2026: "the big yellow square saying two parts crates".
+  it('shows the find as its own icon, its name and way in ink, and NO ROOM on a red line of its own', () => {
+    const { scene, texts, images } = stubScene(400);
+    const hud = new RaidHud(scene);
+    hud.render(
+      { ...STATE, prize: { label: '2 PARTS CRATES', itemId: 'parts-crate', detail: 'NE 118', room: 'NO ROOM: NEEDS 2 SQUARES' } },
+      0,
+    );
+    const icons = images.filter((image) => image.visible);
+    expect(icons).toHaveLength(1);
+    expect(icons[0].texture).toMatch(/^icon-/);
+    const shown = texts.filter((text) => text.visible).map((text) => text.lines);
+    expect(shown).toContainEqual(['2 PARTS CRATES', 'NE 118']);
+    expect(shown).toContainEqual(['NO ROOM: NEEDS 2 SQUARES']);
+    hud.render(STATE, 0);
+    expect(images.some((image) => image.visible)).toBe(false);
   });
 });

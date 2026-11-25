@@ -366,6 +366,8 @@ function hunterContactView(input: HunterChipInput): HunterChipView | null {
 export interface PrizeChipInput {
   /** What the find is called, as the item catalogue names it. */
   readonly name: string;
+  /** The item it is, for its icon on the chip. */
+  readonly itemId?: string;
   /** Compass letters from the player toward it, e.g. `SE`. */
   readonly direction: string;
   /** Steps between the player and it. */
@@ -380,6 +382,8 @@ export interface PrizeChipInput {
 
 export interface PrizeChipView {
   readonly label: string;
+  /** The item it is, for its icon on the chip. */
+  readonly itemId?: string;
   /** The line under it: how far, and which way. */
   readonly detail: string;
   /** A third line, when it would not go in: how much room to make. */
@@ -400,6 +404,7 @@ export function prizeChipView(input: PrizeChipInput | null): PrizeChipView | nul
   }
   return {
     label: input.name.toUpperCase(),
+    ...(input.itemId === undefined ? {} : { itemId: input.itemId }),
     detail: `${input.direction} ${input.distance}`,
     ...(input.noRoomSquares === undefined
       ? {}

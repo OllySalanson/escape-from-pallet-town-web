@@ -3828,6 +3828,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const noRoom = this.noRoomFor(nearest.loot);
     return {
       name: prizeWords(nearest.loot),
+      itemId: nearest.loot.itemId,
       direction: this.headingTo(nearest.loot.position),
       distance: nearest.steps,
       ...(noRoom === undefined ? {} : { noRoomSquares: noRoom }),
