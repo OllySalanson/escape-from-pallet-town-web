@@ -1,6 +1,6 @@
 import { BASE_DOORS } from '../base/doors';
 import { BASE_SPAWN, getBaseMap } from '../base/baseMap';
-import { HARBOUR_PLACES, type HarbourPlace } from '../base/harbourPlaces';
+import { HARBOUR_PLACES, harbourPlaceAt, type HarbourPlace } from '../base/harbourPlaces';
 import { BASE_ROOMS, type RoomId } from '../base/rooms';
 import { DOJO_COUNTER_TILES } from '../arena/dojoCounter';
 import { RIVAL_TILE } from '../base/arenaBouts';
@@ -193,7 +193,7 @@ export function playtestBoardRows(hour: PlaytestHour | null): readonly PlaytestB
 
 /**
  * Where in a part of the harbour the board puts the player down: the open
- * tile nearest the middle of its first stretch, never a doorway (which would
+ * tile of it nearest the middle of its first stretch, never a doorway (which would
  * be walked straight through) or the board's own tile. Asked of the yard as
  * this save has built it, so a fixture never lands on the player.
  */
@@ -202,6 +202,9 @@ export function placeLanding(place: HarbourPlace, builtUpgradeIds: readonly stri
   const doorways = BASE_DOORS.flatMap((door) => door.tiles);
   const open = (tile: GridPosition): boolean =>
     map.collision[tile.y]?.[tile.x] === false &&
+    // In the part itself: where two parts' stretches overlap the first listed
+    // names the tile, and THE BEACH's middle is THE PLEASURE PIER.
+    harbourPlaceAt(tile)?.id === place.id &&
     !doorways.some((door) => door.x === tile.x && door.y === tile.y) &&
     !(tile.x === PLAYTEST_BOARD_TILE.x && tile.y === PLAYTEST_BOARD_TILE.y);
   let best: GridPosition | null = null;
