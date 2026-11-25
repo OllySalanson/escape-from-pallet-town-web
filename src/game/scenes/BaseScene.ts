@@ -168,6 +168,9 @@ import {
   HARBOUR_PEOPLE,
   harbourLifeAt,
   wardenLines,
+  PORTER_ID,
+  porterHasNews,
+  porterLines,
   type HarbourFigure,
   type HarbourPerson,
 } from '../base/harbourLife';
@@ -5710,6 +5713,12 @@ export class BaseScene extends Phaser.Scene {
       this.say(gymGuideLines(this.savedGame.raidProgress), [target], () => this.offerTheReel());
       return;
     }
+    if (local?.id === PORTER_ID) {
+      this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
+      // His "!" goes once his first line is up, read to the end or not.
+      this.say(porterLines(this.beachBottle.length > 0, this.raidsGoneOn()), [target], undefined, () => this.clearHarbourMark(PORTER_ID));
+      return;
+    }
     if (local?.id === WARDEN_ID) {
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
       const teeth = errandRecord(this.savedGame.raidProgress.errands, 'gold-teeth')?.status === 'completed';
@@ -7854,16 +7863,24 @@ export class BaseScene extends Phaser.Scene {
 
   /**
    * The same "!" over everybody out in the harbour with something to say
-   * about a favour, so a player walking the yard can see who wants a word
-   * from across it. It walks their beat with them (`placeHarbourMarks`).
+   * about a favour, and over the porter while he has the bottle on THE BEACH
+   * to tell of (`porterHasNews`), so a player walking the yard can see who
+   * wants a word from across it. It walks their beat with them
+   * (`placeHarbourMarks`).
    */
   private markHarbourGivers(life: readonly HarbourFigure[]): void {
     for (const figure of life) {
-      if (figure.kind === 'person' && this.favourHere(harbourGiver(figure.id))) {
+      const news = figure.id === PORTER_ID && porterHasNews(this.beachBottle.length > 0, this.raidsGoneOn());
+      if (figure.kind === 'person' && (news || this.favourHere(harbourGiver(figure.id)))) {
         this.harbourMarks.set(figure.id, drawEmoteBubble(this, 'exclaim'));
       }
     }
     this.placeHarbourMarks();
+  }
+
+  /** How many raids this save has gone out on, on every map. */
+  private raidsGoneOn(): number {
+    return Object.values(this.savedGame.raidProgress.raidRecord ?? {}).reduce((sum, record) => sum + record.deployed, 0);
   }
 
   private placeHarbourMarks(): void {
@@ -7873,9 +7890,20 @@ export class BaseScene extends Phaser.Scene {
       if (!at || !person) {
         continue;
       }
-      mark.setPosition(
-        Math.round(at.x + TILE_SIZE / 2 - BUBBLE_WIDTH / 2),
-        at.y + getCharacterDesign(person.design).headPixelY - BUBBLE_HEIGHT,
+      const x = Math.round(at.x + TILE_SIZE / 2 - BUBBLE_WIDTH / 2);
+      const y = at.y + getCharacterDesign(person.design).headPixelY - BUBBLE_HEIGHT;
+      mark.setPosition(x, y);
+      // Spoken to from the tile above, the "!" would sit on the player's own
+      // head; it has done its job by then, so it steps aside until they move.
+      // (The marks are put up before the player is, and a restarted scene
+      // still holds the last visit's destroyed sprite.)
+      const player = this.player as Phaser.GameObjects.Sprite | undefined;
+      mark.setVisible(
+        !player?.active ||
+          !Phaser.Geom.Intersects.RectangleToRectangle(
+            new Phaser.Geom.Rectangle(x, y, BUBBLE_WIDTH, BUBBLE_HEIGHT),
+            player.getBounds(),
+          ),
       );
     }
   }

@@ -101,6 +101,41 @@ export function wardenLines(hasHisTeeth: boolean): readonly string[] {
     : ['Hoh hoh! Hee hafahi ho hee haffy!', '(Not a word of it can be made out.)'];
 }
 
+/** The porter on the quay, whose words a first raid's way out passes. */
+export const PORTER_ID = 'quay-porter';
+
+const PORTER_LINES: readonly string[] = [
+  'These crates came in on the SEAGALLOP and they won\'t carry themselves.',
+  'BILL had the pick of them before the sun was up. He always does.',
+];
+
+/**
+ * What the porter says. While the bottle lies on THE BEACH (`treasure/
+ * treasureMap.ts`), once a raid has been gone on, he says so first: the side
+ * quest with the best writing in the harbour was told of only by MARLOW,
+ * inside THE GREAT LIBRARY, and nothing on the way to a raid pointed at the
+ * beach (the critic's problem 21, 25 Nov 2026). He stands on that way, and
+ * where on the sand is said exactly, because the beach has a pier through it (`HARBOUR_PLACES`).
+ */
+export function porterLines(bottleOnTheBeach: boolean, raidsGoneOn: number): readonly string[] {
+  return porterHasNews(bottleOnTheBeach, raidsGoneOn)
+    ? [
+        'Tide brought a bottle in on THE BEACH. East of THE PLEASURE PIER, by the rocks.',
+        'Corked and sealed with wax, and nobody\'s picked it up. Not my crate, not my business.',
+        PORTER_LINES[0],
+      ]
+    : PORTER_LINES;
+}
+
+/**
+ * Whether the porter has the bottle to tell of, which is also when he wears
+ * the harbour's "!" (`BaseScene.markHarbourGivers`): a man who had only ever
+ * talked about crates gave nobody a reason to speak to him again.
+ */
+export function porterHasNews(bottleOnTheBeach: boolean, raidsGoneOn: number): boolean {
+  return bottleOnTheBeach && raidsGoneOn > 0;
+}
+
 export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
   {
     id: 'seagallop-sailor',
@@ -241,17 +276,15 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     ],
   },
   {
-    id: 'quay-porter',
+    id: PORTER_ID,
     kind: 'person',
     name: 'PORTER',
     design: 'man',
     position: at(5, 16),
     facing: 'left',
     idle: { roam: [at(5, 17)], glances: ['down', 'up'], beatMs: 6900 },
-    lines: [
-      'These crates came in on the SEAGALLOP and they won\'t carry themselves.',
-      'BILL had the pick of them before the sun was up. He always does.',
-    ],
+    // Spoken to, he says what washed up on THE BEACH while it lies there (`porterLines`).
+    lines: PORTER_LINES,
   },
   {
     // FireRed's Safari Zone Warden, off the boat and pacing the dry sand at
