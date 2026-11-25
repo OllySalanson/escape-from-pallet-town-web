@@ -139,8 +139,8 @@ describe('what the upgrade list derives', () => {
     expect(workshopSecureItemStacks(['secure-locker-1'])).toBe(1);
     expect(workshopSecurePokemon(['secure-locker-1'])).toBe(0);
     expect(workshopSecurePokemon(['secure-locker-1', 'secure-locker-2'])).toBe(1);
-    expect(recoveryPriceShare(['recovery-bay-1'])).toBe(0.75);
-    expect(recoveryPriceShare(['recovery-bay-1', 'recovery-bay-2'])).toBe(0.5);
+    expect(recoveryPriceShare(['recovery-bay-1'])).toBe(0.5);
+    expect(recoveryPriceShare(['recovery-bay-1', 'recovery-bay-2'])).toBe(0.15);
     expect(wardTreatmentsPerRaid(['quarantine-ward'])).toBe(1);
     expect(hasHunterIntel(['radio-mast'])).toBe(true);
     expect(hasBeacon(['beacon'])).toBe(true);

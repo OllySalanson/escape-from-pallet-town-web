@@ -180,17 +180,20 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     id: 'recovery-bay-1',
     icon: 'super-potion',
     name: 'Healing machine I',
-    effect: 'Reviving costs a quarter less.',
-    detail: 'Brock fits the Center with a better machine: bringing a Pokémon round from a faint - the one thing Nurse Joy charges for - costs a quarter less raid time.',
+    effect: 'Reviving costs under half.',
+    detail: 'Brock fits the Center with a better machine: bringing a Pokémon round from a faint - the one thing Nurse Joy charges for - costs under half the raid time.',
     cost: { supplies: [{ itemId: 'linen-roll', quantity: 4 }] },
-    recoveryPriceShare: 0.75,
+    // Since HP and status were made free, a revive is all a machine can cut,
+    // and a quarter off 0:35 was ten seconds a faint for four linen - a rung
+    // nobody would build (the fresh critic, 25 Nov 2026). Under half is 0:15.
+    recoveryPriceShare: 0.5,
   },
   {
     id: 'recovery-bay-2',
     icon: 'super-potion',
     name: 'Healing machine II',
-    effect: 'Reviving costs half.',
-    detail: 'A second machine beside the first: bringing a Pokémon round from a faint costs half the raid time it started at.',
+    effect: 'Reviving takes five seconds.',
+    detail: 'A second machine beside the first: bringing a Pokémon round from a faint takes five seconds of the next raid, the least any treatment costs. Only the ward is quicker.',
     requires: 'recovery-bay-1',
     cost: {
       supplies: [
@@ -198,7 +201,9 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
         { itemId: 'cable-coil', quantity: 2 },
       ],
     },
-    recoveryPriceShare: 0.5,
+    // The quoting step's floor: a faint still costs something, so it stays
+    // the worst outcome of a fight (`recovery.ts`).
+    recoveryPriceShare: 0.15,
   },
   {
     id: 'quarantine-ward',
