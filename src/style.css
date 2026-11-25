@@ -3245,6 +3245,40 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .extraction-verdict {
   display: grid;
 }
+/* The moment a raid that got out opens on (`run/resultMoment.ts`): the deed,
+   one picture, a line or two, and the way on - the ledger is one key away. */
+:where(.pixel-ui) .extraction-moment-layout {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100%;
+}
+:where(.pixel-ui) .extraction-moment {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: calc(var(--u) * 4);
+  text-align: center;
+}
+:where(.pixel-ui) .extraction-moment .moment-picture {
+  image-rendering: pixelated;
+}
+:where(.pixel-ui) .extraction-moment .moment-picture.is-pokemon {
+  width: calc(var(--u) * 128);
+  height: calc(var(--u) * 128);
+}
+:where(.pixel-ui) .extraction-moment .moment-picture.is-item {
+  width: calc(var(--u) * 48);
+  height: calc(var(--u) * 48);
+}
+:where(.pixel-ui) .extraction-moment .moment-headline {
+  /* One type size (style.test.ts): the headline stands out by its place under
+     the picture and a gap below it, never by size. */
+  margin-bottom: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .extraction-moment .moment-next {
+  color: var(--ink-soft, inherit);
+}
+
 /* A lost stack is drained of colour, so the ledger reads at a glance. */
 :where(.pixel-ui) .px-row.is-lost img {
   filter: grayscale(1) brightness(0.8);

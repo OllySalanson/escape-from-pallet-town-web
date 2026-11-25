@@ -625,6 +625,9 @@ describe('the result screen of a raid that won a badge', () => {
     });
     const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
     Object.assign(scene as object, { report });
+    // The moment heads it (`run/resultMoment.ts`), and the full report says it in full.
+    expect((scene as unknown as { markup(): string }).markup()).toContain('YOU WON THE SOUL BADGE!');
+    Object.assign(scene as object, { fullReport: true });
     const verdict = (scene as unknown as { markup(): string }).markup().split('extraction-verdict')[1]?.split('</section>')[0] ?? '';
     expect(verdict).toContain('You won the SOUL BADGE! Koga no longer holds every road into the Marsh.');
   });
