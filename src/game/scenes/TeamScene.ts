@@ -3,11 +3,11 @@ import { audioManager } from '../audio/AudioManager';
 import { flowForGame } from '../base/arenaKit';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
-import { MAX_RUN_PARTY, type DeploymentFlow } from '../hub/deploymentFlow';
+import type { DeploymentFlow } from '../hub/deploymentFlow';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
-import { pixelScreen, pixelTag } from '../ui/pixelUi';
+import { pixelScreen } from '../ui/pixelUi';
 import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
 import { pickerEntries, wirePickerFind } from '../ui/boxPicker';
 import { LAST_ONE_STAYS, leadLine, TEAM_HINTS, teamBody, teamRowHelp } from '../ui/teamView';
@@ -102,7 +102,6 @@ export class TeamScene extends Phaser.Scene implements ProvidesFeedbackContext {
     this.status = undefined;
     const game = this.game_;
     const flow = this.flow;
-    const going = flow?.party.length ?? 0;
     const body =
       game && flow
         ? teamBody({
@@ -115,7 +114,6 @@ export class TeamScene extends Phaser.Scene implements ProvidesFeedbackContext {
       pixelScreen({
         title: 'Your team',
         back: { label: 'Close', attribute: 'data-close' },
-        aside: pixelTag(`${going} of ${MAX_RUN_PARTY}`, going > 0 ? 'good' : 'risk'),
         body,
         hints: TEAM_HINTS,
         ...(status ? { status } : {}),
