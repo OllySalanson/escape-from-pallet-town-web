@@ -1,3 +1,4 @@
+import { readHonours } from '../look/gymHonours';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { encodeLook, HARBOUR_PATH_MAX, isPlayerId, readWireLook, type HarbourMove } from '../harbour/harbourProtocol';
 
@@ -57,6 +58,8 @@ export function encodeRaidMove(move: RaidMove): Record<string, unknown> {
     f: move.facing,
     // What they wear, as the harbour says it (`harbour/harbourProtocol.ts`).
     ...(move.look ? { w: encodeLook(move.look) } : {}),
+    // And the gym honours they wear, as the harbour says them.
+    ...(move.honours && move.honours.length > 0 ? { g: move.honours } : {}),
   };
 }
 
@@ -65,7 +68,7 @@ export function readRaidMove(payload: unknown): RaidMove | null {
   if (typeof payload !== 'object' || payload === null) {
     return null;
   }
-  const { u, p, s, f, w } = payload as Record<string, unknown>;
+  const { u, p, s, f, w, g } = payload as Record<string, unknown>;
   if (!isPlayerId(u) || !isRaidPlace(p) || typeof f !== 'string' || !FACINGS.includes(f as Direction)) {
     return null;
   }
@@ -81,7 +84,9 @@ export function readRaidMove(payload: unknown): RaidMove | null {
   }
   // A look is believed only as the boutique's own pieces; anything else is the classic figure.
   const look = readWireLook(w);
-  return { from: u, place: p, path, facing: f as Direction, ...(look ? { look } : {}) };
+  // Honours are believed only as the catalogue's own (`look/gymHonours.ts`).
+  const honours = readHonours(g);
+  return { from: u, place: p, path, facing: f as Direction, ...(look ? { look } : {}), ...(honours.length > 0 ? { honours } : {}) };
 }
 
 /** What a player says about themselves on joining: only where they are. */

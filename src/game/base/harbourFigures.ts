@@ -224,9 +224,9 @@ export class HarbourFigures {
       const row = figure.tile.y + (toward.y - figure.tile.y) * figure.progress;
       const y = row * TILE_SIZE + SPRITE_Y_OFFSET;
       drawn.sprite.setPosition(x, y).setDepth(atRow(FIGURE_BAND, row) - OTHER_PLAYERS_BEHIND);
-      const texture = lookTexture(this.scene, figure.look ?? null, figure.pack);
+      const texture = lookTexture(this.scene, figure.look ?? null, figure.pack, figure.honours);
       if (drawn.texture !== texture) {
-        // A look bought or changed, or a pack: the figure is redrawn in it, standing.
+        // A look bought or changed, a pack, or an honour: the figure is redrawn in it, standing.
         drawn.texture = texture;
         drawn.sprite.stop();
         drawn.sprite.setTexture(texture, getIdleFrame(figure.facing));
@@ -483,7 +483,7 @@ export class HarbourFigures {
   }
 
   private standUp(figure: PlateFigure): Drawn {
-    const texture = lookTexture(this.scene, figure.look ?? null, figure.pack);
+    const texture = lookTexture(this.scene, figure.look ?? null, figure.pack, figure.honours);
     const sprite = this.scene.add.sprite(0, 0, texture, getIdleFrame(figure.facing)).setOrigin(0, 0);
     const plate = this.scene.add.graphics();
     const name = this.scene.add.text(0, 0, figure.name, NAME_STYLE);

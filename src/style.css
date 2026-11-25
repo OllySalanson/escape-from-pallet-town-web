@@ -159,6 +159,13 @@ body {
    there behind its lip with its top showing, so the sack ends up full.
    `--hop-x` is how far its row puts it from the sack, `--nudge` where in the
    mouth it settles and `--rest` how deep. */
+/* The result card's player turning round in a gym honour just won (`.moment-picture.is-honour`). */
+@keyframes honour-turn {
+  0% { background-position: 0% 0; }
+  22% { background-position: 33.333% 0; }
+  40% { background-position: 66.667% 0; }
+  80% { background-position: 100% 0; }
+}
 @keyframes haul-stow-hop {
   0% {
     transform: translate(0, 0);
@@ -3317,6 +3324,26 @@ body.touch-play .feedback-tab {
   width: calc(var(--u) * 48);
   height: calc(var(--u) * 48);
 }
+:where(.pixel-ui) .extraction-moment .moment-picture.is-honour {
+  /* The player's own figure, 16x32, turning round once in what they just won:
+     facing you, a side, the back - held there longest - and the other side. */
+  display: block;
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 128);
+  background-image: var(--honour-strip);
+  background-size: 400% 100%;
+  background-repeat: no-repeat;
+  animation: honour-turn 3.6s steps(1, end) infinite;
+}
+:where(.pixel-ui[data-short]) .extraction-moment .moment-picture.is-honour {
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 64);
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(.pixel-ui) .extraction-moment .moment-picture.is-honour {
+    animation: none;
+  }
+}
 :where(.pixel-ui) .extraction-moment .moment-headline {
   /* One type size (style.test.ts): the headline stands out by its place under
      the picture and a gap below it, never by size. */
@@ -5243,6 +5270,14 @@ body.touch-play .feedback-tab {
 }
 .pixel-ui .boutique-card.is-raid {
   --fill: var(--gold-wash);
+}
+/* A gym honour won and worn is gold, as a raid find is; taken off, it is
+   plain and its figure stands back (`look/gymHonours.ts`). */
+.pixel-ui .boutique-card.is-honour {
+  --fill: var(--gold-wash);
+}
+.pixel-ui .boutique-card.is-honour-off .look-figure {
+  opacity: 0.45;
 }
 .pixel-ui .boutique-card > strong {
   text-transform: none;

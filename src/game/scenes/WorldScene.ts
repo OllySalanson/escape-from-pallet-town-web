@@ -1,3 +1,4 @@
+import { honoursEarned, orderedHonours, type HonourId } from '../look/gymHonours';
 import { FIRST_RAID_BRIEFING } from '../hub/firstRaid';
 import { rewardKey, secretById, secretOpenAt, type SecretReward } from '../world/secrets';
 import { CHEST_ITEM_ID, TREASURE_SECRET_ID } from '../treasure/treasureMap';
@@ -2233,7 +2234,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     const pack = this.runSession?.packItemId;
-    rooms.inRaid(this.currentMap.id, this.currentTile, this.facing, readLook(this.runSession?.look), isPackId(pack) ? pack : null);
+    rooms.inRaid(
+      this.currentMap.id,
+      this.currentTile,
+      this.facing,
+      readLook(this.runSession?.look),
+      isPackId(pack) ? pack : null,
+      this.wornHonours(),
+    );
     this.friendFigures = new HarbourFigures(this, () => RAID_NAME_PLATE_DEPTH);
     // Anything the others took before this player dropped in, or while they
     // were in a fight, is already gone.
@@ -9441,15 +9449,24 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /**
    * The sheet the player walks in: what they wore out of the door
    * (`look/look.ts`), or the classic figure, with the raid's pack on their back
-   * (`look/wornPack.ts`). On the Bicycle the rider is FireRed's own
-   * (`world/bicycle.ts`), and the pack rides with them.
+   * (`look/wornPack.ts`) and their gym honours on (`look/gymHonours.ts`). On
+   * the Bicycle the rider is FireRed's own (`world/bicycle.ts`), and the pack
+   * and the honours ride with them.
    */
   private walkingTexture(): string {
-    return lookTexture(this, readLook(this.runSession?.look), this.runSession?.packItemId);
+    return lookTexture(this, readLook(this.runSession?.look), this.runSession?.packItemId, this.wornHonours());
   }
 
   private ridingTexture(): string {
-    return bikeTexture(this, this.runSession?.packItemId);
+    return bikeTexture(this, this.runSession?.packItemId, this.wornHonours());
+  }
+
+  /**
+   * The honours worn out of the door, and any won on this raid: a leader beaten
+   * puts theirs on the player there and then, so they walk out of the gym in it.
+   */
+  private wornHonours(): readonly HonourId[] {
+    return orderedHonours([...(this.runSession?.honours ?? []), ...honoursEarned(this.bossesBeatenThisRaid())]);
   }
 
   /** How far the chevron over the player sits below the classic head: the Bicycle's rider, or this look's head. */

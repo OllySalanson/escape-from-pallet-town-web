@@ -1,3 +1,4 @@
+import type { HonourId } from '../look/gymHonours';
 import type { GridPosition } from '../movement/gridMovement';
 import { WORKSHOP_UPGRADES } from '../hub/workshop';
 import { pokemonNeedingRecovery } from '../hub/recovery';
@@ -856,7 +857,7 @@ export type RoomPerson = {
   readonly id: string;
   readonly tile: GridPosition;
   readonly facing: Direction;
-} & ({ readonly look: DressedLook; readonly pack?: PackItemId } | { readonly design: CastCharacterDesignId });
+} & ({ readonly look: DressedLook; readonly pack?: PackItemId; readonly honours?: readonly HonourId[] } | { readonly design: CastCharacterDesignId });
 
 /**
  * THE BOLTHOLE's furniture as it stands this visit (`home/arrangement.ts`):
@@ -2021,6 +2022,7 @@ function drawGameCorner(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
     id: regular.bot.id,
     look: regular.bot.look,
     ...(regular.bot.pack ? { pack: regular.bot.pack } : {}),
+    ...(regular.bot.honours ? { honours: regular.bot.honours } : {}),
     tile: regular.tile,
     facing: regular.facing,
   }));
@@ -2066,6 +2068,7 @@ function drawBattleArena(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
       id: regular.bot.id,
       look: regular.bot.look,
       ...(regular.bot.pack ? { pack: regular.bot.pack } : {}),
+      ...(regular.bot.honours ? { honours: regular.bot.honours } : {}),
       tile: DOJO_FIGHTER_SPOTS[index].tile,
       facing: DOJO_FIGHTER_SPOTS[index].facing,
     })),

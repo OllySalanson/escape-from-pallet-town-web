@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { boutiqueMarkup, commitBar, shelfStep, type BoutiqueState } from './boutiqueView';
+import { boutiqueMarkup, commitBar, honoursIfChosen, shelfStep, type BoutiqueState } from './boutiqueView';
+import { GYM_HONOURS } from './gymHonours';
 import { STARTER_LOOK, wearing } from './look';
 import { ownedWearables } from './wardrobe';
 import { BOUTIQUE_NAME, WEARABLES } from './wearables';
@@ -12,6 +13,7 @@ function state(overrides: Partial<BoutiqueState> = {}): BoutiqueState {
     owned: ownedWearables([]),
     held: (itemId) => ({ money: 500 })[itemId] ?? 0,
     sheet: () => 'data:,',
+    honours: { earned: [], worn: [] },
     ...overrides,
   };
 }
@@ -84,9 +86,16 @@ describe("the boutique's screen", () => {
 
 describe("the shelves' jump chips", () => {
   it('gives every shelf the screen shows a chip, in shelf order', () => {
-    expect(cards(boutiqueMarkup(state()), 'data-jump')).toEqual(['looks', 'hat', 'hair', 'top', 'legs', 'outfit', 'raid']);
-    // The wardrobe shows only the shelves something owned stands on.
+    expect(cards(boutiqueMarkup(state()), 'data-jump')).toEqual(['looks', 'hat', 'hair', 'top', 'legs', 'outfit', 'raid', 'honours']);
+    // The wardrobe shows only the shelves something owned stands on, a gym honour won first.
     expect(cards(boutiqueMarkup(state({ mode: 'wardrobe' })), 'data-jump')).toEqual(['looks', 'hair', 'top', 'legs']);
+    expect(cards(boutiqueMarkup(state({ mode: 'wardrobe', honours: { earned: ['cascade'], worn: [] } })), 'data-jump')).toEqual([
+      'honours',
+      'looks',
+      'hair',
+      'top',
+      'legs',
+    ]);
   });
 
   it('steps a shelf at a time with Page Down and Page Up, held at both ends', () => {
@@ -96,5 +105,37 @@ describe("the shelves' jump chips", () => {
     expect(shelfStep(2, false, 7, -1)).toBe(2);
     expect(shelfStep(2, true, 7, -1)).toBe(1);
     expect(shelfStep(0, true, 7, -1)).toBe(0);
+  });
+
+  it('shows every gym honour in the shop, never for sale, with whom it is won from', () => {
+    const markup = boutiqueMarkup(state());
+    expect(cards(markup, 'data-honour')).toEqual(GYM_HONOURS.map((honour) => honour.id));
+    expect(markup).toContain('Gym honours');
+    expect(markup).toContain('Beat MISTY');
+    expect(markup).not.toMatch(/data-honour="cascade"[^>]*>[^<]*₽/);
+  });
+
+  it('puts only the honours won in the wardrobe, each saying whether it is worn', () => {
+    const none = boutiqueMarkup(state({ mode: 'wardrobe' }));
+    expect(cards(none, 'data-honour')).toEqual([]);
+    expect(none).not.toContain('Gym honours');
+    const won = boutiqueMarkup(state({ mode: 'wardrobe', honours: { earned: ['cascade', 'soul'], worn: ['cascade'] } }));
+    expect(cards(won, 'data-honour')).toEqual(['cascade', 'soul']);
+    expect(won).toMatch(/data-honour="cascade"[\s\S]*?Worn/);
+    expect(won).toMatch(/data-honour="soul"[\s\S]*?Taken off/);
+  });
+
+  it('shows an honour on in the shop mirror, and the wardrobe mirror as you are', () => {
+    const wardrobe = { mode: 'wardrobe' as const, honours: { earned: ['cascade', 'soul'] as const, worn: ['cascade'] as const } };
+    expect(honoursIfChosen(wardrobe, 'cascade')).toEqual(['cascade']);
+    expect(honoursIfChosen(wardrobe, 'soul')).toEqual(['cascade']);
+    expect(honoursIfChosen({ mode: 'shop', honours: { earned: [], worn: [] } }, 'soul')).toEqual(['soul']);
+  });
+
+  it('opens the wardrobe on the honours won, so they are never scrolled out of sight', () => {
+    const won = boutiqueMarkup(state({ mode: 'wardrobe', honours: { earned: ['cascade'], worn: ['cascade'] } }));
+    expect(won.match(/data-cursor-start/g)).toHaveLength(1);
+    expect(won).toMatch(/data-honour="cascade" data-cursor-start/);
+    expect(boutiqueMarkup(state({ mode: 'wardrobe' }))).toMatch(/data-classic data-cursor-start/);
   });
 });

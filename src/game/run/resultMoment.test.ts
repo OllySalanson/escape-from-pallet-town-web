@@ -54,6 +54,15 @@ describe("the moment a raid that got out opens on", () => {
     const moment = resultMoment(report({ badgesWon: ['You won the CASCADE BADGE! MISTY no longer holds THE COAST.'] }));
     expect(moment?.headline).toBe('YOU WON THE CASCADE BADGE!');
     expect(moment?.line).toBe('MISTY no longer holds THE COAST.');
+    expect(moment?.picture).toBeNull();
+  });
+
+  it("shows a gym's badge as the player wearing its honour", () => {
+    const moment = resultMoment(
+      report({ badgesWon: ['You won the CASCADE BADGE! MISTY no longer holds THE COAST.'], honoursWon: ['cascade'] }),
+    );
+    expect(moment?.picture).toEqual({ kind: 'honour', honour: 'cascade' });
+    expect(moment?.line).toBe('MISTY no longer holds THE COAST. You wear the CASCADE NECKERCHIEF now, for everybody to see.');
   });
 
   it('says an empty raid kindly, and leaves a lost one to its own sequence', () => {

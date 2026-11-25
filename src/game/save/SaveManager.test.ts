@@ -3140,6 +3140,30 @@ describe('what the player wears, and the wardrobe they have bought', () => {
     expect(new SaveManager(storage).describe()).toMatchObject({ kind: 'game', look: starter });
   });
 
+  it("wears every gym honour won, takes one off by choice, and keeps the choice through a reload", () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+    // Nobody takes off what they have not won.
+    expect(saves.showHonour('cascade', false)).toBeUndefined();
+    const game = saves.load()!;
+    saves.save({ ...game, raidProgress: { ...game.raidProgress, defeatedBosses: ['vale-gym-misty', 'vale-gym-koga'] } });
+    expect(new SaveManager(storage).describe()).toMatchObject({ kind: 'game', honours: ['cascade', 'soul'] });
+    expect(saves.showHonour('cascade', false)?.raidProgress.honoursHidden).toEqual(['cascade']);
+    expect(new SaveManager(storage).load()?.raidProgress.honoursHidden).toEqual(['cascade']);
+    expect(new SaveManager(storage).describe()).toMatchObject({ honours: ['soul'] });
+    expect(saves.showHonour('cascade', true)?.raidProgress).not.toHaveProperty('honoursHidden');
+    expect(saves.showHonour('crown', false)).toBeUndefined();
+  });
+
+  it('reads only honours the catalogue knows as taken off', () => {
+    const storage = new MemoryStorage();
+    freshSave(storage);
+    const written = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: Record<string, unknown> };
+    written.raidProgress.honoursHidden = ['soul', 'crown', 4, 'soul'];
+    storage.setItem(SAVE_KEY, JSON.stringify(written));
+    expect(new SaveManager(storage).load()?.raidProgress.honoursHidden).toEqual(['soul']);
+  });
+
   it('buys what a try-on lacks out of the vault in one write, and wears it', () => {
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);

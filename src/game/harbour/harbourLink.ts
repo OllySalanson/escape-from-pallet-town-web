@@ -1,3 +1,4 @@
+import { honoursKey, type HonourId } from '../look/gymHonours';
 import type { DojoClassId } from '../arena/dojoRecord';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { PartnerSpeciesId } from '../base/partner';
@@ -114,6 +115,7 @@ export class HarbourLink<P extends string = HarbourPlace> {
   private partner: PartnerSpeciesId | null = null;
   private look: DressedLook | null = null;
   private pack: PackItemId | null = null;
+  private honours: readonly HonourId[] = [];
   private dojoClass: DojoClassId | null = null;
   private pending: GridPosition[] = [];
   private lastSentAt = Number.NEGATIVE_INFINITY;
@@ -189,14 +191,16 @@ export class HarbourLink<P extends string = HarbourPlace> {
    * What this player wears (`../look/look`), or the classic look, and the pack
    * on their back, if any. Said with every move from now on, and at once to
    * anybody here if it changed - a look bought at the boutique walks out of its
-   * door as itself, and a pack chosen at the rack is on their back at once.
+   * door as itself, and a pack chosen at the rack is on their back at once. The
+   * gym honours they wear (`../look/gymHonours`) are said with it.
    */
-  public wear(look: DressedLook | null, pack: PackItemId | null = null): void {
-    if (lookKey(look) === lookKey(this.look) && pack === this.pack) {
+  public wear(look: DressedLook | null, pack: PackItemId | null = null, honours: readonly HonourId[] = []): void {
+    if (lookKey(look) === lookKey(this.look) && pack === this.pack && honoursKey(honours) === honoursKey(this.honours)) {
       return;
     }
     this.look = look;
     this.pack = pack;
+    this.honours = [...honours];
     if (this.seen() && this.anybodyElse()) {
       this.sendNow();
     }
@@ -437,6 +441,7 @@ export class HarbourLink<P extends string = HarbourPlace> {
       ...(this.partner ? { partner: this.partner } : {}),
       ...(this.look ? { look: this.look } : {}),
       ...(this.pack ? { pack: this.pack } : {}),
+      ...(this.honours.length > 0 ? { honours: this.honours } : {}),
       ...(this.dojoClass ? { dojoClass: this.dojoClass } : {}),
     });
     this.pending = [];

@@ -1,3 +1,4 @@
+import { honourById, type HonourId } from '../look/gymHonours';
 import { RAID_KEY_LETTERS } from '../input/keyBindings';
 import { formatMoney, isCurrency, itemAmountFor } from '../items';
 import type { ExtractionReport, ReportItem, ReportPokemon } from './extractionReport';
@@ -26,7 +27,9 @@ import type { ExtractionReport, ReportItem, ReportPokemon } from './extractionRe
  */
 export type MomentPicture =
   | { readonly kind: 'pokemon'; readonly dexId: number; readonly shiny: boolean }
-  | { readonly kind: 'item'; readonly itemId: string };
+  | { readonly kind: 'item'; readonly itemId: string }
+  /** The player themselves, turning round in the gym honour they have just won (`look/gymHonours.ts`). */
+  | { readonly kind: 'honour'; readonly honour: HonourId };
 
 export interface ResultMoment {
   readonly headline: string;
@@ -115,7 +118,16 @@ export function resultMoment(report: ExtractionReport): ResultMoment | null {
 
   const badge = report.badgesWon?.[0];
   if (badge) {
-    return { headline: upper(badge.replace(/!.*/, '!')), picture: null, line: badge.replace(/^[^!]*!\s*/, ''), stow };
+    // A gym's badge is worn: the card is the player turning round in it, and says so.
+    const won = report.honoursWon?.[0];
+    const honour = won ? honourById(won) : undefined;
+    const wearing = honour ? ` You wear the ${honour.name} now, for everybody to see.` : '';
+    return {
+      headline: upper(badge.replace(/!.*/, '!')),
+      picture: honour ? { kind: 'honour', honour: honour.id } : null,
+      line: `${badge.replace(/^[^!]*!\s*/, '')}${wearing}`,
+      stow,
+    };
   }
   if (caught.length > 0) {
     const [first] = caught;

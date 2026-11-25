@@ -1,3 +1,4 @@
+import { readHonours, type HonourId } from '../look/gymHonours';
 import type { PackItemId } from '../items/items';
 import { isPackId } from '../items/packs';
 import { readLook, type DressedLook } from '../look/look';
@@ -108,6 +109,8 @@ export interface HarbourMove<P extends string = HarbourPlace> {
   readonly look?: DressedLook;
   /** The pack on their back (`../look/wornPack`), if they have one. */
   readonly pack?: PackItemId;
+  /** The gym honours they wear (`../look/gymHonours`), if any. */
+  readonly honours?: readonly HonourId[];
   /** Their class in THE BATTLE ARENA (`../arena/classes`), a ball on their name plate, if they have fought there. */
   readonly dojoClass?: DojoClassId;
 }
@@ -148,6 +151,7 @@ export function encodeHarbourMove(move: HarbourMove): Record<string, unknown> {
     ...(move.partner ? { k: move.partner } : {}),
     ...(move.look ? { w: encodeLook(move.look) } : {}),
     ...(move.pack ? { b: move.pack } : {}),
+    ...(move.honours && move.honours.length > 0 ? { g: move.honours } : {}),
     ...(move.dojoClass ? { c: move.dojoClass } : {}),
   };
 }
@@ -163,7 +167,7 @@ export function readHarbourMove(payload: unknown): HarbourMove | null {
   if (typeof payload !== 'object' || payload === null) {
     return null;
   }
-  const { u, p, s, f, k, w, b, c } = payload as Record<string, unknown>;
+  const { u, p, s, f, k, w, b, c, g } = payload as Record<string, unknown>;
   if (!isPlayerId(u) || !isHarbourPlace(p) || typeof f !== 'string' || !FACINGS.includes(f as Direction)) {
     return null;
   }
@@ -183,6 +187,8 @@ export function readHarbourMove(payload: unknown): HarbourMove | null {
   const look = readWireLook(w);
   // A pack is only ever one the catalogue has; anything else is a player with nothing on their back.
   const pack = isPackId(b as string) ? (b as PackItemId) : undefined;
+  // Honours are only ever the catalogue's own, each once; anything else is not worn.
+  const honours = readHonours(g);
   // A class is only ever one of the dojo's four; anything else is a plate with no ball.
   const dojoClass = isDojoClassId(c) ? c : undefined;
   return {
@@ -193,6 +199,7 @@ export function readHarbourMove(payload: unknown): HarbourMove | null {
     ...(partner ? { partner } : {}),
     ...(look ? { look } : {}),
     ...(pack ? { pack } : {}),
+    ...(honours.length > 0 ? { honours } : {}),
     ...(dojoClass ? { dojoClass } : {}),
   };
 }

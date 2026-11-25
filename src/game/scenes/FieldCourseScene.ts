@@ -1,3 +1,4 @@
+import { honoursWorn } from '../look/gymHonours';
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { recordAction } from '../feedback/actionLog';
@@ -497,7 +498,12 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
     this.boulders = run.boulders.map((at) =>
       this.add.image(at.x * TILE + TILE / 2, at.y * TILE + TILE / 2, TOWN_SHEET_SOURCE.source.textureKey, BOULDER_FRAME).setDepth(3),
     );
-    this.runnerTexture = lookTexture(this, readLook(this.game_?.raidProgress.look));
+    this.runnerTexture = lookTexture(
+      this,
+      readLook(this.game_?.raidProgress.look),
+      null,
+      this.game_ ? honoursWorn(this.game_.raidProgress) : [],
+    );
     this.runner = this.add.sprite(0, 0, this.runnerTexture, getIdleFrame(run.facing)).setOrigin(0, 0).setDepth(4);
     // The course is wider than the screen and starts in its corner, so the
     // view opens on the finish line and runs back along the course to the

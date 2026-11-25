@@ -1,3 +1,4 @@
+import type { HonourId } from '../look/gymHonours';
 import { activeSaveSlot, isPlaytestRun } from '../dev/playtestMode';
 import type { PackItemId } from '../items/items';
 import type { DressedLook } from '../look/look';
@@ -89,6 +90,7 @@ export class FriendRoom {
   /** What this player wears into the raid, for the room to see them in. */
   private look: DressedLook | null = null;
   private pack: PackItemId | null = null;
+  private honours: readonly HonourId[] = [];
   private known = new Map<string, string>();
   private lastNews: FriendNews | null = null;
   private now = 0;
@@ -190,8 +192,9 @@ export class FriendRoom {
 
   /**
    * The player is standing on this tile of the room's map, in a raid, in what
-   * they wear (`look/look.ts`, null for the classic figure), which the room
-   * sees them in as the harbour does.
+   * they wear (`look/look.ts`, null for the classic figure) and the gym honours
+   * they have on (`look/gymHonours.ts`), which the room sees them in as the
+   * harbour does.
    */
   public inRaid(
     mapId: string,
@@ -199,10 +202,12 @@ export class FriendRoom {
     facing: Direction,
     look: DressedLook | null = null,
     pack: PackItemId | null = null,
+    honours: readonly HonourId[] = [],
   ): void {
     if (this.held?.mapId === mapId) {
       this.look = look;
       this.pack = pack;
+      this.honours = honours;
       this.stand(mapPlace(mapId), tile, facing);
     }
   }
@@ -541,7 +546,7 @@ export class FriendRoom {
       });
     }
     this.link.enter(held.me, place, tile, facing);
-    this.link.wear(this.look, this.pack);
+    this.link.wear(this.look, this.pack, this.honours);
   }
 
   private hold(room: HeldRoom): void {

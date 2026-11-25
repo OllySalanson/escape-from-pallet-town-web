@@ -1,3 +1,4 @@
+import { honoursWorn } from '../look/gymHonours';
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { getBaseMap, type BaseMapDefinition } from '../base/baseMap';
@@ -221,6 +222,7 @@ export class ArenaIntroScene extends Phaser.Scene {
       this,
       readLook(data.savedGame.raidProgress.look),
       bestPackIn(data.savedGame.stash.listItems()),
+      honoursWorn(data.savedGame.raidProgress),
     );
     this.words = arenaIntroWords(this.cast);
     void audioManager.loadCries([
