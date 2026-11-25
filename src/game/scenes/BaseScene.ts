@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { thingLine } from '../base/thingLine';
-import { looksTouchOnly, TOUCH_ONLY_WALK_HINT } from '../input/keyboardSeen';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
 import {
   nextTileFromDirection,
@@ -87,6 +86,7 @@ import {
   coinKeyHint,
   houseKeyHintLine,
   yardKeyHintLine,
+  YARD_KEY_WORDS,
   type LearnableKeyId,
 } from '../input/keyBindings';
 import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
@@ -400,6 +400,7 @@ import { HarbourFigures } from '../base/harbourFigures';
 import { OWN_SPEAKER, harbourTalk } from '../base/harbourTalk';
 import { SpeechBubble } from '../base/speechBubble';
 import { HARBOUR_PHRASES, type HarbourPhraseId } from '../harbour/harbourPhrases';
+import { letterShortcut, shortcutsInHint, withMoment, type TouchShortcut } from '../input/touchShortcuts';
 import { PhrasePicker } from '../ui/PhrasePicker';
 import { harbourRegulars, regularsClock, type RegularsWatcher } from '../base/harbourRegulars';
 import { requestedTestMode } from '../dev/testMode';
@@ -1018,6 +1019,22 @@ export class BaseScene extends Phaser.Scene {
    * (`dev/testDescribe.ts`): where the player stands, the doors and things on
    * screen, what the box says or asks, the hint line, and the team and vault.
    */
+  /**
+   * The harbour's keys for the touch pad (`input/touchShortcuts.ts`): the
+   * yard's own, then whatever the hint line names now - DECORATE in the house,
+   * the decorating keys while it is, a coin at the arena's rail. Choosing a
+   * partner, decorating and the phrase list are moments with keys of their
+   * own and none of the yard's.
+   */
+  public touchShortcuts(): readonly TouchShortcut[] {
+    const moment = shortcutsInHint(this.hintText?.visible ? this.hintText.text : '');
+    if (this.choosing || this.decor || this.phrasePicker) {
+      return moment;
+    }
+    const standing = YARD_KEY_WORDS.filter(([id]) => id !== 'walk').map(([, key, word]) => letterShortcut(key, word));
+    return withMoment(standing, moment);
+  }
+
   public describeForTest(): SceneDescription {
     const view = viewTiles(this.cameras.main.worldView, TILE_SIZE);
     const onScreen = (tile: GridPosition): boolean => inView(tile, view);
@@ -4313,11 +4330,6 @@ export class BaseScene extends Phaser.Scene {
       }
       if (!partner && this.canFishAt(facing)) {
         return '[SPACE] FISH';
-      }
-      // A touch-only device is told it needs a keyboard, over the partner too:
-      // it cannot press SPACE either, and CONTINUE stands the partner in front.
-      if (looksTouchOnly()) {
-        return TOUCH_ONLY_WALK_HINT;
       }
       return partner ?? yardKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []), isFirstRaid(this.savedGame.raidProgress));
     }

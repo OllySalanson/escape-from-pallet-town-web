@@ -241,6 +241,13 @@ body {
     0 0 0 2px #253d55,
     0 0 0 200vmax #000;
 }
+/* With the touch pad up the page round a screen is the pad's own navy, so the
+   pad does not jump from navy to black under a thumb as a screen opens. */
+body.touch-play #screens:has(> .menu-overlay.pixel-ui:not([data-layout='side']):not(.arena-panel)) {
+  box-shadow:
+    0 0 0 2px #253d55,
+    0 0 0 200vmax #0e1b27;
+}
 
 /* The bot check (`maker/playerSignIn.ts`), over everything - every menu and a console game - because a
    screen redraws its markup and would take the check down with it. It shows nothing while Turnstile passes a
@@ -1317,6 +1324,230 @@ button {
     background-position-x: calc(var(--u) * -32 * (var(--icon-col) + 1));
     transform: translateY(calc(var(--u) * -3));
   }
+}
+
+/* ==========================================================================
+   Touch pad (`ui/touchPad.ts`, placed by `display/touchLayout.ts`)
+
+   The game played with thumbs, dressed as the handheld it is borrowed from:
+   SVG on a pixel grid of two game pixels (`--tp-unit`), words in Orange Kid
+   at a whole-device-pixel stem (`--tp-text`). A slate d-pad lit along its top
+   edges, a teal OK and a lavender BACK (the Game Boy's own pair of colours),
+   and the screen's keys as controller keys - navy, a cream frame - with the
+   one whose screen is open lit cream. Nothing on it is a real button, so
+   nothing on it can take focus from the screen the pad is working.
+   ========================================================================== */
+body.touch-play {
+  overflow: hidden;
+  overscroll-behavior: none;
+  /* No double-tap zoom anywhere on the page; a menu still scrolls. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+body.touch-play #app > canvas {
+  touch-action: none;
+}
+/* FEEDBACK is the pad's own key while it is on screen. */
+body.touch-play .feedback-tab {
+  display: none;
+}
+.touch-pad {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  font-family: 'Orange Kid', monospace;
+  font-kerning: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.touch-pad[hidden] {
+  display: none;
+}
+.touch-pad > *,
+.touch-pad .tp-tray {
+  position: absolute;
+  pointer-events: auto;
+  touch-action: none;
+}
+.touch-pad svg {
+  display: block;
+  overflow: visible;
+}
+.touch-pad .tp-shadow {
+  fill: #050a10;
+}
+.touch-pad .tp-outline {
+  fill: #171717;
+}
+
+/* The d-pad: a slate cross lit along its top edges and shaded along its
+   lower ones, cream arrows; an arm darkens and its arrow lights teal while it
+   is held. */
+.tp-dpad svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.tp-dpad .tp-body {
+  fill: #5a6070;
+}
+.tp-dpad .tp-shine {
+  fill: #7c8396;
+}
+.tp-dpad .tp-shade {
+  fill: #464b58;
+}
+.tp-dpad .tp-arm-shade {
+  fill: transparent;
+}
+.tp-dpad .tp-arrow {
+  fill: #ebeac5;
+}
+.tp-dpad .tp-arrow-shadow {
+  fill: #3a3e49;
+}
+.tp-dpad .tp-dimple {
+  fill: #4c5160;
+}
+.tp-dpad.is-ArrowUp .tp-arm-ArrowUp .tp-arm-shade,
+.tp-dpad.is-ArrowDown .tp-arm-ArrowDown .tp-arm-shade,
+.tp-dpad.is-ArrowLeft .tp-arm-ArrowLeft .tp-arm-shade,
+.tp-dpad.is-ArrowRight .tp-arm-ArrowRight .tp-arm-shade {
+  fill: #3d414c;
+}
+.tp-dpad.is-ArrowUp .tp-arm-ArrowUp .tp-arrow,
+.tp-dpad.is-ArrowDown .tp-arm-ArrowDown .tp-arrow,
+.tp-dpad.is-ArrowLeft .tp-arm-ArrowLeft .tp-arrow,
+.tp-dpad.is-ArrowRight .tp-arm-ArrowRight .tp-arrow {
+  fill: #55d6be;
+}
+
+/* OK and BACK, on a slant as a Game Boy's A and B are: OK up and to the right,
+   under the thumb's rest; BACK down and in. A press sinks the button onto its
+   shadow. */
+.tp-buttons .tp-button {
+  position: absolute;
+  display: grid;
+  place-items: center;
+}
+.tp-buttons .tp-button > * {
+  grid-area: 1 / 1;
+}
+.tp-buttons .tp-ok {
+  right: 0;
+  top: 0;
+}
+.tp-buttons .tp-back {
+  left: 0;
+  bottom: 0;
+}
+.tp-button .tp-label {
+  /* Sat on the disc, which stands two pad pixels above its shadow. */
+  margin-bottom: calc(var(--tp-unit) * 2);
+  color: #202020;
+  font-size: var(--tp-text);
+  line-height: 1;
+  letter-spacing: 0;
+}
+.tp-ok .tp-label {
+  font-size: var(--tp-text-big);
+}
+.tp-ok .tp-body {
+  fill: #55d6be;
+}
+.tp-ok .tp-shine {
+  fill: #9ff0de;
+}
+.tp-back .tp-body {
+  fill: #a9a3c9;
+}
+.tp-back .tp-shine {
+  fill: #cdc8e6;
+}
+.tp-button.is-pressed .tp-label {
+  transform: translateY(calc(var(--tp-unit) * 2));
+}
+.tp-button.is-pressed svg path:not(.tp-shadow) {
+  /* In the SVG's own pixels. */
+  transform: translateY(2px);
+}
+.tp-ok.is-pressed .tp-body {
+  fill: #3fb8a1;
+}
+.tp-back.is-pressed .tp-body {
+  fill: #8f88b3;
+}
+
+/* The screen's own keys: controller keys rather than menu rows - navy, a
+   cream frame, a cream word - in trays that keep their size whatever stands
+   in them. The key whose screen is open is lit. */
+.tp-tray {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  /* From the top: the menu over the game meets the first row, and a tray of
+     one row leaves its spare room above the d-pad, clear of a thumb's reach. */
+  align-content: flex-start;
+  gap: 8px;
+}
+/* On its side a tray is a fixed grid of two across, filled in reading order,
+   so a key keeps its place from the harbour to a raid. */
+.touch-pad[data-orientation='landscape'] .tp-tray {
+  justify-content: flex-start;
+}
+.tp-chip {
+  display: grid;
+  place-items: center;
+  flex: 0 0 var(--tp-chip-width, 80px);
+  height: var(--tp-chip-height, 48px);
+  min-width: 0;
+  padding: 0 2px;
+  border: var(--tp-unit) solid #ebeac5;
+  background: #1b2638;
+  box-shadow: 0 calc(var(--tp-unit) * 2) 0 #050a10;
+  color: #ebeac5;
+  font-size: var(--tp-text);
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+/* Lit as the menus light the row they are on - cream paper, ink - so it reads
+   "you are here" and never as OK's "press this". */
+.tp-chip.is-open {
+  border-color: #171717;
+  background: #ebeac5;
+  color: #202020;
+}
+.tp-chip.is-pressed {
+  background: #2b3e59;
+  box-shadow: none;
+  transform: translateY(calc(var(--tp-unit) * 2));
+}
+
+/* SOUND and FEEDBACK: the page's, not the game's, so drawn as icons in the
+   keys' frame, quieter than the screen's own. */
+.tp-system {
+  display: flex;
+  gap: 8px;
+}
+.tp-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 40px;
+  height: 40px;
+  border: var(--tp-unit) solid #2b3e59;
+  background: #0b1220;
+}
+.tp-icon .tp-icon-ink {
+  fill: #9cafc7;
+}
+.tp-icon.is-off .tp-icon-ink {
+  fill: #ff917b;
+}
+.tp-icon.is-pressed {
+  background: #18263c;
 }
 
 /* ==========================================================================

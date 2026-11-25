@@ -27,7 +27,8 @@ import {
   type GridPosition,
 } from '../movement/gridMovement';
 import { KeyPresses } from '../input/KeyPresses';
-import { MUTE_KEY, RAID_KEY_LETTERS, ROOM_KEY_LETTERS, phraseListLines, roomKeyHintLine, type LearnableKeyId } from '../input/keyBindings';
+import { MUTE_KEY, RAID_KEY_LETTERS, RAID_KEY_WORDS, ROOM_KEY_LETTERS, phraseListLines, roomKeyHintLine, type LearnableKeyId } from '../input/keyBindings';
+import { letterShortcut, shortcutsInHint, withMoment, type TouchShortcut } from '../input/touchShortcuts';
 import { PressLatch } from '../input/pressLatch';
 import { STEP_DURATION_MS, advanceStepClock } from '../movement/stepClock';
 import { hunterComes, isPlaytestRun, PLAYTEST_RUN_DIVISOR } from '../dev/playtestMode';
@@ -5337,6 +5338,24 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * the pack. Only what a player could see or has been told - the arrow's
    * target, the exits' captions - and never the run plan's hidden loot.
    */
+  /**
+   * The raid's keys for the touch pad (`input/touchShortcuts.ts`): OAK, LOOK,
+   * PACK and TEAM always, SAY and PING in a raid room, and the phrases while
+   * the room's list is open, which are then the only keys that mean anything.
+   */
+  public touchShortcuts(): readonly TouchShortcut[] {
+    const standing = RAID_KEY_WORDS.map(([id, word]) => letterShortcut(RAID_KEY_LETTERS[id], word));
+    const rooms = friendRoom();
+    const inRoom = Boolean(rooms?.room && rooms.room.mapId === this.currentMap?.id && this.runSession);
+    if (!inRoom) {
+      return standing;
+    }
+    if (this.talkOpenMs > 0) {
+      return withMoment([letterShortcut(ROOM_KEY_LETTERS.talk, 'SHUT')], shortcutsInHint(phraseListLines(ROOM_PHRASES).join('\n')));
+    }
+    return [...standing, letterShortcut(ROOM_KEY_LETTERS.talk, 'SAY'), letterShortcut(ROOM_KEY_LETTERS.ping, 'PING')];
+  }
+
   public describeForTest(): SceneDescription {
     const session = this.runSession;
     const snapshot = session?.manager.snapshot();
