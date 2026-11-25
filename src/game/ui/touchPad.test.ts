@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DPAD_DEAD_ZONE, dpadDirection, padPixel, padTextSize, shareKeys, shortcutsFrom, trayColumns } from './touchPad';
+import { DPAD_DEAD_ZONE, dpadDirection, padPixel, padTextSize, shareKeys, shortcutsFrom } from './touchPad';
 
 describe('the touch pad', () => {
   it('reads a thumb on the d-pad by the axis it is further along, with a still middle', () => {
@@ -39,13 +39,25 @@ describe('the touch pad', () => {
     }
   });
 
-  it('lays a tray out in even rows, and shares the keys between two trays', () => {
-    expect(trayColumns(4, 4)).toBe(4);
-    expect(trayColumns(6, 4)).toBe(3);
-    expect(trayColumns(5, 4)).toBe(3);
-    expect(trayColumns(8, 4)).toBe(4);
-    expect(trayColumns(3, 2)).toBe(2);
-    expect(shareKeys([1, 2, 3, 4], 1)).toEqual([[1, 2, 3, 4]]);
-    expect(shareKeys([1, 2, 3, 4, 5], 2)).toEqual([[1, 2, 3], [4, 5]]);
+  it('keeps every standing key in its place, with the keys a moment adds after them', () => {
+    const oak = { code: 'KeyO', label: 'OAK' };
+    const look = { code: 'KeyL', label: 'LOOK' };
+    const pack = { code: 'KeyB', label: 'PACK' };
+    const team = { code: 'KeyP', label: 'TEAM' };
+    const drop = { code: 'KeyX', label: 'DROP', extra: true };
+    expect(shareKeys([oak, look, pack, team], 2)).toEqual([[oak, look], [pack, team]]);
+    // DROP joins without moving PACK across the screen.
+    expect(shareKeys([oak, look, pack, team, drop], 2)).toEqual([[oak, look], [pack, team, drop]]);
+    expect(shareKeys([oak, drop, look], 1)).toEqual([[oak, look, drop]]);
+  });
+});
+
+describe('a sentence of a menu\'s help on the touch pad', () => {
+  it('names the screen\'s letter keys by their tray words, and no other capital', async () => {
+    const { namingTrayKeys } = await import('./menuWords');
+    const keys = [{ code: 'KeyX', label: 'DROP' }];
+    expect(namingTrayKeys('Restores 20 HP. X drops one Potion.', keys)).toBe('Restores 20 HP. [DROP] drops one Potion.');
+    expect(namingTrayKeys('A stronger hunter.', keys)).toBe('A stronger hunter.');
+    expect(namingTrayKeys('I will go.', keys)).toBe('I will go.');
   });
 });

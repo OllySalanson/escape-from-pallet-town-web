@@ -26,7 +26,7 @@ describe('the screen\'s own keys on the touch pad', () => {
     expect(withMoment(standing, [letterShortcut('X', 'PUT AWAY'), letterShortcut('H', 'DECORATE')])).toEqual([
       { code: 'KeyL', label: 'LOOK' },
       { code: 'KeyX', label: 'PUT AWAY' },
-      { code: 'KeyH', label: 'DECORATE' },
+      { code: 'KeyH', label: 'DECORATE', extra: true },
     ]);
   });
 

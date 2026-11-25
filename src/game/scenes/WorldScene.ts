@@ -29,6 +29,7 @@ import {
 import { KeyPresses } from '../input/KeyPresses';
 import { MUTE_KEY, RAID_KEY_LETTERS, RAID_KEY_WORDS, ROOM_KEY_LETTERS, phraseListLines, roomKeyHintLine, type LearnableKeyId } from '../input/keyBindings';
 import { letterShortcut, shortcutsInHint, withMoment, type TouchShortcut } from '../input/touchShortcuts';
+import { touchPlay } from '../input/touchPlay';
 import { PressLatch } from '../input/pressLatch';
 import { STEP_DURATION_MS, advanceStepClock } from '../movement/stepClock';
 import { hunterComes, isPlaytestRun, PLAYTEST_RUN_DIVISOR } from '../dev/playtestMode';
@@ -6411,10 +6412,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
             isDawn(new Date()),
           ),
         ),
-        // Beside a side panel the cue alone: the keys it teaches are the raid's, and the panel has its own.
+        // Beside a side panel the cue alone: the keys it teaches are the raid's,
+        // and the panel has its own. On the touch pad too: its tray already
+        // shows OAK, LOOK, PACK and TEAM under the thumb.
         objectiveLines: objectiveChipLines(navigationCue, this.objectiveDetailMs > 0, isPlaytestRun(), this.keysLearned).slice(
           0,
-          this.panelLean.covering > 0 ? 1 : undefined,
+          this.panelLean.covering > 0 || touchPlay() ? 1 : undefined,
         ),
         place: placePlateLine(this.placeName, this.placePlateMs),
         // Read off the tile rather than remembered with the district name: the

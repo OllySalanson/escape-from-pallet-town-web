@@ -101,21 +101,20 @@ export function padTextSize(devicePixelRatio: number, stems = 1): number {
   return (12.5 * stem) / ratio;
 }
 
-/** How many keys stand across one row of a tray: four, three to keep six as two even rows, two on a side tray. */
-export function trayColumns(count: number, most: number): number {
-  if (most <= 2) {
-    return most;
-  }
-  return count === 5 || count === 6 ? 3 : most;
-}
-
-/** The screen's keys shared between the trays: the first half over the left thumb, the rest over the right. */
-export function shareKeys<T>(keys: readonly T[], trays: number): T[][] {
+/**
+ * The keys shared between the trays, each kept where it stands: the standing
+ * keys in their own places - the first half over the left thumb on a phone on
+ * its side, the rest over the right - and the keys a moment or a screen adds
+ * after them, never between, so a key once learned by where it is stays there.
+ */
+export function shareKeys<T extends { readonly code: string; readonly extra?: boolean }>(keys: readonly T[], trays: number): T[][] {
+  const standing = keys.filter((key) => !key.extra);
+  const extra = keys.filter((key) => key.extra);
   if (trays <= 1) {
-    return [[...keys]];
+    return [[...standing, ...extra]];
   }
-  const first = Math.ceil(keys.length / 2);
-  return [keys.slice(0, first), keys.slice(first)];
+  const first = Math.ceil(standing.length / 2);
+  return [standing.slice(0, first), [...standing.slice(first), ...extra]];
 }
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -445,14 +444,15 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
     [...trays.children].forEach((tray, index) => {
       const keys = shared[index] ?? [];
       const box = layout!.trays[index];
-      const columns = trayColumns(keys.length, layout!.trayColumns);
+      const columns = layout!.trayColumns;
       const gap = 8;
       (tray as HTMLElement).style.setProperty('--tp-chip-width', `${Math.floor((box.width - gap * (columns - 1)) / columns)}px`);
       tray.replaceChildren(
         ...keys.map((shortcut) => {
           const chip = document.createElement('div');
-          chip.className = 'tp-chip';
+          chip.className = shortcut.extra ? 'tp-chip is-extra' : 'tp-chip';
           chip.dataset.key = shortcut.code;
+          chip.classList.toggle('is-open', screenUp && shortcut.code === openedBy);
           chip.textContent = shortcut.label;
           return chip;
         }),
