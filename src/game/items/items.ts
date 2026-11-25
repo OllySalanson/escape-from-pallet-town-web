@@ -1734,7 +1734,7 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
     case 'key':
       return { used: false, message: `${item.displayName} opens its own locked gate. Face the gate and press the interact key.` };
     case 'errand':
-      return { used: false, message: `${item.displayName} is somebody's errand. Carry it home to them.` };
+      return { used: false, message: `${item.displayName} is for a favour. Carry it home to them.` };
     case 'furniture':
       return { used: false, message: `${item.displayName} is for your house. Bring it home and put it down in THE BOLTHOLE.` };
     case 'wearable':

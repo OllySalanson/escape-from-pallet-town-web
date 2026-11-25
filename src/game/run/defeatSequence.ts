@@ -170,11 +170,11 @@ function heldBeat(heldNames: string | null, partnerName: string | undefined, fil
   if (heldNames === null) {
     return {
       id: 'held',
-      headline: partnerName === undefined ? 'THE SECURE SLOT WAS EMPTY.' : 'YOUR PARTNER CAME HOME.',
+      headline: partnerName === undefined ? 'THE LOCKER WAS EMPTY.' : 'YOUR PARTNER CAME HOME.',
       detail:
         partnerName === undefined
-          ? 'You deployed with nothing protected, so nothing came back with you.'
-          : `${partnerLine} The secure slot was empty.`,
+          ? 'You jumped in with nothing in THE LOCKER, so nothing came back with you.'
+          : `${partnerLine} THE LOCKER was empty.`,
       prompt: FINAL_PROMPT,
     };
   }
@@ -184,10 +184,10 @@ function heldBeat(heldNames: string | null, partnerName: string | undefined, fil
   // playtest, 22 Nov 2026).
   const call = filledForYou
     ? 'THE LOCKER packed itself before you jumped in.'
-    : 'That was the call you made before you deployed.';
+    : 'That was the call you made before you jumped in.';
   return {
     id: 'held',
-    headline: 'THE SECURE SLOT HELD.',
+    headline: 'THE LOCKER HELD.',
     detail: `${capitalise(heldNames)} came home with you. ${call}${partnerLine === '' ? '' : ` ${partnerLine}`}`,
     prompt: FINAL_PROMPT,
   };

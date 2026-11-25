@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>Kanto, but it's a heist.</b><br>
-  Drop into a town with five minutes on the clock, grab everything that isn't nailed down, and get
+  Jump into a town with five minutes on the clock, grab everything that isn't nailed down, and get
   out before time runs out or your rival catches up. Whatever you carry out is yours. Whatever you
   don't... well. Blue says thanks.
 </p>
@@ -40,7 +40,7 @@ never played an extraction game? Lucky you, here is the whole genre in five word
 | **Extraction** | Walking out through an exit before the clock hits zero. It is the only way to keep anything. |
 | **Stash** | Everything you own back home: your Pokémon, your supplies, your loot. |
 | **Wipe** | Losing a raid, because your last Pokémon fainted or the clock ran out. The pack goes, with everything in it. |
-| **Secure container** | One small pocket a wipe can't touch. Choose wisely. |
+| **The Locker** | One small pocket a wipe can't touch. Choose wisely. |
 
 That's it. Go out, get greedy, come home. Or don't come home, and learn something about greed.
 
@@ -101,7 +101,7 @@ hatching round it is how near is too near, and the caption says who it is and wh
 Beat it and the lot is yours. Bring a Tackle-only team to the graveyard Gastly and you'll learn
 something about ghosts. There is a gate only its own key
 opens, and somewhere on the map is the key. Find it, get it home, and from then on you can bring
-it along for a shortcut out. Lose a raid with it in your pack and it's gone. Contracts
+it along for a shortcut out. Lose a raid with it in your pack and it's gone. Jobs
 from the board send you looking for something specific. Somewhere on the map there is a prize,
 glinting, that is definitely worth the detour. Probably.
 
@@ -154,7 +154,7 @@ on the high ground, a minecart under the rock, and a Bicycle anywhere else. A ri
 stands faded until its exit opens, then turns up. Hop on and it's off.
 
 Make it to an exit and everything you carried is banked for good. Go down instead and the pack is
-gone, along with every Pokémon you brought that wasn't tucked into the secure container. Your
+gone, along with every Pokémon you brought that wasn't tucked into the Locker. Your
 partner is the one exception: it has its own spot beside the container, fully evolved or not, and
 no wipe can touch it. The result screen is very polite about it either way.
 
@@ -163,7 +163,7 @@ no wipe can touch it. The result screen is very polite about it either way.
   <img src="docs/readme/raid-lost.png" width="400" alt="Raid lost: &quot;You went down.&quot; Three Potions, two Mooring ropes, a Super Potion, 45 Pokedollars, a Parts crate and the Raid pack gone for good; the secure slot held Bulbasaur.">
 </p>
 
-<p align="center"><sub>You'll never be left with nothing, mind. Lose everything and the base quietly tops you back up to a kit you can deploy with.</sub></p>
+<p align="center"><sub>You'll never be left with nothing, mind. Lose everything and the base quietly tops you back up to a kit you can raid with.</sub></p>
 
 ## Your pack is a puzzle
 
@@ -175,7 +175,7 @@ with everything in it, if you don't make it home.
 
 And then there's the Bicycle: FireRed's own, rarer than anything else you'll find out there, and
 twice as fast as walking anywhere that isn't indoors. It's also six squares of your pack, wider
-than the secure container you start with, so every raid you ride it is a raid you could lose it.
+than the Locker you start with, so every raid you ride it is a raid you could lose it.
 
 <p align="center">
   <img src="docs/readme/pack.png" width="800" alt="The pack opened mid-raid: three Potions laid out in a grid of eighteen squares.">
@@ -335,7 +335,7 @@ A few things worth knowing before you go:
 - **The vale keeps secrets.** A Snorlax asleep across a glade who wants a particular tune. A shadow on a crypt floor with nothing to cast it. Somebody standing near each one, or a notice, will tell you part of what it's waiting for, and the gossips back at the harbour know a bit more. Nobody will tell you all of it.
 - **Now and then a great shadow crosses the vale.** About one raid in three, a legendary bird you haven't caught yet flies over on its way home. Ask Professor Oak afterwards and he'll tell you which bird it was, which way it went and where they say it roosts.
 - **The pit is cloud where you haven't been.** Walk it, come home, and watch the cloud lift.
-- **Contracts change how a raid goes:** survey three stakes, carry a sealed case out through one particular exit, or spend your own supplies resupplying an outpost. Two are on offer at the rim, and you can turn both down.
+- **Jobs change how a raid goes:** survey three stakes, carry a sealed case out through one particular exit, or spend your own supplies resupplying an outpost. Two are on offer at the rim, and you can turn both down.
 
 ## Draw your own map
 

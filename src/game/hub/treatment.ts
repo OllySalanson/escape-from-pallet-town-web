@@ -120,7 +120,7 @@ function describeEffect(
     case 'key':
       return { effect: 'Opens a gate in a raid', usable: false };
     case 'errand':
-      return { effect: 'Somebody’s errand', usable: false };
+      return { effect: 'For a favour', usable: false };
     case 'furniture':
       return { effect: 'Put down at home', usable: false };
     case 'wearable':

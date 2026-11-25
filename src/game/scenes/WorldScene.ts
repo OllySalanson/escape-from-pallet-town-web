@@ -8682,7 +8682,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       const exit = this.nearestExitCue();
       return exit
         ? { cue: `BANK VIA ${exit.label.toUpperCase()}: ${exit.heading}`, tile: exit.position, out: true }
-        : { cue: 'EXTRACT TO BANK THE CONTRACT', out: true };
+        : { cue: 'GET OUT TO BANK THE JOB', out: true };
     }
     // The stop the player is closest to, so the chip changes as they move:
     // straight within one place, the walk through the doors from a room, cave
@@ -8747,7 +8747,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         ? [contract.deploymentBriefing]
         : [
             contract.deploymentBriefing,
-            `You are still short ${itemAmountsFor(missing)} for this contract's drop. It will refuse you.`,
+            `You are still short ${itemAmountsFor(missing)} for this job's drop. It will refuse you.`,
           ],
     );
   }

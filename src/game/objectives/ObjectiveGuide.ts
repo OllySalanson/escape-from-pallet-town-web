@@ -156,7 +156,7 @@ export function buildObjectiveGuide(
     isFirstContract,
     // Never the screen's own name: the guide's eyebrow already says that, and
     // a heading that repeats the line above it is a rank of nothing.
-    contractLabel: contract ? contractLabel(contract, isFirstContract) : 'No contract on this raid',
+    contractLabel: contract ? contractLabel(contract, isFirstContract) : 'No job on this raid',
     objectives,
     radio: [
       ...radioLines(contract !== undefined, route, session, context, treasure?.radio ?? (gymFirst ? gym : stake)),
@@ -334,7 +334,7 @@ function errandHints(
     return [
       {
         found: false,
-        line: `${errand.name}'s errand: ${thing} lies in ${errandPlace(errand)}, ${directionTo(context.currentPosition, heading)}${stepsAway(context.stepsTo?.(piece.position))}. It takes ${squares} ${squares === 1 ? 'square' : 'squares'} of your pack.`,
+        line: `${errand.name}'s favour: ${thing} lies in ${errandPlace(errand)}, ${directionTo(context.currentPosition, heading)}${stepsAway(context.stepsTo?.(piece.position))}. It takes ${squares} ${squares === 1 ? 'square' : 'squares'} of your pack.`,
       },
     ];
   });
@@ -433,7 +433,7 @@ function shinyHints(caught: readonly { readonly shiny: boolean; readonly base: {
 }
 
 function contractLabel(contract: RaidContract, isFirstContract: boolean): string {
-  return isFirstContract ? 'Recovery contract' : `${contract.name} contract`;
+  return isFirstContract ? 'Recovery job' : `${contract.name} job`;
 }
 
 function objectiveModel(
@@ -609,7 +609,7 @@ function requiredExitHint(
     (point) => point.mapId === context.currentMapId && point.label === label,
   );
   if (!exit) {
-    return `Only ${label} banks this contract. ${unpaid}`;
+    return `Only ${label} banks this job. ${unpaid}`;
   }
   const way = (target: GridPosition): string =>
     directionTo(context.currentPosition, context.towards?.(target) ?? target);
@@ -621,7 +621,7 @@ function requiredExitHint(
   const sealed = sealedBy
     ? ` It stays sealed until ${sealedBy.label} is worked, ${way(sealedBy.position)}.`
     : '';
-  return `Only ${label}, ${way(exit.position)}, banks this contract.${sealed} ${unpaid}`;
+  return `Only ${label}, ${way(exit.position)}, banks this job.${sealed} ${unpaid}`;
 }
 
 /** The nearest open exit and which way it is, as a sentence names it. */
@@ -705,19 +705,19 @@ function bankingHint(
   if (!ready) {
     const exit = nearest ?? safeExit ?? currentExit;
     return exit
-      ? `Once every stop is made, extract to bank the contract: the nearest open exit is ${exit}.`
-      : 'Once every stop is made, extract through a marked gate to bank the contract.';
+      ? `Once every stop is made, get out to bank the job: the nearest open exit is ${exit}.`
+      : 'Once every stop is made, get out through a marked exit to bank the job.';
   }
   if (nearest) {
-    return `The nearest open exit is ${nearest}. Extract there to bank the contract and your haul.`;
+    return `The nearest open exit is ${nearest}. Get out there to bank the job and your haul.`;
   }
   if (safeExit) {
-    return `Extract through the known safe gate, ${safeExit}, to bank the contract and your haul.`;
+    return `Get out by the known safe exit, ${safeExit}, to bank the job and your haul.`;
   }
   if (currentExit) {
-    return `Extract through ${currentExit} on this map to bank the contract and your haul.`;
+    return `Get out by ${currentExit} on this map to bank the job and your haul.`;
   }
-  return 'Return to a marked extraction gate to bank the contract and your haul.';
+  return 'Head for a marked exit to bank the job and your haul.';
 }
 
 function capitalised(text: string): string {

@@ -225,7 +225,7 @@ const SURVEY_THE_BRAID: RaidContract = {
   ],
   reward: {
     summary:
-      'The Cordon Ledger and the Warden’s Resupply are added to the contract board, and two Great Balls are waiting at base.',
+      'The Cordon Ledger and the Warden’s Resupply are added to the job board, and two Great Balls are waiting at base.',
     items: [{ itemId: 'great-ball', quantity: 2 }],
   },
   briefing: [
@@ -271,7 +271,7 @@ const CORDON_LEDGER: RaidContract = {
     },
   ],
   reward: {
-    summary: 'The secure slot grows a column: more of what you carry comes home from every raid, even a lost one.',
+    summary: 'THE LOCKER grows a column: more of what you carry comes home from every raid, even a lost one.',
     items: [],
     secureItemStack: true,
   },

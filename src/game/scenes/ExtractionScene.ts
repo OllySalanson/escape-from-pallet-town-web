@@ -714,7 +714,7 @@ export class ExtractionScene extends Phaser.Scene {
     // is said last, after the experience, as before: under a four-line contract
     // row a level gained in the field was below the fold (playtest 4).
     const contract = report.contract
-      ? `<h3 class="px-subheading">Contract</h3><div class="px-row has-icon${report.contract.complete ? ' is-secured' : ''}">${objectiveIcon('Contract')}<span class="px-row-main"><strong class="px-wrap">Contract ${report.contract.complete ? 'complete' : 'unpaid'}: ${escapeHtml(report.contract.description)}</strong><small class="px-wrap${report.contract.complete ? '' : ' px-warning'}">${escapeHtml(report.contract.reward)}</small></span></div>`
+      ? `<h3 class="px-subheading">Job</h3><div class="px-row has-icon${report.contract.complete ? ' is-secured' : ''}">${objectiveIcon('Contract')}<span class="px-row-main"><strong class="px-wrap">Job ${report.contract.complete ? 'done' : 'unpaid'}: ${escapeHtml(report.contract.description)}</strong><small class="px-wrap${report.contract.complete ? '' : ' px-warning'}">${escapeHtml(report.contract.reward)}</small></span></div>`
       : '';
     return pixelWindow(
       report.contract?.complete

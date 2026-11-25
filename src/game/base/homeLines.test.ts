@@ -96,7 +96,7 @@ describe("what the things in THE BOLTHOLE say", () => {
     const lines = bedLines(raids({ 'viridian-forest': { deployed: 4, extracted: 3, wiped: 1 } }));
     expect(lines.join(' ')).toContain('VIRIDIAN FOREST');
     expect(lines.at(-1)).toContain('NURSE JOY');
-    expect(bedLines(baseGame()).join(' ')).toContain('drop-in');
+    expect(bedLines(baseGame()).join(' ')).toContain('the jump');
   });
 
   it("colours the upstairs rug after the player's partner", () => {

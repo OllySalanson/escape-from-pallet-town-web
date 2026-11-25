@@ -1104,9 +1104,9 @@ export class ValeOverviewView {
       chipOf('go').text.setText(keyHint('ENTER', go));
     };
     const measured = (): number => this.chips.filter((chip) => chip.text.visible).reduce((sum, chip) => sum + Math.ceil(chip.text.width) + 10, 0);
-    words('ARROWS/WASD', 'DROP HERE');
+    words('ARROWS/WASD', 'JUMP HERE');
     if (measured() > width - 18) {
-      words('ARROWS', 'DROP HERE');
+      words('ARROWS', 'JUMP HERE');
     }
     if (measured() > width - 18) {
       words('ARROWS', 'DROP');

@@ -624,9 +624,9 @@ describe('deployment flow', () => {
 
       expect(flow.secureFit('charizard-1')).toBe('never');
       const refusal = flow.toggleSecurePokemon('charizard-1');
-      expect(refusal).toMatch(/CHARIZARD is too big for any secure container/);
+      expect(refusal).toMatch(/CHARIZARD is too big for THE LOCKER at any size/);
       expect(refusal).toMatch(/A wipe will take it/);
-      expect(refusal).not.toMatch(/Take something out|grow the container|Brock|berth/);
+      expect(refusal).not.toMatch(/Take something out|grow THE LOCKER|Brock|berth/);
     });
 
     it('does not tell a third stage to take something out of a small container either', () => {
@@ -636,8 +636,8 @@ describe('deployment flow', () => {
       flow.togglePokemon('charizard-1');
 
       const refusal = flow.toggleSecurePokemon('charizard-1');
-      expect(refusal).toMatch(/too big for any secure container/);
-      expect(refusal).not.toMatch(/Take something out|grow the container|Brock|berth/);
+      expect(refusal).toMatch(/too big for THE LOCKER at any size/);
+      expect(refusal).not.toMatch(/Take something out|grow THE LOCKER|Brock|berth/);
     });
 
     it('names the way to grow the container when growing it is what would seat the Pokemon', () => {
@@ -654,7 +654,7 @@ describe('deployment flow', () => {
 
       expect(flow.secureFit('charmeleon-1')).toBe('grow');
       const refusal = flow.toggleSecurePokemon('charmeleon-1');
-      expect(refusal).toMatch(/CHARMELEON needs 6 squares - the container is only 2x2/);
+      expect(refusal).toMatch(/CHARMELEON needs 6 squares - THE LOCKER is only 2x2/);
       expect(refusal).toMatch(/build Secure locker I at Brock's Workshop, or rent a locker shelf from Bill/);
       // Emptying a 2x2 cannot seat a 3x2, so it is not offered.
       expect(refusal).not.toMatch(/Take something out/);
@@ -675,7 +675,7 @@ describe('deployment flow', () => {
 
       expect(flow.secureFit('charmeleon-1')).toBe('fits');
       const refusal = flow.toggleSecurePokemon('charmeleon-1');
-      expect(refusal).toBe('CHARMELEON needs 6 squares - the container is full. Take something out.');
+      expect(refusal).toBe('CHARMELEON needs 6 squares - THE LOCKER is full. Take something out.');
     });
 
     it('lists only the routes still open: built rungs, a paid berth and retired contracts are gone', () => {

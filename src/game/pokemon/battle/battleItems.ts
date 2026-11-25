@@ -206,7 +206,7 @@ function refusalMessage(item: ItemDefinition): string {
     case 'key':
       return `${item.displayName} opens a gate in the field, not in a fight.`;
     case 'errand':
-      return `${item.displayName} is somebody's errand. It only needs carrying.`;
+      return `${item.displayName} is for a favour. It only needs carrying.`;
     case 'furniture':
       return `${item.displayName} is for your house, not a fight.`;
     case 'wearable':

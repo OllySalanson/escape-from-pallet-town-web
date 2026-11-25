@@ -321,7 +321,7 @@ describe('the result screen on a defeat', () => {
     advance(READ_MS);
     press(' ');
     expect(root.stage.dataset.beat).toBe('fall taken held');
-    expect(headline.textContent).toBe('THE SECURE SLOT HELD.');
+    expect(headline.textContent).toBe('THE LOCKER HELD.');
   });
 
   /** The captain's whole complaint: it moved on while he was still reading. */
@@ -352,7 +352,7 @@ describe('the result screen on a defeat', () => {
     press(' ');
     expect(root.html).toContain('extraction-lost');
     expect(root.html).toContain('data-continue');
-    expect(root.html).toContain('The secure slot brought Bulbasaur home.');
+    expect(root.html).toContain('THE LOCKER brought Bulbasaur home.');
     // A raid ends on the harbour's quay, beside Bill, not inside Oak's Lab, so
     // the one way out says where it puts the player down.
     expect(root.html).toContain('data-continue>Back to the Arena</button>');

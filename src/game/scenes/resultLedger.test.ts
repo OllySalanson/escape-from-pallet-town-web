@@ -63,7 +63,7 @@ describe('the result screen ledger', () => {
     const html = (scene as unknown as { ledgerPanel(): string }).ledgerPanel();
 
     expect(html).toContain('Level 5 to 6');
-    expect(html.indexOf('Field experience')).toBeLessThan(html.indexOf('Contract unpaid'));
+    expect(html.indexOf('Field experience')).toBeLessThan(html.indexOf('Job unpaid'));
   });
 
   it('leads with a contract banked, so what it paid for good is never under the fold (playtest 47)', () => {
@@ -91,8 +91,8 @@ describe('the result screen ledger', () => {
 
     // The payoff first, the level gained in the field straight under it, and
     // then what was banked beside them - still under a heading of its own.
-    expect(at('Contract complete')).toBeGreaterThan(-1);
-    expect(at('Contract complete')).toBeLessThan(at('Field experience'));
+    expect(at('Job done')).toBeGreaterThan(-1);
+    expect(at('Job done')).toBeLessThan(at('Field experience'));
     expect(at('Four more insertions')).toBeLessThan(at('Field experience'));
     expect(at('Field experience')).toBeLessThan(at('Mooring rope'));
     expect(at('Field experience')).toBeLessThan(at('Satchel'));

@@ -122,7 +122,7 @@ export function bedLines(game: RestoredGame): readonly string[] {
   const rival = hunterRival(nextRival(game));
   const dream = log.favourite
     ? `You dream of ${worldMapName(log.favourite.mapId as WorldMapId).toUpperCase()}. ${rival.name} is there, one step behind you... and you wake up.`
-    : `You dream of the drop-in. OAK's voice: "Come home with the pack on your back." And you wake up.`;
+    : `You dream of the jump. OAK's voice: "Come home with the pack on your back." And you wake up.`;
   return [
     'You lie down in your own bed. Nobody hunts you here.',
     dream,

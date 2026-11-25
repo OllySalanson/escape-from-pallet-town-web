@@ -1949,11 +1949,11 @@ describe('what the base screen leads with', () => {
     hub.setView('locker');
     const markup = markupOf(hub);
     const row = /<button class="px-row" data-secure-pokemon="charizard-1"[^>]*>/.exec(markup)?.[0] ?? '';
-    expect(row).toContain('Too big for any secure container: it is 3x3');
+    expect(row).toContain('Too big for THE LOCKER at any size: it is 3x3');
     expect(row).toContain('A wipe will take it.');
-    expect(row).not.toContain('Secure this Pokémon');
+    expect(row).not.toContain('Put this Pokémon in THE LOCKER');
     // Nobody here can go in, and nothing built would change that.
-    expect(markup).toContain('Nothing in this party fits any secure container');
+    expect(markup).toContain('Nothing in this party fits THE LOCKER at any size');
     expect(markup).not.toContain('cordon ledger');
   });
 
@@ -1978,7 +1978,7 @@ describe('what the base screen leads with', () => {
     hub.setView('locker');
     const markup = markupOf(hub);
     const row = /<button class="px-row" data-secure-pokemon="charmeleon-1"[^>]*>/.exec(markup)?.[0] ?? '';
-    expect(row).toContain('It needs 6 squares, more than the 2x2 container. To secure it, build Secure locker I at Brock');
+    expect(row).toContain('It needs 6 squares, more than THE LOCKER\'s 2x2. To make it safe, build Secure locker I at Brock');
   });
 
   /**
@@ -2374,7 +2374,7 @@ describe('Brock', () => {
     // Built: the same line, still there, gold and tagged BUILT, and what it
     // cost with nothing marked short.
     const built = rowOf('secure-locker-1');
-    expect(built).toContain('One more column of the secure container.');
+    expect(built).toContain('One more column of THE LOCKER.');
     expect(built).toContain('workshop-card is-built');
     expect(built).toContain('>Built<');
     expect(built).not.toContain('is-short');
@@ -2737,7 +2737,7 @@ describe('HubScene - Bill', () => {
     expect(boat).toContain(' points · ');
     // What raises it, as the three prices rather than a paragraph about them -
     // and only while there is a tier left to raise it to.
-    expect(boat).toContain('Bank a contract +2, beat a boss +3, spend ₽200 +1.');
+    expect(boat).toContain('Bank a job +2, beat a boss +3, spend ₽200 +1.');
   });
 
   it('offers a stranger Potions and Poké Balls only, and keeps every shut row reachable by the cursor', () => {

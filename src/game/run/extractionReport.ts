@@ -501,8 +501,8 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
           ? 'Nothing new. What the raid used up is counted below.'
           : 'Nothing new. You leave with exactly what you took in.'
       : lostPack !== null
-        ? `Only your ${lostPack.name}, below, went down outside the secure slot.`
-        : 'Nothing outside the secure slot was at stake.',
+        ? `Only your ${lostPack.name}, below, went down outside THE LOCKER.`
+        : 'Nothing outside THE LOCKER was at stake.',
     ...(contract ? { contract } : {}),
     ...(partner === undefined ? {} : { partner }),
     secured,
@@ -518,7 +518,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
         : partner === undefined
           ? 'You protected nothing.'
           // The partner's place is not the container, and the row above it says so.
-          : 'You put nothing in the container.',
+          : 'You put nothing in THE LOCKER.',
     risked,
     gambleVerdict: gambleVerdict(escaped, secured, stakes),
     ...(spent === undefined ? {} : { spent }),
@@ -575,7 +575,7 @@ function wipedBaseNote(fitToRaid: boolean, restocked: readonly Stack[]): string 
       ? `What you lost stays lost, but Oak keeps a starter kit for this: ${kit} ${restocked.length === 1 && restocked[0].quantity === 1 ? 'is' : 'are'} waiting at base.`
       : `Oak's starter kit is at base: ${kit}. ${notFit}`;
   }
-  return fitToRaid ? 'You still have what you need to deploy again.' : `You have the supplies to deploy again. ${notFit}`;
+  return fitToRaid ? 'You still have what you need to raid again.' : `You have the supplies to raid again. ${notFit}`;
 }
 
 
@@ -733,10 +733,10 @@ function escapeSummary(
       carried.length > 0
         ? `${listNames(carried)} came out of the field with you.`
         : progressSummary(progress);
-    const opening = contractComplete ? 'Contract banked.' : earned === null ? 'No new haul.' : null;
+    const opening = contractComplete ? 'Job banked.' : earned === null ? 'No new haul.' : null;
     return [lost, opening, earned, riskLine].filter((part) => part !== null).join(' ');
   }
-  return [lost, `${contractComplete ? 'Contract banked, plus ' : 'Banked '}${haul}. ${riskLine}`]
+  return [lost, `${contractComplete ? 'Job banked, plus ' : 'Banked '}${haul}. ${riskLine}`]
     .filter((part) => part !== null)
     .join(' ');
 }
@@ -759,7 +759,7 @@ function wipeSummary(
   }
   const kept = describeGroup(secured);
   return `${opening} You lost ${gone}.${home}${
-    kept === null ? (partner === undefined ? ' Nothing was protected.' : '') : ` The secure slot held ${kept}.`
+    kept === null ? (partner === undefined ? ' Nothing was protected.' : '') : ` THE LOCKER held ${kept}.`
   }`;
 }
 
@@ -773,19 +773,19 @@ function gambleVerdict(escaped: boolean, secured: ReportGroup, riskedDescription
   if (escaped) {
     if (riskedDescription === null) {
       return securedDescription === null
-        ? 'You deployed with nothing to lose, so the secure slot had nothing to do.'
+        ? 'You jumped in with nothing to lose, so THE LOCKER had nothing to do.'
         : `Everything you took in was protected, so the raid was never a gamble.`;
     }
     return `A wipe would have cost you ${riskedDescription}. It did not happen this time.`;
   }
   if (securedDescription === null) {
     return riskedDescription === null
-      ? 'There was nothing in the secure slot, and nothing outside it either.'
-      : `The secure slot was empty, so ${riskedDescription} went with the raid.`;
+      ? 'There was nothing in THE LOCKER, and nothing outside it either.'
+      : `THE LOCKER was empty, so ${riskedDescription} went with the raid.`;
   }
   return riskedDescription === null
-    ? `The secure slot brought ${securedDescription} home. Nothing else was exposed.`
-    : `The secure slot brought ${securedDescription} home. ${capitalise(riskedDescription)} did not make it.`;
+    ? `THE LOCKER brought ${securedDescription} home. Nothing else was exposed.`
+    : `THE LOCKER brought ${securedDescription} home. ${capitalise(riskedDescription)} did not make it.`;
 }
 
 /**
@@ -978,7 +978,7 @@ function gearSummary(gear: readonly ReportGear[], escaped: boolean): string | nu
         ? `${listNames(lost)} went down with the raid. Gear is carried by the trainers holding the gates, and each of them has it once.`
         : '',
       onPartner.length > 0 ? `${listNames(onPartner)} came home with your partner, in its own place.` : '',
-      secured.length > 0 ? `${listNames(secured)} came home in the secure slot.` : '',
+      secured.length > 0 ? `${listNames(secured)} came home in THE LOCKER.` : '',
     ]
       .filter(Boolean)
       .join(' ');

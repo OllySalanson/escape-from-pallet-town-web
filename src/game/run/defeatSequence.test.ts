@@ -157,7 +157,7 @@ describe('the defeat sequence a lost raid opens on', () => {
     ]);
     expect(sequence?.beats[1].headline).toBe('THEY STRIPPED YOU.');
     expect(sequence?.beats[1].detail).toBe('Charmander and 2 Potions lifted off you and gone for good.');
-    expect(sequence?.beats[2].headline).toBe('THE SECURE SLOT HELD.');
+    expect(sequence?.beats[2].headline).toBe('THE LOCKER HELD.');
     expect(sequence?.beats[2].detail).toContain('Squirtle and 1 Potion came home with you.');
   });
 
@@ -175,7 +175,7 @@ describe('the defeat sequence a lost raid opens on', () => {
 
     expect(held(true)).toBe('Charmander came home with you. THE LOCKER packed itself before you jumped in.');
     expect(held(true)).not.toContain('call you made');
-    expect(held(false)).toBe('Charmander came home with you. That was the call you made before you deployed.');
+    expect(held(false)).toBe('Charmander came home with you. That was the call you made before you jumped in.');
   });
 
   /**
@@ -187,7 +187,7 @@ describe('the defeat sequence a lost raid opens on', () => {
     const lone = [new Pokemon(SPECIES_BY_ID.charmeleon, 16), new Pokemon(PIDGEY, 4)];
     const empty = buildDefeatSequence(wipedReport(lone, [], { partnerIndex: 0, lastStandIndex: 1 }));
     expect(empty?.beats[2].headline).toBe('YOUR PARTNER CAME HOME.');
-    expect(empty?.beats[2].detail).toBe('Charmeleon is your partner, and a wipe never takes your partner. The secure slot was empty.');
+    expect(empty?.beats[2].detail).toBe('Charmeleon is your partner, and a wipe never takes your partner. THE LOCKER was empty.');
     expect(empty?.figures.filter((figure) => figure.kind === 'pokemon').map(({ label, fate }) => [label, fate])).toEqual([
       ['Charmeleon', 'held'],
       ['Pidgey', 'taken'],
@@ -197,7 +197,7 @@ describe('the defeat sequence a lost raid opens on', () => {
     const both = buildDefeatSequence(
       wipedReport(party, [], { partnerIndex: 0, secureIndex: 1, lastStandIndex: 1, secureFilledForYou: true }),
     );
-    expect(both?.beats[2].headline).toBe('THE SECURE SLOT HELD.');
+    expect(both?.beats[2].headline).toBe('THE LOCKER HELD.');
     expect(both?.beats[2].detail).toBe(
       'Squirtle came home with you. THE LOCKER packed itself before you jumped in. Charmeleon is your partner, and a wipe never takes your partner.',
     );
@@ -254,7 +254,7 @@ describe('the defeat sequence a lost raid opens on', () => {
   it('says so plainly when the slot was empty, rather than skipping the beat', () => {
     const sequence = buildDefeatSequence(wipedReport([new Pokemon(CHARMANDER, 12)]));
 
-    expect(sequence?.beats[2].headline).toBe('THE SECURE SLOT WAS EMPTY.');
+    expect(sequence?.beats[2].headline).toBe('THE LOCKER WAS EMPTY.');
     expect(sequence?.beats[2].detail).toContain('nothing came back with you');
     expect(sequence?.beats[0].detail).toContain('The only one you brought.');
   });

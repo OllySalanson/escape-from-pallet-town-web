@@ -618,7 +618,7 @@ export function neverForTickets(item: ItemDefinition): string | null {
     currency: 'money',
     material: "Brock's materials",
     'evolution-stone': 'an evolution stone',
-    errand: 'an errand',
+    errand: 'something for a favour',
     rod: 'a rod',
     pickaxe: 'a Pickaxe',
     lockpick: 'a Lockpick',
