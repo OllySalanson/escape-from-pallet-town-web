@@ -647,11 +647,29 @@ export class BattleScene extends Phaser.Scene {
    * has passed (the overnight playtest of 20 Nov 2026 threw two balls that way).
    */
   private commandsBackAt = Number.NEGATIVE_INFINITY;
+  /**
+   * When the ball list last opened (scene time). A ball is spent for good, so
+   * the list takes no OK - Space, Enter, a click or a tap - until
+   * `RELEASE_ARMING_MS` has passed: a double press on BALL opened the list and
+   * threw its first ball, and a double click landed its second click on the
+   * POKé BALL row that sits where BALL was (the navigation audit, 25 Nov 2026).
+   */
+  private ballsOpenedAt = Number.NEGATIVE_INFINITY;
+  /**
+   * The ball last thrown, or last left highlighted when the list was backed
+   * out of. The list opens on it, so a press made without looking never spends
+   * a better ball than the player last chose. Kept across fights on purpose:
+   * it is the player's habit, not the raid's state, and a ball no longer
+   * carried simply falls back to the first (weakest) row.
+   */
+  private lastBallId: string | undefined;
   private readonly lastMoveOf = new Map<Pokemon, number>();
   private commandContainer!: Phaser.GameObjects.Container;
   /** Every `JustDown` this scene would ask goes through here - see `KeyPresses`. */
   private readonly keyPresses = new KeyPresses(() => this.game.loop.frame);
   private confirmKey!: Phaser.Input.Keyboard.Key;
+  /** Enter, polled beside Space so the two are one key with the same guards. */
+  private enterKey!: Phaser.Input.Keyboard.Key;
   private leftKey!: Phaser.Input.Keyboard.Key;
   private rightKey!: Phaser.Input.Keyboard.Key;
   private upKey!: Phaser.Input.Keyboard.Key;
@@ -1116,6 +1134,7 @@ export class BattleScene extends Phaser.Scene {
     this.replacementSlot = 0;
     this.lastMainCommand = 0;
     this.commandsBackAt = Number.NEGATIVE_INFINITY;
+    this.ballsOpenedAt = Number.NEGATIVE_INFINITY;
     this.lastMoveOf.clear();
     this.drawCombatants();
     this.drawStatusBoxes();
@@ -1150,9 +1169,11 @@ export class BattleScene extends Phaser.Scene {
     });
 
     this.confirmKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    this.input
-      .keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER)
-      .on('down', () => this.confirm());
+    // Enter is polled with Space rather than answered on its own 'down': bound
+    // to the event, it skipped the frame loop and every guard in it, and a
+    // player reading on with Enter threw a second ball (the navigation audit,
+    // 25 Nov 2026).
+    this.enterKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
     this.leftKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
     this.rightKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
     this.upKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
@@ -1161,6 +1182,7 @@ export class BattleScene extends Phaser.Scene {
     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC).on('down', () => this.goBack());
     this.keyPresses.watch([
       this.confirmKey,
+      this.enterKey,
       this.leftKey,
       this.rightKey,
       this.upKey,
@@ -1275,7 +1297,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     if (this.mode === 'events' || this.mode === 'finished') {
-      if (this.keyPresses.justPressed(this.confirmKey)) {
+      if (this.okPressed()) {
         if (lineWasTyping) {
           audioManager.play('confirm');
           this.dialog.skip();
@@ -1296,14 +1318,29 @@ export class BattleScene extends Phaser.Scene {
       this.moveSelection('up');
     } else if (this.keyPresses.justPressed(this.downKey)) {
       this.moveSelection('down');
-    } else if (this.keyPresses.justPressed(this.confirmKey)) {
-      // The key that read the turn's last line on is not an answer to the menu
-      // it brought back (`commandsBackAt`).
-      if (this.mode === 'main' && this.time.now - this.commandsBackAt < RELEASE_ARMING_MS) {
-        return;
-      }
+    } else if (this.okPressed()) {
       this.confirm();
     }
+  }
+
+  /** OK is one key: Space and Enter, asked the same way in the same frame. */
+  private okPressed(): boolean {
+    // Both are asked, so neither press is left latched for a later frame.
+    const space = this.keyPresses.justPressed(this.confirmKey);
+    const enter = this.enterKey !== undefined && this.keyPresses.justPressed(this.enterKey);
+    return space || enter;
+  }
+
+  /**
+   * Whether the panel on screen is still too new to take an OK. The key that
+   * read the turn's last line on is not an answer to the menu it brought back
+   * (`commandsBackAt`), and nothing opens the ball list and throws from it in
+   * one double press (`ballsOpenedAt`). Every OK - Space, Enter, a click, a
+   * tap - comes through `confirm`, so this is asked there and nowhere else.
+   */
+  private stillArming(): boolean {
+    const since = this.mode === 'main' ? this.commandsBackAt : this.mode === 'balls' ? this.ballsOpenedAt : undefined;
+    return since !== undefined && this.time.now - since < RELEASE_ARMING_MS;
   }
 
   /**
@@ -2479,7 +2516,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private confirm(): void {
-    if (this.mode === 'evolving') {
+    if (this.mode === 'evolving' || this.stillArming()) {
       return;
     }
     audioManager.play('confirm');
@@ -2793,6 +2830,10 @@ export class BattleScene extends Phaser.Scene {
       audioManager.play('cancel');
       this.askToLetLegendGo('balls');
       return;
+    }
+    // The ball left highlighted is the one the list opens on next time.
+    if (this.mode === 'balls') {
+      this.lastBallId = carriedBalls(this.bag)[this.selectedCommand]?.id ?? this.lastBallId;
     }
     // Backing out of the target picker returns to the item list, not to the
     // main commands: the player is cancelling the recipient, not the decision
@@ -3136,10 +3177,15 @@ export class BattleScene extends Phaser.Scene {
   }
 
   /**
-   * BALL with one kind carried throws it - there is nothing to choose, and no
-   * best ball to spend unasked. With two or more it opens the list, because the
-   * ball thrown is the player's decision: a Great Ball is worth saving for a
-   * Pokemon that matters.
+   * BALL always opens the list of balls carried, even when only one kind is
+   * left, because the ball thrown is the player's decision and the command
+   * must always do the same thing. It used to throw at once with one kind
+   * carried: after the last Poke Ball was spent, the next BALL threw a Great
+   * Ball nobody chose, on a screen that had opened a list for the same press a
+   * moment before (Olly, 25 Nov 2026).
+   *
+   * Only the refusals skip the list - a trainer's Pokemon, a legend that can
+   * still fight, no ball at all - because they spend nothing.
    */
   private showBallSelection(): void {
     const balls = carriedBalls(this.bag);
@@ -3148,14 +3194,18 @@ export class BattleScene extends Phaser.Scene {
     // While it can still fight there is no list to read: no ball is going near
     // it, and a chance printed beside one would be a promise the throw breaks.
     const oneThrow = this.legendThrow === 'offered' && balls.length > 0;
-    if (!oneThrow && (this.trainer || balls.length <= 1 || this.legendThrow === 'fighting')) {
+    if (!oneThrow && (this.trainer || balls.length === 0 || this.legendThrow === 'fighting')) {
       this.throwBall(0);
       return;
     }
     this.mode = 'balls';
+    this.ballsOpenedAt = this.time.now;
     // The one throw is the one to spend the best ball on, so the list opens on
     // it; a press made straight through used to throw the Poke Ball at 1%.
-    this.selectedCommand = oneThrow ? bestBallIndex(balls) : 0;
+    // Otherwise it opens on the ball last chosen, and on the first (weakest)
+    // the first time, so it never offers a better ball than the player picked.
+    const last = balls.findIndex((ball) => ball.id === this.lastBallId);
+    this.selectedCommand = oneThrow ? bestBallIndex(balls) : Math.max(0, last);
     this.showCommands();
   }
 
@@ -3216,6 +3266,7 @@ export class BattleScene extends Phaser.Scene {
       this.dialog.showMessage(NO_BALLS_MESSAGE);
       return;
     }
+    this.lastBallId = carriedBalls(this.bag)[ballIndex].id;
     // Asked before the ball is spent, and before the roll: a Pokemon that will
     // not fit in the pack must be refused out loud rather than caught and then
     // quietly dropped, and finding out should not cost a ball - whichever ball

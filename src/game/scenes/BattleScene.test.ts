@@ -2157,14 +2157,18 @@ describe('throwing a ball in a wild battle', () => {
     return { ...harness, press };
   };
 
-  it('counts and throws a Great Ball when it is the only ball carried', () => {
+  it('counts a Great Ball, and throws it only once it is chosen from the list', () => {
     const bag = new Bag({ 'great-ball': 2 });
-    const { renderedTexts, press } = open(bag);
+    const { scene, renderedTexts, press } = open(bag);
 
     expect(read(renderedTexts).find(({ text }) => text.includes('BALL x'))?.text).toBe('  BALL x2');
+    const before = renderedTexts.length;
 
     press('BALL x');
+    expect((scene as unknown as { mode: string }).mode).toBe('balls');
+    expect(bag.count('great-ball')).toBe(2);
 
+    press('GREAT BALL x2', before);
     expect(bag.count('great-ball')).toBe(1);
   });
 
@@ -2173,6 +2177,7 @@ describe('throwing a ball in a wild battle', () => {
     const { scene, press } = open(bag);
 
     press('BALL x');
+    press('GREAT BALL x');
 
     const images = (scene as unknown as { add: { image: { mock: { calls: unknown[][] } } } }).add.image.mock.calls;
     expect(images.map((call) => call[2])).toContain(iconTextureKey(itemIconName('great-ball')));
@@ -2215,14 +2220,184 @@ describe('throwing a ball in a wild battle', () => {
       const great = new Bag({ 'great-ball': 1 });
       const pokeThrow = open(poke);
       pokeThrow.press('BALL x');
+      pokeThrow.press('POKé BALL x');
       expect((pokeThrow.scene as unknown as { state: { outcome: string } }).state.outcome).not.toBe('caught');
 
       const greatThrow = open(great);
       greatThrow.press('BALL x');
+      greatThrow.press('GREAT BALL x');
       expect((greatThrow.scene as unknown as { state: { outcome: string } }).state.outcome).toBe('caught');
     } finally {
       roll.mockRestore();
     }
+  });
+});
+
+/**
+ * Olly, 25 Nov 2026: one Poke Ball and two Great Balls carried, BALL opened a
+ * list and the Poke Ball went; the very next BALL threw a Great Ball at once,
+ * with no list, because one kind was left. A double press, a double click or
+ * Enter read on through "broke free!" threw a ball nobody chose as well. BALL
+ * now always opens the list, the list opens on the ball last chosen, and it
+ * takes no OK - key, click or tap - in its first half second.
+ */
+describe('choosing which ball to throw', () => {
+  type Battle = {
+    mode: string;
+    selectedCommand: number;
+    onMessagesComplete(): void;
+    goBack(): void;
+    update(time: number, delta: number): void;
+  };
+  const meet = (bag: Bag, withClock = false) => {
+    const harness = createBattleSceneHarness({
+      party: new PokemonParty([new Pokemon(SQUIRTLE, 8)]),
+      wild: new Pokemon(getSpeciesById('chansey')!, 4),
+      bag,
+    });
+    const clock = createFakeClock();
+    if (withClock) {
+      const sprites = new Map([
+        ['player0', standingSprite('player')],
+        ['enemy0', standingSprite('enemy')],
+      ]);
+      Object.assign(harness.scene as object, { tweens: clock.tweens, time: clock.time, sprites });
+    }
+    const battle = harness.scene as unknown as Battle;
+    battle.onMessagesComplete();
+    const press = (match: string): void => {
+      const row = read(harness.renderedTexts).filter(({ text }) => text.includes(match)).at(-1);
+      if (!row) {
+        throw new Error(`No row matching ${match}`);
+      }
+      row.handlers.pointerdown();
+    };
+    /** Reads every line of the turn, until the commands are back. */
+    const readOn = (): void => {
+      harness.dialog.isCurrentMessageComplete = true;
+      for (let step = 0; step < 40 && battle.mode !== 'main'; step += 1) {
+        battle.onMessagesComplete();
+        clock.advance(400);
+      }
+    };
+    return { ...harness, battle, clock, press, readOn };
+  };
+  /** The ball rows on screen, in the order the list drew them. */
+  const ballRows = (texts: RenderedText[], from: number): string[] =>
+    read(texts)
+      .slice(from)
+      .map(({ text }) => text.trim().replace(/^\u25b6\s*/, ''))
+      .filter((text) => / BALL x\d+$/.test(text) && !text.startsWith('BALL'));
+
+  it("opens the list for the last kind left, as it did for two - Olly's Great Ball", () => {
+    const roll = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      const bag = new Bag({ 'poke-ball': 1, 'great-ball': 2 });
+      const { battle, press, readOn, renderedTexts } = meet(bag);
+
+      press('BALL x3');
+      expect(battle.mode).toBe('balls');
+      press('POKé BALL x1');
+      expect(bag.count('poke-ball')).toBe(0);
+      readOn();
+      expect(battle.mode).toBe('main');
+
+      const before = renderedTexts.length;
+      press('BALL x2');
+
+      expect(battle.mode).toBe('balls');
+      expect(bag.count('great-ball')).toBe(2);
+      expect(ballRows(renderedTexts, before)).toEqual(['GREAT BALL x2']);
+    } finally {
+      roll.mockRestore();
+    }
+  });
+
+  it('opens on the weakest ball the first time, and on the ball last thrown after that', () => {
+    const roll = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      const bag = new Bag({ 'poke-ball': 3, 'great-ball': 3 });
+      const { battle, press, readOn } = meet(bag);
+
+      press('BALL x6');
+      expect(battle.selectedCommand).toBe(0);
+      press('GREAT BALL x3');
+      expect(bag.count('great-ball')).toBe(2);
+      readOn();
+
+      press('BALL x5');
+      expect(battle.mode).toBe('balls');
+      expect(battle.selectedCommand).toBe(1);
+    } finally {
+      roll.mockRestore();
+    }
+  });
+
+  it('opens on the ball left highlighted when the list was backed out of', () => {
+    const bag = new Bag({ 'poke-ball': 3, 'great-ball': 3 });
+    const { battle, press } = meet(bag);
+
+    press('BALL x6');
+    battle.selectedCommand = 1;
+    battle.goBack();
+    expect(battle.mode).toBe('main');
+
+    press('BALL x6');
+    expect(battle.selectedCommand).toBe(1);
+    expect(bag.count('poke-ball')).toBe(3);
+    expect(bag.count('great-ball')).toBe(3);
+  });
+
+  it('takes no click in its first half second, so a double click on BALL throws nothing', () => {
+    const bag = new Bag({ 'poke-ball': 2, 'great-ball': 1 });
+    const { battle, clock, press } = meet(bag, true);
+    clock.advance(RELEASE_ARMING_MS);
+
+    press('BALL x3');
+    expect(battle.mode).toBe('balls');
+    // The second click of a double click lands on the row where BALL was.
+    clock.advance(120);
+    press('POKé BALL x2');
+    expect(battle.mode).toBe('balls');
+    expect(bag.count('poke-ball')).toBe(2);
+
+    clock.advance(RELEASE_ARMING_MS);
+    press('POKé BALL x2');
+    expect(bag.count('poke-ball')).toBe(1);
+  });
+
+  it('takes Enter through the same wait as Space, so reading on with Enter never throws', () => {
+    const bag = new Bag({ 'poke-ball': 2, 'great-ball': 1 });
+    const { battle, clock, scene } = meet(bag, true);
+    const keyed = scene as unknown as {
+      keyPresses: { justPressed(key: unknown): boolean };
+      dialog: object;
+    };
+    // The harness has no keyboard, so each key is a token of its own.
+    for (const key of ['confirmKey', 'enterKey', 'backKey', 'leftKey', 'rightKey', 'upKey', 'downKey']) {
+      Object.assign(battle, { [key]: { key } });
+    }
+    const enter = (battle as unknown as { enterKey: unknown }).enterKey;
+    keyed.keyPresses = { justPressed: (key) => key === enter };
+    Object.assign(keyed.dialog, { update: () => undefined });
+    const ballsBefore = (): number => bag.count('poke-ball') + bag.count('great-ball');
+
+    // Enter on the menu the instant it came back: not taken.
+    battle.update(0, 16);
+    expect(battle.mode).toBe('main');
+    // Pressed again 300ms later, then again: the second must not throw.
+    clock.advance(RELEASE_ARMING_MS);
+    battle.selectedCommand = 1;
+    battle.update(0, 16);
+    expect(battle.mode).toBe('balls');
+    clock.advance(300);
+    battle.update(0, 16);
+    expect(battle.mode).toBe('balls');
+    expect(ballsBefore()).toBe(3);
+
+    clock.advance(RELEASE_ARMING_MS);
+    battle.update(0, 16);
+    expect(ballsBefore()).toBe(2);
   });
 });
 
@@ -2260,9 +2435,10 @@ describe('a catch the pack has no room for', () => {
   it('spends no ball, and opens the choice of what to put down', () => {
     const bag = fullPack();
     const { scene, dialog, press, renderedTexts } = open(bag);
-    const before = renderedTexts.length;
 
     press('BALL x1');
+    const before = renderedTexts.length;
+    press('POKé BALL x1');
 
     // Nothing is spent to find out, whichever ball was chosen.
     expect(bag.count('poke-ball')).toBe(1);
@@ -2295,6 +2471,7 @@ describe('a catch the pack has no room for', () => {
     const before = renderedTexts.length;
 
     press('BALL x1');
+    press('POKé BALL x1');
     internals.onMessagesComplete();
     expect(internals.mode).toBe('make-room');
     expect(internals.commandTexts[internals.selectedCommand - internals.makeRoomPage * 6]?.text).toContain('KEEP THE PACK');
@@ -2332,9 +2509,10 @@ describe('a catch the pack has no room for', () => {
       text.width = text.text === '▶ ' ? CURSOR_GUTTER : drawnWidth(text.text);
       return text;
     };
-    const before = renderedTexts.length;
 
     press('BALL x3');
+    const before = renderedTexts.length;
+    press('POKé BALL x3');
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     expect((scene as unknown as { mode: string }).mode).toBe('make-room');
     // Seven rows are two pages - KEEP THE PACK and five kinds, then the disc -
@@ -2387,6 +2565,7 @@ describe('a catch the pack has no room for', () => {
     const { scene, press, renderedTexts } = open(bag);
     const before = renderedTexts.length;
     press('BALL x1');
+    press('POKé BALL x1');
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
 
     press('SITRUS BERRY', before);
@@ -2405,6 +2584,7 @@ describe('a catch the pack has no room for', () => {
 
       const before = renderedTexts.length;
       press('BALL x1');
+      press('POKé BALL x1');
       (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
       // A 2x2 Bulbasaur needs four squares together, and the ball thrown is
       // one of them - so three Potions buy the room and the first two drops
@@ -2438,6 +2618,7 @@ describe('a catch the pack has no room for', () => {
 
     const before = renderedTexts.length;
     press('BALL x1');
+    press('POKé BALL x1');
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     press('POTION x', before);
 
@@ -2450,6 +2631,7 @@ describe('a catch the pack has no room for', () => {
 
     const before = renderedTexts.length;
     press('BALL x1');
+    press('POKé BALL x1');
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     press('KEEP THE PACK', before);
 
@@ -2474,6 +2656,7 @@ describe('a catch the pack has no room for', () => {
     const { scene, press } = open(bag);
 
     press('BALL x1');
+    press('POKé BALL x1');
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     (scene as unknown as { goBack(): void }).goBack();
 
@@ -2517,6 +2700,7 @@ describe('a catch the pack has no room for', () => {
     const { scene, dialog, press } = open(bag);
 
     press('BALL x1');
+    press('POKé BALL x1');
 
     expect(dialog.shownMessages[0]).toContain('it is all POKéMON');
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
@@ -2533,6 +2717,7 @@ describe('a catch the pack has no room for', () => {
     const harness = createBattleSceneHarness({ bag, wild: new Pokemon(getSpeciesById('alakazam')!, 22) });
     (harness.scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     harness.renderedTexts.filter(({ text }) => text.includes('BALL x2')).at(-1)!.handlers.pointerdown();
+    harness.renderedTexts.filter(({ text }) => text.includes('POKé BALL x2')).at(-1)!.handlers.pointerdown();
 
     expect(harness.dialog.shownMessages[0]).toContain('Even with everything else put down, this pack cannot hold it.');
     (harness.scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
@@ -2717,12 +2902,17 @@ describe('a trainer sending out Pokemon after a knockout', () => {
     return { ...harness, party, clock, enemySprite: sprites.get('enemy0')! };
   };
 
-  /** One turn of TACKLE, every line read the instant it is up. */
+  /**
+   * One turn of TACKLE, every line read the instant it is up. The menu takes
+   * no OK in its first half second, a click included, so that is waited out.
+   */
   const knockOutAtOnce = (
     scene: BattleScene,
     renderedTexts: RenderedText[],
     dialog: { isCurrentMessageComplete: boolean },
+    clock: { advance(ms: number): void },
   ): void => {
+    clock.advance(RELEASE_ARMING_MS);
     read(renderedTexts).findLast(({ text }) => text.includes('FIGHT'))!.handlers.pointerdown();
     read(renderedTexts).filter(({ text }) => text.includes('TACKLE')).at(-1)!.handlers.pointerdown();
     dialog.isCurrentMessageComplete = true;
@@ -2742,7 +2932,7 @@ describe('a trainer sending out Pokemon after a knockout', () => {
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
 
     for (const next of party.slice(1)) {
-      knockOutAtOnce(scene, renderedTexts, dialog);
+      knockOutAtOnce(scene, renderedTexts, dialog, clock);
       expect(dialog.shownMessages).toContain(`RAIDER MAYA sent out ${next.base.name.toUpperCase()}!`);
       // Long enough for anything started by the knockout to have finished.
       clock.advance(1500);
@@ -2762,7 +2952,7 @@ describe('a trainer sending out Pokemon after a knockout', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
 
-    knockOutAtOnce(scene, renderedTexts, dialog);
+    knockOutAtOnce(scene, renderedTexts, dialog, clock);
     clock.advance(1500);
 
     const { displayedHp } = scene as unknown as { displayedHp: Map<string, number> };
@@ -2888,6 +3078,8 @@ describe('the blink a blow lands with', () => {
       player: { ...battle.state.player, statStages: { ...battle.state.player.statStages, speed: startingSpeed } },
     };
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    // The menu takes no OK in its first half second, a click included.
+    clock.advance(RELEASE_ARMING_MS);
     read(renderedTexts).findLast(({ text }) => text.includes('FIGHT'))!.handlers.pointerdown();
     read(renderedTexts)
       .filter(({ text }) => text.includes(playerMove.name.toUpperCase()))
@@ -3475,6 +3667,7 @@ describe('BattleScene shiny Pokemon', () => {
       const harness = createBattleSceneHarness({ wild, bag: new Bag({ 'poke-ball': 1 }) });
       (harness.scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
       read(harness.renderedTexts).filter(({ text }) => text.includes('BALL x')).at(-1)!.handlers.pointerdown();
+      read(harness.renderedTexts).filter(({ text }) => text.includes('POKé BALL x')).at(-1)!.handlers.pointerdown();
 
       const party = (harness.scene as unknown as { party: PokemonParty }).party.pokemon;
       expect(party).toContain(wild);
