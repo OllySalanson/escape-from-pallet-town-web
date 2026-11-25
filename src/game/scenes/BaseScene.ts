@@ -401,6 +401,7 @@ import { OWN_SPEAKER, harbourTalk } from '../base/harbourTalk';
 import { SpeechBubble } from '../base/speechBubble';
 import { HARBOUR_PHRASES, type HarbourPhraseId } from '../harbour/harbourPhrases';
 import { letterShortcut, shortcutsInHint, withMoment, type TouchShortcut } from '../input/touchShortcuts';
+import { sourceText } from '../input/touchWords';
 import { PhrasePicker } from '../ui/PhrasePicker';
 import { harbourRegulars, regularsClock, type RegularsWatcher } from '../base/harbourRegulars';
 import { requestedTestMode } from '../dev/testMode';
@@ -1027,7 +1028,7 @@ export class BaseScene extends Phaser.Scene {
    * own and none of the yard's.
    */
   public touchShortcuts(): readonly TouchShortcut[] {
-    const moment = shortcutsInHint(this.hintText?.visible ? this.hintText.text : '');
+    const moment = shortcutsInHint(this.hintText?.visible ? sourceText(this.hintText) : '');
     if (this.choosing || this.decor || this.phrasePicker) {
       return moment;
     }
