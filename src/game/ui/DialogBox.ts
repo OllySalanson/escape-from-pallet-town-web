@@ -4,6 +4,7 @@ import { drawFramedWindow, drawPixelWindow } from './pixelWindow';
 import { GAME_FONT } from './gameFont';
 import { DIALOG_FONT_SIZE } from './screenType';
 import { shareLine } from './dialogBoxes';
+import { touchPlay } from '../input/touchPlay';
 
 export interface DialogBoxOptions {
   x?: number;
@@ -50,6 +51,13 @@ const DEFAULT_BORDER_COLOR = 0xffffff;
 const DEFAULT_BACKGROUND_COLOR = 0x1e1e1e;
 const DEFAULT_CHARS_PER_SECOND = 40;
 const DEFAULT_INDICATOR_TEXT = '▼';
+/**
+ * The same prompt on the touch pad, naming the button that moves the line on,
+ * as a fight's box names its key ('SPACE ▼', said 'OK ▼' on the pad): a
+ * newcomer's first raid opens on a line, and on a phone the bare arrow left
+ * the thumb to guess which of the pad's keys it meant.
+ */
+const TOUCH_INDICATOR_TEXT = 'OK ▼';
 const DEFAULT_INDICATOR_BLINK_MS = 300;
 
 export class DialogBox extends Phaser.GameObjects.Container {
@@ -77,7 +85,11 @@ export class DialogBox extends Phaser.GameObjects.Container {
   /** Whether a finished line blinks the prompt that asks for a key. */
   private prompting = true;
   /** What the prompt says when it is asking to go on. */
-  private readonly promptText: string;
+  private readonly givenPrompt: string | undefined;
+
+  private get promptText(): string {
+    return this.givenPrompt ?? (touchPlay() ? TOUCH_INDICATOR_TEXT : DEFAULT_INDICATOR_TEXT);
+  }
   /** How much longer the line up now is held before a key may move it on. See `hold`. */
   private heldMs = 0;
 
@@ -117,7 +129,7 @@ export class DialogBox extends Phaser.GameObjects.Container {
       ...(options.textStyle ?? {}),
     });
 
-    this.promptText = options.indicatorText ?? DEFAULT_INDICATOR_TEXT;
+    this.givenPrompt = options.indicatorText;
     this.indicatorObject = scene.add
       .text(
         // In the padding beside the text rather than at the end of it: a last

@@ -109,8 +109,12 @@ try {
   // A fight out of the raid, as a standing Pokémon starts one: the line read
   // with OK, then the battle with the raid's keys still on the tray, dimmed.
   await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); w.pendingWildBattle = { speciesId: 'pidgey', level: 3 }; w.dialogBox.showMessages(['A wild PIDGEY flutters down!']); })()`);
-  await sleep(400);
-  await shot('8-raid-line');
+  // Read out, so the prompt that waits on OK is up.
+  await sleep(2000);
+  console.log('prompt on the line:', await page.evaluate(`(() => { const box = ${GAME}.scene.getScene('world').dialogBox; return JSON.stringify({ text: box.indicatorObject?.text, visible: box.indicatorObject?.visible }); })()`));
+  // The prompt blinks, as FireRed's does: photographed while it is up.
+  await until(`${GAME}.scene.getScene('world').dialogBox.indicatorObject?.visible === true`, 'the prompt', 5_000);
+  writeScreenshot(join(out, `${deviceName}-8-raid-line.png`), (await page.send('Page.captureScreenshot', { format: 'png' })).data);
   await touch('.tp-ok');
   await until(sceneIs('battle'), 'the fight', 30_000);
   await sleep(2500);
