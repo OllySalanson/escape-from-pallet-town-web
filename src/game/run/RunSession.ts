@@ -1,3 +1,4 @@
+import type { RaceState } from '../world/races';
 import type { RepelState } from '../world/repel';
 import type { RaidWalk } from '../world/raidMemory';
 import type { DressedLook } from '../look/look';
@@ -223,6 +224,11 @@ export interface ActiveRunSession {
   surveyed?: Set<number>;
   /** Where this raid has walked, for the pit to remember (`world/raidMemory.ts`). On the session for the same reason. */
   walk?: RaidWalk;
+  /**
+   * This raid's race against a townsperson (`world/races.ts`), once one has been
+   * agreed: once a raid, and carried through a fight, whose minutes it is charged.
+   */
+  race?: RaceState;
 }
 
 /** Mixed into a raid's seed for its shiny stream, so the two streams never meet. */

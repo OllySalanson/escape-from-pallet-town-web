@@ -84,6 +84,14 @@ const WEATHER_STYLE: ChipStyle = { fill: 0xa9c3d6, ink: 0x14232e };
  */
 const PRIZE_STYLE: ChipStyle = { fill: 0xe8b43c, ink: 0x2e1f00 };
 
+/**
+ * A race (`world/races.ts`): chalk white under a heavy frame, the starter's
+ * flag rather than the furniture's cream - for the twenty seconds it is up it
+ * is the thing on the screen, and it is told from every other chip by shape
+ * as well as by colour.
+ */
+const RACE_STYLE: ChipStyle = { fill: 0xfbfbf4, ink: 0x101418, heavy: true };
+
 export interface RaidHudState {
   readonly clock: RaidClockView;
   readonly objectiveLines: readonly string[];
@@ -96,6 +104,8 @@ export interface RaidHudState {
   readonly prize: PrizeChipView | null;
   /** Everybody else in a raid room, while one is held (`friendChipLines`). */
   readonly friend?: readonly string[] | null;
+  /** A race under way (`raceChipLines`): the clock, the racer, the line. */
+  readonly race?: readonly string[] | null;
 }
 
 export class RaidHud {
@@ -114,6 +124,7 @@ export class RaidHud {
   private readonly weatherText: Phaser.GameObjects.Text;
   private readonly prizeText: Phaser.GameObjects.Text;
   private readonly friendText: Phaser.GameObjects.Text;
+  private readonly raceText: Phaser.GameObjects.Text;
 
   private readonly scene: Phaser.Scene;
 
@@ -127,6 +138,7 @@ export class RaidHud {
     this.weatherText = this.createText(CHIP_FONT_SIZE);
     this.prizeText = this.createText(CHIP_FONT_SIZE);
     this.friendText = this.createText(CHIP_FONT_SIZE);
+    this.raceText = this.createText(CHIP_FONT_SIZE);
   }
 
   /** The chips' screen rectangles, for anything that has to avoid them. */
@@ -183,6 +195,19 @@ export class RaidHud {
     // it jump back up three seconds later would be movement in the corner of
     // the eye for no news at all.
     let column = objective;
+    // A race is where the player is going for as long as it is on, so it takes
+    // the seat under the objective, ahead of everything that merely stays.
+    if (state.race) {
+      column = this.placeChip(
+        this.raceText,
+        state.race,
+        RACE_STYLE,
+        1,
+        () => ({ x: EDGE_MARGIN, y: column.y + column.height + CHIP_GAP }),
+      );
+    } else {
+      this.raceText.setVisible(false);
+    }
     if (state.weather) {
       column = this.placeChip(
         this.weatherText,
@@ -266,6 +291,7 @@ export class RaidHud {
     this.weatherText.destroy();
     this.prizeText.destroy();
     this.friendText.destroy();
+    this.raceText.destroy();
   }
 
   private createText(fontSize: string): Phaser.GameObjects.Text {

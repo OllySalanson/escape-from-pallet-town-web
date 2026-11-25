@@ -133,13 +133,22 @@ describe('Millbrook, walked two abreast', () => {
   const walked = walkDistrict(file, valeSolid({ x: 64, y: 128 }), [LANDING]);
 
   // What is narrow on purpose, and only this: the old jetty Wick fishes off, the
-  // stepping stones to the island, and Hazel's garden behind the Cut tree.
-  const NARROW_ON_PURPOSE = new Set(['Old Wick', 'the island', 'Hazel\u2019s garden']);
+  // stepping stones to the island, Hazel's garden behind the Cut tree, and the
+  // woodcutter's ride behind its own - a way nobody signs, grown shut, which is
+  // LINNET's race's shortcut (`src/game/world/races.ts`).
+  const NARROW_ON_PURPOSE = new Set(['Old Wick', 'the island', 'Hazel\u2019s garden', 'the woodcutter\u2019s ride']);
   const hazels = (x: number, y: number) => x <= 15 && y >= 53;
+  const ride = (x: number, y: number) => x >= 18 && x <= 19 && y >= 60;
   const island = (x: number, y: number) => x >= 27 && x <= 30 && y >= 46 && y <= 48;
   const places = () =>
     walked.places().filter(({ name, x, y }) => {
-      const why = hazels(x, y) ? 'Hazel\u2019s garden' : island(x, y) ? 'the island' : name;
+      const why = hazels(x, y)
+        ? 'Hazel\u2019s garden'
+        : island(x, y)
+          ? 'the island'
+          : ride(x, y)
+            ? 'the woodcutter\u2019s ride'
+            : name;
       return !NARROW_ON_PURPOSE.has(why);
     });
 

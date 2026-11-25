@@ -442,6 +442,28 @@ export const SOUND_EFFECTS = {
     // square with a quick fall, and the second strike a little quieter.
     tones: [sweep(sq(1568, 0.07, 0.05), 1480), sweep(sq(1568, 0.12, 0.04, 0.1), 1397)],
   },
+  raceBeep: {
+    channel: 'world',
+    moment: 'A race’s countdown: 3, 2, 1 (`world/races.ts`)',
+    // A starter's beep: one flat square, the same pitch each count.
+    tones: [sq(784, 0.12, 0.06)],
+  },
+  raceGo: {
+    channel: 'world',
+    moment: 'GO! - the race is on',
+    // The same beep an octave up and held: every starting light ends on it.
+    tones: [sq(1568, 0.3, 0.065), tri(392, 0.3, 0.04)],
+  },
+  raceWon: {
+    channel: 'fanfare',
+    moment: 'Over the line first in a race',
+    tones: run([523, 659, 784, 1047, 784, 1047], 0.08, 0.07, 0.065),
+  },
+  raceLost: {
+    channel: 'world',
+    moment: 'Over the line behind the racer',
+    tones: [tri(523, 0.1, 0.05), tri(440, 0.1, 0.05, 0.11), tri(349, 0.22, 0.05, 0.22)],
+  },
   rodCast: {
     channel: 'world',
     moment: 'A rod is cast into the water - a swish of line, and the float landing',

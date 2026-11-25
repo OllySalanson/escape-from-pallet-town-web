@@ -253,8 +253,9 @@ describe('hunter disengagement wiring', () => {
     // A placed Pokemon met on the map commits to its fight the same way: the
     // cry is read and the battle follows, so neither is billed.
     expect(clock.replace(/\s+/g, ' ')).toContain(
-      'this.pendingTrainerBattle || this.pendingWildBattle || this.openingBriefingOpen || this.onRadio || cutsceneRunning ? 0 : deltaMs;',
+      "this.pendingTrainerBattle || this.pendingWildBattle || this.openingBriefingOpen || this.onRadio || cutsceneRunning || this.runSession.race?.phase === 'countdown' ? 0 : deltaMs;",
     );
+    // A race's countdown is the world's own beat too (`world/races.ts`).
     // And the same rule for an authored beat: the raid is charged for time the
     // player can spend and never for time the world spends on itself, so a
     // cutscene running itself is free and one waiting on a line is billed.

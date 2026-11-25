@@ -35,9 +35,9 @@ import { MISTY_BOSS_ID } from '../../../../src/game/world/valeQuarters';
 
 /** The basin, a letter a lattice cell: T the wood round it, g the reeds that are its floor. */
 const BASIN = [
-  'TTTTTTTTTTTTTTTTTTTT.TTTTTTTTTTT',
-  'TTTTTTTTTTTTTTTTTTTT.TTTTTTTTTTT',
-  'TTTTTTTTTTTTTTTTggggggggTTTTTTTT',
+  'TTTTTTTTT.TTTTTTTTTT.TTTTTTTTTTT',
+  'TTTTTTTTT.TTTTTTTTTT.TTTTTTTTTTT',
+  'TTTTTTTTT.TTTTTTggggggggTTTTTTTT',
   'TTTTTTTTgggggTTTgggggggggggTTTTT',
   'TTTTTgTggggggTTTggggggggggggTTTT',
   'TTTTggTggggggTTTgggggggggggggTTT',
@@ -160,6 +160,9 @@ export function reedmere(): MapcraftResult {
   // marsh into beds, and none of them is the dry way.
   p.trail([[20, 15], [20, 19], [8, 19], [8, 22]]);
   p.trail([[16, 35], [16, 40]]);
+  // The woodcutter's ride comes down out of Millbrook's pines here, past the
+  // small tree only a Cut clears, and is trodden dry as far as the meadow.
+  p.trail([[18, 0], [18, 8]]);
 
   // -- The mere, still and wide, with the bay Mere End stands on ------------------------
   p.draw(14, 24, [
