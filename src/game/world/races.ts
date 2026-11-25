@@ -574,8 +574,6 @@ export function offTheBikeLine(course: RaceCourse): string {
 /** How far a GOLD may miss PERFECT and still be told what it was. */
 export const NEAR_PERFECT_MS = 200;
 
-
-
 /** The floor in steps, which PERFECT is. */
 function floorSteps(course: RaceCourse): number {
   return Math.round(course.perfectMs / STEP_DURATION_MS);
@@ -602,10 +600,12 @@ function perfectTip(course: RaceCourse, input: RaceResultInput): string | null {
   const atGo = Math.max(0, input.startLagMs ?? 0);
   const atCorners = Math.max(0, input.cornerLossMs ?? 0);
   if (atGo === 0 && atCorners === 0) return null;
-  const cost = (ms: number) => (ms < 100 ? 'a few hundredths' : formatGap(ms));
+  // What it cost is what the clock shows it cost: the tenths over PERFECT on screen.
+  const over = Math.max(1, shownTenths(input.timeMs) - shownTenths(course.perfectMs));
+  const cost = over === 1 ? 'a tenth' : `${over} tenths`;
   return atGo >= atCorners
-    ? `${perfect} - and you lost ${cost(atGo)} standing at GO. Keep the direction held down through my count.`
-    : `${perfect} - and you lost ${cost(atCorners)} on the corners. Let go of the old way and press the next one just before each turn.`;
+    ? `${perfect} - standing still at GO cost you ${cost}. Keep the direction held down through my count.`
+    : `${perfect} - stopping at the corners cost you ${cost}. Let go of the old way and press the next one just before each turn.`;
 }
 
 /** How a run went, from its trail: how many steps, and how long it stood before the first. */

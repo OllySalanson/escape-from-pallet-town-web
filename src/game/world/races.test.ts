@@ -313,12 +313,12 @@ describe('what LINNET says', () => {
     // A GOLD a tenth or two off the floor is told it was the start.
     // What kept it off PERFECT, read off the run: a stand at GO, or a step too many - and never in place of a first GOLD's line.
     const near = { ...input, medal: 'gold' as const, timeMs: 9_450, firstGold: false };
-    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 150, cornerLossMs: 0 }).join(' ')).toContain('lost 0.2s standing at GO');
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 150, cornerLossMs: 0 }).join(' ')).toContain('standing still at GO cost you a tenth');
     expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 150, cornerLossMs: 0 }).join(' ')).toContain('Keep the direction held down through my count');
     expect(racerArrivesLines(course, { ...near, steps: 63, startLagMs: 20, cornerLossMs: 0 }).join(' ')).toContain('63 where 62 will do');
     // The likeliest miss: a prompt start, the floor's steps, a frame or two lost at each corner.
     const corners = racerArrivesLines(course, { ...near, steps: 62, startLagMs: 17, cornerLossMs: 120 }).join(' ');
-    expect(corners).toContain('lost 0.1s on the corners');
+    expect(corners).toContain('stopping at the corners cost you a tenth');
     expect(corners).toContain('Let go of the old way');
     // A fight-free run on the floor's steps always hears what it lost, never "spray a Repel".
     expect(corners).not.toContain('Repel');
@@ -330,10 +330,10 @@ describe('what LINNET says', () => {
     expect(raceRunShape([83, 169, 0, 82, 169, 210, 81, 169, 360, 80, 169, 600])).toEqual({ steps: 3, startLagMs: 60, cornerLossMs: 90 });
     // Far off PERFECT and fight-free is still told why - never the Repel line meant for a fight.
     const late = racerArrivesLines(course, { ...near, steps: 62, startLagMs: 350, cornerLossMs: 0, timeMs: 9_650 }).join(' ');
-    expect(late).toContain('GOLD again. 0:09.3 is PERFECT - and you lost 0.4s standing at GO');
+    expect(late).toContain('GOLD again. 0:09.3 is PERFECT - standing still at GO cost you 3 tenths');
     const round = racerArrivesLines(course, { ...near, steps: 68, startLagMs: 17, cornerLossMs: 0, timeMs: 10_217 }).join(' ');
     expect(round).toContain('you took 68 steps where 62 will do');
-    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 60, cornerLossMs: 0, timeMs: 9_420 }).join(' ')).toContain('a few hundredths');
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 60, cornerLossMs: 0, timeMs: 9_420 }).join(' ')).toContain('standing still at GO cost you a tenth');
     expect(racerArrivesLines(course, { ...near, fightMs: 1500, timeMs: 10_800 }).join(' ')).toContain('Spray a Repel');
     // "So close!" by the tenths shown: two runs that both read 0:09.5 hear the same.
     expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 200, cornerLossMs: 0, timeMs: 9_500 })[0]).toContain('So close!');

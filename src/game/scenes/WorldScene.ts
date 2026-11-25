@@ -4876,7 +4876,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     recordAction(`Agreed to race ${course.racer.name}`);
   }
 
-  /** The countdown owns the frame: nothing moves, nobody's clock runs. */
   /**
    * Still counting: true, and the count owns the frame. On GO it is false, and
    * the frame goes on to read the keys - a direction held through the count
