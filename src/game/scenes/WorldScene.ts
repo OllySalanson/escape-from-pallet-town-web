@@ -251,6 +251,7 @@ import { fieldHealHint } from '../world/fieldHealHint';
 import {
   FIRST_CATCH_AGAIN_LINE,
   FIRST_CATCH_CUE,
+  FIRST_CATCH_HUNTER_STEPS,
   FIRST_CATCH_LANDING_LINES,
   FIRST_CATCH_LEVEL,
   FIRST_CATCH_SPECIES,
@@ -7540,9 +7541,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const pidgey = caught.find((pokemon) => pokemon.base.id === FIRST_CATCH_SPECIES);
     if (pidgey) {
       state.caught = true;
-      // Hurt from the fight, with a hunter coming: the pack's Potion is said too.
-      const heal = this.fieldHealLine();
-      this.interrupt([...firstCatchCaughtLines(pidgey.name, this.nearestExitCue()?.label), ...(heal ? [heal] : [])]);
+      // The hunter comes a few steps after Oak's last word, never under it.
+      state.caughtAtStep = session.stepsTaken ?? 0;
+      // Hurt from the fight, with a hunter coming: the pack's Potion is said first.
+      const pack = this.bag.capacity;
+      this.interrupt([
+        ...firstCatchCaughtLines(
+          pidgey.name,
+          this.nearestExitCue()?.label,
+          pack ? pack.width * pack.height : undefined,
+          this.fieldHealLine(),
+        ),
+      ]);
       return true;
     }
     if (this.firstCatchFigure()) {
@@ -11675,7 +11685,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       !session.stagedChaseCome &&
       // Forty seconds in, or the moment the first catch is made: the catch is
       // what there is to lose, and the hunter is what could take it.
-      (elapsedMs >= session.plan.hunter.spawnDelayMs || session.firstCatch?.caught === true) &&
+      (elapsedMs >= session.plan.hunter.spawnDelayMs ||
+        (session.firstCatch?.caughtAtStep !== undefined &&
+          (session.stepsTaken ?? 0) >= session.firstCatch.caughtAtStep + FIRST_CATCH_HUNTER_STEPS)) &&
       hasPlayerSetOff(session.stepsTaken) &&
       this.ridePlace() === 'outdoors'
     ) {
@@ -11844,7 +11856,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         session.manager.snapshot().elapsedMs,
         session.manager.isEnraged,
         { ...(session.plan?.hunter ?? DEFAULT_HUNTER_TUNING), rivalId: rival.id },
-        this.party.pokemon,
+        this.hunterFaces(),
       ),
       introLines: caughtLines(rival, session.manager.isEnraged),
       isHunter: true,
@@ -11938,6 +11950,22 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     box(SEARCH_MARK, 5, 9, 2, 2);
   }
 
+  /**
+   * Who the hunter's team is matched against: the party - one of theirs for
+   * each of yours still standing - except on a new save's first raid before
+   * the clock runs out, where it brings one, against the strongest. Two on the
+   * first raid meant a tutorial that could take the bird it had just taught
+   * the player to catch (the critic's second pass, 25 Nov 2026).
+   */
+  private hunterFaces(): readonly Pokemon[] {
+    const party = this.party.pokemon;
+    if (this.runSession?.plan?.stagedChase !== true || this.runSession.manager.isEnraged) {
+      return party;
+    }
+    const strongest = party.filter((pokemon) => pokemon.currentHp > 0).sort((one, other) => other.level - one.level)[0];
+    return strongest ? [strongest] : party;
+  }
+
   /** The one catch: the fight is queued, and the beat that hands it over plays. */
   private catchPlayer(hunter: GridPosition): void {
     // Whichever way the two of them met, the hunter has the player: a search
@@ -11950,7 +11978,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.runSession!.manager.snapshot().elapsedMs,
         this.runSession!.manager.isEnraged,
         this.runSession!.plan?.hunter && { ...this.runSession!.plan.hunter, rivalId: this.hunterRival().id },
-        this.party.pokemon,
+        this.hunterFaces(),
       ),
       introLines: caughtLines(this.hunterRival(), this.runSession!.manager.isEnraged),
       isHunter: true,

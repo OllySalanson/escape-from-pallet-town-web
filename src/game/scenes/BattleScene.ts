@@ -2936,6 +2936,14 @@ export class BattleScene extends Phaser.Scene {
       return [];
     }
     this.catchLesson = 'said';
+    // The menu comes back on BALL, the command the line names, as the low-HP
+    // hint brings it back on ITEM: on FIGHT, a newcomer pressing only OK
+    // knocked out the bird they had just been told to keep (the critic's
+    // second pass, 25 Nov 2026).
+    const ball = this.mainActions().findIndex((action) => action.type === 'choose-ball');
+    if (ball >= 0) {
+      this.lastMainCommand = ball;
+    }
     return [line];
   }
 

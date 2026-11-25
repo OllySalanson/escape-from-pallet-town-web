@@ -72,8 +72,16 @@ export function catchLessonOpening(enemyName: string): string[] {
 }
 
 /**
+ * At or under this share of its HP the first raid's Pidgey is weak enough to
+ * throw at. It was a half, and a starter's next Scratch knocks out a Lv 2
+ * Pidgey from just under a half: the line came one blow too late (the critic's
+ * second pass, 25 Nov 2026). One Scratch, 5 to 7, takes it under this from full.
+ */
+export const CATCH_LESSON_SHARE = 2 / 3;
+
+/**
  * Said once in the first raid's catch, the first turn that leaves the wild one
- * under half its HP and still up: the moment a ball holds, and the one rule a
+ * at or under `CATCH_LESSON_SHARE` of its HP and still up: the moment a ball holds, and the one rule a
  * newcomer has to know, said while it is true (the overnight critic: teach the
  * real rule, never rig the fight).
  */
@@ -82,7 +90,7 @@ export function catchLessonMessage(facts: {
   readonly enemyMaxHp: number;
   readonly fightGoesOn: boolean;
 }): string | null {
-  if (!facts.fightGoesOn || facts.enemyHp <= 0 || facts.enemyHp * 2 >= facts.enemyMaxHp) {
+  if (!facts.fightGoesOn || facts.enemyHp <= 0 || facts.enemyHp > facts.enemyMaxHp * CATCH_LESSON_SHARE) {
     return null;
   }
   return "It's weak! Throw a BALL now. Knock it out and it's gone.";

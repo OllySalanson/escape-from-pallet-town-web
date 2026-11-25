@@ -140,7 +140,7 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
   nearWork: {
     speaker: 'prof-oak',
     name: 'Professor Oak',
-    lines: ["That's the near work done! From now on the board deals jobs from all over the vale."],
+    lines: ["That's the near work done! From now on, jobs come from all over the vale."],
   },
 };
 

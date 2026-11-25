@@ -42,8 +42,10 @@ describe("the first raid's catch", () => {
     expect(FIRST_CATCH_LANDING_LINES).toHaveLength(1);
     expect(FIRST_CATCH_LANDING_LINES[0]).toContain('PIDGEY');
     expect(FIRST_CATCH_LANDING_LINES[0]).not.toMatch(/ENRAGED|pack|hunter/);
-    const lines = firstCatchCaughtLines('Pidgey', 'Westward Road');
-    expect(lines[0]).toBe("OAK: Got it! PIDGEY rides in your pack now, in 4 squares. Get out of the vale and it's yours.");
+    const lines = firstCatchCaughtLines('Pidgey', 'Westward Road', 18);
+    expect(lines[0]).toBe("OAK: Got it! PIDGEY is in your pack, taking 4 of its 18 squares. Get out of the vale and it's yours.");
+    // Hurt, the Potion comes straight after: the hunter is next.
+    expect(firstCatchCaughtLines('Pidgey', 'Westward Road', 18, 'POTION LINE')[1]).toBe('POTION LINE');
     expect(lines.join(' ')).toContain('WESTWARD ROAD');
     expect(lines.join(' ')).toContain('hunter');
   });
@@ -58,9 +60,11 @@ describe("the catch lesson's words", () => {
     ]);
   });
 
-  it('say "throw a BALL now" only while it is under half and still up', () => {
-    expect(catchLessonMessage({ enemyHp: 7, enemyMaxHp: 13, fightGoesOn: true })).toBeNull();
-    expect(catchLessonMessage({ enemyHp: 6, enemyMaxHp: 13, fightGoesOn: true })).toMatch(/^It's weak! Throw a BALL now/);
+  it('say "throw a BALL now" once one blow has landed, while it is still up', () => {
+    expect(catchLessonMessage({ enemyHp: 13, enemyMaxHp: 13, fightGoesOn: true })).toBeNull();
+    expect(catchLessonMessage({ enemyHp: 9, enemyMaxHp: 13, fightGoesOn: true })).toBeNull();
+    // One Scratch from full, 5 to 7 HP: 13 to 8 at the least.
+    expect(catchLessonMessage({ enemyHp: 8, enemyMaxHp: 13, fightGoesOn: true })).toMatch(/^It's weak! Throw a BALL now/);
     expect(catchLessonMessage({ enemyHp: 0, enemyMaxHp: 13, fightGoesOn: false })).toBeNull();
     expect(catchLessonMessage({ enemyHp: 3, enemyMaxHp: 13, fightGoesOn: false })).toBeNull();
   });

@@ -66,7 +66,7 @@ export function nextStepLines(progress: NextStepProgress): readonly string[] {
   const [job] = buildContractBoard(progress).rows;
   if (banked === 0) {
     return job
-      ? [`Next, a job: ${job.name.toUpperCase()}. Choose it at the RAID ARENA's rail before you jump.`]
+      ? [`Next, a job: ${job.name.toUpperCase()}. Pick it at the RAID ARENA, before you jump.`]
       : ['Next, a raid for whatever the vale holds. Every raid starts at the RAID ARENA.'];
   }
   if (banked < NEAR_JOBS) {
@@ -78,7 +78,7 @@ export function nextStepLines(progress: NextStepProgress): readonly string[] {
   const landing = landingToWalkTo(progress);
   return [
     ...(landing
-      ? [`Walk to ${landing.label.toUpperCase()} on a raid, and you can start the next one from there.`]
+      ? [`Walk to ${landing.label.toUpperCase()} on a raid, and you can land there next time.`]
       : []),
     ...(gym ? [`And when you're ready, the next gym: ${gym.leader.toUpperCase()}, at ${gym.building.toUpperCase()} in ${gym.standsIn.toUpperCase()}.`] : []),
   ];
