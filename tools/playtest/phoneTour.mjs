@@ -96,6 +96,13 @@ try {
   await touchChip('PACK');
   await until(`Boolean(document.querySelector('#screens .menu-overlay'))`, 'the raid pack', 15_000);
   await shot('6-pack');
+  // The pack's own key, read off its help line: DROP is X, dropping one Potion.
+  const carried = `document.querySelector('#screens .menu-overlay')?.innerText.match(/(\\d+) CARRIED/)?.[1] ?? null`;
+  const before = await page.evaluate(carried);
+  await touchChip('DROP');
+  await sleep(600);
+  console.log(`DROP on the pad: ${before} carried before, ${await page.evaluate(carried)} after`);
+  await shot('6b-pack-dropped');
   await touch('.tp-back');
   await sleep(800);
   await shot('7-raid-after');

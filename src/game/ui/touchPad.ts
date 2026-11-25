@@ -1,6 +1,7 @@
 import type { TouchLayout, Rect } from '../display/touchLayout';
 import { sendKey, type KeyTarget } from '../input/syntheticKeys';
-import { hasTouchShortcuts, sameShortcuts, type TouchShortcut } from '../input/touchShortcuts';
+import { hasTouchShortcuts, sameShortcuts, withMoment, type TouchShortcut } from '../input/touchShortcuts';
+import { helpLineKeys } from '../input/touchWords';
 import { arrowRuns, bottomEdgeRuns, crossRuns, discRuns, iconRuns, outlineRuns, runsPath, topEdgeRuns, type PadIcon, type PixelRun } from './touchPadArt';
 
 /**
@@ -302,7 +303,9 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
     }
     const code = element.dataset.key ?? '';
     pressed.set(event.pointerId, { code, element });
-    if (element.classList.contains('tp-chip')) {
+    // Only a key pressed over the world opens a screen; one pressed on a
+    // screen (DROP on the pack) works that screen and lights nothing.
+    if (element.classList.contains('tp-chip') && document.querySelector('#screens > .menu-overlay') === null) {
       openedBy = code;
       openedAt = Date.now();
       sawScreen = false;
@@ -419,9 +422,13 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
   };
 
   const drawShortcuts = () => {
-    const list = shortcutsFrom(host.scenes());
     // The key whose screen is up is lit, until that screen is put away.
     const screenUp = document.querySelector('#screens > .menu-overlay') !== null;
+    // A screen's own letter keys join the tray while it is up: the pack's
+    // DROP, the team's LEAD - read off its help line, as it teaches them.
+    const helpLines = screenUp ? [...document.querySelectorAll<HTMLElement>('#screens [data-help-default]')] : [];
+    const help = helpLines.at(-1)?.dataset.helpDefault ?? '';
+    const list = withMoment(shortcutsFrom(host.scenes()), helpLineKeys(help));
     if (screenUp) {
       sawScreen = true;
     } else if (openedBy && (sawScreen || Date.now() - openedAt > 1500)) {
