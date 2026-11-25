@@ -149,8 +149,8 @@ export const BAG_KITS = {
     signature: rows({ itemId: 'oran-berry', weight: 3 }, { itemId: 'cheri-berry' }, { itemId: 'repel' }),
     extras: EVERYDAY,
     finds: {
-      uncommon: rows({ itemId: 'super-potion', weight: 2 }, { itemId: 'repel' }, { itemId: 'sitrus-berry' }),
-      rare: rows({ itemId: 'old-rod', weight: 2 }, { itemId: 'raid-pack' }),
+      uncommon: rows({ itemId: 'super-potion', weight: 2 }, { itemId: 'repel' }, { itemId: 'sitrus-berry' }, { itemId: 'old-rod' }),
+      rare: rows({ itemId: 'raid-pack' }, { itemId: 'pickaxe' }),
       treasure: rows({ itemId: 'ranger-pack', weight: 2 }, { itemId: 'tm09-bullet-seed' }),
     },
   },
@@ -192,9 +192,9 @@ export const BAG_KITS = {
     signature: rows({ itemId: 'poke-ball', quantity: [1, 2], weight: 2 }, { itemId: 'oran-berry' }),
     extras: rows({ itemId: 'potion' }),
     finds: {
-      uncommon: rows({ itemId: 'super-potion', weight: 2 }, { itemId: 'mooring-rope' }),
-      rare: rows({ itemId: 'old-rod' }),
-      treasure: rows({ itemId: 'good-rod', weight: 2 }, { itemId: 'tm18-rain-dance' }),
+      uncommon: rows({ itemId: 'old-rod', weight: 2 }, { itemId: 'super-potion' }, { itemId: 'mooring-rope' }),
+      rare: rows({ itemId: 'good-rod' }),
+      treasure: rows({ itemId: 'tm18-rain-dance' }),
     },
   },
   beach: {
@@ -216,8 +216,8 @@ export const BAG_KITS = {
     signature: rows({ itemId: 'lamp-oil' }, { itemId: 'mooring-rope' }),
     extras: EVERYDAY,
     finds: {
-      uncommon: rows({ itemId: 'lockpick', weight: 2 }, { itemId: 'super-potion', weight: 2 }, { itemId: 'great-ball' }),
-      rare: rows({ itemId: 'lockpick', quantity: 2, weight: 2 }, { itemId: 'old-rod' }),
+      uncommon: rows({ itemId: 'lockpick', weight: 2 }, { itemId: 'super-potion', weight: 2 }, { itemId: 'old-rod' }),
+      rare: rows({ itemId: 'lockpick', quantity: 2 }),
       treasure: rows({ itemId: 'tm18-rain-dance' }),
     },
   },
@@ -241,7 +241,7 @@ export const BAG_KITS = {
     extras: rows({ itemId: 'potion' }),
     finds: {
       uncommon: rows({ itemId: 'parts-crate', weight: 2 }, { itemId: 'radio-valve' }, { itemId: 'super-potion' }),
-      rare: rows({ itemId: 'pickaxe', weight: 3 }, { itemId: 'lockpick' }),
+      rare: rows({ itemId: 'pickaxe', weight: 3 }, { itemId: 'lockpick', quantity: 2 }),
       treasure: rows({ itemId: 'ranger-pack' }),
     },
   },
@@ -265,7 +265,7 @@ export const BAG_KITS = {
     extras: rows({ itemId: 'great-ball' }),
     finds: {
       uncommon: rows({ itemId: 'radio-valve', weight: 2 }, { itemId: 'great-ball', quantity: 2, weight: 2 }, { itemId: 'repel', quantity: 2 }),
-      rare: rows({ itemId: 'lockpick' }, { itemId: 'chesto-berry', quantity: 2 }),
+      rare: rows({ itemId: 'lockpick', quantity: 2 }, { itemId: 'chesto-berry', quantity: 2 }),
       treasure: rows({ itemId: 'tm40-aerial-ace' }, { itemId: 'tm23-iron-tail' }, { itemId: 'tm13-ice-beam' }),
     },
   },
@@ -277,7 +277,7 @@ export const BAG_KITS = {
     extras: rows({ itemId: 'potion' }),
     finds: {
       uncommon: rows({ itemId: 'radio-valve', weight: 2 }, { itemId: 'super-potion' }),
-      rare: rows({ itemId: 'lockpick' }, { itemId: 'repel', quantity: 2 }),
+      rare: rows({ itemId: 'lockpick', quantity: 2 }, { itemId: 'repel', quantity: 2 }),
       treasure: rows({ itemId: 'quick-claw' }),
     },
   },
@@ -304,7 +304,7 @@ export const BAG_KITS = {
     extras: EVERYDAY,
     finds: {
       uncommon: rows({ itemId: 'super-potion' }, { itemId: 'great-ball' }),
-      rare: rows({ itemId: 'repel', quantity: 2 }, { itemId: 'lockpick' }),
+      rare: rows({ itemId: 'repel', quantity: 2 }, { itemId: 'lockpick', quantity: 2 }),
       treasure: rows({ itemId: 'ranger-pack' }),
     },
   },
@@ -399,7 +399,7 @@ export const HUNTER_KITS: Readonly<Record<HunterRivalId, BagKit>> = {
     extras: rows({ itemId: 'super-potion' }, { itemId: 'potion', quantity: 2 }),
     finds: {
       uncommon: rows({ itemId: 'sitrus-berry', weight: 2 }, { itemId: 'repel' }),
-      rare: rows({ itemId: 'lockpick' }, { itemId: 'lockpick', quantity: 2 }),
+      rare: rows({ itemId: 'lockpick', quantity: 2 }, { itemId: 'repel', quantity: 2 }),
       treasure: rows({ itemId: 'quick-claw', weight: 2 }, { itemId: 'tm40-aerial-ace' }),
     },
   },

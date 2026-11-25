@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ITEMS, type ItemId } from '../items/items';
 import { SEARCH_ROWS } from './cacheSearch';
 import { RACE_COURSES } from './races';
+import { TRADER_BARTERS } from '../hub/trader';
 import { MAP_FILE_LANDMARKS } from './mapFile';
 import { WORLD_POIS } from './pois';
 import { STAKE_SUPPLIES } from './raidStake';
@@ -122,6 +123,26 @@ describe("a beaten trainer's bag", () => {
     for (const kit of KITS) {
       for (const row of [...kit.finds.rare, ...kit.finds.treasure]) {
         expect(crateItems.has(row.itemId), `${kit.id} prizes ${row.itemId}, which a crate gives`).toBe(false);
+      }
+    }
+  });
+
+  it("never prizes less than two materials' worth of what Bill sells a regular: a marked trainer's find is worth the detour", () => {
+    // A single Lockpick, Repel or Old Rod is one material at his counter, any
+    // day; as a RARE FIND with the prize sound it would teach that the mark lies.
+    const cheap = new Map(
+      TRADER_BARTERS.filter((barter) => !barter.once && barter.standing !== 'trusted' && barter.standing !== 'partner').map((barter) => [
+        barter.gives.itemId,
+        barter.takes.reduce((sum, take) => sum + take.quantity, 0) / barter.gives.quantity,
+      ]),
+    );
+    for (const kit of KITS) {
+      for (const row of [...kit.finds.rare, ...kit.finds.treasure]) {
+        const least = typeof row.quantity === 'number' ? row.quantity : (row.quantity?.[0] ?? 1);
+        const cost = cheap.get(row.itemId);
+        if (cost !== undefined) {
+          expect(least * cost, `${kit.id} prizes ${least} ${row.itemId}`).toBeGreaterThanOrEqual(2);
+        }
       }
     }
   });
