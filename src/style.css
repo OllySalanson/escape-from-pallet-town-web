@@ -1750,8 +1750,24 @@ body.touch-play .feedback-tab {
   text-overflow: clip;
 }
 :where(.pixel-ui) .px-place {
+  position: relative;
   color: var(--bar-muted);
-  margin-right: calc(var(--u) * 6);
+  margin-right: calc(var(--u) * 10);
+}
+/* A drawn chevron in the rim's blue between the place and the screen's name,
+   so THE DOCKS and THE HARBOUR BOUTIQUE read as where, then what - with only a
+   gap between them they ran together as one name (critic sweep, 25 Nov 2026).
+   Drawn, because the face has no arrows. */
+:where(.pixel-ui) .px-place::after {
+  content: '';
+  position: absolute;
+  right: calc(var(--u) * -7);
+  top: calc(50% - var(--u) * 3);
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 5);
+  background: var(--rim);
+  mask: var(--px-cursor) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
 }
 :where(.pixel-ui) .px-title-aside {
   min-width: 0;

@@ -186,3 +186,13 @@ keeps it.
 | Before | After |
 |---|---|
 | ![](before-hp-numbers.png) | ![](after-hp-numbers.png) |
+
+## 13. Where, then what
+
+A title bar's place and the screen's name stood a gap apart, so THE DOCKS THE
+HARBOUR BOUTIQUE read as one name. A drawn chevron in the rim's blue stands
+between them now (`.px-place::after`).
+
+| Before | After |
+|---|---|
+| ![](before-breadcrumb.png) | ![](after-breadcrumb.png) |
