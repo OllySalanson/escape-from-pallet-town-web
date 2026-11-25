@@ -65,3 +65,39 @@ export const READING_PANES = '.px-scroll[data-reads][tabindex]';
  * could not find it again, so the cursor went back to the tools (playtest 48).
  */
 export const CURSOR_CONTROLS = `button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), ${READING_PANES}`;
+
+/**
+ * Where Tab takes the cursor between the areas of a screen (the navigation
+ * audit, 25 Nov 2026, rule 10: Tab hops between the areas of a screen and
+ * never leaves the panel). `areas` names the area of every control in reading
+ * order; the hop goes to the next area that has a control, round from the last
+ * to the first, or the other way with Shift. `landing` picks the control to
+ * land on in an area - the one the cursor was last on there - from its
+ * controls' indices, and the first of them is the fallback. Undefined when the
+ * screen has one area or none, so the cursor stays put.
+ *
+ * On THE ARMOURY RACK it is the one key from the supplies to the PACK: Left and
+ * Right are the counts', and Down crossed every supply row, about 47 presses on
+ * a full base, to reach the pack's squares.
+ */
+export function areaHopIndex(
+  areas: readonly string[],
+  current: number,
+  backwards: boolean,
+  landing: (area: string, indices: readonly number[]) => number | undefined = () => undefined,
+): number | undefined {
+  const order: string[] = [];
+  for (const area of areas) {
+    if (!order.includes(area)) {
+      order.push(area);
+    }
+  }
+  if (order.length < 2) {
+    return undefined;
+  }
+  const from = current >= 0 ? order.indexOf(areas[current]) : backwards ? 0 : order.length - 1;
+  const to = order[(from + (backwards ? order.length - 1 : 1)) % order.length];
+  const indices = areas.flatMap((area, index) => (area === to ? [index] : []));
+  const chosen = landing(to, indices);
+  return chosen !== undefined && indices.includes(chosen) ? chosen : indices[0];
+}
