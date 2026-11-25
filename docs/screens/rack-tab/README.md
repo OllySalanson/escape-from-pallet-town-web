@@ -7,8 +7,10 @@ Left and Right change a row's number there, so they could not cross
 (`before-rack.png`).
 
 Now Tab hops between the areas of any screen and never leaves the panel: on the
-rack, from the supplies to the pack, to DONE on the bar, to the panel's HALL
-header, and round to the supply row it left. Shift+Tab goes the other way.
+rack, from the supplies to the pack, to the X in the panel's header, and round
+to the supply row it left. Shift+Tab goes the other way. (When this was first
+made the rack also had a DONE button on its bar and a HALL button in its header;
+both have since gone, and only the X closes it.)
 `after-tab-to-pack.png` is one Tab from the supplies: the cursor is on the first
 piece in the pack, and the help line says the pack's own keys.
 

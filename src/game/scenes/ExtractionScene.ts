@@ -517,9 +517,10 @@ export class ExtractionScene extends Phaser.Scene {
       place: escapeHtml(report.eyebrow),
       title: '',
       aside: escapeHtml(this.clockAside()),
-      // The help strip says what becomes of the result, as the full report's
-      // does; the key for the report is on its button (the critic's third pass).
-      hints: escapeHtml(this.momentNote()),
+      // The help line says what becomes of the result, as the full report's
+      // does, over the keys line every screen keeps.
+      helpDefault: escapeHtml(this.momentNote()),
+      hints: this.resultKeys(true),
       body: `<main class="px-body extraction-moment-layout">${pixelWindow(
         `${picture}<strong class="px-name moment-headline" data-moment-headline>${escapeHtml(moment.headline)}</strong>${
           report.closeCall ? `<span class="px-wrap">${escapeHtml(report.closeCall)}</span>` : ''
@@ -648,9 +649,10 @@ export class ExtractionScene extends Phaser.Scene {
       place: escapeHtml(report.eyebrow),
       title: '',
       aside: escapeHtml(this.clockAside()),
-      // There is one control on this screen, so the help bar is free to carry
-      // what becomes of the result.
-      hints: escapeHtml(this.footerNote()),
+      // There is one control on this screen, so the help line is free to carry
+      // what becomes of the result, over the keys line.
+      helpDefault: escapeHtml(this.footerNote()),
+      hints: this.resultKeys(false),
       body: `<main class="px-body extraction-layout ${escaped ? 'extraction-won' : 'extraction-lost'}">${pixelWindow(
         `<strong class="px-name">${escapeHtml(report.headline)}</strong>${report.closeCall ? `<strong class="px-name">${escapeHtml(report.closeCall)}</strong>` : ''}${(report.badgesWon ?? []).map((line) => `<strong class="px-name px-wrap" data-badge-won>${escapeHtml(line)}</strong>`).join('')}<span class="px-wrap">${escapeHtml(this.verdictSummary())}</span>${report.beatenBy ? `<span class="px-wrap what-beat-you">What beat you? ${escapeHtml(report.beatenBy)}</span>` : ''}`,
         { className: `extraction-verdict ${escaped ? 'px-tone-primary' : 'px-tone-risk'}`, tag: 'div' },
@@ -670,7 +672,8 @@ export class ExtractionScene extends Phaser.Scene {
       place: this.report.takenUpElsewhere ? TAKEN_UP_ELSEWHERE.place : 'Raid settled elsewhere',
       title: '',
       aside: escapeHtml(this.clockAside()),
-      hints: escapeHtml(this.footerNote()),
+      helpDefault: escapeHtml(this.footerNote()),
+      hints: this.resultKeys(false),
       body: `<main class="px-body extraction-layout extraction-lost">${pixelWindow(
         `<strong class="px-name">${escapeHtml(words.headline)}</strong><span class="px-wrap">${escapeHtml(words.summary)}</span>`,
         { className: 'extraction-verdict px-tone-risk', tag: 'div' },
@@ -905,6 +908,12 @@ export class ExtractionScene extends Phaser.Scene {
       return 'Banked';
     }
     return this.spentSupplies ? 'You came home lighter' : 'You came home whole';
+  }
+
+  /** The result's keys line: OK goes on, and L opens the full report from the moment. */
+  private resultKeys(reportToOpen: boolean): string {
+    const on = currentTry() ? 'back to the maker' : 'back to the Arena';
+    return reportToOpen ? `ENTER ${on} · L full report` : `ARROWS read · ENTER ${on}`;
   }
 
   private footerNote(): string {

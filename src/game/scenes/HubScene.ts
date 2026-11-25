@@ -1713,8 +1713,15 @@ export class HubScene extends Phaser.Scene {
     return undefined;
   }
 
-  /** What the keys do, said once along the bottom of every screen. */
+  /**
+   * What the keys do, said once along the bottom of every screen, on a line of
+   * its own that never goes. The rack says its own: Left and Right are the
+   * counts', so Tab is the way across to the pack (`areaHopIndex`).
+   */
   private get hints(): string {
+    if (this.view === 'rack') {
+      return 'UP DOWN move · LEFT RIGHT how many · TAB the pack · ESC back';
+    }
     return 'ARROWS move · ENTER choose · ESC back';
   }
 

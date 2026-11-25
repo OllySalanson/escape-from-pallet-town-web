@@ -137,8 +137,8 @@ must answer the tile pointed at and the cursor's again once the pointer leaves,
 and a click must still press (`docs/screens/pointer-only/`).
 
 `rackTab.mjs <test-mode build url> <dir> [--port=N]` opens THE ARMOURY RACK on a
-long stash and presses Tab: supplies, then the pack, then DONE, then round to the
-supply row it left; Shift+Tab the other way; never out of the panel
+long stash and presses Tab: supplies, then the pack, then the header's X, then
+round to the supply row it left; Shift+Tab the other way; never out of the panel
 (`docs/screens/rack-tab/`).
 
 `slowLoad.mjs <cdp port> <build url> <dir> [kbit/s] [latency ms]` opens the game
