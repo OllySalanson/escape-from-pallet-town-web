@@ -37,25 +37,25 @@ import type { Stash } from '../stash';
  *    pack, cannot be packed *for* one, and are destroyed with the pack on a wipe
  *    unless the secure slot names it. There is no wallet anywhere in the save -
  *    a player's money is `stash.itemCount('money')` and nothing else.
- * 2. **Supplies are not freely purchasable.** His stock is gated twice over: by
- *    standing, which offers nothing at all until you have proved you extract,
- *    and by a ration of a few units per raid. Both gates bind at different
- *    times - the ration stops a hoarder converting a fortune into a shelf of
- *    Potions in one sitting, and the price stops everybody else. See
- *    `TRADER_STOCK` for the arithmetic that keeps a raid's scarcity real.
+ * 2. **The everyday stock is priced, the rest is earned.** Poké Balls and
+ *    Potions are sold to anybody, as many as the purse covers, and the price is
+ *    their only brake; everything better is gated twice, by standing and by a
+ *    ration of one a raid, so a fortune cannot become a shelf of Super Potions
+ *    in one sitting. See `TRADER_STOCK`.
  * 3. **The best things are barter only.** Gear and the evolution stone are on
  *    `TRADER_BARTERS`, paid for in found items and *never* in money, so no
  *    amount of money buys one. `TraderStockItem` is typed to `SupplyItemId`,
  *    which is derived from the catalogue rather than listed, so the compiler
  *    refuses a price tag on a piece of gear.
- * 4. **Sinks outweigh the faucet.** A raid finds roughly ₽40-70 on the ground
- *    (`worldMap.ts`) and the stake trail more, and a trainer beaten pays
- *    FireRed's prize money (`../world/prizeMoney.ts`: ₽60-180 for the vale's
- *    early trainers) - once a save, so a raid that fights somebody new buys
- *    two or three things here, and one that walks straight out, or beats the
- *    same trainers again, buys nothing. His stock is an
- *    unbounded drain at 80-260 a unit, and the berth is 250 every raid a player
- *    wants one. A player cannot out-earn him.
+ * 4. **Sinks outweigh the faucet.** A raid finds at most ₽75 on the ground
+ *    (two of the vale's spots hold money), ₽35 on the stake trail and, half the
+ *    time, ₽60-110 as the stake; the first hunter it beats pays ₽32-192 (capped,
+ *    `HUNTER_PRIZE_LEVEL_CAP`); and a trainer beaten pays FireRed's prize money
+ *    (`../world/prizeMoney.ts`: ₽72-384 for the vale's trainers, ₽6,300 between
+ *    the 36 of them) once a save. So an ordinary raid buys about one Potion
+ *    here, one that beats somebody new two or three more, and the purse that
+ *    grows is spent on what lasts: the berth at 250 a trip and the Boutique's
+ *    looks. A player cannot out-earn him.
  *
  * Everything here is a pure function over the stash and the save's own record,
  * so the rules are testable without Phaser; `HubScene` renders them and
@@ -202,12 +202,13 @@ export function getTraderStanding(id: TraderStandingId): TraderStanding {
  * exactly the faucet that would undo it.
  *
  * The prices are the second gate, and they are set against the faucet rather
- * than against what the item feels worth. A raid brings home roughly ₽40-70,
- * so a Potion at 120 is about two raids of scavenging and a Super Potion
- * at 260 is four. A raid is measured at three Potions of consumption, so even a
- * player who spends every Pokedollar he finds is replacing well under half of what a
- * raid drinks: Bill is a backstop on a bad week, never a supply line.
- * That is what keeps scarcity real with money in the game.
+ * than against what the item feels worth. An ordinary raid brings home about
+ * ₽110-170 (constraint 4), so a Potion at 120 is about a raid and a Super
+ * Potion at 260 two. A raid is measured at three Potions of consumption, so a
+ * player who spends everything an ordinary raid earns replaces about a third
+ * of what it drinks: new trainers beaten are what keep a team stocked, and
+ * once they are all beaten Bill is a backstop, never a supply line. That is
+ * what keeps scarcity real with money in the game.
  */
 export interface TraderStockItem {
   readonly itemId: SupplyItemId;

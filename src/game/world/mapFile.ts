@@ -2866,6 +2866,25 @@ export function placeSlug(name: string): string {
   return foldedSlug(name);
 }
 
+/**
+ * Each placed trainer's id: the map's, the room they stand in and their name,
+ * with a count only where two of one name share a room - never where they fall
+ * in the file's list. A save keeps these for good (`raidProgress.trainersPaid`,
+ * `world/prizeMoney.ts`), and the vale's list has been redrawn from 31 to 42 to
+ * 45 to 36 with trainers added mid-list, so an id that was a place in the list
+ * would have pointed at somebody else after the next redraw (the fresh critic,
+ * 25 Nov 2026).
+ */
+export function placedTrainerIds(mapId: string, trainers: readonly Pick<MapFileTrainer, 'name' | 'area'>[]): readonly string[] {
+  const seen = new Map<string, number>();
+  return trainers.map((placed) => {
+    const base = `${mapId}/trainer-${placed.area === undefined ? '' : `${placeSlug(placed.area)}-`}${placeSlug(placed.name)}`;
+    const count = (seen.get(base) ?? 0) + 1;
+    seen.set(base, count);
+    return count === 1 ? base : `${base}-${count}`;
+  });
+}
+
 export function playerMapId(file: Pick<MapFile, 'id'>): PlayerMapId {
   return `${PLAYER_MAP_PREFIX}${file.id}`;
 }
@@ -3526,8 +3545,9 @@ export function buildFileMap(
         }),
       ),
     ),
-    trainers: () =>
-      (file.trainers ?? []).map((placed, index) => {
+    trainers: () => {
+      const trainerIds = placedTrainerIds(id, file.trainers ?? []);
+      return (file.trainers ?? []).map((placed, index) => {
         const template = trainerTemplate(placed.team);
         const name = placed.name.toUpperCase();
         // The measured team as measured: its own moves, not its level's.
@@ -3549,14 +3569,15 @@ export function buildFileMap(
           // team's own trainer does (`trainersForContract`).
           ...(template.firstContractParty ? { firstContractParty: fresh(template.firstContractParty) } : {}),
           trainer: {
-            id: `${id}/trainer-${index + 1}`,
+            id: trainerIds[index],
             name,
             party: fresh(template.trainer.party),
             defeatText: trainerDefeatLine(name),
             unitCount: template.trainer.unitCount,
           },
         };
-      }),
+      });
+    },
     exits: file.exits.map((exit) => {
       const unlockAtMs = exit.opens.when === 'after' ? exit.opens.seconds * 1_000 : 0;
       return {
