@@ -2521,6 +2521,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       frameLeftMs = 0;
     }
 
+    // Over a race's line on this step: the crossing came first, before any
+    // hunter could reach a player standing on it, so it is called first and the
+    // fight follows the result rather than being counted into it.
+    if (this.tryCrossRaceLine()) {
+      return;
+    }
+
     // A hunter that walked up to a player standing still - its idle step, or
     // a step taken while a box was being read - catches them here, the first
     // moment there is nothing on screen to read. Before the exit, because it
@@ -2540,7 +2547,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.dialogBox.showMessage(gaveUpWaitingLine(liningUp.course));
       return;
     }
-    if (this.tryToeTheMark() || this.tryCrossRaceLine() || this.sayRaceNotice()) {
+    if (this.tryToeTheMark() || this.sayRaceNotice()) {
       return;
     }
 
@@ -8655,7 +8662,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private toggleBike(): string | null {
     const racing = this.runSession?.race;
     if (!this.riding && racing?.phase === 'lining-up') {
-      return `${courseById(racing.courseId)?.racer.name ?? 'The racer'}'s waiting for you at the chalk mark. Talk to them to call the race off first.`;
+      return `${courseById(racing.courseId)?.racer.name ?? 'The racer'}'s waiting for you at the chalk mark. Talk to her to call the race off first.`;
     }
     if (!this.riding && racing && racing.phase !== 'over') {
       return 'On foot, no wheels - not until the race is over.';
