@@ -289,18 +289,24 @@ export function deployOptions(args) {
 
 /**
  * PLAYTEST on the title, into the harbour of a fresh explorer run. A browser
- * that already holds an explorer save is asked first - CARRY ON or START A
+ * with none is asked whether it means to (`sandboxMenu`); one that already holds an explorer save is asked first - CARRY ON or START A
  * FRESH ONE (`playtestMenu`) - and the driver that pressed PLAYTEST once waited
  * on the harbour behind that question until it gave up, so every explorer
  * driver failed the second time it ran in the same browser. A fresh run is what
  * the first time gives, so that is the answer.
  */
 export async function startExplorerRun(page, { press, until }) {
-  const asked = `${GAME}?.scene.getScene('title')?.menu?.question === 'PLAYTEST RUN'`;
+  const question = `${GAME}?.scene.getScene('title')?.menu?.question`;
+  const asked = `${question} === 'PLAYTEST RUN'`;
+  // A browser with no explorer save is told what the sandbox is first
+  // (`sandboxMenu`, cursor on BACK), and EXPLORE IT is above it.
+  const told = `${question} === 'A SANDBOX, NOT THE GAME'`;
   await press('ArrowDown'); await press('ArrowRight'); await press('Space');
-  await until(`${sceneIs('base')} || ${asked}`, "the harbour, or the explorer run's question");
+  await until(`${asked} || ${told}`, "the explorer run's question");
   if (await page.evaluate(asked)) {
     await press('ArrowDown'); await press('Space');
+  } else {
+    await press('ArrowUp'); await press('Space');
   }
   await until(sceneIs('base'));
 }

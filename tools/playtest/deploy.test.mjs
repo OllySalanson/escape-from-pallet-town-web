@@ -133,6 +133,20 @@ function titleWithExplorerSave(hasExplorerSave) {
   let base = false;
   const press = async (code) => {
     if (base) return;
+    if (title.menu.question === 'A SANDBOX, NOT THE GAME') {
+      if (code === 'ArrowUp') title.choice = 'fresh-playtest';
+      if (code === 'ArrowDown') title.choice = 'back';
+      if (code === 'Space') {
+        if (title.choice === 'back') {
+          title.menu = { question: undefined };
+          title.choice = 'playtest';
+          return;
+        }
+        title.startedFresh = true;
+        base = true;
+      }
+      return;
+    }
     if (title.menu.question === 'PLAYTEST RUN') {
       if (code === 'ArrowDown') title.choice = 'fresh-playtest';
       if (code === 'ArrowUp') title.choice = 'resume-playtest';
@@ -150,8 +164,8 @@ function titleWithExplorerSave(hasExplorerSave) {
         title.menu = { question: 'PLAYTEST RUN' };
         title.choice = 'resume-playtest';
       } else {
-        title.startedFresh = true;
-        base = true;
+        title.menu = { question: 'A SANDBOX, NOT THE GAME' };
+        title.choice = 'back';
       }
     }
   };

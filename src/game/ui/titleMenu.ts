@@ -35,7 +35,8 @@ export type TitleChoiceId =
   | 'maker'
   | 'playtest'
   | 'resume-playtest'
-  | 'fresh-playtest';
+  | 'fresh-playtest'
+  | 'back';
 
 export interface TitleChoice {
   readonly id: TitleChoiceId;
@@ -119,6 +120,29 @@ export function playtestMenu(): TitleMenu {
   };
 }
 
+/** What the sandbox question asks, so a driver can tell it from the others. */
+export const SANDBOX_QUESTION = 'A SANDBOX, NOT THE GAME';
+
+/**
+ * Asked the first time PLAYTEST is pressed in a browser with no explorer run
+ * to come back to. Its button sits beside NEW GAME on a first visit, and the
+ * overnight critic pressed it and was handed a level 99 Charizard, the whole
+ * map and a clock of eight hours without a word (problem 18, 25 Nov 2026): a
+ * newcomer who took that for the game would have seen nothing of it. So it
+ * says what it is before it starts, and starts on the answer that changes
+ * nothing, since NEW GAME is what a newcomer came for.
+ */
+export function sandboxMenu(): TitleMenu {
+  return {
+    question: SANDBOX_QUESTION,
+    initial: 'back',
+    choices: [
+      { id: 'fresh-playtest', label: 'EXPLORE IT', enabled: true },
+      { id: 'back', label: 'BACK', enabled: true },
+    ],
+  };
+}
+
 /** Whether choosing New Game has to ask first. */
 export function needsEraseConfirmation(summary: SaveSummary): boolean {
   return summary.kind !== 'none';
@@ -132,6 +156,9 @@ export function needsEraseConfirmation(summary: SaveSummary): boolean {
 export function titleHint(menu: TitleMenu, choice: TitleChoiceId): string {
   if (choice === 'playtest') {
     return 'EXPLORE FREELY · YOUR SAVED GAME IS UNTOUCHED';
+  }
+  if (menu.question === SANDBOX_QUESTION) {
+    return choice === 'fresh-playtest' ? 'LV 99 TEAM · WHOLE MAP OPEN · NOTHING COUNTS' : 'BACK TO THE TITLE';
   }
   if (choice === 'maker') {
     return 'DRAW YOUR OWN RAID MAP';
