@@ -293,6 +293,7 @@ import {
 } from '../run/raidSettlement';
 import { BASE_STAGE_WIDTH } from '../display/stage';
 import { RaidHud } from '../ui/RaidHud';
+import { MapScreen } from '../ui/MapScreen';
 import { PanelLean, type SidePanelView } from '../ui/sidePanel';
 import { HunterEdgeGlow } from '../ui/HunterEdgeGlow';
 import { prefersReducedMotion } from '../ui/reducedMotion';
@@ -358,6 +359,8 @@ import {
 } from '../world/interiors';
 import { WeatherId } from '../pokemon/battle/weather';
 import { SURVEY_RADIUS, tilesAround } from '../world/minimap';
+import { chartTileOf } from '../world/chart';
+import { troddenTiles } from '../world/trodden';
 import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { UI } from '../ui/uiPalette';
 import { HINT_MARGIN, HINT_PADDING_X, HINT_PADDING_Y, spaceHint } from '../ui/hintLine';
@@ -871,6 +874,8 @@ interface ControlKeys {
   bag: Phaser.Input.Keyboard.Key;
   save: Phaser.Input.Keyboard.Key;
   objectives: Phaser.Input.Keyboard.Key;
+  /** THE MAP (`ui/MapScreen.ts`). */
+  map: Phaser.Input.Keyboard.Key;
   back: Phaser.Input.Keyboard.Key;
   /** The look: every name on the screen while it is held - see `captionReveal.ts`. */
   look: Phaser.Input.Keyboard.Key;
@@ -1321,6 +1326,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private onRadio = false;
   /** O was pressed mid-step: he is called on the tile the step ends on. */
   private radioDue = false;
+  /** THE MAP, while it is open over the raid: the world goes on under it (`openMap`). */
+  private mapScreen: MapScreen | null = null;
+  /** M was pressed mid-step: the map opens on the tile the step ends on, as the radio does. */
+  private mapDue = false;
   private radioChip: RadioChip | undefined;
   /** The pointer came down while a box was up: read as the key that moves it on. */
   private boxClicked = false;
@@ -1472,6 +1481,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   private resetStateFromPreviousRaid(): void {
     this.lookMs = 0;
+    // Closed, not forgotten: a screen left up would hold the keyboard over whatever came next.
+    this.mapScreen?.close();
+    this.mapScreen = null;
+    this.mapDue = false;
     this.bagLines = [];
     this.bagsFalling = [];
     this.trainerGlints.clear();
@@ -2617,6 +2630,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.updateOmen(deltaMs);
     this.advanceVillageCalls(deltaMs);
     this.listenToTheWater(deltaMs);
+    if (this.mapScreen && this.keepMapOpen(deltaMs)) {
+      return;
+    }
     if (this.pendingHubTransition) {
       this.handleDialogInput();
       return;
@@ -2686,6 +2702,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
 
+    if (this.keyPresses.justPressed(this.controls.map)) {
+      this.learnKey('map');
+      if (!this.targetTile) {
+        this.openMap();
+        return;
+      }
+      this.mapDue = true;
+    }
+
     if (this.keyPresses.justPressed(this.controls.save)) {
       this.saveGame();
       return;
@@ -2753,6 +2778,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (this.radioDue) {
       this.radioDue = false;
       this.callOak();
+      return;
+    }
+
+    // And M, the same.
+    if (this.mapDue) {
+      this.mapDue = false;
+      this.openMap();
       return;
     }
 
@@ -6739,7 +6771,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const held = Boolean(this.dialogBox?.visible || this.cutscene || this.fishing);
     const standing = RAID_KEY_WORDS.map(([id, word]) => ({
       ...letterShortcut(RAID_KEY_LETTERS[id], word),
-      ...(held && (id === 'bag' || id === 'party') ? { inert: true } : {}),
+      ...(held && (id === 'bag' || id === 'party' || id === 'map') ? { inert: true } : {}),
     }));
     const rooms = friendRoom();
     const inRoom = Boolean(rooms?.room && rooms.room.mapId === this.currentMap?.id && this.runSession);
@@ -6818,6 +6850,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       walking: this.targetTile !== null,
       // The hint line at the foot: what SPACE works on the tile faced.
       hint: this.hintShown || null,
+      // THE MAP on M, while it is open: how many tiles it shows in colour, once drawn.
+      chart: this.mapScreen ? { known: this.mapScreen.knownTiles } : null,
       dialogue: this.dialogBox.visible
         ? {
             text: this.dialogBox.shownText.replace(/\s+/g, ' ').trim(),
@@ -6927,6 +6961,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     this.surveyedFrom = index;
+    (session.trodden ??= new Set<number>()).add(index);
     this.surveyAround(this.currentTile);
     this.noteTheWalk();
   }
@@ -6992,6 +7027,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       {
         width: this.currentMap.width,
         walked: this.runSession?.surveyed ?? [],
+        trodden: this.runSession?.trodden ?? [],
       },
       {
         walk: this.runSession?.walk,
@@ -7248,6 +7284,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       Phaser.Input.Keyboard.KeyCodes.ENTER,
       Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.party],
       Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.bag],
+      Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.map],
       Phaser.Input.Keyboard.KeyCodes.K,
     ]);
     this.input.keyboard.on?.(`keydown-${MUTE_KEY}`, () => audioManager.toggleMute());
@@ -7267,6 +7304,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       bag: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.bag]),
       save: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K),
       objectives: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.objectives]),
+      map: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.map]),
       // Never captured: an overlay above the world must keep its own Escape.
       back: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC, false),
       look: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.look]),
@@ -7290,6 +7328,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.controls.bag,
       this.controls.save,
       this.controls.objectives,
+      this.controls.map,
       this.controls.back,
       this.controls.talk,
       this.controls.ping,
@@ -8166,6 +8205,90 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     audioManager.play('menuOpen');
     this.scene.pause();
     this.scene.launch('party', { party: this.party, bag: this.bag, view: this.besidePanel });
+  }
+
+  /**
+   * THE MAP over the raid (`ui/MapScreen.ts`). The world is not paused under it,
+   * as it is under the pack: the captain asked for the raid clock to keep
+   * running while the map is open (25 Nov 2026), and a clock that runs while
+   * the hunter stands still would be a pause by another name. So the player
+   * stands where they are, the clock is drawn on the map, and the map is
+   * closed by anything the world raises (`keepMapOpen`).
+   */
+  private openMap(): void {
+    if (this.mapScreen) {
+      return;
+    }
+    this.showIdlePose();
+    const map = this.currentMap;
+    const saved = troddenTiles(new SaveManager().load()?.raidProgress.trodden?.[map.id], map.width);
+    const walking = this.runSession?.trodden;
+    // However the world goes - a scene started without a door or a warp to say
+    // so - the map goes with it rather than staying up over the next screen.
+    const shutDown = (): void => this.mapScreen?.close();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, shutDown);
+    this.mapScreen = new MapScreen(
+      this,
+      {
+        mapId: map.id,
+        isKnown: (tile) => {
+          const index = tile.y * map.width + tile.x;
+          return saved.has(index) || walking?.has(index) === true;
+        },
+        standing: chartTileOf(map, this.currentTile),
+        ...(this.runSession ? { clockMs: this.runSession.manager.remainingMs() } : {}),
+      },
+      () => {
+        this.mapScreen = null;
+        this.events.off(Phaser.Scenes.Events.SHUTDOWN, shutDown);
+        // A direction let go while the map was up was never heard going down.
+        this.spentPresses.spendHeld(this.directionKeys);
+      },
+    );
+  }
+
+  /**
+   * One frame of the raid with the map open: the clock and the world have
+   * already moved on above, so this only keeps the clock on the map in step,
+   * and closes the map the moment the world wants the screen - a box to read,
+   * a fight, a door, the clock running out, the hunter arriving at the
+   * player's side. Returns whether the map is still open, and owns the frame.
+   */
+  private keepMapOpen(deltaMs: number): boolean {
+    const screen = this.mapScreen;
+    if (!screen) {
+      return false;
+    }
+    const wanted = Boolean(
+      this.pendingHubTransition ||
+      this.isWarping ||
+      this.trainerPrompt !== undefined ||
+      this.cutscene !== undefined ||
+      this.fishing !== undefined ||
+      this.dialogBox.visible ||
+      this.pendingVoyage ||
+      this.voyaging ||
+      this.pendingTrainerBattle !== undefined ||
+      this.pendingWildBattle !== undefined,
+    );
+    if (wanted) {
+      screen.close();
+      return false;
+    }
+    if (this.runSession) {
+      screen.setClock(this.runSession.manager.remainingMs());
+    }
+    // The map opens only at rest, but the world may still move the player under
+    // it (a slide on ice runs on by itself): a step begun is finished.
+    if (this.targetTile) {
+      this.advanceStep(deltaMs);
+    }
+    // What reaches the player standing still reaches them under the map too: the
+    // hunter at their side, and a way out opening under their feet.
+    if (this.tryStartHunterBattle() || this.tryExtractWhereStanding()) {
+      screen.close();
+    }
+    return this.mapScreen !== null;
   }
 
   private openBag(): void {

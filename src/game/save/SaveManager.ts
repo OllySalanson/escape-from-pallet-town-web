@@ -125,6 +125,7 @@ import {
 import { getWorldMap, isWorldMapId, type WorldMapId } from '../worldMap';
 import type { GrowthRate } from '../pokemon/generated/speciesCatalogue';
 import { mergeSurvey, type SurveyRecord } from '../world/survey';
+import { mergeTrodden, troddenFromSurvey } from '../world/trodden';
 import { activeSaveSlot, PLAYTEST_SAVE_KEY, TRY_IT_SAVE_KEY, type SaveSlot } from '../dev/playtestMode';
 import { isFirstWordsId, type FirstWordsId } from '../hub/firstWords';
 import {
@@ -611,6 +612,12 @@ export interface RaidProgress {
    * with a way in on it rather than on a black square.
    */
   readonly surveyed?: SurveyRecord;
+  /**
+   * The tiles the player has stood on, per map, in the survey's bitset
+   * (`world/trodden.ts`): what THE MAP on M shows in colour. A save from before
+   * it was kept is given what its survey says it walked when it is read.
+   */
+  readonly trodden?: SurveyRecord;
 }
 
 /** One map's raid history. Every other number on the drop-in screen is derived. */
@@ -703,6 +710,7 @@ export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   secureArrangement: EMPTY_ARRANGEMENT,
   raidRecord: {},
   surveyed: {},
+  trodden: {},
 };
 
 export interface SaveData {
@@ -2605,7 +2613,7 @@ export class SaveManager {
   public recordRaidEnded(
     mapId: string,
     outcome: 'extracted' | 'wiped',
-    survey: { readonly width: number; readonly walked: Iterable<number> } | undefined = undefined,
+    survey: { readonly width: number; readonly walked: Iterable<number>; readonly trodden?: Iterable<number> } | undefined = undefined,
     memory: { readonly walk: RaidWalk | undefined; readonly ending: { readonly kind: RaidMarkKind; readonly line: string } } | undefined = undefined,
     clockMs: number | undefined = undefined,
     raidId: string | undefined = undefined,
@@ -2627,6 +2635,10 @@ export class SaveManager {
         surveyed: {
           ...(raidProgress.surveyed ?? {}),
           [mapId]: mergeSurvey(raidProgress.surveyed?.[mapId], survey.width, survey.walked),
+        },
+        trodden: {
+          ...(raidProgress.trodden ?? {}),
+          [mapId]: mergeTrodden(raidProgress.trodden?.[mapId], survey.width, survey.trodden ?? []),
         },
       };
     }
@@ -3436,6 +3448,9 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // not been here" rather than as a raid that went badly.
     raidRecord: clampRaidRecord(value.raidRecord),
     surveyed: clampSurvey(value.surveyed),
+    // Read off the survey on a save written before the steps were kept, so a
+    // player who has walked half the vale does not open THE MAP on fog.
+    trodden: value.trodden === undefined ? troddenFromSurvey(clampSurvey(value.surveyed)) : clampSurvey(value.trodden),
     // The starting area is never lost, so a save written before Floodplain Relay
     // became the first raid still opens on an insertion the player can use, and
     // a save that already banked the contract gets every level the contract now

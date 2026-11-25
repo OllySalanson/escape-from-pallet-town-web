@@ -90,6 +90,7 @@ const RAID_WORD_CONTROLS: Readonly<Record<string, string>> = {
   LOOK: 'look',
   PACK: 'bag',
   TEAM: 'party',
+  MAP: 'map',
 };
 
 describe('the keys a HUD names', () => {
@@ -98,7 +99,7 @@ describe('the keys a HUD names', () => {
     const line = objectiveChipLines('LOST KIT: SW', false, false, new Set())[1];
     const named = namedKeys(line);
 
-    expect(named.map(([, word]) => word)).toEqual(['OAK', 'LOOK', 'PACK', 'TEAM']);
+    expect(named.map(([, word]) => word)).toEqual(['OAK', 'LOOK', 'PACK', 'TEAM', 'MAP']);
     for (const [key, word] of named) {
       const control = controls[RAID_WORD_CONTROLS[word]] as BoundKey;
       expect(control.keyCode, `${word} is named as [${key}]`).toBe(KEY_CODES[key]);
@@ -154,6 +155,7 @@ describe('the keys a HUD names', () => {
       ['B', 'THINGS'],
       ['P', 'TEAM'],
       ['X', 'DEX'],
+      ['M', 'MAP'],
       ['T', 'SAY'],
     ]);
     expect((controls.look as BoundKey).keyCode).toBe(KEY_CODES.L);
@@ -161,6 +163,7 @@ describe('the keys a HUD names', () => {
     expect((controls.things as BoundKey).keyCode).toBe(KEY_CODES.B);
     expect((controls.team as BoundKey).keyCode).toBe(KEY_CODES.P);
     expect((controls.dex as BoundKey).keyCode).toBe(KEY_CODES.X);
+    expect((controls.map as BoundKey).keyCode).toBe(KEY_CODES.M);
     expect((controls.talk as BoundKey).keyCode).toBe(KEY_CODES.T);
     for (const direction of ['up', 'down', 'left', 'right'] as const) {
       expect((controls[direction] as BoundKey).keyCode).toBe(KEY_CODES[direction.toUpperCase()]);
@@ -218,25 +221,26 @@ describe('the keys the house names', () => {
 describe('a key is named until it has been used once', () => {
   it('drops each key from the chip as it is learned, and the chip is one line once all are', () => {
     const learned = new Set<string>();
-    expect(objectiveChipLines('KIT: S', false, false, learned)[1]).toBe('[O] OAK  [L] LOOK  [B] PACK  [P] TEAM');
+    expect(objectiveChipLines('KIT: S', false, false, learned)[1]).toBe('[O] OAK  [L] LOOK  [B] PACK  [P] TEAM  [M] MAP');
 
     learned.add('bag');
-    expect(objectiveChipLines('KIT: S', false, false, learned)[1]).toBe('[O] OAK  [L] LOOK  [P] TEAM');
+    expect(objectiveChipLines('KIT: S', false, false, learned)[1]).toBe('[O] OAK  [L] LOOK  [P] TEAM  [M] MAP');
 
-    learned.add('party').add('look').add('objectives');
+    learned.add('party').add('look').add('objectives').add('map');
     expect(objectiveChipLines('KIT: S', false, false, learned)).toEqual(['KIT: S']);
     // A new objective still names the two keys the raid is read with.
     expect(objectiveChipLines('KIT: S', true, false, learned)).toEqual(['KIT: S', '[O] OAK  [L] LOOK']);
   });
 
   it('empties the yard line as the yard is learned', () => {
-    expect(yardKeyHintLine(new Set(['walk']))).toBe('[L] LOOK   [O] FAVOURS   [B] THINGS   [P] TEAM   [X] DEX   [T] SAY');
-    expect(yardKeyHintLine(new Set(['walk', 'look']))).toBe('[O] FAVOURS   [B] THINGS   [P] TEAM   [X] DEX   [T] SAY');
-    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours']))).toBe('[B] THINGS   [P] TEAM   [X] DEX   [T] SAY');
-    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours', 'things']))).toBe('[P] TEAM   [X] DEX   [T] SAY');
-    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours', 'things', 'team']))).toBe('[X] DEX   [T] SAY');
-    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours', 'things', 'team', 'dex']))).toBe('[T] SAY');
-    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours', 'things', 'team', 'dex', 'talk']))).toBe('');
+    expect(yardKeyHintLine(new Set(['walk']))).toBe('[L] LOOK   [O] FAVOURS   [B] THINGS   [P] TEAM   [X] DEX   [M] MAP   [T] SAY');
+    expect(yardKeyHintLine(new Set(['walk', 'look']))).toBe('[O] FAVOURS   [B] THINGS   [P] TEAM   [X] DEX   [M] MAP   [T] SAY');
+    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours']))).toBe('[B] THINGS   [P] TEAM   [X] DEX   [M] MAP   [T] SAY');
+    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours', 'things']))).toBe('[P] TEAM   [X] DEX   [M] MAP   [T] SAY');
+    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours', 'things', 'team']))).toBe('[X] DEX   [M] MAP   [T] SAY');
+    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours', 'things', 'team', 'dex']))).toBe('[M] MAP   [T] SAY');
+    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours', 'things', 'team', 'dex', 'map']))).toBe('[T] SAY');
+    expect(yardKeyHintLine(new Set(['walk', 'look', 'favours', 'things', 'team', 'dex', 'map', 'talk']))).toBe('');
   });
 
   it('is remembered by the save, once each', () => {

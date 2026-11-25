@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MUTE_KEY } from '../input/keyBindings';
 import { audioManager } from '../audio/AudioManager';
 import { SaveManager, type SaveSummary } from '../save/SaveManager';
 import { getStarterSpecies } from '../stash';
@@ -260,7 +261,7 @@ export class TitleScene extends Phaser.Scene {
     onKey('A', () => this.moveAcross(-1));
     onKey('D', () => this.moveAcross(1));
     onKey('ESC', () => this.backOut());
-    onKey('M', () => audioManager.toggleMute());
+    onKey(MUTE_KEY, () => audioManager.toggleMute());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.naming?.destroy();
       this.naming = null;

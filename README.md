@@ -378,7 +378,8 @@ sightseeing.
 | <kbd>O</kbd> | Professor Oak on the radio; again for the whole field guide | Every favour you have been asked, on one screen |
 | <kbd>L</kbd> (hold) | Look: every caption on screen speaks | Look |
 | <kbd>T</kbd> | Raiding with a friend: pick a quick phrase to say | Pick a quick phrase to say |
-| <kbd>M</kbd> | Sound off, and on again. The game remembers which | Sound off, and on again |
+| <kbd>M</kbd> | The map, close round you: everywhere you've stood is in colour, the rest is fog. <kbd>Z</kbd> for the whole vale, the arrows to look about. The raid clock keeps ticking while you look | The whole vale, to plan the next raid on |
+| <kbd>N</kbd> | Sound off, and on again. The game remembers which | Sound off, and on again |
 | <kbd>H</kbd> | Nothing: the decorating stays at home | In THE BOLTHOLE: move the furniture about. <kbd>R</kbd> turns a piece, <kbd>Q</kbd> <kbd>E</kbd> walk the box |
 | <kbd>F</kbd> | Call Oak's lab: tell us what just happened, with a picture of it | Call Oak's lab |
 | <kbd>Esc</kbd> | Close a screen, hang up on Oak, or skip somebody's talk | Back out of a screen, or skip somebody's talk |
@@ -388,7 +389,7 @@ a trackpad, and the keys just pick your tool.
 
 **On a phone or a tablet** the game grows a Game Boy under your thumbs: a d-pad, **OK** (that's
 <kbd>Space</kbd>) and **BACK** (<kbd>Esc</kbd>), and a row of buttons for whatever the screen in
-front of you can do - PACK, TEAM, OAK and LOOK on a raid, DECORATE in your own house. Hold it upright
+front of you can do - PACK, TEAM, OAK, LOOK and MAP on a raid, DECORATE in your own house. Hold it upright
 and the game sits on top; turn it on its side and the pad splits either side of it. Every menu is
 tappable too. Plug a keyboard in and the pad steps aside until you touch the screen again. Add it to
 your home screen and it opens full screen, like any other game on there.

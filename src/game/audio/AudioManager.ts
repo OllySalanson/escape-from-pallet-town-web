@@ -98,7 +98,7 @@ const DEFAULT_VOLUME = 0.55;
 const SILENCE_BACKGROUND_THEMES: boolean = true;
 
 /**
- * Where M's choice is kept, so a player who muted the game is not met by its
+ * Where the mute key's choice is kept (`MUTE_KEY`), so a player who muted the game is not met by its
  * sounds again on every visit (scenario loop, 22 Nov 2026: the mute was
  * forgotten on each reload). A per-browser convenience, never part of the save:
  * a browser that stores nothing simply starts with sound, as it always did.
