@@ -78,7 +78,8 @@ Then walk round the rim and look down. Every little gold light in the pit is a w
 one you're standing over is the one you'll get. Press SPACE, read what you've got at stake, and go over the
 fence: down past the steps, through the cloud, and out of the sky into the raid. (You land on your feet.
 Walk out alive and you'll come back to that same spot on the rim, and watch the cloud lift off
-everywhere you've just been.)
+everywhere you've just been.) Your very first raid opens on Mill Square with a Pidgey pecking about the
+cobbles and Oak in your ear. Catch it, and you've got something to lose - and somebody has heard you do it.
 
 Want the whole lot at once? There's a big brass telescope on the rail to the left and another to the right.
 Put your eye to one and you get all of Greystone Vale on one screen, cloud, way-in lights and whatever that is

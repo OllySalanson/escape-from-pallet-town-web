@@ -248,6 +248,15 @@ import {
 import { DEFAULT_RAID_PROGRESS, SaveManager, raidsDeployed, type RestoredGame } from '../save/SaveManager';
 import { gymOf, nextGym } from '../world/valeQuarters';
 import { fieldHealHint } from '../world/fieldHealHint';
+import {
+  FIRST_CATCH_AGAIN_LINE,
+  FIRST_CATCH_CUE,
+  FIRST_CATCH_LANDING_LINES,
+  FIRST_CATCH_LEVEL,
+  FIRST_CATCH_SPECIES,
+  firstCatchCaughtLines,
+  firstCatchFigures,
+} from '../world/firstCatch';
 import { usableBattleItems } from '../pokemon/battle/battleItems';
 import { Bag, ITEMS, formatMoney, getItemById, isCurrency, itemAmountsFor, type ItemDefinition, type ItemId } from '../items';
 import {
@@ -1683,15 +1692,23 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // Said on the return from the fight that won it, and raised as an
       // interruption so the key already held walks the player at the door.
       this.interrupt([...openedGates, ...bagLines]);
-    } else if (data.returnLocation !== undefined) {
+    } else if (data.returnLocation !== undefined && !this.sayFirstCatchOutcome()) {
       this.sayFieldHealHint();
     }
   }
 
   /** Oak on the radio after a fight that left somebody worn out, until the pack is known (`world/fieldHealHint.ts`). */
   private sayFieldHealHint(): void {
+    const line = this.fieldHealLine();
+    if (line !== null) {
+      this.interrupt([line]);
+    }
+  }
+
+  /** The line `sayFieldHealHint` says, if it is owed, marked said. */
+  private fieldHealLine(): string | null {
     if (isPlaytestRun() || !this.runSession || this.runSession.fieldHealHintSaid) {
-      return;
+      return null;
     }
     const healer = usableBattleItems(this.bag).find((item) => item.effect.type === 'heal' && this.bag.count(item.id) > 0);
     const line = fieldHealHint(
@@ -1701,8 +1718,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     );
     if (line !== null) {
       this.runSession.fieldHealHintSaid = true;
-      this.interrupt([line]);
     }
+    return line;
   }
 
   /**
@@ -7410,8 +7427,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
 
-    if (entity?.pokemon && entity.wildLevel !== undefined) {
-      this.meetPokemon(entity, entity.pokemon, entity.wildLevel);
+    const firstCatch = entity !== undefined && this.firstCatchFigure()?.id === entity.id;
+    if (entity?.pokemon && (entity.wildLevel !== undefined || firstCatch)) {
+      this.meetPokemon(entity, entity.pokemon, entity.wildLevel ?? FIRST_CATCH_LEVEL, firstCatch);
       return;
     }
 
@@ -7457,14 +7475,25 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * It is marked met as the fight is promised, so even a raid lost inside it
    * does not meet it twice.
    */
-  private meetPokemon(entity: WorldEntity, species: FigureSpeciesId, level: number): void {
+  private meetPokemon(entity: WorldEntity, species: FigureSpeciesId, level: number, firstCatch = false): void {
     if (this.runSession) {
       (this.runSession.pokemonMet ??= []).push(entity.id);
+      if (firstCatch) {
+        const tried = this.runSession.firstCatch?.tried ?? [];
+        this.runSession.firstCatch = {
+          tried: [...tried, entity.id],
+          caughtBefore: this.runSession.manager.snapshot().caughtPokemon.length,
+          answered: false,
+          caught: false,
+        };
+      }
     }
     const secret = this.openSecret(entity.secret);
     this.pendingWildBattle = {
       speciesId: species,
       level,
+      // The first raid's catch teaches itself (`world/firstCatch.ts`).
+      ...(firstCatch ? { lesson: 'catch' as const } : {}),
       // A legend is a boss you can keep: no ball until it is beaten, then one.
       ...(entity.legendary ? { legendary: true } : {}),
       ...(secret?.reward?.kind === 'meet' && secret.reward.shiny ? { shiny: true } : {}),
@@ -7472,7 +7501,55 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     };
     // A secret's Pokemon is met with the words of finding it.
     const found = secret ? secretById(secret.id)?.foundLine : undefined;
-    this.dialogBox.showMessages(found ? [found, ...entity.dialogLines] : [...entity.dialogLines]);
+    // The square's Pidgey is scenery on any other raid, whose second line says
+    // it will not fight: on the first it cries, and it fights.
+    const lines = firstCatch ? entity.dialogLines.slice(0, 1) : entity.dialogLines;
+    this.dialogBox.showMessages(found ? [found, ...lines] : [...lines]);
+  }
+
+  /**
+   * The square's Pidgey a new save's first raid is waiting on, if any
+   * (`world/firstCatch.ts`): the nearest to the landing, then - once that one
+   * is fought and not caught - the other, and then none.
+   */
+  private firstCatchFigure(): WorldEntity | undefined {
+    const session = this.runSession;
+    const plan = session?.plan;
+    if (!session || !plan?.stagedChase || !plan.insertion || this.currentMap?.id !== plan.insertion.mapId || session.firstCatch?.caught) {
+      return undefined;
+    }
+    const tried = session.firstCatch?.tried ?? [];
+    return firstCatchFigures(this.currentMap.entities, plan.insertion.position).find(
+      (figure) => !tried.includes(figure.id),
+    );
+  }
+
+  /**
+   * Oak, on the way back from the first raid's catch: caught - the pack, the
+   * risk and the choice, and the hunter sent; knocked out or left - the other
+   * Pidgey, while there is one. Answers whether anything was said.
+   */
+  private sayFirstCatchOutcome(): boolean {
+    const session = this.runSession;
+    const state = session?.firstCatch;
+    if (!session || !state || state.answered) {
+      return false;
+    }
+    state.answered = true;
+    const caught = session.manager.snapshot().caughtPokemon.slice(state.caughtBefore);
+    const pidgey = caught.find((pokemon) => pokemon.base.id === FIRST_CATCH_SPECIES);
+    if (pidgey) {
+      state.caught = true;
+      // Hurt from the fight, with a hunter coming: the pack's Potion is said too.
+      const heal = this.fieldHealLine();
+      this.interrupt([...firstCatchCaughtLines(pidgey.name, this.nearestExitCue()?.label), ...(heal ? [heal] : [])]);
+      return true;
+    }
+    if (this.firstCatchFigure()) {
+      this.interrupt([FIRST_CATCH_AGAIN_LINE]);
+      return true;
+    }
+    return false;
   }
 
   /** A secret open this raid (`world/secrets.ts`), with what its nook holds next. */
@@ -7889,6 +7966,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       contractSteps.length,
       this.activatedPoiIds.size,
       this.bag.revision,
+      // The square's Pidgey walks about, and the arrow follows it.
+      (() => {
+        const figure = this.firstCatchFigure();
+        const at = figure && this.entityHeldTiles(figure)[0];
+        return figure ? `${figure.id}@${at?.x},${at?.y}` : '';
+      })(),
     ].join(':');
     if (key === this.wayCacheKey && this.wayFieldsGrid === this.collisionData && this.wayBag === this.bag) {
       return this.wayCache;
@@ -7907,6 +7990,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     let toGym = false;
     const gymDoor = hunted || enraged ? undefined : this.gymDoorNear();
     const leader = hunted || enraged || gymDoor ? undefined : this.leaderHere();
+    const catchFigure = hunted || enraged || gymDoor || leader ? undefined : this.firstCatchFigure();
     if (enraged) {
       cue = exit ? `OUT NOW VIA ${exit.label.toUpperCase()}: ${exit.heading}` : undefined;
       tile = exit?.position;
@@ -7918,6 +8002,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // Inside, the leader is what the walk here was for. No arrow: the room is
       // the gym's own puzzle, and its trainers stand on the ways through it.
       cue = leader;
+    } else if (catchFigure) {
+      // A new save's first raid begins with a catch (`world/firstCatch.ts`).
+      tile = this.entityHeldTiles(catchFigure)[0] ?? catchFigure.position;
+      cue = `${FIRST_CATCH_CUE}: ${this.headingTo(tile)}`;
     } else if (job) {
       ({ cue, tile, out } = job);
     } else {
@@ -8245,7 +8333,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const camera = this.cameras.main;
     this.seatDialog([this.currentTile], { left: camera.scrollX, top: camera.scrollY });
     if (!contract) {
-      this.dialogBox.showMessages([...FIRST_RAID_BRIEFING]);
+      this.dialogBox.showMessages([...(this.firstCatchFigure() ? FIRST_CATCH_LANDING_LINES : FIRST_RAID_BRIEFING)]);
       return;
     }
     // A contract that needs supplies out of the pack says so before the first
@@ -11585,7 +11673,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (
       session.plan?.stagedChase &&
       !session.stagedChaseCome &&
-      elapsedMs >= session.plan.hunter.spawnDelayMs &&
+      // Forty seconds in, or the moment the first catch is made: the catch is
+      // what there is to lose, and the hunter is what could take it.
+      (elapsedMs >= session.plan.hunter.spawnDelayMs || session.firstCatch?.caught === true) &&
       hasPlayerSetOff(session.stepsTaken) &&
       this.ridePlace() === 'outdoors'
     ) {
