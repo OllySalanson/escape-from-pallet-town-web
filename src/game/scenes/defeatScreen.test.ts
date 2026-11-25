@@ -282,9 +282,11 @@ function escapeReport(): ExtractionReport {
   });
 }
 
-function open(report: ExtractionReport): Harness {
+/** `full` opens a raid that got out on its full report rather than its moment (`run/resultMoment.ts`). */
+function open(report: ExtractionReport, full = false): Harness {
   const { scene, start, advance } = createScene();
   scene.init({ report });
+  (scene as unknown as { fullReport: boolean }).fullReport = full;
   scene.create();
   return { scene, root: overlayRoots[overlayRoots.length - 1], start, advance };
 }
@@ -385,7 +387,7 @@ describe('the result screen counts what it lists', () => {
     };
     // Charmander came home: one entry, and the pack is not a second.
     expect(report.ledger.pokemon.length + report.ledger.items.length).toBe(1);
-    const { root } = open(report);
+    const { root } = open(report, true);
 
     expect(root.html).toContain('<h2>Banked</h2><small>1 entry</small>');
   });
@@ -398,7 +400,7 @@ describe('the result screen on what was put down', () => {
       spent: [],
       dropped: [{ itemId: 'parts-crate', label: 'Parts crate', quantity: 1 }],
     };
-    const { root } = open(report);
+    const { root } = open(report, true);
 
     expect(root.html).toContain('Put down for room: 1× Parts crate');
     expect(root.html).not.toMatch(/Supplies spent:[^<]*Parts crate/);
@@ -427,7 +429,7 @@ describe('the result screen on what a contract paid', () => {
       carriedOut: { 'cable-coil': 1 },
       saved: true,
     });
-    const { root } = open(report);
+    const { root } = open(report, true);
     // The haul is tiles, each saying what became of it in its colour, its mark
     // and its words for a reader; the contract row, which leads the pane once
     // banked, only mentions the Super Potion.
@@ -460,7 +462,7 @@ describe('the result screen on what a contract paid', () => {
       carriedOut: { 'great-ball': 1 },
       saved: true,
     });
-    const { root } = open(report);
+    const { root } = open(report, true);
 
     // Charmander, the Great Ball found (BANKED) and the two paid (REWARD) are
     // three rows under the heading; the ledger merged the balls into one entry,
@@ -600,11 +602,13 @@ describe('the defeat sequence across raids', () => {
     expect(second.stage.dataset.beat).toBe('fall');
   });
 
-  it('leaves an extraction untouched: a survived raid still opens on its haul', () => {
+  it('leaves an extraction untouched: a survived raid opens on its moment, and its haul is one key away', () => {
     const { root } = open(escapeReport());
 
     expect(root.html).not.toContain('defeat-stage');
-    expect(root.html).toContain('extraction-won');
+    expect(root.html).toContain('data-moment-headline');
+    expect(root.html).toContain('data-full-report');
+    expect(open(escapeReport(), true).root.html).toContain('extraction-won');
   });
 });
 

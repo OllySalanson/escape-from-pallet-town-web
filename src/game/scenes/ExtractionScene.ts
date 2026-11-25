@@ -6,6 +6,9 @@ import { countPlay, raidEnding } from '../analytics/playCounter';
 import { friendRoom } from '../raidRoom/friendRoom';
 import { audioManager } from '../audio/AudioManager';
 import { isPlaytestRun } from '../dev/playtestMode';
+import { nextStepLines } from '../hub/nextStep';
+import { resultMoment, type ResultMoment } from '../run/resultMoment';
+import { SaveManager } from '../save/SaveManager';
 import { formatElapsedClock } from '../run/raidClock';
 import {
   buildDefeatSequence,
@@ -106,6 +109,8 @@ export class ExtractionScene extends Phaser.Scene {
   private report!: ExtractionReport;
   private leaving = false;
   private locked = true;
+  /** A raid that got out opens on its moment (`run/resultMoment.ts`); this is whether the full report has been asked for. */
+  private fullReport = false;
   /** Set while the defeat sequence is on screen, which is when a key advances. */
   private sequencePlaying = false;
   private sequenceBeats: readonly DefeatBeat[] = [];
@@ -145,6 +150,7 @@ export class ExtractionScene extends Phaser.Scene {
     this.report = data.report;
     this.leaving = false;
     this.locked = true;
+    this.fullReport = false;
     this.sequencePlaying = false;
     this.sequenceBeats = [];
     this.beatIndex = -1;
@@ -309,6 +315,7 @@ export class ExtractionScene extends Phaser.Scene {
     const control = this.overlay.root.querySelector<HTMLButtonElement>('[data-continue]')!;
     control.onclick = () => this.leave();
     control.disabled = true;
+    this.hookFullReport();
     this.time.delayedCall(lockMs, () => {
       this.locked = false;
       control.disabled = false;
@@ -356,11 +363,89 @@ export class ExtractionScene extends Phaser.Scene {
       event.preventDefault();
       return;
     }
+    if ((event.key === 'l' || event.key === 'L') && !this.fullReport) {
+      event.preventDefault();
+      this.openFullReport();
+      return;
+    }
     if (!['Enter', ' ', 'Escape'].includes(event.key)) {
       return;
     }
     event.preventDefault();
+    // The cursor walked over to FULL REPORT: that is what OK presses.
+    if (event.key !== 'Escape' && (event.target as Element | null)?.hasAttribute?.('data-full-report') === true) {
+      this.openFullReport();
+      return;
+    }
     this.leave();
+  }
+
+  /** The moment's FULL REPORT button, while the moment is on screen. */
+  private hookFullReport(): void {
+    const full = this.overlay.root.querySelector<HTMLButtonElement>('[data-full-report]');
+    if (full) {
+      full.onclick = () => this.openFullReport();
+    }
+  }
+
+  /** From the moment to the whole account of the raid, the cursor on the way out. */
+  private openFullReport(): void {
+    if (this.fullReport || this.leaving) {
+      return;
+    }
+    this.fullReport = true;
+    audioManager.play('select');
+    this.overlay.root.innerHTML = this.markup();
+    this.overlay.layout();
+    const control = this.overlay.root.querySelector<HTMLButtonElement>('[data-continue]')!;
+    control.onclick = () => this.leave();
+    control.disabled = this.locked;
+    if (!this.locked) {
+      this.overlay.focus('[data-continue]');
+    }
+  }
+
+  /**
+   * What a raid that got out opens on (`run/resultMoment.ts`): the deed, one
+   * picture, what else came home, and Oak's next thing - with the full report
+   * one key away. The overnight critic's problem 10: the result was a ledger.
+   */
+  private momentMarkup(moment: ResultMoment): string {
+    const report = this.report;
+    const picture = moment.picture
+      ? moment.picture.kind === 'pokemon'
+        ? `<img class="moment-picture is-pokemon" src="${publicAssetUrl(pokemonSpritePath('front', moment.picture.dexId, moment.picture.shiny))}" alt="" />`
+        : `<img class="moment-picture is-item" src="${iconUrl(itemIconName(moment.picture.itemId))}" alt="" />`
+      : '';
+    const next = this.nextThing();
+    return pixelScreen({
+      place: escapeHtml(report.eyebrow),
+      title: '',
+      aside: escapeHtml(this.clockAside()),
+      hints: escapeHtml('L FULL REPORT'),
+      body: `<main class="px-body extraction-moment-layout">${pixelWindow(
+        `${picture}<strong class="px-name moment-headline" data-moment-headline>${escapeHtml(moment.headline)}</strong>${
+          report.closeCall ? `<span class="px-wrap">${escapeHtml(report.closeCall)}</span>` : ''
+        }${moment.line ? `<span class="px-wrap">${escapeHtml(moment.line)}</span>` : ''}${
+          next ? `<span class="px-wrap moment-next">${escapeHtml(next)}</span>` : ''
+        }`,
+        { className: 'extraction-moment px-tone-primary', tag: 'div' },
+      )}${pixelCommitBar({
+        title: escapeHtml(this.footerTitle()),
+        lines: [],
+        actions: `<button class="px-window px-button" data-full-report>Full report</button><button class="px-window px-button is-primary" data-continue>${currentTry() ? 'Back to the map maker' : 'Back to the Arena'}</button>`,
+      })}</main>`,
+    });
+  }
+
+  /** Oak's one next thing (`hub/nextStep.ts`), read off the save this raid was just banked into. */
+  private nextThing(): string | undefined {
+    if (currentTry() || isPlaytestRun()) {
+      return undefined;
+    }
+    const progress = new SaveManager().load()?.raidProgress;
+    const [line] = progress ? nextStepLines(progress) : [];
+    return line;
   }
 
   private leave(): void {
@@ -400,6 +485,10 @@ export class ExtractionScene extends Phaser.Scene {
     const escaped = report.outcome === 'ESCAPED';
     if (report.settledElsewhere) {
       return this.settledElsewhereMarkup();
+    }
+    const moment = this.fullReport || currentTry() ? null : resultMoment(report);
+    if (moment) {
+      return this.momentMarkup(moment);
     }
     return pixelScreen({
       place: escapeHtml(report.eyebrow),
