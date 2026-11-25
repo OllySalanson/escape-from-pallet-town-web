@@ -7,7 +7,7 @@ import {
   FEEDBACK_RIGHT_MIN_WIDTH,
   FEEDBACK_TAB_STRIP,
   feedbackTabEdge,
-  MAX_MENU_SCALE,
+  menuScaleFor,
   MENU_LAYER_ID,
   MENU_MAX_WIDTH,
   MENU_MIN_HEIGHT,
@@ -46,44 +46,38 @@ function fakeLayer(): { style: Record<string, string> & { setProperty(name: stri
 }
 
 describe('the menu screens are laid out against the window', () => {
-  it('spends the whole of the captain\'s window rather than capping the measure', () => {
-    // 1920 less the inset and the FEEDBACK tab's strip, at 2x: the screen holds
-    // 936 game pixels across, and what fills them is columns. At 720 - the cap
-    // while a body was one column - a quarter of that window was backdrop
-    // either side of a thin list.
-    const menu = computeMenuStage(1920, 950);
-    expect(menu.width).toBe(936);
-    expect(menu.width * menu.scale).toBe(1920 - FEEDBACK_TAB_STRIP - 8 * 2);
+  it('stands in the game\'s own screen: the canvas\'s box on the glass, never across the page (the captain, 25 Nov 2026)', () => {
+    for (const [width, height] of [[1280, 800], [1366, 768], [1440, 900], [1920, 1080], [2560, 1440], [3840, 2160]]) {
+      const canvas = computeStage(width, height);
+      const menu = computeMenuStage(width, height);
+      const layer = fakeLayer();
+      applyMenuStage(layer as unknown as HTMLElement, width, height);
+      const canvasLeft = Math.floor((width - canvas.width * canvas.zoom) / 2);
+      const canvasTop = Math.floor((height - canvas.height * canvas.zoom) / 2);
+      const label = `${width}x${height}`;
+      // Inside the canvas's box, and filling it to within one game pixel.
+      expect(Number.parseFloat(layer.style.left), label).toBeGreaterThanOrEqual(canvasLeft);
+      expect(Number.parseFloat(layer.style.top), label).toBeGreaterThanOrEqual(canvasTop);
+      expect(Number.parseFloat(layer.style.left) + menu.width * menu.scale, label).toBeLessThanOrEqual(canvasLeft + canvas.width * canvas.zoom);
+      expect(Number.parseFloat(layer.style.top) + menu.height * menu.scale, label).toBeLessThanOrEqual(canvasTop + canvas.height * canvas.zoom);
+      expect(canvas.width * canvas.zoom - menu.width * menu.scale, label).toBeLessThan(menu.scale * 2);
+      // As fine as it takes to keep the room a screen was laid out for, never
+      // coarser than the world and never under 2x.
+      expect(menu.scale, label).toBe(menuScaleFor(canvas.zoom, canvas.width * canvas.zoom, canvas.height * canvas.zoom));
+      expect(menu.scale, label).toBeLessThanOrEqual(canvas.zoom);
+      expect(menu.width, label).toBeGreaterThanOrEqual(560);
+      expect(menu.height, label).toBeGreaterThanOrEqual(384);
+    }
   });
 
-  it('is not the canvas box: the same window gives the two different screens', () => {
-    // The captain's own window. The canvas is capped at 400x256 because the
-    // world view is a deliberate size; a menu on the same display has no such
-    // reason and used to inherit that box anyway.
-    const canvas = computeStage(1920, 950);
-    const menu = computeMenuStage(1920, 950);
-
-    expect([canvas.width, canvas.height, canvas.zoom]).toEqual([400, 256, 3]);
-    expect(menu.width).toBeGreaterThan(canvas.width);
-    expect(menu.height).toBeGreaterThan(canvas.height);
-    // The screen is bigger on the glass as well as in game pixels: the canvas
-    // leaves 720 pixels of the window unused and the menu leaves none of it.
-    expect(menu.width * menu.scale).toBeGreaterThan(canvas.width * canvas.zoom);
-  });
-
-  it('spends a bigger window on room before it spends it on magnification', () => {
-    const small = computeMenuStage(1280, 720);
-    const big = computeMenuStage(2560, 1330);
-    const huge = computeMenuStage(3840, 2000);
-
-    // Never fewer game pixels of height - which is rows - as the window grows.
-    expect(big.height).toBeGreaterThanOrEqual(MENU_MIN_HEIGHT);
-    expect(huge.height).toBeGreaterThan(small.height);
-    // And the type does step up on a display that can afford it without losing
-    // rows, but only there.
-    expect(small.scale).toBe(MIN_MENU_SCALE);
-    expect(huge.scale).toBe(MAX_MENU_SCALE);
-    expect(big.scale).toBeGreaterThan(small.scale);
+  it('keeps the room the screens were laid out for, at a laptop and on a big desktop', () => {
+    // At the world's own zoom a menu had 400x256 game pixels, and the bench
+    // showed none of its box (25 Nov 2026).
+    expect(computeMenuStage(1280, 800)).toEqual({ width: 600, height: 384, scale: 2 });
+    expect(computeMenuStage(1920, 1080)).toEqual({ width: 800, height: 512, scale: 2 });
+    expect(computeMenuStage(2560, 1440)).toEqual({ width: 800, height: 480, scale: 3 });
+    expect(menuScaleFor(2, 800, 600)).toBe(2);
+    expect(menuScaleFor(1, 400, 300)).toBe(1);
   });
 
   it('never resamples: a whole scale, a whole box, and whole placement', () => {
@@ -91,7 +85,6 @@ describe('the menu screens are laid out against the window', () => {
       const stage = computeMenuStage(width, height);
       expect(Number.isInteger(stage.scale), `${width}x${height} scale`).toBe(true);
       expect(stage.scale).toBeGreaterThanOrEqual(MIN_MENU_SCALE);
-      expect(stage.scale).toBeLessThanOrEqual(MAX_MENU_SCALE);
       expect(Number.isInteger(stage.width) && Number.isInteger(stage.height)).toBe(true);
 
       const layer = fakeLayer();
@@ -153,17 +146,6 @@ describe('the menu screens are laid out against the window', () => {
     }
     // A screen of ratio 1 is drawn as it was.
     expect(computeMenuStage(390, 844, 1)).toEqual(computeMenuStage(390, 844));
-  });
-
-  it('keeps every window bigger than the last from losing room', () => {
-    const rooms = WINDOWS.map(([width, height]) => {
-      const stage = computeMenuStage(width, height);
-      return stage.width * stage.height;
-    });
-    // Not strictly monotonic - a window can grow in one direction only - but a
-    // display that is bigger both ways never shows less.
-    expect(computeMenuStage(3840, 2160).height).toBeGreaterThan(computeMenuStage(1280, 720).height);
-    expect(Math.min(...rooms)).toBe(MENU_MIN_WIDTH * MENU_MIN_HEIGHT);
   });
 
   it('survives a resize by being a pure function of the window', () => {

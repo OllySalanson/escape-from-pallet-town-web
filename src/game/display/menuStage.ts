@@ -1,6 +1,19 @@
 /**
  * How the DOM screens are fitted into a browser window.
  *
+ * **In the game's own screen** (the captain, 25 Nov 2026: menus "look stretched
+ * full screen on a big screen while the game itself sits in a smaller window").
+ * On an ordinary window a menu stands in exactly the canvas's box - the same
+ * place and size on the glass, so it is never wider or taller than the game -
+ * drawn as fine as it takes to keep the room every screen was laid out for
+ * (`menuScaleFor`): at 1280x800 the world is 3x and the menus 2x, 600x384 game
+ * pixels; at 2560x1440 the world 6x and the menus 4x. `canvasMenu` is that rule. What follows is the
+ * rule it replaced, kept for the two cases the canvas box cannot serve: a touch
+ * screen, whose room the pad hands out (`touchLayout.ts`), and a window where
+ * the canvas runs under the FEEDBACK tab's strip.
+ *
+ * The older note, for that rule:
+ *
  * The world view is small on purpose - that is the look - but the menus used to
  * be pinned to the same box: `#app` was sized to the canvas, the screens were
  * absolutely positioned inside it and measured themselves in `--px`, so a stash
@@ -32,7 +45,7 @@
  * - Height is deliberately uncapped. Rows are what a taller window buys, and a
  *   screen that stopped growing at some height would go back to hiding them.
  */
-import { onDevicePixel, phonePixelZoom } from './stage';
+import { computeStage, onDevicePixel, phonePixelZoom } from './stage';
 
 export const MENU_MIN_WIDTH = 320;
 export const MENU_MIN_HEIGHT = 240;
@@ -121,6 +134,63 @@ export interface MenuStage {
   readonly scale: number;
 }
 
+/**
+ * The menus' scale in the canvas's box: the largest whole multiple, no bigger
+ * than the world's zoom, at which the box still holds a `MENU_STEP_WIDTH` x
+ * `MENU_ROOM_HEIGHT` screen - the room every screen was laid out for - and
+ * never under 2x, where the face is hard to read. One step
+ * finer than the world was not enough on a big window: at 1920x1080 (world 4x,
+ * menus 3x) the bench showed none of its box. A phone's fractional zoom (whole
+ * device pixels) is the world's own.
+ */
+/**
+ * How many game pixels down a menu in the canvas's box keeps: a laptop's
+ * (1280x800 at 2x). At 360 - `MENU_STEP_HEIGHT` - the bench showed none of its
+ * box at 2560x1440.
+ */
+export const MENU_ROOM_HEIGHT = 384;
+
+export function menuScaleFor(zoom: number, boxWidth: number, boxHeight: number): number {
+  if (!Number.isInteger(zoom) || zoom <= MIN_MENU_SCALE) {
+    return zoom;
+  }
+  const roomy = Math.min(Math.floor(boxWidth / MENU_STEP_WIDTH), Math.floor(boxHeight / MENU_ROOM_HEIGHT));
+  return clamp(roomy, MIN_MENU_SCALE, zoom);
+}
+
+/**
+ * The menu as the canvas's own box, or null where that box runs under the
+ * FEEDBACK tab's strip and the window's room rule must keep it clear.
+ */
+export function canvasMenu(
+  viewportWidth: number,
+  viewportHeight: number,
+  devicePixelRatio = 1,
+): { readonly stage: MenuStage; readonly left: number; readonly top: number } | null {
+  const canvas = computeStage(viewportWidth, viewportHeight, devicePixelRatio);
+  const across = canvas.width * canvas.zoom;
+  const down = canvas.height * canvas.zoom;
+  // Placed exactly as `stageScaler.applyStage` places the canvas.
+  const left = Math.max(0, onDevicePixel((viewportWidth - across) / 2, devicePixelRatio));
+  const top = Math.max(0, onDevicePixel((viewportHeight - down) / 2, devicePixelRatio));
+  const room = menuRoom(viewportWidth, viewportHeight);
+  if (left + across > room.width || top + down > room.height) {
+    return null;
+  }
+  const scale = menuScaleFor(canvas.zoom, across, down);
+  const stage = {
+    width: Math.max(MENU_MIN_WIDTH, toEven(across / scale)),
+    height: Math.max(MENU_MIN_HEIGHT, toEven(down / scale)),
+    scale,
+  };
+  // Centred in the box on whole pixels, for the even-sizing remainder.
+  return {
+    stage,
+    left: left + Math.max(0, onDevicePixel((across - stage.width * scale) / 2, devicePixelRatio)),
+    top: top + Math.max(0, onDevicePixel((down - stage.height * scale) / 2, devicePixelRatio)),
+  };
+}
+
 const clamp = (value: number, min: number, max: number): number =>
   Math.max(min, Math.min(max, value));
 
@@ -140,6 +210,10 @@ export function computeMenuStage(
   devicePixelRatio = 1,
   given?: MenuRoom,
 ): MenuStage {
+  const framed = given ? null : canvasMenu(viewportWidth, viewportHeight, devicePixelRatio);
+  if (framed) {
+    return framed.stage;
+  }
   // On a touch screen the room is the pad's to hand out (`touchLayout.ts`),
   // and the FEEDBACK tab is the pad's pill rather than a strip on an edge.
   const room = given ?? menuRoom(viewportWidth, viewportHeight);
@@ -204,9 +278,10 @@ export function applyMenuStage(
     // Floored, never centred by the page: the room left over is odd as often as
     // it is even, and half of an odd number stands every one-pixel border on a
     // half pixel, which the browser resolves by blurring all of it.
+    const framed = given ? null : canvasMenu(viewportWidth, viewportHeight, devicePixelRatio);
     const room = given ?? { x: 0, y: 0, ...menuRoom(viewportWidth, viewportHeight) };
-    layer.style.left = `${room.x + Math.max(0, onDevicePixel((room.width - width) / 2, devicePixelRatio))}px`;
-    layer.style.top = `${room.y + Math.max(0, onDevicePixel((room.height - height) / 2, devicePixelRatio))}px`;
+    layer.style.left = `${framed ? framed.left : room.x + Math.max(0, onDevicePixel((room.width - width) / 2, devicePixelRatio))}px`;
+    layer.style.top = `${framed ? framed.top : room.y + Math.max(0, onDevicePixel((room.height - height) / 2, devicePixelRatio))}px`;
     // One game pixel, in CSS pixels: `--u` on a pixel-ui screen, and the unit
     // every border, gap and glyph on it is a whole multiple of.
     layer.style.setProperty('--px', `${stage.scale}px`);
