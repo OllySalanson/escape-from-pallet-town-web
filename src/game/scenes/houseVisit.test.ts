@@ -115,6 +115,8 @@ describe('the knock sign in the garden', () => {
       currentTile: { x: HOME_SIGN.x - 1, y: HOME_SIGN.y },
       facing: 'right',
       fixtures: [],
+      // A field a real scene starts with: the hall's great doors, only built in the arena.
+      hallDoors: null,
       afterSaid: null,
       leaving: false,
       partnerAt: () => false,
@@ -375,6 +377,8 @@ describe("the owner's PC in somebody else's house", () => {
       choosing: false,
       rivalHere: false,
       arena: null,
+      // A field a real scene starts with: the hall's great doors, only built in the arena.
+      hallDoors: null,
       readPlaytestBoard: () => false,
       partnerAt: () => false,
       leaderOn: () => undefined,
@@ -433,6 +437,8 @@ describe('seeing a visitor out of your own house', () => {
       choosing: false,
       rivalHere: false,
       arena: null,
+      // A field a real scene starts with: the hall's great doors, only built in the arena.
+      hallDoors: null,
       readPlaytestBoard: () => false,
       leaderOn: () => undefined,
       player: { stop: () => undefined, setFrame: () => undefined },

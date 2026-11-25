@@ -6517,6 +6517,8 @@ export class BaseScene extends Phaser.Scene {
       houses.service,
       (owner, gone) => harbour()?.link.nudge(owner, gone),
       (letIn) => this.knocked(letIn),
+      // This scene goes on running under it, so its own frame moves the view.
+      { covers: (gamePixels) => this.panelLean.setCover(gamePixels), frame: () => undefined },
     );
   }
 

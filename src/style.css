@@ -6261,3 +6261,14 @@ body.touch-play .feedback-tab {
   gap: calc(var(--u) * 4);
   margin-top: auto;
 }
+
+/* --- The name screen: a pop-up over the game, not a page of its own ---------
+   One small window - a question and a line to type in - stood alone in a whole
+   screen of checker (critic sweep, 25 Nov 2026). The game it was asked over
+   shows through, dimmed, as it does round a question in the yard. */
+.menu-overlay.pixel-ui.player-name-menu {
+  background: rgb(10 20 32 / 70%);
+}
+.pixel-ui.player-name-menu .px-body {
+  background: none;
+}

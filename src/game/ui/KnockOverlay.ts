@@ -10,6 +10,7 @@ import {
 } from '../home/knocking';
 import { MenuOverlay } from './MenuOverlay';
 import { isOverlayDismissKey } from './overlayKeyboard';
+import { dockSidePanel, type SidePanelView } from './sidePanel';
 
 /** Where a knock that was answered with a yes takes the player. */
 export interface LetIn {
@@ -35,6 +36,7 @@ export function openKnockScreen(
   service: HouseService,
   nudge: (owner: string, gone?: string) => void,
   onDone: (letIn: LetIn | null) => void,
+  panel?: SidePanelView,
 ): MenuOverlay {
   let settled = false;
   let view: KnockView = { kind: 'asking' };
@@ -61,6 +63,7 @@ export function openKnockScreen(
       walkAway();
     }
     overlay.destroy();
+    panel?.covers(0);
     onDone(letIn);
   };
   const render = (): void => {
@@ -139,7 +142,10 @@ export function openKnockScreen(
     }, KNOCK_ASK_EVERY_MS);
   };
 
-  const overlay: MenuOverlay = new MenuOverlay(scene, 'knock-menu pixel-ui', (event) => {
+  // A side panel beside the yard, as the favours are: a full screen held a
+  // list of a few doors - or one sentence, when nobody else has a house yet -
+  // over a whole screen of empty checker (critic sweep, 25 Nov 2026).
+  const overlay: MenuOverlay = new MenuOverlay(scene, 'knock-menu side-panel pixel-ui', (event) => {
     if (isOverlayDismissKey(event)) {
       event.preventDefault();
       if (knockingOn) {
@@ -156,6 +162,7 @@ export function openKnockScreen(
     }
   });
   overlay.root.setAttribute('aria-label', 'Knock on a door');
+  dockSidePanel(scene, overlay, panel);
   showHouses();
   return overlay;
 }

@@ -139,3 +139,16 @@ two pixels into the level beside it.
 | Before | After |
 |---|---|
 | ![](before-free-treatment.png) | ![](after-free-treatment.png) |
+
+## 9. No screen is one small thing on an empty page
+
+The knock screen held a list of a few doors - or one sentence, when nobody else
+has a house yet - over a whole screen of checker; it is a side panel beside the
+yard now, as the favours are. The name screen was one small window alone in a
+screen of checker; the game it is asked over shows through behind it, dimmed,
+as the yard does round a question.
+
+| | Before | After |
+|---|---|---|
+| Knock on a door | ![](before-knock-panel.png) | ![](after-knock-panel.png) |
+| Your name | ![](before-name-popup.png) | ![](after-name-popup.png) |
