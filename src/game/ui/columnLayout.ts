@@ -134,8 +134,11 @@ export function isShortRoom(gamePixelsHigh: number): boolean {
  * 376 high and the row's pane 209, so every card was cut through its price
  * above the MORE strip (break-it test, 23 Nov 2026). Measured there: 376 plus
  * the 12 the card was short, and a little over. A short screen is always low.
+ * Six more since the screen's frame (`.px-screen::after`) took two pixels of
+ * the title bar and four of the help bar: at 1280x800, 392 high, the row was
+ * cut again.
  */
-export const CARD_ROW_MENU_HEIGHT = 390;
+export const CARD_ROW_MENU_HEIGHT = 396;
 
 /** Whether a screen is too low for a row of cards over a band (`data-low`). */
 export function isLowRoom(gamePixelsHigh: number): boolean {
