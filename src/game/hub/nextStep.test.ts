@@ -25,7 +25,7 @@ describe('the one next thing Oak says', () => {
   it('after the first raid, names the job on the rail', () => {
     const [line, ...rest] = nextStepLines(raided(1));
     expect(rest).toEqual([]);
-    expect(line).toMatch(/^Next, a job: [A-Z ]+\. Choose it at the RAID ARENA's rail before you jump\.$/);
+    expect(line).toMatch(/^Next, a job: [A-Z ]+\. Pick it at the RAID ARENA, before you jump\.$/);
   });
 
   it('after the first job, the next, and favours', () => {
@@ -39,7 +39,7 @@ describe('the one next thing Oak says', () => {
     const landing = landingToWalkTo(progress);
     expect(landing?.mapId).toBe('greystone-vale');
     expect(nextStepLines(progress)).toEqual([
-      `Walk to ${landing!.label.toUpperCase()} on a raid, and you can start the next one from there.`,
+      `Walk to ${landing!.label.toUpperCase()} on a raid, and you can land there next time.`,
       expect.stringContaining('MISTY'),
     ]);
   });

@@ -130,7 +130,7 @@ export interface ActiveRunSession {
    * is still to be answered, and whether the catch was made. On the session
    * because the world is rebuilt after the fight.
    */
-  firstCatch?: { tried: string[]; caughtBefore: number; answered: boolean; caught: boolean };
+  firstCatch?: { tried: string[]; caughtBefore: number; answered: boolean; caught: boolean; caughtAtStep?: number };
   /**
    * Beaten trainers whose watch has already been seen to lift. The world is
    * rebuilt on every return from a fight, so the payoff for a win - the shading

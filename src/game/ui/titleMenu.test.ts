@@ -123,7 +123,7 @@ describe('the title menu', () => {
     expect(menu.initial).toBe('back');
     expect(menu.choices.map((choice) => choice.id)).toEqual(['fresh-playtest', 'back']);
     expect(titleHint(menu, 'fresh-playtest')).toBe('LV 99 TEAM · WHOLE MAP OPEN · NOTHING COUNTS');
-    expect(titleHint(menu, 'back')).toBe('BACK TO THE TITLE');
+    expect(titleHint(menu, 'back')).toBe('ARROWS CHOOSE · SPACE SELECT');
   });
 
   it('asks which explorer run, starting on the one already going', () => {

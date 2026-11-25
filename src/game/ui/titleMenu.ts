@@ -158,7 +158,7 @@ export function titleHint(menu: TitleMenu, choice: TitleChoiceId): string {
     return 'EXPLORE FREELY · YOUR SAVED GAME IS UNTOUCHED';
   }
   if (menu.question === SANDBOX_QUESTION) {
-    return choice === 'fresh-playtest' ? 'LV 99 TEAM · WHOLE MAP OPEN · NOTHING COUNTS' : 'BACK TO THE TITLE';
+    return choice === 'fresh-playtest' ? 'LV 99 TEAM · WHOLE MAP OPEN · NOTHING COUNTS' : 'ARROWS CHOOSE · SPACE SELECT';
   }
   if (choice === 'maker') {
     return 'DRAW YOUR OWN RAID MAP';

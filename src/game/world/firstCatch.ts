@@ -63,15 +63,29 @@ export const FIRST_CATCH_CUE = 'CATCH THE PIDGEY';
  * the one thing to do. The rest is said when it is true.
  */
 export const FIRST_CATCH_LANDING_LINES: readonly string[] = [
-  "OAK: You're in! See that PIDGEY on the square? Walk up to it and press SPACE.",
+  "OAK: You're in! See the PIDGEY the gold arrow is pointing at? Walk up to it and press SPACE.",
 ];
 
-/** Said on the way back from the fight that caught it: the pack, the risk and the choice. */
-export function firstCatchCaughtLines(name: string, exitLabel: string | undefined): readonly string[] {
+/** Steps walked after Oak's last word about the catch before the hunter who heard it comes. */
+export const FIRST_CATCH_HUNTER_STEPS = 6;
+
+/**
+ * Said on the way back from the fight that caught it: the pack, the Potion when
+ * somebody is hurt (before anything else, because the hunter is next), then the
+ * risk and the choice.
+ */
+export function firstCatchCaughtLines(
+  name: string,
+  exitLabel: string | undefined,
+  packSquares: number | undefined,
+  heal: string | null = null,
+): readonly string[] {
   const squares = pokemonCargoCells(FIRST_CATCH_SPECIES);
   const exit = exitLabel ? exitLabel.toUpperCase() : 'the nearest exit';
+  const room = packSquares ? `taking ${squares} of its ${packSquares} squares` : `taking ${squares} squares`;
   return [
-    `OAK: Got it! ${name.toUpperCase()} rides in your pack now, in ${squares} squares. Get out of the vale and it's yours.`,
+    `OAK: Got it! ${name.toUpperCase()} is in your pack, ${room}. Get out of the vale and it's yours.`,
+    ...(heal ? [heal] : []),
     `Faint before you're out, and it's lost. And a hunter will have heard that fight...`,
     `The quickest way out is ${exit}. Or go on for the money, with a hunter about. Your call!`,
   ];
