@@ -120,6 +120,12 @@ encounter to `create` and to the frame after it, with the long tasks between, on
 any build including the live one; a fight that waits on no download draws in
 about 0.2s (`docs/screens/shiny-black-screen/`).
 
+`ballChoice.mjs <test-mode build url> <dir> [--port=N]` plays Olly's ball on a
+wild Chansey with real keys: one Poke Ball and two Great Balls, the Poke Ball
+thrown from the list, and BALL again must open the list on the Great Balls rather
+than throw one; then two Enter presses 120ms apart and a double click on BALL must
+open the list and throw nothing (`docs/screens/ball-choice/`).
+
 `slowLoad.mjs <cdp port> <build url> <dir> [kbit/s] [latency ms]` opens the game
 on a throttled line with the cache off and photographs the first load until the
 title is up, for what a friend on poor wifi sees before the game can draw
