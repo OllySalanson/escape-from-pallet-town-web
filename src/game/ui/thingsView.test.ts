@@ -148,8 +148,8 @@ describe('the pockets as a strip of icons', () => {
     const strip = pocketStrip(pockets);
     expect([...strip.matchAll(/class="things-pocket(?: is-here)?" data-pocket-tab="(\w+)"/g)].map((match) => match[1])).toEqual(['medicine', 'balls', 'stones']);
     expect(strip).toMatch(/things-pocket is-here" data-pocket-tab="medicine"/);
-    // And the lit pocket's name beside them, the others' hidden.
-    expect(strip).toMatch(/things-pocket-name is-here" data-pocket-tab="medicine">Medicine</);
+    // And the lit pocket's name beside them with how many kinds it holds, the others' hidden.
+    expect(strip).toMatch(/things-pocket-name is-here" data-pocket-tab="medicine">Medicine<small>1 kind<\/small></);
     expect(strip.match(/is-here/g)).toHaveLength(2);
     expect(pocketStrip(storedPockets({ potion: 2 }))).toBe('');
   });
