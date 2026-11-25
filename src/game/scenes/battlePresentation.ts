@@ -9,6 +9,7 @@ import { WeatherId, weatherLabel } from '../pokemon/battle/weather';
 import { battleCaps, withArticle } from '../pokemon/battle/battleItems';
 import { statusAbbreviation, type PrimaryStatus } from '../pokemon/battle/status';
 import { isCurrency, itemAmountFor, itemCountTag } from '../items';
+import { BASE_STAGE_WIDTH, MAX_STAGE_WIDTH } from '../display/stage';
 
 export const BATTLE_SCREEN_WIDTH = 320;
 export const MOVE_COLUMN_WIDTH = 148;
@@ -540,9 +541,19 @@ export const combatantSpot = (
   return spotOn(slot === 0 ? 58 : 128, DOUBLE_PLAYER_GROUND, 1.1);
 };
 
-/** Where a combatant slides in from, so it comes in past the field's frame. */
-export const combatantEntryX = (side: 'player' | 'enemy'): number =>
-  side === 'player' ? -50 : 370;
+/**
+ * Where a combatant slides in from: off the widest screen the battle is drawn
+ * on (`MAX_STAGE_WIDTH`, centred on the 320-wide composition), by more than
+ * the half-width of the largest picture, so it comes in from past the screen's
+ * edge rather than appearing on the field.
+ */
+export const combatantEntryX = (side: 'player' | 'enemy'): number => {
+  const margin = (MAX_STAGE_WIDTH - BASE_STAGE_WIDTH) / 2;
+  return side === 'player' ? -margin - ENTRY_CLEARANCE : BASE_STAGE_WIDTH + margin + ENTRY_CLEARANCE;
+};
+
+/** More than half the widest Pokemon picture on the field (64 pixels at 1.1). */
+const ENTRY_CLEARANCE = 40;
 
 /**
  * The prompt over the list of who a move could be aimed at.

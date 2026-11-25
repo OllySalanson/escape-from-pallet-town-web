@@ -64,7 +64,7 @@ import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
 import { flashScreen } from '../ui/screenFlash';
 import { RainOverlay } from '../ui/rainOverlay';
-import { doubleBattleBackdrop } from './battleBackdrop';
+import { BACKDROP_SIDE, BACKDROP_SKY, doubleBattleBackdrop, widenedBackdrop } from './battleBackdrop';
 import { iconTextureKey, itemIconName } from '../ui/icons';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { openNamingScreen } from '../ui/NamingScreenOverlay';
@@ -135,7 +135,7 @@ import {
 } from '../pokemon/battle/battleItems';
 import { prizeLeftLine, prizeLine } from '../world/prizeMoney';
 import { Bag, CURRENCY_ITEM_ID, formatMoney, heldItemName, type ItemDefinition, type ItemId } from '../items';
-import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, baseCompositionOffset } from '../display/stage';
+import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, MAX_STAGE_HEIGHT, MAX_STAGE_WIDTH, baseCompositionOffset } from '../display/stage';
 import { WINDOW_INK, drawFramedWindow } from '../ui/pixelWindow';
 import { UI } from '../ui/uiPalette';
 import { GAME_FONT } from '../ui/gameFont';
@@ -325,7 +325,7 @@ const BATTLEFIELD_HEIGHT = BASE_STAGE_HEIGHT;
  * The art inside `background-grass.png`, which is not the whole file: the crop
  * it was cut from left a black row along the top and the bottom and a black
  * then a white column down the right, and drawn whole those were a dark line
- * under the top bezel and a black-and-white double line down the right edge
+ * along the top edge and a black-and-white double line down the right edge
  * (playtest section 3, item 1). Only this rectangle is drawn.
  */
 const GRASS_BACKDROP_ART = { x: 0, y: 1, width: 255, height: 143 } as const;
@@ -337,8 +337,10 @@ const GRASS_BACKDROP_ART = { x: 0, y: 1, width: 255, height: 143 } as const;
 const GRASS_BACKDROP_DEPTH = 180;
 /** The rain over the field: over the Pokemon (2), the sparkle and the ball (3), under the plates (5). */
 const BATTLE_RAIN_DEPTH = 4;
-/** The double battle's own backdrop, made at run time from the single battle's. */
-const DOUBLE_BACKDROP_KEY = 'battle-background-grass-double';
+/** The backdrop carried to the screen's edges, made at run time from the art (`widenedBackdrop`). */
+const WIDE_BACKDROP_KEY = 'battle-background-grass-wide';
+/** The double battle's, made from its own field (`doubleBattleBackdrop`). */
+const WIDE_DOUBLE_BACKDROP_KEY = 'battle-background-grass-double-wide';
 const BANNER_TEXT_STYLE = {
   fontFamily: BATTLE_FONT,
   // The smallest size the face survives as hard-edged pixels: at 8px its stems
@@ -609,7 +611,6 @@ export class BattleScene extends Phaser.Scene {
   private sprites = new Map<string, Phaser.GameObjects.Image>();
   /** Entrances still sliding in to their spots, on the scene's own clock (`slideOntoSpot`). */
   private slides = new Map<Phaser.GameObjects.Image, { readonly fromX: number; readonly toX: number; readonly startsAt: number; readonly landed: () => void }>();
-  private fieldMask?: Phaser.Display.Masks.GeometryMask;
   /**
    * The moves chosen so far this turn, one per slot. A double battle asks each
    * slot in turn and only resolves once both have answered, so this is what is
@@ -1362,38 +1363,35 @@ export class BattleScene extends Phaser.Scene {
   }
 
   /**
-   * The battlefield, and the bezel it sits in on a screen wider than itself.
+   * The battlefield, to the edges of whatever screen it is on.
    *
-   * Widening the backdrop was tried and rejected: its horizon is bands but its
-   * platform is an ellipse, so stretching it put a second, flatter platform in
-   * the margin. The margin is the camera's own colour instead, with the frame
-   * the rest of the game's windows are drawn with around the battle, which is
-   * what makes it read as a screen rather than as art that stopped short.
+   * The battle is composed 320x240 and a screen is up to 400x256, and for a
+   * while the difference was a navy margin with a frame round the battle -
+   * a box in a box, on a phone most of all (the mobile lane, 25 Nov 2026).
+   * Widening by stretching was tried and rejected (its platform is an
+   * ellipse); instead the art is carried on past its edges, row by row, by
+   * `widenedBackdrop`, and drawn at exactly the scale and place it always
+   * was, so the composition and everything on it is where it was tuned.
    */
   private drawBackdrop(): void {
-    const texture = this.textures.get('battle-background-grass');
-    if (!texture.has('art')) {
-      const { x, y, width, height } = GRASS_BACKDROP_ART;
-      texture.add('art', 0, x, y, width, height);
+    const double = this.state.unitCount > 1;
+    const key = double ? WIDE_DOUBLE_BACKDROP_KEY : WIDE_BACKDROP_KEY;
+    if (!this.textures.exists(key)) {
+      this.createWideBackdrop(key, double);
     }
     // Still a fractional scale, 320 / 255 across: this art is 255 pixels wide
     // and the field is 320, so nothing short of a 320-wide redraw lands every
     // pixel on the grid. What this fixes is the stray border and the half-pixel
     // edges; the redraw is an art task of its own.
-    const double = this.state.unitCount > 1;
-    if (double && !this.textures.exists(DOUBLE_BACKDROP_KEY)) {
-      this.createDoubleBackdrop();
-    }
+    const across = BATTLEFIELD_WIDTH / GRASS_BACKDROP_ART.width;
+    const down = GRASS_BACKDROP_DEPTH / GRASS_BACKDROP_ART.height;
     this.add
-      .image(0, 0, double ? DOUBLE_BACKDROP_KEY : 'battle-background-grass', double ? undefined : 'art')
+      .image(-BACKDROP_SIDE * across, -BACKDROP_SKY * down, key)
       .setOrigin(0, 0)
-      .setDisplaySize(BATTLEFIELD_WIDTH, GRASS_BACKDROP_DEPTH);
-    const bezel = this.add.graphics().setDepth(20);
-    bezel.fillStyle(UI.frameLine.value, 1);
-    bezel.fillRect(-1, -1, BATTLEFIELD_WIDTH + 2, 1);
-    bezel.fillRect(-1, BATTLEFIELD_HEIGHT, BATTLEFIELD_WIDTH + 2, 1);
-    bezel.fillRect(-1, 0, 1, BATTLEFIELD_HEIGHT);
-    bezel.fillRect(BATTLEFIELD_WIDTH, 0, 1, BATTLEFIELD_HEIGHT);
+      .setDisplaySize(
+        (GRASS_BACKDROP_ART.width + BACKDROP_SIDE * 2) * across,
+        (GRASS_BACKDROP_ART.height + BACKDROP_SKY) * down,
+      );
     this.centreComposition();
   }
 
@@ -1445,21 +1443,29 @@ export class BattleScene extends Phaser.Scene {
   }
 
   /**
-   * The double battle's backdrop, drawn once from the single battle's art -
-   * see `battleBackdrop.ts` for what changes and why.
+   * The backdrop carried on to the screen's edges, drawn once a kind - and for
+   * a double, the double's own field first - see `battleBackdrop.ts` for what
+   * changes and why.
    */
-  private createDoubleBackdrop(): void {
+  private createWideBackdrop(key: string, double: boolean): void {
     const { x, y, width, height } = GRASS_BACKDROP_ART;
     const source = this.textures.get('battle-background-grass').getSourceImage() as CanvasImageSource;
-    const canvas = this.textures.createCanvas(DOUBLE_BACKDROP_KEY, width, height);
+    const scratch = document.createElement('canvas');
+    scratch.width = width;
+    scratch.height = height;
+    const scratchContext = scratch.getContext('2d');
+    if (!scratchContext) {
+      return;
+    }
+    scratchContext.drawImage(source, x, y, width, height, 0, 0, width, height);
+    const art = { width, height, data: scratchContext.getImageData(0, 0, width, height).data };
+    const field = double ? doubleBattleBackdrop(art) : art;
+    const wide = widenedBackdrop(field, { mirrorGround: !double });
+    const canvas = this.textures.createCanvas(key, wide.width, wide.height);
     if (!canvas) {
       return;
     }
-    const context = canvas.getContext();
-    context.drawImage(source, x, y, width, height, 0, 0, width, height);
-    const art = context.getImageData(0, 0, width, height);
-    const redrawn = doubleBattleBackdrop({ width, height, data: art.data });
-    context.putImageData(new ImageData(new Uint8ClampedArray(redrawn.data), width, height), 0, 0);
+    canvas.getContext().putImageData(new ImageData(new Uint8ClampedArray(wide.data), wide.width, wide.height), 0, 0);
     canvas.refresh();
   }
 
@@ -1471,15 +1477,9 @@ export class BattleScene extends Phaser.Scene {
    * between the two plate rows - see `combatantSpot`.
    */
   private drawCombatants(): void {
-    // Both sides slide in from outside the battlefield, and on a stage wider
-    // than the battle that is the letterbox: for the length of the entrance
-    // they were drawn on the margin, outside the bezel. They are clipped to the
-    // field, so they come in from behind its frame. The shape is never drawn.
-    const field = this.add.graphics().setVisible(false);
-    field.fillStyle(0xffffff, 1);
-    field.fillRect(0, 0, BATTLEFIELD_WIDTH, BATTLEFIELD_HEIGHT);
-    this.fieldMask = field.createGeometryMask();
-
+    // Both sides slide in from off the widest screen (`combatantEntryX`): the
+    // field runs to the screen's edges, so there is no frame to come in from
+    // behind, and nothing is clipped.
     let delay = 0;
     for (const side of ['enemy', 'player'] as const) {
       for (const ref of slotsOf(this.state, side)) {
@@ -1536,9 +1536,6 @@ export class BattleScene extends Phaser.Scene {
       // The pair nearer the front of the field is drawn over the pair behind
       // it, exactly as the plates are ordered: a slot is a place on the ground.
       .setDepth(2 + ref.slot * 0.001);
-    if (this.fieldMask) {
-      sprite.setMask(this.fieldMask);
-    }
     this.sprites.set(plateKey(ref.side, ref.slot), sprite);
     return sprite;
   }
@@ -4954,7 +4951,14 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     this.rain ??= new RainOverlay(this, BATTLE_RAIN_DEPTH, false);
-    this.rain.update(deltaMs, raining, { x: 0, y: 0, width: BATTLEFIELD_WIDTH, height: GRASS_BACKDROP_DEPTH });
+    // Over the whole field, which runs to the screen's edges (`drawBackdrop`).
+    const margin = (MAX_STAGE_WIDTH - BATTLEFIELD_WIDTH) / 2;
+    this.rain.update(deltaMs, raining, {
+      x: -margin,
+      y: -(MAX_STAGE_HEIGHT - BATTLEFIELD_HEIGHT) / 2,
+      width: BATTLEFIELD_WIDTH + margin * 2,
+      height: GRASS_BACKDROP_DEPTH + (MAX_STAGE_HEIGHT - BATTLEFIELD_HEIGHT) / 2,
+    });
   }
 
   private presentCombatEvent(event: BattleEvent): void {

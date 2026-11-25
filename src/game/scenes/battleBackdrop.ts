@@ -116,3 +116,83 @@ export const doubleBattleBackdrop = (art: RgbaImage): RgbaImage => {
   }
   return { width: art.width, height: art.height, data };
 };
+
+/**
+ * How far the art is carried on past each side, in the art's own pixels: the
+ * battle is composed 320 wide and a screen is up to 400 (`MAX_STAGE_WIDTH`),
+ * so up to 40 screen pixels a side, which is 32 of the art's (it is drawn at
+ * 320 / 255). Eight more so no screen ever sees where the carried art stops.
+ */
+export const BACKDROP_SIDE = 40;
+
+/**
+ * How many rows of sky are carried on above the art: a screen is up to 256
+ * tall against the battle's 240, so 8 screen pixels, which is 7 of the art's.
+ */
+export const BACKDROP_SKY = 8;
+
+/**
+ * The backdrop carried on to the edges of the screen, so a battle fills the
+ * screen it is on rather than standing in a box inside it (the mobile lane's
+ * "box in a box", 25 Nov 2026).
+ *
+ * The field is horizontal bands, so each row is carried on as its own edge
+ * colour, the sky above is the top row's blue, and nothing new is drawn. Two
+ * things touch an edge and are not bands. The foe's platform reaches the
+ * right edge with its rim on a few rows, and carried on as it is that rim
+ * would be a brown line to the edge of the screen: a rim pixel on an edge is
+ * replaced by the nearest row's edge that is field. And the player's ground
+ * runs off the left edge, as FireRed's does off its screen, so on a single
+ * battle it is carried on in mirror, which continues its grass and its rim
+ * without a seam (a double battle has painted that ground out, so its left
+ * edge is field like the rest).
+ *
+ * Widening by stretching was tried before and rejected: it put a second,
+ * flatter platform in the margin. Nothing here is stretched.
+ */
+export const widenedBackdrop = (art: RgbaImage, options: { readonly mirrorGround: boolean }): RgbaImage => {
+  const width = art.width + BACKDROP_SIDE * 2;
+  const height = art.height + BACKDROP_SKY;
+  const data = new Uint8ClampedArray(width * height * 4);
+  const fieldEdge = (x: number, y: number): number => {
+    for (let distance = 0; distance < art.height; distance += 1) {
+      for (const row of [y - distance, y + distance]) {
+        if (row >= 0 && row < art.height && colourAt(art, x, row) !== RIM) {
+          return row;
+        }
+      }
+    }
+    return y;
+  };
+  for (let y = 0; y < height; y += 1) {
+    if (y < BACKDROP_SKY) {
+      // The sky over the art is one colour, the top row's at its right edge:
+      // that row is two blues side by side, and carried up as it is the join
+      // between them stood as a seam up the sky, where every other change of
+      // colour in it runs across.
+      for (let x = 0; x < width; x += 1) {
+        copyPixel(art, art.width - 1, 0, data, x, y, width);
+      }
+      continue;
+    }
+    const row = y - BACKDROP_SKY;
+    const leftEdgeRow = fieldEdge(0, row);
+    const rightEdgeRow = fieldEdge(art.width - 1, row);
+    const groundRow = options.mirrorGround && row >= PLAYER_GROUND.top;
+    for (let x = 0; x < width; x += 1) {
+      const artX = x - BACKDROP_SIDE;
+      if (artX < 0) {
+        if (groundRow) {
+          copyPixel(art, Math.min(art.width - 1, -artX - 1), row, data, x, y, width);
+        } else {
+          copyPixel(art, 0, leftEdgeRow, data, x, y, width);
+        }
+      } else if (artX >= art.width) {
+        copyPixel(art, art.width - 1, rightEdgeRow, data, x, y, width);
+      } else {
+        copyPixel(art, artX, row, data, x, y, width);
+      }
+    }
+  }
+  return { width, height, data };
+};
