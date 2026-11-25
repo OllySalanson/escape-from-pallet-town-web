@@ -285,6 +285,22 @@ describe('Nurse Joy, at her counter', () => {
     return manager;
   };
 
+  /**
+   * Charmander came home fainted beside a fit Pidgey: bringing it round is the
+   * one thing she charges for, and somebody can still raid without it.
+   */
+  const fainted = (freeHealTaken = true): SaveManager => {
+    const manager = saved(NOTHING_NEW, (stash) => {
+      const [first] = stash.listPokemon();
+      first.pokemon.takeDamage(first.pokemon.maxHp);
+      stash.addPokemon(new Pokemon(PIDGEY, 6), 'pidgey-1');
+    });
+    if (freeHealTaken) {
+      manager.save({ ...manager.load()!, freeHealDay: healDayOf(new Date()) });
+    }
+    return manager;
+  };
+
   it('welcomes a newcomer, once, then says the price: moving boxes is not her job', () => {
     const manager = hurt({ firstWordsHeard: ['lab', 'loadout'] });
     const joy = room(manager, [false]);
@@ -309,7 +325,7 @@ describe('Nurse Joy, at her counter', () => {
   });
 
   it('heals everybody on YES, books the time, and comes back to the counter to say so', () => {
-    const manager = hurt();
+    const manager = fainted();
     const joy = room(manager, [true]);
     joy.speak('pokemon-centre', 'stash');
 
@@ -324,7 +340,7 @@ describe('Nurse Joy, at her counter', () => {
   });
 
   it('heals free the first time each day, and says so once in the whole visit', () => {
-    const manager = hurt(NOTHING_NEW, false);
+    const manager = fainted(false);
     const joy = room(manager, [true]);
     joy.speak('pokemon-centre', 'stash');
     expect(joy.said.join(' ')).toContain('Your first heal today is free');
@@ -336,9 +352,11 @@ describe('Nurse Joy, at her counter', () => {
   });
 
   it('says the rule with a price: at most 1:00, and the first each day free', () => {
-    const joy = room(hurt(), [false]);
+    const joy = room(fainted(), [false]);
     joy.speak('pokemon-centre', 'stash');
-    expect(joy.said.join(' ')).toContain('Healing costs at most 1:00 of a raid, and the first each day is free.');
+    expect(joy.said.join(' ')).toContain(
+      'Healing is free. Bringing a Pokémon round from a faint costs at most 1:00 of a raid, and the first each day is free.',
+    );
   });
 
   it('asks nothing of a fit team', () => {

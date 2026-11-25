@@ -14,9 +14,7 @@ import {
   quoteRecovery,
   raidClockAfterRecovery,
   recoveryHeldBackIds,
-  RECOVERY_FULL_BAR_MS,
   RECOVERY_REVIVE_MS,
-  RECOVERY_STATUS_MS,
   RECOVERY_STEP_MS,
   recoveryCostMs,
   recoveryPrices,
@@ -30,10 +28,11 @@ function faintedCharmander(): Pokemon {
   return charmander;
 }
 
+/** A vault whose Charmander came home fainted: the one case Nurse Joy charges for. */
 function hurtStash(): { stash: Stash; charmander: Pokemon } {
   const stash = new Stash();
   const charmander = new Pokemon(CHARMANDER, 5);
-  charmander.takeDamage(charmander.maxHp - 3);
+  charmander.takeDamage(charmander.maxHp);
   stash.addPokemon(charmander, 'charmander-1');
   stash.addItem('potion', 3);
   return { stash, charmander };
@@ -47,39 +46,33 @@ describe('recovery pricing', () => {
     expect(needsRecovery(pidgey)).toBe(false);
   });
 
-  it('scales with the share of the health bar it has to put back', () => {
-    const full = new Pokemon(CHARMANDER, 5);
+  /**
+   * The overnight critic's problem 15 (25 Nov 2026): every treatment was
+   * charged to the next raid's clock, so a bad raid made the next one worse.
+   * A scrape and a status are FireRed's Pokémon Center's: free.
+   */
+  it('mends HP and cures a status for nothing, and says they need her', () => {
     const half = new Pokemon(CHARMANDER, 5);
     half.takeDamage(Math.floor(half.maxHp / 2));
-    const scratched = new Pokemon(CHARMANDER, 5);
-    scratched.takeDamage(1);
+    const nearlyDead = new Pokemon(CHARMANDER, 5);
+    nearlyDead.takeDamage(nearlyDead.maxHp - 1);
+    const poisoned = new Pokemon(CHARMANDER, 5);
+    poisoned.primaryStatus = PrimaryStatus.Poison;
 
-    expect(recoveryCostMs(full)).toBe(0);
-    expect(recoveryCostMs(half)).toBeGreaterThan(recoveryCostMs(scratched));
-    expect(recoveryCostMs(half)).toBeLessThan(RECOVERY_FULL_BAR_MS);
-    // A scratch is cheap enough to be worth fixing, never free.
-    expect(recoveryCostMs(scratched)).toBe(RECOVERY_STEP_MS);
+    for (const pokemon of [half, nearlyDead, poisoned]) {
+      expect(recoveryCostMs(pokemon)).toBe(0);
+      expect(needsRecovery(pokemon)).toBe(true);
+    }
   });
 
-  it('charges a revive surcharge on top of a full bar, so a faint stays the worst outcome', () => {
-    const fainted = new Pokemon(CHARMANDER, 5);
-    fainted.takeDamage(fainted.maxHp);
+  it('charges only to bring a Pokémon round from a faint, so a faint stays the worst outcome', () => {
+    const fainted = faintedCharmander();
     const nearlyDead = new Pokemon(CHARMANDER, 5);
     nearlyDead.takeDamage(nearlyDead.maxHp - 1);
 
     expect(fainted.isFainted).toBe(true);
-    expect(recoveryCostMs(fainted)).toBe(RECOVERY_FULL_BAR_MS + RECOVERY_REVIVE_MS);
-    expect(recoveryCostMs(fainted) - recoveryCostMs(nearlyDead)).toBeGreaterThanOrEqual(
-      RECOVERY_REVIVE_MS,
-    );
-  });
-
-  it('adds a flat charge for a status that would otherwise persist between raids', () => {
-    const poisoned = new Pokemon(CHARMANDER, 5);
-    poisoned.primaryStatus = PrimaryStatus.Poison;
-
-    expect(recoveryCostMs(poisoned)).toBe(RECOVERY_STATUS_MS);
-    expect(needsRecovery(poisoned)).toBe(true);
+    expect(recoveryCostMs(fainted)).toBe(RECOVERY_REVIVE_MS);
+    expect(recoveryCostMs(fainted)).toBeGreaterThan(recoveryCostMs(nearlyDead));
   });
 
   it('rounds prices up to a whole step so the lobby never shows odd seconds', () => {
@@ -149,7 +142,7 @@ describe('recovery charges', () => {
 
     const quoted = quoteRecovery(stash, 0, ids);
 
-    expect(quoted).toBeGreaterThan(0);
+    expect(quoted).toBe(RECOVERY_REVIVE_MS);
     expect(applyRecovery(stash, 0, ids).chargedMs).toBe(quoted);
   });
 
@@ -240,12 +233,23 @@ describe('recovery against the raid clock', () => {
     expect(isFreeHealDay(undefined, new Date(2026, 10, 3))).toBe(true);
   });
 
+  it("keeps today's free heal for a faint: mending a scratch, free any day, never spends it", () => {
+    const stash = new Stash();
+    const scratched = new Pokemon(PIDGEY, 6);
+    scratched.takeDamage(2);
+    stash.addPokemon(scratched, 'scratched');
+    const free: RecoveryTerms = { priceShare: 1, wardTreatments: 0, freeToday: true };
+    const outcome = applyRecovery(stash, 0, ['scratched'], free);
+    expect(outcome.recoveredIds).toEqual(['scratched']);
+    expect(outcome.usedFreeHeal).toBe(false);
+    stash.addPokemon(faintedCharmander(), 'down');
+    expect(applyRecovery(stash, 0, ['down'], free).usedFreeHeal).toBe(true);
+  });
+
   it('prices every treatment as a whole number of quoting steps', () => {
     // A full bar has to cost exactly its listed price, not the next step up.
-    for (const price of [RECOVERY_FULL_BAR_MS, RECOVERY_REVIVE_MS, RECOVERY_STATUS_MS]) {
-      expect(price % RECOVERY_STEP_MS).toBe(0);
-      expect(price).toBeGreaterThan(0);
-    }
+    expect(RECOVERY_REVIVE_MS % RECOVERY_STEP_MS).toBe(0);
+    expect(RECOVERY_REVIVE_MS).toBeGreaterThan(0);
   });
 
   it('ignores a corrupt or negative debt rather than handing out extra time', () => {
@@ -276,30 +280,26 @@ describe('what Brock changes about recovery', () => {
   it('prices a better bay as a smaller share of the raid, never as a fixed time', () => {
     for (const share of [1, 0.75, 0.5]) {
       const prices = recoveryPrices(share);
-      expect(prices.fullBarMs).toBe(
-        Math.round((RAID_DURATION_MS * 0.22 * share) / RECOVERY_STEP_MS) * RECOVERY_STEP_MS,
+      expect(prices.reviveMs).toBe(
+        Math.max(RECOVERY_STEP_MS, Math.round((RAID_DURATION_MS * 0.11 * share) / RECOVERY_STEP_MS) * RECOVERY_STEP_MS),
       );
-      expect(prices.fullBarMs % RECOVERY_STEP_MS).toBe(0);
+      expect(prices.reviveMs % RECOVERY_STEP_MS).toBe(0);
     }
-    expect(recoveryPrices(1)).toEqual({
-      fullBarMs: RECOVERY_FULL_BAR_MS,
-      reviveMs: RECOVERY_REVIVE_MS,
-      statusMs: RECOVERY_STATUS_MS,
-    });
+    expect(recoveryPrices(1)).toEqual({ reviveMs: RECOVERY_REVIVE_MS });
   });
 
-  it('makes every treatment cheaper with each bay, and never free', () => {
+  it('makes a revive cheaper with each bay, and never free', () => {
     const pokemon = downed();
-    pokemon.primaryStatus = PrimaryStatus.Poison;
     const full = recoveryCostMs(pokemon);
     const bayOne = recoveryCostMs(pokemon, { priceShare: 0.75, wardTreatments: 0 });
     const bayTwo = recoveryCostMs(pokemon, { priceShare: 0.5, wardTreatments: 0 });
 
     expect(bayOne).toBeLessThan(full);
     expect(bayTwo).toBeLessThan(bayOne);
-    expect(bayTwo).toBeGreaterThanOrEqual(full / 2);
+    // Half the raid share, to the nearest quoting step.
+    expect(Math.abs(bayTwo - full / 2)).toBeLessThanOrEqual(RECOVERY_STEP_MS / 2);
     // A price that rounded away would make the bay a free heal, which is the ward's offer.
-    expect(recoveryPrices(0.01).statusMs).toBe(RECOVERY_STEP_MS);
+    expect(recoveryPrices(0.01).reviveMs).toBe(RECOVERY_STEP_MS);
     expect(recoveryPrices(Number.NaN)).toEqual(recoveryPrices(1));
   });
 
@@ -312,16 +312,12 @@ describe('what Brock changes about recovery', () => {
     }
   });
 
-  it('heals and cures in a ward bed for nothing, but still charges the revive', () => {
-    const hurt = new Pokemon(CHARMANDER, 5);
-    hurt.takeDamage(hurt.maxHp - 1);
-    hurt.primaryStatus = PrimaryStatus.Burn;
-
-    expect(recoveryCostMs(hurt, WARD, true)).toBe(0);
-    expect(recoveryCostMs(downed(), WARD, true)).toBe(RECOVERY_REVIVE_MS);
+  it('brings a Pokémon round in a ward bed for nothing', () => {
+    expect(recoveryCostMs(downed(), WARD)).toBe(RECOVERY_REVIVE_MS);
+    expect(recoveryCostMs(downed(), WARD, true)).toBe(0);
   });
 
-  it('gives the bed to whoever it saves the most on, so the listed price is the price', () => {
+  it('gives the bed to a fainted Pokémon, never to a scratch, so the listed price is the price', () => {
     const stash = new Stash();
     const scratched = new Pokemon(PIDGEY, 5);
     scratched.takeDamage(1);
@@ -329,14 +325,14 @@ describe('what Brock changes about recovery', () => {
     stash.addPokemon(downed(), 'down');
 
     expect([...wardBedIds(pokemonNeedingRecovery(stash), WARD)]).toEqual(['down']);
-    // Treating the scratch alone does not take the bed from the worse case...
-    expect(quoteRecovery(stash, 0, ['scratched'], WARD)).toBe(recoveryCostMs(scratched));
+    // Treating the scratch alone is free and does not take the bed...
+    expect(quoteRecovery(stash, 0, ['scratched'], WARD)).toBe(0);
     const first = applyRecovery(stash, 0, ['scratched'], WARD);
     expect(first.wardTreatmentsUsed).toBe(0);
-    // ...which then gets it, and pays only for the revive.
+    // ...which then brings the fainted one round for nothing.
     const second = applyRecovery(stash, first.pendingRecoveryMs, ['down'], WARD);
     expect(second.wardTreatmentsUsed).toBe(1);
-    expect(second.chargedMs).toBe(RECOVERY_REVIVE_MS);
+    expect(second.chargedMs).toBe(0);
   });
 
   it('charges in full once the bed for this raid is used', () => {
@@ -344,7 +340,7 @@ describe('what Brock changes about recovery', () => {
     stash.addPokemon(downed(), 'down');
     const used: RecoveryTerms = { priceShare: 1, wardTreatments: 0 };
 
-    expect(quoteRecovery(stash, 0, ['down'], used)).toBe(Math.min(MAX_PENDING_RECOVERY_MS, RECOVERY_FULL_BAR_MS + RECOVERY_REVIVE_MS));
+    expect(quoteRecovery(stash, 0, ['down'], used)).toBe(RECOVERY_REVIVE_MS);
     expect(applyRecovery(stash, 0, ['down'], used).wardTreatmentsUsed).toBe(0);
   });
 
@@ -358,7 +354,7 @@ describe('what Brock changes about recovery', () => {
     const outcome = applyRecovery(stash, 0, ids, WARD);
     expect(outcome.chargedMs).toBe(quoted);
     expect(outcome.wardTreatmentsUsed).toBe(1);
-    expect(quoted).toBe(Math.min(MAX_PENDING_RECOVERY_MS, RECOVERY_FULL_BAR_MS + 2 * RECOVERY_REVIVE_MS));
+    expect(quoted).toBe(RECOVERY_REVIVE_MS);
   });
 });
 

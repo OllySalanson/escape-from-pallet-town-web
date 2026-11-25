@@ -4,28 +4,35 @@ import type { Stash, StashedPokemon } from '../stash';
 import { teamConditionLine } from '../ui/condition';
 
 /**
- * Recovery between raids, priced in raid time.
+ * Recovery between raids: free, as every Pokémon Center is, except for a faint,
+ * which is priced in raid time.
  *
  * Nothing but a finite Potion used to restore HP, so a Pokemon that came home
  * at 3/17 stayed there and the cheapest cure for a worn party was to wipe and
  * be re-granted a fresh level-5 starter. That inverted the whole design, which
- * is built on protecting what you bank.
+ * is built on protecting what you bank, and raid time became the price of every
+ * treatment: a scratch, a burn, a faint.
  *
- * Raid time is the currency because the player always has it, always wants more
- * of it, and it is spent the moment they act on it: a treated party deploys into
- * a shorter raid, so healing trades safety in a fight for pressure on the clock
- * instead of trading away a resource the player might be hoarding. It adds no
- * money, no shop and no new stock; a heal never produces an item or a Pokemon.
+ * That charged the player who was already losing. Every raid after a bad one
+ * ran short, and "a bad raid makes the next one worse" was the overnight
+ * critic's problem 15 (25 Nov 2026): every raid of theirs after the second ran
+ * on 4:00 or 4:35. So HP and a lingering status are mended for nothing, as
+ * FireRed's Nurse Joy mends them, and **only bringing a Pokémon round from a
+ * faint costs clock**: a faint stays the worst outcome of a fight, so pulling
+ * a Pokémon out at 1 HP still beats letting it drop, and a player who finishes
+ * a raid on their feet starts the next one on the full clock.
+ *
+ * Raid time is still the currency for that one charge because the player always
+ * has it, always wants more of it, and spends it the moment they act on it. It
+ * adds no shop and no stock; a heal never produces an item or a Pokemon.
  *
  * The debt is charged when the raid resolves, not when it starts, so abandoning
  * a shortened raid cannot wash it away.
  *
- * Every price here is a share of one raid, not an absolute number of minutes.
- * They were first written against an 18-minute clock; `RAID_DURATION_MS` is now
- * 5 minutes, and left absolute a single revive would have cost more than a whole
- * raid and handed the player a zero clock. The shares below are the ones that
- * schedule expressed, carried across intact.
+ * Every price here is a share of one raid, not an absolute number of minutes,
+ * so a change to `RAID_DURATION_MS` can never price a revive past the clock.
  */
+export const HEALING_IS_FREE_LINE = 'Healing and curing are free. Only bringing a Pokémon round from a faint costs time.';
 
 /** Quoted prices are rounded up to this, so the lobby never shows odd seconds. */
 export const RECOVERY_STEP_MS = 5_000;
@@ -37,22 +44,15 @@ export const RECOVERY_STEP_MS = 5_000;
 const shareOfRaid = (share: number): number =>
   Math.round((RAID_DURATION_MS * share) / RECOVERY_STEP_MS) * RECOVERY_STEP_MS;
 
-const FULL_BAR_SHARE = 0.22;
 const REVIVE_SHARE = 0.11;
-const STATUS_SHARE = 0.03;
-
-/** Restoring a full health bar's worth of HP costs this much of the next raid. */
-export const RECOVERY_FULL_BAR_MS = shareOfRaid(FULL_BAR_SHARE);
 
 /**
- * Reviving costs this on top of refilling the bar, so a faint stays the worst
- * outcome of a fight. Without it, letting a Pokemon drop would cost exactly the
- * same as pulling it out at 1 HP and retreating would be pointless.
+ * Bringing a fainted Pokémon round costs this much of the next raid: the one
+ * treatment with a price, so a faint stays the worst outcome of a fight.
+ * Without it, letting a Pokemon drop would cost exactly the same as pulling it
+ * out at 1 HP and retreating would be pointless.
  */
 export const RECOVERY_REVIVE_MS = shareOfRaid(REVIVE_SHARE);
-
-/** Clearing a lingering status, which also persists between raids. */
-export const RECOVERY_STATUS_MS = shareOfRaid(STATUS_SHARE);
 
 /**
  * What this base charges, which Brock can improve.
@@ -64,9 +64,8 @@ export const RECOVERY_STATUS_MS = shareOfRaid(STATUS_SHARE);
  * clock is the ward's offer, not the bay's.
  *
  * `wardTreatments` is how many of the quarantine ward's beds are still unused
- * before the next raid. A bed waives the healing and the cure for one Pokemon
- * and never the revive premium, for the reason medicine cannot revive either:
- * a faint has to stay the worst outcome of a fight.
+ * before the next raid. A bed waives the revive for one fainted Pokémon - the
+ * one treatment left with a price since healing and curing became free.
  */
 export interface RecoveryTerms {
   readonly priceShare: number;
@@ -96,20 +95,14 @@ export function isFreeHealDay(freeHealDay: string | undefined, now: Date): boole
 }
 
 export interface RecoveryPrices {
-  readonly fullBarMs: number;
   readonly reviveMs: number;
-  readonly statusMs: number;
 }
 
 export function recoveryPrices(priceShare: number): RecoveryPrices {
   const share = Number.isFinite(priceShare) ? Math.min(1, Math.max(0, priceShare)) : 1;
   const priced = (raidShare: number): number =>
     Math.max(RECOVERY_STEP_MS, shareOfRaid(raidShare * share));
-  return {
-    fullBarMs: priced(FULL_BAR_SHARE),
-    reviveMs: priced(REVIVE_SHARE),
-    statusMs: priced(STATUS_SHARE),
-  };
+  return { reviveMs: priced(REVIVE_SHARE) };
 }
 
 /**
@@ -164,31 +157,17 @@ export function isRecoveryHeldBack(stash: Stash, pendingRecoveryMs: number): boo
 }
 
 /**
- * What restoring one Pokemon to full HP with no status costs in raid time, or
- * zero when it is already fit. `inWardBed` prices the same treatment in one of
- * the quarantine ward's beds, where only a revive is still charged.
+ * What restoring one Pokemon to full HP with no status costs in raid time: the
+ * revive, for a Pokémon that has fainted, and nothing for anybody else.
+ * `inWardBed` prices it in one of the quarantine ward's beds, which waive the
+ * revive.
  */
 export function recoveryCostMs(
   pokemon: Pokemon,
   terms: RecoveryTerms = STANDARD_RECOVERY_TERMS,
   inWardBed = false,
 ): number {
-  const prices = recoveryPrices(terms.priceShare);
-  const missingHp = Math.max(0, pokemon.maxHp - pokemon.currentHp);
-  let costMs = 0;
-  if (missingHp > 0 && !inWardBed) {
-    costMs += Math.max(
-      RECOVERY_STEP_MS,
-      roundUpToStep((missingHp / pokemon.maxHp) * prices.fullBarMs),
-    );
-  }
-  if (pokemon.isFainted) {
-    costMs += prices.reviveMs;
-  }
-  if (pokemon.primaryStatus !== null && !inWardBed) {
-    costMs += prices.statusMs;
-  }
-  return costMs;
+  return pokemon.isFainted && !inWardBed ? recoveryPrices(terms.priceShare).reviveMs : 0;
 }
 
 /**
@@ -217,8 +196,9 @@ export function wardBedIds(
   );
 }
 
+/** Whether Nurse Joy has anything to do for this Pokémon: HP to mend, a status to cure, or a faint. */
 export function needsRecovery(pokemon: Pokemon): boolean {
-  return recoveryCostMs(pokemon) > 0;
+  return pokemon.isFainted || pokemon.currentHp < pokemon.maxHp || pokemon.primaryStatus !== null;
 }
 
 /** Every stashed Pokemon a recovery would actually change, in stash order. */
@@ -263,7 +243,7 @@ function planRecovery(
   const patients = resolve(stash, ids);
   // Today's free heal takes everybody for nothing, so it neither fills a ward
   // bed nor waits on a debt at the cap.
-  const free = terms.freeToday === true;
+  const free = freeHealApplies(stash, ids, terms);
   const beds = free ? new Set<string>() : wardBedIds(pokemonNeedingRecovery(stash), terms);
   const heldBack = !free && isRecoveryHeldBack(stash, pendingRecoveryMs);
   const treatments: PlannedTreatment[] = [];
@@ -281,6 +261,22 @@ function planRecovery(
     treatments.push({ stored, inWardBed, chargedMs: charge.chargedMs });
   }
   return { treatments, heldBackIds, pendingRecoveryMs: pending };
+}
+
+/**
+ * Whether today's free heal is what this visit would spend. Mending HP and a
+ * status is free on any day, so only bringing somebody round from a faint
+ * uses it up: a first visit to mend a scratch spent it on nothing, and Nurse
+ * Joy said "your first heal today is free" over a heal that always was (the
+ * fresh critic, 25 Nov 2026). `patients` is who is treated, if already known.
+ */
+export function freeHealApplies(
+  stash: Stash,
+  ids: readonly string[],
+  terms: RecoveryTerms,
+  patients: readonly StashedPokemon[] = resolve(stash, ids),
+): boolean {
+  return terms.freeToday === true && patients.some((stored) => stored.pokemon.isFainted);
 }
 
 /** The whole bill for treating these Pokemon, after the ward's beds and the cap. */
@@ -328,6 +324,8 @@ export function applyRecovery(
   terms: RecoveryTerms = STANDARD_RECOVERY_TERMS,
 ): RecoveryOutcome {
   const plan = planRecovery(stash, pendingRecoveryMs, ids, terms);
+  // Asked before anybody is treated: once brought round, nobody has fainted.
+  const spendsFreeHeal = freeHealApplies(stash, ids, terms);
   const recoveredIds: string[] = [];
   let pending = clampPendingRecoveryMs(pendingRecoveryMs);
   let chargedMs = 0;
@@ -347,7 +345,7 @@ export function applyRecovery(
     pendingRecoveryMs: pending,
     wardTreatmentsUsed,
     heldBackIds: plan.heldBackIds,
-    usedFreeHeal: terms.freeToday === true && recoveredIds.length > 0,
+    usedFreeHeal: spendsFreeHeal && recoveredIds.length > 0,
   };
 }
 
@@ -418,6 +416,3 @@ function resolve(stash: Stash, ids: readonly string[]): readonly StashedPokemon[
     .filter((entry) => needsRecovery(entry.pokemon));
 }
 
-function roundUpToStep(ms: number): number {
-  return Math.ceil(ms / RECOVERY_STEP_MS) * RECOVERY_STEP_MS;
-}

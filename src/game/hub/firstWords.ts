@@ -80,7 +80,7 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
     name: 'Nurse Joy',
     lines: [
       'Welcome to the Pokémon Center! Your Pokémon rest here between raids.',
-      'I can heal anyone hurt or fainted, and I always tell you what it costs before I start.',
+      'Healing is free. Only a faint costs you: time off your next raid.',
       "Poison, paralysis, a burn: they stay on till they're treated, so do come and see me.",
       'Your boxes and everything you have banked are on BILL’S PC, over by the wall.',
     ],

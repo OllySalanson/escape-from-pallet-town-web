@@ -679,7 +679,7 @@ describe('hub deployment route', () => {
   // AI playtest, 22 Nov 2026: a row said CENTER -1:40 and the heal took 0:50,
   // because the debt was near its cap and only the shortfall is charged.
   it("prices a bench row at what the heal then charges, the debt's cap counted", () => {
-    const { hub, worn } = createWornHub((maxHp) => maxHp - 1);
+    const { hub, worn } = createWornHub((maxHp) => maxHp);
     const fullMs = recoveryCostMs(worn.pokemon);
     const pendingMs = MAX_PENDING_RECOVERY_MS - 5_000;
     expect(fullMs).toBeGreaterThan(5_000);
@@ -690,15 +690,15 @@ describe('hub deployment route', () => {
     expect(hub.pendingRecoveryMs - pendingMs).toBe(quoted);
   });
 
-  it('recovers a worn Pokemon at base and takes the cost off the next raid clock', () => {
-    const { hub, start, storage, worn } = createWornHub();
+  it('brings a fainted Pokemon round at base and takes the cost off the next raid clock', () => {
+    const { hub, start, storage, worn } = createWornHub((maxHp) => maxHp);
     const costMs = recoveryCostMs(worn.pokemon);
-    // The player builds the loadout first, so recovery has to leave it intact.
-    hub.flow.togglePokemon('charmander-1');
     expect(costMs).toBeGreaterThan(0);
     expect(hub.raidClockMs).toBe(RAID_DURATION_MS);
 
     hub.recover(['charmander-1']);
+    // Back on its feet, it can go on the raid.
+    hub.flow.togglePokemon('charmander-1');
 
     expect(worn.pokemon.currentHp).toBe(worn.pokemon.maxHp);
     expect(hub.pendingRecoveryMs).toBe(costMs);
@@ -2331,7 +2331,7 @@ describe('Brock', () => {
 
     // Unbought: the card says what it does, and the price is under it.
     const unbought = rowOf('quarantine-ward');
-    expect(unbought).toContain('One heal per raid, free of clock.');
+    expect(unbought).toContain('One revive per raid, free of clock.');
     expect(unbought).toContain('<span class="workshop-costs">');
     // Built: the same line, still there, gold and tagged BUILT, and what it
     // cost with nothing marked short.
@@ -2516,25 +2516,25 @@ describe('Brock', () => {
 
   it('quotes the bay at this base\'s prices and spends the ward bed once', () => {
     const { hub } = createWorkshopHub(['recovery-bay-1', 'quarantine-ward']);
-    const hurt = hub.stash.listPokemon().find(({ id }) => id === 'pidgey-1')!;
-    const down = hub.stash.listPokemon().find(({ id }) => id === 'pidgey-2')!;
-    hurt.pokemon.takeDamage(3);
-    down.pokemon.takeDamage(down.pokemon.maxHp);
+    const first = hub.stash.listPokemon().find(({ id }) => id === 'pidgey-1')!;
+    const second = hub.stash.listPokemon().find(({ id }) => id === 'pidgey-2')!;
+    first.pokemon.takeDamage(first.pokemon.maxHp);
+    second.pokemon.takeDamage(second.pokemon.maxHp);
     const terms = { priceShare: 0.75, wardTreatments: 0 };
 
     // The bill is in the stash, beside the Pokémon it is for.
     hub.setView('stash');
     expect(markupOf(hub)).toContain('Ward bed: ');
 
-    // The bed goes to the worse case. It waives the refill; the revive is still
-    // charged, at the better bay's price.
-    hub.recover(['pidgey-2']);
-    expect(hub.pendingRecoveryMs).toBe(recoveryPrices(0.75).reviveMs);
-
-    // No bed left, so the second treatment is charged in full at the bay's discount.
-    const hurtPriceMs = recoveryCostMs(hurt.pokemon, terms);
+    // The bed brings the first one round for nothing.
     hub.recover(['pidgey-1']);
-    expect(hub.pendingRecoveryMs).toBe(recoveryPrices(0.75).reviveMs + hurtPriceMs);
+    expect(hub.pendingRecoveryMs).toBe(0);
+
+    // No bed left, so the second revive is charged, at the bay's discount.
+    const revivePriceMs = recoveryCostMs(second.pokemon, terms);
+    expect(revivePriceMs).toBe(recoveryPrices(0.75).reviveMs);
+    hub.recover(['pidgey-2']);
+    expect(hub.pendingRecoveryMs).toBe(revivePriceMs);
     expect(markupOf(hub)).not.toContain('Ward bed: ');
   });
 });

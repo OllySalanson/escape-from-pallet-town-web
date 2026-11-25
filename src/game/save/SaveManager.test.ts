@@ -1084,7 +1084,8 @@ describe('SaveManager', () => {
     const saves = new SaveManager(storage);
     const stash = new Stash();
     const charmander = new Pokemon(CHARMANDER, 9);
-    charmander.takeDamage(charmander.maxHp - 4);
+    // Fainted: bringing it round is the one treatment with a price.
+    charmander.takeDamage(charmander.maxHp);
     charmander.primaryStatus = PrimaryStatus.Poison;
     stash.addPokemon(charmander, 'charmander-1');
     stash.addItem('potion', 2);
