@@ -139,7 +139,7 @@ import { BASE_DOORS, doorAt, doorNamed, isHouseDoor, type BaseDoor, type BaseScr
 import type { SceneDescription } from '../dev/testDescribe';
 import { describeBag, describeTeam, inView, tileOf, viewTiles } from '../dev/describeParts';
 import { doorStatusLine } from '../base/doorStatus';
-import { GYM_GUIDE_REEL_QUESTION, gymGuideHasStakesNews, gymGuideLines } from '../base/gymGuide';
+import { GYM_GUIDE_REEL_QUESTION, gymGuideHasStakesNews, gymGuideHonourNews, gymGuideLines } from '../base/gymGuide';
 import { ARENA_INTRO_ENDS_ON, arenaIntroViewing } from '../cutscene/arenaIntro';
 import { BASE_SHEET_SOURCE } from '../base/baseSheet';
 import { BASE_PIECES } from '../base/generated/basePieces';
@@ -5691,7 +5691,18 @@ export class BaseScene extends Phaser.Scene {
       if (gymGuideHasStakesNews(this.savedGame.raidProgress)) {
         this.hearFirstWords('stakes');
       }
-      this.say(lines, [target], () => this.offerTheReel(), () => this.clearHarbourMark(GYM_GUIDE_ID));
+      // And a new gym honour, noticed once (`look/gymHonours.ts`).
+      const noticed = gymGuideHonourNews(this.savedGame.raidProgress);
+      if (noticed) {
+        this.hearFirstWords(noticed);
+      }
+      // His "!" goes once he has nothing left to tell: a second honour keeps it up.
+      const told = (): void => {
+        if (!gymGuideHasStakesNews(this.savedGame.raidProgress) && gymGuideHonourNews(this.savedGame.raidProgress) === undefined) {
+          this.clearHarbourMark(GYM_GUIDE_ID);
+        }
+      };
+      this.say(lines, [target], () => this.offerTheReel(), told);
       return;
     }
     if (local?.id === PORTER_ID) {
@@ -7862,7 +7873,8 @@ export class BaseScene extends Phaser.Scene {
     for (const figure of life) {
       const news =
         (figure.id === PORTER_ID && porterHasNews(this.beachBottle.length > 0, this.raidsGoneOn())) ||
-        (figure.id === GYM_GUIDE_ID && gymGuideHasStakesNews(this.savedGame.raidProgress));
+        (figure.id === GYM_GUIDE_ID &&
+          (gymGuideHasStakesNews(this.savedGame.raidProgress) || gymGuideHonourNews(this.savedGame.raidProgress) !== undefined));
       if (figure.kind === 'person' && (news || this.favourHere(harbourGiver(figure.id)))) {
         this.harbourMarks.set(figure.id, drawEmoteBubble(this, 'exclaim'));
       }

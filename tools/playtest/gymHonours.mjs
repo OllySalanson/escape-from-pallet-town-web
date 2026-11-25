@@ -108,6 +108,71 @@ try {
   }
   await shoot('01-in-the-yard');
 
+  // The Gym Guide notices a new honour: he wears the harbour's "!" until he
+  // has, says it first when spoken to, and never again.
+  const guideState = `(() => { const b = ${GAME}.scene.getScene('base'); return { box: !!b.dialogBox?.visible, marks: [...(b.harbourMarks?.keys() ?? [])] }; })()`;
+  if (!(await page.evaluate(guideState)).marks.includes('gym-guide')) fail('the Gym Guide has no "!" for the new honours');
+  for (let guard = 0; guard < 300; guard += 1) {
+    const move = await page.evaluate(`(() => { const b = ${GAME}.scene.getScene('base'); if (!b.ready || b.dialogBox.visible) return { wait: true };
+      const at = b.harbourLife.spriteAt('gym-guide'); if (!at) return { missing: true };
+      const fig = { x: Math.round(at.x / 16), y: Math.round((at.y + 4) / 16) }; const s = b.currentTile;
+      const beside = [[0,1,'ArrowUp'],[0,-1,'ArrowDown'],[1,0,'ArrowLeft'],[-1,0,'ArrowRight']];
+      for (const [dx, dy, k] of beside) if (s.x === fig.x + dx && s.y === fig.y + dy) return { face: k };
+      const goals = beside.map(([dx, dy]) => ({ x: fig.x + dx, y: fig.y + dy })).filter((g) => !b.isBlocked(g));
+      const W = b.collision[0].length, H = b.collision.length, key = (x, y) => y * W + x;
+      const prev = new Map([[key(s.x, s.y), null]]); const queue = [[s.x, s.y]]; let found = null;
+      while (queue.length) { const [x, y] = queue.shift(); if (goals.some((g) => g.x === x && g.y === y)) { found = [x, y]; break; }
+        for (const [dx, dy, k] of [[0,-1,'ArrowUp'],[0,1,'ArrowDown'],[-1,0,'ArrowLeft'],[1,0,'ArrowRight']]) { const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(key(nx, ny)) || b.isBlocked({ x: nx, y: ny })) continue;
+          prev.set(key(nx, ny), [x, y, k]); queue.push([nx, ny]); } }
+      if (!found) return { wait: true }; let cur = found, first = null;
+      for (;;) { const p = prev.get(key(cur[0], cur[1])); if (!p) break; first = p[2]; cur = [p[0], p[1]]; }
+      return { key: first }; })()`);
+    if (move.missing) fail('the Gym Guide is not out in the harbour');
+    if (move.face) {
+      await press(move.face);
+      await wait(200);
+      const facing = await page.evaluate(`(() => { const b = ${GAME}.scene.getScene('base'); const d = { up: [0,-1], down: [0,1], left: [-1,0], right: [1,0] }[b.facing]; return b.harbourLife.at({ x: b.currentTile.x + d[0], y: b.currentTile.y + d[1] })?.id ?? null; })()`);
+      if (facing === 'gym-guide') break;
+      // Somebody between - the partner at heel - or he moved: try again.
+      for (let close = 0; close < 6 && (await page.evaluate(guideState)).box; close += 1) {
+        await press('Space');
+        await wait(300);
+      }
+      continue;
+    }
+    if (move.key) await press(move.key);
+    await wait(200);
+  }
+  await shoot('01a-gym-guide-mark');
+  await press('Space');
+  await until(`${GAME}.scene.getScene('base').dialogBox.visible && ${GAME}.scene.getScene('base').dialogBox.isCurrentMessageComplete`, 'the Gym Guide speaking');
+  await shoot('01b-gym-guide-notices');
+  const said = [];
+  for (let guard = 0; guard < 30 && (await page.evaluate(guideState)).box; guard += 1) {
+    await until(`${GAME}.scene.getScene('base').dialogBox.isCurrentMessageComplete`, 'a line to finish');
+    said.push(await page.evaluate(`${GAME}.scene.getScene('base').dialogBox.textObject.text.replace(/\\s+/g, ' ').trim()`));
+    await press('Space');
+    await wait(300);
+  }
+  if (!said[0]?.includes('CASCADE NECKERCHIEF')) fail(`the Gym Guide opened with ${JSON.stringify(said[0])}`);
+  console.log(`the Gym Guide: ${said.slice(0, 4).join(' / ')}`);
+  const heard = await saved('raidProgress.firstWordsHeard');
+  if (!heard?.includes('cascadeWorn')) fail('the neckerchief was not noted as noticed');
+  if (!(await page.evaluate(guideState)).marks.includes('gym-guide')) fail('the "!" went while the SOUL BAND was still unnoticed');
+  // The next word with him is the SOUL BAND, and then the "!" goes.
+  await press('Space');
+  await until(`${GAME}.scene.getScene('base').dialogBox.visible && ${GAME}.scene.getScene('base').dialogBox.isCurrentMessageComplete`, 'the Gym Guide again');
+  const second = await page.evaluate(`${GAME}.scene.getScene('base').dialogBox.textObject.text.replace(/\\s+/g, ' ').trim()`);
+  if (!second.includes('SOUL BAND')) fail(`the Gym Guide's second word opened with ${JSON.stringify(second)}`);
+  await shoot('01b-gym-guide-notices-soul');
+  for (let guard = 0; guard < 30 && (await page.evaluate(guideState)).box; guard += 1) {
+    await press('Space');
+    await wait(300);
+  }
+  if ((await page.evaluate(guideState)).marks.includes('gym-guide')) fail('the "!" stayed up once both honours were noticed');
+  console.log(`then: ${second}`);
+
   // A regular wearing honours, with a badge pip each on their name plate. The
   // regulars keep the clock, so wait for one wearing them to come into view.
   const pipped = `(() => { const sc = ${GAME}.scene.getScene('base'); for (const [id, d] of sc.harbourFigures?.drawn ?? []) { if (d.pips.length > 0 && d.plate.visible && d.plate.alpha === 1) { const c = sc.game.canvas.getBoundingClientRect(); const cam = sc.cameras.main; const z = (c.width / sc.scale.width) * cam.zoom; const x = c.left + (d.plate.x - cam.worldView.x) * z, y = c.top + (d.plate.y - cam.worldView.y) * z; if (x > 0 && y > 0 && x < innerWidth - 120 && y < innerHeight - 120) return { id, pips: d.pips.join('+'), x, y, z }; } } return null; })()`;
@@ -122,7 +187,7 @@ try {
     clip: { x: regular.x - 16 * regular.z, y: regular.y - 4 * regular.z, width: 96 * regular.z, height: 48 * regular.z, scale: 1 },
   });
   writeFileSync(`${out}/regular-plate.png`, Buffer.from(plateShot, 'base64'));
-  await shoot('01b-a-regular-with-pips');
+  await shoot('01c-a-regular-with-pips');
   console.log(`${regular.id} wears ${regular.pips}, a pip each on the plate`);
 
   // The boutique's shelf of honours: every one, never for sale.
