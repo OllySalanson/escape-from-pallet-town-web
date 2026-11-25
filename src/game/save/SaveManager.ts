@@ -1,3 +1,4 @@
+import { wonBadges } from '../base/badgeCase';
 import { afterBout, readBouts, type BoutRecord } from '../base/boutLadder';
 import { readDojoRecord, type DojoRecord } from '../arena/dojoRecord';
 import { DOJO_PRIZE_LEVEL, settleDojoBout, type DojoSettlement } from '../arena/classes';
@@ -982,7 +983,8 @@ export type SaveSummary =
   | {
       readonly kind: 'game';
       readonly pokemon: number;
-      readonly contracts: number;
+      /** Gym badges won, as the badge case counts them (`wonBadges`). */
+      readonly badges: number;
       readonly raids: number;
       /** The partner's species, for the title screen to run beside the trainer. */
       readonly partner?: string;
@@ -1055,7 +1057,7 @@ export class SaveManager {
     return {
       kind: 'game',
       pokemon: game.stash.listPokemon().length,
-      contracts: progress.completedContracts.length + progress.standingContractsBanked,
+      badges: wonBadges(game).length,
       raids: raidsDeployed(progress),
       ...(partner ? { partner: partner.pokemon.base.id } : {}),
       ...(progress.look ? { look: progress.look } : {}),

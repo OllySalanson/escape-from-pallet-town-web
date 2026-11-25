@@ -16,7 +16,7 @@ import {
 import { CHASE_LANE } from './titleScenery';
 
 const NONE: SaveSummary = { kind: 'none' };
-const GAME: SaveSummary = { kind: 'game', pokemon: 5, contracts: 2, raids: 9 };
+const GAME: SaveSummary = { kind: 'game', pokemon: 5, badges: 2, raids: 9 };
 const BROKEN: SaveSummary = { kind: 'unreadable' };
 
 describe('the title menu', () => {
@@ -34,13 +34,17 @@ describe('the title menu', () => {
     const menu = titleMenu(GAME);
 
     expect(menu.initial).toBe('continue');
-    expect(menu.choices[0]).toMatchObject({ enabled: true, detail: '5 POKÉMON · 2 JOBS' });
+    expect(menu.choices[0]).toMatchObject({ enabled: true, detail: '5 POKÉMON · 2 BADGES' });
     // The other choice says what it costs before it is chosen.
     expect(menu.choices[1].detail).toBe('ERASES THE SAVE');
   });
 
   it('counts one of a thing in the singular', () => {
-    expect(saveDetail({ kind: 'game', pokemon: 1, contracts: 1, raids: 0 })).toBe('1 POKÉMON · 1 JOB');
+    expect(saveDetail({ kind: 'game', pokemon: 1, badges: 1, raids: 0 })).toBe('1 POKÉMON · 1 BADGE');
+  });
+
+  it('counts badges rather than contracts, from none won', () => {
+    expect(saveDetail({ kind: 'game', pokemon: 1, badges: 0, raids: 0 })).toBe('1 POKÉMON · 0 BADGES');
   });
 
   it('names a save it cannot read rather than calling it empty', () => {

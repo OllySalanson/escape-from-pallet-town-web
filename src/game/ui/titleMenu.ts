@@ -60,7 +60,7 @@ export interface TitleMenu {
 const plural = (count: number, one: string, many: string): string => `${count} ${count === 1 ? one : many}`;
 
 /**
- * "5 POKÉMON · 2 CONTRACTS": enough to know a save is yours. Spelt as every
+ * "5 POKÉMON · 2 BADGES": enough to know a save is yours. Spelt as every
  * menu the title leads to spells it in capitals, not FireRed's "POKéMON",
  * which only the battle commands keep (playtest 47).
  */
@@ -71,7 +71,7 @@ export function saveDetail(summary: SaveSummary): string {
   if (summary.kind === 'unreadable') {
     return 'SAVE UNREADABLE';
   }
-  return `${summary.pokemon} POKÉMON · ${plural(summary.contracts, 'JOB', 'JOBS')}`;
+  return `${summary.pokemon} POKÉMON · ${plural(summary.badges, 'BADGE', 'BADGES')}`;
 }
 
 export function titleMenu(summary: SaveSummary): TitleMenu {

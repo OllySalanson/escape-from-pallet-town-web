@@ -1,3 +1,5 @@
+import { caseBadges } from '../base/badgeCase';
+import { MISTY_BOSS_ID } from '../world/valeQuarters';
 import { afterBout } from '../base/boutLadder';
 import { DERBY_LEVELS } from '../minigames/derby';
 import { createRaidInFlight } from '../run/raidInFlight';
@@ -196,7 +198,32 @@ describe('SaveManager', () => {
         },
       });
 
-      expect(saves.describe()).toEqual({ kind: 'game', pokemon: 2, contracts: 2, raids: 3 });
+      // Contracts banked are not badges: a save with no keeper beaten has none.
+      expect(saves.describe()).toEqual({ kind: 'game', pokemon: 2, badges: 0, raids: 3 });
+    });
+
+    it('counts the badges won, as the badge case does', () => {
+      const storage = new MemoryStorage();
+      const saves = new SaveManager(storage);
+      const stash = new Stash();
+      stash.addPokemon(new Pokemon(CHARMANDER, 5), 'charmander-1');
+      const save = (defeatedBosses: string[]) =>
+        saves.save({
+          party: new PokemonParty(),
+          mapId: 'pallet-town',
+          position: { x: 6, y: 8 },
+          bag: new Bag(),
+          stash,
+          starterSpeciesId: 'charmander',
+          raidProgress: { ...DEFAULT_RAID_PROGRESS, defeatedBosses },
+        });
+
+      save([MISTY_BOSS_ID]);
+      expect(saves.describe()).toMatchObject({ badges: 1 });
+
+      const every = caseBadges().map((badge) => badge.bossId);
+      save([...every, 'not-a-keeper']);
+      expect(saves.describe()).toMatchObject({ badges: every.length });
     });
 
     it('names the partner, for the title screen to run beside the trainer', () => {
