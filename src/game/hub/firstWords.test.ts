@@ -6,10 +6,13 @@ import { ENRAGE_GRACE_MS } from '../run/RunManager';
 describe("Oak's first words", () => {
   // Four AI newcomers on 22 Nov 2026 waited the clock out expecting the raid to
   // end, and met an ENRAGED hunter that nothing had explained.
-  it('say what 0:00 brings: the hunters ENRAGED, and how long there is to get out', () => {
-    const rule = FIRST_WORDS.lab.lines.find((line) => line.includes('0:00'));
+  // Said on the radio the first time a raid reaches a minute left, not in the
+  // lab before there is a clock (the overnight critic's problem 7).
+  it('say what 0:00 brings when a minute is left: the hunters ENRAGED, and how long there is to get out', () => {
+    const [rule] = FIRST_WORDS.enraged.lines;
     expect(rule).toContain('ENRAGED');
     expect(rule).toContain(`${ENRAGE_GRACE_MS / 1000} seconds to get out`);
+    expect(FIRST_WORDS.lab.lines.join(' ')).not.toMatch(/ENRAGED|0:00|pack/);
   });
 
   it('greet the player by the name they have just given (playtest 47)', () => {
@@ -27,10 +30,9 @@ describe("Oak's first words", () => {
     expect(spokenLines(FIRST_WORDS.center, 'ROWAN')).toEqual(FIRST_WORDS.center.lines);
   });
 
-  it('says what a raid is on the way out of the lab in three boxes, and the hall in few enough to be read', () => {
-    expect(FIRST_WORDS.lab.lines).toHaveLength(3);
+  it('says what a raid is on the way out of the lab in two boxes, and the hall in few enough to be read', () => {
+    expect(FIRST_WORDS.lab.lines).toHaveLength(2);
     expect(FIRST_WORDS.lab.lines.join(' ')).toMatch(/exit/);
-    expect(FIRST_WORDS.lab.lines.join(' ')).toMatch(/pack is lost/);
     expect(FIRST_WORDS.lab.lines.join(' ')).toMatch(/RAID ARENA/);
     expect(FIRST_WORDS.loadout.lines.length).toBeLessThanOrEqual(5);
   });

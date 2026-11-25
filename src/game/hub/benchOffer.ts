@@ -46,5 +46,5 @@ export function benchOffer(
  * opens straight after says which, under AT RISK and SAFE.
  */
 export function benchOfferQuestion(offer: BenchOffer): string {
-  return `Take ${offer.name.toUpperCase()} along too?`;
+  return `Take ${offer.name.toUpperCase()} along?`;
 }

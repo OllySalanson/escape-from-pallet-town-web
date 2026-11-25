@@ -248,6 +248,7 @@ import {
 import { DEFAULT_RAID_PROGRESS, SaveManager, raidsDeployed, type RestoredGame } from '../save/SaveManager';
 import { gymOf, nextGym } from '../world/valeQuarters';
 import { fieldHealHint } from '../world/fieldHealHint';
+import { FIRST_WORDS } from '../hub/firstWords';
 import {
   FIRST_CATCH_AGAIN_LINE,
   FIRST_CATCH_CUE,
@@ -902,6 +903,9 @@ const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
 
 /** A secret's Pokemon, met. */
 type SecretMeet = Extract<SecretReward, { kind: 'meet' }>;
+
+/** How much raid clock is left when Oak first warns of the enrage (`WorldScene.warnOfEnrage`). */
+const ENRAGE_WARNING_MS = 60_000;
 
 /** What `pokemonMet` records for a secret met on a line, which has no figure of its own. */
 const secretMetKey = (id: string): string => `secret:${id}`;
@@ -7644,6 +7648,51 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
+   * Whether the first raid's choice is still the player's to make: the catch is
+   * made, and they are no nearer the stake than the way out, by the walk. The
+   * critic's third pass: Oak said "your call" while the chip had already made it,
+   * pointing at the money.
+   */
+  private choosingAfterTheCatch(exit: GridPosition, stake: GridPosition): boolean {
+    if (this.runSession?.firstCatch?.caught !== true) {
+      return false;
+    }
+    const toExit = this.wayField(exit)[this.currentTile.y]?.[this.currentTile.x] ?? -1;
+    const toStake = this.wayField(stake)[this.currentTile.y]?.[this.currentTile.x] ?? -1;
+    return toExit >= 0 && (toStake < 0 || toExit <= toStake);
+  }
+
+  /**
+   * The square's second Pidgey on a first raid, until the first has been fought:
+   * two on the landing screen made a newcomer guess which one Oak meant (the
+   * critic's third pass). It is the retry, and stands up after the first fight.
+   */
+  private heldBackForTheCatch(entity: WorldEntity): boolean {
+    const plan = this.runSession?.plan;
+    if (!plan?.stagedChase || !plan.insertion || this.currentMap?.id !== plan.insertion.mapId || (this.runSession?.firstCatch?.tried.length ?? 0) > 0) {
+      return false;
+    }
+    return firstCatchFigures(this.currentMap.entities, plan.insertion.position)[1]?.id === entity.id;
+  }
+
+  /**
+   * Once a raid, the first time one reaches a minute left in this save: what
+   * 0:00 does, on Oak's radio, while it is about to be true
+   * (`FIRST_WORDS.enraged`) - said in the lab before there was a clock, it was
+   * a word before its meaning (the critic's problem 7).
+   */
+  private warnOfEnrage(remainingMs: number): void {
+    const session = this.runSession;
+    if (!session || session.enrageWarned || isPlaytestRun() || remainingMs > ENRAGE_WARNING_MS || remainingMs <= 0) {
+      return;
+    }
+    session.enrageWarned = true;
+    if (new SaveManager().hearFirstWords('enraged')) {
+      this.interrupt([...FIRST_WORDS.enraged.lines]);
+    }
+  }
+
+  /**
    * Oak, on the way back from the first raid's catch: caught - the pack, the
    * risk and the choice, and the hunter sent; knocked out or left - the other
    * Pidgey, while there is one. Answers whether anything was said.
@@ -7785,6 +7834,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     return (
       entity.pokemon !== undefined &&
       ((this.runSession?.pokemonMet ?? []).includes(entity.id) ||
+        this.heldBackForTheCatch(entity) ||
         legendCaught(entity, this.caughtLegends) ||
         // A secret's Pokemon stands only on a raid it is open, until it is had -
         // or, a sleeper, on every raid until it is had.
@@ -8140,7 +8190,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     } else {
       const trail = this.lootForCurrentMap().filter((loot) => isStakeTrail(loot));
       const stake = hunted ? undefined : this.stakeAhead(trail);
-      if (stake) {
+      if (stake && exit && this.choosingAfterTheCatch(exit.position, stake.stake.position)) {
+        // Oak has just said "your call": the chip says both, and the arrow is
+        // on the way out until the player walks towards the money.
+        cue = `OUT: ${exit.heading} · OR ${prizeWords(stake.stake).toUpperCase()}: ${this.headingTo(stake.stake.position)}`;
+        tile = exit.position;
+        out = true;
+      } else if (stake) {
         cue = `${stakeWayWords(stake.stake, stake.onTheWay)}: ${this.headingTo(stake.stake.position)}`;
         tile = stake.onTheWay?.position ?? stake.stake.position;
         after = stake.stake;
@@ -10652,6 +10708,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.countStandingStill(clockMs);
     this.placeHunterIfDue(snapshot.elapsedMs);
     this.advanceHunterPack(clockMs, snapshot.elapsedMs);
+    this.warnOfEnrage(snapshot.remainingMs);
     this.refreshExtractionMarkers();
     this.refreshBoats();
     this.refreshRunTimerHud(deltaMs);

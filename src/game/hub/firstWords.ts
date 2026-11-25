@@ -25,7 +25,7 @@ import { landingsHeldBack, quarterOfLanding } from '../world/valeQuarters';
  * so leaving without reading it does not buy a second hearing - and the save
  * keeps only the list of ids, as it keeps every other permanent fact.
  */
-export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'moved', 'coast', 'marsh', 'nearWork', 'benchCatch'] as const;
+export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'moved', 'coast', 'marsh', 'nearWork', 'benchCatch', 'enraged'] as const;
 export type FirstWordsId = (typeof FIRST_WORDS_IDS)[number];
 
 export interface FirstWords {
@@ -53,10 +53,10 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
     greeting: 'there you are!',
     lines: [
       'On a raid, grab what you can and walk out through an exit.',
-      // What happens at 0:00 is said here, where the rule is: four AI
-      // newcomers waited out the clock expecting the raid to end, met an
-      // ENRAGED hunter instead, and nothing had said what that was (22 Nov 2026).
-      `Faint, and the pack is lost. At 0:00 the hunters turn ENRAGED, and you've ${ENRAGE_GRACE_MS / 1000} seconds to get out.`,
+      // Fainting and 0:00 are said where they are true, not here, before the
+      // player has a pack, a hunter or a clock (the critic's problem 7): the
+      // first catch says what a faint costs (`world/firstCatch.ts`), and the
+      // first raid to reach 1:00 left says what 0:00 does (`FIRST_WORDS.enraged`).
       'Every raid starts at the RAID ARENA, west across the yard.',
     ],
   },
@@ -142,7 +142,16 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
   benchCatch: {
     speaker: ARENA_KEEPER_DESIGN,
     name: ARENA_KEEPER_NAME,
-    lines: ["Your new catch is at base, off the BENCH. With two on your team, one faint won't end the raid."],
+    lines: ["Your new catch is waiting at base. Take two, and one faint won't end the raid."],
+  },
+  // Said on the radio, once, the first time any raid reaches a minute left
+  // (`WorldScene.warnOfEnrage`): what 0:00 does, while it is about to be true.
+  // Four AI newcomers waited out the clock expecting the raid to end and met
+  // an ENRAGED hunter with nothing having said what that was (22 Nov 2026).
+  enraged: {
+    speaker: 'prof-oak',
+    name: 'Professor Oak',
+    lines: [`OAK: One minute left! At 0:00 the hunters turn ENRAGED, and you've ${ENRAGE_GRACE_MS / 1000} seconds to get out. Head for an exit!`],
   },
   nearWork: {
     speaker: 'prof-oak',

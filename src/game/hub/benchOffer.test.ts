@@ -19,7 +19,7 @@ describe('the catch waiting at base, offered at the rail', () => {
 
   it('is offered once a raid has been gone on, to a lone Pokemon with a fit one at base', () => {
     expect(benchOffer(BEEN_OUT, [starter], [starter, pidgey])).toEqual({ id: 'pidgey-1', name: pidgey.pokemon.name });
-    expect(benchOfferQuestion({ id: 'pidgey-1', name: 'Pidgey' })).toBe('Take PIDGEY along too?');
+    expect(benchOfferQuestion({ id: 'pidgey-1', name: 'Pidgey' })).toBe('Take PIDGEY along?');
     // The reason comes first, in the hall's own voice.
     expect(FIRST_WORDS.benchCatch.lines[0]).toContain("one faint won't end the raid");
   });
