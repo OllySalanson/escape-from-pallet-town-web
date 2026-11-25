@@ -1650,6 +1650,19 @@ describe('SaveManager', () => {
     expect(after.pendingRecoveryMs).toBe(30_000);
   });
 
+  it('records a trainer who has paid their prize once, and touches nothing else', () => {
+    const storage = new MemoryStorage();
+    const manager = new SaveManager(storage);
+    manager.save({ party: new PokemonParty([]), mapId: 'pallet-town', position: { x: 1, y: 1 } });
+    const before = manager.load()!;
+    expect(before.raidProgress.trainersPaid).toEqual([]);
+
+    expect(manager.recordPaidTrainers(['greystone-vale/trainer-3'])).toEqual(['greystone-vale/trainer-3']);
+    expect(manager.recordPaidTrainers(['greystone-vale/trainer-3'])).toEqual([]);
+
+    expect(manager.load()!.raidProgress).toEqual({ ...before.raidProgress, trainersPaid: ['greystone-vale/trainer-3'] });
+  });
+
   it('records a reached drop-in point once, and never one the lobby already offers', () => {
     const storage = new MemoryStorage();
     const manager = new SaveManager(storage);

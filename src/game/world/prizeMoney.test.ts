@@ -3,6 +3,7 @@ import {
   PRIZE_VALUE_FALLBACK,
   prizeLeftLine,
   prizeLine,
+  prizeDue,
   prizeMoneyFor,
 } from './prizeMoney';
 
@@ -32,6 +33,14 @@ describe('prize money', () => {
   it('is never negative, and nothing for an empty party', () => {
     expect(prizeMoneyFor({ levels: [] })).toBe(0);
     expect(prizeMoneyFor({ levels: [-3] })).toBe(0);
+  });
+
+  it('is paid once a save: a trainer beaten again pays nothing, a hunter is the raid\'s to rule', () => {
+    const bugCatcher = { levels: [6], design: 'bug-catcher' } as const;
+    expect(prizeDue('greystone-vale/trainer-1', bugCatcher, [])).toBe(72);
+    expect(prizeDue('greystone-vale/trainer-1', bugCatcher, ['greystone-vale/trainer-1'])).toBe(0);
+    expect(prizeDue('greystone-vale/trainer-2', bugCatcher, ['greystone-vale/trainer-1'])).toBe(72);
+    expect(prizeDue('hunter', { levels: [7], hunter: true }, ['hunter'])).toBe(112);
   });
 
   it('says it as FireRed does, and where the rest went', () => {

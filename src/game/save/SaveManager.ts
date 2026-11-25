@@ -284,6 +284,13 @@ export interface RaidProgress {
    */
   readonly openedGates?: readonly string[];
   /**
+   * The trainers who have paid this save their prize money
+   * (`world/prizeMoney.ts`), by trainer id. A trainer pays once a save, as
+   * FireRed's do, and is written the moment the prize is paid. Absent on every
+   * save written before prize money, which reads as nobody having paid yet.
+   */
+  readonly trainersPaid?: readonly string[];
+  /**
    * Every insertion the player has stood on in any raid. Reaching a drop-in
    * point is what makes it selectable at base; `availableInsertionIds()` adds
    * these to the insertions contracts have unlocked.
@@ -674,6 +681,7 @@ export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   completedContracts: [],
   defeatedBosses: [],
   openedGates: [],
+  trainersPaid: [],
   reachedInsertions: [],
   workshopUpgrades: [],
   standingContractsBanked: 0,
@@ -2407,6 +2415,29 @@ export class SaveManager {
   }
 
   /**
+   * Records trainers who have just paid their prize money, so they never pay
+   * this save again (`world/prizeMoney.ts`). Written at the win, as a boss's is:
+   * the prize is in the pack from that moment and is the pack's to lose. Nothing
+   * but `raidProgress` is touched.
+   */
+  public recordPaidTrainers(trainerIds: readonly string[]): readonly string[] {
+    const game = this.load();
+    if (!game) {
+      return [];
+    }
+    const already = game.raidProgress.trainersPaid ?? [];
+    const fresh = [...new Set(trainerIds)].filter((trainerId) => !already.includes(trainerId));
+    if (fresh.length === 0) {
+      return [];
+    }
+    const raidProgress: RaidProgress = {
+      ...game.raidProgress,
+      trainersPaid: [...already, ...fresh],
+    };
+    return this.save({ ...game, raidProgress }) ? fresh : [];
+  }
+
+  /**
    * Counts one raid deployed to a map, at the moment the player commits to it.
    *
    * Deployments are counted where they are made rather than where they end,
@@ -3296,6 +3327,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // and reached nowhere, which is exactly what a missing list reads as.
     defeatedBosses: uniqueStrings(value.defeatedBosses),
     openedGates: uniqueStrings(value.openedGates),
+    trainersPaid: uniqueStrings(value.trainersPaid),
     reachedInsertions: uniqueStrings(value.reachedInsertions),
     workshopUpgrades,
     // Saves written before gifts existed have received none.

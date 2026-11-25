@@ -484,7 +484,7 @@ import {
   type BagOwner,
   type TrainerBag,
 } from '../world/trainerBags';
-import { prizeMoneyFor } from '../world/prizeMoney';
+import { prizeDue } from '../world/prizeMoney';
 import {
   FRESH_SEARCH,
   SEARCH_RESEATED,
@@ -9703,7 +9703,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /**
    * What beating this trainer will pay into the pack (`world/prizeMoney.ts`).
-   * Nothing outside a raid, and nothing for the second hunter a raid beats.
+   * Nothing outside a raid, nothing for the second hunter a raid beats, and
+   * nothing from a trainer who has paid this save before.
    */
   private prizeMoneyFor(trainer: RunTrainerEncounter['trainer'], isHunter: boolean): number {
     const session = this.runSession;
@@ -9712,14 +9713,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     const levels = trainer.party.map((pokemon) => pokemon.level);
     if (isHunter) {
-      return session.hunterPrizePaid ? 0 : prizeMoneyFor({ levels, hunter: true });
+      return session.hunterPrizePaid ? 0 : prizeDue(trainer.id, { levels, hunter: true });
     }
     const encounter = this.trainerEncounters.find((each) => each.trainer.id === trainer.id);
-    return prizeMoneyFor({
-      levels,
-      design: encounter?.design,
-      boss: encounter?.bossId !== undefined,
-    });
+    return prizeDue(
+      trainer.id,
+      { levels, design: encounter?.design, boss: encounter?.bossId !== undefined },
+      new SaveManager().load()?.raidProgress.trainersPaid,
+    );
   }
 
   /** The raid state that exists only on this scene - see `RaidCarriage`. */

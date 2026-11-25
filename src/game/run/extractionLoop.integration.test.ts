@@ -871,6 +871,7 @@ describe('extraction loop integration', () => {
     expect(saves.load()!.raidProgress).toEqual({
       firstContractExtracted: true,
       openedGates: [],
+      trainersPaid: [],
       completedContracts: ['recover-lost-field-kit'],
       unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest', 'viridian-city'],
       // Banking a contract beats no boss and reaches nowhere new.

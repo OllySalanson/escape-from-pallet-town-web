@@ -4287,8 +4287,22 @@ describe('prize money for a win', () => {
     const runSession = startedRunSession();
     const { scene } = createBattleSceneHarness({ hunterBattle: true, runSession });
     const payer = scene as unknown as Payer;
+    const recorded = vi.spyOn(SaveManager.prototype, 'recordPaidTrainers').mockReturnValue([]);
     payer.prizeMoney = 28;
     payer.payPrizeMoney();
     expect(runSession.hunterPrizePaid).toBe(true);
+    // A hunter is new every raid: nothing to write down for the save.
+    expect(recorded).not.toHaveBeenCalled();
+    recorded.mockRestore();
+  });
+
+  it('writes down a trainer who has paid, so they never pay this save again', () => {
+    const { scene } = createBattleSceneHarness({ authoredTrainer: true, bag: new Bag({}) });
+    const payer = scene as unknown as Payer & { trainer: { id: string } };
+    const recorded = vi.spyOn(SaveManager.prototype, 'recordPaidTrainers').mockReturnValue([]);
+    payer.prizeMoney = 72;
+    payer.payPrizeMoney();
+    expect(recorded).toHaveBeenCalledWith([payer.trainer.id]);
+    recorded.mockRestore();
   });
 });
