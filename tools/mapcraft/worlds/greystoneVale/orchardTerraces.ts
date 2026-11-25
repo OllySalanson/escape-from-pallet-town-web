@@ -92,6 +92,7 @@ export function orchardTerraces(): MapcraftResult {
   // -- The lane: the other framed slope, past the lower orchard and the press -----
   p.meadow(34, 18, 20, 18);
   p.meadow(54, 28, 10, 6); // the lane's way on east, to The Wreck
+  p.meadow(54, 24, 2, 2); // no lone tree beside the press: the wood steps back a tree at a time
   p.wood(52, 18, 2, 4).wood(34, 30, 2, 4);
   p.yard(38, 19, 10, 9, { gates: [[38, 23]], inner: '.' }); // the lower orchard, its gate on the lane
   tree(40, 20, 'tree-2');
