@@ -254,7 +254,10 @@ export function millbrook(): MapcraftResult {
   p.put(25, 47, 'd').put(26, 47, 'd');
   p.flowers([30, 46], [27, 48]);
   stand('wet-rock', 32, 47, 'W');
-  p.bedRows([46, 15, 17], [47, 14, 17], [48, 14, 16], [49, 15, 17], [51, 19, 29], [50, 36, 38], [49, 36, 38], [48, 37, 38]);
+  // The bed west of the millpond stops short of the bank: the two tiles beside
+  // the water are the trodden way down to the woodcutter's glade, so the
+  // woodcutter's ride - LINNET's race's Cut line - is dry from end to end.
+  p.bedRows([46, 15, 15], [47, 14, 15], [48, 14, 15], [49, 15, 15], [51, 19, 29], [50, 36, 38], [49, 36, 38], [48, 37, 38]);
   p.flowers([36, 46], [37, 47], [16, 45]);
   stand('bench', 31, 52);
 

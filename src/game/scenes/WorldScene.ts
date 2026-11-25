@@ -1179,6 +1179,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private raceBestMs: number | undefined;
   /** The chalk mark the player toes before the count. */
   private raceMark: Phaser.GameObjects.Graphics | undefined;
+  /** Whether that save has run the floor already: nothing left on the chip to chase. */
+  private racePerfectHeld = false;
   /** The best mark on the course being raced: a GOLD is shown the floor to chase. */
   private raceMedalHeld: RaceMedal | undefined;
   /** Whether the racer has made their offer this raid: a second ask is short. */
@@ -4596,7 +4598,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       if (here.race.phase === 'countdown' || here.race.phase === 'running') this.createRaceGhost();
       if (!this.raceStarted(here.race)) this.drawChalkMark(here.course);
       const place = this.racerNow(here.race);
-      this.createFigure(RACER_FIGURE_ID, place.tile, place.facing, 'npc', here.course.racer.design);
+      // Gone home is gone: not stood back up at the line when a fight rebuilds the world.
+      if (here.race.outcome !== 'late') {
+        this.createFigure(RACER_FIGURE_ID, place.tile, place.facing, 'npc', here.course.racer.design);
+      }
     }
   }
 
@@ -4647,6 +4652,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const record = new SaveManager().load()?.raidProgress.races?.[course.id];
     this.raceBestMs = record?.bestMs;
     this.raceMedalHeld = record?.medal;
+    this.racePerfectHeld = record?.perfect === true;
     // A best run that set off from anywhere but the mark (saved before there
     // was one) would race from a different start: it is not shown.
     const ghost = record?.ghost;
@@ -4799,6 +4805,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private racerStandsOn(tile: GridPosition): boolean {
     const here = this.raceHere();
     if (!here) {
+      return false;
+    }
+    if (here.race.outcome === 'late') {
       return false;
     }
     const place = this.racerNow(here.race);
@@ -5237,7 +5246,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       bearing,
       tilesToLine: Math.abs(target.x - this.currentTile.x) + Math.abs(target.y - this.currentTile.y),
       bestMs: this.raceBestMs,
-      ...(this.raceMedalHeld === 'gold' ? { perfectMs: course.perfectMs } : {}),
+      // The floor to chase, until it has been run.
+      ...(this.raceMedalHeld === 'gold' && !this.racePerfectHeld ? { perfectMs: course.perfectMs } : {}),
     });
   }
 

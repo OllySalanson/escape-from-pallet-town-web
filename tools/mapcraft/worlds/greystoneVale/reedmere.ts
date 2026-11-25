@@ -334,6 +334,12 @@ export function reedmere(): MapcraftResult {
   stand('barrels', 22, 54);
   p.bushes([25, 56]);
 
+  // The last wade to THE LAST HOUSE is trodden dry beside its wall, so a
+  // runner off the wildfowlers' trail or down the woodcutter's ride reaches the
+  // line without a fight: the clever ways in are skill, not a coin flip.
+  // (Straight through the open reeds - the floor - is still a wade.)
+  p.trail([[10, 21], [10, 22]]);
+
   const file = districtFile(GREYSTONE_VALE, 'reedmere', p, {
     dropIns: [],
     itemSpots: [

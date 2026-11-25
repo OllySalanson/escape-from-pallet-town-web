@@ -391,7 +391,8 @@ export function raceOfferLines(
       `Beat me: ${formatMoney(MEDAL_MONEY.bronze)}. Lose: ${formatMoney(TAKING_PART_MONEY)} for the legs. ${purse}`,
     ];
   }
-  const best = record.bestMs === undefined ? '' : ` Your best: ${formatRaceTime(record.bestMs)}${record.medal ? ` ${MEDAL_WORDS[record.medal]}` : ''}.`;
+  const mark = record.perfect ? ' PERFECT' : record.medal ? ` ${MEDAL_WORDS[record.medal]}` : '';
+  const best = record.bestMs === undefined ? '' : ` Your best: ${formatRaceTime(record.bestMs)}${mark}.`;
   const learned = racerKnowsTheWay(record, shortcutOpen) ? " I've been practising - I know the reeds' dry way now too." : '';
   return [`${racer}: Back for more?${best}${learned}`, purse];
 }
@@ -710,7 +711,7 @@ export function raceChipLines(input: {
   lines.push(`LINE ${input.bearing ? `${input.bearing} ` : ''}${input.tilesToLine}`);
   if (input.bestMs !== undefined) {
     lines.push(
-      input.perfectMs !== undefined && input.bestMs > input.perfectMs
+      input.perfectMs !== undefined && shownTenths(input.bestMs) > shownTenths(input.perfectMs)
         ? `BEST ${formatRaceTime(input.bestMs)} PERFECT ${formatRaceTime(input.perfectMs)}`
         : `BEST ${formatRaceTime(input.bestMs)}`,
     );

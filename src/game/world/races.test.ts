@@ -164,7 +164,9 @@ describe('THE MERE DASH, on the vale as it is drawn', () => {
     // wade to the door, and nowhere else.
     const dry = bestWay(open, from, 3);
     expect(dry.steps * STEP_DURATION_MS).toBeLessThan(course.goldMs - 300);
-    expect(dry.wild).toBeLessThanOrEqual(6);
+    // Dry from end to end: GOLD down the ride is skill, never a coin flip in the
+    // grass (the overnight tester met a fight on 5 runs of 5 when it waded six tiles).
+    expect(dry.wild).toBe(0);
   });
 });
 
@@ -270,6 +272,7 @@ describe('what LINNET says', () => {
     expect(raceOfferLines(course, { runs: 2, wins: 1, bestMs: 14_200, medal: 'silver' }, true, false)[0]).not.toContain('dry way');
     // Asked again the same raid after a NO: short.
     expect(raceOfferLines(course, undefined, false, false, true)).toEqual(['LINNET: Changed your mind?']);
+    expect(raceOfferLines(course, { runs: 9, wins: 8, bestMs: 9_316, medal: 'gold', perfect: true }, false, true)[0]).toContain('Your best: 0:09.3 PERFECT');
   });
 
   it('lets the judge call a win, and the racer say their piece as they run in', () => {
@@ -409,6 +412,9 @@ describe('what LINNET says', () => {
       bestMs: 15_200,
     });
     expect(lines).toEqual(['RACE 0:07.4', 'LINNET: THE HUMMOCK', 'LINE SW 41', 'BEST 0:15.2']);
+    // A best that reads as the floor is not shown the floor to chase.
+    const atFloor = { course, clockMs: 0, racerPlace: null, racerHomeMs: null, waitLeftMs: null, bearing: 'S', tilesToLine: 60, bestMs: 9_316, perfectMs: 9_300 };
+    expect(raceChipLines(atFloor)).toContain('BEST 0:09.3');
     expect(raceChipLines({ course, clockMs: 0, racerPlace: null, racerHomeMs: null, waitLeftMs: null, bearing: 'W', tilesToLine: 2, bestMs: undefined, liningUp: true })).toEqual([
       'RACE: TOE THE MARK',
       'MARK W 2',
