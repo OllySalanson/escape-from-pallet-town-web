@@ -58,7 +58,7 @@ const SECOND_MONEY = 25;
 
 /** What a stake can be, with how often. Money twice over, because it is what the early game was short of. */
 const STAKE_MONEY = [60, 75, 90, 110] as const;
-const STAKE_SUPPLIES: readonly { readonly itemId: ItemId; readonly quantity: number }[] = [
+export const STAKE_SUPPLIES: readonly { readonly itemId: ItemId; readonly quantity: number }[] = [
   { itemId: 'great-ball', quantity: 2 },
   { itemId: 'super-potion', quantity: 2 },
 ];

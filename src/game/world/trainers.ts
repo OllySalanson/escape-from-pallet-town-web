@@ -64,14 +64,13 @@ export interface RunTrainerEncounter extends TrainerWatch {
    * The gear this boss is carrying, handed to the player's pack the first time
    * they beat them.
    *
-   * Only a boss may carry gear, and that is the whole of where gear comes from.
-   * A boss is the one fight in the game that is already once per save - a beaten
-   * one is dropped by `withoutDefeatedBosses` and what is left is the open gate -
-   * so gear stays finite without a second list to keep it so. Everything else
-   * that hands the player items repeats: field loot is drawn fresh every raid,
-   * the standing board deals for as long as the player keeps banking, and the
-   * wipe restock refills the kit. Gear that any of those produced would stop
-   * being a decision by the fifth raid.
+   * Only a boss hands gear over for certain. A boss is the one fight in the
+   * game that is already once per save - a beaten one is dropped by
+   * `withoutDefeatedBosses` and what is left is the open gate - so a certain
+   * piece stays finite without a second list to keep it so. Everything else
+   * that hands the player items repeats, so gear anywhere else is a long shot:
+   * a prize laid on its own odds (`filePrizes.ts`), or the treasure roll of a
+   * beaten trainer's bag (`trainerBags.ts`), never a basic of one.
    *
    * It drops into the raid's own pack, not into the vault: the piece has to be
    * carried out past whatever is left of the clock and the hunter, and a wipe on

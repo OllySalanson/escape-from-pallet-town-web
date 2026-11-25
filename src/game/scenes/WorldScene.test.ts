@@ -181,7 +181,7 @@ describe('finishing a step in a trainer watch', () => {
       'private tryMakeContractStopAt(position: GridPosition): string | null',
     );
     expect(sceneSource).toContain(
-      'private tryActivatePoiAt(position: GridPosition): readonly string[] | null',
+      'private tryActivatePoiAt(position: GridPosition, steppedOn = false): readonly string[] | null',
     );
   });
 

@@ -26,6 +26,11 @@ const FOOTER_GAP = 3;
 const MIN_WIDTH = 112;
 /** Ink for a piece already in the pack, or one not yet come to light. */
 const QUIET_INK = 0x7a7562;
+/**
+ * Ink for a bag's rare find and its treasure: FireRed's own blue and red text
+ * shades, dark enough on the cream to read at the panel's size.
+ */
+const PRIZE_INK: Readonly<Record<'rare' | 'treasure', number>> = { rare: 0x2850b8, treasure: 0xc03018 };
 
 export interface SearchPanelView {
   readonly title: string;
@@ -68,7 +73,15 @@ export class SearchPanel {
     this.rowTexts.forEach((text, index) => {
       const row = view.rows[index];
       text.setVisible(row !== undefined).setText(rowWords[index] ?? '');
-      text.setColor(toCssColor(row && (row.status === 'taken' || row.status === 'hidden') ? QUIET_INK : WINDOW_INK_VALUE));
+      text.setColor(
+        toCssColor(
+          row && (row.status === 'taken' || row.status === 'hidden')
+            ? QUIET_INK
+            : row?.prize
+              ? PRIZE_INK[row.prize]
+              : WINDOW_INK_VALUE,
+        ),
+      );
     });
 
     const rowsWidth = Math.max(0, ...this.rowTexts.slice(0, view.rows.length).map((text) => Math.ceil(text.width))) + ICON_SIZE + ICON_GAP;

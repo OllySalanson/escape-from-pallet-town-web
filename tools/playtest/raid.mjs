@@ -10,7 +10,7 @@
 //        [--hp=N] [--stash=itemId[:n],..] [--read=itemId,..] [--open=LABEL] [--arrange]
 //        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--through=x:y:dir,..] [--grab=itemId,..] [--fight]
 //        [--progress=path.json] [--save-out=path.json] [--shot-dialogs] [--said] [--errands=id,..]
-//        [--hunt=pieceId,..] [--skip-contract] [--shot-battles] [--attach=PORT [--fresh]] [--lead=Name]
+//        [--hunt=pieceId,..] [--skip-contract] [--shot-battles] [--attach=PORT [--fresh]] [--lead=Name] [--rob=N]
 //
 // --said prints every line a battle puts up, once it has finished typing.
 //
@@ -129,6 +129,12 @@ try {
     await page.send('Emulation.setTimezoneOverride', { timezoneId });
     note(`clock: ${hour}, in ${timezoneId}`);
   }
+  // An exception the game throws is printed as it happens: a scene that dies
+  // half built looks to the driver like a screen that never moves on.
+  page.on('Runtime.exceptionThrown', ({ exceptionDetails }) =>
+    note(`page error: ${exceptionDetails.exception?.description ?? exceptionDetails.text}`),
+  );
+  await page.send('Runtime.enable');
   if (seed !== undefined) {
     await page.send('Page.addScriptToEvaluateOnNewDocument', { source: SEEDED(seed) });
   }
@@ -251,6 +257,7 @@ try {
   let battlesShot = 0;
   let menusThisBattle = 0;
   let lastMenuSaid = null;
+  let dryMoveSteps = 0;
   const clearInterruptions = async () => {
     for (let guard = 0; guard < 600; guard += 1) {
       const s = await state();
@@ -301,6 +308,16 @@ try {
           }
           seenCommands.clear();
           note(`battle: ${selected.replace('\u25b6', '').trim()}`);
+        }
+        // A move with no PP left is drawn "--", and choosing it only says so
+        // and asks again: a long fight's first move runs dry, and the driver
+        // pressed it for ever. The list is a grid, so the cursor walks it -
+        // right, down, left, up - until it is on a move that has some left.
+        if (s.battle.mode === 'moves' && /--\s*$/.test(selected)) {
+          await press(['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'][dryMoveSteps % 4]);
+          dryMoveSteps += 1;
+          await wait(100);
+          continue;
         }
         await press('Space');
         await wait(300);
@@ -864,6 +881,113 @@ try {
   if (grab.length > 0) {
     note(`seats the pack is still holding: ${ended ? 'n/a' : await page.evaluate(`${GAME}.scene.getScene('world').bag.arrangement.items.length`)}`);
   note(`pack now ${JSON.stringify(await page.evaluate(`${GAME}.scene.getScene('world').bag.toJSON()`))}`);
+  }
+  // --rob=N beats the N nearest trainers still standing - walked up to, faced
+  // and spoken to, and fought (with --fight, or a level that wins) - and
+  // searches the bag each one drops where they stood (`world/trainerBags.ts`),
+  // taking the lot. It is the only way a dropped bag is played end to end.
+  for (let robbed = 0; robbed < Number(option('rob') ?? 0) && !ended; robbed += 1) {
+    const mark = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
+      const c = w.collisionData, H = c.length, W = c[0].length, s = w.currentTile, id = (x, y) => y * W + x;
+      const steps = new Map([[id(s.x, s.y), 0]]); const queue = [[s.x, s.y]];
+      while (queue.length) { const [x, y] = queue.shift();
+        for (const [dx, dy] of [[0,-1],[0,1],[-1,0],[1,0]]) { const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H || steps.has(id(nx, ny)) || w.isBlocked({ x: nx, y: ny })) continue;
+          steps.set(id(nx, ny), steps.get(id(x, y)) + 1); queue.push([nx, ny]); } }
+      const sides = [[0,1,'ArrowUp'],[0,-1,'ArrowDown'],[1,0,'ArrowLeft'],[-1,0,'ArrowRight']];
+      const options = w.trainersForCurrentMap().filter((t) => t.bossId === undefined).flatMap((t) => sides
+        .map(([dx, dy, key]) => ({ id: t.trainer.id, name: t.trainer.name, at: t.position, x: t.position.x + dx, y: t.position.y + dy, key, d: steps.get(id(t.position.x + dx, t.position.y + dy)) }))
+        .filter((o) => o.d !== undefined));
+      return options.sort((a, b) => a.d - b.d)[0] ?? null; })()`);
+    if (!mark) {
+      note('no trainer left to rob');
+      break;
+    }
+    // Whether the trainer wears the mark of a bag worth the fight, and what it
+    // looks like from a few steps off - the mark hides once you are beside them.
+    note(`${mark.name} ${(await page.evaluate(`${GAME}.scene.getScene('world').trainerGlints.has(${JSON.stringify(mark.id)})`)) ? 'carries a bag worth the fight' : 'shows no mark'}`);
+    if (option('shot')) {
+      // Reachable from where the player is, three steps from the trainer as the crow walks.
+      const offing = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
+        const c = w.collisionData, H = c.length, W = c[0].length, id = (x, y) => y * W + x, t = ${JSON.stringify(mark.at)}, s = w.currentTile;
+        const steps = new Map([[id(s.x, s.y), 0]]); const queue = [[s.x, s.y]]; let best = null;
+        while (queue.length) { const [x, y] = queue.shift(); const d = steps.get(id(x, y));
+          if (Math.abs(x - t.x) + Math.abs(y - t.y) === 3 && (best === null || d < best.d)) best = { x, y, d };
+          for (const [dx, dy] of [[0,-1],[0,1],[-1,0],[1,0]]) { const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H || steps.has(id(nx, ny)) || w.isBlocked({ x: nx, y: ny })) continue;
+            steps.set(id(nx, ny), d + 1); queue.push([nx, ny]); } }
+        return best && { x: best.x, y: best.y }; })()`);
+      if (offing) {
+        await walkTo(offing, `a few steps off ${mark.name}`);
+        const there = await page.evaluate(`(() => { const s = ${GAME}.scene.getScene('world').currentTile; return s.x === ${offing.x} && s.y === ${offing.y}; })()`);
+        if (there) {
+          await page.screenshot(option('shot').replace(/\.png$/, `-bag-${robbed + 1}-before.png`));
+        }
+      }
+    }
+    await walkTo({ x: mark.x, y: mark.y }, `the tile beside ${mark.name}`);
+    // A watch may have caught the player on the way, and that fight is the one
+    // that counts; otherwise the trainer is faced and spoken to.
+    if (!(await page.evaluate(`${GAME}.scene.getScene('world').defeatedTrainerIds.has(${JSON.stringify(mark.id)})`))) {
+      await press(mark.key);
+      await wait(200);
+      await press('Space');
+      await wait(400);
+      // Spoken to, a trainer asks whether to fight: the answer here is yes,
+      // whatever the prompt offers first (it may lead with backing away).
+      const prompt = `${GAME}.scene.getScene('world').trainerPrompt`;
+      for (let guard = 0; guard < 40 && !(await page.evaluate(`Boolean(${prompt})`)); guard += 1) {
+        await press('Space');
+        await wait(200);
+      }
+      for (let guard = 0; guard < 6 && (await page.evaluate(`${prompt}?.selected ?? 0`)) !== 0; guard += 1) {
+        await press('ArrowUp');
+        await wait(150);
+      }
+      if (await page.evaluate(`Boolean(${prompt})`)) {
+        await press('Space');
+        await wait(400);
+      }
+      await clearInterruptions();
+    }
+    const bag = await page.evaluate(`${GAME}.scene.getScene('world').runSession.trainerBags?.[${JSON.stringify(`bag:${mark.id}`)}] ?? null`);
+    if (!bag) {
+      note(`${mark.name}: ${await page.evaluate(`${GAME}.scene.getScene('world').defeatedTrainerIds.has(${JSON.stringify(mark.id)})`) ? 'beaten, and had no bag on them' : 'NOT beaten'}`);
+      continue;
+    }
+    note(`${bag.label} dropped (${bag.best}): ${bag.reward.map((r) => `${r.quantity}x ${r.itemId}`).join(', ')}`);
+    // Whether it can be seen: it falls into place, and a figure left mid-fall is a bag nobody finds.
+    await wait(1000);
+    note(`${bag.label} figure: ${JSON.stringify(await page.evaluate(`(() => { const s = ${GAME}.scene.getScene('world').poiSprites.get(${JSON.stringify(bag.id)});
+      return s ? { alpha: s.alpha, y: s.y, tileY: ${bag.position.y}, visible: s.visible } : null; })()`))}`);
+    if (option('shot')) {
+      await page.screenshot(option('shot').replace(/\.png$/, `-bag-${robbed + 1}-dropped.png`));
+    }
+    const before = clockMs;
+    await walkTo(bag.position, bag.label);
+    const searching = `${GAME}.scene.getScene('world').search`;
+    if (await page.evaluate(`${searching} !== null`)) {
+      if (option('shot')) {
+        await wait(900);
+        await page.screenshot(option('shot').replace(/\.png$/, `-bag-${robbed + 1}-search.png`));
+      }
+      note(`${bag.label} caption while searched: ${JSON.stringify(await page.evaluate(`${GAME}.scene.getScene('world').worldLabels.map((l) => l.caption).filter((c) => c.includes(${JSON.stringify(bag.label)}))`))}`);
+      await press('Space');
+      for (let i = 0; i < 40 && (await page.evaluate(`${searching} !== null`)); i += 1) {
+        await wait(200);
+      }
+    }
+    await state();
+    // What the map says about the bag now: nothing once it is empty, else how much is still in it.
+    note(`${bag.label} caption now: ${JSON.stringify(await page.evaluate(`${GAME}.scene.getScene('world').worldLabels.map((l) => l.caption).filter((c) => c.includes(${JSON.stringify(bag.label)}))`))}`);
+    note(`searched ${bag.label} in ${Math.round((clockMs - before) / 100) / 10}s of clock; pack ${JSON.stringify(await page.evaluate(`${GAME}.scene.getScene('world').bag.toJSON()`))}`);
+  }
+  if (option('rob') && !ended) {
+    // Every bag the raid has seen dropped, the hunters' among them: a hunter
+    // caught up with on the way is a fight the driver did not choose.
+    const bags = await page.evaluate(`Object.entries(${GAME}.scene.getScene('world').runSession.trainerBags ?? {})
+      .map(([id, b]) => b ? id + ': ' + b.label + ' at ' + b.position.x + ',' + b.position.y + ' (' + b.best + ') ' + b.reward.map((r) => r.quantity + 'x ' + r.itemId).join(', ') : id + ': none on them')`);
+    note(`bags this raid:\n  ${bags.join('\n  ')}`);
   }
   // --skip-contract leaves the board's stops where they are: a raid sent for
   // one thing (`--grab=sea-chest`) goes straight out with it.

@@ -14,6 +14,7 @@ import type { WorldMapId } from '../worldMap';
 import type { CacheSearchState } from '../world/cacheSearch';
 import type { WorldLoot } from '../world/loot';
 import type { HunterPack } from '../world/hunterPack';
+import type { TrainerBag } from '../world/trainerBags';
 
 export interface RaidLocation {
   readonly mapId: WorldMapId;
@@ -174,6 +175,14 @@ export interface ActiveRunSession {
    * after every fight, so it lives here rather than on the scene.
    */
   cachesSearched?: Record<string, CacheSearchState>;
+  /**
+   * The bags beaten trainers and hunters dropped this raid, by bag id
+   * (`world/trainerBags.ts`), each on the tile its owner fell on; null for an
+   * owner who had none on them, so they are rolled once. Searched as a cache
+   * is (`cachesSearched`), and kept here because the world is rebuilt after
+   * every fight - the fight that dropped the bag first of all.
+   */
+  trainerBags?: Record<string, TrainerBag | null>;
   /**
    * Where this raid has pushed each Strength boulder it moved, by entity id.
    * A boulder stands where the map put it at the start of every raid, so this

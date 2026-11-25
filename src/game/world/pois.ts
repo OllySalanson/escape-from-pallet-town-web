@@ -3,13 +3,20 @@ import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
 import { fileMap } from './playerMaps';
 
+import type { FindTier } from './trainerBags';
+
 export interface WorldPoi {
   readonly id: string;
   readonly mapId: WorldMapId;
   readonly position: GridPosition;
   readonly label: string;
   readonly description: string;
-  readonly reward: readonly { readonly itemId: ItemId; readonly quantity: number }[];
+  /**
+   * What it holds. `find` marks a dropped bag's find (`trainerBags.ts`): the
+   * one piece rolled on the rarity ladder, which its search names as it comes
+   * to light. A cache has none.
+   */
+  readonly reward: readonly { readonly itemId: ItemId; readonly quantity: number; readonly find?: FindTier }[];
   /**
    * A landmark can change the route state even when it has no item reward.
    * Every map has exactly one exit that opens this way, and it is always at the

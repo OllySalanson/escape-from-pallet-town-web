@@ -98,7 +98,7 @@ describe('world POIs', () => {
         .toBe(`${poi.id} stands on walkable ground: true`);
     }
     expect(worldSceneSource).toContain(
-      'const spoken = pickup === null ? this.tryActivatePoiAt(this.currentTile) : [pickup];',
+      'const spoken = pickup === null ? this.tryActivatePoiAt(this.currentTile, true) : [pickup];',
     );
   });
 });

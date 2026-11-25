@@ -13,6 +13,7 @@ import {
   searchRows,
   takePiece,
   openedCacheLine,
+  isPrizeFind,
 } from './cacheSearch';
 import { MAP_FILE_LANDMARKS } from './mapFile';
 import { WORLD_POIS } from './pois';
@@ -100,5 +101,29 @@ describe('a cache opened and left', () => {
   it('says what is still inside it rather than that it was searched', () => {
     expect(openedCacheLine(1)).toBe('OPENED: 1 STILL INSIDE');
     expect(openedCacheLine(2)).not.toMatch(/SEARCHED/);
+  });
+
+  it("names a bag's rare find and its treasure as they come to light, and inks them apart", () => {
+    const bag = searchPieces([
+      { itemId: 'potion', quantity: 1 },
+      { itemId: 'ranger-pack', quantity: 1, find: 'treasure' },
+    ]);
+    expect(bag.map(isPrizeFind)).toEqual([false, true]);
+    expect(isPrizeFind(searchPieces([{ itemId: 'repel', quantity: 1, find: 'uncommon' }])[0])).toBe(false);
+    expect(searchRows({ searchedMs: 0, taken: [] }, bag).map((row) => row.prize)).toEqual([undefined, undefined]);
+    const rows = searchRows({ searchedMs: searchDurationMs(bag), taken: [] }, bag);
+    expect(rows[1]).toMatchObject({ text: 'RANGER PACK - TREASURE!', prize: 'treasure' });
+    expect(rows[0].prize).toBeUndefined();
+  });
+
+  it('names a pair found as one find, once: the first of them comes to light as the find, the second as itself', () => {
+    const pair = searchPieces([
+      { itemId: 'oran-berry', quantity: 1 },
+      { itemId: 'lockpick', quantity: 2, find: 'rare' },
+    ]);
+    expect(pair.map(isPrizeFind)).toEqual([false, true, false]);
+    const rows = searchRows({ searchedMs: searchDurationMs(pair), taken: [] }, pair);
+    expect(rows.filter((row) => row.prize !== undefined).map((row) => row.text)).toEqual(['LOCKPICK - RARE FIND']);
+    expect(rows[2].text).toBe('LOCKPICK');
   });
 });
