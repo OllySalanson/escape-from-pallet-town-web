@@ -2,8 +2,6 @@ import type Phaser from 'phaser';
 import {
   CURSOR_HEIGHT,
   CURSOR_WIDTH,
-  WINDOW_BORDER,
-  WINDOW_CREAM,
   WINDOW_INK_VALUE,
   drawMenuCursor,
   drawPixelWindow,
@@ -14,6 +12,7 @@ import { GAME_FONT } from './gameFont';
 import { CHIP_FONT_SIZE, CLOCK_FONT_SIZE } from './screenType';
 import { overlaps, type Rect } from './labelPlacement';
 import { iconTextureKey, itemIconName } from './icons';
+import { UI } from './uiPalette';
 import type {
   HunterChipTone,
   HunterChipView,
@@ -21,6 +20,14 @@ import type {
   RaidClockTone,
   RaidClockView,
 } from '../scenes/raidHud';
+
+/**
+ * The chips' paper and line are the menus' own (`uiPalette.ts`): they were the
+ * older cream under a near-black line, a third frame beside the dialogue's and
+ * the panels' (critic sweep, 25 Nov 2026).
+ */
+const WINDOW_CREAM = UI.paper.value;
+const WINDOW_BORDER = UI.frameLine.value;
 
 /**
  * The in-raid overlays.
@@ -339,7 +346,7 @@ export class RaidHud {
       return rect;
     }
     this.covered.push(rect);
-    drawPixelWindow(this.frames, rect, { fill: style.fill, fillAlpha: alpha });
+    drawPixelWindow(this.frames, rect, { fill: style.fill, fillAlpha: alpha, border: WINDOW_BORDER });
     if (style.heavy) {
       this.frames.fillStyle(WINDOW_BORDER, alpha);
       this.frames.fillRect(rect.x + 2, rect.y + 1, rect.width - 4, 1);
@@ -384,7 +391,7 @@ export class RaidHud {
       return;
     }
     this.covered.push(rect);
-    drawPixelWindow(this.frames, rect, { fill: WINDOW_CREAM });
+    drawPixelWindow(this.frames, rect, { fill: WINDOW_CREAM, border: WINDOW_BORDER });
     // The gold edge, inside the frame down the left.
     this.frames.fillStyle(PRIZE_EDGE, 1);
     this.frames.fillRect(rect.x + 1, rect.y + 1, PRIZE_EDGE_WIDTH, rect.height - 2);
