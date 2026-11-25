@@ -47,11 +47,13 @@ const KEY_AND_WORDS = /(?<!\])\[([A-Z0-9])\]\s+([^[\n]*?)(?=\s{2,}|\s*\[|\s*\n|\
 
 /** `text` as the touch pad would say it. */
 export function touchWording(text: string): string {
-  const whole = LINES[text];
-  if (whole !== undefined) {
-    return whole;
-  }
-  let said = text.replace(KEY_PAIR, (_match, _back: string, _next: string, words: string) => `[< ${words.trim()} >]`);
+  // A line said whole wherever it stands, alone or among others in one text
+  // (the pause plate draws its two lines as one).
+  let said = text
+    .split('\n')
+    .map((line) => LINES[line] ?? line)
+    .join('\n');
+  said = said.replace(KEY_PAIR, (_match, _back: string, _next: string, words: string) => `[< ${words.trim()} >]`);
   said = said.replace(KEY_AND_WORDS, (match, _key: string, words: string) => (words.trim() ? `[${words.trim()}]` : match));
   for (const [pattern, word] of KEY_WORDS) {
     said = said.replace(pattern, word);

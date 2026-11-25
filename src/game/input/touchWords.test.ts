@@ -28,6 +28,7 @@ describe('the game\'s words for its keys, on the touch pad', () => {
   it('says the title\'s line whole', () => {
     expect(touchWording('ARROWS CHOOSE · SPACE SELECT')).toBe('D-PAD CHOOSES · OK SELECTS');
     expect(touchWording(WINDOW_PAUSE_LINES[1])).toBe('Tap anywhere to play on.');
+    expect(touchWording(WINDOW_PAUSE_LINES.join('\n'))).toBe(`${WINDOW_PAUSE_LINES[0]}\nTap anywhere to play on.`);
   });
 
   it('leaves words that are not keys alone', () => {

@@ -146,6 +146,40 @@ describe('a raid when the window is not in use', () => {
     expect(page.gameSaw).toEqual(['ArrowUp']);
   });
 
+  it('pauses when the page is hidden or put away, as a phone does going to another app', () => {
+    const raid = aRaid();
+    const page = Object.assign(new EventTarget(), { visibilityState: 'visible' });
+    const window = new EventTarget();
+    const stop = watchWindowFocus(window, () => raid, { page });
+    page.dispatchEvent(new Event('visibilitychange'));
+    expect(raid.paused).toBe(false);
+    page.visibilityState = 'hidden';
+    page.dispatchEvent(new Event('visibilitychange'));
+    expect(raid.paused).toBe(true);
+    page.visibilityState = 'visible';
+    page.dispatchEvent(new Event('visibilitychange'));
+    expect(raid.paused).toBe(true);
+    window.dispatchEvent(new InputEvent('pointerdown'));
+    window.dispatchEvent(new InputEvent('pointerup'));
+    window.dispatchEvent(new Event('pagehide'));
+    expect(raid.pauses).toBe(2);
+    stop();
+  });
+
+  it('spends the touch that plays on: the touch pad\'s key under it never reaches the game', () => {
+    const raid = aRaid();
+    const page = aWindow(raid);
+    page.send('blur');
+    page.send('pointerdown');
+    expect(raid.paused).toBe(false);
+    // The pad presses OK on the same touch.
+    page.send('keydown', 'Space');
+    expect(page.gameSaw).toEqual([]);
+    page.send('pointerup');
+    page.send('keydown', 'Space');
+    expect(page.gameSaw).toEqual(['Space']);
+  });
+
   it('stops watching when asked', () => {
     const raid = aRaid();
     const page = aWindow(raid);
