@@ -175,6 +175,7 @@ import {
 } from '../world/races';
 import { FINISH_WAIT_MS, GO_SHOWN_MS, countdownWord, formatRaceTime, racerPlace, type RacerPlace } from '../world/raceClock';
 import { RACER_GROUND, raceGround, racerLine } from '../world/raceLine';
+import { ghostPlace, trailTime, trailWith, type RaceTrail } from '../world/raceGhost';
 import { DialogBox } from '../ui/DialogBox';
 import { flashScreen } from '../ui/screenFlash';
 import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
@@ -505,6 +506,10 @@ const HUNTER_FIGURE_ID = 'rival-hunter';
 const RACER_FIGURE_ID = 'race-racer';
 /** The countdown's word: over the raid's chips, under nothing. */
 const RACE_WORD_DEPTH = 120;
+/** How see-through the best run is: there, and plainly not a person. */
+const GHOST_ALPHA = 0.45;
+/** How long it takes to fade once it is over the line. */
+const GHOST_FADE_MS = 1200;
 /** Ground a hunter sees across though it cannot walk it: low, or flat. */
 const SEE_THROUGH: ReadonlySet<string> = new Set(['water', 'ford', 'fence', 'ice']);
 /** How far from the player a hunter of the pack is drawn at all - past a screen's half-width either way. */
@@ -1106,6 +1111,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private countdownWordShown: string | null = null;
   /** The best time on the course being raced, read once rather than every frame. */
   private raceBestMs: number | undefined;
+  /** The best run on it, raced again as a see-through you (`world/raceGhost.ts`). */
+  private raceGhost: RaceTrail | undefined;
+  private raceGhostSprite: Phaser.GameObjects.Sprite | undefined;
   /**
    * The authored beat playing over the map: a watch catching the player, the
    * hunter running them down. Driven from `update()` by elapsed time - see
@@ -1328,6 +1336,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.raceWord = undefined;
     this.countdownWordShown = null;
     this.raceBestMs = undefined;
+    this.raceGhost = undefined;
+    this.raceGhostSprite = undefined;
     this.stepFollowsArrow = false;
     this.boardedAtMs = null;
     // The marks were destroyed with the scene; the hunters themselves ride the run session.
@@ -4177,7 +4187,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     const here = this.raceHere();
     if (here) {
-      this.raceBestMs = new SaveManager().load()?.raidProgress.races?.[here.course.id]?.bestMs;
+      this.readRaceRecord(here.course);
+      if (here.race.phase !== 'over') this.createRaceGhost();
       const place = this.racerNow(here.race);
       this.createFigure(RACER_FIGURE_ID, place.tile, place.facing, 'npc', here.course.racer.design);
     }
@@ -4204,12 +4215,51 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     return racerPlace(race.line, STEP_DURATION_MS, race.phase === 'countdown' ? 0 : race.clockMs);
   }
 
+  /** The best time and run on a course, read once a world rather than every frame. */
+  private readRaceRecord(course: RaceCourse): void {
+    const record = new SaveManager().load()?.raidProgress.races?.[course.id];
+    this.raceBestMs = record?.bestMs;
+    this.raceGhost = record?.ghost;
+  }
+
+  /** The see-through you of the best run, in what the player is wearing now. */
+  private createRaceGhost(): void {
+    if (!this.raceGhost) {
+      return;
+    }
+    const start = ghostPlace(this.raceGhost, 0);
+    this.raceGhostSprite = this.add
+      .sprite(start.x * TILE_SIZE, start.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET, this.walkingTexture(), getIdleFrame(start.facing))
+      .setOrigin(0, 0)
+      .setAlpha(GHOST_ALPHA)
+      .setDepth(atRow(FIGURE_BAND, start.y) - 0.0002);
+    this.mapObjects.push(this.raceGhostSprite);
+  }
+
+  /** The best run where the race clock puts it; it fades once it is over the line. */
+  private drawRaceGhost(race: RaceState): void {
+    const sprite = this.raceGhostSprite;
+    if (!sprite || !this.raceGhost) {
+      return;
+    }
+    const clockMs = race.phase === 'countdown' ? 0 : race.clockMs;
+    const place = ghostPlace(this.raceGhost, clockMs);
+    const fade = place.done ? Math.max(0, 1 - (clockMs - trailTime(this.raceGhost)) / GHOST_FADE_MS) : 1;
+    sprite
+      .setPosition(place.x * TILE_SIZE, place.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET)
+      .setDepth(atRow(FIGURE_BAND, place.y) - 0.0002)
+      .setFrame(place.stepping && (place.x + place.y) % 1 < 0.5 ? getWalkFrames(place.facing)[0] : getIdleFrame(place.facing))
+      .setAlpha(GHOST_ALPHA * fade)
+      .setVisible(fade > 0 && race.phase !== 'over');
+  }
+
   /** Every frame: the racer where the clock puts them, striding while they run. */
   private drawRace(): void {
     const here = this.raceHere();
     if (!here || !this.npcSprites.has(RACER_FIGURE_ID)) {
       return;
     }
+    this.drawRaceGhost(here.race);
     const place = this.racerNow(here.race);
     const x = place.tile.x + (place.next.x - place.tile.x) * place.between;
     const y = place.tile.y + (place.next.y - place.tile.y) * place.between;
@@ -4278,7 +4328,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     this.createFigure(RACER_FIGURE_ID, course.racer.stands, 'down', 'npc', course.racer.design);
     this.countdownWordShown = null;
-    this.raceBestMs = new SaveManager().load()?.raidProgress.races?.[course.id]?.bestMs;
+    this.readRaceRecord(course);
+    this.createRaceGhost();
     recordAction(`Agreed to race ${course.racer.name}`);
   }
 
@@ -4289,6 +4340,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (word === null) {
       race.phase = 'running';
       race.clockMs = 0;
+      race.trail = trailWith([], this.currentTile, 0);
       this.showRaceWord('GO!');
       audioManager.play('raceGo');
       this.time.delayedCall(GO_SHOWN_MS, () => this.showRaceWord(null));
@@ -4331,6 +4383,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     here.race.clockMs += clockMs;
+    here.race.trail = trailWith(here.race.trail, this.currentTile, here.race.clockMs);
     // Off made ground, bar the verge the race was asked from: off her road.
     const { x, y } = this.currentTile;
     const atStart = Math.abs(x - here.course.racer.stands.x) + Math.abs(y - here.course.racer.stands.y) <= 1;
@@ -4359,7 +4412,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const timeMs = race.clockMs;
     const outcome: RaceOutcome = timeMs < race.racerMs ? 'won' : 'lost';
     const medal = raceMedal(course, timeMs, outcome === 'won');
-    const was = new SaveManager().recordRace(course.id, timeMs, outcome === 'won', medal);
+    const trail = trailWith(race.trail, this.currentTile, timeMs);
+    const was = new SaveManager().recordRace(course.id, timeMs, outcome === 'won', medal, trail);
     const prize = racePrize(outcome, medal, {
       purseTakenToday: this.purseTakenToday(was),
       trophyBanked: was?.trophy === true,

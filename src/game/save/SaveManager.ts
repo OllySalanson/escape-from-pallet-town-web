@@ -154,6 +154,7 @@ import {
 } from '../treasure/treasureMap';
 import { readHomeLayout, type Placement } from '../home/arrangement';
 import { betterMedal, courseById, type RaceMedal, type RaceRecord } from '../world/races';
+import { readTrail, type RaceTrail } from '../world/raceGhost';
 import { saveWritten } from './keepSavesSafe';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
@@ -1471,7 +1472,13 @@ export class SaveManager {
    * a time is not loot - nothing of it rides in the pack. Returns the record
    * as it stood before, so the line can say whether this was a new best.
    */
-  public recordRace(courseId: string, timeMs: number, won: boolean, medal: RaceMedal | null): RaceRecord | undefined {
+  public recordRace(
+    courseId: string,
+    timeMs: number,
+    won: boolean,
+    medal: RaceMedal | null,
+    trail?: RaceTrail,
+  ): RaceRecord | undefined {
     const game = this.load();
     if (!game) {
       return undefined;
@@ -1484,6 +1491,8 @@ export class SaveManager {
       wins: (was?.wins ?? 0) + (won ? 1 : 0),
       bestMs: Math.round(best),
       ...(betterMedal(was?.medal, medal) ? { medal: betterMedal(was?.medal, medal) } : {}),
+      // The best run is the one raced again: a slower one leaves it where it was.
+      ...(trail && readTrail(trail) && (was?.bestMs === undefined || timeMs < was.bestMs) ? { ghost: [...trail] } : {}),
     };
     this.save({
       ...game,
@@ -3301,6 +3310,7 @@ function readRaces(value: unknown): { readonly races: Readonly<Record<string, Ra
       ...(medal === 'gold' || medal === 'silver' || medal === 'bronze' ? { medal } : {}),
       ...(typeof held.purseDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(held.purseDay) ? { purseDay: held.purseDay } : {}),
       ...(held.trophy === true ? { trophy: true as const } : {}),
+      ...(readTrail(held.ghost) ? { ghost: readTrail(held.ghost) } : {}),
     };
   }
   return Object.keys(races).length > 0 ? { races } : null;

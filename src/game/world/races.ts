@@ -5,6 +5,7 @@ import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
 import { formatGap, formatRaceTime } from './raceClock';
 import type { CastCharacterDesignId } from './characterDesigns';
+import type { RaceTrail } from './raceGhost';
 
 /**
  * A townsperson who says "I'll race you!" - and means it.
@@ -215,6 +216,8 @@ export interface RaceRecord {
   readonly purseDay?: string;
   /** A raid has banked the trophy. */
   readonly trophy?: true;
+  /** Where the best run went and when (`raceGhost.ts`): raced again as a see-through you. */
+  readonly ghost?: RaceTrail;
 }
 
 // -- What the racer says ---------------------------------------------------------
@@ -392,13 +395,15 @@ export interface RaceState {
   fightMs: number;
   /** Whether the player has set foot off made ground since GO: who left the racer's road. */
   offRoad: boolean;
+  /** Where the player has gone since GO, and when (`raceGhost.ts`): kept if it is a best. */
+  trail: number[];
 }
 
 /** A race the player has just said yes to. */
 export function newRace(course: RaceCourse, line: readonly GridPosition[]): RaceState {
   const crossing = line.findIndex((tile) => crossesLine(course, tile));
   const racerMs = racerTimeMs((crossing < 0 ? line.length - 1 : crossing) + 1);
-  return { courseId: course.id, phase: 'countdown', countdownMs: 0, clockMs: 0, line, racerMs, held: [], purseToPick: false, bank: {}, fightMs: 0, offRoad: false };
+  return { courseId: course.id, phase: 'countdown', countdownMs: 0, clockMs: 0, line, racerMs, held: [], purseToPick: false, bank: {}, fightMs: 0, offRoad: false, trail: [] };
 }
 
 /** Charged game time while a fight is on: the racer runs on (`BattleScene` asks this). */
