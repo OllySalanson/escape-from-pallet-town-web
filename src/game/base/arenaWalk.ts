@@ -1,5 +1,5 @@
 import { nextTileFromDirection, type Direction, type GridPosition } from '../movement/gridMovement';
-import { arenaStationAt, arenaTelescopeAt, ARENA_STATIONS } from './arenaHall';
+import { arenaStationAt, arenaTelescopeAt, ARENA_STATIONS, isArenaDoor } from './arenaHall';
 
 /**
  * Walking THE RAID ARENA's curve on one held key. Everywhere else in the game a
@@ -15,7 +15,7 @@ import { arenaStationAt, arenaTelescopeAt, ARENA_STATIONS } from './arenaHall';
  * tiles either side this is a wall, not a corner, and the player stops against it
  * as they do anywhere, so pressing up at the rail in front of the door stays where
  * it is. **It never goes round anything that answers the interact key**: pressing
- * into a station, a telescope or somebody is how they are faced. And a press from
+ * into a station, a telescope, the great doors or somebody is how they are faced. And a press from
  * standing still waits `SLIDE_AFTER_MS` first, so a tap towards a wall only turns.
  *
  * Nothing here knows Phaser. Only the hall asks it (`BaseScene`).
@@ -54,6 +54,7 @@ export function roundTheYardStair(from: GridPosition, direction: Direction, isBl
 /** Whether a tile is one a player presses into on purpose. */
 function answersAKey(tile: GridPosition): boolean {
   return (
+    isArenaDoor(tile) ||
     arenaStationAt(tile) !== undefined ||
     arenaTelescopeAt(tile) !== undefined ||
     ARENA_STATIONS.some((station) => station.past.some((each) => each.x === tile.x && each.y === tile.y))

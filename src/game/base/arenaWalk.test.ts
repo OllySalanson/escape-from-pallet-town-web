@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DIRECTION_DELTAS, type Direction, type GridPosition } from '../movement/gridMovement';
-import { ARENA_KEEPER_TILE, ARENA_MAT, ARENA_STATIONS, ARENA_TELESCOPES, arenaCollision } from './arenaHall';
+import { ARENA_DOOR_STEP, ARENA_KEEPER_TILE, ARENA_MAT, ARENA_STATIONS, ARENA_TELESCOPES, arenaCollision, isArenaDoor } from './arenaHall';
 import { RIVAL_TILE } from './arenaBouts';
 import { getBaseMap } from './baseMap';
 import { BASE_DOORS } from './doors';
@@ -15,15 +15,22 @@ const step = (from: GridPosition, direction: Direction): GridPosition => ({
   y: from.y + DIRECTION_DELTAS[direction].y,
 });
 
+/** The hall with its great doors shut, as a player coming in from the harbour finds it. */
+const isBlockedShut = (tile: GridPosition): boolean => isBlocked(tile) || isArenaDoor(tile);
+
 /** Where one held key takes a player, and every tile on the way, as the scene's walk does it. */
-function hold(from: GridPosition, direction: Direction): { readonly path: readonly GridPosition[]; readonly loops: boolean } {
+function hold(
+  from: GridPosition,
+  direction: Direction,
+  blocked: (tile: GridPosition) => boolean = isBlocked,
+): { readonly path: readonly GridPosition[]; readonly loops: boolean } {
   const path = [from];
   const seen = new Set([`${from.x},${from.y}`]);
   for (;;) {
     const here = path[path.length - 1];
     const ahead = step(here, direction);
-    const side = isBlocked(ahead) ? slideRound(here, direction, isBlocked, isPerson) : null;
-    const next = isBlocked(ahead) ? (side ? step(here, side) : null) : ahead;
+    const side = blocked(ahead) ? slideRound(here, direction, blocked, isPerson) : null;
+    const next = blocked(ahead) ? (side ? step(here, side) : null) : ahead;
     if (!next) {
       return { path, loops: false };
     }
@@ -43,31 +50,55 @@ const holds = (from: GridPosition, ...keys: readonly Direction[]): GridPosition 
     return path[path.length - 1];
   }, from);
 
+/** The same, with the great doors shut. */
+const holdsShut = (from: GridPosition, ...keys: readonly Direction[]): GridPosition =>
+  keys.reduce((at, direction) => {
+    const { path } = hold(at, direction, isBlockedShut);
+    return path[path.length - 1];
+  }, from);
+
 const passes = (from: GridPosition, direction: Direction, tile: GridPosition): boolean =>
   hold(from, direction).path.some((each) => same(each, tile));
 
 const stationNamed = (id: string) => ARENA_STATIONS.find((station) => station.id === id)!;
 const fronts = (id: string): readonly GridPosition[] => stationNamed(id).tiles.map((tile) => ({ x: tile.x, y: tile.y + 1 }));
+/** Everywhere a station is opened from: in front of it, or of the torch or wall that answers for it. */
+const facedFrom = (id: string): readonly GridPosition[] =>
+  [...stationNamed(id).tiles, ...stationNamed(id).past].map((tile) => ({ x: tile.x, y: tile.y + 1 }));
 const [west, east] = ARENA_TELESCOPES;
 const RAIL = { x: ARENA_MAT.x, y: west.stance.y };
 
 describe("walking THE RAID ARENA's great hall on a held key", () => {
-  it('goes from the mat to the bench on one key, and stops in front of it', () => {
-    const end = holds(ARENA_MAT, 'left');
-    expect(fronts('bench')).toContainEqual(end);
-    expect(slideRound(end, 'up', isBlocked, isPerson)).toBeNull();
-    expect(isBlocked(step(end, 'up'))).toBe(true);
+  it('goes up the tunnel from the mat on one key, and stops at the great doors to push them', () => {
+    expect(holdsShut(ARENA_MAT, 'up')).toEqual(ARENA_DOOR_STEP);
+    // Pressing on into them is pressing at them, never a walk round them.
+    expect(slideRound(ARENA_DOOR_STEP, 'up', isBlockedShut, isPerson)).toBeNull();
   });
 
-  it('goes from the mat past the rack to the locker on one key, and stops in front of it', () => {
-    const { path } = hold(ARENA_MAT, 'right');
-    expect(fronts('locker')).toContainEqual(path[path.length - 1]);
-    for (const front of fronts('rack')) {
-      expect(path).toContainEqual(front);
+  it('goes from the doors to the bench, and to the rack, on one key each, and stops facing what it opens', () => {
+    for (const [direction, id] of [
+      ['left', 'bench'],
+      ['right', 'rack'],
+    ] as const) {
+      const end = holdsShut(ARENA_DOOR_STEP, direction);
+      const faced = step(end, direction);
+      const station = stationNamed(id);
+      expect([...station.tiles, ...station.past], id).toContainEqual(faced);
+      expect(slideRound(end, direction, isBlockedShut, isPerson), id).toBeNull();
     }
   });
 
-  it('goes up the runner to the rail on one key, and stays at the rail in front of the door', () => {
+  it('goes along the front of the stations past the rack to the locker on one key, and stops in front of it', () => {
+    const { path } = hold({ x: ARENA_DOOR_STEP.x, y: ARENA_DOOR_STEP.y + 1 }, 'right', isBlockedShut);
+    expect(facedFrom('locker')).toContainEqual(path[path.length - 1]);
+    for (const front of fronts('rack')) {
+      expect(path).toContainEqual(front);
+    }
+    const { path: west } = hold({ x: ARENA_DOOR_STEP.x, y: ARENA_DOOR_STEP.y + 1 }, 'left', isBlockedShut);
+    expect(facedFrom('bench')).toContainEqual(west[west.length - 1]);
+  });
+
+  it('goes up the runner through the open doors to the rail on one key, and stays at the rail', () => {
     expect(holds(ARENA_MAT, 'up')).toEqual(RAIL);
     expect(slideRound(RAIL, 'up', isBlocked, isPerson)).toBeNull();
   });
@@ -125,13 +156,13 @@ describe("walking THE RAID ARENA's great hall on a held key", () => {
   });
 
   it('comes back from everything on two held keys', () => {
-    const benchEnd = holds(ARENA_MAT, 'left');
+    const benchEnd = holdsShut({ x: ARENA_DOOR_STEP.x, y: ARENA_DOOR_STEP.y + 1 }, 'left');
     expect(passes(benchEnd, 'right', { x: ARENA_MAT.x, y: benchEnd.y })).toBe(true);
     for (const telescope of ARENA_TELESCOPES) {
       const back = telescope.side === 'east' ? 'left' : 'right';
       expect(passes(telescope.stance, back, RAIL), telescope.side).toBe(true);
     }
-    // Pressing down beside the porch goes in, not on along the wall.
+    // Pressing down anywhere along the stations' row near the runner goes down the tunnel to the mat.
     for (const x of [ARENA_MAT.x - 4, ARENA_MAT.x - 3, ARENA_MAT.x - 2, ARENA_MAT.x + 2, ARENA_MAT.x + 3, ARENA_MAT.x + 4]) {
       expect(passes({ x, y: benchEnd.y }, 'down', { x: ARENA_MAT.x + Math.sign(x - ARENA_MAT.x), y: ARENA_MAT.y }), `${x}`).toBe(true);
     }

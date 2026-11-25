@@ -11,11 +11,12 @@ import type { GridPosition } from '../movement/gridMovement';
  * pillars and torches, and what a player at the fence is looking at. Nothing
  * here knows Phaser or the save.
  *
- * Everything a player does before a raid is done on this platform
- * (`arenaRim.ts`, `BaseScene`). **The door opens into a squared-off room**: bright
- * flags under a dark wall (`ARENA_ENTRY`), with the bench in one corner and the
- * armoury rack and the locker in the other (`ARENA_STATIONS`), along the row a held
- * key walks from the mat, none of them on any way to the fence or round the ring.
+ * Everything a player does before a raid is done in this hall (`arenaRim.ts`,
+ * `BaseScene`). **The door opens into a tunnel under the south stands**
+ * (`isTunnel`): a corridor from the mat up to a room at its end, the bench, the
+ * armoury rack and the locker spaced along that room's back wall
+ * (`ARENA_STATIONS`), and between them the great doors into the oval
+ * (`ARENA_DOOR`, `arenaDoors.ts`), shut until they are pushed.
  * **Nobody stands behind anything**: what rises over the floor is solid under the
  * part of it that would hide a figure, and no tile is left that goes nowhere
  * (`arenaWalk.ts` is the walking this leaves room for). And
@@ -34,10 +35,11 @@ export const ARENA_TILE = 16;
  * those north and south of it. The ring is where a player spends their time, so
  * the ring has the room: thirteen tiles of floor east and west and nine or ten
  * north and south, four tiles more than it had, out of a pit four tiles smaller all
- * round with narrower steps, so the map below it gives up little.
+ * round with narrower steps, so the map below it gives up little. Below the oval
+ * the tunnel in (`isTunnel`) takes the last eleven rows.
  */
 export const ARENA_HALL_WIDTH = 71;
-export const ARENA_HALL_HEIGHT = 63;
+export const ARENA_HALL_HEIGHT = 74;
 /** How far past the hall's foot the camera may go, so the player on the mat is not at the very bottom of the screen. */
 export const ARENA_DARK_BELOW = 64;
 
@@ -93,51 +95,126 @@ const tileCorners = (tile: GridPosition): readonly (readonly [number, number])[]
   ];
 };
 
-/** The door mat's middle tile: in through the south wall, on the hall's centre line. */
-export const ARENA_MAT: GridPosition = { x: 35, y: 62 };
+/**
+ * **THE RAID ARENA is walked into up a tunnel under its south stands** (the captain,
+ * 25 Nov 2026: "instead of going straight into the raid arena oval, there's a
+ * pathway, a hallway, leading up to it"). From the mat a corridor runs north into
+ * a long room under the stands, the bench, the rack and the locker spaced along
+ * its back wall, and where the corridor would have gone on stand the hall's great
+ * doors, pushed open into the oval. All of it is a rectangle of tiles south of the
+ * oval's wall (`isTunnel`), so nothing round the ring moves.
+ */
+
+/** The hall's centre line, where the door, the runner and the mat all stand. */
+const MIDDLE_X = 35;
+
+/** The tunnel's wall over the doors: the row of the wall's top, then the doors' face. */
+const DOOR_WALL_TOP = 61;
+/** How many rows of the doors' face stand under the wall's top: a door half again as tall as anybody. */
+export const DOOR_FACE_ROWS = 3;
+
+/**
+ * The great doors, as the tiles of the way through the wall: three across, from
+ * the row of the wall's top down to the foot of their face. Every tile of it is a
+ * way through (`arenaCollision`); the scene holds it shut until it is pushed
+ * (`BaseScene`, `base/arenaDoors.ts`).
+ */
+export const ARENA_DOOR = { left: MIDDLE_X - 1, right: MIDDLE_X + 1, top: DOOR_WALL_TOP, bottom: DOOR_WALL_TOP + DOOR_FACE_ROWS } as const;
+
+/** Whether a tile is part of the way through the great doors. */
+export function isArenaDoor(tile: GridPosition): boolean {
+  return tile.x >= ARENA_DOOR.left && tile.x <= ARENA_DOOR.right && tile.y >= ARENA_DOOR.top && tile.y <= ARENA_DOOR.bottom;
+}
+
+/**
+ * The great doors' opening, in hall pixels: three tiles across, under a round arch
+ * whose crown is four pixels under the top of their face. The frame round it is
+ * the hall's art (`scripts/draw-arena-hall.mts`); the leaves that fill it are the
+ * scene's, because they open (`arenaDoors.ts`).
+ */
+export const DOOR_OPENING = (() => {
+  const faceTop = (ARENA_DOOR.top + 1) * ARENA_TILE;
+  const top = faceTop + 4;
+  const width = (ARENA_DOOR.right + 1 - ARENA_DOOR.left) * ARENA_TILE;
+  return { left: ARENA_DOOR.left * ARENA_TILE, top, width, height: (ARENA_DOOR.bottom + 1) * ARENA_TILE - top, archRadius: width / 2, faceTop };
+})();
+
+/** Whether a point of the hall, in pixels, is inside the doors' opening, under its arch. */
+export function inDoorOpening(x: number, y: number): boolean {
+  const { left, top, width, height, archRadius } = DOOR_OPENING;
+  if (x < left || x >= left + width || y < top || y >= top + height) {
+    return false;
+  }
+  const archFoot = top + archRadius;
+  return y >= archFoot || Math.hypot(x + 0.5 - (left + archRadius), y + 0.5 - archFoot) <= archRadius;
+}
+
+/** The tile in front of the doors, on the runner: where a player pushes them from. */
+export const ARENA_DOOR_STEP: GridPosition = { x: MIDDLE_X, y: ARENA_DOOR.bottom + 1 };
+
+/** The row the stations stand on: against the back wall of the room at the tunnel's end, either side of the doors. */
+const STATION_ROW = ARENA_DOOR.bottom + 1;
+
+/**
+ * The room at the tunnel's end, inclusive: the row the stations stand on, the row a
+ * held key walks in front of them, and one more, so it is a room and not a ledge.
+ */
+export const ARENA_ANTEROOM = { left: MIDDLE_X - 12, right: MIDDLE_X + 12, top: STATION_ROW, bottom: STATION_ROW + 2 } as const;
+
+/** The corridor from the mat up to that room, inclusive: five tiles across, so two walk abreast with room to pass. */
+export const ARENA_CORRIDOR = { left: MIDDLE_X - 2, right: MIDDLE_X + 2, top: ARENA_ANTEROOM.bottom + 1, bottom: ARENA_ANTEROOM.bottom + 5 } as const;
+
+/** The door mat's middle tile: at the foot of the corridor, on the hall's centre line. */
+export const ARENA_MAT: GridPosition = { x: MIDDLE_X, y: ARENA_CORRIDOR.bottom + 1 };
 
 /** The mat is three tiles of red across the porch, and all three of them are the way out. */
 export const ARENA_MAT_REACH = 1;
 
-/** The porch the mat stands in, cut through the south wall. */
-const inPorch = (tile: GridPosition): boolean =>
-  Math.abs(tile.x - ARENA_MAT.x) <= 1 && tile.y >= ARENA_MAT.y - 2 && tile.y <= ARENA_MAT.y;
+/** The porch the mat stands in, at the corridor's foot. */
+const inPorch = (tile: GridPosition): boolean => Math.abs(tile.x - ARENA_MAT.x) <= ARENA_MAT_REACH && tile.y === ARENA_MAT.y;
 
-/** The row the stations stand on: the back of the room the door opens into. */
-const STATION_ROW = ARENA_MAT.y - 2;
+type Box = { readonly left: number; readonly right: number; readonly top: number; readonly bottom: number };
+const inBox = (box: Box, tile: GridPosition): boolean =>
+  tile.x >= box.left && tile.x <= box.right && tile.y >= box.top && tile.y <= box.bottom;
 
 /**
- * The room the door opens into, with its corners square where the oval's are not.
- * Inclusive: one row of stations along its back, and the row a held key walks in
- * front of them. Its back wall stands to the north of that with a gate in the
- * middle, which the runner goes through and everything else goes round.
+ * The tunnel and its walls, in tiles: the room at its end with its wall all round
+ * (the wall's top over the doors reaching up to the oval's), and the corridor
+ * with its walls down to the mat. Everything in it is the tunnel's, and none of it
+ * is the oval's floor or the stands.
  */
-export const ARENA_ENTRY = { left: ARENA_MAT.x - 9, right: ARENA_MAT.x + 9, top: STATION_ROW, bottom: ARENA_MAT.y - 1 } as const;
-/** How many rows of wall stand behind the stations, cap and face: tall enough to frame what stands against it. */
-export const ENTRY_WALL_ROWS = 3;
-/** How deep the wall along the room's south side is drawn, in pixels. */
-export const ENTRY_WALL_FOOT = 10;
-/** How far either side of the middle the gate through the back wall reaches. */
-const ENTRY_GATE_REACH = 2;
+export const TUNNEL_BOXES: readonly Box[] = [
+  { left: ARENA_ANTEROOM.left - 1, right: ARENA_ANTEROOM.right + 1, top: DOOR_WALL_TOP, bottom: ARENA_CORRIDOR.top },
+  { left: ARENA_CORRIDOR.left - 1, right: ARENA_CORRIDOR.right + 1, top: ARENA_CORRIDOR.top, bottom: ARENA_MAT.y },
+];
 
-const inEntry = (tile: GridPosition): boolean =>
-  tile.x >= ARENA_ENTRY.left && tile.x <= ARENA_ENTRY.right && tile.y >= ARENA_ENTRY.top && tile.y <= ARENA_ENTRY.bottom;
-
-/** The walls of that room: along the back but for its gate, and down each side. */
-export function isEntryWall(tile: GridPosition): boolean {
-  const across = tile.x >= ARENA_ENTRY.left - 1 && tile.x <= ARENA_ENTRY.right + 1;
-  const behind = tile.y >= ARENA_ENTRY.top - ENTRY_WALL_ROWS && tile.y < ARENA_ENTRY.top;
-  const beside = tile.y >= ARENA_ENTRY.top && tile.y <= ARENA_ENTRY.bottom && (tile.x === ARENA_ENTRY.left - 1 || tile.x === ARENA_ENTRY.right + 1);
-  return across && ((behind && Math.abs(tile.x - ARENA_MAT.x) > ENTRY_GATE_REACH) || beside);
+/** Whether a tile is the tunnel's, floor or wall. */
+export function isTunnel(tile: GridPosition): boolean {
+  return TUNNEL_BOXES.some((box) => inBox(box, tile));
 }
+
+/**
+ * Whether a point of the hall, in pixels, is the tunnel's to paint: its boxes, and
+ * over the room at its end everything up to the oval's own wall, which its wall's
+ * top reaches up to meet. The stands round the hall stop here (`arenaStands.ts`).
+ */
+export function isTunnelPixel(x: number, y: number): boolean {
+  const [room, corridor] = TUNNEL_BOXES;
+  const across = (box: Box): boolean => x >= box.left * ARENA_TILE && x < (box.right + 1) * ARENA_TILE;
+  return (
+    (across(room) && y >= ARENA_CENTRE.y && y < (room.bottom + 1) * ARENA_TILE) ||
+    (across(corridor) && y >= corridor.top * ARENA_TILE && y < (corridor.bottom + 1) * ARENA_TILE)
+  );
+}
+
+/** Whether a tile of the tunnel is floor: the room, the corridor, the porch, or the way through the doors. */
+const isTunnelFloor = (tile: GridPosition): boolean =>
+  inBox(ARENA_ANTEROOM, tile) || inBox(ARENA_CORRIDOR, tile) || inPorch(tile) || isArenaDoor(tile);
 
 /** Every tile of the platform before anything stands on it. */
 function isPlatform(tile: GridPosition): boolean {
-  if (inPorch(tile) || inEntry(tile)) {
-    return true;
-  }
-  if (isEntryWall(tile)) {
-    return false;
+  if (isTunnel(tile)) {
+    return isTunnelFloor(tile);
   }
   const corners = tileCorners(tile);
   const rim = grownOval(PIT_RIM, KERB_WIDTH);
@@ -147,10 +224,9 @@ function isPlatform(tile: GridPosition): boolean {
   );
 }
 
-/** Whether a tile is the hall's outer wall, with the stands behind it: not the porch's own sides, and not the fence. */
+/** Whether a tile is the hall's outer wall, with the stands behind it: not the tunnel's own walls, and not the fence. */
 export function isOuterWall(tile: GridPosition): boolean {
-  const inOrBesidePorch = Math.abs(tile.x - ARENA_MAT.x) <= 2 && tile.y >= ARENA_MAT.y - 3;
-  if (inOrBesidePorch) {
+  if (isTunnel(tile)) {
     return false;
   }
   if (isPlatform(tile)) {
@@ -166,10 +242,15 @@ const PILLAR_REACH = 0.97;
 /**
  * The pillars, as the tile each stands on, evenly round the platform against the
  * wall and mirrored about the hall's centre line. The ring is turned half a step
- * and has a gap round the door, where the room it opens into stands.
+ * and has a gap round the great doors; and two more stand either side of the
+ * tunnel's mouth, on its walls, so the way in from the mat is lit and framed as
+ * the hall is.
  */
 export const ARENA_PILLARS: readonly GridPosition[] = (() => {
-  const pillars: GridPosition[] = [];
+  const pillars: GridPosition[] = [
+    { x: ARENA_CORRIDOR.left - 1, y: ARENA_CORRIDOR.bottom },
+    { x: ARENA_CORRIDOR.right + 1, y: ARENA_CORRIDOR.bottom },
+  ];
   for (let index = 2; index < PILLAR_COUNT - 2; index += 1) {
     const angle = ((index + 0.5) * Math.PI * 2) / PILLAR_COUNT + Math.PI / 2;
     const at = (radius: (oval: Oval) => number, axis: 'x' | 'y'): number => {
@@ -189,8 +270,8 @@ export const ARENA_PILLARS: readonly GridPosition[] = (() => {
   return pillars;
 })();
 
-/** Where the hall's keeper stands: through the gate from the door, beside the runner. */
-export const ARENA_KEEPER_TILE: GridPosition = { x: ARENA_MAT.x - 2, y: ARENA_ENTRY.top - ENTRY_WALL_ROWS - 2 };
+/** Where the hall's keeper stands: by the bench at the corridor's head, where everybody coming up it sees her, off the row the stations are walked along and off every way down into the corridor. */
+export const ARENA_KEEPER_TILE: GridPosition = { x: MIDDLE_X - 6, y: ARENA_ANTEROOM.bottom };
 
 const sameTile = (a: GridPosition, b: GridPosition): boolean => a.x === b.x && a.y === b.y;
 
@@ -217,23 +298,31 @@ const station = (id: ArenaStationId, left: number, width: number, past: readonly
   rises: tall ? stationRow(left, width, STATION_ROW - 1) : [],
 });
 
-/** The standing torches either side of the way up from the door, where the first two pillars would be: the light the bench and the rack are read by. */
+/**
+ * The standing torches along the back wall of the room at the tunnel's end, one
+ * at each end of every station but where the wall is: the light each is read by,
+ * and what keeps them apart.
+ */
 export const ARENA_STAND_TORCHES: readonly GridPosition[] = [
-  { x: ARENA_MAT.x - 3, y: STATION_ROW },
-  { x: ARENA_MAT.x + 3, y: STATION_ROW },
+  { x: ARENA_ANTEROOM.left, y: STATION_ROW },
+  { x: MIDDLE_X - 4, y: STATION_ROW },
+  { x: MIDDLE_X + 4, y: STATION_ROW },
+  { x: MIDDLE_X + 8, y: STATION_ROW },
+  { x: ARENA_ANTEROOM.right, y: STATION_ROW },
 ];
 
 /**
- * The stations, in the two corners of the room the door opens into, where the first
- * screen of the hall shows all three and no way anywhere goes past them: the bench to
- * the west, the rack and the locker to the east. Each is one row of solid tiles
- * against the back wall, so whatever rises over it hides nobody. The torch at one end
- * of a corner and the wall at the other answer for what stands between them.
+ * The stations, along the back wall of the room at the tunnel's end, spaced either
+ * side of the great doors so that the first screen from the mat shows all three
+ * and the doors between them: the bench to the west, the rack and the locker to
+ * the east, a torch between each and at each end, so the two sides mirror about
+ * the doors. Each is one row of solid tiles against the wall, so whatever rises
+ * over it hides nobody. The torch at each end of a station answers for it.
  */
 export const ARENA_STATIONS: readonly ArenaStation[] = [
-  station('bench', ARENA_ENTRY.left, 6, [ARENA_STAND_TORCHES[0], { x: ARENA_ENTRY.left - 1, y: ARENA_ENTRY.bottom }], false),
-  station('rack', ARENA_MAT.x + 4, 3, [ARENA_STAND_TORCHES[1]], false),
-  station('locker', ARENA_MAT.x + 7, 3, [{ x: ARENA_ENTRY.right + 1, y: ARENA_ENTRY.bottom }], false),
+  station('bench', ARENA_ANTEROOM.left + 1, 7, [ARENA_STAND_TORCHES[0], ARENA_STAND_TORCHES[1]], false),
+  station('rack', MIDDLE_X + 5, 3, [ARENA_STAND_TORCHES[2]], false),
+  station('locker', MIDDLE_X + 9, 3, [ARENA_STAND_TORCHES[3], ARENA_STAND_TORCHES[4]], false),
 ];
 
 /**
@@ -299,7 +388,7 @@ export function telescopeGlintPoint({ tile, side }: ArenaTelescope): { readonly 
 export const ARENA_GLINTS: readonly { readonly x: number; readonly y: number }[] = [
   ...ARENA_TELESCOPES.map(telescopeGlintPoint),
   { x: ARENA_STATIONS[2].tiles[1].x * ARENA_TILE + ARENA_TILE / 2, y: STATION_ROW * ARENA_TILE + ARENA_TILE - 20 },
-  { x: (ARENA_STATIONS[0].tiles[5].x + 1) * ARENA_TILE - 7, y: STATION_ROW * ARENA_TILE + ARENA_TILE - 26 },
+  { x: (ARENA_STATIONS[0].tiles[ARENA_STATIONS[0].tiles.length - 1].x + 1) * ARENA_TILE - 7, y: STATION_ROW * ARENA_TILE + ARENA_TILE - 26 },
 ];
 
 /** The tiles of the rail either side of a telescope: where somebody looking through it goes round to, to look down for themselves. */

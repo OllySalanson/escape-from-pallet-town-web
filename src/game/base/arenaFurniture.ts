@@ -31,8 +31,10 @@ const BENCH_INSET_RIGHT = 2;
 const SEAT_RISE = 10;
 /** The rack's shelf: how far up from the foot of its row, and how far things stand along it. */
 const SHELF_RISE = 8;
-const RACK_INSET_LEFT = 1;
+const RACK_INSET_LEFT = 0;
 const SHELF_SLOTS = 3;
+/** How far apart things stand along the shelf: an icon's width less its clear margins, so the third is clear of the post. */
+const SHELF_SPACING = 12;
 
 const tilesOf = (id: string) => ARENA_STATIONS.find((station) => station.id === id)!.tiles;
 
@@ -93,13 +95,14 @@ export class ArenaFurniture {
   private dressTheRack(flow: DeploymentFlow): void {
     const tiles = tilesOf('rack');
     const left = tiles[0].x * TILE_SIZE + RACK_INSET_LEFT + 2;
+    // Three icons with their clear margins to each other, the last clear of the rack's right post.
     const shelf = (tiles[0].y + 1) * TILE_SIZE - SHELF_RISE;
     const packed = [...flow.items].sort((a, b) => b.quantity - a.quantity).map((item) => item.itemId as string);
     const onShow = [...(flow.packItemId === undefined ? [] : [flow.packItemId as string]), ...packed].slice(0, SHELF_SLOTS);
     onShow.forEach((itemId, index) => {
       this.things.push(
         this.scene.add
-          .image(left + index * TILE_SIZE - index, shelf, iconTextureKey(itemIconName(itemId)))
+          .image(left + index * SHELF_SPACING, shelf, iconTextureKey(itemIconName(itemId)))
           .setOrigin(0, 1)
           .setDepth(atRow(FIGURE_BAND, tiles[0].y)),
       );

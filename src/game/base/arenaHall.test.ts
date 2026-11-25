@@ -10,9 +10,18 @@ import {
   ARENA_HALL_HEIGHT,
   ARENA_HALL_WIDTH,
   ARENA_KEEPER_TILE,
-  ARENA_ENTRY,
+  ARENA_ANTEROOM,
+  ARENA_CORRIDOR,
+  ARENA_DOOR,
+  ARENA_DOOR_STEP,
   ARENA_MAT,
-  isEntryWall,
+  ARENA_STAND_TORCHES,
+  DOOR_OPENING,
+  inDoorOpening,
+  isArenaDoor,
+  isOuterWall,
+  isTunnel,
+  isTunnelPixel,
   ARENA_PILLARS,
   ARENA_STATIONS,
   ARENA_TELESCOPES,
@@ -170,12 +179,13 @@ describe("THE RAID ARENA's great hall", () => {
       }
       const front = station.tiles.map((tile) => steps.get(key(tile.x, tile.y + 1)));
       expect(front.every((walk) => walk !== undefined), station.id).toBe(true);
-      expect(Math.min(...(front as number[])), station.id).toBeLessThanOrEqual(12);
+      // Up the tunnel and along the room at its end: a short walk, and no further.
+      expect(Math.min(...(front as number[])), station.id).toBeLessThanOrEqual(17);
     }
   });
 
-  it('lets a standing torch at the end of a station, and the wall at the end of a corner, answer for it', () => {
-    expect(ARENA_STATIONS.map((station) => station.past.map((tile) => `${tile.x},${tile.y}`))).toEqual([['32,60', '25,61'], ['38,60'], ['45,61']]);
+  it('lets the standing torch at either end of a station answer for it', () => {
+    expect(ARENA_STATIONS.map((station) => station.past.map((tile) => `${tile.x},${tile.y}`))).toEqual([['23,65', '31,65'], ['39,65'], ['43,65', '47,65']]);
     for (const station of ARENA_STATIONS) {
       for (const tile of station.past) {
         expect(solid[tile.y][tile.x], `${tile.x},${tile.y}`).toBe(true);
@@ -234,7 +244,7 @@ describe("THE RAID ARENA's great hall", () => {
     }
     expect(ARENA_TORCHES.filter((torch) => torch.on === 'pillar')).toHaveLength(ARENA_PILLARS.length);
     expect(ARENA_TORCHES.some((torch) => torch.on === 'wall')).toBe(true);
-    expect(ARENA_TORCHES.filter((torch) => torch.on === 'stand')).toHaveLength(2);
+    expect(ARENA_TORCHES.filter((torch) => torch.on === 'stand')).toHaveLength(ARENA_STAND_TORCHES.length);
   });
 
   it('walks wider beside the pit than above and below it, and all of it is reached', () => {
@@ -266,30 +276,75 @@ describe("THE RAID ARENA's great hall", () => {
     expect(WALL_FOOT.rx - PIT_RIM.rx).toBeGreaterThanOrEqual(13 * ARENA_TILE);
   });
 
-  it('opens the door into a squared-off room, with the stations in its corners and off every way anywhere', () => {
-    const { left, right, top, bottom } = ARENA_ENTRY;
-    // Square: every tile of it is floor or something standing on it, right into its corners.
-    for (let y = top + 1; y <= bottom; y += 1) {
-      for (let x = left; x <= right; x += 1) {
+  it('is walked into up a tunnel to the great doors, with the stations spaced along the room at its end and off every way anywhere', () => {
+    // The room at the tunnel's end and the corridor up to it are floor right into their corners.
+    for (const box of [ARENA_ANTEROOM, ARENA_CORRIDOR]) {
+      for (let y = box.top; y <= box.bottom; y += 1) {
+        for (let x = box.left; x <= box.right; x += 1) {
+          const standing = arenaStationAt({ x, y }) !== undefined || ARENA_STAND_TORCHES.some((torch) => torch.x === x && torch.y === y);
+          expect(solid[y][x], `${x},${y}`).toBe(standing);
+        }
+      }
+    }
+    // The corridor runs from the mat to the room, and the doors stand at the room's head on the centre line.
+    expect(ARENA_CORRIDOR.bottom).toBe(ARENA_MAT.y - 1);
+    expect(ARENA_CORRIDOR.top).toBe(ARENA_ANTEROOM.bottom + 1);
+    expect(ARENA_DOOR_STEP).toEqual({ x: ARENA_MAT.x, y: ARENA_ANTEROOM.top });
+    expect(ARENA_MAT.y).toBe(ARENA_HALL_HEIGHT - 1);
+    // The way through the doors is floor to the hall: it is the scene that holds them shut.
+    for (let y = ARENA_DOOR.top; y <= ARENA_DOOR.bottom; y += 1) {
+      for (let x = ARENA_DOOR.left; x <= ARENA_DOOR.right; x += 1) {
+        expect(isArenaDoor({ x, y })).toBe(true);
         expect(solid[y][x], `${x},${y}`).toBe(false);
       }
     }
-    expect(isEntryWall({ x: left - 1, y: bottom })).toBe(true);
-    expect(isEntryWall({ x: right + 1, y: bottom })).toBe(true);
-    // The corners hold what a player gets ready with, bench to the west and the others to the east.
-    const [bench, rack, locker] = ARENA_STATIONS;
-    expect(bench.tiles[0].x).toBe(left);
-    expect(locker.tiles[locker.tiles.length - 1].x).toBe(right);
-    expect(rack.tiles[0].x).toBeGreaterThan(ARENA_MAT.x);
-    // The way up the runner and through the gate is clear of all of them.
+    // Beside the doors is their wall, all the way up to the oval's floor.
+    for (let y = ARENA_DOOR.top; y <= ARENA_DOOR.bottom; y += 1) {
+      expect(solid[y][ARENA_DOOR.left - 1], `row ${y}`).toBe(true);
+      expect(solid[y][ARENA_DOOR.right + 1], `row ${y}`).toBe(true);
+    }
+    // The way up the runner, through the doors and on to the fence, is clear of everything.
     for (let y = ARENA_MAT.y; y > ARENA_TELESCOPES[0].tile.y; y -= 1) {
       expect(solid[y][ARENA_MAT.x], `row ${y}`).toBe(false);
     }
+    // The bench to the west of the doors, the rack and the locker to the east, a torch or more between each.
+    const [bench, rack, locker] = ARENA_STATIONS;
+    const ends = (station: (typeof ARENA_STATIONS)[number]) => [station.tiles[0].x, station.tiles[station.tiles.length - 1].x] as const;
+    expect(ends(bench)[1]).toBeLessThan(ARENA_DOOR.left - 2);
+    expect(ends(rack)[0]).toBeGreaterThan(ARENA_DOOR.right + 2);
+    expect(ends(locker)[0] - ends(rack)[1]).toBeGreaterThan(1);
     for (const station of ARENA_STATIONS) {
       for (const tile of station.tiles) {
+        expect(tile.y).toBe(ARENA_ANTEROOM.top);
         expect(Math.abs(tile.x - ARENA_MAT.x)).toBeGreaterThan(3);
       }
     }
+  });
+
+  it('keeps the tunnel the only way south of the oval, its walls its own and never the stands', () => {
+    solid.forEach((row, y) =>
+      row.forEach((blocked, x) => {
+        const centre = { x: (x + 0.5) * ARENA_TILE, y: (y + 0.5) * ARENA_TILE };
+        if (!blocked && acrossOval(WALL_FOOT, centre.x, centre.y) > 1) {
+          expect(isTunnel({ x, y }), `${x},${y}`).toBe(true);
+        }
+        if (isTunnel({ x, y })) {
+          expect(isOuterWall({ x, y }), `${x},${y}`).toBe(false);
+          expect(isTunnelPixel(centre.x, centre.y), `${x},${y}`).toBe(true);
+        }
+      }),
+    );
+  });
+
+  it('opens the doors under an arch, three tiles across and as tall as their face', () => {
+    const { left, top, width, height, archRadius } = DOOR_OPENING;
+    expect(left).toBe(ARENA_DOOR.left * ARENA_TILE);
+    expect(width).toBe(3 * ARENA_TILE);
+    expect(top + height).toBe((ARENA_DOOR.bottom + 1) * ARENA_TILE);
+    expect(inDoorOpening(left + archRadius, top)).toBe(true);
+    expect(inDoorOpening(left, top)).toBe(false);
+    expect(inDoorOpening(left, top + height - 1)).toBe(true);
+    expect(inDoorOpening(left + width, top + height - 1)).toBe(false);
   });
 
   it('stands a telescope on the rail on the left and on the right, mirrored, in sight of the door and each walked up to from the floor', () => {
@@ -560,7 +615,7 @@ describe('the stands round the hall', () => {
         x: Math.round(ARENA_CENTRE.x + Math.cos(angle) * (WALL_FOOT.rx + 30)),
         y: Math.round(ARENA_CENTRE.y + Math.sin(angle) * (WALL_FOOT.ry + 30)),
       };
-      const onTheWayOut = Math.abs(point.x - (ARENA_MAT.x + 0.5) * ARENA_TILE) < 40 && point.y > ARENA_CENTRE.y;
+      const onTheWayOut = (Math.abs(point.x - (ARENA_MAT.x + 0.5) * ARENA_TILE) < 40 && point.y > ARENA_CENTRE.y) || isTunnelPixel(point.x, point.y);
       if (!onTheWayOut && Math.sin(angle) >= 0) {
         expect(opaque(point.x, point.y)).toBe(true);
       }
@@ -581,7 +636,7 @@ describe('the stands round the hall', () => {
     for (let hallY = STANDS_ORIGIN.y; hallY < STANDS_ORIGIN.y + STANDS_HEIGHT; hallY += 3) {
       for (let hallX = STANDS_ORIGIN.x; hallX < STANDS_ORIGIN.x + STANDS_WIDTH; hallX += 3) {
         const inHall = hallX >= 0 && hallY >= 0 && hallX < ARENA_HALL_WIDTH * ARENA_TILE && hallY < ARENA_HALL_HEIGHT * ARENA_TILE && acrossOval(WALL_FOOT, hallX, hallY) <= 1;
-        if (!opaque(hallX, hallY) && !inHall && !(Math.abs(hallX - middle) < 40 && hallY > ARENA_CENTRE.y)) {
+        if (!opaque(hallX, hallY) && !inHall && !isTunnelPixel(hallX, hallY) && !(Math.abs(hallX - middle) < 40 && hallY > ARENA_CENTRE.y)) {
           // Only the hall's own wall and its cap may lie outside the picture's ink.
           expect(acrossOval({ ...WALL_FOOT, rx: WALL_FOOT.rx + 12, ry: WALL_FOOT.ry + 12, y: WALL_FOOT.y - 24 }, hallX, hallY), `${hallX},${hallY}`).toBeLessThanOrEqual(1.12);
         }
@@ -591,7 +646,7 @@ describe('the stands round the hall', () => {
 
   it('leave the way out of the hall open', () => {
     const middle = (ARENA_MAT.x + 0.5) * ARENA_TILE;
-    for (let y = (ARENA_MAT.y + 1) * ARENA_TILE; y < 1050; y += 1) {
+    for (let y = (ARENA_MAT.y + 1) * ARENA_TILE; y < STANDS_ORIGIN.y + STANDS_HEIGHT; y += 1) {
       expect(opaque(Math.round(middle), y)).toBe(false);
     }
   });

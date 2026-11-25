@@ -285,6 +285,18 @@ export const SOUND_EFFECTS = {
     tones: [sweep(noise(520, 0.54, 0.055), 260), sweep(saw(130, 0.5, 0.022), 90)],
     yields: true,
   },
+  arenaDoors: {
+    channel: 'world',
+    moment: "The Raid Arena's great doors pushed open at the head of the tunnel in",
+    // Oak on iron hinges: a low groan sliding down under a creak, the rush of the
+    // hall's air through the gap, and the leaves coming to rest against the walls.
+    tones: [
+      sweep(saw(110, 0.4, 0.03), 82),
+      sweep(sq(260, 0.16, 0.018, 0.04), 190),
+      noise(320, 0.46, 0.05),
+      tri(88, 0.08, 0.06, 0.44),
+    ],
+  },
   ledgeHop: {
     channel: 'world',
     moment: 'Going over a ledge - the one route on a map the hunter cannot follow',

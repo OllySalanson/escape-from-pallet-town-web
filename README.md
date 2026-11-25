@@ -52,8 +52,8 @@ That's it. Go out, get greedy, come home. Or don't come home, and learn somethin
 
 ### 1. Kit up at the Raid Arena
 
-Walk into the Raid Arena at the west end of the harbour, follow the carpet up to the fence and press
-SPACE. That's it: your first raid is packed for you, and you're over the rail and falling before you've
+Walk into the Raid Arena at the west end of the harbour, follow the carpet up the tunnel, shoulder the great doors
+open, carry on up to the fence and press SPACE. That's it: your first raid is packed for you, and you're over the rail and falling before you've
 finished wondering what that hall was. Come home and it's all still there. It's enormous: a great round hall four times the width of anything else in the
 harbour, a wide stone platform all the way round with pillars and burning torches, and in the middle a colosseum of steps going
 down to a pit. Lean on the fence and look. That's Greystone Vale at the bottom, from a very long way up - only the parts
@@ -62,14 +62,14 @@ The next time through the door it shows you what you're in for: a trailer of a r
 You sneak about with your partner picking things up, a fight goes your way, and then tonight's hunter turns up with their whole
 team. A Charizard has to come and save you. (Any key skips it, and the Gym Guide by the door will
 run the reel again if you ask.)
-The door opens into a bright square room with a corner either side of you. Walk up to the red bench and pick who comes with you; they'll sit there waiting. Walk up to the armoury rack and
+The tunnel in ends in a torchlit room under the stands, with the great doors in the middle of its back wall and everything you kit up with spaced along it. Walk up to the red bench and pick who comes with you; they'll sit there waiting. Walk up to the armoury rack and
 pick what goes in the pack, and which pack. Everything you take is at risk, which is the
 point: a Potion in the pack is a Potion you might lose, and a Potion left at home is a fight you
 might lose instead. The pack is a grid of squares, not a list, so a Super Potion and a crate of
 parts are fighting for the same space. Whatever you can't bear to lose goes in the locker, if it fits.
 
 <p align="center">
-  <img src="docs/readme/the-bench.png" width="800" alt="The player standing at a stone bench in the great hall, with a panel beside them listing who can come on the raid.">
+  <img src="docs/readme/the-bench.png" width="800" alt="The player standing at the red bench in the torchlit room at the end of the Raid Arena's tunnel, the great doors behind a panel listing who can come on the raid.">
 </p>
 
 ### 2. Jump in, and the clock starts

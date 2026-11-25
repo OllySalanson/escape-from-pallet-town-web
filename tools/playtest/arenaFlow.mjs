@@ -167,8 +167,8 @@ try {
       if (down !== 0) wanted.push(down > 0 ? 'down' : 'up');
       // The longer way first; the key already held for as long as it still helps.
       if (Math.abs(down) > Math.abs(across)) wanted.reverse();
-      // They can see what stands by the door: anything past it is up the runner first.
-      if (at.y >= 56 && goal.y < 56 && !wanted[0].includes('up') && wanted.includes('up')) wanted.reverse();
+      // They can see the great doors from the tunnel: anything past them is up the runner first.
+      if (at.y >= facts.doorStep.y && goal.y < facts.doorStep.y && !wanted[0].includes('up') && wanted.includes('up')) wanted.reverse();
       if (held && wanted.includes(held)) wanted.unshift(held);
       const open = (direction) => base(`!b.isBlocked({ x: ${at.x + DELTA[direction][0]}, y: ${at.y + DELTA[direction][1]} })`);
       let next = wanted[0];
@@ -196,6 +196,7 @@ try {
 
   const facts = await base(`({
     mat: b.room.mat,
+    doorStep: b.arenaDoorStep,
     stations: b.arenaStations.map((station) => ({ id: station.id, tiles: station.tiles })),
     things: b.place.room.things.filter((thing) => thing.opens === 'telescope').map((thing) => thing.tiles[0]),
     plates: (b.arenaTelescopes ?? []).map((telescope) => telescope.stance),

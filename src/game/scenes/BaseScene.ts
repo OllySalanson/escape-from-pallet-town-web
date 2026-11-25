@@ -253,8 +253,10 @@ import {
 import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubScene, HubSceneData } from './HubScene';
 import type { ArenaIntroSceneData } from './ArenaIntroScene';
-import { ARENA_DARK_BELOW, ARENA_MAT, ARENA_MAT_REACH, ARENA_STATIONS, ARENA_TELESCOPES, PIT_RIM, STATION_PLATE_RISE, acrossOval, arenaStationAt, arenaTelescopeAt, cameraEased, cameraLean, isOuterWall, railBeside, type ArenaStationId } from '../base/arenaHall';
-import { crowdTakesTheView, lapLine, moodAsTheyGo, moodOnTheRail, standsBehind, type CrowdMood } from '../base/arenaCrowd';
+import { ARENA_DARK_BELOW, ARENA_DOOR_STEP, ARENA_MAT, ARENA_MAT_REACH, ARENA_STATIONS, ARENA_TELESCOPES, DOOR_OPENING, PIT_RIM, STATION_PLATE_RISE, acrossOval, arenaStationAt, arenaTelescopeAt, cameraEased, cameraLean, isOuterWall, isTunnel, railBeside, type ArenaStationId } from '../base/arenaHall';
+import { crowdShare, crowdTakesTheView, lapLine, moodAsTheyGo, moodOnTheRail, standsBehind, type CrowdMood } from '../base/arenaCrowd';
+import { doorsBar, doorsWelcome } from '../base/arenaDoors';
+import { ArenaDoorsView } from '../base/arenaDoorsView';
 import {
   RIVAL_TILE,
   boutBag,
@@ -460,6 +462,12 @@ const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
 
 /** The rim tile this page last jumped from: where a raid's ending puts the player back. */
 let lastJumpedFrom: GridPosition | null = null;
+/**
+ * Whether THE RAID ARENA's great doors stand open: from the push until the player
+ * walks out of the hall by its mat. A raid, a bout or a panel coming back to the
+ * hall finds them as they were left; only coming in from the harbour finds them shut.
+ */
+let hallDoorsOpen = false;
 /** Whether a raid has come home since the player was last out in the harbour: the Seagallop ties up when they get there. */
 let boatDueHome = false;
 /**
@@ -827,6 +835,8 @@ export class BaseScene extends Phaser.Scene {
   private kit: ArenaKit | null = null;
   /** Who is on the bench and what is on the rack, where they can be seen. */
   private furniture: ArenaFurniture | null = null;
+  /** The great doors at the head of the hall's tunnel in (`base/arenaDoors.ts`). */
+  private hallDoors: ArenaDoorsView | null = null;
   /** The panel open over the hall, if any: the hall burns on behind it and the player stands still. */
   private arenaPanel: ArenaPanel | null = null;
   /**
@@ -997,6 +1007,8 @@ export class BaseScene extends Phaser.Scene {
   public readonly doors = BASE_DOORS;
   public readonly rooms = BASE_ROOMS;
   public readonly arenaStations = ARENA_STATIONS;
+  /** Where the great doors are pushed from, for a driver walking the hall. */
+  public readonly arenaDoorStep = ARENA_DOOR_STEP;
   public readonly arenaTelescopes = ARENA_TELESCOPES;
   public readonly arenaRim = ARENA_RIM;
 
@@ -1401,6 +1413,7 @@ export class BaseScene extends Phaser.Scene {
     this.drawFurniture();
     this.drawOddities();
     this.drawWallMap();
+    this.hallDoors = null;
     this.arena = this.place.room?.pit ? this.openTheHall(loaded) : null;
     if (this.place.room && ROOMS_ANSWERING_A_POINTER.has(this.place.room.room.id)) {
       this.listenForPointerInRoom();
@@ -1866,6 +1879,17 @@ export class BaseScene extends Phaser.Scene {
     const decision = round.side
       ? { facing: round.side, target: nextTileFromDirection(this.currentTile, round.side) }
       : planned;
+    // The hall's great doors, shut, are not walked into but pushed: the step waits
+    // where it is while they swing, and goes on through once they are back.
+    if (decision.target && this.hallDoorsBar(decision.target)) {
+      this.facing = decision.facing;
+      this.pushingAgainst = null;
+      this.walkPlan?.steps.unshift(decision.facing);
+      this.pushTheDoors();
+      this.player.stop();
+      this.player.setFrame(getIdleFrame(this.facing));
+      return;
+    }
     // A step onto the partner swaps places with it, as a follower does: a
     // first press that only turned the player to face it read as being walled
     // in, at doors and in THE BEACH's corner (AI playtests, 22 Nov 2026).
@@ -1920,6 +1944,29 @@ export class BaseScene extends Phaser.Scene {
       return { side, waiting: false };
     }
     return { side: null, waiting: true };
+  }
+
+  /** Whether the hall's great doors stand shut across this tile. */
+  private hallDoorsBar(tile: GridPosition): boolean {
+    return this.hallDoors !== null && doorsBar(tile, this.hallDoors.open);
+  }
+
+  /**
+   * A push at the great doors: they swing back on a creak, once, and as they come
+   * to rest the house beyond greets whoever is coming through as much as their
+   * record has filled it (`doorsWelcome`). A push while they swing does nothing.
+   */
+  private pushTheDoors(): void {
+    if (!this.hallDoors?.push(() => this.doorsSwungOpen())) {
+      return;
+    }
+    audioManager.play('arenaDoors');
+  }
+
+  private doorsSwungOpen(): void {
+    hallDoorsOpen = true;
+    const through = { x: DOOR_OPENING.left + DOOR_OPENING.width / 2, y: DOOR_OPENING.faceTop };
+    this.arena?.crowdReacts(doorsWelcome(crowdShare(this.savedGame.raidProgress.raidRecord)), through);
   }
 
   /** Whether somebody the player would press into to speak to stands on a tile of the hall. */
@@ -1982,6 +2029,12 @@ export class BaseScene extends Phaser.Scene {
     };
     const mapId = requireInsertion(flow.insertionId).mapId;
     const view = new ArenaView(this, game, this.still, mapId, this.landingsOn(mapId, game));
+    // Anybody already through the doors - home from a raid on the rim, back from a
+    // bout on the far floor - came through them open.
+    if (!isTunnel(this.currentTile)) {
+      hallDoorsOpen = true;
+    }
+    this.hallDoors = new ArenaDoorsView(this, hallDoorsOpen, this.still);
     this.furniture = new ArenaFurniture(this);
     this.furniture.show(flow, partnerOf(game.stash)?.id ?? null);
     // A pointer can walk the room too: the rest of the harbour is walked with the
@@ -2064,6 +2117,7 @@ export class BaseScene extends Phaser.Scene {
     };
     this.arena.hush(Boolean(this.arenaPanel) || Boolean(this.telescope) || this.dialogBox.visible || Boolean(this.jump));
     this.arena.update(deltaMs, middle, isAtRim(this.targetTile ?? this.currentTile));
+    this.hallDoors?.update(deltaMs);
     this.tellTheLap(middle);
     this.watchThePitGift(deltaMs);
     this.hallSign?.update(deltaMs);
@@ -4375,6 +4429,9 @@ export class BaseScene extends Phaser.Scene {
     if (this.atTelescope(facing)) {
       return '[SPACE] LOOK THROUGH THE TELESCOPE';
     }
+    if (this.hallDoorsBar(facing) && !this.hallDoors?.swinging) {
+      return '[SPACE] PUSH THE DOORS';
+    }
     const faced = this.thingFaced(facing);
     if (faced?.opens || faced?.reads || faced?.chalked || faced?.good) {
       return `[SPACE] ${faced.name}`;
@@ -5431,6 +5488,10 @@ export class BaseScene extends Phaser.Scene {
         this.lookThroughTelescope();
         return;
       }
+      if (this.hallDoorsBar(target)) {
+        this.pushTheDoors();
+        return;
+      }
       const thing = this.thingFaced(target);
       // A visitor looks round and touches nothing that is the owner's to use -
       // asked before anything opens, because MY PC opened the visitor's own
@@ -6478,6 +6539,9 @@ export class BaseScene extends Phaser.Scene {
     if (this.choosing) {
       this.say([OAK_DONT_GO], room.keeper ? [room.keeper.position] : []);
       return;
+    }
+    if (room.screen === 'arena') {
+      hallDoorsOpen = false;
     }
     this.goTo({ savedGame: this.savedGame, from: room.id }, 'interiorLeave');
   }
