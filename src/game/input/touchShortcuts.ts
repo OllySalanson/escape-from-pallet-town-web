@@ -25,6 +25,13 @@ export interface TouchShortcut {
    * thumb that has learned where it is.
    */
   readonly extra?: boolean;
+  /**
+   * A standing key that does nothing here, because the screen up has taken
+   * its letter for a key of its own (L is LEAD on YOUR TEAM, not LOOK). It
+   * stays in its place, dimmed and dead, rather than turning into another
+   * key under a thumb that knows it.
+   */
+  readonly inert?: boolean;
 }
 
 /** A scene with keys of its own for the pad. */
@@ -65,16 +72,21 @@ export function shortcutsInHint(hint: string): TouchShortcut[] {
 
 /**
  * The scene's standing keys, then any the moment adds, each key once. A key
- * the moment names that is already standing keeps its place and takes the
- * moment's word, because the moment is what it does now: X is DEX in the
- * house until the house is being decorated, when it is PUT AWAY.
+ * the moment names with a letter a standing key has is a different key: the
+ * standing one stays in its place, dimmed (`inert`), and the moment's comes
+ * after the rest as any added key does - so a thumb that learned where LOOK
+ * is never presses LEAD there. The same key named the same way is one key.
  */
 export function withMoment(standing: readonly TouchShortcut[], moment: readonly TouchShortcut[]): TouchShortcut[] {
   const now = new Map(moment.map((shortcut) => [shortcut.code, shortcut] as const));
-  const merged = standing.map((shortcut) => now.get(shortcut.code) ?? shortcut);
-  const seen = new Set(merged.map((shortcut) => shortcut.code));
+  const merged = standing.map((shortcut) => {
+    const taken = now.get(shortcut.code);
+    return taken && taken.label !== shortcut.label ? { ...shortcut, inert: true } : shortcut;
+  });
+  const standingKeys = new Set(standing.filter((shortcut) => now.get(shortcut.code)?.label === shortcut.label).map((shortcut) => shortcut.code));
+  const seen = new Set<string>();
   for (const shortcut of moment) {
-    if (!seen.has(shortcut.code)) {
+    if (!standingKeys.has(shortcut.code) && !seen.has(shortcut.code)) {
       seen.add(shortcut.code);
       merged.push({ ...shortcut, extra: true });
     }
@@ -96,6 +108,12 @@ export function letterShortcut(letter: string, label: string): TouchShortcut {
 export function sameShortcuts(a: readonly TouchShortcut[], b: readonly TouchShortcut[]): boolean {
   return (
     a.length === b.length &&
-    a.every((each, index) => each.code === b[index].code && each.label === b[index].label && Boolean(each.extra) === Boolean(b[index].extra))
+    a.every(
+      (each, index) =>
+        each.code === b[index].code &&
+        each.label === b[index].label &&
+        Boolean(each.extra) === Boolean(b[index].extra) &&
+        Boolean(each.inert) === Boolean(b[index].inert),
+    )
   );
 }

@@ -450,8 +450,11 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
       tray.replaceChildren(
         ...keys.map((shortcut) => {
           const chip = document.createElement('div');
-          chip.className = shortcut.extra ? 'tp-chip is-extra' : 'tp-chip';
-          chip.dataset.key = shortcut.code;
+          chip.className = ['tp-chip', shortcut.extra ? 'is-extra' : '', shortcut.inert ? 'is-inert' : ''].filter(Boolean).join(' ');
+          // A dead key presses nothing: it has no key to press.
+          if (!shortcut.inert) {
+            chip.dataset.key = shortcut.code;
+          }
           chip.classList.toggle('is-open', screenUp && shortcut.code === openedBy);
           chip.textContent = shortcut.label;
           return chip;

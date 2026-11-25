@@ -72,8 +72,8 @@ export const PAD = {
   /** One of the screen's keys: past 44px, the least a fingertip asks. */
   chipHeight: 48,
   chipGap: 8,
-  /** SOUND and FEEDBACK, each a square. */
-  systemSize: 40,
+  /** SOUND and FEEDBACK, each a square a fingertip wide. */
+  systemSize: 44,
   /** The one gutter everything stands off the edges by. */
   margin: 16,
   gap: 16,

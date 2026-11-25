@@ -21,13 +21,16 @@ describe('the screen\'s own keys on the touch pad', () => {
     expect(shortcutsInHint('')).toEqual([]);
   });
 
-  it('lets the moment rename a standing key in its place, and adds its own after', () => {
+  it('keeps a standing key in its place, dead, when the moment takes its letter, and adds the moment\'s after', () => {
     const standing = [letterShortcut('L', 'LOOK'), letterShortcut('X', 'DEX')];
-    expect(withMoment(standing, [letterShortcut('X', 'PUT AWAY'), letterShortcut('H', 'DECORATE')])).toEqual([
-      { code: 'KeyL', label: 'LOOK' },
-      { code: 'KeyX', label: 'PUT AWAY' },
+    expect(withMoment(standing, [letterShortcut('L', 'LEAD'), letterShortcut('H', 'DECORATE')])).toEqual([
+      { code: 'KeyL', label: 'LOOK', inert: true },
+      { code: 'KeyX', label: 'DEX' },
+      { code: 'KeyL', label: 'LEAD', extra: true },
       { code: 'KeyH', label: 'DECORATE', extra: true },
     ]);
+    // The same key named the same way is one key, where it stands.
+    expect(withMoment(standing, [letterShortcut('L', 'LOOK')])).toEqual(standing);
   });
 
   it('knows a scene that offers keys and two lists that draw the same', () => {
