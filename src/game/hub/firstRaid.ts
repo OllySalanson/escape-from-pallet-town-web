@@ -1,3 +1,5 @@
+import { itemAmountsFor } from '../items';
+
 /**
  * A new save's way into its first raid, which is the one thing it has come for.
  *
@@ -43,3 +45,34 @@ export const FIRST_RAID_BRIEFING: readonly string[] = [
   'Your first raid! Follow the gold arrow, grab what you can, and get out before the clock hits 0:00.',
   'Get out and you keep it all. Faint, or run out of time, and the pack is lost. And keep moving: a hunter is coming.',
 ];
+
+/**
+ * Asked at the rail before a new save's first jump, which goes straight over
+ * with no card (`goesStraightOver`). The overnight critic walked past three
+ * objects called BENCH, RACK and LOCKER that nothing explained, and one SPACE
+ * threw him into the valley with no confirmation and, as far as he knew,
+ * nothing packed (problem 5, 25 Nov 2026). One FireRed question at the moment
+ * it matters says what the three did, by what they hold, and asks; the cursor
+ * starts on JUMP IN, as FireRed's starts on YES, because raid one has nothing
+ * to lose and a NOT YET default would teach a newcomer to hesitate.
+ */
+export function firstJumpQuestion(packed: {
+  readonly team: readonly string[];
+  readonly carried: readonly { readonly itemId: string; readonly quantity: number }[];
+  readonly locked: readonly { readonly itemId: string; readonly quantity: number }[];
+}): string {
+  const team = packed.team.map((name) => name.toUpperCase()).join(' and ');
+  const carried = packed.carried.length > 0 ? `, ${itemAmountsFor(packed.carried).toUpperCase()} off the RACK` : '';
+  const locked = packed.locked.length > 0 ? `, ${itemAmountsFor(packed.locked).toUpperCase()} safe in the LOCKER` : '';
+  return `${team} off the BENCH${carried}${locked}. Jump in?`;
+}
+
+/**
+ * The longest the question may be and still sit in the box's two rows: the
+ * starter's kit is held to it (`firstRaid.test.ts`), because a third row was
+ * drawn below the box's frame.
+ */
+export const FIRST_JUMP_QUESTION_LONGEST = 92;
+
+/** The two answers at the rail, JUMP IN first. */
+export const FIRST_JUMP_ANSWERS = ['JUMP IN', 'NOT YET'] as const;

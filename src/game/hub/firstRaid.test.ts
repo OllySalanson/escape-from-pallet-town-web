@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { goesStraightOver, isFirstRaid } from './firstRaid';
+import { FIRST_JUMP_ANSWERS, FIRST_JUMP_QUESTION_LONGEST, firstJumpQuestion, goesStraightOver, isFirstRaid } from './firstRaid';
 import { buildContractBoard } from './contractBoard';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 
@@ -29,3 +29,26 @@ describe('the way into a first raid', () => {
     ).toBeGreaterThan(0);
   });
 });
+
+/** The critic's problem 5: the first jump had no confirm, and nothing said what the bench, rack and locker were. */
+describe('the question at the rail before the first jump', () => {
+  const kit = { carried: [{ itemId: 'poke-ball', quantity: 3 }], locked: [{ itemId: 'potion', quantity: 3 }] };
+
+  it('says what each station packed, and asks', () => {
+    expect(firstJumpQuestion({ team: ['Charmander'], ...kit })).toBe(
+      'CHARMANDER off the BENCH, 3 POKÉ BALLS off the RACK, 3 POTIONS safe in the LOCKER. Jump in?',
+    );
+    expect(FIRST_JUMP_ANSWERS).toEqual(['JUMP IN', 'NOT YET']);
+  });
+
+  it("fits the box's two rows for every starter", () => {
+    for (const starter of ['Bulbasaur', 'Charmander', 'Squirtle']) {
+      expect(firstJumpQuestion({ team: [starter], ...kit }).length).toBeLessThanOrEqual(FIRST_JUMP_QUESTION_LONGEST);
+    }
+  });
+
+  it('leaves out a station that packed nothing', () => {
+    expect(firstJumpQuestion({ team: ['Squirtle'], carried: [], locked: [] })).toBe('SQUIRTLE off the BENCH. Jump in?');
+  });
+});
+

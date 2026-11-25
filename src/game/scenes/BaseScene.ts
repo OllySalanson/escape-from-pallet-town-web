@@ -325,7 +325,8 @@ import type { ArenaPanel } from './HubScene';
 import type { WorldSceneData } from './WorldScene';
 import { worldMapName, type WorldMapId } from '../worldMap';
 import { FIRST_WORDS, hasHeard, heldLandingNews, mapsMovedNews, spokenLines, type FirstWordsId } from '../hub/firstWords';
-import { goesStraightOver, isFirstRaid } from '../hub/firstRaid';
+import { FIRST_JUMP_ANSWERS, firstJumpQuestion, goesStraightOver, isFirstRaid } from '../hub/firstRaid';
+import { benchOffer, benchOfferQuestion } from '../hub/benchOffer';
 import { rimOpensOnNotYet } from '../hub/railWarning';
 import { centerOffer, healedLine, nobodyCanRaid, NOT_HEALED_LINE, SWAP_AT_THE_PC_LINE } from '../hub/centerCounter';
 import {
@@ -3439,7 +3440,36 @@ export class BaseScene extends Phaser.Scene {
         heldRoomMapId() !== null,
       )
     ) {
-      this.openHallPanel('rim', true);
+      // The first jump asks, once, saying what the bench, rack and locker
+      // packed (`firstJumpQuestion`): no card, but never one press into the vale.
+      const flow = kit.flow;
+      this.askInBox(
+        firstJumpQuestion({
+          team: flow.party.map(({ pokemon }) => pokemon.name),
+          carried: flow.riskedItems,
+          locked: flow.securedItems,
+        }),
+        (yes) => {
+          if (yes) {
+            this.openHallPanel('rim', true);
+          }
+        },
+        { options: FIRST_JUMP_ANSWERS },
+      );
+      return;
+    }
+    // A catch at base and one on the bench: asked once (`hub/benchOffer.ts`).
+    const offer = kit && benchOffer(this.savedGame.raidProgress, kit.flow.party, kit.game.stash.listPokemon());
+    if (kit && offer) {
+      this.sayFirstWords('benchCatch', [], () =>
+        this.askInBox(benchOfferQuestion(offer), (yes) => {
+          if (yes) {
+            kit.flow.togglePokemon(offer.id);
+          }
+          audioManager.play('select');
+          this.openHallPanel('rim');
+        }),
+      );
       return;
     }
     audioManager.play('select');

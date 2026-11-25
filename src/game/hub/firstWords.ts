@@ -25,7 +25,7 @@ import { landingsHeldBack, quarterOfLanding } from '../world/valeQuarters';
  * so leaving without reading it does not buy a second hearing - and the save
  * keeps only the list of ids, as it keeps every other permanent fact.
  */
-export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'moved', 'coast', 'marsh', 'nearWork'] as const;
+export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'moved', 'coast', 'marsh', 'nearWork', 'benchCatch'] as const;
 export type FirstWordsId = (typeof FIRST_WORDS_IDS)[number];
 
 export interface FirstWords {
@@ -137,6 +137,13 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
   },
   // Said by Oak once the near jobs are banked (`hub/nextStep.ts`): the end of
   // the easy work, which the critic banked by raid six with nothing to mark it.
+  // Said at the rail, once, before a lone Pokemon goes over with a catch at
+  // base (`hub/benchOffer.ts`): the reason to take it, before the question.
+  benchCatch: {
+    speaker: ARENA_KEEPER_DESIGN,
+    name: ARENA_KEEPER_NAME,
+    lines: ["Your new catch is at base, off the BENCH. With two on your team, one faint won't end the raid."],
+  },
   nearWork: {
     speaker: 'prof-oak',
     name: 'Professor Oak',
