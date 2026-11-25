@@ -28,7 +28,7 @@ import type { TrainerApproach } from './trainerApproach';
  * a mark is held to the same rule: in that one geometry the beat goes without
  * it. It is one tile of ink, and no player misses what was never raised.
  */
-function markWouldCoverThePlayer(actor: GridPosition, player: GridPosition): boolean {
+export function markWouldCoverThePlayer(actor: GridPosition, player: GridPosition): boolean {
   return actor.x === player.x && actor.y === player.y + 1;
 }
 

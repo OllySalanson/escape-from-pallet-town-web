@@ -420,6 +420,22 @@ import {
   type CutsceneActorFrame,
 } from '../cutscene/cutscene';
 import { bearingFrom, hunterCatchCutscene, trainerApproachCutscene } from '../world/cutscenes';
+import {
+  chargingGuard,
+  guardReach,
+  guardChargeCutscene,
+  guardChargeLines,
+  guardHint,
+  GUARD_WATCH_HOP_MS,
+  guardedCaptionLine,
+  guardFightHint,
+  guardBeatenLine,
+  hoardTaken,
+  rewardThisRaid,
+  guardHopLift,
+  watchingGuard,
+  type Guard,
+} from '../world/guards';
 import { findWatchingTrainer, trainerSightTiles } from '../world/trainerSight';
 import {
   trainerChallengePrompt,
@@ -540,6 +556,8 @@ import { hunterForecastLine } from '../world/hunterForecast';
 import { withArticle } from '../ui/article';
 
 const CAMERA_ZOOM = 1;
+/** How far above a Pokemon icon's feet its spotted mark's top sits: on its head, for a party icon's height. */
+const POKEMON_MARK_ABOVE_SOLE = 36;
 /** The dark a doorway is gone through in, each way: FireRed's own door is about this quick. */
 const DOOR_FADE_MS = 180;
 /** A bird takes this long over a screen of a raid map, a harbour's width being a longer glide. */
@@ -944,6 +962,19 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private idleFigures: IdleFigure[] = [];
   /** Which figures are a Pokemon's icon, and how far under its tile its feet are drawn. */
   private readonly pokemonSoles = new Map<string, number>();
+  /** `guardsHere`, kept until the map or the Pokemon met this raid change. */
+  private guardsCache:
+    | {
+        readonly map: WorldMapDefinition;
+        readonly session: ActiveRunSession | undefined;
+        readonly metCount: number;
+        readonly guards: readonly Guard[];
+      }
+    | undefined;
+  /** Where a watching guard is in its hop (`tendGuards`). */
+  private guardWatchMs = 0;
+  /** The keys of the guards' hoards this save has banked (`guards.key`, `cacheReward`), read as the world is built. */
+  private guardHoardsBanked: ReadonlySet<string> = new Set();
   /** Every tile layer of the map on screen, for FireRed's moving ground. */
   private animatedLayers: AnimatedLayer[] = [];
   /**
@@ -1149,6 +1180,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private readonly prizeGleams = new Map<string, Phaser.GameObjects.Graphics>();
   private readonly activatedPoiIds = new Set<string>();
   private hintFrame?: Phaser.GameObjects.Graphics;
+  /** Where the hint line's window is on the screen while it says something, for the captions to keep off. */
+  private hintRect: Rect | null = null;
   private hintText?: Phaser.GameObjects.Text;
   /** What the hint line says now: '' when it is hidden. */
   private hintShown = '';
@@ -1428,6 +1461,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.trainerGlints.clear();
     this.raidWrittenAt = Number.NEGATIVE_INFINITY;
     this.raidWritten = null;
+    this.guardsCache = undefined;
+    this.guardWatchMs = 0;
     this.pendingRaceAsk = undefined;
     this.pendingRacePurse = false;
     this.raceWord = undefined;
@@ -1706,6 +1741,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!this.arrival) {
       this.showFirstDeploymentBriefing();
     }
+    // What a beaten guard gave up is said by `update` once the box is free, so
+    // a line raised as the world comes back (Oak's field-heal hint, a bag's
+    // drop) never replaces it.
     const bagLines = this.bagLines;
     this.bagLines = [];
     if (openedGates.length > 0 || bagLines.length > 0) {
@@ -1983,6 +2021,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.updatePartner(deltaMs);
     this.tendFigureGlints(deltaMs);
     this.tendTrainerGlints();
+    this.tendGuards(deltaMs);
+    this.sayGuardBeaten();
     this.updateFriend(deltaMs);
     this.refreshHint();
     if (Date.now() - this.raidWrittenAt >= RAID_RESUME_EVERY_MS) {
@@ -3457,6 +3497,69 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
+   * Ground a fight starts on, shaded as one stretch: a trainer's watch, and a
+   * guard's reach (`world/guards.ts`), which are the same promise - step here
+   * and you are fought - so they are drawn the same.
+   */
+  private paintWatchShading(watched: readonly GridPosition[]): void {
+    // Outlined as one strip rather than as a row of boxes: the edge is only
+    // drawn where the watch stops, so three watched tiles read as one lane the
+    // trainer is looking down.
+    const inWatch = new Set(watched.map((tile) => `${tile.x},${tile.y}`));
+    const shading = this.add.graphics().setDepth(WATCH_SHADING_DEPTH);
+    for (const tile of watched) {
+      const x = tile.x * TILE_SIZE;
+      const y = tile.y * TILE_SIZE;
+      shading.fillStyle(WATCH_TINT, WATCH_FILL_ALPHA);
+      shading.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+      shading.fillStyle(WATCH_INK, WATCH_HATCH_ALPHA);
+      for (let row = 0; row < TILE_SIZE; row += 1) {
+        // One ink pixel a row, stepping along the diagonal from map pixel 0, so
+        // neighbouring tiles continue each other's stripes.
+        const first = (WATCH_HATCH_SPACING - ((x + y + row) % WATCH_HATCH_SPACING)) % WATCH_HATCH_SPACING;
+        for (let column = first; column < TILE_SIZE; column += WATCH_HATCH_SPACING) {
+          shading.fillRect(x + column, y + row, 1, 1);
+        }
+      }
+      const edges: Array<readonly [number, number, number, number]> = [];
+      if (!inWatch.has(`${tile.x},${tile.y - 1}`)) {
+        edges.push([x, y, TILE_SIZE, 1]);
+      }
+      if (!inWatch.has(`${tile.x},${tile.y + 1}`)) {
+        edges.push([x, y + TILE_SIZE - 1, TILE_SIZE, 1]);
+      }
+      if (!inWatch.has(`${tile.x - 1},${tile.y}`)) {
+        edges.push([x, y, 1, TILE_SIZE]);
+      }
+      if (!inWatch.has(`${tile.x + 1},${tile.y}`)) {
+        edges.push([x + TILE_SIZE - 1, y, 1, TILE_SIZE]);
+      }
+      // The red edge over a dark one: the colour still says "red", and the ink
+      // under it is what says "edge" to anyone who cannot see red.
+      for (const [inkStyle, alpha] of [
+        [WATCH_INK, WATCH_INK_EDGE_ALPHA],
+        [WATCH_TINT, WATCH_EDGE_ALPHA],
+      ] as const) {
+        shading.fillStyle(inkStyle, alpha);
+        for (const [ex, ey, width, height] of edges) {
+          shading.fillRect(ex, ey, width, height);
+        }
+      }
+    }
+    this.mapObjects.push(shading);
+  }
+
+  /** A guard's reach, shaded as a trainer's watch is, while it stands. */
+  private createGuardReaches(): void {
+    for (const guard of this.guardsHere()) {
+      // Its own tile too, so the ground it holds is one square and not a ring
+      // drawn round it.
+      const reach = [guard.position, ...guardReach(guard.position, (tile: GridPosition) => this.guardGroundBlocked(tile))];
+      this.paintWatchShading(reach);
+    }
+  }
+
+  /**
    * Rain over a place that rains, out of doors: the Coast never stops, and the
    * corner chip saying RAIN was all that showed it (the gyms playtest of 14 Nov
    * 2026). A roof keeps it off, so a room in a wet district is dry.
@@ -3535,6 +3638,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
 
   private createEntities(): void {
+    this.guardHoardsBanked = new Set(new SaveManager().load()?.raidProgress.guardHoardsBanked ?? []);
     this.createSwitchPlates();
     this.createLoot();
     this.createShimmer();
@@ -3593,6 +3697,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.createTrainerGlint(encounter);
       }
     }
+    this.createGuardReaches();
 
     this.createHunterSprite();
     this.createRaceFigures();
@@ -3613,51 +3718,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
 
-    // Outlined as one strip rather than as a row of boxes: the edge is only
-    // drawn where the watch stops, so three watched tiles read as one lane the
-    // trainer is looking down.
-    const inWatch = new Set(watched.map((tile) => `${tile.x},${tile.y}`));
-    const shading = this.add.graphics().setDepth(WATCH_SHADING_DEPTH);
-    for (const tile of watched) {
-      const x = tile.x * TILE_SIZE;
-      const y = tile.y * TILE_SIZE;
-      shading.fillStyle(WATCH_TINT, WATCH_FILL_ALPHA);
-      shading.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-      shading.fillStyle(WATCH_INK, WATCH_HATCH_ALPHA);
-      for (let row = 0; row < TILE_SIZE; row += 1) {
-        // One ink pixel a row, stepping along the diagonal from map pixel 0, so
-        // neighbouring tiles continue each other's stripes.
-        const first = (WATCH_HATCH_SPACING - ((x + y + row) % WATCH_HATCH_SPACING)) % WATCH_HATCH_SPACING;
-        for (let column = first; column < TILE_SIZE; column += WATCH_HATCH_SPACING) {
-          shading.fillRect(x + column, y + row, 1, 1);
-        }
-      }
-      const edges: Array<readonly [number, number, number, number]> = [];
-      if (!inWatch.has(`${tile.x},${tile.y - 1}`)) {
-        edges.push([x, y, TILE_SIZE, 1]);
-      }
-      if (!inWatch.has(`${tile.x},${tile.y + 1}`)) {
-        edges.push([x, y + TILE_SIZE - 1, TILE_SIZE, 1]);
-      }
-      if (!inWatch.has(`${tile.x - 1},${tile.y}`)) {
-        edges.push([x, y, 1, TILE_SIZE]);
-      }
-      if (!inWatch.has(`${tile.x + 1},${tile.y}`)) {
-        edges.push([x + TILE_SIZE - 1, y, 1, TILE_SIZE]);
-      }
-      // The red edge over a dark one: the colour still says "red", and the ink
-      // under it is what says "edge" to anyone who cannot see red.
-      for (const [inkStyle, alpha] of [
-        [WATCH_INK, WATCH_INK_EDGE_ALPHA],
-        [WATCH_TINT, WATCH_EDGE_ALPHA],
-      ] as const) {
-        shading.fillStyle(inkStyle, alpha);
-        for (const [ex, ey, width, height] of edges) {
-          shading.fillRect(ex, ey, width, height);
-        }
-      }
-    }
-    this.mapObjects.push(shading);
+    this.paintWatchShading(watched);
     this.watchedGround.push(...watched.map(tileRect));
 
     // The caption hangs on the trainer's blind side, so it never covers the
@@ -4374,6 +4435,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /** What a landmark's caption says, as it stands now. */
   private poiCaption(poi: WorldPoi, worked: ReturnType<typeof isLandmarkWorked>): string {
+    // Its guard, while it stands, is named on it: who, and what it sits on.
+    const guard = this.guardsHere().find((candidate) => candidate.guards.poiId === poi.id);
     return worked
       ? workedLandmarkCaption(poi, worked)
       : this.activatedPoiIds.has(poi.id)
@@ -4386,7 +4449,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
             // is known from the lid, as the search's own rows show it.
             poi.locked
             ? 'LOCKED: NEEDS A LOCKPICK'
-            : `${isBagId(poi.id) ? 'BAG' : 'CACHE'}: ${this.piecesLeftIn(poi)} TO FIND${this.bagGlints(poi) ? `\n${BAG_GLINT_LINE}` : ''}`}`;
+            : guard
+              ? // While its guard stands, who that is and what it has is the
+                // line: what else is inside is found once it is beaten, and a
+                // third line found no seat in the corner of a fenced yard.
+                guardedCaptionLine(guard, this.unbankedHoardName(poi.id))
+              : `${isBagId(poi.id) ? 'BAG' : 'CACHE'}: ${this.piecesLeftIn(poi)} TO FIND${this.bagGlints(poi) ? `\n${BAG_GLINT_LINE}` : ''}`}`;
   }
 
   /** Takes a landmark's figure and caption off the map. */
@@ -6437,9 +6505,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * way out with a lock or rubble in it, a night track, a field move's
    * obstacle, a lever, a door with a card lock, or a cache or landmark that has
    * something left in it. Asked of the same lookups `tryInteract` answers from,
-   * so the line is never offered where the press would say nothing.
+   * so the line is never offered where the press would say nothing. The one
+   * line that is not a SPACE is a guard's (`world/guards.ts`): watching from a
+   * few steps off, it names itself and what it guards before it comes.
    */
   private hintHere(): string {
+    // Within a guard's reach SPACE is answered by the guard (`tryInteract`), so
+    // that is what the line offers, whatever else is faced.
+    const beside = chargingGuard(this.guardsHere(), this.currentTile, (tile: GridPosition) => this.guardGroundBlocked(tile));
+    if (beside) {
+      return guardFightHint(beside);
+    }
     const faced = nextTileFromDirection(this.currentTile, this.facing);
     const barred = this.barredExitAt(faced);
     if (barred && itemThatOpens(barred)) {
@@ -6474,7 +6550,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (lock && !this.switchThrown(lock)) {
       return spaceHint('LOCKED DOOR');
     }
-    return '';
+    // A guard watching says so before it comes, which is how a first one is
+    // read as a guard and not as a Pokemon that happened to be in the way.
+    const guard = watchingGuard(this.guardsHere(), this.currentTile, (tile: GridPosition) => this.guardGroundBlocked(tile));
+    return guard ? guardHint(guard) : '';
   }
 
   /** The hint centred along the foot of the screen, or hidden when there is nothing to say. */
@@ -6485,6 +6564,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.hintShown = text;
     this.hintFrame.clear();
     this.hintText.setText(text).setVisible(text !== '');
+    this.hintRect = null;
     if (text === '') {
       return;
     }
@@ -6493,6 +6573,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const x = Math.round((this.scale.width - width) / 2);
     const y = this.scale.height - height - HINT_MARGIN;
     drawPixelWindow(this.hintFrame, { x, y, width, height }, { fill: WINDOW_CREAM });
+    this.hintRect = { x, y, width, height };
     this.hintText.setPosition(x + HINT_PADDING_X, y + HINT_PADDING_Y);
   }
 
@@ -7411,6 +7492,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   private tryInteract(): void {
+    // Within a guard's reach the interact key is answered by the guard, whatever
+    // it was pressed at: a player back beside it from a fight they ran from
+    // faces the landmark it guards, and the landmark is had by beating it.
+    if (this.tryGuardCharge()) {
+      return;
+    }
     const targetTile = nextTileFromDirection(this.currentTile, this.facing);
     const warp = getWarpAt(this.currentMap, targetTile, 'interact');
     if (warp) {
@@ -7678,6 +7765,102 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return true;
     }
     return false;
+  }
+
+  /**
+   * The guards standing on this map this raid (`world/guards.ts`): every
+   * standing Pokemon that guards something and has not been beaten or caught.
+   * Asked several times a frame, so worked out again only when the map or the
+   * raid's list of Pokemon met changes.
+   */
+  private guardsHere(): readonly Guard[] {
+    const session = this.runSession;
+    const metCount = session?.pokemonMet?.length ?? 0;
+    const cached = this.guardsCache;
+    if (cached && cached.map === this.currentMap && cached.session === session && cached.metCount === metCount) {
+      return cached.guards;
+    }
+    const guards = this.currentMap.entities.flatMap((entity): Guard[] =>
+      entity.pokemon && entity.guards && entity.wildLevel !== undefined && !this.wasMet(entity)
+        ? [{ id: entity.id, position: entity.position, species: entity.pokemon, level: entity.wildLevel, guards: entity.guards }]
+        : [],
+    );
+    this.guardsCache = { map: this.currentMap, session, metCount, guards };
+    return guards;
+  }
+
+  /** Solid ground, for a guard's reach and watch: terrain only, as a trainer's sight is. */
+  private guardGroundBlocked(tile: GridPosition): boolean {
+    // The map's own grid, which `collisionData` is a working copy of: a guard
+    // is read off the ground as drawn, never off what stands on it.
+    return this.currentMap.collision?.[tile.y]?.[tile.x] !== false;
+  }
+
+  /** Back from beating or catching a guard: what it has given up, said once. */
+  private sayGuardBeaten(): void {
+    const session = this.runSession;
+    const id = session?.guardBeaten;
+    // Kept until the box is free, so a line already up does not swallow it:
+    // asked again every frame (`update`) until it is said.
+    if (!session || id === undefined || this.dialogBox?.visible || this.cutscene) {
+      return;
+    }
+    delete session.guardBeaten;
+    const entity = this.currentMap.entities.find((candidate) => candidate.id === id);
+    if (!entity?.pokemon || !entity.guards) {
+      return;
+    }
+    this.dialogBox.showMessages([guardBeatenLine(entity.pokemon, entity.guards.name, this.unbankedHoardName(entity.guards.poiId))]);
+  }
+
+  /** The player stands within a guard's reach: it comes at them. */
+  private tryGuardCharge(): boolean {
+    const guard = chargingGuard(this.guardsHere(), this.currentTile, (tile: GridPosition) => this.guardGroundBlocked(tile));
+    if (!guard) {
+      return false;
+    }
+    this.chargeWith(guard);
+    return true;
+  }
+
+  /**
+   * A guard's fight, promised: the beat plays, and the fight is queued behind
+   * its line. It is recorded met only by the fight, and only if it is beaten or
+   * caught (`BattleScene`), so a guard fled from is still there - and comes at
+   * the player again with only its lunge and a line, the introduction made.
+   */
+  private chargeWith(guard: Guard): void {
+    const session = this.runSession;
+    const again = (session?.guardsCharged ?? []).includes(guard.id);
+    if (session && !again) {
+      (session.guardsCharged ??= []).push(guard.id);
+    }
+    this.pendingWildBattle = { speciesId: guard.species, level: guard.level, guard: guard.id };
+    this.playCutscene(guardChargeCutscene(guard, this.currentTile, guardChargeLines(guard, again), again));
+  }
+
+  /**
+   * A guard that could reach the player within a few steps faces them and
+   * hops on the spot, every `GUARD_WATCH_HOP_MS`; the rest stand as any
+   * Pokemon does. Asked every frame, because the player's tile is what it reads
+   * and the sprite is all it changes.
+   */
+  private tendGuards(deltaMs: number): void {
+    if (this.cutscene) {
+      return;
+    }
+    this.guardWatchMs = (this.guardWatchMs + deltaMs) % GUARD_WATCH_HOP_MS;
+    const watcher = watchingGuard(this.guardsHere(), this.currentTile, (tile: GridPosition) => this.guardGroundBlocked(tile));
+    for (const guard of this.guardsHere()) {
+      const sprite = this.npcSprites.get(guard.id);
+      const sole = this.pokemonSoles.get(guard.id);
+      if (!sprite || sole === undefined) {
+        continue;
+      }
+      const watching = watcher?.id === guard.id;
+      sprite.setFlipX(watching && this.currentTile.x > guard.position.x);
+      sprite.setY((guard.position.y + 1) * TILE_SIZE + sole - (watching ? guardHopLift(this.guardWatchMs) : 0));
+    }
   }
 
   /** A secret open this raid (`world/secrets.ts`), with what its nook holds next. */
@@ -8600,12 +8783,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.facing = actor.facing;
       this.showIdlePose();
     } else {
-      this.npcSprites
-        .get(actorId)
-        ?.setPosition(actor.x * TILE_SIZE, actor.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET)
-        .setDepth(atRow(FIGURE_BAND, actor.y))
-        .setVisible(actor.visible);
-      this.faceFigure(actorId, actor.facing);
+      // Through the one place figures are stood, so a Pokemon in a beat - a
+      // guard's charge - stands on its icon's feet and not a person's.
+      this.placeFigure(actorId, actor.x, actor.y - (actor.lift ?? 0), actor.facing, { visible: actor.visible });
     }
     if (!actor.emote) {
       marks.get(actorId)?.destroy();
@@ -8619,7 +8799,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.paintSpottedMark(mark);
       marks.set(actorId, mark);
     }
-    this.placeSpottedMark(mark, actor.x, actor.y, actor.emote.elapsedMs);
+    this.placeSpottedMark(mark, actor.x, actor.y, actor.emote.elapsedMs, this.pokemonSoles?.get(actorId));
   }
 
   /**
@@ -8653,11 +8833,19 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     tileX: number,
     tileY: number,
     elapsedMs: number,
+    /**
+     * A Pokemon's, whose icon hangs from its feet and stands lower than a
+     * person: its mark sits on its own head, not at a person's height beside
+     * it, where a guard's mark beside the player read as the player's own.
+     */
+    pokemonSole?: number,
   ): void {
     const pop = elapsedMs < 90 ? 3 : 0;
     mark.setPosition(
       tileX * TILE_SIZE + TILE_SIZE / 2 - 5,
-      tileY * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET - 14 - pop,
+      pokemonSole === undefined
+        ? tileY * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET - 14 - pop
+        : (tileY + 1) * TILE_SIZE + pokemonSole - POKEMON_MARK_ABOVE_SOLE - pop,
     );
   }
 
@@ -8953,6 +9141,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // hunter's catch below, which this same step would otherwise make first and
     // charge to the race (its fight is game time the racer runs on).
     if (this.tryCrossRaceLine()) {
+      return;
+    }
+
+    // A guard comes at the step that puts the player beside it, before
+    // anything on that tile is taken or worked - or gone through: what it
+    // guards is had by beating it, never by being quick (`world/guards.ts`).
+    if (this.tryGuardCharge()) {
       return;
     }
 
@@ -9525,7 +9720,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // So is a side panel: a caption half under it is half a caption.
     const covered = this.panelLean.covering;
     const panel = covered > 0 ? [{ x: this.scale.width - covered, y: 0, width: covered, height: this.scale.height }] : [];
-    const furniture = [...(tab ? [tab] : []), ...(this.raidHud?.occupied ?? []), ...searching, ...panel, ...dialog].map((chip) => ({
+    // So is the hint line: a guarded cache's caption came out under it.
+    const hint = this.hintRect ? [this.hintRect] : [];
+    const furniture = [...(tab ? [tab] : []), ...(this.raidHud?.occupied ?? []), ...searching, ...panel, ...hint, ...dialog].map((chip) => ({
       x: chip.x + view.left,
       y: chip.y + view.top,
       width: chip.width,
@@ -9640,14 +9837,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       width: TILE_SIZE,
       height: TILE_SIZE,
     }));
-    const standing = [...this.npcSprites.values()]
-      .filter((sprite) => sprite.visible)
-      .map((sprite) => ({
-        x: sprite.x,
-        y: sprite.y + CHARACTER_HEAD_PIXEL_Y,
-        width: TILE_SIZE,
-        height: FIGURE_HEIGHT,
-      }));
+    const standing = [...this.npcSprites.entries()]
+      .filter(([, sprite]) => sprite.visible)
+      .map(([id, sprite]) => {
+        // A Pokemon's icon hangs from its feet at the middle of its tile
+        // (`createPokemonFigure`), not from a person's top-left corner: read as
+        // a person's, its ground sat half a tile right and a tile low, and the
+        // cache caption beside a guard was seated over the guard.
+        const sole = this.pokemonSoles?.get(id);
+        return sole === undefined
+          ? { x: sprite.x, y: sprite.y + CHARACTER_HEAD_PIXEL_Y, width: TILE_SIZE, height: FIGURE_HEIGHT }
+          : { x: sprite.x - TILE_SIZE / 2, y: sprite.y - sole - TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE };
+      });
     // A door, a staircase or a mat is the thing its caption names, and writing
     // seated over it hides it.
     const doorways = this.currentMap.warps.flatMap((warp) =>
@@ -10025,7 +10226,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // A cache opens; a landmark is worked. They are different deeds on the
     // map and the field guide, so they are different sounds.
     audioManager.play(poi!.effect === 'unlock-extraction' ? 'landmarkWorked' : 'cacheOpen');
-    if (poi!.reward.length > 0) {
+    if (this.cacheReward(poi!).length > 0) {
       this.beginSearch(poi!);
     } else {
       this.removePoi(poi!.id);
@@ -10045,12 +10246,51 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /** The pieces still in a cache this raid has opened, or all of them if it has not. */
   private piecesLeftIn(poi: WorldPoi): number {
-    return searchPieces(poi.reward).length - this.searchStateOf(poi).taken.length;
+    return searchPieces(this.cacheReward(poi)).length - this.searchStateOf(poi).taken.length;
+  }
+
+  /**
+   * What a cache pays this raid: what it is authored to, less a guard's hoard
+   * this save has already banked (`world/guards.ts`), which is had once.
+   * Read off the save as the raid's world is built, so it never changes under
+   * a search in progress.
+   */
+  private cacheReward(poi: WorldPoi): WorldPoi['reward'] {
+    return rewardThisRaid(poi.reward, this.hoardIn(poi.id), this.hoardBanked(poi.id)) as WorldPoi['reward'];
+  }
+
+  /** The name of the stone a landmark's guard still sits on this save, for its caption. */
+  private unbankedHoardName(poiId: string): string | undefined {
+    const hoard = this.hoardIn(poiId);
+    return hoard && !this.hoardBanked(poiId) ? getItemById(hoard)?.displayName : undefined;
+  }
+
+  /** What a landmark's guard sits on, if one does (`MapFilePokemon.sitsOn`). */
+  private hoardIn(poiId: string): ItemId | undefined {
+    return this.currentMap.entities.find((entity) => entity.guards?.poiId === poiId)?.guards?.hoard;
+  }
+
+  /** Whether this save has banked the hoard of the guard on a landmark, by its stable key (`guards.key`). */
+  private hoardBanked(poiId: string): boolean {
+    const key = this.currentMap.entities.find((entity) => entity.guards?.poiId === poiId)?.guards?.key;
+    return key !== undefined && this.guardHoardsBanked?.has(key) === true;
+  }
+
+  /** The guards' hoards this raid has taken out of their landmarks, by their stable keys, for the save to bank (`hoardTaken`). */
+  private hoardsTaken(): string[] {
+    return this.currentMap.entities.flatMap((entity) => {
+      const guarded = entity.guards;
+      const poi = guarded && this.currentMap.pois.find((candidate) => candidate.id === guarded.poiId);
+      return guarded?.hoard && poi && !this.guardHoardsBanked?.has(guarded.key) &&
+        hoardTaken(searchPieces(this.cacheReward(poi)), this.searchStateOf(poi).taken, guarded.hoard)
+        ? [guarded.key]
+        : [];
+    });
   }
 
   /** Opens the search panel on a cache, carrying on from wherever this raid left it. */
   private beginSearch(poi: WorldPoi): void {
-    this.search = { poi, pieces: searchPieces(poi.reward), takingAll: false, said: null };
+    this.search = { poi, pieces: searchPieces(this.cacheReward(poi)), takingAll: false, said: null };
     this.refreshPoiCaption(poi);
     this.renderSearch();
   }
@@ -10469,6 +10709,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       pokemon: snapshot.caughtPokemon,
       items: objectiveRewards,
       gifts: snapshot.giftIds,
+      hoards: this.hoardsTaken(),
     };
     // What the raid itself cost, settled the same way whichever ending fires.
     const settlement = buildRaidSettlement(

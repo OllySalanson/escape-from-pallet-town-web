@@ -44,6 +44,7 @@ import {
   type RaidContract,
 } from './contracts';
 import { formatStacks } from './RunObjectives';
+import { guardedTiles } from '../world/guards';
 
 /**
  * The standing board: what the contract board offers once the authored chain is
@@ -512,7 +513,12 @@ function measureGround(
     return undefined;
   }
   const map = walkedEmptyHanded(getWorldMap(mapId, opened));
-  const steps = stepDistances(map.collision, frontDoor.position, undefined, map.links);
+  // Walked round every guard's square (`world/guards.ts`), so ground only a
+  // guard leads to - the back of the Sailors' Rest - is never where a job is.
+  const guarded = new Set(
+    guardedTiles(map.entities, (tile) => map.collision[tile.y]?.[tile.x] !== false).map(tileKey),
+  );
+  const steps = stepDistances(map.collision, frontDoor.position, guarded, map.links);
   const taken = takenTiles(map, defeatedBosses);
   const free = (tile: GridPosition): boolean => !taken.has(tileKey(tile));
   const reached = (grid: readonly Int32Array[], tile: GridPosition): boolean => (grid[tile.y]?.[tile.x] ?? -1) >= 0;
@@ -647,7 +653,8 @@ function walkedEmptyHanded(map: WorldMapDefinition): WorldMapDefinition {
 /**
  * Tiles a stop may never stand on, because something else already does: a way
  * in, a way out, a landmark, a person, a door, or ground a trainer is watching
- * - a stop there would be a fight the board never priced.
+ * or a guard reaches (`world/guards.ts`) - a stop there would be a fight the
+ * board never priced.
  */
 function takenTiles(map: WorldMapDefinition, defeatedBosses: readonly string[]): ReadonlySet<string> {
   const isBlocked = (tile: GridPosition): boolean => map.collision[tile.y]?.[tile.x] ?? true;
@@ -663,6 +670,7 @@ function takenTiles(map: WorldMapDefinition, defeatedBosses: readonly string[]):
       ...extractionPointsOn(map.id).map((point) => point.position),
       ...insertionsOn(map.id).map((insertion) => insertion.position),
       ...fixedTrainers.flatMap((trainer) => [trainer.position, ...trainerSightTiles(trainer, isBlocked)]),
+      ...guardedTiles(map.entities, isBlocked),
     ].map(tileKey),
   );
 }

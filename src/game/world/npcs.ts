@@ -1,4 +1,5 @@
 import type { BerryId } from './berries';
+import type { ItemId } from '../items';
 import type { FigureSpeciesId } from './pokemonFigures';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
@@ -33,6 +34,12 @@ export interface WorldEntity {
    * Absent, it only says its name.
    */
   wildLevel?: number;
+  /**
+   * The landmark a standing Pokemon guards (`guards.ts`), by its id and name:
+   * it comes at the player who steps beside it, rather than waiting to be
+   * spoken to.
+   */
+  guards?: { readonly poiId: string; readonly key: string; readonly name: string; readonly hoard?: ItemId };
   /**
    * A legend (`legends.ts`): no ball while it can fight, one throw once it is
    * beaten, and it never stands again once the Pokedex owns its kind.

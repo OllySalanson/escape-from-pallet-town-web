@@ -1,3 +1,4 @@
+import { guardedTiles } from '../world/guards';
 import type { WildEncounterTable } from '../pokemon/encounters';
 import { Pokemon } from '../pokemon';
 import { Move } from '../pokemon/Move';
@@ -868,6 +869,9 @@ export function generateRunPlan(
   for (const point of extractionPoints) {
     reserve(reservedTiles, point.mapId, point.position);
   }
+  for (const map of Object.values(content.maps)) {
+    reserveGuardedGround(reservedTiles, map);
+  }
   // Every drop-in point, not only the one this raid starts on: reaching one is
   // an event of its own, and a cache rolled onto it would speak over it.
   for (const dropIn of runInsertions()) {
@@ -1073,6 +1077,7 @@ export function generateRoomLoot(mapId: WorldMapId, roomSeed: number): readonly 
   for (const poi of map.pois) {
     reserve(reservedTiles, mapId, poi.position);
   }
+  reserveGuardedGround(reservedTiles, map);
   const rng = createSeededRng((roomSeed ^ ROOM_LOOT_STREAM) >>> 0);
   return generateLoot({ [mapId]: map } as Record<WorldMapId, WorldMapDefinition>, reservedTiles, rng, isReachable)[mapId] ?? [];
 }
@@ -1675,6 +1680,17 @@ function standingGround(map: WorldMapDefinition): readonly StandingTile[] {
   }
   standingGroundByMap.set(map, tiles);
   return tiles;
+}
+
+/**
+ * Where a map's guards sit and all they reach (`world/guards.ts`): loot there
+ * would be a fight nobody priced. Asked by a raid's own loot and by a room's
+ * shared ground alike.
+ */
+function reserveGuardedGround(tiles: Map<WorldMapId, Set<string>>, map: WorldMapDefinition): void {
+  for (const tile of guardedTiles(map.entities, (each) => map.collision[each.y]?.[each.x] !== false)) {
+    reserve(tiles, map.id, tile);
+  }
 }
 
 function reserve(tiles: Map<WorldMapId, Set<string>>, mapId: WorldMapId, position: { x: number; y: number }): void {

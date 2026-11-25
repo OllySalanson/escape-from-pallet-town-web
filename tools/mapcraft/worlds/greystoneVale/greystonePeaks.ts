@@ -258,7 +258,7 @@ export function greystonePeaks(): MapcraftResult {
         { x: 41, y: 26, name: 'Lamp Seller', look: 'old-woman', facing: 'up', lines: ['Lamps. Two for the price of three. You would be amazed how many people go in without one.', 'You would not be amazed how many come out. Top floor down from here, and it gets worse.'], beat: { everyMs: 3300, glances: ['up', 'right'] }, calls: ['Lamps! Lovely lamps!'] },
         // -- The quarry --------------------------------------------------------------------------
         { x: 49, y: 13, name: 'Foreman', look: 'worker', facing: 'right', lines: ['Every step in Millbrook came off this bench, and every statue at The Crossing.', 'Somebody left a good crate of tools up here and has not been back. Big lad. Very serious.'], beat: { everyMs: 3200, glances: ['right', 'down'] }, calls: ['Stand clear!', 'Mind your head!'] },
-        { x: 53, y: 17, name: 'Quarryman', look: 'heavy-man', facing: 'up', lines: ['You hit it till it breaks. Then there are two of it. Then you hit that.', 'Thirty years in, and there is more of it than when I started.'], beat: { everyMs: 2700, roam: [[1, 0]], glances: ['up'] }, calls: ['Clang!'] },
+        { x: 53, y: 17, name: 'Quarryman', look: 'heavy-man', facing: 'up', lines: ['You hit it till it breaks. Then there are two of it. Then you hit that.', 'Thirty years in, and there is more of it than when I started.'], beat: { everyMs: 2700, roam: [[-1, 0]], glances: ['up'] }, calls: ['Clang!'] },
         // -- The stone carts ------------------------------------------------------------------------
         { x: 43, y: 37, name: 'Stone Carter', look: 'man', facing: 'right', lines: ["Going down full, coming up empty. You'd think that was the easy way round.", "That's what the last horse thought."], beat: { everyMs: 3000, glances: ['right', 'up'] }, calls: ['Whoa! Hold her there!'] },
         { x: 39, y: 36, name: 'Carter’s Lad', look: 'boy', facing: 'left', lines: ['That Mankey up on the edge throws things at the carts. It has got a very good arm.', 'I threw one back. It kept it.'], beat: { everyMs: 1900, glances: ['left', 'up'] }, calls: ['Oi! Put that back!'] },
@@ -296,7 +296,12 @@ export function greystonePeaks(): MapcraftResult {
         // could split it (`src/game/world/secrets.ts`).
         { x: 15, y: 59, species: 'golem', level: 22, secret: 'the-cracked-crag' },
         { x: 14, y: 57, species: 'rhyhorn', beat: { everyMs: 3000, roam: [[0, 1]] } },
-        { x: 56, y: 17, species: 'machop', beat: { everyMs: 1600, roam: [[1, 0]] } },
+        // A guard (`world/guards.ts`): an Onix coiled below the Powder Store
+        // by the Quarry Hut, where every way onto it passes, so its parts - Brock's
+        // own trade - and the Moon Stone the quarrymen dug out are had by
+        // beating Brock's own Pokemon. Water and Grass
+        // flatten it; a Charmander has to work for it (`guardsPlaced.test.ts`).
+        { x: 55, y: 16, species: 'onix', level: 11, guards: 'Powder Store', sitsOn: 'moon-stone' },
         { x: 50, y: 11, species: 'machoke', level: 14 },
         { x: 57, y: 13, species: 'geodude', beat: { everyMs: 2800, roam: [[0, -1]] } },
         { x: 41, y: 31, species: 'sandshrew', level: 9 },
@@ -305,11 +310,11 @@ export function greystonePeaks(): MapcraftResult {
       // A rowan by the head of the pass.
       berryTrees: [{ x: 45, y: 5, berry: 'oran' }],
       trainers: [
-        { x: 56, y: 15, name: 'Breaker Finn', team: 'breaker', look: 'black-belt', facing: 'left', sight: 0, lines: ['This quarry is closed to visitors!', 'Unless you can break through me.'] },
+        { x: 57, y: 15, name: 'Breaker Finn', team: 'breaker', look: 'black-belt', facing: 'left', sight: 0, lines: ['This quarry is closed to visitors!', 'Unless you can break through me.'] },
         { x: 21, y: 32, name: 'Hiker Pell', team: 'breaker', look: 'hiker', facing: 'left', sight: 0, lines: ['It is all uphill from here. It was all uphill from there too. Fight me while I get my breath.'] },
         { x: 57, y: 21, name: 'Walker Oona', team: 'scout', look: 'picnicker', facing: 'left', sight: 0, lines: ['This is not on any map, this path. How did you find it? Tell me after!'] },
       ],
-      landmarks: [{ x: 55, y: 15, name: 'Quarry Hut', kind: 'shed' }],
+      landmarks: [{ x: 55, y: 15, name: 'Powder Store', kind: 'shed' }],
       // The floors ride in Tanglewood's file too; carried here as well, so the
       // peaks pass their checks alone, the stitcher takes them once.
       areas: cave.areas,

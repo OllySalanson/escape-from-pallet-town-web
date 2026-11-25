@@ -294,8 +294,13 @@ export function theCrossing(): MapcraftResult {
         { x: 54, y: 26, species: 'tauros', beat: { everyMs: 2800, roam: [[0, 1]] } },
         { x: 60, y: 26, species: 'ponyta', beat: { everyMs: 2200, roam: [[-1, 0]] } },
         { x: 53, y: 28, species: 'doduo', level: 8, beat: { everyMs: 1500, roam: [[1, 0]] } },
-        // The bees.
-        { x: 48, y: 41, species: 'beedrill', beat: { everyMs: 1100, roam: [[0, 1]] } },
+        // The bees. A Weedle sat at the end of Hive Row is the vale's gentlest
+        // guard (`world/guards.ts`), the first a new raid is likely to meet: a
+        // fresh starter beats it at least four times in five, and it teaches the rest -
+        // step beside one and it comes at you - before any guard with a stone
+        // to keep does (`guardsPlaced.test.ts`). It has been sitting on a
+        // beekeeper's Great Ball, so even the first guard pays for the fight.
+        { x: 49, y: 43, species: 'weedle', level: 4, guards: 'Hive Row', sitsOn: 'great-ball' },
         { x: 56, y: 43, species: 'weedle', level: 6, beat: { everyMs: 2100, roam: [[0, 1]] } },
         { x: 55, y: 42, species: 'beedrill', level: 12 },
         // The Wide Water.

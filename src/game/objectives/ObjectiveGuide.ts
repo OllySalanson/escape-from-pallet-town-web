@@ -5,6 +5,7 @@ import type { GridPosition } from '../movement/gridMovement';
 import { compassBearing, compassWord } from '../world/bearing';
 import { type WorldMapId, worldMapName } from '../worldMap';
 import { poisForMap, type WorldPoi } from '../world/pois';
+import { fileMap } from '../world/playerMaps';
 import { isLandmarkWorked } from '../world/workedLandmarks';
 import { errandForItem, errandPlace, errandSquares, errandThing } from '../hub/errands';
 import { isDugExit, itemThatOpens } from '../world/extractionPoints';
@@ -663,8 +664,16 @@ function nearestLandmarkToWork(
       ? context.stepsTo(poi.position)
       : Math.abs(poi.position.x - here.x) + Math.abs(poi.position.y - here.y);
   let best: { readonly poi: WorldPoi; readonly distance: number } | undefined;
+  // A landmark a guard still sits on is a fight first (`world/guards.ts`), and
+  // Oak sends nobody into one unasked: its caption says who guards it.
+  const met = session.pokemonMet ?? [];
+  const guarded = new Set(
+    (fileMap(context.currentMapId)?.entities ?? []).flatMap((entity) =>
+      entity.guards && !met.includes(entity.id) ? [entity.guards.poiId] : [],
+    ),
+  );
   for (const poi of poisForMap(context.currentMapId)) {
-    if (!kind(poi) || (poi.locked === true) !== locked || context.activatedPoiIds.has(poi.id) || isLandmarkWorked(poi.id, completed)) {
+    if (!kind(poi) || (poi.locked === true) !== locked || context.activatedPoiIds.has(poi.id) || isLandmarkWorked(poi.id, completed) || guarded.has(poi.id)) {
       continue;
     }
     const distance = distanceTo(poi);

@@ -467,6 +467,14 @@ export interface RaidProgress {
    */
   readonly giftsReceived: readonly string[];
   /**
+   * Every guard's hoard a raid has taken and then extracted, by `guards.key` -
+   * the map and the landmark's name, stable as the map grows (`world/guards.ts`):
+   * a stone is had once a save, so that landmark pays only its own after. Taken
+   * and lost with a wiped raid, it is not here, and is there to fight for again.
+   * Optional with an empty default.
+   */
+  readonly guardHoardsBanked?: readonly string[];
+  /**
    * Pokedollars that have crossed Bill's counter, ever. It is turnover, not a
    * balance: a player's money is what is in the vault and nothing else
    * (`../hub/trader`), and this only records what was spent, because standing
@@ -781,9 +789,10 @@ export interface SaveGameState {
  * keeps about a gift - the giver's lines and whether they have anything left to
  * give are derived from it (`world/gifts.ts`).
  */
-function withGiftsReceived(game: RestoredGame, result: RunResult): RestoredGame {
+function withGiftsAndHoardsBanked(game: RestoredGame, result: RunResult): RestoredGame {
   const gifts = result.gifts ?? [];
-  if (gifts.length === 0) {
+  const hoards = result.hoards ?? [];
+  if (gifts.length === 0 && hoards.length === 0) {
     return game;
   }
   return {
@@ -791,6 +800,10 @@ function withGiftsReceived(game: RestoredGame, result: RunResult): RestoredGame 
     raidProgress: {
       ...game.raidProgress,
       giftsReceived: [...new Set([...game.raidProgress.giftsReceived, ...gifts])],
+      // A guard's hoard is had the same way: when a raid banks it (`world/guards.ts`).
+      ...(hoards.length > 0
+        ? { guardHoardsBanked: [...new Set([...(game.raidProgress.guardHoardsBanked ?? []), ...hoards])] }
+        : {}),
     },
   };
 }
@@ -1278,7 +1291,7 @@ export class SaveManager {
     if (!loaded || !endsRaidInFlight(loaded, raidId)) {
       return false;
     }
-    const game = withGiftsReceived(loaded, result);
+    const game = withGiftsAndHoardsBanked(loaded, result);
 
     applySettlement(game.stash, settlement);
     game.stash.bankRun(result);
@@ -1311,7 +1324,7 @@ export class SaveManager {
     if (!loaded || !endsRaidInFlight(loaded, raidId)) {
       return { saved: false, granted: false };
     }
-    const game = withGiftsReceived(loaded, result);
+    const game = withGiftsAndHoardsBanked(loaded, result);
 
     applySettlement(game.stash, settlement);
     game.stash.bankRun(result);
@@ -3287,6 +3300,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     workshopUpgrades,
     // Saves written before gifts existed have received none.
     giftsReceived: uniqueStrings(value.giftsReceived),
+    ...(Array.isArray(value.guardHoardsBanked) ? { guardHoardsBanked: uniqueStrings(value.guardHoardsBanked) } : {}),
     ...(value.battleLessonGiven === true ? { battleLessonGiven: true } : {}),
     ...(value.arenaIntroSeen === true ? { arenaIntroSeen: true } : {}),
     ...(readLandings(value.landings) ?? {}),

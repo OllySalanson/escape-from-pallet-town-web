@@ -78,7 +78,7 @@ const LANDMARK = keysOf<MapFileLandmark>()(['x', 'y', 'area', 'name', 'kind', 'l
 const DISTRICT = keysOf<MapFileDistrict>()(['area', 'name', 'x', 'y', 'width', 'height', 'wildlife', 'rain', 'floorRolls']);
 const TRAINER = keysOf<MapFileTrainer>()(['x', 'y', 'area', 'name', 'team', 'look', 'facing', 'sight', 'lines']);
 const DOOR = keysOf<MapFileDoor>()(['kind', 'x', 'y', 'width', 'height', 'keeper', 'name']);
-const POKEMON = keysOf<MapFilePokemon>()(['x', 'y', 'area', 'species', 'level', 'legendary', 'beat', 'secret']);
+const POKEMON = keysOf<MapFilePokemon>()(['x', 'y', 'area', 'species', 'level', 'legendary', 'beat', 'secret', 'guards', 'sitsOn']);
 const AREA = keysOf<MapFileArea>()([
   'id', 'name', 'kind', 'style', 'width', 'height', 'ground', 'buildings', 'switches', 'barriers', 'lift',
 ]);

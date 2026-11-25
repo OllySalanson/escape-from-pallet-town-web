@@ -3,6 +3,7 @@ import { STEP_DIRECTIONS, linkKey, nextTileFromDirection, type GridLinks, type G
 import type { SeededRng } from '../run/rng';
 import type { WorldMapDefinition, WorldMapId } from '../worldMap';
 import type { WorldLoot } from './loot';
+import { guardedTiles } from './guards';
 import { stepDistances } from './mapStructure';
 import { trainerSightTiles, type TrainerWatch } from './trainerSight';
 
@@ -114,6 +115,10 @@ export function stakeGround(
     }
   }
   const isWall = (tile: GridPosition): boolean => map.collision[tile.y]?.[tile.x] !== false;
+  // A guard's reach is a fight on the ground as surely as a watch is (`guards.ts`).
+  for (const tile of guardedTiles(map.entities, isWall)) {
+    blocked.add(`${tile.x},${tile.y}`);
+  }
   for (const watch of watches) {
     blocked.add(`${watch.position.x},${watch.position.y}`);
     for (const tile of trainerSightTiles(watch, isWall)) {

@@ -89,6 +89,9 @@ vi.mock('../ui/DialogBox', () => ({
   },
 }));
 
+import { DialogBox } from '../ui/DialogBox';
+import { searchPieces } from '../world/cacheSearch';
+import type { WorldPoi } from '../world/pois';
 import { Bag } from '../items';
 import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, PokemonParty, experienceForLevel } from '../pokemon';
 import { SaveManager, type StorageLike } from '../save/SaveManager';
@@ -921,4 +924,124 @@ describe('walking at any frame rate', () => {
       }
     },
   );
+});
+
+/**
+ * A guard (`world/guards.ts`) carried through the real fight and back: the step
+ * beside it queues its fight before anything else on that tile, a fight run
+ * from leaves it sat where it was and the next step in brings it on again with
+ * only its lunge, and a fight won takes it off the map and says what it gave up.
+ */
+describe('a guard carried through a battle and back', () => {
+  interface GuardInternals {
+    currentMap: WorldMapDefinition;
+    currentTile: { x: number; y: number };
+    targetTile: { x: number; y: number } | null;
+    stepProgress: number;
+    dialogBox: { visible: boolean; showMessages(lines: readonly string[]): void };
+    cutscene: { player: { cutscene: { id: string; actions: readonly { kind: string }[] } } } | undefined;
+    pendingWildBattle: { speciesId: string; guard?: string } | undefined;
+    advanceStep(deltaMs: number): void;
+    handleRunResolutionComplete(): void;
+    endCutscene(): void;
+    guardsHere(): readonly { id: string }[];
+  }
+  const starts = (scene: object) => (scene as unknown as { scene: { start: ReturnType<typeof vi.fn> } }).scene.start;
+  const lastStart = <T>(scene: object, key: string): T =>
+    starts(scene).mock.calls.filter(([started]) => started === key).at(-1)![1] as T;
+
+  it('stays when run from, comes on again with only its lunge, and is gone once beaten', () => {
+    const world = new WorldScene();
+    attachSceneStubs(world, makeControls());
+    // The vale has boats at its quays, which ask the texture manager for their frame.
+    Object.assign(world as object, { textures: chainable() });
+    const runSession = startRaid(world, new RunManager(), 'greystone-vale-stepping-stones', 3);
+    const internals = world as unknown as GuardInternals;
+    const gastly = internals.currentMap.entities.find((entity) => entity.guards?.name === 'Sailors’ Rest')!;
+    const { x, y } = gastly.position;
+    const stepInto = (from: { x: number; y: number }, to: { x: number; y: number }) => {
+      internals.dialogBox.visible = false;
+      internals.currentTile = { ...from };
+      internals.targetTile = { ...to };
+      internals.stepProgress = 0;
+      internals.advanceStep(60_000);
+    };
+    const fight = (outcome: 'active' | 'victory') => {
+      internals.endCutscene();
+      internals.handleRunResolutionComplete();
+      const outbound = lastStart<BattleSceneData>(world, 'battle');
+      expect(outbound.wild?.guard).toBe(gastly.id);
+      const battle = new BattleScene();
+      attachSceneStubs(battle as unknown as WorldScene, makeControls());
+      Object.assign(battle as object, {
+        add: new Proxy({}, { get: () => () => chainable() }),
+        tweens: chainable(),
+        input: { keyboard: new Proxy({}, { get: () => () => chainable() }) },
+        cameras: { main: chainable() },
+        textures: chainable(),
+      });
+      battle.create(outbound);
+      const state = (battle as unknown as { state: { outcome: string } }).state;
+      (battle as unknown as { state: object }).state = { ...state, outcome };
+      (battle as unknown as { completeReturnToWorld(): void }).completeReturnToWorld();
+      starts(world).mockClear();
+      world.create(lastStart<RaidCarriage>(battle, 'world'));
+    };
+
+    // Two tiles off, then beside it: the step in queues its fight behind the beat.
+    stepInto({ x, y: y + 3 }, { x, y: y + 2 });
+    expect(internals.pendingWildBattle).toBeUndefined();
+    stepInto({ x, y: y + 2 }, { x, y: y + 1 });
+    expect(internals.pendingWildBattle).toMatchObject({ speciesId: 'gastly', guard: gastly.id });
+    expect(internals.cutscene?.player.cutscene.actions.some((action) => action.kind === 'emote')).toBe(true);
+
+    // Run from: it is still there, and the next step within its reach is only the lunge and a line.
+    fight('active');
+    expect(internals.guardsHere().map((guard) => guard.id)).toContain(gastly.id);
+    expect(runSession.pokemonMet ?? []).not.toContain(gastly.id);
+    stepInto({ x, y: y + 1 }, { x: x - 1, y: y + 1 });
+    expect(internals.pendingWildBattle?.guard).toBe(gastly.id);
+    expect(internals.cutscene?.player.cutscene.actions.map((action) => action.kind)).toEqual(['turn', 'lunge', 'wait', 'say']);
+
+    // Beaten: gone for the raid, and the way back says what it gave up.
+    // Hurt, with a Potion in the pack: Oak's field-heal hint is raised as the
+    // world comes back, and the guard's line waits for it rather than being
+    // written over by it.
+    const lead = (world as unknown as { party: PokemonParty }).party.pokemon[0];
+    lead.currentHp = 1;
+    const said = vi.spyOn(DialogBox.prototype, 'showMessages');
+    fight('victory');
+    expect(runSession.pokemonMet).toContain(gastly.id);
+    expect(internals.guardsHere().map((guard) => guard.id)).not.toContain(gastly.id);
+    const givenUp = () => said.mock.calls.flat(2).join(' ').includes('has given up SAILORS’ REST, and the WATER STONE');
+    if (internals.dialogBox.visible) {
+      world.update(0, 16);
+      expect(givenUp()).toBe(false);
+    }
+    internals.dialogBox.visible = false;
+    world.update(0, 16);
+    expect(givenUp()).toBe(true);
+
+    // The grave's stone taken out of the search is what the extraction banks,
+    // under the key that outlasts the map growing; and once banked, the grave
+    // pays only its own and its caption names only its guard.
+    const scene = world as unknown as {
+      cacheReward(poi: { id: string }): readonly { itemId: string }[];
+      hoardsTaken(): string[];
+      unbankedHoardName(poiId: string): string | undefined;
+      guardHoardsBanked: ReadonlySet<string>;
+    };
+    const grave = internals.currentMap.pois.find((poi) => poi.id === gastly.guards!.poiId)!;
+    // Counted a unit at a time, as the search counts them (`searchPieces`).
+    const pieces = searchPieces(scene.cacheReward(grave) as WorldPoi['reward']).map(({ itemId }) => itemId);
+    expect(pieces).toContain('water-stone');
+    expect(scene.hoardsTaken()).toEqual([]);
+    runSession.cachesSearched = { [grave.id]: { searchedMs: 60_000, taken: [pieces.indexOf('water-stone')] } };
+    expect(scene.hoardsTaken()).toEqual(['greystone-vale/sailors-rest']);
+    expect(scene.unbankedHoardName(grave.id)).toBe('Water Stone');
+    scene.guardHoardsBanked = new Set(['greystone-vale/sailors-rest']);
+    expect(scene.cacheReward(grave).map(({ itemId }) => itemId)).not.toContain('water-stone');
+    expect(scene.unbankedHoardName(grave.id)).toBeUndefined();
+    expect(scene.hoardsTaken()).toEqual([]);
+  });
 });

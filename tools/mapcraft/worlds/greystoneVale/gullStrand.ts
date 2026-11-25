@@ -280,7 +280,9 @@ export function gullStrand(): MapcraftResult {
       landmarks: [
         { x: 35, y: 45, name: 'River Mouth', kind: 'jetty' },
         { x: 7, y: 15, name: 'The Old Light', kind: 'mast' },
-        { x: 55, y: 11, name: 'Sailors’ Rest', kind: 'grave' },
+        // In the back of the yard, behind the gap between the gold grave and
+        // its neighbour, where the Gastly sits (`world/guards.ts`).
+        { x: 57, y: 7, name: 'Sailors’ Rest', kind: 'grave' },
       ],
       districts: [
         { name: 'THE OLD LIGHT', x: 4, y: 6, width: 22, height: 12, wildlife: 'shore' },
@@ -330,8 +332,13 @@ export function gullStrand(): MapcraftResult {
         { x: 21, y: 9, species: 'spearow', beat: { everyMs: 1400, roam: [[1, 0]] } },
         // The rope walk's Mankey, who wants the end of the rope.
         { x: 38, y: 9, species: 'mankey', level: 8, beat: { everyMs: 1300, roam: [[1, 0], [2, 0]] } },
-        // Nothing in the sailors' rest but a Gastly. It does not know yet.
-        { x: 56, y: 10, species: 'gastly', beat: { everyMs: 2300, roam: [[0, 1]] } },
+        // Nothing in the sailors' rest but a Gastly, and it has the grave goods.
+        // A guard (`world/guards.ts`): sat in the one gap into the back of the
+        // yard, it comes at whoever steps beside it, and the Sailors' Rest
+        // behind it - the lamp, the shroud and the Water Stone a drowned sailor
+        // was buried with - is had only through it. Normal moves go straight
+        // through it, so it asks what you brought (`guardsPlaced.test.ts`).
+        { x: 57, y: 8, species: 'gastly', level: 12, guards: 'Sailors’ Rest', sitsOn: 'water-stone' },
         // The salt pans' Slowpoke, and the Quay's Meowth, who knows when noon is.
         { x: 36, y: 37, species: 'slowpoke' },
         { x: 53, y: 44, species: 'meowth', beat: { everyMs: 1500, roam: [[-1, 0]] } },
@@ -373,7 +380,7 @@ export function gullStrand(): MapcraftResult {
         { x: 11, y: 12, name: 'Old Bertie', look: 'old-man', facing: 'left', secret: 'the-light-that-answers', lines: ['Lit her every night for forty years, and nobody has told me to stop.', 'They did tell me. I did not catch it. My hearing is very selective.', 'That star winks at her, not at me. It wants its answer in the wrong colours. Walk something SHINY up to it.'], beat: { everyMs: 3900, glances: ['up', 'down'] }, calls: ['Forty years!'] },
         { x: 43, y: 7, name: 'Ropemaker', look: 'worker', facing: 'left', lines: ['Forty fathoms a day, walking backwards. I have not seen where I was going since I was twelve.', 'If that Mankey has the end of it again, I am not going to know until the far post.'], beat: { everyMs: 2000, roam: [[-1, 0], [-2, 0], [-3, 0], [-4, 0], [-5, 0], [-6, 0]], glances: ['right'] }, calls: ['Mind your back. Mine, I mean.'] },
         { x: 47, y: 7, name: 'Rope Boy', look: 'youngster', facing: 'left', lines: ['I turn the wheel. He walks away. Then I turn the wheel some more. He is nearly at Pewter.'], beat: { everyMs: 3200, glances: ['left'] }, calls: ['Turn, turn, turn.'] },
-        { x: 52, y: 11, name: 'Sexton', look: 'gentleman', facing: 'right', lines: ['There is nobody under most of these. The sea keeps them. These are just where to come and shout.', 'I have got a good one for you, down in the far corner. He is not dead. He owes me for the stone.'], beat: { everyMs: 4300, glances: ['down', 'right'] }, calls: ['Mind the graves.'] },
+        { x: 52, y: 11, name: 'Sexton', look: 'gentleman', facing: 'right', lines: ['There is nobody under most of these. The sea keeps them. These are just where to come and shout.', 'A Gastly sits on the Sailors’ Rest now. Step up beside it and it goes for you. Nobody has had the grave goods since.', 'Punch it, kick it, tackle it: it all goes straight through. Bring something that is not just fists.'], beat: { everyMs: 4300, glances: ['down', 'right'] }, calls: ['Mind the graves.'] },
         { x: 33, y: 33, name: 'Salt Raker', look: 'straw-hat', facing: 'right', lines: ['Sea goes in, sun comes out, sea goes away, you rake what is left.', 'Everything tastes of it. My wife tastes of it. It is a very nice marriage.'], beat: { everyMs: 2800, roam: [[1, 0], [2, 0]], glances: ['up', 'down'] }, calls: ['Rake, and rake, and rake.'] },
         { x: 44, y: 37, name: 'Net Wife', look: 'woman', facing: 'right', lines: ['Every boat out of this strand has got one of my nets on it, and every net has got a hole.', 'They say I do not mend them. I say they keep finding Krabby.'], beat: { everyMs: 3100, glances: ['down'] }, calls: ['Who has had my needle?'] },
         { x: 57, y: 37, name: 'Drying Rack Dan', look: 'heavy-man', facing: 'left', lines: ['Salt, wind and three days on the rack. Then you could mend a boot with it.', 'People have. Those boots are very well thought of.'], beat: { everyMs: 3500, roam: [[0, -1]], glances: ['left'] }, calls: ['Mind the kippers!'] },
