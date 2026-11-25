@@ -218,3 +218,13 @@ class now.
 | Before | After |
 |---|---|
 | ![](before-rack-names.png) | ![](after-rack-names.png) |
+
+## 16. The battle's type banners are tabs
+
+WILD NORMAL and YOURS GRASS/POISON floated over the sky as outlined white
+letters, a style nothing else used. Each is a tab of the frame's navy on its
+plate's top edge now, as a panel's heading is a strip over its window.
+
+| Before | After |
+|---|---|
+| ![](before-type-tabs.png) | ![](after-type-tabs.png) |
