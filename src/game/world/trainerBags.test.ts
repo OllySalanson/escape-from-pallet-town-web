@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ITEMS, type ItemId } from '../items/items';
 import { SEARCH_ROWS } from './cacheSearch';
+import { RACE_COURSES } from './races';
 import { builtInFileMaps } from './playerMaps';
 import { createRunTrainerEncounters } from './trainers';
 import {
@@ -56,10 +57,19 @@ describe("a beaten trainer's bag", () => {
     }
   });
 
-  it("never holds TM39, which is Brock's to give, nor the Hauler frame, which is Oak's for a whole Pokedex", () => {
+  // The pit's gifts (`base/pitCoins.ts`) are not here: they are the commoner
+  // furniture, handed back for coins in a row that never ends, not a prize
+  // that is the one way to its thing.
+  it("never holds a thing another reward is the one way to: Brock's TM39, Oak's Hauler frame, a race's trophies", () => {
+    const givenElsewhere = [
+      'tm39-rock-tomb',
+      'hauler-frame',
+      ...RACE_COURSES.flatMap((race) => [race.trophy, race.perfectTrophy].filter((id): id is ItemId => id !== undefined)),
+    ];
     for (const kit of KITS) {
-      expect(rowsOf(kit).map((row) => row.itemId), kit.id).not.toContain('tm39-rock-tomb');
-      expect(rowsOf(kit).map((row) => row.itemId), kit.id).not.toContain('hauler-frame');
+      for (const itemId of givenElsewhere) {
+        expect(rowsOf(kit).map((row) => row.itemId), `${kit.id} holds ${itemId}`).not.toContain(itemId);
+      }
     }
   });
 
@@ -107,7 +117,7 @@ describe("a beaten trainer's bag", () => {
   });
 
   it('turns up a find of each tier at its standing\'s odds, and always the signature piece first', () => {
-    for (const standing of ['rookie', 'veteran', 'hunter', 'boss', 'roadside'] as const) {
+    for (const standing of ['rookie', 'veteran', 'hunter', 'boss', 'roadside', 'newcomer'] as const) {
       const bags = bagsOver(owner(BAG_KITS.duffel, standing)).filter((bag) => bag !== null);
       for (const tier of FIND_TIERS) {
         const share = bags.filter((bag) => bag.best === tier).length / bags.length;

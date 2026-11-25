@@ -92,9 +92,12 @@ export const EXTRA_CHANCE = 0.5;
  * save, never even known about. And a trainer standing on ground a walk
  * straight out could call in on is `roadside` (`RunPlan.roadsideTrainers`):
  * walking straight out pays almost nothing (`world/raidStake.ts`), so their bag
- * holds its signature piece and nothing else.
+ * holds its signature piece and nothing else. On a new save's first raid
+ * every ordinary trainer is a `newcomer`, whose bag always holds a find: the
+ * first bags a player ever opens are what sells them on bags, the way the
+ * first contract is softened for a newcomer by data.
  */
-export type BagStanding = 'rookie' | 'veteran' | 'hunter' | 'boss' | 'roadside';
+export type BagStanding = 'rookie' | 'veteran' | 'hunter' | 'boss' | 'roadside' | 'newcomer';
 
 /** The level a trainer's best Pokemon is at from which they are a veteran. */
 export const VETERAN_LEVEL = 12;
@@ -109,6 +112,7 @@ export const FIND_ODDS: Readonly<Record<BagStanding, Readonly<Record<FindTier, n
   hunter: { treasure: 0.04, rare: 0.2, uncommon: 0.56 },
   boss: { treasure: 1, rare: 0, uncommon: 0 },
   roadside: { treasure: 0, rare: 0, uncommon: 0 },
+  newcomer: { treasure: 0.04, rare: 0.2, uncommon: 0.76 },
 };
 
 const rows = (...list: readonly BagRow[]): readonly BagRow[] => list;
@@ -163,7 +167,10 @@ export const BAG_KITS = {
     finds: {
       uncommon: rows({ itemId: 'sitrus-berry', weight: 3 }, { itemId: 'chesto-berry' }, { itemId: 'aspear-berry' }),
       rare: rows({ itemId: 'sitrus-berry', quantity: 2, weight: 2 }, { itemId: 'pretty-flowers' }),
-      treasure: rows({ itemId: 'pika-cushion' }),
+      // A cushion to sit on the grass with. Not the Pika Cushion: it is the
+      // first thing the pit hands back (`base/pitCoins.ts`), and that moment
+      // is the pit's.
+      treasure: rows({ itemId: 'fire-cushion' }),
     },
   },
   tin: {
@@ -283,8 +290,10 @@ export const BAG_KITS = {
     finds: {
       uncommon: rows({ itemId: 'lockpick', weight: 2 }, { itemId: 'super-potion' }),
       rare: rows({ itemId: 'lockpick', quantity: 2 }),
-      // A gentleman's trinket, carried for nobody's reason but his own.
-      treasure: rows({ itemId: 'glass-ornament' }),
+      // A gentleman's trophy, carried for nobody's reason but his own. Not
+      // the Glass Ornament or the Silver Shield, which are LINNET's race's to
+      // give (`races.ts`).
+      treasure: rows({ itemId: 'gold-shield' }),
     },
   },
   bag: {
@@ -495,8 +504,11 @@ export const isHunterBagId = (bagId: string): boolean => bagId.startsWith(bagIdF
  */
 export const BAG_GLINT_LINE = 'SOMETHING GLINTS INSIDE';
 
-/** How long a trainer whose bag glints waits between twinkles: often enough to be seen walking past. */
+/** How long the bag over a trainer worth the fight waits between bobs: often enough to be seen walking past. */
 export const TRAINER_GLINT_EVERY_MS = 1400;
+/** How far above the trainer's head the bag hangs, and how far it bobs, in pixels. */
+export const TRAINER_GLINT_LIFT = 6;
+export const TRAINER_GLINT_BOB = 2;
 
 /** How long after the world comes back from the fight a bag is seen to fall: once its fade has cleared. */
 export const BAG_DROP_DELAY_MS = 350;

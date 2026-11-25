@@ -437,11 +437,12 @@ import {
   type WorldLoot,
 } from '../world/loot';
 import { lockedCrateLines, openPoi, type WorldPoi } from '../world/pois';
-import { SHINY_SPARKLE_TEXTURE, SPARKLE_FRAMES } from '../ui/shinySparkle';
 import {
   BAG_DROP_DELAY_MS,
   BAG_GLINT_LINE,
+  TRAINER_GLINT_BOB,
   TRAINER_GLINT_EVERY_MS,
+  TRAINER_GLINT_LIFT,
   bagAsPoi,
   bagIdFor,
   bagLabel,
@@ -1095,6 +1096,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private bagLines: string[] = [];
   /** The bags the fight just won dropped, to be seen to fall once the world is drawn. */
   private bagsFalling: TrainerBag[] = [];
+  /** The mark over each trainer whose bag is worth the fight, by trainer id, drawn with the map. */
+  private trainerGlints = new Map<string, Phaser.GameObjects.Image>();
   private readonly defeatedTrainerIds = new Set<string>();
   /**
    * Gear a beaten boss dropped that the pack had no room for. It waits here
@@ -1393,6 +1396,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.lookMs = 0;
     this.bagLines = [];
     this.bagsFalling = [];
+    this.trainerGlints.clear();
     this.pendingRaceAsk = undefined;
     this.pendingRacePurse = false;
     this.raceWord = undefined;
@@ -3490,7 +3494,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         encounter.design,
       );
       this.createTrainerWatch(encounter);
-      if (this.trainerBagGlints(encounter)) {
+      if (encounter.bossId === undefined && this.trainerBagGlints(encounter)) {
         this.createTrainerGlint(encounter);
       }
     }
@@ -3998,10 +4002,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       id: encounter.trainer.id,
       name: encounter.trainer.name,
       kit: kitFor(encounter.design),
-      standing:
-        !boss && this.runSession?.plan?.roadsideTrainers?.includes(encounter.trainer.id)
-          ? 'roadside'
-          : standingOf(encounter.trainer.party.map((pokemon) => pokemon.level), boss),
+      standing: boss
+        ? 'boss'
+        : // A new save's first raid (`RunPlan.stagedChase` is set on it and no
+          // other): the first bags a player ever opens are what sells them on
+          // bags, so they always hold a find, roadside or not.
+          this.runSession?.plan?.stagedChase === true
+          ? 'newcomer'
+          : this.runSession?.plan?.roadsideTrainers?.includes(encounter.trainer.id)
+            ? 'roadside'
+            : standingOf(encounter.trainer.party.map((pokemon) => pokemon.level), false),
     };
   }
 
@@ -4020,36 +4030,39 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     return best === 'rare' || best === 'treasure';
   }
 
-  /** A twinkle over a trainer whose bag glints: FireRed's shiny glint, on and off, above their head. */
+  /**
+   * The mark over a trainer whose bag is worth the fight: the dropped bag's
+   * own icon, bobbing over their head - the thing they would drop, so it reads
+   * as loot, and never as the stars that mean a shiny Pokemon in this game.
+   */
   private createTrainerGlint(encounter: RunTrainerEncounter): void {
-    if (!this.textures?.exists?.(SHINY_SPARKLE_TEXTURE)) {
+    const texture = iconTextureKey(WORLD_ICONS.trainerBag);
+    if (!this.textures?.exists?.(texture)) {
       return;
     }
-    const texture = this.textures.get(SHINY_SPARKLE_TEXTURE);
-    for (const [name, frame] of Object.entries(SPARKLE_FRAMES)) {
-      if (!texture.has(name)) {
-        texture.add(name, 0, frame.x, frame.y, frame.width, frame.height);
-      }
-    }
+    const x = encounter.position.x * TILE_SIZE + TILE_SIZE / 2;
+    const y = encounter.position.y * TILE_SIZE - TILE_SIZE / 2 - TRAINER_GLINT_LIFT;
     const glint = this.add
-      .image(
-        encounter.position.x * TILE_SIZE + TILE_SIZE - 3,
-        encounter.position.y * TILE_SIZE - TILE_SIZE / 2 + 2,
-        SHINY_SPARKLE_TEXTURE,
-        'glint',
-      )
-      .setDepth(atRow(FIGURE_BAND, encounter.position.y) + OVER_FIGURE)
-      .setAlpha(0);
+      .image(x, y, texture)
+      .setDepth(atRow(FIGURE_BAND, encounter.position.y) + OVER_FIGURE);
     this.tweens?.add?.({
       targets: glint,
-      alpha: 1,
-      duration: 220,
+      y: y - TRAINER_GLINT_BOB,
+      duration: 260,
       yoyo: true,
-      hold: 160,
+      hold: 120,
       repeat: -1,
       repeatDelay: TRAINER_GLINT_EVERY_MS,
+      ease: 'Sine.easeOut',
     });
+    this.trainerGlints.set(encounter.trainer.id, glint);
     this.mapObjects.push(glint);
+  }
+
+  /** Takes a trainer's mark down as they come for the player: it would hang over the tile they left. */
+  private dropTrainerGlint(trainerId: string): void {
+    this.trainerGlints?.get(trainerId)?.destroy();
+    this.trainerGlints?.delete(trainerId);
   }
 
   /**
@@ -8182,6 +8195,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return false;
     }
 
+    this.dropTrainerGlint(watcher.trainer.id);
     this.pendingTrainerBattle = {
       trainer: watcher.trainer,
       introLines: watcher.introLines,
@@ -8450,6 +8464,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
 
     audioManager.play('trainerSpotted');
+    this.dropTrainerGlint(encounter.trainer.id);
     this.pendingTrainerBattle = {
       trainer: encounter.trainer,
       introLines: encounter.introLines,
@@ -9095,6 +9110,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private clearMap(): void {
     this.mapObjects.forEach((object) => object.destroy());
     this.mapObjects = [];
+    this.trainerGlints.clear();
     this.worldLabels.forEach((label) => label.destroy());
     this.worldLabels = [];
     this.watchedGround = [];

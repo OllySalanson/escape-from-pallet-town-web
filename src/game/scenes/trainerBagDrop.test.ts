@@ -55,7 +55,7 @@ const VALE = 'greystone-vale';
  * A raid on the real vale, standing beside a real trainer of it, with the
  * seed a bag is rolled on. Keys are stubs the test presses by hand.
  */
-function besideATrainer(trainer: RunTrainerEncounter, seed: number, roadside: readonly string[] = []) {
+function besideATrainer(trainer: RunTrainerEncounter, seed: number, roadside: readonly string[] = [], firstRaid = false) {
   const map = getWorldMap(VALE);
   const key = (): StubKey => ({ justDown: false, isDown: false });
   const controls = {
@@ -109,7 +109,7 @@ function besideATrainer(trainer: RunTrainerEncounter, seed: number, roadside: re
         },
         registerFoundItem: vi.fn(),
       },
-      plan: { hunter: { spawnDelayMs: 600_000 }, roadsideTrainers: roadside },
+      plan: { hunter: { spawnDelayMs: 600_000 }, roadsideTrainers: roadside, ...(firstRaid ? { stagedChase: true } : {}) },
     },
     hunterPackHere: () => undefined,
     interrupt: vi.fn(),
@@ -261,5 +261,20 @@ describe("a beaten trainer's bag in a raid", () => {
     expect(scene.search).toBeNull();
     expect(scene.tryActivatePoiAt(hiker.position)).toEqual([]);
     expect(scene.search).not.toBeNull();
+  });
+
+  it("always puts a find in the bags of a new save's first raid, roadside or not: the first bags sell bags", () => {
+    let bags = 0;
+    for (let seed = 1; seed < 80; seed += 1) {
+      const { scene } = besideATrainer(hiker, seed, [hiker.trainer.id], true);
+      scene.defeatedTrainerIds.add(hiker.trainer.id);
+      scene.dropBeatenTrainersBags();
+      const bag = scene.runSession.trainerBags![bagIdFor(hiker.trainer.id)];
+      if (bag) {
+        bags += 1;
+        expect(bag.best, `seed ${seed}`).not.toBe('basic');
+      }
+    }
+    expect(bags).toBeGreaterThan(40);
   });
 });

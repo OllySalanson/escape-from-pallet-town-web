@@ -904,6 +904,11 @@ try {
       break;
     }
     await walkTo({ x: mark.x, y: mark.y }, `the tile beside ${mark.name}`);
+    // Whether the trainer wears the mark of a bag worth the fight, and what it looks like before it.
+    note(`${mark.name} ${(await page.evaluate(`${GAME}.scene.getScene('world').trainerGlints.has(${JSON.stringify(mark.id)})`)) ? 'carries a bag worth the fight' : 'shows no mark'}`);
+    if (option('shot')) {
+      await page.screenshot(option('shot').replace(/\.png$/, `-bag-${robbed + 1}-before.png`));
+    }
     // A watch may have caught the player on the way, and that fight is the one
     // that counts; otherwise the trainer is faced and spoken to.
     if (!(await page.evaluate(`${GAME}.scene.getScene('world').defeatedTrainerIds.has(${JSON.stringify(mark.id)})`))) {
