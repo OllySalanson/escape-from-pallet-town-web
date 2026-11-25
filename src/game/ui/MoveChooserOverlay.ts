@@ -40,10 +40,14 @@ export function openMoveChooser(
     overlay.root.innerHTML = moveChooserMarkup(view, chosen);
     overlay.focus(focus, '[data-forget]', '[data-decline]');
   };
+  // Marking a move keeps the cursor on it: FORGET is a reach of its own. It
+  // used to jump to FORGET, so a press that marked and a press after it
+  // forgot a move nobody meant to (the overnight critic's Oddish lost its
+  // only attack mashing SPACE through a level-up, 25 Nov 2026).
   const mark = (index: number | null): void => {
     const was = chosen;
     chosen = index;
-    render(index === null ? `[data-forget="${was ?? 0}"]` : '[data-forget-confirm]');
+    render(`[data-forget="${index ?? was ?? 0}"]`);
   };
   const overlay: MenuOverlay = new MenuOverlay(scene, `move-chooser-menu${view.beside ? ' side-panel' : ''} pixel-ui`, (event) => {
     if (event.key === 'Escape') {
@@ -82,7 +86,10 @@ export function openMoveChooser(
       settle({ kind: 'later' });
     }
   });
-  // Start on the first move to forget: the way out is a deliberate reach.
-  render('[data-forget]');
+  // Start on the answer that changes nothing - DECIDE LATER where it is on
+  // offer, DO NOT LEARN where it is not - so SPACE pressed on through the lines
+  // of a fight can never forget a move: forgetting is two deliberate reaches,
+  // to a move and then to FORGET (`tools/playtest/chooserMash.mjs`).
+  render(view.canDefer ? '[data-later]' : '[data-decline]');
   return overlay;
 }
