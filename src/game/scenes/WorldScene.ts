@@ -1890,6 +1890,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Last, so it is drawn where this frame's step has put the player.
     this.updatePartner(deltaMs);
     this.tendFigureGlints(deltaMs);
+    this.tendTrainerGlints();
     this.updateFriend(deltaMs);
     this.refreshHint();
   }
@@ -4057,6 +4058,25 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     });
     this.trainerGlints.set(encounter.trainer.id, glint);
     this.mapObjects.push(glint);
+  }
+
+  /**
+   * Hides a trainer's mark while the player stands beside them. It hangs over
+   * the tile above the trainer's head, which is where somebody walking up
+   * from the north stands, and drawn over a face it is a smudge; by then the
+   * choice it was there for has been made.
+   */
+  private tendTrainerGlints(): void {
+    if (!this.trainerGlints || this.trainerGlints.size === 0) {
+      return;
+    }
+    const near = (tile: GridPosition | null, at: GridPosition): boolean =>
+      tile !== null && Math.abs(tile.x - at.x) <= 1 && Math.abs(tile.y - at.y) <= 1;
+    for (const encounter of this.trainersForCurrentMap()) {
+      this.trainerGlints
+        .get(encounter.trainer.id)
+        ?.setVisible(!near(this.currentTile, encounter.position) && !near(this.targetTile, encounter.position));
+    }
   }
 
   /** Takes a trainer's mark down as they come for the player: it would hang over the tile they left. */

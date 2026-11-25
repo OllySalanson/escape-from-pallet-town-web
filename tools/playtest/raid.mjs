@@ -903,12 +903,24 @@ try {
       note('no trainer left to rob');
       break;
     }
-    await walkTo({ x: mark.x, y: mark.y }, `the tile beside ${mark.name}`);
-    // Whether the trainer wears the mark of a bag worth the fight, and what it looks like before it.
+    // Whether the trainer wears the mark of a bag worth the fight, and what it
+    // looks like from a few steps off - the mark hides once you are beside them.
     note(`${mark.name} ${(await page.evaluate(`${GAME}.scene.getScene('world').trainerGlints.has(${JSON.stringify(mark.id)})`)) ? 'carries a bag worth the fight' : 'shows no mark'}`);
     if (option('shot')) {
-      await page.screenshot(option('shot').replace(/\.png$/, `-bag-${robbed + 1}-before.png`));
+      const offing = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
+        const c = w.collisionData, H = c.length, W = c[0].length, id = (x, y) => y * W + x, t = ${JSON.stringify(mark.at)};
+        const steps = new Map([[id(t.x, t.y), 0]]); const queue = [[t.x, t.y]]; const out = [];
+        while (queue.length) { const [x, y] = queue.shift(); const d = steps.get(id(x, y)); if (d === 3) { out.push({ x, y }); continue; }
+          for (const [dx, dy] of [[0,-1],[0,1],[-1,0],[1,0]]) { const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H || steps.has(id(nx, ny)) || w.isBlocked({ x: nx, y: ny })) continue;
+            steps.set(id(nx, ny), d + 1); queue.push([nx, ny]); } }
+        const s = w.currentTile; return out.sort((a, b) => Math.abs(a.x - s.x) + Math.abs(a.y - s.y) - Math.abs(b.x - s.x) - Math.abs(b.y - s.y))[0] ?? null; })()`);
+      if (offing) {
+        await walkTo(offing, `a few steps off ${mark.name}`);
+        await page.screenshot(option('shot').replace(/\.png$/, `-bag-${robbed + 1}-before.png`));
+      }
     }
+    await walkTo({ x: mark.x, y: mark.y }, `the tile beside ${mark.name}`);
     // A watch may have caught the player on the way, and that fight is the one
     // that counts; otherwise the trainer is faced and spoken to.
     if (!(await page.evaluate(`${GAME}.scene.getScene('world').defeatedTrainerIds.has(${JSON.stringify(mark.id)})`))) {
