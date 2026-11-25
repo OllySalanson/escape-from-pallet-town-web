@@ -164,3 +164,14 @@ next.
 | Before | After |
 |---|---|
 | ![](before-rim.png) | ![](after-rim.png) |
+
+## 11. The raid's chips are the menus' paper
+
+The clock, the objective, the place and the prize were the older cream under a
+near-black line - a third frame beside the dialogue's and the panels'. They are
+the menus' paper and navy line now (`RaidHud.ts`), so the corner chips and the
+question under them are one set.
+
+| Before | After |
+|---|---|
+| ![](before-hud-chips.png) | ![](after-hud-chips.png) |
