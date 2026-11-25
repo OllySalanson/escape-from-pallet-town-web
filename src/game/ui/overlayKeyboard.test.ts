@@ -291,6 +291,37 @@ describe('an open overlay owns the keyboard', () => {
     overlay.destroy();
   });
 
+  it('hands it W, A, S and D as the arrows, as walking and every answer box take them', () => {
+    // The navigation audit (25 Nov 2026): they did nothing in any panel.
+    const overlay = openOverlay();
+
+    for (const key of ['w', 'a', 's', 'd', 'W', 'D']) {
+      fakeWindow.press(key);
+    }
+
+    expect(overlay.keys).toEqual(['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowRight']);
+    overlay.destroy();
+  });
+
+  it('keeps W, A, S and D letters in a text field, and the browser\'s with Ctrl', () => {
+    const typed: string[] = [];
+    const scene = { events: { once: () => {} } } as never;
+    const overlay = new MenuOverlay(scene, 'test-menu', (event) => {
+      typed.push(event.key);
+      event.preventDefault();
+    });
+
+    fakeWindow.press({ key: 'd', target: { tagName: 'INPUT' } });
+    const withCtrl = fakeWindow.press({ key: 'd', ctrlKey: true });
+    const plain = fakeWindow.press('d');
+
+    expect(typed).toEqual(['d', 'ArrowRight']);
+    // A screen that takes the arrow keeps it from the browser, through the stand-in.
+    expect(plain.defaultPrevented).toBe(true);
+    expect(withCtrl.defaultPrevented).toBe(true);
+    overlay.destroy();
+  });
+
   it('takes a held Enter or Space as one press: the repeats work nothing, on screen or in the browser', () => {
     // Playtest 26 #7: Enter held on `Review & deploy` ran through the final
     // check into the raid, and held on a Potion drank the pack. The browser

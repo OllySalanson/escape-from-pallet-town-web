@@ -85,8 +85,40 @@ function onKeyDown(event: KeyboardEvent): void {
     event.preventDefault();
     return;
   }
-  owner.handler(event);
+  owner.handler(asArrowEvent(event));
   pressFocusedButton(event);
+}
+
+const ARROW_BY_LETTER: Readonly<Record<string, string>> = {
+  w: 'ArrowUp',
+  a: 'ArrowLeft',
+  s: 'ArrowDown',
+  d: 'ArrowRight',
+};
+
+/**
+ * W, A, S and D, handed to an overlay as the arrows they stand for: they walk,
+ * and move the cursor in every answer box, the title and the jump-in card, and
+ * did nothing in any panel, so a hand resting on them found the panels dead
+ * (the navigation audit, 25 Nov 2026). One place, so every screen - its
+ * cursor, its pocket jumps, its page turns - takes them as it takes the
+ * arrows. A field being typed in never gets here (`isTypingTarget`), so there
+ * they stay letters; with Ctrl, Alt or Meta they are the browser's.
+ */
+export function asArrowEvent(event: KeyboardEvent): KeyboardEvent {
+  const arrow = typeof event.key === 'string' ? ARROW_BY_LETTER[event.key.toLowerCase()] : undefined;
+  if (!arrow || event.ctrlKey || event.metaKey || event.altKey) {
+    return event;
+  }
+  return new Proxy(event, {
+    get(target, property) {
+      if (property === 'key' || property === 'code') {
+        return arrow;
+      }
+      const value: unknown = Reflect.get(target, property, target);
+      return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(target) : value;
+    },
+  });
 }
 
 /**
