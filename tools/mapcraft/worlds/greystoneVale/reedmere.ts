@@ -334,6 +334,17 @@ export function reedmere(): MapcraftResult {
   stand('barrels', 22, 54);
   p.bushes([25, 56]);
 
+  // The last wade to THE LAST HOUSE is trodden dry beside its wall, so a
+  // runner off the wildfowlers' trail or down the woodcutter's ride reaches the
+  // line without a fight: the clever ways in are skill, not a coin flip.
+  // (Straight through the open reeds - the floor - is still a wade.)
+  p.trail([[10, 21], [10, 22]]);
+  // The reeds' dry way (SILVER's line) was two single tufts short of dry, at the
+  // top of THE HUMMOCK and where it turns west: trodden, so a runner who found
+  // it is never ambushed on it, and LINNET's "Find the dry way" is true.
+  p.trail([[33, 10], [33, 10]]);
+  p.trail([[28, 14], [28, 14]]);
+
   const file = districtFile(GREYSTONE_VALE, 'reedmere', p, {
     dropIns: [],
     itemSpots: [
@@ -476,7 +487,7 @@ export function reedmere(): MapcraftResult {
         // -- The withy beds ---------------------------------------------------------------------------------------
         { x: 10, y: 42, name: 'Mrs Osier', look: 'woman', facing: 'left', lines: ['Baskets for the eels, baskets for the peat, baskets to put the other baskets in.', 'My sister at The Crossing says hers are better. They are not. Do not tell her I said so.'], beat: { everyMs: 3100, roam: [[0, -1]], glances: ['left'] }, calls: ['Baskets! Good baskets!'] },
         // -- The Last House --------------------------------------------------------------------------------------------
-        { x: 10, y: 28, name: 'Old Reeve', look: 'gentleman', facing: 'left', lines: ['I collected the toll on the Mere Path for thirty years. There is no toll now.', 'I keep the time for LINNET\u2019s races instead. The line is by my door; the stopwatch was the toll\u2019s.', 'West, and do not stop for anybody on the path. Nobody good is out there.'], beat: { everyMs: 4200, glances: ['right'] }, calls: ['Toll is nothing. Mind it.', 'Line\u2019s by my door!'] },
+        { x: 10, y: 28, name: 'Old Reeve', look: 'gentleman', facing: 'left', lines: ['I collected the toll on the Mere Path for thirty years. There is no toll now.', 'I keep the time for LINNET\u2019s races instead. The line is by my door; the stopwatch was the toll\u2019s.', 'West, and do not stop for anybody on the path. Nobody good is out there.'], beat: { everyMs: 4200, glances: ['right'] }, calls: ['No toll now. Mind the line!', 'Line\u2019s by my door!'] },
         // -- The way nobody signs -----------------------------------------------------------------------------------------
         { x: 8, y: 11 + 2 - 1, name: 'Snipe Shooter', look: 'camper', facing: 'right', lines: ['You have walked all this way into the reeds to talk to me. I do not know what to do with that.', 'Nobody comes up here. That is what it is for.'], beat: { everyMs: 3900, glances: ['down'] }, calls: ['Oh. Hello. Why?'] },
         { x: 22, y: 56, name: 'Birdwatcher', look: 'rocker', facing: 'left', lines: ['Birdwatching. That is what I am doing. With these crates. Which are for birds.', 'Cove? What cove? There is no cove down that path. Very rocky, the no cove.'], beat: { everyMs: 2700, glances: ['up', 'down'] }, calls: ['Lovely... bird, that.'] },

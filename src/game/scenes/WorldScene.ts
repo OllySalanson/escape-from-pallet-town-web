@@ -1179,12 +1179,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private raceBestMs: number | undefined;
   /** The chalk mark the player toes before the count. */
   private raceMark: Phaser.GameObjects.Graphics | undefined;
+  /** Whether that save has run the floor already: nothing left on the chip to chase. */
+  private racePerfectHeld = false;
   /** The best mark on the course being raced: a GOLD is shown the floor to chase. */
   private raceMedalHeld: RaceMedal | undefined;
   /** Whether the racer has made their offer this raid: a second ask is short. */
   private raceAsked = false;
-  /** A race's word to be said the first moment nothing is on screen: the racer giving up. */
-  private raceNotice: string[] | undefined;
+  /** The save's race records as this world was built, for the racers' calls. */
+  private raceRecordsSeen: Readonly<Record<string, RaceRecord>> | undefined;
   /** The best run on it, raced again as a see-through you (`world/raceGhost.ts`). */
   private raceGhost: RaceTrail | undefined;
   private raceGhostSprite: Phaser.GameObjects.Sprite | undefined;
@@ -1415,7 +1417,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.raceBestMs = undefined;
     this.raceGhost = undefined;
     this.raceGhostSprite = undefined;
-    this.raceNotice = undefined;
+    this.raceRecordsSeen = undefined;
     this.raceMedalHeld = undefined;
     this.raceAsked = false;
     this.raceMark = undefined;
@@ -2492,8 +2494,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     // A race's countdown holds everybody on the line, the player included.
     const countingDown = this.raceHere();
-    if (countingDown?.race.phase === 'countdown' && !this.dialogBox.visible) {
-      this.advanceRaceCountdown(countingDown.race, deltaMs);
+    if (countingDown?.race.phase === 'countdown' && !this.dialogBox.visible && this.advanceRaceCountdown(countingDown.race, deltaMs)) {
       return;
     }
 
@@ -3237,12 +3238,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private advanceVillageCalls(deltaMs: number): void {
     const { x, y } = this.currentTile;
     const callers = this.currentMap.entities
-      .filter((entity) => entity.calls && this.npcSprites.has(entity.id))
+      .filter((entity) => entity.calls && this.npcSprites.has(entity.id) && !this.judgeTiming(entity))
       .map((entity) => {
         const sprite = this.npcSprites.get(entity.id) as Phaser.GameObjects.Sprite;
         const across = sprite.x / TILE_SIZE - x;
         const down = sprite.y / TILE_SIZE - y;
-        return { id: entity.id, distance: Math.hypot(across, down), calls: entity.calls ?? [] };
+        return { id: entity.id, distance: Math.hypot(across, down), calls: this.racerCalls(entity) ?? entity.calls ?? [] };
       });
     this.villageCall = advanceCalls(this.villageCall, {
       deltaMs,
@@ -4528,6 +4529,29 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     return race && course && course.mapId === this.currentMap.id ? { race, course } : null;
   }
 
+  /**
+   * A judge holding the stopwatch keeps quiet from the agreement to the line:
+   * his bubble would stand over the finish just as the player runs in.
+   */
+  private judgeTiming(entity: WorldEntity): boolean {
+    const here = this.raceHere();
+    if (!here || here.race.phase === 'over') return false;
+    const at = here.course.judge.at;
+    return entity.position.x === at.x && entity.position.y === at.y;
+  }
+
+  /**
+   * What a racer calls out once the save has beaten them (`RaceCourse.beatenCalls`):
+   * a rematch, not "Nobody beats me!". Read once a world, not every frame.
+   */
+  private racerCalls(entity: WorldEntity): readonly string[] | undefined {
+    const course = this.courseOfPerson(entity);
+    if (!course) return undefined;
+    this.raceRecordsSeen ??= new SaveManager().load()?.raidProgress.races ?? {};
+    const record = this.raceRecordsSeen[course.id];
+    return record && record.wins > 0 ? course.beatenCalls(record) : undefined;
+  }
+
   /** Whether the racers stand this raid: in every raid, never in a maker's try. */
   private racersStand(): boolean {
     return this.runSession !== undefined && !currentTry();
@@ -4582,7 +4606,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       if (here.race.phase === 'countdown' || here.race.phase === 'running') this.createRaceGhost();
       if (!this.raceStarted(here.race)) this.drawChalkMark(here.course);
       const place = this.racerNow(here.race);
-      this.createFigure(RACER_FIGURE_ID, place.tile, place.facing, 'npc', here.course.racer.design);
+      // Gone home is gone: not stood back up at the line when a fight rebuilds the world.
+      if (here.race.outcome !== 'late') {
+        this.createFigure(RACER_FIGURE_ID, place.tile, place.facing, 'npc', here.course.racer.design);
+      }
     }
   }
 
@@ -4633,6 +4660,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const record = new SaveManager().load()?.raidProgress.races?.[course.id];
     this.raceBestMs = record?.bestMs;
     this.raceMedalHeld = record?.medal;
+    this.racePerfectHeld = record?.perfect === true;
     // A best run that set off from anywhere but the mark (saved before there
     // was one) would race from a different start: it is not shown.
     const ghost = record?.ghost;
@@ -4787,6 +4815,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!here) {
       return false;
     }
+    if (here.race.outcome === 'late') {
+      return false;
+    }
     const place = this.racerNow(here.race);
     return (!this.raceStarted(here.race) || place.home) && place.tile.x === tile.x && place.tile.y === tile.y;
   }
@@ -4877,8 +4908,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     recordAction(`Agreed to race ${course.racer.name}`);
   }
 
-  /** The countdown owns the frame: nothing moves, nobody's clock runs. */
-  private advanceRaceCountdown(race: RaceState, deltaMs: number): void {
+  /**
+   * Still counting: true, and the count owns the frame. On GO it is false, and
+   * the frame goes on to read the keys - a direction held through the count
+   * begins its step on the GO frame itself, at race clock 0, at any frame rate.
+   */
+  private advanceRaceCountdown(race: RaceState, deltaMs: number): boolean {
     race.countdownMs += deltaMs;
     const word = countdownWord(race.countdownMs);
     if (word === null) {
@@ -4889,7 +4924,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.showRaceWord('GO!');
       audioManager.play('raceGo');
       this.time.delayedCall(GO_SHOWN_MS, () => this.showRaceWord(null));
-      return;
+      return false;
     }
     if (word !== this.countdownWordShown) {
       // ON YOUR MARKS is said, not counted: three beeps, then GO.
@@ -4897,6 +4932,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.showRaceWord(word);
       if (counted) audioManager.play('raceBeep');
     }
+    return true;
   }
 
   /** The big word over the middle of the screen, or none. */
@@ -4948,15 +4984,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (x >= off.x && y >= off.y && x < off.x + off.width && y < off.y + off.height) {
       here.race.tookShortcut = true;
     }
-    // Never gone home on a player standing on the line: they are over it, whatever the clock says.
-    if (here.race.clockMs >= here.race.racerMs + FINISH_WAIT_MS && !crossesLine(here.course, this.currentTile)) {
+    // Never gone home on a player whose step onto the line is under way: the
+    // clock was charged for this frame before the step that lands there.
+    const landing = this.targetTile !== null && crossesLine(here.course, this.targetTile);
+    if (here.race.clockMs >= here.race.racerMs + FINISH_WAIT_MS && !landing) {
       // Gone home, and gone: their figure with them.
       here.race.phase = 'over';
       here.race.outcome = 'late';
       this.npcSprites.get(RACER_FIGURE_ID)?.destroy();
       this.npcSprites.delete(RACER_FIGURE_ID);
       this.npcAppearances.delete(RACER_FIGURE_ID);
-      this.raceNotice = [goneHomeLine(here.course)];
+      here.race.notice = [goneHomeLine(here.course)];
     }
   }
 
@@ -4970,9 +5008,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (this.dialogBox.visible || this.trainerPrompt || this.targetTile) {
       return false;
     }
-    if (this.raceNotice) {
-      this.dialogBox.showMessages(this.raceNotice);
-      this.raceNotice = undefined;
+    if (here?.race.notice) {
+      this.dialogBox.showMessages(here.race.notice);
+      here.race.notice = undefined;
       return true;
     }
     if (!here?.race.arrivalWords || !this.racerNow(here.race).home) {
@@ -5024,11 +5062,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       timeMs,
       racerMs: race.racerMs,
       fightMs: race.fightMs,
+      foughtWild: race.foughtWild,
       offRoad: race.offRoad,
       racerKnew: race.racerKnew,
       tookShortcut: race.tookShortcut,
       shortcutOpen: this.shortcutOpen(course),
       firstGold: was?.medal !== 'gold',
+      ...(was?.bestMs !== undefined ? { bestMs: was.bestMs } : {}),
       // How the run went, read off where it went: a step over the floor, or a slow start.
       ...raceRunShape(trail),
       hadPerfect: was?.perfect === true,
@@ -5215,7 +5255,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       bearing,
       tilesToLine: Math.abs(target.x - this.currentTile.x) + Math.abs(target.y - this.currentTile.y),
       bestMs: this.raceBestMs,
-      ...(this.raceMedalHeld === 'gold' ? { perfectMs: course.perfectMs } : {}),
+      // The floor to chase, until it has been run.
+      ...(this.raceMedalHeld === 'gold' && !this.racePerfectHeld ? { perfectMs: course.perfectMs } : {}),
     });
   }
 

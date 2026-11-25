@@ -93,7 +93,7 @@ export interface RaceCourse {
    * a step a tile - no fight, no stop, no wasted tile. A grid has no faster
    * line, so this is the last thing there is to chase (`races.test.ts` measures
    * it). On THE MERE DASH it is down the ride and then straight through the
-   * reeds - two dozen wild tiles, so only a Repel makes it more than a dice roll.
+   * reeds - eighteen wild tiles, so only a Repel makes it more than a dice roll.
    */
   readonly perfectMs: number;
   /** The trophy the first SILVER or better ever adds: something to put on a shelf. */
@@ -109,6 +109,8 @@ export interface RaceCourse {
   readonly hints: {
     readonly road: string;
     readonly fights: string;
+    /** Lost to a fight that was not the grass's: a hunter, or a trainer. */
+    readonly caught: string;
     readonly longWay: string;
     readonly shortcut: string;
     /** The shortcut hint once its door is open: it is no longer grown shut. */
@@ -120,6 +122,8 @@ export interface RaceCourse {
    * and what they say instead: the village noticing is half of being proud of it.
    */
   readonly gossip: readonly RaceGossip[];
+  /** What the racer calls out as a raid goes past once the save has beaten them: a rematch, not a boast. */
+  readonly beatenCalls: (record: RaceRecord) => readonly string[];
 }
 
 /** A person or sign that says something else once the racer has been beaten. */
@@ -168,14 +172,19 @@ export const MERE_DASH: RaceCourse = {
   hints: {
     road: 'You stuck to my boardwalk. Everybody does! The reeds have a dry way through, if you look.',
     fights: "The reeds are quick - but I don't stop while you fight in them. Find the dry way, or pack a Repel.",
+    caught: "I don't stop for anybody who wants a fight - and you did. Run from them, and keep running.",
     longWay: 'You left my boardwalk and still came in behind me? The dry way through the reeds is straighter than that.',
     shortcut:
-      "Nobody gets under 0:11.0 through the reeds. There's an old ride through the pines behind the woodcutter's - grown shut. Bill trades a Cut disc for a linen roll and a parts crate.",
+      "Nobody gets under 0:11.0 from the lane. There's an old ride through the pines behind the woodcutter's - grown shut. Bill trades a Cut disc for a linen roll and a parts crate.",
     shortcutOpen:
-      "Nobody gets under 0:11.0 through the reeds. The woodcutter's ride's open now, mind - straight down through the pines.",
+      "Nobody gets under 0:11.0 from the lane. The woodcutter's ride's open now, mind - straight down through the pines.",
     learned:
       "My dry way now, too! Through the reeds you'll never beat me. The woodcutter's ride - that one's yours.",
   },
+  beatenCalls: (record) =>
+    record.perfect
+      ? ['0:09.3... HOW?!', 'Rematch! Please!']
+      : ['Rematch!', "I've been practising!", 'Race you again?'],
   gossip: [
     {
       // Pip, her little brother, on the square.
@@ -314,6 +323,9 @@ export function racerKnowsTheWay(record: RaceRecord | undefined, shortcutOpen: b
   return shortcutOpen && (record?.medal === 'silver' || record?.medal === 'gold');
 }
 
+/** A ride run lost by less than this lost it at the start; more, and it stood about on the way. */
+export const BY_A_HAIR_MS = 500;
+
 /** A crossing within this of the racer's is a photo finish, and said as one. */
 export const PHOTO_FINISH_MS = 100;
 
@@ -373,18 +385,33 @@ export function raceOfferLines(
   if (askedThisRaid) {
     return [`${racer}: Changed your mind?`];
   }
-  const purse = purseTakenToday
-    ? "Today's purse is gone - come back tomorrow for it."
-    : `Under ${formatRaceTime(course.goldMs)} takes today's purse: any evolution stone you like.`;
+  const pay = payLine(course, purseTakenToday);
   if (!record || record.runs === 0) {
     return [
       `${racer}: I'll race you! First to ${course.finish.name}, ${course.finish.where} - the line's by its door.`,
-      `Beat me: ${formatMoney(MEDAL_MONEY.bronze)}. Lose: ${formatMoney(TAKING_PART_MONEY)} for the legs. ${purse}`,
+      `${pay} Lose: ${formatMoney(TAKING_PART_MONEY)} for the legs.`,
     ];
   }
-  const best = record.bestMs === undefined ? '' : ` Your best: ${formatRaceTime(record.bestMs)}${record.medal ? ` ${MEDAL_WORDS[record.medal]}` : ''}.`;
+  const mark = record.perfect ? ' PERFECT' : record.medal ? ` ${MEDAL_WORDS[record.medal]}` : '';
+  const best = record.bestMs === undefined ? '' : ` Your best: ${formatRaceTime(record.bestMs)}${mark}.`;
   const learned = racerKnowsTheWay(record, shortcutOpen) ? " I've been practising - I know the reeds' dry way now too." : '';
-  return [`${racer}: Back for more?${best}${learned}`, purse];
+  return [`${racer}: Back for more?${best}${learned}`, pay];
+}
+
+/**
+ * What a win pays, every raid, mark by mark as the judge will call it, with the
+ * day's purse on GOLD: said on every offer, so a GOLD holder knows there is
+ * still something in it.
+ */
+function payLine(course: RaceCourse, purseTakenToday: boolean): string {
+  const purse = purseTakenToday
+    ? ' - the purse is gone till tomorrow.'
+    : " - and the day's first GOLD takes the purse, any evolution stone you like.";
+  return (
+    `BRONZE beats me: ${formatMoney(MEDAL_MONEY.bronze)}. ` +
+    `SILVER, under ${formatRaceTime(course.silverMs)}: ${formatMoney(MEDAL_MONEY.silver)}. ` +
+    `GOLD, under ${formatRaceTime(course.goldMs)}: ${formatMoney(MEDAL_MONEY.gold)}${purse}`
+  );
 }
 
 /** The captain's question, word for word. */
@@ -407,6 +434,8 @@ export interface RaceResultInput {
   readonly outcome: RaceOutcome;
   /** Game time spent fighting on the way. */
   readonly fightMs: number;
+  /** Whether a fight on the way was wild (a Repel's to keep off) rather than a hunter's. */
+  readonly foughtWild?: boolean;
   /** Whether the player left the racer's road. */
   readonly offRoad: boolean;
   /** Whether the racer ran the reeds' dry way this race. */
@@ -419,6 +448,8 @@ export interface RaceResultInput {
   readonly firstGold: boolean;
   /** Whether the save has run a PERFECT before. */
   readonly hadPerfect: boolean;
+  /** The save's best time before this run, if it had one. */
+  readonly bestMs?: number;
   /** Steps the run took, from its trail (`raceRunShape`). */
   readonly steps?: number;
   /** How long the player stood still after GO before their first step. */
@@ -482,7 +513,9 @@ export function racerArrivesLines(course: RaceCourse, input: RaceResultInput): s
   const racer = course.racer.name;
   const behind = gapWords(shownGap(input.racerMs, input.timeMs));
   if (input.medal === 'gold' && isPerfect(course, input.timeMs)) {
-    return [`${racer}: Not a step wasted. I watched. I'm going to be sick.`];
+    // She was round the mere when it was run: she has it from the judge.
+    const judge = course.judge.name.split(' ').pop();
+    return [`${racer}: ${judge} says not a step wasted. Not ONE. I'm going to be sick.`];
   }
   const tip = perfectTip(course, input);
   if (input.medal === 'gold') {
@@ -493,17 +526,22 @@ export function racerArrivesLines(course: RaceCourse, input: RaceResultInput): s
       ];
     }
     if (tip) {
-      return [`${racer}: ${input.timeMs - course.perfectMs <= NEAR_PERFECT_MS ? 'So close! ' : 'GOLD again. '}${tip}`];
+      const near = shownTenths(input.timeMs) - shownTenths(course.perfectMs) <= NEAR_PERFECT_MS / 100;
+      return [`${racer}: ${near ? 'So close! ' : 'GOLD again. '}${tip}`];
     }
     return [
       input.hadPerfect
         ? `${racer}: GOLD again. You've done it in ${formatRaceTime(course.perfectMs)} before, so don't look so pleased.`
-        : `${racer}: GOLD again. ${formatRaceTime(course.perfectMs)} is as fast as anybody could go - straight through the reeds. Spray a Repel first, or something will jump out.`,
+        : `${racer}: GOLD again. ${formatRaceTime(course.perfectMs)} is as fast as anybody could go - out of the ride and straight down through the reeds to the door. ${input.foughtWild === false ? "And don't stop for anybody who wants a fight." : 'Spray a Repel first, or something will jump out.'}`,
     ];
   }
   if (input.tookShortcut) {
     const missed = input.fightMs > 0 ? 'Stop to fight and you lose it.' : "Don't stop once.";
-    return [`${racer}: The ride! I KNEW it. Beat me ${behind}... ${formatRaceTime(course.goldMs)} is in there, you know. ${missed}`];
+    // Told what is in the ride once; a player who has run it under GOLD is
+    // reminded of their own best instead of being taught it.
+    return input.firstGold || input.bestMs === undefined
+      ? [`${racer}: The ride! I KNEW it. Beat me ${behind}... ${formatRaceTime(course.goldMs)} is in there, you know. ${missed}`]
+      : [`${racer}: Beat me ${behind}. You've run it in ${formatRaceTime(input.bestMs)}, mind - ${missed.toLowerCase()}`];
   }
   return [
     input.beatenBefore ? `${racer}: Again?! Beat me ${behind}. One of these days.` : `${racer}: How?! Beat me ${behind}... fair's fair.`,
@@ -519,12 +557,16 @@ export function racerWonLines(course: RaceCourse, input: RaceResultInput): strin
   // on, then the way she has learned, then the reeds, then her road.
   const why = input.tookShortcut
     ? input.fightMs > 0
-      ? "You found the ride - then stopped to fight in it. I don't stop."
-      : 'The ride, and still behind me - by a hair. Come off the mark the moment I say GO.'
+      ? "You found the ride - then stopped to fight. I don't stop."
+      : shownGap(input.timeMs, input.racerMs) < BY_A_HAIR_MS
+        ? 'The ride, and still behind me - by a hair. Come off the mark the moment I say GO.'
+        : `You found the ride and still came in ${formatGap(shownGap(input.timeMs, input.racerMs))} behind me - you stood about on the way. Don't stop once.`
     : input.racerKnew
       ? course.hints.learned
       : input.fightMs > 0
-        ? course.hints.fights
+        ? input.foughtWild === false
+          ? course.hints.caught
+          : course.hints.fights
         : input.offRoad
           ? course.hints.longWay
           : course.hints.road;
@@ -539,7 +581,7 @@ export function racerWonLines(course: RaceCourse, input: RaceResultInput): strin
 export function perfectTrophyLine(course: RaceCourse, trophyName: string, again: boolean): string {
   return again
     ? `${course.judge.name}: Another PERFECT - and the ${trophyName.toUpperCase()} again. Get it home this time.`
-    : `${course.judge.name}: A PERFECT. I've timed this line forty years and never written one down. Take the ${trophyName.toUpperCase()}.`;
+    : `${course.judge.name}: A PERFECT. I've timed every race ${course.racer.name} ever ran and never written one of those down. Take the ${trophyName.toUpperCase()}.`;
 }
 
 /** Said on YES when the player is not on the chalk mark: the count waits for them. */
@@ -567,13 +609,6 @@ export function offTheBikeLine(course: RaceCourse): string {
 /** How far a GOLD may miss PERFECT and still be told what it was. */
 export const NEAR_PERFECT_MS = 200;
 
-/**
- * The frame the GO itself takes, which nobody can win back: a key held through
- * the count still starts its step a frame after GO (`tools/playtest/race.mjs
- * --hold` lands its first step at 167ms at 60fps).
- */
-export const GO_FRAME_MS = 17;
-
 /** The floor in steps, which PERFECT is. */
 function floorSteps(course: RaceCourse): number {
   return Math.round(course.perfectMs / STEP_DURATION_MS);
@@ -586,10 +621,11 @@ function floorSteps(course: RaceCourse): number {
 function perfectTip(course: RaceCourse, input: RaceResultInput): string | null {
   // Any fight-free GOLD short of PERFECT is told why, however far short:
   // the Repel line is for a run that met something in the reeds.
-  if (input.medal !== 'gold' || input.fightMs > 0 || isPerfect(course, input.timeMs)) return null;
+  // A save that has run the floor is never taught it again.
+  if (input.medal !== 'gold' || input.fightMs > 0 || input.hadPerfect || isPerfect(course, input.timeMs)) return null;
   const perfect = `${formatRaceTime(course.perfectMs)} is PERFECT`;
   if (input.steps !== undefined && input.steps > floorSteps(course) + 1) {
-    return `${perfect} - you took ${input.steps} steps where ${floorSteps(course)} will do. Straight through the reeds is shorter - spray a Repel first.`;
+    return `${perfect} - you took ${input.steps} steps where ${floorSteps(course)} will do. Out of the ride, wade straight down to the door instead of round by the dry way - spray a Repel first.`;
   }
   if (input.steps !== undefined && input.steps > floorSteps(course)) {
     return `${perfect} - and a step too many kept you off it: ${input.steps} where ${floorSteps(course)} will do.`;
@@ -597,13 +633,15 @@ function perfectTip(course: RaceCourse, input: RaceResultInput): string | null {
   // On the floor's steps with no fight, every millisecond over it is a stand:
   // at GO, or at a corner. Name the bigger, with what it cost - there is only a
   // tenth to spare, so no stand is too small to be the reason.
-  const atGo = Math.max(0, (input.startLagMs ?? 0) - GO_FRAME_MS);
+  const atGo = Math.max(0, input.startLagMs ?? 0);
   const atCorners = Math.max(0, input.cornerLossMs ?? 0);
   if (atGo === 0 && atCorners === 0) return null;
-  const cost = (ms: number) => (ms < 100 ? 'a few hundredths' : formatGap(ms));
+  // What it cost is what the clock shows it cost: the tenths over PERFECT on screen.
+  const over = Math.max(1, shownTenths(input.timeMs) - shownTenths(course.perfectMs));
+  const cost = over === 1 ? 'a tenth' : `${over} tenths`;
   return atGo >= atCorners
-    ? `${perfect} - and you lost ${cost(atGo)} standing at GO. Keep the direction held down through my count.`
-    : `${perfect} - and you lost ${cost(atCorners)} on the corners. Let go of the old way and press the next one just before each turn.`;
+    ? `${perfect} - standing still at GO cost you ${cost}. Keep the direction held down through my count.`
+    : `${perfect} - stopping at the corners cost you ${cost}. Let go of the old way and press the next one just before each turn.`;
 }
 
 /** How a run went, from its trail: how many steps, and how long it stood before the first. */
@@ -697,7 +735,7 @@ export function raceChipLines(input: {
   lines.push(`LINE ${input.bearing ? `${input.bearing} ` : ''}${input.tilesToLine}`);
   if (input.bestMs !== undefined) {
     lines.push(
-      input.perfectMs !== undefined && input.bestMs > input.perfectMs
+      input.perfectMs !== undefined && shownTenths(input.bestMs) > shownTenths(input.perfectMs)
         ? `BEST ${formatRaceTime(input.bestMs)} PERFECT ${formatRaceTime(input.perfectMs)}`
         : `BEST ${formatRaceTime(input.bestMs)}`,
     );
@@ -738,6 +776,10 @@ export interface RaceState {
   bank: { purseDay?: string; trophy?: boolean; perfectTrophy?: boolean };
   /** Game time spent fighting since GO: what the racer ran while the player fought. */
   fightMs: number;
+  /** Whether any of that was a wild fight - the one a Repel keeps off (a hunter's is not). */
+  foughtWild: boolean;
+  /** The racer's untold word, said the first moment nothing is on screen (the racer going home). Kept on the race so a fight in between cannot lose it. */
+  notice?: string[];
   /** Whether the player has set foot off made ground since GO: who left the racer's road. */
   offRoad: boolean;
   /** Whether the player has come down the shortcut since GO. */
@@ -754,13 +796,14 @@ export interface RaceState {
 export function newRace(course: RaceCourse, line: readonly GridPosition[], racerKnew = false): RaceState {
   const crossing = line.findIndex((tile) => crossesLine(course, tile));
   const racerMs = racerTimeMs((crossing < 0 ? line.length - 1 : crossing) + 1);
-  return { courseId: course.id, phase: 'countdown', countdownMs: 0, clockMs: 0, line, racerMs, held: [], purseToPick: false, bank: {}, fightMs: 0, offRoad: false, tookShortcut: false, trail: [], racerKnew };
+  return { courseId: course.id, phase: 'countdown', countdownMs: 0, clockMs: 0, line, racerMs, held: [], purseToPick: false, bank: {}, fightMs: 0, foughtWild: false, offRoad: false, tookShortcut: false, trail: [], racerKnew };
 }
 
 /** Charged game time while a fight is on: the racer runs on (`BattleScene` asks this). */
-export function chargeFight(race: RaceState | undefined, deltaMs: number): void {
+export function chargeFight(race: RaceState | undefined, deltaMs: number, wild = false): void {
   if (race?.phase === 'running') {
     race.clockMs += Math.max(0, deltaMs);
     race.fightMs += Math.max(0, deltaMs);
+    if (wild) race.foughtWild = true;
   }
 }

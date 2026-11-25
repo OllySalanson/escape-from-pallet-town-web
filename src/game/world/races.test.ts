@@ -18,6 +18,8 @@ import {
   judgeLines,
   racerArrivesLines,
   racerWonLines,
+  newRace,
+  chargeFight,
   raceGossipAt,
   racerKnowsTheWay,
   raceLineWord,
@@ -32,6 +34,7 @@ import {
 import { createRunTrainerEncounters } from './trainers';
 import { TRADER_BARTERS } from '../hub/trader';
 import file from './maps/greystoneVale.json';
+import { MAX_CALL_LENGTH } from './villageCalls';
 
 /**
  * THE MERE DASH measured on the real vale, so a redraw of Millbrook or Reedmere
@@ -163,7 +166,12 @@ describe('THE MERE DASH, on the vale as it is drawn', () => {
     // wade to the door, and nowhere else.
     const dry = bestWay(open, from, 3);
     expect(dry.steps * STEP_DURATION_MS).toBeLessThan(course.goldMs - 300);
-    expect(dry.wild).toBeLessThanOrEqual(6);
+    // Dry from end to end: GOLD down the ride is skill, never a coin flip in the
+    // grass (the overnight tester met a fight on 5 runs of 5 when it waded six tiles).
+    expect(dry.wild).toBe(0);
+    // And the reeds' dry way, shut ride and all: SILVER is skill too.
+    const reedsDry = bestWay(shut, from, 3);
+    expect(reedsDry.wild).toBe(0);
   });
 });
 
@@ -176,6 +184,24 @@ describe('the floor', () => {
     expect(raceLineWord(course, { medal: 'gold', timeMs: course.perfectMs })).toBe('PERFECT 0:09.3');
     expect(raceLineWord(course, { medal: 'gold', timeMs: 10_350 })).toBe('GOLD 0:10.3');
     expect(raceLineWord(course, { medal: null, timeMs: 23_000 })).toBe('2ND 0:23.0');
+  });
+});
+
+describe('the line', () => {
+  // A crossing is called inside the step that lands on it, before warps,
+  // pickups, landmarks and watches: so the line must stand where none is.
+  it('stands on plain planks: no warp, way out, find, grass or trainer\u2019s watch', () => {
+    const raw = file as unknown as { exits: { x: number; y: number }[]; itemSpots: { x: number; y: number }[] };
+    for (const tile of course.finish.tiles) {
+      expect(shut.warps.some((warp) => warp.source.x === tile.x && warp.source.y === tile.y)).toBe(false);
+      expect(raw.exits.some((exit) => exit.x === tile.x && exit.y === tile.y)).toBe(false);
+      expect(raw.itemSpots.some((spot) => spot.x === tile.x && spot.y === tile.y)).toBe(false);
+      expect(shut.tallGrass[tile.y][tile.x]).toBe(false);
+      expect(shut.pois.some((poi) => poi.position.x === tile.x && poi.position.y === tile.y)).toBe(false);
+      for (const trainer of createRunTrainerEncounters().filter((one) => one.mapId === shut.id)) {
+        expect(Math.abs(trainer.position.x - tile.x) + Math.abs(trainer.position.y - tile.y)).toBeGreaterThan(6);
+      }
+    }
   });
 });
 
@@ -246,11 +272,17 @@ describe('what LINNET says', () => {
     const back = raceOfferLines(course, { runs: 2, wins: 1, bestMs: 14_200, medal: 'silver' }, true, true);
     expect(back[0]).toContain('Your best: 0:14.2 SILVER');
     expect(back[0]).toContain("I know the reeds' dry way now");
-    expect(back[1]).toContain('come back tomorrow');
+    expect(back[1]).toContain('the purse is gone till tomorrow');
+    // Every offer says what each mark pays, every raid - a GOLD holder still has P60 to race for.
+    expect(back[1]).toBe('BRONZE beats me: ₽30. SILVER, under 0:16.5: ₽40. GOLD, under 0:11.0: ₽60 - the purse is gone till tomorrow.');
+    expect(offer).toContain("GOLD, under 0:11.0: ₽60 - and the day's first GOLD takes the purse, any evolution stone you like. Lose: ₽10 for the legs.");
+    // Each mark's time said once.
+    expect(offer.split('0:11.0').length).toBe(2);
     // The ride still shut: she has not learned anything to wall them out with.
     expect(raceOfferLines(course, { runs: 2, wins: 1, bestMs: 14_200, medal: 'silver' }, true, false)[0]).not.toContain('dry way');
     // Asked again the same raid after a NO: short.
     expect(raceOfferLines(course, undefined, false, false, true)).toEqual(['LINNET: Changed your mind?']);
+    expect(raceOfferLines(course, { runs: 9, wins: 8, bestMs: 9_316, medal: 'gold', perfect: true }, false, true)[0]).toContain('Your best: 0:09.3 PERFECT');
   });
 
   it('lets the judge call a win, and the racer say their piece as they run in', () => {
@@ -282,8 +314,12 @@ describe('what LINNET says', () => {
     expect(ride).not.toContain('Bill');
     // The tenth identical win is not met with the first one's surprise.
     expect(racerArrivesLines(course, { ...input, beatenBefore: true }).join(' ')).toContain('Again?!');
-    expect(racerArrivesLines(course, { ...input, medal: 'gold', timeMs: 10_500, firstGold: false, hadPerfect: true }).join(' ')).toContain("You've done it in 0:09.3");
-    expect(racerArrivesLines(course, { ...input, medal: 'gold', timeMs: 9_300 }).join(' ')).toContain('Not a step wasted');
+    // A PERFECT holder grinding the purse down the dry ride, run as the game hands it over (with its shape):
+    // reminded of their own floor, never taught it.
+    const perfectHolder = racerArrivesLines(course, { ...input, medal: 'gold', tookShortcut: true, shortcutOpen: true, timeMs: 10_200, firstGold: false, hadPerfect: true, steps: 68, startLagMs: 0, cornerLossMs: 0, fightMs: 0 }).join(' ');
+    expect(perfectHolder).toContain("You've done it in 0:09.3");
+    expect(perfectHolder).not.toContain('steps where');
+    expect(racerArrivesLines(course, { ...input, medal: 'gold', timeMs: 9_300 }).join(' ')).toBe("LINNET: REEVE says not a step wasted. Not ONE. I'm going to be sick.");
     // Once the ride is cut it is no longer grown shut.
     expect(racerArrivesLines(course, { ...input, shortcutOpen: true }).join(' ')).toContain('open now');
     // The first GOLD is the best run she has ever seen; the tenth is not.
@@ -295,32 +331,57 @@ describe('what LINNET says', () => {
     // A GOLD a tenth or two off the floor is told it was the start.
     // What kept it off PERFECT, read off the run: a stand at GO, or a step too many - and never in place of a first GOLD's line.
     const near = { ...input, medal: 'gold' as const, timeMs: 9_450, firstGold: false };
-    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 150, cornerLossMs: 0 }).join(' ')).toContain('lost 0.1s standing at GO');
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 150, cornerLossMs: 0 }).join(' ')).toContain('standing still at GO cost you a tenth');
     expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 150, cornerLossMs: 0 }).join(' ')).toContain('Keep the direction held down through my count');
     expect(racerArrivesLines(course, { ...near, steps: 63, startLagMs: 20, cornerLossMs: 0 }).join(' ')).toContain('63 where 62 will do');
     // The likeliest miss: a prompt start, the floor's steps, a frame or two lost at each corner.
     const corners = racerArrivesLines(course, { ...near, steps: 62, startLagMs: 17, cornerLossMs: 120 }).join(' ');
-    expect(corners).toContain('lost 0.1s on the corners');
+    expect(corners).toContain('stopping at the corners cost you a tenth');
     expect(corners).toContain('Let go of the old way');
     // A fight-free run on the floor's steps always hears what it lost, never "spray a Repel".
     expect(corners).not.toContain('Repel');
-    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 17, cornerLossMs: 0 }).join(' ')).toContain('GOLD again');
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 0, cornerLossMs: 0 }).join(' ')).toContain('GOLD again');
     // A first GOLD has never been told PERFECT is there: the tip says what it is.
     const first = racerArrivesLines(course, { ...near, firstGold: true, steps: 62, startLagMs: 150, cornerLossMs: 0 });
     expect(first[0]).toContain('best run');
     expect(first[1]).toContain('0:09.3 is PERFECT');
     expect(raceRunShape([83, 169, 0, 82, 169, 210, 81, 169, 360, 80, 169, 600])).toEqual({ steps: 3, startLagMs: 60, cornerLossMs: 90 });
     // Far off PERFECT and fight-free is still told why - never the Repel line meant for a fight.
-    const late = racerArrivesLines(course, { ...near, steps: 62, startLagMs: 250, cornerLossMs: 0, timeMs: 9_550 }).join(' ');
-    expect(late).toContain('GOLD again. 0:09.3 is PERFECT - and you lost 0.2s standing at GO');
+    const late = racerArrivesLines(course, { ...near, steps: 62, startLagMs: 350, cornerLossMs: 0, timeMs: 9_650 }).join(' ');
+    expect(late).toContain('GOLD again. 0:09.3 is PERFECT - standing still at GO cost you 3 tenths');
     const round = racerArrivesLines(course, { ...near, steps: 68, startLagMs: 17, cornerLossMs: 0, timeMs: 10_217 }).join(' ');
-    expect(round).toContain('you took 68 steps where 62 will do');
-    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 60, cornerLossMs: 0, timeMs: 9_420 }).join(' ')).toContain('a few hundredths');
+    expect(round).toContain('you took 68 steps where 62 will do. Out of the ride, wade straight down to the door');
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 60, cornerLossMs: 0, timeMs: 9_420 }).join(' ')).toContain('standing still at GO cost you a tenth');
     expect(racerArrivesLines(course, { ...near, fightMs: 1500, timeMs: 10_800 }).join(' ')).toContain('Spray a Repel');
+    // "So close!" by the tenths shown: two runs that both read 0:09.5 hear the same.
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 200, cornerLossMs: 0, timeMs: 9_500 })[0]).toContain('So close!');
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 220, cornerLossMs: 0, timeMs: 9_520 })[0]).toContain('So close!');
+    // A GOLD holder down the ride and short of it is reminded of their own best, not taught the par.
+    const holder = racerArrivesLines(course, { ...input, tookShortcut: true, fightMs: 1500, timeMs: 12_100, firstGold: false, bestMs: 10_300 }).join(' ');
+    expect(holder).toContain("You've run it in 0:10.3");
+    expect(holder).not.toContain('is in there');
     expect(gaveUpWaitingLine(course)).toBe('LINNET gave up waiting at the chalk mark.');
+    // The judge stands where his figure does, so his stopwatch silence finds him.
+    const reeve = getWorldMap('greystone-vale').entities.find((entity) => entity.dialogLines.some((line) => line.includes('the stopwatch was the toll')));
+    expect(reeve?.position).toEqual(course.judge.at);
+    // The hints never send a player 'through the reeds' for the floor: that is the lane side's way.
+    expect(course.hints.shortcut).toContain('from the lane');
+    expect(course.hints.shortcutOpen).toContain('from the lane');
+    // A ride run lost by seconds stood about on the way; only a whisker is "by a hair".
+    const lostRide = (timeMs: number) =>
+      racerWonLines(course, { ...input, outcome: 'lost', medal: null, tookShortcut: true, fightMs: 0, timeMs, racerMs: 15_450 }).join(' ');
+    expect(lostRide(15_600)).toContain('by a hair');
+    expect(lostRide(20_850)).toContain('5.4s behind me - you stood about on the way');
+    expect(perfectTrophyLine(course, 'Glass Ornament', false)).toContain('every race LINNET ever ran');
+    // Beaten, she calls for a rematch, never "Nobody beats me!" - and every call fits a bubble.
+    for (const record of [{ runs: 2, wins: 1, medal: 'silver' as const }, { runs: 9, wins: 7, medal: 'gold' as const, perfect: true as const }]) {
+      const calls = course.beatenCalls(record);
+      expect(calls.join(' ')).not.toContain('Nobody beats me');
+      for (const call of calls) expect(call.length).toBeLessThanOrEqual(MAX_CALL_LENGTH);
+    }
     // The gap she quotes is the gap between the times on screen.
     expect(racerWonLines(course, { ...input, outcome: 'lost', medal: null, timeMs: 23_000, racerMs: 22_800 }).join(' ')).toContain('Beat you by 0.2s!');
-    expect(perfectTrophyLine(course, 'Glass Ornament', false)).toContain('never written one down');
+    expect(perfectTrophyLine(course, 'Glass Ornament', false)).toContain('never written one of those down');
     expect(perfectTrophyLine(course, 'Glass Ornament', true)).toContain('Get it home this time');
     expect(toeTheLineLine(course, true)).toContain('Off the bike!');
     expect(toeTheLineLine(course, false)).toContain('the white one');
@@ -353,6 +414,27 @@ describe('what LINNET says', () => {
     expect(lost(0, true, true)).toContain('never beat me');
   });
 
+  it('tells a fight on a dry line for what it was: a hunter, which no Repel keeps off', () => {
+    const base = { outcome: 'lost' as const, fightMs: 4000, offRoad: true, racerKnew: false, tookShortcut: false, shortcutOpen: false, firstGold: true, hadPerfect: false, beatenBefore: false, timeMs: 23_400, racerMs: 22_800, medal: null, newBest: false, prize: { money: 10, purse: false, trophy: false } };
+    expect(racerWonLines(course, { ...base, foughtWild: true }).join(' ')).toContain('pack a Repel');
+    expect(racerWonLines(course, { ...base, foughtWild: false }).join(' ')).toContain('Run from them, and keep running');
+    expect(racerWonLines(course, { ...base, foughtWild: false }).join(' ')).not.toContain('Repel');
+    const gold = { ...base, outcome: 'won' as const, medal: 'gold' as const, tookShortcut: true, shortcutOpen: true, timeMs: 10_600, racerMs: 15_450, firstGold: false, beatenBefore: true, prize: { money: 60, purse: false, trophy: false } };
+    expect(racerArrivesLines(course, { ...gold, foughtWild: false }).join(' ')).toContain("out of the ride and straight down through the reeds to the door. And don't stop for anybody");
+    expect(racerArrivesLines(course, { ...gold, foughtWild: true }).join(' ')).toContain('Spray a Repel first');
+  });
+
+  it('remembers whether a fight in the race was wild, and only a running race', () => {
+    const race = newRace(course, [{ x: 0, y: 0 }, ...course.finish.tiles]);
+    chargeFight(race, 100, true);
+    expect(race.foughtWild).toBe(false);
+    race.phase = 'running';
+    chargeFight(race, 100, false);
+    expect(race.foughtWild).toBe(false);
+    chargeFight(race, 100, true);
+    expect(race.foughtWild).toBe(true);
+  });
+
   it('calls a dead heat the player\u2019s, on the tenth the screen shows', () => {
     expect(raceOutcome(15_450, 15_450)).toBe('won');
     expect(raceOutcome(15_467, 15_450)).toBe('won');
@@ -371,6 +453,9 @@ describe('what LINNET says', () => {
       bestMs: 15_200,
     });
     expect(lines).toEqual(['RACE 0:07.4', 'LINNET: THE HUMMOCK', 'LINE SW 41', 'BEST 0:15.2']);
+    // A best that reads as the floor is not shown the floor to chase.
+    const atFloor = { course, clockMs: 0, racerPlace: null, racerHomeMs: null, waitLeftMs: null, bearing: 'S', tilesToLine: 60, bestMs: 9_316, perfectMs: 9_300 };
+    expect(raceChipLines(atFloor)).toContain('BEST 0:09.3');
     expect(raceChipLines({ course, clockMs: 0, racerPlace: null, racerHomeMs: null, waitLeftMs: null, bearing: 'W', tilesToLine: 2, bestMs: undefined, liningUp: true })).toEqual([
       'RACE: TOE THE MARK',
       'MARK W 2',
