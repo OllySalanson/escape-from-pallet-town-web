@@ -471,9 +471,6 @@ export class MapMakerScene extends Phaser.Scene {
     this.panel = 'map';
     this.painter = new MapPainter();
     this.overlay = new MenuOverlay(this, 'map-maker pixel-ui', (event) => this.handleKey(event));
-    // Rows here are tools, and a pointer crossing them on its way to the map
-    // must not choose one: it only lights what it is over.
-    this.overlay.pointerRule = 'previews';
     // Enter in a one-line field is done with it: the field is committed and the
     // cursor goes back to the tools, so the next key is a shortcut again rather
     // than a letter typed in front of the name. On key up, because the keyboard

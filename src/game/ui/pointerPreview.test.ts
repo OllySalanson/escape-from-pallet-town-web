@@ -38,17 +38,19 @@ function screen() {
   const backdrop = new FakeElement('backdrop');
   let cursor: FakeElement | null = cards[0];
   const help: (string | null)[] = [];
-  const preview = new PointerPreview<FakeElement>(
-    { help: (control) => help.push(control?.name ?? null), cursor: () => cursor },
-    'previews',
-  );
+  const pointed: (string | null)[] = [];
+  const preview = new PointerPreview<FakeElement>({
+    help: (control) => help.push(control?.name ?? null),
+    pointed: (control) => pointed.push(control?.name ?? null),
+    cursor: () => cursor,
+  });
   const click = (control: FakeElement): void => {
     // A button takes focus when it is pressed; that, not the pointer, is what
     // moves the cursor - and the overlay tells the preview it moved.
     cursor = control;
     preview.cursorMoved();
   };
-  return { list, cards, seelName, teach, backdrop, preview, help, click, cursor: () => cursor };
+  return { list, cards, seelName, teach, backdrop, preview, help, pointed, click, cursor: () => cursor };
 }
 
 describe('a pointer that only previews', () => {
@@ -105,20 +107,23 @@ describe('a pointer that only previews', () => {
   });
 });
 
-describe('a pointer that moves the cursor', () => {
-  it('is still what every other screen does', () => {
-    const { cards, preview, help } = screen();
-    preview.rule = 'moves-cursor';
+/**
+ * The navigation audit (25 Nov 2026): every other screen let the pointer move
+ * the cursor, so a pointer left resting on JUMP IN decided what the next Enter
+ * did. Olly ruled that pointing only lights a thing, on every screen, so there
+ * is no rule to choose any more - and a screen whose card follows its cursor
+ * is told what is pointed at instead, to answer it the same way.
+ */
+describe('a pointer on any screen', () => {
+  it('tells the screen what it rests on, and when it has left, without focusing anything', () => {
+    const { cards, backdrop, preview, pointed, cursor } = screen();
     preview.moved(cards[2]);
-    expect(cards[2].focus).toHaveBeenCalledWith({ preventScroll: true });
-    // It does not preview on top of that: the focus is the answer.
-    expect(help).toEqual([]);
-  });
-
-  it('does not refocus the control the cursor is already on', () => {
-    const { cards, preview } = screen();
-    preview.rule = 'moves-cursor';
-    preview.moved(cards[0]);
-    expect(cards[0].focus).not.toHaveBeenCalled();
+    preview.moved(cards[1]);
+    preview.moved(backdrop);
+    expect(pointed).toEqual(['seel', 'lapras', null]);
+    expect(cursor()?.name).toBe('squirtle');
+    for (const card of cards) {
+      expect(card.focus).not.toHaveBeenCalled();
+    }
   });
 });

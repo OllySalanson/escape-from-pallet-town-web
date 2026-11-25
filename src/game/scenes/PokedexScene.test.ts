@@ -80,6 +80,25 @@ describe('THE POKéDEX by keyboard', () => {
     expect(dex.overlay.focus).toHaveBeenLastCalledWith('[data-dex="16"]', '[data-close]');
   });
 
+  it('answers a tile pointed at on the card, without moving the cursor, and the cursor\'s again once the pointer leaves', () => {
+    // The navigation audit (25 Nov 2026): the pointer never moves the cursor, so
+    // the card answers what is pointed at instead (`ui/pointerPreview.ts`).
+    const dex = pokedex();
+    const pane = { dataset: {} as Record<string, string>, innerHTML: '', offsetParent: {} };
+    dex.overlay.root.querySelector.mockImplementation((selector: string) => (selector === '[data-dex-card]' ? pane : null));
+    const pointed = (answer: (control: unknown) => void, dexId: number | null): void =>
+      answer(dexId === null ? null : { closest: () => ({ dataset: { dex: String(dexId) } }) });
+    const answer = (control: unknown): void =>
+      (dex as unknown as { answerPointed(control: unknown): void }).answerPointed(control);
+
+    pointed(answer, 143);
+    expect(pane.dataset.dexCard).toBe('143');
+    expect((dex as unknown as { cursor: number }).cursor).toBe(16);
+
+    pointed(answer, null);
+    expect(pane.dataset.dexCard).toBe('16');
+  });
+
   it('hands the arrow keys to the cursor on the grid, and keeps them from the page', () => {
     const dex = pokedex();
     for (const arrow of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) {

@@ -3251,11 +3251,11 @@ body.touch-play .feedback-tab {
    general rule is one faint pixel laid over a card's frame, which on a card this
    size reads as nothing at all; this is a dark teal ring inside the frame, with
    the frame and its clear corners left alone. */
-:where(.pixel-ui[data-pointer='previews']) .starter-card:hover:not(:focus) {
+:where(.pixel-ui) .starter-card:hover:not(:focus) {
   --fill: var(--cream-lit);
   box-shadow: none;
 }
-:where(.pixel-ui[data-pointer='previews']) .starter-card:hover:not(:focus)::after {
+:where(.pixel-ui) .starter-card:hover:not(:focus)::after {
   content: '';
   position: absolute;
   inset: var(--u);
@@ -4020,7 +4020,7 @@ body.touch-play .feedback-tab {
    different controls at once and must never look alike. The cursor is the lit
    fill and the drawn triangle; the pointer is one pixel of rule inside the
    control, and nothing on the control it is over changes but that. */
-:where(.pixel-ui[data-pointer='previews']) button:hover:not(:focus) {
+:where(.pixel-ui) button:hover:not(:focus) {
   box-shadow: inset 0 0 0 var(--u) var(--ink-soft);
 }
 
