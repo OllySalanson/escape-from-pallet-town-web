@@ -1240,13 +1240,13 @@ export const WORKSHOP_DISPLAY: readonly RungDisplay[] = [
   {
     upgradeId: 'recovery-bay-2',
     name: 'HEALING MACHINE II',
-    note: 'Joy quotes half',
+    note: 'A revive costs half',
     props: [{ name: 'healingMachineModel', x: 11, y: 7 }],
   },
   {
     upgradeId: 'quarantine-ward',
     name: 'THE WARD’S MONITORS',
-    note: 'One heal a raid, off the clock',
+    note: 'One revive a raid, off the clock',
     props: [{ name: 'whMonitorDesk', x: 5, y: 2 }],
   },
 ];
@@ -1261,19 +1261,19 @@ export const CENTER_DISPLAY: readonly RungDisplay[] = [
   {
     upgradeId: 'recovery-bay-1',
     name: 'HEALING MACHINE I',
-    note: 'Every price a quarter less',
+    note: 'A revive a quarter less',
     props: [{ name: 'pcHealingMachine', x: 2, y: 0 }],
   },
   {
     upgradeId: 'recovery-bay-2',
     name: 'HEALING MACHINE II',
-    note: 'Every price halved',
+    note: 'A revive costs half',
     props: [{ name: 'pcHealingMachine', x: 12, y: 0 }],
   },
   {
     upgradeId: 'quarantine-ward',
     name: 'THE WARD',
-    note: 'One heal a raid, off the clock',
+    note: 'One revive a raid, off the clock',
     props: [{ name: 'wardBed', x: 2, y: 5 }],
   },
 ];

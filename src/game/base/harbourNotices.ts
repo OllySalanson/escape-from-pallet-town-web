@@ -14,7 +14,7 @@ export const HARBOUR_NOTICES: readonly string[] = [
   'The S.S. ANNE\'s captain lends his spyglass on the long pier. Go after dark.',
   'Raid after nine at night and the wild Pokémon are not the ones you met by day.',
   'The DAY-CARE MAN raises one Pokémon while you raid: a level every two raids, and no fee.',
-  'NURSE JOY heals in full, and charges in time: what she spends comes off your next raid\'s clock.',
+  'NURSE JOY heals for free. Only a faint costs you: bringing one round comes off your next raid\'s clock.',
   'Lose a raid and you lose what you took into it - unless it rode home in the secure container.',
   'BILL trades rods, HMs and evolution stones for what you bring home. Never for money.',
   'The telly in THE BOLTHOLE says which rival is hunting tonight.',

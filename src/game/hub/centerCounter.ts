@@ -2,6 +2,7 @@ import type { RaidProgress, RestoredGame } from '../save/SaveManager';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { awayOnRaid, type RaidInFlight } from '../run/raidInFlight';
 import {
+  freeHealApplies,
   formatRecoveryClock,
   isFreeHealDay,
   MAX_PENDING_RECOVERY_MS,
@@ -49,7 +50,7 @@ export function recoveryTermsFor(
  * the rule said beside it, and again after, was the same thing three times in
  * one visit (the first-time-friend retest, 22 Nov 2026).
  */
-export const HEAL_RULE_LINE = `Healing costs at most ${formatRecoveryClock(MAX_PENDING_RECOVERY_MS)} of a raid, and the first each day is free.`;
+export const HEAL_RULE_LINE = `Healing is free. Bringing a Pokémon round from a faint costs at most ${formatRecoveryClock(MAX_PENDING_RECOVERY_MS)} of a raid, and the first each day is free.`;
 
 type CounterGame = Pick<RestoredGame, 'stash' | 'pendingRecoveryMs' | 'wardTreatmentsUsed' | 'freeHealDay'> & {
   readonly raidProgress: Pick<RaidProgress, 'workshopUpgrades'>;
@@ -116,7 +117,7 @@ export function joyRailLine(game: CounterGame, free = false, now: Date = new Dat
     return 'Nurse Joy can help.';
   }
   const terms = recoveryTermsFor(game.raidProgress.workshopUpgrades, game.wardTreatmentsUsed, game.freeHealDay, now);
-  if (terms.freeToday) {
+  if (freeHealApplies(game.stash, ids, terms)) {
     return "Nurse Joy's first heal today is free.";
   }
   const quoteMs = quoteRecovery(game.stash, game.pendingRecoveryMs, ids, terms);
@@ -162,6 +163,8 @@ export function centerOffer(game: CounterGame, free = false, now: Date = new Dat
     return { lines: [...outLine, `${teamCondition(game.stash, away) ?? 'Somebody needs me'}. ${capped}`, raidFirst] };
   }
   const quoteMs = free ? 0 : quoteRecovery(game.stash, pending, ids, terms);
+  // Spent only on a faint: mending a scratch is free on any day.
+  const freeToday = freeHealApplies(game.stash, ids, terms);
   const treated = hurt.filter((stored) => !heldBack.includes(stored.id));
   const them =
     treated.length === 1
@@ -170,7 +173,7 @@ export function centerOffer(game: CounterGame, free = false, now: Date = new Dat
         ? treated.length === 2 ? 'both of them' : `all ${treated.length} of them`
         : `${treated.length} of them`;
   const price =
-    terms.freeToday && !free
+    freeToday && !free
       ? "Your first heal today is free: it won't cost your next raid a second."
       : quoteMs === 0
       ? "Healing won't cost your next raid a second."
@@ -183,8 +186,8 @@ export function centerOffer(game: CounterGame, free = false, now: Date = new Dat
       ...outLine,
       `${teamCondition(game.stash, away) ?? 'Somebody needs me'}. ${price}`,
       ...(heldBack.length > 0 ? [`${capped} The rest must wait for a raid.`] : []),
-      ...(free || terms.freeToday ? [] : wardLines(game, pending, ids, terms)),
-      ...(free || terms.freeToday ? [] : [HEAL_RULE_LINE]),
+      ...(free || freeToday ? [] : wardLines(game, pending, ids, terms)),
+      ...(free || freeToday || quoteMs === 0 ? [] : [HEAL_RULE_LINE]),
     ],
     question: `Shall I heal ${them}?`,
     // With nobody able to raid, the only useful answer is yes: a question opening
@@ -214,9 +217,8 @@ function wardLines(game: CounterGame, pending: number, ids: readonly string[], t
   if (bedded.length === 0) {
     return [];
   }
-  const fainted = bedded.some((pokemon) => pokemon.isFainted);
   return [
-    `THE WARD takes ${inWords(bedded.map((pokemon) => pokemon.name))}, so ${bedded.length === 1 ? 'its' : 'their'} healing is free.${fainted ? ' Bringing a Pokémon round from a faint never is.' : ''}`,
+    `THE WARD takes ${inWords(bedded.map((pokemon) => pokemon.name))}, so bringing ${bedded.length === 1 ? 'it' : 'them'} round is free.`,
   ];
 }
 

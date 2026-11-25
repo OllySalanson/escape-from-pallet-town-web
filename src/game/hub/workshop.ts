@@ -180,8 +180,8 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     id: 'recovery-bay-1',
     icon: 'super-potion',
     name: 'Healing machine I',
-    effect: 'Treatment prices drop a quarter.',
-    detail: 'Brock fits the Center with a better machine: every price Nurse Joy quotes - healing, curing and reviving - costs a quarter less raid time.',
+    effect: 'Reviving costs a quarter less.',
+    detail: 'Brock fits the Center with a better machine: bringing a Pokémon round from a faint - the one thing Nurse Joy charges for - costs a quarter less raid time.',
     cost: { supplies: [{ itemId: 'linen-roll', quantity: 4 }] },
     recoveryPriceShare: 0.75,
   },
@@ -189,8 +189,8 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     id: 'recovery-bay-2',
     icon: 'super-potion',
     name: 'Healing machine II',
-    effect: 'Treatment prices drop to half.',
-    detail: 'A second machine beside the first: every price Nurse Joy quotes costs half the raid time it started at.',
+    effect: 'Reviving costs half.',
+    detail: 'A second machine beside the first: bringing a Pokémon round from a faint costs half the raid time it started at.',
     requires: 'recovery-bay-1',
     cost: {
       supplies: [
@@ -204,9 +204,9 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     id: 'quarantine-ward',
     icon: 'antidote',
     name: 'Quarantine ward',
-    effect: 'One heal per raid, free of clock.',
+    effect: 'One revive per raid, free of clock.',
     detail:
-      'Once per raid, Nurse Joy heals and cures one Pokémon free of clock - whoever it saves the most on. A revive still costs its premium.',
+      'Once per raid, Nurse Joy brings one fainted Pokémon round free of clock.',
     cost: {
       supplies: [
         { itemId: 'linen-roll', quantity: 2 },
