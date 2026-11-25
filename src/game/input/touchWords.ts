@@ -58,6 +58,9 @@ export function touchWording(text: string): string {
   for (const [pattern, word] of KEY_WORDS) {
     said = said.replace(pattern, word);
   }
+  // A button whose name is already what it does is said once: the glass's
+  // "[ESC] BACK" is "[BACK]", never "[BACK] BACK".
+  said = said.replace(/\[(BACK|OK)\] \1\b/g, '[$1]');
   // A key named on the end of a button's own words - "DROP ONE [X]" - is
   // the button itself to a finger, and the tray's key besides.
   return said.replace(/\s*\[[A-Z0-9]\]\s*$/, '');

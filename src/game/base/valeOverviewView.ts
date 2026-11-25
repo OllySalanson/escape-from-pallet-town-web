@@ -598,6 +598,19 @@ export class ValeOverviewView {
     }
   }
 
+  /**
+   * The glass's own letter keys, as the touch pad offers them
+   * (`input/touchShortcuts.ts`): ZOOM, and the next way in back and forward
+   * while there is more than one. OK and BACK are the pad's own buttons.
+   */
+  public padKeys(): string {
+    const zoom = keyHint(TELESCOPE_KEY_LETTERS.closer, 'ZOOM');
+    if (this.source.landings.length <= 1) {
+      return zoom;
+    }
+    return `${zoom}  [${TELESCOPE_KEY_LETTERS.wayBack}][${TELESCOPE_KEY_LETTERS.wayNext}] NEXT`;
+  }
+
   private listen(keys: OverviewKeys): void {
     if (keys.stepBack) {
       this.leave({ kind: 'back' });
@@ -1094,14 +1107,14 @@ export class ValeOverviewView {
     drawPixelWindow(on, { x: 0, y: top, width, height: OVERVIEW_BAR_HEIGHT }, { fill: PLATE_FILL, border: BRASS_DARK });
     const chipOf = (id: ChipId): Chip => this.chips.find((chip) => chip.id === id)!;
     chipOf('closer').text.setText(keyHint(TELESCOPE_KEY_LETTERS.closer, 'ZOOM'));
-    chipOf('step-back').text.setText(keyHint('SPACE', 'BACK'));
+    chipOf('step-back').text.setText(keyHint('ESC', 'BACK'));
     const ways = chipOf('ways').text;
     ways.setText(`${keyHint(TELESCOPE_KEY_LETTERS.wayBack, '').trim()} ${keyHint(TELESCOPE_KEY_LETTERS.wayNext, 'NEXT')}`).setVisible(manyWays);
     chipOf('go').text.setColor(onWayIn ? BRIGHT_WORDS : DIM_WORDS);
     // The whole row in the room there is, in the shorter words if it comes to it.
     const words = (move: string, go: string): void => {
       chipOf('move').text.setText(keyHint(move, 'MOVE'));
-      chipOf('go').text.setText(keyHint('ENTER', go));
+      chipOf('go').text.setText(keyHint('SPACE', go));
     };
     const measured = (): number => this.chips.filter((chip) => chip.text.visible).reduce((sum, chip) => sum + Math.ceil(chip.text.width) + 10, 0);
     words('ARROWS/WASD', 'DROP HERE');

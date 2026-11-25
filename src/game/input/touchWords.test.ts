@@ -11,6 +11,8 @@ describe('the game\'s words for its keys, on the touch pad', () => {
     expect(touchWording('[SPACE] BULBASAUR')).toBe('[OK] BULBASAUR');
     expect(touchWording('WALK UP TO A POKÉ BALL AND PRESS [SPACE]')).toBe('WALK UP TO A POKÉ BALL AND PRESS [OK]');
     expect(touchWording('[ESC] SKIP')).toBe('[BACK] SKIP');
+    // A button named for what it does is said once.
+    expect(touchWording('[Z] ZOOM  [SPACE] DROP HERE  [ESC] BACK')).toBe('[ZOOM]  [OK] DROP HERE  [BACK]');
     expect(touchWording('[ARROWS] WALK')).toBe('[D-PAD] WALK');
     expect(touchWording('ARROWS move · ENTER choose · ESC back')).toBe('D-PAD move · OK choose · BACK');
     expect(touchWording('ARROWS: move · SPACE: dig · ESC: stop')).toBe('D-PAD: move · OK: dig · BACK: stop');
