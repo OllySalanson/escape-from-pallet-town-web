@@ -8519,9 +8519,17 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!doorway) {
       return undefined;
     }
-    const steps = this.wayField(doorway.stand)[this.currentTile.y]?.[this.currentTile.x] ?? -1;
     const plan = this.runSession?.plan;
     const outForTheGym = plan !== undefined && !plan.contract && plan.stagedChase !== true;
+    // Near means the gym's own door. The first door on the walk can be a cave
+    // between: on a job, measured to GREYSTONE CAVES' mouth the gym won outside
+    // it and the job won inside, and the arrow walked the critic in and out of
+    // that door until the clock ran out (critic's review, 6.12, 25 Nov 2026).
+    const areas = this.currentMap.areas ?? [];
+    if (!outForTheGym && placedAreaAt(areas, doorway.arrives) !== placedAreaAt(areas, gym.inside)) {
+      return undefined;
+    }
+    const steps = this.wayField(doorway.stand)[this.currentTile.y]?.[this.currentTile.x] ?? -1;
     const reach = outForTheGym ? Number.POSITIVE_INFINITY : GYM_DOOR_NEAR_STEPS;
     if (steps < 0 || steps > reach) {
       return undefined;
