@@ -1524,6 +1524,11 @@ body.touch-play .feedback-tab {
   border-color: #55d6be;
   color: #bfe6cf;
 }
+.tp-chip.is-inert {
+  border-color: #2b3e59;
+  color: #4c6280;
+  box-shadow: none;
+}
 .tp-chip.is-pressed {
   background: #2b3e59;
   box-shadow: none;
@@ -1539,8 +1544,8 @@ body.touch-play .feedback-tab {
 .tp-icon {
   display: grid;
   place-items: center;
-  flex: 0 0 40px;
-  height: 40px;
+  flex: 0 0 44px;
+  height: 44px;
   border: var(--tp-unit) solid #2b3e59;
   background: #0b1220;
 }
