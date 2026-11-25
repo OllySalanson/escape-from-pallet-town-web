@@ -120,6 +120,8 @@ export interface RaceCourse {
    * and what they say instead: the village noticing is half of being proud of it.
    */
   readonly gossip: readonly RaceGossip[];
+  /** What the racer calls out as a raid goes past once the save has beaten them: a rematch, not a boast. */
+  readonly beatenCalls: (record: RaceRecord) => readonly string[];
 }
 
 /** A person or sign that says something else once the racer has been beaten. */
@@ -176,6 +178,10 @@ export const MERE_DASH: RaceCourse = {
     learned:
       "My dry way now, too! Through the reeds you'll never beat me. The woodcutter's ride - that one's yours.",
   },
+  beatenCalls: (record) =>
+    record.perfect
+      ? ['0:09.3... HOW?!', 'Rematch! Please!']
+      : ['Rematch!', "I've been practising!", 'Race you again?'],
   gossip: [
     {
       // Pip, her little brother, on the square.
@@ -313,6 +319,9 @@ export function racePrize(outcome: RaceOutcome, medal: RaceMedal | null, record:
 export function racerKnowsTheWay(record: RaceRecord | undefined, shortcutOpen: boolean): boolean {
   return shortcutOpen && (record?.medal === 'silver' || record?.medal === 'gold');
 }
+
+/** A ride run lost by less than this lost it at the start; more, and it stood about on the way. */
+export const BY_A_HAIR_MS = 500;
 
 /** A crossing within this of the racer's is a photo finish, and said as one. */
 export const PHOTO_FINISH_MS = 100;
@@ -527,7 +536,9 @@ export function racerWonLines(course: RaceCourse, input: RaceResultInput): strin
   const why = input.tookShortcut
     ? input.fightMs > 0
       ? "You found the ride - then stopped to fight in it. I don't stop."
-      : 'The ride, and still behind me - by a hair. Come off the mark the moment I say GO.'
+      : shownGap(input.timeMs, input.racerMs) < BY_A_HAIR_MS
+        ? 'The ride, and still behind me - by a hair. Come off the mark the moment I say GO.'
+        : `You found the ride and still came in ${formatGap(shownGap(input.timeMs, input.racerMs))} behind me - you stood about on the way. Don't stop once.`
     : input.racerKnew
       ? course.hints.learned
       : input.fightMs > 0
@@ -546,7 +557,7 @@ export function racerWonLines(course: RaceCourse, input: RaceResultInput): strin
 export function perfectTrophyLine(course: RaceCourse, trophyName: string, again: boolean): string {
   return again
     ? `${course.judge.name}: Another PERFECT - and the ${trophyName.toUpperCase()} again. Get it home this time.`
-    : `${course.judge.name}: A PERFECT. I've timed this line forty years and never written one down. Take the ${trophyName.toUpperCase()}.`;
+    : `${course.judge.name}: A PERFECT. I've timed every race ${course.racer.name} ever ran and never written one of those down. Take the ${trophyName.toUpperCase()}.`;
 }
 
 /** Said on YES when the player is not on the chalk mark: the count waits for them. */

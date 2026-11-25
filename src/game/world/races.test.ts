@@ -32,6 +32,7 @@ import {
 import { createRunTrainerEncounters } from './trainers';
 import { TRADER_BARTERS } from '../hub/trader';
 import file from './maps/greystoneVale.json';
+import { MAX_CALL_LENGTH } from './villageCalls';
 
 /**
  * THE MERE DASH measured on the real vale, so a redraw of Millbrook or Reedmere
@@ -343,9 +344,21 @@ describe('what LINNET says', () => {
     expect(holder).toContain("You've run it in 0:10.3");
     expect(holder).not.toContain('is in there');
     expect(gaveUpWaitingLine(course)).toBe('LINNET gave up waiting at the chalk mark.');
+    // A ride run lost by seconds stood about on the way; only a whisker is "by a hair".
+    const lostRide = (timeMs: number) =>
+      racerWonLines(course, { ...input, outcome: 'lost', medal: null, tookShortcut: true, fightMs: 0, timeMs, racerMs: 15_450 }).join(' ');
+    expect(lostRide(15_600)).toContain('by a hair');
+    expect(lostRide(20_850)).toContain('5.4s behind me - you stood about on the way');
+    expect(perfectTrophyLine(course, 'Glass Ornament', false)).toContain('every race LINNET ever ran');
+    // Beaten, she calls for a rematch, never "Nobody beats me!" - and every call fits a bubble.
+    for (const record of [{ runs: 2, wins: 1, medal: 'silver' as const }, { runs: 9, wins: 7, medal: 'gold' as const, perfect: true as const }]) {
+      const calls = course.beatenCalls(record);
+      expect(calls.join(' ')).not.toContain('Nobody beats me');
+      for (const call of calls) expect(call.length).toBeLessThanOrEqual(MAX_CALL_LENGTH);
+    }
     // The gap she quotes is the gap between the times on screen.
     expect(racerWonLines(course, { ...input, outcome: 'lost', medal: null, timeMs: 23_000, racerMs: 22_800 }).join(' ')).toContain('Beat you by 0.2s!');
-    expect(perfectTrophyLine(course, 'Glass Ornament', false)).toContain('never written one down');
+    expect(perfectTrophyLine(course, 'Glass Ornament', false)).toContain('never written one of those down');
     expect(perfectTrophyLine(course, 'Glass Ornament', true)).toContain('Get it home this time');
     expect(toeTheLineLine(course, true)).toContain('Off the bike!');
     expect(toeTheLineLine(course, false)).toContain('the white one');

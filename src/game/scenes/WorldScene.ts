@@ -1183,6 +1183,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private raceMedalHeld: RaceMedal | undefined;
   /** Whether the racer has made their offer this raid: a second ask is short. */
   private raceAsked = false;
+  /** The save's race records as this world was built, for the racers' calls. */
+  private raceRecordsSeen: Readonly<Record<string, RaceRecord>> | undefined;
   /** A race's word to be said the first moment nothing is on screen: the racer giving up. */
   private raceNotice: string[] | undefined;
   /** The best run on it, raced again as a see-through you (`world/raceGhost.ts`). */
@@ -1416,6 +1418,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.raceGhost = undefined;
     this.raceGhostSprite = undefined;
     this.raceNotice = undefined;
+    this.raceRecordsSeen = undefined;
     this.raceMedalHeld = undefined;
     this.raceAsked = false;
     this.raceMark = undefined;
@@ -3241,7 +3244,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         const sprite = this.npcSprites.get(entity.id) as Phaser.GameObjects.Sprite;
         const across = sprite.x / TILE_SIZE - x;
         const down = sprite.y / TILE_SIZE - y;
-        return { id: entity.id, distance: Math.hypot(across, down), calls: entity.calls ?? [] };
+        return { id: entity.id, distance: Math.hypot(across, down), calls: this.racerCalls(entity) ?? entity.calls ?? [] };
       });
     this.villageCall = advanceCalls(this.villageCall, {
       deltaMs,
@@ -4525,6 +4528,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const race = this.runSession?.race;
     const course = race ? courseById(race.courseId) : undefined;
     return race && course && course.mapId === this.currentMap.id ? { race, course } : null;
+  }
+
+  /**
+   * What a racer calls out once the save has beaten them (`RaceCourse.beatenCalls`):
+   * a rematch, not "Nobody beats me!". Read once a world, not every frame.
+   */
+  private racerCalls(entity: WorldEntity): readonly string[] | undefined {
+    const course = this.courseOfPerson(entity);
+    if (!course) return undefined;
+    this.raceRecordsSeen ??= new SaveManager().load()?.raidProgress.races ?? {};
+    const record = this.raceRecordsSeen[course.id];
+    return record && record.wins > 0 ? course.beatenCalls(record) : undefined;
   }
 
   /** Whether the racers stand this raid: in every raid, never in a maker's try. */
