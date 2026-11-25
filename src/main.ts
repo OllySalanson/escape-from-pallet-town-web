@@ -11,6 +11,8 @@ import { followTesterLink, installPlayCounter, isAutomatedBrowser } from './game
 import { installPixelText } from './game/ui/pixelText';
 import { onTouchPlayChange, touchPlay, watchTouchPlay } from './game/input/touchPlay';
 import { installTouchWording, rewordTexts } from './game/input/touchWords';
+import { watchMenuWords } from './game/ui/menuWords';
+import { menuLayer } from './game/display/menuStage';
 import { installTouchPad } from './game/ui/touchPad';
 import { audioManager } from './game/audio/AudioManager';
 import { pausesForWindow, watchWindowFocus } from './game/world/windowPause';
@@ -66,7 +68,12 @@ const touchPad = installTouchPad({
   soundMuted: () => audioManager.isMuted,
   wakeSound: () => void audioManager.activate(),
 });
-const stopRewording = onTouchPlayChange(() => rewordTexts(game.scene.scenes));
+// ...and so do the menu screens (`ui/menuWords.ts`).
+const menuWords = watchMenuWords(menuLayer(), touchPlay);
+const stopRewording = onTouchPlayChange(() => {
+  rewordTexts(game.scene.scenes);
+  menuWords.reword();
+});
 const stopWatchingViewport = watchViewport(game, { playing: touchPlay, onChange: onTouchPlayChange, place: (layout) => touchPad.place(layout) });
 // Counts play for the owner's STATS page, only on the published game, never for
 // a browser a program drives or one that asks not to be tracked, and a tester's
@@ -123,6 +130,7 @@ if (import.meta.hot) {
     stopWatchingViewport();
     stopWatchingTouch();
     stopRewording();
+    menuWords.stop();
     touchPad.destroy();
     feedbackDesk.destroy();
     stopWatchingFocus();

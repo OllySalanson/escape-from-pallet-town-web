@@ -29,6 +29,7 @@ const NAMED: Readonly<Record<string, SyntheticKey>> = {
   Enter: { code: 'Enter', key: 'Enter', keyCode: 13 },
   Escape: { code: 'Escape', key: 'Escape', keyCode: 27 },
   Backspace: { code: 'Backspace', key: 'Backspace', keyCode: 8 },
+  Tab: { code: 'Tab', key: 'Tab', keyCode: 9 },
 };
 
 /**

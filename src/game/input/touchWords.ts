@@ -1,4 +1,5 @@
 import { touchPlay } from './touchPlay';
+import type { TouchShortcut } from './touchShortcuts';
 
 /**
  * The game's words for its keys, said for the touch pad while it is played on
@@ -30,6 +31,8 @@ const KEY_WORDS: readonly (readonly [RegExp, string])[] = [
   [/\bARROWS(?:\/WASD)?(?=[\s:·,.]|$)/g, 'D-PAD'],
   [/\bArrows(?=\s)/g, 'D-PAD'],
   [/\b(?:SPACE|ENTER)\b/g, 'OK'],
+  // "ESC back" is BACK, and so is "O or ESC back": the button says the word.
+  [/\b(?:[A-Z] or )?ESC(?: or [A-Z])? back\b/g, 'BACK'],
   [/\bESC\b/g, 'BACK'],
 ];
 
@@ -53,7 +56,63 @@ export function touchWording(text: string): string {
   for (const [pattern, word] of KEY_WORDS) {
     said = said.replace(pattern, word);
   }
-  return said;
+  // A key named on the end of a button's own words - "DROP ONE [X]" - is
+  // the button itself to a finger, and the tray's key besides.
+  return said.replace(/\s*\[[A-Z0-9]\]\s*$/, '');
+}
+
+/** One part of a menu's help line that is a key and what it does: "X drop", "TAB shelves or bar". */
+const HELP_KEY = /^(TAB|[A-Z])\s+(?!or\b)(\S.*)$/;
+
+/** A help-line key whose job BACK already does: the key that opened the screen, closing it again. */
+const BACKS_OUT = /^(?:close|back)\b/;
+
+function helpKey(part: string): { readonly code: string; readonly label: string } | 'back' | null {
+  const match = HELP_KEY.exec(part.trim());
+  if (!match) {
+    return null;
+  }
+  const words = match[2].trim();
+  if (BACKS_OUT.test(words)) {
+    return 'back';
+  }
+  const label = words
+    .replace(/^to the /, '')
+    .replace(/ or /g, '/')
+    .replace(/[.,;:]+$/, '')
+    .toUpperCase();
+  return { code: match[1] === 'TAB' ? 'Tab' : `Key${match[1]}`, label };
+}
+
+/**
+ * The letter keys a menu's help line names, as the pad's tray offers them:
+ * "ARROWS move · ENTER use · X drop · ESC back" is a DROP key on X. The pad's
+ * own buttons (the arrows, ENTER, ESC) are skipped, and so is a key that only
+ * closes the screen, which BACK does.
+ */
+export function helpLineKeys(line: string): TouchShortcut[] {
+  const keys: TouchShortcut[] = [];
+  for (const part of line.split(' · ')) {
+    const key = helpKey(part);
+    if (key && key !== 'back') {
+      keys.push(key);
+    }
+  }
+  return keys;
+}
+
+/** A menu's help line as the pad would say it: each key it names by its tray word, the rest in the pad's words. */
+export function touchHelpLine(line: string): string {
+  return line
+    .split(' · ')
+    .flatMap((part) => {
+      const key = helpKey(part);
+      if (key === 'back') {
+        return [];
+      }
+      return [key ? `[${key.label}]` : touchWording(part)];
+    })
+    .join(' · ');
 }
 
 /** What a `Text` was given, before the pad's words were put in: what a hint is read from for its keys. */

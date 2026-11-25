@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { resetTouchPlay, setTouchPlay } from './touchPlay';
 import { shortcutsInHint } from './touchShortcuts';
 import { WINDOW_PAUSE_LINES } from '../world/windowPause';
-import { installTouchWording, rewordTexts, sourceText, touchWording } from './touchWords';
+import { helpLineKeys, installTouchWording, rewordTexts, sourceText, touchHelpLine, touchWording } from './touchWords';
 
 afterEach(() => resetTouchPlay());
 
@@ -12,7 +12,7 @@ describe('the game\'s words for its keys, on the touch pad', () => {
     expect(touchWording('WALK UP TO A POKÉ BALL AND PRESS [SPACE]')).toBe('WALK UP TO A POKÉ BALL AND PRESS [OK]');
     expect(touchWording('[ESC] SKIP')).toBe('[BACK] SKIP');
     expect(touchWording('[ARROWS] WALK')).toBe('[D-PAD] WALK');
-    expect(touchWording('ARROWS move · ENTER choose · ESC back')).toBe('D-PAD move · OK choose · BACK back');
+    expect(touchWording('ARROWS move · ENTER choose · ESC back')).toBe('D-PAD move · OK choose · BACK');
     expect(touchWording('ARROWS: move · SPACE: dig · ESC: stop')).toBe('D-PAD: move · OK: dig · BACK: stop');
     expect(touchWording('Arrows choose · ENTER picks this one · ESC leaves')).toBe('D-PAD choose · OK picks this one · BACK leaves');
   });
@@ -22,6 +22,7 @@ describe('the game\'s words for its keys, on the touch pad', () => {
     expect(touchWording('[H] DECORATE')).toBe('[DECORATE]');
     expect(touchWording('[SPACE] PUT DOWN  [R] TURN  [Q][E] BOX  [X] PUT AWAY')).toBe('[OK] PUT DOWN  [TURN]  [< BOX >]  [PUT AWAY]');
     expect(touchWording('[1] OVER HERE!')).toBe('[OVER HERE!]');
+    expect(touchWording('Drop one [X]')).toBe('Drop one');
   });
 
   it('says the title\'s line whole', () => {
@@ -73,5 +74,25 @@ describe('a Text that says its keys the pad\'s way', () => {
     setTouchPlay(false);
     rewordTexts([{ children: { list: [hint] } }]);
     expect(hint.text).toBe('[SPACE] FISH');
+  });
+});
+
+describe('a menu\'s help line on the touch pad', () => {
+  it('offers the letter keys it names, and not the pad\'s own or a key that only closes it', () => {
+    expect(helpLineKeys('ARROWS move · ENTER use · X drop · ESC back to the raid')).toEqual([{ code: 'KeyX', label: 'DROP' }]);
+    expect(helpLineKeys('ARROWS move · ENTER take or leave · L lead · FIND a name · P close')).toEqual([{ code: 'KeyL', label: 'LEAD' }]);
+    expect(helpLineKeys('ARROWS look along the shelves · ENTER try it on, then ENTER buys · TAB shelves or bar · ESC leave')).toEqual([
+      { code: 'Tab', label: 'SHELVES/BAR' },
+    ]);
+    expect(helpLineKeys('ARROWS read · O or ESC back to the raid')).toEqual([]);
+    expect(helpLineKeys('ARROWS choose · ENTER play · N your name · ESC back to the house')).toEqual([{ code: 'KeyN', label: 'YOUR NAME' }]);
+    expect(helpLineKeys('ARROWS move · LEFT/RIGHT a pocket · ENTER use a disc or stone · B close')).toEqual([]);
+  });
+
+  it('says each key by its tray word and the rest in the pad\'s words', () => {
+    expect(touchHelpLine('ARROWS move · ENTER use · X drop · ESC back to the raid')).toBe('D-PAD move · OK use · [DROP] · BACK to the raid');
+    expect(touchHelpLine('ARROWS read · O or ESC back to the raid')).toBe('D-PAD read · BACK to the raid');
+    expect(touchHelpLine('ARROWS move · LEFT/RIGHT a pocket · ENTER use a disc or stone · B close')).toBe('D-PAD move · LEFT/RIGHT a pocket · OK use a disc or stone');
+    expect(touchHelpLine('Arrows choose · ENTER asks to buy one · ESC leaves')).toBe('D-PAD choose · OK asks to buy one · BACK leaves');
   });
 });
