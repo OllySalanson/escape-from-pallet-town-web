@@ -934,9 +934,11 @@ try {
       continue;
     }
     note(`${bag.label} dropped (${bag.best}): ${bag.reward.map((r) => `${r.quantity}x ${r.itemId}`).join(', ')}`);
+    // Whether it can be seen: it falls into place, and a figure left mid-fall is a bag nobody finds.
+    await wait(1000);
+    note(`${bag.label} figure: ${JSON.stringify(await page.evaluate(`(() => { const s = ${GAME}.scene.getScene('world').poiSprites.get(${JSON.stringify(bag.id)});
+      return s ? { alpha: s.alpha, y: s.y, tileY: ${bag.position.y}, visible: s.visible } : null; })()`))}`);
     if (option('shot')) {
-      // Long enough for it to have fallen: it drops once the fight's fade clears.
-      await wait(1000);
       await page.screenshot(option('shot').replace(/\.png$/, `-bag-${robbed + 1}-dropped.png`));
     }
     const before = clockMs;

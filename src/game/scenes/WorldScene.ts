@@ -305,6 +305,7 @@ import { WINDOW_PAUSE_LINES, WINDOW_PAUSE_TITLE, type PausesForWindow } from '..
 import {
   CAPTION_BAND,
   FIGURE_BAND,
+  OVER_FIGURE,
   MARKER_BAND,
   CANOPY_BAND,
   ROOF_BAND,
@@ -436,9 +437,11 @@ import {
   type WorldLoot,
 } from '../world/loot';
 import { lockedCrateLines, openPoi, type WorldPoi } from '../world/pois';
+import { SHINY_SPARKLE_TEXTURE, SPARKLE_FRAMES } from '../ui/shinySparkle';
 import {
   BAG_DROP_DELAY_MS,
   BAG_GLINT_LINE,
+  TRAINER_GLINT_EVERY_MS,
   bagAsPoi,
   bagIdFor,
   bagLabel,
@@ -3487,6 +3490,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         encounter.design,
       );
       this.createTrainerWatch(encounter);
+      if (this.trainerBagGlints(encounter)) {
+        this.createTrainerGlint(encounter);
+      }
     }
 
     this.createHunterSprite();
@@ -3981,20 +3987,69 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       if (!this.defeatedTrainerIds.has(encounter.trainer.id)) {
         continue;
       }
-      this.dropBag(
-        {
-          id: encounter.trainer.id,
-          name: encounter.trainer.name,
-          kit: kitFor(encounter.design),
-          standing: standingOf(
-            encounter.trainer.party.map((pokemon) => pokemon.level),
-            encounter.bossId !== undefined,
-          ),
-        },
-        encounter.mapId,
-        () => encounter.position,
-      );
+      this.dropBag(this.bagOwnerOf(encounter), encounter.mapId, () => encounter.position);
     }
+  }
+
+  /** A trainer as the bag they would drop is rolled for: their kit, and their standing on this raid. */
+  private bagOwnerOf(encounter: RunTrainerEncounter): BagOwner {
+    const boss = encounter.bossId !== undefined;
+    return {
+      id: encounter.trainer.id,
+      name: encounter.trainer.name,
+      kit: kitFor(encounter.design),
+      standing:
+        !boss && this.runSession?.plan?.roadsideTrainers?.includes(encounter.trainer.id)
+          ? 'roadside'
+          : standingOf(encounter.trainer.party.map((pokemon) => pokemon.level), boss),
+    };
+  }
+
+  /**
+   * Whether this trainer's bag, if beaten, holds a rare find or a treasure.
+   * The roll is the raid's from the moment it deploys, so it can be shown
+   * before the fight - as a glint over the trainer, never as what it is - and
+   * the fight becomes a choice: that fisherman is worth the detour.
+   */
+  private trainerBagGlints(encounter: RunTrainerEncounter): boolean {
+    const seed = this.runSession?.seed;
+    if (seed === undefined || !this.isLootAvailable()) {
+      return false;
+    }
+    const best = rollBagContents(this.bagOwnerOf(encounter), seed)?.best;
+    return best === 'rare' || best === 'treasure';
+  }
+
+  /** A twinkle over a trainer whose bag glints: FireRed's shiny glint, on and off, above their head. */
+  private createTrainerGlint(encounter: RunTrainerEncounter): void {
+    if (!this.textures?.exists?.(SHINY_SPARKLE_TEXTURE)) {
+      return;
+    }
+    const texture = this.textures.get(SHINY_SPARKLE_TEXTURE);
+    for (const [name, frame] of Object.entries(SPARKLE_FRAMES)) {
+      if (!texture.has(name)) {
+        texture.add(name, 0, frame.x, frame.y, frame.width, frame.height);
+      }
+    }
+    const glint = this.add
+      .image(
+        encounter.position.x * TILE_SIZE + TILE_SIZE - 3,
+        encounter.position.y * TILE_SIZE - TILE_SIZE / 2 + 2,
+        SHINY_SPARKLE_TEXTURE,
+        'glint',
+      )
+      .setDepth(atRow(FIGURE_BAND, encounter.position.y) + OVER_FIGURE)
+      .setAlpha(0);
+    this.tweens?.add?.({
+      targets: glint,
+      alpha: 1,
+      duration: 220,
+      yoyo: true,
+      hold: 160,
+      repeat: -1,
+      repeatDelay: TRAINER_GLINT_EVERY_MS,
+    });
+    this.mapObjects.push(glint);
   }
 
   /**
@@ -4037,11 +4092,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       if (!sprite) {
         continue;
       }
-      sprite.setY(bag.position.y * TILE_SIZE - TILE_SIZE / 2).setAlpha(0);
+      // Drawn whole from the first frame and only its fall animated: the
+      // tween clock runs slow on a long frame, and a bag that waited on it to
+      // be seen at all was a bag nobody found (playtest, 25 Nov 2026).
+      sprite.setY(bag.position.y * TILE_SIZE);
       this.tweens?.add?.({
         targets: sprite,
         y: bag.position.y * TILE_SIZE + TILE_SIZE / 2,
-        alpha: 1,
         delay: BAG_DROP_DELAY_MS,
         duration: 300,
         ease: 'Bounce.easeOut',
@@ -4053,8 +4110,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /** Whether a dropped bag holds a rare find or a treasure, which its caption gives away. */
   private bagGlints(poi: WorldPoi): boolean {
-    const bag = this.runSession?.trainerBags?.[poi.id];
-    return bag != null && (bag.best === 'rare' || bag.best === 'treasure');
+    const taken = this.searchStateOf(poi).taken;
+    return searchPieces(poi.reward).some((piece, index) => isPrizeFind(piece) && !taken.includes(index));
   }
 
   /**
@@ -8599,7 +8656,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.tryCollectLootAt(this.currentTile) ??
       this.tryMakeContractStopAt(this.currentTile) ??
       this.tryReachDropInAt(this.currentTile);
-    const spoken = pickup === null ? this.tryActivatePoiAt(this.currentTile) : [pickup];
+    const spoken = pickup === null ? this.tryActivatePoiAt(this.currentTile, true) : [pickup];
     if (spoken !== null && spoken.length > 0) {
       if (!this.tryTrainerChallengeAt(this.currentTile, spoken)) {
         this.dialogBox.showMessages([...spoken]);
@@ -9583,7 +9640,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * cache opened with nothing else to say returns no lines at all. Coming back
    * to one walked away from half searched carries on the search.
    */
-  private tryActivatePoiAt(position: GridPosition): readonly string[] | null {
+  private tryActivatePoiAt(position: GridPosition, steppedOn = false): readonly string[] | null {
     const poi = this.poisHere().find(
       (candidate) =>
         candidate.position.x === position.x &&
@@ -9594,6 +9651,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         !isLandmarkWorked(candidate.id, this.completedContracts),
     );
     if (poi && this.isLootAvailable() && this.activatedPoiIds.has(poi.id) && this.piecesLeftIn(poi) > 0) {
+      // A bag lies where a trainer stood, often in a lane: one left half
+      // searched for want of room is walked over on the way through, and
+      // should not open on every pass. Faced and asked for, it opens.
+      if (steppedOn && isBagId(poi.id)) {
+        return null;
+      }
       this.beginSearch(poi);
       return [];
     }

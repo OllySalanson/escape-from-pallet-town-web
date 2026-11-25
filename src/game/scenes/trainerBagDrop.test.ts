@@ -41,7 +41,10 @@ interface Driven {
   bagLines: string[];
   dropBeatenTrainersBags(): void;
   poisHere(): readonly WorldPoi[];
-  tryActivatePoiAt(tile: GridPosition): readonly string[] | null;
+  tryActivatePoiAt(tile: GridPosition, steppedOn?: boolean): readonly string[] | null;
+  closeSearch(): void;
+  bagGlints(poi: WorldPoi): boolean;
+  trainerBagGlints(trainer: RunTrainerEncounter): boolean;
   advanceRunClock(deltaMs: number): void;
   handleSearchInput(): boolean;
 }
@@ -52,7 +55,7 @@ const VALE = 'greystone-vale';
  * A raid on the real vale, standing beside a real trainer of it, with the
  * seed a bag is rolled on. Keys are stubs the test presses by hand.
  */
-function besideATrainer(trainer: RunTrainerEncounter, seed: number) {
+function besideATrainer(trainer: RunTrainerEncounter, seed: number, roadside: readonly string[] = []) {
   const map = getWorldMap(VALE);
   const key = (): StubKey => ({ justDown: false, isDown: false });
   const controls = {
@@ -106,7 +109,7 @@ function besideATrainer(trainer: RunTrainerEncounter, seed: number) {
         },
         registerFoundItem: vi.fn(),
       },
-      plan: { hunter: { spawnDelayMs: 600_000 } },
+      plan: { hunter: { spawnDelayMs: 600_000 }, roadsideTrainers: roadside },
     },
     hunterPackHere: () => undefined,
     interrupt: vi.fn(),
@@ -208,5 +211,55 @@ describe("a beaten trainer's bag in a raid", () => {
       }
     }
     throw new Error('no raid in 200 left the swimmer without a bag');
+  });
+
+  it("drops a roadside trainer's bag with its signature piece alone, and shows no glint over them", () => {
+    for (let seed = 1; seed < 60; seed += 1) {
+      const { scene } = besideATrainer(hiker, seed, [hiker.trainer.id]);
+      expect(scene.trainerBagGlints(hiker)).toBe(false);
+      scene.defeatedTrainerIds.add(hiker.trainer.id);
+      scene.dropBeatenTrainersBags();
+      const bag = scene.runSession.trainerBags![bagIdFor(hiker.trainer.id)];
+      if (bag) {
+        expect(bag.reward).toHaveLength(1);
+        expect(kitFor('hiker').signature.map((row) => row.itemId)).toContain(bag.reward[0].itemId);
+      }
+    }
+  });
+
+  it('glints over a trainer whose bag holds a prize, before the fight, and on the bag only while the prize is in it', () => {
+    let seed = 1;
+    for (; seed < 2000; seed += 1) {
+      if (besideATrainer(hiker, seed).scene.trainerBagGlints(hiker)) break;
+    }
+    const { scene, controls } = besideATrainer(hiker, seed);
+    scene.defeatedTrainerIds.add(hiker.trainer.id);
+    scene.dropBeatenTrainersBags();
+    const dropped = scene.runSession.trainerBags![bagIdFor(hiker.trainer.id)]!;
+    expect(['rare', 'treasure']).toContain(dropped.best);
+    const poi = scene.poisHere().find((candidate) => candidate.id === dropped.id)!;
+    expect(scene.bagGlints(poi)).toBe(true);
+
+    scene.tryActivatePoiAt(hiker.position);
+    controls.interact[0].justDown = true;
+    scene.handleSearchInput();
+    controls.interact[0].justDown = false;
+    for (let spent = 0; spent < searchDurationMs(searchPieces(dropped.reward)); spent += 16) {
+      scene.advanceRunClock(16);
+    }
+    expect(scene.bagGlints(poi)).toBe(false);
+  });
+
+  it('does not open a half-searched bag again on a passing step, only when faced and asked', () => {
+    const seed = seedWithABag(hiker);
+    const { scene } = besideATrainer(hiker, seed);
+    scene.defeatedTrainerIds.add(hiker.trainer.id);
+    scene.dropBeatenTrainersBags();
+    expect(scene.tryActivatePoiAt(hiker.position, true)).toEqual([]);
+    scene.closeSearch();
+    expect(scene.tryActivatePoiAt(hiker.position, true)).toBeNull();
+    expect(scene.search).toBeNull();
+    expect(scene.tryActivatePoiAt(hiker.position)).toEqual([]);
+    expect(scene.search).not.toBeNull();
   });
 });

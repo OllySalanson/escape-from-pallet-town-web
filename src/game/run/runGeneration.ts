@@ -612,6 +612,14 @@ export interface RunPlan {
    */
   readonly roomLootIds?: readonly string[];
   readonly trainers: readonly RunTrainerEncounter[];
+  /**
+   * The trainers, by id, standing on ground a walk straight out could call in
+   * on (`world/raidStake.ts`, `StakeGround.walkOut`). Walking straight out pays
+   * almost nothing, so a bag one of them drops holds its signature piece and
+   * no find (`world/trainerBags.ts`, the `roadside` standing). Absent where the
+   * raid has no stake.
+   */
+  readonly roadsideTrainers?: readonly string[];
   readonly extractionPoints: readonly ExtractionPoint[];
   readonly hunter: HunterTuning;
   /**
@@ -993,6 +1001,13 @@ export function generateRunPlan(
     night,
     loot,
     trainers,
+    ...(stakes
+      ? {
+          roadsideTrainers: trainers
+            .filter((trainer) => trainer.mapId === insertion.mapId && stakes.walkOut[trainer.position.y * insertionMap.width + trainer.position.x] === 1)
+            .map((trainer) => trainer.trainer.id),
+        }
+      : {}),
     extractionPoints,
     ...(shortfallMs > 0 ? { clockShortfallMs: shortfallMs } : {}),
     ...(outfitting.firstRaid ? { stagedChase: true } : {}),

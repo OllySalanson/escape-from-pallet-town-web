@@ -107,7 +107,7 @@ describe("a beaten trainer's bag", () => {
   });
 
   it('turns up a find of each tier at its standing\'s odds, and always the signature piece first', () => {
-    for (const standing of ['rookie', 'veteran', 'hunter', 'boss'] as const) {
+    for (const standing of ['rookie', 'veteran', 'hunter', 'boss', 'roadside'] as const) {
       const bags = bagsOver(owner(BAG_KITS.duffel, standing)).filter((bag) => bag !== null);
       for (const tier of FIND_TIERS) {
         const share = bags.filter((bag) => bag.best === tier).length / bags.length;
@@ -120,11 +120,30 @@ describe("a beaten trainer's bag", () => {
     }
   });
 
-  it("finds every kit's rare tier as often as the odds say: no tier is eaten by a find it may not repeat", () => {
+  it("finds every kit's rare tier and treasure as often as the odds say: no tier is eaten by a find it may not repeat", () => {
     for (const kit of KITS) {
-      const bags = bagsOver(owner(kit, 'boss'), 1000);
-      const rareOrBetter = bags.filter((bag) => bag!.best === 'rare' || bag!.best === 'treasure').length / bags.length;
-      expect(rareOrBetter, kit.id).toBeGreaterThan(0.9);
+      const bags = bagsOver(owner(kit, 'hunter'), 2000);
+      const share = (tier: string) => bags.filter((bag) => bag!.best === tier).length / bags.length;
+      expect(share('rare'), kit.id).toBeGreaterThan(FIND_ODDS.hunter.rare * 0.8);
+      expect(share('treasure'), kit.id).toBeGreaterThan(FIND_ODDS.hunter.treasure * 0.6);
+    }
+  });
+
+  it('always gives up a boss\'s treasure: a fight once a save must not miss its prize for the whole save', () => {
+    for (const kit of [BAG_KITS.mistysBag, BAG_KITS.kogasPouch, BAG_KITS.seaBag]) {
+      expect(bagsOver(owner(kit, 'boss'), 300).every((bag) => bag!.best === 'treasure'), kit.id).toBe(true);
+    }
+  });
+
+  it('pays a roadside trainer\'s bag its signature piece and nothing else: walking straight out pays almost nothing', () => {
+    for (const kit of KITS) {
+      const signature = new Set<ItemId>(kit.signature.map((row) => row.itemId));
+      for (const bag of bagsOver(owner(kit, 'roadside'), 300)) {
+        if (bag === null) continue;
+        expect(bag.reward, kit.id).toHaveLength(1);
+        expect(signature.has(bag.reward[0].itemId), kit.id).toBe(true);
+        expect(bag.best).toBe('basic');
+      }
     }
   });
 

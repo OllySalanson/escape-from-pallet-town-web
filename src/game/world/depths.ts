@@ -40,6 +40,13 @@ export const FIGURE_BAND = 2;
 export const atRow = (band: number, tileY: number): number => band + tileY / 1000;
 
 /**
+ * A mark worn by one figure - the glint over a trainer whose bag is worth the
+ * fight (`world/trainerBags.ts`) - over that figure and every figure a row
+ * above it, under any figure a row below: half a row up from its own.
+ */
+export const OVER_FIGURE = 0.0005;
+
+/**
  * The crown of a tree, and anything else a figure passes behind.
  *
  * It is the one band above the figures, which is what gives a wood an inside:
