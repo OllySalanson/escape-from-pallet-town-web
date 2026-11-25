@@ -4061,7 +4061,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * null, which is most raids.
    */
   private prizeInMind(): PrizeChipInput | null {
-    if (!this.isLootAvailable()) {
+    // While the first raid's catch is the one job, its chip is the one thing
+    // to read: a ₽10 and a bearing beside CATCH THE PIDGEY was a second sum and
+    // a second heading nobody had explained (the critic's fourth pass).
+    if (!this.isLootAvailable() || this.firstCatchFigure()) {
       return null;
     }
     let nearest: { readonly loot: WorldLoot; readonly steps: number } | null = null;
@@ -7755,11 +7758,19 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * critic's third pass). It is the retry, and stands up after the first fight.
    */
   private heldBackForTheCatch(entity: WorldEntity): boolean {
-    const plan = this.runSession?.plan;
-    if (!plan?.stagedChase || !plan.insertion || this.currentMap?.id !== plan.insertion.mapId || (this.runSession?.firstCatch?.tried.length ?? 0) > 0) {
+    const session = this.runSession;
+    const plan = session?.plan;
+    if (!session || !plan?.stagedChase || !plan.insertion || this.currentMap?.id !== plan.insertion.mapId) {
       return false;
     }
-    return firstCatchFigures(this.currentMap.entities, plan.insertion.position)[1]?.id === entity.id;
+    if (firstCatchFigures(this.currentMap.entities, plan.insertion.position)[1]?.id !== entity.id) {
+      return false;
+    }
+    // It stands up only for a retry: after the first was knocked out or left,
+    // never after a catch, when Oak is saying get out (the critic's fourth pass).
+    const state = session.firstCatch;
+    const caught = state !== undefined && session.manager.snapshot().caughtPokemon.length > state.caughtBefore;
+    return state === undefined || state.caught || caught;
   }
 
   /**

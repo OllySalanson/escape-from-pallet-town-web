@@ -632,3 +632,13 @@ describe('the result screen of a raid that won a badge', () => {
     expect(verdict).toContain('You won the SOUL BADGE! Koga no longer holds every road into the Marsh.');
   });
 });
+
+/** The critic's fourth pass: "Everything above is on BILL'S PC" over one Pidgey, a name a first raid has never heard. */
+describe("the moment's note", () => {
+  it('says a raid that brought home only Pokemon left them waiting at base', () => {
+    const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
+    const pidgey = { name: 'Pidgey', dexId: 16, level: 3, currentHp: 5, maxHp: 15 };
+    Object.assign(scene as object, { report: { saved: true, ledger: { pokemon: [pidgey], items: [] } } });
+    expect((scene as unknown as { momentNote(): string }).momentNote()).toBe('PIDGEY is waiting at base for your next raid.');
+  });
+});
