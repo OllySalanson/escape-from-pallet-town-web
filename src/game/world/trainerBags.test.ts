@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ITEMS, type ItemId } from '../items/items';
+import { ITEM_DEFINITIONS, ITEMS, type ItemId } from '../items/items';
 import { SEARCH_ROWS } from './cacheSearch';
 import { RACE_COURSES } from './races';
 import { TRADER_BARTERS } from '../hub/trader';
@@ -114,11 +114,14 @@ describe("a beaten trainer's bag", () => {
     expect(bagSeed(42, 'a')).not.toBe(bagSeed(43, 'a'));
   });
 
-  it("never names a crate's own thing as a rare find or a treasure: the bag worth the fight is not a cache's Great Balls", () => {
+  it("never names a crate's own thing or a tree's as a rare find or a treasure: the bag worth the fight is not a cache's Great Balls", () => {
     const vale = getWorldMap('greystone-vale');
     const crateItems = new Set<string>([
       ...[...WORLD_POIS, ...vale.pois, ...Object.values(MAP_FILE_LANDMARKS)].flatMap((poi) => poi.reward.map((row) => row.itemId)),
       ...STAKE_SUPPLIES.map((row) => row.itemId),
+      // And every berry: they grow on the maps' trees, ripe every raid and
+      // picked with one press (`world/berries.ts`).
+      ...ITEM_DEFINITIONS.filter((item) => item.holdable === true).map((item) => item.id),
     ]);
     for (const kit of KITS) {
       for (const row of [...kit.finds.rare, ...kit.finds.treasure]) {

@@ -166,7 +166,7 @@ export const BAG_KITS = {
     extras: rows({ itemId: 'potion' }),
     finds: {
       uncommon: rows({ itemId: 'sitrus-berry', weight: 3 }, { itemId: 'chesto-berry' }, { itemId: 'aspear-berry' }),
-      rare: rows({ itemId: 'sitrus-berry', quantity: 2, weight: 2 }, { itemId: 'pretty-flowers' }),
+      rare: rows({ itemId: 'pretty-flowers', weight: 2 }, { itemId: 'tropical-plant' }),
       // A cushion to sit on the grass with. Not the Pika Cushion: it is the
       // first thing the pit hands back (`base/pitCoins.ts`), and that moment
       // is the pit's.
@@ -181,7 +181,7 @@ export const BAG_KITS = {
     extras: rows({ itemId: 'antidote' }),
     finds: {
       uncommon: rows({ itemId: 'great-ball', weight: 3 }, { itemId: 'repel' }),
-      rare: rows({ itemId: 'repel', quantity: 2 }, { itemId: 'pecha-berry', quantity: 2 }),
+      rare: rows({ itemId: 'repel', quantity: 2 }),
       treasure: rows({ itemId: 'miracle-seed', weight: 2 }, { itemId: 'tm09-bullet-seed' }),
     },
   },
@@ -205,7 +205,8 @@ export const BAG_KITS = {
     extras: rows({ itemId: 'potion' }),
     finds: {
       uncommon: rows({ itemId: 'super-potion', weight: 2 }, { itemId: 'sitrus-berry' }),
-      rare: rows({ itemId: 'sitrus-berry', quantity: 2 }),
+      // A towel to lie on.
+      rare: rows({ itemId: 'surf-mat' }),
       treasure: rows({ itemId: 'water-cushion' }),
     },
   },
@@ -253,7 +254,7 @@ export const BAG_KITS = {
     extras: rows({ itemId: 'potion', quantity: [1, 2] }),
     finds: {
       uncommon: rows({ itemId: 'sitrus-berry', weight: 2 }, { itemId: 'super-potion' }),
-      rare: rows({ itemId: 'sitrus-berry', quantity: 2 }),
+      rare: rows({ itemId: 'pickaxe' }),
       treasure: rows({ itemId: 'focus-band' }),
     },
   },
@@ -265,7 +266,7 @@ export const BAG_KITS = {
     extras: rows({ itemId: 'great-ball' }),
     finds: {
       uncommon: rows({ itemId: 'radio-valve', weight: 2 }, { itemId: 'great-ball', quantity: 2, weight: 2 }, { itemId: 'repel', quantity: 2 }),
-      rare: rows({ itemId: 'lockpick', quantity: 2 }, { itemId: 'chesto-berry', quantity: 2 }),
+      rare: rows({ itemId: 'lockpick', quantity: 2 }, { itemId: 'repel', quantity: 3 }),
       treasure: rows({ itemId: 'tm40-aerial-ace' }, { itemId: 'tm23-iron-tail' }, { itemId: 'tm13-ice-beam' }),
     },
   },
@@ -317,7 +318,7 @@ export const BAG_KITS = {
     extras: rows({ itemId: 'oran-berry' }),
     finds: {
       uncommon: rows({ itemId: 'sitrus-berry', quantity: 2 }),
-      rare: rows({ itemId: 'sitrus-berry', quantity: 3 }),
+      rare: rows({ itemId: 'surf-mat' }),
       treasure: rows({ itemId: 'tm18-rain-dance', weight: 2 }, { itemId: 'water-cushion' }),
     },
   },
@@ -411,7 +412,7 @@ export const HUNTER_KITS: Readonly<Record<HunterRivalId, BagKit>> = {
     extras: rows({ itemId: 'super-potion' }, { itemId: 'great-ball' }),
     finds: {
       uncommon: rows({ itemId: 'sitrus-berry', weight: 2 }, { itemId: 'chesto-berry' }),
-      rare: rows({ itemId: 'sitrus-berry', quantity: 2 }),
+      rare: rows({ itemId: 'repel', quantity: 3 }),
       treasure: rows({ itemId: 'never-melt-ice', weight: 2 }, { itemId: 'tm13-ice-beam' }),
     },
   },
@@ -447,7 +448,7 @@ export const HUNTER_KITS: Readonly<Record<HunterRivalId, BagKit>> = {
     extras: rows({ itemId: 'great-ball' }),
     finds: {
       uncommon: rows({ itemId: 'sitrus-berry', weight: 2 }, { itemId: 'great-ball', quantity: 2 }),
-      rare: rows({ itemId: 'sitrus-berry', quantity: 2 }, { itemId: 'repel', quantity: 2 }),
+      rare: rows({ itemId: 'repel', quantity: 2 }, { itemId: 'lockpick', quantity: 2 }),
       treasure: rows({ itemId: 'life-orb' }, { itemId: 'charcoal' }, { itemId: 'tm23-iron-tail' }),
     },
   },
