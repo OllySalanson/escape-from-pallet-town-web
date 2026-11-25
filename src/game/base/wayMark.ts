@@ -290,6 +290,29 @@ export class YardWayMark {
 }
 
 /**
+ * How big the chevron is drawn, in whole pixels per pixel of its picture, `sinceMs`
+ * after it came back for the way out on a later raid (`world/raidArrow.ts`): it
+ * lands from four times its size to its own two in a quarter of a second, then
+ * beats twice, so a player whose eyes are on the road sees it arrive without a
+ * word said. Whole steps, because between them every pixel of it is blurred.
+ */
+export function wayOutPopScale(sinceMs: number): number {
+  if (sinceMs < 0) {
+    return 2;
+  }
+  const landing = [4, 4, 3, 3, 3];
+  const step = Math.floor(sinceMs / 50);
+  if (step < landing.length) {
+    return landing[step];
+  }
+  // Two beats after it lands: 3 for a tenth of a second at 0.45s and at 0.85s.
+  return (sinceMs >= 450 && sinceMs < 550) || (sinceMs >= 850 && sinceMs < 950) ? 3 : 2;
+}
+
+/** How long the chevron's arrival lasts (`wayOutPopScale`). */
+export const WAY_OUT_POP_MS = 950;
+
+/**
  * What a raid shows the way to, with no words (`WorldScene.settleWayMark`): gold
  * to what the raid is for, green to the way out. Over the thing once it is on the
  * screen, and before that beside the figure, pointing where the walk goes.
@@ -298,6 +321,8 @@ export class RaidWayMark {
   private readonly scene: Phaser.Scene;
   private readonly still: boolean;
   private readonly image: Phaser.GameObjects.Image;
+  /** When it came back for the way out (`announce`), on the clock `frame` is handed. */
+  private poppedAtMs: number | undefined;
 
   public constructor(scene: Phaser.Scene, depth: number, still: boolean) {
     this.scene = scene;
@@ -326,7 +351,23 @@ export class RaidWayMark {
       this.still ? 0 : elapsedMs,
       captions,
     );
-    this.image.setTexture(way.out ? GREEN_TEXTURE : TEXTURE).setVisible(true).setPosition(at.x, at.y).setAngle(at.angle);
+    const since = this.poppedAtMs === undefined ? WAY_OUT_POP_MS : elapsedMs - this.poppedAtMs;
+    if (since >= WAY_OUT_POP_MS) {
+      this.poppedAtMs = undefined;
+    }
+    this.image
+      .setTexture(way.out ? GREEN_TEXTURE : TEXTURE)
+      .setVisible(true)
+      .setPosition(at.x, at.y)
+      .setAngle(at.angle)
+      .setScale(since < WAY_OUT_POP_MS ? wayOutPopScale(since) : 2);
+  }
+
+  /** It has come back for the way out: the next frames pop it in (`wayOutPopScale`). Still, with reduced motion. */
+  public announce(elapsedMs: number): void {
+    if (!this.still) {
+      this.poppedAtMs = elapsedMs;
+    }
   }
 
   public destroy(): void {

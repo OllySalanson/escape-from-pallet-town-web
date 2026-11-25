@@ -312,10 +312,10 @@ export function rimJobTile(
         readonly help: string;
         readonly format: (ms: number) => string;
       }
-    | { readonly kind: 'none'; readonly arrowTo?: string; readonly help: string },
+    | { readonly kind: 'none'; readonly nextGym?: string; readonly help: string },
 ): string {
   if (options.kind === 'none') {
-    return tile('job', 'No job', `<small class="rim-note">${options.arrowTo ? `THE GOLD ARROW: ${options.arrowTo}` : 'NOTHING TO FETCH'}</small>`, options.help, 'is-pay');
+    return tile('job', 'No job', `<small class="rim-note">${options.nextGym ? `NEXT GYM: ${options.nextGym}` : 'NOTHING TO FETCH'}</small>`, options.help, 'is-pay');
   }
   const pay = [
     ...options.pay.items.map(stackIcon),

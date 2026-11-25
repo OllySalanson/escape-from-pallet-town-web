@@ -12,7 +12,12 @@ vi.mock('phaser', () => ({
 }));
 
 interface Driven {
-  raidWay(): { readonly cue?: string; readonly mark: { readonly tile: { x: number; y: number }; readonly out: boolean } | null };
+  raidWay(): {
+    readonly cue?: string;
+    readonly mark: { readonly tile: { x: number; y: number }; readonly out: boolean } | null;
+    readonly shown: boolean;
+    readonly returned?: true;
+  };
 }
 
 /** WESTWARD ROAD, one step west of where the player stands. */
@@ -20,8 +25,11 @@ const EXIT = { label: 'Westward Road', heading: 'W', position: { x: 64, y: 158 }
 /** The job's next stop, the other way. */
 const STAKE = { cue: 'STAKE 1: E (3 LEFT)', tile: { x: 150, y: 153 }, out: false };
 
-/** The real scene's `raidWay`, standing beside an exit with a job still to do, the clock at `elapsedMs`. */
-function holdingAJob(elapsedMs: number): Driven {
+/**
+ * The real scene's `raidWay`, standing beside an exit with a job still to do,
+ * the clock at `elapsedMs` of a minute's raid: a later raid's, or a new save's first.
+ */
+function holdingAJob(elapsedMs: number, firstRaid = false): Driven {
   const manager = new RunManager();
   manager.startRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] }, { mapId: 'greystone-vale', durationMs: 60_000 });
   manager.tick(elapsedMs);
@@ -35,7 +43,7 @@ function holdingAJob(elapsedMs: number): Driven {
     collectedLootIds: new Set(),
     activatedPoiIds: new Set(),
     bag: { revision: 0 },
-    runSession: { manager, plan: {} },
+    runSession: { manager, plan: firstRaid ? { stagedChase: true } : {} },
     hunterPackHere: () => undefined,
     nearestExitCue: () => EXIT,
     contractTarget: () => STAKE,
@@ -51,14 +59,36 @@ describe('the gold arrow once the hunters are ENRAGED', () => {
   it('leaves the job for the nearest way out, and the chip says so', () => {
     // One step beside WESTWARD ROAD at 0:00, the arrow still said STAKE 1: E,
     // away from the exit, with 15 seconds left (scenario loop, 23 Nov 2026).
-    const way = holdingAJob(60_000).raidWay();
-    expect(way.cue).toBe('OUT NOW VIA WESTWARD ROAD: W');
-    expect(way.mark).toEqual({ tile: EXIT.position, out: true });
+    for (const firstRaid of [true, false]) {
+      const way = holdingAJob(60_000, firstRaid).raidWay();
+      expect(way.cue).toBe('OUT NOW VIA WESTWARD ROAD: W');
+      expect(way.mark).toEqual({ tile: EXIT.position, out: true });
+      expect(way.shown).toBe(true);
+    }
   });
 
-  it('keeps to the job while the clock is still running', () => {
-    const way = holdingAJob(59_000).raidWay();
+  it('keeps a first raid on the job while the clock is still running, arrow and all', () => {
+    const way = holdingAJob(59_000, true).raidWay();
     expect(way.cue).toBe(STAKE.cue);
     expect(way.mark).toEqual({ tile: STAKE.tile, out: false });
+    expect(way.shown).toBe(true);
+    expect(way.returned).toBeUndefined();
+  });
+});
+
+describe('the arrow on a raid after the first (world/raidArrow.ts)', () => {
+  it('is not drawn while there is more than thirty seconds on the clock, and the chip still says the job', () => {
+    const way = holdingAJob(29_000).raidWay();
+    expect(way.cue).toBe(STAKE.cue);
+    expect(way.mark).toEqual({ tile: STAKE.tile, out: false });
+    expect(way.shown).toBe(false);
+  });
+
+  it('comes back at thirty seconds for the nearest way out, and the chip says so', () => {
+    const way = holdingAJob(30_000).raidWay();
+    expect(way.cue).toBe('OUT NOW VIA WESTWARD ROAD: W');
+    expect(way.mark).toEqual({ tile: EXIT.position, out: true });
+    expect(way.shown).toBe(true);
+    expect(way.returned).toBe(true);
   });
 });

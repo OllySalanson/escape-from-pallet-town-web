@@ -202,6 +202,7 @@ import { flashScreen } from '../ui/screenFlash';
 import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
 import { rollEncounter, type WildEncounter } from '../world/wildEncounters';
 import { tableForStep } from '../world/arrowRoutes';
+import { raidArrowPhase } from '../world/raidArrow';
 import { caughtLegends, legendCaught } from '../world/legends';
 import {
   NOT_EVEN_A_NIBBLE,
@@ -654,8 +655,17 @@ const WAY_FIELDS_KEPT = 6;
 interface RaidWay {
   /** The objective chip's line, when the way is a job or the stake; absent, the chip says the way out. */
   readonly cue?: string;
-  /** Gold to the target, green (`out`) to a way out; null for no arrow. */
+  /** Gold to the target, green (`out`) to a way out; null for no way. */
   readonly mark: { readonly target: GridPosition; readonly aim: GridPosition; readonly out: boolean } | null;
+  /**
+   * Whether the arrow is drawn for `mark` (`world/raidArrow.ts`): always on a
+   * new save's first raid, on a later one only for the way out in its last
+   * thirty seconds. The way is worked out either way, for the chip, Oak and the
+   * easier walk through the busiest grass (`stepShortensArrowWalk`).
+   */
+  readonly shown: boolean;
+  /** Whether this is the arrow come back for the way out on a later raid, which arrives with a pop (`settleWayMark`). */
+  readonly returned?: true;
   /** The stake, when it is what the arrow is after: Oak's radio names it too (`ObjectiveGuideContext.stake`). */
   readonly stake?: WorldLoot;
   /** Whether the arrow is after the next gym's door, which Oak's radio then leads with (`ObjectiveGuideContext.gymLeads`). */
@@ -665,7 +675,7 @@ interface RaidWay {
 /** How near the next gym's door, in walking steps, the gold arrow turns to it (`gymDoorNear`). */
 const GYM_DOOR_NEAR_STEPS = 10;
 
-const NO_WAY: RaidWay = { mark: null };
+const NO_WAY: RaidWay = { mark: null, shown: false };
 
 /** Where a carried job sends the player: the chip's line, and the tile the arrow is after, if it is on this map. */
 interface JobWay {
@@ -6846,8 +6856,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
                     ...(this.currentMap.id === session.plan?.contract?.mapId ? { tile: tileOf(marker.position) } : {}),
                   }))
                 : [],
-              // The mark is in world pixels, at a tile's centre.
-              way: way.mark
+              // The mark is in world pixels, at a tile's centre. Only an arrow
+              // drawn is told: a later raid's is away until its last thirty seconds.
+              way: way.mark && way.shown
                 ? {
                     cue: way.cue ?? null,
                     toward: { x: Math.floor(way.mark.target.x / TILE_SIZE), y: Math.floor(way.mark.target.y / TILE_SIZE) },
@@ -8308,7 +8319,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /**
    * The way, with no words (`base/wayMark.ts`): gold to where the raid is going
-   * and green to the way out (`raidWay`). Hidden while anything is being read.
+   * and green to the way out (`raidWay`). Hidden while anything is being read,
+   * and on a later raid until its last thirty seconds (`world/raidArrow.ts`).
    */
   private settleWayMark(deltaMs: number): void {
     const mark = this.raidWayMark;
@@ -8318,7 +8330,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.wayMarkMs += deltaMs;
     const hidden =
       this.dialogBox.visible || this.cutscene !== undefined || this.isWarping || this.panelLean.covering > 0 || this.runSession?.manager.phase !== RunPhase.InRun;
-    const way = hidden ? null : this.raidWay().mark;
+    const raidWay = hidden ? NO_WAY : this.raidWay();
+    const way = raidWay.shown ? raidWay.mark : null;
+    // The first frame a later raid's arrow is back for the way out, it pops, once
+    // a raid: the fight it may come back after rebuilds this scene, not the session.
+    const session = this.runSession;
+    if (way && raidWay.returned && session && !session.wayOutShown) {
+      session.wayOutShown = true;
+      mark.announce(this.wayMarkMs);
+    }
     // Clear of every caption on show: one is seated round the very thing it marks.
     const captions = way ? this.worldLabels.flatMap((label) => label.shown() ?? []) : [];
     mark.frame(way, { x: this.player.x + TILE_SIZE / 2, y: this.player.y + TILE_SIZE / 2 }, this.wayMarkMs, captions);
@@ -8349,6 +8369,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // them - from one step beside WESTWARD ROAD it said STAKE 1: E, away from
     // the exit, while the red chip counted down (scenario loop, 23 Nov 2026).
     const enraged = this.runSession.manager.isEnraged;
+    // A later raid's arrow comes back only for its last thirty seconds, and
+    // then only for the way out, as the enrage's does (`world/raidArrow.ts`).
+    const arrow = raidArrowPhase({
+      firstRaid: this.runSession.plan?.stagedChase === true,
+      remainingMs: this.runSession.manager.remainingMs(),
+      enraged,
+    });
+    const leaving = enraged || arrow === 'way-out';
     const exit = this.nearestExitCue();
     const contractSteps = this.runSession.manager.snapshot().contractSteps;
     const key = [
@@ -8356,6 +8384,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       `${this.currentTile.x},${this.currentTile.y}`,
       hunted,
       enraged,
+      arrow,
       this.collectedLootIds.size,
       exit?.label,
       contractSteps.length,
@@ -8383,10 +8412,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     let out = false;
     let after: WorldLoot | undefined;
     let toGym = false;
-    const gymDoor = hunted || enraged ? undefined : this.gymDoorNear();
-    const leader = hunted || enraged || gymDoor ? undefined : this.leaderHere();
-    const catchFigure = hunted || enraged || gymDoor || leader ? undefined : this.firstCatchFigure();
-    if (enraged) {
+    const gymDoor = hunted || leaving ? undefined : this.gymDoorNear();
+    const leader = hunted || leaving || gymDoor ? undefined : this.leaderHere();
+    const catchFigure = hunted || leaving || gymDoor || leader ? undefined : this.firstCatchFigure();
+    if (leaving) {
       cue = exit ? `OUT NOW VIA ${exit.label.toUpperCase()}: ${exit.heading}` : undefined;
       tile = exit?.position;
       out = true;
@@ -8424,6 +8453,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.wayCache = {
       ...(cue === undefined ? {} : { cue }),
       mark: tile ? this.wayMarkTo(tile, out) : null,
+      shown: arrow !== 'off',
+      ...(arrow === 'way-out' ? { returned: true as const } : {}),
       ...(after === undefined ? {} : { stake: after }),
       ...(toGym ? { gym: true as const } : {}),
     };
@@ -8585,7 +8616,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (way.gym) {
       return { gymLeads: true };
     }
-    return way.stake ? { stake: { words: prizeWords(way.stake), position: way.stake.position } } : {};
+    return way.stake
+      ? { stake: { words: prizeWords(way.stake), position: way.stake.position, ...(way.shown ? {} : { unmarked: true as const }) } }
+      : {};
   }
 
   /** ESC, or on to the whole list: his lines go at once. */
