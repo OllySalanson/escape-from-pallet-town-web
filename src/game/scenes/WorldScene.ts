@@ -174,6 +174,8 @@ import {
   racerKnowsTheWay,
   raceGossipAt,
   raceOutcome,
+  gaveUpWaitingLine,
+  raceRunShape,
   callItOffQuestion,
   calledOffLine,
   offTheBikeLine,
@@ -191,7 +193,7 @@ import {
   type RaceRecord,
   type RaceState,
 } from '../world/races';
-import { FINISH_WAIT_MS, GO_SHOWN_MS, countdownWord, formatRaceTime, racerPlace, type RacerPlace } from '../world/raceClock';
+import { COUNTDOWN_WORDS, FINISH_WAIT_MS, GO_SHOWN_MS, countdownWord, formatRaceTime, racerPlace, type RacerPlace } from '../world/raceClock';
 import { RACER_GROUND, knowingLine, raceGround, racerLine } from '../world/raceLine';
 import { evolutionByStone } from '../pokemon/evolution';
 import { ghostPlace, trailTime, trailWith, type RaceTrail } from '../world/raceGhost';
@@ -2534,7 +2536,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const liningUp = this.raceHere();
     if (liningUp?.race.phase === 'lining-up' && this.wanderedOff(liningUp.course)) {
       this.callOffRace(liningUp.course);
-      this.dialogBox.showMessage(calledOffLine(liningUp.course));
+      // She is out of sight by now: said as what happened, not in her voice.
+      this.dialogBox.showMessage(gaveUpWaitingLine(liningUp.course));
       return;
     }
     if (this.tryToeTheMark() || this.tryCrossRaceLine() || this.sayRaceNotice()) {
@@ -2645,7 +2648,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       !this.fishing &&
       !this.dialogBox.visible &&
       this.pendingTrainerBattle === undefined &&
-      this.pendingWildBattle === undefined
+      this.pendingWildBattle === undefined &&
+      // On the chalk mark the count has begun: nobody walks on through it.
+      this.runSession?.race?.phase !== 'countdown'
     );
   }
 
@@ -4367,7 +4372,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     here.race.phase = 'countdown';
     here.race.countdownMs = 0;
     this.createRaceGhost();
-    return false;
+    return true;
   }
 
   /** How far from the mark a player lining up may wander before the race is off. */
@@ -4546,8 +4551,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     if (word !== this.countdownWordShown) {
+      // ON YOUR MARKS is said, not counted: three beeps, then GO.
+      const counted = word !== COUNTDOWN_WORDS[0];
       this.showRaceWord(word);
-      audioManager.play('raceBeep');
+      if (counted) audioManager.play('raceBeep');
     }
   }
 
@@ -4678,6 +4685,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       tookShortcut: race.tookShortcut,
       shortcutOpen: this.shortcutOpen(course),
       firstGold: was?.medal !== 'gold',
+      // How the run went, read off where it went: a step over the floor, or a slow start.
+      ...raceRunShape(trail),
       hadPerfect: was?.perfect === true,
       beatenBefore: (was?.wins ?? 0) > 0,
       medal,
@@ -6485,7 +6494,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // peeked out either side ("STAKE" and "THE LAS" round the race's stone choice).
     const dialogOver = this.dialogBox.visible
       ? { x: this.dialogBox.x, y: this.dialogBox.y, width: DIALOG_WIDTH, height: DIALOG_HEIGHT }
-      : (this.trainerPrompt?.bounds ?? null);
+      : (this.trainerPrompt?.rects ?? null);
     hud.render(
       {
         clock: this.withTryHint(
@@ -8629,6 +8638,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    */
   private toggleBike(): string | null {
     const racing = this.runSession?.race;
+    if (!this.riding && racing?.phase === 'lining-up') {
+      return `${courseById(racing.courseId)?.racer.name ?? 'The racer'}'s waiting on the chalk mark. Call the race off first.`;
+    }
     if (!this.riding && racing && racing.phase !== 'over') {
       return 'On foot, no wheels - not until the race is over.';
     }

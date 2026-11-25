@@ -236,7 +236,7 @@ try {
   }
   await until(`${W}.describeForTest().race?.phase === 'running'`, 'GO');
   const go = await state();
-  note(`GO at raid clock ${go.elapsedMs}ms, LINNET due ${go.race.racerMs}ms`);
+  note(`GO at raid clock ${go.elapsedMs}ms from ${JSON.stringify(go.tile)}, LINNET due ${go.race.racerMs}ms`);
   if (shots) await page.screenshot(`${shots}/3-go.png`);
   if (slowMs > 0) await wait(slowMs);
   const path = await plan(FINISH, line === 'cut' ? 'cut' : line);

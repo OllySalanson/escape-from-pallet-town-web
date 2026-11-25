@@ -201,6 +201,14 @@ export class ChoicePrompt extends Phaser.GameObjects.Container {
     return { x: this.x, y: top, width: this.boxBounds.width, height: bottom - top };
   }
 
+  /** The question's box and its answers' window, apart: what the raid's chips stand aside for. */
+  public get rects(): readonly { x: number; y: number; width: number; height: number }[] {
+    return [
+      { x: this.x, y: this.y, width: this.boxBounds.width, height: this.boxBounds.height },
+      { x: this.x + this.answerBounds.x, y: this.y + this.answerBounds.y, width: this.answerBounds.width, height: this.answerBounds.height },
+    ];
+  }
+
   /** The answer the cursor is on, as it reads. */
   public get highlighted(): string {
     return this.optionTexts[this.selectedIndex]?.text ?? '';

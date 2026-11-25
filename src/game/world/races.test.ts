@@ -22,6 +22,8 @@ import {
   racerKnowsTheWay,
   raceLineWord,
   raceOutcome,
+  raceRunShape,
+  gaveUpWaitingLine,
   perfectTrophyLine,
   toeTheLineLine,
   isPerfect,
@@ -291,7 +293,16 @@ describe('what LINNET says', () => {
     expect(judgeLines(course, { ...input, timeMs: 22_805 }).join(' ')).toContain('Photo finish');
     expect(judgeLines(course, { ...input, timeMs: 22_750 }).join(' ')).not.toContain('Photo finish');
     // A GOLD a tenth or two off the floor is told it was the start.
-    expect(racerArrivesLines(course, { ...input, medal: 'gold', timeMs: 9_450, firstGold: false }).join(' ')).toContain('Hold your way through my count');
+    // What kept it off PERFECT, read off the run: a stand at GO, or a step too many - and never in place of a first GOLD's line.
+    const near = { ...input, medal: 'gold' as const, timeMs: 9_450, firstGold: false };
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 150 }).join(' ')).toContain('Hold your way through my count');
+    expect(racerArrivesLines(course, { ...near, steps: 63, startLagMs: 20 }).join(' ')).toContain('A step too many - 63 where 62 will do');
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 20 }).join(' ')).toContain('GOLD again');
+    const first = racerArrivesLines(course, { ...near, firstGold: true, steps: 62, startLagMs: 150 });
+    expect(first[0]).toContain('best run');
+    expect(first[1]).toContain('Hold your way');
+    expect(raceRunShape([83, 169, 0, 82, 169, 210, 81, 169, 360])).toEqual({ steps: 2, startLagMs: 60 });
+    expect(gaveUpWaitingLine(course)).toBe('LINNET gave up waiting at the chalk mark.');
     // The gap she quotes is the gap between the times on screen.
     expect(racerWonLines(course, { ...input, outcome: 'lost', medal: null, timeMs: 23_000, racerMs: 22_800 }).join(' ')).toContain('Beat you by 0.2s!');
     expect(perfectTrophyLine(course, 'Glass Ornament', false)).toContain('never written one down');
