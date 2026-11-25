@@ -25,7 +25,7 @@ import { landingsHeldBack, quarterOfLanding } from '../world/valeQuarters';
  * so leaving without reading it does not buy a second hearing - and the save
  * keeps only the list of ids, as it keeps every other permanent fact.
  */
-export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'moved', 'coast', 'marsh', 'nearWork', 'benchCatch', 'enraged'] as const;
+export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'moved', 'coast', 'marsh', 'nearWork', 'benchCatch', 'enraged', 'stakes'] as const;
 export type FirstWordsId = (typeof FIRST_WORDS_IDS)[number];
 
 export interface FirstWords {
@@ -152,6 +152,21 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
     speaker: 'prof-oak',
     name: 'Professor Oak',
     lines: [`OAK: One minute left! At 0:00 the hunters turn ENRAGED, and you've ${ENRAGE_GRACE_MS / 1000} seconds to get out. Head for an exit!`],
+  },
+  // Said by the Gym Guide on THE RAID ARENA's forecourt, the first time he is
+  // spoken to after a raid (`base/gymGuide.ts`). Until then no survey job is
+  // dealt (`objectives/standingBoard.ts`): the captain was offered "read all 3
+  // survey stakes" from his second raid and was only told what one was on his
+  // fifth (25 Nov 2026). He wears the harbour's "!" while he has it to say.
+  stakes: {
+    speaker: 'gym-guide',
+    name: 'GYM GUIDE',
+    lines: [
+      "Yo, champ! Seen PROFESSOR OAK's survey stakes out in the vale?",
+      'Wooden posts he hammers in to map it. Stand on one to read it.',
+      "Read every one, then get out: that's a LINE SURVEY done.",
+      "Now you know, he'll put survey jobs on the board for you.",
+    ],
   },
   nearWork: {
     speaker: 'prof-oak',

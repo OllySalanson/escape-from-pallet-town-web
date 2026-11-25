@@ -26,6 +26,8 @@ const progressAt = (standingContractsBanked: number): StandingBoardProgress => (
   workshopUpgrades: [],
   unlockedInsertions: [],
   reachedInsertions: [],
+  // Told what a survey stake is, as a save is once it has spoken to the Gym Guide.
+  firstWordsHeard: ['stakes'],
 });
 
 describe('the jobs a raid may carry', () => {
@@ -52,6 +54,22 @@ describe('the jobs a raid may carry', () => {
     const [board, other] = jobsForMap('greystone-vale', progressAt(0));
     expect(board.name).toBe('Line survey');
     expect(other.name).not.toBe('Line survey');
+  });
+
+  it.each([0, 1, 2, 5])('deals no survey in round %i to a save nobody has told what a survey stake is', (round) => {
+    // The captain was asked to "read all 3 survey stakes" from his second raid
+    // and only heard what one was on his fifth, from the Gym Guide (25 Nov 2026).
+    const untold = { ...progressAt(round), firstWordsHeard: [] };
+    const jobs = jobsForMap('greystone-vale', untold);
+    expect(jobs.length).toBeGreaterThan(0);
+    for (const job of jobs) {
+      expect(job.standingTemplate, job.id).not.toBe('survey');
+      expect(`${job.name} ${job.description} ${job.briefing.join(' ')}`, job.id).not.toMatch(/survey|stake/i);
+    }
+    // The first job still asks nothing out of the pack, survey or not.
+    if (round === 0) {
+      expect(jobs[0].markers.every((marker) => (marker.carriedIn ?? []).length === 0)).toBe(true);
+    }
   });
 
   it('carries the one chosen, the board’s when nothing still on offer was, and none when turned down', () => {

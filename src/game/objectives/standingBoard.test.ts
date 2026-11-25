@@ -66,6 +66,8 @@ const progressWith = (overrides: Partial<StandingBoardProgress> = {}): StandingB
   workshopUpgrades: [],
   unlockedInsertions: EVERY_FRONT_DOOR,
   reachedInsertions: [],
+  // Told what a survey stake is, as a save is once it has spoken to the Gym Guide.
+  firstWordsHeard: ['stakes'],
   ...overrides,
 });
 

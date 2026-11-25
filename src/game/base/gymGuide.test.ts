@@ -1,13 +1,16 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildContractBoard } from '../hub/contractBoard';
+import { FIRST_WORDS } from '../hub/firstWords';
 import { errandOf, harbourGiver, withErrandAsked } from '../hub/errands';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
-import { gymAdvice, gymGuideLines } from './gymGuide';
+import { gymAdvice, gymGuideHasStakesNews, gymGuideLines } from './gymGuide';
 import { KOGA_BOSS_ID, MISTY_BOSS_ID, VALE_QUARTERS } from '../world/valeQuarters';
 
 /** A save with a raid behind it: the board has nothing for anybody yet to go on one. */
 const BEEN_OUT = { ...DEFAULT_RAID_PROGRESS, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } };
+/** The same save once the Gym Guide has said what a survey stake is. */
+const TOLD = { ...BEEN_OUT, firstWordsHeard: ['stakes'] };
 
 /**
  * The Gym Guide at the Raid Arena's door says the day's work in the dialogue
@@ -20,8 +23,8 @@ describe("the Gym Guide's word on the day's work", () => {
   it("says the board's job, what it asks and what it pays, as the board itself words them", () => {
     // The roster as shipped: the standing board deals on Greystone Vale.
     retireMapsForTests(RETIRED_MAPS);
-    const [job] = buildContractBoard(BEEN_OUT).rows;
-    const lines = gymGuideLines(BEEN_OUT);
+    const [job] = buildContractBoard(TOLD).rows;
+    const lines = gymGuideLines(TOLD);
     expect(lines[0]).toBe(`Yo, champ! Today's job: ${job.name.toUpperCase()}.`);
     expect(lines).toContain(`${job.description}.`);
     expect(lines.some((line) => line.startsWith('It pays ') && line.includes(job.reward.replace(/\.$/, '')))).toBe(true);
@@ -32,6 +35,28 @@ describe("the Gym Guide's word on the day's work", () => {
     // A box a line, and few of them: it is said, not read off a list. (The
     // suite always has a published player map, whose job is "more on the board".)
     expect(lines.length - gymAdvice(BEEN_OUT).length).toBeLessThanOrEqual(6);
+  });
+
+  it('says what a survey stake is the first time after a raid, then names the job as the board now deals it', () => {
+    retireMapsForTests(RETIRED_MAPS);
+    // Nothing to explain before a raid, and nothing once said.
+    expect(gymGuideHasStakesNews(DEFAULT_RAID_PROGRESS)).toBe(false);
+    expect(gymGuideHasStakesNews(BEEN_OUT)).toBe(true);
+    expect(gymGuideHasStakesNews(TOLD)).toBe(false);
+    // Before he has said it the board holds no survey (`standingBoard.ts`).
+    expect(buildContractBoard(BEEN_OUT).rows.map((row) => row.description).join(' ')).not.toMatch(/survey stake/i);
+
+    const lines = gymGuideLines(BEEN_OUT);
+    const stakes = FIRST_WORDS.stakes.lines;
+    expect(lines.slice(0, stakes.length)).toEqual(stakes);
+    expect(stakes.join(' ')).toMatch(/Stand on one/);
+    // The job he names next is the board's once the stakes are known.
+    const [job] = buildContractBoard(TOLD).rows;
+    expect(lines[stakes.length]).toBe(`Today's job: ${job.name.toUpperCase()}.`);
+    expect(gymGuideLines(TOLD).join(' ')).not.toContain(stakes[0]);
+    for (const line of stakes) {
+      expect(line.length, line).toBeLessThanOrEqual(68);
+    }
   });
 
   it('names every favour in hand, whose it is and where its thing lies', () => {

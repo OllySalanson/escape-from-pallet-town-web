@@ -25,6 +25,8 @@ describe('a board of one map', () => {
     workshopUpgrades: [],
     unlockedInsertions: [],
     reachedInsertions: [],
+    // Told what a survey stake is, as a save is once it has spoken to the Gym Guide.
+    firstWordsHeard: ['stakes'],
   });
 
   it('always deals a contract that can be finished without beating a boss', () => {

@@ -1,5 +1,6 @@
 import { buildContractBoard } from '../hub/contractBoard';
 import { errandPlace, errandThing, errandsInHand, type ErrandProgress } from '../hub/errands';
+import { FIRST_WORDS, hasHeard } from '../hub/firstWords';
 import type { StandingBoardProgress } from '../objectives/standingBoard';
 import { nextGym } from '../world/valeQuarters';
 
@@ -24,23 +25,45 @@ import { nextGym } from '../world/valeQuarters';
 export const GYM_GUIDE_REEL_QUESTION = 'WATCH THE REEL AGAIN?';
 
 export function gymGuideLines(
-  progress: StandingBoardProgress & ErrandProgress & { readonly gymsMet?: readonly string[] },
+  progress: StandingBoardProgress & ErrandProgress & { readonly gymsMet?: readonly string[]; readonly firstWordsHeard?: readonly string[] },
 ): readonly string[] {
-  const board = buildContractBoard(progress);
+  // Told what a survey stake is, the board deals survey jobs from this line on
+  // (`standingBoard.ts`), so the job he names next is the board as it now stands.
+  const explains = gymGuideHasStakesNews(progress);
+  const told = explains ? { ...progress, firstWordsHeard: [...(progress.firstWordsHeard ?? []), 'stakes'] } : progress;
+  const board = buildContractBoard(told);
   const [job] = board.rows;
+  const greeting = explains ? '' : 'Yo, champ! ';
   const work = job
     ? [
-        `Yo, champ! Today's job: ${job.name.toUpperCase()}.`,
+        `${greeting}Today's job: ${job.name.toUpperCase()}.`,
         sentence(job.description),
         ...(job.asks ? [sentence(job.asks)] : []),
         sentence(`It pays ${job.reward}`),
         ...(board.rows.length > 1 ? [`There is more on the board in OAK'S LAB.`] : []),
       ]
-    : ['Yo, champ! Nothing on the board today. Raid for what the vale holds!'];
+    : [`${greeting}Nothing on the board today. Raid for what the vale holds!`];
   const favours = errandsInHand(progress).map(
     (errand) => `${errand.name} is waiting on ${errandThing(errand).toUpperCase()}, from ${errandPlace(errand)}.`,
   );
-  return [...work, ...favours, ...gymAdvice(progress), 'Kit up through that door!'];
+  return [...(explains ? FIRST_WORDS.stakes.lines : []), ...work, ...favours, ...gymAdvice(told), 'Kit up through that door!'];
+}
+
+/**
+ * Whether the Gym Guide has survey stakes to explain: once a raid has been gone
+ * on (a first raid has no job, `hub/firstRaid.ts`) and until he has said it.
+ * It is also when he wears the harbour's "!" (`BaseScene.markHarbourGivers`),
+ * so the survey jobs it opens are never missed for want of a word with him.
+ */
+export function gymGuideHasStakesNews(progress: {
+  readonly firstWordsHeard?: readonly string[];
+  readonly raidRecord?: Readonly<Record<string, { readonly deployed: number }>>;
+}): boolean {
+  return raidsGoneOn(progress) > 0 && !hasHeard(progress.firstWordsHeard, 'stakes');
+}
+
+function raidsGoneOn(progress: { readonly raidRecord?: Readonly<Record<string, { readonly deployed: number }>> }): number {
+  return Object.values(progress.raidRecord ?? {}).reduce((sum, record) => sum + record.deployed, 0);
 }
 
 /**
@@ -57,7 +80,7 @@ export function gymAdvice(progress: {
   readonly gymsMet?: readonly string[];
   readonly raidRecord?: Readonly<Record<string, { readonly deployed: number }>>;
 }): readonly string[] {
-  const raids = Object.values(progress.raidRecord ?? {}).reduce((sum, record) => sum + record.deployed, 0);
+  const raids = raidsGoneOn(progress);
   const gym = nextGym(progress.defeatedBosses);
   if (!gym || raids === 0) {
     return [];
