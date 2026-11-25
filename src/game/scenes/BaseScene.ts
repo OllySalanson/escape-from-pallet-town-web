@@ -347,7 +347,9 @@ import {
 import { roomPosterPicture } from '../base/roomPosters';
 import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
 import { dueMilestone, milestoneWords, pokedexOwned } from '../hub/pokedex';
-import { boardLines, oakNews } from '../base/labBoard';
+import { boardLines, boardPointer, oakNews } from '../base/labBoard';
+import { jobsBanked, jobsNamed, nextStepLines } from '../hub/nextStep';
+import { NEAR_JOBS } from '../objectives/standingBoard';
 import { friendRoom, friendRoomsOffered } from '../raidRoom/friendRoom';
 import { abandonedRaidLines, boutHeartbeat, raidHeartbeat } from '../run/raidInFlight';
 import { settleAtBase } from '../run/unsavedEnding';
@@ -6645,9 +6647,7 @@ export class BaseScene extends Phaser.Scene {
     if (screen === 'lab') {
       this.sayFirstWords('lab', about, () =>
         favourThen(() =>
-          this.oakGives(about, () => {
-            this.readTheBoard(room, about, oakNews(this.savedGame, isPlaytestRun()));
-          }),
+          this.oakGives(about, () => this.oakSaysWhatIsNext(room, about)),
         ),
       );
       return;
@@ -7279,27 +7279,56 @@ export class BaseScene extends Phaser.Scene {
    * read out by Oak from the mat with whatever news he has first. Raiding with a
    * friend is the last thing pinned to it.
    */
-  private readTheBoard(room: BaseRoom, about: readonly GridPosition[], news: readonly string[] = []): void {
+  private readTheBoard(room: BaseRoom, about: readonly GridPosition[]): void {
     this.player.stop();
     this.player.setFrame(getIdleFrame(this.facing));
-    this.say([...news, ...boardLines(this.savedGame)], about, () => {
-      if (!friendRoomsOffered()) {
+    this.say(boardLines(this.savedGame), about, () => this.offerFriendRoom(room));
+  }
+
+  /**
+   * Oak from the mat: who is hurt, the one next thing (`hub/nextStep.ts`) and
+   * where the rest is pinned - never the board read out. He read every notice
+   * and rumour after every word, thirteen boxes on the critic's save, every
+   * time (problem 8, 25 Nov 2026); the board is read off the wall beside him.
+   * The end of the near jobs is said once, before the rest.
+   */
+  private oakSaysWhatIsNext(room: BaseRoom, about: readonly GridPosition[]): void {
+    const game = this.savedGame;
+    const speak = (): void => {
+      const lines = [...oakNews(game, isPlaytestRun()), ...nextStepLines(game.raidProgress), ...boardPointer(game, jobsNamed(game.raidProgress))];
+      if (lines.length === 0) {
+        this.offerFriendRoom(room);
         return;
       }
-      const held = friendRoom()?.room;
-      const at = { ...this.currentTile };
-      // On NOT NOW unless a room is waiting: this ends everything Oak has to say,
-      // so the key that was reading his lines is usually still being pressed.
-      this.askInBox(
-        held ? `Your room ${held.code} is pinned up. Go and see to it?` : 'Going to raid with a friend?',
-        (yes) => {
-          if (yes) {
-            this.openHub({ savedGame: this.savedGame, view: 'friend', from: room.id, at });
-          }
-        },
-        { startOnNotNow: !held },
-      );
-    });
+      this.player.stop();
+      this.player.setFrame(getIdleFrame(this.facing));
+      this.say(lines, about, () => this.offerFriendRoom(room));
+    };
+    if (jobsBanked(game.raidProgress) >= NEAR_JOBS) {
+      this.sayFirstWords('nearWork', about, speak);
+      return;
+    }
+    speak();
+  }
+
+  /** Raiding with a friend: the last thing Oak or his board has to say. */
+  private offerFriendRoom(room: BaseRoom): void {
+    if (!friendRoomsOffered()) {
+      return;
+    }
+    const held = friendRoom()?.room;
+    const at = { ...this.currentTile };
+    // On NOT NOW unless a room is waiting: this ends everything Oak has to say,
+    // so the key that was reading his lines is usually still being pressed.
+    this.askInBox(
+      held ? `Your room ${held.code} is pinned up. Go and see to it?` : 'Going to raid with a friend?',
+      (yes) => {
+        if (yes) {
+          this.openHub({ savedGame: this.savedGame, view: 'friend', from: room.id, at });
+        }
+      },
+      { startOnNotNow: !held },
+    );
   }
 
   /**

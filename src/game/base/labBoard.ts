@@ -118,6 +118,26 @@ export function boardLines(game: Pick<RestoredGame, 'raidProgress' | 'stash'>): 
   return [...lead, ...work, ...(rumours.length === 0 ? [] : [RUMOURS_PINNED_LINE, ...rumours])];
 }
 
+/**
+ * What Oak says about his board instead of reading it out (`BaseScene.oakSaysWhatIsNext`):
+ * that there is more on it than he has just said, and where. `named` is how
+ * many of its jobs he has already named; nothing when the board holds no more.
+ */
+export function boardPointer(game: Pick<RestoredGame, 'raidProgress' | 'stash'>, named = 0): readonly string[] {
+  const notices = boardNotices(game);
+  const work = notices.filter((notice) => notice.kind !== 'rumour').length - named;
+  const rumours = notices.filter((notice) => notice.kind === 'rumour').length;
+  if (work <= 0 && rumours === 0) {
+    return [];
+  }
+  const parts = [
+    ...(work > 0 ? [work === 1 ? 'a notice' : `${work} notices`] : []),
+    ...(rumours > 0 ? [rumours === 1 ? 'a rumour' : `${rumours} rumours`] : []),
+  ];
+  const what = parts.join(' and ');
+  return [named > 0 ? `There's more on my board, by the wall: ${what}. Have a read!` : `My board by the wall has ${what} on it. Have a read!`];
+}
+
 /** The line under the board's caption: how much is on it. */
 export function boardNote(game: Pick<RestoredGame, 'raidProgress' | 'stash'>): string {
   const notices = boardNotices(game);

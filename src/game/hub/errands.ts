@@ -477,6 +477,20 @@ export function errandQuarter(errand: Errand): ValeQuarter | undefined {
   return district ? quarterOfPlace(district, districtsForMap(errand.mapId)) : undefined;
 }
 
+/**
+ * Whether anybody may ask a new favour of this save: once it has banked a job,
+ * and only while it has no favour in hand. The critic came home from a first
+ * raid to four keepers each asking one, on top of a job, a stake and a gym
+ * (problem 9, 25 Nov 2026); one at a time, after the first job, is a path
+ * rather than a pile. A favour already in hand is kept, whatever this says.
+ */
+export function mayAskAFavour(progress: ErrandProgress): boolean {
+  return (
+    (progress.completedContracts?.length ?? 0) + (progress.standingContractsBanked ?? 0) > 0 &&
+    errandsInHand(progress).length === 0
+  );
+}
+
 /** What a giver has to say when spoken to, if anything. */
 export type ErrandBeat =
   | { readonly kind: 'ask'; readonly errand: Errand }
@@ -505,7 +519,7 @@ export function errandBeat(
     return undefined;
   }
   if (record === undefined) {
-    return errandOpen(errand, progress) ? { kind: 'ask', errand } : undefined;
+    return errandOpen(errand, progress) && mayAskAFavour(progress) ? { kind: 'ask', errand } : undefined;
   }
   if (held(errand.itemId) > 0) {
     return { kind: 'thanks', errand };
