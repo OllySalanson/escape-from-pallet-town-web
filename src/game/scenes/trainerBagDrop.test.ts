@@ -28,7 +28,7 @@ import { searchDurationMs, searchPieces, type CacheSearchState } from '../world/
 import { trainersOn } from '../world/mapTrainers';
 import type { WorldPoi } from '../world/pois';
 import { SpentPresses } from '../world/spentPresses';
-import { bagIdFor, kitFor, travellingLightLine, type TrainerBag } from '../world/trainerBags';
+import { BAG_GLINT_LINE, bagIdFor, kitFor, travellingLightLine, type TrainerBag } from '../world/trainerBags';
 import type { RunTrainerEncounter } from '../world/trainers';
 import { getWorldMap } from '../worldMap';
 import { WorldScene } from './WorldScene';
@@ -45,6 +45,15 @@ interface Driven {
   closeSearch(): void;
   bagGlints(poi: WorldPoi): boolean;
   trainerBagGlints(trainer: RunTrainerEncounter): boolean;
+  poiCaption(poi: WorldPoi, worked: false): string;
+  createTrainerGlint(trainer: RunTrainerEncounter): void;
+  tendTrainerGlints(): void;
+  dropTrainerGlint(trainerId: string): void;
+  clearMap(): void;
+  trainerGlints: Map<string, { visible: boolean; destroyed: boolean }>;
+  hunterBagOwner(hunter: { id: string; rivalId: 'blue' | 'lorelei' }): { standing: string };
+  whereTrainerFell(trainer: RunTrainerEncounter): GridPosition | undefined;
+  currentTile: GridPosition;
   advanceRunClock(deltaMs: number): void;
   handleSearchInput(): boolean;
 }
@@ -116,6 +125,32 @@ function besideATrainer(trainer: RunTrainerEncounter, seed: number, roadside: re
     refreshExtractionMarkers: vi.fn(),
     refreshRunTimerHud: vi.fn(),
     createPoi: vi.fn(),
+    trainerGlints: new Map(),
+    worldLabels: [],
+    watchedGround: [],
+    figureGlints: [],
+    trainersForCurrentMap: () => [trainer],
+    // Where a bag may lie is `boulderMayRest`'s, tested with the boulders; here only open ground matters.
+    boulderMayRest: (tile: GridPosition) => map.collision[tile.y]?.[tile.x] === false,
+    npcSprites: new Map(),
+    npcAppearances: new Map(),
+    lootSprites: new Map(),
+    prizeLabels: new Map(),
+    prizeGleams: new Map(),
+    contractMarkers: new Map(),
+    dropInLabels: new Map(),
+    add: {
+      graphics: () => {
+        const mark = {
+          y: 0, visible: true, destroyed: false,
+          setDepth: () => mark, fillStyle: () => mark, fillRect: () => mark,
+          setPosition: (_x: number, y: number) => { mark.y = y; return mark; },
+          setVisible: (visible: boolean) => { mark.visible = visible; return mark; },
+          destroy: () => { mark.destroyed = true; },
+        };
+        return mark;
+      },
+    },
     removePoi: vi.fn(),
     renderSearch: vi.fn(),
   });
@@ -276,5 +311,71 @@ describe("a beaten trainer's bag in a raid", () => {
       }
     }
     expect(bags).toBeGreaterThan(40);
+  });
+
+  it('keeps saying SOMETHING GLINTS INSIDE on an opened bag until its prize is taken, not only before it is opened', () => {
+    let seed = 1;
+    for (; seed < 2000; seed += 1) {
+      if (besideATrainer(hiker, seed).scene.trainerBagGlints(hiker)) break;
+    }
+    const { scene, controls } = besideATrainer(hiker, seed);
+    scene.defeatedTrainerIds.add(hiker.trainer.id);
+    scene.dropBeatenTrainersBags();
+    const poi = () => scene.poisHere().find((candidate) => candidate.id === bagIdFor(hiker.trainer.id))!;
+    expect(scene.poiCaption(poi(), false)).toContain(BAG_GLINT_LINE);
+
+    // Opened and walked away from with the find still to come to light.
+    scene.tryActivatePoiAt(hiker.position);
+    scene.advanceRunClock(16);
+    scene.closeSearch();
+    expect(scene.poiCaption(poi(), false)).toMatch(/OPENED: \d+ STILL INSIDE\nSOMETHING GLINTS INSIDE/);
+
+    scene.tryActivatePoiAt(hiker.position);
+    controls.interact[0].justDown = true;
+    scene.handleSearchInput();
+    controls.interact[0].justDown = false;
+    for (let spent = 0; spent < searchDurationMs(searchPieces(poi().reward)); spent += 16) {
+      scene.advanceRunClock(16);
+    }
+    expect(scene.poisHere().some((candidate) => candidate.id === bagIdFor(hiker.trainer.id))).toBe(true);
+    expect(scene.bagGlints(poi())).toBe(false);
+  });
+
+  it('hides the mark over a trainer while the player is beside them, takes it down when they come, and drops it with the map', () => {
+    const { scene } = besideATrainer(hiker, 1);
+    scene.createTrainerGlint(hiker);
+    const mark = scene.trainerGlints.get(hiker.trainer.id)!;
+    scene.currentTile = { x: hiker.position.x, y: hiker.position.y - 4 };
+    scene.tendTrainerGlints();
+    expect(mark.visible).toBe(true);
+    scene.currentTile = { x: hiker.position.x + 1, y: hiker.position.y - 1 };
+    scene.tendTrainerGlints();
+    expect(mark.visible).toBe(false);
+
+    scene.dropTrainerGlint(hiker.trainer.id);
+    expect(mark.destroyed).toBe(true);
+    expect(scene.trainerGlints.size).toBe(0);
+
+    scene.createTrainerGlint(hiker);
+    scene.clearMap();
+    expect(scene.trainerGlints.size).toBe(0);
+  });
+
+  it('rolls only the first hunter a raid beats at a hunter\'s odds, and every later one at a veteran\'s', () => {
+    const { scene } = besideATrainer(hiker, 1);
+    expect(scene.hunterBagOwner({ id: 'hunter:a', rivalId: 'blue' }).standing).toBe('hunter');
+    scene.runSession.trainerBags = { [bagIdFor('hunter:a')]: null };
+    expect(scene.hunterBagOwner({ id: 'hunter:b', rivalId: 'lorelei' }).standing).toBe('veteran');
+  });
+
+  it("drops a watching trainer's bag where the fight was - beside the player they walked up to - not back at their post", () => {
+    const { scene } = besideATrainer(hiker, 1);
+    // Spoken to from beside them: the bag is on their own tile.
+    expect(scene.whereTrainerFell(hiker)).toEqual(hiker.position);
+    // Caught three tiles down their line: they walked up, and fell beside the player.
+    scene.currentTile = { x: hiker.position.x, y: hiker.position.y + 3 };
+    const fell = scene.whereTrainerFell(hiker)!;
+    expect(Math.abs(fell.x - scene.currentTile.x) + Math.abs(fell.y - scene.currentTile.y)).toBeLessThanOrEqual(2);
+    expect(fell).not.toEqual(scene.currentTile);
   });
 });
