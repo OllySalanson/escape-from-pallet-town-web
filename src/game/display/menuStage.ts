@@ -32,6 +32,8 @@
  * - Height is deliberately uncapped. Rows are what a taller window buys, and a
  *   screen that stopped growing at some height would go back to hiding them.
  */
+import { onDevicePixel, phonePixelZoom } from './stage';
+
 export const MENU_MIN_WIDTH = 320;
 export const MENU_MIN_HEIGHT = 240;
 export const MENU_MAX_WIDTH = 1120;
@@ -124,12 +126,25 @@ const toEven = (value: number): number => Math.floor(value / 2) * 2;
  * `MENU_STEP_WIDTH` x `MENU_STEP_HEIGHT` screen at, clamped into the readable
  * band; everything the window has left over becomes logical pixels.
  */
-export function computeMenuStage(viewportWidth: number, viewportHeight: number): MenuStage {
+export function computeMenuStage(viewportWidth: number, viewportHeight: number, devicePixelRatio = 1): MenuStage {
   const room = menuRoom(viewportWidth, viewportHeight);
   const usableWidth = Math.max(1, room.width - MENU_INSET * 2);
   const usableHeight = Math.max(1, room.height - MENU_INSET * 2);
   const holdsSmallestScreen =
     viewportWidth >= MENU_MIN_WIDTH * MIN_MENU_SCALE && viewportHeight >= MENU_MIN_HEIGHT * MIN_MENU_SCALE;
+  // A phone: whole device pixels a game pixel, as the canvas is drawn there
+  // (`phonePixelZoom` in stage.ts says why), so the menus are as crisp as the
+  // world under them and as large as the screen can hold the smallest one.
+  const devicePixels = holdsSmallestScreen
+    ? undefined
+    : phonePixelZoom(usableWidth, usableHeight, devicePixelRatio, MENU_MIN_WIDTH, MENU_MIN_HEIGHT, Infinity);
+  if (devicePixels !== undefined) {
+    return {
+      width: clamp(toEven(devicePixels.deviceWidth / devicePixels.devicePerPixel), MENU_MIN_WIDTH, MENU_MAX_WIDTH),
+      height: Math.max(MENU_MIN_HEIGHT, toEven(devicePixels.deviceHeight / devicePixels.devicePerPixel)),
+      scale: devicePixels.zoom,
+    };
+  }
   const scale = holdsSmallestScreen
     ? clamp(
         Math.min(
@@ -160,8 +175,9 @@ export function applyMenuStage(
   layer: HTMLElement | null,
   viewportWidth: number,
   viewportHeight: number,
+  devicePixelRatio = 1,
 ): MenuStage {
-  const stage = computeMenuStage(viewportWidth, viewportHeight);
+  const stage = computeMenuStage(viewportWidth, viewportHeight, devicePixelRatio);
   if (layer) {
     const width = stage.width * stage.scale;
     const height = stage.height * stage.scale;
@@ -172,8 +188,8 @@ export function applyMenuStage(
     // it is even, and half of an odd number stands every one-pixel border on a
     // half pixel, which the browser resolves by blurring all of it.
     const room = menuRoom(viewportWidth, viewportHeight);
-    layer.style.left = `${Math.max(0, Math.floor((room.width - width) / 2))}px`;
-    layer.style.top = `${Math.max(0, Math.floor((room.height - height) / 2))}px`;
+    layer.style.left = `${Math.max(0, onDevicePixel((room.width - width) / 2, devicePixelRatio))}px`;
+    layer.style.top = `${Math.max(0, onDevicePixel((room.height - height) / 2, devicePixelRatio))}px`;
     // One game pixel, in CSS pixels: `--u` on a pixel-ui screen, and the unit
     // every border, gap and glyph on it is a whole multiple of.
     layer.style.setProperty('--px', `${stage.scale}px`);

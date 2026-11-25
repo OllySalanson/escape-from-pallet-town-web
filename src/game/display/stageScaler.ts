@@ -1,5 +1,5 @@
 import { applyMenuStage, menuLayer } from './menuStage';
-import { computeStage, type StageSize } from './stage';
+import { computeStage, onDevicePixel, type StageSize } from './stage';
 
 /**
  * Keeps the running game's screen matched to the browser window.
@@ -23,8 +23,9 @@ export function applyStage(
   parent: HTMLElement | null,
   viewportWidth: number,
   viewportHeight: number,
+  devicePixelRatio = 1,
 ): StageSize {
-  const stage = computeStage(viewportWidth, viewportHeight);
+  const stage = computeStage(viewportWidth, viewportHeight, devicePixelRatio);
   // In this order: Phaser writes the canvas's CSS size only when told the zoom
   // afterwards. `resize` tells it for itself at any zoom but 1, so a window that
   // stayed at 1x (a phone) kept the canvas at the size it last was and drew the
@@ -40,8 +41,10 @@ export function applyStage(
     // is even, and half of an odd number put the whole screen - canvas and menus
     // alike - on half a pixel, which the browser resolves by blurring all of it.
     parent.style.position = 'absolute';
-    parent.style.left = `${Math.max(0, Math.floor((viewportWidth - width) / 2))}px`;
-    parent.style.top = `${Math.max(0, Math.floor((viewportHeight - height) / 2))}px`;
+    // On a phone the zoom is whole device pixels rather than CSS ones, so the
+    // corner is placed on a device pixel too.
+    parent.style.left = `${Math.max(0, onDevicePixel((viewportWidth - width) / 2, devicePixelRatio))}px`;
+    parent.style.top = `${Math.max(0, onDevicePixel((viewportHeight - height) / 2, devicePixelRatio))}px`;
     // One game pixel, in CSS pixels. Anything the scenes hang off the canvas
     // box - the frame around it, and a driver measuring it - reads the same
     // grid the canvas is scaled to. The DOM screens have a box and a pixel of
@@ -63,8 +66,9 @@ export function applyStage(
 export function watchViewport(game: ScalableGame, parentId = 'app'): () => void {
   const parent = () => document.getElementById(parentId);
   const update = () => {
-    applyStage(game, parent(), window.innerWidth, window.innerHeight);
-    applyMenuStage(menuLayer(), window.innerWidth, window.innerHeight);
+    const ratio = window.devicePixelRatio || 1;
+    applyStage(game, parent(), window.innerWidth, window.innerHeight, ratio);
+    applyMenuStage(menuLayer(), window.innerWidth, window.innerHeight, ratio);
   };
   update();
   window.addEventListener('resize', update);

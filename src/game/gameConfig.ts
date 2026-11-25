@@ -73,7 +73,7 @@ export function createGameConfig(
   const stage =
     typeof window === 'undefined'
       ? { width: BASE_STAGE_WIDTH, height: BASE_STAGE_HEIGHT, zoom: 3 }
-      : computeStage(window.innerWidth, window.innerHeight);
+      : computeStage(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1);
 
   return {
     // Test mode changes how often and how the game is drawn, and nothing else. A
