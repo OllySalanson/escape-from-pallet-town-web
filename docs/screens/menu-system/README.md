@@ -208,3 +208,13 @@ theirs; the words stay on the help bar and for a reader (`priceChips` in
 | Before | After |
 |---|---|
 | ![](before-boutique-prices.png) | ![](after-boutique-prices.png) |
+
+## 15. A name is in capitals on every shelf
+
+The rack and the locker set an item's name in mixed case (Potion, Super
+Potion) where every other list sets it in capitals; they take the names' own
+class now.
+
+| Before | After |
+|---|---|
+| ![](before-rack-names.png) | ![](after-rack-names.png) |
