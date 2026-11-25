@@ -101,6 +101,12 @@ export interface PixelScreenOptions {
   readonly hints: string;
   /** A message about what just happened. It takes the help bar while it lasts. */
   readonly status?: string;
+  /**
+   * The screen's keys on a line of their own, under the help line, which the
+   * cursor never takes: on a screen where every control has help of its own,
+   * `hints` is never seen, and a player was never told which keys to press.
+   */
+  readonly keys?: string;
 }
 
 /**
@@ -157,7 +163,8 @@ export function pixelScreen(options: PixelScreenOptions): string {
   const status = options.status
     ? `<span class="px-status-line" role="status">${options.status}</span>`
     : '';
-  const help = `<p class="px-help${status ? ' has-status' : ''}"><span data-help-text data-help-default="${escapeAttribute(options.hints)}">${options.hints}</span>${status}</p>`;
+  const keys = options.keys ? `<span class="px-keys">${options.keys}</span>` : '';
+  const help = `<p class="px-help${status ? ' has-status' : ''}${keys ? ' has-keys' : ''}"><span data-help-text data-help-default="${escapeAttribute(options.hints)}">${options.hints}</span>${status}${keys}</p>`;
   return `<div class="px-screen"><header class="px-title">${back}<h1>${place}${options.title}</h1>${aside}</header>${options.body}${help}</div>`;
 }
 

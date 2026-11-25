@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('phaser', () => ({
   default: { Scene: class {}, Scenes: { Events: { SHUTDOWN: 'shutdown' } } },
@@ -25,12 +25,12 @@ class MemoryStorage implements StorageLike {
 }
 
 interface BoutiqueInternals {
-  tryOnCard(look: unknown, card: string, event: { detail: number }): void;
+  tryOnCard(look: unknown, event: { detail: number }): void;
   buy(): void;
-  crossToOrFromBar(key: string): boolean;
+  crossToOrFromBar(): boolean;
   cursorOn(target: unknown): void;
   trying: unknown;
-  lastCard: string | null;
+  lastCard: number | null;
   triedOnAt: number;
 }
 
@@ -43,14 +43,19 @@ function shop() {
   const focused: string[] = [];
   const sent: string[][] = [];
   const found = new Map<string, { focus: () => void }>();
+  const element = (selector: string) => {
+    const kept = found.get(selector) ?? { focus: () => focused.push(selector) };
+    found.set(selector, kept);
+    return kept;
+  };
+  // A page of four cards, each answering to its place on the page.
+  const cards = [0, 1, 2, 3].map((index) => ({ focus: () => focused.push(`card ${index}`) }));
   const overlay = {
     focus: (...selectors: string[]) => sent.push(selectors),
     root: {
-      querySelector: (selector: string) => {
-        const element = found.get(selector) ?? { focus: () => focused.push(selector) };
-        found.set(selector, element);
-        return element;
-      },
+      querySelector: element,
+      querySelectorAll: () => cards,
+      contains: () => true,
     },
   };
   const scene = Object.create(BoutiqueScene.prototype) as BoutiqueInternals & Record<string, unknown>;
@@ -70,6 +75,12 @@ function shop() {
 
 const hat = wearing(null, 'youngster-cap');
 
+beforeEach(() => {
+  vi.stubGlobal('HTMLElement', class {});
+  vi.stubGlobal('Element', class {});
+  vi.stubGlobal('document', { activeElement: null });
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -77,25 +88,26 @@ afterEach(() => {
 describe('the way to BUY at THE HARBOUR BOUTIQUE', () => {
   it('is one press by the keys: ENTER on a card tries it on and goes to the bar', () => {
     const { scene, sent } = shop();
+    scene.lastCard = 2;
 
-    scene.tryOnCard(hat, '[data-wear="youngster-cap"]', { detail: 0 });
+    scene.tryOnCard(hat, { detail: 0 });
 
     expect(sameLook(scene.trying as never, hat)).toBe(true);
     // BUY if it is for sale, WEAR if it is owned, and the card back if there is nothing to do.
-    expect(sent).toEqual([['[data-buy]', '[data-wear-it]:not([aria-disabled="true"])', '[data-wear="youngster-cap"]']]);
+    expect(sent).toEqual([['[data-buy]', '[data-wear-it]:not([aria-disabled="true"])', '[data-index="2"]']]);
   });
 
   it('leaves a mouse where it is: it can reach the bar for itself', () => {
     const { scene, sent } = shop();
 
-    scene.tryOnCard(hat, '[data-wear="youngster-cap"]', { detail: 1 });
+    scene.tryOnCard(hat, { detail: 1 });
 
     expect(sent).toEqual([]);
   });
 
   it('never spends on the second press of a double-tap, and does on a press after it', () => {
     const { scene, manager } = shop();
-    scene.tryOnCard(hat, '[data-wear="youngster-cap"]', { detail: 0 });
+    scene.tryOnCard(hat, { detail: 0 });
 
     scene.buy();
     expect(manager.load()?.raidProgress.wardrobe ?? []).not.toContain('youngster-cap');
@@ -105,24 +117,22 @@ describe('the way to BUY at THE HARBOUR BOUTIQUE', () => {
     expect(manager.load()?.raidProgress.wardrobe).toContain('youngster-cap');
   });
 
-  it('comes back with Up or Tab to the card it left, and Tab goes across from the shelves', () => {
+  it('comes back with Tab to the card it left, and Tab goes across from the shelves', () => {
     const { scene, focused } = shop();
-    const card = { dataset: { wear: 'youngster-cap' }, hasAttribute: () => false };
-    vi.stubGlobal('HTMLElement', Object);
+    // Landing on the page's third card remembers it.
+    const HTMLElementStub = globalThis.HTMLElement as unknown as new () => object;
+    const card = Object.assign(new HTMLElementStub(), { dataset: { index: '2', wear: 'youngster-cap' }, hasAttribute: () => false });
     scene.cursorOn(card);
-    expect(scene.lastCard).toBe('[data-wear="youngster-cap"]');
+    expect(scene.lastCard).toBe(2);
 
-    vi.stubGlobal('Element', Object);
-    vi.stubGlobal('document', { activeElement: { matches: () => true } });
-    expect(scene.crossToOrFromBar('ArrowUp')).toBe(true);
-    expect(scene.crossToOrFromBar('Tab')).toBe(true);
-    expect(focused).toEqual(['[data-wear="youngster-cap"]', '[data-wear="youngster-cap"]']);
+    const ElementStub = globalThis.Element as unknown as new () => object;
+    vi.stubGlobal('document', { activeElement: Object.assign(new ElementStub(), { matches: () => true }) });
+    expect(scene.crossToOrFromBar()).toBe(true);
+    expect(focused).toEqual(['card 2']);
 
     focused.length = 0;
-    vi.stubGlobal('document', { activeElement: { matches: () => false } });
-    // Up on the shelves is the shelves' own.
-    expect(scene.crossToOrFromBar('ArrowUp')).toBe(false);
-    expect(scene.crossToOrFromBar('Tab')).toBe(true);
+    vi.stubGlobal('document', { activeElement: Object.assign(new ElementStub(), { matches: () => false }) });
+    expect(scene.crossToOrFromBar()).toBe(true);
     expect(focused[0]).toContain('[data-buy]');
   });
 });

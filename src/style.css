@@ -1268,6 +1268,28 @@ button {
   }
 }
 
+/* A boutique page turned, coming in from the side it was turned to. */
+@keyframes boutique-turn-next {
+  from {
+    opacity: 0.4;
+    transform: translateX(calc(var(--u) * 6));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes boutique-turn-back {
+  from {
+    opacity: 0.4;
+    transform: translateX(calc(var(--u) * -6));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   #screens .arena-panel {
     animation: none;
@@ -1825,6 +1847,24 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .px-help.has-status [data-help-text] {
   display: none;
+}
+/* A screen's keys, on the help bar's second line whatever the first says
+   (`pixelScreen`'s `keys`): the line above names what the cursor is on. */
+:where(.pixel-ui) .px-help.has-keys [data-help-text],
+:where(.pixel-ui) .px-help.has-keys .px-status-line {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+:where(.pixel-ui) .px-help.has-keys.has-status [data-help-text] {
+  display: none;
+}
+:where(.pixel-ui) .px-keys {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  color: var(--bar-muted);
 }
 
 /* --- The window --------------------------------------------------------- */
@@ -4951,9 +4991,11 @@ body.touch-play .feedback-tab {
 
 /* ------------------------------------------------------------------------
    THE HARBOUR BOUTIQUE and the wardrobe (`look/boutiqueView.ts`): the mirror
-   down the left, the shelves across the rest of the window, the bar along
-   the foot. Every figure is a look composed whole-pixel (`look/composeLook.ts`)
-   and drawn at a whole number of game pixels a pixel.
+   down the left, the shelves beside it as tabs and a page of cards, and the
+   bar along the foot. Every figure is a look composed whole-pixel
+   (`look/composeLook.ts`) and drawn at a whole number of game pixels a pixel.
+   Nothing on it scrolls: a shelf is pages of whole cards, as many as its room
+   holds (`BoutiqueScene.measure`).
    ------------------------------------------------------------------------ */
 :where(.pixel-ui) .boutique-layout {
   grid-template-rows: minmax(0, 1fr) auto;
@@ -4970,10 +5012,10 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .boutique-panes > .px-window {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
   align-content: start;
   max-height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 /* Two classes deep, as the rule for both panes is, or the mirror is the row that gives way. */
 :where(.pixel-ui) .boutique-panes > .boutique-mirror-window {
@@ -4991,38 +5033,10 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui[data-room='tight']) .boutique-mirror .look-figure {
   --figure-scale: 2;
 }
-/* At the smallest stage the four facings leave the list under the mirror less
-   room than one of its rows, so it could only ever show a row cut through:
-   it goes, and the bar along the foot still says what is new and its price. */
+/* At the smallest stage the four facings leave no room for what they are made
+   of: it goes, and the bar along the foot still says what the try-on costs. */
 :where(.pixel-ui[data-room='tight']) .boutique-panes > .boutique-mirror-window > .boutique-worn {
   display: none;
-}
-/* A card's figure at two, and at the game's own size at the smallest stage,
-   so a card is short enough to fold whole under a MORE strip rather than be
-   cut through its words. */
-:where(.pixel-ui) .boutique-card .look-figure {
-  --figure-scale: 2;
-}
-:where(.pixel-ui[data-room='tight']) .boutique-card .look-figure {
-  --figure-scale: 1;
-}
-/* The shelves' own window: its heading, a row of jump chips, then the list. */
-:where(.pixel-ui) .boutique-panes > .boutique-shelves-window {
-  grid-template-rows: auto auto minmax(0, 1fr);
-}
-:where(.pixel-ui) .boutique-jumps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--u) * 2);
-  padding-bottom: calc(var(--u) * 3);
-}
-/* At the smallest stage the chips would take two rows of a list that has few
-   to spare; the shelves' own headings still say where each one starts. */
-:where(.pixel-ui[data-room='tight']) .boutique-jumps {
-  display: none;
-}
-:where(.pixel-ui[data-room='tight']) .boutique-panes > .boutique-shelves-window {
-  grid-template-rows: auto minmax(0, 1fr);
 }
 /* The four facings two by two: down and left, up and right. */
 :where(.pixel-ui) .boutique-mirror {
@@ -5033,13 +5047,242 @@ body.touch-play .feedback-tab {
   padding: calc(var(--u) * 4) 0;
   background: var(--cream-lit);
 }
-:where(.pixel-ui) .boutique-worn-row {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: calc(var(--u) * 2);
+/* What the mirror's look is made of, a piece a row: its slot small, its name,
+   and its price as the things themselves or YOURS. */
+:where(.pixel-ui) .boutique-worn {
+  display: grid;
+  align-content: start;
+  gap: calc(var(--u) * 3);
+  padding-top: calc(var(--u) * 3);
+  min-height: 0;
+  overflow: hidden;
 }
-:where(.pixel-ui) .boutique-worn-row small {
+:where(.pixel-ui) .boutique-worn-row {
+  display: grid;
+  justify-items: start;
+}
+:where(.pixel-ui) .boutique-worn-row > small {
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .boutique-worn-row .boutique-costs {
+  justify-content: start;
+}
+/* The shelves' window: its heading (and which page), the tabs, then the page
+   between its two arrows. */
+:where(.pixel-ui) .boutique-panes > .boutique-shelves-window {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+/* A tab a shelf, as YOUR THINGS's pockets are tabs: the open one raised in
+   paper and joined to the page, a red line along its top; the others sunk. */
+:where(.pixel-ui) .boutique-tabs {
+  display: flex;
+  gap: var(--u);
+  margin: 0 calc(var(--u) * -4);
+  padding: calc(var(--u) * 2) calc(var(--u) * 4) 0;
+  box-shadow: inset 0 calc(var(--u) * -1) 0 var(--frame);
+}
+.pixel-ui .boutique-tab {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 1) calc(var(--u) * 4) calc(var(--u) * 1);
+  border: var(--u) solid var(--frame);
+  border-bottom: none;
+  background: var(--cream-dim);
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pixel-ui .boutique-tab > small {
+  color: var(--ink-soft);
+}
+.pixel-ui .boutique-tab.is-here {
+  /* One pixel taller, over the rule under the strip, so it joins the page. */
+  margin-bottom: calc(var(--u) * -1);
+  padding-bottom: calc(var(--u) * 2);
+  background: var(--cream);
+  color: var(--ink);
+  box-shadow: inset 0 calc(var(--u) * 2) 0 var(--cursor);
+}
+.pixel-ui .boutique-tab:focus {
+  background: var(--cream-lit);
+  color: var(--ink);
+}
+.pixel-ui .boutique-tab:focus::before {
+  content: '';
+  position: absolute;
+  left: var(--u);
+  top: calc(var(--u) * 4);
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 5);
+  background: var(--cursor);
+  mask: var(--px-cursor) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
+}
+.pixel-ui .boutique-tab:hover:not(:focus) {
+  color: var(--ink);
+}
+/* The smallest stage keeps every tab on the strip by dropping the counts, and
+   RAID FINDS is RAID. */
+:where(.pixel-ui[data-room='tight']) :is(.boutique-tab > small, .boutique-tab-more) {
+  display: none;
+}
+.pixel-ui[data-room='tight'] .boutique-tab {
+  padding-inline: var(--u);
+}
+:where(.pixel-ui[data-room='tight']) .boutique-tabs {
+  gap: 0;
+  padding-left: var(--u);
+}
+/* The page between its arrows: an arrow is lit while there is a page that way,
+   and dims to a ghost at either end, so the shelf says it goes on. */
+:where(.pixel-ui) .boutique-shelf {
+  display: grid;
+  grid-template-columns: calc(var(--u) * 9) minmax(0, 1fr) calc(var(--u) * 9);
+  align-items: stretch;
+  min-height: 0;
+  padding-top: calc(var(--u) * 4);
+}
+.pixel-ui .boutique-turn {
+  position: relative;
+  padding: 0;
+  background: none;
+  color: var(--cursor);
+}
+.pixel-ui .boutique-turn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: calc(var(--u) * 2);
+  width: calc(var(--u) * 5);
+  height: calc(var(--u) * 9);
+  margin-top: calc(var(--u) * -5);
+  background: currentColor;
+  /* A drawn arrowhead, five pixels across and nine high. */
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+.pixel-ui .boutique-turn.is-back::after {
+  clip-path: polygon(100% 0, 0 50%, 100% 100%);
+}
+.pixel-ui .boutique-turn:disabled {
+  color: var(--cream-dim);
+}
+.pixel-ui .boutique-turn:not(:disabled):hover {
+  color: var(--red);
+}
+/* The page itself: whole columns of whole game pixels and rows one card high,
+   written by the scene once the shelf is measured, and hidden until then so a
+   page is never seen at the wrong size. */
+:where(.pixel-ui) .boutique-page {
+  display: grid;
+  grid-template-columns: repeat(var(--columns, 4), calc(var(--u) * var(--track, 100)));
+  grid-auto-rows: calc(var(--u) * var(--card-height, 80));
+  gap: calc(var(--u) * 3);
+  justify-content: center;
+  /* What room is left under the last row is shared above and below the page,
+     level with its arrows. */
+  align-content: center;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+:where(.pixel-ui) .boutique-page:not([data-measured]) {
+  visibility: hidden;
+}
+/* A turned page comes in from the side it was turned to, in two steps of whole
+   pixels and a tenth of a second: the shelf moves on, and the eye goes with it. */
+:where(.pixel-ui) .boutique-page.is-turning-next {
+  animation: boutique-turn-next 0.1s steps(2, jump-none) both;
+}
+:where(.pixel-ui) .boutique-page.is-turning-back {
+  animation: boutique-turn-back 0.1s steps(2, jump-none) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(.pixel-ui) .boutique-page:is(.is-turning-next, .is-turning-back) {
+    animation: none;
+  }
+}
+/* A card: the figure, the name, the price, and a stamp in
+   its corner for whatever is already true. Every card on a page is one size. */
+.pixel-ui .boutique-card {
+  --pad-top: 2;
+  justify-items: center;
+  align-content: center;
+  text-align: center;
+  row-gap: var(--u);
+  padding: calc(var(--u) * 3) calc(var(--u) * 4);
+  overflow: hidden;
+}
+.pixel-ui .boutique-card .look-figure {
+  --figure-scale: 2;
+}
+.pixel-ui[data-room='tight'] .boutique-card .look-figure {
+  --figure-scale: 1;
+}
+/* At the smallest stage a card is the game's own size, a pixel over and under
+   and nothing between, so a page still holds two whole rows. */
+.pixel-ui[data-room='tight'] .boutique-card {
+  row-gap: 0;
+  padding: var(--u) calc(var(--u) * 2);
+}
+.pixel-ui .boutique-card > .boutique-card-name {
+  max-width: 100%;
+  /* One line, whole: the few names longer than a card end in an ellipsis, and
+     the mirror and the help line under the screen say them in full. Room
+     below for a y's tail, which a box cut to the line takes off. */
+  padding-bottom: var(--u);
+  margin-bottom: calc(var(--u) * -1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: none;
+}
+/* The price line is an item icon high on every card, priced or not, so every
+   name on a row stands on the same line. */
+:where(.pixel-ui) .boutique-card-price {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--u) * 16);
+}
+.pixel-ui .boutique-card.is-selected {
+  --fill: var(--teal-wash);
+}
+.pixel-ui .boutique-card.is-raid {
+  --fill: var(--gold-wash);
+}
+/* The cursor's card: lit paper in a red frame two pixels deep, the outer
+   pixel the window's own edge and the inner one drawn inside it. */
+.pixel-ui .boutique-card:focus {
+  --fill: var(--cream-lit);
+  --edge: var(--cursor);
+}
+.pixel-ui .boutique-card:focus::after {
+  content: '';
+  position: absolute;
+  inset: var(--u);
+  border: var(--u) solid var(--cursor);
+  pointer-events: none;
+}
+.pixel-ui .boutique-card:hover:not(:focus) {
+  --fill: var(--cream-lit);
+}
+:where(.pixel-ui) .boutique-stamp {
+  position: absolute;
+  top: calc(var(--u) * 3);
+  right: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .boutique-free {
+  color: var(--ink-soft);
+}
+/* The bar along the foot is one line: what the try-on comes to, and its two buttons. */
+:where(.pixel-ui) .boutique-bar .px-bar-head {
+  flex-wrap: nowrap;
+  margin-bottom: 0;
+}
+:where(.pixel-ui) .boutique-bill {
+  min-width: 0;
   color: var(--ink-soft);
 }
 /* A look's figure is the whole point of this screen, so unlike a keeper's it
@@ -5057,29 +5300,6 @@ body.touch-play .feedback-tab {
     animation: none;
   }
 }
-.pixel-ui .boutique-card {
-  /* Stretched so a row of cards is one height, and given back its own floor:
-     a window's `min-height: 0` let the grid size every row to nothing. */
-  align-self: stretch;
-  min-height: auto;
-  justify-items: center;
-  align-content: start;
-  text-align: center;
-  row-gap: calc(var(--u) * 1);
-}
-.pixel-ui .boutique-card.is-selected {
-  --fill: var(--teal-wash);
-}
-.pixel-ui .boutique-card.is-selected:focus {
-  --fill: var(--cream-lit);
-}
-.pixel-ui .boutique-card.is-raid {
-  --fill: var(--gold-wash);
-}
-.pixel-ui .boutique-card > strong {
-  text-transform: none;
-}
-
 /* The bench is one list, the whole width of its panel. */
 :where(.pixel-ui) .bench-layout {
   grid-template-columns: minmax(0, 1fr);
@@ -6362,4 +6582,14 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .boutique-cost {
   display: flex;
   align-items: center;
+}
+/* What the vault is short of, in the bar and under the mirror: the red of a refusal. */
+:where(.pixel-ui) .boutique-cost.is-short,
+:where(.pixel-ui) .boutique-cost.is-short small {
+  color: var(--red);
+}
+/* Cards hold the price on one line: the money and two materials, then "+1". */
+:where(.pixel-ui) .boutique-card .boutique-costs {
+  flex-wrap: nowrap;
+  gap: 0 calc(var(--u) * 2);
 }
