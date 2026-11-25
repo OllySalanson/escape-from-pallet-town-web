@@ -226,3 +226,20 @@ describe('RaidHud prize chip', () => {
     expect(images.some((image) => image.visible)).toBe(false);
   });
 });
+
+describe('RaidHud prize chip beside a panel', () => {
+  it('steps down under any chip it would touch, so it never lies on the place chip', () => {
+    const { scene } = stubScene(400);
+    const hud = new RaidHud(scene);
+    hud.render(
+      { ...STATE, hunter: null, prize: { label: '2 LAMP OILS AND A NAME LONG ENOUGH TO REACH ACROSS', itemId: 'lamp-oil', detail: 'NE 118' } },
+      0,
+      null,
+      155,
+    );
+    const chips = hud.occupied;
+    for (const [index, chip] of chips.entries()) {
+      expect(chips.slice(index + 1).filter((other) => overlaps(chip, other))).toEqual([]);
+    }
+  });
+});

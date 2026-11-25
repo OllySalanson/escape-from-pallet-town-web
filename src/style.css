@@ -6312,6 +6312,9 @@ body.touch-play .feedback-tab {
 }
 .pixel-ui.player-name-menu .px-body {
   background: none;
+  /* Its question and its bar are one pop-up: with the backdrop gone, the gap
+     between them was a see-through strip with the title's buttons in it. */
+  row-gap: 0;
 }
 
 /* A boutique card's price as the things themselves (`priceChips` in
