@@ -501,7 +501,7 @@ describe('deployment flow', () => {
       expect(flow.riskedPokemon).toEqual([]);
       expect(flow.secureCells).toEqual({ used: 4, total: 4 });
       // Pressing the partner's row is an answer, never a refusal to obey.
-      expect(flow.toggleSecurePokemon('charmander-1')).toMatch(/is your partner, so it has a place of its own: a wipe never takes your partner/);
+      expect(flow.toggleSecurePokemon('charmander-1')).toMatch(/is your partner\. It never leaves your side\./);
       expect(flow.securedPokemon.map(({ id }) => id)).toEqual(['rattata-1']);
       expect(flow.deploy.bind(flow)).toThrow();
       flow.advance();

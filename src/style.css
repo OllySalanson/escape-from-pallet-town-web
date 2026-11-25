@@ -3864,6 +3864,12 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui[data-room='tight']) .box-bar {
   position: static;
 }
+/* The join field is the whole of its window: nothing stands under it to rule off. */
+:where(.pixel-ui) .box-bar.friend-join {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  box-shadow: none;
+}
 
 /* --- Bill ------------------------------------------------------- */
 /* Standing across the top, then the shelf and the barter table side by side,

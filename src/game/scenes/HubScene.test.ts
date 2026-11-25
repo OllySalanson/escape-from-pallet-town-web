@@ -1967,7 +1967,7 @@ describe('what the base screen leads with', () => {
     const markup = markupOf(hub);
     const row = /<button class="px-row is-secured is-partner-place"[^]*?<\/button>/.exec(markup)?.[0] ?? '';
     expect(row).toContain('PARTNER');
-    expect(row).toContain('a wipe never takes your partner');
+    expect(row).toContain('It never leaves your side.');
     expect(markup).not.toContain('A wipe will take');
     expect(markup).not.toContain('data-secure-pokemon="charizard-1"');
   });
