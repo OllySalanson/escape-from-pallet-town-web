@@ -1478,6 +1478,7 @@ export class SaveManager {
     won: boolean,
     medal: RaceMedal | null,
     trail?: RaceTrail,
+    perfect = false,
   ): RaceRecord | undefined {
     const game = this.load();
     if (!game) {
@@ -1493,6 +1494,7 @@ export class SaveManager {
       ...(betterMedal(was?.medal, medal) ? { medal: betterMedal(was?.medal, medal) } : {}),
       // The best run is the one raced again: a slower one leaves it where it was.
       ...(trail && readTrail(trail) && (was?.bestMs === undefined || timeMs < was.bestMs) ? { ghost: [...trail] } : {}),
+      ...(perfect || was?.perfect ? { perfect: true as const } : {}),
     };
     this.save({
       ...game,
@@ -1506,8 +1508,11 @@ export class SaveManager {
    * the day's purse, and the trophy. A raid lost with them in the pack has not
    * won them, and the racer offers them again.
    */
-  public bankRaceWinnings(courseId: string, bank: { readonly purseDay?: string; readonly trophy?: boolean }): void {
-    if (!bank.purseDay && !bank.trophy) {
+  public bankRaceWinnings(
+    courseId: string,
+    bank: { readonly purseDay?: string; readonly trophy?: boolean; readonly perfectTrophy?: boolean },
+  ): void {
+    if (!bank.purseDay && !bank.trophy && !bank.perfectTrophy) {
       return;
     }
     const game = this.load();
@@ -1519,6 +1524,7 @@ export class SaveManager {
       ...was,
       ...(bank.purseDay ? { purseDay: bank.purseDay } : {}),
       ...(bank.trophy || was.trophy ? { trophy: true as const } : {}),
+      ...(bank.perfectTrophy || was.perfectTrophy ? { perfectTrophy: true as const } : {}),
     };
     this.save({
       ...game,
@@ -3311,6 +3317,8 @@ function readRaces(value: unknown): { readonly races: Readonly<Record<string, Ra
       ...(typeof held.purseDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(held.purseDay) ? { purseDay: held.purseDay } : {}),
       ...(held.trophy === true ? { trophy: true as const } : {}),
       ...(readTrail(held.ghost) ? { ghost: readTrail(held.ghost) } : {}),
+      ...(held.perfect === true ? { perfect: true as const } : {}),
+      ...(held.perfectTrophy === true ? { perfectTrophy: true as const } : {}),
     };
   }
   return Object.keys(races).length > 0 ? { races } : null;

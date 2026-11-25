@@ -22,6 +22,7 @@ import {
   racerKnowsTheWay,
   raceLineWord,
   raceOutcome,
+  isPerfect,
   racerTimeMs,
 } from './races';
 import { createRunTrainerEncounters } from './trainers';
@@ -97,17 +98,6 @@ function bestWay(map: WorldMapDefinition, from: GridPosition, wadeCost = 0): { s
   return { steps: Number.POSITIVE_INFINITY, wild: 0 };
 }
 
-/** Where a player can stand to ask: beside the racer, on open ground. */
-function askingTiles(map: WorldMapDefinition): GridPosition[] {
-  const { x, y } = course.racer.stands;
-  return [
-    { x: x + 1, y },
-    { x: x - 1, y },
-    { x, y: y + 1 },
-    { x, y: y - 1 },
-  ].filter((tile) => !map.collision[tile.y][tile.x]);
-}
-
 const shut = getWorldMap('greystone-vale');
 const ride = shut.gates.find((gate) => gate.tiles.some((tile) => tile.x === 82 && tile.y === 188));
 const open = getWorldMap('greystone-vale', ride ? [gateKey(ride)] : []);
@@ -140,37 +130,45 @@ describe('THE MERE DASH, on the vale as it is drawn', () => {
     expect(crossing).toBe(152);
   });
 
-  it('cannot be won by following LINNET, and is won by the reeds’ dry way', () => {
+  it('starts everybody from one chalk mark beside her, on open ground', () => {
+    const { mark, stands } = course.racer;
+    expect(Math.abs(mark.x - stands.x) + Math.abs(mark.y - stands.y)).toBe(1);
+    expect(shut.collision[mark.y][mark.x]).toBe(false);
+  });
+
+  it('cannot be won by following LINNET, and is won by the reeds\u2019 dry way', () => {
     const line = racerLine(raceGround(shut, figuresOn(shut)), course.racer.stands, course.finish.tiles)!;
     const racerMs = racerTimeMs(line.length);
-    for (const from of askingTiles(shut)) {
-      const best = bestWay(shut, from);
-      // Beside her, a step behind: following her road is never ahead of her.
-      expect(best.steps * STEP_DURATION_MS).toBeLessThan(racerMs - 5000);
-      // SILVER is the dry way run clean, with a few tiles' slack from any side of her.
-      expect(best.steps * STEP_DURATION_MS).toBeLessThan(course.silverMs - 600);
-      // ...and GOLD is out of reach of every line the shut ride leaves.
-      expect(best.steps * STEP_DURATION_MS).toBeGreaterThan(course.goldMs + 3000);
-    }
+    const mark = course.racer.mark;
+    // Following her road from the mark is longer than her road: a nose behind, every time.
+    const road = racerLine(raceGround(shut, figuresOn(shut)), mark, course.finish.tiles)!;
+    expect(road.length).toBeGreaterThan(line.length);
+    const best = bestWay(shut, mark);
+    expect(best.steps * STEP_DURATION_MS).toBeLessThan(racerMs - 5000);
+    // SILVER is the dry way run clean, with a few tiles' slack.
+    expect(bestWay(shut, mark, 3).steps * STEP_DURATION_MS).toBeLessThan(course.silverMs - 600);
+    // ...and GOLD is out of reach of every line the shut ride leaves.
+    expect(best.steps * STEP_DURATION_MS).toBeGreaterThan(course.goldMs + 3000);
     expect(racerMs).toBeGreaterThan(course.silverMs + 4000);
   });
 
   it('is GOLD only down the woodcutter’s ride, with a few tiles to spare', () => {
-    for (const from of askingTiles(open)) {
-      expect(bestWay(open, from).steps * STEP_DURATION_MS).toBeLessThan(course.goldMs - 1000);
-      // And it can be walked minding the grass: past the millpond and the last
-      // wade to the door, and nowhere else.
-      const dry = bestWay(open, from, 3);
-      expect(dry.steps * STEP_DURATION_MS).toBeLessThan(course.goldMs - 300);
-      expect(dry.wild).toBeLessThanOrEqual(6);
-    }
+    const from = course.racer.mark;
+    expect(bestWay(open, from).steps * STEP_DURATION_MS).toBeLessThan(course.goldMs - 1000);
+    // And it can be walked minding the grass: past the millpond and the last
+    // wade to the door, and nowhere else.
+    const dry = bestWay(open, from, 3);
+    expect(dry.steps * STEP_DURATION_MS).toBeLessThan(course.goldMs - 300);
+    expect(dry.wild).toBeLessThanOrEqual(6);
   });
 });
 
 describe('the floor', () => {
-  it('is the fewest steps down the ride from the best side of her: PERFECT is not a step wasted', () => {
-    const fewest = Math.min(...askingTiles(open).map((from) => bestWay(open, from).steps));
-    expect(course.perfectMs).toBe(fewest * STEP_DURATION_MS);
+  it('is the fewest steps from the mark down the ride: PERFECT is not a step wasted', () => {
+    expect(course.perfectMs).toBe(bestWay(open, course.racer.mark).steps * STEP_DURATION_MS);
+    // Judged on the tenth the screen shows: the frame the clock takes at GO and at the line is nobody's to see.
+    expect(isPerfect(course, course.perfectMs + 33)).toBe(true);
+    expect(isPerfect(course, course.perfectMs + 100)).toBe(false);
     expect(raceLineWord(course, { medal: 'gold', timeMs: course.perfectMs })).toBe('PERFECT 0:09.3');
     expect(raceLineWord(course, { medal: 'gold', timeMs: 10_350 })).toBe('GOLD 0:10.3');
     expect(raceLineWord(course, { medal: null, timeMs: 23_000 })).toBe('2ND 0:23.0');
@@ -190,19 +188,15 @@ describe('LINNET, once she has learned the dry way', () => {
       expect(line!.some((tile) => tile.x >= off.x && tile.x < off.x + off.width && tile.y >= off.y && tile.y < off.y + off.height)).toBe(false);
       const crossing = line!.findIndex((tile) => course.finish.tiles.some((one) => one.x === tile.x && one.y === tile.y));
       const herMs = racerTimeMs(crossing + 1);
-      // Under SILVER herself: through the reeds a player ties her at best.
+      // Under SILVER herself, and a step ahead of the dry way from the mark.
       expect(herMs).toBeLessThan(course.silverMs);
-      for (const from of askingTiles(map)) {
-        // The dry way, minding the grass as she does: a tie at best.
-        expect(bestWay(shut, from, 3).steps * STEP_DURATION_MS).toBeGreaterThanOrEqual(herMs - STEP_DURATION_MS);
-        // Wading straight through can nose ahead - through enough wild grass to be a dice roll.
-        const wade = bestWay(shut, from);
-        if (wade.steps * STEP_DURATION_MS < herMs) expect(wade.wild).toBeGreaterThanOrEqual(10);
-      }
+      const mark = course.racer.mark;
+      expect(bestWay(shut, mark, 3).steps * STEP_DURATION_MS).toBeGreaterThan(herMs);
+      // Wading straight through can nose ahead - through enough wild grass to be a dice roll.
+      const wade = bestWay(shut, mark);
+      if (wade.steps * STEP_DURATION_MS < herMs) expect(wade.wild).toBeGreaterThanOrEqual(10);
       if (map === open) {
-        for (const from of askingTiles(open)) {
-          expect(bestWay(open, from, 3).steps * STEP_DURATION_MS).toBeLessThan(herMs - 3000);
-        }
+        expect(bestWay(open, mark, 3).steps * STEP_DURATION_MS).toBeLessThan(herMs - 3000);
       }
     }
   });
@@ -264,6 +258,8 @@ describe('what LINNET says', () => {
       tookShortcut: false,
       shortcutOpen: false,
       firstGold: true,
+      hadPerfect: false,
+      beatenBefore: false,
       timeMs: 15_200,
       racerMs: 22_800,
       medal: 'silver' as const,
@@ -280,7 +276,10 @@ describe('what LINNET says', () => {
     expect(ride).toContain('The ride! I KNEW it.');
     expect(ride).toContain('Stop to fight and you lose it.');
     expect(ride).not.toContain('Bill');
-    expect(racerArrivesLines(course, { ...input, tookShortcut: true, timeMs: 12_200 }).join(' ')).toContain("Don't stop once.");
+    // The tenth identical win is not met with the first one's surprise.
+    expect(racerArrivesLines(course, { ...input, beatenBefore: true }).join(' ')).toContain('Again?!');
+    expect(racerArrivesLines(course, { ...input, medal: 'gold', timeMs: 10_500, firstGold: false, hadPerfect: true }).join(' ')).toContain("You've done it in 0:09.3");
+    expect(racerArrivesLines(course, { ...input, medal: 'gold', timeMs: 9_300 }).join(' ')).toContain('Not a step wasted');
     // Once the ride is cut it is no longer grown shut.
     expect(racerArrivesLines(course, { ...input, shortcutOpen: true }).join(' ')).toContain('open now');
     // The first GOLD is the best run she has ever seen; the tenth is not.
@@ -300,6 +299,8 @@ describe('what LINNET says', () => {
         tookShortcut: false,
         shortcutOpen: false,
         firstGold: true,
+        hadPerfect: false,
+        beatenBefore: false,
         timeMs: 23_400,
         racerMs: 22_800,
         medal: null,
@@ -312,11 +313,13 @@ describe('what LINNET says', () => {
     expect(lost(9100, true, false)).toContain("I don't stop while you fight");
     expect(lost(0, true, false)).toContain('straighter');
     expect(lost(0, true, true)).toContain('My dry way now');
+    expect(lost(0, true, true)).toContain('never beat me');
   });
 
-  it('calls a dead heat the player\u2019s', () => {
+  it('calls a dead heat the player\u2019s, on the tenth the screen shows', () => {
     expect(raceOutcome(15_450, 15_450)).toBe('won');
-    expect(raceOutcome(15_467, 15_450)).toBe('lost');
+    expect(raceOutcome(15_467, 15_450)).toBe('won');
+    expect(raceOutcome(15_517, 15_450)).toBe('lost');
   });
 
   it('keeps the chip to what a glance can take', () => {

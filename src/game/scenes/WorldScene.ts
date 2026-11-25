@@ -173,6 +173,10 @@ import {
   racerKnowsTheWay,
   raceGossipAt,
   raceOutcome,
+  shownTenths,
+  isPerfect,
+  perfectTrophyLine,
+  toeTheLineLine,
   judgeAfterLines,
   type RaceMedal,
   raceNotYetLines,
@@ -1127,6 +1131,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private countdownWordShown: string | null = null;
   /** The best time on the course being raced, read once rather than every frame. */
   private raceBestMs: number | undefined;
+  /** The chalk mark the player toes before the count. */
+  private raceMark: Phaser.GameObjects.Graphics | undefined;
   /** The best mark on the course being raced: a GOLD is shown the floor to chase. */
   private raceMedalHeld: RaceMedal | undefined;
   /** Whether the racer has made their offer this raid: a second ask is short. */
@@ -1363,6 +1369,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.raceNotice = undefined;
     this.raceMedalHeld = undefined;
     this.raceAsked = false;
+    this.raceMark = undefined;
     this.stepFollowsArrow = false;
     this.boardedAtMs = null;
     // The marks were destroyed with the scene; the hunters themselves ride the run session.
@@ -2518,7 +2525,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
 
-    if (this.tryCrossRaceLine() || this.sayRaceNotice()) {
+    if (this.tryToeTheMark() || this.tryCrossRaceLine() || this.sayRaceNotice()) {
       return;
     }
 
@@ -4228,6 +4235,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (here) {
       this.readRaceRecord(here.course);
       if (here.race.phase !== 'over') this.createRaceGhost();
+      if (!this.raceStarted(here.race)) this.drawChalkMark(here.course);
       const place = this.racerNow(here.race);
       this.createFigure(RACER_FIGURE_ID, place.tile, place.facing, 'npc', here.course.racer.design);
     }
@@ -4255,7 +4263,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // house front, and the pennant flies from its head: the chequer again,
     // small, above whoever is crossing rather than out of their back.
     const head = course.finish.tiles[0];
-    const poleX = head.x * TILE_SIZE + 13;
+    // A column west of the line, so it never stands over whoever is on it.
+    const poleX = (head.x - 1) * TILE_SIZE + 8;
     const poleFoot = head.y * TILE_SIZE;
     const flag = this.add.graphics().setDepth(atRow(FIGURE_BAND, head.y - 1));
     flag.fillStyle(0x3a2a1a, 1);
@@ -4271,7 +4280,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /** Where the racer is now: at the start until GO, on their line after. */
   private racerNow(race: RaceState): RacerPlace {
-    return racerPlace(race.line, STEP_DURATION_MS, race.phase === 'countdown' ? 0 : race.clockMs);
+    return racerPlace(race.line, STEP_DURATION_MS, this.raceStarted(race) ? race.clockMs : 0);
   }
 
   /** The best time and run on a course, read once a world rather than every frame. */
@@ -4304,7 +4313,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!sprite || !this.raceGhost) {
       return;
     }
-    const clockMs = race.phase === 'countdown' ? 0 : race.clockMs;
+    const clockMs = this.raceStarted(race) ? race.clockMs : 0;
     const place = ghostPlace(this.raceGhost, clockMs);
     const fade = place.done ? Math.max(0, 1 - (clockMs - trailTime(this.raceGhost)) / GHOST_FADE_MS) : 1;
     sprite
@@ -4313,6 +4322,37 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       .setFrame(place.stepping && (place.x + place.y) % 1 < 0.5 ? getWalkFrames(place.facing)[0] : getIdleFrame(place.facing))
       .setAlpha(GHOST_ALPHA * fade)
       .setVisible(fade > 0 && race.phase !== 'over');
+  }
+
+  /** Whether the race has gone: past the chalk mark and the count. */
+  private raceStarted(race: RaceState): boolean {
+    return race.phase === 'running' || race.phase === 'over';
+  }
+
+  /** The chalk mark while the player is wanted on it: a white box on the ground, under every figure. */
+  private drawChalkMark(course: RaceCourse | null): void {
+    this.raceMark?.destroy();
+    this.raceMark = undefined;
+    if (!course) {
+      return;
+    }
+    const { x, y } = course.racer.mark;
+    this.raceMark = this.add.graphics().setDepth(MARKER_BAND);
+    this.raceMark.lineStyle(2, 0xf8f8f0, 0.95).strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+    this.mapObjects.push(this.raceMark);
+  }
+
+  /** On the chalk mark with nothing on screen: "On your marks..." and the count. */
+  private tryToeTheMark(): boolean {
+    const here = this.raceHere();
+    const mark = here?.course.racer.mark;
+    if (!here || here.race.phase !== 'lining-up' || !mark || mark.x !== this.currentTile.x || mark.y !== this.currentTile.y) {
+      return false;
+    }
+    here.race.phase = 'countdown';
+    here.race.countdownMs = 0;
+    this.dialogBox.showMessage(raceReadyLine(here.course, false));
+    return true;
   }
 
   /** Every frame: the racer where the clock puts them, striding while they run. */
@@ -4337,7 +4377,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return false;
     }
     const place = this.racerNow(here.race);
-    return (here.race.phase === 'countdown' || place.home) && place.tile.x === tile.x && place.tile.y === tile.y;
+    return (!this.raceStarted(here.race) || place.home) && place.tile.x === tile.x && place.tile.y === tile.y;
   }
 
   /** The racer asks: who, where, what for - and then the captain's question. */
@@ -4397,8 +4437,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.runSession.race = newRace(course, this.freshRaceLine(course, knows), knows);
     const wasRiding = this.riding;
     this.setRiding(false);
+    // Everybody goes from the same chalk mark, whichever side they asked from:
+    // on it already, the count; otherwise they are asked to step on to it.
+    const mark = course.racer.mark;
+    const onMark = mark.x === this.currentTile.x && mark.y === this.currentTile.y;
+    if (!onMark) {
+      this.runSession.race.phase = 'lining-up';
+    }
+    this.drawChalkMark(course);
     // Said before the count: the countdown waits for the box to be read.
-    this.dialogBox.showMessage(raceReadyLine(course, wasRiding));
+    this.dialogBox.showMessage(onMark ? raceReadyLine(course, wasRiding) : toeTheLineLine(course));
     const person = this.currentMap.entities.find((entity) => this.courseOfPerson(entity) === course);
     if (person) {
       this.npcSprites.get(person.id)?.destroy();
@@ -4419,6 +4467,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (word === null) {
       race.phase = 'running';
       race.clockMs = 0;
+      this.drawChalkMark(null);
       race.trail = trailWith([], this.currentTile, 0);
       this.showRaceWord('GO!');
       audioManager.play('raceGo');
@@ -4517,7 +4566,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const dx = this.currentTile.x - place.x;
     const dy = this.currentTile.y - place.y;
     this.faceFigure(RACER_FIGURE_ID, Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy < 0 ? 'up' : 'down');
-    this.dialogBox.showMessages(here.race.arrivalWords);
+    this.interrupt(here.race.arrivalWords, [place]);
     here.race.arrivalWords = undefined;
     return true;
   }
@@ -4536,7 +4585,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const outcome: RaceOutcome = raceOutcome(timeMs, race.racerMs);
     const medal = raceMedal(course, timeMs, outcome === 'won');
     const trail = trailWith(race.trail, this.currentTile, timeMs);
-    const was = new SaveManager().recordRace(course.id, timeMs, outcome === 'won', medal, trail);
+    const perfect = medal === 'gold' && isPerfect(course, timeMs);
+    const was = new SaveManager().recordRace(course.id, timeMs, outcome === 'won', medal, trail, perfect);
     const prize = racePrize(outcome, medal, {
       purseTakenToday: this.purseTakenToday(was),
       trophyBanked: was?.trophy === true,
@@ -4557,23 +4607,33 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       tookShortcut: race.tookShortcut,
       shortcutOpen: this.shortcutOpen(course),
       firstGold: was?.medal !== 'gold',
+      hadPerfect: was?.perfect === true,
+      beatenBefore: (was?.wins ?? 0) > 0,
       medal,
       // A first run is not a best of anything: it is the time to beat.
-      newBest: was?.bestMs !== undefined && timeMs < was.bestMs,
+      // Judged on the tenth shown: 0:10.3 is not a new best on 0:10.3.
+      newBest: was?.bestMs !== undefined && shownTenths(timeMs) < shownTenths(was.bestMs),
       prize,
     };
     // The judge calls a win; the racer, still out on the course, is heard from
     // as they run in. A loss the racer says themselves: they are here.
     const lines = outcome === 'won' ? judgeLines(course, input) : racerWonLines(course, input);
+    const speaker = outcome === 'won' ? course.judge.at : this.racerNow(race).tile;
     if (outcome === 'won') {
       race.arrivalWords = racerArrivesLines(course, input);
     }
     this.showRaceWord(raceLineWord(course, { medal, timeMs }));
     this.time.delayedCall(LINE_WORD_MS, () => this.showRaceWord(null));
+    // The first PERFECT a raid gets home: the rarest thing in the house.
+    const perfectTrophy = perfect && was?.perfectTrophy !== true;
     const handed: { itemId: ItemId; quantity: number }[] = [
       { itemId: 'money', quantity: prize.money },
       ...(prize.trophy ? [{ itemId: course.trophy, quantity: 1 }] : []),
+      ...(perfectTrophy ? [{ itemId: course.perfectTrophy, quantity: 1 }] : []),
     ];
+    if (perfectTrophy) {
+      lines.push(perfectTrophyLine(course, getItemById(course.perfectTrophy)?.displayName ?? course.perfectTrophy));
+    }
     if (prize.trophy && medal) {
       // Under SILVER before and still no trophy at home: a wipe took the last one.
       const again = was?.bestMs !== undefined && was.bestMs < course.silverMs;
@@ -4582,7 +4642,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!this.handOver(race, course, handed)) {
       lines.push(heldPrizeLine(course, outcome === 'won'));
     }
-    this.dialogBox.showMessages(lines);
+    // Seated clear of whoever is talking: the judge by his door, or the racer at the line.
+    this.interrupt(lines, [speaker]);
     this.pendingRacePurse = prize.purse;
     return true;
   }
@@ -4609,6 +4670,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     if (itemId === course.trophy) {
       race.bank.trophy = true;
+    }
+    if (itemId === course.perfectTrophy) {
+      race.bank.perfectTrophy = true;
     }
   }
 
@@ -4711,7 +4775,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const bearing = compassBearing(this.currentTile, course.finish.tiles[0]);
     return raceChipLines({
       course,
-      clockMs: race.phase === 'countdown' ? 0 : race.clockMs,
+      clockMs: this.raceStarted(race) ? race.clockMs : 0,
+      liningUp: race.phase === 'lining-up',
       racerPlace: districtAt(this.currentMap.id, place.tile)?.name ?? null,
       racerHomeMs: home ? race.racerMs : null,
       waitLeftMs: home ? race.racerMs + FINISH_WAIT_MS - race.clockMs : null,

@@ -209,8 +209,15 @@ try {
   if (shots) await page.screenshot(`${shots}/2-question.png`);
   for (let guard = 0; guard < 4 && (await state()).choice?.selected !== 0; guard += 1) await press('ArrowLeft');
   await press('Space');
-  // "On your marks..." is read before the count.
+  // "On your marks..." is read before the count - or "Toe the chalk mark", and
+  // the walk on to it first.
   await clear();
+  if ((await state()).race?.phase === 'lining-up') {
+    note('lining up on the chalk mark');
+    const toMark = await plan([{ x: 83, y: 169 }], 'wade');
+    if (toMark) await run(toMark);
+    await clear();
+  }
   await until(`${W}.describeForTest().race?.phase === 'running'`, 'GO');
   const go = await state();
   note(`GO at raid clock ${go.elapsedMs}ms, LINNET due ${go.race.racerMs}ms`);
