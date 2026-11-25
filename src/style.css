@@ -1165,11 +1165,11 @@ button {
   padding: 0;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  border: 2px solid #171717;
+  border: 2px solid #24344c;
   border-left: 0;
   border-radius: 0;
-  background: #55d6be;
-  color: #171717;
+  background: #3c5c86;
+  color: #f8f0c8;
   font-family: 'Orange Kid', monospace;
   font-size: 25px;
   line-height: 26px;
@@ -1179,7 +1179,7 @@ button {
   box-shadow: 2px 0 0 #0b1220;
 }
 .feedback-tab:hover {
-  background: #8fe6d4;
+  background: #5a82b0;
 }
 .feedback-tab[hidden] {
   display: none;
@@ -1341,22 +1341,35 @@ button {
    ========================================================================== */
 .menu-overlay.pixel-ui {
   --u: var(--px, 2px);
-  --ink: #202020;
-  --ink-soft: #5d5c47;
-  --frame: #171717;
-  --cream: #ebeac5;
-  --cream-lit: #f8f7dd;
-  --cream-dim: #d3d2a9;
-  --backdrop: #183c52;
-  --backdrop-band: #1c455e;
-  --bar: #0b1220;
-  --bar-text: #ebeac5;
-  --bar-muted: #9cafc7;
+  /* The pop-ups' palette (`src/game/ui/uiPalette.ts`): FireRed's window - cream
+     paper, a navy line, a blue rim - and a red cursor, so a question asked in
+     the yard and the screen it opens are one surface (the captain, 25 Nov
+     2026: "shite colours"; `docs/screens/menu-system/`). */
+  --ink: #303030;
+  --ink-soft: #645e4a;
+  --frame: #24344c;
+  --cream: #f0eccc;
+  --cream-lit: #fff6c8;
+  --cream-dim: #e2ddb8;
+  --backdrop: #16263a;
+  --backdrop-band: #1b2f48;
+  /* The title and help bars are the frame's own navy, so they read as part of
+     the window; a panel's heading is the rim's shade, a step lighter. */
+  --bar: #24344c;
+  --heading: #3c5c86;
+  --bar-text: #f8f0c8;
+  --bar-muted: #c4daf0;
+  --rim: #5a82b0;
+  --rim-light: #b4d0ec;
+  --rim-shade: #3c5c86;
+  --cursor: #d83828;
+  --confirm: #2c7e48;
+  --confirm-lit: #3a9a5a;
   --teal: #55d6be;
-  --teal-wash: #bfe6cf;
+  --teal-wash: #dde6e6;
   /* Teal dark enough to be a mark on cream (4.9:1); --teal is 1.5:1 there and
      reads only on the dark bar (playtest 39 D1). */
-  --teal-ink: #17705f;
+  --teal-ink: #236a3c;
   --gold: #f0c454;
   --gold-wash: #f2e5ab;
   --red: #b0201c;
@@ -1367,13 +1380,12 @@ button {
   --px-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h-1zM4 0h1v1h-1zM1 1h1v1h-1zM3 1h1v1h-1zM2 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM0 4h1v1h-1zM4 4h1v1h-1z'/%3E%3C/svg%3E");
   --px-hollow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h5v5h-5zM1 1v3h3v-3z' fill-rule='evenodd'/%3E%3C/svg%3E");
   overflow: hidden;
-  /* Two-pixel bands, the way the party screen of the games this is dressed as
-     is never one flat colour. */
-  background: repeating-linear-gradient(
-    0deg,
-    var(--backdrop) 0 calc(var(--u) * 2),
-    var(--backdrop-band) calc(var(--u) * 2) calc(var(--u) * 4)
-  );
+  /* A calm checker of two blues, eight pixels a square, the way the party
+     screen of the games this is dressed as is never one flat colour. Two-pixel
+     bands read as a CRT's scan lines. */
+  background:
+    conic-gradient(var(--backdrop-band) 25%, var(--backdrop) 0 50%, var(--backdrop-band) 0 75%, var(--backdrop) 0)
+    0 0 / calc(var(--u) * 16) calc(var(--u) * 16);
   color: var(--ink);
   font-family: 'Orange Kid', monospace;
   font-size: calc(var(--u) * 12.5);
@@ -1435,18 +1447,49 @@ button {
      off the right edge and dragged both body columns along with it. Nothing
      inside a screen may resize the screen. */
   grid-template-columns: minmax(0, 1fr);
+  position: relative;
   /* Its own transparent layer, which is what makes the browser antialias the
      text in greys. On an opaque layer Windows and Linux use the LCD's colour
      subpixels instead, and every stem of a pixel face grows an orange fringe on
      one side and a blue one on the other. */
   will-change: transform;
 }
+:where(.pixel-ui) .px-screen::after {
+  /* The pop-ups' frame round the whole screen (`drawFramedWindow`): a line
+     with clear corners, a two-pixel blue rim and a bevel, four pixels deep.
+     Painted over the screen's own edge rather than padded inside it - there it
+     lies on the navy bars and the body's own padding, so a column that was
+     exactly full stays full. Only round the screen: a rim round every panel
+     inside it would crowd the rows. So a screen reads as one window of the
+     game, as the question in the yard does. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--rim-light), var(--rim-light)) calc(var(--u) * 3) calc(var(--u) * 3) / calc(100% - var(--u) * 6) var(--u) no-repeat,
+    linear-gradient(var(--rim-light), var(--rim-light)) calc(var(--u) * 3) calc(var(--u) * 3) / var(--u) calc(100% - var(--u) * 6) no-repeat,
+    linear-gradient(var(--rim-shade), var(--rim-shade)) left calc(var(--u) * 4) bottom calc(var(--u) * 3) / calc(100% - var(--u) * 7) var(--u) no-repeat,
+    linear-gradient(var(--rim-shade), var(--rim-shade)) right calc(var(--u) * 3) top calc(var(--u) * 4) / var(--u) calc(100% - var(--u) * 7) no-repeat,
+    linear-gradient(var(--rim), var(--rim)) var(--u) var(--u) / calc(100% - var(--u) * 2) calc(var(--u) * 2) no-repeat,
+    linear-gradient(var(--rim), var(--rim)) left var(--u) bottom var(--u) / calc(100% - var(--u) * 2) calc(var(--u) * 2) no-repeat,
+    linear-gradient(var(--rim), var(--rim)) var(--u) var(--u) / calc(var(--u) * 2) calc(100% - var(--u) * 2) no-repeat,
+    linear-gradient(var(--rim), var(--rim)) right var(--u) top var(--u) / calc(var(--u) * 2) calc(100% - var(--u) * 2) no-repeat,
+    linear-gradient(var(--frame), var(--frame)) var(--u) 0 / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--frame), var(--frame)) var(--u) 100% / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--frame), var(--frame)) 0 var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat,
+    linear-gradient(var(--frame), var(--frame)) 100% var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat;
+}
 :where(.pixel-ui) .px-title {
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 6);
-  height: calc(var(--u) * 16);
-  padding: 0 calc(var(--u) * 4);
+  /* Its top four pixels are under the screen's frame: two more, and the words
+     stand clear of it, accents and all - at sixteen the frame took the mark off
+     POKÉDEX's E. */
+  height: calc(var(--u) * 18);
+  padding: calc(var(--u) * 2) calc(var(--u) * 6) 0;
   background: var(--bar);
   box-shadow: 0 var(--u) 0 var(--frame);
   color: var(--bar-text);
@@ -1467,7 +1510,7 @@ button {
   text-overflow: clip;
 }
 :where(.pixel-ui) .px-place {
-  color: var(--teal);
+  color: var(--bar-muted);
   margin-right: calc(var(--u) * 6);
 }
 :where(.pixel-ui) .px-title-aside {
@@ -1494,11 +1537,21 @@ button {
   -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
   transform: scaleX(-1);
 }
+:where(.pixel-ui) .px-back:focus::before {
+  background: var(--cursor);
+}
 :where(.pixel-ui) .px-back:focus {
-  color: var(--bar);
-  background: var(--teal);
+  color: var(--cream-lit);
+  background: none;
 }
 :where(.pixel-ui) .px-body {
+  /* The checker again, under the windows: a side panel's root is clear so the
+     map shows beside it, and the gaps between its windows showed the arena's
+     floor through them. On the body, never the screen, which must stay a
+     transparent layer (below). */
+  background:
+    conic-gradient(var(--backdrop-band) 25%, var(--backdrop) 0 50%, var(--backdrop-band) 0 75%, var(--backdrop) 0)
+    0 0 / calc(var(--u) * 16) calc(var(--u) * 16);
   min-height: 0;
   padding: calc(var(--u) * 4);
   display: grid;
@@ -1509,10 +1562,13 @@ button {
    fixed height under every list, because a bar that grew with its sentence
    would move the whole screen each time the cursor did. */
 :where(.pixel-ui) .px-help {
-  height: calc(var(--u) * 26);
-  padding: var(--u) calc(var(--u) * 4) 0;
+  /* Two lines and the screen's frame under them. */
+  height: calc(var(--u) * 30);
+  padding: var(--u) calc(var(--u) * 6) 0;
   background: var(--bar);
-  box-shadow: 0 calc(var(--u) * -1) 0 var(--frame);
+  /* A rule of the rim's shade over it, so it reads as a band of its own and
+     not as the frame's bottom edge grown thick. */
+  box-shadow: 0 calc(var(--u) * -1) 0 var(--heading);
   color: var(--bar-text);
   overflow: hidden;
 }
@@ -1542,7 +1598,6 @@ button {
     linear-gradient(var(--fill), var(--fill)) var(--u) var(--u) / calc(100% - var(--u) * 2)
       calc(100% - var(--u) * 2) no-repeat;
 }
-.pixel-ui .px-tone-primary,
 .pixel-ui .px-tone-care {
   --fill: var(--teal-wash);
 }
@@ -1571,7 +1626,7 @@ button {
   margin: calc(var(--u) * -3) calc(var(--u) * -3) calc(var(--u) * 4);
   padding: 0 calc(var(--u) * 3);
   height: calc(var(--u) * 14);
-  background: var(--bar);
+  background: var(--heading);
   color: var(--bar-text);
   /* Caps for the whole strip, notes included, exactly as the title bar sets
      its own aside: the strip is one rank, not a heading beside a sentence. */
@@ -1834,7 +1889,7 @@ button {
   background: var(--cream-lit);
 }
 .pixel-ui button.px-row.is-selected:focus {
-  background: #d5f2e0;
+  background: var(--cream-lit);
 }
 .pixel-ui button.px-row.is-secured:focus {
   background: #f8edbd;
@@ -1858,13 +1913,21 @@ button {
   mask: var(--px-cursor) center / 100% 100% no-repeat;
   -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
 }
+/* On paper the cursor is the pop-ups' red; on a filled button it keeps the
+   button's own letters' colour, which is what reads on green or red. */
+.pixel-ui button.px-row:focus::before,
+.pixel-ui .px-card:focus::before,
+.pixel-ui .px-chip:focus::before,
+.pixel-ui .px-button:not(.is-primary, .is-danger):focus::before {
+  background: var(--cursor);
+}
 :where(.pixel-ui) .px-tag {
   text-transform: uppercase;
   white-space: nowrap;
   color: var(--ink-soft);
 }
 :where(.pixel-ui) .px-tag-good {
-  color: #1d6a4f;
+  color: var(--teal-ink);
 }
 :where(.pixel-ui) .px-tag-risk {
   color: var(--red);
@@ -1873,6 +1936,17 @@ button {
   color: #7a5a00;
 }
 /* A tag that is a fact rather than an offer carries the drawn tick. */
+/* On a bar - the title's aside, a heading's note - a tag is a light ink, as
+   the bar's own words are: the paper's green and red are dark on navy. */
+:where(.pixel-ui) :is(.px-title, .px-heading) .px-tag-good {
+  color: #9ad8a8;
+}
+:where(.pixel-ui) :is(.px-title, .px-heading) .px-tag-risk {
+  color: #ffa090;
+}
+:where(.pixel-ui) :is(.px-title, .px-heading) .px-tag-secure {
+  color: var(--gold);
+}
 :where(.pixel-ui) .px-tag.has-tick::after {
   content: '';
   display: inline-block;
@@ -1894,20 +1968,21 @@ button {
   white-space: nowrap;
 }
 .pixel-ui .px-button {
-  --fill: var(--cream);
+  --fill: var(--cream-lit);
 }
 .pixel-ui .px-button.is-primary {
-  --fill: var(--teal);
+  --fill: var(--confirm);
+  color: #ffffff;
 }
 .pixel-ui .px-button.is-danger {
   --fill: var(--red);
   color: var(--cream-lit);
 }
 .pixel-ui .px-button:focus {
-  --fill: var(--cream-lit);
+  --fill: #ffffff;
 }
 .pixel-ui .px-button.is-primary:focus {
-  --fill: #8ff0dc;
+  --fill: var(--confirm-lit);
 }
 .pixel-ui .px-button.is-danger:focus {
   --fill: #d0302a;
@@ -1957,7 +2032,7 @@ button {
   color: var(--ink-soft);
 }
 .pixel-ui .px-step:focus {
-  --fill: var(--teal);
+  --fill: var(--cream-lit);
 }
 :where(.pixel-ui) .px-stepper {
   display: flex;
@@ -2331,7 +2406,7 @@ button {
   --fill: var(--cream-lit);
 }
 .pixel-ui .px-card.px-tone-primary:focus {
-  --fill: #d5f2e0;
+  --fill: var(--cream-lit);
 }
 
 /* --- The wall map in Oak's Lab ----------------------------------------- */
@@ -2736,7 +2811,7 @@ button {
   padding: calc(var(--u) * 2) calc(var(--u) * 3);
 }
 :where(.pixel-ui) .px-ready {
-  color: #1d6a4f;
+  color: var(--teal-ink);
 }
 /* The roster takes the room and the supplies keep a lane of their own: what the
    screen is for is finding one Pokemon among many, and the supplies are a list
@@ -2861,7 +2936,7 @@ button {
   --fill: var(--teal-wash);
 }
 .pixel-ui .starter-card.is-selected:focus {
-  --fill: #d5f2e0;
+  --fill: var(--cream-lit);
 }
 :where(.pixel-ui) .starter-number {
   position: absolute;
@@ -3559,7 +3634,7 @@ button {
 .pixel-ui button.px-row.teach-pupil.is-selected,
 .pixel-ui button.px-row.teach-pupil.is-selected:focus {
   background: var(--teal-wash);
-  box-shadow: inset 0 0 0 var(--u) #1d6a4f;
+  box-shadow: inset 0 0 0 var(--u) var(--teal-ink);
 }
 /* A card that cannot be chosen still explains itself, so it is dimmed rather
    than taken out: no fill of its own, its words in the soft ink and its
@@ -4710,7 +4785,7 @@ button {
   --fill: var(--teal-wash);
 }
 .pixel-ui .boutique-card.is-selected:focus {
-  --fill: #d5f2e0;
+  --fill: var(--cream-lit);
 }
 .pixel-ui .boutique-card.is-raid {
   --fill: var(--gold-wash);
@@ -5303,7 +5378,7 @@ button {
   right: calc(var(--u) * 2);
   width: calc(var(--u) * 7);
   height: calc(var(--u) * 5);
-  background: #1d6a4f;
+  background: var(--teal-ink);
   mask: var(--px-tick) center / 100% 100% no-repeat;
   -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
 }

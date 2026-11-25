@@ -34,3 +34,27 @@ Made by `tools/playtest/popupShots.mjs <test-mode build url> <dir> --window=1280
 against a test-mode build (`tools/playtest/README.md`, 'Memory'). Judged by two
 rounds of a fresh critic who did not write the change; what was taken and what
 was not is in the pull request.
+
+## 2. Every menu screen, in the same colours
+
+The DOM screens - Bill's PC, the shops, the workshop, the bench, the raid's
+pack and party, YOUR TEAM, the name screen and the rest - were olive-cream on
+navy scan-line stripes under near-black bars, with a mint accent no Kanto screen
+uses. Now they wear the pop-ups' palette (the Pixel UI tokens are
+`uiPalette.ts`'s, and `uiPalette.test.ts` holds them so): the same paper and ink,
+navy title and help bars, panel headings in the rim's blue, a checker of two
+blues behind, a red cursor, a green confirm button - and each whole screen in
+the pop-ups' blue-rimmed frame, painted over its own edge so a full column
+stays full.
+
+| | Before | After |
+|---|---|---|
+| Bill's PC | ![](before-stash.png) | ![](after-stash.png) |
+| Bill's cottage | ![](before-bill.png) | ![](after-bill.png) |
+| Brock's Workshop | ![](before-workshop.png) | ![](after-workshop.png) |
+| The bench, beside the hall | ![](before-lobby.png) | ![](after-lobby.png) |
+| YOUR TEAM, beside the yard | ![](before-your-team.png) | ![](after-your-team.png) |
+| Your name | ![](before-name-screen.png) | ![](after-name-screen.png) |
+
+Made by `tools/playtest/menuShots.mjs <build url> <dir> --window=1280x800 --raid`
+and `popupShots.mjs`. How the screens sit in a big window is the next step.

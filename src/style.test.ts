@@ -149,9 +149,10 @@ describe('the pixel-ui stylesheet', () => {
     // Weight and size are both off the table (`strong` is 400, one font-size),
     // so a heading is told from the sentences under it by inversion and ink.
     // Plain ink over a `--cream-dim` hairline is what the captain read as a
-    // wall of equal text, and it must not come back.
+    // wall of equal text, and it must not come back. The strip is the rim's
+    // shade, a step lighter than the title bar's navy, so the two ranks differ.
     const heading = /:where\(\.pixel-ui\) \.px-heading \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '';
-    expect(heading).toMatch(/background:\s*var\(--bar\);/);
+    expect(heading).toMatch(/background:\s*var\(--heading\);/);
     expect(heading).toMatch(/color:\s*var\(--bar-text\);/);
     expect(heading).not.toMatch(/--cream-dim/);
     // A note is whole or it is not drawn: the strip wraps a note that does not
