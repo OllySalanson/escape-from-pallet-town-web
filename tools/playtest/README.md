@@ -646,6 +646,17 @@ raid's side panels (`src/game/ui/sidePanel.ts`): the pack, a disc, the move choo
 the party by key and mouse, what each leaves in sight, the map's east edge, FEEDBACK over
 the pack, and the clock and a chasing hunter standing still until the panel shuts.
 
+## On a phone
+
+`phone.mjs <test-mode build url> <dir> --device=portrait|landscape|small|tablet|desktop
+[--save=file.json] [--steps=file.json]` opens the game as a phone sees it: a
+mobile viewport at the phone's own pixel ratio (`DEVICES`: a 412x915 Android at
+2.625, the same on its side, a 375x667 iPhone at 2), `(pointer: coarse)`, and
+real touches through `Input.dispatchTouchEvent`. A step is `{ "tap": [x, y] }`,
+`{ "touch": "selector" }`, `{ "hold": [x, y, ms] }`, `{ "key": "Space" }`,
+`{ "wait": ms }`, `{ "eval": "js" }` or `{ "shot": "name" }`; `emulateDevice`,
+`touchTap` and `centreOf` are exported for a driver of its own.
+
 ## The stranger's memory test
 
 Whether a map reads as places is not something its author can judge: they know

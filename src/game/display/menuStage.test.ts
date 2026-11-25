@@ -135,6 +135,26 @@ describe('the menu screens are laid out against the window', () => {
     expect(computeMenuStage(640, 480)).toEqual({ width: MENU_MIN_WIDTH, height: MENU_MIN_HEIGHT, scale: MIN_MENU_SCALE });
   });
 
+  it('draws a phone\'s menus in whole device pixels, inside the window and inside the tab\'s strip', () => {
+    for (const [width, height, ratio] of [[412, 915, 2.625], [915, 412, 2.625], [390, 844, 3], [844, 390, 3], [375, 667, 2]]) {
+      const label = `${width}x${height}@${ratio}`;
+      const stage = computeMenuStage(width, height, ratio);
+      const layer = fakeLayer();
+      applyMenuStage(layer as unknown as HTMLElement, width, height, ratio);
+      expect(Number.isInteger(Math.round(stage.scale * ratio * 1e9) / 1e9), label).toBe(true);
+      expect(stage.scale, label).toBeGreaterThanOrEqual(SMALL_WINDOW_MENU_SCALE);
+      expect(stage.width, label).toBeGreaterThanOrEqual(MENU_MIN_WIDTH);
+      expect(stage.height, label).toBeGreaterThanOrEqual(MENU_MIN_HEIGHT);
+      const left = Number.parseFloat(layer.style.left);
+      const top = Number.parseFloat(layer.style.top);
+      expect(Number.isInteger(Math.round(left * ratio * 1e6) / 1e6), `${label} left`).toBe(true);
+      expect(left + stage.width * stage.scale, `${label} across`).toBeLessThanOrEqual(width + 1e-9);
+      expect(top + stage.height * stage.scale, `${label} down`).toBeLessThanOrEqual(height + 1e-9);
+    }
+    // A screen of ratio 1 is drawn as it was.
+    expect(computeMenuStage(390, 844, 1)).toEqual(computeMenuStage(390, 844));
+  });
+
   it('keeps every window bigger than the last from losing room', () => {
     const rooms = WINDOWS.map(([width, height]) => {
       const stage = computeMenuStage(width, height);
