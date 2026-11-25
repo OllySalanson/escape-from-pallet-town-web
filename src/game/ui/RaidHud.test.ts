@@ -213,14 +213,14 @@ describe('RaidHud prize chip', () => {
     const { scene, texts, images } = stubScene(400);
     const hud = new RaidHud(scene);
     hud.render(
-      { ...STATE, prize: { label: '2 PARTS CRATES', itemId: 'parts-crate', detail: 'NE 118', room: 'NO ROOM: NEEDS 2 SQUARES' } },
+      { ...STATE, prize: { label: '2 PARTS CRATES', itemId: 'parts-crate', detail: 'NE · 118 STEPS', room: 'NO ROOM: NEEDS 2 SQUARES' } },
       0,
     );
     const icons = images.filter((image) => image.visible);
     expect(icons).toHaveLength(1);
     expect(icons[0].texture).toMatch(/^icon-/);
     const shown = texts.filter((text) => text.visible).map((text) => text.lines);
-    expect(shown).toContainEqual(['2 PARTS CRATES', 'NE 118']);
+    expect(shown).toContainEqual(['2 PARTS CRATES', 'NE · 118 STEPS']);
     expect(shown).toContainEqual(['NO ROOM: NEEDS 2 SQUARES']);
     hud.render(STATE, 0);
     expect(images.some((image) => image.visible)).toBe(false);
@@ -232,7 +232,7 @@ describe('RaidHud prize chip beside a panel', () => {
     const { scene } = stubScene(400);
     const hud = new RaidHud(scene);
     hud.render(
-      { ...STATE, hunter: null, prize: { label: '2 LAMP OILS AND A NAME LONG ENOUGH TO REACH ACROSS', itemId: 'lamp-oil', detail: 'NE 118' } },
+      { ...STATE, hunter: null, prize: { label: '2 LAMP OILS AND A NAME LONG ENOUGH TO REACH ACROSS', itemId: 'lamp-oil', detail: 'NE · 118 STEPS' } },
       0,
       null,
       155,

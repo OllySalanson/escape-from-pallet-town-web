@@ -207,16 +207,20 @@ describe('the prize chip', () => {
   it('names the find and says which way and how far', () => {
     expect(prizeChipView({ name: 'Fire Stone', direction: 'SE', distance: 34 })).toEqual({
       label: 'FIRE STONE',
-      detail: 'SE 34',
+      detail: 'SE · 34 STEPS',
     });
   });
 
   it('says how much room to make, before the walk, when the pack would not take it', () => {
     expect(prizeChipView({ name: '2 Parts crates', direction: 'NE', distance: 140, noRoomSquares: 8 })).toEqual({
       label: '2 PARTS CRATES',
-      detail: 'NE 140',
+      detail: 'NE · 140 STEPS',
       room: 'NO ROOM: NEEDS 8 SQUARES',
     });
+  });
+
+  it('says one step as one', () => {
+    expect(prizeChipView({ name: 'Fire Stone', direction: 'W', distance: 1 })?.detail).toBe('W · 1 STEP');
   });
 
   it('shows nothing until something rare has actually been seen', () => {
@@ -230,6 +234,7 @@ describe('the prize chip', () => {
     const longest = 'HM06 ROCK SMASH';
     const view = prizeChipView({ name: longest, direction: 'NW', distance: 128 })!;
     expect(view.label.length).toBeLessThanOrEqual('EXTRACT WITH YOUR HAUL'.length);
+    expect(view.detail).toBe('NW · 128 STEPS');
     expect(view.detail.length).toBeLessThanOrEqual(view.label.length);
   });
 });
