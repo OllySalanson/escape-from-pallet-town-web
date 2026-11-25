@@ -39,10 +39,10 @@
   --shadow: 0 18px 42px rgb(0 0 0 / 32%);
 }
 
+/* Its margin and colour are index.html's, so the page is dressed before this
+   stylesheet arrives. */
 body {
-  margin: 0;
   min-height: 100vh;
-  background: #0e1b27;
   display: grid;
   place-items: center;
 }
@@ -61,16 +61,6 @@ body {
   display: grid;
   place-items: center;
   position: relative;
-}
-
-/* The one thing in the frame before the game's script has arrived (index.html),
-   gone the moment the game mounts. */
-.boot-wait {
-  margin: 0;
-  font-family: 'Orange Kid', monospace;
-  font-size: 32px;
-  letter-spacing: 1px;
-  color: var(--menu-muted);
 }
 
 /* The layer every DOM screen is appended to, sized in script against the
