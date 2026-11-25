@@ -419,6 +419,8 @@ export interface RaceResultInput {
   readonly firstGold: boolean;
   /** Whether the save has run a PERFECT before. */
   readonly hadPerfect: boolean;
+  /** The save's best time before this run, if it had one. */
+  readonly bestMs?: number;
   /** Steps the run took, from its trail (`raceRunShape`). */
   readonly steps?: number;
   /** How long the player stood still after GO before their first step. */
@@ -493,7 +495,8 @@ export function racerArrivesLines(course: RaceCourse, input: RaceResultInput): s
       ];
     }
     if (tip) {
-      return [`${racer}: ${input.timeMs - course.perfectMs <= NEAR_PERFECT_MS ? 'So close! ' : 'GOLD again. '}${tip}`];
+      const near = shownTenths(input.timeMs) - shownTenths(course.perfectMs) <= NEAR_PERFECT_MS / 100;
+      return [`${racer}: ${near ? 'So close! ' : 'GOLD again. '}${tip}`];
     }
     return [
       input.hadPerfect
@@ -503,7 +506,11 @@ export function racerArrivesLines(course: RaceCourse, input: RaceResultInput): s
   }
   if (input.tookShortcut) {
     const missed = input.fightMs > 0 ? 'Stop to fight and you lose it.' : "Don't stop once.";
-    return [`${racer}: The ride! I KNEW it. Beat me ${behind}... ${formatRaceTime(course.goldMs)} is in there, you know. ${missed}`];
+    // Told what is in the ride once; a player who has run it under GOLD is
+    // reminded of their own best instead of being taught it.
+    return input.firstGold || input.bestMs === undefined
+      ? [`${racer}: The ride! I KNEW it. Beat me ${behind}... ${formatRaceTime(course.goldMs)} is in there, you know. ${missed}`]
+      : [`${racer}: Beat me ${behind}. You've run it in ${formatRaceTime(input.bestMs)}, mind - ${missed.toLowerCase()}`];
   }
   return [
     input.beatenBefore ? `${racer}: Again?! Beat me ${behind}. One of these days.` : `${racer}: How?! Beat me ${behind}... fair's fair.`,
@@ -567,12 +574,7 @@ export function offTheBikeLine(course: RaceCourse): string {
 /** How far a GOLD may miss PERFECT and still be told what it was. */
 export const NEAR_PERFECT_MS = 200;
 
-/**
- * The frame the GO itself takes, which nobody can win back: a key held through
- * the count still starts its step a frame after GO (`tools/playtest/race.mjs
- * --hold` lands its first step at 167ms at 60fps).
- */
-export const GO_FRAME_MS = 17;
+
 
 /** The floor in steps, which PERFECT is. */
 function floorSteps(course: RaceCourse): number {
@@ -597,7 +599,7 @@ function perfectTip(course: RaceCourse, input: RaceResultInput): string | null {
   // On the floor's steps with no fight, every millisecond over it is a stand:
   // at GO, or at a corner. Name the bigger, with what it cost - there is only a
   // tenth to spare, so no stand is too small to be the reason.
-  const atGo = Math.max(0, (input.startLagMs ?? 0) - GO_FRAME_MS);
+  const atGo = Math.max(0, input.startLagMs ?? 0);
   const atCorners = Math.max(0, input.cornerLossMs ?? 0);
   if (atGo === 0 && atCorners === 0) return null;
   const cost = (ms: number) => (ms < 100 ? 'a few hundredths' : formatGap(ms));

@@ -2492,8 +2492,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     // A race's countdown holds everybody on the line, the player included.
     const countingDown = this.raceHere();
-    if (countingDown?.race.phase === 'countdown' && !this.dialogBox.visible) {
-      this.advanceRaceCountdown(countingDown.race, deltaMs);
+    if (countingDown?.race.phase === 'countdown' && !this.dialogBox.visible && this.advanceRaceCountdown(countingDown.race, deltaMs)) {
       return;
     }
 
@@ -4878,7 +4877,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /** The countdown owns the frame: nothing moves, nobody's clock runs. */
-  private advanceRaceCountdown(race: RaceState, deltaMs: number): void {
+  /**
+   * Still counting: true, and the count owns the frame. On GO it is false, and
+   * the frame goes on to read the keys - a direction held through the count
+   * begins its step on the GO frame itself, at race clock 0, at any frame rate.
+   */
+  private advanceRaceCountdown(race: RaceState, deltaMs: number): boolean {
     race.countdownMs += deltaMs;
     const word = countdownWord(race.countdownMs);
     if (word === null) {
@@ -4889,7 +4893,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.showRaceWord('GO!');
       audioManager.play('raceGo');
       this.time.delayedCall(GO_SHOWN_MS, () => this.showRaceWord(null));
-      return;
+      return false;
     }
     if (word !== this.countdownWordShown) {
       // ON YOUR MARKS is said, not counted: three beeps, then GO.
@@ -4897,6 +4901,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.showRaceWord(word);
       if (counted) audioManager.play('raceBeep');
     }
+    return true;
   }
 
   /** The big word over the middle of the screen, or none. */
@@ -4948,8 +4953,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (x >= off.x && y >= off.y && x < off.x + off.width && y < off.y + off.height) {
       here.race.tookShortcut = true;
     }
-    // Never gone home on a player standing on the line: they are over it, whatever the clock says.
-    if (here.race.clockMs >= here.race.racerMs + FINISH_WAIT_MS && !crossesLine(here.course, this.currentTile)) {
+    // Never gone home on a player whose step onto the line is under way: the
+    // clock was charged for this frame before the step that lands there.
+    const landing = this.targetTile !== null && crossesLine(here.course, this.targetTile);
+    if (here.race.clockMs >= here.race.racerMs + FINISH_WAIT_MS && !landing) {
       // Gone home, and gone: their figure with them.
       here.race.phase = 'over';
       here.race.outcome = 'late';
@@ -5029,6 +5036,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       tookShortcut: race.tookShortcut,
       shortcutOpen: this.shortcutOpen(course),
       firstGold: was?.medal !== 'gold',
+      ...(was?.bestMs !== undefined ? { bestMs: was.bestMs } : {}),
       // How the run went, read off where it went: a step over the floor, or a slow start.
       ...raceRunShape(trail),
       hadPerfect: was?.perfect === true,

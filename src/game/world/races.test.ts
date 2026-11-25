@@ -179,6 +179,24 @@ describe('the floor', () => {
   });
 });
 
+describe('the line', () => {
+  // A crossing is called inside the step that lands on it, before warps,
+  // pickups, landmarks and watches: so the line must stand where none is.
+  it('stands on plain planks: no warp, way out, find, grass or trainer\u2019s watch', () => {
+    const raw = file as unknown as { exits: { x: number; y: number }[]; itemSpots: { x: number; y: number }[] };
+    for (const tile of course.finish.tiles) {
+      expect(shut.warps.some((warp) => warp.source.x === tile.x && warp.source.y === tile.y)).toBe(false);
+      expect(raw.exits.some((exit) => exit.x === tile.x && exit.y === tile.y)).toBe(false);
+      expect(raw.itemSpots.some((spot) => spot.x === tile.x && spot.y === tile.y)).toBe(false);
+      expect(shut.tallGrass[tile.y][tile.x]).toBe(false);
+      expect(shut.pois.some((poi) => poi.position.x === tile.x && poi.position.y === tile.y)).toBe(false);
+      for (const trainer of createRunTrainerEncounters().filter((one) => one.mapId === shut.id)) {
+        expect(Math.abs(trainer.position.x - tile.x) + Math.abs(trainer.position.y - tile.y)).toBeGreaterThan(6);
+      }
+    }
+  });
+});
+
 describe('LINNET, once she has learned the dry way', () => {
   it('runs the reeds\u2019 dry way at the player\u2019s pace, never up the ride, so only the ride beats her', () => {
     expect(racerKnowsTheWay({ runs: 1, wins: 1, medal: 'bronze' }, true)).toBe(false);
@@ -295,7 +313,7 @@ describe('what LINNET says', () => {
     // A GOLD a tenth or two off the floor is told it was the start.
     // What kept it off PERFECT, read off the run: a stand at GO, or a step too many - and never in place of a first GOLD's line.
     const near = { ...input, medal: 'gold' as const, timeMs: 9_450, firstGold: false };
-    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 150, cornerLossMs: 0 }).join(' ')).toContain('lost 0.1s standing at GO');
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 150, cornerLossMs: 0 }).join(' ')).toContain('lost 0.2s standing at GO');
     expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 150, cornerLossMs: 0 }).join(' ')).toContain('Keep the direction held down through my count');
     expect(racerArrivesLines(course, { ...near, steps: 63, startLagMs: 20, cornerLossMs: 0 }).join(' ')).toContain('63 where 62 will do');
     // The likeliest miss: a prompt start, the floor's steps, a frame or two lost at each corner.
@@ -304,19 +322,26 @@ describe('what LINNET says', () => {
     expect(corners).toContain('Let go of the old way');
     // A fight-free run on the floor's steps always hears what it lost, never "spray a Repel".
     expect(corners).not.toContain('Repel');
-    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 17, cornerLossMs: 0 }).join(' ')).toContain('GOLD again');
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 0, cornerLossMs: 0 }).join(' ')).toContain('GOLD again');
     // A first GOLD has never been told PERFECT is there: the tip says what it is.
     const first = racerArrivesLines(course, { ...near, firstGold: true, steps: 62, startLagMs: 150, cornerLossMs: 0 });
     expect(first[0]).toContain('best run');
     expect(first[1]).toContain('0:09.3 is PERFECT');
     expect(raceRunShape([83, 169, 0, 82, 169, 210, 81, 169, 360, 80, 169, 600])).toEqual({ steps: 3, startLagMs: 60, cornerLossMs: 90 });
     // Far off PERFECT and fight-free is still told why - never the Repel line meant for a fight.
-    const late = racerArrivesLines(course, { ...near, steps: 62, startLagMs: 250, cornerLossMs: 0, timeMs: 9_550 }).join(' ');
-    expect(late).toContain('GOLD again. 0:09.3 is PERFECT - and you lost 0.2s standing at GO');
+    const late = racerArrivesLines(course, { ...near, steps: 62, startLagMs: 350, cornerLossMs: 0, timeMs: 9_650 }).join(' ');
+    expect(late).toContain('GOLD again. 0:09.3 is PERFECT - and you lost 0.4s standing at GO');
     const round = racerArrivesLines(course, { ...near, steps: 68, startLagMs: 17, cornerLossMs: 0, timeMs: 10_217 }).join(' ');
     expect(round).toContain('you took 68 steps where 62 will do');
     expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 60, cornerLossMs: 0, timeMs: 9_420 }).join(' ')).toContain('a few hundredths');
     expect(racerArrivesLines(course, { ...near, fightMs: 1500, timeMs: 10_800 }).join(' ')).toContain('Spray a Repel');
+    // "So close!" by the tenths shown: two runs that both read 0:09.5 hear the same.
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 200, cornerLossMs: 0, timeMs: 9_500 })[0]).toContain('So close!');
+    expect(racerArrivesLines(course, { ...near, steps: 62, startLagMs: 220, cornerLossMs: 0, timeMs: 9_520 })[0]).toContain('So close!');
+    // A GOLD holder down the ride and short of it is reminded of their own best, not taught the par.
+    const holder = racerArrivesLines(course, { ...input, tookShortcut: true, fightMs: 1500, timeMs: 12_100, firstGold: false, bestMs: 10_300 }).join(' ');
+    expect(holder).toContain("You've run it in 0:10.3");
+    expect(holder).not.toContain('is in there');
     expect(gaveUpWaitingLine(course)).toBe('LINNET gave up waiting at the chalk mark.');
     // The gap she quotes is the gap between the times on screen.
     expect(racerWonLines(course, { ...input, outcome: 'lost', medal: null, timeMs: 23_000, racerMs: 22_800 }).join(' ')).toContain('Beat you by 0.2s!');
