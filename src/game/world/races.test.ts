@@ -20,6 +20,8 @@ import {
   racerWonLines,
   raceGossipAt,
   racerKnowsTheWay,
+  raceLineWord,
+  raceOutcome,
   racerTimeMs,
 } from './races';
 import { createRunTrainerEncounters } from './trainers';
@@ -165,10 +167,22 @@ describe('THE MERE DASH, on the vale as it is drawn', () => {
   });
 });
 
+describe('the floor', () => {
+  it('is the fewest steps down the ride from the best side of her: PERFECT is not a step wasted', () => {
+    const fewest = Math.min(...askingTiles(open).map((from) => bestWay(open, from).steps));
+    expect(course.perfectMs).toBe(fewest * STEP_DURATION_MS);
+    expect(raceLineWord(course, { medal: 'gold', timeMs: course.perfectMs })).toBe('PERFECT 0:09.3');
+    expect(raceLineWord(course, { medal: 'gold', timeMs: 10_350 })).toBe('GOLD 0:10.3');
+    expect(raceLineWord(course, { medal: null, timeMs: 23_000 })).toBe('2ND 0:23.0');
+  });
+});
+
 describe('LINNET, once she has learned the dry way', () => {
   it('runs the reeds\u2019 dry way at the player\u2019s pace, never up the ride, so only the ride beats her', () => {
-    expect(racerKnowsTheWay({ runs: 1, wins: 1, medal: 'bronze' })).toBe(false);
-    expect(racerKnowsTheWay({ runs: 1, wins: 1, medal: 'silver' })).toBe(true);
+    expect(racerKnowsTheWay({ runs: 1, wins: 1, medal: 'bronze' }, true)).toBe(false);
+    expect(racerKnowsTheWay({ runs: 1, wins: 1, medal: 'silver' }, true)).toBe(true);
+    // Not while the ride is shut to the player: a rung is only put above somebody who can climb it.
+    expect(racerKnowsTheWay({ runs: 1, wins: 1, medal: 'silver' }, false)).toBe(false);
     for (const map of [shut, open]) {
       const line = knowingLine(raceGround(map, figuresOn(map)), course.racer.stands, course.finish.tiles, course.racer.keepsOff, course.racer.waits);
       expect(line).not.toBeNull();
@@ -225,16 +239,20 @@ describe('what a race pays', () => {
 describe('what LINNET says', () => {
   it('asks the captain\u2019s question, and says where the line is and what it pays before it', () => {
     expect(raceQuestion(course)).toBe('Do you want to race LINNET to THE LAST HOUSE?');
-    const offer = raceOfferLines(course, undefined, false).join(' ');
+    const offer = raceOfferLines(course, undefined, false, false).join(' ');
     expect(offer).toContain('THE LAST HOUSE');
     expect(offer).toContain('₽30');
     expect(offer).toContain('₽10');
     expect(offer).toContain('evolution stone');
     // Once it is known, one line and the purse.
-    const back = raceOfferLines(course, { runs: 2, wins: 1, bestMs: 14_200, medal: 'silver' }, true);
+    const back = raceOfferLines(course, { runs: 2, wins: 1, bestMs: 14_200, medal: 'silver' }, true, true);
     expect(back[0]).toContain('Your best: 0:14.2 SILVER');
     expect(back[0]).toContain("I know the reeds' dry way now");
     expect(back[1]).toContain('come back tomorrow');
+    // The ride still shut: she has not learned anything to wall them out with.
+    expect(raceOfferLines(course, { runs: 2, wins: 1, bestMs: 14_200, medal: 'silver' }, true, false)[0]).not.toContain('dry way');
+    // Asked again the same raid after a NO: short.
+    expect(raceOfferLines(course, undefined, false, false, true)).toEqual(['LINNET: Changed your mind?']);
   });
 
   it('lets the judge call a win, and the racer say their piece as they run in', () => {
@@ -244,15 +262,17 @@ describe('what LINNET says', () => {
       offRoad: true,
       racerKnew: false,
       tookShortcut: false,
+      shortcutOpen: false,
+      firstGold: true,
       timeMs: 15_200,
       racerMs: 22_800,
       medal: 'silver' as const,
       newBest: false,
       prize: { money: 40, purse: false, trophy: false },
     };
-    expect(judgeLines(course, input).join(' ')).toBe('OLD REEVE: Over the line! 0:15.2. SILVER! LINNET left the purse with me: ₽40.');
+    expect(judgeLines(course, input).join(' ')).toBe('OLD REEVE: Over the line! 0:15.2. SILVER! LINNET left your winnings with me: ₽40.');
     const arrives = racerArrivesLines(course, input).join(' ');
-    expect(arrives).toContain('7.6s behind');
+    expect(arrives).toContain('Beat me by 7.6s');
     expect(arrives).toContain('woodcutter');
     expect(arrives).toContain('Bill trades a Cut disc');
     // Down the ride and short of GOLD: told what cost it, not told to go and find the ride.
@@ -260,6 +280,14 @@ describe('what LINNET says', () => {
     expect(ride).toContain('The ride! I KNEW it.');
     expect(ride).toContain('Stop to fight and you lose it.');
     expect(ride).not.toContain('Bill');
+    expect(racerArrivesLines(course, { ...input, tookShortcut: true, timeMs: 12_200 }).join(' ')).toContain("Don't stop once.");
+    // Once the ride is cut it is no longer grown shut.
+    expect(racerArrivesLines(course, { ...input, shortcutOpen: true }).join(' ')).toContain('open now');
+    // The first GOLD is the best run she has ever seen; the tenth is not.
+    expect(racerArrivesLines(course, { ...input, medal: 'gold', timeMs: 10_500 }).join(' ')).toContain('best run');
+    expect(racerArrivesLines(course, { ...input, medal: 'gold', timeMs: 10_500, firstGold: false }).join(' ')).toContain('GOLD again');
+    // A photo finish is called as one.
+    expect(judgeLines(course, { ...input, timeMs: 22_750 }).join(' ')).toContain('Photo finish');
   });
 
   it('tells a loser what lost it: the boardwalk, the fights, the long way, or her learning the way', () => {
@@ -270,6 +298,8 @@ describe('what LINNET says', () => {
         offRoad,
         racerKnew,
         tookShortcut: false,
+        shortcutOpen: false,
+        firstGold: true,
         timeMs: 23_400,
         racerMs: 22_800,
         medal: null,
@@ -282,6 +312,11 @@ describe('what LINNET says', () => {
     expect(lost(9100, true, false)).toContain("I don't stop while you fight");
     expect(lost(0, true, false)).toContain('straighter');
     expect(lost(0, true, true)).toContain('My dry way now');
+  });
+
+  it('calls a dead heat the player\u2019s', () => {
+    expect(raceOutcome(15_450, 15_450)).toBe('won');
+    expect(raceOutcome(15_467, 15_450)).toBe('lost');
   });
 
   it('keeps the chip to what a glance can take', () => {

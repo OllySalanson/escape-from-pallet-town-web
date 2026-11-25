@@ -65,8 +65,11 @@ export interface RaceCourse {
      */
     readonly keepsOff: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
   };
-  /** Who stands at the line with a stopwatch and calls the time: a person the map file places by it. */
-  readonly judge: { readonly name: string };
+  /**
+   * Who stands at the line with a stopwatch and calls the time: a person the
+   * map file places by it, who holds what a winner's pack had no room for.
+   */
+  readonly judge: { readonly name: string; readonly at: GridPosition };
   readonly finish: {
     /** The place the line is at, as the racer names it. */
     readonly name: string;
@@ -79,6 +82,14 @@ export interface RaceCourse {
   readonly silverMs: number;
   /** Under this is GOLD: only the Cut line. */
   readonly goldMs: number;
+  /**
+   * The floor: the fewest steps there are, from the best side of the racer, at
+   * a step a tile - no fight, no stop, no wasted tile. A grid has no faster
+   * line, so this is the last thing there is to chase (`races.test.ts` measures
+   * it). On THE MERE DASH it is down the ride and then straight through the
+   * reeds - two dozen wild tiles, so only a Repel makes it more than a dice roll.
+   */
+  readonly perfectMs: number;
   /** The trophy the first SILVER or better ever adds: something to put on a shelf. */
   readonly trophy: ItemId;
   /**
@@ -92,6 +103,8 @@ export interface RaceCourse {
     readonly fights: string;
     readonly longWay: string;
     readonly shortcut: string;
+    /** The shortcut hint once its door is open: it is no longer grown shut. */
+    readonly shortcutOpen: string;
     readonly learned: string;
   };
   /**
@@ -128,7 +141,7 @@ export const MERE_DASH: RaceCourse = {
     waits: { x: 70, y: 220 },
     keepsOff: { x: 82, y: 188, width: 2, height: 14 },
   },
-  judge: { name: 'OLD REEVE' },
+  judge: { name: 'OLD REEVE', at: { x: 74, y: 220 } },
   finish: {
     name: 'THE LAST HOUSE',
     where: 'at the far end of the reeds',
@@ -139,6 +152,7 @@ export const MERE_DASH: RaceCourse = {
   },
   silverMs: 16_500,
   goldMs: 11_000,
+  perfectMs: 9_300,
   trophy: 'silver-shield',
   hints: {
     road: 'You stuck to my boardwalk. Everybody does! The reeds have a dry way through, if you look.',
@@ -146,8 +160,10 @@ export const MERE_DASH: RaceCourse = {
     longWay: 'You left my boardwalk and still came in behind me? The dry way through the reeds is straighter than that.',
     shortcut:
       "Nobody gets under 0:11.0 through the reeds. There's an old ride through the pines behind the woodcutter's - grown shut. Bill trades a Cut disc for a linen roll and a parts crate.",
+    shortcutOpen:
+      "Nobody gets under 0:11.0 through the reeds. The woodcutter's ride's open now, mind - straight down through the pines.",
     learned:
-      "My dry way now, too! Through the reeds you'll only ever tie me. The ride behind the woodcutter's - that one's yours. If you can Cut.",
+      "My dry way now, too! Through the reeds you'll only ever tie me. The woodcutter's ride - that one's yours.",
   },
   gossip: [
     {
@@ -274,12 +290,23 @@ export function racePrize(outcome: RaceOutcome, medal: RaceMedal | null, record:
 
 /**
  * Whether the racer runs the reeds' dry way rather than their road: once a save
- * has beaten them off it with a SILVER or better, they have learned it. It is
- * the race's ladder - road, reeds, ride - and it keeps the race close for
- * whoever is on its next rung.
+ * has beaten them off it with a SILVER or better, AND the shortcut that stays
+ * the player's is open to them. It is the race's ladder - road, reeds, ride -
+ * and it keeps the race close for whoever is on its next rung; but a rung is
+ * only put above a player who can climb it. Learned before the ride is open,
+ * a SILVER would buy a wall: every race lost by a step, for as long as Cut
+ * took to come by.
  */
-export function racerKnowsTheWay(record: RaceRecord | undefined): boolean {
-  return record?.medal === 'silver' || record?.medal === 'gold';
+export function racerKnowsTheWay(record: RaceRecord | undefined, shortcutOpen: boolean): boolean {
+  return shortcutOpen && (record?.medal === 'silver' || record?.medal === 'gold');
+}
+
+/** A crossing within this of the racer's is a photo finish, and said as one. */
+export const PHOTO_FINISH_MS = 100;
+
+/** Who crossed first: a dead heat is the player's - they were the one racing somebody who knows the way. */
+export function raceOutcome(timeMs: number, racerMs: number): 'won' | 'lost' {
+  return timeMs <= racerMs ? 'won' : 'lost';
 }
 
 /** The player's own calendar day, which is what "today's purse" means. */
@@ -305,20 +332,32 @@ export interface RaceRecord {
 
 // -- What the racer says ---------------------------------------------------------
 
-/** The offer, up to the question: who, where the line is, and what it pays - short, once it is known. */
-export function raceOfferLines(course: RaceCourse, record: RaceRecord | undefined, purseTakenToday: boolean): string[] {
+/**
+ * The offer, up to the question: who, where the line is, and what it pays -
+ * short, once it is known, and shorter again to a player who said NO a moment ago.
+ */
+export function raceOfferLines(
+  course: RaceCourse,
+  record: RaceRecord | undefined,
+  purseTakenToday: boolean,
+  shortcutOpen: boolean,
+  askedThisRaid = false,
+): string[] {
   const racer = course.racer.name;
+  if (askedThisRaid) {
+    return [`${racer}: Changed your mind?`];
+  }
   const purse = purseTakenToday
     ? "Today's purse is gone - come back tomorrow for it."
     : `Under ${formatRaceTime(course.goldMs)} takes today's purse: any evolution stone you like.`;
   if (!record || record.runs === 0) {
     return [
       `${racer}: I'll race you! First to ${course.finish.name}, ${course.finish.where} - the line's by its door.`,
-      `Beat me: ${formatMoney(MEDAL_MONEY.bronze)}. Lose: ${formatMoney(TAKING_PART_MONEY)} for the legs. Nobody's ever done it under ${formatRaceTime(course.goldMs)} - do that and today's purse is yours: any evolution stone.`,
+      `Beat me: ${formatMoney(MEDAL_MONEY.bronze)}. Lose: ${formatMoney(TAKING_PART_MONEY)} for the legs. ${purse}`,
     ];
   }
   const best = record.bestMs === undefined ? '' : ` Your best: ${formatRaceTime(record.bestMs)}${record.medal ? ` ${MEDAL_WORDS[record.medal]}` : ''}.`;
-  const learned = racerKnowsTheWay(record) ? " I've been practising - I know the reeds' dry way now too." : '';
+  const learned = racerKnowsTheWay(record, shortcutOpen) ? " I've been practising - I know the reeds' dry way now too." : '';
   return [`${racer}: Back for more?${best}${learned}`, purse];
 }
 
@@ -355,6 +394,10 @@ export interface RaceResultInput {
   readonly racerKnew: boolean;
   /** Whether the player came down the shortcut that stays theirs (`RaceCourse.racer.keepsOff`). */
   readonly tookShortcut: boolean;
+  /** Whether the shortcut's door is open: what the racer says about it changes. */
+  readonly shortcutOpen: boolean;
+  /** Whether the save had no GOLD before this run. */
+  readonly firstGold: boolean;
   readonly timeMs: number;
   readonly racerMs: number;
   readonly medal: RaceMedal | null;
@@ -362,55 +405,87 @@ export interface RaceResultInput {
   readonly prize: RacePrize;
 }
 
+/** Whether a time is the floor: not a step wasted. */
+export function isPerfect(course: RaceCourse, timeMs: number): boolean {
+  return timeMs <= course.perfectMs;
+}
+
 /** The big word over the screen at the line: the mark and the time, or the place. */
-export function raceLineWord(input: { readonly medal: RaceMedal | null; readonly timeMs: number }): string {
-  return `${input.medal ? MEDAL_WORDS[input.medal] : '2ND'} ${formatRaceTime(input.timeMs)}`;
+export function raceLineWord(course: RaceCourse, input: { readonly medal: RaceMedal | null; readonly timeMs: number }): string {
+  const mark = input.medal === 'gold' && isPerfect(course, input.timeMs) ? 'PERFECT' : input.medal ? MEDAL_WORDS[input.medal] : '2ND';
+  return `${mark} ${formatRaceTime(input.timeMs)}`;
+}
+
+/** How a gap is said: a whisker is a photo finish. */
+function gapWords(gapMs: number): string {
+  return gapMs < PHOTO_FINISH_MS ? 'by a whisker' : `by ${formatGap(gapMs)}`;
 }
 
 /**
  * The player over the line first: the judge calls it, and pays out of the
- * racer's purse - the racer is still out on the course, and is heard from when
- * they run in (`racerArrivesLines`).
+ * racer's winnings - the racer is still out on the course, and is heard from
+ * when they run in (`racerArrivesLines`).
  */
 export function judgeLines(course: RaceCourse, input: RaceResultInput): string[] {
   const judge = course.judge.name;
   const racer = course.racer.name;
   const fought = input.fightMs > 0 ? ` - ${formatGap(input.fightMs)} of it fighting` : '';
-  const mark = input.medal ? ` ${MEDAL_WORDS[input.medal]}!` : '';
+  const photo = input.racerMs - input.timeMs < PHOTO_FINISH_MS ? 'Photo finish - and it\u2019s yours! ' : 'Over the line! ';
+  const mark =
+    input.medal === 'gold' && isPerfect(course, input.timeMs)
+      ? ' GOLD - and PERFECT. Not a step wasted.'
+      : input.medal
+        ? ` ${MEDAL_WORDS[input.medal]}!`
+        : '';
   return [
-    `${judge}: Over the line! ${formatRaceTime(input.timeMs)}${fought}.${mark}${input.newBest ? ' A new best.' : ''}`,
-    `${racer} left the purse with me: ${formatMoney(input.prize.money)}.`,
+    `${judge}: ${photo}${formatRaceTime(input.timeMs)}${fought}.${mark}${input.newBest ? ' A new best.' : ''}`,
+    `${racer} left your winnings with me: ${formatMoney(input.prize.money)}.`,
   ];
 }
 
 /** What the racer says as they run in behind a player who beat them. */
 export function racerArrivesLines(course: RaceCourse, input: RaceResultInput): string[] {
   const racer = course.racer.name;
+  const behind = gapWords(input.racerMs - input.timeMs);
   if (input.medal === 'gold') {
-    return [`${racer}: Through the woodcutter's ride?! Nobody's been up there in years. That's the best run I've ever seen.`];
+    if (input.firstGold) {
+      return [`${racer}: Through the woodcutter's ride?! Nobody's been up there in years. That's the best run I've ever seen.`];
+    }
+    return [
+      isPerfect(course, input.timeMs)
+        ? `${racer}: Not a step wasted. I watched. I'm going to be sick.`
+        : `${racer}: GOLD again. ${formatRaceTime(course.perfectMs)} is as fast as anybody could go - straight through the reeds, if nothing jumps out at you.`,
+    ];
   }
   if (input.tookShortcut) {
-    const missed = input.fightMs > 0 ? 'Stop to fight and you lose it.' : 'Cut your corners tighter.';
-    return [`${racer}: The ride! I KNEW it. ${formatGap(input.racerMs - input.timeMs)} behind... ${formatRaceTime(course.goldMs)} is in there, you know. ${missed}`];
+    const missed = input.fightMs > 0 ? 'Stop to fight and you lose it.' : "Don't stop once.";
+    return [`${racer}: The ride! I KNEW it. Beat me ${behind}... ${formatRaceTime(course.goldMs)} is in there, you know. ${missed}`];
   }
-  return [`${racer}: How?! ${formatGap(input.racerMs - input.timeMs)} behind... fair's fair.`, `${racer}: ${course.hints.shortcut}`];
+  return [
+    `${racer}: How?! Beat me ${behind}... fair's fair.`,
+    `${racer}: ${input.shortcutOpen ? course.hints.shortcutOpen : course.hints.shortcut}`,
+  ];
 }
 
 /** The racer over the line first: they say it themselves, and pay the taking part. */
 export function racerWonLines(course: RaceCourse, input: RaceResultInput): string[] {
   const racer = course.racer.name;
   const fought = input.fightMs > 0 ? ` (${formatGap(input.fightMs)} of it fighting)` : '';
-  // Once they know the dry way it is the only thing worth saying: through the
-  // reeds a player can only tie them, fights or no.
-  const why = input.racerKnew
-    ? course.hints.learned
-    : input.fightMs > 0
-      ? course.hints.fights
-      : input.offRoad
-        ? course.hints.longWay
-        : course.hints.road;
+  // What lost it, the thing nearest the player first: the ride run and fought
+  // on, then the way she has learned, then the reeds, then her road.
+  const why = input.tookShortcut
+    ? input.fightMs > 0
+      ? "You found the ride - then stopped to fight in it. I don't stop."
+      : "The ride, and still behind me? Don't stop once."
+    : input.racerKnew
+      ? course.hints.learned
+      : input.fightMs > 0
+        ? course.hints.fights
+        : input.offRoad
+          ? course.hints.longWay
+          : course.hints.road;
   return [
-    `${racer}: Beat you by ${formatGap(input.timeMs - input.racerMs)}! You: ${formatRaceTime(input.timeMs)}${fought}.${input.newBest ? ' A new best, mind.' : ''}`,
+    `${racer}: Beat you ${gapWords(input.timeMs - input.racerMs)}! You: ${formatRaceTime(input.timeMs)}${fought}.${input.newBest ? ' A new best, mind.' : ''}`,
     `${racer}: ${why}`,
     `${racer} hands you ${formatMoney(input.prize.money)} for the legs.`,
   ];
@@ -421,13 +496,28 @@ export function pursePickLine(course: RaceCourse): string {
   return `${course.judge.name}: And today's purse. Which stone?`;
 }
 
-export function trophyLine(course: RaceCourse, trophyName: string): string {
-  return `${course.judge.name}: Your first time under ${formatRaceTime(course.silverMs)} on ${course.name} - the course trophy goes with it, the ${trophyName.toUpperCase()}. Put it somewhere people will see.`;
+/** The course's trophy: the first time it is won, or again for one a wipe took. */
+export function trophyLine(course: RaceCourse, trophyName: string, again: boolean): string {
+  return again
+    ? `${course.judge.name}: The course trophy again, the ${trophyName.toUpperCase()}. Get it home this time.`
+    : `${course.judge.name}: Your first time under ${formatRaceTime(course.silverMs)} on ${course.name} - the course trophy goes with it, the ${trophyName.toUpperCase()}. Put it somewhere people will see.`;
 }
 
-/** The judge or racer has a prize the pack had no room for: it waits at the line. */
-export function heldPrizeLine(course: RaceCourse): string {
-  return `${course.racer.name}: Your pack's full. I'll hold it here - make room and come back for it.`;
+/**
+ * A prize the pack had no room for waits at the line: with the judge when the
+ * player won (the racer is still out on the course), with the racer when they did.
+ */
+export function heldPrizeLine(course: RaceCourse, byJudge: boolean): string {
+  return byJudge
+    ? `${course.judge.name}: Your pack's full. I'll keep it by my door - make room and come and see me.`
+    : `${course.racer.name}: Your pack's full. I'll hold it here - make room and come back for it.`;
+}
+
+/** The judge, spoken to after a race this raid with nothing held: the time, for the pride of hearing it. */
+export function judgeAfterLines(course: RaceCourse, timeMs: number | undefined): string[] {
+  return timeMs === undefined
+    ? [`${course.judge.name}: No time for you today. ${course.racer.name} won't wait for ever.`]
+    : [`${course.judge.name}: ${formatRaceTime(timeMs)}. I wrote it down. I write them all down.`];
 }
 
 /** Spoken to after the race, with nothing held and nothing left to say. */
@@ -454,6 +544,8 @@ export function raceChipLines(input: {
   readonly bearing: string | null;
   readonly tilesToLine: number;
   readonly bestMs: number | undefined;
+  /** Shown to a save with a GOLD: the floor, the last thing there is to chase. */
+  readonly perfectMs?: number;
 }): string[] {
   const racer = input.course.racer.name;
   const lines = [`RACE ${formatRaceTime(input.clockMs)}`];
@@ -467,7 +559,11 @@ export function raceChipLines(input: {
   }
   lines.push(`LINE ${input.bearing ? `${input.bearing} ` : ''}${input.tilesToLine}`);
   if (input.bestMs !== undefined) {
-    lines.push(`BEST ${formatRaceTime(input.bestMs)}`);
+    lines.push(
+      input.perfectMs !== undefined && input.bestMs > input.perfectMs
+        ? `BEST ${formatRaceTime(input.bestMs)} PERFECT ${formatRaceTime(input.perfectMs)}`
+        : `BEST ${formatRaceTime(input.bestMs)}`,
+    );
   }
   return lines;
 }

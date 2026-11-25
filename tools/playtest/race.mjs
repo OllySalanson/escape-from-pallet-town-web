@@ -13,6 +13,7 @@
 //
 // --line=road   follows LINNET's own boardwalk (a first-timer who follows her)
 // --line=dry    the reeds' dry way: the fewest steps, a wild tile costing three
+// --line=reeds  the dry way, never up the woodcutter's ride even when it is open
 // --line=wade   the fewest steps whatever the grass
 // --line=cut    as dry, which with --opened=greystone-vale/door-2 (or a Cut) takes
 //               the woodcutter's ride
@@ -123,7 +124,7 @@ try {
     const grass = w.currentMap.tallGrass, terrain = w.currentMap.terrain; const s = w.currentTile;
     const made = new Set(['sand', 'stone', 'earth', 'paving', 'boards', 'gravel']);
     const goals = ${JSON.stringify(goals)}; const isGoal = (x, y) => goals.some((g) => g.x === x && g.y === y);
-    const mode = ${JSON.stringify(mode)}; const wade = mode === 'dry' || mode === 'cut' ? 3 : 0;
+    const mode = ${JSON.stringify(mode)}; const wade = mode === 'dry' || mode === 'cut' || mode === 'reeds' ? 3 : 0;
     const id = (x, y) => y * Wd + x; const cost = new Map([[id(s.x, s.y), 0]]); const prev = new Map([[id(s.x, s.y), null]]);
     const buckets = [[[s.x, s.y]]];
     for (let d = 0; d < buckets.length; d += 1) for (const [x, y] of buckets[d] ?? []) {
@@ -131,6 +132,7 @@ try {
       if (isGoal(x, y)) { const path = []; let cur = id(x, y); while (cur !== null) { path.push({ x: cur % Wd, y: Math.floor(cur / Wd) }); cur = prev.get(cur); } return path.reverse(); }
       for (const [dx, dy] of [[0,-1],[0,1],[-1,0],[1,0]]) { const nx = x + dx, ny = y + dy;
         if (nx < 0 || ny < 0 || nx >= Wd || ny >= H || w.isBlocked({ x: nx, y: ny })) continue;
+        if (mode === 'reeds' && nx >= 82 && nx <= 83 && ny >= 188 && ny <= 201) continue;
         if (mode === 'road' && !made.has(terrain[ny][nx]) && !isGoal(nx, ny)) continue;
         const step = d + 1 + (grass[ny][nx] ? wade : 0); const k = id(nx, ny);
         if (cost.has(k) && cost.get(k) <= step) continue; cost.set(k, step); prev.set(k, id(x, y)); (buckets[step] ??= []).push([nx, ny]); } }
