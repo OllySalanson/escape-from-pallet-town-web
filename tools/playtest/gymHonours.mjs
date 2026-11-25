@@ -1,6 +1,7 @@
 // Plays the gym honours (`src/game/look/gymHonours.ts`) end to end: a save
 // that has beaten MISTY and KOGA walks THE HARBOUR wearing both - photographed
-// close up in every facing, standing and mid-stride - takes one off at THE
+// close up in every facing, standing and mid-stride - waits for a regular
+// wearing honours to show the badge pips on their name plate, takes one off at THE
 // BOLTHOLE's wardrobe and is seen without it, sees every honour on the
 // boutique's GYM HONOURS shelf, and opens the result card a gym's badge
 // opens on, where the player turns round in what they won.
@@ -106,6 +107,23 @@ try {
     writeFileSync(`${out}/stand-${key.slice(5).toLowerCase()}.png`, await crop());
   }
   await shoot('01-in-the-yard');
+
+  // A regular wearing honours, with a badge pip each on their name plate. The
+  // regulars keep the clock, so wait for one wearing them to come into view.
+  const pipped = `(() => { const sc = ${GAME}.scene.getScene('base'); for (const [id, d] of sc.harbourFigures?.drawn ?? []) { if (d.pips.length > 0 && d.plate.visible && d.plate.alpha === 1) { const c = sc.game.canvas.getBoundingClientRect(); const cam = sc.cameras.main; const z = (c.width / sc.scale.width) * cam.zoom; const x = c.left + (d.plate.x - cam.worldView.x) * z, y = c.top + (d.plate.y - cam.worldView.y) * z; if (x > 0 && y > 0 && x < innerWidth - 120 && y < innerHeight - 120) return { id, pips: d.pips.join('+'), x, y, z }; } } return null; })()`;
+  let regular = null;
+  for (let tries = 0; tries < 240 && !regular; tries += 1) {
+    regular = await page.evaluate(pipped);
+    if (!regular) await wait(1000);
+  }
+  if (!regular) fail('no regular wearing an honour came into view');
+  const { data: plateShot } = await page.send('Page.captureScreenshot', {
+    format: 'png',
+    clip: { x: regular.x - 16 * regular.z, y: regular.y - 4 * regular.z, width: 96 * regular.z, height: 48 * regular.z, scale: 1 },
+  });
+  writeFileSync(`${out}/regular-plate.png`, Buffer.from(plateShot, 'base64'));
+  await shoot('01b-a-regular-with-pips');
+  console.log(`${regular.id} wears ${regular.pips}, a pip each on the plate`);
 
   // The boutique's shelf of honours: every one, never for sale.
   await walkIntoBase(page, 'boutique', { press, until, wait });

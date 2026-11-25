@@ -38,6 +38,13 @@ export interface GymHonour {
   /** What it is, in a line, said where it is shown. */
   readonly note: string;
   readonly art: WornArt;
+  /**
+   * The badge it is for, seven pixels square, as a pip on its wearer's name
+   * plate in the harbour (`base/harbourFigures.ts`): canon's own shape, so a
+   * crowd can be counted from behind. `o` the rim, `a` the colour, `b` its
+   * bright edge, `c` its shade, `.` nothing.
+   */
+  readonly pip: { readonly rows: readonly string[]; readonly ink: Readonly<Record<'a' | 'b' | 'c', string>> };
 }
 
 /** A loose end swinging: a pixel out one way on the first step, the other way on the second. */
@@ -63,6 +70,11 @@ export const GYM_HONOURS: readonly GymHonour[] = [
     name: 'CASCADE NECKERCHIEF',
     leader: 'Misty',
     note: "A sailor's neckerchief in Cerulean blue, with a white wave.",
+    // The CASCADE BADGE is a drop of water.
+    pip: {
+      rows: ['...o...', '..obo..', '.obaao.', 'oaaaaco', 'oaaacco', '.occco.', '..ooo..'],
+      ink: { a: '#3890f8', b: '#c8e8ff', c: '#2058c0' },
+    },
     art: {
       colours: { C: 0x3890f8, c: 0x2058c0, W: 0xf8f8f8 },
       parts: {
@@ -96,6 +108,11 @@ export const GYM_HONOURS: readonly GymHonour[] = [
     name: 'SOUL BAND',
     leader: 'Koga',
     note: "A ninja's band in poison purple, with a steel plate on the brow.",
+    // The SOUL BADGE is a heart.
+    pip: {
+      rows: ['.oo.oo.', 'obaoaco', 'oaaaaco', 'oaaacco', '.oacco.', '..oco..', '...o...'],
+      ink: { a: '#f070b0', b: '#ffd8ec', c: '#b03878' },
+    },
     art: {
       colours: { P: 0xa838b0, p: 0x6c2074, S: 0xe8f0ff, s: 0x7c8898 },
       parts: {
@@ -166,6 +183,27 @@ export function readHonours(value: unknown): readonly HonourId[] {
 /** One string that names a set of honours, for a texture key: empty for none. */
 export function honoursKey(honours: readonly string[]): string {
   return honours.join('.');
+}
+
+/** A pip's side, in pixels, and the gap between two on a plate. */
+export const HONOUR_PIP_SIZE = 7;
+export const HONOUR_PIP_GAP = 1;
+
+/** The rim every pip is drawn in: the class ball's, so a plate's marks are one family (`arena/classBall.ts`). */
+const PIP_RIM = '#202028';
+
+/** Every inked pixel of an honour's pip, at 1x, with its colour. */
+export function honourPipPixels(id: string): readonly { readonly x: number; readonly y: number; readonly ink: string }[] {
+  const honour = honourById(id);
+  if (!honour) return [];
+  return honour.pip.rows.flatMap((row, y) =>
+    [...row].flatMap((key, x) => (key === '.' ? [] : [{ x, y, ink: key === 'o' ? PIP_RIM : honour.pip.ink[key as 'a' | 'b' | 'c'] }])),
+  );
+}
+
+/** How wide a row of pips is: none is nothing. */
+export function honourPipsWidth(count: number): number {
+  return count === 0 ? 0 : count * HONOUR_PIP_SIZE + (count - 1) * HONOUR_PIP_GAP;
 }
 
 /** The catalogue's own honours among these, each once, in catalogue order: the order they are drawn in. */

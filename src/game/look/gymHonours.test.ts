@@ -8,7 +8,10 @@ import { valeGyms } from '../world/valeQuarters';
 import { composeLook, PIECE_HEIGHT, PIECE_WIDTH, type Pixels } from './composeLook';
 import {
   GYM_HONOURS,
+  HONOUR_PIP_SIZE,
   honourArts,
+  honourPipPixels,
+  honourPipsWidth,
   honourOf,
   honoursEarned,
   honoursWorn,
@@ -102,6 +105,21 @@ describe('GYM HONOURS', () => {
         }
       }
     }
+  });
+
+  it("has a badge pip of canon's shape, seven pixels square, unlike every other", () => {
+    for (const honour of GYM_HONOURS) {
+      expect(honour.pip.rows).toHaveLength(HONOUR_PIP_SIZE);
+      for (const row of honour.pip.rows) {
+        expect(row).toHaveLength(HONOUR_PIP_SIZE);
+        expect(row).toMatch(/^[.oabc]+$/);
+      }
+      expect(honourPipPixels(honour.id).every((pixel) => /^#[0-9a-f]{6}$/.test(pixel.ink))).toBe(true);
+    }
+    expect(new Set(GYM_HONOURS.map((honour) => honour.pip.rows.join('/'))).size).toBe(GYM_HONOURS.length);
+    expect(honourPipPixels('crown')).toEqual([]);
+    expect(honourPipsWidth(0)).toBe(0);
+    expect(honourPipsWidth(2)).toBe(2 * HONOUR_PIP_SIZE + 1);
   });
 
   it('is worn for a leader beaten, and not once it is taken off', () => {

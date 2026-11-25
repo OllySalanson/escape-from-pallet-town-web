@@ -1,3 +1,4 @@
+import { honourPipPixels, honourPipsWidth, type HonourId } from '../look/gymHonours';
 import { describe, expect, it } from 'vitest';
 import type Phaser from 'phaser';
 import type { GridPosition } from '../movement/gridMovement';
@@ -52,6 +53,12 @@ class Drawn {
   public setOrigin(): this {
     return this;
   }
+  public padding: readonly number[] = [0, 0, 0, 0];
+  public setPadding(left: number, top: number, right: number, bottom: number): this {
+    this.padding = [left, top, right, bottom];
+    return this;
+  }
+  public inked = 0;
   public alpha = 1;
   public setAlpha(alpha: number = 1): this {
     this.alpha = alpha;
@@ -74,6 +81,7 @@ class Drawn {
     return this;
   }
   public fillRect(): this {
+    this.inked += 1;
     return this;
   }
   public gone = false;
@@ -587,5 +595,45 @@ describe('a name plate and the townspeople', () => {
     const plate = { x: 0, y: 40, width: 40, height: 12 };
     expect(clearOfStanding(plate, [])).toBe(40);
     expect(clearOfStanding(plate, [{ x: 100, y: 30, width: 16, height: 26 }])).toBe(40);
+  });
+});
+
+describe('somebody wearing gym honours', () => {
+  it('has a badge pip on their name plate for each, after the name, and none once they are taken off', () => {
+    const { scene } = stage();
+    const texts: Drawn[] = [];
+    const graphics: Drawn[] = [];
+    const add = (scene as unknown as { add: Record<string, unknown> }).add;
+    add.text = (_x: number, _y: number, text: string) => {
+      const made = new Drawn().setText(text);
+      texts.push(made);
+      return made;
+    };
+    add.graphics = () => {
+      const made = new Drawn();
+      graphics.push(made);
+      return made;
+    };
+    const others = new HarbourFigures(scene);
+    const amy = (honours: readonly HonourId[]) => ({
+      id: 'amy',
+      place: 'yard' as const,
+      name: 'AMY',
+      tile: { x: 3, y: 3 },
+      toward: null,
+      progress: 0,
+      facing: 'down' as const,
+      behind: null,
+      ...(honours.length > 0 ? { honours } : {}),
+    });
+    others.update([amy(['soul', 'cascade'])]);
+    const [name] = texts;
+    // Two pixels of cream between the name and its pips, as between a class ball and the name.
+    expect(name.padding).toEqual([0, 0, 2 + honourPipsWidth(2), 0]);
+    const plate = graphics.find((each) => each.inked > 0)!;
+    const pipPixels = honourPipPixels('cascade').length + honourPipPixels('soul').length;
+    expect(plate.inked).toBeGreaterThanOrEqual(pipPixels);
+    others.update([amy([])]);
+    expect(name.padding).toEqual([0, 0, 0, 0]);
   });
 });

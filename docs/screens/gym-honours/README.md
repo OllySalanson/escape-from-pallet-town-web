@@ -17,6 +17,9 @@ figure looked.
 - `wardrobe.png` - YOUR WARDROBE with the neckerchief taken off: gold for worn, the
   figure dimmed for taken off.
 - `shop.png` - THE HARBOUR BOUTIQUE's GYM HONOURS shelf, which sells nothing.
+- `plate-pips.png`, `yard-pips.png` - a regular wearing MISTY's honour, with her badge's
+  drop as a pip on the name plate. Before, a plate held only the name and any Battle Arena
+  class ball.
 - `result-card.png` - the card a gym's badge opens on: the player turning round in
   what they won.
 
