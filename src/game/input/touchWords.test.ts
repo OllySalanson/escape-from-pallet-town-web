@@ -52,7 +52,7 @@ describe('a Text that says its keys the pad\'s way', () => {
       return this;
     }
   }
-  installTouchWording(FakeText as never);
+  installTouchWording(FakeText);
 
   it('draws the pad\'s words while played by touch, and keeps what it was given', () => {
     const hint = new FakeText();
