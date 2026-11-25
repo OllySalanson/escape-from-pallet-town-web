@@ -6154,7 +6154,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * the room's list is open, which are then the only keys that mean anything.
    */
   public touchShortcuts(): readonly TouchShortcut[] {
-    const standing = RAID_KEY_WORDS.map(([id, word]) => letterShortcut(RAID_KEY_LETTERS[id], word));
+    // While a box waits to be read, the pack and the party are not opened
+    // (`updateRaid` returns before it reads them); OAK and LOOK still answer.
+    const held = Boolean(this.dialogBox?.visible || this.cutscene || this.fishing);
+    const standing = RAID_KEY_WORDS.map(([id, word]) => ({
+      ...letterShortcut(RAID_KEY_LETTERS[id], word),
+      ...(held && (id === 'bag' || id === 'party') ? { inert: true } : {}),
+    }));
     const rooms = friendRoom();
     const inRoom = Boolean(rooms?.room && rooms.room.mapId === this.currentMap?.id && this.runSession);
     if (!inRoom) {

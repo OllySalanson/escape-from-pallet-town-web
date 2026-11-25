@@ -1,6 +1,6 @@
 import type { TouchLayout, Rect } from '../display/touchLayout';
 import { sendKey, type KeyTarget } from '../input/syntheticKeys';
-import { hasTouchShortcuts, sameShortcuts, withMoment, type TouchShortcut } from '../input/touchShortcuts';
+import { dimsTouchTray, hasTouchShortcuts, sameShortcuts, withMoment, type TouchShortcut } from '../input/touchShortcuts';
 import { helpLineKeys } from '../input/touchWords';
 import { arrowRuns, bottomEdgeRuns, crossRuns, discRuns, iconRuns, outlineRuns, runsPath, topEdgeRuns, type PadIcon, type PixelRun } from './touchPadArt';
 
@@ -71,9 +71,17 @@ export function dpadDirection(x: number, y: number, size: number): Direction | n
   return dy > 0 ? 'ArrowDown' : 'ArrowUp';
 }
 
-/** The keys the pad should offer now: the topmost running or paused scene that has any. */
-export function shortcutsFrom(scenes: readonly unknown[]): readonly TouchShortcut[] {
+/**
+ * The keys the pad should offer now: the topmost running or paused scene that
+ * has any. A scene that dims the tray (a battle) leaves `before` - the keys
+ * last offered - where they stood, every one dimmed, so the pad keeps its
+ * shape and a thumb finds nothing new under it.
+ */
+export function shortcutsFrom(scenes: readonly unknown[], before: readonly TouchShortcut[] = []): readonly TouchShortcut[] {
   for (const scene of [...scenes].reverse()) {
+    if (dimsTouchTray(scene)) {
+      return before.filter((key) => !key.extra).map((key) => ({ ...key, inert: true }));
+    }
     if (hasTouchShortcuts(scene)) {
       const list = scene.touchShortcuts();
       if (list.length > 0) {
@@ -427,7 +435,7 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
     // DROP, the team's LEAD - read off its help line, as it teaches them.
     const helpLines = screenUp ? [...document.querySelectorAll<HTMLElement>('#screens [data-help-default]')] : [];
     const help = helpLines.at(-1)?.dataset.helpDefault ?? '';
-    const list = withMoment(shortcutsFrom(host.scenes()), helpLineKeys(help));
+    const list = withMoment(shortcutsFrom(host.scenes(), shown), helpLineKeys(help));
     if (screenUp) {
       sawScreen = true;
     } else if (openedBy && (sawScreen || Date.now() - openedAt > 1500)) {

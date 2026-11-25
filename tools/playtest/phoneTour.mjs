@@ -106,6 +106,16 @@ try {
   await touch('.tp-back');
   await sleep(800);
   await shot('7-raid-after');
+  // A fight out of the raid, as a standing Pokémon starts one: the line read
+  // with OK, then the battle with the raid's keys still on the tray, dimmed.
+  await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); w.pendingWildBattle = { speciesId: 'pidgey', level: 3 }; w.dialogBox.showMessages(['A wild PIDGEY flutters down!']); })()`);
+  await sleep(400);
+  await shot('8-raid-line');
+  await touch('.tp-ok');
+  await until(sceneIs('battle'), 'the fight', 30_000);
+  await sleep(2500);
+  console.log('tray in the fight:', await page.evaluate(`[...document.querySelectorAll('.tp-chip')].map((c) => c.textContent + (c.classList.contains('is-inert') ? ' (dimmed)' : '')).join(', ')`));
+  await shot('9-battle');
 } finally {
   await browser.close();
 }

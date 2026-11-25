@@ -520,6 +520,12 @@ const plateKey = (side: BattleSide, slot: number): string => `${side}${slot}`;
 export const CATCH_SHAKE_LINE_MS = 700;
 
 export class BattleScene extends Phaser.Scene {
+  /**
+   * A fight has no keys of its own for the touch pad's tray, and the raid's
+   * do nothing in it: they stay where they stood, dimmed (`input/touchShortcuts.ts`).
+   */
+  public readonly dimsTouchTray = true as const;
+
   private state!: BattleState;
   private dialog!: DialogBox;
   private plates = new Map<string, CombatantPlate>();

@@ -22,6 +22,10 @@ describe('the touch pad', () => {
       { code: 'KeyH', label: 'DECORATE' },
     ]);
     expect(shortcutsFrom([{}, {}])).toEqual([]);
+    // A battle over a raid keeps the raid's keys in their places, dimmed.
+    const pack = { code: 'KeyB', label: 'PACK' };
+    const drop = { code: 'KeyX', label: 'DROP', extra: true };
+    expect(shortcutsFrom([{ dimsTouchTray: true }], [pack, drop])).toEqual([{ ...pack, inert: true }]);
   });
 
   it('draws its art on whole device pixels', () => {
