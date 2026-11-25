@@ -2,7 +2,7 @@ import type Phaser from 'phaser';
 import { GAME_FONT } from './gameFont';
 import { LARGE_CURSOR_HEIGHT, drawFramedWindow, drawPopupCursor } from './pixelWindow';
 import { FRAME_DEPTH, UI } from './uiPalette';
-import { CHIP_FONT_SIZE } from './screenType';
+import { DIALOG_FONT_SIZE } from './screenType';
 import { CANOPY_BAND } from '../world/depths';
 
 /**
@@ -19,7 +19,8 @@ import { CANOPY_BAND } from '../world/depths';
 
 /** Paper between the frame and the phrases. */
 const PAD = FRAME_DEPTH + 2;
-const ROW_HEIGHT = 13;
+/** A row at the dialogue's size, which the phrases are set in: at the chips' 12px "MAYBE LATER!" ran together. */
+const ROW_HEIGHT = 15;
 const GUTTER = 9;
 const COLUMN_GAP = 6;
 const MARGIN = 4;
@@ -41,7 +42,7 @@ export class PhrasePicker {
     this.onSay = onSay;
     this.selected = Math.min(remembered, phrases.length - 1);
     const depth = CANOPY_BAND + 0.22;
-    const style = { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: UI.ink.css };
+    const style = { fontFamily: GAME_FONT, fontSize: DIALOG_FONT_SIZE, color: UI.ink.css };
     this.frame = scene.add.graphics().setScrollFactor(0).setDepth(depth);
     this.rows = phrases.map((words, index) =>
       scene.add

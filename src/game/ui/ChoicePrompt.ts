@@ -79,16 +79,17 @@ export class ChoicePrompt extends Phaser.GameObjects.Container {
     drawFramedWindow(frame, { x: 0, y: 0, width: options.width, height: options.height });
     this.add(frame);
 
-    options.lines.forEach((line, index) => {
-      this.add(
-        scene.add.text(padding, padding + index * LINE_HEIGHT, line, {
-          fontFamily: GAME_FONT,
-          fontSize: DIALOG_FONT_SIZE,
-          color: UI.ink.css,
-          wordWrap: { width: options.width - padding * 2 },
-        }),
-      );
-    });
+    // One text, its lines broken where they were written and wrapped by the
+    // box: drawn a line apiece at a pitch of their own, a question of two lines
+    // stood further apart than the dialogue box's two rows did.
+    this.add(
+      scene.add.text(padding, padding, options.lines.join('\n'), {
+        fontFamily: GAME_FONT,
+        fontSize: DIALOG_FONT_SIZE,
+        color: UI.ink.css,
+        wordWrap: { width: options.width - padding * 2 },
+      }),
+    );
 
     this.optionTexts = options.options.map((label) =>
       scene.add.text(0, 0, label, { fontFamily: GAME_FONT, fontSize: DIALOG_FONT_SIZE, color: UI.ink.css }),

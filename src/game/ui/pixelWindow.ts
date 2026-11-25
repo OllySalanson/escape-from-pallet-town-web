@@ -120,9 +120,13 @@ export function drawMenuCursor(
 
 /**
  * The pop-ups' cursor: the large triangle in red, with a one-pixel shadow down
- * its lower right as FireRed's has, so it holds its shape on cream paper.
+ * its lower-right edge and under its tip, as FireRed's has, so it holds its
+ * shape on cream paper. The whole triangle offset made a ragged stair.
  */
 export function drawPopupCursor(graphics: Phaser.GameObjects.Graphics, x: number, y: number): void {
-  drawMenuCursor(graphics, x + 1, y + 1, UI.cursorShadow.value, 'large');
   drawMenuCursor(graphics, x, y, UI.cursor.value, 'large');
+  graphics.fillStyle(UI.cursorShadow.value, 1);
+  // Rows 3 to 6 are 4, 3, 2 and 1 wide: the pixel after each is the edge.
+  [4, 3, 2, 1].forEach((width, step) => graphics.fillRect(x + width, y + 3 + step, 1, 1));
+  graphics.fillRect(x, y + LARGE_CURSOR_HEIGHT, 1, 1);
 }
