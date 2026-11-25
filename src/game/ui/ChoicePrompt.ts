@@ -103,8 +103,12 @@ export class ChoicePrompt extends Phaser.GameObjects.Container {
     const windowHeight = answerRows * ANSWER_ROW + (FRAME_DEPTH + ANSWER_INSET / 2) * 2;
     const windowX = options.width - windowWidth;
     // One pixel down, so the two windows share one frame line rather than
-    // stacking two lines and two rims between their papers.
-    const windowY = 1 - windowHeight;
+    // stacking two lines and two rims between their papers. A question seated at
+    // the top of the screen - clear of whoever is asking, who stands below - has
+    // no room above it, so its answers hang under it instead, sharing the line
+    // the same way, rather than off the top of the screen.
+    const above = 1 - windowHeight;
+    const windowY = options.y + above < 0 ? options.height - 1 : above;
     this.answerBounds = { x: windowX, y: windowY, width: windowWidth, height: windowHeight };
     const answerFrame = scene.add.graphics();
     drawFramedWindow(answerFrame, { x: windowX, y: windowY, width: windowWidth, height: windowHeight });
@@ -192,8 +196,9 @@ export class ChoicePrompt extends Phaser.GameObjects.Container {
    * window on top of it - for whatever must keep clear of it (a caption).
    */
   public get bounds(): { x: number; y: number; width: number; height: number } {
-    const top = this.y + this.answerBounds.y;
-    return { x: this.x, y: top, width: this.boxBounds.width, height: this.y + this.boxBounds.height - top };
+    const top = this.y + Math.min(0, this.answerBounds.y);
+    const bottom = this.y + Math.max(this.boxBounds.height, this.answerBounds.y + this.answerBounds.height);
+    return { x: this.x, y: top, width: this.boxBounds.width, height: bottom - top };
   }
 
   /** The answer the cursor is on, as it reads. */

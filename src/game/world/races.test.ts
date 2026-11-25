@@ -22,6 +22,8 @@ import {
   racerKnowsTheWay,
   raceLineWord,
   raceOutcome,
+  perfectTrophyLine,
+  toeTheLineLine,
   isPerfect,
   racerTimeMs,
 } from './races';
@@ -286,7 +288,16 @@ describe('what LINNET says', () => {
     expect(racerArrivesLines(course, { ...input, medal: 'gold', timeMs: 10_500 }).join(' ')).toContain('best run');
     expect(racerArrivesLines(course, { ...input, medal: 'gold', timeMs: 10_500, firstGold: false }).join(' ')).toContain('GOLD again');
     // A photo finish is called as one.
-    expect(judgeLines(course, { ...input, timeMs: 22_750 }).join(' ')).toContain('Photo finish');
+    expect(judgeLines(course, { ...input, timeMs: 22_805 }).join(' ')).toContain('Photo finish');
+    expect(judgeLines(course, { ...input, timeMs: 22_750 }).join(' ')).not.toContain('Photo finish');
+    // A GOLD a tenth or two off the floor is told it was the start.
+    expect(racerArrivesLines(course, { ...input, medal: 'gold', timeMs: 9_450, firstGold: false }).join(' ')).toContain('Hold your way through my count');
+    // The gap she quotes is the gap between the times on screen.
+    expect(racerWonLines(course, { ...input, outcome: 'lost', medal: null, timeMs: 23_000, racerMs: 22_800 }).join(' ')).toContain('Beat you by 0.2s!');
+    expect(perfectTrophyLine(course, 'Glass Ornament', false)).toContain('never written one down');
+    expect(perfectTrophyLine(course, 'Glass Ornament', true)).toContain('Get it home this time');
+    expect(toeTheLineLine(course, true)).toContain('Off the bike!');
+    expect(toeTheLineLine(course, false)).toContain('the white one');
   });
 
   it('tells a loser what lost it: the boardwalk, the fights, the long way, or her learning the way', () => {
@@ -334,6 +345,10 @@ describe('what LINNET says', () => {
       bestMs: 15_200,
     });
     expect(lines).toEqual(['RACE 0:07.4', 'LINNET: THE HUMMOCK', 'LINE SW 41', 'BEST 0:15.2']);
+    expect(raceChipLines({ course, clockMs: 0, racerPlace: null, racerHomeMs: null, waitLeftMs: null, bearing: 'W', tilesToLine: 2, bestMs: undefined, liningUp: true })).toEqual([
+      'RACE: TOE THE MARK',
+      'MARK W 2',
+    ]);
   });
 
   it('has the village talk about a race once it is won, and not before', () => {

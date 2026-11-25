@@ -403,13 +403,6 @@ export function raceNotYetLines(course: RaceCourse): string[] {
   return [`${course.racer.name}: Get home in one piece first. THEN I'll race you.`];
 }
 
-/** Said as YES is answered, before the countdown. */
-export function raceReadyLine(course: RaceCourse, wasRiding: boolean): string {
-  return wasRiding
-    ? `${course.racer.name}: Off the bike! On foot, like everybody. On your marks...`
-    : `${course.racer.name}: On your marks...`;
-}
-
 export interface RaceResultInput {
   readonly outcome: RaceOutcome;
   /** Game time spent fighting on the way. */
@@ -451,6 +444,11 @@ function gapWords(gapMs: number): string {
   return gapMs < PHOTO_FINISH_MS ? 'by a whisker' : `by ${formatGap(gapMs)}`;
 }
 
+/** The gap between two times as the screen shows them, so it always adds up: 0:23.0 against 0:22.8 is 0.2s. */
+export function shownGap(later: number, earlier: number): number {
+  return Math.max(0, shownTenths(later) - shownTenths(earlier)) * 100;
+}
+
 /**
  * The player over the line first: the judge calls it, and pays out of the
  * racer's winnings - the racer is still out on the course, and is heard from
@@ -460,10 +458,10 @@ export function judgeLines(course: RaceCourse, input: RaceResultInput): string[]
   const judge = course.judge.name;
   const racer = course.racer.name;
   const fought = input.fightMs > 0 ? ` - ${formatGap(input.fightMs)} of it fighting` : '';
-  const photo = input.racerMs - input.timeMs < PHOTO_FINISH_MS ? 'Photo finish - and it\u2019s yours! ' : 'Over the line! ';
+  const photo = shownGap(input.racerMs, input.timeMs) < PHOTO_FINISH_MS ? 'Photo finish - and it\u2019s yours! ' : 'Over the line! ';
   const mark =
     input.medal === 'gold' && isPerfect(course, input.timeMs)
-      ? ' GOLD - and PERFECT. Not a step wasted.'
+      ? ' GOLD - and PERFECT.'
       : input.medal
         ? ` ${MEDAL_WORDS[input.medal]}!`
         : '';
@@ -476,9 +474,12 @@ export function judgeLines(course: RaceCourse, input: RaceResultInput): string[]
 /** What the racer says as they run in behind a player who beat them. */
 export function racerArrivesLines(course: RaceCourse, input: RaceResultInput): string[] {
   const racer = course.racer.name;
-  const behind = gapWords(input.racerMs - input.timeMs);
+  const behind = gapWords(shownGap(input.racerMs, input.timeMs));
   if (input.medal === 'gold' && isPerfect(course, input.timeMs)) {
     return [`${racer}: Not a step wasted. I watched. I'm going to be sick.`];
+  }
+  if (input.medal === 'gold' && input.timeMs - course.perfectMs <= NEAR_PERFECT_MS && input.fightMs === 0) {
+    return [`${racer}: So close to PERFECT! You stood still at GO. Hold your way through my count - go the instant I say it.`];
   }
   if (input.medal === 'gold') {
     if (input.firstGold) {
@@ -518,21 +519,43 @@ export function racerWonLines(course: RaceCourse, input: RaceResultInput): strin
           ? course.hints.longWay
           : course.hints.road;
   return [
-    `${racer}: Beat you ${gapWords(input.timeMs - input.racerMs)}! You: ${formatRaceTime(input.timeMs)}${fought}.${input.newBest ? ' A new best, mind.' : ''}`,
+    `${racer}: Beat you ${gapWords(shownGap(input.timeMs, input.racerMs))}! You: ${formatRaceTime(input.timeMs)}${fought}.${input.newBest ? ' A new best, mind.' : ''}`,
     `${racer}: ${why}`,
     `${racer} hands you ${formatMoney(input.prize.money)} for the legs.`,
   ];
 }
 
 /** The first PERFECT: what goes with it. */
-export function perfectTrophyLine(course: RaceCourse, trophyName: string): string {
-  return `${course.judge.name}: A PERFECT. I've timed this line forty years and never written one down. Take the ${trophyName.toUpperCase()}.`;
+export function perfectTrophyLine(course: RaceCourse, trophyName: string, again: boolean): string {
+  return again
+    ? `${course.judge.name}: Another PERFECT - and the ${trophyName.toUpperCase()} again. Get it home this time.`
+    : `${course.judge.name}: A PERFECT. I've timed this line forty years and never written one down. Take the ${trophyName.toUpperCase()}.`;
 }
 
 /** Said on YES when the player is not on the chalk mark: the count waits for them. */
-export function toeTheLineLine(course: RaceCourse): string {
-  return `${course.racer.name}: Toe the chalk mark - just to my left. We go when you're on it.`;
+export function toeTheLineLine(course: RaceCourse, wasRiding: boolean): string {
+  return `${course.racer.name}: ${wasRiding ? 'Off the bike! On foot, like everybody. ' : ''}Toe the chalk box beside me - the white one. We go when you're on it.`;
 }
+
+/** Talked to while lining up: where the mark is, and whether it is still on. */
+export function callItOffQuestion(course: RaceCourse): string {
+  return `${course.racer.name}: The white box beside me! Or shall we call it off?`;
+}
+
+export const CALL_IT_OFF_ANSWERS: readonly string[] = ['RACE', 'CALL IT OFF'];
+
+/** Called off, by the player or by them wandering away: the racer asks again another time. */
+export function calledOffLine(course: RaceCourse): string {
+  return `${course.racer.name}: Suit yourself! Ask me again when you've got the legs.`;
+}
+
+/** Off the bike on the mark: said before the count. */
+export function offTheBikeLine(course: RaceCourse): string {
+  return `${course.racer.name}: Off the bike! On foot, like everybody.`;
+}
+
+/** How far a GOLD may miss PERFECT and still be told it was only the start. */
+export const NEAR_PERFECT_MS = 200;
 
 /** Said when the purse is handed over, before the stone is chosen. */
 export function pursePickLine(course: RaceCourse): string {
@@ -594,7 +617,8 @@ export function raceChipLines(input: {
 }): string[] {
   const racer = input.course.racer.name;
   if (input.liningUp) {
-    return ['RACE: TOE THE MARK', `LINE ${input.bearing ? `${input.bearing} ` : ''}${input.tilesToLine}`];
+    // Where the chalk box is, not the finish: that is what the player is looking for.
+    return ['RACE: TOE THE MARK', `MARK ${input.bearing ? `${input.bearing} ` : ''}${input.tilesToLine}`];
   }
   const lines = [`RACE ${formatRaceTime(input.clockMs)}`];
   if (input.racerHomeMs !== null) {

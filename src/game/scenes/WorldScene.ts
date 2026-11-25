@@ -174,6 +174,10 @@ import {
   racerKnowsTheWay,
   raceGossipAt,
   raceOutcome,
+  callItOffQuestion,
+  calledOffLine,
+  offTheBikeLine,
+  CALL_IT_OFF_ANSWERS,
   shownTenths,
   isPerfect,
   perfectTrophyLine,
@@ -181,7 +185,6 @@ import {
   judgeAfterLines,
   type RaceMedal,
   raceNotYetLines,
-  raceReadyLine,
   trophyLine,
   type RaceCourse,
   type RaceOutcome,
@@ -522,6 +525,8 @@ const HUNTER_FIGURE_ID = 'rival-hunter';
 const RACER_FIGURE_ID = 'race-racer';
 /** The countdown's word: over the raid's chips, under nothing. */
 const RACE_WORD_DEPTH = 120;
+/** How far a player lining up may wander from the chalk mark before the race is off. */
+const LINE_UP_REACH_TILES = 24;
 /** How see-through the best run is: there, and plainly not a person. */
 const GHOST_ALPHA = 0.6;
 const GHOST_TINT = 0x9fd4ff;
@@ -2526,6 +2531,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
 
+    const liningUp = this.raceHere();
+    if (liningUp?.race.phase === 'lining-up' && this.wanderedOff(liningUp.course)) {
+      this.callOffRace(liningUp.course);
+      this.dialogBox.showMessage(calledOffLine(liningUp.course));
+      return;
+    }
     if (this.tryToeTheMark() || this.tryCrossRaceLine() || this.sayRaceNotice()) {
       return;
     }
@@ -4235,7 +4246,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const here = this.raceHere();
     if (here) {
       this.readRaceRecord(here.course);
-      if (here.race.phase !== 'over') this.createRaceGhost();
+      if (here.race.phase === 'countdown' || here.race.phase === 'running') this.createRaceGhost();
       if (!this.raceStarted(here.race)) this.drawChalkMark(here.course);
       const place = this.racerNow(here.race);
       this.createFigure(RACER_FIGURE_ID, place.tile, place.facing, 'npc', here.course.racer.design);
@@ -4289,12 +4300,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const record = new SaveManager().load()?.raidProgress.races?.[course.id];
     this.raceBestMs = record?.bestMs;
     this.raceMedalHeld = record?.medal;
-    this.raceGhost = record?.ghost;
+    // A best run that set off from anywhere but the mark (saved before there
+    // was one) would race from a different start: it is not shown.
+    const ghost = record?.ghost;
+    this.raceGhost = ghost && ghost[0] === course.racer.mark.x && ghost[1] === course.racer.mark.y ? ghost : undefined;
   }
 
   /** The see-through you of the best run, in what the player is wearing now. */
   private createRaceGhost(): void {
-    if (!this.raceGhost) {
+    if (!this.raceGhost || this.raceGhostSprite) {
       return;
     }
     const start = ghostPlace(this.raceGhost, 0);
@@ -4352,8 +4366,58 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     here.race.phase = 'countdown';
     here.race.countdownMs = 0;
-    this.dialogBox.showMessage(raceReadyLine(here.course, false));
-    return true;
+    this.createRaceGhost();
+    return false;
+  }
+
+  /** How far from the mark a player lining up may wander before the race is off. */
+  private wanderedOff(course: RaceCourse): boolean {
+    const { x, y } = course.racer.mark;
+    return Math.abs(this.currentTile.x - x) + Math.abs(this.currentTile.y - y) > LINE_UP_REACH_TILES;
+  }
+
+  /**
+   * The race called off before it started - asked to, or walked away from: as
+   * if it had never been agreed, so the racer stands to be asked again and the
+   * bike is the player's again.
+   */
+  private callOffRace(course: RaceCourse): void {
+    if (!this.runSession) return;
+    this.runSession.race = undefined;
+    this.npcSprites.get(RACER_FIGURE_ID)?.destroy();
+    this.npcSprites.delete(RACER_FIGURE_ID);
+    this.npcAppearances.delete(RACER_FIGURE_ID);
+    this.raceGhostSprite?.destroy();
+    this.raceGhostSprite = undefined;
+    this.drawChalkMark(null);
+    const person = this.currentMap.entities.find((entity) => this.courseOfPerson(entity) === course);
+    if (person && !this.npcSprites.has(person.id)) {
+      this.createFigure(person.id, person.position, person.facing, 'npc', person.design);
+    }
+    recordAction(`Called off the race with ${course.racer.name}`);
+  }
+
+  /** Talked to while lining up: where the mark is, or call it off. */
+  private askCallItOff(course: RaceCourse): void {
+    this.trainerPrompt = new ChoicePrompt(this, {
+      x: Math.round((this.scale.width - DIALOG_WIDTH) / 2),
+      y: this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
+      width: DIALOG_WIDTH,
+      height: DIALOG_HEIGHT,
+      padding: 10,
+      lines: [callItOffQuestion(course)],
+      options: CALL_IT_OFF_ANSWERS,
+      selected: 0,
+      onChoose: (index) => {
+        this.trainerPrompt?.destroy();
+        this.trainerPrompt = undefined;
+        if (index === 1) {
+          audioManager.play('cancel');
+          this.callOffRace(course);
+          this.dialogBox.showMessage(calledOffLine(course));
+        }
+      },
+    });
   }
 
   /** Every frame: the racer where the clock puts them, striding while they run. */
@@ -4446,8 +4510,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.runSession.race.phase = 'lining-up';
     }
     this.drawChalkMark(course);
-    // Said before the count: the countdown waits for the box to be read.
-    this.dialogBox.showMessage(onMark ? raceReadyLine(course, wasRiding) : toeTheLineLine(course));
+    // On the mark, the count starts at once - "ON YOUR MARKS" is its first word,
+    // not a box to read, so a direction held through it goes on GO. Only a rider
+    // is told first that the bike is going away.
+    if (!onMark) {
+      this.dialogBox.showMessage(toeTheLineLine(course, wasRiding));
+    } else if (wasRiding) {
+      this.dialogBox.showMessage(offTheBikeLine(course));
+    }
     const person = this.currentMap.entities.find((entity) => this.courseOfPerson(entity) === course);
     if (person) {
       this.npcSprites.get(person.id)?.destroy();
@@ -4457,7 +4527,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.createFigure(RACER_FIGURE_ID, course.racer.stands, 'down', 'npc', course.racer.design);
     this.countdownWordShown = null;
     this.readRaceRecord(course);
-    this.createRaceGhost();
+    if (onMark) this.createRaceGhost();
     recordAction(`Agreed to race ${course.racer.name}`);
   }
 
@@ -4633,7 +4703,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       ...(perfectTrophy ? [{ itemId: course.perfectTrophy, quantity: 1 }] : []),
     ];
     if (perfectTrophy) {
-      lines.push(perfectTrophyLine(course, getItemById(course.perfectTrophy)?.displayName ?? course.perfectTrophy));
+      lines.push(
+        perfectTrophyLine(course, getItemById(course.perfectTrophy)?.displayName ?? course.perfectTrophy, was?.perfect === true),
+      );
     }
     if (prize.trophy && medal) {
       // Under SILVER before and still no trophy at home: a wipe took the last one.
@@ -4645,6 +4717,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     // Seated clear of whoever is talking: the judge by his door, or the racer at the line.
     this.interrupt(lines, [speaker]);
+    // The mark and time keep out of the box's way: under it when it is at the top.
+    this.raceWord?.setY(Math.round(this.dialogRaised ? this.scale.height * 0.86 : this.scale.height / 2 - 24));
     this.pendingRacePurse = prize.purse;
     return true;
   }
@@ -4679,9 +4753,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /** The day's purse: the player names the stone. */
   private askPurseStone(course: RaceCourse): void {
+    // Where the call was: clear of the judge who is asking.
+    this.seatDialog([course.judge.at]);
     this.trainerPrompt = new ChoicePrompt(this, {
       x: Math.round((this.scale.width - DIALOG_WIDTH) / 2),
-      y: this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
+      y: this.dialogBox.y,
       width: DIALOG_WIDTH,
       height: DIALOG_HEIGHT,
       padding: 10,
@@ -4773,7 +4849,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const { race, course } = here;
     const place = this.racerNow(race);
     const home = race.phase === 'running' && race.clockMs >= race.racerMs;
-    const bearing = compassBearing(this.currentTile, course.finish.tiles[0]);
+    // Lining up, the chip points at the chalk mark; racing, at the line.
+    const target = race.phase === 'lining-up' ? course.racer.mark : course.finish.tiles[0];
+    const bearing = compassBearing(this.currentTile, target);
     return raceChipLines({
       course,
       clockMs: this.raceStarted(race) ? race.clockMs : 0,
@@ -4782,7 +4860,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       racerHomeMs: home ? race.racerMs : null,
       waitLeftMs: home ? race.racerMs + FINISH_WAIT_MS - race.clockMs : null,
       bearing,
-      tilesToLine: Math.abs(course.finish.tiles[0].x - this.currentTile.x) + Math.abs(course.finish.tiles[0].y - this.currentTile.y),
+      tilesToLine: Math.abs(target.x - this.currentTile.x) + Math.abs(target.y - this.currentTile.y),
       bestMs: this.raceBestMs,
       ...(this.raceMedalHeld === 'gold' ? { perfectMs: course.perfectMs } : {}),
     });
@@ -6397,9 +6475,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     // A box drawn across the top of the screen is drawn over the chips, which
     // stuck out either side of it half cut; while one is up they stand aside.
+    // A question raised to the top is a box over them too: chips half under it
+    // peeked out either side ("STAKE" and "THE LAS" round the race's stone choice).
     const dialogOver = this.dialogBox.visible
       ? { x: this.dialogBox.x, y: this.dialogBox.y, width: DIALOG_WIDTH, height: DIALOG_HEIGHT }
-      : null;
+      : (this.trainerPrompt?.bounds ?? null);
     hud.render(
       {
         clock: this.withTryHint(
@@ -6914,6 +6994,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       } else if (race.race.phase === 'running') {
         this.faceFigure(RACER_FIGURE_ID, OPPOSITE_DIRECTION[this.facing]);
         this.dialogBox.showMessage(`${race.course.racer.name}: Over the line first, then talk!`);
+      } else if (race.race.phase === 'lining-up') {
+        this.faceFigure(RACER_FIGURE_ID, OPPOSITE_DIRECTION[this.facing]);
+        this.askCallItOff(race.course);
       }
       return;
     }

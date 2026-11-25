@@ -89,7 +89,7 @@ class FakeText {
 
 const anything = (): unknown => new Proxy(() => anything(), { get: () => anything });
 
-function ask(options: readonly string[], selected: number) {
+function ask(options: readonly string[], selected: number, y = 200) {
   const texts: FakeText[] = [];
   const scene = {
     add: {
@@ -105,7 +105,7 @@ function ask(options: readonly string[], selected: number) {
   const chosen: number[] = [];
   const prompt = new ChoicePrompt(scene as never, {
     x: 0,
-    y: 0,
+    y,
     width: 300,
     height: 60,
     lines: ['A question?'],
@@ -203,9 +203,18 @@ describe('the answer window', () => {
 
   it('shares one frame line with the question box beneath it', () => {
     const { prompt } = ask(['YES', 'NOT NOW'], 0);
-    // The answer window's bottom line is the box's top line, y 0.
+    // The answer window's bottom line is the box's top line, y 200.
     const bounds = prompt.bounds;
-    expect(bounds.y + bounds.height).toBe(60);
-    expect(bounds.y).toBeLessThan(0);
+    expect(bounds.y + bounds.height).toBe(260);
+    expect(bounds.y).toBeLessThan(200);
+  });
+
+  it('hangs its answers under a question seated at the top of the screen, never off it', () => {
+    // Seated clear of somebody standing below (the race judge asking which stone):
+    // there is no room above, so the answers share the box's bottom line instead.
+    const { prompt } = ask(['THUNDER', 'FIRE', 'WATER', 'LEAF', 'MOON'], 0, 4);
+    const bounds = prompt.bounds;
+    expect(bounds.y).toBe(4);
+    expect(bounds.y + bounds.height).toBeGreaterThan(4 + 60);
   });
 });
