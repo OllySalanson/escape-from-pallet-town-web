@@ -98,3 +98,15 @@ describe('the move chooser', () => {
     expect(moveFacts(TACKLE, 3)).toContain(`PP 3/${TACKLE.pp}`);
   });
 });
+
+describe('the move chooser under a mashed key', () => {
+  // The overnight critic, 25 Nov 2026 (problem 45): SPACE pressed on through a
+  // level-up marked the first move and then pressed FORGET, and an Oddish lost
+  // its only attack. `tools/playtest/chooserMash.mjs` plays it in a browser.
+  it('opens on the answer that changes nothing, and never puts the cursor on FORGET', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const source = await readFile(new URL('./MoveChooserOverlay.ts', import.meta.url), 'utf8');
+    expect(source).toContain("render(view.canDefer ? '[data-later]' : '[data-decline]');");
+    expect(source).not.toMatch(/render\([^)]*data-forget-confirm/);
+  });
+});
