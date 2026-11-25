@@ -8513,6 +8513,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const key = [
       this.currentMap.id,
       `${this.currentTile.x},${this.currentTile.y}`,
+      // The chevron keeps to the way the player is facing while that still shortens the walk (`aheadOnWalk`).
+      this.facing,
       hunted,
       enraged,
       arrow,
@@ -8695,10 +8697,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const doorway = doorwayTowards(this.currentMap, this.currentTile, tile);
     const links = playerLinks(this.currentMap);
     const aim = !doorway
-      ? aheadOnWalk(this.wayField(tile), this.currentTile, tile, links)
+      ? aheadOnWalk(this.wayField(tile), this.currentTile, tile, links, this.facing)
       : this.currentTile.x === doorway.stand.x && this.currentTile.y === doorway.stand.y
         ? doorway.into
-        : aheadOnWalk(this.wayField(doorway.stand), this.currentTile, doorway.stand, links);
+        : aheadOnWalk(this.wayField(doorway.stand), this.currentTile, doorway.stand, links, this.facing);
     return {
       target: worldTile(tile),
       aim: worldTile(aim),

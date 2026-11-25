@@ -1,5 +1,5 @@
 import { MATERIAL_IDS, type ItemId } from '../items';
-import { STEP_DIRECTIONS, linkKey, nextTileFromDirection, type GridLinks, type GridPosition } from '../movement/gridMovement';
+import { STEP_DIRECTIONS, linkKey, nextTileFromDirection, type Direction, type GridLinks, type GridPosition } from '../movement/gridMovement';
 import type { SeededRng } from '../run/rng';
 import type { WorldMapDefinition, WorldMapId } from '../worldMap';
 import type { WorldLoot } from './loot';
@@ -268,13 +268,28 @@ export function layStakeTrail(
   ];
 }
 
-/** How far along a walk the way mark looks, in steps, to say which way the walk sets off. */
+/** How far along a walk the way mark looks, in steps, at most: the length of the straight run it shows. */
 const WAY_AHEAD_STEPS = 8;
 
+/** A step each way, in the order a tie between equally short runs goes. */
+const WAY_STEPS: readonly { readonly direction: Direction; readonly dx: number; readonly dy: number }[] = [
+  { direction: 'up', dx: 0, dy: -1 },
+  { direction: 'right', dx: 1, dy: 0 },
+  { direction: 'down', dx: 0, dy: 1 },
+  { direction: 'left', dx: -1, dy: 0 },
+];
+
 /**
- * Where a walk to a tile has got to `WAY_AHEAD_STEPS` from here, down a field of
- * steps to that tile: a straight line at it can point into a wall. The tile itself
- * from anywhere the field does not reach.
+ * Where the straight run the walk to a tile sets off on ends, at most
+ * `WAY_AHEAD_STEPS` from here, down a field of steps to that tile: the way
+ * mark points along it, so the key it shows is always a step that shortens
+ * the walk. It used to aim at wherever the walk had got to eight steps on,
+ * and where the road jogged that was a diagonal the chevron rounded to a key
+ * that walked into a bank or a tree (critic's review, problem 12, 25 Nov
+ * 2026). Of the steps that shorten the walk, the one the player is already
+ * `facing` wins, so holding a key keeps going until the road turns; else the
+ * one with the longest straight run. The tile itself from anywhere the field
+ * does not reach.
  *
  * A field grown over the map's doorways (`stepDistances` with `links`) is
  * walked through them too: where the next step of the walk is a doorway, the
@@ -288,27 +303,37 @@ export function aheadOnWalk(
   from: GridPosition,
   target: GridPosition,
   links?: GridLinks,
+  facing?: Direction,
 ): GridPosition {
-  let at = from;
-  if ((field[at.y]?.[at.x] ?? -1) < 0) {
+  const walkAt = (x: number, y: number): number => field[y]?.[x] ?? -1;
+  if (walkAt(from.x, from.y) < 0) {
     return target;
   }
-  const width = field[0]?.length ?? 0;
-  for (let step = 0; step < WAY_AHEAD_STEPS; step += 1) {
-    const walk = field[at.y][at.x];
-    const next = [
-      { x: at.x, y: at.y - 1 },
-      { x: at.x + 1, y: at.y },
-      { x: at.x, y: at.y + 1 },
-      { x: at.x - 1, y: at.y },
-    ].find((tile) => (field[tile.y]?.[tile.x] ?? -1) >= 0 && field[tile.y][tile.x] === walk - 1);
-    if (!next) {
-      const through = links ? doorwayOnWalk(field, links, width, at, walk) : undefined;
-      return through ?? at;
+  /** How many steps straight on from `at` each shorten the walk, up to the most it looks. */
+  const runFrom = (at: GridPosition, dx: number, dy: number): number => {
+    let length = 0;
+    let x = at.x;
+    let y = at.y;
+    while (length < WAY_AHEAD_STEPS) {
+      const next = walkAt(x + dx, y + dy);
+      if (next < 0 || next !== walkAt(x, y) - 1) {
+        break;
+      }
+      x += dx;
+      y += dy;
+      length += 1;
     }
-    at = next;
+    return length;
+  };
+  const runs = WAY_STEPS.map((step) => ({ ...step, length: runFrom(from, step.dx, step.dy) })).filter((run) => run.length > 0);
+  if (runs.length === 0) {
+    const width = field[0]?.length ?? 0;
+    return (links ? doorwayOnWalk(field, links, width, from, walkAt(from.x, from.y)) : undefined) ?? from;
   }
-  return at;
+  const chosen =
+    runs.find((run) => run.direction === facing) ??
+    runs.reduce((best, run) => (run.length > best.length ? run : best));
+  return { x: from.x + chosen.dx * chosen.length, y: from.y + chosen.dy * chosen.length };
 }
 
 /** The tile pressed into from `at` to go through a doorway one step nearer, if the walk goes through one there. */
