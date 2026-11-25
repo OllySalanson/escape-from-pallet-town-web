@@ -261,3 +261,16 @@ in one row.
 | Before | After |
 |---|---|
 | ![](before-workshop-seven.png) | ![](after-workshop-seven.png) |
+
+## 20. The wild fight's sixth command: HEAL
+
+A wild fight's 3x2 command grid had an empty sixth cell. The captain kept the
+grid, so catching stays one press, and asked for something useful there that
+was not already one press away. HEAL gives the Pokémon fighting the weakest
+Potion that makes its missing HP up (else the strongest), by ITEM's own path and
+turn, in one press instead of three; it is drawn as a refusal, and spends
+nothing, when there is nothing to heal or nothing to heal with.
+
+| Before | After | Phone |
+|---|---|---|
+| ![](before-heal.png) | ![](after-heal.png) | ![](after-heal-phone.png) |

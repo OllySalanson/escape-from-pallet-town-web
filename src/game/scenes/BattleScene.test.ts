@@ -514,8 +514,10 @@ describe('BattleScene command presentation', () => {
       // The escape command prices itself: Charmander outruns Bulbasaur 12 to 9,
       // and in FireRed the faster Pokemon always gets away.
       { text: '  RUN 100%', x: 112, y: 210 },
+      // The sixth cell: the Pokémon fighting a Potion in one press (the captain).
+      { text: '  HEAL x2', x: 206, y: 210 },
     ]);
-    // Five commands are three columns of the same two rows four commands use:
+    // Six commands are three columns of the same two rows four commands use:
     // as a third row the last one sat six pixels off the panel's border.
     expect(read(renderedTexts).every(({ y }) => y >= 174 && y < 238)).toBe(true);
     expect(read(renderedTexts).every(({ style }) => !('fixedWidth' in style))).toBe(true);
@@ -523,7 +525,7 @@ describe('BattleScene command presentation', () => {
     read(renderedTexts)[0].handlers.pointerdown();
 
     // Two guidance lines are laid out first, then one row per known move.
-    const [summaryLine, matchupLine, ...moveTexts] = read(renderedTexts).slice(5);
+    const [summaryLine, matchupLine, ...moveTexts] = read(renderedTexts).slice(6);
     expect(moveTexts).toHaveLength(3);
     expect([summaryLine, matchupLine, ...moveTexts].every(({ y }) => y >= 174 && y < 238)).toBe(
       true,
@@ -538,12 +540,13 @@ describe('BattleScene command presentation', () => {
 
     (scene as unknown as { goBack(): void }).goBack();
 
-    expect(read(renderedTexts).slice(10).map(({ text }) => text)).toEqual([
+    expect(read(renderedTexts).slice(11).map(({ text }) => text)).toEqual([
       '▶ FIGHT',
       '  BALL x5',
       '  POKéMON',
       '  ITEM x2',
       '  RUN 100%',
+      '  HEAL x2',
     ]);
   });
 
@@ -571,7 +574,7 @@ describe('BattleScene command presentation', () => {
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     read(renderedTexts)[0].handlers.pointerdown();
 
-    const [summaryLine, matchupLine, , , emberRow] = read(renderedTexts).slice(5);
+    const [summaryLine, matchupLine, , , emberRow] = read(renderedTexts).slice(6);
     emberRow.handlers.pointerover();
 
     expect(summaryLine.text).toBe('FIRE · SPECIAL · POWER 40 · PP 25/25 · SAME-TYPE x1.5');
@@ -587,7 +590,7 @@ describe('BattleScene command presentation', () => {
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     read(renderedTexts)[0].handlers.pointerdown();
 
-    const [, matchupLine, scratchRow, , emberRow] = read(renderedTexts).slice(5);
+    const [, matchupLine, scratchRow, , emberRow] = read(renderedTexts).slice(6);
     emberRow.handlers.pointerover();
     const neutralInk = matchupLine.setColor.mock.lastCall?.[0] as string;
     scratchRow.handlers.pointerover();
@@ -791,7 +794,7 @@ describe('escaping a wild encounter', () => {
     (scene as unknown as { showCommands(): void }).showCommands();
 
     // 94 + 30 = 124 of 256.
-    expect(read(renderedTexts).at(-1)?.text).toBe('▶ RUN 48%');
+    expect(read(renderedTexts).at(-2)?.text).toBe('▶ RUN 48%');
   });
 
   it('always gets away when the player is the faster, whatever the roll (playtest 45)', () => {
@@ -1956,7 +1959,7 @@ describe('the battle menu remembers where the cursor was left, as FireRed does',
       (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     }
     expect(mode()).toBe('main');
-    expect(read(renderedTexts).slice(-5).find(({ text }) => text.startsWith('▶'))?.text).toBe('▶ FIGHT');
+    expect(read(renderedTexts).slice(-6).find(({ text }) => text.startsWith('▶'))?.text).toBe('▶ FIGHT');
 
     (scene as unknown as { confirm(): void }).confirm();
     expect(mode()).toBe('moves');
@@ -1964,7 +1967,54 @@ describe('the battle menu remembers where the cursor was left, as FireRed does',
 
     (scene as unknown as { goBack(): void }).goBack();
     expect(mode()).toBe('main');
-    expect(read(renderedTexts).slice(-5).find(({ text }) => text.startsWith('▶'))?.text).toBe('▶ FIGHT');
+    expect(read(renderedTexts).slice(-6).find(({ text }) => text.startsWith('▶'))?.text).toBe('▶ FIGHT');
+  });
+});
+
+describe("HEAL, the wild fight's sixth command", () => {
+  // The captain, 25 Nov 2026: keep the 3x2 grid so catching stays one press,
+  // and fill the empty cell with something useful not already one press away.
+  it('gives the Pokémon fighting a Potion in one press, at the cost of the turn, and comes back on FIGHT', () => {
+    const pidgey = new Pokemon(PIDGEY, 5);
+    pidgey.currentHp = 8;
+    const { scene, dialog } = createBattleSceneHarness({
+      party: new PokemonParty([pidgey]),
+      wild: new Pokemon(getSpeciesById('rattata')!, 3),
+    });
+    const battle = scene as unknown as {
+      onMessagesComplete(): void;
+      dispatchAction(action: { type: string }): void;
+      mode: string;
+      selectedCommand: number;
+      bag: Bag;
+      mainActions(): readonly { readonly type: string }[];
+    };
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    for (let step = 0; step < 5 && battle.mode !== 'main'; step += 1) battle.onMessagesComplete();
+    expect(battle.mainActions().map((action) => action.type)).toContain('quick-heal');
+    const before = battle.bag.count('potion');
+    battle.dispatchAction({ type: 'quick-heal' });
+    expect(battle.bag.count('potion')).toBe(before - 1);
+    expect(pidgey.currentHp).toBeGreaterThan(8);
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40 && battle.mode !== 'main'; step += 1) battle.onMessagesComplete();
+    expect(battle.mainActions()[battle.selectedCommand]?.type).toBe('choose-fight');
+  });
+
+  it('spends nothing on a Pokémon at full HP, says so, and is drawn as a refusal', () => {
+    const pidgey = new Pokemon(PIDGEY, 5);
+    const { scene, dialog, renderedTexts } = createBattleSceneHarness({
+      party: new PokemonParty([pidgey]),
+      wild: new Pokemon(getSpeciesById('rattata')!, 3),
+    });
+    const battle = scene as unknown as { onMessagesComplete(): void; dispatchAction(action: { type: string }): void; mode: string; bag: Bag };
+    for (let step = 0; step < 5 && battle.mode !== 'main'; step += 1) battle.onMessagesComplete();
+    // Drawn as a refusal is: it would do nothing.
+    expect(renderedTexts.filter(({ text }) => text.includes('HEAL')).at(-1)?.style.color).toBe('#9b1c1c');
+    const before = battle.bag.count('potion');
+    battle.dispatchAction({ type: 'quick-heal' });
+    expect(battle.bag.count('potion')).toBe(before);
+    expect(dialog.shownMessages).toContain('PIDGEY is already at full HP!');
   });
 });
 
@@ -2409,12 +2459,13 @@ describe('a catch the pack has no room for', () => {
     // one of five. The cursor is on BALL, where the player left it: on FIGHT,
     // a SPACE more than the panel needed attacked the Pokémon being caught.
     expect((scene as unknown as { mode: string }).mode).toBe('main');
-    expect(read(renderedTexts).slice(-5).map(({ text }) => text)).toEqual([
+    expect(read(renderedTexts).slice(-6).map(({ text }) => text)).toEqual([
       '  FIGHT',
       '\u25b6 BALL x1',
       '  POKéMON',
       '  ITEM x17',
       expect.stringContaining('RUN'),
+      '  HEAL x17',
     ]);
   });
 

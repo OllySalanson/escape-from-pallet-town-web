@@ -715,6 +715,33 @@ export const catchChanceLabel = (chance: number): string => {
 
 export const formatItemCommand = (count: number): string => `ITEM x${count}`;
 
+/**
+ * The wild fight's sixth command (the captain, 25 Nov 2026: keep the 3x2 grid
+ * so catching stays one press, and fill its empty cell with something useful
+ * that is not already one press away): HEAL, the fighting Pokémon a Potion in
+ * one press, at ITEM's own cost - the turn. Counted as ITEM is.
+ */
+export const formatHealCommand = (count: number): string => `HEAL x${count}`;
+
+/**
+ * Which medicine HEAL uses: the weakest that makes the missing HP up in full,
+ * so a Super Potion is not spent where a Potion does; else the strongest. Null
+ * with nothing to heal with.
+ */
+export const quickHealChoice = <T extends { readonly amount: number }>(
+  medicines: readonly T[],
+  missingHp: number,
+): T | null => {
+  if (medicines.length === 0) {
+    return null;
+  }
+  const byStrength = [...medicines].sort((a, b) => a.amount - b.amount);
+  return byStrength.find((medicine) => medicine.amount >= missingHp) ?? byStrength[byStrength.length - 1];
+};
+
+/** HEAL pressed on a Pokémon with nothing to make up. */
+export const fullHpHealMessage = (name: string): string => `${battleCaps(name)} is already at full HP!`;
+
 /** One medicine row in the item submenu, counted the way the pocket counts it. */
 export const formatItemRow = (item: { readonly displayName: string }, count: number): string =>
   `${battleCaps(item.displayName)} x${count}`;

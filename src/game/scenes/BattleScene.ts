@@ -195,7 +195,10 @@ import {
   enemyBannerRole,
   type BannerRole,
   formatHunterFleeCommand,
+  formatHealCommand,
   formatItemCommand,
+  fullHpHealMessage,
+  quickHealChoice,
   formatItemRow,
   describeBallGuidance,
   formatBallCommand,
@@ -273,6 +276,7 @@ type BattleAction =
   | { readonly type: 'choose-pokemon' }
   | { readonly type: 'choose-item' }
   | { readonly type: 'choose-run' }
+  | { readonly type: 'quick-heal' }
   | { readonly type: 'answer-yield'; readonly yielding: boolean }
   | { readonly type: 'answer-let-go'; readonly lettingGo: boolean }
   | { readonly type: 'use-move'; readonly moveIndex: number }
@@ -1828,6 +1832,7 @@ export class BattleScene extends Phaser.Scene {
         'POKéMON',
         item,
         this.wildEscapeLabel(),
+        formatHealCommand(this.healers().reduce((sum, healer) => sum + this.bag.count(healer.id), 0)),
       ];
   }
 
@@ -1881,7 +1886,7 @@ export class BattleScene extends Phaser.Scene {
         {
           fontFamily: BATTLE_FONT,
           fontSize: this.isRowListMode ? '13px' : DIALOG_FONT_SIZE,
-          color: isEmptyStackLabel(label) ? PANEL_REFUSAL_INK : WINDOW_INK,
+          color: this.refusesLabel(label) ? PANEL_REFUSAL_INK : WINDOW_INK,
           ...(layout
             ? {
                 fixedWidth: layout.width,
@@ -2330,7 +2335,7 @@ export class BattleScene extends Phaser.Scene {
       // The cursor is the whole of the selection, as it is in the dialogue this
       // panel shares a frame with: no row is boxed in a second colour.
       text.setColor(
-        text.text.includes('FNT') || isEmptyStackLabel(text.text) ? PANEL_REFUSAL_INK : WINDOW_INK,
+        text.text.includes('FNT') || this.refusesLabel(text.text) ? PANEL_REFUSAL_INK : WINDOW_INK,
       );
       if (index === cursor) {
         this.rowCursor?.setPosition(this.rowHomes.get(text) ?? text.x, text.y);
@@ -2603,6 +2608,9 @@ export class BattleScene extends Phaser.Scene {
       case 'choose-run':
         this.flee();
         return;
+      case 'quick-heal':
+        this.quickHeal();
+        return;
       case 'use-move':
         this.chooseMove(action.moveIndex);
         return;
@@ -2651,7 +2659,63 @@ export class BattleScene extends Phaser.Scene {
           { type: 'choose-pokemon' },
           { type: 'choose-item' },
           { type: 'choose-run' },
+          { type: 'quick-heal' },
         ];
+  }
+
+  /**
+   * A command drawn in the refusal ink: an empty stack, and HEAL on a Pokémon
+   * with no HP to make up - it refuses and spends nothing, so it must not look
+   * as ready as the commands beside it (critic check, 25 Nov 2026).
+   */
+  private refusesLabel(label: string): boolean {
+    if (isEmptyStackLabel(label)) {
+      return true;
+    }
+    if (this.mode !== 'main' || !label.startsWith('HEAL')) {
+      return false;
+    }
+    const active = this.state.player;
+    return active.currentHp >= active.pokemon.maxHp;
+  }
+
+  /** The pack's HP medicine on hand, for HEAL. */
+  private healers(): readonly ItemDefinition[] {
+    return usableBattleItems(this.bag).filter((item) => item.effect.type === 'heal' && this.bag.count(item.id) > 0);
+  }
+
+  /**
+   * HEAL: the Pokémon fighting gets the medicine that makes its missing HP up
+   * (`quickHealChoice`), by ITEM's own path - the same turn, the same lines, and
+   * the cursor back on FIGHT after it (`useItem`).
+   */
+  private quickHeal(): void {
+    const healers = this.healers();
+    const active = this.state.player;
+    const refuse = (line: string): void => {
+      this.mode = 'events';
+      this.commandContainer.setVisible(false);
+      audioManager.play('denied');
+      this.dialog.showMessage(line);
+    };
+    if (healers.length === 0) {
+      refuse(NO_BATTLE_ITEMS_MESSAGE);
+      return;
+    }
+    const missing = active.pokemon.maxHp - active.currentHp;
+    if (missing <= 0) {
+      refuse(fullHpHealMessage(active.pokemon.name));
+      return;
+    }
+    const choice = quickHealChoice(
+      healers.map((item) => ({ item, amount: item.effect.type === 'heal' ? item.effect.amount : 0 })),
+      missing,
+    );
+    if (!choice) {
+      return;
+    }
+    this.pendingItem = choice.item;
+    this.useItem(this.party.pokemon.indexOf(active.pokemon));
   }
 
   private goBack(): void {
