@@ -2,8 +2,31 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('phaser', () => ({
   default: {
+    Geom: {
+      Rectangle: class {
+        public readonly x: number;
+        public readonly y: number;
+        public readonly width: number;
+        public readonly height: number;
+        public constructor(x: number, y: number, width: number, height: number) {
+          this.x = x;
+          this.y = y;
+          this.width = width;
+          this.height = height;
+        }
+        public static Contains(): boolean {
+          return true;
+        }
+      },
+    },
     GameObjects: {
       Container: class {
+        public x: number;
+        public y: number;
+        public constructor(_scene: unknown, x: number, y: number) {
+          this.x = x;
+          this.y = y;
+        }
         public add(): this {
           return this;
         }
@@ -24,14 +47,30 @@ import { ChoicePrompt } from './ChoicePrompt';
 /** A text that keeps what it says, which is all the prompt draws its cursor with. */
 class FakeText {
   public text: string;
-  public constructor(text: string) {
+  public x: number;
+  public y: number;
+  public color = '';
+  public hitArea: { x: number; y: number; width: number; height: number } | null = null;
+  public constructor(text: string, x: number, y: number) {
     this.text = text;
+    this.x = x;
+    this.y = y;
+  }
+  /** Seven pixels a letter: near enough Orange Kid at dialogue size. */
+  public get width(): number {
+    return this.text.length * 7;
+  }
+  public setPosition(x: number, y: number): this {
+    this.x = x;
+    this.y = y;
+    return this;
   }
   public setText(text: string): this {
     this.text = text;
     return this;
   }
-  public setColor(): this {
+  public setColor(color: string): this {
+    this.color = color;
     return this;
   }
   public scrollFactor = 1;
@@ -39,7 +78,8 @@ class FakeText {
     this.scrollFactor = factor;
     return this;
   }
-  public setInteractive(): this {
+  public setInteractive(config: { hitArea: FakeText['hitArea'] }): this {
+    this.hitArea = config.hitArea;
     return this;
   }
   public on(): this {
@@ -54,8 +94,8 @@ function ask(options: readonly string[], selected: number) {
   const scene = {
     add: {
       graphics: anything,
-      text: (_x: number, _y: number, label: string) => {
-        const text = new FakeText(label);
+      text: (x: number, y: number, label: string) => {
+        const text = new FakeText(label, x, y);
         texts.push(text);
         return text;
       },
@@ -77,8 +117,7 @@ function ask(options: readonly string[], selected: number) {
     texts,
     prompt,
     chosen,
-    highlighted: () =>
-      texts.filter((text) => text.text.startsWith('▶')).map((text) => text.text.slice(2)),
+    highlighted: () => [prompt.highlighted],
   };
 }
 
@@ -125,5 +164,48 @@ describe('a question under a camera that has scrolled', () => {
   it('has answers a pointer finds where they are drawn: a hit is tested against each one\'s own scroll factor', () => {
     const { texts } = ask(['YES', 'NOT NOW'], 0);
     expect(texts.slice(-2).map((text) => text.scrollFactor)).toEqual([0, 0]);
+  });
+});
+
+describe('the answer window', () => {
+  it('stands on top of the question box, so a question of two lines never has an answer printed over it', () => {
+    const { texts } = ask(['YES', 'NOT NOW'], 0);
+    const answers = texts.slice(-2);
+    // The question box is y 0 to 60; every answer is above it.
+    expect(answers.every((text) => text.y < 0)).toBe(true);
+    // One under another, as FireRed's YES/NO is.
+    expect(answers[0].x).toBe(answers[1].x);
+    expect(answers[1].y).toBeGreaterThan(answers[0].y);
+  });
+
+  it('stands at the right end of the box, as wide as its longest answer', () => {
+    const { texts } = ask(['YES', 'NOT NOW'], 0);
+    const longest = texts[texts.length - 1];
+    expect(longest.x + longest.width).toBeLessThanOrEqual(300);
+    expect(longest.x).toBeGreaterThan(150);
+  });
+
+  it('answers a press anywhere on the row, not only on the letters', () => {
+    const { texts } = ask(['YES', 'NOT NOW'], 0);
+    const yes = texts[texts.length - 2];
+    expect(yes.hitArea!.width).toBeGreaterThan(yes.width);
+    expect(yes.hitArea!.height).toBeGreaterThanOrEqual(16);
+    expect(yes.hitArea!.x).toBeLessThan(0);
+  });
+
+  it('writes every answer in full ink, so the one the cursor is not on never reads as one that cannot be chosen', () => {
+    const { texts, prompt } = ask(['YES', 'NOT NOW'], 1);
+    const [yes, notNow] = texts.slice(-2);
+    expect(yes.color).toBe(notNow.color);
+    prompt.moveSelection(-1);
+    expect(prompt.highlighted).toBe('YES');
+  });
+
+  it('shares one frame line with the question box beneath it', () => {
+    const { prompt } = ask(['YES', 'NOT NOW'], 0);
+    // The answer window's bottom line is the box's top line, y 0.
+    const bounds = prompt.bounds;
+    expect(bounds.y + bounds.height).toBe(60);
+    expect(bounds.y).toBeLessThan(0);
   });
 });

@@ -94,6 +94,8 @@ import { captionBoundsOverRoom, placeCaptions, placeDialog, seatedOver, type Rec
 import { advanceLookMs, isLooking } from '../ui/captionReveal';
 import { GAME_FONT } from '../ui/gameFont';
 import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
+import { UI } from '../ui/uiPalette';
+import { BASE_STAGE_WIDTH } from '../display/stage';
 import { HINT_MARGIN, HINT_PADDING_X, HINT_PADDING_Y } from '../ui/hintLine';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import {
@@ -494,7 +496,14 @@ export const BOTTLE_HINT = '[SPACE] A BOTTLE';
 
 /** What the hint line says while the quick-phrase list is open. */
 const PHRASE_LIST_HINT = `[ARROWS] CHOOSE   [SPACE] SAY   [${ROOM_KEY_LETTERS.talk}] CLOSE`;
-const DIALOG_WIDTH = 232;
+/**
+ * The raid's own width, so the base and the raid speak in one box. At 232 it
+ * held 38 letters a row, and most of what the harbour says is longer than two
+ * of those: Nurse Joy's hello took ten presses, cut mid-sentence ("I can heal
+ * anyone hurt or fainted," / press / "and I always tell you...") and the
+ * Porter's first box was three words (overnight critic, 25 Nov 2026).
+ */
+const DIALOG_WIDTH = BASE_STAGE_WIDTH - 16;
 const DIALOG_HEIGHT = 56;
 const DIALOG_MARGIN = 8;
 const figureRect = (tile: GridPosition): Rect => ({
@@ -4233,11 +4242,11 @@ export class BaseScene extends Phaser.Scene {
       padding: 10,
       // The same drawn window and the same face as the raid's dialogue, so the
       // base speaks in the game's one voice.
-      pixelWindow: true,
-      borderColor: WINDOW_CREAM,
-      backgroundColor: 0x0e1828,
-      textStyle: { fontFamily: GAME_FONT, fontSize: DIALOG_FONT_SIZE },
-      indicatorStyle: { fontFamily: GAME_FONT, fontSize: '12px' },
+      // The pop-up window every question and list is drawn in too (`uiPalette.ts`).
+      framedWindow: true,
+      backgroundColor: UI.paper.value,
+      textStyle: { fontFamily: GAME_FONT, fontSize: DIALOG_FONT_SIZE, color: UI.ink.css },
+      indicatorStyle: { fontFamily: GAME_FONT, fontSize: '12px', color: UI.cursor.css },
     }).setScrollFactor(0, 0, true);
   }
 
@@ -4604,7 +4613,7 @@ export class BaseScene extends Phaser.Scene {
           // NOW, or a knock at the door - which is up while the box is down.
           ...[this.boxQuestion?.prompt, this.knockPrompt?.prompt]
             .filter((prompt): prompt is ChoicePrompt => prompt !== undefined)
-            .map((prompt) => ({ x: prompt.x + view.left, y: prompt.y + view.top, width: DIALOG_WIDTH, height: DIALOG_HEIGHT })),
+            .map(({ bounds }) => ({ ...bounds, x: bounds.x + view.left, y: bounds.y + view.top })),
         ],
         keepClear: [
           ...(room?.keeper ? [figureRect(room.keeper.position)] : []),

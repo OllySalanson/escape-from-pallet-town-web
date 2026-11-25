@@ -293,6 +293,7 @@ import {
 import { WeatherId } from '../pokemon/battle/weather';
 import { SURVEY_RADIUS, tilesAround } from '../world/minimap';
 import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
+import { UI } from '../ui/uiPalette';
 import { HINT_MARGIN, HINT_PADDING_X, HINT_PADDING_Y, spaceHint } from '../ui/hintLine';
 import {
   OBJECTIVE_DETAIL_MS,
@@ -5085,14 +5086,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // The same window the raid HUD and the map captions are drawn with, so the
       // overworld has one frame rather than a rounded bubble beside them. Text
       // metrics are untouched: authored narration still wraps exactly as before.
-      pixelWindow: true,
-      borderColor: WINDOW_CREAM,
-      backgroundColor: 0x0e1828,
+      // The pop-up window every question and list is drawn in too (`uiPalette.ts`).
+      framedWindow: true,
+      backgroundColor: UI.paper.value,
       // The same face as the battle's dialogue and the map's captions. It is
       // narrower than the browser monospace it replaces at every size, so
       // authored narration wraps to the same lines or fewer, never more.
-      textStyle: { fontFamily: GAME_FONT, fontSize: DIALOG_FONT_SIZE },
-      indicatorStyle: { fontFamily: GAME_FONT, fontSize: '12px' },
+      textStyle: { fontFamily: GAME_FONT, fontSize: DIALOG_FONT_SIZE, color: UI.ink.css },
+      indicatorStyle: { fontFamily: GAME_FONT, fontSize: '12px', color: UI.cursor.css },
       onComplete: () => this.handleRunResolutionComplete(),
     }).setScrollFactor(0, 0, true);
   }
@@ -9333,13 +9334,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.pushingAgainst = null;
     this.showIdlePose();
     const prompt = floorPrompt(found.lift, found.stop);
+    // The floors stand in the answer window, two abreast, so a tall lift is not a tower over the map.
     const columns = 2;
-    const height = 20 + 20 * (prompt.lines.length + Math.ceil(prompt.options.length / columns));
     this.trainerPrompt = new ChoicePrompt(this, {
       x: Math.round((this.scale.width - DIALOG_WIDTH) / 2),
-      y: this.scale.height - height - DIALOG_MARGIN,
+      y: this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
       width: DIALOG_WIDTH,
-      height,
+      height: DIALOG_HEIGHT,
       padding: 10,
       lines: prompt.lines,
       options: prompt.options,

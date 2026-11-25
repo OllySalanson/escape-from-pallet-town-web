@@ -33,6 +33,13 @@ vi.mock('phaser', () => {
     default: {
       Scene: class {},
       GameObjects: { Container },
+      Geom: {
+        Rectangle: class {
+          public static Contains(): boolean {
+            return true;
+          }
+        },
+      },
       Input: {
         Keyboard: {
           JustDown: (key: StubKey) => key?.justDown === true,
@@ -151,6 +158,7 @@ function facingMaya() {
             return this;
           }),
           setColor: vi.fn().mockReturnThis(),
+          setPosition: vi.fn().mockReturnThis(),
         };
         renderedTexts.push(rendered);
         return rendered;
@@ -187,7 +195,9 @@ describe('speaking to an authored trainer', () => {
     expect(harness.dialogBox.showMessages).not.toHaveBeenCalled();
     expect(promptText(harness.renderedTexts)).toContain('RAIDER MAYA');
     // And what is in the fight, against the player's own lead.
-    expect(promptText(harness.renderedTexts)).toMatch(/RAIDER MAYA: \d Pokémon, lead Lv \d+ to your Lv 5\./);
+    expect(promptText(harness.renderedTexts)).toMatch(
+      /RAIDER MAYA: \d Pokémon, lead Lv \d+ to your Lv 5\./,
+    );
     expect(promptText(harness.renderedTexts)).toContain(TRAINER_COMMITMENT_LINE);
     expect(promptText(harness.renderedTexts)).toContain(CHALLENGE_OPTION);
     expect(promptText(harness.renderedTexts)).toContain(BACK_AWAY_OPTION);
