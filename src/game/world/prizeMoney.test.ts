@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  HUNTER_PRIZE_LEVEL_CAP,
   PRIZE_VALUE_FALLBACK,
   prizeLeftLine,
   prizeLine,
@@ -30,6 +31,13 @@ describe('prize money', () => {
     expect(prizeMoneyFor({ levels: [7], hunter: true, design: 'beauty' })).toBe(4 * 7 * 4);
   });
 
+  it('counts a hunter from no higher than a set level, because one pays every raid', () => {
+    expect(prizeMoneyFor({ levels: [8], hunter: true })).toBe(128);
+    expect(prizeMoneyFor({ levels: [46], hunter: true })).toBe(4 * HUNTER_PRIZE_LEVEL_CAP * 4);
+    // A trainer is paid once a save, so theirs is never capped.
+    expect(prizeMoneyFor({ levels: [46], design: 'cooltrainer' })).toBe(4 * 46 * 9);
+  });
+
   it('is never negative, and nothing for an empty party', () => {
     expect(prizeMoneyFor({ levels: [] })).toBe(0);
     expect(prizeMoneyFor({ levels: [-3] })).toBe(0);
@@ -37,9 +45,9 @@ describe('prize money', () => {
 
   it('is paid once a save: a trainer beaten again pays nothing, a hunter is the raid\'s to rule', () => {
     const bugCatcher = { levels: [6], design: 'bug-catcher' } as const;
-    expect(prizeDue('greystone-vale/trainer-1', bugCatcher, [])).toBe(72);
-    expect(prizeDue('greystone-vale/trainer-1', bugCatcher, ['greystone-vale/trainer-1'])).toBe(0);
-    expect(prizeDue('greystone-vale/trainer-2', bugCatcher, ['greystone-vale/trainer-1'])).toBe(72);
+    expect(prizeDue('greystone-vale/trainer-scout-tam', bugCatcher, [])).toBe(72);
+    expect(prizeDue('greystone-vale/trainer-scout-tam', bugCatcher, ['greystone-vale/trainer-scout-tam'])).toBe(0);
+    expect(prizeDue('greystone-vale/trainer-scout-bryn', bugCatcher, ['greystone-vale/trainer-scout-tam'])).toBe(72);
     expect(prizeDue('hunter', { levels: [7], hunter: true }, ['hunter'])).toBe(112);
   });
 

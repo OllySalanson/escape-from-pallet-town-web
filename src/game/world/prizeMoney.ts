@@ -99,6 +99,14 @@ export const PRIZE_VALUE_FALLBACK = 5;
 export const PRIZE_VALUE_BOSS = 25;
 /** A hunter: FireRed's early rival, who is what a hunter is. */
 export const PRIZE_VALUE_HUNTER = 4;
+/**
+ * The highest level a hunter's prize is counted from. A hunter mirrors the
+ * party and pays every raid, so counted from their own level the prize grew
+ * for ever: a Lv 50 team landed, beat the hunter and walked out with ₽736,
+ * six Potions a raid for a walk out (the fresh critic, 25 Nov 2026). Capped,
+ * it is at most ₽192, a Potion and change - worth the fight, never a wage.
+ */
+export const HUNTER_PRIZE_LEVEL_CAP = 12;
 
 export interface PrizeOwner {
   /** Their party's levels, in the order they send them out. */
@@ -110,7 +118,7 @@ export interface PrizeOwner {
 
 /** FireRed's prize for beating this trainer, in Pokédollars. Never negative, always whole. */
 export function prizeMoneyFor(owner: PrizeOwner): number {
-  const last = owner.levels[owner.levels.length - 1] ?? 0;
+  const last = Math.min(owner.levels[owner.levels.length - 1] ?? 0, owner.hunter ? HUNTER_PRIZE_LEVEL_CAP : Number.POSITIVE_INFINITY);
   const value = owner.hunter
     ? PRIZE_VALUE_HUNTER
     : owner.boss

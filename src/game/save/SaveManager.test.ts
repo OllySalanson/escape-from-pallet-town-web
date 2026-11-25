@@ -1684,10 +1684,10 @@ describe('SaveManager', () => {
     const before = manager.load()!;
     expect(before.raidProgress.trainersPaid).toEqual([]);
 
-    expect(manager.recordPaidTrainers(['greystone-vale/trainer-3'])).toEqual(['greystone-vale/trainer-3']);
-    expect(manager.recordPaidTrainers(['greystone-vale/trainer-3'])).toEqual([]);
+    expect(manager.recordPaidTrainers(['greystone-vale/trainer-scout-tam'])).toEqual(['greystone-vale/trainer-scout-tam']);
+    expect(manager.recordPaidTrainers(['greystone-vale/trainer-scout-tam'])).toEqual([]);
 
-    expect(manager.load()!.raidProgress).toEqual({ ...before.raidProgress, trainersPaid: ['greystone-vale/trainer-3'] });
+    expect(manager.load()!.raidProgress).toEqual({ ...before.raidProgress, trainersPaid: ['greystone-vale/trainer-scout-tam'] });
   });
 
   it('records a reached drop-in point once, and never one the lobby already offers', () => {
