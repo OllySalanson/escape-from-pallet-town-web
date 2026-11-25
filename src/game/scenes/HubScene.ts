@@ -2841,7 +2841,7 @@ export class HubScene extends Phaser.Scene {
         // itself: a pile of its icon, the packed ones lit (`pixelStack`). The
         // squares each takes and whether it was packed for you are the help
         // bar's, which says them the moment the cursor is on the row.
-        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}" data-describes="${describeKey('item', item.id)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong>${pixelStack(item, packed, held)}</span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason, cursorStart: index === 0 })}</div>`;
+        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}" data-describes="${describeKey('item', item.id)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong class="px-name">${item.displayName}</strong>${pixelStack(item, packed, held)}</span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason, cursorStart: index === 0 })}</div>`;
       })
       .join('');
     const cells = this.flow.bagCells;
@@ -3512,7 +3512,7 @@ export class HubScene extends Phaser.Scene {
           : limit >= blocksFor(itemId, packed)
             ? 'Everything you packed of this is already in the container.'
             : roomLine;
-      return `<div class="px-row has-icon${held ? ' is-secured' : ''}">${itemIcon(itemId, this.itemName(itemId))}<span class="px-row-main"><strong>${this.itemName(itemId)}</strong><small>${size === 1 ? '1 square' : `${size} squares`}</small></span>${countSelector({ kind: 'secure', id: itemId, label: this.itemName(itemId), value: held, max: limit, help, limit: limitReason })}</div>`;
+      return `<div class="px-row has-icon${held ? ' is-secured' : ''}">${itemIcon(itemId, this.itemName(itemId))}<span class="px-row-main"><strong class="px-name">${this.itemName(itemId)}</strong><small>${size === 1 ? '1 square' : `${size} squares`}</small></span>${countSelector({ kind: 'secure', id: itemId, label: this.itemName(itemId), value: held, max: limit, help, limit: limitReason })}</div>`;
     };
     const itemRows = this.flow.items
       .map((item) =>
