@@ -72,6 +72,15 @@ const TITLE_MAIN = '#f8f5d7';
 const TAGLINE = '#cfdce6';
 /** What a window casts on the town under it. */
 const SHADOW_ALPHA = 0.55;
+/**
+ * Where a two-line choice's label and detail are centred, from the top of its
+ * `TITLE_ROW_HEIGHT_WITH_DETAIL` window: the pair sits in the paper inside the
+ * frame's bevel, three pixels of paper over the label and three under the
+ * detail. The detail used to be centred four pixels off the bottom of a
+ * 32-high window, on the frame itself (the captain, 25 Nov 2026).
+ */
+const DETAIL_LABEL_Y = 11;
+const DETAIL_LINE_Y = 23;
 
 /** The name, set at four times Orange Kid's own grid so every stem is a whole four pixels. */
 const NAME_SIZE = '50px';
@@ -677,12 +686,12 @@ export class TitleScene extends Phaser.Scene {
       this.trackMenu(bar);
       if (selected) {
         const cursor = this.add.graphics().setDepth(11);
-        const cursorY = raised.y + (choice.detail ? 9 : Math.round(raised.height / 2)) - 2;
+        const cursorY = raised.y + (choice.detail ? DETAIL_LABEL_Y : Math.round(raised.height / 2)) - 2;
         drawMenuCursor(cursor, raised.x + 6, cursorY, UI.cursor.value);
         this.cursor = { graphics: this.trackMenu(cursor), x: raised.x + 6, y: cursorY };
       }
       const ink = choice.enabled ? WINDOW_INK : UI.inkSoft.css;
-      const labelY = choice.detail ? raised.y + 11 : raised.y + Math.round(raised.height / 2);
+      const labelY = raised.y + (choice.detail ? DETAIL_LABEL_Y : Math.round(raised.height / 2));
       this.trackMenu(
         this.add
           .text(raised.x + Math.round(raised.width / 2), labelY, choice.label, {
@@ -697,7 +706,7 @@ export class TitleScene extends Phaser.Scene {
       if (choice.detail) {
         this.trackMenu(
           this.add
-            .text(raised.x + Math.round(raised.width / 2), raised.y + 24, choice.detail, {
+            .text(raised.x + Math.round(raised.width / 2), raised.y + DETAIL_LINE_Y, choice.detail, {
               align: 'center',
               color: ink,
               fontFamily: GAME_FONT,
