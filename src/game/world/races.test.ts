@@ -167,6 +167,9 @@ describe('THE MERE DASH, on the vale as it is drawn', () => {
     // Dry from end to end: GOLD down the ride is skill, never a coin flip in the
     // grass (the overnight tester met a fight on 5 runs of 5 when it waded six tiles).
     expect(dry.wild).toBe(0);
+    // And the reeds' dry way, shut ride and all: SILVER is skill too.
+    const reedsDry = bestWay(shut, from, 3);
+    expect(reedsDry.wild).toBe(0);
   });
 });
 

@@ -93,7 +93,7 @@ export interface RaceCourse {
    * a step a tile - no fight, no stop, no wasted tile. A grid has no faster
    * line, so this is the last thing there is to chase (`races.test.ts` measures
    * it). On THE MERE DASH it is down the ride and then straight through the
-   * reeds - two dozen wild tiles, so only a Repel makes it more than a dice roll.
+   * reeds - eighteen wild tiles, so only a Repel makes it more than a dice roll.
    */
   readonly perfectMs: number;
   /** The trophy the first SILVER or better ever adds: something to put on a shelf. */

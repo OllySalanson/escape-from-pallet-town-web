@@ -339,6 +339,11 @@ export function reedmere(): MapcraftResult {
   // line without a fight: the clever ways in are skill, not a coin flip.
   // (Straight through the open reeds - the floor - is still a wade.)
   p.trail([[10, 21], [10, 22]]);
+  // The reeds' dry way (SILVER's line) was two single tufts short of dry, at the
+  // top of THE HUMMOCK and where it turns west: trodden, so a runner who found
+  // it is never ambushed on it, and LINNET's "Find the dry way" is true.
+  p.trail([[33, 10], [33, 10]]);
+  p.trail([[28, 14], [28, 14]]);
 
   const file = districtFile(GREYSTONE_VALE, 'reedmere', p, {
     dropIns: [],
