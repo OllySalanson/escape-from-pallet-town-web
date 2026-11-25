@@ -58,3 +58,21 @@ stays full.
 
 Made by `tools/playtest/menuShots.mjs <build url> <dir> --window=1280x800 --raid`
 and `popupShots.mjs`. How the screens sit in a big window is the next step.
+
+## 3. A menu stands in the game's own box
+
+The captain: menus "look stretched full screen on a big screen while the game
+itself sits in a smaller window". They were laid out against the whole window
+(up to 1120 game pixels across, at 2x-4x); now a menu stands in exactly the
+canvas's box, drawn as fine as keeps the room it was laid out for
+(`menuScaleFor` in `display/menuStage.ts`): 1280x800 the world 3x and the menu
+2x, 1920x1080 4x and 2x, 2560x1440 6x and 3x. A touch screen keeps the pad's
+layout.
+
+| 2560x1440 | Before: across the glass | After: in the game's box |
+|---|---|---|
+| Bill's PC | ![](before-in-frame-stash-2560x1440.png) | ![](after-in-frame-stash-2560x1440.png) |
+
+The bench at 2560x1440 and Bill's PC at 1920x1080:
+
+![](after-in-frame-bench-2560x1440.png) ![](after-in-frame-stash-1920x1080.png)
