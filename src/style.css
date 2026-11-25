@@ -5084,52 +5084,420 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .bench-layout {
   grid-template-columns: minmax(0, 1fr);
 }
-/* The rim: one card at the foot of the window (`.arena-panel.is-rim`, with the panels). */
+/* The rim: one card at the foot of the window (`.arena-panel.is-rim`, with the
+   panels), drawn as pictures and numbers (`hub/rimCard.ts`): what is chosen on
+   the left, what it means in four tiles on the right, and the sentence about
+   whatever is pointed at or highlighted on the line at its foot. */
 :where(.pixel-ui) .rim-layout {
   display: block;
 }
+:where(.pixel-ui) .rim-card.px-window {
+  gap: calc(var(--u) * 3);
+}
 /* Why nobody can go, heading the card (`HubScene.rimView`). */
 :where(.pixel-ui) .rim-refusal {
-  margin: 0 0 calc(var(--u) * 2);
+  margin: 0;
 }
-:where(.pixel-ui) .rim-ways {
+:where(.pixel-ui) .rim-refusal [data-rim-title] {
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .rim-grid {
+  display: grid;
+  grid-template-columns: calc(var(--u) * 176) minmax(0, 1fr);
+  gap: calc(var(--u) * 6);
+}
+:where(.pixel-ui) .rim-controls {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 3);
+}
+/* A row that holds a value: its name, then a sunk well with an arrow at each
+   end and the value between them. The highlight on it is the menus' red cursor
+   in front of the name, and its arrows turn red, because they are what the
+   keys do now. */
+.pixel-ui .rim-choice {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: calc(var(--u) * 24) calc(var(--u) * 9) minmax(0, 1fr) auto calc(var(--u) * 9);
+  align-items: center;
+  height: calc(var(--u) * 18);
+  padding-left: calc(var(--u) * 8);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pixel-ui .rim-choice::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: calc(var(--u) * 32);
+  right: 0;
+  top: 0;
+  bottom: 0;
+  /* A button's own window: lit paper in the navy line, white under the cursor. */
+  background: var(--cream-lit);
+  box-shadow: inset 0 0 0 var(--u) var(--frame);
+}
+.pixel-ui .rim-choice:focus {
+  outline: none;
+}
+.pixel-ui .rim-choice:focus::after {
+  background: #ffffff;
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 2) var(--cursor),
+    inset 0 0 0 calc(var(--u) * 3) #ffffff;
+}
+.pixel-ui .rim-choice:focus .rim-choice-label {
+  color: var(--cursor);
+}
+.pixel-ui .rim-choice:focus::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--u) * 2);
+  top: calc(var(--u) * 7);
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 5);
+  background: var(--cursor);
+  mask: var(--px-cursor) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
+}
+:where(.pixel-ui) .rim-choice-label {
+  color: var(--heading);
+}
+:where(.pixel-ui) .rim-choice-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 3);
+  min-width: 0;
+  overflow: hidden;
+}
+:where(.pixel-ui) .rim-choice-value .item-icon {
+  margin: calc(var(--u) * -1) 0;
+}
+/* How far along its choices a row is, so what is behind the arrows is counted. */
+:where(.pixel-ui) .rim-choice-at,
+:where(.pixel-ui) .rim-choice-value .rim-note {
+  color: var(--ink-soft);
+}
+/* The count has a column of its own on every row, so every row's right arrow stands in one place. */
+:where(.pixel-ui) .rim-choice-at {
+  min-width: calc(var(--u) * 20);
+  text-align: right;
+}
+:where(.pixel-ui) .rim-choice-value .rim-note::before {
+  content: '· ';
+}
+/* A choice that will not work as it stands carries a red mark, not red words. */
+:where(.pixel-ui) .rim-warn-mark {
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 11);
+  background: var(--red);
+  color: var(--cream-lit);
+}
+/* The arrows are the menus' cursor, pointing each way, in the frame's blue. */
+:where(.pixel-ui) .rim-step {
+  justify-self: center;
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 5);
+  background: var(--frame);
+  mask: var(--px-cursor) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
+}
+:where(.pixel-ui) .rim-step.is-back {
+  transform: scaleX(-1);
+}
+:where(.pixel-ui) .rim-choice:focus .rim-step {
+  background: var(--cursor);
+}
+:where(.pixel-ui) .rim-choice.is-fixed .rim-step {
+  visibility: hidden;
+}
+/* The clock the choices leave, under the rows that set it. */
+:where(.pixel-ui) .rim-clock {
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+  height: calc(var(--u) * 20);
+  padding-left: calc(var(--u) * 8);
+}
+:where(.pixel-ui) .rim-clock-time {
+  /* One type size, so the number every raid is played against is set apart
+     the way a heading is: inverted, on the frame's navy. */
+  padding: var(--u) calc(var(--u) * 5);
+  background: var(--bar);
+  color: var(--bar-text);
+}
+:where(.pixel-ui) .rim-clock.is-night .rim-clock-time {
+  background: var(--heading);
+}
+:where(.pixel-ui) .rim-note {
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+:where(.pixel-ui) .rim-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: auto 0 0;
+}
+:where(.pixel-ui) .rim-actions .px-button {
+  text-align: center;
+}
+/* The button under the cursor is ringed in the cursor's red, as a row is. */
+.pixel-ui .rim-actions .px-button:focus {
+  outline: calc(var(--u) * 2) solid var(--cursor);
+  outline-offset: calc(var(--u) * -1);
+}
+/* Who they bring, as a ball each. */
+:where(.pixel-ui) .rim-balls {
+  display: inline-flex;
+  gap: var(--u);
+  margin-right: calc(var(--u) * 3);
+  vertical-align: calc(var(--u) * -1);
+}
+:where(.pixel-ui) .rim-ball {
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 7);
+  background: linear-gradient(var(--red) 0 calc(var(--u) * 3), var(--frame) 0 calc(var(--u) * 4), #ffffff 0);
+  box-shadow: 0 0 0 var(--u) var(--frame);
+  clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
+}
+/* The four tiles: two abreast, each a lighter sheet on the card's paper with
+   its heading in the headings' blue - red for what can be lost, green for
+   nothing to lose. */
+:where(.pixel-ui) .rim-board {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .rim-tile {
+  display: grid;
+  align-content: start;
+  gap: var(--u);
+  min-width: 0;
+  overflow: hidden;
+  padding: calc(var(--u) * 2) calc(var(--u) * 4) calc(var(--u) * 3);
+  background: var(--cream-lit);
+  box-shadow: inset 0 0 0 var(--u) rgb(36 52 76 / 22%);
+}
+/* A phone on its side: the controls take less, and each tile its short words. */
+:where(.pixel-ui[data-rim-narrow]) .rim-grid {
+  grid-template-columns: calc(var(--u) * 150) minmax(0, 1fr);
+  gap: calc(var(--u) * 4);
+}
+/* The words that only add to what a tile already shows go, and stay on the help line. */
+:where(.pixel-ui[data-rim-narrow]) .rim-wide {
+  display: none;
+}
+:where(.pixel-ui[data-rim-narrow]) .rim-tile .rim-walk {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+:where(.pixel-ui[data-rim-narrow]) .rim-keys {
+  display: none;
+}
+:where(.pixel-ui[data-rim-narrow]) .rim-tile {
+  padding-left: calc(var(--u) * 3);
+  padding-right: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .rim-tile-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: calc(var(--u) * 6);
-}
-/* What a raid has at stake: a line each, the label in its own column, in the
-   headings' blue capitals and ruled off from the next, so the card reads as a
-   briefing rather than a wall of sentences (critic sweep, 25 Nov 2026). */
-:where(.pixel-ui) .rim-stakes {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-}
-:where(.pixel-ui) .rim-stakes dt {
+  gap: calc(var(--u) * 4);
   color: var(--heading);
   text-transform: uppercase;
+  white-space: nowrap;
 }
-:where(.pixel-ui) .rim-stakes > div + div {
-  box-shadow: inset 0 var(--u) 0 rgb(36 52 76 / 15%);
-}
-:where(.pixel-ui) .rim-stakes > div {
+:where(.pixel-ui) .rim-tile-body {
   display: grid;
-  /* Wide enough for HUNTERS in capitals and a gap after it. */
-  grid-template-columns: calc(var(--u) * 42) minmax(0, 1fr);
+  gap: var(--u);
+  min-width: 0;
 }
-:where(.pixel-ui) .rim-stakes dd {
-  white-space: normal;
+:where(.pixel-ui) .rim-team {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(var(--u) * 4);
 }
-/* The Sky line's wait buttons (`base/raidSky.ts`) stand on the line itself, a
-   line of text tall, so the row is no taller than the others and its label
-   still reads level with what it labels. */
-:where(.pixel-ui) .rim-stakes > div {
-  align-items: baseline;
+:where(.pixel-ui) .rim-team-notes {
+  display: grid;
+  align-content: start;
+  justify-items: end;
+  min-width: 0;
 }
-:where(.pixel-ui) .rim-stakes .rim-sky-wait {
-  margin-left: calc(var(--u) * 2);
+:where(.pixel-ui) .rim-mons {
+  display: flex;
+  gap: calc(var(--u) * 2);
+}
+/* Room on its right for the padlock, which stands beside the icon rather than over the Pokémon. */
+:where(.pixel-ui) .rim-mon {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  padding-right: calc(var(--u) * 12);
+}
+:where(.pixel-ui) .rim-mon-lock {
+  position: absolute;
+  left: calc(var(--u) * 28);
+  top: calc(var(--u) * 6);
+  pointer-events: none;
+}
+/* A party icon's top rows are blank: the line under it and the lock over it sit tight. */
+:where(.pixel-ui) .rim-mon > .px-mon-icon {
+  margin-top: calc(var(--u) * -4);
+}
+:where(.pixel-ui) .rim-mon-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--u);
+  margin-top: calc(var(--u) * -3);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+:where(.pixel-ui) .rim-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 3);
+  min-height: calc(var(--u) * 18);
+}
+:where(.pixel-ui) .rim-line.is-kept {
+  gap: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .rim-stack {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+}
+:where(.pixel-ui) .rim-stack.is-mon .rim-count {
+  margin-left: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .rim-stack.is-mon .px-mon-icon {
+  margin: calc(var(--u) * -10) calc(var(--u) * -4) calc(var(--u) * -4);
+}
+:where(.pixel-ui) .rim-count {
+  margin-left: var(--u);
+  color: var(--ink);
+  white-space: nowrap;
+}
+/* Who hunts: the figure, the name, and how many to how many and at what level. */
+:where(.pixel-ui) .rim-hunter {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .rim-hunter .px-figure {
+  --figure-scale: 1;
+  display: block;
+}
+:where(.pixel-ui) .rim-hunter-words {
+  display: grid;
+  min-width: 0;
+}
+:where(.pixel-ui) .rim-hunter-words .px-name small {
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .rim-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 calc(var(--u) * 6);
+  white-space: nowrap;
+}
+/* Danger: a pip a rung of the ladder, lit red to the rung this raid opens on. */
+:where(.pixel-ui) .rim-pips {
+  display: flex;
+  gap: var(--u);
+}
+:where(.pixel-ui) .rim-pips {
+  gap: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .rim-pip {
+  width: calc(var(--u) * 8);
+  height: calc(var(--u) * 7);
+  background: var(--cream-dim);
+  box-shadow: inset 0 0 0 var(--u) var(--ink-soft);
+}
+:where(.pixel-ui) .rim-pip.is-lit {
+  background: #e0453a;
+  box-shadow: inset 0 0 0 var(--u) var(--red);
+}
+/* The walk against the clock: the bar is the whole raid, the dark part the
+   straight walk and the light part the time to allow for stops; red past the end. */
+:where(.pixel-ui) .rim-walk {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .rim-walk-bar {
+  position: relative;
+  height: calc(var(--u) * 6);
+  background: var(--cream-dim);
+  box-shadow: inset 0 0 0 var(--u) var(--ink-soft);
+}
+:where(.pixel-ui) .rim-walk-allow,
+:where(.pixel-ui) .rim-walk-fill {
+  position: absolute;
+  left: var(--u);
+  top: var(--u);
+  bottom: var(--u);
+}
+:where(.pixel-ui) .rim-walk-allow {
+  width: calc((100% - var(--u) * 2) * var(--allow));
+  background: #a8d8b0;
+}
+/* Past the notch, the time the raid has not got: red stripes. */
+:where(.pixel-ui) .rim-walk-over {
+  position: absolute;
+  top: var(--u);
+  bottom: var(--u);
+  left: calc(var(--u) + (100% - var(--u) * 2) * var(--clock));
+  width: calc((100% - var(--u) * 2) * (var(--allow) - var(--clock)));
+  background: repeating-linear-gradient(90deg, #e0453a 0 calc(var(--u) * 2), #f0a090 0 calc(var(--u) * 4));
+}
+:where(.pixel-ui) .rim-walk-fill {
+  width: calc((100% - var(--u) * 2) * var(--walk));
+  background: #3fb56b;
+}
+:where(.pixel-ui) .rim-walk.is-warn .rim-walk-time {
+  color: var(--red);
+}
+/* A quicker way in is the answer, so it is a button that lands there. */
+.pixel-ui .rim-quicker {
+  --pad-top: 0;
+  justify-self: start;
   padding-top: 0;
   padding-bottom: 0;
+  color: var(--teal-ink);
+}
+/* Where the raid's clock runs out, a notch, so a walk past it is seen going past it. */
+:where(.pixel-ui) .rim-walk-end {
+  position: absolute;
+  left: calc(var(--u) + (100% - var(--u) * 2) * var(--clock) - var(--u));
+  top: calc(var(--u) * -2);
+  bottom: calc(var(--u) * -2);
+  width: var(--u);
+  background: var(--frame);
+}
+/* The help line: the sentence about whatever is pointed at or highlighted,
+   two lines deep whatever it says, so the card never changes height under the
+   pit as the highlight moves; the keys stand at the right of its first line. */
+:where(.pixel-ui) .rim-foot {
+  display: flow-root;
+  min-height: calc(var(--u) * 26);
+  margin: 0;
+  padding-top: calc(var(--u) * 2);
+  box-shadow: inset 0 var(--u) 0 rgb(36 52 76 / 22%);
+}
+:where(.pixel-ui) .rim-keys {
+  float: right;
+  margin-left: calc(var(--u) * 8);
+  white-space: nowrap;
+}
+:where(.pixel-ui) .rim-help {
+  white-space: normal;
 }
 
 /* In a side column a card is too narrow for two moves abreast, and wrapping

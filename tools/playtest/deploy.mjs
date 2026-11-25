@@ -18,6 +18,12 @@ export const GAME = 'window.__escapeFromPalletTownGame__';
  * was before raids were written down.
  */
 export const NO_RAID_RESUME = `(() => { const set = Storage.prototype.setItem; Storage.prototype.setItem = function (key, value) { if (String(key).includes('.raid-resume')) throw new DOMException('refused', 'QuotaExceededError'); return set.call(this, key, value); }; })();`;
+/**
+ * Everything the rim's card says: its words, and the whole sentence each tile
+ * and row stands for, which is its help (`hub/rimCard.ts`) - the card is
+ * pictures and numbers now, and the sentences a driver checks are there.
+ */
+export const RIM_CARD_WORDS = `(() => { const card = document.querySelector('.rim-card'); if (!card) return ''; return [card.innerText, ...[...card.querySelectorAll('[data-help]')].map((each) => each.dataset.help)].join(' | '); })()`;
 export const sceneIs = (key) => `${GAME}?.scene.getScenes(true).some((s) => s.scene.key === '${key}')`;
 /** True from the moment a jump over the fence has begun until the raid is under way. */
 const GOING_OVER = `(() => { const scenes = ${GAME}.scene.getScenes(true).map((s) => s.scene.key); return scenes.includes('world') || Boolean(${GAME}.scene.getScene('base')?.jump); })()`;

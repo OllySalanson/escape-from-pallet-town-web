@@ -45,8 +45,3 @@ export function clockAfterWaiting(clockMs: number, waited: boolean): number {
 export function waitedSkyNote(light: WindowLight): string {
   return `${light === 'night' ? 'night' : 'dusk'}: you wait on the rim for it. It costs ${formatRecoveryClock(WAIT_FOR_DARK_MS)} of the raid clock`;
 }
-
-/** What the button that waits for a sky says. */
-export function waitButtonLabel(light: WindowLight): string {
-  return light === 'night' ? 'Wait for dark' : 'Wait for dusk';
-}

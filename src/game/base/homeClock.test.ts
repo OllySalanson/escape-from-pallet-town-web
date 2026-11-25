@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { houseSeason, skyNote, windowLight, windowLines } from './homeClock';
+import { houseSeason, skyNote, skyTurns, windowLight, windowLines } from './homeClock';
 
 const at = (month: number, hour: number) => new Date(2026, month, 15, hour, 30);
 
@@ -32,5 +32,9 @@ describe("the rim's word on a raid's sky", () => {
     expect(skyNote(at(5, 19))).toBe('dusk, by your own clock. Full dark comes at 9 pm');
     expect(skyNote(at(5, 6))).toBe('dawn, by your own clock. Day comes at 7 am');
     expect(skyNote(at(5, 23))).toBe('night, by your own clock, until 5 am');
+  });
+
+  it('says it short beside the sky on the rim card, at the same hours', () => {
+    expect([12, 19, 6, 23].map((hour) => skyTurns(at(5, hour)))).toEqual(['DUSK 6PM', 'DARK 9PM', 'DAY 7AM', 'TILL 5AM']);
   });
 });

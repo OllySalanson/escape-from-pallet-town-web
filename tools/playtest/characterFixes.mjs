@@ -6,7 +6,7 @@
 // Prints one PASS or FAIL per check and leaves a picture of each. Exit code 1 is a FAIL.
 import { mkdirSync } from 'node:fs';
 import { PIXEL_WINDOW, attachBrowser, launchBrowser, sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, jumpIn, openHallPanel, sceneIs, walkIntoBase } from './deploy.mjs';
+import { GAME, SAVE_KEY, jumpIn, openHallPanel, sceneIs, walkIntoBase, RIM_CARD_WORDS } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -100,7 +100,7 @@ try {
     await step(4);
   };
   await smallest('rail-hurt-320');
-  const card = await page.evaluate(`document.querySelector('.rim-stakes')?.innerText ?? ''`);
+  const card = await page.evaluate(RIM_CARD_WORDS);
   check('the card says who is hurt', /at 1\/\d+ and burned/.test(card), card.replace(/\n+/g, ' | '));
   const cursor = await page.evaluate(`document.activeElement?.innerText ?? ''`);
   check('the cursor is on NOT YET', /not yet/i.test(cursor), cursor);
@@ -148,7 +148,7 @@ try {
   await until(`${sceneIs('hub')}`, 'the card');
   await wait(300);
   await shot('rail-for-good');
-  const stakes = await page.evaluate(`document.querySelector('.rim-stakes')?.innerText ?? ''`);
+  const stakes = await page.evaluate(RIM_CARD_WORDS);
   check('the card says who is lost for good', /lost for good/.test(stakes), stakes.replace(/\n+/g, ' | '));
   await page.evaluate(`document.querySelector('button[data-start]').click()`);
   await until(`${base}.jump?.breath`, 'the held breath');

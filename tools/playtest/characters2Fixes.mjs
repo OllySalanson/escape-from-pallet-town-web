@@ -9,7 +9,7 @@
 // leaves a picture of each. Exit code 1 is a FAIL.
 import { mkdirSync } from 'node:fs';
 import { PIXEL_WINDOW, attachBrowser, launchBrowser, sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, jumpIn, openHallPanel, sceneIs, walkIntoBase } from './deploy.mjs';
+import { GAME, SAVE_KEY, jumpIn, openHallPanel, sceneIs, walkIntoBase, RIM_CARD_WORDS } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -123,7 +123,7 @@ try {
     await until(`${sceneIs('hub')}`, 'the card');
     await wait(300);
     await shot('rail-hunter-line');
-    const card = await page.evaluate(`document.querySelector('.rim-stakes, .px-commit')?.innerText ?? document.body.innerText`);
+    const card = await page.evaluate(RIM_CARD_WORDS);
     check('the hunter line says what the job does', /this job: \d+s sooner/.test(card), card.replace(/\n+/g, ' | ').slice(0, 400));
 
     // Fault 4: with a job, the arrow and the chip are after the same stop.

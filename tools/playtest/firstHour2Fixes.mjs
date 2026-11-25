@@ -11,7 +11,7 @@
 // screen, was fixed by #510 and is photographed by its own fixer.)
 import { mkdirSync } from 'node:fs';
 import { PIXEL_WINDOW, attachBrowser, launchBrowser } from './browser.mjs';
-import { GAME, SAVE_KEY, openHallPanel, sceneIs, walkIntoBase } from './deploy.mjs';
+import { GAME, SAVE_KEY, openHallPanel, sceneIs, walkIntoBase, RIM_CARD_WORDS } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -130,9 +130,9 @@ try {
     await gameWith(`(save) => { ${hasBeenOut} ${noBalls} }`);
     await walkIntoBase(page, 'raid-arena', { press, until, wait });
     await openHallPanel(page, 'rim', { press, until, wait });
-    await until(`${sceneIs('hub')} && !!document.querySelector('.rim-stakes')`, 'the card');
+    await until(`${sceneIs('hub')} && !!document.querySelector('.rim-card')`, 'the card');
     await wait(300);
-    const card = await text('.confirm-bar');
+    const card = await page.evaluate(RIM_CARD_WORDS);
     await shot('rim-no-balls');
     check('the card says a found ball still catches', /only catch with a ball you find out there/.test(card) && !/nothing can be caught/.test(card), card.replace(/\n+/g, ' | '));
   }
@@ -142,9 +142,9 @@ try {
     await gameWith(`(save) => { ${hasBeenOut} for (const stored of save.stash.pokemon) stored.pokemon.currentHp = 0; }`);
     await walkIntoBase(page, 'raid-arena', { press, until, wait });
     await openHallPanel(page, 'rim', { press, until, wait });
-    await until(`${sceneIs('hub')} && !!document.querySelector('.rim-stakes')`, 'the card');
+    await until(`${sceneIs('hub')} && !!document.querySelector('.rim-card')`, 'the card');
     await wait(300);
-    const card = await text('.confirm-bar');
+    const card = await page.evaluate(RIM_CARD_WORDS);
     await shot('rim-all-fainted');
     check('the card says Joy can revive them', /Nurse Joy can revive them/.test(card), card.replace(/\n+/g, ' | '));
     check('and nothing in red about a wipe costing everything', !/a wipe costs you everything/.test(card));

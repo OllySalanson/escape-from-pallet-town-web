@@ -132,6 +132,21 @@ import {
 } from '../objectives';
 import { deferPendingMoves, nextPendingMoveOffer } from '../hub/pendingMoves';
 import { benchRailWarning, rimOpensOnNotYet, type RailWarning } from '../hub/railWarning';
+import {
+  cycleChoice,
+  isRimArrow,
+  rimChoiceRow,
+  rimClock,
+  rimHunterTile,
+  rimJobTile,
+  rimKeyMove,
+  rimLandingOrder,
+  rimPackTile,
+  rimSkyValue,
+  rimTeamTile,
+  type RimChoiceRowOptions,
+  type RimRowId,
+} from '../hub/rimCard';
 import { nextGym } from '../world/valeQuarters';
 import { jobAsks } from '../hub/rimJob';
 import { raidsDeployed, raidsLost, SaveManager, spareAtBase, traderProgressOf, type RestoredGame } from '../save/SaveManager';
@@ -154,9 +169,10 @@ import {
 } from '../stash';
 import { iconMarkup, itemIcon } from '../ui/icons';
 import { hunterThreatFor, hunterThreatLine, type HunterThreat } from '../world/hunterThreat';
-import { rivalForRaid } from '../world/hunters';
+import { hunterRival, rivalForRaid } from '../world/hunters';
+import { HUNTER_TIERS } from '../world/hunter';
 import { isNightRaid } from '../world/nightRaids';
-import { clockAfterWaiting, raidSky, waitableSkies, waitButtonLabel, waitedSkyNote, WAIT_FOR_DARK_MS } from '../base/raidSky';
+import { clockAfterWaiting, raidSky, waitableSkies, waitedSkyNote, WAIT_FOR_DARK_MS } from '../base/raidSky';
 import { windowLight, type WindowLight } from '../base/homeClock';
 import type { GridPosition } from '../movement/gridMovement';
 import { type WorldMapId, worldMapIds, worldMapMaker, worldMapName } from '../worldMap';
@@ -217,7 +233,7 @@ import { joyRailLine, recoveryTermsFor } from '../hub/centerCounter';
 import { DAY_CARE_LEAST_RAID_MS, dayCareRefusal, leftLines, raidsCompleted } from '../hub/dayCare';
 import { tradeDealFor, tradeHelp, tradeQuestion, tradeRefusal } from '../hub/trades';
 import { TRADER_POSITION } from '../base/harbourLife';
-import { skyNote } from '../base/homeClock';
+import { skyNote, skyTurns } from '../base/homeClock';
 import { friendRoom, friendRoomsOffered, raidName } from '../raidRoom/friendRoom';
 import { typedRoomCode } from '../raidRoom/roomCode';
 import { friendRoomView, friendStatusLine, type RoomMapChoice } from '../hub/friendRoomView';
@@ -225,7 +241,6 @@ import { keyHint } from '../input/keyBindings';
 import { storedPockets } from '../ui/thingsView';
 import { awayFromGarden, awayLine, gardenPokemon, toggleGarden, withGarden } from '../base/homeGarden';
 import { pokedexNote } from '../base/homeLines';
-import { wayInToward } from '../base/valeOverview';
 import { withArticle } from '../ui/article';
 
 /**
@@ -294,16 +309,11 @@ type HubView = 'stash' | ArenaPanel | 'reselect' | 'workshop' | 'trader' | 'wall
  */
 const PANEL_MIN_WIDTH = 320;
 const PANEL_SHARE = 0.56;
-/** Which way on the map each arrow key points, on the rim. */
 /** The rim card's heading while nobody can go: what the card is saying, before where it would have gone. */
 export const RIM_REFUSED_TITLE = 'Nobody can jump yet';
 
-const RIM_ARROWS: Readonly<Record<string, { readonly x: number; readonly y: number }>> = {
-  ArrowUp: { x: 0, y: -1 },
-  ArrowDown: { x: 0, y: 1 },
-  ArrowLeft: { x: -1, y: 0 },
-  ArrowRight: { x: 1, y: 0 },
-};
+/** Below this many game pixels across, the rim card's tiles say each fact in its short form. */
+const RIM_NARROW_WIDTH = 560;
 
 /**
  * Game pixels a card on the wall map takes beyond its picture: its window's
@@ -706,26 +716,6 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * The rim's other jobs, a button each on the Job line, and one to go without
-   * a job; or, turned down, a button for each job. LINE SURVEY was every raid's
-   * job until it was banked, with no way to choose another or none (AI
-   * playtest 4, 22 Nov 2026).
-   */
-  private jobButtons(insertionId: RunInsertionId, contract: RaidContract | undefined): string {
-    const jobs = this.jobsAt(insertionId);
-    const button = (choice: string, label: string, help: string): string =>
-      `<button class="px-window px-button rim-sky-wait" data-job="${escapeAttribute(choice)}" data-help="${escapeAttribute(help)}">${label}</button>`;
-    const others = jobs
-      .filter((job) => job.id !== contract?.id)
-      .map((job) => button(job.id, job.name, `Take ${job.name.toUpperCase()} instead: ${job.description}. It pays ${rewardLine(job.reward)}.`));
-    const none =
-      contract !== undefined && mayTurnJobDown(jobs)
-        ? [button(noJobChoice(jobs)!, 'No job', 'Raid with no job: nothing to fetch and nothing paid for it, and the board keeps its jobs for next time. The gold arrow leads to the next gym.')]
-        : [];
-    return [...others, ...none].join('');
-  }
-
-  /**
    * What the party costs in hunter on the raid this insertion would start: the
    * loadout's own tier plus whatever the contract carried there adds. The final
    * check prints it and the deploy spends it, so both ask here.
@@ -765,7 +755,9 @@ export class HubScene extends Phaser.Scene {
     }
     const layer = this.overlay.root.parentElement;
     const wide = Math.floor((layer?.clientWidth ?? 0) / unit);
-    // The rim's is as tall as what it says (`.arena-panel.is-rim`).
+    // The rim's is as tall as what it says (`.arena-panel.is-rim`), and in a
+    // narrow window (a phone on its side) its tiles say the short form of each fact.
+    this.overlay.root.toggleAttribute('data-rim-narrow', this.view === 'rim' && wide < RIM_NARROW_WIDTH);
     if (this.view !== 'rim') {
       this.overlay.root.style.setProperty('--dock', String(Math.min(wide, Math.max(PANEL_MIN_WIDTH, Math.floor(wide * PANEL_SHARE)))));
     }
@@ -1594,22 +1586,15 @@ export class HubScene extends Phaser.Scene {
         return;
       }
     }
-    // On the rim the arrows point at the map: each goes to the way in that lies
-    // that way. One that points at none is the cursor's, so a rim with one way
-    // in still moves between NOT YET and JUMP IN; and Right from NOT YET is
-    // always JUMP IN beside it, because NOT YET is where the card opens for a
-    // hurt team or a player just home, and only TAB - said nowhere - left it
-    // (the second characters hunt of 11 Nov 2026, finding 1).
-    if (this.view === 'rim') {
-      const way = RIM_ARROWS[event.key];
-      if (way) {
-        event.preventDefault();
-        const onNotYet = (document.activeElement as HTMLElement | null)?.matches('[data-back]') === true;
-        if ((onNotYet && event.key === 'ArrowRight') || !this.stepToWayIn(way)) {
-          this.moveRimCursor(event.key);
-        }
-        return;
-      }
+    // On the rim an arrow does one thing (`hub/rimCard.ts`): Up and Down go
+    // between the card's rows, Left and Right change the row's value or step
+    // between NOT YET and JUMP IN. It used to point at the map first and fall
+    // back to the buttons where no landing lay that way, so the same key did
+    // two jobs by where the lights happened to sit (the captain, 25 Nov 2026).
+    if (this.view === 'rim' && isRimArrow(event.key)) {
+      event.preventDefault();
+      this.rimArrow(event.key);
+      return;
     }
     // A deal being asked again is a YES/NO box, and the arrows stay in it.
     const answers = [...this.overlay.root.querySelectorAll<HTMLElement>('.px-arming .px-bar-actions button')];
@@ -1828,16 +1813,31 @@ export class HubScene extends Phaser.Scene {
       this.render();
     });
     on('[data-back]', () => this.goBack());
-    on('[data-job]', (button) =>
-      rerender(() => {
-        this.jobPick = button.dataset.job || undefined;
-      }),
-    );
-    on('[data-wait-sky]', (button) =>
-      rerender(() => {
-        this.waitedSky = (button.dataset.waitSky || undefined) as WindowLight | undefined;
-      }),
-    );
+    // A value row on the rim's card: its left arrow goes back, anywhere else on it goes on.
+    on('[data-rim-row]', (button, event) => {
+      const back = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-rim-step]')?.dataset.rimStep === '-1';
+      if (button.classList.contains('is-fixed')) {
+        audioManager.play('bump');
+        return;
+      }
+      this.stepRimRow(button.dataset.rimRow as RimRowId, back ? -1 : 1);
+    });
+    // A tile is no control, so the cursor never lands on it; pointing at one
+    // (or a finger on it) puts its whole sentence on the help line, and the line
+    // goes back to the highlighted control's when the pointer leaves.
+    const rimHelp = root.querySelector<HTMLElement>('.rim-help');
+    if (rimHelp) {
+      const highlighted = (): string =>
+        (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('[data-help]')?.dataset.help ?? rimHelp.dataset.helpDefault ?? '';
+      root.querySelectorAll<HTMLElement>('[data-rim-tile]').forEach((tile) => {
+        tile.onpointerenter = () => {
+          rimHelp.textContent = tile.dataset.help ?? '';
+        };
+        tile.onpointerleave = () => {
+          rimHelp.textContent = highlighted();
+        };
+      });
+    }
     on('[data-view]', (button) => rerender(() => this.setView(button.dataset.view as HubView)));
     on('[data-starter]', (button) =>
       rerender(() => {
@@ -2907,13 +2907,16 @@ export class HubScene extends Phaser.Scene {
 
   /**
    * THE RIM: looking down over the fence, and the last thing before a jump. The pit
-   * behind it is the map, with every way in lit on it, so this says only what the
-   * map cannot - what going has at stake - and has the one button that goes.
+   * behind it is the map, with every way in lit on it, so the card says what the
+   * map cannot - what going has at stake - in pictures and numbers
+   * (`hub/rimCard.ts`), with the one button that goes.
    *
-   * Nothing here is a list. Another way in is pointed at on the map: the arrow keys
-   * go to whichever lies that way (`stepToWayIn`), a click on a light chooses it, and
-   * the pit swings round to it. A player who walked up to the place they wanted
-   * presses straight through. What a whole map holds is on Oak's wall map.
+   * On the left, what is chosen: where to land, the job and the sky, each a
+   * `< VALUE >` row that Left and Right change, the clock those leave, and the
+   * buttons. On the right, what it means: who comes and who is safe, what a wipe
+   * takes, who hunts, and what the job pays against its walk. Each tile's whole
+   * sentence is the help line's, under whatever is pointed at or highlighted.
+   * A click on a light in the pit chooses that landing, as the LAND row does.
    */
   private rimView(): string {
     const chosen = this.flow.insertionId;
@@ -2925,40 +2928,176 @@ export class HubScene extends Phaser.Scene {
     const underWay = this.saveManager.load()?.raidInFlight;
     const elsewhere = underWay ? raidHeartbeat.liveElsewhere(underWay.id) : false;
     const warning = refusal ? undefined : this.packWarning();
-    const ways = this.waysFromHere().length;
-    const nextMap = this.nextMapWayIn();
     const stay = rimOpensOnNotYet(this.flow, this.justHome);
-    // Why nobody can go heads the card, in red, where the place's name would
-    // be. At the foot, in the small print under the stakes, it was missed: a
-    // player home from a first raid lost in seconds found JUMP IN greyed out
-    // and could not see why (the captain, 22 Nov 2026).
-    return `<main class="px-body rim-layout">${pixelCommitBar({
-      title: `<span data-rim-title${refusal ? ' class="px-warning"' : ''}>${refusal ? RIM_REFUSED_TITLE : this.rimTitle(chosen)}</span>`,
-      lines: [
-        ...(refusal
-          ? [`<p class="px-wrap px-warning rim-refusal">${refusal}</p>`]
-          : elsewhere
-            ? [`<p class="px-wrap px-warning rim-refusal">${RAID_ELSEWHERE_LINE}</p>`]
-            : []),
-        `<div data-rim-about>${this.rimStakes(chosen)}</div>`,
-        this.roomNote(),
-        ...(this.firstContractActive ? ['<small class="px-wrap">More ways in open up when you bring this contract home.</small>'] : []),
-        ...(warning ? [`<small class="px-wrap px-warning">${warning}</small>`] : []),
-        ...(ways > 1 || nextMap
-          ? [
-              `<div class="rim-ways">${ways > 1 ? `<small>${keyHint('ARROWS', 'OR CLICK A LIGHT: ANOTHER WAY IN')}</small>` : ''}${
-                nextMap
-                  ? `<button class="px-window px-button" data-insertion="${nextMap.id}" data-help="${escapeAttribute(`Look down on ${worldMapName(nextMap.mapId)} instead${worldMapMaker(nextMap.mapId) ? `, a map by ${worldMapMaker(nextMap.mapId)}` : ''}.`)}">${worldMapName(nextMap.mapId)}</button>`
-                  : ''
-              }</div>`,
-            ]
+    const rows = this.rimRows(chosen);
+    // Why nobody can go heads the card, in red, where the eye starts. At the
+    // foot, in the small print under the stakes, it was missed: a player home
+    // from a first raid lost in seconds found JUMP IN greyed out and could not
+    // see why (the captain, 22 Nov 2026).
+    const head = [
+      ...(refusal
+        ? [`<p class="px-wrap px-warning rim-refusal"><span data-rim-title>${RIM_REFUSED_TITLE}:</span> ${refusal}</p>`]
+        : elsewhere
+          ? [`<p class="px-wrap px-warning rim-refusal">${RAID_ELSEWHERE_LINE}</p>`]
           : []),
-      ].filter((line) => line !== ''),
-      // With nobody able to go, a team about to be finished by the first thing
-      // it meets, or a player only just home and still pressing through the
-      // result, the cursor is on the way back and SPACE does not spend the raid.
-      actions: `<button class="px-window px-button" data-back${stay ? ' data-cursor-start' : ''} data-help="Stay on the rim. Everything you have chosen stays as it is.">Not yet</button><button class="px-window px-button is-primary" data-start${stay ? '' : ' data-cursor-start'}${refusal ? ` aria-disabled="true" data-help="${escapeAttribute(refusal)}"` : ' data-help="Over the fence. There is no way back from here: the raid starts."'}>Jump in</button>`,
-    })}</main>`;
+      this.roomNote(),
+      ...(this.firstContractActive ? ['<small class="px-wrap">More ways in open up when you bring this contract home.</small>'] : []),
+      ...(warning ? [`<small class="px-wrap px-warning">${warning}</small>`] : []),
+    ].filter((line) => line !== '');
+    // With nobody able to go, a team about to be finished by the first thing
+    // it meets, or a player only just home and still pressing through the
+    // result, the cursor is on the way back and SPACE does not spend the raid.
+    const actions = `<div class="px-bar-actions rim-actions"><button class="px-window px-button" data-back${stay ? ' data-cursor-start' : ''} data-help="Stay on the rim. Everything you have chosen stays as it is.">Not yet</button><button class="px-window px-button is-primary" data-start${stay ? '' : ' data-cursor-start'}${refusal ? ` aria-disabled="true" data-help="${escapeAttribute(refusal)}"` : ` data-help="${escapeAttribute(this.rimJumpHelp(chosen))}"`}>Jump in</button></div>`;
+    const landing = requireInsertion(chosen);
+    const keys = keyHint('ARROWS', 'CHOOSE');
+    const card = pixelWindow(
+      `${head.join('')}<div class="rim-grid"><div class="rim-controls">${rows.map((row) => rimChoiceRow(row)).join('')}${this.rimClockView()}${actions}</div><div class="rim-board" data-rim-about>${this.rimBoard(chosen)}</div></div><p class="rim-foot"><small class="rim-keys">${keys}</small><span class="rim-help" data-help-text data-help-default="${escapeAttribute(landing.description)}">${landing.description}</span></p>`,
+      { className: 'confirm-bar rim-card', tag: 'div' },
+    );
+    return `<main class="px-body rim-layout">${card}</main>`;
+  }
+
+  /**
+   * What JUMP IN says on the help line: the one or two things that matter most
+   * about going now - a hurt team, a Pokémon a wipe would lose for good, a job
+   * longer than the clock - before the warning that there is no way back.
+   */
+  private rimJumpHelp(insertionId: RunInsertionId): string {
+    const job = this.rimJob(insertionId);
+    const lost = this.flow.riskedPokemon.map(({ pokemon }) => pokemon.name);
+    const hurt = this.railHurt();
+    const pressing = [
+      ...(hurt ? [hurt.line] : []),
+      ...(lost.length > 0 ? [`A wipe loses ${lost.join(' and ')} for good.`] : []),
+      ...(job.tooLong && job.walk !== undefined
+        ? [`The job needs ${formatRecoveryClock(job.walk * STEP_DURATION_MS * JOB_WALK_ALLOWANCE)} of your ${formatRecoveryClock(this.raidClockMs)}.`]
+        : []),
+    ].slice(0, 2);
+    return `${pressing.length > 0 ? `${pressing.join(' ')} ` : ''}Over the fence: there is no way back from here, and the raid starts.`;
+  }
+
+  /** The card's value rows, top to bottom: where, which job, which sky. */
+  private rimRows(insertionId: RunInsertionId): readonly RimChoiceRowOptions[] {
+    const landings = this.rimLandings();
+    const landing = requireInsertion(insertionId);
+    const where: RimChoiceRowOptions = {
+      id: 'landing',
+      label: 'Land',
+      value: `<strong>${landingPlace(landing)}</strong>`,
+      choices: landings.length,
+      at: landings.findIndex((way) => way.id === insertionId) + 1,
+      // A landing on another map says whose map it is (`worldMapMaker`), as the button that went there did.
+      help: `${landing.description}${landings.length > 1 ? ' Or click a light on the map.' : ''}${
+        new Set(landings.map((way) => way.mapId)).size > 1
+          ? ` On ${worldMapName(landing.mapId)}${worldMapMaker(landing.mapId) ? `, a map by ${worldMapMaker(landing.mapId)}` : ''}.`
+          : ''
+      }`,
+    };
+    const jobs = this.rimJobChoices(insertionId);
+    const job = this.rimJob(insertionId);
+    const jobRow: RimChoiceRowOptions[] =
+      jobs.length === 0
+        ? []
+        : [
+            {
+              id: 'job',
+              label: 'Job',
+              value: job.contract ? job.contract.name : 'No job',
+              choices: jobs.length,
+              at: jobs.indexOf(job.contract?.id ?? noJobChoice(this.jobsAt(insertionId)) ?? '') + 1,
+              help: job.sentence,
+              warn: job.warn,
+            },
+          ];
+    const skies = this.rimSkyChoices();
+    const sky = this.waitingForSky ? this.waitedSky : undefined;
+    const skyRow: RimChoiceRowOptions[] = isPlaytestRun()
+      ? []
+      : [{ id: 'sky', label: 'Sky', value: rimSkyValue(this.raidLight, sky !== undefined, sky !== undefined ? `WAIT ${formatRecoveryClock(WAIT_FOR_DARK_MS)}` : skyTurns(new Date())), choices: skies.length, help: this.rimSkyHelp() }];
+    return [where, ...jobRow, ...skyRow];
+  }
+
+  /** Every way in the LAND row goes through, in its order (`rimLandingOrder`). */
+  private rimLandings(): readonly RunInsertion[] {
+    return rimLandingOrder(this.offeredWays.map(([, insertion]) => insertion));
+  }
+
+  /** The JOB row's values: each job on offer, and none where a job may be turned down. */
+  private rimJobChoices(insertionId: RunInsertionId): readonly string[] {
+    const jobs = this.jobsAt(insertionId);
+    const none = mayTurnJobDown(jobs) ? noJobChoice(jobs) : undefined;
+    return [...jobs.map((job) => job.id), ...(none === undefined ? [] : [none])];
+  }
+
+  /** The SKY row's values: now, and each darker sky that can be waited for. */
+  private rimSkyChoices(): readonly (WindowLight | undefined)[] {
+    return [undefined, ...waitableSkies(new Date())];
+  }
+
+  /** The SKY row's sentence: what the clock gives, and what a wait costs. */
+  private rimSkyHelp(): string {
+    const now = new Date();
+    if (this.waitingForSky) {
+      return `${waitedSkyNote(this.raidLight)}. LEFT or RIGHT to go now instead.`;
+    }
+    const waits = waitableSkies(now);
+    return waits.length === 0
+      ? skyNote(now)
+      : `${skyNote(now)}. LEFT or RIGHT to wait on the rim for ${waits.map((sky) => (sky === 'night' ? 'full dark' : 'dusk')).join(' or ')}: some things in the vale only happen then, and it costs ${formatRecoveryClock(WAIT_FOR_DARK_MS)} of the raid clock.`;
+  }
+
+  /** A value row changed by Left or Right, or by a press on its arrows: it commits nothing. */
+  private stepRimRow(row: RimRowId, by: -1 | 1): void {
+    audioManager.play('select');
+    if (row === 'landing') {
+      const ways = this.rimLandings();
+      const current = ways.find((way) => way.id === this.flow.insertionId) ?? ways[0];
+      if (current) {
+        this.pointAtLanding(cycleChoice(ways, current, by).id);
+      }
+    } else if (row === 'job') {
+      const insertionId = this.flow.insertionId;
+      const current = this.contractFor(insertionId)?.id ?? noJobChoice(this.jobsAt(insertionId));
+      this.jobPick = cycleChoice(this.rimJobChoices(insertionId), current, by);
+      this.render();
+    } else {
+      this.waitedSky = cycleChoice(this.rimSkyChoices(), this.waitingForSky ? this.waitedSky : undefined, by);
+      this.render();
+    }
+    this.overlay.root.querySelector<HTMLElement>(`[data-rim-row="${row}"]`)?.focus();
+  }
+
+  /** An arrow key on the card (`rimKeyMove`): one key, one job. */
+  private rimArrow(key: string): void {
+    const rows = this.rimRows(this.flow.insertionId);
+    const buttons = [...this.overlay.root.querySelectorAll<HTMLElement>('.rim-actions button')];
+    const active = document.activeElement as HTMLElement | null;
+    const row = active?.dataset.rimRow as RimRowId | undefined;
+    const button = active ? buttons.indexOf(active) : -1;
+    const start = Math.max(0, buttons.findIndex((each) => each.hasAttribute('data-cursor-start')));
+    const move = rimKeyMove(key, rows, row ? { row } : button >= 0 ? { button } : null, buttons.length, start);
+    if (move.kind === 'step') {
+      this.stepRimRow(move.row, move.by);
+    } else if (move.kind === 'row') {
+      this.overlay.root.querySelector<HTMLElement>(`[data-rim-row="${move.row}"]`)?.focus();
+    } else if (move.kind === 'button') {
+      buttons[move.index]?.focus();
+    } else {
+      audioManager.play('bump');
+    }
+  }
+
+  /** The raid clock, large, under the rows that set it. */
+  private rimClockView(): string {
+    const night = this.raidLight === 'night';
+    if (isPlaytestRun()) {
+      return rimClock({ clock: 'NO CLOCK', night, help: this.clockNote() });
+    }
+    const off = [
+      ...(this.pendingRecoveryMs > 0 ? [`−${formatRecoveryClock(this.pendingRecoveryMs)} HEALING`] : []),
+      ...(this.waitingForSky ? [`−${formatRecoveryClock(WAIT_FOR_DARK_MS)} WAIT`] : []),
+    ].join(' ');
+    return rimClock({ clock: formatRecoveryClock(this.raidClockMs), ...(off ? { off } : {}), night, help: this.clockNote() });
   }
 
   /**
@@ -2983,56 +3122,76 @@ export class HubScene extends Phaser.Scene {
     return this.unlockedInsertions.filter(([, insertion]) => !room || insertion.mapId === room.mapId);
   }
 
-  /** The ways in on the map in the pit. */
-  private waysFromHere(): readonly { readonly id: RunInsertionId; readonly tile: { readonly x: number; readonly y: number } }[] {
-    const { mapId } = requireInsertion(this.flow.insertionId);
-    return this.offeredWays
-      .filter(([, insertion]) => insertion.mapId === mapId)
-      .map(([id, insertion]) => ({ id, tile: insertion.position }));
-  }
-
-  /** The first way in on the next map round, when there is another map to look down on. */
-  private nextMapWayIn(): RunInsertion | null {
-    const { mapId } = requireInsertion(this.flow.insertionId);
-    const maps = [...new Set(this.offeredWays.map(([, insertion]) => insertion.mapId))];
-    if (maps.length < 2) {
-      return null;
-    }
-    const next = maps[(maps.indexOf(mapId) + 1) % maps.length];
-    return this.offeredWays.find(([, insertion]) => insertion.mapId === next)?.[1] ?? null;
-  }
-
-  /** An arrow key on the rim: to the way in that lies that way on the map, if one does, and whether one did. */
-  private stepToWayIn(way: { readonly x: number; readonly y: number }): boolean {
-    const next = wayInToward(this.waysFromHere(), this.flow.insertionId, way);
-    if (!next) {
-      return false;
-    }
-    audioManager.play('select');
-    this.pointAtLanding(next.id);
-    return true;
-  }
-
-  /** An arrow on the rim that is the cursor's: to the button that way, or a bump where there is none. */
-  private moveRimCursor(key: string): void {
-    const before = document.activeElement;
-    this.overlay.moveCursor(key);
-    if (document.activeElement === before) {
-      audioManager.play('bump');
-    }
-  }
-
-  private rimTitle(insertionId: RunInsertionId): string {
-    // The place, among its map's other ways in (`landingPlace`): "Jump in at Greystone Vale" beside "Jump in at Old Quay" (veteran playtest, 20 Nov 2026).
-    return `Jump in at ${landingPlace(requireInsertion(insertionId))}`;
+  /**
+   * The job a raid from here carries and what the card says of it: the whole
+   * sentence for the help line, the walk against the clock for the tile, and
+   * whether either is said in red.
+   */
+  private rimJob(insertionId: RunInsertionId): {
+    readonly contract: RaidContract | undefined;
+    readonly sentence: string;
+    readonly warn: boolean;
+    readonly walk?: number;
+    readonly tooLong: boolean;
+    readonly short: readonly { readonly itemId: ItemId; readonly quantity: number }[];
+    readonly quicker?: { readonly id: string; readonly label: string; readonly ms: number };
+  } {
+    const contract = this.contractFor(insertionId);
+    const required = contract ? contractCarryIn(contract) : [];
+    const short = required.length === 0 ? [] : missingCarryIn(required, (itemId) => this.flow.itemQuantity(itemId));
+    // What the job on the board asks and pays, because a job nobody reads the price of is a job imposed.
+    // And how much of the clock it is just walking, because a step count means
+    // nothing beside 5:00 and a job across the vale leaves little room for
+    // anything else (the characters bug hunt, 11 Nov 2026). Fights are free.
+    const walk = contract ? standingJobWalk(contract, requireInsertion(insertionId).position, this.savedGame.raidProgress) : undefined;
+    // A job's stops are placed off the front door, so from a way in across the
+    // map it can be most of the raid: say which way in on offer walks it much
+    // quicker (the north bug hunt, 11 Nov 2026).
+    const quicker =
+      contract && walk !== undefined
+        ? quickerLandingFor(
+            contract,
+            requireInsertion(insertionId).position,
+            this.offeredWays.filter(([, way]) => way.mapId === contract.mapId).map(([, way]) => way),
+            this.savedGame.raidProgress,
+          )
+        : undefined;
+    // An allowance past the whole clock is said in red, beside the figures: a
+    // Line survey reading "2:45 of your 4:00; allow 6:52" was offered first and
+    // taken, by a friend who had not done the sum (AI playtest, 23 Nov 2026).
+    const tooLong =
+      walk !== undefined && !isPlaytestRun() && walk * STEP_DURATION_MS * JOB_WALK_ALLOWANCE > this.raidClockMs;
+    const walking =
+      walk === undefined
+        ? ''
+        : ` Walked straight with no stops, it takes ${formatRecoveryClock(walk * STEP_DURATION_MS)}${isPlaytestRun() ? ' of walking' : ` of your ${formatRecoveryClock(this.raidClockMs)}`}; allow ${formatRecoveryClock(walk * STEP_DURATION_MS * JOB_WALK_ALLOWANCE)}.${
+            tooLong ? ' That is longer than this raid.' : ''
+          }${quicker ? ` From ${quicker.landing.label} it takes ${formatRecoveryClock(quicker.walk * STEP_DURATION_MS)}.` : ''}`;
+    const sentence = contract
+      ? short.length > 0
+        ? `${contract.name} needs ${itemAmountsFor(required)}. Still short: ${itemAmountsFor(short)}`
+        : // What the job asks, not only its name: offered SEALED DISPATCH beside
+          // a Line survey, a newcomer could not tell what either meant (scenario
+          // loop, 22 Nov 2026).
+          `${contract.name}: ${jobAsks(contract.description)}. ${required.length > 0 ? `Hand over ${itemAmountsFor(required)}, and it pays` : 'It pays'} ${rewardLine(contract.reward)}.${walking}`
+      : `None this raid: nothing to fetch.${this.noJobArrow()}`;
+    return {
+      contract,
+      sentence,
+      warn: short.length > 0 || tooLong,
+      ...(walk === undefined ? {} : { walk }),
+      tooLong,
+      short,
+      ...(quicker ? { quicker: { id: quicker.landing.id, label: quicker.landing.label, ms: quicker.walk * STEP_DURATION_MS } } : {}),
+    };
   }
 
   /**
-   * What a raid from here risks and keeps, and the hunter it draws: each a line,
-   * because this pane has perhaps five of them before it has to scroll and these
-   * are what cannot be taken back.
+   * The four tiles: who comes and who is safe, what a wipe takes, who hunts,
+   * and what the job pays. Each is pictures and numbers, and carries the whole
+   * sentence it stands for as its help.
    */
-  private rimStakes(insertionId: RunInsertionId): string {
+  private rimBoard(insertionId: RunInsertionId): string {
     const securedPokemon = this.flow.securedPokemon;
     const securedItems = this.flow.securedItems;
     const stack = (item: { readonly itemId: ItemId; readonly quantity: number }): string =>
@@ -3074,95 +3233,85 @@ export class HubScene extends Phaser.Scene {
       // a chart they had never found (the overnight retest, 23 Nov 2026).
       ...securedItems.map((item) => (isFoundOnly(item.itemId) ? roomKeptFor(item, this.itemName(item.itemId)) : stack(item))),
     ];
+    // With nobody able to go the head already says why, and a red "a wipe costs
+    // you everything" over a raid that cannot start only frightened; and since
+    // the partner never goes down with a wipe, "everything" was never true
+    // either - it is what you take (the first-hour bug hunt, 11 Nov 2026).
+    const safeSentence = !this.flow.isDeployable
+      ? ''
+      : ` Safe: ${kept.length === 0 ? 'nothing: a wipe costs everything you take' : kept.join(', ')}.`;
+    const safeIds = new Set([...(partner === undefined ? [] : [partner.id]), ...securedPokemon.map((stored) => stored.id)]);
+    const teamSentence =
+      this.flow.party.length === 0 ? 'Team: nobody yet.' : `Team: ${rimTeamLine(this.flow.party.map(member), home, fainted)}`;
+    const team = rimTeamTile({
+      members: this.flow.party.map(({ id, pokemon }) => ({
+        name: pokemon.name,
+        speciesId: pokemon.base.id,
+        level: pokemon.level,
+        currentHp: pokemon.currentHp,
+        maxHp: pokemon.maxHp,
+        safe: safeIds.has(id),
+        partner: partner?.id === id,
+      })),
+      home: home.length + fainted.length,
+      ...(hurt ? { hurt: 'HURT' } : {}),
+      help: `${teamSentence}${hurt ? ` Hurt: ${hurt.line}` : ''}${safeSentence}`,
+    });
+    const risk = rimPackTile({
+      risked: [
+        ...(this.flow.packItemId === undefined ? [] : [{ itemId: this.flow.packItemId, name: this.flow.packName }]),
+        ...this.flow.riskedItems.map((item) => ({ itemId: item.itemId, name: this.itemName(item.itemId), quantity: item.quantity })),
+      ],
+      kept: securedItems.map((item) => ({ itemId: item.itemId, name: this.itemName(item.itemId), quantity: item.quantity })),
+      lostPokemon: this.flow.riskedPokemon.map(({ pokemon }) => ({ speciesId: pokemon.base.id, name: pokemon.name })),
+      help: `At risk: ${lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', ')}.${
+        goneForGood.length === 0 ? '' : ` A wipe: ${goneForGood.join(', ')}: lost for good.`
+      }${safeSentence}`,
+    });
     const threat = this.hunterThreatAt(insertionId, this.flow.party);
     // A raid alone meets a pack; a room shares one hunter (`WorldScene.hunterPackHere`).
     const pack = !friendRoom()?.room;
     const hunter = hunterThreatLine(threat, pack);
-    const contract = this.contractFor(insertionId);
-    const required = contract ? contractCarryIn(contract) : [];
-    const short = required.length === 0 ? [] : missingCarryIn(required, (itemId) => this.flow.itemQuantity(itemId));
-    const line = (label: string, body: string, warn = false): string =>
-      `<div><dt>${label}</dt><dd class="px-wrap${warn ? ' px-warning' : ''}">${body}</dd></div>`;
-    // What the job on the board asks and pays, because a job nobody reads the price of is a job imposed.
-    // And how much of the clock it is just walking, because a step count means
-    // nothing beside 5:00 and a job across the vale leaves little room for
-    // anything else (the characters bug hunt, 11 Nov 2026). Fights are free.
-    const walk = contract ? standingJobWalk(contract, requireInsertion(insertionId).position, this.savedGame.raidProgress) : undefined;
-    // A job's stops are placed off the front door, so from a way in across the
-    // map it can be most of the raid: say which way in on offer walks it much
-    // quicker (the north bug hunt, 11 Nov 2026).
-    const quicker =
-      contract && walk !== undefined
-        ? quickerLandingFor(
-            contract,
-            requireInsertion(insertionId).position,
-            this.offeredWays.filter(([, way]) => way.mapId === contract.mapId).map(([, way]) => way),
-            this.savedGame.raidProgress,
-          )
-        : undefined;
-    // An allowance past the whole clock is said in red, beside the figures: a
-    // Line survey reading "2:45 of your 4:00; allow 6:52" was offered first and
-    // taken, by a friend who had not done the sum (AI playtest, 23 Nov 2026).
-    const tooLong =
-      walk !== undefined && !isPlaytestRun() && walk * STEP_DURATION_MS * JOB_WALK_ALLOWANCE > this.raidClockMs;
-    const walking =
-      walk === undefined
-        ? ''
-        : ` Walked straight with no stops, it takes ${formatRecoveryClock(walk * STEP_DURATION_MS)}${isPlaytestRun() ? ' of walking' : ` of your ${formatRecoveryClock(this.raidClockMs)}`}; allow ${formatRecoveryClock(walk * STEP_DURATION_MS * JOB_WALK_ALLOWANCE)}.${
-            tooLong ? ' That is longer than this raid.' : ''
-          }${quicker ? ` From ${quicker.landing.label} it takes ${formatRecoveryClock(quicker.walk * STEP_DURATION_MS)}.` : ''}`;
-    const job = contract
-      ? short.length > 0
-        ? `${contract.name} needs ${itemAmountsFor(required)}. Still short: ${itemAmountsFor(short)}`
-        : // What the job asks, not only its name: offered SEALED DISPATCH beside
-          // a Line survey, a newcomer could not tell what either meant (scenario
-          // loop, 22 Nov 2026).
-          `${contract.name}: ${jobAsks(contract.description)}. ${required.length > 0 ? `Hand over ${itemAmountsFor(required)}, and it pays` : 'It pays'} ${rewardLine(contract.reward)}.${walking}`
-      : undefined;
-    // With nobody able to go the foot already says why, and a red "a wipe costs
-    // you everything" over a raid that cannot start only frightened; and since
-    // the partner never goes down with a wipe, "everything" was never true
-    // either - it is what you take (the first-hour bug hunt, 11 Nov 2026).
-    const safe = !this.flow.isDeployable
-      ? ''
-      : line('Safe', kept.length === 0 ? 'nothing: a wipe costs everything you take' : kept.join(', '), kept.length === 0);
-    const team = this.flow.party.length === 0 ? '' : line('Team', rimTeamLine(this.flow.party.map(member), home, fainted));
-    return `<dl class="dropin-facts rim-stakes">${team}${hurt ? line('Hurt', hurt.line, true) : ''}${line('At risk', lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', '))}${goneForGood.length === 0 ? '' : line('A wipe', `${goneForGood.join(', ')}: lost for good`, true)}${safe}${
-      job === undefined
-        ? this.jobsAt(insertionId).length > 0
-          ? line('Job', `None this raid: nothing to fetch.${this.noJobArrow()} ${this.jobButtons(insertionId, contract)}`)
-          : ''
-        : line('Job', `${job} ${this.jobButtons(insertionId, contract)}`, short.length > 0 || tooLong)
-    }${isPlaytestRun() ? '' : line('Sky', this.skyLine())}${line(pack ? 'Hunters' : 'Hunter', `<span data-hunter-tier="${threat.tierOffset + 1}">${hunter.heading.replace(/^Hunters?: /, '')}: ${hunter.detail}</span>`, threat.tierOffset > 0)}${this.clockIsNews ? line('Clock', this.clockNote()) : ''}</dl>`;
+    const rival = hunterRival(threat.rival);
+    const lead = threat.openingTeam[0];
+    const hunters = rimHunterTile({
+      name: rival.name,
+      design: rival.design,
+      pack,
+      rung: threat.tierOffset + 1,
+      rungs: HUNTER_TIERS.length,
+      ...(threat.matchedTo ? { count: threat.openingTeam.length } : {}),
+      ...(threat.matchedTo && lead ? { lead: { theirs: lead.level, yours: threat.matchedTo.level } } : {}),
+      soonerSeconds: Math.round(threat.arrivesSoonerMs / 1_000),
+      help: `${hunter.heading}: ${hunter.detail}`,
+    }).replace('data-rim-tile="hunters"', `data-rim-tile="hunters" data-hunter-tier="${threat.tierOffset + 1}"`);
+    const job = this.rimJob(insertionId);
+    const jobTile = job.contract
+      ? rimJobTile({
+          kind: 'job',
+          pay: {
+            items: job.contract.reward.items.map((item) => ({ itemId: item.itemId, name: this.itemName(item.itemId as ItemId), quantity: item.quantity })),
+            pokemon: (job.contract.reward.pokemon ?? []).map(({ speciesId, level }) => ({ speciesId, level, name: getSpeciesById(speciesId)?.name ?? speciesId })),
+          },
+          ...(job.walk === undefined
+            ? {}
+            : { walkMs: job.walk * STEP_DURATION_MS, allowMs: job.walk * STEP_DURATION_MS * JOB_WALK_ALLOWANCE }),
+          clockMs: this.raidClockMs,
+          tooLong: job.tooLong,
+          short: job.short.map((item) => ({ itemId: item.itemId, name: this.itemName(item.itemId), quantity: item.quantity })),
+          ...(job.quicker ? { quicker: job.quicker } : {}),
+          help: job.sentence,
+          format: formatRecoveryClock,
+        })
+      : this.jobsAt(insertionId).length > 0 || this.rimJobChoices(insertionId).length > 0
+        ? rimJobTile({ kind: 'none', ...(this.noJobGym() ? { arrowTo: this.noJobGym() } : {}), help: job.sentence })
+        : rimJobTile({ kind: 'none', help: 'No job this raid: nothing to fetch. Walk it, find what it has, and get out.' });
+    return `${team}${hunters}${risk}${jobTile}`;
   }
 
-  /** Whether the clock is worth a line: it is on the title bar, and only a night or a shortened one has more to say. */
-  private get clockIsNews(): boolean {
-    return this.pendingRecoveryMs > 0 || isPlaytestRun() || this.raidLight === 'night' || this.waitingForSky;
-  }
-
-  /**
-   * The rim's Sky line: what the clock gives, and a button for each darker
-   * sky the raid could wait for instead (`base/raidSky.ts`) - or, waited, what
-   * it costs and the button that goes now after all.
-   */
-  private skyLine(): string {
-    const now = new Date();
-    const button = (sky: string, label: string, help: string): string =>
-      `<button class="px-window px-button rim-sky-wait" data-wait-sky="${sky}" data-help="${escapeAttribute(help)}">${label}</button>`;
-    if (this.waitingForSky) {
-      return `${waitedSkyNote(this.raidLight)} ${button('', 'Go now', `Jump under the sky your own clock has, and keep the ${formatRecoveryClock(WAIT_FOR_DARK_MS)}.`)}`;
-    }
-    const waits = waitableSkies(now)
-      .map((sky) =>
-        button(
-          sky,
-          waitButtonLabel(sky),
-          `Wait on the rim until ${sky === 'night' ? 'full dark' : 'dusk'}: some things in the vale only happen then. It costs ${formatRecoveryClock(WAIT_FOR_DARK_MS)} of the raid clock.`,
-        ),
-      )
-      .join('');
-    return `${skyNote(now)}${waits ? ` ${waits}` : ''}`;
+  /** The gym the gold arrow leads a raid with no job to, by its leader's name. */
+  private noJobGym(): string | undefined {
+    return nextGym(this.savedGame.raidProgress.defeatedBosses)?.leader.toUpperCase();
   }
 
   /**

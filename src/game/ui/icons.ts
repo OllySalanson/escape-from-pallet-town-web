@@ -175,10 +175,24 @@ export const WORLD_ICONS = {
   favourAsk: 'favour-ask',
 } as const satisfies Record<string, string>;
 
+/**
+ * The jump-in card's own pictures (`hub/rimCard.ts`), drawn by
+ * `scripts/draw-briefing-icons.mjs`: the raid clock, the three skies a raid
+ * can jump under, and the padlock beside whatever a wipe cannot take.
+ */
+export const BRIEFING_ICONS = {
+  raidClock: 'raid-clock',
+  day: 'sky-day',
+  dusk: 'sky-dusk',
+  night: 'sky-night',
+  padlock: 'padlock',
+} as const satisfies Record<string, string>;
+
 /** Every icon file that has to exist, in one list so a test can check them. */
 export const ICON_NAMES: readonly string[] = [
   ...Object.values(ITEM_ICONS),
   ...Object.values(WORLD_ICONS),
+  ...Object.values(BRIEFING_ICONS),
 ];
 
 /** The Phaser texture key for an icon, so the world and the loader agree. */
