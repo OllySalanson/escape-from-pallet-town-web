@@ -63,12 +63,14 @@ describe("the boutique's screen", () => {
       const start = markup.indexOf(`data-whole="${id}"`);
       return markup.slice(start, markup.indexOf('</button>', start));
     };
-    expect(card('mon-mewtwo')).toMatch(/<small class="px-wrap">₽\d+ \+ a raid find<\/small>/);
+    // Said as the things themselves on the card, and in words for a reader.
+    expect(card('mon-mewtwo')).toMatch(/aria-label="₽\d+ \+ a raid find"/);
+    expect(card('mon-mewtwo')).toContain('<span class="boutique-cost">+ a raid find</span>');
     // Bought everything but the robe: the card needs only the find.
     const all = ownedWearables(WEARABLES.filter((piece) => piece.rarity !== 'raid').map((piece) => piece.id));
     const owned = boutiqueMarkup(state({ owned: all }));
     const start = owned.indexOf('data-whole="mon-mewtwo"');
-    expect(owned.slice(start, owned.indexOf('</button>', start))).toContain('<small class="px-wrap">Needs a raid find</small>');
+    expect(owned.slice(start, owned.indexOf('</button>', start))).toContain('<span class="boutique-cost">Needs a raid find</span>');
   });
 
   it('wears what is owned without a till, and puts back a try-on', () => {
