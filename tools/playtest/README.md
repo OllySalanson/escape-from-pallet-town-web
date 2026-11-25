@@ -114,6 +114,12 @@ crossed first, every line at the finish, the pack and the save's record.
 
 `stalePage.mjs <build dir> [--shot=dir] [--before]` serves a build under the Pages folder and plays a page from before a publish, whose bundles are gone: it must reload once into the current page, and a page whose files never come must reload once, stop and say so with TRY AGAIN, never loop (index.html's boot guard, `src/bootGuard.test.ts`; `docs/screens/stale-page/`).
 
+`battleGap.mjs <build url> [--fights=N] [--latency=ms] [--team=..] [--wild-shiny] [--shot=file.png] [--port=N]`
+times the black between a wild encounter and the battle's first frame, from the
+encounter to `create` and to the frame after it, with the long tasks between, on
+any build including the live one; a fight that waits on no download draws in
+about 0.2s (`docs/screens/shiny-black-screen/`).
+
 `slowLoad.mjs <cdp port> <build url> <dir> [kbit/s] [latency ms]` opens the game
 on a throttled line with the cache off and photographs the first load until the
 title is up, for what a friend on poor wifi sees before the game can draw

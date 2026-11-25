@@ -31,8 +31,8 @@ export function rollShiny(rng: Pick<SeededRng, 'next'> = { next: Math.random }):
  * Every shiny texture a fight with these Pokemon on the field could need: both
  * sides of each shiny one's whole evolution line, because a Pokemon can evolve
  * in the middle of a fight and must come out of it in the same colours it went
- * in with. Ordinary textures are loaded at boot; a shiny's are fetched by the
- * fight that meets it.
+ * in with. Ordinary textures are loaded at boot; a shiny's are fetched in the
+ * background, never holding a fight's first frame (`shinyTextureFetch.ts`).
  */
 export function shinyTexturesFor(
   pokemon: readonly { readonly shiny: boolean; readonly base: { readonly id: string } }[],

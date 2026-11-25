@@ -3546,6 +3546,33 @@ describe('BattleScene shiny Pokemon', () => {
 
     expect(sprite.setTexture).toHaveBeenLastCalledWith('pokemon-front-1');
   });
+
+  // The captain's black screen before a Caterpie (25 Nov 2026): a fight that
+  // fielded a shiny held its first frame in `preload` until the shiny's
+  // sprites had downloaded. A fight draws at once and recolours on arrival.
+  it('waits on no download before its first frame', () => {
+    expect(Object.getOwnPropertyNames(BattleScene.prototype)).not.toContain('preload');
+  });
+
+  it('recolours a shiny already on the field when its colours arrive', () => {
+    const { scene } = createBattleSceneHarness();
+    let arrived = false;
+    Object.assign(scene as object, {
+      textures: { exists: (key: string) => arrived || !key.includes('shiny'), get: vi.fn() },
+    });
+    const sprite = (scene as unknown as { sprites: Map<string, ReturnType<typeof spriteStub>> }).sprites.get('enemy0')!;
+    const player = (scene as unknown as { sprites: Map<string, ReturnType<typeof spriteStub>> }).sprites.get('player0')!;
+    land(scene, shinyBulbasaur());
+    expect(sprite.setTexture).toHaveBeenLastCalledWith('pokemon-front-1');
+    Object.assign(sprite, { active: true });
+
+    arrived = true;
+    (scene as unknown as { recolourShinies(): void }).recolourShinies();
+
+    expect(sprite.setTexture).toHaveBeenLastCalledWith('pokemon-shiny-front-1');
+    // The player's own Pokemon is not shiny and is left as it stands.
+    expect(player.setTexture).not.toHaveBeenCalled();
+  });
 });
 
 /**
