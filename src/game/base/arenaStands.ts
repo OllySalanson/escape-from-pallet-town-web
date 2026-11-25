@@ -5,9 +5,7 @@ import {
   ARENA_HALL_WIDTH,
   ARENA_MAT,
   ARENA_TILE,
-  ARENA_ENTRY,
-  ENTRY_WALL_FOOT,
-  ENTRY_WALL_ROWS,
+  isTunnelPixel,
   WALL_FACE_HEIGHT,
   WALL_FOOT,
   acrossOval,
@@ -84,14 +82,9 @@ function acrossRing(oval: Oval, px: number, py: number, north: boolean): number 
   return north && py > oval.y ? Math.abs(px - oval.x) / oval.rx : acrossOval(oval, px, py);
 }
 
-/** The room the door opens into and its walls stand here, and its corners are further out than the oval's. */
-const inEntry = (x: number, y: number): boolean =>
-  x >= (ARENA_ENTRY.left - 1) * ARENA_TILE &&
-  x < (ARENA_ENTRY.right + 2) * ARENA_TILE &&
-  y >= (ARENA_ENTRY.top - ENTRY_WALL_ROWS) * ARENA_TILE &&
-  y < (ARENA_ENTRY.bottom + 1) * ARENA_TILE + ENTRY_WALL_FOOT;
+/** The tunnel in from the mat is the hall's own art, under the stands, and the way out below the mat is open. */
 const inWayOut = (x: number, y: number): boolean =>
-  (y >= WAY_OUT_FROM && Math.abs(x - WAY_OUT_MIDDLE) < WAY_OUT_HALF) || inEntry(x, y);
+  (y >= WAY_OUT_FROM && Math.abs(x - WAY_OUT_MIDDLE) < WAY_OUT_HALF) || isTunnelPixel(x, y);
 
 /** How many arches stand round the half of the arcade that can be seen. */
 const ARCHES = 26;

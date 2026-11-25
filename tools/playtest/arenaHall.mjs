@@ -74,6 +74,20 @@ try {
   await step(200);
   await until(sceneIs('base'), 'the harbour');
   await step(1000);
+  // One raid behind it: a save's first raid goes over at the rail with nothing on
+  // the way (`hub/firstRaid.ts`), and what this plays is the hall a player gets
+  // ready in from then on - the marshal's word, the panels, the rim's card.
+  await page.evaluate(`(() => {
+    const save = JSON.parse(localStorage.getItem(${JSON.stringify(SAVE)}));
+    save.raidProgress.raidRecord = { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } };
+    localStorage.setItem(${JSON.stringify(SAVE)}, JSON.stringify(save));
+  })()`);
+  await page.send('Page.navigate', { url: address });
+  await page.waitFor(sceneIs('title'), { what: 'the title', timeoutMs: 90000 });
+  await page.evaluate(`${GAME}.pauseLoop()`);
+  await press('Space');
+  await until(sceneIs('base'), 'the harbour');
+  await step(1000);
 
   /** A step's worth of the way to some tiles, as a key, over the scene's own collision. */
   const keyTowards = (goals) =>
@@ -113,11 +127,18 @@ try {
   expect('no box from anybody on arriving', !(await base('b.dialogBox.visible')));
   expect('stood on the mat', await base(`b.currentTile.x === b.room.mat.x && b.currentTile.y === b.room.mat.y`));
   expect('the marshal has something to say to a newcomer', await base('Boolean(b.keeperMark)'));
-  expect('the hint on the mat says the way out', (await base('b.hintShown')) === '[DOWN] OUT');
-  expect('the key on the mat opens nothing', await (async () => {
+  // The partner arrives in front of the player on the mat, so the mat's hint and
+  // its key are theirs (a word from them, never a screen).
+  expect('the hint on the mat says something', (await base('b.hintShown')) !== '');
+  expect('the key on the mat opens no screen', await (async () => {
     await press('Space');
     await step(300);
-    return !(await page.evaluate(sceneIs('hub'))) && !(await base('b.dialogBox.visible'));
+    const opened = await page.evaluate(sceneIs('hub'));
+    for (let guard = 0; guard < 8 && (await base('b.dialogBox.visible')); guard += 1) {
+      await press('Space');
+      await step(300);
+    }
+    return !opened;
   })());
   const fires = () => base(`JSON.stringify(b.arena.fires.map((fire) => fire.frame))`);
   const before = await fires();
@@ -212,12 +233,8 @@ try {
     await walkTo({ x: mat.x, y: 53 });
   }
 
-  // Looking down, with the marshal's words the first time.
+  // Looking down: the rim's card, straight away (`BaseScene.lookDown`).
   await press('Space');
-  await step(900);
-  expect('the marshal says what is down there, in the hall, before anything opens', (await base('b.dialogBox.visible')) && !(await page.evaluate(sceneIs('hub'))));
-  await shot('7-rim-words');
-  await press('Escape');
   await until(sceneIs('hub'), 'the rim');
   await step(900);
   await shot('8-looking-down');
@@ -225,7 +242,7 @@ try {
   expect('the cursor is on the jump', await page.evaluate(`document.activeElement?.hasAttribute('data-start') === true`));
   await press('Escape');
   await step(500);
-  expect('NOT YET is back on the rim', await base(`b.currentTile.x === ${mat.x} && b.currentTile.y === 56 && !b.arenaPanel`));
+  expect('NOT YET is back on the rim', await base(`b.currentTile.x === ${mat.x} && b.currentTile.y === 53 && !b.arenaPanel`));
   await press('Space');
   await until(sceneIs('hub'), 'the rim again');
   await step(500);
@@ -263,7 +280,8 @@ try {
   await step(1500);
   await press('Enter');
   await until(sceneIs('base'), 'home');
-  expect('home is the hall, on the rim it left from', await base(`b.room?.id === 'raid-arena' && b.currentTile.x === ${mat.x} && b.currentTile.y === 56`));
+  expect('home is the hall, on the rim it left from', await base(`b.room?.id === 'raid-arena' && b.currentTile.x === ${mat.x} && b.currentTile.y === 53`));
+  expect('the great doors stand open behind a raid come home', await base('b.hallDoors?.open === true'));
   if (!still) {
     expect('the cloud lifts off what the raid walked', await base('Boolean(b.fogLift)'));
     await step(900);

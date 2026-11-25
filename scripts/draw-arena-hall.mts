@@ -21,7 +21,11 @@ import { writePng } from '../tools/tileset/tileSheet.mjs';
 import {
   ARENA_BANNERS,
   ARENA_CENTRE,
-  ARENA_ENTRY,
+  ARENA_ANTEROOM,
+  ARENA_CORRIDOR,
+  ARENA_DOOR,
+  DOOR_OPENING,
+  inDoorOpening,
   ARENA_HALL_HEIGHT,
   ARENA_HALL_WIDTH,
   ARENA_MAT,
@@ -31,8 +35,6 @@ import {
   ARENA_TELESCOPES,
   ARENA_TILE,
   ARENA_TORCHES,
-  ENTRY_WALL_FOOT,
-  ENTRY_WALL_ROWS,
   KERB_WIDTH,
   PIT_RIM,
   STATION_PLATE_RISE,
@@ -43,6 +45,9 @@ import {
   acrossOval,
   dithered,
   grownOval,
+  isArenaDoor,
+  isTunnel,
+  isTunnelPixel,
   ovalPoint,
   scatter,
   stoneAt,
@@ -229,108 +234,237 @@ function paintWall(): void {
 /** The red cloths hung down the wall between its torches, with the Arena's ball on them. */
 function paintBanners(): void {
   for (const foot of ARENA_BANNERS) {
-    const x = foot.x;
-    const top = foot.y - WALL_FACE_HEIGHT + 4;
-    const width = 15;
-    const height = 36;
-    const left = x - 7;
-    ground.fill(left - 1, top - 2, width + 2, 2, IRON);
-    for (let py = top; py < top + height; py += 1) {
-      // Swallow-tailed at the foot.
-      const tail = py - (top + height - 6);
-      for (let px = left; px < left + width; px += 1) {
-        const fromMiddle = Math.abs(px - x);
-        if (tail > 0 && fromMiddle < tail) {
-          continue;
-        }
-        const edge = px === left || px === left + width - 1;
-        ground.set(px, py, edge ? RED_DARK : px < left + 3 ? RED_LIGHT : RED);
+    paintBanner(foot.x, foot.y - WALL_FACE_HEIGHT + 4, 36);
+  }
+}
+
+/** One red cloth from an iron rod, swallow-tailed, with the Arena's ball on it: `x` its middle, `top` the rod. */
+function paintBanner(x: number, top: number, height: number): void {
+  const width = 15;
+  const left = x - 7;
+  ground.fill(left - 1, top - 2, width + 2, 2, IRON);
+  for (let py = top; py < top + height; py += 1) {
+    // Swallow-tailed at the foot.
+    const tail = py - (top + height - 6);
+    for (let px = left; px < left + width; px += 1) {
+      const fromMiddle = Math.abs(px - x);
+      if (tail > 0 && fromMiddle < tail) {
+        continue;
       }
+      const edge = px === left || px === left + width - 1;
+      ground.set(px, py, edge ? RED_DARK : px < left + 3 ? RED_LIGHT : RED);
     }
-    // The ball: a gold ring with a line through it.
-    const cx = x;
-    const cy = top + 14;
-    for (let py = -5; py <= 5; py += 1) {
-      for (let px = -5; px <= 5; px += 1) {
-        const distance = Math.hypot(px, py);
-        if (distance <= 5.2 && distance >= 3.8) {
-          ground.set(cx + px, cy + py, GOLD);
-        } else if (distance < 3.8 && py === 0) {
-          ground.set(cx + px, cy + py, GOLD_DARK);
-        }
+  }
+  // The ball: a gold ring with a line through it.
+  const cx = x;
+  const cy = top + 14;
+  for (let py = -5; py <= 5; py += 1) {
+    for (let px = -5; px <= 5; px += 1) {
+      const distance = Math.hypot(px, py);
+      if (distance <= 5.2 && distance >= 3.8) {
+        ground.set(cx + px, cy + py, GOLD);
+      } else if (distance < 3.8 && py === 0) {
+        ground.set(cx + px, cy + py, GOLD_DARK);
       }
     }
   }
 }
 
-// --- the room the door opens into --------------------------------------------
+// --- the tunnel in --------------------------------------------------------------
 
-const FLAG_LIGHT: Rgb = [240, 224, 184];
-const FLAG_DARK: Rgb = [216, 192, 144];
 const FLAG_GROUT: Rgb = [152, 120, 80];
-const ENTRY_WALL: Rgb = [32, 56, 120];
-const ENTRY_WALL_LIT: Rgb = [48, 80, 152];
-const ENTRY_WALL_DEEP: Rgb = [20, 32, 80];
-const ENTRY_CAP_LIT: Rgb = [168, 144, 112];
+/** The lit lip of a wall's top where it drops to the floor, as the oval's own wall has on its outer edge. */
+const CAP_LIP: Rgb = STONE_RAMP[3];
+
+/** Where the doors' face stands, in pixels: the wall over the room at the tunnel's end, from its top to the floor. */
+const FACE_TOP = DOOR_OPENING.faceTop;
+const FACE_FOOT = (ARENA_DOOR.bottom + 1) * ARENA_TILE;
+
+/** The great doors' opening, in pixels (`DOOR_OPENING`): three tiles across, under a round arch. */
+const DOOR_LEFT = DOOR_OPENING.left;
+const DOOR_RIGHT = DOOR_OPENING.left + DOOR_OPENING.width;
+const DOOR_MIDDLE = (DOOR_LEFT + DOOR_RIGHT) / 2;
+const ARCH_RADIUS = DOOR_OPENING.archRadius;
+const ARCH_CENTRE_Y = DOOR_OPENING.top + ARCH_RADIUS;
+/** How thick the arch's ring of stones and the jambs under it are. */
+const ARCH_RING = 6;
+const inDoorway = inDoorOpening;
+
+const tileOf = (x: number, y: number): { readonly x: number; readonly y: number } => ({ x: Math.floor(x / ARENA_TILE), y: Math.floor(y / ARENA_TILE) });
+
+/** Whether a pixel of the tunnel is floor: a tile of it that can be walked, but not the doors' face. */
+function isTunnelFloorPixel(x: number, y: number): boolean {
+  const tile = tileOf(x, y);
+  if (!isTunnel(tile)) {
+    return false;
+  }
+  if (isArenaDoor(tile)) {
+    return y >= FACE_FOOT || inDoorway(x, y) || y < FACE_TOP;
+  }
+  const inAnteroom = tile.x >= ARENA_ANTEROOM.left && tile.x <= ARENA_ANTEROOM.right && tile.y >= ARENA_ANTEROOM.top && tile.y <= ARENA_ANTEROOM.bottom;
+  const inCorridor = tile.x >= ARENA_CORRIDOR.left && tile.x <= ARENA_CORRIDOR.right && tile.y >= ARENA_CORRIDOR.top && tile.y <= ARENA_CORRIDOR.bottom;
+  const inPorch = Math.abs(tile.x - ARENA_MAT.x) <= 1 && tile.y === ARENA_MAT.y;
+  return inAnteroom || inCorridor || inPorch;
+}
+
+/** Whether a pixel is the doors' face: the wall over the room at the tunnel's end, between its two side walls, but the opening. */
+function isFacePixel(x: number, y: number): boolean {
+  return (
+    y >= FACE_TOP &&
+    y < FACE_FOOT &&
+    x >= ARENA_ANTEROOM.left * ARENA_TILE &&
+    x < (ARENA_ANTEROOM.right + 1) * ARENA_TILE &&
+    !inDoorway(x, y)
+  );
+}
+
+/** The tunnel's floor: the oval's own warm flags, in straight courses, lit by its torches and darker in under its walls. */
+function tunnelFloorLevel(x: number, y: number): number {
+  const course = Math.floor(y / 12);
+  const edge = y % 12;
+  const flag = Math.floor((x + (course % 2) * 12) / 24);
+  const flagEdge = (x + (course % 2) * 12) % 24;
+  let level = 2.3 + torchLight(x, y, ARENA_TORCHES) * 4.9 + 0.6 * (scatter(course + 300, flag) - 0.5);
+  if (edge === 0 || flagEdge === 0) {
+    level -= 1.7;
+  } else if (edge === 1 || flagEdge === 1) {
+    level += 0.5;
+  }
+  if (scatter(x, y) > 0.985) {
+    level -= 0.7;
+  }
+  // The dark gathers along the foot of every wall: deepest under the face, which
+  // stands tallest, and a few pixels in from the sides.
+  const wallNear = (dx: number, dy: number): boolean => !isTunnelFloorPixel(x + dx, y + dy);
+  for (let reach = 1; reach <= 6; reach += 1) {
+    if (wallNear(0, -reach) && reach <= 6) {
+      level -= (7 - reach) * 0.35;
+      break;
+    }
+  }
+  for (let reach = 1; reach <= 3; reach += 1) {
+    if (wallNear(-reach, 0) || wallNear(reach, 0)) {
+      level -= (4 - reach) * 0.4;
+      break;
+    }
+  }
+  return level;
+}
 
 /**
- * Nothing else in the hall is this colour, on purpose. The hall is one warm stone
- * from wall to wall and anything of that stone standing on it disappears into it, so
- * the place where a player gets ready is pale flags under a deep blue wall: a lit
- * room at the door, that the eye goes to before it goes anywhere else.
+ * THE RAID ARENA's tunnel in, under the south stands: the hall's own stone from
+ * end to end, so it is part of the colosseum and not a room built on to it (the
+ * captain, 25 Nov 2026: the old room's pale flags and blue wall "don't fit with the
+ * background of the raid arena"). Its walls' tops are the dark cap the oval's wall
+ * has, lipped where they drop to the floor; the wall over the room at its end is
+ * the face the oval's north wall shows, blocks lit by the torches before it; the
+ * floor is the oval's warm flags in straight courses.
  */
-function paintEntry(): void {
-  const { left, right, top, bottom } = ARENA_ENTRY;
-  const wallTop = (top - ENTRY_WALL_ROWS) * ARENA_TILE;
-  const wallLeft = (left - 1) * ARENA_TILE;
-  const wallRight = (right + 2) * ARENA_TILE;
-  const floorTop = top * ARENA_TILE;
-  const floorBottom = (bottom + 1) * ARENA_TILE;
-  const midX = (ARENA_MAT.x + 0.5) * ARENA_TILE;
-  const gateHalf = 2.5 * ARENA_TILE;
-  for (let y = wallTop; y < floorBottom + ENTRY_WALL_FOOT; y += 1) {
-    for (let x = wallLeft; x < wallRight; x += 1) {
-      const inGate = Math.abs(x + 0.5 - midX) < gateHalf && y < floorTop;
-      if (inGate) {
+function paintTunnel(): void {
+  for (let y = 0; y < HEIGHT; y += 1) {
+    for (let x = 0; x < WIDTH; x += 1) {
+      if (!isTunnelPixel(x, y)) {
         continue;
       }
-      const inFloor = x >= left * ARENA_TILE && x < (right + 1) * ARENA_TILE && y >= floorTop && y < floorBottom;
-      if (inFloor) {
-        const flagX = Math.floor(x / ARENA_TILE);
-        const flagY = Math.floor(y / ARENA_TILE);
-        const grout = x % ARENA_TILE === 0 || y % ARENA_TILE === 0;
-        ground.set(x, y, grout ? FLAG_GROUT : (flagX + flagY) % 2 === 0 ? FLAG_LIGHT : FLAG_DARK);
+      // The oval's own floor, over the room at the tunnel's end, stays the oval's.
+      if (y < ARENA_DOOR.top * ARENA_TILE && acrossOval(WALL_FOOT, x + 0.5, y + 0.5) <= 1) {
         continue;
       }
-      if (y >= floorBottom || x < left * ARENA_TILE || x >= (right + 1) * ARENA_TILE || y < wallTop + ARENA_TILE) {
-        // The top of the wall, looked down on: dressed stone, its outer edge lit
-        // and a dark line where it meets the room.
-        const edge = y === wallTop || y === floorBottom + ENTRY_WALL_FOOT - 1 || x === wallLeft || x === wallRight - 1;
-        const coping = (y - wallTop) % 8 === 0 || (x + ((y - wallTop) % 16 < 8 ? 0 : 8)) % 16 === 0;
-        ground.set(x, y, edge ? ENTRY_CAP_LIT : coping ? STONE_RAMP[2] : stoneAt(3.4 + scatter(x >> 3, y >> 3) * 0.8, x, y));
-        continue;
-      }
-      // The back wall's face: a gold rail along its top, panels below, and the dark
-      // gathering in the angle with the floor.
-      const fromTop = y - (wallTop + ARENA_TILE);
-      const fromFoot = floorTop - 1 - y;
-      const nextToGate = Math.abs(Math.abs(x + 0.5 - midX) - gateHalf) < 9;
-      if (fromTop < 2 || nextToGate) {
-        ground.set(x, y, nextToGate ? stoneAt(fromFoot < 3 ? 3 : 7, x, y) : GOLD);
-      } else if (fromFoot < 3) {
-        ground.set(x, y, ENTRY_WALL_DEEP);
-      } else if (x % 32 === 0) {
-        ground.set(x, y, ENTRY_WALL_DEEP);
+      if (isTunnelFloorPixel(x, y)) {
+        ground.set(x, y, stoneAt(tunnelFloorLevel(x, y), x, y));
+      } else if (isFacePixel(x, y)) {
+        ground.set(x, y, stoneAt(wallLevel(x, y, FACE_TOP, FACE_FOOT), x, y));
       } else {
-        ground.set(x, y, x % 32 === 1 ? ENTRY_WALL_LIT : ENTRY_WALL);
+        // A wall's top, looked down on: the oval's dark cap, lipped where it drops
+        // to the floor and outlined where the stands' roof meets it.
+        const lip = [
+          [0, 1],
+          [1, 0],
+          [-1, 0],
+        ].some(([dx, dy]) => isTunnelFloorPixel(x + dx, y + dy) || isFacePixel(x + dx, y + dy));
+        const outside = !isTunnelPixel(x - 1, y) || !isTunnelPixel(x + 1, y) || !isTunnelPixel(x, y + 1);
+        ground.set(x, y, lip ? CAP_LIP : outside ? STONE_RAMP[0] : dithered(0.12, x, y) ? STONE_RAMP[2] : CAP);
       }
+    }
+  }
+}
+
+/** The red cloths either side of the great doors, as the oval's wall hangs them, with the Arena's ball on each. */
+function paintDoorBanners(): void {
+  const gap = (DOOR_LEFT - ARCH_RING) - (ARENA_STAND_TORCHES[1].x + 1) * ARENA_TILE;
+  const reach = DOOR_MIDDLE - (DOOR_LEFT - ARCH_RING - gap / 2);
+  for (const x of [Math.round(DOOR_MIDDLE - reach), Math.round(DOOR_MIDDLE + reach)]) {
+    paintBanner(x, FACE_TOP + 3, 38);
+  }
+}
+
+/** A brass rail along the doors' face, which the stations' name plates hang from. */
+function paintPlateRail(): void {
+  const y = (ARENA_ANTEROOM.top * ARENA_TILE) - STATION_PLATE_RISE - 2;
+  for (let x = ARENA_ANTEROOM.left * ARENA_TILE; x < (ARENA_ANTEROOM.right + 1) * ARENA_TILE; x += 1) {
+    if (x >= DOOR_LEFT - ARCH_RING && x < DOOR_RIGHT + ARCH_RING) {
+      continue;
+    }
+    ground.set(x, y, x % 24 === 0 ? BRASS_LIGHT : GOLD);
+    ground.set(x, y + 1, GOLD_DARK);
+    ground.set(x, y + 2, STONE_RAMP[1]);
+  }
+}
+
+const ARCH_STONE: Rgb = STONE_RAMP[7];
+const ARCH_STONE_LIT: Rgb = STONE_RAMP[9];
+const ARCH_STONE_SHADE: Rgb = STONE_RAMP[5];
+const ARCH_JOINT: Rgb = STONE_RAMP[2];
+
+/**
+ * The great doors' frame, painted after the runner because it stands over the
+ * runner's ends: a round arch of pale dressed stones with a keystone, jambs down to
+ * the floor, and the dark of the way through under the arch. The way through the
+ * wall's top above it is left open, a slot with the runner going on through it, so
+ * the way back out is as plain from the oval as the way in is from the tunnel, and
+ * nobody walking through is ever half under a wall. The doors themselves are the
+ * scene's, because they open (`base/arenaDoors.ts`).
+ */
+function paintDoorFrame(): void {
+  const putFrame = (x: number, y: number, ink: Rgb): void => ground.set(x, y, ink);
+  // The way through: the floor in the opening falls into shadow under the arch and
+  // along the jambs, and the light of the hall comes through at the top of it.
+  for (let y = FACE_TOP; y < FACE_FOOT; y += 1) {
+    for (let x = DOOR_LEFT; x < DOOR_RIGHT; x += 1) {
+      if (!inDoorway(x, y)) {
+        continue;
+      }
+      const fromJamb = Math.min(x - DOOR_LEFT, DOOR_RIGHT - 1 - x);
+      if (fromJamb < 3) {
+        ground.set(x, y, fromJamb === 0 ? STONE_RAMP[0] : STONE_RAMP[1]);
+      }
+    }
+  }
+  // The arch and the jambs: dressed stones, a joint every so often, lit from the top left.
+  for (let y = FACE_TOP; y < FACE_FOOT; y += 1) {
+    for (let x = DOOR_LEFT - ARCH_RING; x < DOOR_RIGHT + ARCH_RING; x += 1) {
+      const px = x + 0.5 - DOOR_MIDDLE;
+      const py = y + 0.5 - ARCH_CENTRE_Y;
+      const distance = Math.hypot(px, py);
+      const inRing = py < 0 ? distance > ARCH_RADIUS && distance <= ARCH_RADIUS + ARCH_RING : Math.abs(px) > ARCH_RADIUS && Math.abs(px) <= ARCH_RADIUS + ARCH_RING;
+      if (!inRing) {
+        continue;
+      }
+      const across = py < 0 ? distance - ARCH_RADIUS : Math.abs(px) - ARCH_RADIUS;
+      // Joints: radial round the arch, a course every eight pixels down the jambs.
+      const turn = py < 0 ? Math.atan2(-py, px) : 0;
+      const joint = py < 0 ? Math.abs(((turn / Math.PI) * 9) % 1) < 0.07 : Math.floor(y - ARCH_CENTRE_Y) % 8 === 0;
+      const outerEdge = across > ARCH_RING - 1;
+      const innerEdge = across <= 1;
+      const ink = joint || outerEdge ? ARCH_JOINT : innerEdge ? (px < 0 ? ARCH_STONE_LIT : ARCH_STONE_SHADE) : px < -4 && py < 0 ? ARCH_STONE_LIT : px > 4 ? ARCH_STONE_SHADE : ARCH_STONE;
+      putFrame(x, y, ink);
     }
   }
 }
 
 // --- the runner --------------------------------------------------------------
 
-/** A red runner from the door to the fence: the way a player was going to walk anyway. */
+/** A red runner from the mat up the tunnel, through the great doors and on to the fence: the way a player was going to walk anyway. */
 function paintRunner(): void {
   const halfWidth = 13;
   const rim = grownOval(PIT_RIM, KERB_WIDTH);
@@ -340,6 +474,10 @@ function paintRunner(): void {
   for (let y = top; y < bottom; y += 1) {
     for (let px = -halfWidth; px < halfWidth; px += 1) {
       const x = Math.floor(midX + px);
+      // Up the tunnel it is on the floor only: under the doors, never up their face.
+      if (isTunnel(tileOf(x, y)) && !isTunnelFloorPixel(x, y)) {
+        continue;
+      }
       const light = torchLight(x, y, ARENA_TORCHES);
       const share = 0.45 + light * 0.75;
       const fromEdge = Math.min(px + halfWidth, halfWidth - 1 - px);
@@ -361,7 +499,7 @@ function paintRunner(): void {
  * the carpet to whatever they came for. Nothing is written on it.
  */
 function paintRunnerArms(): void {
-  const row = ARENA_ENTRY.bottom;
+  const row = ARENA_ANTEROOM.top + 1;
   const midY = row * ARENA_TILE + 8;
   const halfDepth = 6;
   const first = ARENA_STATIONS[0].tiles[0].x * ARENA_TILE + 2;
@@ -617,30 +755,17 @@ function paintTorch(torch: ArenaTorch): void {
 
 // --- the door ------------------------------------------------
 
-/** The way out: the wall stops either side of a dark porch, with the night's air in it. */
+/** The way out, at the corridor's foot: the runner's own foot across the porch, and a lit sill to step down off. */
 function paintPorch(): void {
   const left = (ARENA_MAT.x - 1) * ARENA_TILE;
   const right = (ARENA_MAT.x + 2) * ARENA_TILE;
-  const top = (ARENA_MAT.y - 1) * ARENA_TILE;
   const bottom = (ARENA_MAT.y + 1) * ARENA_TILE;
-  for (let y = top; y < bottom; y += 1) {
-    for (let x = left - 10; x < right + 10; x += 1) {
-      // The wall's end either side, looked down on: its cap, its lit edge, and
-      // a face turned to the runner.
-      const out = x < left ? left - 1 - x : x >= right ? x - right : -1;
-      if (out >= 0) {
-        ground.set(x, y, out === 0 ? STONE_RAMP[4] : out === 9 ? STONE_RAMP[3] : CAP);
-      }
-    }
-  }
-  // The door mat: the runner's own foot, across the whole porch.
   for (let y = ARENA_MAT.y * ARENA_TILE + 1; y < bottom - 3; y += 1) {
     for (let x = left + 2; x < right - 2; x += 1) {
       const edge = y === ARENA_MAT.y * ARENA_TILE + 1 || y === bottom - 4 || x === left + 2 || x === right - 3;
       ground.set(x, y, edge ? GOLD_DARK : (x + y) % 2 === 0 ? RED : RED_DARK);
     }
   }
-  // The step down out of the hall: the runner stops on a lit sill.
   ground.fill(left, bottom - 3, right - left, 1, STONE_RAMP[7]);
   ground.fill(left, bottom - 2, right - left, 2, STONE_RAMP[2]);
 }
@@ -671,7 +796,20 @@ function stationPut(top: number): (x: number, y: number, ink: Rgb) => void {
  * heads of whoever sat on it.
  */
 function stationOnFloor(x: number, y: number, ink: Rgb): void {
-  ground.set(x, y, ink);
+  ground.set(x, y, torchlit(ink, x, y));
+}
+
+/**
+ * A colour as the torches beside it light it: brighter and warmer towards the
+ * flames either side, a little dimmer between, so a station stands in the room's
+ * light rather than pasted over it. Rounded back to the GBA's 15 bits.
+ */
+function torchlit(ink: Rgb, x: number, y: number): Rgb {
+  // A station stands at the torches' own height, so it is lit as the floor a step in front of it is.
+  const light = torchLight(x, y + 12, ARENA_TORCHES);
+  const strength = 0.8 + light * 0.34;
+  const fifteen = (value: number): number => Math.max(0, Math.min(248, Math.round(value / 8) * 8));
+  return [fifteen(ink[0] * strength * (1 + light * 0.06)), fifteen(ink[1] * strength), fifteen(ink[2] * strength * (1 - light * 0.08))];
 }
 
 /** Its shadow on the floor, thrown down and to the right, as a pillar's is. */
@@ -923,7 +1061,7 @@ function paintStationPlates(): void {
     for (let dy = 2; dy <= rows.length; dy += 1) {
       const x = x0 + width - 2 + (dy < rows.length - 1 ? 1 : 0);
       if (y0 + dy >= top - 2 * ARENA_TILE + 2) {
-        ground.set(x, y0 + dy, ENTRY_WALL_DEEP);
+        ground.set(x, y0 + dy, STONE_RAMP[1]);
       }
     }
   }
@@ -1031,10 +1169,13 @@ function paintTelescope(telescope: ArenaTelescope): void {
 paintFloor();
 paintWall();
 paintBanners();
-paintEntry();
+paintTunnel();
+paintDoorBanners();
+paintPlateRail();
 paintRunner();
 paintRunnerArms();
 paintPorch();
+paintDoorFrame();
 paintFence();
 // Back to front, because a nearer pillar's capital stands over a further one's foot.
 for (const pillar of [...ARENA_PILLARS].sort((a, b) => a.y - b.y)) {

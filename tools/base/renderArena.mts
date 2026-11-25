@@ -3,7 +3,7 @@
  * floor, the rings, the hall's tile layers and the over layer, slid for
  * somebody standing where you say, and cropped to what a window shows.
  *
- *   npx vite-node tools/base/renderArena.mts -- out.png --at=35,62 --view=400x256 --scale=2 --survey=all
+ *   npx vite-node tools/base/renderArena.mts -- out.png --at=35,73 --view=400x256 --scale=2 --survey=all
  *   npx vite-node tools/base/renderArena.mts -- out.png --whole --scale=1 --survey=none
  *
  * `--light=day|dusk|night`: the hour. `--survey=none|all|some`: what this save has walked. `--whole` is the hall
@@ -16,6 +16,7 @@ import {
   ARENA_DARK_BELOW,
   ARENA_HALL_HEIGHT,
   ARENA_HALL_WIDTH,
+  ARENA_MAT,
   ARENA_TILE,
   FLOOR_PARALLAX,
   PIT_MAP_CENTRE,
@@ -36,7 +37,7 @@ const out = args.find((arg) => !arg.startsWith('--')) ?? 'arena.png';
 const option = (name: string): string | undefined => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const whole = args.includes('--whole');
 const scale = Number(option('scale') ?? 1);
-const [atX, atY] = (option('at') ?? '35,62').split(',').map(Number);
+const [atX, atY] = (option('at') ?? `${ARENA_MAT.x},${ARENA_MAT.y}`).split(',').map(Number);
 const [viewW, viewH] = (option('view') ?? '400x256').split('x').map(Number);
 const survey = option('survey') ?? 'some';
 
