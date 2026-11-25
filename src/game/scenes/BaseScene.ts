@@ -7321,7 +7321,7 @@ export class BaseScene extends Phaser.Scene {
   private oakSaysWhatIsNext(room: BaseRoom, about: readonly GridPosition[]): void {
     const game = this.savedGame;
     const speak = (): void => {
-      const lines = [...oakNews(game, isPlaytestRun()), ...nextStepLines(game.raidProgress), ...boardPointer(game, jobsNamed(game.raidProgress))];
+      const lines = [...oakNews(game, isPlaytestRun()), ...nextStepLines(game.raidProgress, (itemId) => game.stash.itemCount(itemId)), ...boardPointer(game, jobsNamed(game.raidProgress))];
       if (lines.length === 0) {
         this.offerFriendRoom(room);
         return;
