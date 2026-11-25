@@ -13,6 +13,7 @@ import {
   searchRows,
   takePiece,
   openedCacheLine,
+  isPrizeFind,
 } from './cacheSearch';
 import { MAP_FILE_LANDMARKS } from './mapFile';
 import { WORLD_POIS } from './pois';
@@ -100,5 +101,18 @@ describe('a cache opened and left', () => {
   it('says what is still inside it rather than that it was searched', () => {
     expect(openedCacheLine(1)).toBe('OPENED: 1 STILL INSIDE');
     expect(openedCacheLine(2)).not.toMatch(/SEARCHED/);
+  });
+
+  it("names a bag's rare find and its treasure as they come to light, and inks them apart", () => {
+    const bag = searchPieces([
+      { itemId: 'potion', quantity: 1 },
+      { itemId: 'ranger-pack', quantity: 1, find: 'treasure' },
+    ]);
+    expect(bag.map(isPrizeFind)).toEqual([false, true]);
+    expect(isPrizeFind(searchPieces([{ itemId: 'repel', quantity: 1, find: 'uncommon' }])[0])).toBe(false);
+    expect(searchRows({ searchedMs: 0, taken: [] }, bag).map((row) => row.prize)).toEqual([undefined, undefined]);
+    const rows = searchRows({ searchedMs: searchDurationMs(bag), taken: [] }, bag);
+    expect(rows[1]).toMatchObject({ text: 'RANGER PACK - TREASURE!', prize: 'treasure' });
+    expect(rows[0].prize).toBeUndefined();
   });
 });

@@ -437,6 +437,22 @@ import {
 } from '../world/loot';
 import { lockedCrateLines, openPoi, type WorldPoi } from '../world/pois';
 import {
+  BAG_DROP_DELAY_MS,
+  BAG_GLINT_LINE,
+  bagAsPoi,
+  bagIdFor,
+  bagLabel,
+  HUNTER_KITS,
+  isBagId,
+  isHunterBagId,
+  travellingLightLine,
+  kitFor,
+  rollBagContents,
+  standingOf,
+  type BagOwner,
+  type TrainerBag,
+} from '../world/trainerBags';
+import {
   FRESH_SEARCH,
   SEARCH_RESEATED,
   cacheEmptied,
@@ -451,6 +467,7 @@ import {
   takePiece,
   type CacheSearchState,
   type SearchPiece,
+  isPrizeFind,
 } from '../world/cacheSearch';
 import { SearchPanel } from '../ui/SearchPanel';
 import {
@@ -1071,6 +1088,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /** Set once a finished raid is on its way to the result screen. */
   private pendingResultScreen = false;
   private trainerEncounters: readonly RunTrainerEncounter[] = [];
+  /** What to say on the way back from a fight about the bags it dropped - a trainer who had none. */
+  private bagLines: string[] = [];
+  /** The bags the fight just won dropped, to be seen to fall once the world is drawn. */
+  private bagsFalling: TrainerBag[] = [];
   private readonly defeatedTrainerIds = new Set<string>();
   /**
    * Gear a beaten boss dropped that the pack had no room for. It waits here
@@ -1367,6 +1388,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   private resetStateFromPreviousRaid(): void {
     this.lookMs = 0;
+    this.bagLines = [];
+    this.bagsFalling = [];
     this.pendingRaceAsk = undefined;
     this.pendingRacePurse = false;
     this.raceWord = undefined;
@@ -1601,7 +1624,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.ensureHunterPack();
     this.applyPendingHunterBreakaway();
     this.settlePackAfterFight(data.returnLocation !== undefined);
+    this.dropBeatenTrainersBags();
     this.createEntities();
+    this.letBagsFall();
     this.liftBeatenWatches();
     this.resumeHunterProximity();
     this.createPlayer();
@@ -1643,10 +1668,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!this.arrival) {
       this.showFirstDeploymentBriefing();
     }
-    if (openedGates.length > 0) {
+    const bagLines = this.bagLines;
+    this.bagLines = [];
+    if (openedGates.length > 0 || bagLines.length > 0) {
       // Said on the return from the fight that won it, and raised as an
       // interruption so the key already held walks the player at the door.
-      this.interrupt(openedGates);
+      this.interrupt([...openedGates, ...bagLines]);
     } else if (data.returnLocation !== undefined) {
       this.sayFieldHealHint();
     }
@@ -3921,7 +3948,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
 
-    for (const poi of this.currentMap.pois) {
+    for (const poi of this.poisHere()) {
       // An opened cache stands until every piece of it is in somebody's pack:
       // walked away from half searched, it is still there to come back to.
       if (this.activatedPoiIds.has(poi.id) && this.piecesLeftIn(poi) === 0) {
@@ -3929,6 +3956,128 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       }
       this.createPoi(poi);
     }
+  }
+
+  /**
+   * This map's caches as the raid finds them: the map's own landmarks, and
+   * every bag a beaten trainer dropped on it (`world/trainerBags.ts`), which
+   * is searched exactly as a cache is.
+   */
+  private poisHere(): readonly WorldPoi[] {
+    const bags = Object.values(this.runSession?.trainerBags ?? {}).filter(
+      (bag): bag is TrainerBag => bag !== null && bag.mapId === this.currentMap.id,
+    );
+    return bags.length === 0 ? this.currentMap.pois : [...this.currentMap.pois, ...bags.map(bagAsPoi)];
+  }
+
+  /**
+   * Every trainer this raid has beaten drops their bag where they stood, once
+   * (`world/trainerBags.ts`). Asked on every rebuild of the world, which is
+   * how a fight returns here, so the bag of the trainer just beaten is rolled
+   * now and every bag rolled before is left as it is.
+   */
+  private dropBeatenTrainersBags(): void {
+    for (const encounter of this.trainerEncounters) {
+      if (!this.defeatedTrainerIds.has(encounter.trainer.id)) {
+        continue;
+      }
+      this.dropBag(
+        {
+          id: encounter.trainer.id,
+          name: encounter.trainer.name,
+          kit: kitFor(encounter.design),
+          standing: standingOf(
+            encounter.trainer.party.map((pokemon) => pokemon.level),
+            encounter.bossId !== undefined,
+          ),
+        },
+        encounter.mapId,
+        () => encounter.position,
+      );
+    }
+  }
+
+  /**
+   * Rolls one owner's bag and lays it, the first time they are beaten this
+   * raid; a later beating (a hunter back for the enrage) drops nothing more.
+   * A bag that lands on the map in view falls on to its tile.
+   */
+  private dropBag(owner: BagOwner, mapId: WorldMapId, restsOn: () => GridPosition | undefined): void {
+    const session = this.runSession;
+    const id = bagIdFor(owner.id);
+    if (!session || session.seed === undefined || session.trainerBags?.[id] !== undefined) {
+      return;
+    }
+    const contents = rollBagContents(owner, session.seed);
+    const position = contents ? restsOn() : undefined;
+    const bag: TrainerBag | null =
+      contents && position ? { id, mapId, position: { ...position }, label: bagLabel(owner), ...contents } : null;
+    (session.trainerBags ??= {})[id] = bag;
+    if (mapId !== this.currentMap.id || !this.isLootAvailable()) {
+      return;
+    }
+    if (!bag) {
+      // Said, so a trainer who had nothing is not mistaken for a bag that
+      // failed to drop - and so a player learns who travels light.
+      this.bagLines.push(travellingLightLine(owner.name));
+      return;
+    }
+    // Drawn by `createPois` with every other cache, and seen to fall once it is.
+    this.bagsFalling.push(bag);
+  }
+
+  /**
+   * Lets the bags dropped by the fight just won fall on to their tiles, once
+   * the fade back from it has cleared - seen to fall, rather than found
+   * already lying there.
+   */
+  private letBagsFall(): void {
+    for (const bag of this.bagsFalling) {
+      const sprite = this.poiSprites.get(bag.id);
+      if (!sprite) {
+        continue;
+      }
+      sprite.setY(bag.position.y * TILE_SIZE - TILE_SIZE / 2).setAlpha(0);
+      this.tweens?.add?.({
+        targets: sprite,
+        y: bag.position.y * TILE_SIZE + TILE_SIZE / 2,
+        alpha: 1,
+        delay: BAG_DROP_DELAY_MS,
+        duration: 300,
+        ease: 'Bounce.easeOut',
+        onStart: () => audioManager.play('bagDropped'),
+      });
+    }
+    this.bagsFalling = [];
+  }
+
+  /** Whether a dropped bag holds a rare find or a treasure, which its caption gives away. */
+  private bagGlints(poi: WorldPoi): boolean {
+    const bag = this.runSession?.trainerBags?.[poi.id];
+    return bag != null && (bag.best === 'rare' || bag.best === 'treasure');
+  }
+
+  /**
+   * Where a bag dropped on `tile` comes to rest: that tile if nothing a raid
+   * is for is on it, else the nearest that is, a tile or two away - a hunter
+   * can be beaten on an exit or beside a cache. Undefined if nowhere near is
+   * free, and then it drops nothing.
+   */
+  private bagRestingTile(tile: GridPosition): GridPosition | undefined {
+    for (let reach = 0; reach <= 2; reach += 1) {
+      for (let dy = -reach; dy <= reach; dy += 1) {
+        for (let dx = -reach; dx <= reach; dx += 1) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== reach) {
+            continue;
+          }
+          const spot = { x: tile.x + dx, y: tile.y + dy };
+          if (this.boulderMayRest(spot) && !(spot.x === this.currentTile.x && spot.y === this.currentTile.y)) {
+            return spot;
+          }
+        }
+      }
+    }
+    return undefined;
   }
 
   /** A landmark's figure and caption, as it stands now. */
@@ -3951,7 +4100,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         iconTextureKey(
           worked
             ? WORLD_ICONS.landmarkWorked
-            : poi.effect === 'unlock-extraction'
+            : isBagId(poi.id)
+              ? WORLD_ICONS.trainerBag
+              : poi.effect === 'unlock-extraction'
               ? WORLD_ICONS.radioMast
               : poi.locked
                 ? WORLD_ICONS.lockedCrate
@@ -3975,7 +4126,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
               // is known from the lid, as the search's own rows show it.
               poi.locked
               ? 'LOCKED: NEEDS A LOCKPICK'
-              : `CACHE: ${this.piecesLeftIn(poi)} TO FIND`}`,
+              : `${isBagId(poi.id) ? 'BAG' : 'CACHE'}: ${this.piecesLeftIn(poi)} TO FIND${this.bagGlints(poi) ? `\n${BAG_GLINT_LINE}` : ''}`}`,
       tone: worked ? LABEL_TONES.worked : LABEL_TONES.station,
       depth: atRow(CAPTION_BAND, poi.position.y),
       speech: { voice: 'name', tiles: [poi.position] },
@@ -5508,7 +5659,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       getVisibleLoot(this.lootForCurrentMap(), true, this.collectedLootIds).some((loot) =>
         here(loot.position),
       ) ||
-      this.currentMap.pois.some((poi) => here(poi.position)) ||
+      this.poisHere().some((poi) => here(poi.position)) ||
       this.currentMap.gates.some((gate) => gate.tiles.some(here)) ||
       this.currentMap.warps.some((warp) => here(warp.source))
     );
@@ -6014,7 +6165,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (lever?.kind === 'lever' && !this.switchThrown(lever)) {
       return spaceHint('LEVER');
     }
-    const poi = this.currentMap.pois.find(
+    const poi = this.poisHere().find(
       (candidate) =>
         candidate.position.x === faced.x &&
         candidate.position.y === faced.y &&
@@ -6243,7 +6394,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const loot = this.lootForCurrentMap()
       .filter((piece) => this.lootSprites.has(piece.id) && !this.collectedLootIds.has(piece.id) && onScreen(piece.position))
       .map((piece) => ({ item: getItemById(piece.itemId)?.displayName ?? piece.itemId, tile: tileOf(piece.position) }));
-    const landmarks = this.currentMap.pois
+    const landmarks = this.poisHere()
       .filter((poi) => onScreen(poi.position) && !(this.activatedPoiIds.has(poi.id) && this.piecesLeftIn(poi) === 0))
       .map((poi) => ({ label: poi.label, tile: tileOf(poi.position), searched: this.activatedPoiIds.has(poi.id) }));
     const captions = this.worldLabels
@@ -9433,7 +9584,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * to one walked away from half searched carries on the search.
    */
   private tryActivatePoiAt(position: GridPosition): readonly string[] | null {
-    const poi = this.currentMap.pois.find(
+    const poi = this.poisHere().find(
       (candidate) =>
         candidate.position.x === position.x &&
         candidate.position.y === position.y &&
@@ -9511,8 +9662,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     (session.cachesSearched ??= {})[search.poi.id] = now;
-    if (piecesRevealed(search.pieces, now.searchedMs) > piecesRevealed(search.pieces, was.searchedMs)) {
-      audioManager.play('select');
+    const revealedBefore = piecesRevealed(search.pieces, was.searchedMs);
+    if (piecesRevealed(search.pieces, now.searchedMs) > revealedBefore) {
+      // A bag's rare find or treasure comes to light with the one bright
+      // sound the raid keeps for a prize; anything else with a tick.
+      const cameToLight = search.pieces.slice(revealedBefore, piecesRevealed(search.pieces, now.searchedMs));
+      audioManager.play(cameToLight.some(isPrizeFind) ? 'prizeSighted' : 'select');
       // TAKE ALL takes what is left as it comes to light.
       if (search.takingAll) {
         this.takeSearched(piecesToTake(now, search.pieces));
@@ -11386,6 +11541,20 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     pack.engagedId = null;
     if (engaged && outcome.defeated) {
       pack.beaten(engaged);
+      // Only the first hunter a raid beats carries at a hunter's odds: there
+      // is one in every district, and a bag of signature gear behind every
+      // one of them would make the raid's danger its vending machine.
+      const huntersBagged = Object.keys(this.runSession?.trainerBags ?? {}).some((id) => isHunterBagId(id));
+      this.dropBag(
+        {
+          id: engaged.id,
+          name: hunterRival(engaged.rivalId).name,
+          kit: HUNTER_KITS[engaged.rivalId],
+          standing: huntersBagged ? 'veteran' : 'hunter',
+        },
+        this.currentMap.id,
+        () => this.bagRestingTile(engaged.position),
+      );
     } else if (engaged && outcome.pendingBreakaway) {
       const ground = this.hunterBlocker();
       const fallback = findHunterBreakawayTile(

@@ -350,6 +350,13 @@ export const SOUND_EFFECTS = {
     moment: 'A marked cache is opened for its reward',
     tones: [noise(900, 0.06, 0.05), ...run([392, 523, 659, 784], 0.07, 0.06, 0.05).map(later(0.06))],
   },
+  bagDropped: {
+    channel: 'world',
+    moment: "A beaten trainer's bag hits the ground where they stood",
+    // A soft cloth thump and a small rattle of what is inside it: lighter and
+    // shorter than a landing's thud, because it is a bag and not a body.
+    tones: [noise(600, 0.05, 0.07), tri(196, 0.06, 0.05), ...run([1175, 1319], 0.025, 0.03, 0.03).map(later(0.05))],
+  },
   prizeSighted: {
     channel: 'alert',
     ducksMusic: true,

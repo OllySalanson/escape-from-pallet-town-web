@@ -169,6 +169,8 @@ export const WORLD_ICONS = {
   lockedGate: 'locked-gate',
   /** A cache with a lock on it, which a Lockpick opens (`WorldPoi.locked`). */
   lockedCrate: 'locked-crate',
+  /** A beaten trainer's bag, lying where they fell with its things spilling out (`world/trainerBags.ts`). */
+  trainerBag: 'trainer-bag',
   /** Somebody with a favour to ask: the "!" over their head (`hub/favourList.ts`). */
   favourAsk: 'favour-ask',
 } as const satisfies Record<string, string>;

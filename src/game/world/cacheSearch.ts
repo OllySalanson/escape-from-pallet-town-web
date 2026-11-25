@@ -2,6 +2,7 @@ import { cellsFor } from '../items/itemGrid';
 import { ITEMS, type ItemId } from '../items/items';
 import type { WorldPoi } from './pois';
 import { keyHint } from '../input/keyBindings';
+import type { FindTier } from './trainerBags';
 
 /**
  * Searching a cache: what is in it comes to light a piece at a time, and the
@@ -34,6 +35,8 @@ export interface SearchPiece {
   readonly itemId: ItemId;
   /** The squares it takes in the pack, which is what makes it slower to find. */
   readonly squares: number;
+  /** A dropped bag's find, and how rare (`trainerBags.ts`); absent for everything else. */
+  readonly find?: FindTier;
 }
 
 /** How long the lid takes before the first piece can come to light. */
@@ -55,8 +58,8 @@ export function openedCacheLine(piecesLeft: number): string {
 
 /** What searching a cache comes to, in pieces, in the order they come to light. */
 export function searchPieces(reward: WorldPoi['reward']): SearchPiece[] {
-  return reward.flatMap(({ itemId, quantity }) =>
-    Array.from({ length: quantity }, () => ({ itemId, squares: cellsFor(itemId, 1) })),
+  return reward.flatMap(({ itemId, quantity, find }) =>
+    Array.from({ length: quantity }, () => ({ itemId, squares: cellsFor(itemId, 1), ...(find ? { find } : {}) })),
   );
 }
 
@@ -136,7 +139,25 @@ export interface SearchRow {
   readonly itemId: ItemId | null;
   readonly text: string;
   readonly status: SearchRowStatus;
+  /** A rare or treasure find that has come to light, which the panel inks apart. */
+  readonly prize?: 'rare' | 'treasure';
 }
+
+/**
+ * Whether a piece is a find worth announcing: a rare or a treasure out of a
+ * beaten trainer's bag. It comes to light with the prize sound, its row says
+ * what it is, and the panel inks it apart - the moment the bag was searched
+ * for should not read like the Potion above it.
+ */
+export function isPrizeFind(piece: SearchPiece): piece is SearchPiece & { readonly find: 'rare' | 'treasure' } {
+  return piece.find === 'rare' || piece.find === 'treasure';
+}
+
+/** What a prize find's row adds to its name. */
+export const PRIZE_FIND_WORD: Readonly<Record<'rare' | 'treasure', string>> = {
+  rare: 'RARE FIND',
+  treasure: 'TREASURE!',
+};
 
 /**
  * What the search panel says, row by row: a piece that has come to light by
@@ -153,7 +174,9 @@ export function searchRows(state: CacheSearchState, pieces: readonly SearchPiece
       return { key: null, itemId: piece.itemId, text: `${name} - TAKEN`, status: 'taken' };
     }
     if (index < revealed) {
-      return { key: String(index + 1), itemId: piece.itemId, text: name, status: 'found' };
+      return isPrizeFind(piece)
+        ? { key: String(index + 1), itemId: piece.itemId, text: `${name} - ${PRIZE_FIND_WORD[piece.find]}`, status: 'found', prize: piece.find }
+        : { key: String(index + 1), itemId: piece.itemId, text: name, status: 'found' };
     }
     if (index === revealed) {
       return { key: null, itemId: null, text: `SEARCHING${'.'.repeat(1 + searchProgress(state, pieces, index))}`, status: 'searching' };

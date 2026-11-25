@@ -1,0 +1,143 @@
+import { describe, expect, it } from 'vitest';
+import { ITEMS, type ItemId } from '../items/items';
+import { SEARCH_ROWS } from './cacheSearch';
+import { builtInFileMaps } from './playerMaps';
+import { createRunTrainerEncounters } from './trainers';
+import {
+  BAG_KITS,
+  bagLabel,
+  bagSeed,
+  FIND_ODDS,
+  FIND_TIERS,
+  HUNTER_KITS,
+  KIT_FOR_DESIGN,
+  kitFor,
+  rollBagContents,
+  standingOf,
+  travellingLightLine,
+  VETERAN_LEVEL,
+  type BagKit,
+  type BagOwner,
+  type BagRow,
+} from './trainerBags';
+
+const KITS: readonly BagKit[] = [...Object.values(BAG_KITS), ...Object.values(HUNTER_KITS)];
+const rowsOf = (kit: BagKit): readonly BagRow[] => [...kit.signature, ...kit.extras, ...FIND_TIERS.flatMap((tier) => kit.finds[tier])];
+const most = (row: BagRow): number => (typeof row.quantity === 'number' ? row.quantity : (row.quantity?.[1] ?? 1));
+const owner = (kit: BagKit, standing: BagOwner['standing'], id = 'someone'): BagOwner => ({ id, name: 'HIKER PELL', kit, standing });
+
+/** Every bag a few thousand raids drop for one owner. */
+function bagsOver(of: BagOwner, raids = 4000) {
+  return Array.from({ length: raids }, (_, seed) => rollBagContents(of, seed + 1));
+}
+
+describe("a beaten trainer's bag", () => {
+  it('holds only what a trainer would carry and a crate does not decide: never money, a key, a stone, an HM or somebody\'s errand', () => {
+    const never = new Set(['currency', 'key', 'evolution-stone', 'errand', 'relic', 'wearable']);
+    for (const kit of KITS) {
+      for (const row of rowsOf(kit)) {
+        const item = ITEMS[row.itemId];
+        expect(item, `${kit.id}: ${row.itemId}`).toBeDefined();
+        expect(never.has(item.effect.type), `${kit.id} carries ${row.itemId}`).toBe(false);
+        // An HM is a field move's key to a door, never a find.
+        expect(row.itemId.startsWith('hm'), `${kit.id} carries ${row.itemId}`).toBe(false);
+      }
+    }
+  });
+
+  it('keeps gear, machines and the bigger packs to the treasure tier, so the bag worth telling somebody about stays rare', () => {
+    for (const kit of KITS) {
+      for (const row of [...kit.signature, ...kit.extras, ...kit.finds.uncommon, ...kit.finds.rare]) {
+        const { type } = ITEMS[row.itemId].effect;
+        // A machine is "the only sentence this game has for 'this mattered'"
+        // (docs/agents/battle.md): never an everyday find.
+        expect(type === 'held' || type === 'machine' || (type === 'pack' && row.itemId !== 'raid-pack'), `${kit.id}: ${row.itemId}`).toBe(false);
+      }
+    }
+  });
+
+  it("never holds TM39, which is Brock's to give, nor the Hauler frame, which is Oak's for a whole Pokedex", () => {
+    for (const kit of KITS) {
+      expect(rowsOf(kit).map((row) => row.itemId), kit.id).not.toContain('tm39-rock-tomb');
+      expect(rowsOf(kit).map((row) => row.itemId), kit.id).not.toContain('hauler-frame');
+    }
+  });
+
+  it('never repeats a thing it already holds as its find, and marks the find with its tier', () => {
+    for (const kit of KITS) {
+      for (const bag of bagsOver(owner(kit, 'boss'), 400)) {
+        const ids = bag!.reward.map((piece) => piece.itemId);
+        expect(new Set(ids).size, `${kit.id}: ${ids.join(', ')}`).toBe(ids.length);
+        expect(bag!.reward.at(-1)?.find, kit.id).toBe(bag!.best);
+        expect(bag!.reward.slice(0, -1).every((piece) => piece.find === undefined)).toBe(true);
+      }
+    }
+  });
+
+  it('never holds more pieces than the search panel has rows for', () => {
+    for (const kit of KITS) {
+      const signature = Math.max(...kit.signature.map(most));
+      const extra = Math.max(0, ...kit.extras.map(most));
+      const find = Math.max(0, ...FIND_TIERS.flatMap((tier) => kit.finds[tier].map(most)));
+      expect(signature + extra + find, kit.id).toBeLessThanOrEqual(SEARCH_ROWS);
+    }
+  });
+
+  it('gives every trainer the game ships who has a look of their own a kit of their kind', () => {
+    const trainers = [...createRunTrainerEncounters(), ...builtInFileMaps().flatMap((map) => map.trainers())];
+    for (const encounter of trainers) {
+      if (encounter.design !== undefined) {
+        expect(KIT_FOR_DESIGN[encounter.design], `${encounter.trainer.name} (${encounter.design})`).toBeDefined();
+      }
+    }
+  });
+
+  it('is the same bag for the same trainer in the same raid, and its own bag for each trainer', () => {
+    const kit = BAG_KITS.rucksack;
+    expect(rollBagContents(owner(kit, 'veteran', 'a'), 42)).toEqual(rollBagContents(owner(kit, 'veteran', 'a'), 42));
+    expect(bagSeed(42, 'a')).not.toBe(bagSeed(42, 'b'));
+    expect(bagSeed(42, 'a')).not.toBe(bagSeed(43, 'a'));
+  });
+
+  it('is carried as often as the kit says, and always by a boss and a hunter', () => {
+    const swimmer = bagsOver(owner(BAG_KITS.beach, 'rookie'));
+    expect(swimmer.filter(Boolean).length / swimmer.length).toBeCloseTo(BAG_KITS.beach.carried, 1);
+    expect(bagsOver(owner(BAG_KITS.beach, 'boss')).every(Boolean)).toBe(true);
+    expect(bagsOver(owner(HUNTER_KITS.agatha, 'hunter')).every(Boolean)).toBe(true);
+  });
+
+  it('turns up a find of each tier at its standing\'s odds, and always the signature piece first', () => {
+    for (const standing of ['rookie', 'veteran', 'hunter', 'boss'] as const) {
+      const bags = bagsOver(owner(BAG_KITS.duffel, standing)).filter((bag) => bag !== null);
+      for (const tier of FIND_TIERS) {
+        const share = bags.filter((bag) => bag.best === tier).length / bags.length;
+        expect(Math.abs(share - FIND_ODDS[standing][tier]), `${standing} ${tier}`).toBeLessThan(0.025);
+      }
+      const signature = new Set<ItemId>(BAG_KITS.duffel.signature.map((row) => row.itemId));
+      for (const bag of bags) {
+        expect(signature.has(bag.reward[0].itemId)).toBe(true);
+      }
+    }
+  });
+
+  it("finds every kit's rare tier as often as the odds say: no tier is eaten by a find it may not repeat", () => {
+    for (const kit of KITS) {
+      const bags = bagsOver(owner(kit, 'boss'), 1000);
+      const rareOrBetter = bags.filter((bag) => bag!.best === 'rare' || bag!.best === 'treasure').length / bags.length;
+      expect(rareOrBetter, kit.id).toBeGreaterThan(0.9);
+    }
+  });
+
+  it('reads a trainer\'s standing off their best Pokemon, and a boss is a boss', () => {
+    expect(standingOf([5, VETERAN_LEVEL - 1], false)).toBe('rookie');
+    expect(standingOf([5, VETERAN_LEVEL], false)).toBe('veteran');
+    expect(standingOf([9], true)).toBe('boss');
+  });
+
+  it("names the bag after its owner and its kind, so a player learns whose bags are worth a fight", () => {
+    expect(bagLabel({ name: 'HIKER PELL', kit: kitFor('hiker') })).toBe("HIKER PELL'S RUCKSACK");
+    expect(kitFor('rocket-grunt').noun).toBe('DUFFEL');
+    expect(kitFor(undefined)).toBe(BAG_KITS.bag);
+    expect(travellingLightLine('SWIMMER NELL')).toBe('SWIMMER NELL was travelling light: no bag to search.');
+  });
+});

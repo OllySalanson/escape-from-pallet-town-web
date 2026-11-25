@@ -270,6 +270,10 @@ game.
   of it read as a tin or a jar, which is what every other icon in the Other
   pocket already is. It was `scrip.png`, with a plain seal where the sign is,
   until the money became the Pokedollar on 2026-09-23.
+  `trainer-bag` is `scripts/draw-trainer-bag-icon.mjs`: a tan leather shoulder
+  bag (`#7c4a24`, `#b8743a`, `#e0a05a`) lying on its side with its strap up and
+  a Poke Ball rolled out of its mouth, the bag a beaten trainer drops. Drawn
+  lying down so it never reads as one of the four packs, which stand up.
   `bell-rope` is `scripts/draw-bell-rope-icon.mjs`: an iron bollard (`#4a4f5c`,
   `#8a93a6`) with a coil of pale hemp round its neck (`#d9a75e`, `#a0743c`) and
   the rope running off the foot of the tile into the sea below. It is what THE
