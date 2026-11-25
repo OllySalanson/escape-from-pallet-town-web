@@ -27,6 +27,31 @@ describe('the page head', () => {
     }
   });
 
+  it('can be added to a home screen and opens there as the game alone', async () => {
+    const link = /<link\s+rel="manifest"\s+href="([^"]+)"/.exec(html)?.[1];
+    expect(link).toBe('/manifest.webmanifest');
+    const manifest = JSON.parse(await readFile(new URL(`public${link}`, root), 'utf8')) as {
+      name: string;
+      start_url: string;
+      scope: string;
+      display: string;
+      icons: { src: string; sizes: string; purpose: string }[];
+    };
+    expect(manifest.name).toBe('Escape from Pallet Town');
+    // Relative, so the published copy under its Pages folder starts in its own folder.
+    expect(manifest.start_url).toBe('./');
+    expect(manifest.scope).toBe('./');
+    expect(manifest.display).toBe('fullscreen');
+    for (const size of [192, 512]) {
+      const icon = manifest.icons.find((each) => each.sizes === `${size}x${size}`);
+      expect(icon, `${size}`).toBeDefined();
+      const png = await readFile(new URL(`public/${icon!.src}`, root));
+      expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([size, size]);
+    }
+    expect(manifest.icons.some((icon) => icon.purpose === 'maskable')).toBe(true);
+    expect(meta('name', 'apple-mobile-web-app-capable')).toBe('yes');
+  });
+
   it('describes a shared link, with a picture at a full address that the build publishes', async () => {
     expect(meta('property', 'og:title')).toBe('Escape from Pallet Town');
     expect(meta('property', 'og:description')).toMatch(/heist/);

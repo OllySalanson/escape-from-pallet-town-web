@@ -381,7 +381,8 @@ a trackpad, and the keys just pick your tool.
 <kbd>Space</kbd>) and **BACK** (<kbd>Esc</kbd>), and a row of buttons for whatever the screen in
 front of you can do - PACK, TEAM, OAK and LOOK on a raid, DECORATE in your own house. Hold it upright
 and the game sits on top; turn it on its side and the pad splits either side of it. Every menu is
-tappable too. Plug a keyboard in and the pad steps aside until you touch the screen again.
+tappable too. Plug a keyboard in and the pad steps aside until you touch the screen again. Add it to
+your home screen and it opens full screen, like any other game on there.
 
 ## Run it on your own machine
 
