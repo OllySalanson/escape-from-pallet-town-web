@@ -68,8 +68,8 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
     speaker: ARENA_KEEPER_DESIGN,
     name: ARENA_KEEPER_NAME,
     lines: [
-      'Everything for a raid is in this room. Walk up to it and press.',
-      'The BENCH is who comes with you. The RACK is what you carry.',
+      "That's GREYSTONE VALE down the pit. Don't ask how. It was here first.",
+      'Walk up and press. The BENCH is who comes. The RACK is what you carry.',
       'The LOCKER comes home whatever happens. A catch takes 4 squares or more, so leave room.',
       'The cloud in the pit is whatever you have not walked yet.',
       'And a rival hunter comes looking. If they catch you, you fight.',

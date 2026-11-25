@@ -655,7 +655,7 @@ describe('deployment flow', () => {
       expect(flow.secureFit('charmeleon-1')).toBe('grow');
       const refusal = flow.toggleSecurePokemon('charmeleon-1');
       expect(refusal).toMatch(/CHARMELEON needs 6 squares - the container is only 2x2/);
-      expect(refusal).toMatch(/build Secure locker I at Brock's Workshop, or rent a berth in Bill's hold/);
+      expect(refusal).toMatch(/build Secure locker I at Brock's Workshop, or rent a locker shelf from Bill/);
       // Emptying a 2x2 cannot seat a 3x2, so it is not offered.
       expect(refusal).not.toMatch(/Take something out/);
     });

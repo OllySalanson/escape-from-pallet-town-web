@@ -104,6 +104,6 @@ export function windowLines(now: Date): readonly string[] {
         ? ['The sun is coming up over the harbour, and the first boats are going out.']
         : ['The sun is low over the harbour, and the sea has gone the colour of a Charmander.'];
     case 'night':
-      return ['Stars over the harbour. Every light out there on the water is somebody else\'s raid.'];
+      return ['Stars over the harbour. The RAID ARENA is still lit: somebody is out there.'];
   }
 }

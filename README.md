@@ -222,13 +222,13 @@ and say yes, you're let in to have a nose round for as long as you like (or unti
   each where its Pokémon would be, and only once in a long while. Carry one home and it's yours.
   Everybody else in the harbour sees what you wear.
 
-And it's a working waterfront. The **Seagallop**, the islands ferry, is tied up at the jetty: every
-raid sails out on her and comes home on her. The **S.S. Anne** lies at the end of the long pier,
+And it's a working waterfront. The **Seagallop**, the islands ferry, is tied up at the jetty:
+she brings in the crates and the visitors. She used to take raiders out, before the Arena, and her sailor hasn't quite got over it. The **S.S. Anne** lies at the end of the long pier,
 dead ahead as you walk out of Harbour Square between its two lamps. The warehouses on the quay
 front hold what the boats bring in, with a fish stall under a striped awning against their wall,
 a net drying beside it and rowing boats tied up below; past them there's a little
 cove with a jetty to fish off, sheltered by a stone breakwater that runs out round the bay to the
-harbour mouth - where Brock will build you a harbour light. And it's busy: a sailor waits by the ferry (and keeps her log: ask him how many raids she's brought you home from), a porter minds the crates she brought in, a Gym Guide hangs about
+harbour mouth - where Brock will build you a harbour light. And it's busy: a sailor waits by the ferry (and keeps count of your raids anyway: ask him), a porter minds the crates she brought in, a Gym Guide hangs about
 outside the Raid Arena, the captain paces the pier (and lends you his spyglass - go back after dark and he'll show you
 the lights of the vale's hardest places to reach), a dock worker and his Machop stack crates on the wharf, a fishmonger
 sells the morning's catch (mostly Magikarp) while a Meowth eyes his stall, a gardener minds the flower beds outside the Great Library, an
@@ -237,7 +237,7 @@ of the long pier where the good ones bite - they all go back, but he keeps a tal
 Slowpoke staring at the sea, Krabby and Psyduck on the beach, and Lapras and Tentacool out in the
 bay, and now and then a bird glides over. They keep your hours, too - after dark the children
 have gone home, and if you walk out along the breakwater you might hear Lapras singing. Talk to any of them. The sea moves the way FireRed's does, the surf laps at the cove, and the
-Seagallop sounds her horn as she glides in to the jetty to bring you home, and the boats ride the
+Seagallop sounds her horn as she glides in to the jetty, and the boats ride the
 swell while they're moored, rowing boats and all. And it keeps your clock: the harbour goes gold at dusk and blue at
 night, every window lights up, the lamps come on along the quay and the front, the S.S. Anne's portholes glow, and once Brock has built you the
 beacon, its beam sweeps the bay. Every part of the harbour has a name, and like a

@@ -254,6 +254,12 @@ changes shape on any painted frame (`docs/screens/starter-balls/`). A driver tha
 is testing something else takes its partner with
 `scene.getScene('base').takeStarterForDriver(id)`, straight out into the yard.
 
+`storyLines.mjs <test-mode build url> <dir> [--port=N]` reads the story where it
+is told: the Seagallop's sailor on a new save and on one with raids on record,
+the ferry's plate, the notice board, the Arena's sign, Oak's door, the old man on
+the green (by day), the Arena's trailer card, the Marshal and Bill's locker
+shelf, photographing every box and logging its words (`docs/screens/story-raid-arena/`).
+
 `harbourEdges.mjs <test-mode build url> <dir> [--port=N]` replays the harbour
 playtest of 14 Nov 2026 and fails if any finding comes back: walks out of HARBOUR
 SQUARE straight down the long pier, faces a moored rowing boat (no cast) and the

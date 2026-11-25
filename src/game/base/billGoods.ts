@@ -123,7 +123,7 @@ export function goodName(good: BillGood): string {
     return getItemById(good.itemId)?.displayName ?? good.itemId;
   }
   if (good.kind === 'berth') {
-    return 'A berth in the hold';
+    return 'A locker shelf';
   }
   return TRADER_BARTERS.find((each) => each.id === good.barterId)?.name ?? good.barterId;
 }

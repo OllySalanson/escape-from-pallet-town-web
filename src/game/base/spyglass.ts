@@ -24,11 +24,11 @@ export interface SpyglassSight {
 export const SPYGLASS_SIGHTS: Readonly<Record<WindowLight, readonly SpyglassSight[]>> = {
   day: [
     { line: 'Past the harbour mouth the sea is empty, all the way to the grey coast of GREYSTONE VALE.' },
-    { line: 'The SEAGALLOP\'s wake, white across the bay. Somebody is coming home.' },
+    { line: 'The SEAGALLOP\'s wake, white across the bay. The islands ferry, coming in.' },
     { line: 'Every porthole on the S.S. ANNE, polished. Come back after dark - the far places show their lights then.' },
   ],
   dusk: [
-    { line: 'The sun going down behind GREYSTONE VALE. Every raid goes out there.' },
+    { line: 'The sun going down behind GREYSTONE VALE. Every raid lands there.' },
     { line: 'The first lights coming on along the far coast. Wait for full dark, and they will tell you more.' },
   ],
   night: [
@@ -66,7 +66,7 @@ export const SPYGLASS_SIGHTS: Readonly<Record<WindowLight, readonly SpyglassSigh
  * for a night that was over (the overnight playtest of 20 Nov 2026).
  */
 export const SPYGLASS_DAWN_SIGHTS: readonly SpyglassSight[] = [
-  { line: 'The sun coming up behind GREYSTONE VALE. Every raid goes out there.' },
+  { line: 'The sun coming up behind GREYSTONE VALE. Every raid lands there.' },
   { line: 'The last lights going out along the far coast. Come back after dark tonight, and they will tell you more.' },
 ];
 

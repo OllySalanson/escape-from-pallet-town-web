@@ -86,7 +86,7 @@ export const NOTICE_BOARD: BaseSign = {
   y: 17,
   lines: [
     `${BASE_PLACE_NAME.toUpperCase()} - what the raids are run out of.`,
-    'Every raid starts at the RAID ARENA, west of the yard, and THE SEAGALLOP at the jetty brings it home. OAK keeps the board of work. JOY patches the team up. BROCK builds onto the base, and BILL takes what you drag home.',
+    'Every raid starts at the RAID ARENA, west of the yard: jump in from the rim, and ride home to it. OAK keeps the board of work. JOY patches the team up. BROCK builds onto the base, and BILL takes what you drag home.',
     'THE BOLTHOLE, at the end of the row, is yours. Past it, the DAY-CARE MAN raises one Pokémon while you raid.',
     'Past THE GREEN, THE PROMENADE: the GAME CORNER pays TICKETS for POKéMON JUMP and BERRY PICKING, the FIELD-MOVE COURSE past it pays them for a quick time, and the PRIZE WINDOW takes them.',
   ],
@@ -126,7 +126,7 @@ export const GREEN_SIGN: BaseSign = {
 export const ARENA_SIGN: BaseSign = {
   x: 3,
   y: 14,
-  lines: ['THE RAID ARENA', 'Every raid starts here. Walk in, kit up, drop in.'],
+  lines: ['THE RAID ARENA', 'Every raid starts here. Walk in, kit up, jump in.'],
 };
 
 /** On the wharf at the head of the long pier, west of its bollards. */
