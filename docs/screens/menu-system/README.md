@@ -240,3 +240,14 @@ would touch.
 |---|---|---|
 | Your name | ![](before-name-join.png) | ![](after-name-join.png) |
 | The prize chip beside the pack | ![](before-prize-clear.png) | ![](after-prize-clear.png) |
+
+## 18. A pocket tab shows its pocket
+
+YOUR THINGS's tabs (section 4) raised the pocket the cursor was in over one
+list of every pocket, so MEDICINE stood over Poké Balls and a pack and read as
+a filter that did not filter. The list shows the lit pocket only now; LEFT and
+RIGHT (or a tab, clicked) open the next (`ThingsScene.showPocket`).
+
+| Before | After |
+|---|---|
+| ![](before-pocket-filter.png) | ![](after-pocket-filter.png) |
