@@ -366,13 +366,14 @@ const SINGLE_PLAYER_PLATE: PlateLayout = { ...SINGLE_ENEMY_PLATE, x: 150, y: 114
 
 /** The double battle's plate: two of these a side, side by side. */
 const DOUBLE_PLATE_WIDTH = 148;
-// Deep enough for the typing's descenders to clear the frame: at 42 the tail
-// of the G in GRASS/POISON was drawn on the plate's own bottom border.
-const DOUBLE_PLATE_HEIGHT = 44;
+// Deep enough for the typing to clear the frame: at 42 the tail of the G in
+// GRASS/POISON was drawn on the plate's own bottom border, and at 44 inside the
+// four-pixel frame (#799) the bottom half of WATER was drawn under it.
+const DOUBLE_PLATE_HEIGHT = 48;
 const DOUBLE_PLATE_PITCH = 156;
-/** The top band, clear of the field; and the bottom one, just over the panel. */
+/** The top band, clear of the field; and the bottom one, four pixels over the panel. */
 const DOUBLE_ENEMY_BAND_Y = 2;
-const DOUBLE_PLAYER_BAND_Y = 126;
+const DOUBLE_PLAYER_BAND_Y = BATTLE_PANEL.y - 4 - DOUBLE_PLATE_HEIGHT;
 /** Where a double battle's player pictures stand: just behind the top of their plate row. */
 export const DOUBLE_PLAYER_GROUND = DOUBLE_PLAYER_BAND_Y + 2;
 
@@ -447,9 +448,9 @@ export const statusPlateLayout = (
     y: side === 'enemy' ? DOUBLE_ENEMY_BAND_Y : DOUBLE_PLAYER_BAND_Y,
     width: DOUBLE_PLATE_WIDTH,
     height: DOUBLE_PLATE_HEIGHT,
-    nameY: 4,
-    barY: 19,
-    detailY: 30,
+    nameY: 5,
+    barY: 20,
+    detailY: 31,
     barX: 30,
     hpLabelX: 9,
     // The player's plate has to fit its HP numbers on the same row as the bar,

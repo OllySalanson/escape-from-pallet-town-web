@@ -23,8 +23,10 @@ import {
   withdrawLine,
 } from '../pokemon/battle/battleFlow';
 import { TypewriterQueue } from '../ui/TypewriterQueue';
+import { FRAME_DEPTH } from '../ui/uiPalette';
 import {
   BATTLE_SCREEN_WIDTH,
+  statusPlateLayout,
   lowHpItemHint,
   combatantSpot,
   seatedSpriteY,
@@ -1119,5 +1121,27 @@ describe("HEAL, the wild fight's sixth command", () => {
     expect(quickHealChoice(potions, 80)?.id).toBe('super-potion');
     expect(quickHealChoice([], 10)).toBeNull();
     expect(formatHealCommand(3)).toBe('HEAL x3');
+  });
+});
+
+describe("a status plate's rows", () => {
+  // Orange Kid at CAPTION_FONT_SIZE draws 13 pixels tall: the HP numbers on a
+  // single battle's player plate and the typing on a double battle's plate.
+  const CAPTION_LINE_PIXELS = 13;
+
+  it.each([
+    ['a single battle, the player', statusPlateLayout('player', 0, 1)],
+    ['a double battle, the foe', statusPlateLayout('enemy', 1, 2)],
+    ['a double battle, the player', statusPlateLayout('player', 1, 2)],
+  ])('stand inside the four-pixel frame: %s', (_, plate) => {
+    // At 44 deep a double battle's plate drew the bottom half of WATER under
+    // its own frame once the frame went from one pixel to FireRed's four.
+    expect(plate.nameY).toBeGreaterThanOrEqual(FRAME_DEPTH);
+    expect(plate.detailY + CAPTION_LINE_PIXELS).toBeLessThanOrEqual(plate.height - FRAME_DEPTH);
+  });
+
+  it("keep a double battle's player plates off the panel", () => {
+    const plate = statusPlateLayout('player', 0, 2);
+    expect(plate.y + plate.height).toBeLessThan(BATTLE_PANEL.y);
   });
 });
