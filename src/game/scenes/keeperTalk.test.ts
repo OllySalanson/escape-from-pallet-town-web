@@ -498,33 +498,69 @@ describe('the Day-Care Man, at his fence', () => {
 });
 
 describe('at the rail', () => {
-  const lookDown = (manager: SaveManager, notReady?: string) => {
+  const lookDown = (manager: SaveManager, notReady?: string, answers: readonly boolean[] = []) => {
     const said: (readonly string[])[] = [];
+    const asked: { question: string; options?: readonly string[] }[] = [];
     const opened: unknown[][] = [];
+    const toggled: string[] = [];
+    const left = [...answers];
     const scene = BaseScene.prototype as unknown as Record<string, unknown>;
+    const game = manager.load()!;
+    const party = game.stash.listPokemon().slice(0, 1);
     const stand = {
       saveManager: manager,
-      savedGame: manager.load()!,
+      savedGame: game,
       currentTile: { x: 40, y: 40 },
       facing: 'up',
       player: { stop: () => undefined, setFrame: () => undefined },
       place: { room: { room: { keeper: { position: { x: 30, y: 30 } } } } },
-      kit: { flow: { notReady } },
-      say: (lines: readonly string[]) => said.push(lines),
+      kit: {
+        game,
+        flow: {
+          notReady,
+          party,
+          riskedItems: [{ itemId: 'poke-ball', quantity: 3 }],
+          securedItems: [{ itemId: 'potion', quantity: 3 }],
+          togglePokemon: (id: string) => toggled.push(id),
+        },
+      },
+      say: (lines: readonly string[], _about: unknown, then?: () => void) => {
+        said.push(lines);
+        then?.();
+      },
+      askInBox: (question: string, answer: (yes: boolean) => void, options?: { options?: readonly string[] }) => {
+        asked.push({ question, options: options?.options });
+        answer(left.shift() ?? true);
+      },
+      sayFirstWords: scene.sayFirstWords,
+      hearFirstWords: scene.hearFirstWords,
       openHallPanel: (...panel: unknown[]) => opened.push(panel),
     };
     (scene.lookDown as (this: typeof stand) => void).call(stand);
-    return { said, opened };
+    return { said, asked, opened, toggled, party };
   };
 
-  it('goes straight over on a first raid, with nothing to read and no card', () => {
-    const { said, opened } = lookDown(saved(NOTHING_NEW));
+  /** The critic's problem 5: the first jump was one SPACE, with nothing said of what was packed. */
+  it('asks before the first jump, saying what was packed, and goes straight over on JUMP IN', () => {
+    const { said, asked, opened, party } = lookDown(saved(NOTHING_NEW));
     expect(said).toEqual([]);
+    expect(asked).toEqual([
+      {
+        question: `${party[0].pokemon.name.toUpperCase()} off the BENCH, 3 POKÉ BALLS off the RACK, 3 POTIONS safe in the LOCKER. Jump in?`,
+        options: ['JUMP IN', 'NOT YET'],
+      },
+    ]);
     expect(opened).toEqual([['rim', true]]);
   });
 
+  it('stays at the rail on NOT YET', () => {
+    const { opened } = lookDown(saved(NOTHING_NEW), undefined, [false]);
+    expect(opened).toEqual([]);
+  });
+
   it('shows the card when something is wrong with the raid being got ready', () => {
-    const { opened } = lookDown(saved(NOTHING_NEW), 'Nobody is coming.');
+    const { asked, opened } = lookDown(saved(NOTHING_NEW), 'Nobody is coming.');
+    expect(asked).toEqual([]);
     expect(opened).toEqual([['rim']]);
   });
 
@@ -532,6 +568,22 @@ describe('at the rail', () => {
     const { said, opened } = lookDown(saved({ ...NOTHING_NEW, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } }));
     expect(said).toEqual([]);
     expect(opened).toEqual([['rim']]);
+  });
+
+  it('offers a catch waiting at base to a lone Pokemon, once, before the card', () => {
+    const progress = { ...NOTHING_NEW, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } };
+    const manager = saved(progress, (stash) => {
+      stash.addPokemon(new Pokemon(PIDGEY, 3), 'pidgey-1');
+    });
+    const first = lookDown(manager);
+    expect(first.said).toEqual([FIRST_WORDS.benchCatch.lines]);
+    expect(first.asked.map(({ question }) => question)).toEqual(['Take PIDGEY along too?']);
+    expect(first.toggled).toEqual(['pidgey-1']);
+    expect(first.opened).toEqual([['rim']]);
+
+    const again = lookDown(manager);
+    expect(again.said).toEqual([]);
+    expect(again.asked).toEqual([]);
   });
 });
 
