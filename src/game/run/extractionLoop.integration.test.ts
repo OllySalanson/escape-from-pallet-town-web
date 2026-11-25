@@ -65,6 +65,8 @@ function persistedStarterSpeciesId(storage: StorageLike): unknown {
  * dozen expectations, so what those assertions are about stays the supplies.
  */
 const STARTING_ITEMS = { 'poke-ball': 5, potion: 3, 'raid-pack': 1 } as const;
+/** Oak's kit after a lost raid: less than a new save is given (`MINIMUM_SUPPLIES`), in the pack the save still holds. */
+const WIPE_KIT = { 'poke-ball': 2, potion: 1, 'raid-pack': 1 } as const;
 
 function seedNewPlayer(storage: StorageLike): SaveManager {
   const saves = new SaveManager(storage);
@@ -507,7 +509,8 @@ describe('extraction loop integration', () => {
 
     const wipedStash = saves.load()!.stash;
     expect(wipedStash.listPokemon().map(({ id }) => id)).toEqual([starter.id]);
-    expect(wipedStash.listItems()).toEqual(STARTING_ITEMS);
+    // The three secured Potions came home; the kit adds back only the balls.
+    expect(wipedStash.listItems()).toEqual({ ...WIPE_KIT, potion: 3 });
   });
 
   it('returns a player who wiped holding an unrelated leftover item with a usable supply of balls and potions', () => {
@@ -545,7 +548,7 @@ describe('extraction loop integration', () => {
       { pokemon: { base: { id: 'bulbasaur' }, level: 5 } },
     ]);
     // The kept antidote is never taken away, and the balls and potions come back.
-    expect(recovered.listItems()).toEqual({ ...STARTING_ITEMS, antidote: 1 });
+    expect(recovered.listItems()).toEqual({ ...WIPE_KIT, antidote: 1 });
   });
 
   it('restocks a wiped player whose secure slot saved a Pokemon but no supplies', () => {
@@ -581,7 +584,7 @@ describe('extraction loop integration', () => {
     // needs to attempt another run still come back.
     const recovered = saves.load()!.stash;
     expect(recovered.listPokemon().map(({ id }) => id)).toEqual([starter.id]);
-    expect(recovered.listItems()).toEqual(STARTING_ITEMS);
+    expect(recovered.listItems()).toEqual(WIPE_KIT);
   });
 
   it('lets a wiped player re-specialise, and re-grants the newly chosen starter on the next wipe', () => {
