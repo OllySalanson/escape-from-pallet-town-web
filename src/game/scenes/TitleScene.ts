@@ -13,6 +13,7 @@ import {
   moveTitleChoiceAcross,
   needsEraseConfirmation,
   playtestMenu,
+  sandboxMenu,
   titleHint,
   titleMenu,
   type TitleChoiceId,
@@ -815,9 +816,11 @@ export class TitleScene extends Phaser.Scene {
         const menu = playtestMenu();
         this.showMenu(menu, menu.initial);
       } else {
-        this.startGame('fresh-playtest');
+        void audioManager.playWaking('confirm');
+        const menu = sandboxMenu();
+        this.showMenu(menu, menu.initial);
       }
-    } else if (this.choice === 'keep') {
+    } else if (this.choice === 'keep' || this.choice === 'back') {
       this.backOut();
     } else if (this.choice === 'resume-playtest' || this.choice === 'fresh-playtest') {
       this.startGame(this.choice);

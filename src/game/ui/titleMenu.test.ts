@@ -7,6 +7,8 @@ import {
   moveTitleChoiceAcross,
   needsEraseConfirmation,
   playtestMenu,
+  sandboxMenu,
+  SANDBOX_QUESTION,
   saveDetail,
   titleHint,
   titleMenu,
@@ -113,6 +115,17 @@ describe('the title menu', () => {
     expect(titleHint(playtestMenu(), 'resume-playtest')).toBe('ESC GOES BACK');
   });
 
+  it('says what the explorer run is before a browser that has never played one starts it, starting on BACK', () => {
+    const menu = sandboxMenu();
+
+    expect(menu.question).toBe(SANDBOX_QUESTION);
+    expect(menu.question).toMatch(/NOT THE GAME/);
+    expect(menu.initial).toBe('back');
+    expect(menu.choices.map((choice) => choice.id)).toEqual(['fresh-playtest', 'back']);
+    expect(titleHint(menu, 'fresh-playtest')).toBe('LV 99 TEAM · WHOLE MAP OPEN · NOTHING COUNTS');
+    expect(titleHint(menu, 'back')).toBe('BACK TO THE TITLE');
+  });
+
   it('asks which explorer run, starting on the one already going', () => {
     const menu = playtestMenu();
 
@@ -144,6 +157,7 @@ describe('the title menu layout', () => {
       titleMenu(BROKEN),
       eraseMenu(),
       playtestMenu(),
+      sandboxMenu(),
     ];
     for (const menu of menus) {
       const layout = layoutTitleMenu(menu, width, height, plateBottom);
