@@ -385,24 +385,33 @@ export function raceOfferLines(
   if (askedThisRaid) {
     return [`${racer}: Changed your mind?`];
   }
-  const purse = purseTakenToday
-    ? "Today's purse is gone - come back tomorrow for it."
-    : `Under ${formatRaceTime(course.goldMs)} takes today's purse: any evolution stone you like.`;
+  const pay = payLine(course, purseTakenToday);
   if (!record || record.runs === 0) {
     return [
       `${racer}: I'll race you! First to ${course.finish.name}, ${course.finish.where} - the line's by its door.`,
-      `${payLine(course)} Lose: ${formatMoney(TAKING_PART_MONEY)} for the legs. ${purse}`,
+      `${pay} Lose: ${formatMoney(TAKING_PART_MONEY)} for the legs.`,
     ];
   }
   const mark = record.perfect ? ' PERFECT' : record.medal ? ` ${MEDAL_WORDS[record.medal]}` : '';
   const best = record.bestMs === undefined ? '' : ` Your best: ${formatRaceTime(record.bestMs)}${mark}.`;
   const learned = racerKnowsTheWay(record, shortcutOpen) ? " I've been practising - I know the reeds' dry way now too." : '';
-  return [`${racer}: Back for more?${best}${learned}`, `${payLine(course)} ${purse}`];
+  return [`${racer}: Back for more?${best}${learned}`, pay];
 }
 
-/** What a win pays, every raid: said on every offer, so a GOLD holder knows there is still something in it. */
-function payLine(course: RaceCourse): string {
-  return `Beat me: ${formatMoney(MEDAL_MONEY.bronze)} - ${formatMoney(MEDAL_MONEY.silver)} under ${formatRaceTime(course.silverMs)}, ${formatMoney(MEDAL_MONEY.gold)} under ${formatRaceTime(course.goldMs)}.`;
+/**
+ * What a win pays, every raid, mark by mark as the judge will call it, with the
+ * day's purse on GOLD: said on every offer, so a GOLD holder knows there is
+ * still something in it.
+ */
+function payLine(course: RaceCourse, purseTakenToday: boolean): string {
+  const purse = purseTakenToday
+    ? ' - the purse is gone till tomorrow.'
+    : " - and the day's first GOLD takes the purse, any evolution stone you like.";
+  return (
+    `BRONZE beats me: ${formatMoney(MEDAL_MONEY.bronze)}. ` +
+    `SILVER, under ${formatRaceTime(course.silverMs)}: ${formatMoney(MEDAL_MONEY.silver)}. ` +
+    `GOLD, under ${formatRaceTime(course.goldMs)}: ${formatMoney(MEDAL_MONEY.gold)}${purse}`
+  );
 }
 
 /** The captain's question, word for word. */

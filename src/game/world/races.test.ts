@@ -272,10 +272,12 @@ describe('what LINNET says', () => {
     const back = raceOfferLines(course, { runs: 2, wins: 1, bestMs: 14_200, medal: 'silver' }, true, true);
     expect(back[0]).toContain('Your best: 0:14.2 SILVER');
     expect(back[0]).toContain("I know the reeds' dry way now");
-    expect(back[1]).toContain('come back tomorrow');
+    expect(back[1]).toContain('the purse is gone till tomorrow');
     // Every offer says what each mark pays, every raid - a GOLD holder still has P60 to race for.
-    expect(back[1]).toContain('Beat me: ₽30 - ₽40 under 0:16.5, ₽60 under 0:11.0.');
-    expect(offer).toContain('₽60 under 0:11.0');
+    expect(back[1]).toBe('BRONZE beats me: ₽30. SILVER, under 0:16.5: ₽40. GOLD, under 0:11.0: ₽60 - the purse is gone till tomorrow.');
+    expect(offer).toContain("GOLD, under 0:11.0: ₽60 - and the day's first GOLD takes the purse, any evolution stone you like. Lose: ₽10 for the legs.");
+    // Each mark's time said once.
+    expect(offer.split('0:11.0').length).toBe(2);
     // The ride still shut: she has not learned anything to wall them out with.
     expect(raceOfferLines(course, { runs: 2, wins: 1, bestMs: 14_200, medal: 'silver' }, true, false)[0]).not.toContain('dry way');
     // Asked again the same raid after a NO: short.
