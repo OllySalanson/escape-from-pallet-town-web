@@ -7683,7 +7683,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    */
   private warnOfEnrage(remainingMs: number): void {
     const session = this.runSession;
-    if (!session || session.enrageWarned || isPlaytestRun() || remainingMs > ENRAGE_WARNING_MS || remainingMs <= 0) {
+    const inTheLastMinute = remainingMs > 0 && remainingMs <= ENRAGE_WARNING_MS;
+    if (!session || session.enrageWarned || isPlaytestRun() || !inTheLastMinute) {
       return;
     }
     session.enrageWarned = true;
