@@ -504,10 +504,9 @@ export const isHunterBagId = (bagId: string): boolean => bagId.startsWith(bagIdF
  */
 export const BAG_GLINT_LINE = 'SOMETHING GLINTS INSIDE';
 
-/** How long the bag over a trainer worth the fight waits between bobs: often enough to be seen walking past. */
+/** How long the mark over a trainer worth the fight waits between bobs: often enough to be seen walking past. */
 export const TRAINER_GLINT_EVERY_MS = 1400;
-/** How far above the trainer's head the bag hangs, and how far it bobs, in pixels. */
-export const TRAINER_GLINT_LIFT = 6;
+/** How far the mark bobs, in pixels. */
 export const TRAINER_GLINT_BOB = 2;
 
 /** How long after the world comes back from the fight a bag is seen to fall: once its fade has cleared. */

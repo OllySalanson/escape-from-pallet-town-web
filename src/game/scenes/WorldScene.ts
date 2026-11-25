@@ -305,7 +305,6 @@ import { WINDOW_PAUSE_LINES, WINDOW_PAUSE_TITLE, type PausesForWindow } from '..
 import {
   CAPTION_BAND,
   FIGURE_BAND,
-  OVER_FIGURE,
   MARKER_BAND,
   CANOPY_BAND,
   ROOF_BAND,
@@ -442,7 +441,6 @@ import {
   BAG_GLINT_LINE,
   TRAINER_GLINT_BOB,
   TRAINER_GLINT_EVERY_MS,
-  TRAINER_GLINT_LIFT,
   bagAsPoi,
   bagIdFor,
   bagLabel,
@@ -800,6 +798,10 @@ const WATCH_LIFT_FADE_MS = 520;
 const SPOTTED_INK = 0x171717;
 const SPOTTED_CREAM = 0xfdf6e3;
 const SPOTTED_MARK = 0xdc2626;
+/** The bag in a trainer's mark: `trainer-bag.png`'s own leather and buckle. */
+const BAG_MARK_LIGHT = 0xe0a05a;
+const BAG_MARK_LEATHER = 0xb8743a;
+const BAG_MARK_BUCKLE = 0xf0d890;
 /** The question in a hunter's "?" while it looks for you: the green the chip says LOST YOU in. */
 const SEARCH_MARK = 0x3f8f3a;
 /**
@@ -1097,7 +1099,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /** The bags the fight just won dropped, to be seen to fall once the world is drawn. */
   private bagsFalling: TrainerBag[] = [];
   /** The mark over each trainer whose bag is worth the fight, by trainer id, drawn with the map. */
-  private trainerGlints = new Map<string, Phaser.GameObjects.Image>();
+  private trainerGlints = new Map<string, Phaser.GameObjects.Graphics>();
   private readonly defeatedTrainerIds = new Set<string>();
   /**
    * Gear a beaten boss dropped that the pack had no room for. It waits here
@@ -4032,23 +4034,23 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
-   * The mark over a trainer whose bag is worth the fight: the dropped bag's
-   * own icon, bobbing over their head - the thing they would drop, so it reads
-   * as loot, and never as the stars that mean a shiny Pokemon in this game.
+   * The mark over a trainer whose bag is worth the fight: FireRed's emote
+   * bubble - the same cream bubble and tail as the "!" a trainer shows when
+   * they spot you - with a little bag in it, bobbing over their head. A
+   * thought rather than a thing: the bag's own icon hung over a figure read
+   * as a bag lying on the ground a tile north of them, and the shiny stars
+   * already mean a shiny Pokemon.
    */
   private createTrainerGlint(encounter: RunTrainerEncounter): void {
-    const texture = iconTextureKey(WORLD_ICONS.trainerBag);
-    if (!this.textures?.exists?.(texture)) {
+    if (!this.add?.graphics) {
       return;
     }
-    const x = encounter.position.x * TILE_SIZE + TILE_SIZE / 2;
-    const y = encounter.position.y * TILE_SIZE - TILE_SIZE / 2 - TRAINER_GLINT_LIFT;
-    const glint = this.add
-      .image(x, y, texture)
-      .setDepth(atRow(FIGURE_BAND, encounter.position.y) + OVER_FIGURE);
+    const mark = this.add.graphics().setDepth(atRow(CANOPY_BAND, encounter.position.y) + 0.1);
+    this.paintBagMark(mark);
+    this.placeSpottedMark(mark, encounter.position.x, encounter.position.y, Number.POSITIVE_INFINITY);
     this.tweens?.add?.({
-      targets: glint,
-      y: y - TRAINER_GLINT_BOB,
+      targets: mark,
+      y: mark.y - TRAINER_GLINT_BOB,
       duration: 260,
       yoyo: true,
       hold: 120,
@@ -4056,8 +4058,27 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       repeatDelay: TRAINER_GLINT_EVERY_MS,
       ease: 'Sine.easeOut',
     });
-    this.trainerGlints.set(encounter.trainer.id, glint);
-    this.mapObjects.push(glint);
+    this.trainerGlints.set(encounter.trainer.id, mark);
+    this.mapObjects.push(mark);
+  }
+
+  /** The bag-in-a-bubble mark, a pixel at a time like the spotted "!", in the dropped bag's own leather. */
+  private paintBagMark(mark: Phaser.GameObjects.Graphics): void {
+    const box = (color: number, x: number, y: number, w: number, h: number) =>
+      mark.fillStyle(color, 1).fillRect(x, y, w, h);
+    box(SPOTTED_INK, 0, 0, 11, 13);
+    box(SPOTTED_CREAM, 1, 1, 9, 11);
+    box(SPOTTED_INK, 4, 13, 3, 1);
+    box(SPOTTED_CREAM, 5, 13, 1, 1);
+    box(SPOTTED_INK, 5, 14, 1, 1);
+    // The bag: a strap over a body, a flap of lighter leather and a buckle.
+    box(SPOTTED_INK, 4, 2, 3, 1);
+    box(SPOTTED_INK, 3, 3, 1, 1);
+    box(SPOTTED_INK, 7, 3, 1, 1);
+    box(SPOTTED_INK, 2, 4, 7, 6);
+    box(BAG_MARK_LIGHT, 3, 5, 5, 2);
+    box(BAG_MARK_LEATHER, 3, 7, 5, 2);
+    box(BAG_MARK_BUCKLE, 5, 6, 1, 1);
   }
 
   /**

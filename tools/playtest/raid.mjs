@@ -907,17 +907,22 @@ try {
     // looks like from a few steps off - the mark hides once you are beside them.
     note(`${mark.name} ${(await page.evaluate(`${GAME}.scene.getScene('world').trainerGlints.has(${JSON.stringify(mark.id)})`)) ? 'carries a bag worth the fight' : 'shows no mark'}`);
     if (option('shot')) {
+      // Reachable from where the player is, three steps from the trainer as the crow walks.
       const offing = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
-        const c = w.collisionData, H = c.length, W = c[0].length, id = (x, y) => y * W + x, t = ${JSON.stringify(mark.at)};
-        const steps = new Map([[id(t.x, t.y), 0]]); const queue = [[t.x, t.y]]; const out = [];
-        while (queue.length) { const [x, y] = queue.shift(); const d = steps.get(id(x, y)); if (d === 3) { out.push({ x, y }); continue; }
+        const c = w.collisionData, H = c.length, W = c[0].length, id = (x, y) => y * W + x, t = ${JSON.stringify(mark.at)}, s = w.currentTile;
+        const steps = new Map([[id(s.x, s.y), 0]]); const queue = [[s.x, s.y]]; let best = null;
+        while (queue.length) { const [x, y] = queue.shift(); const d = steps.get(id(x, y));
+          if (Math.abs(x - t.x) + Math.abs(y - t.y) === 3 && (best === null || d < best.d)) best = { x, y, d };
           for (const [dx, dy] of [[0,-1],[0,1],[-1,0],[1,0]]) { const nx = x + dx, ny = y + dy;
             if (nx < 0 || ny < 0 || nx >= W || ny >= H || steps.has(id(nx, ny)) || w.isBlocked({ x: nx, y: ny })) continue;
             steps.set(id(nx, ny), d + 1); queue.push([nx, ny]); } }
-        const s = w.currentTile; return out.sort((a, b) => Math.abs(a.x - s.x) + Math.abs(a.y - s.y) - Math.abs(b.x - s.x) - Math.abs(b.y - s.y))[0] ?? null; })()`);
+        return best && { x: best.x, y: best.y }; })()`);
       if (offing) {
         await walkTo(offing, `a few steps off ${mark.name}`);
-        await page.screenshot(option('shot').replace(/\.png$/, `-bag-${robbed + 1}-before.png`));
+        const there = await page.evaluate(`(() => { const s = ${GAME}.scene.getScene('world').currentTile; return s.x === ${offing.x} && s.y === ${offing.y}; })()`);
+        if (there) {
+          await page.screenshot(option('shot').replace(/\.png$/, `-bag-${robbed + 1}-before.png`));
+        }
       }
     }
     await walkTo({ x: mark.x, y: mark.y }, `the tile beside ${mark.name}`);
