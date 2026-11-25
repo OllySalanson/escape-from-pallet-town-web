@@ -129,9 +129,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       }
       const pocket = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-pocket]')?.dataset.pocket : undefined;
       if (!pocket) return;
-      this.overlay?.root.querySelectorAll<HTMLElement>('[data-pocket-tab]').forEach((tab) => {
-        tab.classList.toggle('is-here', tab.dataset.pocketTab === pocket);
-      });
+      this.showPocket(pocket);
     });
     this.render();
   }
@@ -275,6 +273,47 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       this.unchoosePupil();
     });
     overlay.refocus(...prefer, '[data-teach]:not([aria-disabled])', '[data-pupil]:not([aria-disabled])', '[data-target]:not([aria-disabled])', '[data-thing]', '[data-close]');
+    // A tab is a pocket to open: its first row, with the list showing that pocket.
+    overlay.root.querySelectorAll<HTMLElement>('[data-pocket-tab]').forEach((tab) => {
+      tab.onclick = () => {
+        const pocket = tab.dataset.pocketTab;
+        this.showPocket(pocket);
+        overlay.root.querySelector<HTMLButtonElement>(`[data-thing][data-pocket="${pocket}"]`)?.focus({ preventScroll: true });
+      };
+    });
+    // The list was drawn whole again: which pocket it shows is asked afresh.
+    delete overlay.root.dataset.pocketShown;
+    const focused = typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null);
+    this.showPocket(focused?.closest<HTMLElement>('[data-pocket]')?.dataset.pocket);
+  }
+
+  /**
+   * The list shows one pocket at a time, the one its raised tab names: the tabs
+   * stood over every pocket at once and read as filters that did not filter -
+   * MEDICINE over Poké Balls and a pack (the feature tester, 25 Nov 2026). The
+   * other pockets' rows are hidden rather than redrawn, so the cursor (which
+   * passes over hidden controls) stays in the pocket, and LEFT and RIGHT open
+   * the next one (`jumpPocket`). With one pocket there are no tabs and nothing
+   * to hide.
+   */
+  private showPocket(pocket: string | undefined): void {
+    const overlay = this.overlay;
+    if (!overlay?.root.querySelector('.things-pockets')) {
+      return;
+    }
+    const rows = [...overlay.root.querySelectorAll<HTMLElement>('[data-thing][data-pocket]')];
+    const shown = pocket ?? rows[0]?.dataset.pocket;
+    if (!shown || overlay.root.dataset.pocketShown === shown) {
+      return;
+    }
+    overlay.root.dataset.pocketShown = shown;
+    for (const row of rows) {
+      row.hidden = row.dataset.pocket !== shown;
+    }
+    overlay.root.querySelectorAll<HTMLElement>('[data-pocket-tab]').forEach((tab) => {
+      tab.classList.toggle('is-here', tab.dataset.pocketTab === shown);
+    });
+    overlay.remeasure();
   }
 
   private listBody(game: RestoredGame, flow: DeploymentFlow): string {
@@ -365,6 +404,8 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     const current = Math.max(0, rows.indexOf(document.activeElement as HTMLButtonElement));
     const to = rows[pocketJump(rows.map((row) => row.dataset.pocket ?? ''), current, step)];
     if (to && to !== document.activeElement) {
+      // The pocket is shown before the cursor goes to it: a hidden row takes no focus.
+      this.showPocket(to.dataset.pocket);
       // The pocket's own heading at the top of the pane, not cut off above
       // the row: a jump lands on a pocket, so the pocket says which it is.
       to.focus({ preventScroll: true });
