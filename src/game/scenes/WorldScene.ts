@@ -4620,7 +4620,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (x >= off.x && y >= off.y && x < off.x + off.width && y < off.y + off.height) {
       here.race.tookShortcut = true;
     }
-    if (here.race.clockMs >= here.race.racerMs + FINISH_WAIT_MS) {
+    // Never gone home on a player standing on the line: they are over it, whatever the clock says.
+    if (here.race.clockMs >= here.race.racerMs + FINISH_WAIT_MS && !crossesLine(here.course, this.currentTile)) {
       // Gone home, and gone: their figure with them.
       here.race.phase = 'over';
       here.race.outcome = 'late';
@@ -8418,6 +8419,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.saveGame();
     this.soundFootstep(steppedFrom);
 
+    // A race's line is crossed the moment the step onto it lands - before the
+    // hunter's catch below, which this same step would otherwise make first and
+    // charge to the race (its fight is game time the racer runs on).
+    if (this.tryCrossRaceLine()) {
+      return;
+    }
+
     const warp = getWarpAt(this.currentMap, this.currentTile, 'step');
     if (warp) {
       this.warp(warp);
@@ -8655,7 +8663,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private toggleBike(): string | null {
     const racing = this.runSession?.race;
     if (!this.riding && racing?.phase === 'lining-up') {
-      return `${courseById(racing.courseId)?.racer.name ?? 'The racer'}'s waiting for you at the chalk mark. Talk to them to call the race off first.`;
+      return `${courseById(racing.courseId)?.racer.name ?? 'The racer'}'s waiting for you at the chalk mark. Talk to her to call the race off first.`;
     }
     if (!this.riding && racing && racing.phase !== 'over') {
       return 'On foot, no wheels - not until the race is over.';
