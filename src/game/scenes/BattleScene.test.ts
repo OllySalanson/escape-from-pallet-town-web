@@ -40,6 +40,7 @@ vi.mock('../ui/MoveChooserOverlay', () => ({
 }));
 
 import { Bag } from '../items';
+import { usableBattleItems } from '../pokemon/battle/battleItems';
 import {
   CHARMANDER,
   Pokemon,
@@ -1757,6 +1758,40 @@ describe('the medicine hint', () => {
     battle.onMessagesComplete();
     expect(battle.mode).toBe('main');
     expect(battle.mainActions()[battle.selectedCommand]?.type).toBe('choose-item');
+  });
+
+  it('puts the cursor back on FIGHT once the Potion is drunk, so an OK masher attacks again', () => {
+    // The overnight critic, 25 Nov 2026 (6.50-6.52): the menu remembered ITEM,
+    // so every later turn came back on it and a player pressing only OK drank
+    // the pack dry and never attacked again.
+    const pidgey = new Pokemon(PIDGEY, 5);
+    pidgey.currentHp = 1;
+    const { scene, dialog } = createBattleSceneHarness({
+      party: new PokemonParty([pidgey]),
+      wild: new Pokemon(getSpeciesById('rattata')!, 3),
+    });
+    const battle = scene as unknown as {
+      onMessagesComplete(): void;
+      useItem(partyIndex: number): void;
+      mode: string;
+      selectedCommand: number;
+      pendingItem: unknown;
+      bag: Bag;
+      mainActions(): readonly { readonly type: string }[];
+    };
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    battle.onMessagesComplete();
+    battle.onMessagesComplete();
+    expect(battle.mainActions()[battle.selectedCommand]?.type).toBe('choose-item');
+    battle.pendingItem = usableBattleItems(battle.bag).find((item) => item.effect.type === 'heal');
+    expect(battle.pendingItem).toBeDefined();
+    battle.useItem(0);
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40 && battle.mode !== 'main'; step += 1) {
+      battle.onMessagesComplete();
+    }
+    expect(battle.mode).toBe('main');
+    expect(battle.mainActions()[battle.selectedCommand]?.type).toBe('choose-fight');
   });
 });
 
