@@ -112,6 +112,8 @@ dry way, `wade` the fewest steps through the grass, and `cut` with
 `--opened=greystone-vale/door-2` the woodcutter's ride; it prints the clock, who
 crossed first, every line at the finish, the pack and the save's record.
 
+`stalePage.mjs <build dir> [--shot=dir] [--before]` serves a build under the Pages folder and plays a page from before a publish, whose bundles are gone: it must reload once into the current page, and a page whose files never come must reload once, stop and say so with TRY AGAIN, never loop (index.html's boot guard, `src/bootGuard.test.ts`; `docs/screens/stale-page/`).
+
 `slowLoad.mjs <cdp port> <build url> <dir> [kbit/s] [latency ms]` opens the game
 on a throttled line with the cache off and photographs the first load until the
 title is up, for what a friend on poor wifi sees before the game can draw

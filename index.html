@@ -3,6 +3,115 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Everything the page shows before the game's own stylesheet has come,
+         and if it never comes: kept here, because a page whose bundles are
+         missing has nothing else to dress it. -->
+    <style>
+      @font-face {
+        font-family: 'Orange Kid';
+        src: url('./assets/battle/orange-kid.woff2') format('woff2');
+        font-display: block;
+      }
+      body {
+        margin: 0;
+        background: #0e1b27;
+      }
+      .boot-wait,
+      .boot-failed p {
+        margin: 0;
+        font-family: 'Orange Kid', monospace;
+        font-size: 32px;
+        letter-spacing: 1px;
+        color: #9cafc7;
+      }
+      .boot-failed {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        text-align: center;
+      }
+      .boot-failed button {
+        font-family: 'Orange Kid', monospace;
+        font-size: 28px;
+        letter-spacing: 1px;
+        color: #edf4ff;
+        background: #18263c;
+        border: 2px solid #55d6be;
+        padding: 6px 22px;
+        cursor: pointer;
+      }
+    </style>
+    <!-- A page from before a publish names bundles the publish deleted: GitHub
+         Pages replaces the whole site, and a tab woken from the browser's cache
+         after a night asleep asks for files that are gone (25 Nov 2026). If the
+         game's own script or stylesheet fails while it is still loading, the
+         page reloads once, which fetches the current page; a second failure
+         within a minute - no connection, or files truly gone - stops and says
+         so with a button, and tries again by itself when the connection comes
+         back. It must stand before the build's script and stylesheet tags,
+         which Vite puts at the end of this head. Asked by bootGuard.test.ts and
+         played by tools/playtest/stalePage.mjs. -->
+    <script>
+      (function () {
+        var KEY = 'escape-from-pallet-town.boot-reload';
+        var RETRY_WINDOW_MS = 60000;
+        var failed = false;
+        var stillLoading = function () {
+          return document.readyState === 'loading' || !!document.querySelector('.boot-wait');
+        };
+        var isGameFile = function (element) {
+          if (element instanceof HTMLScriptElement) {
+            return true;
+          }
+          return element instanceof HTMLLinkElement && /\b(stylesheet|modulepreload)\b/.test(element.rel);
+        };
+        var sayItFailed = function () {
+          var wait = document.querySelector('.boot-wait');
+          if (!wait) {
+            document.addEventListener('DOMContentLoaded', sayItFailed, { once: true });
+            return;
+          }
+          var box = document.createElement('div');
+          box.className = 'boot-failed';
+          box.setAttribute('role', 'alert');
+          var line = document.createElement('p');
+          line.textContent = 'THE GAME COULD NOT LOAD.';
+          var button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = 'TRY AGAIN';
+          button.addEventListener('click', function () {
+            location.reload();
+          });
+          box.append(line, button);
+          wait.replaceWith(box);
+          button.focus();
+          window.addEventListener('online', function () {
+            location.reload();
+          }, { once: true });
+        };
+        window.addEventListener('error', function (event) {
+          if (failed || !isGameFile(event.target) || !stillLoading()) {
+            return;
+          }
+          failed = true;
+          try {
+            var last = Number(sessionStorage.getItem(KEY)) || 0;
+            if (Date.now() - last > RETRY_WINDOW_MS) {
+              sessionStorage.setItem(KEY, String(Date.now()));
+              location.reload();
+              return;
+            }
+          } catch (error) {
+            // Storage refused: a reload could not know it had already tried.
+          }
+          sayItFailed();
+        }, true);
+      })();
+    </script>
     <title>Escape from Pallet Town</title>
     <meta
       name="description"
