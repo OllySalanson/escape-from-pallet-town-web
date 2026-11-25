@@ -4,7 +4,9 @@ import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
 import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../world/valeQuarters';
 import { readFileSync } from 'node:fs';
 import { CHART_PIECES } from '../treasure/treasureMap';
-import { chaseLine, jobsBanked, landingToWalkTo, nextStepLines, VALE_LEGENDS } from './nextStep';
+import { Stash } from '../stash';
+import { CHARMANDER, Pokemon } from '../pokemon';
+import { chaseLine, jobsBanked, landingToWalkTo, LEGEND_REACH_LEVELS, nextStepLines, VALE_LEGENDS, vaultOf } from './nextStep';
 
 const raided = (raids: number, more: Partial<RaidProgress> = {}): RaidProgress => ({
   ...DEFAULT_RAID_PROGRESS,
@@ -77,30 +79,49 @@ describe('the one next thing Oak says', () => {
 
     it('names the treasure map first, stage by stage', () => {
       expect(nextStepLines(done).at(-1)).toContain('a bottle has washed up on THE BEACH');
-      expect(chaseLine(done, (itemId) => (itemId === 'bottled-chart' ? 1 : 0))).toContain('take that bottled chart to MARLOW');
+      expect(chaseLine(done, { held: (itemId) => (itemId === 'bottled-chart' ? 1 : 0) })).toContain('take that bottled chart to MARLOW');
       expect(chaseLine({ ...done, treasureHunt: { roomOpen: true, pinned: ['shore'], chestOpened: false } })).toContain(
         `still wants ${CHART_PIECES.length - 1} more pieces`,
       );
       const whole = { roomOpen: true, pinned: CHART_PIECES.map((piece) => piece.id), chestOpened: false };
       expect(chaseLine({ ...done, treasureHunt: whole })).toContain("SMUGGLERS' COVE");
-      expect(chaseLine({ ...done, treasureHunt: whole }, (itemId) => (itemId === 'sea-chest' ? 1 : 0))).toContain('carry the SEA CHEST');
+      expect(chaseLine({ ...done, treasureHunt: whole }, { held: (itemId) => (itemId === 'sea-chest' ? 1 : 0) })).toContain('carry the SEA CHEST');
     });
 
     it('then the legends not yet caught, a different one each raid, and nothing once every one is caught', () => {
       const chest = { ...done, treasureHunt: { roomOpen: true, pinned: CHART_PIECES.map((piece) => piece.id), chestOpened: true } };
-      expect(chaseLine(chest)).toBe('Next, a legend: ZAPDOS sleeps in the TURBINE HALL under the POWER STATION. Beat it, and you get one throw.');
+      expect(chaseLine(chest)).toBe('Next, a legend: ZAPDOS sleeps in the TURBINE HALL under the POWER STATION, at Lv 50. Beat it, and you get one throw.');
       expect(chaseLine({ ...chest, pokedexOwned: [145] })).toContain('ARTICUNO');
       // The next raid, the next one in turn.
       expect(chaseLine({ ...chest, raidRecord: { 'greystone-vale': { deployed: 21, extracted: 21, wiped: 0 } } })).toContain('ARTICUNO');
       expect(chaseLine({ ...chest, pokedexOwned: VALE_LEGENDS.map((legend) => legend.dexId) })).toBeUndefined();
     });
 
-    it('names only legends the vale really holds', () => {
+    it('names only legends the vale really holds, at the level it holds them', () => {
       const vale = JSON.parse(readFileSync('src/game/world/maps/greystoneVale.json', 'utf8')) as {
-        pokemon: { species: string; legendary?: boolean }[];
+        pokemon: { species: string; level: number; legendary?: boolean }[];
       };
-      const standing = vale.pokemon.filter((pokemon) => pokemon.legendary).map((pokemon) => pokemon.species).sort();
-      expect(VALE_LEGENDS.map((legend) => legend.speciesId).sort()).toEqual(standing);
+      const standing = vale.pokemon.filter((pokemon) => pokemon.legendary).map((pokemon) => `${pokemon.species} ${pokemon.level}`).sort();
+      expect(VALE_LEGENDS.map((legend) => `${legend.speciesId} ${legend.level}`).sort()).toEqual(standing);
+    });
+
+    it('tells a team far below a legend the gap, rather than to beat it', () => {
+      const chest = { ...done, treasureHunt: { roomOpen: true, pinned: CHART_PIECES.map((piece) => piece.id), chestOpened: true } };
+      expect(chaseLine(chest, { bestLevel: 18 })).toBe(
+        "Next, a legend: ZAPDOS sleeps in the TURBINE HALL under the POWER STATION, at Lv 50. Your best is Lv 18. Grow into it - it isn't going anywhere.",
+      );
+      expect(chaseLine(chest, { bestLevel: 50 - LEGEND_REACH_LEVELS })).toContain('Beat it, and you get one throw.');
+    });
+
+    it('reads the vault off a stash: what it holds, and its best level', () => {
+      const stash = new Stash();
+      stash.addPokemon(new Pokemon(CHARMANDER, 12));
+      stash.addPokemon(new Pokemon(CHARMANDER, 23));
+      stash.addItem('bottled-chart', 1);
+      const vault = vaultOf(stash);
+      expect(vault.bestLevel).toBe(23);
+      expect(vault.held?.('bottled-chart')).toBe(1);
+      expect(chaseLine(done, vault)).toContain('take that bottled chart');
     });
   });
 });
