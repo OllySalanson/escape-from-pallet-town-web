@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
-import { bagFocusPreference, firstMatching } from './menuFocus';
+import { areaHopIndex, bagFocusPreference, firstMatching } from './menuFocus';
 
 /**
  * A stand-in for `root.querySelector` over a menu whose controls are listed in
@@ -47,5 +47,38 @@ describe('menu focus', () => {
       // A comma inside one focus selector is the fault coming back.
       expect(source).not.toMatch(/\.(?:re)?focus\('[^']*,[^']*'\)/);
     }
+  });
+});
+
+/**
+ * The navigation audit (25 Nov 2026), rule 10: Tab hops between the areas of
+ * a screen and never leaves the panel. On THE ARMOURY RACK, Left and Right are
+ * the counts' and the PACK was reached only by Down through every supply row.
+ */
+describe('Tab between the areas of a screen', () => {
+  // Three supply rows, two pack squares and TIDY, then DONE on the bar.
+  const RACK = ['supplies', 'supplies', 'supplies', 'pack', 'pack', 'pack', 'bar'];
+
+  it('goes from the supplies to the pack, then the bar, and round to the supplies', () => {
+    expect(areaHopIndex(RACK, 1, false)).toBe(3);
+    expect(areaHopIndex(RACK, 4, false)).toBe(6);
+    expect(areaHopIndex(RACK, 6, false)).toBe(0);
+  });
+
+  it('goes back with Shift', () => {
+    expect(areaHopIndex(RACK, 4, true)).toBe(0);
+    expect(areaHopIndex(RACK, 0, true)).toBe(6);
+  });
+
+  it('lands where the cursor last was in that area', () => {
+    expect(areaHopIndex(RACK, 6, false, (area, indices) => (area === 'supplies' ? indices[2] : undefined))).toBe(2);
+    // A remembered control no longer in the area is no answer.
+    expect(areaHopIndex(RACK, 6, false, () => 5)).toBe(0);
+  });
+
+  it('starts in the first area with nothing focused, and stays put with one area', () => {
+    expect(areaHopIndex(RACK, -1, false)).toBe(0);
+    expect(areaHopIndex(['list', 'list'], 0, false)).toBeUndefined();
+    expect(areaHopIndex([], -1, false)).toBeUndefined();
   });
 });

@@ -3,7 +3,7 @@ import { audioManager } from '../audio/AudioManager';
 import { menuClickSound } from '../audio/menuSounds';
 import { menuLayer } from '../display/menuStage';
 import { columnTracks, isLowRoom, isShortRoom, planColumns, roomFor } from './columnLayout';
-import { CURSOR_CONTROLS, firstMatching, READING_PANES } from './menuFocus';
+import { areaHopIndex, CURSOR_CONTROLS, firstMatching, READING_PANES } from './menuFocus';
 import { claimOverlayKeyboard } from './overlayKeyboard';
 import { PointerPreview } from './pointerPreview';
 import {
@@ -26,6 +26,10 @@ export class MenuOverlay {
   private readonly resizeHandler: () => void;
   /** Which control the player was last on, so a re-render can put them back. */
   private lastFocusKey: string | null = null;
+  /** The control the cursor was last on in each area of the screen, for Tab to land back on (`areaHopIndex`). */
+  private readonly lastInArea = new Map<string, string>();
+  /** Whether the key being handled was pressed with Shift: Shift+Tab hops back. */
+  private shiftHeld = false;
   /** The frame the cursor is waiting on, while it is waiting on one. */
   private cursorFrame: number | undefined;
   /** Scrolls the panes of the last `redraw` back, once the screen is laid out. */
@@ -64,6 +68,7 @@ export class MenuOverlay {
       // Every screen moves its cursor by moving focus, so focus having moved is
       // the one definition of "the cursor moved" that holds for all of them.
       const focused = document.activeElement;
+      this.shiftHeld = event.shiftKey === true;
       onKeyDown(event);
       if (document.activeElement !== focused && event.key.startsWith('Arrow')) {
         audioManager.play('select');
@@ -96,6 +101,9 @@ export class MenuOverlay {
     this.focusHandler = (event) => {
       const control = event.target instanceof HTMLElement ? event.target : null;
       this.lastFocusKey = control ? focusKeyOf(control) : null;
+      if (control && this.lastFocusKey !== null) {
+        this.lastInArea.set(areaOf(control, this.root), this.lastFocusKey);
+      }
       this.pointer.cursorMoved();
       this.showHelpFor(control);
     };
@@ -242,7 +250,7 @@ export class MenuOverlay {
    */
   public moveCursor(key: string): boolean {
     if (key === 'Tab') {
-      return this.stepAcrossPane();
+      return this.stepAcrossPane() || this.hopArea();
     }
     const direction = focusDirectionForKey(key);
     if (!direction) {
@@ -300,6 +308,34 @@ export class MenuOverlay {
       return false;
     }
     controls[target].focus();
+    return true;
+  }
+
+  /**
+   * Tab past any pane: on to the next area of the screen (Shift+Tab back),
+   * landing where the cursor last was there (`areaHopIndex`). It always takes
+   * the key, so Tab never walks out of the panel into the page behind it.
+   */
+  private hopArea(): boolean {
+    const controls = this.cursorControls();
+    if (controls.length === 0) {
+      return false;
+    }
+    const areas = controls.map((control) => areaOf(control, this.root));
+    const target = areaHopIndex(
+      areas,
+      controls.indexOf(document.activeElement as HTMLElement),
+      this.shiftHeld,
+      (area, indices) => {
+        const key = this.lastInArea.get(area);
+        const remembered = key === undefined ? undefined : indices.find((index) => focusKeyOf(controls[index]) === key);
+        return remembered ?? indices.find((index) => controls[index].hasAttribute('data-cursor-start'));
+      },
+    );
+    if (target !== undefined) {
+      controls[target].focus();
+      this.scrollPastTopCut(controls[target]);
+    }
     return true;
   }
 
@@ -1234,6 +1270,26 @@ function keyedByClasses(root: RedrawnRoot): Map<string, { scrollTop: number }> {
     keyed.set(`${classes}#${nth}`, element);
   }
   return keyed;
+}
+
+/**
+ * The area of the screen a control is in, for Tab: its outermost framed window
+ * that is not itself a control - the supplies, the pack, the bar under them -
+ * named by its class and its place among the screen's windows, which survive a
+ * redraw. A control in no window is in the screen's own area.
+ */
+function areaOf(control: HTMLElement, root: HTMLElement): string {
+  let area: HTMLElement | null = null;
+  for (let node = control.parentElement; node && node !== root; node = node.parentElement) {
+    if (node.classList.contains('px-window') && !node.matches(CURSOR_CONTROLS)) {
+      area = node;
+    }
+  }
+  if (!area) {
+    return 'screen';
+  }
+  const windows = [...root.querySelectorAll('.px-window')];
+  return `${area.className}#${windows.indexOf(area)}`;
 }
 
 function focusKeyOf(control: HTMLElement): string | null {
