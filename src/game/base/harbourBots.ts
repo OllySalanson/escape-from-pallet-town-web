@@ -1,3 +1,4 @@
+import type { HonourId } from '../look/gymHonours';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { createSeededRng, type SeededRng } from '../run/rng';
 import { WORKSHOP_UPGRADES } from '../hub/workshop';
@@ -63,6 +64,13 @@ export interface HarbourBot {
   readonly look: DressedLook;
   /** What is on their back, if anything: most people about a raiding port have a pack, and not all. */
   readonly pack?: PackItemId;
+  /**
+   * The gym honours they wear (`../look/gymHonours`): a few of the old hands
+   * have MISTY's, one has KOGA's too, and nobody more - a harbour where everybody
+   * wears one makes the brag worth nothing, and one where nobody does never says
+   * there is one to win.
+   */
+  readonly honours?: readonly HonourId[];
 }
 
 export const HARBOUR_BOTS: readonly HarbourBot[] = [
@@ -99,6 +107,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     partner: 'wartortle',
     look: { head: 'ace-tail', top: 'plain-tee', legs: 'plain-trousers', body: 'ace-suit' },
     pack: 'raid-pack',
+    honours: ['cascade'],
   },
   {
     id: 'bot:xkitx',
@@ -133,6 +142,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     partner: 'venusaur',
     look: { head: 'golden-waves', top: 'plain-tee', legs: 'plain-trousers', body: 'long-skirt' },
     pack: 'ranger-pack',
+    honours: ['cascade'],
   },
   {
     id: 'bot:toise4life',
@@ -146,6 +156,7 @@ export const HARBOUR_BOTS: readonly HarbourBot[] = [
     partner: 'charizard',
     look: { head: 'ace-wave', top: 'ace-jacket', legs: 'ace-trousers', body: null },
     pack: 'raid-pack',
+    honours: ['cascade', 'soul'],
   },
 ];
 

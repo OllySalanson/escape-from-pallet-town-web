@@ -1,3 +1,4 @@
+import type { HonourId } from '../look/gymHonours';
 import type { RaceState } from '../world/races';
 import type { RepelState } from '../world/repel';
 import type { RaidWalk } from '../world/raidMemory';
@@ -75,6 +76,12 @@ export interface ActiveRunSession {
    * is the classic figure.
    */
   readonly look?: DressedLook;
+  /**
+   * The gym honours the player wore out of the door (`../look/gymHonours`),
+   * read once as the look is. An honour won on this raid goes on at once
+   * besides (`WorldScene.walkingTexture`).
+   */
+  readonly honours?: readonly HonourId[];
   readonly objectives: readonly RunObjective[];
   /** The deterministic world configuration generated when this raid begins. */
   readonly plan?: RunPlan;
@@ -285,6 +292,7 @@ export function createActiveRunSession(
   partner?: Pokemon,
   look?: DressedLook,
   raidId?: string,
+  honours: readonly HonourId[] = [],
 ): ActiveRunSession {
   return {
     ...(raidId === undefined ? {} : { raidId }),
@@ -297,6 +305,7 @@ export function createActiveRunSession(
     ...(packItemId === undefined ? {} : { packItemId }),
     ...(partner === undefined ? {} : { partner }),
     ...(look === undefined ? {} : { look }),
+    ...(honours.length === 0 ? {} : { honours: [...honours] }),
     objectives: [...objectives],
     ...(plan === undefined
       ? {}

@@ -417,7 +417,8 @@ export class TitleScene extends Phaser.Scene {
     const frameBottom = height;
     // The trainer is Red until the save has dressed them: then it is their own look.
     const look = this.summary.kind === 'game' ? this.summary.look : undefined;
-    const trainerKey = look ? lookTexture(this, look) : characterDesignTextureKey('protagonist-red');
+    const honours = this.summary.kind === 'game' ? (this.summary.honours ?? []) : [];
+    const trainerKey = look ? lookTexture(this, look, null, honours) : characterDesignTextureKey('protagonist-red');
     const rivalKey = characterDesignTextureKey('blue');
     this.trainer = this.track(this.add.sprite(-100, frameBottom, trainerKey).setOrigin(0.5, 1).setDepth(7));
     this.rival = this.track(this.add.sprite(-100, frameBottom, rivalKey).setOrigin(0.5, 1).setDepth(7));

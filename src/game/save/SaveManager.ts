@@ -26,6 +26,7 @@ import { COIN_PRICE, giftWaiting, type PitGift, type PitRecord } from '../base/p
 import { readRaidMemory, remembering, type RaidMarkKind, type RaidMemory, type RaidWalk } from '../world/raidMemory';
 import { canWear, readLook, type DressedLook, type PlayerLook } from '../look/look';
 import { billFor, billLine, checkBill, ownedWearables, unownedIn } from '../look/wardrobe';
+import { honoursEarned, honoursWorn, isHonourId, readHonours, type HonourId } from '../look/gymHonours';
 import { isWearableId } from '../look/wearables';
 import { getWorkshopUpgrade, takePayment, type PaymentCheck } from '../hub/workshop';
 import {
@@ -422,6 +423,13 @@ export interface RaidProgress {
    * saves, which reads as nothing bought.
    */
   readonly wardrobe?: readonly string[];
+  /**
+   * The gym honours the player has chosen to take off (`../look/gymHonours`).
+   * An honour is worn because its leader is in `defeatedBosses`, never stored as
+   * owned; this is only the choice not to show one. Absent, every honour earned
+   * is worn - which is what every save written before honours reads as.
+   */
+  readonly honoursHidden?: readonly string[];
   /**
    * Every kind of Pokémon this save has owned, by dex number (`../hub/pokedex`).
    * It is written, never asked to be kept up: every save adds whatever kinds
@@ -988,6 +996,8 @@ export type SaveSummary =
       readonly partner?: string;
       /** What the player wears, for the title screen's trainer; absent is the classic look. */
       readonly look?: DressedLook;
+      /** The gym honours they wear with it (`../look/gymHonours`). */
+      readonly honours?: readonly HonourId[];
     };
 
 /** What a prize bought at THE GAME CORNER came to: the game after it, and what it said or gave. */
@@ -1059,6 +1069,7 @@ export class SaveManager {
       raids: raidsDeployed(progress),
       ...(partner ? { partner: partner.pokemon.base.id } : {}),
       ...(progress.look ? { look: progress.look } : {}),
+      ...(honoursWorn(progress).length > 0 ? { honours: honoursWorn(progress) } : {}),
     };
   }
 
@@ -2154,6 +2165,25 @@ export class SaveManager {
     const raidProgress: RaidProgress = { ...game.raidProgress };
     delete (raidProgress as { look?: DressedLook }).look;
     const next: RestoredGame = { ...game, raidProgress: worn ? { ...raidProgress, look: worn } : raidProgress };
+    return this.save(next) ? next : undefined;
+  }
+
+  /**
+   * Puts a gym honour on or takes it off (`../look/gymHonours`): only one this
+   * save has earned. Returns the game as written, or nothing when it could not be.
+   */
+  public showHonour(id: string, shown: boolean): RestoredGame | undefined {
+    const game = this.load();
+    if (!game || !isHonourId(id) || !honoursEarned(game.raidProgress.defeatedBosses).includes(id)) {
+      return undefined;
+    }
+    const hidden = new Set(game.raidProgress.honoursHidden ?? []);
+    if (shown) hidden.delete(id);
+    else hidden.add(id);
+    const raidProgress: RaidProgress = { ...game.raidProgress };
+    delete (raidProgress as { honoursHidden?: readonly string[] }).honoursHidden;
+    const kept = readHonours([...hidden]);
+    const next: RestoredGame = { ...game, raidProgress: kept.length > 0 ? { ...raidProgress, honoursHidden: kept } : raidProgress };
     return this.save(next) ? next : undefined;
   }
 
@@ -3365,6 +3395,9 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     ...(readDerbyCleared(value.derbyCleared) ? { derbyCleared: readDerbyCleared(value.derbyCleared) } : {}),
     ...(readLook(value.look) ? { look: readLook(value.look) as DressedLook } : {}),
     ...(Array.isArray(value.wardrobe) ? { wardrobe: uniqueStrings(value.wardrobe).filter(isWearableId) } : {}),
+    ...(Array.isArray(value.honoursHidden) && readHonours(uniqueStrings(value.honoursHidden)).length > 0
+      ? { honoursHidden: readHonours(uniqueStrings(value.honoursHidden)) }
+      : {}),
     ...(Array.isArray(value.errands) ? { errands: clampErrandRecords(value.errands) } : {}),
     ...(Array.isArray(value.pokedexRewards)
       ? {

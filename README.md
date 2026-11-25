@@ -220,7 +220,10 @@ and say yes, you're let in to have a nose round for as long as you like (or unti
   dozen things aren't for sale at all: the legendary colours and the shiny ones - an Articuno
   crest, a jet-black Shiny Charizard jacket, a Mew dress - turn up only out in Greystone Vale,
   each where its Pokémon would be, and only once in a long while. Carry one home and it's yours.
-  Everybody else in the harbour sees what you wear.
+  Everybody else in the harbour sees what you wear. And the best two things in the shop window
+  can't be had in the shop at all: beat Misty and you walk out of her gym in her Cascade
+  neckerchief, beat Koga and his Soul band goes round your brow, steel plate and all. They go on
+  over whatever you wear, they stack, and everybody in the harbour can count them.
 
 And it's a working waterfront. The **Seagallop**, the islands ferry, is tied up at the jetty:
 she brings in the crates and the visitors. She used to take raiders out, before the Arena, and her sailor hasn't quite got over it. The **S.S. Anne** lies at the end of the long pier,

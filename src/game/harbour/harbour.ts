@@ -1,3 +1,4 @@
+import type { HonourId } from '../look/gymHonours';
 import type { DojoClassId } from '../arena/dojoRecord';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { PartnerSpeciesId } from '../base/partner';
@@ -83,7 +84,8 @@ export class HarbourSession {
 
   /**
    * The player is standing here, under this name (or none yet), with this
-   * kind of Pokemon at their heel (or none) for everybody else to see.
+   * kind of Pokemon at their heel (or none), in what they wear and the gym
+   * honours they have on (`../look/gymHonours`), for everybody else to see.
    */
   public stand(
     where: HarbourWhere,
@@ -94,6 +96,7 @@ export class HarbourSession {
     look: DressedLook | null = null,
     pack: PackItemId | null = null,
     dojoClass: DojoClassId | null = null,
+    honours: readonly HonourId[] = [],
   ): void {
     this.stopAwayClock();
     this.where = where;
@@ -101,7 +104,7 @@ export class HarbourSession {
     this.facing = facing;
     this.link.enter(this.me, placeFor(where, this.me), tile, facing);
     this.link.carry(partner);
-    this.link.wear(look, pack);
+    this.link.wear(look, pack, honours);
     this.link.rank(dojoClass);
     if (name && name !== this.named) {
       const renamed = this.named !== null;

@@ -1,3 +1,8 @@
+import { honoursWorn } from '../look/gymHonours';
+import { readLook } from '../look/look';
+import { lookTexture } from '../look/lookTexture';
+import type { Direction } from '../movement/gridMovement';
+import { CHARACTER_FRAME_HEIGHT, CHARACTER_FRAME_WIDTH, CHARACTER_SHEET_COLUMNS, getIdleFrame } from '../playerFrames';
 import Phaser from 'phaser';
 import { moodOfRaid } from '../base/arenaCrowd';
 import { currentTry, homeAfterRaid, recordWalkedOut } from '../maker/tryIt';
@@ -500,11 +505,13 @@ export class ExtractionScene extends Phaser.Scene {
    */
   private momentMarkup(moment: ResultMoment): string {
     const report = this.report;
-    const picture = moment.picture
-      ? moment.picture.kind === 'pokemon'
+    const picture = !moment.picture
+      ? ''
+      : moment.picture.kind === 'pokemon'
         ? `<img class="moment-picture is-pokemon" src="${publicAssetUrl(pokemonSpritePath('front', moment.picture.dexId, moment.picture.shiny))}" alt="" />`
-        : `<img class="moment-picture is-item" src="${iconUrl(itemIconName(moment.picture.itemId))}" alt="" />`
-      : '';
+        : moment.picture.kind === 'item'
+          ? `<img class="moment-picture is-item" src="${iconUrl(itemIconName(moment.picture.itemId))}" alt="" />`
+          : this.honourPicture();
     const next = this.nextThing();
     return pixelScreen({
       place: escapeHtml(report.eyebrow),
@@ -556,6 +563,34 @@ export class ExtractionScene extends Phaser.Scene {
       return `${who} waiting at base for your next raid.`;
     }
     return this.footerNote();
+  }
+
+  /**
+   * The player turning round in the gym honour just won, with every other one
+   * they wear (`look/gymHonours.ts`): the four standing frames of their own
+   * figure as a strip the card steps through, lingering on the back, where a
+   * neckerchief's collar and a band's knot are boldest. Nothing when the figure
+   * cannot be drawn.
+   */
+  private honourPicture(): string {
+    const progress = new SaveManager().load()?.raidProgress;
+    if (!progress || typeof document === 'undefined') return '';
+    const texture = lookTexture(this, readLook(progress.look), null, honoursWorn(progress));
+    if (!this.textures.exists(texture)) return '';
+    const source = this.textures.get(texture).getSourceImage() as CanvasImageSource;
+    const canvas = document.createElement('canvas');
+    const turn: readonly Direction[] = ['down', 'left', 'up', 'right'];
+    canvas.width = CHARACTER_FRAME_WIDTH * turn.length;
+    canvas.height = CHARACTER_FRAME_HEIGHT;
+    const context = canvas.getContext('2d');
+    if (!context) return '';
+    turn.forEach((direction, at) => {
+      const frame = getIdleFrame(direction);
+      const x = (frame % CHARACTER_SHEET_COLUMNS) * CHARACTER_FRAME_WIDTH;
+      const y = Math.floor(frame / CHARACTER_SHEET_COLUMNS) * CHARACTER_FRAME_HEIGHT;
+      context.drawImage(source, x, y, CHARACTER_FRAME_WIDTH, CHARACTER_FRAME_HEIGHT, at * CHARACTER_FRAME_WIDTH, 0, CHARACTER_FRAME_WIDTH, CHARACTER_FRAME_HEIGHT);
+    });
+    return `<span class="moment-picture is-honour" role="img" aria-label="You, wearing it" style="--honour-strip:url('${canvas.toDataURL()}')"></span>`;
   }
 
   /** Oak's one next thing (`hub/nextStep.ts`), read off the save this raid was just banked into. */

@@ -1,3 +1,4 @@
+import { honoursWorn, type HonourId } from '../look/gymHonours';
 import Phaser from 'phaser';
 import { thingLine } from '../base/thingLine';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
@@ -1467,6 +1468,7 @@ export class BaseScene extends Phaser.Scene {
       readLook(this.savedGame.raidProgress.look),
       this.wornPack(),
       shownClass(this.savedGame.raidProgress.dojo),
+      this.wornHonours(),
     );
     this.createCaptions();
     this.createDialogBox();
@@ -4059,7 +4061,7 @@ export class BaseScene extends Phaser.Scene {
           ? ((appearance) => [appearance.textureKey, worldCharacterIdleFrame(appearance, person.facing)] as const)(
               getWorldCharacterAppearance('npc', person.design),
             )
-          : ([lookTexture(this, person.look, person.pack ?? null), getIdleFrame(person.facing)] as const);
+          : ([lookTexture(this, person.look, person.pack ?? null, person.honours), getIdleFrame(person.facing)] as const);
       const sprite = this.add
         .sprite(person.tile.x * TILE_SIZE, person.tile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET, texture, frame)
         .setOrigin(0, 0)
@@ -4169,7 +4171,7 @@ export class BaseScene extends Phaser.Scene {
   private createPlayer(): void {
     // The player is drawn in what they wear (`look/look.ts`); a save that has
     // never been to the boutique wears the classic figure the game always drew.
-    this.playerTexture = lookTexture(this, readLook(this.savedGame.raidProgress.look), this.wornPack());
+    this.playerTexture = lookTexture(this, readLook(this.savedGame.raidProgress.look), this.wornPack(), this.wornHonours());
     this.player = this.add
       .sprite(0, 0, this.playerTexture, getIdleFrame(this.facing))
       .setOrigin(0, 0);
@@ -6213,6 +6215,7 @@ export class BaseScene extends Phaser.Scene {
       readLook(this.savedGame.raidProgress.look),
       this.wornPack(),
       shownClass(this.savedGame.raidProgress.dojo),
+      this.wornHonours(),
     );
   }
 
@@ -6642,6 +6645,8 @@ export class BaseScene extends Phaser.Scene {
         this.partnerSpecies(),
         readLook(this.savedGame.raidProgress.look),
         this.wornPack(),
+        shownClass(this.savedGame.raidProgress.dojo),
+        this.wornHonours(),
       );
     });
     this.scene.pause();
@@ -7826,12 +7831,18 @@ export class BaseScene extends Phaser.Scene {
     return (this.kit ? this.kit.flow.packItemId : bestPackIn(this.savedGame.stash.listItems())) ?? null;
   }
 
+  /** The gym honours the player wears (`look/gymHonours.ts`): every one earned that they have not taken off. */
+  private wornHonours(): readonly HonourId[] {
+    return this.choosing ? [] : honoursWorn(this.savedGame.raidProgress);
+  }
+
   /** Draws the player in what the save says they wear, with the pack they have on, and tells the harbour. */
   private dressPlayer(): void {
     const look = readLook(this.savedGame.raidProgress.look);
     const pack = this.wornPack();
-    harbour()?.link.wear(look, pack);
-    const texture = lookTexture(this, look, pack);
+    const honours = this.wornHonours();
+    harbour()?.link.wear(look, pack, honours);
+    const texture = lookTexture(this, look, pack, honours);
     if (texture === this.playerTexture) {
       return;
     }

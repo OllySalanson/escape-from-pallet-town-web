@@ -22,13 +22,13 @@ import {
   getWalkFrames,
 } from '../playerFrames';
 import type { Direction } from '../movement/gridMovement';
-import type { PackItemId } from '../items/items';
 import { isPackId } from '../items/packs';
 import { BIKE_FRAME_RATE, BIKE_FRAME_SIZE, BIKE_SHEET_COLUMNS, BIKE_TEXTURE } from '../world/bicycle';
 import { SHARED_CHARACTER_TEXTURE } from '../world/characterPresentation';
 import { composeLook, PIECE_HEIGHT, PIECE_WIDTH, type Pixels } from './composeLook';
 import { lookKey, type PlayerLook } from './look';
-import { dressInPack } from './wornPack';
+import { honourArts, honoursKey, orderedHonours } from './gymHonours';
+import { dressIn, packArt, type WornArt } from './wornPack';
 
 export const WEARABLES_TEXTURE = 'wearables';
 export const WEARABLES_ASSET_PATH = 'assets/wearables.png';
@@ -37,16 +37,21 @@ const DIRECTIONS: readonly Direction[] = ['down', 'right', 'up', 'left'];
 const WALK_FRAME_RATE = 10;
 
 /**
- * The texture a look is drawn from, with `pack` on its back if it is one, composing
- * it the first time. A figure that cannot be composed is drawn in the classic
+ * The texture a look is drawn from, with `pack` on its back if it is one and the
+ * gym `honours` it wears (`gymHonours.ts`), composing it the first time. A figure that cannot be composed is drawn in the classic
  * clothes with nothing on its back, which is always better than no figure.
  */
-export function lookTexture(scene: Phaser.Scene, look: PlayerLook, pack?: string | null): string {
-  const worn = isPackId(pack) ? pack : null;
-  if (!look && !worn) {
+export function lookTexture(
+  scene: Phaser.Scene,
+  look: PlayerLook,
+  pack?: string | null,
+  honours: readonly string[] = [],
+): string {
+  const worn = wornOn(pack, honours);
+  if (!look && worn.length === 0) {
     return SHARED_CHARACTER_TEXTURE;
   }
-  const key = `look:${lookKey(look)}${worn ? `#${worn}` : ''}`;
+  const key = `look:${lookKey(look)}${wornKey(pack, honours)}`;
   const textures = scene.textures as Phaser.Textures.TextureManager | undefined;
   if (!textures || typeof textures.exists !== 'function') {
     return SHARED_CHARACTER_TEXTURE;
@@ -54,9 +59,7 @@ export function lookTexture(scene: Phaser.Scene, look: PlayerLook, pack?: string
   if (textures.exists(key)) {
     return key;
   }
-  const pixels = look
-    ? dressedPixels(textures, look, worn, key)
-    : classicPixels(textures, worn!);
+  const pixels = look ? dressedPixels(textures, look, worn, key) : classicPixels(textures, worn);
   if (!pixels || !addSheet(textures, key, pixels, PIECE_WIDTH, CHARACTER_FRAME_WIDTH * CHARACTER_SHEET_COLUMNS, PIECE_HEIGHT, CHARACTER_FRAME_WIDTH, CHARACTER_FRAME_HEIGHT)) {
     return SHARED_CHARACTER_TEXTURE;
   }
@@ -69,11 +72,12 @@ export function lookTexture(scene: Phaser.Scene, look: PlayerLook, pack?: string
  * figure is FireRed's own, but what they carry is still theirs. Its pedalling is
  * under `getWalkAnimationKey(direction, texture)`, as on the rider with no pack.
  */
-export function bikeTexture(scene: Phaser.Scene, pack?: string | null): string {
-  if (!isPackId(pack)) {
+export function bikeTexture(scene: Phaser.Scene, pack?: string | null, honours: readonly string[] = []): string {
+  const worn = wornOn(pack, honours);
+  if (worn.length === 0) {
     return BIKE_TEXTURE;
   }
-  const key = `${BIKE_TEXTURE}#${pack}`;
+  const key = `${BIKE_TEXTURE}${wornKey(pack, honours)}`;
   const textures = scene.textures as Phaser.Textures.TextureManager | undefined;
   if (!textures || typeof textures.exists !== 'function') {
     return BIKE_TEXTURE;
@@ -86,7 +90,7 @@ export function bikeTexture(scene: Phaser.Scene, pack?: string | null): string {
   if (!sheet || sheet.width !== side) {
     return BIKE_TEXTURE;
   }
-  const pixels = dressInPack({ width: side, under: sheet.data }, 'rider', pack);
+  const pixels = dressIn({ width: side, under: sheet.data }, 'rider', worn);
   if (!addSheet(textures, key, pixels, side, side, side, BIKE_FRAME_SIZE, BIKE_FRAME_SIZE)) {
     return BIKE_TEXTURE;
   }
@@ -94,10 +98,25 @@ export function bikeTexture(scene: Phaser.Scene, pack?: string | null): string {
   return key;
 }
 
+/**
+ * Everything worn over the figure, in the order it is drawn: the pack, then the
+ * gym honours (`gymHonours.ts`), so a neckerchief's collar shows over a pack's top
+ * rather than vanishing under it from behind.
+ */
+function wornOn(pack: string | null | undefined, honours: readonly string[]): readonly WornArt[] {
+  return [...(isPackId(pack) ? [packArt(pack)] : []), ...honourArts(honours)];
+}
+
+/** The part of a texture key that says what is worn over the look: `#pack` and `~honours`. */
+function wornKey(pack: string | null | undefined, honours: readonly string[]): string {
+  const shown = honoursKey(orderedHonours(honours));
+  return `${isPackId(pack) ? `#${pack}` : ''}${shown ? `~${shown}` : ''}`;
+}
+
 function dressedPixels(
   textures: Phaser.Textures.TextureManager,
   look: NonNullable<PlayerLook>,
-  pack: PackItemId | null,
+  worn: readonly WornArt[],
   key: string,
 ): Uint8ClampedArray | null {
   const atlas = wearablesAtlas(textures);
@@ -106,8 +125,8 @@ function dressedPixels(
   }
   const { under, head } = composeLook(atlas, look, 'layers');
   headRows.set(key, firstDrawnRow(head));
-  if (pack) {
-    return dressInPack({ width: PIECE_WIDTH, under, head }, 'firered', pack);
+  if (worn.length > 0) {
+    return dressIn({ width: PIECE_WIDTH, under, head }, 'firered', worn);
   }
   for (let at = 0; at < under.length; at += 4) {
     if (head[at + 3]) {
@@ -117,8 +136,8 @@ function dressedPixels(
   return under;
 }
 
-/** The classic figure's walking frames with a pack on: the first four columns of `character.png`. */
-function classicPixels(textures: Phaser.Textures.TextureManager, pack: PackItemId): Uint8ClampedArray | null {
+/** The classic figure's walking frames with what is worn on: the first four columns of `character.png`. */
+function classicPixels(textures: Phaser.Textures.TextureManager, worn: readonly WornArt[]): Uint8ClampedArray | null {
   const sheet = sheetPixels(textures, SHARED_CHARACTER_TEXTURE);
   if (!sheet) {
     return null;
@@ -127,7 +146,7 @@ function classicPixels(textures: Phaser.Textures.TextureManager, pack: PackItemI
   for (let y = 0; y < PIECE_HEIGHT; y += 1) {
     under.set(sheet.data.subarray(y * sheet.width * 4, (y * sheet.width + PIECE_WIDTH) * 4), y * PIECE_WIDTH * 4);
   }
-  return dressInPack({ width: PIECE_WIDTH, under }, 'classic', pack);
+  return dressIn({ width: PIECE_WIDTH, under }, 'classic', worn);
 }
 
 /** Puts pixels on a canvas of `canvasWidth` by `height` and hands it to Phaser as a sprite sheet. */

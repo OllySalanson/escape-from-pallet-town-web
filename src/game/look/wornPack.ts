@@ -38,7 +38,8 @@ export type WornPackBody = 'classic' | 'firered' | 'rider';
 export type PackLayer = 'behind' | 'front' | 'over';
 
 /** The way a pack is drawn: side on is one drawing, mirrored for the other side. */
-type PackFacing = 'down' | 'side' | 'up';
+export type WornFacing = 'down' | 'side' | 'up';
+type PackFacing = WornFacing;
 
 export interface PackPart {
   readonly layer: PackLayer;
@@ -55,6 +56,29 @@ export interface PackPart {
   readonly fixed?: true;
   /** Stands over the head rather than from the shoulders, for a body whose head and shoulders are not as far apart. */
   readonly overHead?: true;
+  /**
+   * Drawn only over the figure itself, never past its edge and never over its
+   * outline: a band tied round whatever head it is worn on takes that head's
+   * shape, a cap's or a bob's, without a drawing for each.
+   */
+  readonly clip?: true;
+  /**
+   * Tied at the brow: moved up or down with the face of the head it is worn on,
+   * so it sits on the forehead under a cap's brim and over a crop's fringe alike
+   * (`browDrop`). Its rows are drawn for the reference head, whose face starts
+   * on row `REFERENCE_FACE_ROW`.
+   */
+  readonly brow?: true;
+}
+
+/**
+ * Something worn, drawn the way a pack is: its parts by facing, and the colours
+ * its letters stand for (`o` is always the figure's own outline). A pack is one
+ * (`WORN_PACK_ART`), and so is a gym honour (`gymHonours.ts`).
+ */
+export interface WornArt {
+  readonly colours: Readonly<Record<string, number>>;
+  readonly parts: Readonly<Record<WornFacing, readonly PackPart[]>>;
 }
 
 type PackSway = readonly [x: number, y: number];
@@ -433,6 +457,12 @@ interface BodyPlace {
   readonly ownBag?: ReadonlyMap<number, number>;
   /** Whether a step that does not dip the figure lifts what it carries instead. Pedalling does not. */
   readonly bounces: boolean;
+  /**
+   * How much further down than `shift` says a `brow` part goes, by facing: the
+   * classic figure's face is higher on its head than a FireRed one's, and the
+   * rider's lower under his cap. A FireRed look reads its own (`browDrop`).
+   */
+  readonly brow?: Readonly<Record<PackFacing, number>>;
 }
 
 export const BODY_PLACES: Readonly<Record<WornPackBody, BodyPlace>> = {
@@ -449,6 +479,7 @@ export const BODY_PLACES: Readonly<Record<WornPackBody, BodyPlace>> = {
     shift: { down: [0, -1], side: [1, -2], up: [0, -3] },
     overHeadRise: 2,
     chin: { down: 17, side: 18, up: 16 },
+    brow: { down: -4, side: -3, up: -2 },
     bounces: true,
   },
   rider: {
@@ -456,6 +487,7 @@ export const BODY_PLACES: Readonly<Record<WornPackBody, BodyPlace>> = {
     frameHeight: 32,
     shift: { down: [8, -3], side: [8, -3], up: [8, -4] },
     chin: { down: 17, side: 16, up: 15 },
+    brow: { down: 2, side: 1, up: 3 },
     sideInFront: true,
     ownBag: new Map([
       [0xffde5a, 0xc53939],
@@ -532,6 +564,37 @@ function outlineOf(body: Uint8Array | Uint8ClampedArray): number {
   return darkest;
 }
 
+/** The first row of the reference FireRed head's face, which `brow` parts are drawn against. */
+export const REFERENCE_FACE_ROW = 16;
+
+/** FireRed's lightest skin, which every face it draws starts with at its top row. */
+const FACE_SKIN = 0xffd5b4;
+
+/**
+ * How many rows lower than the reference head's this head's face starts, read
+ * off its standing frame facing down: a FireRed head has the same face on the
+ * same body, but a brim or a heavy fringe covers its top. Nought for a figure
+ * with no head of its own (the classic figure and the rider are one drawing each).
+ */
+export function browDrop(head: Uint8Array | Uint8ClampedArray | undefined, width: number): number {
+  if (!head) return 0;
+  for (let y = 0; y < 32; y += 1) {
+    for (let x = 0; x < 16; x += 1) {
+      const at = (y * width + x) * 4;
+      if (head[at + 3] === 255 && ((head[at] << 16) | (head[at + 1] << 8) | head[at + 2]) === FACE_SKIN) {
+        return y - REFERENCE_FACE_ROW;
+      }
+    }
+  }
+  return 0;
+}
+
+/** Whether a pixel is the figure's own, solid and not its outline: where a clipped part may go. */
+function onFigure(under: Uint8Array | Uint8ClampedArray, head: Uint8Array | Uint8ClampedArray, at: number, outline: number): boolean {
+  const from = head[at + 3] === 255 ? head : under[at + 3] === 255 ? under : null;
+  return from !== null && ((from[at] << 16) | (from[at + 1] << 8) | from[at + 2]) !== outline;
+}
+
 function put(out: Uint8ClampedArray, at: number, colour: number): void {
   out[at] = colour >> 16;
   out[at + 1] = (colour >> 8) & 255;
@@ -591,6 +654,21 @@ function withoutOwnBag(pixels: Uint8Array | Uint8ClampedArray, place: BodyPlace)
  * four rows and four columns the walk is drawn from are dressed.
  */
 export function dressInPack(figure: FigurePixels, body: WornPackBody, pack: PackItemId): Uint8ClampedArray {
+  return dressIn(figure, body, [packArt(pack)]);
+}
+
+/** A pack as something worn. */
+export function packArt(pack: PackItemId): WornArt {
+  return { colours: PACK_COLOURS, parts: WORN_PACK_ART[pack] };
+}
+
+/**
+ * The figure with everything in `worn` on it, RGBA, the size it came: each
+ * layer is drawn for every piece in the order given, so a later piece's straps
+ * go over an earlier one's. Only the four rows and four columns the walk is
+ * drawn from are dressed.
+ */
+export function dressIn(figure: FigurePixels, body: WornPackBody, worn: readonly WornArt[]): Uint8ClampedArray {
   const place = BODY_PLACES[body];
   const { width } = figure;
   const { under, head } = figure.head
@@ -598,11 +676,12 @@ export function dressInPack(figure: FigurePixels, body: WornPackBody, pack: Pack
     : cutAtChin(withoutOwnBag(figure.under, place), width, body);
   const out = new Uint8ClampedArray(figure.under.length);
   const outline = outlineOf(figure.under);
+  const ownBrow = body === 'firered' ? browDrop(figure.head, width) : 0;
 
   ROWS.forEach((direction, row) => {
     const mirrored = direction === 'left';
     const facing = facingOf(direction);
-    const parts = WORN_PACK_ART[pack][facing];
+    const brow = ownBrow + (place.brow?.[facing] ?? 0);
     for (let column = 0; column < COLUMNS; column += 1) {
       const left = column * place.frameWidth;
       const top = row * place.frameHeight;
@@ -610,14 +689,15 @@ export function dressInPack(figure: FigurePixels, body: WornPackBody, pack: Pack
       const inFront = facing === 'side' && place.sideInFront === true;
 
       const drawLayer = (layer: PackLayer): void => {
-        for (const part of parts) {
+        for (const { colours, parts: byFacing } of worn) for (const part of byFacing[facing]) {
           if ((inFront && part.layer === 'behind' ? 'front' : part.layer) !== layer) continue;
           const stepping = column % 2 === 1;
           const [swayX, swayY] = stepping && part.sway ? part.sway[(column - 1) / 2] : [0, 0];
           // A step always moves what is hung on a figure: down with it, or up if it does not dip.
           const lift = stepping && place.bounces && stepY === 0 && !part.sway && !part.fixed ? -1 : 0;
           part.rows.forEach((pixels, rowOfPart) => {
-            const y = part.y + rowOfPart + place.shift[facing][1] + stepY + swayY + lift - (part.overHead ? (place.overHeadRise ?? 0) : 0);
+            const y =
+              part.y + rowOfPart + place.shift[facing][1] + stepY + swayY + lift - (part.overHead ? (place.overHeadRise ?? 0) : 0) + (part.brow ? brow : 0);
             if (y < 0 || y >= place.frameHeight) return;
             for (let i = 0; i < pixels.length; i += 1) {
               const key = pixels[i];
@@ -625,7 +705,9 @@ export function dressInPack(figure: FigurePixels, body: WornPackBody, pack: Pack
               const across = mirrored ? place.frameWidth - 1 - i - place.shift[facing][0] : i + place.shift[facing][0];
               const x = across + (mirrored ? -swayX : swayX) + stepX;
               if (x < 0 || x >= place.frameWidth) continue;
-              put(out, ((top + y) * width + left + x) * 4, key === OUTLINE ? outline : PACK_COLOURS[key]);
+              const at = ((top + y) * width + left + x) * 4;
+              if (part.clip && !onFigure(under, head, at, outline)) continue;
+              put(out, at, key === OUTLINE ? outline : colours[key]);
             }
           });
         }

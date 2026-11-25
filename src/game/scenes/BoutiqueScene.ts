@@ -2,7 +2,9 @@ import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
-import { boutiqueMarkup, mirrorFigures, shelfStep, wornRows, type BoutiqueMode, type BoutiqueState } from '../look/boutiqueView';
+import { boutiqueMarkup, honoursIfChosen, mirrorFigures, shelfStep, wornRows, type BoutiqueMode, type BoutiqueState } from '../look/boutiqueView';
+import { honourArts, honourById, honoursEarned, honoursKey, honoursWorn, isHonourId, type HonourId } from '../look/gymHonours';
+import { dressIn, type WornPackBody } from '../look/wornPack';
 import { composeLook, PIECE_HEIGHT, PIECE_WIDTH } from '../look/composeLook';
 import { lookKey, readLook, wearing, type PlayerLook } from '../look/look';
 import { wearablesAtlas } from '../look/lookTexture';
@@ -87,6 +89,14 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
     ];
   }
 
+  private honoursEarned(): readonly HonourId[] {
+    return this.game_ ? honoursEarned(this.game_.raidProgress.defeatedBosses) : [];
+  }
+
+  private honoursWorn(): readonly HonourId[] {
+    return this.game_ ? honoursWorn(this.game_.raidProgress) : [];
+  }
+
   private wearingNow(): PlayerLook {
     return readLook(this.game_?.raidProgress.look);
   }
@@ -99,7 +109,8 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
       wearing: this.wearingNow(),
       owned: ownedWearables(this.game_?.raidProgress.wardrobe, stash),
       held: (itemId) => stash?.itemCount(itemId) ?? 0,
-      sheet: (look) => this.sheet(look),
+      sheet: (look, honours) => this.sheet(look, honours ?? this.honoursWorn()),
+      honours: { earned: this.honoursEarned(), worn: this.honoursWorn() },
       ...(this.status ? { status: this.status } : {}),
     };
   }
@@ -133,6 +144,9 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
       button.onclick = (event) => whole && this.tryOnCard(whole.look, `[data-whole="${whole.id}"]`, event);
     });
     root.querySelector<HTMLButtonElement>('[data-classic]')!.onclick = (event) => this.tryOnCard(null, '[data-classic]', event);
+    root.querySelectorAll<HTMLButtonElement>('[data-honour]').forEach((button) => {
+      button.onclick = () => this.chooseHonour(button.dataset.honour ?? '');
+    });
     root.querySelectorAll<HTMLButtonElement>('[data-jump]').forEach((button) => {
       button.onclick = () => this.jumpTo(button.dataset.jump ?? '');
     });
@@ -180,13 +194,22 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
 
   private preview(target: HTMLElement): void {
     let look: PlayerLook | undefined;
+    const honour = target.dataset.honour;
+    if (honour && isHonourId(honour)) {
+      // A gym honour shows on what is in the mirror, as ENTER would leave it.
+      const mirror = this.overlay?.root.querySelector<HTMLElement>('[data-mirror]');
+      if (mirror) mirror.innerHTML = mirrorFigures(this.sheet(this.trying, honoursIfChosen(this.state(), honour)));
+      const worn = this.overlay?.root.querySelector<HTMLElement>('[data-worn]');
+      if (worn) worn.innerHTML = wornRows({ trying: this.trying, owned: this.state().owned });
+      return;
+    }
     if (target.dataset.wear) look = wearing(this.trying, target.dataset.wear);
     else if (target.dataset.whole) look = wholeLookById(target.dataset.whole)?.look;
     else if (target.hasAttribute('data-classic')) look = null;
     const shown = look === undefined ? this.trying : look;
     const mirror = this.overlay?.root.querySelector<HTMLElement>('[data-mirror]');
     if (mirror) {
-      mirror.innerHTML = mirrorFigures(this.sheet(shown));
+      mirror.innerHTML = mirrorFigures(this.sheet(shown, this.honoursWorn()));
     }
     // And what it is made of, so the list under the mirror is the figure in it.
     const worn = this.overlay?.root.querySelector<HTMLElement>('[data-worn]');
@@ -208,6 +231,38 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
     if (event.detail !== 0) return;
     this.overlay?.focus('[data-buy]', '[data-wear-it]:not([aria-disabled="true"])', card);
     this.triedOnAt = performance.now();
+  }
+
+  /**
+   * A gym honour's card: in the wardrobe, ENTER puts it on or takes it off at
+   * once - there is nothing to buy or try, so nothing waits on the bar; in the
+   * shop, it says where one is won.
+   */
+  private chooseHonour(id: string): void {
+    const honour = honourById(id);
+    if (!honour || !isHonourId(id)) return;
+    const card = `[data-honour="${id}"]`;
+    if (this.mode === 'shop' || !this.honoursEarned().includes(id)) {
+      audioManager.play('denied');
+      this.status = this.honoursEarned().includes(id)
+        ? `The ${honour.name} is yours: put it on or take it off at YOUR WARDROBE.`
+        : `Not for sale: ${honour.leader.toUpperCase()} gives the ${honour.name} to whoever beats them.`;
+      this.render(card);
+      return;
+    }
+    const on = !this.honoursWorn().includes(id);
+    const game = this.saveManager.showHonour(id, on);
+    if (!game) {
+      audioManager.play('denied');
+      this.status = 'That did not change. Nothing has.';
+      this.render(card);
+      return;
+    }
+    audioManager.play(on ? 'confirm' : 'select');
+    recordAction(`${on ? 'Put on' : 'Took off'} the ${honour.name}`);
+    this.game_ = game;
+    this.status = on ? `You put the ${honour.name} back on.` : `You take the ${honour.name} off. Nobody sees it now.`;
+    this.render(card);
   }
 
   private tryOn(look: PlayerLook, focusOn: string | undefined): void {
@@ -315,17 +370,17 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
     return card instanceof HTMLButtonElement ? card : undefined;
   }
 
-  /** A look's sheet as a data URL, composed once a look for the life of the page. */
-  private sheet(look: PlayerLook): string {
-    const key = lookKey(look);
+  /** A look's sheet in these gym honours as a data URL, composed once each for the life of the page. */
+  private sheet(look: PlayerLook, honours: readonly HonourId[]): string {
+    const key = `${lookKey(look)}~${honoursKey(honours)}`;
     const kept = sheetCache.get(key);
     if (kept) return kept;
-    const url = this.drawSheet(look);
+    const url = this.drawSheet(look, honours);
     sheetCache.set(key, url);
     return url;
   }
 
-  private drawSheet(look: PlayerLook): string {
+  private drawSheet(look: PlayerLook, honours: readonly HonourId[]): string {
     const canvas = document.createElement('canvas');
     canvas.width = PIECE_WIDTH;
     canvas.height = PIECE_HEIGHT;
@@ -337,14 +392,35 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
         ? (this.textures.get(SHARED_CHARACTER_TEXTURE).getSourceImage() as CanvasImageSource)
         : undefined;
       if (source) context.drawImage(source, 0, 0, PIECE_WIDTH, PIECE_HEIGHT, 0, 0, PIECE_WIDTH, PIECE_HEIGHT);
+      if (honours.length > 0) {
+        const classic = context.getImageData(0, 0, PIECE_WIDTH, PIECE_HEIGHT);
+        this.putDressed(context, 'classic', { width: PIECE_WIDTH, under: classic.data }, honours);
+      }
       return canvas.toDataURL();
     }
     const atlas = wearablesAtlas(this.textures);
     if (!atlas) return '';
+    if (honours.length > 0) {
+      const { under, head } = composeLook(atlas, look, 'layers');
+      this.putDressed(context, 'firered', { width: PIECE_WIDTH, under, head }, honours);
+      return canvas.toDataURL();
+    }
     const image = context.createImageData(PIECE_WIDTH, PIECE_HEIGHT);
     image.data.set(composeLook(atlas, look));
     context.putImageData(image, 0, 0);
     return canvas.toDataURL();
+  }
+
+  /** A figure with the gym honours on, put on the canvas: drawn as it is in the harbour (`wornPack.ts`). */
+  private putDressed(
+    context: CanvasRenderingContext2D,
+    body: WornPackBody,
+    figure: Parameters<typeof dressIn>[0],
+    honours: readonly HonourId[],
+  ): void {
+    const image = context.createImageData(PIECE_WIDTH, PIECE_HEIGHT);
+    image.data.set(dressIn(figure, body, honourArts(honours)));
+    context.putImageData(image, 0, 0);
   }
 
   private close(): void {

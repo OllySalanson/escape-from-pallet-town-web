@@ -1,3 +1,4 @@
+import { honoursEarned, type HonourId } from '../look/gymHonours';
 import {
   CURRENCY_ITEM_ID,
   ITEM_DEFINITIONS,
@@ -244,6 +245,12 @@ export interface ExtractionReport {
    * afterwards has still won it. Absent when the raid won none.
    */
   readonly badgesWon?: readonly string[];
+  /**
+   * The gym honours those badges put on the player (`../look/gymHonours`), in
+   * the order they are drawn: the result card shows the player wearing them.
+   * Absent when the raid won none.
+   */
+  readonly honoursWon?: readonly HonourId[];
   /**
    * The secure container went in as the autofill left it, so what it held was
    * not a call the player made. Absent reads as chosen.
@@ -543,6 +550,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     ...(input.cause === 'defeated' && input.lostTo ? { lostTo: input.lostTo } : {}),
     ...(input.cause === 'defeated' && input.beatenBy ? { beatenBy: input.beatenBy } : {}),
     ...badgeLines(input.bossesBeaten ?? []),
+    ...(honoursEarned(input.bossesBeaten ?? []).length > 0 ? { honoursWon: honoursEarned(input.bossesBeaten ?? []) } : {}),
     ...(snapshot.secureFilledForYou ? { secureFilledForYou: true } : {}),
     baseNote: escaped ? null : wipedBaseNote(input.fitToRaid ?? true, input.restocked ?? []),
     ...(escaped ? {} : kitAtBaseOf(input.restocked ?? [])),

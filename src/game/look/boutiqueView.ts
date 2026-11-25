@@ -17,6 +17,7 @@ import { COLUMN_MEASURES, escapeAttribute, pixelColumns, pixelCommitBar, pixelSc
 import { lookKey, LOOK_SLOTS, sameLook, wearing, type LookSlot, type PlayerLook } from './look';
 import { billFor, billLine, checkBill, lookPriceLine, priceLine, SHELF_ORDER, shelfPieces, unownedIn, WHOLE_LOOKS, type WearableBill, type WholeLook } from './wardrobe';
 import { BOUTIQUE_NAME, wearableById, WEARABLES, type Wearable } from './wearables';
+import { GYM_HONOURS, type GymHonour, type HonourId } from './gymHonours';
 
 export type BoutiqueMode = 'shop' | 'wardrobe';
 
@@ -29,8 +30,13 @@ export interface BoutiqueState {
   readonly owned: ReadonlySet<string>;
   /** How many of an item the vault holds: money, and the goods a barter asks for. */
   readonly held: (itemId: string) => number;
-  /** A look's sheet as something a page can draw: a data URL of its 64x128 grid. */
-  readonly sheet: (look: PlayerLook) => string;
+  /**
+   * A look's sheet as something a page can draw: a data URL of its 64x128 grid,
+   * in `honours`, or in the gym honours the player wears when none are named.
+   */
+  readonly sheet: (look: PlayerLook, honours?: readonly HonourId[]) => string;
+  /** The gym honours this save has won, and the ones it has on (`gymHonours.ts`). */
+  readonly honours: { readonly earned: readonly HonourId[]; readonly worn: readonly HonourId[] };
   readonly status?: string;
 }
 
@@ -139,6 +145,7 @@ export const SHELF_JUMPS: Readonly<Record<string, string>> = {
   legs: 'Bottoms',
   outfit: 'Outfits',
   raid: 'Raid finds',
+  honours: 'Honours',
 };
 
 /**
@@ -179,12 +186,51 @@ function shopShelves(state: BoutiqueState): string {
   ).join('');
   const raid = WEARABLES.filter((piece) => piece.rarity === 'raid');
   const found = `${shelfHeading('raid', 'Found on raids')}<p class="px-note px-wrap">Never on a shelf: legendary colours and shiny ones turn up on raids. Try them on all the same.</p>${raid.map((piece) => pieceCard(state, piece)).join('')}`;
-  return `${looks}${shelves}${found}`;
+  return `${looks}${shelves}${found}${honourShelf(state)}`;
+}
+
+/**
+ * The gym honours (`gymHonours.ts`): in the wardrobe, the ones won, each put on
+ * or taken off by ENTER; in the shop, every one, on the player, with whom it is
+ * won from - never sold, and the shop is where a player learns they exist.
+ */
+function honourShelf(state: BoutiqueState): string {
+  const shop = state.mode === 'shop';
+  const shown = shop ? GYM_HONOURS : GYM_HONOURS.filter((honour) => state.honours.earned.includes(honour.id));
+  if (shown.length === 0) return '';
+  const note = shop ? '<p class="px-note px-wrap">Never sold: each gym leader gives theirs to whoever beats them, and everybody sees you wear it.</p>' : '';
+  return `${shelfHeading('honours', 'Gym honours')}${note}${shown.map((honour) => honourCard(state, honour)).join('')}`;
+}
+
+/**
+ * The honours the mirror shows with the cursor on an honour's card: in the
+ * shop, it put on, to see; in the wardrobe, what is worn now - the card says
+ * whether it is on, and ENTER changes it in the mirror and on the card at once.
+ */
+export function honoursIfChosen(state: Pick<BoutiqueState, 'mode' | 'honours'>, id: HonourId): readonly HonourId[] {
+  const { worn } = state.honours;
+  return state.mode === 'wardrobe' ? worn : [...worn.filter((each) => each !== id), id];
+}
+
+function honourCard(state: BoutiqueState, honour: GymHonour): string {
+  const earned = state.honours.earned.includes(honour.id);
+  const worn = state.honours.worn.includes(honour.id);
+  const leader = honour.leader.toUpperCase();
+  const shop = state.mode === 'shop';
+  const line = !earned ? `Beat ${leader}` : shop ? `${leader}'s · Yours` : `${leader}'s · ${worn ? 'Worn' : 'Taken off'}`;
+  const help = !earned
+    ? `${honour.name}: ${honour.note} Not for sale: ${leader} gives it to whoever beats them.`
+    : shop
+      ? `${honour.name}: won from ${leader}. Put it on or take it off at YOUR WARDROBE.`
+      : `${honour.name}: won from ${leader}. ${worn ? 'Everybody sees you wear it. ENTER takes it off.' : 'Taken off, so nobody sees it. ENTER puts it back on.'}`;
+  const look = earned && (shop || worn) ? ' is-honour' : earned ? ' is-honour-off' : '';
+  const start = state.mode === 'wardrobe' && state.honours.earned[0] === honour.id ? ' data-cursor-start' : '';
+  return `<button class="px-window px-card boutique-card${look}" data-honour="${honour.id}"${start} data-help="${escapeAttribute(help)}">${lookFigure(state.sheet(state.wearing, [honour.id]), { label: honour.name })}<strong>${honour.name}</strong><small class="px-wrap${earned ? ' px-note' : ''}">${line}</small></button>`;
 }
 
 function wardrobeShelves(state: BoutiqueState): string {
   const looks = WHOLE_LOOKS.filter((entry) => unownedIn(entry.look, state.owned).length === 0);
-  const head = `${shelfHeading('looks', 'Whole looks')}${classicCard(state)}${looks.map((entry) => wholeCard(state, entry)).join('')}`;
+  const head = `${honourShelf(state)}${shelfHeading('looks', 'Whole looks')}${classicCard(state)}${looks.map((entry) => wholeCard(state, entry)).join('')}`;
   const shelves = SHELF_ORDER.map((kind) => {
     const pieces = WEARABLES.filter((piece) => piece.kind === kind && state.owned.has(piece.id));
     return pieces.length === 0 ? '' : `${shelfHeading(kind, SHELF_HEADINGS[kind])}${pieces.map((piece) => pieceCard(state, piece)).join('')}`;
@@ -197,7 +243,8 @@ function wardrobeShelves(state: BoutiqueState): string {
 function classicCard(state: BoutiqueState): string {
   const on = state.trying === null;
   const help = 'The clothes you came to the harbour in. Free, and always yours.';
-  return `<button class="px-window px-card boutique-card${on ? ' is-selected' : ''}" data-classic data-cursor-start data-help="${escapeAttribute(help)}">${lookFigure(state.sheet(null), { label: 'The classic look' })}<strong>The classic look</strong><small class="px-wrap">${on ? 'On in the mirror' : 'Free'}</small></button>`;
+  const start = state.mode === 'wardrobe' && state.honours.earned.length > 0 ? '' : ' data-cursor-start';
+  return `<button class="px-window px-card boutique-card${on ? ' is-selected' : ''}" data-classic${start} data-help="${escapeAttribute(help)}">${lookFigure(state.sheet(null), { label: 'The classic look' })}<strong>The classic look</strong><small class="px-wrap">${on ? 'On in the mirror' : 'Free'}</small></button>`;
 }
 
 /**

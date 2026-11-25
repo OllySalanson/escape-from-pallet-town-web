@@ -1,3 +1,4 @@
+import { honoursWorn } from '../look/gymHonours';
 import { namesSeenTwice, rimNameOf, rimTeamLine } from '../hub/rimTeam';
 import { raidConditions } from '../world/secrets';
 import { CHART_PIECES, chartWhole, NO_TREASURE_HUNT } from '../treasure/treasureMap';
@@ -1464,6 +1465,7 @@ export class HubScene extends Phaser.Scene {
       readLook(this.savedGame.raidProgress.look) ?? undefined,
       // Every ending settles this raid and no other (`SaveManager.ownsRaid`).
       recorded ? inFlight.id : undefined,
+      honoursWorn(this.savedGame.raidProgress),
     );
     const world = {
       party: new PokemonParty(deployment.party.map((stored) => stored.pokemon)),
