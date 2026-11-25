@@ -584,7 +584,9 @@ export const moveGuidanceFor = (
 /** The guidance lines sit under the two move rows, inside the same panel. */
 export const moveGuidanceLayout = (line: number): MoveCommandLayout => ({
   x: 18,
-  y: 37 + line * 11,
+  // Straight under the move rows (they end at 36), so the second line ends two
+  // pixels clear of the panel's frame rather than on it.
+  y: 36 + line * 11,
   width: BATTLE_SCREEN_WIDTH - 36,
   height: 11,
 });
