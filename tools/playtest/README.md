@@ -656,6 +656,9 @@ real touches through `Input.dispatchTouchEvent`. A step is `{ "tap": [x, y] }`,
 `{ "touch": "selector" }`, `{ "hold": [x, y, ms] }`, `{ "key": "Space" }`,
 `{ "wait": ms }`, `{ "eval": "js" }` or `{ "shot": "name" }`; `emulateDevice`,
 `touchTap` and `centreOf` are exported for a driver of its own.
+`phoneTour.mjs <url> <dir> --device=...` photographs every screen the touch pad
+changes - the title, the harbour, YOUR THINGS and YOUR TEAM opened from the pad,
+a raid and its pack - pressing everything after the deploy with a finger.
 
 ## The stranger's memory test
 

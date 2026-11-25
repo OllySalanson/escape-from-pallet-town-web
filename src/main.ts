@@ -9,7 +9,9 @@ import { watchViewport } from './game/display/stageScaler';
 import { installFeedbackDesk } from './game/feedback/feedbackDesk';
 import { followTesterLink, installPlayCounter, isAutomatedBrowser } from './game/analytics/playCounter';
 import { installPixelText } from './game/ui/pixelText';
-import { watchForKeyboard } from './game/input/keyboardSeen';
+import { onTouchPlayChange, touchPlay, watchTouchPlay } from './game/input/touchPlay';
+import { installTouchPad } from './game/ui/touchPad';
+import { audioManager } from './game/audio/AudioManager';
 import { pausesForWindow, watchWindowFocus } from './game/world/windowPause';
 import { keepSavesSafe } from './game/save/keepSavesSafe';
 import { SaveManager } from './game/save/SaveManager';
@@ -23,12 +25,12 @@ const developmentScenes = import.meta.env.DEV && isTestLabRequested()
 if (import.meta.env.DEV) {
   // What has sounded, readable from the console (`__audio.recentlyPlayed`), so
   // "did that play twice?" is a question with an answer on a development build.
-  const { audioManager } = await import('./game/audio/AudioManager');
   (window as unknown as { __audio: typeof audioManager }).__audio = audioManager;
 }
 
-// From the first moment, so a key pressed while the game boots still counts.
-const stopWatchingForKeyboard = watchForKeyboard(window);
+// From the first moment: a finger for a pointer starts the game on the touch
+// pad, and a key or a touch while it boots already counts (`input/touchPlay.ts`).
+const stopWatchingTouch = watchTouchPlay(window);
 
 // Before the first scene exists, so no text is ever painted the soft way.
 installPixelText(Phaser.GameObjects.Text);
@@ -49,9 +51,19 @@ const game = mountGame(() => {
   // else can stop or read the game.
   return testMode === 'off' ? created : installTestReadouts(installTestModeControls(created));
 });
-const stopWatchingViewport = watchViewport(game);
 // The FEEDBACK tab and the F key, on every screen. See `feedback/feedbackDesk.ts`.
 const feedbackDesk = installFeedbackDesk(game);
+// The game played with thumbs, laid out round the window with the game by
+// `watchViewport` (`ui/touchPad.ts`, `display/touchLayout.ts`).
+const touchPad = installTouchPad({
+  document,
+  scenes: () => game.scene.getScenes(false).filter((scene) => scene.sys.isActive() || scene.sys.isPaused()),
+  openFeedback: () => feedbackDesk.open(),
+  toggleSound: () => audioManager.toggleMute(),
+  soundMuted: () => audioManager.isMuted,
+  wakeSound: () => void audioManager.activate(),
+});
+const stopWatchingViewport = watchViewport(game, { playing: touchPlay, onChange: onTouchPlayChange, place: (layout) => touchPad.place(layout) });
 // Counts play for the owner's STATS page, only on the published game, never for
 // a browser a program drives or one that asks not to be tracked, and a tester's
 // (`?tester` once, or the STATS page's switch) apart. See `game/analytics/playCounter.ts`.
@@ -105,7 +117,8 @@ if (import.meta.env.DEV) {
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     stopWatchingViewport();
-    stopWatchingForKeyboard();
+    stopWatchingTouch();
+    touchPad.destroy();
     feedbackDesk.destroy();
     stopWatchingFocus();
     stopGuardingLeave();

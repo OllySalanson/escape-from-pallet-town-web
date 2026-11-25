@@ -1,5 +1,6 @@
 import { applyMenuStage, menuLayer } from './menuStage';
 import { computeStage, onDevicePixel, type StageSize } from './stage';
+import { computeTouchLayout, type Rect, type SafeInsets, type TouchLayout } from './touchLayout';
 
 /**
  * Keeps the running game's screen matched to the browser window.
@@ -24,8 +25,10 @@ export function applyStage(
   viewportWidth: number,
   viewportHeight: number,
   devicePixelRatio = 1,
+  /** On a touch screen: the game already fitted and placed round the pad (`touchLayout.ts`). */
+  placed?: { readonly stage: StageSize; readonly box: Rect },
 ): StageSize {
-  const stage = computeStage(viewportWidth, viewportHeight, devicePixelRatio);
+  const stage = placed?.stage ?? computeStage(viewportWidth, viewportHeight, devicePixelRatio);
   // In this order: Phaser writes the canvas's CSS size only when told the zoom
   // afterwards. `resize` tells it for itself at any zoom but 1, so a window that
   // stayed at 1x (a phone) kept the canvas at the size it last was and drew the
@@ -43,8 +46,8 @@ export function applyStage(
     parent.style.position = 'absolute';
     // On a phone the zoom is whole device pixels rather than CSS ones, so the
     // corner is placed on a device pixel too.
-    parent.style.left = `${Math.max(0, onDevicePixel((viewportWidth - width) / 2, devicePixelRatio))}px`;
-    parent.style.top = `${Math.max(0, onDevicePixel((viewportHeight - height) / 2, devicePixelRatio))}px`;
+    parent.style.left = `${placed ? placed.box.x : Math.max(0, onDevicePixel((viewportWidth - width) / 2, devicePixelRatio))}px`;
+    parent.style.top = `${placed ? placed.box.y : Math.max(0, onDevicePixel((viewportHeight - height) / 2, devicePixelRatio))}px`;
     // One game pixel, in CSS pixels. Anything the scenes hang off the canvas
     // box - the frame around it, and a driver measuring it - reads the same
     // grid the canvas is scaled to. The DOM screens have a box and a pixel of
@@ -57,20 +60,62 @@ export function applyStage(
   return stage;
 }
 
+/** What the viewport watcher needs to lay the window out round the touch pad. */
+export interface TouchFit {
+  /** Whether the game is being played by touch now (`input/touchPlay.ts`). */
+  playing(): boolean;
+  /** Subscribes to that changing; returns the unsubscribe. */
+  onChange(listener: () => void): () => void;
+  /** Draws the pad into the layout, or takes it away. */
+  place(layout: TouchLayout | null): void;
+}
+
+/**
+ * The window's safe area - what a notch, rounded corners and a home bar leave -
+ * read from `env(safe-area-inset-*)` through a probe, which is the only way a
+ * script can ask. Zero everywhere on a screen without one.
+ */
+export function readSafeInsets(document: Document): SafeInsets {
+  const probe = document.createElement('div');
+  probe.style.cssText =
+    'position:fixed;visibility:hidden;pointer-events:none;' +
+    'padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
+  document.body.append(probe);
+  const style = getComputedStyle(probe);
+  const read = (value: string) => Number.parseFloat(value) || 0;
+  const insets = {
+    top: read(style.paddingTop),
+    right: read(style.paddingRight),
+    bottom: read(style.paddingBottom),
+    left: read(style.paddingLeft),
+  };
+  probe.remove();
+  return insets;
+}
+
 /**
  * Applies both stages now and on every window resize - the canvas box and the
- * menu box, which are sized by different rules and laid out independently.
+ * menu box, which are sized by different rules and laid out independently -
+ * and, while the game is played by touch, lays both out round the pad.
  * Returns a teardown so a hot reload cannot leave a second listener resizing a
  * destroyed game.
  */
-export function watchViewport(game: ScalableGame, parentId = 'app'): () => void {
+export function watchViewport(game: ScalableGame, touch?: TouchFit, parentId = 'app'): () => void {
   const parent = () => document.getElementById(parentId);
   const update = () => {
     const ratio = window.devicePixelRatio || 1;
-    applyStage(game, parent(), window.innerWidth, window.innerHeight, ratio);
-    applyMenuStage(menuLayer(), window.innerWidth, window.innerHeight, ratio);
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const layout = touch?.playing() ? computeTouchLayout(width, height, ratio, readSafeInsets(document)) : null;
+    applyStage(game, parent(), width, height, ratio, layout ? { stage: layout.stage, box: layout.canvas } : undefined);
+    applyMenuStage(menuLayer(), width, height, ratio, layout?.menus);
+    touch?.place(layout);
   };
   update();
   window.addEventListener('resize', update);
-  return () => window.removeEventListener('resize', update);
+  const stopTouch = touch?.onChange(update);
+  return () => {
+    window.removeEventListener('resize', update);
+    stopTouch?.();
+  };
 }

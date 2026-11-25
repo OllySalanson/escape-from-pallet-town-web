@@ -377,6 +377,12 @@ sightseeing.
 Every menu works with the mouse as well. The map maker is the other way round: you draw with a mouse or
 a trackpad, and the keys just pick your tool.
 
+**On a phone or a tablet** the game grows a Game Boy under your thumbs: a d-pad, **OK** (that's
+<kbd>Space</kbd>) and **BACK** (<kbd>Esc</kbd>), and a row of buttons for whatever the screen in
+front of you can do - PACK, TEAM, OAK and LOOK on a raid, DECORATE in your own house. Hold it upright
+and the game sits on top; turn it on its side and the pad splits either side of it. Every menu is
+tappable too. Plug a keyboard in and the pad steps aside until you touch the screen again.
+
 ## Run it on your own machine
 
 The quickest way to play is the [live build](https://ollysalanson.github.io/escape-from-pallet-town-web/),
