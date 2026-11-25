@@ -148,13 +148,13 @@ describe('the pixel-ui stylesheet', () => {
   it('ranks a heading above its own body: the face has no bold cut and one size', () => {
     // Weight and size are both off the table (`strong` is 400, one font-size),
     // so a heading is told from the sentences under it by inversion and ink.
-    // Plain ink over a `--cream-dim` hairline is what the captain read as a
+    // Plain ink over a `--paper-sunk` hairline is what the captain read as a
     // wall of equal text, and it must not come back. The strip is the rim's
     // shade, a step lighter than the title bar's navy, so the two ranks differ.
     const heading = /:where\(\.pixel-ui\) \.px-heading \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '';
     expect(heading).toMatch(/background:\s*var\(--heading\);/);
     expect(heading).toMatch(/color:\s*var\(--bar-text\);/);
-    expect(heading).not.toMatch(/--cream-dim/);
+    expect(heading).not.toMatch(/--paper-sunk/);
     // A note is whole or it is not drawn: the strip wraps a note that does not
     // fit onto a line it clips away, and never shrinks or clips the note itself.
     expect(heading).toMatch(/flex-wrap:\s*wrap;/);
@@ -171,10 +171,10 @@ describe('the pixel-ui stylesheet', () => {
   });
 
   it('never rules a divider in an ink that cannot be seen on cream', () => {
-    // `--cream-dim` on `--cream` is a twelve per cent step: it reads as a fill
+    // `--paper-sunk` on `--paper` is a twelve per cent step: it reads as a fill
     // (the in-list band is one) and never as a line.
     const shadows = [...pixelUiRules.matchAll(/box-shadow:\s*([^;]+);/g)].map((match) => match[1]);
-    expect(shadows.filter((value) => value.includes('--cream-dim'))).toEqual([]);
+    expect(shadows.filter((value) => value.includes('--paper-sunk'))).toEqual([]);
   });
 
   it('lets no child resize the screen it is drawn on', () => {
@@ -199,7 +199,7 @@ describe('the pixel-ui stylesheet', () => {
     expect(strip).toMatch(/height:\s*var\(--more-cover, calc\(var\(--u\) \* 13\)\);/);
     const track = /::-webkit-scrollbar-track \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '';
     expect(track).not.toMatch(/background:\s*transparent;/);
-    expect(track).toMatch(/background:\s*var\(--cream-dim\);/);
+    expect(track).toMatch(/background:\s*var\(--paper-sunk\);/);
   });
 
   it('gives no scrolling pane a foot of its own, whatever else it is', () => {
@@ -646,25 +646,24 @@ describe('a type tag', () => {
     const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
     return (light + 0.05) / (dark + 0.05);
   }
-  const ink = /--cream-lit:\s*(#[0-9a-f]{6});/i.exec(stylesheet)?.[1] ?? '';
+  const chip = /:where\(\.pixel-ui\) \.px-type \{([^}]*)\}/.exec(stylesheet)?.[1] ?? '';
+  const token = (name: string): string => new RegExp(`--${name}:\\s*(#[0-9a-f]{6});`, 'i').exec(stylesheet)?.[1] ?? '';
   const fills = [...stylesheet.matchAll(/([^{}]+)\{([^}]*)\}/g)]
-    .filter(([, selectors]) => /\.px-type\b/.test(selectors) || /\.px-type-[a-z]+/.test(selectors))
+    .filter(([, selectors]) => /\.px-type-[a-z]+/.test(selectors))
     .map(([, selectors, rule]) => ({
       selectors: selectors.trim(),
-      fill: /background:\s*(#[0-9a-f]{6})/i.exec(rule)?.[1],
+      fill: /--type:\s*(#[0-9a-f]{6})/i.exec(rule)?.[1],
     }))
     .filter((entry): entry is { selectors: string; fill: string } => entry.fill !== undefined);
 
-  it('is lettered in the cream ink every fill is measured against', () => {
-    expect(ink).toMatch(/^#[0-9a-f]{6}$/i);
+  it('is an ink chip lettered in white, its colour a square beside the word', () => {
+    expect(chip).toMatch(/background:\s*var\(--ink-2\);/);
+    expect(chip).toMatch(/color:\s*var\(--paper\);/);
     expect(fills.length).toBeGreaterThanOrEqual(8);
   });
 
-  it('can be read by everybody: every fill holds its letters at WCAG AA, 4.5 to 1 (playtest 40)', () => {
-    const faint = fills
-      .map(({ selectors, fill }) => ({ selectors, fill, ratio: Number(contrast(ink, fill).toFixed(2)) }))
-      .filter(({ ratio }) => ratio < 4.5);
-    expect(faint).toEqual([]);
+  it('can be read by everybody: white on the chip holds WCAG AA, 4.5 to 1 (playtest 40)', () => {
+    expect(contrast(token('paper'), token('ink-2'))).toBeGreaterThanOrEqual(4.5);
   });
 
   it('tells every one of the seventeen types apart by its own fill', async () => {
@@ -704,7 +703,7 @@ describe("the map maker's passed-check tick", () => {
       ([, selectors]) => selectors.trim() === ':where(.pixel-ui) .maker-check-mark',
     )?.[2];
     const mark = colourOf(/background:\s*([^;]+);/.exec(rule ?? '')?.[1]?.trim() ?? '');
-    const cream = colourOf('var(--cream)');
+    const cream = colourOf('var(--paper)');
     expect(mark).toMatch(/^#[0-9a-f]{6}$/i);
     const [light, dark] = [luminance(mark), luminance(cream)].sort((x, y) => y - x);
     expect((light + 0.05) / (dark + 0.05)).toBeGreaterThanOrEqual(3);
@@ -722,7 +721,7 @@ describe('a refused button', () => {
     expect(focusedKinds).toContain('.is-primary');
     for (const kind of focusedKinds) {
       const refused = new RegExp(
-        `\\.pixel-ui \\.px-button${kind.replace(/\./g, '\\.')}\\[aria-disabled='true'\\]:focus[^{]*\\{[^}]*--fill: var\\(--cream-dim\\)`,
+        `\\.pixel-ui \\.px-button${kind.replace(/\./g, '\\.')}\\[aria-disabled='true'\\]:focus[^{]*\\{[^}]*--fill: var\\(--paper-sunk\\)`,
       );
       expect(stylesheet, `a refused ${kind || 'plain'} button with the cursor on it`).toMatch(refused);
     }

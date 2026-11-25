@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { FRAME_DEPTH, UI } from './uiPalette';
+import { UI } from './uiPalette';
 
 /**
  * The game's window frame, drawn rather than stretched.
@@ -57,40 +57,17 @@ export function drawPixelWindow(
 }
 
 /**
- * The pop-up window: FireRed's frame - a dark line with its corners clear, a
- * two-pixel blue rim, and a one-pixel bevel inside it lit on the top and left
- * and shaded on the bottom and right - round the paper. `FRAME_DEPTH` deep on
- * every side. Below a size that can hold all of that it is the plain window.
+ * The pop-up window in the menus' look: a line of ink with its corners clear
+ * round white paper, as every menu card is drawn. `FRAME_DEPTH` is still the
+ * inset every pop-up's words keep from its edge, so the words stand where they
+ * stood when the frame was a four-pixel blue rim.
  */
 export function drawFramedWindow(
   graphics: Phaser.GameObjects.Graphics,
   rect: PixelWindowRect,
   fill: number = UI.paper.value,
 ): void {
-  const { x, y, width, height } = rect;
-  if (width < FRAME_DEPTH * 2 + 2 || height < FRAME_DEPTH * 2 + 2) {
-    drawPixelWindow(graphics, rect, { fill, border: UI.frameLine.value });
-    return;
-  }
-  // The line, corners clear.
-  graphics.fillStyle(UI.frameLine.value, 1);
-  graphics.fillRect(x + 1, y, width - 2, 1);
-  graphics.fillRect(x + 1, y + height - 1, width - 2, 1);
-  graphics.fillRect(x, y + 1, 1, height - 2);
-  graphics.fillRect(x + width - 1, y + 1, 1, height - 2);
-  // The rim, and the corner pixel inside the line that keeps the chamfer round.
-  graphics.fillStyle(UI.frameRim.value, 1);
-  graphics.fillRect(x + 1, y + 1, width - 2, height - 2);
-  // The bevel: lit top and left, shaded bottom and right.
-  graphics.fillStyle(UI.frameLight.value, 1);
-  graphics.fillRect(x + 3, y + 3, width - 6, 1);
-  graphics.fillRect(x + 3, y + 3, 1, height - 6);
-  graphics.fillStyle(UI.frameShade.value, 1);
-  graphics.fillRect(x + 4, y + height - 4, width - 7, 1);
-  graphics.fillRect(x + width - 4, y + 4, 1, height - 7);
-  // The paper.
-  graphics.fillStyle(fill, 1);
-  graphics.fillRect(x + FRAME_DEPTH, y + FRAME_DEPTH, width - FRAME_DEPTH * 2, height - FRAME_DEPTH * 2);
+  drawPixelWindow(graphics, rect, { fill, border: UI.frameLine.value });
 }
 
 /**
