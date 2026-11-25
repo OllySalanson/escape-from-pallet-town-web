@@ -40,6 +40,8 @@ export const LIBRARY_CONTROLS = {
   pack: RAID_KEY_LETTERS.bag,
   /** P: the team in a raid, YOUR TEAM at home. */
   team: RAID_KEY_LETTERS.party,
+  /** M: THE MAP, in a raid and at home (`ui/MapScreen.ts`). */
+  map: RAID_KEY_LETTERS.map,
   say: ROOM_KEY_LETTERS.talk,
   ping: ROOM_KEY_LETTERS.ping,
   decorate: HOME_KEY_LETTERS.decorate,

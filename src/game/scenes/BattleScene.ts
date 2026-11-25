@@ -5291,6 +5291,7 @@ export class BattleScene extends Phaser.Scene {
         {
           width: getWorldMap(raidMapId).width,
           walked: this.runSession.surveyed ?? [],
+          trodden: this.runSession.trodden ?? [],
         },
         { walk: this.runSession.walk, ending: { kind: 'fell', line: fellLine(this.state.player.pokemon.name) } },
         this.runSession.manager.snapshot().elapsedMs,

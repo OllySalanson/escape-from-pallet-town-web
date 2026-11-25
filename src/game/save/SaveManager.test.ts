@@ -27,7 +27,9 @@ import { FIRST_CONTRACT_ID } from '../objectives/contracts';
 import { createStartingStash, Stash } from '../stash';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import { WORLD_MAPS } from '../worldMap';
-import { surveyedTiles } from '../world/survey';
+import { encodeSurvey, surveyedTiles } from '../world/survey';
+import { troddenTiles } from '../world/trodden';
+import { SURVEY_RADIUS, tilesAround } from '../world/minimap';
 
 class MemoryStorage {
   private readonly values = new Map<string, string>();
@@ -1391,6 +1393,7 @@ describe('SaveManager', () => {
 
       expect(progress?.raidRecord).toEqual({});
       expect(progress?.surveyed).toEqual({});
+      expect(progress?.trodden).toEqual({});
     },
   );
 
@@ -1425,6 +1428,48 @@ describe('SaveManager', () => {
 
     const held = saves.load()?.raidProgress.surveyed?.['floodplain-relay'];
     expect([...surveyedTiles(held, width)].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, width]);
+  });
+
+  it('keeps the tiles each raid stood on beside the survey, for THE MAP on M', () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+    const width = WORLD_MAPS['floodplain-relay'].width;
+
+    saves.recordRaidEnded('floodplain-relay', 'extracted', { width, walked: [0, 1, 2, width], trodden: [1] });
+    saves.recordRaidEnded('floodplain-relay', 'wiped', { width, walked: [2, 3], trodden: [2] });
+
+    const held = saves.load()?.raidProgress.trodden?.['floodplain-relay'];
+    expect([...troddenTiles(held, width)].sort((a, b) => a - b)).toEqual([1, 2]);
+  });
+
+  it('reads the steps a save from before they were kept took off its survey', () => {
+    // A raid that walked along row 10 from x = 10 to x = 20 surveyed a disc
+    // round every step; the steps are what is left of the survey once every
+    // tile whose whole disc was not surveyed is taken away.
+    const width = 40;
+    const walked = [...Array(11).keys()].map((at) => ({ x: 10 + at, y: 10 }));
+    const surveyed = new Set(walked.flatMap((step) => tilesAround(step, SURVEY_RADIUS, width, 40)));
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 6,
+        party: [],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: {},
+        stash: { pokemon: [], items: {} },
+        raidProgress: {
+          firstContractExtracted: true,
+          unlockedInsertions: ['route-1'],
+          surveyed: { 'pallet-town': encodeSurvey(width, surveyed) },
+        },
+      }),
+    );
+
+    const trodden = troddenTiles(new SaveManager(storage).load()?.raidProgress.trodden?.['pallet-town'], width);
+
+    expect([...trodden].sort((a, b) => a - b)).toEqual(walked.map((step) => step.y * width + step.x));
   });
 
   it('drops a record for a map that no longer exists, and a survey with no width', () => {

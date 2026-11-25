@@ -17,6 +17,7 @@ export const RAID_KEY_LETTERS = {
   look: 'L',
   bag: 'B',
   party: 'P',
+  map: 'M',
 } as const;
 
 export type RaidKeyId = keyof typeof RAID_KEY_LETTERS;
@@ -29,6 +30,8 @@ export const RAID_KEY_WORDS: readonly (readonly [RaidKeyId, string])[] = [
   // room sends the player to "drop something from the PACK" (`world/loot.ts`).
   ['bag', 'PACK'],
   ['party', 'TEAM'],
+  // THE MAP (`ui/MapScreen.ts`): the whole of the place, fog where nobody has walked.
+  ['map', 'MAP'],
 ];
 
 /** The two keys the raid screen is *read* with, named whenever the objective is news. */
@@ -51,7 +54,7 @@ export const ROOM_KEY_LETTERS = {
  * same question asked at home: what am I out for (`hub/favourList.ts`) - and
  * the quick phrases, on T as in a raid room.
  */
-export type YardKeyId = 'walk' | 'look' | 'favours' | 'things' | 'team' | 'dex' | 'talk';
+export type YardKeyId = 'walk' | 'look' | 'favours' | 'things' | 'team' | 'dex' | 'map' | 'talk';
 
 /**
  * THE POKéDEX's key anywhere in the harbour (`scenes/PokedexScene.ts`): X, the
@@ -73,6 +76,7 @@ export const YARD_KEY_WORDS: readonly (readonly [YardKeyId, string, string])[] =
   ['things', RAID_KEY_LETTERS.bag, 'THINGS'],
   ['team', RAID_KEY_LETTERS.party, 'TEAM'],
   ['dex', POKEDEX_KEY, 'DEX'],
+  ['map', RAID_KEY_LETTERS.map, 'MAP'],
   ['talk', ROOM_KEY_LETTERS.talk, 'SAY'],
 ];
 
@@ -106,14 +110,18 @@ export const TELESCOPE_KEY_LETTERS = {
   closer: 'Z',
 } as const;
 
+/** THE MAP's one letter (`ui/MapScreen.ts`): Z, the telescope's closer, for close up and the whole place. */
+export const CHART_ZOOM_KEY = TELESCOPE_KEY_LETTERS.closer;
+
 /**
- * Three keys that work on every screen they are named on: M turns the sound
- * off and on (`BaseScene`, `WorldScene` and `BattleScene` bind it), F opens
+ * Three keys that work on every screen they are named on: N turns the sound
+ * off and on (`BaseScene`, `WorldScene` and `BattleScene` bind it) - it was M
+ * until M was THE MAP, the captain's key for it (25 Nov 2026) - F opens
  * the FEEDBACK panel (`feedback/feedbackDesk.ts`), and R turns a piece being
  * laid out in a pack (`ui/gridArranging.ts`). Named here so the books in THE
  * GREAT LIBRARY (`library/controls.ts`) teach the key that is bound.
  */
-export const MUTE_KEY = 'M';
+export const MUTE_KEY = 'N';
 export const FEEDBACK_KEY = 'F';
 export const PACK_TURN_KEY = 'R';
 
@@ -143,7 +151,7 @@ export function roomKeyHintLine(learned: ReadonlySet<string>): string {
 }
 
 /** Every key the save can have learned, in one list (`raidProgress.keysLearned`). */
-export const LEARNABLE_KEYS = ['walk', 'objectives', 'look', 'bag', 'party', 'decorate', 'talk', 'ping', 'favours', 'things', 'team', 'dex', 'coin'] as const;
+export const LEARNABLE_KEYS = ['walk', 'objectives', 'look', 'bag', 'party', 'map', 'decorate', 'talk', 'ping', 'favours', 'things', 'team', 'dex', 'coin'] as const;
 export type LearnableKeyId = (typeof LEARNABLE_KEYS)[number];
 
 export function isLearnableKey(value: unknown): value is LearnableKeyId {

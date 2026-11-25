@@ -110,6 +110,8 @@ export function playtestRaidProgress(): RaidProgress {
     // shelf - derived from his own top tier, so a retuned ladder moves with it.
     traderMoneySpent: POKEDOLLARS_PER_STANDING * (TRADER_STANDINGS.at(-1)?.points ?? 0),
     surveyed: everythingSurveyed(),
+    // And stood on every tile of it, so THE MAP on M has no fog to show.
+    trodden: everythingSurveyed(),
     gameCorner: withPlaytestTickets(DEFAULT_RAID_PROGRESS).gameCorner,
     gymsMet: withEveryLeaderMet(DEFAULT_RAID_PROGRESS).gymsMet,
     derbyCleared: withEveryDerbyLevel(DEFAULT_RAID_PROGRESS).derbyCleared,
@@ -136,11 +138,13 @@ export function withEverythingCurrent(progress: RaidProgress): RaidProgress {
   const heldGates = progress.openedGates ?? [];
   const openedGates = union(heldGates, fresh.openedGates ?? []);
   const unsurveyed = Object.entries(fresh.surveyed ?? {}).filter(([mapId]) => !progress.surveyed?.[mapId]);
+  const untrodden = Object.entries(fresh.trodden ?? {}).filter(([mapId]) => !progress.trodden?.[mapId]);
   const added =
     unlockedInsertions.length !== progress.unlockedInsertions.length ||
     reachedInsertions.length !== progress.reachedInsertions.length ||
     openedGates.length !== heldGates.length ||
-    unsurveyed.length > 0;
+    unsurveyed.length > 0 ||
+    untrodden.length > 0;
   if (!added) {
     return progress;
   }
@@ -150,6 +154,7 @@ export function withEverythingCurrent(progress: RaidProgress): RaidProgress {
     reachedInsertions,
     openedGates,
     surveyed: { ...progress.surveyed, ...Object.fromEntries(unsurveyed) },
+    trodden: { ...progress.trodden, ...Object.fromEntries(untrodden) },
   };
 }
 

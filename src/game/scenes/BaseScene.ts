@@ -323,10 +323,12 @@ import {
 } from '../base/arenaDive';
 import { marshalLines } from '../base/arenaMarshal';
 import { wallMapPicture } from '../base/wallMap';
-import { landingPlace, requireInsertion, runInsertion, type RunInsertionId } from '../run/runGeneration';
+import { availableInsertionIds, landingPlace, requireInsertion, runInsertion, type RunInsertionId } from '../run/runGeneration';
 import type { ArenaPanel } from './HubScene';
 import type { WorldSceneData } from './WorldScene';
-import { worldMapName, type WorldMapId } from '../worldMap';
+import { getWorldMap, worldMapName, type WorldMapId } from '../worldMap';
+import { MapScreen } from '../ui/MapScreen';
+import { troddenTiles } from '../world/trodden';
 import { FIRST_WORDS, hasHeard, heldLandingNews, mapsMovedNews, spokenLines, type FirstWordsId } from '../hub/firstWords';
 import { FIRST_JUMP_ANSWERS, firstJumpQuestion, goesStraightOver, isFirstRaid } from '../hub/firstRaid';
 import { benchOffer, benchOfferQuestion } from '../hub/benchOffer';
@@ -686,6 +688,8 @@ interface BaseControls {
   readonly team: Phaser.Input.Keyboard.Key;
   /** X: THE POKéDEX (`scenes/PokedexScene.ts`). The key the house puts a piece away with, which is read only while decorating. */
   readonly dex: Phaser.Input.Keyboard.Key;
+  /** M: THE MAP (`ui/MapScreen.ts`), on the key a raid's is on. */
+  readonly map: Phaser.Input.Keyboard.Key;
   /** THE BOLTHOLE's keys (`HOME_KEY_LETTERS`): decorating, and what it is done with. */
   readonly decorate: Phaser.Input.Keyboard.Key;
   readonly turn: Phaser.Input.Keyboard.Key;
@@ -802,7 +806,9 @@ export class BaseScene extends Phaser.Scene {
    * is 150ms and these keys were only read between steps, so a tap walking
    * along was lost nearly every time and nothing said why.
    */
-  private listAskedMidStep: 'favours' | 'things' | 'team' | 'dex' | 'talk' | null = null;
+  /** THE MAP, while it is open over the harbour. */
+  private mapScreen: MapScreen | null = null;
+  private listAskedMidStep: 'favours' | 'things' | 'team' | 'dex' | 'map' | 'talk' | null = null;
   /** What this player is saying, over their head while they say it. */
   private ownBubble: SpeechBubble | null = null;
   /** The game time of this frame, which the harbour's talk is paced by. */
@@ -1092,6 +1098,8 @@ export class BaseScene extends Phaser.Scene {
         : null,
       choice: question ? { question: question.question.join(' '), options: question.optionLabels, selected: question.selected } : null,
       hint: this.hintText?.visible ? this.hintText.text.replace(/\s+/g, ' ').trim() : null,
+      // THE MAP on M, while it is open: how many tiles it shows in colour, once drawn.
+      chart: this.mapScreen ? { known: this.mapScreen.knownTiles } : null,
       // THE RAID ARENA's telescope, while somebody is looking through it.
       telescope: this.telescope?.describeForTest() ?? null,
       // THE BOLTHOLE while it is being decorated: what is in hand, and why it will not go down.
@@ -1270,6 +1278,7 @@ export class BaseScene extends Phaser.Scene {
     this.ownWave = null;
     this.phrasePicker = null;
     this.listAskedMidStep = null;
+    this.mapScreen = null;
     this.ownBubble = null;
     this.harbourLife = null;
     this.fishing = null;
@@ -1808,6 +1817,8 @@ export class BaseScene extends Phaser.Scene {
         this.listAskedMidStep = 'team';
       } else if (this.keyPresses.justPressed(this.controls.dex)) {
         this.listAskedMidStep = 'dex';
+      } else if (this.keyPresses.justPressed(this.controls.map)) {
+        this.listAskedMidStep = 'map';
       } else if (this.keyPresses.justPressed(this.controls.talk)) {
         this.listAskedMidStep = 'talk';
       }
@@ -1851,6 +1862,11 @@ export class BaseScene extends Phaser.Scene {
 
     if (this.keyPresses.justPressed(this.controls.dex) || asked === 'dex') {
       this.openPokedex();
+      return;
+    }
+
+    if (this.keyPresses.justPressed(this.controls.map) || asked === 'map') {
+      this.openMap();
       return;
     }
 
@@ -4885,6 +4901,7 @@ export class BaseScene extends Phaser.Scene {
       things: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.bag], false),
       team: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.party], false),
       dex: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[POKEDEX_KEY], false),
+      map: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.map], false),
       decorate: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.decorate], false),
       turn: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.turn], false),
       boxBack: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.boxBack], false),
@@ -4907,6 +4924,7 @@ export class BaseScene extends Phaser.Scene {
         this.controls.things,
         this.controls.team,
         this.controls.dex,
+        this.controls.map,
         this.controls.decorate,
         this.controls.coin,
         this.controls.closer,
@@ -6082,6 +6100,40 @@ export class BaseScene extends Phaser.Scene {
    * paused harbour, on X anywhere in it and from Oak's PC in his lab. It only
    * looks, so nothing is read back when it closes.
    */
+  /**
+   * THE MAP at home (`ui/MapScreen.ts`): the place the next raid goes to, in
+   * colour wherever the player has ever stood. Nothing runs at home, so the
+   * harbour waits under it as it does under the Pokédex.
+   */
+  private openMap(): void {
+    if (this.leaving || this.choosing) {
+      return;
+    }
+    const game = new SaveManager().load();
+    if (!game) {
+      return;
+    }
+    this.learnKey('map');
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    const mapId = runInsertion(availableInsertionIds(game.raidProgress)[0] ?? '')?.mapId ?? 'greystone-vale';
+    const map = getWorldMap(mapId);
+    const walked = troddenTiles(game.raidProgress.trodden?.[mapId], map.width);
+    this.scene.pause();
+    this.mapScreen = new MapScreen(
+      this,
+      { mapId, isKnown: (tile) => walked.has(tile.y * map.width + tile.x), standing: null },
+      () => {
+        this.mapScreen = null;
+        this.scene.resume();
+        this.input.keyboard?.resetKeys();
+        this.spentPresses.spendHeld(this.directionKeys());
+        this.showHint(this.hintHere());
+      },
+    );
+  }
+
   private openPokedex(): void {
     if (this.leaving || this.choosing) {
       return;

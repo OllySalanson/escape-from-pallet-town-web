@@ -267,6 +267,8 @@ export interface ActiveRunSession {
    * whole game serialised, and a write per step is a write per 150ms.
    */
   surveyed?: Set<number>;
+  /** The tiles this raid has stood on, for THE MAP on M (`world/trodden.ts`). On the session for the same reason. */
+  trodden?: Set<number>;
   /** Where this raid has walked, for the pit to remember (`world/raidMemory.ts`). On the session for the same reason. */
   walk?: RaidWalk;
   /**
