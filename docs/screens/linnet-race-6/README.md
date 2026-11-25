@@ -8,5 +8,6 @@ beside its wall (`2-dry-way-down-to-the-last-house.png`). Straight through the o
 PERFECT - is still a wade.
 
 Played three times with a held start (`node tools/playtest/race.mjs "$URL" --hold --line=cut
---opened=greystone-vale/door-2`): 68 steps, 0 wild, no fight, GOLD 0:10.2 each time. Pictures from a
+--opened=greystone-vale/door-2`): 68 steps, 0 wild, no fight, GOLD 0:10.2 each time. Nothing stands over the
+finish: OLD REEVE keeps quiet while a race is on. Pictures from a
 test-mode build at `?testmode=pixels`, 1200x768 (`--pixels --shot-every=800`).

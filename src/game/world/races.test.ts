@@ -308,7 +308,7 @@ describe('what LINNET says', () => {
     // The tenth identical win is not met with the first one's surprise.
     expect(racerArrivesLines(course, { ...input, beatenBefore: true }).join(' ')).toContain('Again?!');
     expect(racerArrivesLines(course, { ...input, medal: 'gold', timeMs: 10_500, firstGold: false, hadPerfect: true }).join(' ')).toContain("You've done it in 0:09.3");
-    expect(racerArrivesLines(course, { ...input, medal: 'gold', timeMs: 9_300 }).join(' ')).toContain('Not a step wasted');
+    expect(racerArrivesLines(course, { ...input, medal: 'gold', timeMs: 9_300 }).join(' ')).toBe("LINNET: REEVE says not a step wasted. Not ONE. I'm going to be sick.");
     // Once the ride is cut it is no longer grown shut.
     expect(racerArrivesLines(course, { ...input, shortcutOpen: true }).join(' ')).toContain('open now');
     // The first GOLD is the best run she has ever seen; the tenth is not.

@@ -494,7 +494,9 @@ export function racerArrivesLines(course: RaceCourse, input: RaceResultInput): s
   const racer = course.racer.name;
   const behind = gapWords(shownGap(input.racerMs, input.timeMs));
   if (input.medal === 'gold' && isPerfect(course, input.timeMs)) {
-    return [`${racer}: Not a step wasted. I watched. I'm going to be sick.`];
+    // She was round the mere when it was run: she has it from the judge.
+    const judge = course.judge.name.split(' ').pop();
+    return [`${racer}: ${judge} says not a step wasted. Not ONE. I'm going to be sick.`];
   }
   const tip = perfectTip(course, input);
   if (input.medal === 'gold') {
