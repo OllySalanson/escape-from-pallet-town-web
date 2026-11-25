@@ -54,7 +54,7 @@ export function grownSecureGrid(grid: GridSize, routes: readonly SecureGrowthRou
 
 /**
  * How to grow it, as the end of a sentence: "build Secure locker I at Brock's
- * Workshop, or rent a berth in Bill's hold". Brock's next rung only, because
+ * Workshop, or rent a locker shelf from Bill". Brock's next rung only, because
  * the second cannot be built before the first. Empty when nothing is left.
  */
 export function secureGrowthAdvice(routes: readonly SecureGrowthRoute[]): string {
@@ -64,7 +64,7 @@ export function secureGrowthAdvice(routes: readonly SecureGrowthRoute[]): string
     ways.push(`build ${workshop.name} at Brock's Workshop`);
   }
   if (routes.some((route) => route.kind === 'berth')) {
-    ways.push("rent a berth in Bill's hold");
+    ways.push("rent a locker shelf from Bill");
   }
   const contract = routes.find((route) => route.kind === 'contract');
   if (contract) {

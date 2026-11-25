@@ -1934,7 +1934,7 @@ describe('SaveManager', () => {
     const paid = saves.buyTraderBerth();
     expect(paid).toMatchObject({ ok: true });
     // The receipt says what the row it was bought from says: squares, this raid.
-    expect(paid.message).toBe('Berth paid. +2 protected squares in the secure slot, this raid.');
+    expect(paid.message).toBe('Shelf paid. +2 safe squares in THE LOCKER, this raid.');
     expect(saves.load()!.traderBerthPaid).toBe(true);
     expect(saves.load()!.stash.itemCount('money')).toBe(1_000 - 250);
 

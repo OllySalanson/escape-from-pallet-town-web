@@ -85,8 +85,8 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
       }
       const open = buildContractBoard(game.raidProgress).rows.length;
       return open === 0
-        ? 'No contracts: raid for what maps hold'
-        : `${open} contract${open === 1 ? '' : 's'} on the board`;
+        ? 'No jobs: raid for what the vale holds'
+        : `${open} job${open === 1 ? '' : 's'} on the board`;
     }
     case 'stash': {
       const team = game.stash.listPokemon();

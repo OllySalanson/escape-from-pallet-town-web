@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { seagallopLines } from './seagallopLog';
 
-describe('the Seagallop\'s log, as her sailor tells it', () => {
+describe('the Seagallop\'s sailor, who keeps count of raids', () => {
   it('sends a newcomer to the Raid Arena', () => {
     expect(seagallopLines(undefined).join(' ')).toContain('RAID ARENA');
     expect(seagallopLines({}).join(' ')).toContain('RAID ARENA');

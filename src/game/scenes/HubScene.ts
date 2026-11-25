@@ -3999,12 +3999,12 @@ export class HubScene extends Phaser.Scene {
     const offer = checkBerth(counter);
     const paid = offer.refusal === 'already-paid';
     const squares = berthSquares(this.flow.secureGrid);
-    const heading = '<h3 class="px-subheading">A berth in the hold</h3>';
+    const heading = '<h3 class="px-subheading">A locker shelf</h3>';
     if (this.traderArmed === BERTH_DEAL) {
       return `<div class="px-list">${heading}${this.armedDeal({
         id: BERTH_DEAL,
-        icon: iconMarkup('supply-crate', 'Berth'),
-        name: 'Berth',
+        icon: iconMarkup('supply-crate', 'Locker shelf'),
+        name: 'Locker shelf',
         question: `Pay ${formatMoney(TRADER_BERTH_PRICE)} for one raid, used or not?`,
         confirm: 'data-berth-confirm',
         confirmLabel: 'Pay for it',
@@ -4014,7 +4014,7 @@ export class HubScene extends Phaser.Scene {
     const wiring = paid
       ? `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`
       : offer.refusal === undefined
-        ? `data-berth data-help="${escapeAttribute(`One more protected stack for one raid. Brock builds one for good.`)}"`
+        ? `data-berth data-help="${escapeAttribute(`One more column of THE LOCKER for one raid. Brock builds one for good.`)}"`
         : `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`;
     const tag = paid
       ? pixelTag('Paid', 'secure', true)
@@ -4026,7 +4026,7 @@ export class HubScene extends Phaser.Scene {
       : shopPriceColumn([
           { ask: formatMoney(TRADER_BERTH_PRICE), short: offer.refusal === 'money-short' },
         ]);
-    return `<div class="px-list">${heading}<button class="px-row has-icon px-tall px-priced${paid ? ' is-secured' : ''}" ${wiring}>${iconMarkup('supply-crate', 'Berth')}<span class="px-row-main"><strong class="px-name">Berth</strong><small class="px-wrap">+${squares} protected squares, this raid.</small></span>${price}${tag}</button></div>`;
+    return `<div class="px-list">${heading}<button class="px-row has-icon px-tall px-priced${paid ? ' is-secured' : ''}" ${wiring}>${iconMarkup('supply-crate', 'Locker shelf')}<span class="px-row-main"><strong class="px-name">Locker shelf</strong><small class="px-wrap">+${squares} safe squares, this raid.</small></span>${price}${tag}</button></div>`;
   }
 
   /** What the shelf's pointed-at row is, what it costs, and what is shutting it. */

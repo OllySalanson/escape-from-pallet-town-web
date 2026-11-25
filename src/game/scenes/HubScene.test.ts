@@ -2777,7 +2777,7 @@ describe('HubScene - Bill', () => {
     expect(boat).toContain('<span class="px-price"><small>₽250</small></span>');
     // The one sentence that tells the two places apart, on the row itself.
     // The squares come from the grid rather than a number typed beside it.
-    expect(boat).toMatch(/\+\d+ protected squares, this raid\./);
+    expect(boat).toMatch(/\+\d+ safe squares, this raid\./);
     // The comparison with the built locker is the help bar's, because on the
     // row it wrapped to three lines and ate the shelf above it.
     expect(boat).toMatch(/data-help="[^"]*Brock builds one for good/);

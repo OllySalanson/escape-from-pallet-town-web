@@ -2885,7 +2885,7 @@ export class SaveManager {
     };
     return {
       ok: true,
-      message: `Berth paid. +${berthSquares(BASE_SECURE_GRID)} protected squares in the secure slot, this raid.`,
+      message: `Shelf paid. +${berthSquares(BASE_SECURE_GRID)} safe squares in THE LOCKER, this raid.`,
       saved: this.save({ ...game, raidProgress, traderBerthPaid: true }),
     };
   }

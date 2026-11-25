@@ -183,12 +183,12 @@ function barterQuote(counter: TraderCounter, barterId: string): BillQuote {
 function berthQuote(counter: TraderCounter): BillQuote {
   const offer = checkBerth(counter);
   const price = formatMoney(TRADER_BERTH_PRICE);
-  const what = 'A berth in my hold: one more column of your secure container, this raid only.';
+  const what = 'A shelf of mine at the Arena: one more column of THE LOCKER, this raid only.';
   switch (offer.refusal) {
     case 'already-paid':
-      return { lines: ["Your berth's paid for. It's yours till the raid's over."] };
+      return { lines: ["Your shelf's paid for. It's yours till the raid's over."] };
     case 'standing-short':
-      return { lines: [keptBack('A berth in the hold', TRADER_BERTH_STANDING)] };
+      return { lines: [keptBack('A locker shelf', TRADER_BERTH_STANDING)] };
     case 'money-short':
       return { lines: [what, `${price}, and you have ${formatMoney(moneyHeld(counter.stash))}.`] };
     default:

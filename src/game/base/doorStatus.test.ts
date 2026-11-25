@@ -61,7 +61,7 @@ const doorNamed = (id: string) => BASE_DOORS.find((door) => door.id === id)!;
 describe("what each of the base's doors says", () => {
   it('leads the lab with the work on the board', () => {
     const line = doorStatusLine(doorNamed('oaks-lab'), restore(createStartingStash(CHARMANDER)));
-    expect(line).toMatch(/contract/);
+    expect(line).toMatch(/job/);
   });
 
   it('says the team is fit, and says who is not', () => {

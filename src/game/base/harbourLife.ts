@@ -257,7 +257,7 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     idle: { glances: ['right', 'down'], beatMs: 8200 },
     lines: [
       'Sixty years I\'ve watched the boats come in here.',
-      'Every one of them comes back lighter than it went out. That\'s raiding, that is.',
+      'Nobody goes by boat now. They jump. In my day we had the sense to be scared.',
     ],
   },
   {
