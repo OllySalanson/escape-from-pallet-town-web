@@ -676,6 +676,15 @@ export class BattleScene extends Phaser.Scene {
   private upKey!: Phaser.Input.Keyboard.Key;
   private downKey!: Phaser.Input.Keyboard.Key;
   private backKey!: Phaser.Input.Keyboard.Key;
+  /** W, A, S and D are the arrows here, as they are walking and in every answer box. */
+  private wasdKeys: Phaser.Input.Keyboard.Key[] = [];
+  /**
+   * A click that landed on nothing clickable while a line was up: it reads the
+   * line on, as Space does, read by the next frame (`update`).
+   */
+  private lineClicked = false;
+  /** The row the pointer is resting on, whose guidance is shown while it is. */
+  private pointedRow: number | undefined;
   private launchedFromWorld = false;
   /** The guard this fight is with (`world/guards.ts`), by its entity id, recorded met only once it is beaten or caught. */
   private guardId: string | null = null;
@@ -1180,6 +1189,10 @@ export class BattleScene extends Phaser.Scene {
     this.upKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
     this.downKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
     this.backKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.BACKSPACE);
+    // Not captured: the naming screen opened over a fight takes typed letters.
+    this.wasdKeys = (['W', 'A', 'S', 'D'] as const).map((code) =>
+      this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes[code], false),
+    );
     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC).on('down', () => this.goBack());
     this.keyPresses.watch([
       this.confirmKey,
@@ -1189,8 +1202,19 @@ export class BattleScene extends Phaser.Scene {
       this.upKey,
       this.downKey,
       this.backKey,
+      ...this.wasdKeys,
     ]);
     this.input.keyboard!.on?.(`keydown-${MUTE_KEY}`, () => audioManager.toggleMute());
+    // A click reads a line on as the key does, so a fight can be played with
+    // the mouse alone, as the harbour and a raid can (the navigation audit, 25
+    // Nov 2026: two clicks on a battle line did nothing). The rows take their
+    // own clicks.
+    this.lineClicked = false;
+    this.pointedRow = undefined;
+    const clicked = (_pointer: Phaser.Input.Pointer, over: readonly Phaser.GameObjects.GameObject[]): void =>
+      this.screenClicked(over);
+    this.input.on?.('pointerdown', clicked);
+    this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () => this.input.off?.('pointerdown', clicked));
     this.mode = 'events';
     const fielded = (side: 'player' | 'enemy'): PokemonInstance[] =>
       slotsOf(this.state, side).flatMap((ref) => {
@@ -1298,7 +1322,9 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     if (this.mode === 'events' || this.mode === 'finished') {
-      if (this.okPressed()) {
+      const clicked = this.lineClicked;
+      this.lineClicked = false;
+      if (this.okPressed() || clicked) {
         if (lineWasTyping) {
           audioManager.play('confirm');
           this.dialog.skip();
@@ -1309,19 +1335,36 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    this.lineClicked = false;
+    const direction = this.directionPressed();
     if (this.keyPresses.justPressed(this.backKey)) {
       this.goBack();
-    } else if (this.keyPresses.justPressed(this.leftKey)) {
-      this.moveSelection('left');
-    } else if (this.keyPresses.justPressed(this.rightKey)) {
-      this.moveSelection('right');
-    } else if (this.keyPresses.justPressed(this.upKey)) {
-      this.moveSelection('up');
-    } else if (this.keyPresses.justPressed(this.downKey)) {
-      this.moveSelection('down');
+    } else if (direction) {
+      this.moveSelection(direction);
     } else if (this.okPressed()) {
       this.confirm();
     }
+  }
+
+  /** A click on the screen: on nothing clickable while a line is up, it reads the line on. */
+  private screenClicked(over: readonly unknown[]): void {
+    this.lineClicked = over.length === 0 && (this.mode === 'events' || this.mode === 'finished') && this.dialog.visible;
+  }
+
+  /** The arrow pressed this frame, W, A, S and D being the arrows. */
+  private directionPressed(): 'left' | 'right' | 'up' | 'down' | undefined {
+    const [w, a, s, d] = this.wasdKeys ?? [];
+    // Every key is asked, so none is left latched for a later frame.
+    const pressed = (arrow: Phaser.Input.Keyboard.Key, letter: Phaser.Input.Keyboard.Key | undefined): boolean => {
+      const byArrow = this.keyPresses.justPressed(arrow);
+      const byLetter = letter !== undefined && this.keyPresses.justPressed(letter);
+      return byArrow || byLetter;
+    };
+    const left = pressed(this.leftKey, a);
+    const right = pressed(this.rightKey, d);
+    const up = pressed(this.upKey, w);
+    const down = pressed(this.downKey, s);
+    return left ? 'left' : right ? 'right' : up ? 'up' : down ? 'down' : undefined;
   }
 
   /** OK is one key: Space and Enter, asked the same way in the same frame. */
@@ -1787,6 +1830,8 @@ export class BattleScene extends Phaser.Scene {
     // same screen area, so make the handoff explicit instead of relying on the
     // typewriter's completion callback to have hidden it first.
     this.dialog.setVisible(false);
+    // The rows are drawn again, and a row taken away says no pointer-out.
+    this.pointedRow = undefined;
     this.commandContainer.removeAll(true);
     this.commandContainer.setVisible(true);
     if (this.mode === 'party') {
@@ -1927,15 +1972,9 @@ export class BattleScene extends Phaser.Scene {
       );
       text
         .setInteractive({ useHandCursor: true })
-        .on('pointerover', () => {
-          this.selectedCommand = start + index;
-          this.updateSelection();
-        })
-        .on('pointerdown', () => {
-          this.selectedCommand = start + index;
-          this.updateSelection();
-          this.confirm();
-        });
+        .on('pointerover', () => this.lightRow(text, start + index))
+        .on('pointerout', () => this.unlightRow())
+        .on('pointerdown', () => this.clickRow(start + index));
       this.commandContainer.add(text);
       return text;
     });
@@ -1981,15 +2020,9 @@ export class BattleScene extends Phaser.Scene {
       });
       text
         .setInteractive({ useHandCursor: !pokemon.isFainted })
-        .on('pointerover', () => {
-          this.selectedCommand = index;
-          this.updateSelection();
-        })
-        .on('pointerdown', () => {
-          this.selectedCommand = index;
-          this.updateSelection();
-          this.confirm();
-        });
+        .on('pointerover', () => this.lightRow(text, index))
+        .on('pointerout', () => this.unlightRow())
+        .on('pointerdown', () => this.clickRow(index));
       container.add(text);
       return text;
     });
@@ -2034,15 +2067,9 @@ export class BattleScene extends Phaser.Scene {
       );
       text
         .setInteractive({ useHandCursor: true })
-        .on('pointerover', () => {
-          this.selectedCommand = index;
-          this.updateSelection();
-        })
-        .on('pointerdown', () => {
-          this.selectedCommand = index;
-          this.updateSelection();
-          this.confirm();
-        });
+        .on('pointerover', () => this.lightRow(text, index))
+        .on('pointerout', () => this.unlightRow())
+        .on('pointerdown', () => this.clickRow(index));
       container.add(text);
       return text;
     });
@@ -2116,15 +2143,9 @@ export class BattleScene extends Phaser.Scene {
       });
       text
         .setInteractive({ useHandCursor: true })
-        .on('pointerover', () => {
-          this.selectedCommand = index;
-          this.updateSelection();
-        })
-        .on('pointerdown', () => {
-          this.selectedCommand = index;
-          this.updateSelection();
-          this.confirm();
-        });
+        .on('pointerover', () => this.lightRow(text, index))
+        .on('pointerout', () => this.unlightRow())
+        .on('pointerdown', () => this.clickRow(index));
       container.add(text);
       return text;
     });
@@ -2200,14 +2221,9 @@ export class BattleScene extends Phaser.Scene {
       );
       text
         .setInteractive({ useHandCursor: true })
-        .on('pointerover', () => {
-          this.selectedCommand = start + offset;
-          this.showCommands();
-        })
-        .on('pointerdown', () => {
-          this.selectedCommand = start + offset;
-          this.confirm();
-        });
+        .on('pointerover', () => this.lightRow(text, start + offset))
+        .on('pointerout', () => this.unlightRow())
+        .on('pointerdown', () => this.clickRow(start + offset, false));
       container.add(text);
       return text;
     });
@@ -2326,16 +2342,19 @@ export class BattleScene extends Phaser.Scene {
     const row = Math.floor(this.selectedCommand / columns);
     const column = this.selectedCommand % columns;
     const rows = Math.ceil(count / columns);
-    const nextRow =
-      direction === 'up' ? (row + rows - 1) % rows : direction === 'down' ? (row + 1) % rows : row;
-    const nextColumn =
-      direction === 'left'
-        ? (column + columns - 1) % columns
-        : direction === 'right'
-          ? (column + 1) % columns
-          : column;
+    // A list stops at its ends, as every other menu in the game does: wrapped,
+    // Right from POKéMON went round to FIGHT (the navigation audit, 25 Nov 2026).
+    const nextRow = Math.max(0, Math.min(rows - 1, row + (direction === 'up' ? -1 : direction === 'down' ? 1 : 0)));
+    const nextColumn = Math.max(
+      0,
+      Math.min(columns - 1, column + (direction === 'left' ? -1 : direction === 'right' ? 1 : 0)),
+    );
     const pageBefore = rowListPage(this.selectedCommand).page;
-    this.selectedCommand = Math.min(nextRow * columns + nextColumn, count - 1);
+    const next = Math.min(nextRow * columns + nextColumn, count - 1);
+    if (next === this.selectedCommand) {
+      return;
+    }
+    this.selectedCommand = next;
     if (
       this.mode === 'make-room' ||
       (this.isRowListMode && rowListPage(this.selectedCommand).page !== pageBefore)
@@ -2347,6 +2366,43 @@ export class BattleScene extends Phaser.Scene {
       this.updateSelection();
     }
     audioManager.play('select');
+  }
+
+  /**
+   * Pointing at a row lights it and nothing more. The mouse used to move the
+   * keyboard's cursor too, so a pointer left resting on a command decided what
+   * the next Space or Enter did (the navigation audit, 25 Nov 2026). Only a
+   * click presses; leaving the row puts its ink back (`updateSelection`).
+   */
+  private lightRow(text: Phaser.GameObjects.Text, index: number): void {
+    this.pointedRow = index;
+    this.refreshMoveGuidance();
+    if (text.text.includes('FNT') || this.refusesLabel(text.text)) {
+      return;
+    }
+    text.setColor(UI.frameRim.css);
+  }
+
+  /** The pointer has left a row: its ink and the cursor's guidance come back. */
+  private unlightRow(): void {
+    this.pointedRow = undefined;
+    this.updateSelection();
+  }
+
+  /**
+   * A click on a row presses it, as OK would with the cursor there. A click the
+   * panel is still too new to take (`stillArming`) moves nothing, so the second
+   * click of a double click neither throws nor shifts the cursor.
+   */
+  private clickRow(index: number, redrawn = true): void {
+    if (this.stillArming()) {
+      return;
+    }
+    this.selectedCommand = index;
+    if (redrawn) {
+      this.updateSelection();
+    }
+    this.confirm();
   }
 
   private updateSelection(): void {
@@ -2451,16 +2507,19 @@ export class BattleScene extends Phaser.Scene {
     if (this.moveGuidanceTexts.length === 0) {
       return;
     }
+    // The row the pointer is on answers first, then the cursor's: pointing is
+    // a question, and asking it never moves the cursor (`hoverDescribe.ts`).
+    const shown = this.pointedRow ?? this.selectedCommand;
     if (this.mode === 'items') {
-      const item = usableBattleItems(this.bag)[this.selectedCommand];
+      const item = usableBattleItems(this.bag)[shown];
       this.moveGuidanceTexts[0]?.setText(this.fitCaption(item ? describeItemGuidance(item) : '')).setColor(PANEL_GUIDANCE_INK);
       this.moveGuidanceTexts[1]
-        ?.setText(this.fitCaption(rowListPageNote(rowListPage(this.selectedCommand).page, usableBattleItems(this.bag).length)))
+        ?.setText(this.fitCaption(rowListPageNote(rowListPage(shown).page, usableBattleItems(this.bag).length)))
         .setColor(PANEL_GUIDANCE_INK);
       return;
     }
     if (this.mode === 'balls') {
-      const ball = carriedBalls(this.bag)[this.selectedCommand];
+      const ball = carriedBalls(this.bag)[shown];
       const foe = this.state.enemy;
       const chance = ball
         ? getCatchChance(
@@ -2475,7 +2534,7 @@ export class BattleScene extends Phaser.Scene {
         ?.setText(this.fitCaption(ball ? describeBallGuidance(ball, chance) : ''))
         .setColor(PANEL_GUIDANCE_INK);
       this.moveGuidanceTexts[1]
-        ?.setText(this.fitCaption(rowListPageNote(rowListPage(this.selectedCommand).page, carriedBalls(this.bag).length)))
+        ?.setText(this.fitCaption(rowListPageNote(rowListPage(shown).page, carriedBalls(this.bag).length)))
         .setColor(PANEL_GUIDANCE_INK);
       return;
     }
@@ -2483,7 +2542,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     const chooser = this.chooser();
-    const move = chooser?.moves[this.selectedCommand];
+    const move = chooser?.moves[shown];
     if (!chooser || !move) {
       return;
     }

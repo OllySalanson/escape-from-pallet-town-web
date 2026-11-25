@@ -126,6 +126,11 @@ thrown from the list, and BALL again must open the list on the Great Balls rathe
 than throw one; then two Enter presses 120ms apart and a double click on BALL must
 open the list and throw nothing (`docs/screens/ball-choice/`).
 
+`battleKeys.mjs <test-mode build url> <dir> [--port=N]` reads a wild fight's
+opening lines with mouse clicks alone, rests the pointer on ITEM (lit, the cursor
+still on FIGHT), moves with D and runs Right past the end of the row, which must
+stop there (`docs/screens/battle-keys/`).
+
 `slowLoad.mjs <cdp port> <build url> <dir> [kbit/s] [latency ms]` opens the game
 on a throttled line with the cache off and photographs the first load until the
 title is up, for what a friend on poor wifi sees before the game can draw
