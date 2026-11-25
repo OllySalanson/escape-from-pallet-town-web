@@ -189,9 +189,11 @@ describe("Greystone Vale's quarters", () => {
    */
   it('asks the gate states a save can walk, and only those', () => {
     const states = gateStatesToVerify(gatesForMap(VALE));
-    // Every door shut; the Cut tree; the night track; Misty's; Misty's and
-    // Koga's, because he fights only a holder of her badge; and every door.
-    expect(states).toHaveLength(6);
+    // Every door shut; each of the two Cut trees (Hazel's garden, and the
+    // woodcutter's ride LINNET's race goes down - `world/races.ts`); the night
+    // track; Misty's; Misty's and Koga's, because he fights only a holder of
+    // her badge; and every door.
+    expect(states).toHaveLength(7);
     expect(states).toContainEqual([MISTY_BOSS_ID]);
     expect(states).toContainEqual([MISTY_BOSS_ID, KOGA_BOSS_ID]);
     expect(states).not.toContainEqual([KOGA_BOSS_ID]);

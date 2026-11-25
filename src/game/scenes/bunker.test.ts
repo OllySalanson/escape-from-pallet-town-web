@@ -213,7 +213,8 @@ const attachSceneStubs = (scene: WorldScene, controls: Record<string, FakeKey>):
     events: { once: vi.fn(), on: vi.fn() },
     time: { now: 0, delayedCall: vi.fn((_delayMs: number, callback: () => void) => callback()) },
     tweens: { add: vi.fn(() => chainable()), addCounter: vi.fn(() => chainable()) },
-    textures: { get: vi.fn(() => ({ has: vi.fn(() => true), add: vi.fn() })) },
+    // `exists`: the prize chip draws the find's own icon when its texture is loaded (#810).
+    textures: { get: vi.fn(() => ({ has: vi.fn(() => true), add: vi.fn() })), exists: vi.fn(() => true) },
   });
 };
 

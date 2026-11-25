@@ -165,12 +165,13 @@ describe('the rooms behind the base doors', () => {
         ]);
         // Bill's goods stand between him and the door. Nobody has to cross them
         // to hear him: the key on the mat speaks to him all the same.
-        // The marshal stands through the gate from the Arena's door: nobody has to go to her.
+        // The marshal stands through the gate from the Arena's door, at the end of
+        // the tunnel under the stands (#805): nobody has to go to her.
         // THE GAME CORNER's attendant is across the arcade, behind the coin
         // counter on its back wall, and the prize clerk across the prize room:
         // the key on the mat speaks to them too.
         // THE BATTLE ARENA's receptionist is up the tatami from the door, at the head of the hall.
-        const across = { 'bills-cottage': 7, 'raid-arena': 8, 'game-corner': 9, 'prize-window': 6, 'battle-arena': 8 }[walk.door.id] ?? 4;
+        const across = { 'bills-cottage': 7, 'raid-arena': 11, 'game-corner': 9, 'prize-window': 6, 'battle-arena': 8 }[walk.door.id] ?? 4;
         expect([walk.door.id, walk.acrossTheRoom <= across]).toEqual([walk.door.id, true]);
       }
     }

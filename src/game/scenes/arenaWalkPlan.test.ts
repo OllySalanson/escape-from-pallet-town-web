@@ -41,6 +41,8 @@ function clickedWalk() {
     knockScreen: null,
     favoursScreen: null,
     arenaPanel: null,
+    // The hall's great doors (#805): shut doors bar a tile; there are none here.
+    hallDoors: null,
     telescope: null,
     fogLift: null,
     phrasePicker: null,
