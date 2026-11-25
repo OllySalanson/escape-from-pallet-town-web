@@ -3265,6 +3265,14 @@ export class BattleScene extends Phaser.Scene {
 
     this.bag.remove(item.id, 1);
     this.pendingItem = undefined;
+    // The medicine hint put the menu on ITEM for this one drink; the turns
+    // after it come back on FIGHT. Remembering ITEM, a player pressing only OK
+    // drank the pack dry and never attacked again (overnight critic, 25 Nov
+    // 2026, on a phone's one big button).
+    const fight = this.mainActions().findIndex((action) => action.type === 'choose-fight');
+    if (fight >= 0) {
+      this.lastMainCommand = fight;
+    }
     this.state = use.state;
     this.persistActivePokemonHp();
     // Whichever slot the medicine was drunk in - the plate that has to move is
