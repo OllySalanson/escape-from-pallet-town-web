@@ -11,7 +11,11 @@
 // - public/favicon-32.png    - 2x, for a browser that does not take an SVG icon;
 // - public/apple-touch-icon.png - 11x on a 180x180 cream square, the size iOS
 //   asks for when a page is added to a home screen (it would paint any
-//   transparency black).
+//   transparency black);
+// - public/icon-192.png and icon-512.png - 10x and 24x on cream squares, the
+//   two sizes an Android home screen asks a web app's manifest for
+//   (public/manifest.webmanifest). At 24x the ball is 384 across, inside the
+//   middle 80% a launcher keeps when it masks an icon to its own shape.
 //
 // The output is byte-stable: run it again and nothing changes.
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -143,4 +147,6 @@ const ball = readRgbaPng(SOURCE);
 writeFileSync(new URL('favicon.svg', OUT), svg(ball));
 writeRgbaPng(new URL('favicon-32.png', OUT), scaled(ball, 2, 32));
 writeRgbaPng(new URL('apple-touch-icon.png', OUT), scaled(ball, 11, 180, TOUCH_BACKGROUND));
-console.log('favicon.svg, favicon-32.png, apple-touch-icon.png written to public/');
+writeRgbaPng(new URL('icon-192.png', OUT), scaled(ball, 10, 192, TOUCH_BACKGROUND));
+writeRgbaPng(new URL('icon-512.png', OUT), scaled(ball, 24, 512, TOUCH_BACKGROUND));
+console.log('favicon.svg, favicon-32.png, apple-touch-icon.png, icon-192.png, icon-512.png written to public/');

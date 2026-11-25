@@ -198,11 +198,11 @@ the commit that script names. Each folder carries the game's `LICENSE` and a
 
 ## Site icons and link preview (`public/`, beside this folder)
 
-- `favicon.svg`, `favicon-32.png` and `apple-touch-icon.png` are `icons/poke-ball.png`
+- `favicon.svg`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192.png` and `icon-512.png` are `icons/poke-ball.png`
   (below) scaled by whole numbers, one square per pixel, by
-  `scripts/draw-site-icons.mjs`; the touch icon sits on the title's cream
+  `scripts/draw-site-icons.mjs`; the touch and home-screen icons sit on the title's cream
   (`#f8f5d7`) because iOS paints transparency black. Same authorship and licence
-  as the icon.
+  as the icon. `manifest.webmanifest`, which names the two home-screen icons, was written here.
 - `social-preview.png` is byte-identical to `docs/readme/social-preview.png`,
   which `tools/readme/drawArt.mjs` draws from the game's own banner parts and
   sheets and writes to both places; it carries the provenance of the sheets it

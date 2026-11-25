@@ -14,6 +14,14 @@
     <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#0f1f33" />
+    <!-- Added to a home screen, it opens as the game alone - no browser bars -
+         on either phone: Android reads the manifest, iOS the three tags under it.
+         The icons are drawn by the same script as the tab's. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Pallet Town" />
     <!-- What a shared link shows in WhatsApp, Discord, iMessage and the rest.
          They fetch the page without running it, so the picture must be a full
          address: the published copy of docs/readme/social-preview.png. -->
