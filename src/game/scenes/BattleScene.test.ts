@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
+import { UI } from '../ui/uiPalette';
+import { WINDOW_INK } from '../ui/pixelWindow';
 
 vi.mock('phaser', () => ({
   default: {
@@ -2398,6 +2400,107 @@ describe('choosing which ball to throw', () => {
     clock.advance(RELEASE_ARMING_MS);
     battle.update(0, 16);
     expect(ballsBefore()).toBe(2);
+  });
+});
+
+/**
+ * The navigation audit (25 Nov 2026) found the battle's menus keeping rules of
+ * their own: a click did not read a line on, the arrows wrapped round, W, A, S
+ * and D did nothing, and pointing at a command moved the keyboard's cursor. The
+ * game's one rule set: arrows (W, A, S, D among them) move the cursor and stop
+ * at the ends, pointing only lights a row, and a click reads a line on.
+ */
+describe("the battle's keys and mouse", () => {
+  type Battle = {
+    mode: string;
+    selectedCommand: number;
+    onMessagesComplete(): void;
+    update(time: number, delta: number): void;
+    screenClicked(over: readonly unknown[]): void;
+    moveSelection(direction: 'left' | 'right' | 'up' | 'down'): void;
+    keyPresses: { justPressed(key: unknown): boolean };
+  };
+  /** A fight on its command menu, with each key a token the test can press. */
+  const onTheMenu = () => {
+    const harness = createBattleSceneHarness();
+    const battle = harness.scene as unknown as Battle;
+    battle.onMessagesComplete();
+    for (const key of ['confirmKey', 'enterKey', 'backKey', 'leftKey', 'rightKey', 'upKey', 'downKey']) {
+      Object.assign(battle, { [key]: { key } });
+    }
+    Object.assign(battle, { wasdKeys: ['W', 'A', 'S', 'D'].map((key) => ({ key })) });
+    Object.assign(harness.dialog, { update: () => undefined });
+    let pressed: string | undefined;
+    battle.keyPresses = { justPressed: (key) => (key as { key: string } | undefined)?.key === pressed };
+    const press = (key: string): void => {
+      pressed = key;
+      battle.update(0, 16);
+      pressed = undefined;
+    };
+    return { ...harness, battle, press };
+  };
+  const command = (texts: RenderedText[], label: string) =>
+    read(texts).filter(({ text }) => text.includes(label)).at(-1)!;
+
+  it('moves the cursor with W, A, S and D as with the arrows', () => {
+    const { battle, press } = onTheMenu();
+    expect(battle.selectedCommand).toBe(0);
+    press('D');
+    expect(battle.selectedCommand).toBe(1);
+    press('A');
+    expect(battle.selectedCommand).toBe(0);
+    press('S');
+    expect(battle.selectedCommand).toBeGreaterThan(1);
+    press('W');
+    expect(battle.selectedCommand).toBe(0);
+  });
+
+  it('stops at the ends of the menu rather than wrapping round', () => {
+    const { battle, press } = onTheMenu();
+    press('leftKey');
+    expect(battle.selectedCommand).toBe(0);
+    press('upKey');
+    expect(battle.selectedCommand).toBe(0);
+    for (let step = 0; step < 6; step += 1) {
+      press('rightKey');
+    }
+    const lastOfRow = battle.selectedCommand;
+    expect(lastOfRow).toBeGreaterThan(0);
+    press('rightKey');
+    expect(battle.selectedCommand).toBe(lastOfRow);
+  });
+
+  it('lights a row the pointer is on without moving the cursor, and presses only on a click', () => {
+    const { battle, renderedTexts } = onTheMenu();
+    const item = command(renderedTexts, 'ITEM x');
+    item.handlers.pointerover();
+    expect(battle.selectedCommand).toBe(0);
+    expect(battle.mode).toBe('main');
+    expect(item.setColor).toHaveBeenLastCalledWith(UI.frameRim.css);
+    item.handlers.pointerout();
+    expect(item.setColor).toHaveBeenLastCalledWith(WINDOW_INK);
+
+    item.handlers.pointerdown();
+    expect(battle.mode).toBe('items');
+  });
+
+  it('reads a line on with a click on the screen, as Space does', () => {
+    const { battle, dialog, renderedTexts } = onTheMenu();
+    command(renderedTexts, 'BALL x').handlers.pointerdown();
+    command(renderedTexts, 'POKé BALL x').handlers.pointerdown();
+    expect(battle.mode).toBe('events');
+    Object.assign(dialog, { visible: true });
+    dialog.isCurrentMessageComplete = true;
+    const advanced = dialog.advance.mock.calls.length;
+
+    // A click on a row is the row's, and reads nothing on.
+    battle.screenClicked([{}]);
+    battle.update(0, 16);
+    expect(dialog.advance.mock.calls.length).toBe(advanced);
+
+    battle.screenClicked([]);
+    battle.update(0, 16);
+    expect(dialog.advance.mock.calls.length).toBe(advanced + 1);
   });
 });
 

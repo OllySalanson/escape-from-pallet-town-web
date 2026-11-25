@@ -23,11 +23,11 @@ import {
 export const LIBRARY_CONTROLS = {
   /** Walking, and moving a cursor: every scene's `createCursorKeys`. */
   walk: 'ARROWS',
-  /** Walking too: `BaseScene.bindControls` and `WorldScene.bindControls` add W, A, S and D. */
+  /** Walking too: `BaseScene.bindControls` and `WorldScene.bindControls` add W, A, S and D, and `BattleScene.wasdKeys` moves its cursor with them. */
   wasd: 'W A S D',
   /** Talk, read, open, choose: the `interact` keys in `BaseScene` and `WorldScene`, `confirmKey` in `BattleScene`. */
   interact: 'SPACE',
-  /** The other choosing key, and the one a pack is laid out with (`ui/gridArranging.ts`). */
+  /** The other choosing key, one key with SPACE (`BattleScene.okPressed`), and the one a pack is laid out with (`ui/gridArranging.ts`). */
   confirm: 'ENTER',
   /** Back out of a screen, skip talk, put a piece back where it was. */
   back: 'ESC',
