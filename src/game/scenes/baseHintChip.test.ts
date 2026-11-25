@@ -18,7 +18,8 @@ import { placeCaptions, type Rect } from '../ui/labelPlacement';
 import { BaseScene } from './BaseScene';
 
 const VIEW = { left: 700, top: 400, right: 1100, bottom: 656, width: 400, height: 256 };
-const BOX = { x: 84, y: 192, width: 232, height: 56 };
+/** The harbour box as drawn in this view: the raid's width, centred. */
+const BOX = { x: 48, y: 192, width: 304, height: 56 };
 
 /** The real talk hint on a stand-in of a scene with more of a keeper's words to come. */
 function talking(): { hintRect: () => Rect; chip: () => Rect } {

@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { FRAME_DEPTH, UI } from './uiPalette';
 
 /**
  * The game's window frame, drawn rather than stretched.
@@ -56,22 +57,76 @@ export function drawPixelWindow(
 }
 
 /**
+ * The pop-up window: FireRed's frame - a dark line with its corners clear, a
+ * two-pixel blue rim, and a one-pixel bevel inside it lit on the top and left
+ * and shaded on the bottom and right - round the paper. `FRAME_DEPTH` deep on
+ * every side. Below a size that can hold all of that it is the plain window.
+ */
+export function drawFramedWindow(
+  graphics: Phaser.GameObjects.Graphics,
+  rect: PixelWindowRect,
+  fill: number = UI.paper.value,
+): void {
+  const { x, y, width, height } = rect;
+  if (width < FRAME_DEPTH * 2 + 2 || height < FRAME_DEPTH * 2 + 2) {
+    drawPixelWindow(graphics, rect, { fill, border: UI.frameLine.value });
+    return;
+  }
+  // The line, corners clear.
+  graphics.fillStyle(UI.frameLine.value, 1);
+  graphics.fillRect(x + 1, y, width - 2, 1);
+  graphics.fillRect(x + 1, y + height - 1, width - 2, 1);
+  graphics.fillRect(x, y + 1, 1, height - 2);
+  graphics.fillRect(x + width - 1, y + 1, 1, height - 2);
+  // The rim, and the corner pixel inside the line that keeps the chamfer round.
+  graphics.fillStyle(UI.frameRim.value, 1);
+  graphics.fillRect(x + 1, y + 1, width - 2, height - 2);
+  // The bevel: lit top and left, shaded bottom and right.
+  graphics.fillStyle(UI.frameLight.value, 1);
+  graphics.fillRect(x + 3, y + 3, width - 6, 1);
+  graphics.fillRect(x + 3, y + 3, 1, height - 6);
+  graphics.fillStyle(UI.frameShade.value, 1);
+  graphics.fillRect(x + 4, y + height - 4, width - 7, 1);
+  graphics.fillRect(x + width - 4, y + 4, 1, height - 7);
+  // The paper.
+  graphics.fillStyle(fill, 1);
+  graphics.fillRect(x + FRAME_DEPTH, y + FRAME_DEPTH, width - FRAME_DEPTH * 2, height - FRAME_DEPTH * 2);
+}
+
+/**
  * The menu cursor from the games this one is dressed as: a solid right-pointing
  * triangle, drawn rather than typed so it is the same three pixels wide at every
  * zoom and never falls back to whatever arrow a browser font happens to carry.
  */
 export const CURSOR_WIDTH = 3;
 export const CURSOR_HEIGHT = 5;
+/** The pop-ups' cursor: the same triangle, a size up, so it reads beside dialogue-sized words. */
+export const LARGE_CURSOR_WIDTH = 4;
+export const LARGE_CURSOR_HEIGHT = 7;
 
 export function drawMenuCursor(
   graphics: Phaser.GameObjects.Graphics,
   x: number,
   y: number,
   color: number,
+  size: 'small' | 'large' = 'small',
 ): void {
   graphics.fillStyle(color, 1);
-  const rows = [1, 2, 3, 2, 1];
+  const rows = size === 'large' ? [1, 2, 3, 4, 3, 2, 1] : [1, 2, 3, 2, 1];
   rows.forEach((width, row) => {
     graphics.fillRect(x, y + row, width, 1);
   });
+}
+
+/**
+ * The pop-ups' cursor: the large triangle in red, with a one-pixel shadow down
+ * its lower-right edge and under its tip, as FireRed's has, so it holds its
+ * shape on cream paper. The whole triangle offset made a ragged stair.
+ */
+export function drawPopupCursor(graphics: Phaser.GameObjects.Graphics, x: number, y: number): void {
+  drawMenuCursor(graphics, x, y, UI.cursor.value, 'large');
+  graphics.fillStyle(UI.cursorShadow.value, 1);
+  // Rows 3 to 6 are 4, 3, 2 and 1 wide: the pixel after each is the edge.
+  [4, 3, 2, 1].forEach((width, step) => graphics.fillRect(x + width, y + 3 + step, 1, 1));
+  graphics.fillRect(x, y + LARGE_CURSOR_HEIGHT, 1, 1);
 }

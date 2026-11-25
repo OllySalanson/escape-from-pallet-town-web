@@ -119,7 +119,7 @@ describe('the three balls on Oak’s table', () => {
   });
 
   it('are asked about in a line that fits the box, with room for its answers', () => {
-    // Longer than this wraps onto the answers' own row (`ChoicePrompt`).
+    // One row of the box, as FireRed asks it; the answers stand in their own window (`ChoicePrompt`).
     for (const { id } of STARTER_SPECIES) {
       expect(starterQuestion(getStarterSpecies(id)).length).toBeLessThanOrEqual(28);
     }

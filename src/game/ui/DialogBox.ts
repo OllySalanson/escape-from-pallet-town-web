@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { TypewriterQueue } from './TypewriterQueue';
-import { drawPixelWindow } from './pixelWindow';
+import { drawFramedWindow, drawPixelWindow } from './pixelWindow';
 import { GAME_FONT } from './gameFont';
 import { DIALOG_FONT_SIZE } from './screenType';
 import { shareLine } from './dialogBoxes';
@@ -29,6 +29,12 @@ export interface DialogBoxOptions {
    * instead of a rounded stroke. Geometry and text are untouched.
    */
   pixelWindow?: boolean;
+  /**
+   * Draws the pop-up window instead - the paper in its blue-rimmed frame
+   * (`drawFramedWindow`), filled with `backgroundColor`. Geometry and text are
+   * untouched.
+   */
+  framedWindow?: boolean;
   textStyle?: Phaser.Types.GameObjects.Text.TextStyle;
   /** The continue indicator, when it should not be the default white glyph. */
   indicatorStyle?: Phaser.Types.GameObjects.Text.TextStyle;
@@ -359,6 +365,10 @@ export class DialogBox extends Phaser.GameObjects.Container {
     const alpha = options.backgroundTexture ? 0 : 1;
 
     this.backgroundGraphics.clear();
+    if (options.framedWindow) {
+      drawFramedWindow(this.backgroundGraphics, { x: 0, y: 0, width: this.widthPx, height: this.heightPx }, backgroundColor);
+      return;
+    }
     if (options.pixelWindow) {
       drawPixelWindow(
         this.backgroundGraphics,
