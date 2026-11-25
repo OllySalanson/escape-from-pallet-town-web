@@ -131,7 +131,7 @@ export function dexGoal(state: PokedexViewState): string {
   const owned = state.dex.owned.length;
   const due = dueMilestone(owned, state.claimed);
   if (due) {
-    return `<div class="dex-goal is-due"><span class="dex-goal-words">${pixelTag('Oak has a reward', 'secure')}<small>See him in his lab</small></span><span class="dex-rewards">${rewardIcons(due)}</span></div>`;
+    return `<div class="dex-goal is-due"><span class="dex-goal-words">${pixelTag('Oak has a reward', 'good')}<small>See him in his lab</small></span><span class="dex-rewards">${rewardIcons(due)}</span></div>`;
   }
   const next = nextMilestone(owned);
   if (!next) {

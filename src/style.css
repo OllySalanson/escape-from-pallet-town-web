@@ -5214,9 +5214,13 @@ body.touch-play .feedback-tab {
 }
 /* What it is holding, on the icon's corner, as FireRed marks a held item in its
    party - here the piece's own icon, so which piece is seen too. */
+/* What a slot's Pokémon holds, on the corner of its icon as FireRed's held-item
+   mark is: the icon stands from 2 to 34 and its words from 36, so the mark ends
+   at 34 - at 22 it ran two pixels into the level beside it (critic sweep,
+   25 Nov 2026). */
 :where(.pixel-ui) .px-slot-gear {
   position: absolute;
-  left: calc(var(--u) * 22);
+  left: calc(var(--u) * 18);
   bottom: var(--u);
   pointer-events: none;
 }

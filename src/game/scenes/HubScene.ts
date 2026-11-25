@@ -2545,7 +2545,7 @@ export class HubScene extends Phaser.Scene {
         const tag = out
           ? pixelTag('On a raid')
           : hurt
-          ? pixelTag(this.atHome ? 'Needs Joy' : this.recoveryPriceTag(stored), 'risk')
+          ? pixelTag(this.atHome ? 'Needs Joy' : this.recoveryPriceTag(stored), this.atHome || this.recoveryPriceMs(stored) > 0 ? 'risk' : 'good')
           : this.atHome
             ? this.homeTag(stored, garden)
             : pixelTag('Fit', 'good', true);
@@ -2559,8 +2559,11 @@ export class HubScene extends Phaser.Scene {
         return pixelMonTile(stored.pokemon, {
           classes: [...(moving ? ['is-selected'] : []), ...(out ? ['is-away'] : [])],
           // A hurt one at the Center says what ENTER would cost, in red, where
-          // its level would be: the treatment is a price and is seen first.
-          ...(hurt && !out && !this.atHome ? { line: pixelTag(this.recoveryPriceTag(stored), 'risk') } : {}),
+          // its level would be: the treatment is a price and is seen first. A
+          // free one is good news, so it is green: in red, FREE read as a fault.
+          ...(hurt && !out && !this.atHome
+            ? { line: pixelTag(this.recoveryPriceTag(stored), this.recoveryPriceMs(stored) > 0 ? 'risk' : 'good') }
+            : {}),
           attributes: `${wiring} data-shows="${stored.id}" data-box-name="${escapeAttribute(boxed ?? '')}" aria-label="${escapeAttribute(spoken)}"${index === 0 ? ' data-cursor-start' : ''}`,
         });
       })
