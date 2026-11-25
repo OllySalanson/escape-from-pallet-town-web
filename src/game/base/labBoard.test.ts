@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { baseGame } from './baseGames.testkit';
-import { BARE_BOARD_LINE, RUMOURS_PINNED_LINE, bankedJobsLine, SCRAP_HEIGHT, SCRAP_WIDTH, boardLines, boardNote, boardNotices, boardPoster, oakNews, scrapSeats, slipSeats } from './labBoard';
+import { BARE_BOARD_LINE, RUMOURS_PINNED_LINE, bankedJobsLine, SCRAP_HEIGHT, SCRAP_WIDTH, boardLines, boardNote, boardNotices, boardPointer, boardPoster, oakNews, scrapSeats, slipSeats } from './labBoard';
 import { createStartingStash } from '../stash';
 import { BOARD_TILES, OAK_BOARD, OAK_CHART_TABLE, OAK_WALL_MAP, buildRoom, roomNamed } from './rooms';
 import { RUMOURS } from '../world/rumours';
@@ -203,3 +203,26 @@ describe("Oak's news of healing a raid was too short to pay for", () => {
     expect(fresh.join(' ')).toContain('went on recovery');
   });
 });
+
+/** Oak says this instead of reading the board out (the critic's problem 8). */
+describe("Oak's word about his board", () => {
+  it('says nothing about a bare board, or one that holds only the job he has just named', () => {
+    expect(boardPointer(baseGame({}))).toEqual([]);
+    const game = baseGame({ progress: BEEN_OUT });
+    const jobs = boardNotices(game).filter((notice) => notice.kind === 'contract').length;
+    expect(jobs).toBeGreaterThan(0);
+    expect(boardPointer(game, jobs)).toEqual([]);
+  });
+
+  it('says how much more is pinned up, and never reads a notice out', () => {
+    const game = baseGame({ progress: { ...BEEN_OUT, rumoursHeard: ['angler-red-one'], errands: withErrandAsked(undefined, 'brocks-crate') } });
+    const [line, ...rest] = boardPointer(game, 1);
+    expect(rest).toEqual([]);
+    expect(line).toMatch(/^There's more on my board, by the wall: (a notice|\d notices) and a rumour\. Have a read!$/);
+    for (const notice of boardNotices(game)) {
+      expect(line).not.toContain(notice.line);
+    }
+    expect(boardPointer(game)[0]).toMatch(/^My board by the wall has /);
+  });
+});
+

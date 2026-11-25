@@ -25,7 +25,7 @@ import { landingsHeldBack, quarterOfLanding } from '../world/valeQuarters';
  * so leaving without reading it does not buy a second hearing - and the save
  * keeps only the list of ids, as it keeps every other permanent fact.
  */
-export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'moved', 'coast', 'marsh'] as const;
+export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'moved', 'coast', 'marsh', 'nearWork'] as const;
 export type FirstWordsId = (typeof FIRST_WORDS_IDS)[number];
 
 export interface FirstWords {
@@ -134,6 +134,13 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
     lines: [
       'Oak on the radio: Koga holds the Marsh from his gym in Tanglewood now. Beat him, and the Rest House and the Salvage Camp are yours again.',
     ],
+  },
+  // Said by Oak once the near jobs are banked (`hub/nextStep.ts`): the end of
+  // the easy work, which the critic banked by raid six with nothing to mark it.
+  nearWork: {
+    speaker: 'prof-oak',
+    name: 'Professor Oak',
+    lines: ["That's the near work done! From now on the board deals jobs from all over the vale."],
   },
 };
 

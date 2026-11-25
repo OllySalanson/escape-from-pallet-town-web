@@ -21,6 +21,7 @@ import {
   FAVOUR_ANSWERS,
   forgetDeclinedErrands,
   harbourGiver,
+  mayAskAFavour,
   errandForItem,
   errandLoot,
   errandOf,
@@ -43,8 +44,10 @@ import { MACHINES } from '../pokemon/machines';
 import { TRADER_BARTERS } from './trader';
 
 const FRESH: ErrandProgress = DEFAULT_RAID_PROGRESS;
-/** A new save with one raid behind it, which is when anybody first asks a favour. */
+/** A new save with one raid behind it. */
 const BEEN_OUT: ErrandProgress = { ...DEFAULT_RAID_PROGRESS, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 0, wiped: 1 } } };
+/** The same save with its first job banked, which is when anybody first asks a favour. */
+const FIRST_JOB_DONE: ErrandProgress = { ...BEEN_OUT, standingContractsBanked: 1 };
 /** A save that can drop into Greystone Vale, where every favour lies. */
 const OPENED: ErrandProgress = {
   ...DEFAULT_RAID_PROGRESS,
@@ -225,9 +228,11 @@ describe('errands', () => {
         expect(errand.mapId).toBe('greystone-vale');
         // A favour behind a gym is asked once its doors are open, and every
         // other one straight away.
-        const out = { ...BEEN_OUT, defeatedBosses: gymDoorsFor(errand) };
+        const out = { ...FIRST_JOB_DONE, defeatedBosses: gymDoorsFor(errand) };
         expect(errandOpen(errand, out), errand.id).toBe(true);
         expect(errandBeat(errand.giver, out, nothing)).toEqual({ kind: 'ask', errand });
+        // Not before the first job is banked (`mayAskAFavour`).
+        expect(errandBeat(errand.giver, { ...out, standingContractsBanked: 0 }, nothing)).toBeUndefined();
         // Nobody asks a favour of somebody on their way to their first raid.
         expect(errandOpen(errand, FRESH), errand.id).toBe(false);
       }
@@ -235,6 +240,31 @@ describe('errands', () => {
       retireMapsForTests([]);
     }
   });
+
+  it('asks one favour at a time, and only once a job has been banked', () => {
+    retireMapsForTests(RETIRED_MAPS);
+    try {
+      oneAtATime();
+    } finally {
+      retireMapsForTests([]);
+    }
+  });
+
+  const oneAtATime = (): void => {
+    const [first, second] = ERRANDS.filter((errand) => gymDoorsFor(errand).length === 0);
+    const out = { ...FIRST_JOB_DONE };
+    expect(mayAskAFavour(BEEN_OUT)).toBe(false);
+    expect(mayAskAFavour(out)).toBe(true);
+    expect(errandBeat(second.giver, out, nothing)).toEqual({ kind: 'ask', errand: second });
+    // With the first taken, nobody else asks until it is done.
+    const taking = { ...out, errands: withErrandAsked(out.errands, first.id) };
+    expect(mayAskAFavour(taking)).toBe(false);
+    expect(errandBeat(second.giver, taking, nothing)).toBeUndefined();
+    // ... and the one in hand still answers to its own giver.
+    expect(errandBeat(first.giver, taking, (itemId) => (itemId === first.itemId ? 1 : 0))).toEqual({ kind: 'thanks', errand: first });
+    const done = { ...taking, errands: withErrandCompleted(taking.errands, first.id) };
+    expect(errandBeat(second.giver, done, nothing)).toEqual({ kind: 'ask', errand: second });
+  };
 
   /**
    * The captain's log lies at THE WRECK and the Warden's teeth in SAFARI

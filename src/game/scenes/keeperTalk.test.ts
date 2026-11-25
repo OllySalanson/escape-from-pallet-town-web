@@ -18,7 +18,8 @@ import { BaseScene } from './BaseScene';
 import { raidHeartbeat } from '../run/raidInFlight';
 import { roomNamed } from '../base/rooms';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
-import { boardLines } from '../base/labBoard';
+import { BARE_BOARD_LINE, boardLines, boardPointer } from '../base/labBoard';
+import { nextStepLines } from '../hub/nextStep';
 import { CHARMANDER, PIDGEY, Pokemon, PokemonParty } from '../pokemon';
 import { ALL_SPECIES } from '../pokemon/species';
 import { Bag } from '../items';
@@ -97,6 +98,8 @@ function room(manager: SaveManager, answers: readonly boolean[] = []) {
     oakGives: scene.oakGives,
     dressPlayer: () => undefined,
     readTheBoard: scene.readTheBoard,
+    oakSaysWhatIsNext: scene.oakSaysWhatIsNext,
+    offerFriendRoom: scene.offerFriendRoom,
     joyOffers: scene.joyOffers,
     freshGame: scene.freshGame,
     brockQuotes: scene.brockQuotes,
@@ -118,7 +121,7 @@ function room(manager: SaveManager, answers: readonly boolean[] = []) {
 const NOTHING_NEW: Partial<RaidProgress> = { firstWordsHeard: ['lab', 'loadout', 'center'] };
 
 describe('Professor Oak, from the mat', () => {
-  it('tells a newcomer what a raid is in the room, once, and then reads the board: nothing opens', () => {
+  it('tells a newcomer what a raid is in the room, once, and never reads the board out: nothing opens', () => {
     const manager = saved();
     const first = room(manager, [false]);
     first.speak('oaks-lab', 'lab');
@@ -129,15 +132,55 @@ describe('Professor Oak, from the mat', () => {
     }
     const game = manager.load()!;
     expect(game.raidProgress.firstWordsHeard).toEqual(['lab']);
-    expect(first.said.join(' ')).toContain(boardLines(game)[0]);
+    expect(first.said).not.toContain(BARE_BOARD_LINE);
 
     const again = room(manager, [false]);
     again.speak('oaks-lab', 'lab');
     expect(again.said).not.toContain(FIRST_WORDS.lab.lines[1]);
-    expect(again.said.join(' ')).toContain(boardLines(game)[0]);
   });
 
-  it('says who is hurt and what the clock has lost before he reads the board', () => {
+  /**
+   * The critic heard thirteen boxes of job, favours and rumours every time he
+   * spoke to Oak (problem 8): now Oak says the one next thing and where the
+   * rest is pinned, and the board is read off the wall.
+   */
+  it('says the one next thing and points at his board, rather than reading it out', () => {
+    retireMapsForTests(RETIRED_MAPS);
+    try {
+      const manager = saved({ ...NOTHING_NEW, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } });
+      const game = manager.load()!;
+      const oak = room(manager, [false]);
+      oak.speak('oaks-lab', 'lab');
+
+      expect(oak.said).toEqual([...nextStepLines(game.raidProgress), ...boardPointer(game, 1)]);
+      expect(oak.said.join(' ')).toMatch(/^Next, a job: /);
+      for (const line of boardLines(game)) {
+        expect(oak.said).not.toContain(line);
+      }
+    } finally {
+      retireMapsForTests([]);
+    }
+  });
+
+  it('marks the end of the near jobs once, then names what is next', () => {
+    retireMapsForTests(RETIRED_MAPS);
+    try {
+      const manager = saved({ ...NOTHING_NEW, raidRecord: { 'greystone-vale': { deployed: 4, extracted: 4, wiped: 0 } }, standingContractsBanked: 2 });
+      const first = room(manager, [false]);
+      first.speak('oaks-lab', 'lab');
+      const done = first.said.indexOf(FIRST_WORDS.nearWork.lines[0]);
+      expect(done).toBeGreaterThanOrEqual(0);
+      expect(first.said.findIndex((line) => line.includes('MISTY'))).toBeGreaterThan(done);
+
+      const again = room(manager, [false]);
+      again.speak('oaks-lab', 'lab');
+      expect(again.said).not.toContain(FIRST_WORDS.nearWork.lines[0]);
+    } finally {
+      retireMapsForTests([]);
+    }
+  });
+
+  it('says who is hurt and what the clock has lost before anything else', () => {
     const manager = saved(NOTHING_NEW, (stash) => {
       stash.listPokemon()[0].pokemon.takeDamage(5);
     });
@@ -150,18 +193,19 @@ describe('Professor Oak, from the mat', () => {
     expect(oak.said[1]).toBe('Your next raid runs 4:15: 0:45 went on recovery.');
   });
 
-  it('asks his favour after his first words and before the board', () => {
+  it('asks his favour after his first words and before what is next', () => {
     // His parcel lies on Greystone Vale, which is the map a save is offered.
     retireMapsForTests(RETIRED_MAPS);
     try {
-      const manager = saved({ raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } });
+      // A favour is asked once a job has been banked (`mayAskAFavour`).
+      const manager = saved({ raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } }, standingContractsBanked: 1 });
       const oak = room(manager, [true]);
       oak.speak('oaks-lab', 'lab');
 
       expect(oak.asked).toHaveLength(1);
       const favour = oak.said.findIndex((line) => line.includes('Before you go!'));
       expect(favour).toBeGreaterThan(oak.said.indexOf(FIRST_WORDS.lab.lines[2]));
-      expect(favour).toBeLessThan(oak.said.indexOf(boardLines(manager.load()!)[0]));
+      expect(favour).toBeLessThan(oak.said.findIndex((line) => line.includes('is on the rail')));
     } finally {
       retireMapsForTests([]);
     }

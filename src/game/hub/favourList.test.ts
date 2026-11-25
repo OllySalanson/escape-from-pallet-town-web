@@ -18,8 +18,8 @@ import { favourEntries, favourGiverWhere, favourListMarkup } from './favourList'
 
 const nothing = (): number => 0;
 
-/** A raid behind it, which is when anybody first asks a favour. */
-const BEEN_OUT = { ...DEFAULT_RAID_PROGRESS, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } };
+/** A raid and a job behind it, which is when anybody first asks a favour (`mayAskAFavour`). */
+const BEEN_OUT = { ...DEFAULT_RAID_PROGRESS, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } }, standingContractsBanked: 1 };
 /** The same, with both gyms beaten: the Marsh's two favours are asked once Koga's doors are open. */
 const GYMS_BEATEN = { ...BEEN_OUT, defeatedBosses: [MISTY_BOSS_ID, KOGA_BOSS_ID] };
 
@@ -72,7 +72,9 @@ describe('the favours list', () => {
     const joyHome = (itemId: ItemId): number => (itemId === joy.itemId ? 1 : 0);
     const entries = favourEntries(progress, joyHome, 0);
     const standing = Object.fromEntries(entries.map((entry) => [entry.errand.id, entry.standing]));
-    expect(standing).toMatchObject({ [joy.id]: 'home', [oak.id]: 'in-hand', [bill.id]: 'ask-later', [brock.id]: 'done' });
+    expect(standing).toMatchObject({ [joy.id]: 'home', [oak.id]: 'in-hand', [brock.id]: 'done' });
+    // Nobody asks a new favour while one is in hand, so Bill's is not listed.
+    expect(standing[bill.id]).toBeUndefined();
     expect(entries[0].errand).toBe(joy);
     expect(entries.at(-1)!.errand).toBe(brock);
 
@@ -83,8 +85,9 @@ describe('the favours list', () => {
     expect(markup).toContain('Home. Speak to Nurse Joy at POKÉMON CENTER.');
     expect(markup).toContain(`Done. ${brock.reward.summary}.`);
     expect(markup).toContain('2 in hand · 1 done');
-    // A NOT NOW is still on the list, and says when it comes round again.
-    expect(markup).toContain('Asked again after your next raid');
+    // A NOT NOW, with nothing in hand, is still on the list and says when it comes round again.
+    const declined = favourListMarkup(favourEntries({ ...BEEN_OUT, errands: withErrandCompleted(withErrandAsked(undefined, brock.id), brock.id) }, nothing, 0));
+    expect(declined).toContain('Asked again after your next raid');
     // The first row is where the cursor starts, and its pane is the one shown.
     expect(markup.match(/data-cursor-start/g)).toHaveLength(1);
     expect(markup).toContain(`data-shown-by="favour-${joy.id}">`);
