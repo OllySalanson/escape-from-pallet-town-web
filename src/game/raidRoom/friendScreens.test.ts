@@ -90,12 +90,12 @@ describe('the lab’s raid-with-a-friend screen', () => {
     expect(html).not.toContain('maxlength');
   });
 
-  it('says what a room shares as the raid plays it: first-step loot, one hunter, a keeper’s doors', () => {
+  // The captain, 25 Nov 2026: no advice lines slapped on a screen. How a
+  // shared raid plays is learnt by playing one, not from a box of rules.
+  it('carries no box of rules about how a shared raid plays', () => {
     const html = friendRoomView({ ...base, room: null });
-    expect(html).not.toContain('own clock and loot');
-    expect(html).toContain('The loot goes to whoever steps on it first');
-    expect(html).toContain('one hunter chases you all');
-    expect(html).toContain('opens his doors for everyone');
+    expect(html).not.toContain('Together, apart');
+    expect(html).not.toContain('The loot goes to whoever steps on it first');
   });
 
   it('asks for a name before anything else', () => {
@@ -104,7 +104,7 @@ describe('the lab’s raid-with-a-friend screen', () => {
     expect(html).toContain('THE BOLTHOLE');
   });
 
-  it('shows a held room’s code, the friend’s line and where to get ready', () => {
+  it('shows a held room’s code and the friend’s line, with no directions slapped under them', () => {
     const html = friendRoomView({
       ...base,
       room: { code: 'BHRK', mapName: 'Floodplain Relay', hostName: 'ASH' },
@@ -113,7 +113,7 @@ describe('the lab’s raid-with-a-friend screen', () => {
     expect(html).toContain('BHRK');
     expect(html).toContain('ASH’s room');
     expect(html).toContain('ASH is getting ready.');
-    expect(html).toContain('RAID ARENA');
+    expect(html).not.toContain('RAID ARENA');
     expect(html).not.toContain('data-room-prepare');
     expect(html).toContain('data-room-leave');
   });

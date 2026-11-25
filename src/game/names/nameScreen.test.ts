@@ -21,7 +21,7 @@ describe('YOUR NAME?', () => {
     expect(typedPlayerName('A A')).toBe('A A');
 
     const help = /data-name-field[^>]*data-help="([^"]*)"/.exec(nameScreenMarkup({ where: 'continue', value: '' }))?.[1];
-    const consoleLine = /On every board[^<]*/.exec(
+    const consoleLine = /Up to ten:[^<]*/.exec(
       gamesMenuMarkup({ games: CONSOLE_GAMES, boards: new Map(), playerName: null, naming: { value: '' } }),
     )?.[0];
     for (const line of [help, consoleLine]) {

@@ -1,5 +1,8 @@
 # AI feel: who talks formally, and the lines to look at
 
+**The standing rule: no advice lines on a screen** - [no-advice-lines.md](no-advice-lines.md).
+What a screen may say, and where teaching goes instead.
+
 For the captain's call. Nothing here has been rewritten yet; the rewrite is the
 next piece of work, once the split below is agreed.
 

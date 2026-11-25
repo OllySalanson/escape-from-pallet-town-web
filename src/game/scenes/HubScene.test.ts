@@ -2008,7 +2008,7 @@ describe('what the base screen leads with', () => {
     expect(internals.overlay.focus).toHaveBeenLastCalledWith('[data-pokemon="charmander-1"]');
   });
 
-  it('says on the bench who is coming, and on the rack what is packed', () => {
+  it('says on the bench who is coming, and lectures nothing under the rack', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');
     hub.flow.setItemQuantity('potion', 0);
@@ -2024,9 +2024,10 @@ describe('what the base screen leads with', () => {
     expect(slots).toMatch(/class="px-party-slot is-lead" data-pokemon="charmander-1"/);
     expect(slots.match(/px-party-slot is-empty/g)).toHaveLength(5);
 
+    // The pack's squares show what is packed; the rule about wipes is not
+    // lectured under them (the captain, 25 Nov 2026: no advice lines).
     hub.setView('rack');
-    expect(markupOf(hub)).toContain('1 supply packed.');
-    expect(markupOf(hub)).not.toContain('1 supplies');
+    expect(markupOf(hub)).not.toContain('Lost on a wipe');
   });
 
   it('says at the rim what a wipe would take and what comes home', () => {

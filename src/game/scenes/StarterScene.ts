@@ -58,7 +58,6 @@ export class StarterScene extends Phaser.Scene {
         { heading: 'Saving is switched off' },
       )}${pixelCommitBar({
         title: 'No game to keep',
-        lines: [`<span class="px-wrap">Every raid is kept in the save, so the game needs one to start.</span>`],
         actions: '',
       })}</main>`,
     });

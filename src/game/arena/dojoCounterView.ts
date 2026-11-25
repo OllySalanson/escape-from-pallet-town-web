@@ -128,7 +128,7 @@ export function teamBody(
   const yours =
     chosen.length > 0
       ? chosen.map((entry, index) => row(entry, true, index === 0)).join('')
-      : '<p class="px-empty px-wrap">Nobody yet. Bring up to three, one of each kind.</p>';
+      : '<p class="px-empty px-wrap">Nobody yet.</p>';
   const rest = others.map((entry, index) => row(entry, false, chosen.length === 0 && index === 0)).join('');
   const list = `${pickerFindField()}<h3 class="px-subheading">Your side</h3>${yours}<h3 class="px-subheading">In your boxes</h3>${rest}`;
   const ready = chosen.length > 0;

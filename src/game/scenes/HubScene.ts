@@ -18,7 +18,6 @@ import {
   beaconUnlockAtMs,
   checkBerth,
   faintedRefusal,
-  FAINTED_TREATMENT_NOTE,
   formatRecoveryClock,
   getWorkshopUpgrade,
   hasBeacon,
@@ -109,7 +108,6 @@ import {
 } from '../dev/playtestMode';
 import { createActiveRunSession } from '../run/RunSession';
 import {
-  FIRST_CONTRACT,
   frontDoorFor,
   generateRunPlan,
   generateRoomLoot,
@@ -120,7 +118,6 @@ import {
   requireInsertion,
 } from '../run/runGeneration';
 import {
-  availableContracts,
   contractCarryIn,
   jobChoice,
   jobsForMap,
@@ -685,16 +682,6 @@ export class HubScene extends Phaser.Scene {
 
   private spare(itemId: string): number {
     return spareAtBase(this.savedGameNow, itemId);
-  }
-
-  /**
-   * Whether the first contract is still on the board. A save that has banked it
-   * is past it, and so is every save while its map is retired
-   * (`world/mapRoster.ts`), which is what lets a new game drop straight in
-   * wherever the game is played.
-   */
-  private get firstContractActive(): boolean {
-    return availableContracts(this.savedGame.raidProgress.completedContracts).includes(FIRST_CONTRACT);
   }
 
   /**
@@ -2054,7 +2041,7 @@ export class HubScene extends Phaser.Scene {
   private roomNote(): string {
     const room = this.heldRoom;
     return room
-      ? `<small class="px-wrap room-note">${room.hostName ? `${room.hostName}’s room` : 'Your room'} ${room.code} · you each raid ${worldMapName(room.mapId)} on your own clock</small>`
+      ? `<small class="px-wrap room-note">${room.hostName ? `${room.hostName}’s room` : 'Your room'} ${room.code} · ${worldMapName(room.mapId)}</small>`
       : '';
   }
 
@@ -2256,7 +2243,7 @@ export class HubScene extends Phaser.Scene {
       ? options.map((option) => this.careOption(stored.id, option, shows)).join('')
       : '<span class="px-note">No medicine at base.</span>';
     const bay = `<button class="px-window px-chip" data-recover="${stored.id}" ${shows} data-help="${this.recoveryHelp(stored)}">${this.recoveryPriceLabel(stored)}</button>`;
-    return `${pokemon.isFainted ? `<span class="px-note px-wrap">${FAINTED_TREATMENT_NOTE}</span>` : ''}${medicine}${bay}`;
+    return `${pokemon.isFainted ? '<span class="px-note">Fainted.</span>' : ''}${medicine}${bay}`;
   }
 
   private careOption(pokemonId: string, option: TreatmentOption, shows = ''): string {
@@ -2852,7 +2839,6 @@ export class HubScene extends Phaser.Scene {
       })
       .join('');
     const cells = this.flow.bagCells;
-    const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
     const warning = this.packWarning();
     const firstCount = supplyRows.indexOf('data-count-dir');
     return `<main class="px-body loadout-layout">${pixelWindow(
@@ -2870,9 +2856,7 @@ export class HubScene extends Phaser.Scene {
       },
     )}</div>${pixelCommitBar({
       title: this.flow.packName,
-      lines: [
-        `<small class="px-wrap${warning ? ' px-warning' : ''}">${warning || `${supplies} ${supplies === 1 ? 'supply' : 'supplies'} packed. Lost on a wipe unless they are in the locker. The ${this.flow.packName} is lost on a wipe either way.`}</small>`,
-      ],
+      lines: warning ? [`<small class="px-wrap px-warning">${warning}</small>`] : [],
       actions: '',
     })}</main>`;
   }
@@ -2947,7 +2931,6 @@ export class HubScene extends Phaser.Scene {
           ? [`<p class="px-wrap px-warning rim-refusal">${RAID_ELSEWHERE_LINE}</p>`]
           : []),
       this.roomNote(),
-      ...(this.firstContractActive ? ['<small class="px-wrap">More ways in open up when you bring this job home.</small>'] : []),
       ...(warning ? [`<small class="px-wrap px-warning">${warning}</small>`] : []),
     ].filter((line) => line !== '');
     // With nobody able to go, a team about to be finished by the first thing
@@ -3428,7 +3411,7 @@ export class HubScene extends Phaser.Scene {
       : '';
     const signs = `<h3 class="px-subheading">Signs pinned here</h3>${gym}${
       entry.signs.length === 0
-        ? `<p class="px-empty px-wrap">${entry.held === 0 ? 'No boss on this map.' : `No boss beaten here yet. Beat one and their sign goes up.`}</p>`
+        ? `<p class="px-empty px-wrap">${entry.held === 0 ? 'No boss on this map.' : 'No boss beaten here yet.'}</p>`
         : entry.signs
             .map((sign) =>
               told(
@@ -3737,11 +3720,7 @@ export class HubScene extends Phaser.Scene {
     )}${pixelCommitBar({
       className: 'px-tone-secure secure-intro',
       title: 'Comes home whatever happens',
-      lines: [
-        // The two lids above already count the squares and what fills them, so
-        // this line says only what the counting does not: the rest is gone.
-        '<span class="px-wrap">Everything else you take is lost on a wipe.</span>',
-      ],
+      lines: [],
       actions: '',
     })}</main>`;
   }
@@ -4346,7 +4325,7 @@ export class HubScene extends Phaser.Scene {
     const lead = afterALoss
       ? `${spare.pokemon.name} is all you have left. You can trade it`
       : `While ${spare.pokemon.name} is your only Pokémon, you can trade it`;
-    return `<section class="swap-panel"><h3 class="px-subheading">${heading}</h3><p class="px-note px-wrap">${lead} for a level 5 starter, which arrives in the condition ${spare.pokemon.name} is in now - the species you settle on is the one you are re-issued after a wipe.</p><button class="px-window px-button" data-view="reselect" data-help="Only offered while one Pokémon is left at base.">Choose a new partner</button></section>`;
+    return `<section class="swap-panel"><h3 class="px-subheading">${heading}</h3><p class="px-note px-wrap">${lead} for a level 5 starter, which arrives in the condition ${spare.pokemon.name} is in now.</p><button class="px-window px-button" data-view="reselect" data-help="Only offered while one Pokémon is left at base.">Choose a new partner</button></section>`;
   }
 
   private reselectView(): string {
@@ -4354,7 +4333,7 @@ export class HubScene extends Phaser.Scene {
     if (!spare) return '<main class="px-body"><p class="px-window px-empty">You have more than one Pokémon, so there is nothing to swap.</p></main>';
     const chosen = getStarterSpecies(this.reselectStarterId);
     const held = `${spare.pokemon.name} (Level ${spare.pokemon.level})`;
-    return `<main class="px-body starter-shell reselect-shell"><p class="starter-brief">${held} is your last Pokémon. Swapping releases it for good for a level 5 starter as hurt as it is now, with no supplies: a change of direction, never an upgrade or a heal.</p><div class="starter-grid" ${pixelColumns(100, { maximum: 3, widest: 132 })}>${starterCards(this.reselectStarterId, { heldSpeciesId: spare.pokemon.base.id, selectHelp: 'Swap to this starter.' })}</div>${this.swapFooter(spare, chosen)}</main>`;
+    return `<main class="px-body starter-shell reselect-shell"><p class="starter-brief">${held} is your last Pokémon. Swapping releases it for good for a level 5 starter as hurt as it is now, with no supplies.</p><div class="starter-grid" ${pixelColumns(100, { maximum: 3, widest: 132 })}>${starterCards(this.reselectStarterId, { heldSpeciesId: spare.pokemon.base.id, selectHelp: 'Swap to this starter.' })}</div>${this.swapFooter(spare, chosen)}</main>`;
   }
 
   private swapFooter(spare: StashedPokemon, chosen: PokemonBase): string {

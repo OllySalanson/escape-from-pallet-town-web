@@ -120,7 +120,7 @@ export class ObjectivesScene extends Phaser.Scene {
               }</button>`,
           )
           .join('')
-      : '<p class="px-empty px-wrap">No job this raid. Your loot is only safe once you get out.</p>';
+      : '<p class="px-empty px-wrap">No job this raid.</p>';
     // Numbered, because the notes are a route read in order and the typeface
     // has no list marker: the number stands in a gutter of its own.
     const notes = guide.hints

@@ -41,7 +41,7 @@ export interface BoardNotice {
 export const RUMOURS_PINNED_LINE = 'Rumours you have heard, pinned up in the corner:';
 
 /** What the board says when nothing is pinned to it. */
-export const BARE_BOARD_LINE = 'Nothing pinned up. Raid for supplies, Pokémon and whatever the vale still holds.';
+export const BARE_BOARD_LINE = 'Nothing pinned up.';
 
 function contractNotice(row: ContractBoardRow): BoardNotice {
   const asks = row.asks ? ` ${row.asks}.` : '';

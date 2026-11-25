@@ -38,10 +38,10 @@ describe("the boutique's screen", () => {
     expect(Number(looks) + Number(pieces)).toBe(onShelves);
   });
 
-  it('shows the wardrobe only what the save owns, and says how much more there is', () => {
+  it('shows the wardrobe only what the save owns, with no line about the shop', () => {
     const markup = boutiqueMarkup(state({ mode: 'wardrobe', owned: ownedWearables(['red-cap']) }));
     expect(cards(markup, 'data-wear').sort()).toEqual(['plain-tee', 'plain-trousers', 'red-cap', 'short-crop']);
-    expect(markup).toContain(`${WEARABLES.length - 4} more on the shelves of ${BOUTIQUE_NAME}`);
+    expect(markup).not.toContain('more on the shelves');
   });
 
   it('prices a try-on, and offers to buy it only when the vault can pay', () => {

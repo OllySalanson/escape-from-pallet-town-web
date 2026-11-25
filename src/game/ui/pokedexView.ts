@@ -217,7 +217,7 @@ export function dexCard(dex: Pokedex, dexId: number): string {
   const kind = kindAt(dexId);
   const parts = entryParts(dex, dexId, false);
   if (!kind || !parts) {
-    return `<div class="dex-card-figure"><span class="dex-ball is-big" aria-hidden="true"></span></div><div class="dex-entry-head"><span class="px-row-line"><small>${dexNumber(dexId)}</small><strong class="px-name">?????</strong></span><small class="px-wrap">Not met yet. A fight with one puts its shape here.</small></div>`;
+    return `<div class="dex-card-figure"><span class="dex-ball is-big" aria-hidden="true"></span></div><div class="dex-entry-head"><span class="px-row-line"><small>${dexNumber(dexId)}</small><strong class="px-name">?????</strong></span><small class="px-wrap">Not met yet.</small></div>`;
   }
   const standing = dexStanding(dex, dexId);
   const where = parts.where

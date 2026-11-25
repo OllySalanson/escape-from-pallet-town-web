@@ -209,7 +209,7 @@ export class PartyScene extends Phaser.Scene {
     return `${take}${give}${
       take || give
         ? ''
-        : '<span class="px-note">Nothing held, and no gear in the pack. Gear is carried by the trainers holding the gates.</span>'
+        : '<span class="px-note">Nothing held, and no gear in the pack.</span>'
     }`;
   }
 
