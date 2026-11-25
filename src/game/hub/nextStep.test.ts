@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_RAID_PROGRESS, type RaidProgress } from '../save/SaveManager';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
 import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../world/valeQuarters';
-import { jobsBanked, landingToWalkTo, nextStepLines } from './nextStep';
+import { readFileSync } from 'node:fs';
+import { CHART_PIECES } from '../treasure/treasureMap';
+import { chaseLine, jobsBanked, landingToWalkTo, nextStepLines, VALE_LEGENDS } from './nextStep';
 
 const raided = (raids: number, more: Partial<RaidProgress> = {}): RaidProgress => ({
   ...DEFAULT_RAID_PROGRESS,
@@ -64,5 +66,41 @@ describe('the one next thing Oak says', () => {
 
   it('counts both kinds of banked job', () => {
     expect(jobsBanked({ completedContracts: ['a'], standingContractsBanked: 2 })).toBe(3);
+  });
+
+  /**
+   * The overnight critic's problem 17 (25 Nov 2026): "After both badges the
+   * game has nothing to say." The treasure map first, then the legends.
+   */
+  describe('after both badges', () => {
+    const done = raided(20, { standingContractsBanked: 9, defeatedBosses: [MISTY_BOSS_ID, KOGA_BOSS_ID] });
+
+    it('names the treasure map first, stage by stage', () => {
+      expect(nextStepLines(done).at(-1)).toContain('a bottle has washed up on THE BEACH');
+      expect(chaseLine(done, (itemId) => (itemId === 'bottled-chart' ? 1 : 0))).toContain('take that bottled chart to MARLOW');
+      expect(chaseLine({ ...done, treasureHunt: { roomOpen: true, pinned: ['shore'], chestOpened: false } })).toContain(
+        `still wants ${CHART_PIECES.length - 1} more pieces`,
+      );
+      const whole = { roomOpen: true, pinned: CHART_PIECES.map((piece) => piece.id), chestOpened: false };
+      expect(chaseLine({ ...done, treasureHunt: whole })).toContain("SMUGGLERS' COVE");
+      expect(chaseLine({ ...done, treasureHunt: whole }, (itemId) => (itemId === 'sea-chest' ? 1 : 0))).toContain('carry the SEA CHEST');
+    });
+
+    it('then the legends not yet caught, a different one each raid, and nothing once every one is caught', () => {
+      const chest = { ...done, treasureHunt: { roomOpen: true, pinned: CHART_PIECES.map((piece) => piece.id), chestOpened: true } };
+      expect(chaseLine(chest)).toBe('Next, a legend: ZAPDOS sleeps in the TURBINE HALL under the POWER STATION. Beat it, and you get one throw.');
+      expect(chaseLine({ ...chest, pokedexOwned: [145] })).toContain('ARTICUNO');
+      // The next raid, the next one in turn.
+      expect(chaseLine({ ...chest, raidRecord: { 'greystone-vale': { deployed: 21, extracted: 21, wiped: 0 } } })).toContain('ARTICUNO');
+      expect(chaseLine({ ...chest, pokedexOwned: VALE_LEGENDS.map((legend) => legend.dexId) })).toBeUndefined();
+    });
+
+    it('names only legends the vale really holds', () => {
+      const vale = JSON.parse(readFileSync('src/game/world/maps/greystoneVale.json', 'utf8')) as {
+        pokemon: { species: string; legendary?: boolean }[];
+      };
+      const standing = vale.pokemon.filter((pokemon) => pokemon.legendary).map((pokemon) => pokemon.species).sort();
+      expect(VALE_LEGENDS.map((legend) => legend.speciesId).sort()).toEqual(standing);
+    });
   });
 });
