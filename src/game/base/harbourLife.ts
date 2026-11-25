@@ -356,6 +356,22 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
       'I\'m saving my TICKETS for the CUTE TV. Ninety-eight more games to go.',
     ],
   },
+  // A fisherman with his line over the pleasure pier's middle stop, seen
+  // from the walk: what tells a newcomer there is fishing at the end of it.
+  {
+    id: 'pier-fisherman',
+    kind: 'person',
+    name: 'FISHERMAN',
+    design: 'fisherman',
+    position: at(89, 21),
+    facing: 'right',
+    byDayOnly: true,
+    idle: { glances: ['right', 'down'], beatMs: 7900 },
+    lines: [
+      'Tiddlers, this close in. The big ones are off the end of the pier.',
+      'The FISHING DERBY board\'s out there. Two minutes, and the biggest catch wins.',
+    ],
+  },
   // THE FIELD-MOVE COURSE's keeper, at its gate with his box of HMs: he lends
   // them for the run, so it is who could learn a move that counts there.
   {

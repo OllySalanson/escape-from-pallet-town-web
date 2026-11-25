@@ -105,7 +105,7 @@ export const SEA_VIEWS: readonly RoomSpot[] = [
   stand(50, 31, 'down'),
   stand(55, 31, 'down'),
   // THE PROMENADE: the pleasure pier's head.
-  stand(80, 29, 'left'),
+  stand(80, 30, 'left'),
 ];
 
 /** Something to look at for a while: a fountain, the bench above THE COVE, the Day-Care's pen, the arena's statues, the S.S. Anne. */

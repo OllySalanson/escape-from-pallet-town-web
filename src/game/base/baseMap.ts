@@ -344,13 +344,13 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
     'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTTTTTTTTTTTTTTTT.....TTTTT............TTTT................TTTT...........T.......FFFFFFTTTT',
     'TtTTTTtTTTTtTTTTTtTTTT............TTTtTTTTTTTTTTTtTTTT.......TTTT............TtTT.............t..TT...........t.T.......F####FTTTT',
     'TTT...........................................FFFFFFF........................TTTT................TT.............T.......F####FTTTT',
-    'TTT...........................................F.....F........................TTTT.......MMMM.....TT.............TTT.vvvvF####FTTTT',
-    'TtTMMMMMMMMMMM................................F.....F..............PPPPPPP...TTTMMMMMMMMMMMMMMMM.TT.....vv...........vv.F####FTtTT',
-    'TTTMMMMMMMMMMM................................F.....F.............PPPPPPPPP..TTTMMMMMMMMMMMMMMMM........vv.......t...vv.F##WWFTTTT',
-    'TTTMMMMMMMMMMM................................FFFFFFF.............PPPPPPPPP..TTTMMMMMMMMMMMMMMMM........vv...........vv.FFFFFFTTTT',
-    'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMPPPPPPP...TTT',
-    'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMPPPPPPP.t.TTT',
-    'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMPPPPPPP...TTT',
+    'TTT...........................................F.....F........................TTTT.......MMMM.....TT.............TTT..vvvF####FTTTT',
+    'TtTMMMMMMMMMMM................................F.....F..............MMMMMMM...TTTMMMMMMMMMMMMMMMM.TT.....vv...........vv.F####FTtTT',
+    'TTTMMMMMMMMMMM................................F.....F.............MMMMMMMMM..TTTMMMMMMMMMMMMMMMM........vv.......t...vv.F##WWFTTTT',
+    'TTTMMMMMMMMMMM................................FFFFFFF.............MMMMMMMMM..TTTMMMMMMMMMMMMMMMM........vv...........vv.FFFFFFTTTT',
+    'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM...TTT',
+    'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM.t.TTT',
+    'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM...TTT',
     'TtTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........____________________MMMMMMMMMMMMMM________________~~CCCCPPPPPPPCCCTTT',
     'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........____________________MMMMMMMMMMMMMM________________~~CCCCPPPPPPPCCCTTT',
     'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMddddddd~~~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~~~~~~~~~~~~~~CCWWCCCCWWCCCWWWW',
@@ -576,19 +576,21 @@ function plantQuay(map: MapSketch<BasePropName>): void {
  * they stood across a pair's way up to every door north of it.
  */
 const KERB: readonly (readonly [number, BasePropName])[] = [
-  [66, 'promenadeLamp'],
-  [67, 'seaBench'],
-  [73, 'promenadeLamp'],
-  [75, 'seaBench'],
-  [79, 'promenadeLamp'],
+  // The walk's one row of lamps, about every six tiles, with benches between.
+  [63, 'promenadeLamp'],
+  [65, 'seaBench'],
+  [71, 'promenadeLamp'],
+  [73, 'seaBench'],
+  [77, 'promenadeLamp'],
   [81, 'troughRed'],
   [88, 'troughYellow'],
-  [92, 'seaBench'],
-  [97, 'seaBench'],
-  [101, 'promenadeLamp'],
-  [104, 'seaBench'],
-  [108, 'seaBench'],
-  [111, 'promenadeLamp'],
+  [93, 'seaBench'],
+  [95, 'promenadeLamp'],
+  [99, 'seaBench'],
+  [103, 'promenadeLamp'],
+  [107, 'seaBench'],
+  [109, 'promenadeLamp'],
+  [115, 'promenadeLamp'],
 ];
 
 function plantPromenade(map: MapSketch<BasePropName>): void {
@@ -628,9 +630,9 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
   for (const x of [92, 93, 94]) map.plant(x, 16, 'railing');
 
   // --- The boardwalk's rail ---------------------------------------------
-  // Railing along its seaward edge, broken where steps go down to the sand,
-  // with a lamp here and there on its post (`promenadePost`).
-  const lamps = new Set([61, 71, 76, 95]);
+  // Railing along its seaward edge, broken where steps go down to the sand.
+  // The walk's lamps are on its own seaward row (`KERB`): the rail is
+  // unbroken but for the steps, so the front is lit by one row, not two.
   const steps = new Set([68, 69, 78, 79, 105, 106, 111, 112]);
   // The huts in a terrace of four and a pair, steps down to the sand between
   // them, painted as their owners chose rather than in the rainbow's order.
@@ -645,7 +647,7 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
   const huts = new Set(HUTS.flatMap(([x]) => [x, x + 1]));
   for (const x of [...Array.from({ length: 19 }, (_, i) => 61 + i), ...Array.from({ length: 18 }, (_, i) => 95 + i)]) {
     if (steps.has(x) || huts.has(x)) continue;
-    map.plant(x, 16, lamps.has(x) ? 'promenadeLamp' : 'railing');
+    map.plant(x, 16, 'railing');
   }
   for (const [x, hut] of HUTS) map.plant(x, 16, hut);
 
@@ -688,8 +690,9 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
   map.plant(89, 22, 'promenadeLamp');
   map.plant(80, 27, 'pennantRed');
   map.plant(90, 27, 'pennantBlue');
+  map.plant(80, 29, 'promenadeLamp');
   map.plant(90, 29, 'promenadeLamp');
-  map.plant(81, 30, 'lifebuoy');
+  map.plant(83, 30, 'lifebuoy');
   // Gear for the FISHING DERBY: a crate of the catch by its board, and pots.
   map.plant(82, 29, 'fishCrate');
   map.plant(88, 30, 'lobsterPots');
@@ -701,6 +704,7 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
   map.plant(107, 9, 'bench');
   map.plant(GARDENS_SIGN.x, GARDENS_SIGN.y, 'homeSign');
   map.plant(97, 10, 'troughPink');
+  map.plant(110, 11, 'troughRed');
 
   // --- THE POINT --------------------------------------------------------
   // The course's ground behind its fence, seen from its gate: scrub to CUT
@@ -713,7 +717,7 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
   // The lookout where the walk ends: a railing round the paving over the
   // rocks, a bench either side of a telescope, and the bay in front of them.
   for (const x of [117, 118, 119, 121, 122, 123]) map.plant(x, 16, 'railing');
-  map.plant(115, 12, 'troughYellow');
+  map.plant(115, 11, 'troughYellow');
   map.plant(118, 15, 'seaBench');
   map.plant(120, 16, 'coinTelescope');
   map.plant(122, 15, 'seaBench');
