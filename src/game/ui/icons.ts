@@ -173,6 +173,12 @@ export const WORLD_ICONS = {
   trainerBag: 'trainer-bag',
   /** Somebody with a favour to ask: the "!" over their head (`hub/favourList.ts`). */
   favourAsk: 'favour-ask',
+  /**
+   * YOUR THINGS as a sack, and its front alone from the lip down, which the
+   * result card drops a raid's haul into (`run/resultMoment.ts`).
+   */
+  thingsBag: 'things-bag',
+  thingsBagFront: 'things-bag-front',
 } as const satisfies Record<string, string>;
 
 /**

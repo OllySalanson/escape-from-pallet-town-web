@@ -154,6 +154,57 @@ body {
     transform: none;
   }
 }
+/* The haul going into YOUR THINGS on a raid's result (`.haul-stow`): a thing
+   hops up out of its row, over and down into the sack's mouth, and settles
+   there behind its lip with its top showing, so the sack ends up full.
+   `--hop-x` is how far its row puts it from the sack, `--nudge` where in the
+   mouth it settles and `--rest` how deep. */
+@keyframes haul-stow-hop {
+  0% {
+    transform: translate(0, 0);
+  }
+  40% {
+    transform: translate(calc(var(--hop-x) * 0.5), calc(var(--px) * -15));
+  }
+  70% {
+    transform: translate(calc(var(--hop-x) + var(--nudge)), calc(var(--px) * -13));
+  }
+  88% {
+    transform: translate(calc(var(--hop-x) + var(--nudge)), calc(var(--rest) + var(--px) * 2.5));
+  }
+  100% {
+    transform: translate(calc(var(--hop-x) + var(--nudge)), var(--rest));
+  }
+}
+/* A thing's count, gone as it hops. */
+@keyframes haul-stow-count-off {
+  to {
+    opacity: 0;
+  }
+}
+/* The sack catching one: squashed, then up again, from its foot. */
+@keyframes haul-stow-gulp {
+  0% {
+    transform: scale(1.1, 0.88);
+  }
+  50% {
+    transform: scale(0.95, 1.06);
+  }
+  100% {
+    transform: none;
+  }
+}
+/* Its name, once the last thing is in. */
+@keyframes haul-stow-said {
+  from {
+    opacity: 1;
+    transform: translateY(calc(var(--u) * 4));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 /* The moment a stone evolves a Pokemon (`evolveMomentBody`): the two pictures
    trade places faster and faster, then the new one stays, as FireRed's does. */
 @keyframes evolve-moment-out {
@@ -3256,6 +3307,12 @@ body.touch-play .feedback-tab {
   width: calc(var(--u) * 128);
   height: calc(var(--u) * 128);
 }
+/* Under 300 game pixels down, the picture is drawn at its own size, so the
+   sack fits under it. */
+:where(.pixel-ui[data-short]) .extraction-moment .moment-picture.is-pokemon {
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 64);
+}
 :where(.pixel-ui) .extraction-moment .moment-picture.is-item {
   width: calc(var(--u) * 48);
   height: calc(var(--u) * 48);
@@ -3267,6 +3324,117 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .extraction-moment .moment-next {
   color: var(--ink-soft, inherit);
+}
+/* The haul going into YOUR THINGS (`ExtractionScene.stowMarkup`): a row of
+   the things beside an open sack, drawn twice - whole behind them, its front
+   from the lip down in front - so each is seen to go in. The sack is drawn at
+   twice a thing's scale (`--px`), so its mouth is as wide as a thing. The row
+   waits beside the sack rather than over it, so it costs the card the sack's
+   height and no more: over a caught Pokémon's picture, one above the other ran
+   off an 800x600 window. */
+:where(.pixel-ui) .haul-stow {
+  /* One pixel of a thing's icon: 2x, and 1x where the screen is short. */
+  --px: calc(var(--u) * 2);
+  --cell: calc(var(--px) * 17);
+  --gap: calc(var(--px) * 6);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  justify-items: center;
+  row-gap: calc(var(--u) * 4);
+  /* Room over the sack for the top of a hop. */
+  margin: calc(var(--px) * 6) 0 calc(var(--u) * 2);
+}
+:where(.pixel-ui[data-short]) .haul-stow {
+  --px: var(--u);
+  margin-top: calc(var(--px) * 2);
+}
+/* The sack is the middle of the card, where it rests once all is in; the row
+   waits to its left, out of the way of the card's own centring. */
+:where(.pixel-ui) .haul-stow-row {
+  position: absolute;
+  top: calc(var(--px) * 10);
+  right: calc(50% + var(--px) * 16 + var(--gap));
+  display: flex;
+}
+:where(.pixel-ui) .haul-stow-thing {
+  /* From the middle of its cell to the middle of the sack. */
+  --hop-x: calc((var(--n) - var(--at) - 0.5) * var(--cell) + var(--gap) + var(--px) * 16);
+  /* Spread across the mouth no wider than its tied neck, and every other one a
+     little deeper, so they settle as a heap rather than a row, their tops out. */
+  --nudge: calc(var(--from) * var(--px) * 0.8);
+  --rest: calc(var(--px) * (-11 + var(--deep) * 3));
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: var(--cell);
+  height: calc(var(--px) * 16);
+  /* The one nearest the sack first, so none hops over another still waiting. */
+  --delay: calc(0.6s + (var(--n) - 1 - var(--at)) * 0.2s);
+  animation: haul-stow-hop 0.5s steps(14, end) var(--delay) forwards;
+}
+:where(.pixel-ui) .haul-stow-thing img {
+  width: calc(var(--px) * 16);
+  height: calc(var(--px) * 16);
+  image-rendering: pixelated;
+}
+:where(.pixel-ui) .haul-stow-more {
+  color: var(--ink);
+}
+/* How many of it, under it as a tile has it, until it hops. */
+:where(.pixel-ui) .haul-stow-count {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  translate: -50% 0;
+  margin-top: calc(var(--u) * -3);
+  color: var(--ink-soft);
+  white-space: nowrap;
+  animation: haul-stow-count-off 0.1s steps(1, start) var(--delay) forwards;
+}
+:where(.pixel-ui) .haul-stow-bag {
+  position: relative;
+  width: calc(var(--px) * 32);
+  height: calc(var(--px) * 32);
+}
+:where(.pixel-ui) .haul-stow-bag img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  transform-origin: 50% 94%;
+}
+:where(.pixel-ui) .haul-stow-back {
+  z-index: 1;
+}
+:where(.pixel-ui) .haul-stow-front {
+  z-index: 3;
+}
+:where(.pixel-ui) .haul-stow-bag.is-gulping img {
+  animation: haul-stow-gulp 0.24s steps(4, end);
+}
+:where(.pixel-ui) .haul-stow-label {
+  opacity: 0;
+}
+:where(.pixel-ui) .haul-stow.is-stowed .haul-stow-label {
+  animation: haul-stow-said 0.2s steps(2, end) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Already in the sack, as it ends. */
+  :where(.pixel-ui) .haul-stow-thing {
+    animation: none;
+    transform: translate(calc(var(--hop-x) + var(--nudge)), var(--rest));
+  }
+  :where(.pixel-ui) .haul-stow-count {
+    animation: none;
+    opacity: 0;
+  }
+  :where(.pixel-ui) .haul-stow.is-stowed .haul-stow-label {
+    animation: none;
+    opacity: 1;
+  }
 }
 
 /* A lost stack is drained of colour, so the ledger reads at a glance. */

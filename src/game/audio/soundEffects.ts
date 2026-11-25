@@ -755,6 +755,21 @@ export const SOUND_EFFECTS = {
     moment: 'Extraction - the haul is out',
     tones: run([392, 523, 659, 784, 1047], 0.1, 0.075, 0.055),
   },
+  haulDrop: {
+    channel: 'world',
+    moment: 'The result card: a thing from the haul drops into the sack',
+    // A soft "plop" into cloth: a short note that falls, with a pinch of noise
+    // for the canvas. Quiet and quick, because it says itself up to five times.
+    tones: [sweep(tri(880, 0.06, 0.06), 523), noise(1400, 0.04, 0.03, 0.03)],
+  },
+  haulStowed: {
+    channel: 'fanfare',
+    moment: 'The result card: the last of the haul is in YOUR THINGS',
+    // The drop's note again, and a bell over it: a quick rise to a held top
+    // note, shorter and lower than the contract's, because it closes a little
+    // thing rather than a job.
+    tones: [sq(784, 0.06, 0.055), sq(1047, 0.06, 0.055, 0.07), tri(1568, 0.32, 0.06, 0.14), tri(523, 0.32, 0.045, 0.14)],
+  },
   contractBanked: {
     channel: 'fanfare',
     moment: 'The result screen confirms a banked contract',

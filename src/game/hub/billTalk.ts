@@ -237,9 +237,9 @@ export function billFromTheMat(counter: TraderCounter): BillQuote {
 /** Said once a deal is struck: `SaveManager`'s own message is written for a status bar. */
 export function dealtLine(good: BillGood): string {
   if (good.kind === 'stock') {
-    return "Yours. It's in your vault.";
+    return "Yours. It's in YOUR THINGS.";
   }
   return good.kind === 'barter'
-    ? "Done! It's in your vault, and what you gave me goes on my shelves."
+    ? "Done! It's in YOUR THINGS, and what you gave me goes on my shelves."
     : 'Paid. The extra column is yours for the coming raid.';
 }

@@ -201,7 +201,7 @@ try {
   say(armedRung);
   await shoot('workshop-armed');
   if ((await page.evaluate(`localStorage.getItem('${SAVE_KEY}')`)) !== ladderBefore) fail('one press on a rung spent its materials');
-  if (!/keep/i.test(String(armedRung.on))) fail(`the armed cursor rests on "${armedRung.on}", not on keeping them`);
+  if (!/not now/i.test(String(armedRung.on))) fail(`the armed cursor rests on "${armedRung.on}", not on NOT NOW`);
   await press('Enter');
   await sleep(340);
   if ((await page.evaluate(`localStorage.getItem('${SAVE_KEY}')`)) !== ladderBefore) fail('keeping the materials spent them anyway');
@@ -255,7 +255,7 @@ try {
     if (!deal.does) fail(`${deal.on} says nothing about what it hands back`);
     if (!deal.price) fail(`${deal.on} says nothing about what it takes`);
     const pane = deal.open.find((open) => open.id === deal.shows);
-    if (!pane?.price?.includes('vault')) fail(`${deal.on} never says what the vault holds`);
+    if (!pane?.price?.includes('YOUR THINGS')) fail(`${deal.on} never says what YOUR THINGS holds`);
     if (pane && pane.asks.length > 1) fail(`${deal.on}'s price does not line up: ${pane.asks.join(', ')}`);
 
     // A barter is asked again before it is struck, and the first press spends
@@ -269,8 +269,8 @@ try {
     if ((await page.evaluate(`localStorage.getItem('${SAVE_KEY}')`)) !== before) {
       fail('one press on a barter spent the goods');
     }
-    if (!/keep/i.test(String(armed.on))) {
-      fail(`the armed cursor rests on "${armed.on}", not on keeping them`);
+    if (!/not now/i.test(String(armed.on))) {
+      fail(`the armed cursor rests on "${armed.on}", not on NOT NOW`);
     }
     // The pane has to keep answering for the deal being asked about: it is
     // where what you get and what you hand over are both written down, and the

@@ -2810,12 +2810,12 @@ describe('HubScene - Bill', () => {
     const shelf = boat.slice(boat.indexOf('data-shown-by="super-potion"'));
     // ₽260 against ₽200 held, so the held half is the one written in red.
     expect(shelf).toContain('<div class="is-short"><dt>');
-    expect(shelf).toContain('<dd><span class="cost-mark" aria-hidden="true"></span>₽200 in the vault</dd>');
+    expect(shelf).toContain('<dd><span class="cost-mark" aria-hidden="true"></span>₽200 in YOUR THINGS</dd>');
     expect(shelf).toContain('<dt><span class="shop-price-nib" aria-hidden="true"></span><span>1 of his ration</span></dt>');
 
     const table = boat.slice(boat.indexOf('data-shown-by="barter-hm03"'));
     expect(table).toContain('2× Mooring rope');
-    expect(table).toContain('<dd>2 in the vault</dd>');
+    expect(table).toContain('<dd>2 in YOUR THINGS</dd>');
   });
 
   it('names the standing a shut deal is waiting on rather than only shutting it', () => {

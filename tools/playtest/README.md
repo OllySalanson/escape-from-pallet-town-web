@@ -248,10 +248,6 @@ changes shape on any painted frame (`docs/screens/starter-balls/`). A driver tha
 is testing something else takes its partner with
 `scene.getScene('base').takeStarterForDriver(id)`, straight out into the yard.
 
-`haulQuay.mjs <url> <dir> [--port=N]` comes home from a raid as the result screen
-hands over and walks out to the quay: the haul stands there that one visit, a
-lost raid leaves none, and the hall is untouched.
-
 `harbourEdges.mjs <test-mode build url> <dir> [--port=N]` replays the harbour
 playtest of 14 Nov 2026 and fails if any finding comes back: walks out of HARBOUR
 SQUARE straight down the long pier, faces a moored rowing boat (no cast) and the

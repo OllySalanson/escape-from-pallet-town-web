@@ -117,10 +117,13 @@ try {
   await press('Enter');
   await sleep(120);
   if (!(await page.evaluate(`document.activeElement?.hasAttribute('data-buy')`))) fail(`ENTER on ${card} did not take the cursor to BUY`);
-  await shoot('01d-cursor-on-buy');
+  // The second press of the double-tap comes before the photograph: the guard
+  // is half a second of real time, and a screenshot on a loaded machine took
+  // longer than that, so the "double-tap" was two presses and bought it.
   await press('Enter');
   await sleep(120);
   if ((await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress.wardrobe?.length ?? 0`)) !== moneyBefore) fail('the second ENTER of a double-tap bought it');
+  await shoot('01d-cursor-on-buy');
   await press('ArrowUp');
   await sleep(120);
   if ((await page.evaluate(`document.activeElement?.dataset.wear`)) !== card) fail('Up from BUY did not come back to the card');
