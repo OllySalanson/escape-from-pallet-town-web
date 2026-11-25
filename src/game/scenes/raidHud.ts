@@ -261,6 +261,11 @@ export interface HunterChipInput {
    */
   readonly offTheScent?: boolean;
   /**
+   * Past 0:00: the hunter sent for the player is counted down from wherever it
+   * is, not only once it is near, so the last fifteen seconds read as a race.
+   */
+  readonly enraged?: boolean;
+  /**
    * Present only on a raid deployed from a base with the radio mast, and only
    * while there is still a hunter to report on.
    */
@@ -335,7 +340,7 @@ function hunterContactView(input: HunterChipInput): HunterChipView | null {
   if (input.shout) {
     return { label: input.shout === 'back' ? `${who} IS BACK` : `${who} ON YOUR TAIL`, tone: 'closing' };
   }
-  if (input.distance === null || input.distance > HUNTER_ALERT_DISTANCE) {
+  if (input.distance === null || (input.distance > HUNTER_ALERT_DISTANCE && input.enraged !== true)) {
     return null;
   }
   return { label: `${who} ${input.direction} ${input.distance}`, tone: 'closing' };

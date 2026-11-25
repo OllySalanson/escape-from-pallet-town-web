@@ -50,8 +50,10 @@ import { HUNTER_RIVALS, type HunterRivalId } from './hunters';
  *   or trainer fight every hunter that was after you knows where you are and
  *   comes on `HUNTER_FIGHT_CATCH_UP_STEPS`, but stops a step short of you, so
  *   coming out of the grass you always have one step to read and answer.
- * - **The enrage** (the clock's last fifteen seconds) is every hunter near you
- *   knowing where you are, giving up nowhere, at twice your pace.
+ * - **The enrage** (the clock's last fifteen seconds) is one hunter sent for
+ *   you from `ENRAGE_SEND_STEPS` off by walking, knowing where you are, giving
+ *   up nowhere, at twice your pace - and every hunter already after you turns
+ *   the same way. Where you stood when the clock ran out changes nothing.
  *
  * Everything a hunter is, is here and nowhere else: the scene keeps no second
  * copy of where one stands. The pack rides on the run session, so it is the
@@ -114,6 +116,17 @@ export const HUNTER_COME_FOR_MS = 18_000;
 /** How far off, in your steps, a hunter comes from when it comes for you: on the way, and not yet in sight. */
 const COME_FOR_LEAST_STEPS = 14;
 const COME_FOR_MOST_STEPS = 22;
+/**
+ * How long the enrage's hunter takes to reach a player who stands still. The
+ * same whatever the player was doing: the critic stood six tiles from an open
+ * gate through the whole enrage and nothing came, and the next raid walked
+ * into one on the next tile the same second (review, problem 14, 25 Nov 2026).
+ */
+export const ENRAGE_REACH_MS = 6_000;
+/** How far off by walking the enrage's hunter comes from: `ENRAGE_REACH_MS` at its pace. Run straight away from it and it takes twice that. */
+export const ENRAGE_SEND_STEPS = Math.round(ENRAGE_REACH_MS / HUNTER_ENRAGED_STEP_MS);
+/** The furthest the enrage's hunter searches its way to you: from where it was sent, with room for the long way round. */
+const HUNTER_ENRAGED_CHASE_LIMIT = ENRAGE_SEND_STEPS * 2;
 /** The smallest district that is a hunter's patch, in tiles across and down. */
 export const HUNTER_GROUND_MIN_SIDE = 32;
 
@@ -851,14 +864,18 @@ export class HunterPack {
    * the walk than the player is can never be on their shortest way out. Null
    * where the player is too hemmed in to have one yet.
    */
-  private comingFrom(world: PackWorld, ways: readonly GridPosition[]): GridPosition | null {
+  private comingFrom(world: PackWorld, ways: readonly GridPosition[], most: number = COME_FOR_MOST_STEPS): GridPosition | null {
     const out = ways.length > 0 ? this.walksToNearest(world, ways) : null;
     const start = world.player.y * world.width + world.player.x;
     const seen = new Set<number>([start]);
     let frontier = [start];
     let found: GridPosition | null = null;
     let foundFar = Number.NEGATIVE_INFINITY;
-    for (let steps = 1; steps <= COME_FOR_MOST_STEPS && frontier.length > 0; steps += 1) {
+    for (let steps = 1; steps <= most && frontier.length > 0; steps += 1) {
+      // Sent from as far as `most` reaches: a further ring beats every nearer one.
+      if (most > COME_FOR_MOST_STEPS) {
+        foundFar = Number.NEGATIVE_INFINITY;
+      }
       const next: number[] = [];
       for (const index of frontier) {
         const x = index % world.width;
@@ -944,23 +961,57 @@ export class HunterPack {
   }
 
   /**
-   * The enrage: every hunter near the player knows where they are, never gives
-   * up, and runs at twice their pace. Hunters too far off to matter stay as
-   * they are. A hunter beaten before the enrage is not brought back here - the
-   * scene brings the one keeper of the patch the player is in back, once.
+   * The enrage, once: every hunter already after the player turns, and if none
+   * is, one is sent - the keeper of the district they stand in, beaten or not,
+   * else the nearest - from `ENRAGE_SEND_STEPS` off by walking, out of sight on
+   * the far side from `ways`, knowing where they are, at twice their pace. A
+   * hunter just fled from keeps the blind window that was paid for. Answers the
+   * hunter sent, and whether it had been beaten, for the screen to say.
    */
-  enrage(world: PackWorld): void {
-    for (const hunter of this.hunters) {
-      if (!isAbroad(hunter) || hunter.enraged || hunter.mode === 'stunned') {
-        continue;
-      }
-      if (this.awake(hunter, world)) {
-        hunter.enraged = true;
-        hunter.mode = 'chase';
-        hunter.lastSeen = { ...world.player };
-        hunter.timerMs = 0;
-      }
+  enrage(world: PackWorld, ways: readonly GridPosition[]): { readonly hunter: PackHunter; readonly back: boolean } | null {
+    if (this.enrageAnswered) {
+      return null;
     }
+    this.enrageAnswered = true;
+    const after = this.hunters.filter((hunter) => isAbroad(hunter) && isAfterYou(hunter));
+    for (const hunter of after) {
+      Object.assign(hunter, { enraged: true, mode: 'chase', lastSeen: { ...world.player }, timerMs: 0 });
+    }
+    if (after.length > 0) {
+      return null;
+    }
+    const distanceTo = (hunter: PackHunter): number =>
+      Math.abs(hunter.position.x - world.player.x) + Math.abs(hunter.position.y - world.player.y);
+    const free = this.hunters.filter((hunter) => hunter.mode !== 'stunned' && hunter.mode !== 'waiting');
+    const hunter =
+      free.find((candidate) => inGround(candidate.ground, world.player)) ??
+      [...free].sort((one, other) => distanceTo(one) - distanceTo(other))[0];
+    if (!hunter) {
+      return null;
+    }
+    const back = hunter.mode === 'beaten';
+    const tile = this.comingFrom(world, ways, ENRAGE_SEND_STEPS);
+    if (!tile && back) {
+      return null;
+    }
+    const from = tile ?? hunter.position;
+    Object.assign(hunter, {
+      mode: 'chase',
+      enraged: true,
+      position: { ...from },
+      next: null,
+      stepMs: 0,
+      timerMs: 0,
+      lastSeen: { ...world.player },
+      sees: true,
+      snagged: false,
+      straight: 0,
+      looks: 0,
+      gap: null,
+      path: [],
+      facing: directionTowards(from, world.player, hunter.facing),
+    });
+    return { hunter, back };
   }
 
   private awake(hunter: PackHunter, world: PackWorld): boolean {
@@ -1156,7 +1207,14 @@ export class HunterPack {
     // lane can only ever reach the tile you are leaving.
     const target = hunter.lastSeen ?? world.player;
     const blocked = this.blockerFor(hunter, world);
-    const route = this.search.firstStep(world, blocked, hunter.position, contactGoals(target), target, HUNTER_CHASE_LIMIT);
+    const route = this.search.firstStep(
+      world,
+      blocked,
+      hunter.position,
+      contactGoals(target),
+      target,
+      hunter.enraged ? HUNTER_ENRAGED_CHASE_LIMIT : HUNTER_CHASE_LIMIT,
+    );
     const seesYou = hunter.enraged || hunter.sees;
     hunter.gap = route && seesYou ? route.length : null;
     if (!hunter.enraged) {
