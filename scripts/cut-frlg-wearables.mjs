@@ -204,6 +204,8 @@ const RAMPS = {
   sky: ['94c5ee', '6283cd', '39394a'],
   scarlet: ['ff6a4a', 'c53939', '6a2929'],
 };
+/** Skin, by colour: the reference's skin entries, so a mend never paints cloth in skin. */
+const SKIN_RGB = new Set();
 const RAMP_OF = new Map(Object.entries(RAMPS).flatMap(([ramp, shades]) => shades.map((shade) => [shade, ramp])));
 
 /**
@@ -227,6 +229,7 @@ const bobOf = (frame) => (isStep(frame) ? 1 : 0);
 // -- the reference's regions -------------------------------------------------
 
 const reference = person(REFERENCE);
+for (const index of REFERENCE_SKIN) SKIN_RGB.add(hex(canonical(reference.palette[index])));
 
 function inHead(frame, x, y) {
   const bob = bobOf(frame);
@@ -322,13 +325,21 @@ function cut(image, donor, region) {
         if (region === 'BODY' ? where !== 'HEAD' : where === region) keep.add(`${x},${y}`);
       }
     }
-    // Long hair: a hair colour below the chin that touches the head is the head's.
+    // Long hair: a hair colour below the chin that runs on from the head is the
+    // head's. It grows from the head's hair, and from the rest of the head above
+    // the chin's row (a ponytail meets the head along its outline), but never
+    // from the chin itself: what touches the chin from below is the chest, and
+    // grown from there it took a Rocket's red front for hair.
+    const recolour = new Map();
     if (hair.size > 0) {
       const inRegion = (x, y) => regionAt(frame, x, y + drop) === 'HEAD';
       const grown = new Set();
       const queue = [];
       for (let y = 0; y < HEIGHT; y += 1) {
-        for (let x = 0; x < FRAME; x += 1) if (at(image, source, x, y) && inRegion(x, y)) queue.push([x, y]);
+        for (let x = 0; x < FRAME; x += 1) {
+          const index = at(image, source, x, y);
+          if (index && inRegion(x, y) && (hair.has(index) || y + drop < CHIN_ROW + bobOf(frame))) queue.push([x, y]);
+        }
       }
       const seen = new Set(queue.map(([x, y]) => `${x},${y}`));
       while (queue.length > 0) {
@@ -345,24 +356,102 @@ function cut(image, donor, region) {
           queue.push([nx, ny]);
         }
       }
-      // The hair's own outline goes with it.
-      for (const key of [...grown]) {
-        const [x, y] = key.split(',').map(Number);
+      // The hair's own outline goes with it: black beside it, and anything
+      // beside it that stands outside the shared body, which is hair drawn
+      // wider than any shoulders - a beauty's is outlined in her gown's dark.
+      const outsideBody = (x, y) => !referenceRegions[frame][y + drop]?.[x];
+      const edge = [...grown];
+      while (edge.length > 0) {
+        const [x, y] = edge.pop().split(',').map(Number);
         for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          if (at(image, source, x + dx, y + dy) === OUTLINE && !inRegion(x + dx, y + dy)) grown.add(`${x + dx},${y + dy}`);
+          const nx = x + dx;
+          const ny = y + dy;
+          const key = `${nx},${ny}`;
+          const index = at(image, source, nx, ny);
+          if (index === 0 || grown.has(key) || inRegion(nx, ny)) continue;
+          if (index === OUTLINE) grown.add(key);
+          else if (outsideBody(nx, ny)) {
+            grown.add(key);
+            edge.push(key);
+          }
         }
       }
       if (region === 'HEAD') for (const key of grown) keep.add(key);
-      else for (const key of grown) keep.delete(key);
+      else {
+        const taken = [...grown].filter((key) => keep.has(key));
+        for (const key of taken) keep.delete(key);
+        mendUnderHair(image, source, keep, taken, recolour, (x, y) => !outsideBody(x, y) && !inRegion(x, y), inRegion);
+      }
     }
     const pixels = [];
     for (const key of keep) {
       const [x, y] = key.split(',').map(Number);
-      pixels.push({ x, y: y + drop, rgb: canonical(image.palette[at(image, source, x, y)]) });
+      const index = recolour.get(key) ?? at(image, source, x, y);
+      pixels.push({ x, y: y + drop, rgb: canonical(image.palette[index]) });
     }
     frames.push(pixels);
   }
   return frames;
+}
+
+/**
+ * FireRed never draws a dress under the long hair that hangs over it, so the
+ * hair taken off a piece leaves the piece open where it hung - a band across
+ * the back of a gown, a notch at a shoulder - and any other head shows the
+ * ground through it. A pixel the hair left is drawn again when it lies inside
+ * FireRed's shared body, has the piece below it, and has the piece, the head
+ * or the hair's own black edge on both sides: in the nearest cloth below it in
+ * its own column, or failing that beside it, never an outline and never skin.
+ * The black edge beside a mended pixel stays as the piece's edge. Hair that
+ * stood out past the shared body is open to the ground and stays gone.
+ */
+function mendUnderHair(image, source, keep, taken, recolour, inSharedBody, inHeadRegion) {
+  if (taken.length === 0) return;
+  const key = (x, y) => `${x},${y}`;
+  // The hair's black edge inside the shared body is the piece's edge too.
+  const edge = new Set(
+    taken.filter((k) => {
+      const [x, y] = k.split(',').map(Number);
+      return at(image, source, x, y) === OUTLINE && inSharedBody(x, y);
+    }),
+  );
+  const wall = (x, y) => keep.has(key(x, y)) || edge.has(key(x, y)) || inHeadRegion(x, y);
+  const closedIn = (x, y) => {
+    if (!inSharedBody(x, y)) return false;
+    let left = false;
+    let right = false;
+    let below = false;
+    for (let i = 0; i < x; i += 1) left ||= wall(i, y);
+    for (let i = x + 1; i < FRAME; i += 1) right ||= wall(i, y);
+    for (let j = y + 1; j < HEIGHT; j += 1) below ||= keep.has(key(x, j));
+    return left && right && below;
+  };
+  const skin = new Set(image.palette.flatMap((rgb, index) => (SKIN_RGB.has(hex(canonical(rgb))) ? [index] : [])));
+  const indexAt = (x, y) => recolour.get(key(x, y)) ?? at(image, source, x, y);
+  const isCloth = (x, y) => keep.has(key(x, y)) && !skin.has(indexAt(x, y)) && indexAt(x, y) !== OUTLINE;
+  // Bottom up, so a band of several rows takes its cloth from the row under it.
+  const closed = taken
+    .map((k) => k.split(',').map(Number))
+    .filter(([x, y]) => closedIn(x, y))
+    .sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+  for (const [x, y] of closed) {
+    let from = null;
+    for (let below = y + 1; below < HEIGHT && !from; below += 1) if (isCloth(x, below)) from = [x, below];
+    for (let reach = 1; reach < FRAME && !from; reach += 1) {
+      if (isCloth(x - reach, y)) from = [x - reach, y];
+      else if (isCloth(x + reach, y)) from = [x + reach, y];
+    }
+    if (!from) continue;
+    recolour.set(key(x, y), indexAt(...from));
+    keep.add(key(x, y));
+  }
+  // A mended stretch keeps the black edge the hair had drawn along it.
+  for (const k of edge) {
+    if (keep.has(k)) continue;
+    const [x, y] = k.split(',').map(Number);
+    const mendedBeside = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => recolour.has(key(x + dx, y + dy)));
+    if (mendedBeside) keep.add(k);
+  }
 }
 
 /** How far a donor's region strays from the reference's, at worst over the frames. */

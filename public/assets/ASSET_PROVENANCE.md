@@ -1033,6 +1033,23 @@ on FireRed's as FireRed's own do. Their walks are their own and reach under the
 soles, so no Emerald outfit was cut. Same ruling, same rights holders; nothing
 from pret is committed.
 
+Re-cut on 2026-11-25, from the same commits, because the long-hair rule had
+holed nine outfits: grown from the chin's outline it took a Rocket's red front
+and a Channeler's grey robe for hair, and long hair taken off a gown left the
+ground showing where it hung. The hair now grows only from the head's own hair
+and the head above the chin, the Channeler's greys count as her robe, and a
+pixel the hair leaves inside the shared body is filled by the cut script with
+the nearest cloth below it in the same figure - so a few dozen pixels on the
+backs and shoulders of the long-haired donors' dresses are pret's own colours placed by
+`mendUnderHair` rather than by FireRed. `src/game/look/wearables.test.ts`
+counts every see-through pixel inside a worn figure; `docs/screens/outfit-gaps/`
+is the before and after.
+
+The raid finds' bag icons (`icons/mewtwo-robe.png` and the other eleven of
+`RAID_WEARABLES`) are not drawn: `scripts/draw-wearable-icons.mts` composes
+each from these pieces, worn on the starter look, so they carry the same
+ruling.
+
 ### `frlg-ember.png` - a volcano's cave and its slopes' steps: FireRed's Mt. Ember
 
 **RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling

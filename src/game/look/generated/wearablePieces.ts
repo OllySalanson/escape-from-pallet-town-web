@@ -131,7 +131,7 @@ export const WEARABLE_PIECES = {
   'head-may': { slot: 'head', cell: 93, from: 'rs_may', ramps: ['tan', 'red', 'grey'] },
   'body-may': { slot: 'body', cell: 94, from: 'rs_may', ramps: ['grey', 'red', 'tan'] },
   'head-rocket-f': { slot: 'head', cell: 95, from: 'rocket_f', ramps: ['grey', 'red', 'tan'] },
-  'body-rocket-f': { slot: 'body', cell: 96, from: 'rocket_f', ramps: ['grey', 'tan'] },
+  'body-rocket-f': { slot: 'body', cell: 96, from: 'rocket_f', ramps: ['grey', 'tan', 'red'] },
   'head-swimmer-f': { slot: 'head', cell: 97, from: 'swimmer_f_land', ramps: ['orange'] },
   'body-swimmer-f': { slot: 'body', cell: 98, from: 'swimmer_f_land', ramps: ['violet', 'orange'] },
   'head-woman-1': { slot: 'head', cell: 99, from: 'woman_1', ramps: ['olive', 'green', 'rose'] },

@@ -142,12 +142,7 @@
  },
  "channeler": {
   "head": "head-channeler",
-  "body": "body-channeler",
-  "hair": [
-   11,
-   12,
-   13
-  ]
+  "body": "body-channeler"
  },
  "fat_man": {
   "head": "head-fat-man",

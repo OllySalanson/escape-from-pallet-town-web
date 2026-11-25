@@ -6,6 +6,7 @@ import { decodePng } from '../testing/pngPixels';
 import { composeLook, PIECE_HEIGHT, PIECE_WIDTH } from './composeLook';
 import { WEARABLE_PIECES } from './generated/wearablePieces';
 import { STARTER_LOOK, type DressedLook } from './look';
+import { WHOLE_LOOKS } from './wardrobe';
 import { BOUTIQUE_NAME, RAID_WEARABLES, slotOf, STARTER_WEARABLES, WEARABLES, wearableById } from './wearables';
 
 const sheet = decodePng(readFileSync(new URL('../../../public/assets/wearables.png', import.meta.url)));
@@ -31,6 +32,35 @@ function ownPixels(pieceId: keyof typeof WEARABLE_PIECES): number {
   let count = 0;
   for (let y = 0; y < PIECE_HEIGHT; y += 1) {
     for (let x = 0; x < PIECE_WIDTH; x += 1) if (atlas.data[((top + y) * atlas.width + left + x) * 4 + 3]) count += 1;
+  }
+  return count;
+}
+
+/**
+ * How many pixels of a look are see-through with the figure on all four
+ * sides of them - left, right, above and below in the same frame - over all
+ * sixteen frames: the ground showing through a figure rather than round it.
+ */
+function seeThroughInside(pixels: Uint8ClampedArray): number {
+  let count = 0;
+  for (let frame = 0; frame < 16; frame += 1) {
+    const left = (frame % 4) * 16;
+    const top = Math.floor(frame / 4) * 32;
+    const drawn = (x: number, y: number) => pixels[((top + y) * PIECE_WIDTH + left + x) * 4 + 3] !== 0;
+    for (let y = 0; y < 32; y += 1) {
+      for (let x = 0; x < 16; x += 1) {
+        if (drawn(x, y)) continue;
+        let west = false;
+        let east = false;
+        let north = false;
+        let south = false;
+        for (let i = 0; i < x; i += 1) west ||= drawn(i, y);
+        for (let i = x + 1; i < 16; i += 1) east ||= drawn(i, y);
+        for (let j = 0; j < y; j += 1) north ||= drawn(x, j);
+        for (let j = y + 1; j < 32; j += 1) south ||= drawn(x, j);
+        if (west && east && north && south) count += 1;
+      }
+    }
   }
   return count;
 }
@@ -118,6 +148,37 @@ describe("THE HARBOUR BOUTIQUE's catalogue", () => {
     }
     expect(faults).toEqual([]);
     expect(PIECE_HEIGHT).toBe(128);
+  });
+
+  it('leaves no see-through gap inside any figure, worn alone or as a whole look', () => {
+    // FireRed's own figures have a few see-through pixels between an arm or a
+    // lock of hair and the body on a side frame, and the pieces cut from them
+    // keep those, counted here over all sixteen frames. Anything else is a gap
+    // the cut left: the hair rule once gave a robe's grey chest to the veil and
+    // left a strip through the Mewtwo robe under any other head.
+    const fireRedGaps: Readonly<Record<string, number>> = {
+      'sailor-cap': 2,
+      'mum-do': 8,
+      'lorelei-waves': 26,
+      'bruno-mane': 8,
+      'sky-bob': 4,
+      'smart-shorts': 2,
+      'picnic-dungarees': 6,
+      'lorelei-gown': 2,
+      'gym-brock': 8,
+      'elite-lorelei': 26,
+      'elite-bruno': 8,
+    };
+    const found: Record<string, number> = {};
+    const looks: [string, DressedLook][] = [
+      ...WEARABLES.map((piece): [string, DressedLook] => [piece.id, dressedIn(piece.id)]),
+      ...WHOLE_LOOKS.map((whole): [string, DressedLook] => [whole.id, whole.look]),
+    ];
+    for (const [id, look] of looks) {
+      const gaps = seeThroughInside(pixelsOf(look));
+      if (gaps > 0) found[id] = gaps;
+    }
+    expect(found).toEqual(fireRedGaps);
   });
 
   it('makes every colour variant clearly another colour of its piece', () => {
