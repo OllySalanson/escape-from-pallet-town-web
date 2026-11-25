@@ -192,6 +192,12 @@ export interface ActiveRunSession {
    */
   trainerBags?: Record<string, TrainerBag | null>;
   /**
+   * Whether this raid has already been paid for beating a hunter
+   * (`world/prizeMoney.ts`): only the first one pays, because there is one in
+   * every district.
+   */
+  hunterPrizePaid?: boolean;
+  /**
    * Where this raid has pushed each Strength boulder it moved, by entity id.
    * A boulder stands where the map put it at the start of every raid, so this
    * is raid state and nothing else.

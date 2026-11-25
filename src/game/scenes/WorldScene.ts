@@ -465,6 +465,7 @@ import {
   type BagOwner,
   type TrainerBag,
 } from '../world/trainerBags';
+import { prizeMoneyFor } from '../world/prizeMoney';
 import {
   FRESH_SEARCH,
   SEARCH_RESEATED,
@@ -875,7 +876,7 @@ export function raidTakenUpLine(remainingMs: number): string {
 /** The fight itself - the only part of a battle payload a call site writes. */
 type BattleEncounter =
   | Required<Pick<BattleSceneData, 'wild' | 'teachingBattle'>>
-  | Required<Pick<BattleSceneData, 'trainer' | 'hunterBattle'>>;
+  | (Required<Pick<BattleSceneData, 'trainer' | 'hunterBattle'>> & Pick<BattleSceneData, 'prizeMoney'>);
 
 /** The cloud a raid opens under, after a jump. */
 const ARRIVAL_CLOUD_TEXTURE = 'raid-arrival-cloud';
@@ -9377,6 +9378,27 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     });
   }
 
+  /**
+   * What beating this trainer will pay into the pack (`world/prizeMoney.ts`).
+   * Nothing outside a raid, and nothing for the second hunter a raid beats.
+   */
+  private prizeMoneyFor(trainer: RunTrainerEncounter['trainer'], isHunter: boolean): number {
+    const session = this.runSession;
+    if (!session || session.manager.phase !== RunPhase.InRun) {
+      return 0;
+    }
+    const levels = trainer.party.map((pokemon) => pokemon.level);
+    if (isHunter) {
+      return session.hunterPrizePaid ? 0 : prizeMoneyFor({ levels, hunter: true });
+    }
+    const encounter = this.trainerEncounters.find((each) => each.trainer.id === trainer.id);
+    return prizeMoneyFor({
+      levels,
+      design: encounter?.design,
+      boss: encounter?.bossId !== undefined,
+    });
+  }
+
   /** The raid state that exists only on this scene - see `RaidCarriage`. */
   private raidCarriage(): RaidCarriage {
     return {
@@ -11178,7 +11200,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (this.pendingTrainerBattle) {
       const battle = this.pendingTrainerBattle;
       this.pendingTrainerBattle = undefined;
-      this.transitionToBattle({ trainer: battle.trainer, hunterBattle: battle.isHunter });
+      this.transitionToBattle({
+        trainer: battle.trainer,
+        hunterBattle: battle.isHunter,
+        prizeMoney: this.prizeMoneyFor(battle.trainer, battle.isHunter),
+      });
       return;
     }
 

@@ -133,7 +133,8 @@ import {
   carriedBalls,
   usableBattleItems,
 } from '../pokemon/battle/battleItems';
-import { Bag, heldItemName, type ItemDefinition, type ItemId } from '../items';
+import { prizeLeftLine, prizeLine } from '../world/prizeMoney';
+import { Bag, CURRENCY_ITEM_ID, formatMoney, heldItemName, type ItemDefinition, type ItemId } from '../items';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, baseCompositionOffset } from '../display/stage';
 import { WINDOW_INK, drawFramedWindow } from '../ui/pixelWindow';
 import { UI } from '../ui/uiPalette';
@@ -366,6 +367,12 @@ export interface BattleSceneData extends Partial<RaidCarriage> {
   teachingBattle?: boolean;
   /** Hunters are trainer battles that can be fled from and resume pursuit. */
   hunterBattle?: boolean;
+  /**
+   * What beating this trainer pays into the pack (`world/prizeMoney.ts`),
+   * worked out by the world, which knows who they are and where they stood.
+   * Absent for a wild fight and for any fight for sport.
+   */
+  prizeMoney?: number;
   /** A development route can return to its launcher after a complete battle. */
   returnScene?: string;
   /**
@@ -685,6 +692,8 @@ export class BattleScene extends Phaser.Scene {
   private itemSlotsThisTurn = new Set<number>();
   private itemLinesThisTurn: StagedNote[] = [];
   private victoryRewardsGranted = false;
+  /** What this win pays into the pack (`world/prizeMoney.ts`); nothing for a wild fight or a bout. */
+  private prizeMoney = 0;
   /** Whether this fight has said that medicine can be used in it (`lowHpItemHint`): once a fight. */
   private lowHpHintSaid = false;
   /** Whether this fight has taught a line of the type chart (`typeLesson`): once a fight. */
@@ -968,6 +977,7 @@ export class BattleScene extends Phaser.Scene {
     }
     this.trainer = data.trainer;
     this.hunterBattle = data.hunterBattle ?? false;
+    this.prizeMoney = data.exhibition ? 0 : Math.max(0, Math.floor(data.prizeMoney ?? 0));
     this.teachingBattle = data.teachingBattle ?? false;
     this.catchLesson = data.wild?.lesson === 'catch' ? 'owed' : null;
     this.itemLessonGiven = false;
@@ -4215,6 +4225,7 @@ export class BattleScene extends Phaser.Scene {
                 message: this.trainer.defeatText ?? `${this.trainer.name} was defeated!`,
                 sound: 'victory',
               },
+              ...this.payPrizeMoney(),
             ]
           : this.awardVictoryExperience(this.state.enemy.pokemon),
       );
@@ -4247,6 +4258,60 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     this.dialog.showMessage('You blacked out!');
+  }
+
+  /**
+   * FireRed's prize for a trainer beaten (`world/prizeMoney.ts`), into the
+   * raid's own pack: as much as it has room for, and the rest put down where
+   * the fight began. Paid once, as the win is announced.
+   */
+  private payPrizeMoney(): { message: string }[] {
+    const prize = this.prizeMoney;
+    this.prizeMoney = 0;
+    if (prize <= 0) {
+      return [];
+    }
+    if (this.hunterBattle && this.runSession) {
+      this.runSession.hunterPrizePaid = true;
+    }
+    let taken = prize;
+    if (!this.bag.wouldTakeFind(CURRENCY_ITEM_ID, taken)) {
+      let low = 0;
+      let high = prize;
+      while (low < high) {
+        const mid = Math.ceil((low + high) / 2);
+        if (this.bag.wouldTakeFind(CURRENCY_ITEM_ID, mid)) low = mid;
+        else high = mid - 1;
+      }
+      taken = low;
+    }
+    if (taken > 0) {
+      this.bag.takeFind(CURRENCY_ITEM_ID, taken);
+    }
+    // Found, as a pile on the ground is, and the part with no room put down as
+    // a drop is: the raid's found list counts the whole prize, picking the rest
+    // up takes the drop back, and leaving it says it was put down.
+    const manager = this.runSession?.manager;
+    if (manager?.phase === RunPhase.InRun) {
+      manager.registerFoundItem(CURRENCY_ITEM_ID, prize);
+      if (taken < prize) {
+        manager.registerDroppedItem(CURRENCY_ITEM_ID, prize - taken);
+      }
+    }
+    const lines = taken > 0 ? [{ message: prizeLine(formatMoney(taken)) }] : [];
+    if (taken === prize) {
+      return lines;
+    }
+    if (this.runSession && this.returnLocation) {
+      layDroppedPiece(
+        (this.runSession.droppedOnTheGround ??= {}),
+        this.returnLocation.mapId,
+        CURRENCY_ITEM_ID,
+        prize - taken,
+        this.returnLocation.position,
+      );
+    }
+    return [...lines, { message: prizeLeftLine(taken > 0 ? formatMoney(taken) : '', formatMoney(prize - taken)) }];
   }
 
   /**
