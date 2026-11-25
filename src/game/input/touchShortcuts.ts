@@ -36,7 +36,16 @@ export function hasTouchShortcuts(scene: unknown): scene is TouchShortcutSource 
  */
 export function shortcutsInHint(hint: string): TouchShortcut[] {
   const found: TouchShortcut[] = [];
-  const pattern = /\[([A-Z0-9])\]\s+([^[\n]*?)(?=\s{2,}|\s*\[|\s*\n|\s*$)/g;
+  // A pair sharing a word walks something back and forward: "[Q][E] BOX" is "< BOX" and "BOX >".
+  for (const match of hint.matchAll(/\[([A-Z0-9])\]\[([A-Z0-9])\]\s+([^[\n]*?)(?=\s{2,}|\s*\[|\s*\n|\s*$)/g)) {
+    const back = codeForHintKey(match[1]);
+    const next = codeForHintKey(match[2]);
+    const label = match[3].trim();
+    if (back && next && label) {
+      found.push({ code: back, label: `< ${label}` }, { code: next, label: `${label} >` });
+    }
+  }
+  const pattern = /(?<!\])\[([A-Z0-9])\]\s+([^[\n]*?)(?=\s{2,}|\s*\[|\s*\n|\s*$)/g;
   for (const match of hint.matchAll(pattern)) {
     const code = codeForHintKey(match[1]);
     const label = match[2].trim();

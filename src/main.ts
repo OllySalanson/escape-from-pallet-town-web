@@ -10,6 +10,7 @@ import { installFeedbackDesk } from './game/feedback/feedbackDesk';
 import { followTesterLink, installPlayCounter, isAutomatedBrowser } from './game/analytics/playCounter';
 import { installPixelText } from './game/ui/pixelText';
 import { onTouchPlayChange, touchPlay, watchTouchPlay } from './game/input/touchPlay';
+import { installTouchWording, rewordTexts } from './game/input/touchWords';
 import { installTouchPad } from './game/ui/touchPad';
 import { audioManager } from './game/audio/AudioManager';
 import { pausesForWindow, watchWindowFocus } from './game/world/windowPause';
@@ -34,6 +35,8 @@ const stopWatchingTouch = watchTouchPlay(window);
 
 // Before the first scene exists, so no text is ever painted the soft way.
 installPixelText(Phaser.GameObjects.Text);
+// ...and says its keys the touch pad's way while it is played on one (`input/touchWords.ts`).
+installTouchWording(Phaser.GameObjects.Text);
 
 const testMode = requestedTestMode();
 // Asks the browser to keep the save rather than clear it after a week away
@@ -63,6 +66,7 @@ const touchPad = installTouchPad({
   soundMuted: () => audioManager.isMuted,
   wakeSound: () => void audioManager.activate(),
 });
+const stopRewording = onTouchPlayChange(() => rewordTexts(game.scene.scenes));
 const stopWatchingViewport = watchViewport(game, { playing: touchPlay, onChange: onTouchPlayChange, place: (layout) => touchPad.place(layout) });
 // Counts play for the owner's STATS page, only on the published game, never for
 // a browser a program drives or one that asks not to be tracked, and a tester's
@@ -118,6 +122,7 @@ if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     stopWatchingViewport();
     stopWatchingTouch();
+    stopRewording();
     touchPad.destroy();
     feedbackDesk.destroy();
     stopWatchingFocus();
