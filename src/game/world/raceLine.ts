@@ -25,6 +25,8 @@ export interface RaceGround {
   readonly solid: (x: number, y: number) => boolean;
   /** What a tile is made of. */
   readonly material: (x: number, y: number) => Material;
+  /** Whether a tile is wild grass, which a racer who knows the way minds as a player does. */
+  readonly wild: (x: number, y: number) => boolean;
 }
 
 /**
@@ -110,6 +112,7 @@ export function raceGround(
     readonly height: number;
     readonly collision: readonly (readonly boolean[])[];
     readonly terrain: readonly (readonly Material[])[];
+    readonly tallGrass: readonly (readonly boolean[])[];
   },
   figures: readonly GridPosition[],
 ): RaceGround {
@@ -119,5 +122,65 @@ export function raceGround(
     height: map.height,
     solid: (x, y) => map.collision[y][x] || standing.has(y * map.width + x),
     material: (x, y) => map.terrain[y][x],
+    wild: (x, y) => map.tallGrass[y][x],
   };
+}
+
+/** What a wild tile costs a racer who knows the way, in steps: the player's own reckoning (`tools/race/lines.mts`). */
+export const KNOWING_WADE_COST = 3;
+
+/**
+ * The line of a racer who has learned the map: the quickest way to the line
+ * over any ground, a wild tile counted as `KNOWING_WADE_COST` steps (they would
+ * rather not wade, as a player would rather not fight), and never onto
+ * `keepsOff` - the shortcut that stays the player's. Then on to `waits` as
+ * `racerLine` goes. Null when there is no such way.
+ */
+export function knowingLine(
+  ground: RaceGround,
+  start: GridPosition,
+  finish: readonly GridPosition[],
+  keepsOff: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
+  waits?: GridPosition,
+): GridPosition[] | null {
+  const { width, height } = ground;
+  const off = (x: number, y: number) =>
+    x >= keepsOff.x && y >= keepsOff.y && x < keepsOff.x + keepsOff.width && y < keepsOff.y + keepsOff.height;
+  const key = (x: number, y: number) => y * width + x;
+  const cost = new Int32Array(width * height).fill(-1);
+  const from = new Int32Array(width * height).fill(-1);
+  const startKey = key(start.x, start.y);
+  cost[startKey] = 0;
+  from[startKey] = startKey;
+  const buckets: number[][] = [[startKey]];
+  for (let spent = 0; spent < buckets.length; spent += 1) {
+    for (const at of buckets[spent] ?? []) {
+      if (cost[at] !== spent) continue;
+      const x = at % width;
+      const y = (at - x) / width;
+      if (finish.some((goal) => goal.x === x && goal.y === y)) {
+        const line: GridPosition[] = [];
+        for (let step = at; ; step = from[step]) {
+          line.push({ x: step % width, y: Math.floor(step / width) });
+          if (step === startKey) break;
+        }
+        line.reverse();
+        if (!waits) return line;
+        const aside = roadWalk(ground, line[line.length - 1], [waits]);
+        return aside ? [...line, ...aside.slice(1)] : null;
+      }
+      for (const [dx, dy] of STEPS) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height || ground.solid(nx, ny) || off(nx, ny)) continue;
+        const next = spent + 1 + (ground.wild(nx, ny) ? KNOWING_WADE_COST : 0);
+        const nextKey = key(nx, ny);
+        if (cost[nextKey] !== -1 && cost[nextKey] <= next) continue;
+        cost[nextKey] = next;
+        from[nextKey] = at;
+        (buckets[next] ??= []).push(nextKey);
+      }
+    }
+  }
+  return null;
 }

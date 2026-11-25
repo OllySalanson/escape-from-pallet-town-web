@@ -6480,7 +6480,7 @@
    "x": 84,
    "y": 169,
    "name": "Linnet",
-   "look": "picnicker",
+   "look": "cooltrainer-woman",
    "facing": "down",
    "lines": [
     "I race people. Ask me when you have the legs for it."
@@ -9668,7 +9668,7 @@
    "facing": "left",
    "lines": [
     "I collected the toll on the Mere Path for thirty years. There is no toll now.",
-    "I still sit here. Somebody ought to.",
+    "I keep the time for LINNET’s races instead. The line is by my door; the stopwatch was the toll’s.",
     "West, and do not stop for anybody on the path. Nobody good is out there."
    ],
    "beat": {
@@ -9678,7 +9678,8 @@
     ]
    },
    "calls": [
-    "Toll is nothing. Mind it."
+    "Toll is nothing. Mind it.",
+    "Line’s by my door!"
    ]
   },
   {

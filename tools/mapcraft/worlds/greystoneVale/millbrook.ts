@@ -352,7 +352,7 @@ export function millbrook(): MapcraftResult {
         { x: 13, y: 41, name: 'Bram', look: 'boy', facing: 'right', lines: ['My mum says never to go down to the pool on your own.', 'Tom goes down there on his own. Tom is ten.'], beat: { everyMs: 2500, roam: [[-1, 0]], glances: ['down'] }, calls: ['Tam always wins.'] },
         // LINNET races anybody to THE LAST HOUSE (`src/game/world/races.ts`), and is
         // stood here from a save's second raid on: what she says is the race's.
-        { x: 20, y: 41, name: 'Linnet', look: 'picnicker', facing: 'down', lines: ['I race people. Ask me when you have the legs for it.'], calls: ['I\u2019ll race you!', 'Race you to the mere!', 'Nobody beats me!'] },
+        { x: 20, y: 41, name: 'Linnet', look: 'cooltrainer-woman', facing: 'down', lines: ['I race people. Ask me when you have the legs for it.'], calls: ['I\u2019ll race you!', 'Race you to the mere!', 'Nobody beats me!'] },
         { x: 40, y: 37, name: 'Gardener', look: 'woman', facing: 'left', lines: ['Every Pidgey in the vale nests in my roof.', 'East of the village the road goes over the bridge at The Crossing.'], beat: { everyMs: 3000, roam: [[1, 0]], glances: ['down', 'up'] }, calls: ['Get off my roof!', 'Shoo, Pidgey!'] },
         { x: 56, y: 38, name: 'Mrs Lark', look: 'beauty', facing: 'left', lines: ['Best in show, nine years running. There is no show. I started it. I judge it.'], beat: { everyMs: 3300, roam: [[1, 0]], glances: ['down'] }, calls: ['Mind my dahlias!'] },
         // -- The ends of the village ---------------------------------------------------

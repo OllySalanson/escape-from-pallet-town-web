@@ -59,7 +59,14 @@ export interface RaceCourse {
     readonly stands: GridPosition;
     /** Where they wait once over the line: off the planks, so nobody is blocked. */
     readonly waits: GridPosition;
+    /**
+     * Ground they never take, even once they know the map: the shortcut that is
+     * the player's to find. The woodcutter's ride is grown shut for them, Cut or no Cut.
+     */
+    readonly keepsOff: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
   };
+  /** Who stands at the line with a stopwatch and calls the time: a person the map file places by it. */
+  readonly judge: { readonly name: string };
   readonly finish: {
     /** The place the line is at, as the racer names it. */
     readonly name: string;
@@ -72,32 +79,59 @@ export interface RaceCourse {
   readonly silverMs: number;
   /** Under this is GOLD: only the Cut line. */
   readonly goldMs: number;
-  /** The trophy the first GOLD ever adds. */
+  /** The trophy the first SILVER or better ever adds: something to put on a shelf. */
   readonly trophy: ItemId;
   /**
    * What the racer says next time it is worth knowing: to a loser who stuck to
    * their road, to one who left it and fought, to one who left it and was
-   * slower anyway, and to a winner who has not found the shortcut.
+   * slower anyway, to a winner who has not found the shortcut - and, once they
+   * have learned the dry way themselves, to one who lost to them on it.
    */
-  readonly hints: { readonly road: string; readonly fights: string; readonly longWay: string; readonly shortcut: string };
+  readonly hints: {
+    readonly road: string;
+    readonly fights: string;
+    readonly longWay: string;
+    readonly shortcut: string;
+    readonly learned: string;
+  };
+  /**
+   * Who about the place talks about the race once a save has beaten the racer,
+   * and what they say instead: the village noticing is half of being proud of it.
+   */
+  readonly gossip: readonly RaceGossip[];
+}
+
+/** A person or sign that says something else once the racer has been beaten. */
+export interface RaceGossip {
+  readonly at: GridPosition;
+  /** What they say now, given the record and what they used to say. */
+  readonly says: (record: RaceRecord, own: readonly string[]) => string[];
 }
 
 /**
  * THE MERE DASH: LINNET, from the alley mouth below Mill Square to THE LAST
  * HOUSE at the far end of the reeds. Her road goes down the lane and round the
- * whole mere on the boardwalk (154 steps); the reeds' dry way leaves the lane
+ * whole mere on the boardwalk (153 steps); the reeds' dry way leaves the lane
  * across the wildfowlers' meadow (104 steps, five of them wild grass); the Cut
  * line goes west of the millpond, through the woodcutter's glade and down the
- * woodcutter's ride (68). See `races.test.ts` for the measurements.
+ * woodcutter's ride (68). Once a save has a SILVER she knows the dry way too,
+ * and only the ride beats her. See `races.test.ts` for the measurements.
  */
 export const MERE_DASH: RaceCourse = {
   id: 'mere-dash',
   mapId: 'greystone-vale',
   name: 'THE MERE DASH',
-  racer: { name: 'LINNET', design: 'picnicker', stands: { x: 84, y: 169 }, waits: { x: 70, y: 220 } },
+  racer: {
+    name: 'LINNET',
+    design: 'cooltrainer-woman',
+    stands: { x: 84, y: 169 },
+    waits: { x: 70, y: 220 },
+    keepsOff: { x: 82, y: 188, width: 2, height: 14 },
+  },
+  judge: { name: 'OLD REEVE' },
   finish: {
     name: 'THE LAST HOUSE',
-    where: 'at the far end of the reeds, where the Mere Path leaves the vale',
+    where: 'at the far end of the reeds',
     tiles: [
       { x: 72, y: 218 },
       { x: 72, y: 219 },
@@ -109,10 +143,34 @@ export const MERE_DASH: RaceCourse = {
   hints: {
     road: 'You stuck to my boardwalk. Everybody does! The reeds have a dry way through, if you look.',
     fights: "The reeds are quick - but I don't stop while you fight in them. Find the dry way, or pack a Repel.",
-    longWay: "You left my boardwalk and still came in behind me? The dry way through the reeds is straighter than that.",
+    longWay: 'You left my boardwalk and still came in behind me? The dry way through the reeds is straighter than that.',
     shortcut:
-      "Nobody gets under 0:11.0 through the reeds. There's an old ride through the pines behind the woodcutter's - grown shut. Bring a Cut.",
+      "Nobody gets under 0:11.0 through the reeds. There's an old ride through the pines behind the woodcutter's - grown shut. Bill trades a Cut disc for a linen roll and a parts crate.",
+    learned:
+      "My dry way now, too! Through the reeds you'll only ever tie me. The ride behind the woodcutter's - that one's yours. If you can Cut.",
   },
+  gossip: [
+    {
+      // Pip, her little brother, on the square.
+      at: { x: 88, y: 162 },
+      says: (record) => [
+        'Race you to the fountain!',
+        record.medal === 'gold'
+          ? 'Somebody beat my sister LINNET by miles. Through the WOODS. She has not stopped talking about it.'
+          : 'My sister LINNET says somebody beat her to the mere. She practises every night now. It was you, wasn\u2019t it.',
+      ],
+    },
+    {
+      // The Mill Square sign's last line is the race's notice.
+      at: { x: 101, y: 157 },
+      says: (record, own) => [
+        ...own.filter((line) => !line.startsWith('RACES:')),
+        `RACES: ask LINNET, by the alley. Course record: ${record.bestMs === undefined ? '-' : formatRaceTime(record.bestMs)}${
+          record.medal ? ` ${MEDAL_WORDS[record.medal]}` : ''
+        }. She is furious.`,
+      ],
+    },
+  ],
 };
 
 export const RACE_COURSES: readonly RaceCourse[] = [MERE_DASH];
@@ -122,6 +180,22 @@ export function courseStartedAt(mapId: WorldMapId, tile: GridPosition): RaceCour
   return RACE_COURSES.find(
     (course) => course.mapId === mapId && course.racer.stands.x === tile.x && course.racer.stands.y === tile.y,
   );
+}
+
+/** What a person or sign at `tile` says about a race this save has won, if they talk about it. */
+export function raceGossipAt(
+  mapId: WorldMapId,
+  tile: GridPosition,
+  records: Readonly<Record<string, RaceRecord>> | undefined,
+  own: readonly string[],
+): string[] | undefined {
+  for (const course of RACE_COURSES) {
+    const record = records?.[course.id];
+    if (course.mapId !== mapId || !record || record.wins === 0) continue;
+    const gossip = course.gossip.find((one) => one.at.x === tile.x && one.at.y === tile.y);
+    if (gossip) return gossip.says(record, own);
+  }
+  return undefined;
 }
 
 export function courseById(id: string): RaceCourse | undefined {
@@ -165,8 +239,8 @@ export type RaceOutcome = 'won' | 'lost' | 'late';
 
 /** P for crossing the line behind the racer, before they have gone home. */
 export const TAKING_PART_MONEY = 10;
-/** P for beating them. */
-export const WINNING_MONEY = 30;
+/** P for beating them, by the mark: a GOLD is the run worth coming back for every raid. */
+export const MEDAL_MONEY: Readonly<Record<RaceMedal, number>> = { bronze: 30, silver: 40, gold: 60 };
 
 /** The five stones the day's purse can be, in Bill's order. */
 export const PURSE_STONES: readonly ItemId[] = ['thunder-stone', 'fire-stone', 'water-stone', 'leaf-stone', 'moon-stone'];
@@ -176,7 +250,7 @@ export interface RacePrize {
   readonly money: number;
   /** The day's purse: a stone the player chooses. */
   readonly purse: boolean;
-  /** The course's trophy, for the first GOLD ever. */
+  /** The course's trophy, for the first SILVER or better ever. */
   readonly trophy: boolean;
 }
 
@@ -191,12 +265,21 @@ export function racePrize(outcome: RaceOutcome, medal: RaceMedal | null, record:
   if (outcome === 'late') {
     return { money: 0, purse: false, trophy: false };
   }
-  const gold = medal === 'gold';
   return {
-    money: outcome === 'won' ? WINNING_MONEY : TAKING_PART_MONEY,
-    purse: gold && !record.purseTakenToday,
-    trophy: gold && !record.trophyBanked,
+    money: outcome === 'won' && medal ? MEDAL_MONEY[medal] : TAKING_PART_MONEY,
+    purse: medal === 'gold' && !record.purseTakenToday,
+    trophy: (medal === 'gold' || medal === 'silver') && !record.trophyBanked,
   };
+}
+
+/**
+ * Whether the racer runs the reeds' dry way rather than their road: once a save
+ * has beaten them off it with a SILVER or better, they have learned it. It is
+ * the race's ladder - road, reeds, ride - and it keeps the race close for
+ * whoever is on its next rung.
+ */
+export function racerKnowsTheWay(record: RaceRecord | undefined): boolean {
+  return record?.medal === 'silver' || record?.medal === 'gold';
 }
 
 /** The player's own calendar day, which is what "today's purse" means. */
@@ -222,22 +305,21 @@ export interface RaceRecord {
 
 // -- What the racer says ---------------------------------------------------------
 
-/** The offer, up to the question: who, where the line is, and what each finish pays. */
+/** The offer, up to the question: who, where the line is, and what it pays - short, once it is known. */
 export function raceOfferLines(course: RaceCourse, record: RaceRecord | undefined, purseTakenToday: boolean): string[] {
   const racer = course.racer.name;
-  const lines = [
-    record && record.runs > 0
-      ? `${racer}: Back for more? Same line - ${course.finish.name}, ${course.finish.where}.`
-      : `${racer}: I'll race you! First to ${course.finish.name}, ${course.finish.where}. The line's on the planks by its door.`,
-    `Beat me: ${formatMoney(WINNING_MONEY)}. Just get there before I go home: ${formatMoney(TAKING_PART_MONEY)} for trying. And no bikes - on foot!`,
-    `Under ${formatRaceTime(course.silverMs)} is SILVER. Under ${formatRaceTime(course.goldMs)} is GOLD, and ${
-      purseTakenToday ? "today's purse is gone - come back tomorrow for it" : "GOLD takes today's purse: an evolution stone, your pick"
-    }.`,
-  ];
-  if (record?.bestMs !== undefined) {
-    lines.push(`Your best: ${formatRaceTime(record.bestMs)}${record.medal ? ` (${MEDAL_WORDS[record.medal]})` : ''}.`);
+  const purse = purseTakenToday
+    ? "Today's purse is gone - come back tomorrow for it."
+    : `Under ${formatRaceTime(course.goldMs)} takes today's purse: any evolution stone you like.`;
+  if (!record || record.runs === 0) {
+    return [
+      `${racer}: I'll race you! First to ${course.finish.name}, ${course.finish.where} - the line's by its door.`,
+      `Beat me: ${formatMoney(MEDAL_MONEY.bronze)}. Lose: ${formatMoney(TAKING_PART_MONEY)} for the legs. Nobody's ever done it under ${formatRaceTime(course.goldMs)} - do that and today's purse is yours: any evolution stone.`,
+    ];
   }
-  return lines;
+  const best = record.bestMs === undefined ? '' : ` Your best: ${formatRaceTime(record.bestMs)}${record.medal ? ` ${MEDAL_WORDS[record.medal]}` : ''}.`;
+  const learned = racerKnowsTheWay(record) ? " I've been practising - I know the reeds' dry way now too." : '';
+  return [`${racer}: Back for more?${best}${learned}`, purse];
 }
 
 /** The captain's question, word for word. */
@@ -251,7 +333,12 @@ export function raceDeclinedLine(course: RaceCourse): string {
   return `${course.racer.name}: Scared? I'll be here.`;
 }
 
-/** Said as the countdown begins. */
+/** On a save's first raid: the racer is there, and wants the player home first. */
+export function raceNotYetLines(course: RaceCourse): string[] {
+  return [`${course.racer.name}: Get home in one piece first. THEN I'll race you.`];
+}
+
+/** Said as YES is answered, before the countdown. */
 export function raceReadyLine(course: RaceCourse, wasRiding: boolean): string {
   return wasRiding
     ? `${course.racer.name}: Off the bike! On foot, like everybody. On your marks...`
@@ -264,6 +351,10 @@ export interface RaceResultInput {
   readonly fightMs: number;
   /** Whether the player left the racer's road. */
   readonly offRoad: boolean;
+  /** Whether the racer ran the reeds' dry way this race. */
+  readonly racerKnew: boolean;
+  /** Whether the player came down the shortcut that stays theirs (`RaceCourse.racer.keepsOff`). */
+  readonly tookShortcut: boolean;
   readonly timeMs: number;
   readonly racerMs: number;
   readonly medal: RaceMedal | null;
@@ -271,70 +362,89 @@ export interface RaceResultInput {
   readonly prize: RacePrize;
 }
 
-/** What is said at the line: the result, the mark, and what the next race wants. */
-export function raceResultLines(course: RaceCourse, input: RaceResultInput): string[] {
+/** The big word over the screen at the line: the mark and the time, or the place. */
+export function raceLineWord(input: { readonly medal: RaceMedal | null; readonly timeMs: number }): string {
+  return `${input.medal ? MEDAL_WORDS[input.medal] : '2ND'} ${formatRaceTime(input.timeMs)}`;
+}
+
+/**
+ * The player over the line first: the judge calls it, and pays out of the
+ * racer's purse - the racer is still out on the course, and is heard from when
+ * they run in (`racerArrivesLines`).
+ */
+export function judgeLines(course: RaceCourse, input: RaceResultInput): string[] {
+  const judge = course.judge.name;
   const racer = course.racer.name;
-  const lines: string[] = [];
+  const fought = input.fightMs > 0 ? ` - ${formatGap(input.fightMs)} of it fighting` : '';
+  const mark = input.medal ? ` ${MEDAL_WORDS[input.medal]}!` : '';
+  return [
+    `${judge}: Over the line! ${formatRaceTime(input.timeMs)}${fought}.${mark}${input.newBest ? ' A new best.' : ''}`,
+    `${racer} left the purse with me: ${formatMoney(input.prize.money)}.`,
+  ];
+}
+
+/** What the racer says as they run in behind a player who beat them. */
+export function racerArrivesLines(course: RaceCourse, input: RaceResultInput): string[] {
+  const racer = course.racer.name;
+  if (input.medal === 'gold') {
+    return [`${racer}: Through the woodcutter's ride?! Nobody's been up there in years. That's the best run I've ever seen.`];
+  }
+  if (input.tookShortcut) {
+    const missed = input.fightMs > 0 ? 'Stop to fight and you lose it.' : 'Cut your corners tighter.';
+    return [`${racer}: The ride! I KNEW it. ${formatGap(input.racerMs - input.timeMs)} behind... ${formatRaceTime(course.goldMs)} is in there, you know. ${missed}`];
+  }
+  return [`${racer}: How?! ${formatGap(input.racerMs - input.timeMs)} behind... fair's fair.`, `${racer}: ${course.hints.shortcut}`];
+}
+
+/** The racer over the line first: they say it themselves, and pay the taking part. */
+export function racerWonLines(course: RaceCourse, input: RaceResultInput): string[] {
+  const racer = course.racer.name;
   const fought = input.fightMs > 0 ? ` (${formatGap(input.fightMs)} of it fighting)` : '';
-  if (input.outcome === 'won') {
-    lines.push(`You crossed first! ${formatRaceTime(input.timeMs)}${fought} - ${racer} was ${formatGap(input.racerMs - input.timeMs)} behind.`);
-  } else {
-    lines.push(`${racer} crossed first, ${formatGap(input.timeMs - input.racerMs)} ahead. Your time: ${formatRaceTime(input.timeMs)}${fought}.`);
-  }
-  if (input.medal) {
-    lines.push(`${MEDAL_WORDS[input.medal]}!${input.newBest ? ' A new best.' : ''}`);
-  } else if (input.newBest) {
-    lines.push('A new best.');
-  }
-  if (input.outcome === 'won') {
-    lines.push(
-      input.medal === 'gold'
-        ? `${racer}: Through the woodcutter's ride?! Nobody's been up there in years. That's the best run I've ever seen.`
-        : `${racer}: How?! Fine. Fair's fair.`,
-    );
-  } else {
-    const why = input.fightMs > 0 ? course.hints.fights : input.offRoad ? course.hints.longWay : course.hints.road;
-    lines.push(`${racer}: ${why}`);
-  }
-  lines.push(`${racer} hands you ${formatMoney(input.prize.money)}.`);
-  if (input.outcome === 'won' && input.medal !== 'gold') {
-    lines.push(`${racer}: ${course.hints.shortcut}`);
-  }
-  return lines;
+  // Once they know the dry way it is the only thing worth saying: through the
+  // reeds a player can only tie them, fights or no.
+  const why = input.racerKnew
+    ? course.hints.learned
+    : input.fightMs > 0
+      ? course.hints.fights
+      : input.offRoad
+        ? course.hints.longWay
+        : course.hints.road;
+  return [
+    `${racer}: Beat you by ${formatGap(input.timeMs - input.racerMs)}! You: ${formatRaceTime(input.timeMs)}${fought}.${input.newBest ? ' A new best, mind.' : ''}`,
+    `${racer}: ${why}`,
+    `${racer} hands you ${formatMoney(input.prize.money)} for the legs.`,
+  ];
 }
 
 /** Said when the purse is handed over, before the stone is chosen. */
 export function pursePickLine(course: RaceCourse): string {
-  return `${course.racer.name}: And today's purse. Which stone?`;
+  return `${course.judge.name}: And today's purse. Which stone?`;
 }
 
 export function trophyLine(course: RaceCourse, trophyName: string): string {
-  return `${course.racer.name}: First GOLD on ${course.name}! The ${trophyName} is yours - put it somewhere people will see.`;
+  return `${course.judge.name}: Your first time under ${formatRaceTime(course.silverMs)} on ${course.name} - the course trophy goes with it, the ${trophyName.toUpperCase()}. Put it somewhere people will see.`;
 }
 
-/** The racer has a prize the pack had no room for: they hold it at the line. */
+/** The judge or racer has a prize the pack had no room for: it waits at the line. */
 export function heldPrizeLine(course: RaceCourse): string {
   return `${course.racer.name}: Your pack's full. I'll hold it here - make room and come back for it.`;
 }
 
-/** Spoken to after the race, with nothing held. */
+/** Spoken to after the race, with nothing held and nothing left to say. */
 export function afterRaceLines(course: RaceCourse, outcome: RaceOutcome | null): string[] {
   const racer = course.racer.name;
-  if (outcome === 'late') {
-    return [`${racer}: You took so long I nearly went home! Race you next time.`];
-  }
   if (outcome === 'won') {
-    return [`${racer}: Again next time. I'll be practising.`];
+    return [`${racer}: Again next raid. I'll be practising.`];
   }
-  return [`${racer}: Again next time? I'll be waiting by the alley.`];
+  return [`${racer}: Again next raid? I'll be waiting by the alley.`];
 }
 
-/** Said when the racer gives up waiting, if the player is in earshot of the box. */
+/** Said when the racer gives up waiting and goes home. */
 export function goneHomeLine(course: RaceCourse): string {
-  return `${course.racer.name} has gone home. The race is off.`;
+  return `${course.racer.name} gave up waiting and went home. The race is off.`;
 }
 
-/** The race chip: the clock, where the racer is, the line's bearing, and the best to beat. */
+/** The race chip: the clock, where the racer is, the line's bearing and distance, and the best to beat. */
 export function raceChipLines(input: {
   readonly course: RaceCourse;
   readonly clockMs: number;
@@ -342,6 +452,7 @@ export function raceChipLines(input: {
   readonly racerHomeMs: number | null;
   readonly waitLeftMs: number | null;
   readonly bearing: string | null;
+  readonly tilesToLine: number;
   readonly bestMs: number | undefined;
 }): string[] {
   const racer = input.course.racer.name;
@@ -354,7 +465,7 @@ export function raceChipLines(input: {
   } else if (input.racerPlace) {
     lines.push(`${racer}: ${input.racerPlace}`);
   }
-  lines.push(`LINE: ${input.course.finish.name}${input.bearing ? ` ${input.bearing}` : ''}`);
+  lines.push(`LINE ${input.bearing ? `${input.bearing} ` : ''}${input.tilesToLine}`);
   if (input.bestMs !== undefined) {
     lines.push(`BEST ${formatRaceTime(input.bestMs)}`);
   }
@@ -395,15 +506,21 @@ export interface RaceState {
   fightMs: number;
   /** Whether the player has set foot off made ground since GO: who left the racer's road. */
   offRoad: boolean;
+  /** Whether the player has come down the shortcut since GO. */
+  tookShortcut: boolean;
   /** Where the player has gone since GO, and when (`raceGhost.ts`): kept if it is a best. */
   trail: number[];
+  /** Whether the racer ran the reeds' dry way this race (`racerKnowsTheWay`). */
+  readonly racerKnew: boolean;
+  /** What the racer has to say when they run in behind a player who beat them. */
+  arrivalWords?: string[];
 }
 
 /** A race the player has just said yes to. */
-export function newRace(course: RaceCourse, line: readonly GridPosition[]): RaceState {
+export function newRace(course: RaceCourse, line: readonly GridPosition[], racerKnew = false): RaceState {
   const crossing = line.findIndex((tile) => crossesLine(course, tile));
   const racerMs = racerTimeMs((crossing < 0 ? line.length - 1 : crossing) + 1);
-  return { courseId: course.id, phase: 'countdown', countdownMs: 0, clockMs: 0, line, racerMs, held: [], purseToPick: false, bank: {}, fightMs: 0, offRoad: false, trail: [] };
+  return { courseId: course.id, phase: 'countdown', countdownMs: 0, clockMs: 0, line, racerMs, held: [], purseToPick: false, bank: {}, fightMs: 0, offRoad: false, tookShortcut: false, trail: [], racerKnew };
 }
 
 /** Charged game time while a fight is on: the racer runs on (`BattleScene` asks this). */
