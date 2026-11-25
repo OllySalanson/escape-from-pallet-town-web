@@ -12,6 +12,10 @@ import { isWorldMapId, worldMapName } from '../worldMap';
  * its contents back in the vault (playtest 11, B1). That made the clock, the
  * hunter and the wipe optional for anybody willing to close a tab.
  *
+ * A raid is written down as it is played and taken up again after a reload
+ * (`run/raidResume.ts`), so this is now only what becomes of one that cannot
+ * be: storage refused it, or the record will not read back.
+ *
  * The captain's ruling: **an abandoned raid loses the pack and everything in
  * it, and the team comes home.** It is softer than a wipe, because a real crash
  * is not the player's fault, and it is never free. So this is written at the

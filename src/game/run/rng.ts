@@ -7,8 +7,25 @@ export interface SeededRng {
   shuffle<T>(values: readonly T[]): T[];
 }
 
-export function createSeededRng(seed: number): SeededRng {
-  let state = seed >>> 0;
+/**
+ * Where each stream has got to, by stream, so a raid in progress can be written
+ * down and taken up again on the very same rolls (`run/raidResume.ts`). Kept
+ * beside the streams rather than on them, so `SeededRng` stays the five calls
+ * every roll in the game is made through.
+ */
+const positions = new WeakMap<SeededRng, () => number>();
+
+/** Where `rng` has got to, for `createSeededRng(seed, at)` to carry on from; null for a stream not made here. */
+export function seededRngPosition(rng: SeededRng): number | null {
+  return positions.get(rng)?.() ?? null;
+}
+
+/**
+ * A stream from `seed`, or - given `at`, a `seededRngPosition` - the same
+ * stream taken up exactly where it had got to.
+ */
+export function createSeededRng(seed: number, at?: number): SeededRng {
+  let state = (at ?? seed) >>> 0;
   const next = (): number => {
     state += 0x6d2b79f5;
     let value = state;
@@ -17,7 +34,7 @@ export function createSeededRng(seed: number): SeededRng {
     return ((value ^ (value >>> 14)) >>> 0) / 4_294_967_296;
   };
 
-  return {
+  const rng: SeededRng = {
     next,
     int: (minInclusive, maxInclusive) =>
       minInclusive + Math.floor(next() * (maxInclusive - minInclusive + 1)),
@@ -37,4 +54,6 @@ export function createSeededRng(seed: number): SeededRng {
       return shuffled;
     },
   };
+  positions.set(rng, () => state >>> 0);
+  return rng;
 }

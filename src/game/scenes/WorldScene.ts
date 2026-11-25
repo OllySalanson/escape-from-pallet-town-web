@@ -277,6 +277,7 @@ import {
 import { RunPhase } from '../run/RunManager';
 import { formatRaidClock } from '../run/raidClock';
 import { holdUnsavedEnding } from '../run/unsavedEnding';
+import { clearRaidResumeWriter, RAID_RESUME_EVERY_MS, setRaidResumeWriter, writeRaidResume } from '../run/raidResume';
 import { compassBearing } from '../world/bearing';
 import { buildExtractionReport, type ExtractionReport } from '../run/extractionReport';
 import { clearPackRoomForPokemon, packFullForPokemonLine, syncPackCargo } from '../run/raidCargo';
@@ -861,6 +862,13 @@ export interface WorldSceneData extends Partial<RaidCarriage> {
   readonly savedGame?: RestoredGame;
   /** The raid is starting with the player falling out of the cloud over its first tile (`world/raidArrival.ts`). */
   readonly droppedIn?: boolean;
+  /** The raid is being taken up where it stood after the page it was in went (`run/raidResume.ts`). */
+  readonly resumed?: boolean;
+}
+
+/** What a raid taken up after a reload says, with the clock it picks up on. */
+export function raidTakenUpLine(remainingMs: number): string {
+  return `Back where you left off, with ${formatRaidClock(Math.max(0, remainingMs))} on the clock.`;
 }
 
 /** The fight itself - the only part of a battle payload a call site writes. */
@@ -999,6 +1007,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /** Every `JustDown` this scene would ask goes through here - see `KeyPresses`. */
   private readonly keyPresses = new KeyPresses(() => this.currentFrame());
   private isWarping = false;
+  /** When this raid was last written down (`run/raidResume.ts`), by the page's clock. */
+  private raidWrittenAt = Number.NEGATIVE_INFINITY;
+  /** Writes the raid down when the page goes. */
+  private readonly resumeWriter = (): void => this.writeRaid();
   /** The boats moored at this map's jetties, each drawn while it sails (`sailing.ts`). */
   private boats: Array<{
     readonly sailing: MapSailing;
@@ -1408,6 +1420,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.bagLines = [];
     this.bagsFalling = [];
     this.trainerGlints.clear();
+    this.raidWrittenAt = Number.NEGATIVE_INFINITY;
     this.pendingRaceAsk = undefined;
     this.pendingRacePurse = false;
     this.raceWord = undefined;
@@ -1692,9 +1705,42 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // Said on the return from the fight that won it, and raised as an
       // interruption so the key already held walks the player at the door.
       this.interrupt([...openedGates, ...bagLines]);
+    } else if (data.resumed && this.runSession) {
+      this.interrupt([raidTakenUpLine(this.runSession.manager.snapshot().remainingMs)]);
+      // Raised by the raid on its first frame, as the briefing is, so as free.
+      this.openingBriefingOpen = true;
     } else if (data.returnLocation !== undefined && !this.sayFirstCatchOutcome()) {
       this.sayFieldHealHint();
     }
+    // Written down from its first frame here, and from then on as it is played,
+    // so the page going is never the raid going with it.
+    if (this.runSession?.raidId !== undefined) {
+      setRaidResumeWriter(this.resumeWriter);
+      this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () => clearRaidResumeWriter(this.resumeWriter));
+      this.writeRaid();
+    }
+  }
+
+  /**
+   * Writes the raid down as it stands (`run/raidResume.ts`), as the world a
+   * fight would hand back to. Not while it is changing hands - on the way into
+   * a fight (which wrote itself down as it was started), out of the raid, or
+   * afloat between two shores - when the world is not where a reload should
+   * put the player.
+   */
+  private writeRaid(): void {
+    if (
+      this.runSession?.raidId === undefined ||
+      this.isWarping ||
+      this.pendingHubTransition ||
+      this.pendingResultScreen ||
+      this.voyaging !== undefined ||
+      this.pendingVoyage !== undefined
+    ) {
+      return;
+    }
+    this.raidWrittenAt = Date.now();
+    writeRaidResume(new SaveManager(), 'world', this.raidCarriage());
   }
 
   /** Oak on the radio after a fight that left somebody worn out, until the pack is known (`world/fieldHealHint.ts`). */
@@ -1912,6 +1958,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.tendTrainerGlints();
     this.updateFriend(deltaMs);
     this.refreshHint();
+    if (Date.now() - this.raidWrittenAt >= RAID_RESUME_EVERY_MS) {
+      this.writeRaid();
+    }
   }
 
   /**
@@ -9238,6 +9287,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const cast = [...this.party.pokemon, ...(data.trainer?.party ?? [])].map((pokemon) => pokemon.base.dexId);
     const wildDexId = data.wild ? getSpeciesById(data.wild.speciesId)?.dexId : undefined;
     void audioManager.loadCries(wildDexId === undefined ? cast : [...cast, wildDexId]);
+    // Written down before the fade, shininess and all: a reload from here on
+    // is this fight, never the tile before it.
+    writeRaidResume(new SaveManager(), 'battle', data);
     this.isWarping = true;
     this.player.stop();
     this.cameras.main.fadeOut(180, 0, 0, 0);

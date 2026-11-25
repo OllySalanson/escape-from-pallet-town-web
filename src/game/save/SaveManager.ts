@@ -158,6 +158,14 @@ import { readTrail, type RaceTrail } from '../world/raceGhost';
 import { saveWritten } from './keepSavesSafe';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
+/** Beside a slot's save: how far its raid in flight has got (`writeRaidResume`). */
+export const RAID_RESUME_SUFFIX = '.raid-resume';
+/** Beside that: the raid's plan, written once a raid. */
+export const RAID_RESUME_PLAN_SUFFIX = '.plan';
+/** How a plan record for `raidId` begins, so whether it is written can be asked without reading it. */
+export function raidResumePlanPrefix(raidId: string): string {
+  return `{"raidId":${JSON.stringify(raidId)},`;
+}
 const SAVE_VERSION = 7;
 const PRIMARY_STATUSES = new Set<PrimaryStatus>([
   'poison',
@@ -1109,6 +1117,81 @@ export class SaveManager {
       return null;
     }
     return typeof stored.raidInFlight.id === 'string' ? stored.raidInFlight.id : null;
+  }
+
+  /**
+   * Writes down how far the raid in flight has got (`run/raidResume.ts`),
+   * beside the save and never inside it: the base writes its own whole copy of
+   * the game, and a copy made before the raid would put an old raid back.
+   *
+   * Written only while `raidId` is still the save's raid in flight, so a page
+   * whose raid was settled or taken over elsewhere writes nothing. The plan -
+   * the raid's map, the same from its first step to its last - is written once
+   * a raid. And a record that cannot be brought up to date is taken away rather
+   * than left standing, because an old record taken up after a reload would be
+   * a way back to before whatever happened since.
+   */
+  public writeRaidResume(raidId: string, record: string, plan: () => string): boolean {
+    if (!this.storage) {
+      return false;
+    }
+    const key = `${this.key}${RAID_RESUME_SUFFIX}`;
+    try {
+      if (this.raidInFlightId() !== raidId) {
+        return false;
+      }
+      const planKey = `${key}${RAID_RESUME_PLAN_SUFFIX}`;
+      if (!this.storage.getItem(planKey)?.startsWith(raidResumePlanPrefix(raidId))) {
+        this.storage.setItem(planKey, plan());
+      }
+      this.storage.setItem(key, record);
+      return true;
+    } catch {
+      try {
+        this.storage.removeItem(key);
+      } catch {
+        // Nothing more can be done: the raid will be settled as abandoned.
+      }
+      return false;
+    }
+  }
+
+  /** The raid record and its plan, as written, or null for none. */
+  public readRaidResume(): { readonly record: string; readonly plan: string } | null {
+    try {
+      const key = `${this.key}${RAID_RESUME_SUFFIX}`;
+      const record = this.storage?.getItem(key);
+      const plan = this.storage?.getItem(`${key}${RAID_RESUME_PLAN_SUFFIX}`);
+      return record && plan ? { record, plan } : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Takes the raid record away: the raid it was for is over, or cannot be taken up. */
+  public clearRaidResume(): void {
+    const key = `${this.key}${RAID_RESUME_SUFFIX}`;
+    try {
+      this.storage?.removeItem(key);
+      this.storage?.removeItem(`${key}${RAID_RESUME_PLAN_SUFFIX}`);
+    } catch {
+      // Nothing to take away.
+    }
+  }
+
+  /**
+   * Gives the raid in flight a new id, for the page taking it up after a
+   * reload: every ending, the heartbeat and every resume write are held to the
+   * id, so a page that was only frozen and wakes later finds its raid settled
+   * elsewhere rather than playing it a second time beside this one.
+   */
+  public handOverRaidInFlight(fromId: string, toId: string): boolean {
+    const game = this.load();
+    const raid = game?.raidInFlight;
+    if (!game || !raid || raid.id !== fromId) {
+      return false;
+    }
+    return this.save({ ...game, raidInFlight: { ...raid, id: toId } });
   }
 
   /** The id of the bout the stored save has under way, read without restoring the game. */
@@ -3398,7 +3481,7 @@ export function copyPokemon(pokemon: Pokemon): Pokemon {
   return copy;
 }
 
-function serializePokemon(pokemon: Pokemon): SavedPokemon {
+export function serializePokemon(pokemon: Pokemon): SavedPokemon {
   return {
     speciesId: pokemon.base.id,
     level: pokemon.level,
@@ -3415,7 +3498,7 @@ function serializePokemon(pokemon: Pokemon): SavedPokemon {
   };
 }
 
-function deserializePokemon(value: unknown, saveVersion = SAVE_VERSION): Pokemon | null {
+export function deserializePokemon(value: unknown, saveVersion = SAVE_VERSION): Pokemon | null {
   if (!isRecord(value) || typeof value.speciesId !== 'string' || !isPositiveInteger(value.level)) {
     return null;
   }

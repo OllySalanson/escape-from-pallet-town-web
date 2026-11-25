@@ -352,7 +352,8 @@ import { jobsBanked, jobsNamed, nextStepLines } from '../hub/nextStep';
 import { NEAR_JOBS } from '../objectives/standingBoard';
 import { friendRoom, friendRoomsOffered } from '../raidRoom/friendRoom';
 import { abandonedRaidLines, boutHeartbeat, raidHeartbeat } from '../run/raidInFlight';
-import { settleAtBase } from '../run/unsavedEnding';
+import { retryUnsavedEnding, settleAtBase } from '../run/unsavedEnding';
+import { takeUpRaid } from '../run/raidResume';
 import { ABANDONED_BOUT_LINE, newBoutId, type BoutUnderWay } from '../arena/boutUnderWay';
 import { isHomeRoom, ownedFurniture, type Placement } from '../home/arrangement';
 import { DecorateMode, type DecorateHost } from '../base/decorateMode';
@@ -1187,6 +1188,21 @@ export class BaseScene extends Phaser.Scene {
     // A raid this page saw end, whose ending storage refused, is written now
     // as it ended - and while storage still refuses it, it is not this page's
     // to settle as abandoned (`run/unsavedEnding.ts`).
+    // But first, a raid that was written down as it was played is not
+    // abandoned at all: it is taken up where it stood (`run/raidResume.ts`).
+    // Not by a page holding an ending storage would not take: that raid is over.
+    if (retryUnsavedEnding() !== 'unsaved') {
+      const taken = takeUpRaid(this.saveManager, (raidId) => raidHeartbeat.liveElsewhere(raidId));
+      if (taken) {
+        this.leaving = true;
+        if (taken.scene === 'battle') {
+          this.scene.start('battle', { ...taken.data, resumed: taken.foes ? { foes: taken.foes } : {} });
+        } else {
+          this.scene.start('world', { ...taken.data, resumed: true });
+        }
+        return;
+      }
+    }
     const abandoned = settleAtBase(() =>
       this.saveManager.settleAbandonedRaid((raidId) => raidHeartbeat.liveElsewhere(raidId)),
     );
