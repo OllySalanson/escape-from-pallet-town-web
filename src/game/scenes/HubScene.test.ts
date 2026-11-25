@@ -572,7 +572,7 @@ describe('a panel over the hall', () => {
     expect(markup).toContain('data-cursor-start');
   });
 
-  it('points at another way in with the arrows: the pit swings round and nothing is committed', () => {
+  it('points at another way in from the LAND row: the pit swings round and nothing is committed', () => {
     const { hub } = createHub({
       ...DEFAULT_RAID_PROGRESS,
       firstContractExtracted: true,
@@ -586,16 +586,17 @@ describe('a panel over the hall', () => {
     hub.setView('rim');
     hub.flow.togglePokemon('charmander-1');
     hub.flow.chooseInsertion('route-1');
-    const press = (key: string): void =>
-      (hub as unknown as { stepToWayIn(way: { x: number; y: number }): void }).stepToWayIn({ x: key === 'ArrowRight' ? 1 : -1, y: 0 });
+    const step = (by: -1 | 1): void => (hub as unknown as { stepRimRow(row: string, by: -1 | 1): void }).stepRimRow('landing', by);
+    // The LAND row goes west to east, as the pit's lights lie, so the
+    // overlook is one step the way it lies from the door.
     const overlook = RUN_INSERTIONS['route-1-overlook'].position;
     const door = RUN_INSERTIONS['route-1'].position;
-    press(overlook.x > door.x ? 'ArrowRight' : 'ArrowLeft');
+    step(overlook.x > door.x ? 1 : -1);
     expect(hub.flow.insertionId).toBe('route-1-overlook');
     expect(aimed).toEqual(['route-1-overlook']);
-    // Nothing lies past it that way on this map, so it stays.
-    press(overlook.x > door.x ? 'ArrowRight' : 'ArrowLeft');
-    expect(hub.flow.insertionId).toBe('route-1-overlook');
+    // And back again the other way.
+    step(overlook.x > door.x ? -1 : 1);
+    expect(hub.flow.insertionId).toBe('route-1');
     expect(() => hub.flow.deploy()).toThrow(/confirmed loadout/);
   });
 });
@@ -609,6 +610,16 @@ const wallMapMarkup = (hub: HubInternals): string => {
   hub.render();
   return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
 };
+
+/**
+ * The whole sentence a tile or row of the rim's card stands for, as its help
+ * line reads it (`hub/rimCard.ts`): the `team`, `risk`, `hunters`, `job` and
+ * `clock` tiles, and the `landing`, `job` and `sky` rows.
+ */
+function rimSays(markup: string, part: string, kind: 'tile' | 'row' = 'tile'): string {
+  const match = new RegExp(`data-rim-${kind}="${part}"[^>]*?data-help="([^"]*)"`).exec(markup);
+  return (match?.[1] ?? '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+}
 
 describe('hub deployment route', () => {
   it('takes one of a piece out of the pack and back to the vault with a right-click or DEL (the captain, 2026-10-29)', () => {
@@ -1001,7 +1012,7 @@ describe('hub deployment route', () => {
     readyToDeploy(hub);
     hub.render();
     const check = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
-    expect(check).toMatch(/<dt>Team<\/dt><dd[^>]*>Charmander Lv \d+[^<]* comes\./);
+    expect(rimSays(check, 'team')).toMatch(/^Team: Charmander Lv \d+[^.]* comes\./);
   });
 
   it('says on the final check what a delivery contract is still short of', () => {
@@ -1079,16 +1090,16 @@ describe('hub deployment route', () => {
     };
 
     it.each([
-      { hour: 12, offered: ['Wait for dusk', 'Wait for dark'] },
-      { hour: 19, offered: ['Wait for dark'] },
+      { hour: 12, offered: ['dusk', 'night'] },
+      { hour: 19, offered: ['night'] },
       { hour: 23, offered: [] },
     ])('offers at $hour:00 only the skies still to come: $offered', ({ hour, offered }) => {
       try {
-        const { rim } = rimAt(hour);
-        const html = rim();
-        for (const label of ['Wait for dusk', 'Wait for dark']) {
-          expect(html.includes(`>${label}</button>`)).toBe(offered.includes(label));
-        }
+        const { hub, rim } = rimAt(hour);
+        // The SKY row's values: now, then each sky still to come.
+        expect((hub as unknown as { rimSkyChoices(): readonly (string | undefined)[] }).rimSkyChoices()).toEqual([undefined, ...offered]);
+        // With nothing to wait for, its arrows are not drawn.
+        expect(/class="rim-choice is-fixed" data-rim-row="sky"/.test(rim())).toBe(offered.length === 0);
       } finally {
         vi.useRealTimers();
       }
@@ -1101,7 +1112,10 @@ describe('hub deployment route', () => {
         const html = rim();
         expect(html).toContain('night: you wait on the rim for it. It costs 1:00 of the raid clock');
         expect(html).toContain('night raid clock 4:00 (5:00 base − 1:00 waiting)');
-        expect(html).toContain('>Go now</button>');
+        // The SKY row says the wait, and the clock under it what it cost.
+        expect(rimSays(html, 'sky', 'row')).toContain('LEFT or RIGHT to go now instead.');
+        expect(html).toMatch(/<strong>Dark<\/strong><small class="rim-note rim-wide">WAIT 1:00/);
+        expect(html).toContain('−1:00 WAIT');
 
         deploy(hub, start);
         const { runSession } = start.mock.calls[0][1] as WorldSceneData;
@@ -1242,12 +1256,12 @@ describe('hub deployment route', () => {
     expect(rack).toContain('squares');
 
     hub.setView('rim');
-    expect(markupOf(hub)).toContain('Jump in at Floodplain Relay');
+    expect(markupOf(hub)).toMatch(/data-rim-row="landing"[^>]*>.*?<strong>Floodplain Relay<\/strong>/);
     expect(() => hub.flow.deploy()).toThrow(/confirmed loadout/);
     // A front door that names its place says the place at the rim.
     hub.flow.chooseInsertion('greystone-vale');
     hub.setView('rim');
-    expect(markupOf(hub)).toContain('Jump in at Mill Square');
+    expect(markupOf(hub)).toMatch(/data-rim-row="landing"[^>]*>.*?<strong>Mill Square<\/strong>/);
   });
 
   it('says on Oak\'s wall what is known of a place, and counts what is not', () => {
@@ -1574,7 +1588,9 @@ describe('the standing board in the lobby', () => {
     hub.setView('rim');
     const markup = markupOf(hub);
     expect(markup).toContain('That is longer than this raid.');
-    expect(markup).toMatch(/<dt>Job<\/dt><dd class="px-wrap px-warning">/);
+    // The JOB row's value, and the PAYS tile, in red.
+    expect(markup).toContain('class="rim-choice is-warn" data-rim-row="job"');
+    expect(markup).toContain('LONGER THAN THE RAID');
   });
 
   /**
@@ -1596,20 +1612,22 @@ describe('the standing board in the lobby', () => {
     hub.setView('rim');
     readyToDeploy(hub);
 
-    const rim = markupOf(hub);
-    expect(rim).toContain(`data-job="${jobs[1].id}"`);
-    expect(rim).toContain(`data-job="${noJobChoice(jobs)}"`);
-    expect(rim).toContain(`${jobs[0].name}: `);
+    // The JOB row holds the board's job, the second, and none, in that order.
+    const internals = hub as unknown as { rimJobChoices(id: string): readonly string[]; stepRimRow(row: string, by: -1 | 1): void };
+    expect(internals.rimJobChoices(insertion.id)).toEqual([jobs[0].id, jobs[1].id, noJobChoice(jobs)]);
+    expect(rimSays(markupOf(hub), 'job', 'row')).toContain(`${jobs[0].name}: `);
 
-    const choice = pick === 'none' ? noJobChoice(jobs)! : jobs[pick].id;
-    (hub as unknown as { jobPick: string | undefined }).jobPick = choice;
+    // Right once is the second job, twice is none.
+    internals.stepRimRow('job', 1);
+    if (pick === 'none') {
+      internals.stepRimRow('job', 1);
+    }
     const chosen = markupOf(hub);
     if (pick === 'none') {
-      expect(chosen).toContain('None this raid: nothing to fetch.');
-      expect(chosen).toContain(`data-job="${jobs[0].id}"`);
+      expect(rimSays(chosen, 'job', 'row')).toContain('None this raid: nothing to fetch.');
+      expect(chosen).toMatch(/data-rim-row="job".*?No job/);
     } else {
-      expect(chosen).toContain(`${jobs[1].name}: `);
-      expect(chosen).toContain(`data-job="${jobs[0].id}"`);
+      expect(rimSays(chosen, 'job', 'row')).toContain(`${jobs[1].name}: `);
     }
 
     deploy(hub, start);
@@ -2018,8 +2036,8 @@ describe('what the base screen leads with', () => {
     readyToDeploy(hub);
     const rim = markupOf(hub);
     // The pack and three Potions go; the Charmander filled the locker.
-    expect(rim).toMatch(/<dt>At risk<\/dt><dd[^>]*>the Raid pack, Potion/);
-    expect(rim).toMatch(/<dt>Safe<\/dt><dd[^>]*>Charmander/);
+    expect(rimSays(rim, 'risk')).toMatch(/^At risk: the Raid pack, Potion/);
+    expect(rimSays(rim, 'risk')).toContain('Safe: Charmander');
   });
 
   it('tells two of a kind apart by level on the Safe line, as the Team line does', () => {
@@ -2036,7 +2054,7 @@ describe('what the base screen leads with', () => {
     expect(rim).toContain('Pidgey Lv 6 comes.');
     // One of a kind keeps its bare name.
     expect(rim).toContain('Charmander and Pidgey Lv 4 stay home');
-    expect(rim).toMatch(/<dt>Safe<\/dt><dd[^>]*>Pidgey Lv 6<\/dd>/);
+    expect(rimSays(rim, 'team')).toContain('Safe: Pidgey Lv 6.');
   });
 
   it('says at the rim who a wipe would lose for good, and never the partner, which is always safe', () => {
@@ -2048,7 +2066,7 @@ describe('what the base screen leads with', () => {
     hub.flow.toggleSecurePokemon('charmander-1');
     hub.setView('rim');
     readyToDeploy(hub);
-    expect(markupOf(hub)).toMatch(/<dt>A wipe<\/dt><dd[^>]*>Charmander: lost for good/);
+    expect(rimSays(markupOf(hub), 'risk')).toContain('A wipe: Charmander: lost for good');
     // The partner has a place of its own beside the container (11 Nov 2026,
     // option B), so marking the Charmander as the partner moves it from the
     // losses to what is safe - the hunt's "(your partner): lost for good" is gone.
@@ -2056,7 +2074,7 @@ describe('what the base screen leads with', () => {
     hub.setView('rim');
     readyToDeploy(hub);
     expect(markupOf(hub)).not.toContain('lost for good');
-    expect(markupOf(hub)).toMatch(/<dt>Safe<\/dt><dd[^>]*>Charmander \(your partner\)/);
+    expect(rimSays(markupOf(hub), 'team')).toContain('Safe: Charmander (your partner)');
   });
 
   it('says nothing in red at the rim about a wipe when nobody can go (first-hour hunt 2, finding 3)', () => {
@@ -2069,7 +2087,7 @@ describe('what the base screen leads with', () => {
     const rim = markupOf(hub);
     expect(rim).toContain('Nurse Joy can revive them');
     expect(rim).not.toContain('a wipe costs you everything');
-    expect(rim).not.toMatch(/<dt>Safe<\/dt>/);
+    expect(rim).not.toContain('Safe:');
   });
 
   it('says at the rim, with no one safe, that a wipe costs what you take rather than everything', () => {
@@ -2078,7 +2096,7 @@ describe('what the base screen leads with', () => {
     hub.flow.toggleSecurePokemon('charmander-1');
     hub.setView('rim');
     readyToDeploy(hub);
-    expect(markupOf(hub)).toMatch(/<dt>Safe<\/dt><dd[^>]*>nothing: a wipe costs everything you take/);
+    expect(rimSays(markupOf(hub), 'team')).toContain('Safe: nothing: a wipe costs everything you take');
   });
 
   it('warns on the card of a badly hurt team, with the cursor on NOT YET', () => {
@@ -2090,7 +2108,7 @@ describe('what the base screen leads with', () => {
     hub.setView('rim');
     readyToDeploy(hub);
     const rim = markupOf(hub);
-    expect(rim).toMatch(/<dt>Hurt<\/dt><dd[^>]*>.* is at 1\/\d+ and burned/);
+    expect(rimSays(rim, 'team')).toMatch(/Hurt: .* is at 1\/\d+ and burned/);
     expect(rim).toMatch(/data-back data-cursor-start/);
     expect(rim).not.toMatch(/data-start data-cursor-start/);
   });
@@ -2103,36 +2121,48 @@ describe('what the base screen leads with', () => {
     readyToDeploy(hub);
     expect(hub.flow.notReady).toBeUndefined();
     const rim = markupOf(hub);
-    expect(rim).not.toContain('<dt>Hurt</dt>');
+    expect(rim).not.toContain('Hurt:');
     expect(rim).toMatch(/data-back data-cursor-start/);
     expect(rim).not.toMatch(/data-start data-cursor-start/);
   });
 
   /**
-   * Presses `key` on the rim with the cursor on the button `on` names, and
-   * answers which button the cursor is on afterwards. The overlay's own cursor
-   * moves between the card's two buttons, NOT YET on the left.
+   * Presses `key` on the rim with the highlight on `on` - a button, `back` or
+   * `start`, or one of the card's rows - and answers where the highlight is
+   * afterwards (`HubScene.rimArrow`).
    */
-  function pressOnTheRim(hub: HubInternals, on: 'back' | 'start', key: string): 'back' | 'start' {
-    const button = (which: 'back' | 'start') => ({ matches: (selector: string) => selector === `[data-${which}]`, closest: () => null });
-    const buttons = { back: button('back'), start: button('start') };
-    const document = { activeElement: buttons[on] as unknown };
-    const moveCursor = vi.fn((pressed: string) => {
-      if (pressed === 'ArrowRight' && document.activeElement === buttons.back) {
-        document.activeElement = buttons.start;
-      } else if (pressed === 'ArrowLeft' && document.activeElement === buttons.start) {
-        document.activeElement = buttons.back;
-      }
-      return true;
-    });
-    Object.assign((hub as unknown as { overlay: object }).overlay, { moveCursor });
+  function pressOnTheRim(hub: HubInternals, on: string, key: string): string {
+    const document = { activeElement: null as unknown };
+    const make = (name: string) => {
+      const control = {
+        name,
+        dataset: name === 'back' || name === 'start' ? {} : { rimRow: name },
+        hasAttribute: () => false,
+        matches: () => false,
+        closest: () => null,
+        focus: () => {
+          document.activeElement = control;
+        },
+      };
+      return control;
+    };
+    const back = make('back');
+    const start = make('start');
+    const rows = new Map(['landing', 'job', 'sky'].map((name) => [name, make(name)]));
+    const root = (hub as unknown as { overlay: { root: { querySelectorAll: (selector: string) => unknown[]; querySelector: (selector: string) => unknown } } }).overlay.root;
+    const saved = { all: root.querySelectorAll, one: root.querySelector };
+    root.querySelectorAll = (selector) => (selector === '.rim-actions button' ? [back, start] : saved.all(selector));
+    root.querySelector = (selector) => rows.get(/data-rim-row="(\w+)"/.exec(selector)?.[1] ?? '') ?? null;
+    document.activeElement = on === 'back' ? back : on === 'start' ? start : rows.get(on);
     vi.stubGlobal('document', document);
     try {
       (hub as unknown as { handleKey(event: KeyboardEvent): void }).handleKey({ key, preventDefault: () => undefined } as KeyboardEvent);
     } finally {
       vi.unstubAllGlobals();
+      root.querySelectorAll = saved.all;
+      root.querySelector = saved.one;
     }
-    return document.activeElement === buttons.start ? 'start' : 'back';
+    return (document.activeElement as { name: string }).name;
   }
 
   // The second characters hunt of 11 Nov 2026, finding 1: a hurt team's card
@@ -2160,17 +2190,18 @@ describe('what the base screen leads with', () => {
     expect(pressOnTheRim(hub, 'back', 'ArrowRight')).toBe('start');
   });
 
-  it('moves between the buttons with an arrow that points at no other way in', () => {
+  it('moves between the buttons with Left and Right', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');
     hub.setView('rim');
     readyToDeploy(hub);
-    expect((hub as unknown as { waysFromHere(): readonly unknown[] }).waysFromHere()).toHaveLength(1);
     expect(pressOnTheRim(hub, 'start', 'ArrowLeft')).toBe('back');
     expect(pressOnTheRim(hub, 'back', 'ArrowRight')).toBe('start');
   });
 
-  it('keeps the arrows on the map where another way in lies that way', () => {
+  // The captain, 25 Nov 2026: the same arrow moved the map's pointer on one
+  // press and the buttons' highlight on the next, by where the lights lay.
+  it('moves the landing only from the LAND row, whatever lies on the map', () => {
     const { hub } = createHub({
       ...DEFAULT_RAID_PROGRESS,
       firstContractExtracted: true,
@@ -2184,7 +2215,14 @@ describe('what the base screen leads with', () => {
     hub.flow.togglePokemon('charmander-1');
     hub.flow.chooseInsertion('route-1');
     const toward = RUN_INSERTIONS['route-1-overlook'].position.x > RUN_INSERTIONS['route-1'].position.x ? 'ArrowRight' : 'ArrowLeft';
-    expect(pressOnTheRim(hub, 'start', toward)).toBe('start');
+    const away = toward === 'ArrowRight' ? 'ArrowLeft' : 'ArrowRight';
+    // On the buttons the arrows are the buttons', with a landing that way or not.
+    expect(pressOnTheRim(hub, 'start', away)).toBe('back');
+    expect(pressOnTheRim(hub, 'back', toward)).toBe('start');
+    expect(hub.flow.insertionId).toBe('route-1');
+    // Up goes to the rows above; on the LAND row the same key moves the landing and keeps the highlight.
+    expect(pressOnTheRim(hub, 'start', 'ArrowUp')).not.toBe('start');
+    expect(pressOnTheRim(hub, 'landing', toward)).toBe('landing');
     expect(hub.flow.insertionId).toBe('route-1-overlook');
   });
 
@@ -2194,7 +2232,7 @@ describe('what the base screen leads with', () => {
     hub.setView('rim');
     readyToDeploy(hub);
     const rim = markupOf(hub);
-    expect(rim).not.toContain('<dt>Hurt</dt>');
+    expect(rim).not.toContain('Hurt:');
     expect(rim).toMatch(/data-start data-cursor-start/);
   });
 });

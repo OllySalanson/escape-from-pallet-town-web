@@ -10,7 +10,7 @@
 // expected to give.
 import { mkdirSync } from 'node:fs';
 import { PIXEL_WINDOW, attachBrowser, launchBrowser } from './browser.mjs';
-import { GAME, SAVE_KEY, jumpIn, openHallPanel, sceneIs, walkIntoBase } from './deploy.mjs';
+import { GAME, SAVE_KEY, jumpIn, openHallPanel, sceneIs, walkIntoBase, RIM_CARD_WORDS } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -163,9 +163,9 @@ try {
     await gameWith(`(save) => { ${hasBeenOut} save.raidProgress.standingContractsBanked = 6; }`);
     await walkIntoBase(page, 'raid-arena', { press, until, wait });
     await openHallPanel(page, 'rim', { press, until, wait });
-    await until(`${sceneIs('hub')} && !!document.querySelector('.rim-stakes')`, 'the card');
+    await until(`${sceneIs('hub')} && !!document.querySelector('.rim-card')`, 'the card');
     await wait(300);
-    const card = await text('.rim-stakes');
+    const card = await page.evaluate(RIM_CARD_WORDS);
     await shot('rim-job-walk');
     check('the Job line says how long the job walks', /Walked straight with no stops, it takes \d+:\d\d of your \d+:\d\d; allow \d+:\d\d/.test(card), card.replace(/\n+/g, ' | '));
   }

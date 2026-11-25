@@ -12,7 +12,7 @@
 // is a FAIL.
 import { mkdirSync } from 'node:fs';
 import { PIXEL_WINDOW, attachBrowser, launchBrowser } from './browser.mjs';
-import { GAME, SAVE_KEY, jumpIn, openHallPanel, sceneIs, walkIntoBase } from './deploy.mjs';
+import { GAME, SAVE_KEY, jumpIn, openHallPanel, sceneIs, walkIntoBase, RIM_CARD_WORDS } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -100,8 +100,8 @@ try {
   await openHallPanel(page, 'rim', { press, until, wait });
   await wait(300);
   await shot('rim');
-  const card = await text('.rim-stakes');
-  check('the rim never calls the partner lost', !/lost for good/.test(card) && /Safe\s*Charmeleon \(your partner\)/i.test(card), card);
+  const card = await page.evaluate(RIM_CARD_WORDS);
+  check('the rim never calls the partner lost', !/lost for good/.test(card) && /Safe:\s*Charmeleon \(your partner\)/i.test(card), card);
 
   await jumpIn(page, { press, until, wait });
   for (let guard = 0; guard < 30 && (await page.evaluate(`${world}.dialogBox.visible`)); guard += 1) await press('Space');

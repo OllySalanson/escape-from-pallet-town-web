@@ -241,7 +241,10 @@ game.
   `good-rod`, the `lockpick`, the five keys `weir-key`, `paddock-key`,
   `forester-key`, `garden-key` and `market-key`, the `card-key`, and the `locked-gate` and
   `locked-crate` a keyed exit and a locked cache are drawn as, the
-  `bicycle`, and the `repel`.
+  `bicycle`, and the `repel`; and the jump-in card's `raid-clock`, `sky-day`,
+  `sky-dusk`, `sky-night` and `padlock`, drawn in code by
+  `scripts/draw-briefing-icons.mjs` on the same palette (the sun in the Thunder
+  Stone's gold).
   The materials are
   drawn in code by `scripts/draw-material-icons.mjs` and the held items by
   `scripts/draw-gear-icons.mjs` (character art and small shapes on the same

@@ -69,6 +69,18 @@ export function skyNote(now: Date): string {
   }
 }
 
+/** When the sky next turns, as the rim card's SKY row says it beside the sky (`skyNote`'s hours, short). */
+export function skyTurns(now: Date): string {
+  switch (windowLight(now)) {
+    case 'night':
+      return 'TILL 5AM';
+    case 'dusk':
+      return isDawn(now) ? 'DAY 7AM' : 'DARK 9PM';
+    default:
+      return 'DUSK 6PM';
+  }
+}
+
 export type HouseSeason = 'october' | 'december' | null;
 
 export function houseSeason(now: Date): HouseSeason {
