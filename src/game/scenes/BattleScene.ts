@@ -336,9 +336,12 @@ const BANNER_TEXT_STYLE = {
   // The smallest size the face survives as hard-edged pixels: at 8px its stems
   // are under two thirds of a pixel and `WILD NORMAL` came out `WILC NCRMAL`.
   fontSize: CAPTION_FONT_SIZE,
-  color: '#f8fafc',
-  stroke: '#0f172a',
-  strokeThickness: 3,
+  // A tab of the frame's navy on the plate's top edge, as a panel's heading is
+  // a strip over its window: outlined white letters floating on the sky were a
+  // style nothing else in the game used (critic sweep, 25 Nov 2026).
+  color: UI.paper.css,
+  backgroundColor: UI.frameLine.css,
+  padding: { left: 3, right: 3, top: 1, bottom: 1 },
 } as const;
 const MATCHUP_COLORS: Readonly<Record<MatchupTone, string>> = {
   // Read on the panel's cream, so these are the dark end of each hue.
@@ -1518,8 +1521,8 @@ export class BattleScene extends Phaser.Scene {
       // rather than relying on whatever happens to be behind it.
       banner = this.add
         .text(
-          x,
-          y - 15,
+          x + 2,
+          y - 14,
           combatantBanner(
             showNumbers ? 'YOURS' : this.enemyRole(),
             getCombatantTypes(combatant),
