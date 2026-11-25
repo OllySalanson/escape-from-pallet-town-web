@@ -1234,13 +1234,13 @@ export const WORKSHOP_DISPLAY: readonly RungDisplay[] = [
   {
     upgradeId: 'recovery-bay-1',
     name: 'HEALING MACHINE I',
-    note: 'Joy quotes a quarter less',
+    note: 'A revive costs under half',
     props: [{ name: 'healingMachineModel', x: 11, y: 4 }],
   },
   {
     upgradeId: 'recovery-bay-2',
     name: 'HEALING MACHINE II',
-    note: 'A revive costs half',
+    note: 'A revive in five seconds',
     props: [{ name: 'healingMachineModel', x: 11, y: 7 }],
   },
   {
@@ -1261,13 +1261,13 @@ export const CENTER_DISPLAY: readonly RungDisplay[] = [
   {
     upgradeId: 'recovery-bay-1',
     name: 'HEALING MACHINE I',
-    note: 'A revive a quarter less',
+    note: 'A revive costs under half',
     props: [{ name: 'pcHealingMachine', x: 2, y: 0 }],
   },
   {
     upgradeId: 'recovery-bay-2',
     name: 'HEALING MACHINE II',
-    note: 'A revive costs half',
+    note: 'A revive in five seconds',
     props: [{ name: 'pcHealingMachine', x: 12, y: 0 }],
   },
   {

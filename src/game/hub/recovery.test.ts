@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CHARMANDER, PIDGEY, Pokemon } from '../pokemon';
 import { PrimaryStatus } from '../pokemon/battle/status';
 import { RAID_DURATION_MS } from '../run/raidClock';
+import { recoveryPriceShare } from './workshop';
 import { Stash } from '../stash';
 import {
   applyRecovery,
@@ -278,7 +279,7 @@ describe('what Brock changes about recovery', () => {
   }
 
   it('prices a better bay as a smaller share of the raid, never as a fixed time', () => {
-    for (const share of [1, 0.75, 0.5]) {
+    for (const share of [1, 0.5, 0.15]) {
       const prices = recoveryPrices(share);
       expect(prices.reviveMs).toBe(
         Math.max(RECOVERY_STEP_MS, Math.round((RAID_DURATION_MS * 0.11 * share) / RECOVERY_STEP_MS) * RECOVERY_STEP_MS),
@@ -288,23 +289,23 @@ describe('what Brock changes about recovery', () => {
     expect(recoveryPrices(1)).toEqual({ reviveMs: RECOVERY_REVIVE_MS });
   });
 
-  it('makes a revive cheaper with each bay, and never free', () => {
+  it('makes a revive cheaper with each machine, by enough to be worth the linen, and never free', () => {
     const pokemon = downed();
     const full = recoveryCostMs(pokemon);
-    const bayOne = recoveryCostMs(pokemon, { priceShare: 0.75, wardTreatments: 0 });
-    const bayTwo = recoveryCostMs(pokemon, { priceShare: 0.5, wardTreatments: 0 });
+    const bayOne = recoveryCostMs(pokemon, { priceShare: recoveryPriceShare(['recovery-bay-1']), wardTreatments: 0 });
+    const bayTwo = recoveryCostMs(pokemon, { priceShare: recoveryPriceShare(['recovery-bay-1', 'recovery-bay-2']), wardTreatments: 0 });
 
-    expect(bayOne).toBeLessThan(full);
+    // What Brock's rungs say: under half, then the least a treatment costs.
+    expect(bayOne).toBeLessThan(full / 2);
     expect(bayTwo).toBeLessThan(bayOne);
-    // Half the raid share, to the nearest quoting step.
-    expect(Math.abs(bayTwo - full / 2)).toBeLessThanOrEqual(RECOVERY_STEP_MS / 2);
+    expect(bayTwo).toBe(RECOVERY_STEP_MS);
     // A price that rounded away would make the bay a free heal, which is the ward's offer.
     expect(recoveryPrices(0.01).reviveMs).toBe(RECOVERY_STEP_MS);
     expect(recoveryPrices(Number.NaN)).toEqual(recoveryPrices(1));
   });
 
   it('keeps a faint the worst outcome at every bay level', () => {
-    for (const priceShare of [1, 0.75, 0.5]) {
+    for (const priceShare of [1, 0.5, 0.15]) {
       const terms = { priceShare, wardTreatments: 0 };
       const nearlyDown = new Pokemon(CHARMANDER, 5);
       nearlyDown.takeDamage(nearlyDown.maxHp - 1);

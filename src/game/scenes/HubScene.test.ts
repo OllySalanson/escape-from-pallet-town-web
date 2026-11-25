@@ -2558,7 +2558,7 @@ describe('Brock', () => {
     const second = hub.stash.listPokemon().find(({ id }) => id === 'pidgey-2')!;
     first.pokemon.takeDamage(first.pokemon.maxHp);
     second.pokemon.takeDamage(second.pokemon.maxHp);
-    const terms = { priceShare: 0.75, wardTreatments: 0 };
+    const terms = { priceShare: 0.5, wardTreatments: 0 };
 
     // The bill is in the stash, beside the Pokémon it is for.
     hub.setView('stash');
@@ -2570,7 +2570,7 @@ describe('Brock', () => {
 
     // No bed left, so the second revive is charged, at the bay's discount.
     const revivePriceMs = recoveryCostMs(second.pokemon, terms);
-    expect(revivePriceMs).toBe(recoveryPrices(0.75).reviveMs);
+    expect(revivePriceMs).toBe(recoveryPrices(0.5).reviveMs);
     hub.recover(['pidgey-2']);
     expect(hub.pendingRecoveryMs).toBe(revivePriceMs);
     expect(markupOf(hub)).not.toContain('Ward bed: ');
