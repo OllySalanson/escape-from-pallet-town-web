@@ -132,7 +132,8 @@ import {
 } from '../pokemon/battle/battleItems';
 import { Bag, heldItemName, type ItemDefinition, type ItemId } from '../items';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, baseCompositionOffset } from '../display/stage';
-import { WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
+import { WINDOW_INK, drawFramedWindow } from '../ui/pixelWindow';
+import { UI } from '../ui/uiPalette';
 import { GAME_FONT } from '../ui/gameFont';
 import { CAPTION_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { KeyPresses } from '../input/KeyPresses';
@@ -1008,10 +1009,10 @@ export class BattleScene extends Phaser.Scene {
       // everywhere else - all of it under the player's eyes for every fight.
       // Drawn instead, it is the one-pixel window the HUD, the map captions and
       // the overworld dialogue already use, and the 22px text inset that used to
-      // clear the smear goes with it.
-      pixelWindow: true,
-      backgroundColor: WINDOW_CREAM,
-      borderColor: WINDOW_BORDER,
+      // clear the smear goes with it. It is the pop-ups' framed window now - the
+      // blue rim every question and menu wears - so a fight is the same game.
+      framedWindow: true,
+      backgroundColor: UI.paper.value,
       textStyle: {
         fontFamily: BATTLE_FONT,
         fontSize: DIALOG_FONT_SIZE,
@@ -1020,7 +1021,7 @@ export class BattleScene extends Phaser.Scene {
       indicatorStyle: {
         fontFamily: BATTLE_FONT,
         fontSize: CAPTION_FONT_SIZE,
-        color: WINDOW_INK,
+        color: UI.cursor.css,
       },
       onComplete: () => this.onMessagesComplete(),
     });
@@ -1214,7 +1215,7 @@ export class BattleScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setDisplaySize(BATTLEFIELD_WIDTH, GRASS_BACKDROP_DEPTH);
     const bezel = this.add.graphics().setDepth(20);
-    bezel.fillStyle(WINDOW_CREAM, 1);
+    bezel.fillStyle(UI.frameLine.value, 1);
     bezel.fillRect(-1, -1, BATTLEFIELD_WIDTH + 2, 1);
     bezel.fillRect(-1, BATTLEFIELD_HEIGHT, BATTLEFIELD_WIDTH + 2, 1);
     bezel.fillRect(-1, 0, 1, BATTLEFIELD_HEIGHT);
@@ -1400,7 +1401,7 @@ export class BattleScene extends Phaser.Scene {
     // along the bottom - the same smear the dialogue panel below had, on the
     // panel directly above it.
     const frame = this.add.graphics().setDepth(5);
-    drawPixelWindow(frame, { x, y, width: layout.width, height: layout.height }, { fill: WINDOW_CREAM });
+    drawFramedWindow(frame, { x, y, width: layout.width, height: layout.height });
     container.add(frame);
     const nameSize = layout.showsTyping ? CAPTION_FONT_SIZE : '14px';
     const nameText = this.add
@@ -1771,7 +1772,7 @@ export class BattleScene extends Phaser.Scene {
   /** The frame every state of the bottom panel is drawn in: the dialogue's own. */
   private createPanelFrame(): Phaser.GameObjects.Graphics {
     const frame = this.add.graphics();
-    drawPixelWindow(frame, BATTLE_PANEL, { fill: WINDOW_CREAM });
+    drawFramedWindow(frame, BATTLE_PANEL);
     return frame;
   }
 
@@ -2236,7 +2237,8 @@ export class BattleScene extends Phaser.Scene {
     const cursor = this.add.text(first.x - gutter, first.y, '▶', {
       fontFamily: BATTLE_FONT,
       fontSize,
-      color: WINDOW_INK,
+      // The pop-ups' red, as every cursor in the game is.
+      color: UI.cursor.css,
     });
     first.parentContainer?.add(cursor);
     this.rowCursor = cursor;

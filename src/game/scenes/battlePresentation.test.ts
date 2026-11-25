@@ -90,6 +90,11 @@ describe('battle presentation', () => {
       expect(layout.y + layout.height).toBeLessThanOrEqual(MOVE_COMMAND_HEIGHT);
     }
 
+    // And all of it inside the panel's four-pixel frame.
+    for (let index = 0; index < 4; index += 1) {
+      expect(moveCommandLayout(index).y).toBeGreaterThanOrEqual(4);
+    }
+    expect(moveGuidanceLayout(1).y + moveGuidanceLayout(1).height).toBeLessThanOrEqual(MOVE_COMMAND_HEIGHT - 4);
     const lastMoveRow = moveCommandLayout(3);
     for (const line of [0, 1]) {
       const layout = moveGuidanceLayout(line);
@@ -362,7 +367,7 @@ describe('battle presentation', () => {
     expect(battleSceneSource).not.toContain('0x93c5fd');
     expect(battleSceneSource).not.toContain('text.setBackgroundColor');
     expect(battleSceneSource).toContain(
-      'drawPixelWindow(frame, BATTLE_PANEL, { fill: WINDOW_CREAM });',
+      'drawFramedWindow(frame, BATTLE_PANEL);',
     );
     expect(battleSceneSource).toContain('...BATTLE_PANEL,');
     expect(battleSceneSource).toContain('.setInteractive({ useHandCursor: true })');

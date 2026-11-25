@@ -94,7 +94,9 @@ export const moveCommandLayout = (index: number): MoveCommandLayout => {
   const row = Math.floor(index / 2);
   return {
     x: 18 + column * MOVE_COLUMN_WIDTH,
-    y: 2 + row * 17,
+    // Inside the panel's four-pixel frame (`drawFramedWindow`), as the
+    // guidance lines under them are.
+    y: 4 + row * 16,
     width: MOVE_COLUMN_WIDTH - 12,
     height: 16,
   };
@@ -580,7 +582,7 @@ export const moveGuidanceFor = (
 /** The guidance lines sit under the two move rows, inside the same panel. */
 export const moveGuidanceLayout = (line: number): MoveCommandLayout => ({
   x: 18,
-  y: 37 + line * 12,
+  y: 37 + line * 11,
   width: BATTLE_SCREEN_WIDTH - 36,
   height: 11,
 });
