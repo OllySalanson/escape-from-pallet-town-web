@@ -68,7 +68,7 @@ export function secureGrowthAdvice(routes: readonly SecureGrowthRoute[]): string
   }
   const contract = routes.find((route) => route.kind === 'contract');
   if (contract) {
-    ways.push(`bank the ${contract.name} contract`);
+    ways.push(`bank the ${contract.name} job`);
   }
   return ways.join(', or ');
 }

@@ -146,7 +146,7 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     id: 'secure-locker-1',
     icon: 'supply-crate',
     name: 'Secure locker I',
-    effect: 'One more column of the secure container.',
+    effect: 'One more column of THE LOCKER.',
     detail: 'More of what you carry comes home from every raid - even a lost one.',
     cost: {
       supplies: [{ itemId: 'parts-crate', quantity: 4 }],
@@ -159,7 +159,7 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     name: 'Secure locker II',
     effect: 'A second protected Pokémon, and the room for it.',
     detail:
-      'A Pokémon takes four squares, so the slot alone would have been a promise the container could not keep: it brings a column with it.',
+      'A Pokémon takes four squares, so the slot alone would have been a promise THE LOCKER could not keep: it brings a column with it.',
     requires: 'secure-locker-1',
     cost: {
       supplies: [

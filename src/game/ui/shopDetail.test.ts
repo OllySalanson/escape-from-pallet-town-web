@@ -58,7 +58,7 @@ describe('the pane under a shelf', () => {
     shopDetailPane({
       id: 'secure-locker-1',
       shown: true,
-      effect: 'One more column of the secure container.',
+      effect: 'One more column of THE LOCKER.',
       detail: 'More of what you carry comes home from every raid.',
       priceLabel: 'Price',
       price: [pricePart('2 Pokémon', 3, 2, 'you can release')],
@@ -67,7 +67,7 @@ describe('the pane under a shelf', () => {
 
   it('leads with what the thing does, whatever it costs', () => {
     expect(pane()).toContain('What it does');
-    expect(pane()).toContain('One more column of the secure container.');
+    expect(pane()).toContain('One more column of THE LOCKER.');
     expect(pane()).toContain('More of what you carry comes home from every raid.');
   });
 

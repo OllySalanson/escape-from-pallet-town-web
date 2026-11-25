@@ -68,7 +68,7 @@ function choosingView(screen: FriendRoomScreen): string {
   const maps = screen.maps
     .map(
       (map, index) =>
-        `<button class="px-row" data-room-map="${escapeAttribute(map.mapId)}"${index === 0 ? ' data-cursor-start' : ''}${disabled} data-help="${escapeAttribute(`Make a room on ${map.name}. Your friends drop in there too.`)}"><span class="px-row-main"><strong class="px-name">${map.name}</strong></span></button>`,
+        `<button class="px-row" data-room-map="${escapeAttribute(map.mapId)}"${index === 0 ? ' data-cursor-start' : ''}${disabled} data-help="${escapeAttribute(`Make a room on ${map.name}. Your friends jump in there too.`)}"><span class="px-row-main"><strong class="px-name">${map.name}</strong></span></button>`,
     )
     .join('');
   const make = pixelWindow(
@@ -92,7 +92,7 @@ function heldView(screen: FriendRoomScreen, room: NonNullable<FriendRoomScreen['
     { className: 'friend-room', heading: whose, note: room.mapName },
   )}${pixelCommitBar({
     title: `Raid ${room.mapName} together`,
-    lines: ['<small class="px-wrap">Get ready at the RAID ARENA, west of the yard, as for any raid. You drop in when you are ready, not together.</small>'],
+    lines: ['<small class="px-wrap">Get ready at the RAID ARENA, west of the yard, as for any raid. You jump in when you are ready, not together.</small>'],
     actions: `<button class="px-window px-button" data-room-leave data-help="Leave the room. Anybody else in it raids on without you.">Leave the room</button><button class="px-window px-button is-primary" data-back data-cursor-start data-help="Back to the lab. The room stays yours while you walk to the Raid Arena.">Back to the lab</button>`,
   })}</main>`;
 }

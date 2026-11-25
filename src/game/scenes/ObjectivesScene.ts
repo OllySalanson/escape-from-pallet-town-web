@@ -120,7 +120,7 @@ export class ObjectivesScene extends Phaser.Scene {
               }</button>`,
           )
           .join('')
-      : '<p class="px-empty px-wrap">No contract objective is active. Your loot is still only safe after extraction.</p>';
+      : '<p class="px-empty px-wrap">No job this raid. Your loot is only safe once you get out.</p>';
     // Numbered, because the notes are a route read in order and the typeface
     // has no list marker: the number stands in a gutter of its own.
     const notes = guide.hints
@@ -132,7 +132,7 @@ export class ObjectivesScene extends Phaser.Scene {
     const body = `<main class="px-body raid-guide-layout">${pixelWindow(
       `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.brief)}>${objectives}</div>`,
       {
-        heading: 'Contract status',
+        heading: 'Job status',
         note: guide.objectives.length ? `${done} of ${guide.objectives.length} done` : 'nothing owed',
       },
     )}${pixelWindow(`<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.brief)}>${notes}</div>`, {

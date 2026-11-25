@@ -94,16 +94,16 @@ try {
     // Major 1's wording: a Charizard with both lockers built.
     await gameWith(`(save) => { ${hasBeenOut} ${partnerIs('charizard', 36)} save.raidProgress.workshopUpgrades = ['secure-locker-1', 'secure-locker-2']; }`);
     const { row, pressed, note } = await lockerRow('locker-charizard');
-    check('the row says no container will hold it', /Too big for any secure container/.test(row), row);
-    check('the press says a wipe will take it and offers nothing impossible', /too big for any secure container/.test(pressed) && !/Take something out|grow the container/.test(pressed), pressed);
-    check('the note says nothing here can go in', /fits any secure container/.test(note), note);
+    check('the row says no container will hold it', /Too big for THE LOCKER at any size/.test(row), row);
+    check('the press says a wipe will take it and offers nothing impossible', /too big for THE LOCKER at any size/.test(pressed) && !/Take something out|grow THE LOCKER/.test(pressed), pressed);
+    check('the note says nothing here can go in', /fits THE LOCKER at any size/.test(note), note);
   }
 
   if (wanted('grow')) {
     // A Charmeleon on a fresh base: growing is the answer, and it is named.
     await gameWith(`(save) => { ${hasBeenOut} ${partnerIs('charmeleon', 16)} }`);
     const { row, pressed } = await lockerRow('locker-charmeleon');
-    check('the row names what to build', /To secure it, build Secure locker I at Brock/.test(row), row);
+    check('the row names what to build', /To make it safe, build Secure locker I at Brock/.test(row), row);
     check('the press does not say take something out of a 2x2', !/Take something out/.test(pressed) && /Secure locker I/.test(pressed), pressed);
   }
 

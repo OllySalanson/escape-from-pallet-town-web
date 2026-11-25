@@ -105,7 +105,7 @@ describe('objective field guide', () => {
     expect(firstGuide.hints.join(' ')).toContain('Floodplain Relay');
     expect(firstGuide.hints.join(' ')).toContain('reeds');
     expect(firstGuide.hints.join(' ')).toContain('lost field kit');
-    expect(firstGuide.hints.join(' ')).toMatch(/extract/i);
+    expect(firstGuide.hints.join(' ')).toMatch(/get out/i);
     expect(firstGuide.hints).toHaveLength(4);
     expect(laterGuide.isFirstContract).toBe(false);
     expect(laterGuide.hints).toHaveLength(2);
@@ -527,9 +527,9 @@ describe('the exit the field guide names', () => {
     // contract" with no stop made told a player the job was done (veteran
     // playtest, 20 Nov 2026), and Oak's radio reads this line out.
     expect(guide.hints).toContain(
-      'Once every stop is made, extract to bank the contract: the nearest open exit is SOUTH GATE, right here.',
+      'Once every stop is made, get out to bank the job: the nearest open exit is SOUTH GATE, right here.',
     );
-    expect(guide.radio.join(' ')).not.toContain('Extract there to bank the contract');
+    expect(guide.radio.join(' ')).not.toContain('Get out there to bank the job');
   });
 
   it('falls back to the map list when no open exit was measured', () => {
@@ -576,7 +576,7 @@ describe('a contract only one exit banks', () => {
     });
 
     expect(guide.hints).toContain(
-      'Only WEST CULVERT, to the south-west, banks this contract. It stays sealed until SLUICE WHEEL is worked, to the south-east. Any other gate ends the raid and leaves it unpaid.',
+      'Only WEST CULVERT, to the south-west, banks this job. It stays sealed until SLUICE WHEEL is worked, to the south-east. Any other gate ends the raid and leaves it unpaid.',
     );
   });
 
@@ -588,7 +588,7 @@ describe('a contract only one exit banks', () => {
     });
 
     expect(guide.hints).toContain(
-      'Only WEST CULVERT, to the south-west, banks this contract. Any other gate ends the raid and leaves it unpaid.',
+      'Only WEST CULVERT, to the south-west, banks this job. Any other gate ends the raid and leaves it unpaid.',
     );
   });
 });
@@ -674,7 +674,7 @@ describe('an errand in the field guide', () => {
 
   it('says where the thing lies, then that it is being carried', () => {
     const session = createErrandSession();
-    expect(errandHints(session, 0)).toEqual([expect.stringMatching(/^Brock's errand: Brock's crate lies in GREYSTONE PEAKS, /)]);
+    expect(errandHints(session, 0)).toEqual([expect.stringMatching(/^Brock's favour: Brock's crate lies in GREYSTONE PEAKS, /)]);
 
     session.manager.registerFoundItem('brocks-crate', 1);
     expect(errandHints(session, 1)).toEqual([
@@ -694,7 +694,7 @@ describe('an errand in the field guide', () => {
         carried: (itemId) => (itemId === 'brocks-crate' ? carried : 0),
       }).radio;
 
-    expect(radio(0)).toContainEqual(expect.stringMatching(/^Brock's errand: Brock's crate lies in GREYSTONE PEAKS, to the /));
+    expect(radio(0)).toContainEqual(expect.stringMatching(/^Brock's favour: Brock's crate lies in GREYSTONE PEAKS, to the /));
     session.manager.registerFoundItem('brocks-crate', 1);
     expect(radio(1).join(' ')).not.toContain("Brock's crate");
   });
@@ -737,9 +737,9 @@ describe('a favour already done, laid again for what it is', () => {
         ...(favoursInHand ? { favoursInHand } : {}),
       }).hints.filter((hint) => hint.includes('Amber'));
 
-    expect(hints(['old-amber']).join(' ')).toContain("Bill's errand");
+    expect(hints(['old-amber']).join(' ')).toContain("Bill's favour");
     const done = hints([]);
-    expect(done.join(' ')).not.toContain('errand');
+    expect(done.join(' ')).not.toContain('favour');
     expect(done.join(' ')).toMatch(/Old Amber lies in PINE HOLLOW/);
   });
 });

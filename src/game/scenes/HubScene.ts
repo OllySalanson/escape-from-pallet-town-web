@@ -1082,7 +1082,7 @@ export class HubScene extends Phaser.Scene {
     audioManager.play('cancel');
     this.setStatus(
       name === 'secure'
-        ? `Took a square of ${item} out of the container.`
+        ? `Took a square of ${item} out of THE LOCKER.`
         : left > 0
           ? `Took one ${item} out of the pack. ${left} still packed.`
           : `Took ${item} out of the pack.`,
@@ -2113,7 +2113,7 @@ export class HubScene extends Phaser.Scene {
         return {
           ok: false,
           reason: worldMapIds().includes(mapId as WorldMapId)
-            ? `That room is on ${worldMapName(mapId as WorldMapId)}, which you cannot drop into yet.`
+            ? `That room is on ${worldMapName(mapId as WorldMapId)}, which you cannot jump into yet.`
             : 'That room is on a map this game does not have.',
         } as const;
       }
@@ -2941,7 +2941,7 @@ export class HubScene extends Phaser.Scene {
           ? [`<p class="px-wrap px-warning rim-refusal">${RAID_ELSEWHERE_LINE}</p>`]
           : []),
       this.roomNote(),
-      ...(this.firstContractActive ? ['<small class="px-wrap">More ways in open up when you bring this contract home.</small>'] : []),
+      ...(this.firstContractActive ? ['<small class="px-wrap">More ways in open up when you bring this job home.</small>'] : []),
       ...(warning ? [`<small class="px-wrap px-warning">${warning}</small>`] : []),
     ].filter((line) => line !== '');
     // With nobody able to go, a team about to be finished by the first thing
@@ -3623,12 +3623,12 @@ export class HubScene extends Phaser.Scene {
         // any says so, rather than inviting a press that cannot work.
         const fit = secured ? 'fits' : this.flow.secureFit(stored.id);
         const help = secured
-          ? `Secured: it comes home even if you wipe. It is taking ${squares} of the container.`
+          ? `In THE LOCKER: it comes home even if you wipe. It is taking ${squares}.`
           : fit === 'never'
-            ? `Too big for any secure container: ${secureNeverReason(piece, this.flow.secureGrid)}. A wipe will take it.`
+            ? `Too big for THE LOCKER at any size: ${secureNeverReason(piece, this.flow.secureGrid)}. A wipe will take it.`
             : fit === 'grow'
-              ? `It needs ${squares}, more than the ${this.flow.secureGrid.width}x${this.flow.secureGrid.height} container. To secure it, ${this.flow.secureGrowthAdvice}.`
-              : `Secure this Pokémon so a wipe cannot take it. It needs ${squares} of the container.`;
+              ? `It needs ${squares}, more than THE LOCKER's ${this.flow.secureGrid.width}x${this.flow.secureGrid.height}. To make it safe, ${this.flow.secureGrowthAdvice}.`
+              : `Put this Pokémon in THE LOCKER so a wipe cannot take it. It needs ${squares}.`;
         // The price is on the row whether or not it is paid: a secured Pokemon
         // still says what it is taking, because the next question the screen is
         // asked is what would fit if it came out.
@@ -3654,14 +3654,14 @@ export class HubScene extends Phaser.Scene {
       const limit = this.flow.secureLimit(itemId);
       const packed = this.flow.itemQuantity(itemId);
       const roomLine = held >= limit
-        ? 'The container cannot seat any more of this beside what is in it.'
-        : `The container has room for ${limit} square${limit === 1 ? '' : 's'} of this beside what is in it.`;
+        ? 'THE LOCKER cannot seat any more of this beside what is in it.'
+        : `THE LOCKER has room for ${limit} square${limit === 1 ? '' : 's'} of this beside what is in it.`;
       const limitReason = isFoundOnly(itemId)
         ? roomLine
         : packed === 0
-          ? 'Pack some of this first - the container protects what you carry.'
+          ? 'Pack some of this first - THE LOCKER protects what you carry.'
           : limit >= blocksFor(itemId, packed)
-            ? 'Everything you packed of this is already in the container.'
+            ? 'Everything you packed of this is already in THE LOCKER.'
             : roomLine;
       return `<div class="px-row has-icon${held ? ' is-secured' : ''}">${itemIcon(itemId, this.itemName(itemId))}<span class="px-row-main"><strong class="px-name">${this.itemName(itemId)}</strong><small>${size === 1 ? '1 square' : `${size} squares`}</small></span>${countSelector({ kind: 'secure', id: itemId, label: this.itemName(itemId), value: held, max: limit, help, limit: limitReason })}</div>`;
     };
@@ -3669,7 +3669,7 @@ export class HubScene extends Phaser.Scene {
       .map((item) =>
         secureRow(
           item.itemId,
-          `${this.itemName(item.itemId)}: ${item.quantity} packed. What you put in the container comes home even if you wipe.`,
+          `${this.itemName(item.itemId)}: ${item.quantity} packed. What you put in THE LOCKER comes home even if you wipe.`,
         ),
       )
       .join('');
@@ -3709,12 +3709,12 @@ export class HubScene extends Phaser.Scene {
       // second row takes both and the container scrolls away with the list.
       `<div class="secure-body">${pixelGrid(this.flow.secureLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
         className: 'is-secure',
-        label: `Secure container, ${cells.used} of ${cells.total} squares full${this.flow.securedCargo.length ? `, holding ${this.flow.securedCargo.map((piece) => piece.name).join(' and ')}` : ''}`,
+        label: `THE LOCKER, ${cells.used} of ${cells.total} squares full${this.flow.securedCargo.length ? `, holding ${this.flow.securedCargo.map((piece) => piece.name).join(' and ')}` : ''}`,
         arrange: { name: 'secure', ghost: this.arranging.ghostFor('secure'), help: ARRANGE_AND_REMOVE_HELP },
       })}${this.arrangeBar('secure')}<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${itemRows ? `${itemRows}` : ''}<h3 class="px-subheading">Room for what you find</h3>${materialRows}</div></div>`,
       {
         className: 'secure-group',
-        heading: 'Container',
+        heading: 'In the locker',
         note: `${cells.used}/${cells.total} squares`,
       },
     )}${pixelCommitBar({
@@ -3756,16 +3756,16 @@ export class HubScene extends Phaser.Scene {
       // Only grown advice it can follow: a party nobody can ever secure is told
       // so, and a container with nothing left to build is not told to grow.
       if (!fits.includes('grow')) {
-        return `<p class="px-note px-wrap">Nothing in this party fits any secure container: it only ever grows sideways from ${this.flow.secureGrid.height} squares tall. A wipe will take ${fits.length === 1 ? 'it' : 'them'}.</p>`;
+        return `<p class="px-note px-wrap">Nothing in this party fits THE LOCKER at any size: it only ever grows sideways from ${this.flow.secureGrid.height} squares tall. A wipe will take ${fits.length === 1 ? 'it' : 'them'}.</p>`;
       }
       const smallest = contenders
         .map((stored) => cargoCells(pokemonCargo(stored.id, stored.pokemon)))
         .sort((a, b) => a - b)[0];
-      return `<p class="px-note px-wrap">Nothing in this party fits: the container is ${shape} and the smallest here needs ${cargoSquaresLabel(smallest)}. To make room, ${grow}.</p>`;
+      return `<p class="px-note px-wrap">Nothing in this party fits: THE LOCKER is ${shape} and the smallest here needs ${cargoSquaresLabel(smallest)}. To make room, ${grow}.</p>`;
     }
     const names = cargo.map((piece) => piece.name.toUpperCase()).join(' and ');
     return free === 0
-      ? `<p class="px-note px-wrap">${names} ${cargo.length === 1 ? 'fills' : 'fill'} the container - there is no room left for supplies. Let ${cargo.length === 1 ? 'it' : 'them'} go to carry gear instead${grow ? ', or grow the container' : ''}.</p>`
+      ? `<p class="px-note px-wrap">${names} ${cargo.length === 1 ? 'fills' : 'fill'} THE LOCKER - there is no room left for supplies. Let ${cargo.length === 1 ? 'it' : 'them'} go to carry gear instead${grow ? ', or grow THE LOCKER' : ''}.</p>`
       : `<p class="px-note px-wrap">${names} ${cargo.length === 1 ? 'leaves' : 'leave'} ${cargoSquaresLabel(free)} for supplies.</p>`;
   }
 
@@ -3844,7 +3844,7 @@ export class HubScene extends Phaser.Scene {
     const standingPane = pixelWindow(
       `<div class="px-lead">${pixelFigure('bill', 'Bill')}<p class="px-wrap">${standing.note}</p></div>${
         next
-          ? `<p class="px-wrap px-note">Bank a contract +${STANDING_PER_CONTRACT}, beat a boss +${STANDING_PER_BOSS}, spend ${formatMoney(POKEDOLLARS_PER_STANDING)} +1.</p>`
+          ? `<p class="px-wrap px-note">Bank a job +${STANDING_PER_CONTRACT}, beat a boss +${STANDING_PER_BOSS}, spend ${formatMoney(POKEDOLLARS_PER_STANDING)} +1.</p>`
           : ''
       }`,
       { className: 'trader-standing', heading: `Standing · ${standing.name}`, note: standingNote },

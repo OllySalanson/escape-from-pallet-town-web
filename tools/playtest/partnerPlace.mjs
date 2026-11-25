@@ -95,7 +95,7 @@ try {
   await wait(200);
   const answer = await text('.px-status-line');
   await shot('locker-partner-pressed');
-  check('pressing the partner says it is safe, and asks nothing impossible', /a wipe never takes your partner/.test(answer) && !/grow the container|Take something out/.test(answer), answer);
+  check('pressing the partner says it is safe, and asks nothing impossible', /a wipe never takes your partner/.test(answer) && !/grow THE LOCKER|Take something out/.test(answer), answer);
 
   await openHallPanel(page, 'rim', { press, until, wait });
   await wait(300);

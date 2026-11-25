@@ -71,7 +71,7 @@ export function saveDetail(summary: SaveSummary): string {
   if (summary.kind === 'unreadable') {
     return 'SAVE UNREADABLE';
   }
-  return `${summary.pokemon} POKÉMON · ${plural(summary.contracts, 'CONTRACT', 'CONTRACTS')}`;
+  return `${summary.pokemon} POKÉMON · ${plural(summary.contracts, 'JOB', 'JOBS')}`;
 }
 
 export function titleMenu(summary: SaveSummary): TitleMenu {

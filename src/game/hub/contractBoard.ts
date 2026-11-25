@@ -41,7 +41,7 @@ export function buildContractBoard(progress: StandingBoardProgress): ContractBoa
   const contracts = isFirstRaid(progress) ? [] : boardContracts(progress);
   const standing = isStandingBoardOpen(progress.completedContracts);
   return {
-    heading: standing ? 'Standing board' : 'Contract board',
+    heading: standing ? 'Standing board' : 'Job board',
     note: standing
       ? `${contracts.length} open · ${progress.standingContractsBanked} banked · turns over when you bank one`
       : `${contracts.length} open · rewards require extraction`,

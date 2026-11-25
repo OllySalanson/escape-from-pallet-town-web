@@ -150,7 +150,7 @@ describe('banking a standing contract', () => {
 describe('the lobby’s contract board', () => {
   it('lists the authored chain exactly as it did, until the chain is banked', () => {
     const board = buildContractBoard({ ...DEFAULT_RAID_PROGRESS, completedContracts: [CHAIN[0], CHAIN[1]] });
-    expect(board).toMatchObject({ heading: 'Contract board', note: '2 open · rewards require extraction' });
+    expect(board).toMatchObject({ heading: 'Job board', note: '2 open · rewards require extraction' });
     expect(board.rows.map((row) => [row.name, row.asks])).toEqual([
       ['Cordon ledger', 'Banks only through WEST CULVERT'],
       ['Warden’s resupply', 'Pack 2× Potion'],

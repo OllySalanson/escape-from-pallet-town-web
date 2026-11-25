@@ -117,7 +117,7 @@ export type SecureFit = 'fits' | 'grow' | 'never';
  */
 export function secureNeverReason(piece: { readonly width: number; readonly height: number }, grid: GridSize): string {
   return Math.min(piece.width, piece.height) > grid.height
-    ? `it is ${piece.width}x${piece.height}, and the container only ever grows sideways from ${grid.height} squares tall`
+    ? `it is ${piece.width}x${piece.height}, and THE LOCKER only ever grows sideways from ${grid.height} squares tall`
     : `it is ${piece.width}x${piece.height}, and no container this base can build is that wide`;
 }
 
@@ -1083,7 +1083,7 @@ export class DeploymentFlow {
   private noRoomForPokemonMessage(id: string): string {
     const stored = this.party.find((member) => member.id === id);
     if (!stored) {
-      return 'The secure container is full. Take something out of it first.';
+      return 'THE LOCKER is full. Take something out of it first.';
     }
     const name = stored.pokemon.name.toUpperCase();
     const piece = pokemonCargo(stored.id, stored.pokemon);
@@ -1091,19 +1091,19 @@ export class DeploymentFlow {
     const shape = `${this.secureGrid.width}x${this.secureGrid.height}`;
     const fit = this.secureFit(id);
     if (fit === 'never') {
-      return `${name} is too big for any secure container: ${secureNeverReason(piece, this.secureGrid)}. A wipe will take it.`;
+      return `${name} is too big for THE LOCKER at any size: ${secureNeverReason(piece, this.secureGrid)}. A wipe will take it.`;
     }
     const grow = this.secureGrowthAdvice;
     if (fit === 'grow') {
-      return `${name} needs ${squares} - the container is only ${shape}. To secure it, ${grow}.`;
+      return `${name} needs ${squares} - THE LOCKER is only ${shape}. To make it safe, ${grow}.`;
     }
     const total = gridCells(this.secureGrid);
     const free = total - this.secureLayout().cellsUsed;
     const room =
       free === 0
-        ? 'the container is full'
+        ? 'THE LOCKER is full'
         : `only ${cargoSquaresLabel(free)} of it ${free === 1 ? 'is' : 'are'} free`;
-    return `${name} needs ${squares} - ${room}. Take something out${grow ? ', or grow the container' : ''}.`;
+    return `${name} needs ${squares} - ${room}. Take something out${grow ? ', or grow THE LOCKER' : ''}.`;
   }
 
   /**
@@ -1138,7 +1138,7 @@ export class DeploymentFlow {
     if (next === current) {
       if (squares > blocksFor(itemId, current)) {
         if (ceiling === 0) {
-          return 'Pack some of this first - the container protects what you carry.';
+          return 'Pack some of this first - THE LOCKER protects what you carry.';
         }
         return this.noRoomInContainerMessage();
       }
@@ -1187,8 +1187,8 @@ export class DeploymentFlow {
 
   private noRoomInContainerMessage(): string {
     return this.securedCargo.length > 0
-      ? `No room - ${this.securedCargo.map((piece) => piece.name.toUpperCase()).join(' and ')} ${this.securedCargo.length === 1 ? 'is' : 'are'} taking the container. Unsecure a Pokémon, or grow it.`
-      : 'The secure container is full. Take something out of it first.';
+      ? `No room - ${this.securedCargo.map((piece) => piece.name.toUpperCase()).join(' and ')} ${this.securedCargo.length === 1 ? 'is' : 'are'} taking THE LOCKER. Take a Pokémon out, or grow it.`
+      : 'THE LOCKER is full. Take something out of it first.';
   }
 
   /** Whether one more square of a kind would go into the secure container. */
@@ -1310,7 +1310,7 @@ export class DeploymentFlow {
  * it is safe, and why, and that it costs the container nothing.
  */
 export function partnerPlaceLine(name: string): string {
-  return `${name.toUpperCase()} is your partner, so it has a place of its own: a wipe never takes your partner, and it needs no room in the container.`;
+  return `${name.toUpperCase()} is your partner, so it has a place of its own: a wipe never takes your partner, and it needs no room in THE LOCKER.`;
 }
 
 /** A ball of any kind, as the battle's BALL command counts one (`carriedBalls`). */

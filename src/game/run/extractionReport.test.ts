@@ -325,7 +325,7 @@ describe('extraction report after a survived raid', () => {
     expect(report.summary.startsWith('Job unpaid: SOUTH GATE is not WEST CULVERT. Banked ')).toBe(true);
     // The haul is graded on what was actually banked, so an unpaid contract
     // cannot flatter the headline.
-    expect(report.summary.startsWith('Contract banked')).toBe(false);
+    expect(report.summary.startsWith('Job banked')).toBe(false);
   });
 
   /**
@@ -370,10 +370,10 @@ describe('extraction report after a survived raid', () => {
     // The ledger still lists what the stash received, contract pay included.
     expect(withHaul.ledger.items.map(({ itemId }) => itemId)).toEqual(['cable-coil', 'great-ball']);
     expect(withHaul.ledger.pokemon).toHaveLength(2);
-    expect(withHaul.summary).toMatch(/^Contract banked, plus Pidgey and 2 Cable coils\. /);
+    expect(withHaul.summary).toMatch(/^Job banked, plus Pidgey and 2 Cable coils\. /);
 
     const contractOnly = reportFor(false);
-    expect(contractOnly.summary).toMatch(/^Contract banked\. /);
+    expect(contractOnly.summary).toMatch(/^Job banked\. /);
     expect(contractOnly.summary).not.toContain('Great Ball');
   });
 
@@ -544,7 +544,7 @@ describe('extraction report after a lost raid', () => {
     expect(report.secured.items).toEqual([{ itemId: 'potion', label: 'Potion', quantity: 1 }]);
     expect(report.spent).toEqual([{ itemId: 'potion', label: 'Potion', quantity: 2 }]);
     expect(report.gambleVerdict).toBe(
-      'The secure slot brought Pidgey and 1 Potion home. Bulbasaur and 3 Poké Balls did not make it.',
+      'THE LOCKER brought Pidgey and 1 Potion home. Bulbasaur and 3 Poké Balls did not make it.',
     );
     // A loss is never graded as a haul, whatever the secure slot rescued.
     expect(report.haulTier).toBe('empty');
@@ -583,7 +583,7 @@ describe('extraction report after a lost raid', () => {
     expect(report.ledger.pokemon[0].level).toBe(4);
     expect(report.secured.pokemon.map(({ level }) => level)).toEqual([6]);
     expect(report.summary).toBe(
-      'The raid ended where you fell. You lost Pidgey and 2 Poké Balls. Charmeleon, your partner, came home with you. The secure slot held Pidgey.',
+      'The raid ended where you fell. You lost Pidgey and 2 Poké Balls. Charmeleon, your partner, came home with you. THE LOCKER held Pidgey.',
     );
     // The gear on the partner came home on it, so it is no loss.
     expect(report.gear.find((piece) => piece.holder === 'Charmeleon')?.fate).toBe('kept');
@@ -619,9 +619,9 @@ describe('extraction report after a lost raid', () => {
     };
 
     expect(report({ partner }, [partner])).toBe("Charmeleon's Charcoal came home with your partner, in its own place.");
-    expect(report({ pokemon: [secured] }, [secured])).toBe("Pidgey's Quick Claw came home in the secure slot.");
+    expect(report({ pokemon: [secured] }, [secured])).toBe("Pidgey's Quick Claw came home in THE LOCKER.");
     expect(report({ pokemon: [secured], partner }, [partner, secured])).toBe(
-      "Charmeleon's Charcoal came home with your partner, in its own place. Pidgey's Quick Claw came home in the secure slot.",
+      "Charmeleon's Charcoal came home with your partner, in its own place. Pidgey's Quick Claw came home in THE LOCKER.",
     );
   });
 
@@ -663,7 +663,7 @@ describe('extraction report after a lost raid', () => {
     expect(result.lostPokemon).toEqual([]);
     expect(report.headline).toBe('You went down.');
     expect(report.summary).toBe('The raid ended where you fell. You lost 2 Poké Balls. Charmander, your partner, came home with you.');
-    expect(report.securedEmptyText).toBe('You put nothing in the container.');
+    expect(report.securedEmptyText).toBe('You put nothing in THE LOCKER.');
   });
 
   it('never counts the partner as carried at risk on a raid that got out', () => {
@@ -703,7 +703,7 @@ describe('extraction report after a lost raid', () => {
     expect(report.summary).toContain('The raid ended where you fell.');
     expect(report.summary).toContain('Nothing was protected.');
     expect(report.gambleVerdict).toBe(
-      'The secure slot was empty, so Charmander and 2 Poké Balls went with the raid.',
+      'THE LOCKER was empty, so Charmander and 2 Poké Balls went with the raid.',
     );
     // No bag was available to the losing scene, which is not the same claim as
     // "nothing was spent", so the screen is given nothing to print.
@@ -759,7 +759,7 @@ describe('extraction report after a lost raid', () => {
       /^What you lost stays lost, but Oak keeps a starter kit for this: 3 Poké Balls and 1 Satchel are waiting at base\.$/,
     );
     expect(report(false, kit)).toBe("Oak's starter kit is at base: 3 Poké Balls and 1 Satchel. Nurse Joy must revive somebody before you can raid.");
-    expect(report(true, [])).toBe('You still have what you need to deploy again.');
+    expect(report(true, [])).toBe('You still have what you need to raid again.');
   });
 
   it('never promises a deployable loadout when the wipe left nobody fit to raid', () => {
@@ -779,10 +779,10 @@ describe('extraction report after a lost raid', () => {
     };
 
     expect(report(false).baseNote).toBe(
-      'You have the supplies to deploy again. Nurse Joy must revive somebody before you can raid.',
+      'You have the supplies to raid again. Nurse Joy must revive somebody before you can raid.',
     );
     expect(report(true).baseNote).toBe(
-      'You still have what you need to deploy again.',
+      'You still have what you need to raid again.',
     );
 
     // Read off the stash the wipe wrote: a fainted partner is nobody fit, and
@@ -1541,10 +1541,10 @@ describe('what the raid had at stake', () => {
       saved: true,
     });
 
-    expect(report.summary).toBe('The raid ended where you fell. You lost your Raid pack. The secure slot held Bulbasaur.');
+    expect(report.summary).toBe('The raid ended where you fell. You lost your Raid pack. THE LOCKER held Bulbasaur.');
     expect(report.summary).not.toContain('Nothing was taken');
-    expect(report.ledgerEmptyText).not.toBe('Nothing outside the secure slot was at stake.');
-    expect(report.gambleVerdict).toBe('The secure slot brought Bulbasaur home. Your Raid pack did not make it.');
+    expect(report.ledgerEmptyText).not.toBe('Nothing outside THE LOCKER was at stake.');
+    expect(report.gambleVerdict).toBe('THE LOCKER brought Bulbasaur home. Your Raid pack did not make it.');
   });
 
   it('names the gear that went down with an unprotected Pokemon in the loss', () => {
