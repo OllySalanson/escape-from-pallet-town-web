@@ -129,10 +129,10 @@ export interface ActiveRunSession {
    * A new save's first catch (`world/firstCatch.ts`): which of the square's
    * Pidgey have been fought, how many catches the raid held before the last
    * fight began (so the return from it can tell a catch), whether that fight
-   * is still to be answered, and whether the catch was made. On the session
+   * is still to be answered, and whether and where the catch was made. On the session
    * because the world is rebuilt after the fight.
    */
-  firstCatch?: { tried: string[]; caughtBefore: number; answered: boolean; caught: boolean; caughtAtStep?: number };
+  firstCatch?: { tried: string[]; caughtBefore: number; answered: boolean; caught: boolean; caughtAtStep?: number; caughtAt?: GridPosition };
   /**
    * Beaten trainers whose watch has already been seen to lift. The world is
    * rebuilt on every return from a fight, so the payoff for a win - the shading

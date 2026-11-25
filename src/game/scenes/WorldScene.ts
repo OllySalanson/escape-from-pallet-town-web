@@ -4061,7 +4061,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * null, which is most raids.
    */
   private prizeInMind(): PrizeChipInput | null {
-    if (!this.isLootAvailable()) {
+    // While the first raid's catch is the one job, its chip is the one thing
+    // to read: a ₽10 and a bearing beside CATCH THE PIDGEY was a second sum and
+    // a second heading nobody had explained (the critic's fourth pass).
+    if (!this.isLootAvailable() || this.firstCatchFigure()) {
       return null;
     }
     let nearest: { readonly loot: WorldLoot; readonly steps: number } | null = null;
@@ -7736,17 +7739,31 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
   /**
    * Whether the first raid's choice is still the player's to make: the catch is
-   * made, and they are no nearer the stake than the way out, by the walk. The
-   * critic's third pass: Oak said "your call" while the chip had already made it,
-   * pointing at the money.
+   * made, and since it they have not walked towards the stake and away from the
+   * way out. The critic's third pass: Oak said "your call" while the chip had
+   * already made it, pointing at the money. Asked by distance alone, a catch
+   * made nearer the stake than the exit still pointed at the money the moment
+   * Oak stopped talking (the fifth play-through, the second Pidgey caught).
    */
   private choosingAfterTheCatch(exit: GridPosition, stake: GridPosition): boolean {
-    if (this.runSession?.firstCatch?.caught !== true) {
+    const state = this.runSession?.firstCatch;
+    if (state?.caught !== true) {
       return false;
     }
-    const toExit = this.wayField(exit)[this.currentTile.y]?.[this.currentTile.x] ?? -1;
-    const toStake = this.wayField(stake)[this.currentTile.y]?.[this.currentTile.x] ?? -1;
-    return toExit >= 0 && (toStake < 0 || toExit <= toStake);
+    const exitField = this.wayField(exit);
+    const stakeField = this.wayField(stake);
+    const from = state.caughtAt ?? this.currentTile;
+    const toExit = exitField[this.currentTile.y]?.[this.currentTile.x] ?? -1;
+    const toStake = stakeField[this.currentTile.y]?.[this.currentTile.x] ?? -1;
+    if (toExit < 0) {
+      return false;
+    }
+    if (toStake < 0) {
+      return true;
+    }
+    const fromExit = exitField[from.y]?.[from.x] ?? toExit;
+    const fromStake = stakeField[from.y]?.[from.x] ?? toStake;
+    return !(toStake < fromStake && toExit > fromExit);
   }
 
   /**
@@ -7755,11 +7772,19 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * critic's third pass). It is the retry, and stands up after the first fight.
    */
   private heldBackForTheCatch(entity: WorldEntity): boolean {
-    const plan = this.runSession?.plan;
-    if (!plan?.stagedChase || !plan.insertion || this.currentMap?.id !== plan.insertion.mapId || (this.runSession?.firstCatch?.tried.length ?? 0) > 0) {
+    const session = this.runSession;
+    const plan = session?.plan;
+    if (!session || !plan?.stagedChase || !plan.insertion || this.currentMap?.id !== plan.insertion.mapId) {
       return false;
     }
-    return firstCatchFigures(this.currentMap.entities, plan.insertion.position)[1]?.id === entity.id;
+    if (firstCatchFigures(this.currentMap.entities, plan.insertion.position)[1]?.id !== entity.id) {
+      return false;
+    }
+    // It stands up only for a retry: after the first was knocked out or left,
+    // never after a catch, when Oak is saying get out (the critic's fourth pass).
+    const state = session.firstCatch;
+    const caught = state !== undefined && session.manager.snapshot().caughtPokemon.length > state.caughtBefore;
+    return state === undefined || state.caught || caught;
   }
 
   /**
@@ -7798,6 +7823,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       state.caught = true;
       // The hunter comes a few steps after Oak's last word, never under it.
       state.caughtAtStep = session.stepsTaken ?? 0;
+      // Where the choice is put, so the chip offers both ways until the player makes it.
+      state.caughtAt = { ...this.currentTile };
       // Hurt from the fight, with a hunter coming: the pack's Potion is said first.
       const pack = this.bag.capacity;
       this.interrupt([

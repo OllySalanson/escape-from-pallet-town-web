@@ -424,7 +424,7 @@ export class ExtractionScene extends Phaser.Scene {
       aside: escapeHtml(this.clockAside()),
       // The help strip says what becomes of the result, as the full report's
       // does; the key for the report is on its button (the critic's third pass).
-      hints: escapeHtml(this.footerNote()),
+      hints: escapeHtml(this.momentNote()),
       body: `<main class="px-body extraction-moment-layout">${pixelWindow(
         `${picture}<strong class="px-name moment-headline" data-moment-headline>${escapeHtml(moment.headline)}</strong>${
           report.closeCall ? `<span class="px-wrap">${escapeHtml(report.closeCall)}</span>` : ''
@@ -452,6 +452,22 @@ export class ExtractionScene extends Phaser.Scene {
     }
     const money = this.report.ledger.items.filter((item) => isCurrency(item.itemId)).reduce((sum, item) => sum + item.quantity, 0);
     return money > 0 ? `${formatMoney(money)} banked` : 'Saved';
+  }
+
+  /**
+   * The moment's note: where a raid that brought home only Pokemon left them, in
+   * the words the rail uses next ("waiting at base"), not the full report's
+   * "Everything above is on BILL'S PC" - a name a first raid has never heard,
+   * over one Pidgey (the critic's fourth pass).
+   */
+  private momentNote(): string {
+    const { ledger, saved } = this.report;
+    if (saved && ledger.items.length === 0 && ledger.pokemon.length > 0) {
+      const names = ledger.pokemon.map((pokemon) => pokemon.name.toUpperCase());
+      const who = names.length === 1 ? `${names[0]} is` : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]} are`;
+      return `${who} waiting at base for your next raid.`;
+    }
+    return this.footerNote();
   }
 
   /** Oak's one next thing (`hub/nextStep.ts`), read off the save this raid was just banked into. */

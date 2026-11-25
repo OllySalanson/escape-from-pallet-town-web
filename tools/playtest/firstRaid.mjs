@@ -2,7 +2,12 @@
 // player's, played the way somebody who does not read plays it: SPACE on anything
 // that asks, the key that goes where they can see they want to go, and nothing else.
 //
-//   node tools/playtest/firstRaid.mjs <url> <out-dir> [--port=N] [--window=1200x768] [--shots]
+//   node tools/playtest/firstRaid.mjs <url> <out-dir> [--port=N] [--window=1200x768] [--shots] [--catch [--ko]]
+//
+// With --catch it plays on through the first raid as a newcomer follows the chip:
+// walks up to the Pidgey Oak names, fights it under half HP and throws a ball (or,
+// with --ko, knocks it out and goes to the second), then walks out by the nearest
+// exit, running from anything else wild, to the result card.
 //
 // It presses real keys into the real scene on stepped 60fps frames, so the seconds
 // it reports are game seconds, with a quarter of a second of a person's reaction
@@ -21,6 +26,8 @@ mkdirSync(out, { recursive: true });
 const [windowWidth, windowHeight] = (option('window') ?? `${PIXEL_WINDOW.width}x${PIXEL_WINDOW.height}`).split('x').map(Number);
 const window = { width: windowWidth, height: windowHeight };
 const shots = args.includes('--shots');
+const playCatch = args.includes('--catch');
+const knockOut = args.includes('--ko');
 const address = url;
 const FRAME_MS = 1000 / 60;
 const REACTION_MS = 250;
@@ -102,9 +109,9 @@ try {
   };
 
   /** A walk from where the player stands to the first of some tiles, a held key to a straight run. */
-  const walk = async (goalsExpression, what) => {
-    const route = await base(`(() => { const goals = ${goalsExpression};
-      const c = b.collision, H = c.length, W = c[0].length, s = b.currentTile, id = (x, y) => y * W + x;
+  const walk = async (goalsExpression, what, on = base) => {
+    const route = await on(`(() => { const goals = ${goalsExpression};
+      const c = b.collision ?? b.collisionData, H = c.length, W = c[0].length, s = b.currentTile, id = (x, y) => y * W + x;
       const at = (x, y) => goals.some((g) => g.x === x && g.y === y);
       const prev = new Map([[id(s.x, s.y), null]]); const queue = [[s.x, s.y]]; let found = null;
       while (queue.length) { const [x, y] = queue.shift(); if (at(x, y)) { found = [x, y]; break; }
@@ -130,18 +137,18 @@ try {
     for (const run of runs) {
       await wait(REACTION_MS);
       presses += 1;
-      const from = await base(`({ ...b.currentTile })`);
+      const from = await on(`({ ...b.currentTile })`);
       await page.keyDown(KEY[run.direction]);
       for (let guard = 0; guard < 2000; guard += 1) {
         await frames(1);
-        const at = await base(`({ ...b.currentTile, moving: Boolean(b.targetTile), gone: !b.sys.isActive() || b.leaving === true })`);
+        const at = await on(`({ ...b.currentTile, moving: Boolean(b.targetTile), gone: !b.sys.isActive() || b.leaving === true || Boolean(b.dialogBox?.visible) })`);
         const walked = Math.abs(at.x - from.x) + Math.abs(at.y - from.y);
         if (at.gone || walked >= run.tiles || (walked === run.tiles - 1 && at.moving)) {
           break;
         }
       }
       await page.keyUp(KEY[run.direction]);
-      for (let guard = 0; guard < 40 && (await base(`Boolean(b.targetTile) && b.sys.isActive()`)); guard += 1) {
+      for (let guard = 0; guard < 40 && (await on(`Boolean(b.targetTile) && b.sys.isActive()`)); guard += 1) {
         await frames(1);
       }
     }
@@ -298,6 +305,143 @@ try {
   await wait(300);
   await shot('the-raid-is-yours');
   stage('The raid opens');
+  if (playCatch) {
+    const inWorld = (expression) => page.evaluate(`(() => { const b = ${GAME}.scene.getScene('world'); return ${expression}; })()`);
+    const fightView = () => page.evaluate(`${GAME}.scene.getScene('battle').describeForTest()`);
+    /** Moves the battle cursor onto the first command that starts with `prefix`, and presses it. */
+    const choose = async (prefix) => {
+      for (let guard = 0; guard < 40; guard += 1) {
+        const view = await fightView();
+        const index = (view.commands ?? []).findIndex((command) => command.startsWith(prefix));
+        if (index < 0) {
+          return false;
+        }
+        if (view.cursor === index) {
+          await tap('Space');
+          return true;
+        }
+        await tap(guard % 4 === 3 ? 'ArrowDown' : 'ArrowRight');
+      }
+      throw new Error(`the cursor never reached ${prefix}`);
+    };
+    /** A fight played to its end: the Pidgey Oak named is caught (or knocked out), anything else wild is run from. */
+    const fight = async (target) => {
+      let lastLine = '';
+      let stalled = 0;
+      let toldToThrow = false;
+      for (let guard = 0; guard < 600 && (await active('battle')); guard += 1) {
+        const view = await fightView();
+        if (view.message && view.message.text !== lastLine) {
+          lastLine = view.message.text;
+          stalled = 0;
+          toldToThrow ||= lastLine.includes('Throw a BALL now');
+          say(`the fight says: ${lastLine}`);
+        } else if ((stalled += 1) > 40) {
+          throw new Error(`the fight stopped moving: ${JSON.stringify(view)}`);
+        }
+        if (view.busy || !view.foe) {
+          await wait(200);
+        } else if (view.mode === 'nickname') {
+          await tap('ArrowDown');
+          await tap('Space');
+        } else if (view.mode === 'naming') {
+          await tap('Escape');
+        } else if (view.mode === 'party') {
+          await tap('ArrowRight');
+          await tap('Space');
+        } else if (!(view.commands?.length > 0) || !['main', 'moves', 'balls'].includes(view.mode)) {
+          // A line being read (mode 'events'), whatever command labels are still drawn under it.
+          await tap('Space');
+        } else if (view.mode === 'main') {
+          // A newcomer throws when the fight says to, or once the foe's bar is under half.
+          const catchNow = target && !knockOut && view.foe.hp > 0 && (toldToThrow || view.foe.hp <= view.foe.maxHp / 2);
+          if (catchNow) {
+            await shot('ball-now');
+            await choose('BALL');
+          } else if (target || view.trainer) {
+            await choose('FIGHT');
+          } else if (!(await choose('RUN'))) {
+            await choose('FIGHT');
+          }
+        } else if (view.mode === 'moves') {
+          const move = view.moves.find((each) => each.power > 0 && each.pp > 0) ?? view.moves[0];
+          await choose(move.name.toUpperCase().slice(0, 6));
+        } else {
+          await tap('Space');
+        }
+      }
+      for (let guard = 0; guard < 300 && !(await active('world')) && !(await active('extraction')); guard += 1) {
+        await wait(100);
+      }
+      await wait(400);
+    };
+    /** Whatever the raid is saying, read through. */
+    const readOn = async () => {
+      for (let guard = 0; guard < 60 && (await inWorld(`b.sys.isActive() && b.dialogBox?.visible === true`)); guard += 1) {
+        say(`the raid says: ${String(await inWorld(`b.dialogBox?.textObject?.text ?? ''`)).replaceAll('\n', ' ')}`);
+        await tap('Space');
+      }
+    };
+    const chip = () => inWorld(`b.wayCache?.cue ?? null`);
+    const pidgeys = () => inWorld(`b.currentMap.entities.filter((e) => e.pokemon && !b.wasMet(e) && b.entityHeldTiles(e).some((t) => Math.abs(t.x - b.currentTile.x) + Math.abs(t.y - b.currentTile.y) < 24)).map((e) => e.id + '@' + b.entityHeldTiles(e)[0].x + ',' + b.entityHeldTiles(e)[0].y)`).catch(() => null);
+    say(`the chip: ${await chip()}; wild figures standing: ${JSON.stringify(await pidgeys())}`);
+    stageStart = { clockMs, presses };
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      if (await active('battle')) {
+        await fight(false);
+        await readOn();
+        continue;
+      }
+      const target = await inWorld(`(() => { const f = b.firstCatchFigure(); return f ? { id: f.id, at: b.entityHeldTiles(f)[0] } : null; })()`);
+      if (!target) {
+        break;
+      }
+      const beside = `[[0,1],[0,-1],[1,0],[-1,0]].map(([dx, dy]) => ({ x: ${target.at.x} + dx, y: ${target.at.y} + dy }))`;
+      await walk(beside, `the Pidgey at ${target.at.x},${target.at.y}`, inWorld);
+      await readOn();
+      if (await active('battle')) {
+        continue;
+      }
+      const here = await inWorld(`({ ...b.currentTile })`);
+      const face = here.x < target.at.x ? 'ArrowRight' : here.x > target.at.x ? 'ArrowLeft' : here.y < target.at.y ? 'ArrowDown' : 'ArrowUp';
+      await tap(face);
+      await tap('Space');
+      await readOn();
+      for (let guard = 0; guard < 60 && !(await active('battle')); guard += 1) {
+        await wait(100);
+      }
+      if (await active('battle')) {
+        await fight(true);
+        await readOn();
+        await shot('after-the-fight');
+        say(`the chip: ${await chip()}; wild figures standing: ${JSON.stringify(await pidgeys())}`);
+      }
+    }
+    stage('The catch');
+    await shot('after-the-catch');
+    for (let attempt = 0; attempt < 12 && !(await active('extraction')); attempt += 1) {
+      if (await active('battle')) {
+        await fight(false);
+      }
+      await readOn();
+      const exit = await inWorld(`b.nearestExitCue()?.position ?? null`).catch(() => null);
+      if (!exit) {
+        await wait(300);
+        continue;
+      }
+      await walk(`[${JSON.stringify(exit)}]`, `the way out at ${exit.x},${exit.y}`, inWorld).catch((error) => say(String(error.message)));
+      for (let guard = 0; guard < 30 && !(await active('extraction')); guard += 1) {
+        await wait(100);
+      }
+    }
+    for (let guard = 0; guard < 300 && !(await active('extraction')); guard += 1) {
+      await wait(100);
+    }
+    await wait(1500);
+    stage('Out');
+    await shot('the-result');
+    say(`the result: ${(await page.evaluate(`document.querySelector('#screens .pixel-ui')?.innerText ?? ''`)).replace(/\s+/g, ' ').trim().slice(0, 400)}`);
+  }
   const total = { seconds: Number((clockMs / 1000).toFixed(1)), presses };
   console.log('\nBarriers, in order:');
   for (const each of stages) {
