@@ -115,4 +115,15 @@ describe('a cache opened and left', () => {
     expect(rows[1]).toMatchObject({ text: 'RANGER PACK - TREASURE!', prize: 'treasure' });
     expect(rows[0].prize).toBeUndefined();
   });
+
+  it('names a pair found as one find, once: the first of them comes to light as the find, the second as itself', () => {
+    const pair = searchPieces([
+      { itemId: 'oran-berry', quantity: 1 },
+      { itemId: 'lockpick', quantity: 2, find: 'rare' },
+    ]);
+    expect(pair.map(isPrizeFind)).toEqual([false, true, false]);
+    const rows = searchRows({ searchedMs: searchDurationMs(pair), taken: [] }, pair);
+    expect(rows.filter((row) => row.prize !== undefined).map((row) => row.text)).toEqual(['LOCKPICK - RARE FIND']);
+    expect(rows[2].text).toBe('LOCKPICK');
+  });
 });

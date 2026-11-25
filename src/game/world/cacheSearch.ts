@@ -58,8 +58,15 @@ export function openedCacheLine(piecesLeft: number): string {
 
 /** What searching a cache comes to, in pieces, in the order they come to light. */
 export function searchPieces(reward: WorldPoi['reward']): SearchPiece[] {
+  // A bag's find is one find however many of it there are: its first piece
+  // comes to light as the find, named and sounded, and the rest as itself -
+  // a pair of Lockpicks announced twice reads as two finds, or as a fault.
   return reward.flatMap(({ itemId, quantity, find }) =>
-    Array.from({ length: quantity }, () => ({ itemId, squares: cellsFor(itemId, 1), ...(find ? { find } : {}) })),
+    Array.from({ length: quantity }, (_, unit) => ({
+      itemId,
+      squares: cellsFor(itemId, 1),
+      ...(find && unit === 0 ? { find } : {}),
+    })),
   );
 }
 
