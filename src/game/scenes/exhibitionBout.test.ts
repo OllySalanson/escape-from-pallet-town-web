@@ -66,7 +66,11 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('a bout for show', () => {
   it('reaches the save nowhere: the scene only names it where a kind is met and where a raid is lost, and a bout is turned away from both', () => {
-    expect([...methodsTouchingTheSave()].sort()).toEqual(['registerFoesSeen', 'resolveRunWipe', 'writeFight', 'writeFightOver']);
+    expect([...methodsTouchingTheSave()].sort()).toEqual(['payPrizeMoney', 'registerFoesSeen', 'resolveRunWipe', 'writeFight', 'writeFightOver']);
+    // A prize is written down as paid (`world/prizeMoney.ts`), and a bout is never handed one.
+    expect(SOURCE).toContain('this.prizeMoney = data.exhibition ? 0 :');
+    const paid = SOURCE.slice(SOURCE.indexOf('private payPrizeMoney(): { message: string }[] {')).split('\n');
+    expect(paid.slice(1, 5).map((line) => line.trim())).toEqual(['const prize = this.prizeMoney;', 'this.prizeMoney = 0;', 'if (prize <= 0) {', 'return [];']);
     // A raid's fight is written down as it is fought (`run/raidResume.ts`), and a bout never is.
     const written = SOURCE.slice(SOURCE.indexOf('private writeFight(): void {'));
     expect(written.split('\n')[1]).toContain('this.exhibition');

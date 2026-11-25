@@ -24,10 +24,17 @@ import type { CharacterDesignId } from './characterDesigns';
  * Every trainer pays it, the roadside ones a walk straight out passes
  * included: a fight is a risk the walk is not, and a first bug catcher paying
  * "₽9 for winning!" read as the game mocking the player (tried, 25 Nov 2026).
- * Two exceptions keep it from being a vending machine, each a rule the
- * trainer bags already keep (`trainerBags.ts`):
+ * Three rules keep it from being a vending machine:
+ * - a trainer pays **once a save**, as FireRed's do (`raidProgress.trainersPaid`,
+ *   written the moment the prize is paid). A roadside trainer stands back up
+ *   every raid, and fights cost no raid clock, so paying every time made six
+ *   trainers by STEPPING STONES a ₽960 round in forty seconds, raid after raid,
+ *   and Bill's unrationed Potions a supply line (the fresh critic, 25 Nov 2026).
+ *   Paid once, the vale's trainers are a purse spread over the map: new money
+ *   is a trainer you have not beaten yet, further out;
  * - a **hunter** pays only the first time a raid beats one: there is one in
- *   every district and they are beaten every raid;
+ *   every district and they are beaten every raid (hunters are new each raid,
+ *   so this one is per raid, as the trainer bags' is, `trainerBags.ts`);
  * - a fight for sport - a bout, a practice, a gym leader sparring in the hall
  *   - pays nothing, and is never handed a prize. A boss pays once a save
  *   because a boss is fought once a save.
@@ -110,6 +117,15 @@ export function prizeMoneyFor(owner: PrizeOwner): number {
       ? Math.max(PRIZE_VALUE_BOSS, (owner.design && PRIZE_VALUE_FOR_DESIGN[owner.design]) ?? 0)
       : ((owner.design && PRIZE_VALUE_FOR_DESIGN[owner.design]) ?? PRIZE_VALUE_FALLBACK);
   return 4 * Math.max(0, Math.floor(last)) * value;
+}
+
+/**
+ * What beating this trainer pays now: their prize, or nothing if this save has
+ * been paid by them before (`raidProgress.trainersPaid`). A hunter is new each
+ * raid and is never on that list; the raid's own `hunterPrizePaid` rules it.
+ */
+export function prizeDue(trainerId: string, owner: PrizeOwner, trainersPaid: readonly string[] = []): number {
+  return !owner.hunter && trainersPaid.includes(trainerId) ? 0 : prizeMoneyFor(owner);
 }
 
 /** FireRed's line, with this game's money. */
