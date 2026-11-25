@@ -18,6 +18,12 @@
  * play the game headless open second tabs and step a stopped loop, and a plate
  * waiting for a click would stand in the way of every one of them.
  *
+ * On a phone the window is left by putting the page away - another app, the
+ * lock button - which hides the page and may never blur the window, so a
+ * hidden page (`visibilitychange`, `pagehide`) pauses too; and the touch that
+ * plays on is spent on the plate as a key is, or the touch pad's OK under it
+ * would also talk to whoever was faced.
+ *
  * Phaser-free, so the rule is tested on a stand-in window; the scene does the
  * pausing and draws the plate (`WorldScene.pauseForWindow`).
  */
@@ -65,6 +71,13 @@ export interface WindowPauseOptions {
    * typed into, or its tab.
    */
   readonly ignores?: (event: InputEventLike) => boolean;
+  /**
+   * The document, whose page being hidden is a window left too. A phone
+   * switching to another app, or locking, hides the page and may never blur
+   * the window, and the raid came back running under a thumb that had not
+   * looked yet.
+   */
+  readonly page?: EventTarget & { readonly visibilityState?: string };
 }
 
 /**
@@ -84,6 +97,10 @@ export function watchWindowFocus(
 ): () => void {
   let paused: PausesForWindow | null = null;
   let spentCode: string | null = null;
+  // A finger that resumed the raid is spent on the plate until it lifts: the
+  // touch pad presses its key on the same touch (`ui/touchPad.ts`), and OK
+  // tapped to play on must not also talk to whoever was faced.
+  let spentTouch = false;
   const ignored = (event: InputEventLike): boolean => options.ignores?.(event) === true;
 
   const resume = (): void => {
@@ -107,6 +124,11 @@ export function watchWindowFocus(
 
   const onKeyDown = (raw: Event): void => {
     const event = raw as unknown as InputEventLike;
+    if (spentTouch) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
     const code = event.code ?? '';
     if (spentCode !== null && code === spentCode) {
       event.preventDefault();
@@ -131,7 +153,18 @@ export function watchWindowFocus(
   const onPointerDown = (raw: Event): void => {
     const event = raw as unknown as InputEventLike;
     if (paused && !ignored(event)) {
+      spentTouch = true;
       resume();
+    }
+  };
+
+  const onPointerUp = (): void => {
+    spentTouch = false;
+  };
+
+  const onPageHidden = (): void => {
+    if (options.page?.visibilityState === 'hidden') {
+      onBlur();
     }
   };
 
@@ -141,7 +174,15 @@ export function watchWindowFocus(
   target.addEventListener('keydown', onKeyDown, true);
   target.addEventListener('keyup', onKeyUp, true);
   target.addEventListener('pointerdown', onPointerDown, true);
+  target.addEventListener('pointerup', onPointerUp, true);
+  target.addEventListener('pointercancel', onPointerUp, true);
+  target.addEventListener('pagehide', onBlur);
+  options.page?.addEventListener('visibilitychange', onPageHidden);
   return () => {
+    target.removeEventListener('pointerup', onPointerUp, true);
+    target.removeEventListener('pointercancel', onPointerUp, true);
+    target.removeEventListener('pagehide', onBlur);
+    options.page?.removeEventListener('visibilitychange', onPageHidden);
     target.removeEventListener('blur', onBlur);
     target.removeEventListener('keydown', onKeyDown, true);
     target.removeEventListener('keyup', onKeyUp, true);

@@ -100,6 +100,7 @@ const stopWatchingFocus =
           return pausesForWindow(world) ? world : null;
         },
         {
+          page: document,
           ignores: (event) =>
             game.scene.isActive('feedback') ||
             (event.target instanceof Element && event.target.closest('.feedback-panel, .feedback-tab') !== null),
