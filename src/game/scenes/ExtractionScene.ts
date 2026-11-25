@@ -1,13 +1,13 @@
 import Phaser from 'phaser';
 import { moodOfRaid } from '../base/arenaCrowd';
-import { haulFromReport } from '../base/haulOnTheQuay';
 import { currentTry, homeAfterRaid, recordWalkedOut } from '../maker/tryIt';
 import { countPlay, raidEnding } from '../analytics/playCounter';
 import { friendRoom } from '../raidRoom/friendRoom';
 import { audioManager } from '../audio/AudioManager';
 import { isPlaytestRun } from '../dev/playtestMode';
 import { nextStepLines } from '../hub/nextStep';
-import { resultMoment, type ResultMoment } from '../run/resultMoment';
+import { RAID_KEY_LETTERS } from '../input/keyBindings';
+import { resultMoment, STOW_LABEL, type HaulStow, type ResultMoment } from '../run/resultMoment';
 import { SaveManager } from '../save/SaveManager';
 import { formatElapsedClock } from '../run/raidClock';
 import {
@@ -24,10 +24,10 @@ import type {
   ReportItem,
   ReportPokemon,
 } from '../run/extractionReport';
-import { formatMoney, isCurrency, itemCountTag } from '../items';
+import { formatMoney, isCurrency, itemAmountFor, itemCountTag } from '../items';
 import { publicAssetUrl } from '../publicAssetUrl';
 import { pokemonSpritePath } from '../pokemon/pokemonSprites';
-import { iconUrl, itemIcon, itemIconName, objectiveIcon } from '../ui/icons';
+import { iconUrl, itemIcon, itemIconName, objectiveIcon, WORLD_ICONS } from '../ui/icons';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import type { SceneDescription } from '../dev/testDescribe';
 import { formatExperience } from '../ui/pokemonSummary';
@@ -122,6 +122,8 @@ export class ExtractionScene extends Phaser.Scene {
   private promptTimer: Phaser.Time.TimerEvent | null = null;
   private sequenceHoldMs = 0;
   private defeatStage: HTMLElement | null = null;
+  /** The sack's chime is owed once the screen answers, because nothing hopped to sound it (`hookStow`). */
+  private chimeAtLock = false;
 
   public constructor() {
     super('extraction');
@@ -158,6 +160,7 @@ export class ExtractionScene extends Phaser.Scene {
     this.promptTimer?.remove(false);
     this.promptTimer = null;
     this.defeatStage = null;
+    this.chimeAtLock = false;
   }
 
   public create(): void {
@@ -316,16 +319,21 @@ export class ExtractionScene extends Phaser.Scene {
     control.onclick = () => this.leave();
     control.disabled = true;
     this.hookFullReport();
+    this.hookStow();
     this.time.delayedCall(lockMs, () => {
       this.locked = false;
       control.disabled = false;
       // The raid's own ending has already sounded on the way here. The one
       // thing this screen adds is the contract, and it says so as the screen
       // becomes answerable: played on arrival it landed 0.7s behind the
-      // extraction jingle, two rising phrases running into each other.
-      if (this.report.outcome === 'ESCAPED' && this.report.contract?.complete) {
+      // extraction jingle, two rising phrases running into each other. The
+      // contract's fanfare says what the sack's chime would, so it is the one.
+      if (this.contractToSound()) {
         audioManager.play('contractBanked');
+      } else if (this.chimeAtLock) {
+        audioManager.play('haulStowed');
       }
+      this.chimeAtLock = false;
       // Focus only lands once the button can act on it, so the first keypress a
       // player makes after reading is the one that leaves.
       this.overlay.focus('[data-continue]');
@@ -380,6 +388,86 @@ export class ExtractionScene extends Phaser.Scene {
     this.leave();
   }
 
+  private contractToSound(): boolean {
+    return this.report.outcome === 'ESCAPED' && this.report.contract?.complete === true;
+  }
+
+  /**
+   * The haul going into YOUR THINGS on the moment (`stowMarkup`): the hops are
+   * CSS, and each one landing is what sounds, so the sound is never ahead of or
+   * behind the picture on a slow frame. A drop each, the sack gulping, and the
+   * chime as the last is in and its name is written under it. A contract's
+   * fanfare says the same and more, and it sounds as the screen answers
+   * whatever the sack is doing, so the sack stays quiet then. Reduced motion
+   * draws it already in, and the chime waits for the screen to answer, or it
+   * runs into the extraction jingle.
+   */
+  private hookStow(): void {
+    const stow = this.overlay.root.querySelector<HTMLElement>('[data-haul-stow]');
+    if (!stow) {
+      return;
+    }
+    const things = [...stow.querySelectorAll<HTMLElement>('[data-stow-thing]')];
+    const still = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+    if (still || things.length === 0) {
+      stow.classList.add('is-stowed');
+      this.chimeAtLock = true;
+      return;
+    }
+    const chime = () => {
+      stow.classList.add('is-stowed');
+      if (!this.contractToSound()) {
+        audioManager.play('haulStowed');
+      }
+    };
+    const bag = stow.querySelector<HTMLElement>('[data-stow-bag]');
+    let landed = 0;
+    for (const thing of things) {
+      thing.addEventListener('animationend', (event) => {
+        if (event.animationName !== 'haul-stow-hop' || !stow.isConnected) {
+          return;
+        }
+        landed += 1;
+        if (bag) {
+          // Restarted for every catch: off, a reflow, and on again.
+          bag.classList.remove('is-gulping');
+          void bag.offsetWidth;
+          bag.classList.add('is-gulping');
+        }
+        if (landed < things.length) {
+          audioManager.play('haulDrop');
+        } else {
+          chime();
+        }
+      });
+    }
+  }
+
+  /**
+   * What the raid put in YOUR THINGS, in a row beside an open sack: each hops
+   * in after the one nearer it and settles in its mouth, the sack gulps, and its name
+   * and key are written under it (`run/resultMoment.ts`). Each thing knows its place in the row,
+   * so how far it hops to the sack's mouth is the stylesheet's sum.
+   */
+  private stowMarkup(stow: HaulStow): string {
+    const cells = [
+      ...stow.things.map(
+        (thing) =>
+          `<img src="${iconUrl(itemIconName(thing.itemId))}" alt="" />${
+            thing.quantity > 1 || isCurrency(thing.itemId) ? `<span class="haul-stow-count">${escapeHtml(itemCountTag(thing.itemId, thing.quantity))}</span>` : ''
+          }`,
+      ),
+      ...(stow.more > 0 ? [`<span class="haul-stow-more">+${stow.more}</span>`] : []),
+    ];
+    const middle = (cells.length - 1) / 2;
+    const said = [...stow.things.map((thing) => itemAmountFor(thing.itemId, thing.quantity)), ...(stow.more > 0 ? [`${stow.more} more`] : [])].join(', ');
+    return `<div class="haul-stow" data-haul-stow style="--n: ${cells.length}" role="img" aria-label="${escapeHtml(`${said}, into YOUR THINGS`)}"><div class="haul-stow-row">${cells
+      .map((cell, index) => `<span class="haul-stow-thing" data-stow-thing style="--at: ${index}; --from: ${index - middle}; --deep: ${index % 2}">${cell}</span>`)
+      .join('')}</div><div class="haul-stow-bag" data-stow-bag><img class="haul-stow-back" src="${iconUrl(WORLD_ICONS.thingsBag)}" alt="" /><img class="haul-stow-front" src="${iconUrl(
+      WORLD_ICONS.thingsBagFront,
+    )}" alt="" /></div><span class="px-name haul-stow-label" aria-hidden="true">${escapeHtml(STOW_LABEL)}</span></div>`;
+  }
+
   /** The moment's FULL REPORT button, while the moment is on screen. */
   private hookFullReport(): void {
     const full = this.overlay.root.querySelector<HTMLButtonElement>('[data-full-report]');
@@ -428,7 +516,7 @@ export class ExtractionScene extends Phaser.Scene {
       body: `<main class="px-body extraction-moment-layout">${pixelWindow(
         `${picture}<strong class="px-name moment-headline" data-moment-headline>${escapeHtml(moment.headline)}</strong>${
           report.closeCall ? `<span class="px-wrap">${escapeHtml(report.closeCall)}</span>` : ''
-        }${moment.line ? `<span class="px-wrap">${escapeHtml(moment.line)}</span>` : ''}${
+        }${moment.line ? `<span class="px-wrap">${escapeHtml(moment.line)}</span>` : ''}${moment.stow ? this.stowMarkup(moment.stow) : ''}${
           next ? `<span class="px-wrap moment-next">${escapeHtml(next)}</span>` : ''
         }`,
         { className: 'extraction-moment px-tone-primary', tag: 'div' },
@@ -494,7 +582,6 @@ export class ExtractionScene extends Phaser.Scene {
     const home = homeAfterRaid(
       moodOfRaid(this.report.outcome === 'ESCAPED', this.report.haulTier, closeCall !== undefined),
       closeCall,
-      haulFromReport(this.report),
     );
     const reachable = this.scene.manager.keys[home.key];
     this.cameras.main.fadeOut(200, 0, 0, 0);
@@ -811,7 +898,7 @@ export class ExtractionScene extends Phaser.Scene {
     // this screen could lie about a result the player can see for themselves -
     // and so is calling a raid that levelled a Pokemon "nothing new to bank".
     if (this.report.haulTier !== 'empty') {
-      return 'Everything above is on BILL’S PC, ready for your next raid.';
+      return this.whereTheHaulIs();
     }
     if (this.report.progress.length > 0) {
       return 'No gear banked, but what your party learned is banked with them.';
@@ -821,6 +908,25 @@ export class ExtractionScene extends Phaser.Scene {
     return this.spentSupplies
       ? 'Nothing new to bank. What is left of your loadout is back at base.'
       : 'Nothing new to bank, but your loadout is back at base and ready to redeploy.';
+  }
+
+  /**
+   * Where what came home is, by the names of the screens that show it and
+   * their keys: things in YOUR THINGS, Pokémon on YOUR TEAM. It said BILL'S
+   * PC, the name of one of the places those are read, and the quay's pile
+   * said "the vault", the name of none (the captain, 25 Nov 2026).
+   */
+  private whereTheHaulIs(): string {
+    const { items, pokemon } = this.report.ledger;
+    // The keys as words, not `[B]`: this screen answers to neither.
+    const things = `YOUR THINGS (${RAID_KEY_LETTERS.bag} at base)`;
+    const team = `YOUR TEAM (${RAID_KEY_LETTERS.party} at base)`;
+    if (pokemon.length === 0) {
+      return `Everything above is in ${things}, ready for your next raid.`;
+    }
+    return items.length === 0
+      ? `Everything above is on ${team}, ready for your next raid.`
+      : `The things are in ${things} and the Pokémon on ${team}, ready for your next raid.`;
   }
 
   private get spentSupplies(): boolean {

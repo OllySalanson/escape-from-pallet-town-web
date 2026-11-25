@@ -3945,7 +3945,7 @@ export class HubScene extends Phaser.Scene {
                   formatTraderStacks([{ itemId, quantity: quantity * count }]),
                   this.stash.itemCount(itemId),
                   quantity * count,
-                  'in the vault',
+                  'in YOUR THINGS',
                   itemIcon(itemId, this.itemName(itemId)),
                 ),
               ),
@@ -4050,7 +4050,7 @@ export class HubScene extends Phaser.Scene {
         // Money is held as a sum, so both halves are written as one: ₽120 against ₽300.
         {
           ask: formatMoney(item.price),
-          held: `${formatMoney(held)} in the vault`,
+          held: `${formatMoney(held)} in YOUR THINGS`,
           short: held < item.price,
           icon: itemIcon(CURRENCY_ITEM_ID, this.itemName(CURRENCY_ITEM_ID)),
         },
@@ -4091,7 +4091,7 @@ export class HubScene extends Phaser.Scene {
               formatTraderStacks([{ itemId, quantity: quantity * count }]),
               this.stash.itemCount(itemId),
               quantity * count,
-              'in the vault',
+              'in YOUR THINGS',
               itemIcon(itemId, this.itemName(itemId)),
             ),
       ),

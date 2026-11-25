@@ -277,6 +277,12 @@ game.
   bag (`#7c4a24`, `#b8743a`, `#e0a05a`) lying on its side with its strap up and
   a Poke Ball rolled out of its mouth, the bag a beaten trainer drops. Drawn
   lying down so it never reads as one of the four packs, which stand up.
+  `things-bag` and `things-bag-front` are `scripts/draw-things-bag-icon.mjs`:
+  a blue canvas sack (`#24386c`, `#3a5ca8`, `#6a94dc`) standing up with its
+  mouth open and dark (`#1a1424`, `#3a2c48`) and its neck tied with a gold cord
+  (`#d8a030`, `#f8d870`, `#fff0c0`), YOUR THINGS on the raid's result card. The
+  second file is the same sack from its lip down, drawn over the things so each
+  is seen to go in. Blue so it never reads as a trainer's tan bag or a pack.
   `bell-rope` is `scripts/draw-bell-rope-icon.mjs`: an iron bollard (`#4a4f5c`,
   `#8a93a6`) with a coil of pale hemp round its neck (`#d9a75e`, `#a0743c`) and
   the rope running off the foot of the tile into the sea below. It is what THE

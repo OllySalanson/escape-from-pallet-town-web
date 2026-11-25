@@ -416,8 +416,7 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   map.plant(NOTICE_BOARD.x, NOTICE_BOARD.y, 'noticeBoard');
 
   // Crates on the corner of the quay, off the boats and waiting for the
-  // warehouses (`harbourLife.ts` has the porter minding them). The quay below
-  // them is where a raid's haul is stood out (`haulOnTheQuay.ts`). The
+  // warehouses (`harbourLife.ts` has the porter minding them). The
   // forecourt's other corner is a statue, a gap, a barrel and a cottage.
   map.plant(3, 16, 'crateStack');
   // What Bill keeps by his own wall is one barrel, a tile clear of the

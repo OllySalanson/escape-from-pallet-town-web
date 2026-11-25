@@ -49,7 +49,6 @@ import {
   starterQuestion,
 } from '../base/starterTable';
 import { StarterPreview } from '../ui/StarterPreview';
-import { HAUL_CAPTION, HAUL_SAILOR_LINE, haulLaidOut } from '../base/haulOnTheQuay';
 import {
   FAVOUR_ANSWERS,
   declineErrand,
@@ -483,8 +482,6 @@ let boatDueHome = false;
  * rather than arriving off the title, so it is said the first time they do.
  */
 let harbourToBeNamed = false;
-/** What the Seagallop is bringing home, for the next time the player is out in the yard. */
-let haulDueHome: readonly string[] = [];
 /** How long the view looks round at the crowd on coming home, and how far towards them. */
 const CROWD_LOOK_MS = 1700;
 /** Where the run's slate hangs, on the rail at the head of the runner: beside whoever has just come up it, and in the view turned to the crowd. */
@@ -663,8 +660,6 @@ export interface BaseSceneData {
   readonly saidBy?: GridPosition;
   /** A new game, with nothing written yet: this is Oak's table with all three balls on it (`base/starterTable.ts`). */
   readonly choosing?: boolean;
-  /** What a raid just brought out, to stand on the quay when the boat ties up (`base/haulOnTheQuay.ts`). */
-  readonly haul?: readonly string[];
   /** The ball just taken off that table, so Oak hands it over and says what a raid is. */
   readonly chose?: StarterSpeciesId;
 }
@@ -981,8 +976,6 @@ export class BaseScene extends Phaser.Scene {
   private keeperMark: Phaser.GameObjects.Graphics | null = null;
   /** There is a partner to choose on Oak's table, and no game in storage yet (`base/starterTable.ts`). */
   private choosing = false;
-  /** What is standing on the quay this visit to the yard. */
-  private haulOnTheQuay: readonly string[] = [];
   private starterPreview: StarterPreview | null = null;
   /** The ball the pointer is resting on, which only asks what is in it. */
   private pointedBall: StarterSpeciesId | null = null;
@@ -1388,13 +1381,8 @@ export class BaseScene extends Phaser.Scene {
     this.homeOnTheRail = data.arrival === 'raid';
     if (data.arrival === 'raid') {
       boatDueHome = true;
-      haulDueHome = [...new Set([...haulDueHome, ...(data.haul ?? [])])];
     } else if (boatHome) {
       boatDueHome = false;
-    }
-    this.haulOnTheQuay = boatHome ? haulDueHome : [];
-    if (boatHome) {
-      haulDueHome = [];
     }
     this.boats = null;
     this.rowingBoats = null;
@@ -1437,7 +1425,6 @@ export class BaseScene extends Phaser.Scene {
       });
     }
     this.drawSprites();
-    this.drawHaul();
     this.drawFurniture();
     this.drawOddities();
     this.drawWallMap();
@@ -3803,16 +3790,6 @@ export class BaseScene extends Phaser.Scene {
     }
   }
 
-  /** What the raid brought home, on the quay beside the boat: pictures, walked over as ground loot is. */
-  private drawHaul(): void {
-    for (const { itemId, at } of haulLaidOut(this.haulOnTheQuay)) {
-      this.add
-        .image(at.x * TILE_SIZE, at.y * TILE_SIZE, iconTextureKey(itemIconName(itemId)))
-        .setOrigin(0, 0)
-        .setDepth(atRow(MARKER_BAND, at.y));
-    }
-  }
-
   /**
    * Everything on Bill's shelves, each as the miniature `base/cabinet.ts`
    * draws it (`oddityFrame`). Each answers the pointer: resting on one is
@@ -4276,18 +4253,6 @@ export class BaseScene extends Phaser.Scene {
         speech: { voice: 'name', tiles: [DAY_CARE_KEEPER.position] },
       }),
     );
-    const haul = haulLaidOut(this.haulOnTheQuay).map(({ at }) => at);
-    if (haul.length > 0) {
-      this.worldLabels.push(
-        new WorldLabel(this, {
-          subject: tilesRect(haul),
-          text: HAUL_CAPTION,
-          tone: LANDMARK_TONE,
-          depth: atRow(CAPTION_BAND, Math.max(...haul.map((tile) => tile.y))),
-          speech: { voice: 'name', tiles: haul },
-        }),
-      );
-    }
     if (isPlaytestRun()) {
       this.worldLabels.push(
         new WorldLabel(this, {
@@ -5695,7 +5660,7 @@ export class BaseScene extends Phaser.Scene {
       const log = seagallopLines(this.savedGame.raidProgress.raidRecord);
       const rumour = this.hearRumour('sailor');
       const told = rumour ? [...log, rumour] : log;
-      this.say(this.haulOnTheQuay.length > 0 ? [HAUL_SAILOR_LINE, ...told] : told, [target]);
+      this.say(told, [target]);
       return;
     }
     if (local?.id === CAPTAIN_ID) {

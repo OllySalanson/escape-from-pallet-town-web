@@ -433,7 +433,7 @@ describe('Bill, at his cottage', () => {
     // Off the ration: he sells Potions to anybody, as many as they can pay for.
     expect(after.traderRationUsed).toBe(0);
     expect(bill.went).toEqual([]);
-    expect(bill.said.at(-1)).toContain('in your vault');
+    expect(bill.said.at(-1)).toContain('in YOUR THINGS');
   });
 
   it('strikes a barter on YES, and draws the room again with the thing off the shelf', () => {

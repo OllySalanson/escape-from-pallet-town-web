@@ -89,7 +89,7 @@ export function checkBill(bill: WearableBill, stash: Pick<Stash, 'itemCount'>): 
     .filter(([itemId, quantity]) => stash.itemCount(itemId) < quantity)
     .map(([itemId, quantity]) => ({ itemId, quantity: quantity - stash.itemCount(itemId) }));
   if (short.length > 0) {
-    return { bill, refusal: 'goods-short', why: `That needs ${itemAmountsFor(short)} more than you have in the vault.` };
+    return { bill, refusal: 'goods-short', why: `That needs ${itemAmountsFor(short)} more than you have in YOUR THINGS.` };
   }
   return { bill };
 }

@@ -113,7 +113,7 @@ export function recordWalkedOut(attempt: TryingMap): void {
  * Where a raid's ending goes: back to the map maker from a try, to the base
  * from anything else. One answer for the three scenes a raid can end in.
  */
-export function homeAfterRaid(raidMood?: CrowdMood, closeCall?: string, haul: readonly string[] = []):
+export function homeAfterRaid(raidMood?: CrowdMood, closeCall?: string):
   | { readonly key: 'mapmaker'; readonly data: { readonly tried: true } }
   | {
       readonly key: 'base';
@@ -122,7 +122,6 @@ export function homeAfterRaid(raidMood?: CrowdMood, closeCall?: string, haul: re
         readonly room: 'raid-arena';
         readonly raidMood?: CrowdMood;
         readonly closeCall?: string;
-        readonly haul?: readonly string[];
       };
     } {
   return currentTry()
@@ -134,7 +133,6 @@ export function homeAfterRaid(raidMood?: CrowdMood, closeCall?: string, haul: re
           room: 'raid-arena',
           ...(raidMood ? { raidMood } : {}),
           ...(closeCall ? { closeCall } : {}),
-          ...(haul.length > 0 ? { haul } : {}),
         },
       };
 }
