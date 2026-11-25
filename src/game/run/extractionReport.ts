@@ -277,6 +277,11 @@ export interface ExtractionReport {
    * was written. Absent reads as no.
    */
   readonly settledElsewhere?: boolean;
+  /**
+   * And it was not settled at all: another window took it up where this one
+   * left it (`run/raidResume.ts`), and is playing it still.
+   */
+  readonly takenUpElsewhere?: boolean;
 }
 
 export interface ExtractionReportInput {
@@ -362,6 +367,8 @@ export interface ExtractionReportInput {
   readonly bossesBeaten?: readonly string[];
   /** See `ExtractionReport.settledElsewhere`. */
   readonly settledElsewhere?: boolean;
+  /** See `ExtractionReport.takenUpElsewhere`. */
+  readonly takenUpElsewhere?: boolean;
 }
 
 export function buildExtractionReport(input: ExtractionReportInput): ExtractionReport {
@@ -544,6 +551,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       : {}),
     saved: input.saved,
     ...(input.settledElsewhere ? { settledElsewhere: true } : {}),
+    ...(input.settledElsewhere && input.takenUpElsewhere ? { takenUpElsewhere: true } : {}),
   };
 }
 

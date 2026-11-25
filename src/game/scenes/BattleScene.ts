@@ -104,6 +104,7 @@ import { buildExtractionReport } from '../run/extractionReport';
 import { wipedContractReport } from '../objectives/contractReport';
 import { buildWipeSettlement, deployedRaidCondition } from '../run/raidSettlement';
 import { holdUnsavedEnding } from '../run/unsavedEnding';
+import { clearRaidResumeWriter, elsewhereFacts, setRaidResumeWriter, writeRaidResume, type FightState, type FoeState } from '../run/raidResume';
 import {
   packFullForPokemonLine,
   clearPackRoomForPokemon,
@@ -379,7 +380,67 @@ export interface BattleSceneData extends Partial<RaidCarriage> {
    * not the raid's state to carry: the world reads it off the tile every time.
    */
   weather?: WeatherId | null;
+  /**
+   * This fight is being taken up after the page it was in went
+   * (`run/raidResume.ts`): the other side as the last resolved turn left it,
+   * in the order the fight holds it.
+   */
+  resumed?: Partial<FightState>;
 }
+
+/** The fight itself, as a payload names it: what a taken-up fight is started from again. */
+type FightPayload = Pick<BattleSceneData, 'wild' | 'trainer' | 'teachingBattle' | 'hunterBattle' | 'weather'>;
+
+/** What a resolved turn left a Pokemon on the other side with, off the field if it is there. */
+function foeStateOf(pokemon: Pokemon, onField: BattleCombatant | undefined): FoeState {
+  return onField
+    ? {
+        hp: onField.currentHp,
+        status: onField.primaryStatus,
+        sleepTurns: onField.sleepTurns,
+        pp: pokemon.moves.map((move, index) => (onField.moves.find((each) => each.base === move.base) ?? onField.moves[index])?.pp ?? move.pp),
+      }
+    : {
+        hp: pokemon.currentHp,
+        status: pokemon.primaryStatus,
+        sleepTurns: pokemon.sleepTurns,
+        pp: pokemon.moves.map((move) => move.pp),
+      };
+}
+
+/** Puts a written foe state back on a Pokemon. */
+function takeUpFoe(pokemon: Pokemon, foe: FoeState | undefined): void {
+  if (!foe) {
+    return;
+  }
+  pokemon.currentHp = Math.max(0, Math.min(pokemon.maxHp, Math.floor(foe.hp)));
+  pokemon.primaryStatus = foe.status;
+  pokemon.sleepTurns = foe.sleepTurns;
+  foe.pp.forEach((pp, index) => pokemon.moves[index]?.setPp(pp));
+}
+
+/**
+ * A trainer fight taken up: each of the trainer's party as it was left, and
+ * those already beaten sent to the back, so the fight opens on one still
+ * standing as the engine opens on the first of the party.
+ */
+function takeUpFight(data: BattleSceneData): BattleSceneData {
+  const foes = data.resumed?.foes;
+  if (!foes || !data.trainer) {
+    return data;
+  }
+  data.trainer.party.forEach((pokemon, index) => takeUpFoe(pokemon, foes[index]));
+  const standing = data.trainer.party.filter((pokemon) => !pokemon.isFainted);
+  const beaten = data.trainer.party.filter((pokemon) => pokemon.isFainted);
+  return { ...data, trainer: { ...data.trainer, party: [...standing, ...beaten] } };
+}
+
+/** What a fight taken up says first. */
+export const FIGHT_TAKEN_UP_LINE = 'The fight picks up where it left off.';
+/** What a fight taken up after its last turn lost it says, before the wipe it was. */
+export const FIGHT_ALREADY_LOST_LINE = 'Your team had nothing left to fight with.';
+/** What a fight taken up after the turn that won it says, before the win is paid. */
+export const FIGHT_ALREADY_WON_LINE = 'The fight was already won.';
 
 /**
  * A bout in THE RAID ARENA's hall: against the rival on the far floor (`rival`),
@@ -700,6 +761,12 @@ export class BattleScene extends Phaser.Scene {
   private fallen = new Set<PokemonInstance>();
   private isTransitioning = false;
   private pendingBattleExit = false;
+  /** This fight as its payload named it, written down with every turn (`writeFight`). */
+  private fight: FightPayload = {};
+  /** The other side of this fight, in the order it is written down. */
+  private foesFought: Pokemon[] = [];
+  /** Writes this fight down when the page goes (`run/raidResume.ts`). */
+  private readonly resumeWriter = (): void => this.writeFight();
   /**
    * The one throw a beaten legend allows (`world/legends.ts`): `fighting`
    * while it can still fight and no ball goes near it, `offered` once it is
@@ -865,7 +932,8 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  public create(data: BattleSceneData = {}): void {
+  public create(payload: BattleSceneData = {}): void {
+    const data = takeUpFight(payload);
     void audioManager.startTheme('battle');
     // A wild fight was announced by the grass that produced it, one fade ago;
     // announcing it again here put two jingles on top of each other. A trainer's
@@ -946,7 +1014,15 @@ export class BattleScene extends Phaser.Scene {
     this.nicknameAsked = false;
     // An evolution a wipe or an exit overtook belongs to the fight it was in.
     this.evolving = null;
-    const playerPokemon = this.party.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
+    // A fight taken up after the turn that lost it opens on the Pokemon that
+    // fell, only to be the wipe it already was.
+    // And one taken up opens on whoever was out, if they still stand.
+    const wasOut = data.resumed?.lead === undefined ? undefined : this.party.pokemon[data.resumed.lead];
+    const playerPokemon =
+      (wasOut && !wasOut.isFainted ? wasOut : undefined) ??
+      this.party.getHealthyPokemon() ??
+      this.party.pokemon[0] ??
+      new Pokemon(CHARMANDER, 10);
     // The second Pokemon this party can field, which is what decides whether a
     // trainer who asks for a double battle gets one. It is offered to the
     // engine whatever the trainer asked for, and the engine is what refuses it.
@@ -956,6 +1032,9 @@ export class BattleScene extends Phaser.Scene {
     const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
     wildPokemon.shiny = data.wild?.shiny === true;
     wildPokemon.fromSecret = data.wild?.secret ?? null;
+    if (!data.trainer) {
+      takeUpFoe(wildPokemon, data.resumed?.foes?.[0]);
+    }
     this.launchedFromWorld = Boolean((data.wild || data.trainer) && data.party);
     // The whole party rides on the state, so the engine counts the bench as it
     // counts a trainer's: the field emptying is not the battle lost while
@@ -966,6 +1045,27 @@ export class BattleScene extends Phaser.Scene {
         : createBattleState(playerPokemon, wildPokemon, data.weather ?? null)),
       playerParty: this.party.pokemon,
     };
+    const lostAlready = data.resumed !== undefined && this.party.isAllFainted();
+    if (lostAlready) {
+      this.state = { ...this.state, outcome: 'defeat' };
+    }
+    // Taken up after the turn that won it: the win it was, paid once - to
+    // whoever is out, the one the fight can still say faced the foe.
+    const wild = data.trainer ? [] : [wildPokemon];
+    const wonAlready = !lostAlready && data.resumed !== undefined && [...(data.trainer?.party ?? []), ...wild].every((pokemon) => pokemon.isFainted);
+    if (wonAlready) {
+      this.state = { ...this.state, outcome: 'victory' };
+      this.victoryRewardsGranted = data.resumed?.rewarded === true;
+      this.foesFacedBy.set(this.state.enemy.pokemon, new Set([playerPokemon]));
+    }
+    this.fight = {
+      ...(data.wild ? { wild: data.wild } : {}),
+      ...(data.trainer ? { trainer: data.trainer } : {}),
+      ...(data.teachingBattle ? { teachingBattle: true } : {}),
+      ...(data.hunterBattle ? { hunterBattle: true } : {}),
+      weather: data.weather ?? null,
+    };
+    this.foesFought = data.trainer ? [...data.trainer.party] : [wildPokemon];
     // A fight in a wet place is in the rain from its first frame; the last
     // fight's overlay went down with the scene that drew it.
     this.rain = null;
@@ -1073,7 +1173,19 @@ export class BattleScene extends Phaser.Scene {
     // An ability that acts the moment its Pokemon lands has already acted -
     // `createBattleState` applied it - so these are the words for what is
     // already true, read after the opening lines that named both sides.
+    // Written down as it opens, so a reload from here on is this fight again.
+    if (this.runSession?.raidId !== undefined && !this.exhibition) {
+      setRaidResumeWriter(this.resumeWriter);
+      this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () => clearRaidResumeWriter(this.resumeWriter));
+      this.writeFight();
+    }
+    if (lostAlready || wonAlready) {
+      this.dialog.showMessages([lostAlready ? FIGHT_ALREADY_LOST_LINE : FIGHT_ALREADY_WON_LINE]);
+      return;
+    }
+    const takenUp = data.resumed !== undefined ? [FIGHT_TAKEN_UP_LINE] : [];
     this.dialog.showMessages([
+      ...takenUp,
       ...(this.catchLesson !== null
         ? catchLessonOpening(this.state.enemy.pokemon.name)
         : this.teachingBattle
@@ -1098,7 +1210,7 @@ export class BattleScene extends Phaser.Scene {
       ...(this.state.weather ? [weatherSetMessage(this.state.weather.id, false)] : []),
       ...this.noteOpening(openingAbilityEvents(this.state)).map((event) => eventToMessage(event, this.foeWord())),
     ], (index) => {
-      const line = openingSounds[index];
+      const line = openingSounds[index - takenUp.length];
       if (line?.sound) {
         audioManager.play(line.sound);
       }
@@ -2687,6 +2799,9 @@ export class BattleScene extends Phaser.Scene {
     if (this.hunterState) {
       this.hunterState = beginHunterDisengage(this.hunterState);
     }
+    // Paid for and gone: written down as the world it gets away to, so a reload
+    // is neither the fight again nor the price back.
+    this.writeFightOver();
     this.pendingBattleExit = true;
     this.mode = 'events';
     this.commandContainer.setVisible(false);
@@ -2754,6 +2869,8 @@ export class BattleScene extends Phaser.Scene {
         )
       : null;
     if (attempt.escaped) {
+      // Got away: written down as the world it gets away to.
+      this.writeFightOver();
       this.pendingBattleExit = true;
       audioManager.play('flee');
       if (attempt.item) {
@@ -2883,6 +3000,8 @@ export class BattleScene extends Phaser.Scene {
     this.noteWhoFacesWhom();
     this.refreshStatusLabels();
     const rewardMessages = this.withTypeLesson(previousState, result.events, this.awardTrainerDefeatExperience(previousState, result.events));
+    // And again with the experience the turn paid, which is paid after it is resolved.
+    this.writeFight();
     this.pendingChoices = [];
     this.choosingSlot = 0;
     this.prepareForcedReplacement();
@@ -3139,6 +3258,9 @@ export class BattleScene extends Phaser.Scene {
       this.showCombatEvents(result.events);
       return;
     }
+    // The one throw is spent, and the legend is gone: written down now, as the
+    // world the fight hands back to, so a reload is not a second throw.
+    this.writeFightOver();
     this.showCombatEvents(result.events, [], [this.legendFleesNote()]);
   }
 
@@ -3200,9 +3322,11 @@ export class BattleScene extends Phaser.Scene {
     }
     if (this.party.pokemon.length < PARTY_LIMIT) {
       this.party.addPokemon(caughtPokemon);
-      return;
+    } else {
+      this.caughtPokemonStash.push(caughtPokemon);
     }
-    this.caughtPokemonStash.push(caughtPokemon);
+    // Caught is caught: a reload from here is the world with it in the party.
+    this.writeFightOver();
   }
 
   private showPartySelection(forcedReplacement: boolean): void {
@@ -3353,6 +3477,7 @@ export class BattleScene extends Phaser.Scene {
     // A foe can fall on a turn spent on the bag - to its own poison or recoil -
     // and it pays as it would on any other turn.
     const rewards = this.awardTrainerDefeatExperience(beforeEnemy, enemyResult.events);
+    this.writeFight();
     this.refreshStatusLabels();
     this.prepareForcedReplacement();
     this.mode = 'events';
@@ -3444,6 +3569,7 @@ export class BattleScene extends Phaser.Scene {
     this.noteWhoFacesWhom();
     const events = [...switchIn.events, ...result.events];
     const rewards = this.awardTrainerDefeatExperience(switchedState, events);
+    this.writeFight();
     this.refreshStatusLabels();
     this.prepareForcedReplacement();
     this.mode = 'events';
@@ -3610,6 +3736,76 @@ export class BattleScene extends Phaser.Scene {
     // Everything the player has on the field, because a double battle has two
     // of them and the one that was not acting still took the weather.
     playerCombatants(this.state).forEach(persistCombatantToPokemon);
+    // Every resolved turn comes through here, before a line of it is shown:
+    // written now, a turn seen going badly cannot be chosen again.
+    this.writeFight();
+  }
+
+  /**
+   * Writes this fight down as it stands (`run/raidResume.ts`): the raid it is
+   * part of, the fight as its payload named it, and the other side as the last
+   * resolved turn left it. A fight that is over is not - its ending writes
+   * the raid home or to the world - except one lost, which is written as lost,
+   * because the turn that lost it must never be played again.
+   */
+  private writeFight(): void {
+    if (!this.runSession?.raidId || this.exhibition || this.pendingResultScreen || this.isTransitioning || this.pendingBattleExit) {
+      return;
+    }
+    // A catch is written as the world it hands back to (`writeFightOver`).
+    if (this.state.outcome === 'caught') {
+      return;
+    }
+    const onField = (pokemon: Pokemon): BattleCombatant | undefined =>
+      slotsOf(this.state, 'enemy')
+        .map((ref) => unitAt(this.state, ref))
+        .find((combatant): combatant is BattleCombatant => combatant?.pokemon === pokemon);
+    // The engine keeps a foe's HP on the field, never on the Pokemon. A
+    // trainer sends its party out in order and never calls one back, so one
+    // already sent out and no longer on the field is one that fell - often
+    // in the same turn its replacement came out, so it is never seen down.
+    const foes = this.foesFought.map((pokemon, index) => {
+      const field = onField(pokemon);
+      if (field) {
+        return foeStateOf(pokemon, field);
+      }
+      const fell = this.state.trainer !== undefined && index < this.state.enemySentOut;
+      return fell ? { ...foeStateOf(pokemon, undefined), hp: 0, status: null, sleepTurns: 0 } : foeStateOf(pokemon, undefined);
+    });
+    const lead = this.party.pokemon.indexOf(this.state.player.pokemon);
+    writeRaidResume(new SaveManager(), 'battle', { ...this.raidCarriageNow(), ...this.fight }, {
+      foes,
+      ...(lead > 0 ? { lead } : {}),
+      ...(this.victoryRewardsGranted ? { rewarded: true } : {}),
+    });
+  }
+
+  /**
+   * Writes the raid down as the world this fight is about to hand back to: for
+   * an ending that cannot be played again - a catch, a legend's one throw -
+   * which the page going before the fade must not undo.
+   */
+  private writeFightOver(): void {
+    if (this.runSession?.raidId !== undefined && !this.exhibition) {
+      writeRaidResume(new SaveManager(), 'world', this.raidCarriageNow());
+    }
+  }
+
+  /** What this fight is carrying for the raid, as it stands. */
+  private raidCarriageNow(): RaidCarriage {
+    return {
+      party: this.party,
+      bag: this.bag,
+      caughtPokemonStash: this.caughtPokemonStash,
+      runSession: this.runSession,
+      defeatedTrainerIds: [...this.defeatedTrainerIds],
+      unclaimedBossGear: this.unclaimedBossGear,
+      collectedLootIds: [...this.collectedLootIds],
+      seenPrizeIds: [...this.seenPrizeIds],
+      activatedPoiIds: [...this.activatedPoiIds],
+      returnLocation: this.returnLocation,
+      hunterState: this.hunterState,
+    };
   }
 
   private refreshStatusLabels(): void {
@@ -4022,6 +4218,8 @@ export class BattleScene extends Phaser.Scene {
             ]
           : this.awardVictoryExperience(this.state.enemy.pokemon),
       );
+      // Paid: written as paid, so a reload from here is never paid twice.
+      this.writeFight();
       return;
     }
 
@@ -4923,7 +5121,7 @@ export class BattleScene extends Phaser.Scene {
       fitToRaid: anyoneFitToRaid(new SaveManager().load()?.stash),
       restocked,
       saved,
-      ...(settledElsewhere ? { settledElsewhere } : {}),
+      ...elsewhereFacts(settledElsewhere, session.raidId, new SaveManager()),
     });
     this.time.delayedCall(RUN_RESULT_DELAY_MS, () => {
       if (this.scene.manager.keys.extraction) {

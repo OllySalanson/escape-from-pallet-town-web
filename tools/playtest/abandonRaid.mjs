@@ -9,8 +9,12 @@
 // 3. A second tab opened while the first is still in its raid: nothing is
 //    settled, and the raid is still recorded as under way.
 // And a reload at base, outside a raid, changes nothing in the save.
+//
+// A raid is written down as it is played and taken up after a reload
+// (`run/raidResume.ts`, `raidResume.mjs`); this plays the raid that cannot be,
+// with storage refusing the raid's record (`NO_RAID_RESUME`).
 import { LOGIC_WINDOW, PIXEL_WINDOW, launchBrowser, sleep } from './browser.mjs';
-import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase, jumpIn } from './deploy.mjs';
+import { GAME, NO_RAID_RESUME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase, jumpIn } from './deploy.mjs';
 
 const base = process.argv.slice(2).find((arg) => !arg.startsWith('--'));
 if (!base) {
@@ -81,7 +85,7 @@ async function continueToBase(page) {
 const browser = await launchBrowser({ window: shots ? PIXEL_WINDOW : LOGIC_WINDOW });
 try {
   // 1. Reload mid-raid.
-  const tab = await browser.openPage(url.href);
+  const tab = await browser.openPage(url.href, { init: NO_RAID_RESUME });
   await newGame(tab);
   const before = await save(tab);
   await deployFrom(tab);
@@ -120,7 +124,7 @@ try {
   // 2. Close the tab mid-raid, open the game in a new one.
   await deployFrom(tab);
   await tab.close();
-  const reopened = await browser.openPage(url.href);
+  const reopened = await browser.openPage(url.href, { init: NO_RAID_RESUME });
   await continueToBase(reopened);
   after = await save(reopened);
   check((await said(reopened)).includes('The game closed'), 'a new tab says the closed tab\'s raid was abandoned');
@@ -131,7 +135,7 @@ try {
 
   // 3. A second tab while the first is still in its raid.
   await deployFrom(reopened);
-  const second = await browser.openPage(url.href);
+  const second = await browser.openPage(url.href, { init: NO_RAID_RESUME });
   await continueToBase(second);
   after = await save(second);
   check((await said(second)) === '', 'a second tab says nothing about a raid still being played');

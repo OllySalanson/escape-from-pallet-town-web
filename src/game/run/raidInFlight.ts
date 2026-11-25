@@ -12,6 +12,10 @@ import { isWorldMapId, worldMapName } from '../worldMap';
  * its contents back in the vault (playtest 11, B1). That made the clock, the
  * hunter and the wipe optional for anybody willing to close a tab.
  *
+ * A raid is written down as it is played and taken up again after a reload
+ * (`run/raidResume.ts`), so this is now only what becomes of one that cannot
+ * be: storage refused it, or the record will not read back.
+ *
  * The captain's ruling: **an abandoned raid loses the pack and everything in
  * it, and the team comes home.** It is softer than a wipe, because a real crash
  * is not the player's fault, and it is never free. So this is written at the
@@ -143,6 +147,21 @@ function readOwed(value: unknown): RaidOwed | undefined {
     traderRationUsed: count(record.traderRationUsed),
     traderBerthPaid: record.traderBerthPaid === true,
   };
+}
+
+/**
+ * The raid an id belongs to, across the pages that have played it: a page
+ * taking a raid up after a reload gives it a new id (`run/raidResume.ts`) that
+ * keeps this part, so the page it was taken from can tell its raid went on
+ * elsewhere from its raid being settled there.
+ */
+export function raidRoot(raidId: string): string {
+  return raidId.split('~')[0] ?? raidId;
+}
+
+/** The id a page taking a raid up plays it under. */
+export function takenUpRaidId(raidId: string, now: number = Date.now()): string {
+  return `${raidRoot(raidId)}~${now.toString(36)}`;
 }
 
 /** The Pokemon the raid in flight took, by stash id: none between raids. */

@@ -85,6 +85,22 @@ export const SETTLED_ELSEWHERE = {
   note: 'Nothing here was banked: your base is as the other window left it.',
 } as const;
 
+/**
+ * The same screen for a raid another window took up where this one left it
+ * (`ExtractionReport.takenUpElsewhere`, `run/raidResume.ts`): nothing was
+ * settled and nothing lost - the raid is still out, in the other window - so
+ * this one only says that what it did after it went quiet does not count.
+ */
+export const TAKEN_UP_ELSEWHERE = {
+  place: 'Raid in another window',
+  headline: 'YOUR OTHER WINDOW HAS THIS RAID.',
+  summary: 'This window was away, and the game, opened in another, picked the raid up where it stood.',
+  ledger: 'Nothing this window did after it went quiet counts. Your pack and everything in it are still out on the raid.',
+  team: 'Your team is still out, on the raid in the other window.',
+  title: 'Still out in another window',
+  note: 'Nothing here was banked: finish the raid in the other window.',
+} as const;
+
 export class ExtractionScene extends Phaser.Scene {
   private overlay!: MenuOverlay;
   private report!: ExtractionReport;
@@ -405,19 +421,20 @@ export class ExtractionScene extends Phaser.Scene {
 
   /** The same screen for a raid another window settled: what happened, and that nothing here counts. */
   private settledElsewhereMarkup(): string {
+    const words = this.report.takenUpElsewhere ? TAKEN_UP_ELSEWHERE : SETTLED_ELSEWHERE;
     return pixelScreen({
       // Not EXTRACTED or RAID LOST: neither was written.
-      place: 'Raid settled elsewhere',
+      place: this.report.takenUpElsewhere ? TAKEN_UP_ELSEWHERE.place : 'Raid settled elsewhere',
       title: '',
       aside: escapeHtml(this.clockAside()),
       hints: escapeHtml(this.footerNote()),
       body: `<main class="px-body extraction-layout extraction-lost">${pixelWindow(
-        `<strong class="px-name">${escapeHtml(SETTLED_ELSEWHERE.headline)}</strong><span class="px-wrap">${escapeHtml(SETTLED_ELSEWHERE.summary)}</span>`,
+        `<strong class="px-name">${escapeHtml(words.headline)}</strong><span class="px-wrap">${escapeHtml(words.summary)}</span>`,
         { className: 'extraction-verdict px-tone-risk', tag: 'div' },
-      )}${pixelWindow(`<div class="px-list px-scroll" data-reads><p class="px-empty px-wrap">${escapeHtml(SETTLED_ELSEWHERE.ledger)}</p></div>`, {
+      )}${pixelWindow(`<div class="px-list px-scroll" data-reads><p class="px-empty px-wrap">${escapeHtml(words.ledger)}</p></div>`, {
         className: 'extraction-ledger',
         heading: 'Not banked',
-      })}${pixelWindow(`<div class="px-list px-scroll" data-reads><p class="px-empty px-wrap">${escapeHtml(SETTLED_ELSEWHERE.team)}</p></div>`, {
+      })}${pixelWindow(`<div class="px-list px-scroll" data-reads><p class="px-empty px-wrap">${escapeHtml(words.team)}</p></div>`, {
         className: 'extraction-gamble',
         heading: 'Your team',
       })}${pixelCommitBar({
@@ -633,7 +650,7 @@ export class ExtractionScene extends Phaser.Scene {
 
   private footerTitle(): string {
     if (this.report.settledElsewhere) {
-      return 'Settled in another window';
+      return this.report.takenUpElsewhere ? TAKEN_UP_ELSEWHERE.title : 'Settled in another window';
     }
     if (!this.report.saved) {
       return 'Could not save';
@@ -656,7 +673,7 @@ export class ExtractionScene extends Phaser.Scene {
         : 'A try of your map: leave by an exit for the walk to count. Your saved game was not touched.';
     }
     if (this.report.settledElsewhere) {
-      return SETTLED_ELSEWHERE.note;
+      return this.report.takenUpElsewhere ? TAKEN_UP_ELSEWHERE.note : SETTLED_ELSEWHERE.note;
     }
     if (!this.report.saved) {
       // Tried again as the base opens (`run/unsavedEnding.ts`); said, or a player

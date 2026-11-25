@@ -20,6 +20,10 @@ import type { ActiveRunSession, RaidLocation } from './RunSession';
  * `BattleScene` has to hand back a whole one. A new piece of per-raid world
  * state is added here, and the compiler then names each place that must carry
  * it.
+ *
+ * The same carriage is what a raid is written down as, so it survives a
+ * reload (`run/raidResume.ts`): whatever is added here, or to the run session,
+ * must be plain data, a `Map`, a `Set`, or a class `run/raidSnapshot.ts` knows.
  */
 export interface RaidCarriage {
   readonly party: PokemonParty;

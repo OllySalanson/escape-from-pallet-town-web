@@ -66,7 +66,12 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('a bout for show', () => {
   it('reaches the save nowhere: the scene only names it where a kind is met and where a raid is lost, and a bout is turned away from both', () => {
-    expect(methodsTouchingTheSave()).toEqual(['registerFoesSeen', 'resolveRunWipe']);
+    expect([...methodsTouchingTheSave()].sort()).toEqual(['registerFoesSeen', 'resolveRunWipe', 'writeFight', 'writeFightOver']);
+    // A raid's fight is written down as it is fought (`run/raidResume.ts`), and a bout never is.
+    const written = SOURCE.slice(SOURCE.indexOf('private writeFight(): void {'));
+    expect(written.split('\n')[1]).toContain('this.exhibition');
+    const over = SOURCE.slice(SOURCE.indexOf('private writeFightOver(): void {'));
+    expect(over.split('\n')[1]).toContain('!this.exhibition');
     // The Pokédex is told what a fight met (`hub/pokedex.ts`), and a bout is the first thing it refuses.
     const met = SOURCE.slice(SOURCE.indexOf('private registerFoesSeen(): void {'));
     expect(met.split('\n')[1].trim()).toBe('if (this.exhibition) {');

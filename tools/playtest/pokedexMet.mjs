@@ -16,7 +16,7 @@
 // (`tools/playtest/README.md`, "Memory").
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, PIXEL_WINDOW } from './browser.mjs';
-import { GAME, SAVE_KEY, deploy, sceneIs } from './deploy.mjs';
+import { GAME, NO_RAID_RESUME, SAVE_KEY, deploy, sceneIs } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [base, outDir] = args.filter((arg) => !arg.startsWith('--'));
@@ -38,7 +38,8 @@ const check = (ok, what) => {
 
 const browser = await launchBrowser({ window: PIXEL_WINDOW });
 try {
-  const page = await browser.openPage('about:blank');
+  // The raid is abandoned rather than taken up again (`NO_RAID_RESUME`).
+  const page = await browser.openPage('about:blank', { init: NO_RAID_RESUME });
   const wait = (ms) => page.evaluate(`${GAME}.stepFrames(${Math.max(1, Math.ceil(ms / 100))})`);
   const until = async (expression, what = expression) => {
     for (let i = 0; i < 400; i += 1) {

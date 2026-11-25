@@ -7,8 +7,28 @@ export interface SeededRng {
   shuffle<T>(values: readonly T[]): T[];
 }
 
-export function createSeededRng(seed: number): SeededRng {
-  let state = seed >>> 0;
+/**
+ * Where a stream has got to, so a raid in progress can be written down and
+ * taken up again on the very same rolls (`run/raidResume.ts`). A symbol on the
+ * stream rather than a sixth call of `SeededRng`, so every roll in the game is
+ * still made through the five - and never a side table: the harbour's planner
+ * makes streams by the hundred thousand, and a `WeakMap` entry each made one of
+ * its sweeps ten times slower, and a symbol in the literal still doubled it.
+ */
+const POSITION = Symbol('seeded-rng-position');
+
+/** Where `rng` has got to, for `createSeededRng(seed, at)` to carry on from; null for a stream not made here. */
+export function seededRngPosition(rng: SeededRng): number | null {
+  const position = (rng as { [POSITION]?: () => number })[POSITION];
+  return typeof position === 'function' ? position() : null;
+}
+
+/**
+ * A stream from `seed`, or - given `at`, a `seededRngPosition` - the same
+ * stream taken up exactly where it had got to.
+ */
+export function createSeededRng(seed: number, at?: number): SeededRng {
+  let state = (at ?? seed) >>> 0;
   const next = (): number => {
     state += 0x6d2b79f5;
     let value = state;
@@ -17,7 +37,7 @@ export function createSeededRng(seed: number): SeededRng {
     return ((value ^ (value >>> 14)) >>> 0) / 4_294_967_296;
   };
 
-  return {
+  const rng: SeededRng = {
     next,
     int: (minInclusive, maxInclusive) =>
       minInclusive + Math.floor(next() * (maxInclusive - minInclusive + 1)),
@@ -37,4 +57,9 @@ export function createSeededRng(seed: number): SeededRng {
       return shuffled;
     },
   };
+  // Where it has got to is read off the stream itself (`seededRngPosition`),
+  // through a symbol added after the stream is made, so a stream is built
+  // exactly as fast as it always was.
+  (rng as { [POSITION]?: () => number })[POSITION] = () => state >>> 0;
+  return rng;
 }
