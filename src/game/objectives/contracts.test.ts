@@ -6,6 +6,7 @@ import { createActiveRunSession } from '../run/RunSession';
 import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type StorageLike } from '../save/SaveManager';
 import { createStartingStash, MINIMUM_SUPPLIES, Stash } from '../stash';
+import { TRADER_STOCK } from '../hub/trader';
 import { districtsForMap } from '../world/districts';
 import { EXTRACTION_POINTS, extractionPointsOn } from '../world/extractionPoints';
 import { stepDistances } from '../world/mapStructure';
@@ -165,17 +166,18 @@ describe.each(LATER_CONTRACTS.map((contract) => [contract.id, contract] as const
     });
 
     /**
-     * A delivery has to be packable out of the kit a wiped player is handed, or
-     * one bad raid locks the contract out until they find the items in the field.
+     * A delivery has to be packable by a wiped player, or one bad raid locks the
+     * contract out until they find the items in the field: out of the kit base
+     * restocks, or off Bill's everyday shelf, which sells a stranger Potions and
+     * Poké Balls with no ration (`hub/trader.ts`).
      */
-    it('never asks for supplies a wiped player cannot restock at base', () => {
+    it('never asks for supplies a wiped player cannot restock at base or buy', () => {
       const stash = new Stash();
       stash.ensurePlayable();
       stash.restockMinimumSupplies();
       for (const { itemId, quantity } of contractCarryIn(contract)) {
-        expect(`${contract.id} needs ${quantity}× ${itemId}, base restocks ${stash.itemCount(itemId)}`)
-          .toBe(`${contract.id} needs ${quantity}× ${itemId}, base restocks ${stash.itemCount(itemId)}`);
-        expect(stash.itemCount(itemId)).toBeGreaterThanOrEqual(quantity);
+        const everyday = TRADER_STOCK.some((item) => item.itemId === itemId && item.standing === 'stranger' && !item.rationed);
+        expect(everyday || stash.itemCount(itemId) >= quantity, `${contract.id} needs ${quantity}× ${itemId}`).toBe(true);
       }
     });
 

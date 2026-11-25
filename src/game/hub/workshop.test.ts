@@ -206,7 +206,7 @@ describe('what may be spent', () => {
   });
 
   it('reads the kit as a capability, so a better ball or potion frees the plain one', () => {
-    // Five throws and three heals are the kit, whatever tier holds them.
+    // Two throws and one heal are the kit, whatever tier holds them.
     const vault = vaultWith({
       'poke-ball': 5,
       'great-ball': 2,
@@ -218,8 +218,8 @@ describe('what may be spent', () => {
       // supplies alone rather than about a vault with nothing to carry in.
       'raid-pack': 1,
     });
-    expect(spendableSupply(vault, 'poke-ball')).toBe(2);
-    expect(spendableSupply(vault, 'potion')).toBe(1);
+    expect(spendableSupply(vault, 'poke-ball')).toBe(5);
+    expect(spendableSupply(vault, 'potion')).toBe(3);
     // An Antidote heals nothing, so it is never part of the kit.
     expect(spendableSupply(vault, 'antidote')).toBe(2);
     expect(checkPayment(vault, [], 'secure-locker-1')).toMatchObject({ ok: true });

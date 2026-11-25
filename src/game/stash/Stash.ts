@@ -19,30 +19,43 @@ export const STARTER_SPECIES = [BULBASAUR, CHARMANDER, SQUIRTLE] as const;
 export type StarterSpeciesId = (typeof STARTER_SPECIES)[number]['id'];
 
 /**
- * The supplies a player must hold to be able to attempt a real run. Every
- * recovery path tops the stash up to these counts, so a wipe can never return
- * a player to play in a state they cannot escape.
+ * The supplies a player must hold to be able to attempt a real run: the kit
+ * every recovery path tops the stash up to, so a wipe can never return a
+ * player to play in a state they cannot escape.
  *
- * Five Poke Balls and three Potions is deliberately the same kit a brand new
- * save is given, not a discounted one: catching is the only way to grow the
- * stash, and catch chance runs from 20% at full HP up to a 95% cap as the
- * target weakens, so five throws is what makes at least one catch near
- * certain. Three Potions is the supply every balance simulation of the raid
- * gauntlet was measured with; the same runs carrying none wipe about 99% of
- * the time even as Charmander.
+ * It is **only what a raid cannot be played without**, and deliberately less
+ * than a new save is given (`STARTING_SUPPLIES`). It used to be the same five
+ * Poké Balls and three Potions, which is more than a whole raid's money buys at
+ * Bill's, so a player holding fewer gained supplies by losing and the cheapest
+ * shop in the game was the floor (the overnight critic's problem 11, 25 Nov
+ * 2026). Two balls is a catch still within reach, one Potion is a fight still
+ * survivable, and nothing here is worth losing a raid for.
  *
  * And **something to carry them in**. A pack is gear now, so a raid lost takes
  * the pack with it, and a player who went down in their only one would have
  * nothing to deploy with at all. The line is the *smallest* pack on purpose -
- * twelve squares, eight of them the kit - because the restock is a last resort
- * and not a refund. `servesAs` reads the kit as a capability, so any pack at
- * all answers this line: a player who still holds a Hauler frame is never
- * handed a Satchel, and a player who holds none always is.
+ * twelve squares - because the restock is a last resort and not a refund.
+ * `servesAs` reads the kit as a capability, so any pack at all answers this
+ * line: a player who still holds a Hauler frame is never handed a Satchel, and
+ * a player who holds none always is.
  */
 export const MINIMUM_SUPPLIES: Readonly<Record<string, number>> = {
+  'poke-ball': 2,
+  potion: 1,
+  [FALLBACK_PACK_ID]: 1,
+};
+
+/**
+ * What a brand new save is given, on top of its starting pack. Five Poké Balls
+ * because catching is the only way to grow the stash, and catch chance runs
+ * from 20% at full HP up to a 95% cap as the target weakens, so five throws is
+ * what makes at least one catch near certain; three Potions because that is the
+ * supply every balance simulation of the raid gauntlet was measured with. A
+ * gift once, never a refill: the refill is `MINIMUM_SUPPLIES`.
+ */
+export const STARTING_SUPPLIES: Readonly<Record<string, number>> = {
   'poke-ball': 5,
   potion: 3,
-  [FALLBACK_PACK_ID]: 1,
 };
 
 /**
@@ -962,6 +975,9 @@ export function createStartingStash(starter = BULBASAUR): Stash {
   // player who had lost everything.
   stash.ensureAPack();
   stash.ensurePlayable(starter);
+  for (const [itemId, quantity] of Object.entries(STARTING_SUPPLIES)) {
+    stash.addItem(itemId, quantity - stash.itemCount(itemId));
+  }
   // The one Pokemon in a new vault is the one the player just picked.
   stash.adoptPartner(stash.listPokemon()[0]?.id ?? null);
   return stash;

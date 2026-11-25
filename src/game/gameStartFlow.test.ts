@@ -284,8 +284,8 @@ describe('game start flow', () => {
     expect(game?.stash.listPokemon()).toMatchObject([
       { pokemon: { base: { id: 'bulbasaur' }, level: 5 } },
     ]);
-    // The kit, and the pack every save is issued so it has something to carry it in.
-    expect(saves.load()?.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3, 'raid-pack': 1 });
+    // Oak's kit (`MINIMUM_SUPPLIES`), and the pack every save is issued so it has something to carry it in.
+    expect(saves.load()?.stash.listItems()).toEqual({ 'poke-ball': 2, potion: 1, 'raid-pack': 1 });
   });
 
   it.each(['bulbasaur', 'charmander', 'squirtle'] as const)(

@@ -5,6 +5,7 @@ export {
   createStartingStash,
   getStarterSpecies,
   MINIMUM_SUPPLIES,
+  STARTING_SUPPLIES,
   STARTER_SPECIES,
   starterInConditionOf,
   Stash,

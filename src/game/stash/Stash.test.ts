@@ -3,7 +3,7 @@ import { Bag } from '../items';
 import { BULBASAUR, CHARIZARD, CHARMANDER, CHARMELEON, PIDGEY, Pokemon, PokemonParty, SQUIRTLE } from '../pokemon';
 import { PrimaryStatus } from '../pokemon/battle/status';
 import { SaveManager, type StorageLike } from '../save/SaveManager';
-import { BOX_CAPACITY, MAX_BOX_NAME_LENGTH, MINIMUM_SUPPLIES, Stash, starterInConditionOf } from './Stash';
+import { BOX_CAPACITY, createStartingStash, MAX_BOX_NAME_LENGTH, MINIMUM_SUPPLIES, STARTING_SUPPLIES, Stash, starterInConditionOf } from './Stash';
 
 class MemoryStorage implements StorageLike {
   private readonly values = new Map<string, string>();
@@ -44,7 +44,7 @@ describe('Stash', () => {
     expect(stash.ensurePlayable(starter)).toBe(false);
     expect(stash.listPokemon()).toMatchObject([{ pokemon: { base: { id: starter.id }, level: 5 } }]);
     // The kit, and something to carry it in: a vault with no pack cannot raid.
-    expect(stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3, satchel: 1 });
+    expect(stash.listItems()).toEqual({ 'poke-ball': 2, potion: 1, satchel: 1 });
   });
 
   it('leaves existing Pokemon and supplies completely unchanged', () => {
@@ -58,7 +58,7 @@ describe('Stash', () => {
   });
 
   it('tops partial supplies back up to the minimum when it re-grants a starter', () => {
-    const stash = new Stash({ items: { potion: 2, 'poke-ball': 1 } });
+    const stash = new Stash({ items: { 'poke-ball': 1 } });
 
     expect(stash.ensurePlayable()).toBe(true);
     expect(stash.listPokemon()).toMatchObject([{ pokemon: { base: { id: 'bulbasaur' }, level: 5 } }]);
@@ -73,16 +73,34 @@ describe('Stash', () => {
   });
 
   it('tops up only what the kit is short of, without ever reducing a larger hoard', () => {
-    const stash = new Stash({ items: { 'poke-ball': 12, potion: 1 } });
+    const stash = new Stash({ items: { 'poke-ball': 12 } });
 
-    expect(stash.supplyShortfall()).toEqual({ potion: 2, satchel: 1 });
+    expect(stash.supplyShortfall()).toEqual({ potion: 1, satchel: 1 });
     expect(stash.restockMinimumSupplies()).toBe(true);
-    expect(stash.listItems()).toEqual({ 'poke-ball': 12, potion: 3, satchel: 1 });
+    expect(stash.listItems()).toEqual({ 'poke-ball': 12, potion: 1, satchel: 1 });
 
     // Repeating it adds nothing, so the restock cannot be farmed.
     expect(stash.supplyShortfall()).toEqual({});
     expect(stash.restockMinimumSupplies()).toBe(false);
-    expect(stash.listItems()).toEqual({ 'poke-ball': 12, potion: 3, satchel: 1 });
+    expect(stash.listItems()).toEqual({ 'poke-ball': 12, potion: 1, satchel: 1 });
+  });
+
+  /**
+   * The overnight critic's problem 11 (25 Nov 2026): one Potion and one Poké
+   * Ball before a wipe, three and five after it, so losing was the cheapest
+   * shop in the game. The kit is only what a raid cannot be played without, and
+   * a new save is given more than it - so no save is ever topped up past where
+   * it started.
+   */
+  it('hands a wiped player less than a new save is given, and never more than one Potion', () => {
+    const stash = new Stash({ items: { potion: 1, 'poke-ball': 1 } });
+    stash.restockMinimumSupplies();
+    expect(stash.itemCount('potion')).toBe(1);
+    expect(stash.itemCount('poke-ball')).toBe(2);
+    for (const [itemId, quantity] of Object.entries(MINIMUM_SUPPLIES)) {
+      expect(quantity, itemId).toBeLessThanOrEqual(STARTING_SUPPLIES[itemId] ?? 1);
+    }
+    expect(createStartingStash().listItems()).toMatchObject(STARTING_SUPPLIES);
   });
 
   /**
@@ -102,14 +120,13 @@ describe('Stash', () => {
   it('counts a better item towards the kit, and only the shortfall is basic stock', () => {
     const stash = new Stash({ items: { 'super-potion': 1, 'great-ball': 4, 'hauler-frame': 1 } });
 
-    expect(stash.restockMinimumSupplies()).toBe(true);
+    // A Super Potion is the kit's Potion and the Great Balls its Poké Balls.
+    expect(stash.restockMinimumSupplies()).toBe(false);
     // A Hauler frame answers the kit's pack line, so no Satchel is handed out:
     // the kit is a capability, and that is as true of the pack as of the balls.
     expect(stash.listItems()).toEqual({
       'super-potion': 1,
-      potion: 2,
       'great-ball': 4,
-      'poke-ball': 1,
       'hauler-frame': 1,
     });
   });
@@ -307,7 +324,7 @@ describe('Stash', () => {
     // Three unsecured Poké Balls are gone for good, then the wipe tops the
     // survivor back up to the minimum needed to attempt another run - which
     // includes a pack, because a vault with none cannot deploy at all.
-    expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3, 'raid-pack': 1 });
+    expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 2, potion: 3, 'raid-pack': 1 });
   });
 
   /**

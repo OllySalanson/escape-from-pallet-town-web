@@ -142,13 +142,13 @@ describe('the containers a save starts with', () => {
     expect(fitsInGrid(kit, RAID_BAG_GRID)).toBe(true);
     const packed = packContents(kit, RAID_BAG_GRID);
     expect(packed.overflow).toEqual([]);
-    expect(packed.cellsUsed).toBe(8);
-    expect(gridCells(RAID_BAG_GRID) - packed.cellsUsed).toBe(10);
+    expect(packed.cellsUsed).toBe(3);
+    expect(gridCells(RAID_BAG_GRID) - packed.cellsUsed).toBe(15);
 
     // And in the last-resort pack, which is the one the restock hands out.
     const satchel = packGridFor(FALLBACK_PACK_ID);
     expect(fitsInGrid(kit, satchel)).toBe(true);
-    expect(gridCells(satchel) - packContents(kit, satchel).cellsUsed).toBe(4);
+    expect(gridCells(satchel) - packContents(kit, satchel).cellsUsed).toBe(9);
   });
 
   it('starts the secure container at one parts crate, or four Potions', () => {
