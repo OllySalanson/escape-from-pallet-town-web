@@ -86,6 +86,17 @@ export type CutsceneAction =
       readonly emote: CutsceneEmote;
       readonly durationMs: number;
     } & ActionCommon)
+  /**
+   * A Pokemon going for someone: up off the ground and a third of a tile
+   * toward `toward`, and back onto its own tile. It ends where it began, so
+   * nothing it stands on changes.
+   */
+  | ({
+      readonly kind: 'lunge';
+      readonly actor: string;
+      readonly toward: GridPosition;
+      readonly durationMs: number;
+    } & ActionCommon)
   | ({
       readonly kind: 'teleport';
       readonly actor: string;
@@ -123,6 +134,8 @@ export interface CutsceneActorFrame {
   readonly visible: boolean;
   /** The mark over the actor's head, with how long it has been up. */
   readonly emote: { readonly kind: CutsceneEmote; readonly elapsedMs: number } | null;
+  /** How far off the ground it is, in tiles: only ever above nothing while it lunges. */
+  readonly lift?: number;
 }
 
 export interface CutsceneSpeech {
@@ -155,6 +168,7 @@ export function actionDurationMs(action: CutsceneAction): number | null {
     case 'wait':
     case 'emote':
     case 'fade':
+    case 'lunge':
       return action.durationMs;
     case 'move':
       return action.path.length * action.stepMs;
@@ -208,6 +222,9 @@ export function checkCutscene(cutscene: Cutscene): readonly string[] {
     if (action.kind === 'say' && action.lines.length === 0) {
       say(`${at} has no lines, so it would wait on a box nobody can see`);
     }
+    if (action.kind === 'lunge' && action.durationMs <= 0) {
+      say(`${at} is a lunge that takes no time, so nobody would see it`);
+    }
     if (action.kind === 'move' && (action.path.length === 0 || action.stepMs <= 0)) {
       say(`${at} is a walk with no ground to cover`);
     }
@@ -229,7 +246,12 @@ interface MutableActor {
   facing: Direction;
   visible: boolean;
   emote: { kind: CutsceneEmote; elapsedMs: number } | null;
+  lift: number;
 }
+
+/** How far a lunge carries toward its mark and how high it leaves the ground, in tiles. */
+export const LUNGE_REACH = 1 / 3;
+export const LUNGE_LIFT = 1 / 4;
 
 interface RunningAction {
   readonly action: CutsceneAction;
@@ -282,7 +304,7 @@ export class CutscenePlayer {
       throw new Error(problems.join('; '));
     }
     for (const [id, placement] of Object.entries(cutscene.actors)) {
-      this.actors.set(id, { ...placement, visible: true, emote: null });
+      this.actors.set(id, { ...placement, visible: true, emote: null, lift: 0 });
     }
   }
 
@@ -382,7 +404,7 @@ export class CutscenePlayer {
   }
 
   private originFor(action: CutsceneAction): GridPosition | null {
-    if (action.kind !== 'move') {
+    if (action.kind !== 'move' && action.kind !== 'lunge') {
       return null;
     }
     const actor = this.actors.get(action.actor);
@@ -441,6 +463,22 @@ export class CutscenePlayer {
       }
       return;
     }
+    if (action.kind === 'lunge') {
+      const actor = this.actors.get(action.actor);
+      const origin = running.origin;
+      if (!actor || !origin) {
+        return;
+      }
+      // Out and back on one arc, so it lands on its own tile at the end
+      // however the frames fall.
+      const arc = elapsedMs >= durationMs ? 0 : Math.sin((Math.PI * elapsedMs) / durationMs);
+      const dx = Math.sign(action.toward.x - origin.x);
+      const dy = Math.sign(action.toward.y - origin.y);
+      actor.x = origin.x + dx * LUNGE_REACH * arc;
+      actor.y = origin.y + dy * LUNGE_REACH * arc;
+      actor.lift = LUNGE_LIFT * arc;
+      return;
+    }
     if (action.kind !== 'move') {
       return;
     }
@@ -476,6 +514,7 @@ export class CutscenePlayer {
         facing: actor.facing,
         visible: actor.visible,
         emote: actor.emote === null ? null : { ...actor.emote },
+        ...(actor.lift > 0 ? { lift: actor.lift } : {}),
       });
     }
     return frame;

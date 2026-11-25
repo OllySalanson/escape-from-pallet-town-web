@@ -248,7 +248,7 @@ export function orchardTerraces(): MapcraftResult {
         { name: 'THE SLIP', x: 40, y: 50, width: 20, height: 8, wildlife: 'shore' },
       ],
       landmarks: [
-        { x: 32, y: 14, name: 'Apple Store', kind: 'shed' },
+        { x: 32, y: 14, name: 'Apple Cart', kind: 'shed' },
         { x: 49, y: 29, name: 'Cider Vat', kind: 'kiln' },
       ],
       berryTrees: [
@@ -269,7 +269,12 @@ export function orchardTerraces(): MapcraftResult {
         { x: 32, y: 46, species: 'tauros' },
         { x: 37, y: 41, species: 'tauros', beat: { everyMs: 3100, roam: [[1, 0]] } },
         { x: 29, y: 13, species: 'doduo', beat: { everyMs: 1400, roam: [[1, 0]] } },
-        { x: 34, y: 13, species: 'doduo', level: 9, beat: { everyMs: 1600, roam: [[0, 1]] } },
+        // A guard (`world/guards.ts`): the cock of the yard, stood on the
+        // Apple Cart by the store, so the cart's spare parts and the Leaf Stone it
+        // scratched up under the old tree are had past it. Quick
+        // and pecking, it is a Bulbasaur's hard fight; Fire and Water see it
+        // off (`guardsPlaced.test.ts`).
+        { x: 32, y: 13, species: 'doduo', level: 9, guards: 'Apple Cart', sitsOn: 'leaf-stone' },
         { x: 20, y: 16, species: 'doduo', beat: { everyMs: 1300, roam: [[1, 0]] } },
         { x: 16, y: 7, species: 'meowth', beat: { everyMs: 2000, roam: [[0, 1]] } },
         { x: 10, y: 9, species: 'caterpie' },

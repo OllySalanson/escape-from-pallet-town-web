@@ -31,6 +31,7 @@ import {
   type CollisionGrid,
   type NamedGround,
 } from './mapStructure';
+import { guardReach } from './guards';
 import { idleBeatTiles, stepDirection } from './npcIdle';
 import type { WorldEntity } from './npcs';
 import { trainerSightTiles } from './trainerSight';
@@ -229,7 +230,10 @@ function entityTiles(state: MapState): Set<string> {
  * (`WorldScene.tryPushBoulder`).
  */
 function standsForGood(entity: WorldEntity): boolean {
-  return !entity.boulder && !entity.barrier;
+  // A guard is fought and gone, as a trainer is (`guards.ts`): what stands
+  // behind it is reached through it, and its own rules ask that it cuts nothing
+  // else off and never stands across a door.
+  return !entity.boulder && !entity.barrier && entity.guards === undefined;
 }
 
 function insertionsOn(mapId: WorldMapId) {
@@ -487,6 +491,132 @@ export function describeMapStructure(partName: string): void {
       }
     });
 
+    /**
+     * A guard (`guards.ts`) is a fight the player cannot step past, so it may
+     * stand in front of one thing only - what it guards - and never across the
+     * way to anything else. Asked with every tile it reaches shut, which is
+     * stricter than the game, where a step onto one is a fight rather than a
+     * wall: everything a raid could walk to without the guard it can still walk
+     * to without going near it, except the landmark it sits on.
+     */
+    eachRule('%s lets every guard keep only what it guards', (_name, state) => {
+      const { map, mapId } = state;
+      const isBlocked = collisionBlocker(map.collision);
+      const guards = map.entities.filter((entity) => entity.guards !== undefined);
+      if (guards.length === 0) {
+        return;
+      }
+      // What a guard holds: its square, and the landmark it names. Ground that
+      // only its own tile leads to is behind it, and is unreachable with it
+      // standing already - which is what "behind a Pokemon" means.
+      const held = new Set(
+        guards.flatMap((guard) => {
+          const poi = map.pois.find((candidate) => candidate.id === guard.guards?.poiId);
+          return [...guardReach(guard.position, isBlocked), ...(poi ? [poi.position] : [])].map(({ x, y }) => `${x},${y}`);
+        }),
+      );
+      // Asked with every figure solid, the guard's own tile too: the ground only
+      // its tile leads to is behind it, and is what it guards.
+      const standing = new Set([...entityTiles(state), ...guards.map(({ position }) => `${position.x},${position.y}`)]);
+      const guardedToo = new Set([...standing, ...held]);
+      // Every tile, not a list of things: the loot a raid lays is re-seated
+      // anywhere, so ground cut off is loot cut off, and a flee from inside a
+      // square that borders cut-off ground walks into it without the fight.
+      for (const insertion of insertionsOn(mapId)) {
+        const before = stepDistances(map.collision, insertion.position, standing, playerLinks(map));
+        const after = stepDistances(map.collision, insertion.position, guardedToo, playerLinks(map));
+        const lost: string[] = [];
+        before.forEach((row, y) =>
+          row.forEach((steps, x) => {
+            if (steps >= 0 && (after[y]?.[x] ?? -1) < 0 && !held.has(`${x},${y}`)) {
+              lost.push(`${x},${y}`);
+            }
+          }),
+        );
+        expect(`${insertion.id} loses ${lost.length ? lost.join(' ') : 'nothing'} past every guard`).toBe(
+          `${insertion.id} loses nothing past every guard`,
+        );
+      }
+    });
+
+    /**
+     * Nobody stands or walks a beat on ground a guard reaches: its square is
+     * drawn as ground a step onto is a fight, and a person or a trainer on it
+     * would be a tile of that promise nobody can take (`guards.ts`).
+     */
+    eachRule('%s keeps everybody off the ground a guard reaches', (_name, state) => {
+      const { map } = state;
+      const isBlocked = collisionBlocker(map.collision);
+      const reached = new Set(
+        map.entities
+          .filter((entity) => entity.guards !== undefined)
+          .flatMap((guard) => guardReach(guard.position, isBlocked).map((tile) => `${tile.x},${tile.y}`)),
+      );
+      if (reached.size === 0) {
+        return;
+      }
+      const onIt = [
+        ...map.entities.filter((entity) => entity.guards === undefined).flatMap((entity) => idleBeatTiles(entity).map((tile) => ({ who: entity.id, tile }))),
+        ...trainersIn(state).map((trainer) => ({ who: trainer.trainer.id, tile: trainer.position })),
+      ]
+        .filter(({ tile }) => reached.has(`${tile.x},${tile.y}`))
+        .map(({ who, tile }) => `${who} at ${tile.x},${tile.y}`);
+      expect(onIt).toEqual([]);
+    });
+
+    /**
+     * And a guard is met on purpose: its reach is never where a raid lands,
+     * leaves or comes through a door, never a job's stop, and always has ground
+     * outside it to walk up from - so the way back from it is always open.
+     */
+    eachRule('%s never lets a guard ambush the player', (_name, state) => {
+      const { map, mapId } = state;
+      const isBlocked = collisionBlocker(map.collision);
+      const unmissable = [
+        ...insertionsOn(mapId).map((insertion) => ({ what: insertion.id, position: insertion.position })),
+        ...extractionPointsOn(mapId).map((point) => ({ what: point.label, position: point.position })),
+        ...map.warps
+          .filter((warp) => warp.destinationMapId === mapId)
+          .map((warp) => ({ what: `arrival at ${warp.destination.x},${warp.destination.y}`, position: warp.destination })),
+        // And no door: a guard beside one would be a fight on the way in or out of a building.
+        ...map.warps.map((warp) => ({ what: `door at ${warp.source.x},${warp.source.y}`, position: warp.source })),
+        ...RAID_CONTRACTS.filter((contract) => contract.mapId === mapId).flatMap((contract) =>
+          contract.markers.map((marker) => ({ what: `${contract.id}/${marker.id}`, position: marker.position })),
+        ),
+      ];
+      // A step into a reach is the guard's before anything else's, so a reach
+      // over a trainer's watch would let the guard's fight stand in for the toll.
+      const watched = new Set(
+        trainersIn(state).flatMap((trainer) =>
+          trainerSightTiles(trainer, (tile) => map.collision[tile.y]?.[tile.x] !== false).map(({ x, y }) => `${x},${y}`),
+        ),
+      );
+      for (const guard of map.entities.filter((entity) => entity.guards !== undefined)) {
+        const reach = guardReach(guard.position, isBlocked);
+        const inReach = new Set(reach.map((tile) => `${tile.x},${tile.y}`));
+        const overWatch = reach.filter(({ x, y }) => watched.has(`${x},${y}`)).map(({ x, y }) => `${x},${y}`);
+        expect(`${guard.id} reaches a trainer's watch at: ${overWatch.join(' ')}`).toBe(`${guard.id} reaches a trainer's watch at: `);
+        for (const thing of unmissable) {
+          const key = `${thing.position.x},${thing.position.y}`;
+          expect(`${guard.id} reaches ${thing.what}: ${inReach.has(key)}`).toBe(`${guard.id} reaches ${thing.what}: false`);
+        }
+        const approaches = reach.filter((tile) =>
+          [
+            { x: tile.x + 1, y: tile.y },
+            { x: tile.x - 1, y: tile.y },
+            { x: tile.x, y: tile.y + 1 },
+            { x: tile.x, y: tile.y - 1 },
+          ].some(
+            (step) =>
+              !isBlocked(step) &&
+              !inReach.has(`${step.x},${step.y}`) &&
+              (step.x !== guard.position.x || step.y !== guard.position.y),
+          ),
+        );
+        expect(`${guard.id} reach approaches: ${approaches.length}`).not.toBe(`${guard.id} reach approaches: 0`);
+      }
+    });
+
     eachRule('%s answers a held direction from its insertion within a few steps', (_name, { map, mapId }) => {
       for (const insertion of insertionsOn(mapId)) {
         const collision = map.collision;
@@ -711,6 +841,11 @@ export function describeMapStructure(partName: string): void {
       for (const trainer of trainersIn(state)) {
         expect(`${trainer.trainer.id} can be challenged from ${beside(trainer.position).length} sides`)
           .not.toBe(`${trainer.trainer.id} can be challenged from 0 sides`);
+      }
+      // And a guard, which is fought as a trainer is and gone once beaten.
+      for (const guard of map.entities.filter((entity) => entity.guards !== undefined)) {
+        expect(`${guard.id} can be challenged from ${beside(guard.position).length} sides`)
+          .not.toBe(`${guard.id} can be challenged from 0 sides`);
       }
     });
 

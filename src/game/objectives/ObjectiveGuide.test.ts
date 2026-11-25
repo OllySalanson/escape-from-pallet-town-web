@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { fileMap } from '../world/playerMaps';
 import { Pokemon, BULBASAUR } from '../pokemon';
 import { RunManager } from '../run';
 import { createActiveRunSession } from '../run/RunSession';
@@ -982,5 +983,27 @@ describe('the treasure map in the field guide', () => {
     expect(carrying.radio[0]).not.toContain(TREASURE_GOAL.title);
     const after = guideFor(valeSession(true, [MISTY_BOSS_ID], [CHEST_ITEM_ID]), [MISTY_BOSS_ID]);
     expect(after.hints.join(' ')).not.toContain(TREASURE_GOAL.title);
+  });
+});
+
+describe('a guarded landmark in the field guide (world/guards.ts)', () => {
+  it('is never the next place to go while its guard stands, and is once it is beaten', () => {
+    const session = createUncontractedSession('greystone-vale');
+    // Two steps out from the Gastly that sits on the Sailors' Rest, just short of
+    // its square, where the grave is the nearest thing to work.
+    const gastly = fileMap('greystone-vale')!.entities.find((entity) => entity.guards?.name === 'Sailors’ Rest')!;
+    const map = getWorldMap('greystone-vale');
+    const open = (x: number, y: number) => map.collision[y]?.[x] === false;
+    const currentPosition = [
+      { x: gastly.position.x, y: gastly.position.y + 2 },
+      { x: gastly.position.x, y: gastly.position.y - 2 },
+      { x: gastly.position.x + 2, y: gastly.position.y },
+      { x: gastly.position.x - 2, y: gastly.position.y },
+    ].find(({ x, y }) => open(x, y))!;
+    const context = { currentMapId: 'greystone-vale' as const, currentPosition, activatedPoiIds: new Set<string>() };
+    const named = () => buildObjectiveGuide(session, context).hints.some((hint) => hint.includes('SAILORS’ REST'));
+    expect(named()).toBe(false);
+    session.pokemonMet = [gastly.id];
+    expect(named()).toBe(true);
   });
 });

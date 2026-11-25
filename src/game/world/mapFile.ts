@@ -69,6 +69,7 @@ import { foldedSlug, isMapText, typedMapText } from './mapText';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { filePrizes, hoardOf, leanOf } from './filePrizes';
 import { isSecretId } from './secrets';
+import { GUARD_HOARDS } from './guards';
 
 /**
  * A raid map as one file.
@@ -155,6 +156,12 @@ export const MAP_FILE_LIMITS = {
    * files may stand them (`BUILT_IN_MAP_FILE_LIMITS`).
    */
   maxLegends: 0,
+  /**
+   * Standing Pokemon that guard something (`MapFilePokemon.guards`): none on a
+   * player's map, where nothing yet asks that a guard leaves every way out
+   * open (`mapStructure.testkit.ts` does, for the game's own).
+   */
+  maxGuards: 0,
   /**
    * Landmarks behind a lock (`MapFileLandmark.locked`): a crate a Lockpick
    * opens. None on a player's map, whose caches are all measured open; the
@@ -262,6 +269,9 @@ export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   // power station, Moltres on the volcano, Articuno on the ice, Mewtwo in the
   // lab under the station (`powerStation.ts`, `emberIsle.ts`, `frostreef.ts`).
   maxLegends: 5,
+  // A guard is a fight the player cannot walk past, so there are few, each in
+  // front of something worth the fight (`guards.ts`).
+  maxGuards: 12,
   // FireRed's Mewtwo is level 70, as the shipped four's list has it (`legends.ts`).
   maxPokemonLevel: 70,
   maxBeatTiles: 8,
@@ -1513,6 +1523,19 @@ export interface MapFilePokemon extends MapFileSpot {
    * beside it. Only on the game's own maps (`maxSecrets`).
    */
   readonly secret?: string;
+  /**
+   * The landmark it guards, by name, standing within a tile of it: a guard
+   * (`guards.ts`) comes at the player the moment they step beside it, rather
+   * than waiting to be spoken to. Only a Pokemon that fights, keeps no beat and
+   * is no secret's or legend's, and only on the game's own maps (`maxGuards`).
+   */
+  readonly guards?: string;
+  /**
+   * What it has been sitting on (`GUARD_HOARDS`): found in the landmark it
+   * guards, on top of what the landmark pays and never one of those, once a
+   * save, which is what makes the fight worth picking.
+   */
+  readonly sitsOn?: ItemId;
 }
 
 /** A berry tree (`berries.ts`): picked once a raid for one berry. */
@@ -2250,7 +2273,62 @@ export function readMapFile(
       }
     }
     beatOf(`Pokémon ${index + 1}`, standing.beat);
+    if (standing.sitsOn !== undefined && (standing.guards === undefined || !(GUARD_HOARDS as readonly unknown[]).includes(standing.sitsOn))) {
+      problems.push(`Pokémon ${index + 1} sits on one of ${GUARD_HOARDS.join(', ')}, and only a guard sits on anything.`);
+    }
+    if (standing.guards !== undefined) {
+      const guarded = (Array.isArray(value.landmarks) ? value.landmarks.filter(isRecord) : []).find(
+        (landmark) => landmark.name === standing.guards,
+      );
+      if (
+        guarded === undefined ||
+        guarded.area !== standing.area ||
+        typeof guarded.x !== 'number' ||
+        typeof guarded.y !== 'number' ||
+        typeof standing.x !== 'number' ||
+        typeof standing.y !== 'number' ||
+        Math.max(Math.abs(guarded.x - standing.x), Math.abs(guarded.y - standing.y)) !== 1
+      ) {
+        problems.push(`Pokémon ${index + 1} guards a landmark, which it names and stands within a tile of.`);
+      } else if (
+        (Array.isArray(value.exits) ? value.exits.filter(isRecord) : []).some(
+          (exit) => isRecord(exit.opens) && exit.opens.when === 'landmark' && exit.opens.landmark === standing.guards,
+        )
+      ) {
+        // A way out behind a fight is a way out a raid may not have.
+        problems.push(`Pokémon ${index + 1} guards a landmark that opens a way out, which no guard may.`);
+      } else if (
+        standing.sitsOn !== undefined &&
+        typeof guarded.kind === 'string' &&
+        (MAP_FILE_LANDMARKS[guarded.kind as MapFileLandmarkKind]?.reward ?? []).some((entry) => entry.itemId === standing.sitsOn)
+      ) {
+        // Told apart from what the landmark pays only by being something it does not.
+        problems.push(`Pokémon ${index + 1} sits on something its landmark already pays, which it may not.`);
+      } else if (standing.level === undefined || standing.secret !== undefined || standing.legendary !== undefined) {
+        problems.push(`Pokémon ${index + 1} guards something, which only a plain wild Pokémon that fights may.`);
+      } else if (isRecord(standing.beat) && Array.isArray(standing.beat.roam) && standing.beat.roam.length > 0) {
+        problems.push(`Pokémon ${index + 1} guards something, so it stands its ground and walks no beat.`);
+      }
+    }
   });
+  const guardedNames = Array.isArray(value.pokemon)
+    ? value.pokemon.flatMap((standing) => {
+        const named = (standing as { guards?: unknown })?.guards;
+        return named === undefined ? [] : [named];
+      })
+    : [];
+  // One guard to a landmark: its hoard, its caption and its key are its own.
+  if (new Set(guardedNames).size < guardedNames.length) {
+    problems.push('Two Pokémon guard the same landmark, which only one may.');
+  }
+  const guards = guardedNames.length;
+  if (guards > limits.maxGuards) {
+    problems.push(
+      limits.maxGuards === 0
+        ? 'A Pokémon may guard something only on a map the game draws.'
+        : `The map stands ${guards} guards; a map file holds ${limits.maxGuards}.`,
+    );
+  }
   const legends = Array.isArray(value.pokemon)
     ? value.pokemon.filter((standing) => (standing as { legendary?: unknown })?.legendary === true).length
     : 0;
@@ -3247,6 +3325,16 @@ export function buildFileMap(
   // landmark opens, which its description says.
   const landmarkId = (name: string): string =>
     `${id}/landmark-${(file.landmarks ?? []).findIndex((landmark) => landmark.name === name) + 1}`;
+  // The landmark a guard sits on, as the guard carries it (`guards.ts`).
+  // `key` is what a save banks its hoard under: the map and the landmark's name,
+  // which stay put as the map grows, where the landmark's id is only its place
+  // in the list and moves with every landmark drawn before it.
+  const guardedLandmark = (name: string, sitsOn: ItemId | undefined) => ({
+    poiId: landmarkId(name),
+    key: `${id}/${foldedSlug(name)}`,
+    name,
+    ...(sitsOn ? { hoard: sitsOn } : {}),
+  });
   const opensExit = (name: string): string | undefined =>
     file.exits.find((exit) => exit.opens.when === 'landmark' && exit.opens.landmark === name)?.name.toUpperCase();
   return {
@@ -3309,6 +3397,7 @@ export function buildFileMap(
         ...(standing.legendary ? { legendary: true } : {}),
         ...(standing.beat ? { idle: fileBeat(standing, at) } : {}),
         ...(standing.secret ? { secret: standing.secret } : {}),
+        ...(standing.guards ? { guards: guardedLandmark(standing.guards, standing.sitsOn) } : {}),
       })),
       ...(file.berryTrees ?? []).map((tree, index): WorldEntity => ({
         id: `${id}/berry-tree-${index + 1}`,
@@ -3365,13 +3454,15 @@ export function buildFileMap(
     pois: (file.landmarks ?? []).map((landmark, index) => {
       const kind = MAP_FILE_LANDMARKS[landmark.kind];
       const opens = opensExit(landmark.name);
+      // What its guard has been sitting on comes out of it too (`guards.ts`).
+      const hoard = (file.pokemon ?? []).find((standing) => standing.guards === landmark.name)?.sitsOn;
       return {
         id: `${id}/landmark-${index + 1}`,
         mapId: id,
         position: at(landmark),
         label: landmark.name.toUpperCase(),
         description: `${kind.label}. ${kind.says}${opens ? ` Working it opens ${opens} as a way out.` : ''}`,
-        reward: kind.reward.map((entry) => ({ ...entry })),
+        reward: [...kind.reward.map((entry) => ({ ...entry })), ...(hoard ? [{ itemId: hoard, quantity: 1 }] : [])],
         ...(landmark.locked ? { locked: true as const } : {}),
         // The exit it opens, as the shipped maps' Sluice Wheel opens theirs.
         ...(opens ? { effect: 'unlock-extraction' as const, unlockedExtractionLabel: opens } : {}),

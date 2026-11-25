@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { guardedTiles } from '../world/guards';
 import { isMaterial } from '../items';
 import { WORKSHOP_UPGRADES, workshopMaterialKinds } from '../hub/workshop';
 import { BALLS_PREPACKED } from '../hub/deploymentFlow';
@@ -154,6 +155,24 @@ describe("a save's first jobs", () => {
         for (const contract of standingOffers(seed, progressWith({ standingContractsBanked: banked }))) {
           // A walk measured from the case to its exit is the same wherever the raid lands.
           expect(contract.briefing.join(' '), contract.id).not.toMatch(/\d+ steps? from (?!the case)/);
+        }
+      }
+    }
+  });
+
+  it('never sets a stop where a guard sits or reaches (world/guards.ts)', () => {
+    for (const seed of SEEDS.slice(0, 60)) {
+      for (const banked of [0, NEAR_JOBS, 7]) {
+        for (const contract of standingOffers(seed, progressWith({ standingContractsBanked: banked }))) {
+          const map = getWorldMap(contract.mapId);
+          const guarded = new Set(
+            guardedTiles(map.entities, (tile) => map.collision[tile.y]?.[tile.x] !== false).map(({ x, y }) => `${x},${y}`),
+          );
+          for (const marker of contract.markers) {
+            expect(`${contract.id} ${marker.id}: ${guarded.has(`${marker.position.x},${marker.position.y}`) ? 'guarded' : 'open'}`).toBe(
+              `${contract.id} ${marker.id}: open`,
+            );
+          }
         }
       }
     }

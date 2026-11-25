@@ -146,6 +146,17 @@ export interface ActiveRunSession {
    */
   pokemonMet?: string[];
   /**
+   * The guards (`world/guards.ts`) that have come at the player this raid, by
+   * entity id: one met again, after a fight the player ran from, comes at them
+   * with only its lunge and a line rather than the whole introduction.
+   */
+  guardsCharged?: string[];
+  /**
+   * The guard the fight just ended beat or caught, by entity id, for the world
+   * to say what it has given up on the way back (`WorldScene.sayGuardBeaten`).
+   */
+  guardBeaten?: string;
+  /**
    * Whether this raid's patch of shimmering grass has been stepped into
    * (`world/shimmer.ts`): met once, win, lose or run, and the grass stops
    * glittering - which the world, rebuilt after the fight, has to be told.

@@ -142,6 +142,12 @@ export interface RunResult {
   readonly items: readonly { readonly itemId: string; readonly quantity: number }[];
   /** Gifts among `pokemon`, by gift id, for the save to record as received. */
   readonly gifts?: readonly string[];
+  /**
+   * Guards' hoards taken this raid (`world/guards.ts`), by `guards.key` - the map
+   * and the landmark's name, stable as the map grows - for the save to record as
+   * had: banked on any extraction, whatever became of the stone on the way out.
+   */
+  readonly hoards?: readonly string[];
 }
 
 /** A quantity of one item. Negative quantities are only legal in a supply delta. */

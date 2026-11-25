@@ -95,7 +95,11 @@ One map, Greystone Vale, drawn tile by tile and far bigger than one raid can cov
 always somewhere you didn't get to. Tall grass rolls wild encounters, and whatever lives in the water
 bites on a rod, if you can spare the clock to stand there. Landmarks hide caches, which you have
 to rummage through a piece at a time while the clock (and whoever is chasing you) keeps going, and
-the good ones are padlocked: bring a Lockpick, and expect it to snap. There is a gate only its own key
+the good ones are padlocked: bring a Lockpick, and expect it to snap. A few have a wild Pokémon
+sat on them, most of them minding an evolution stone, and it goes for you the moment you step beside it: the red
+hatching round it is how near is too near, and the caption says who it is and what it's sitting on.
+Beat it and the lot is yours. Bring a Tackle-only team to the graveyard Gastly and you'll learn
+something about ghosts. There is a gate only its own key
 opens, and somewhere on the map is the key. Find it, get it home, and from then on you can bring
 it along for a shortcut out. Lose a raid with it in your pack and it's gone. Contracts
 from the board send you looking for something specific. Somewhere on the map there is a prize,

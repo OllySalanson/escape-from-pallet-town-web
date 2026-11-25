@@ -654,6 +654,8 @@ export class BattleScene extends Phaser.Scene {
   private downKey!: Phaser.Input.Keyboard.Key;
   private backKey!: Phaser.Input.Keyboard.Key;
   private launchedFromWorld = false;
+  /** The guard this fight is with (`world/guards.ts`), by its entity id, recorded met only once it is beaten or caught. */
+  private guardId: string | null = null;
   private party!: PokemonParty;
   private forcedReplacement = false;
   private partyMessage = '';
@@ -1046,6 +1048,7 @@ export class BattleScene extends Phaser.Scene {
       takeUpFoe(wildPokemon, data.resumed?.foes?.[0]);
     }
     this.launchedFromWorld = Boolean((data.wild || data.trainer) && data.party);
+    this.guardId = data.wild?.guard ?? null;
     // The whole party rides on the state, so the engine counts the bench as it
     // counts a trainer's: the field emptying is not the battle lost while
     // somebody is left to send in.
@@ -5041,6 +5044,12 @@ export class BattleScene extends Phaser.Scene {
       if (this.trainer && this.state.outcome === 'victory') {
         this.defeatedTrainerIds.add(this.trainer.id);
         this.runSession?.manager.registerTrainerDefeat();
+      }
+      // A guard beaten or caught has let the player by for the raid; one fled
+      // from is still sat where it was (`world/guards.ts`).
+      if (this.guardId !== null && this.runSession && (this.state.outcome === 'victory' || this.state.outcome === 'caught')) {
+        (this.runSession.pokemonMet ??= []).push(this.guardId);
+        this.runSession.guardBeaten = this.guardId;
       }
       this.persistActivePokemonHp();
       // Typed as the whole carriage, so a field the world packed and this

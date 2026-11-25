@@ -793,7 +793,10 @@ export function checkMapFile(
   // reached across another exit is not a way out, it is that exit.
   const exitTiles = new Set(file.exits.map((exit) => at(onGrid(exit))));
   // A figure that keeps a beat is a wall on every tile of it, whichever it is on.
-  const figureTiles = [...people, ...signs, ...pokemon, ...berryTrees].flatMap((spot) =>
+  // A guard is not (`guards.ts`): it is fought and gone, as a trainer is, so
+  // what stands behind it is reached through it - and that it cuts nothing else
+  // off is the structure sweep's (`mapStructure.testkit.ts`).
+  const figureTiles = [...people, ...signs, ...pokemon.filter((spot) => spot.guards === undefined), ...berryTrees].flatMap((spot) =>
     beatSpots(spot).map((tile) => at(onGrid(tile))),
   );
   // A rock barrier is a wall for the way out, as a boulder is - nobody has to

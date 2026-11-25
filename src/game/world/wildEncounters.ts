@@ -28,6 +28,12 @@ export interface WildEncounter {
    * and says "throw a BALL now" the moment it is weak enough to hold.
    */
   lesson?: 'catch';
+  /**
+   * The guard this is (`guards.ts`), by its entity id: beaten or caught, the
+   * fight records it met (`ActiveRunSession.pokemonMet`) and it is gone for
+   * the raid; fled from, it stands where it stood.
+   */
+  guard?: string;
 }
 
 export type EncounterRng = () => number;

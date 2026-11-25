@@ -7370,7 +7370,7 @@
     "everyMs": 2700,
     "roam": [
      [
-      1,
+      -1,
       0
      ]
     ],
@@ -9961,7 +9961,8 @@
    "facing": "right",
    "lines": [
     "There is nobody under most of these. The sea keeps them. These are just where to come and shout.",
-    "I have got a good one for you, down in the far corner. He is not dead. He owes me for the stone."
+    "A Gastly sits on the Sailors’ Rest now. Step up beside it and it goes for you. Nobody has had the grave goods since.",
+    "Punch it, kick it, tackle it: it all goes straight through. Bring something that is not just fists."
    ],
    "beat": {
     "everyMs": 4300,
@@ -14662,7 +14663,7 @@
   {
    "x": 183,
    "y": 79,
-   "name": "Quarry Hut",
+   "name": "Powder Store",
    "kind": "shed"
   },
   {
@@ -14759,15 +14760,15 @@
    "kind": "mast"
   },
   {
-   "x": 183,
-   "y": 203,
+   "x": 185,
+   "y": 199,
    "name": "Sailors’ Rest",
    "kind": "grave"
   },
   {
    "x": 224,
    "y": 206,
-   "name": "Apple Store",
+   "name": "Apple Cart",
    "kind": "shed"
   },
   {
@@ -16073,7 +16074,7 @@
    ]
   },
   {
-   "x": 184,
+   "x": 185,
    "y": 79,
    "name": "Breaker Finn",
    "team": "breaker",
@@ -17049,18 +17050,12 @@
    }
   },
   {
-   "x": 184,
-   "y": 81,
-   "species": "machop",
-   "beat": {
-    "everyMs": 1600,
-    "roam": [
-     [
-      1,
-      0
-     ]
-    ]
-   }
+   "x": 183,
+   "y": 80,
+   "species": "onix",
+   "level": 11,
+   "guards": "Powder Store",
+   "sitsOn": "moon-stone"
   },
   {
    "x": 178,
@@ -17451,18 +17446,12 @@
    }
   },
   {
-   "x": 176,
-   "y": 169,
-   "species": "beedrill",
-   "beat": {
-    "everyMs": 1100,
-    "roam": [
-     [
-      0,
-      1
-     ]
-    ]
-   }
+   "x": 177,
+   "y": 171,
+   "species": "weedle",
+   "level": 4,
+   "guards": "Hive Row",
+   "sitsOn": "great-ball"
   },
   {
    "x": 184,
@@ -18315,18 +18304,12 @@
    }
   },
   {
-   "x": 184,
-   "y": 202,
+   "x": 185,
+   "y": 200,
    "species": "gastly",
-   "beat": {
-    "everyMs": 2300,
-    "roam": [
-     [
-      0,
-      1
-     ]
-    ]
-   }
+   "level": 12,
+   "guards": "Sailors’ Rest",
+   "sitsOn": "water-stone"
   },
   {
    "x": 164,
@@ -18414,19 +18397,12 @@
    }
   },
   {
-   "x": 226,
+   "x": 224,
    "y": 205,
    "species": "doduo",
    "level": 9,
-   "beat": {
-    "everyMs": 1600,
-    "roam": [
-     [
-      0,
-      1
-     ]
-    ]
-   }
+   "guards": "Apple Cart",
+   "sitsOn": "leaf-stone"
   },
   {
    "x": 212,
