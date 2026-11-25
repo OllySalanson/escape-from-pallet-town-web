@@ -4,7 +4,7 @@ import { STEP_DURATION_MS } from '../movement/stepClock';
 import { getWorldMap, type WorldMapDefinition } from '../worldMap';
 import { gateKey } from './gates';
 import { ledgesForMap } from './ledges';
-import { RACER_GROUND, raceGround, racerLine } from './raceLine';
+import { RACER_GROUND, knowingLine, raceGround, racerLine } from './raceLine';
 import {
   MERE_DASH,
   PURSE_STONES,
@@ -15,7 +15,11 @@ import {
   raceOfferLines,
   racePrize,
   raceQuestion,
-  raceResultLines,
+  judgeLines,
+  racerArrivesLines,
+  racerWonLines,
+  raceGossipAt,
+  racerKnowsTheWay,
   racerTimeMs,
 } from './races';
 import { createRunTrainerEncounters } from './trainers';
@@ -161,14 +165,44 @@ describe('THE MERE DASH, on the vale as it is drawn', () => {
   });
 });
 
+describe('LINNET, once she has learned the dry way', () => {
+  it('runs the reeds\u2019 dry way at the player\u2019s pace, never up the ride, so only the ride beats her', () => {
+    expect(racerKnowsTheWay({ runs: 1, wins: 1, medal: 'bronze' })).toBe(false);
+    expect(racerKnowsTheWay({ runs: 1, wins: 1, medal: 'silver' })).toBe(true);
+    for (const map of [shut, open]) {
+      const line = knowingLine(raceGround(map, figuresOn(map)), course.racer.stands, course.finish.tiles, course.racer.keepsOff, course.racer.waits);
+      expect(line).not.toBeNull();
+      const off = course.racer.keepsOff;
+      expect(line!.some((tile) => tile.x >= off.x && tile.x < off.x + off.width && tile.y >= off.y && tile.y < off.y + off.height)).toBe(false);
+      const crossing = line!.findIndex((tile) => course.finish.tiles.some((one) => one.x === tile.x && one.y === tile.y));
+      const herMs = racerTimeMs(crossing + 1);
+      // Under SILVER herself: through the reeds a player ties her at best.
+      expect(herMs).toBeLessThan(course.silverMs);
+      for (const from of askingTiles(map)) {
+        // The dry way, minding the grass as she does: a tie at best.
+        expect(bestWay(shut, from, 3).steps * STEP_DURATION_MS).toBeGreaterThanOrEqual(herMs - STEP_DURATION_MS);
+        // Wading straight through can nose ahead - through enough wild grass to be a dice roll.
+        const wade = bestWay(shut, from);
+        if (wade.steps * STEP_DURATION_MS < herMs) expect(wade.wild).toBeGreaterThanOrEqual(10);
+      }
+      if (map === open) {
+        for (const from of askingTiles(open)) {
+          expect(bestWay(open, from, 3).steps * STEP_DURATION_MS).toBeLessThan(herMs - 3000);
+        }
+      }
+    }
+  });
+});
+
 describe('what a race pays', () => {
   it('pays a little a raid and the day’s purse for the first GOLD of the day', () => {
     const fresh = { purseTakenToday: false, trophyBanked: false };
     expect(racePrize('lost', null, fresh)).toEqual({ money: 10, purse: false, trophy: false });
     expect(racePrize('won', 'bronze', fresh)).toEqual({ money: 30, purse: false, trophy: false });
-    expect(racePrize('won', 'silver', fresh)).toEqual({ money: 30, purse: false, trophy: false });
-    expect(racePrize('won', 'gold', fresh)).toEqual({ money: 30, purse: true, trophy: true });
-    expect(racePrize('won', 'gold', { purseTakenToday: true, trophyBanked: true })).toEqual({ money: 30, purse: false, trophy: false });
+    // The first SILVER or better puts the trophy on the shelf; a GOLD every raid is worth the most.
+    expect(racePrize('won', 'silver', fresh)).toEqual({ money: 40, purse: false, trophy: true });
+    expect(racePrize('won', 'gold', fresh)).toEqual({ money: 60, purse: true, trophy: true });
+    expect(racePrize('won', 'gold', { purseTakenToday: true, trophyBanked: true })).toEqual({ money: 60, purse: false, trophy: false });
     expect(racePrize('late', null, fresh)).toEqual({ money: 0, purse: false, trophy: false });
   });
 
@@ -189,56 +223,65 @@ describe('what a race pays', () => {
 });
 
 describe('what LINNET says', () => {
-  it('asks the captain’s question, and says where the line is and what it pays before it', () => {
+  it('asks the captain\u2019s question, and says where the line is and what it pays before it', () => {
     expect(raceQuestion(course)).toBe('Do you want to race LINNET to THE LAST HOUSE?');
     const offer = raceOfferLines(course, undefined, false).join(' ');
     expect(offer).toContain('THE LAST HOUSE');
     expect(offer).toContain('₽30');
     expect(offer).toContain('₽10');
     expect(offer).toContain('evolution stone');
-    expect(raceOfferLines(course, undefined, true).join(' ')).toContain('come back tomorrow');
-    expect(raceOfferLines(course, { runs: 2, wins: 1, bestMs: 14_200, medal: 'silver' }, false).join(' ')).toContain(
-      'Your best: 0:14.2 (SILVER)',
-    );
+    // Once it is known, one line and the purse.
+    const back = raceOfferLines(course, { runs: 2, wins: 1, bestMs: 14_200, medal: 'silver' }, true);
+    expect(back[0]).toContain('Your best: 0:14.2 SILVER');
+    expect(back[0]).toContain("I know the reeds' dry way now");
+    expect(back[1]).toContain('come back tomorrow');
   });
 
-  it('tells a loser about the reeds and a winner without GOLD about the ride', () => {
-    const lost = raceResultLines(course, {
-      outcome: 'lost',
-      fightMs: 0,
-      offRoad: false,
-      timeMs: 23_400,
-      racerMs: 22_950,
-      medal: null,
-      newBest: true,
-      prize: { money: 10, purse: false, trophy: false },
-    }).join(' ');
-    expect(lost).toContain('LINNET crossed first, 0.5s ahead');
-    expect(lost).toContain('dry way');
-    const won = raceResultLines(course, {
-      outcome: 'won',
+  it('lets the judge call a win, and the racer say their piece as they run in', () => {
+    const input = {
+      outcome: 'won' as const,
       fightMs: 0,
       offRoad: true,
+      racerKnew: false,
+      tookShortcut: false,
       timeMs: 15_200,
-      racerMs: 22_950,
-      medal: 'silver',
-      newBest: false,
-      prize: { money: 30, purse: false, trophy: false },
-    }).join(' ');
-    expect(won).toContain('SILVER!');
-    const waded = raceResultLines(course, {
-      outcome: 'lost',
-      fightMs: 9100,
-      offRoad: true,
-      timeMs: 26_800,
       racerMs: 22_800,
-      medal: null,
+      medal: 'silver' as const,
       newBest: false,
-      prize: { money: 10, purse: false, trophy: false },
-    }).join(' ');
-    expect(waded).toContain('0:26.8 (9.1s of it fighting)');
-    expect(waded).toContain("I don't stop while you fight");
-    expect(won).toContain('woodcutter');
+      prize: { money: 40, purse: false, trophy: false },
+    };
+    expect(judgeLines(course, input).join(' ')).toBe('OLD REEVE: Over the line! 0:15.2. SILVER! LINNET left the purse with me: ₽40.');
+    const arrives = racerArrivesLines(course, input).join(' ');
+    expect(arrives).toContain('7.6s behind');
+    expect(arrives).toContain('woodcutter');
+    expect(arrives).toContain('Bill trades a Cut disc');
+    // Down the ride and short of GOLD: told what cost it, not told to go and find the ride.
+    const ride = racerArrivesLines(course, { ...input, tookShortcut: true, fightMs: 1500, timeMs: 12_200 }).join(' ');
+    expect(ride).toContain('The ride! I KNEW it.');
+    expect(ride).toContain('Stop to fight and you lose it.');
+    expect(ride).not.toContain('Bill');
+  });
+
+  it('tells a loser what lost it: the boardwalk, the fights, the long way, or her learning the way', () => {
+    const lost = (fightMs: number, offRoad: boolean, racerKnew: boolean) =>
+      racerWonLines(course, {
+        outcome: 'lost',
+        fightMs,
+        offRoad,
+        racerKnew,
+        tookShortcut: false,
+        timeMs: 23_400,
+        racerMs: 22_800,
+        medal: null,
+        newBest: false,
+        prize: { money: 10, purse: false, trophy: false },
+      }).join(' ');
+    expect(lost(0, false, false)).toContain('boardwalk');
+    expect(lost(0, false, false)).toContain('Beat you by 0.6s!');
+    expect(lost(9100, true, false)).toContain('0:23.4 (9.1s of it fighting)');
+    expect(lost(9100, true, false)).toContain("I don't stop while you fight");
+    expect(lost(0, true, false)).toContain('straighter');
+    expect(lost(0, true, true)).toContain('My dry way now');
   });
 
   it('keeps the chip to what a glance can take', () => {
@@ -249,9 +292,20 @@ describe('what LINNET says', () => {
       racerHomeMs: null,
       waitLeftMs: null,
       bearing: 'SW',
+      tilesToLine: 41,
       bestMs: 15_200,
     });
-    expect(lines).toEqual(['RACE 0:07.4', 'LINNET: THE HUMMOCK', 'LINE: THE LAST HOUSE SW', 'BEST 0:15.2']);
+    expect(lines).toEqual(['RACE 0:07.4', 'LINNET: THE HUMMOCK', 'LINE SW 41', 'BEST 0:15.2']);
+  });
+
+  it('has the village talk about a race once it is won, and not before', () => {
+    const own = ['MILL SQUARE', 'West: the Westward Road.', 'RACES: ask LINNET, by the alley off the south street. Nobody has beaten her yet.'];
+    expect(raceGossipAt('greystone-vale', { x: 101, y: 157 }, { 'mere-dash': { runs: 2, wins: 0 } }, own)).toBeUndefined();
+    const sign = raceGossipAt('greystone-vale', { x: 101, y: 157 }, { 'mere-dash': { runs: 3, wins: 1, bestMs: 10_200, medal: 'gold' } }, own);
+    expect(sign).toEqual(['MILL SQUARE', 'West: the Westward Road.', 'RACES: ask LINNET, by the alley. Course record: 0:10.2 GOLD. She is furious.']);
+    expect(raceGossipAt('greystone-vale', { x: 88, y: 162 }, { 'mere-dash': { runs: 1, wins: 1, medal: 'silver' } }, [])?.join(' ')).toContain(
+      'practises every night',
+    );
   });
 
   it('has one course per racer standing tile', () => {

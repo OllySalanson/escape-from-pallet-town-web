@@ -471,6 +471,12 @@ export const SOUND_EFFECTS = {
     moment: 'Over the line first in a race',
     tones: run([523, 659, 784, 1047, 784, 1047], 0.08, 0.07, 0.065),
   },
+  raceGold: {
+    channel: 'fanfare',
+    moment: 'Over the line in GOLD time',
+    // The winner's run, then held high and sounded twice: a record.
+    tones: [...run([523, 659, 784, 1047], 0.07, 0.07, 0.065), sq(1319, 0.14, 0.07, 0.3), sq(1568, 0.34, 0.075, 0.46), tri(392, 0.5, 0.05, 0.3)],
+  },
   raceLost: {
     channel: 'world',
     moment: 'Over the line behind the racer',

@@ -16,11 +16,15 @@
 // --line=wade   the fewest steps whatever the grass
 // --line=cut    as dry, which with --opened=greystone-vale/door-2 (or a Cut) takes
 //               the woodcutter's ride
-// --slow=N      a stranger who dawdles: N ms stood still at every corner
+// --slow=N      a slow starter: N ms late off the line after GO
+// --first       a save on its first raid: LINNET is there and wants you home first
+// --record-out=file  writes the course's record (best time, mark, best run) after the race
+// --record-in=file   puts that record in the save before asking, so the race is run
+//                    against a best - its ghost walks beside the player
 //
 // Every check is stepped (test mode, the loop paused), so a run is the same run
 // whatever the machine is doing. See tools/playtest/README.md.
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { LOGIC_WINDOW, PIXEL_WINDOW, launchBrowser } from './browser.mjs';
 import { GAME, deploy, deployOptions } from './deploy.mjs';
 
@@ -69,7 +73,7 @@ try {
     await wait(350);
   };
   const deployed = Object.fromEntries(Object.entries(deployOptions(args)).filter(([, value]) => value !== undefined));
-  await deploy(page, url.href, { press, click, until, wait, paused: true, insertion: 'greystone-vale', banked: 1, ...deployed });
+  await deploy(page, url.href, { press, click, until, wait, paused: true, ...(flag('first') ? {} : { insertion: 'greystone-vale', banked: 1 }), ...deployed });
   const W = `${GAME}.scene.getScene('world')`;
   const state = () => page.evaluate(`(() => { const w = ${W}; const g = ${GAME};
     const battle = g.scene.getScenes(true).some((s) => s.scene.key === 'battle');
@@ -132,6 +136,7 @@ try {
         if (cost.has(k) && cost.get(k) <= step) continue; cost.set(k, step); prev.set(k, id(x, y)); (buckets[step] ??= []).push([nx, ny]); } }
     return null; })()`);
 
+  let lineShot = false;
   const KEY = (from, to) => (to.x > from.x ? 'ArrowRight' : to.x < from.x ? 'ArrowLeft' : to.y > from.y ? 'ArrowDown' : 'ArrowUp');
   /** Walks a path holding keys, turning a beat before each corner. */
   const run = async (path, { stopWhen } = {}) => {
@@ -143,6 +148,12 @@ try {
       if (s.choice) {
         await hold(null);
         return { asked: true };
+      }
+      if (s.dialog && shots && !lineShot && s.race?.phase === 'over') {
+        lineShot = true;
+        await hold(null);
+        await wait(300);
+        await page.screenshot(`${shots}/5-at-the-line.png`);
       }
       if (s.battle || s.dialog) {
         await hold(null);
@@ -166,7 +177,6 @@ try {
       const from = going >= 0 ? going : i;
       if (from >= path.length - 1) { await hold(null); await wait(FRAME_MS); continue; }
       const key = KEY(path[from], path[from + 1]);
-      if (slowMs > 0 && held !== key && held !== null && !s.target) { await hold(null); await wait(slowMs); }
       await hold(key);
       await wait(FRAME_MS);
     }
@@ -175,7 +185,13 @@ try {
 
   // The raid opens on its briefing.
   await clear();
-  note(`deployed at ${JSON.stringify((await state()).tile)}`);
+  note(`deployed at ${JSON.stringify((await state()).tile)}, first raid ${await page.evaluate(`${W}.runSession.plan?.stagedChase === true`)}`);
+  if (option('record-in')) {
+    const record = readFileSync(option('record-in'), 'utf8');
+    await page.evaluate(`(() => { const key = 'escape-from-pallet-town.save.v1'; const save = JSON.parse(localStorage.getItem(key));
+      save.raidProgress.races = { 'mere-dash': ${record} }; localStorage.setItem(key, JSON.stringify(save)); })()`);
+    note(`racing against the best in ${option('record-in')}`);
+  }
   const toAsk = await plan([ASK], 'wade');
   if (!toAsk) throw new Error('cannot reach LINNET');
   await run(toAsk);
@@ -185,15 +201,19 @@ try {
   await press('Space');
   // The offer, read to the end, then the question.
   const asked = await clear();
+  if (flag('first')) { note(`first raid: ${asked.choice ? 'ASKED - wrong' : 'no question, as it should be'}`); process.exit(0); }
   if (!asked.choice) throw new Error(`no question: ${JSON.stringify(asked)}`);
   note(`  asks: ${asked.choice.question} [${asked.choice.options.join(' / ')}] selected ${asked.choice.selected}`);
   if (shots) await page.screenshot(`${shots}/2-question.png`);
   for (let guard = 0; guard < 4 && (await state()).choice?.selected !== 0; guard += 1) await press('ArrowLeft');
   await press('Space');
+  // "On your marks..." is read before the count.
+  await clear();
   await until(`${W}.describeForTest().race?.phase === 'running'`, 'GO');
   const go = await state();
   note(`GO at raid clock ${go.elapsedMs}ms, LINNET due ${go.race.racerMs}ms`);
   if (shots) await page.screenshot(`${shots}/3-go.png`);
+  if (slowMs > 0) await wait(slowMs);
   const path = await plan(FINISH, line === 'cut' ? 'cut' : line);
   if (!path) throw new Error(`no ${line} line from ${JSON.stringify(go.tile)}`);
   const wild = await page.evaluate(`(() => { const g = ${W}.currentMap.tallGrass; return ${JSON.stringify(path)}.filter((t) => g[t.y][t.x]).length; })()`);
@@ -201,7 +221,8 @@ try {
   let shotAt = 0;
   const result = await run(path, {
     stopWhen: async (s) => {
-      if (shots && s.race && s.race.clockMs - shotAt > 5000) { shotAt = s.race.clockMs; await page.screenshot(`${shots}/4-running-${Math.round(s.race.clockMs / 1000)}s.png`); }
+      if (flag('debug-ghost') && s.race && s.race.clockMs - shotAt > 2000) note(`ghost: ${await page.evaluate(`(() => { const g = ${W}.raceGhostSprite; return g ? JSON.stringify({ x: g.x / 16, y: g.y / 16, visible: g.visible, alpha: g.alpha, frame: g.frame.name, tex: g.texture.key, trail: (${W}.raceGhost ?? []).length }) : 'none'; })()`)} player ${JSON.stringify(s.tile)}`);
+      if (shots && s.race && s.race.clockMs - shotAt > Number(option('shot-every') ?? 5000)) { shotAt = s.race.clockMs; await page.screenshot(`${shots}/4-running-${Math.round(s.race.clockMs / 1000)}s.png`); }
       return false;
     },
   });
@@ -224,6 +245,7 @@ try {
   note(`pack: ${bag}`);
   const record = await page.evaluate(`JSON.stringify(JSON.parse(localStorage.getItem('escape-from-pallet-town.save.v1')).raidProgress.races ?? null)`);
   note(`save: ${record}`);
+  if (option('record-out')) writeFileSync(option('record-out'), JSON.stringify(JSON.parse(record)['mere-dash']));
 } finally {
   browser.close();
 }
