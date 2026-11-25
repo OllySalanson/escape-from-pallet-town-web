@@ -663,6 +663,17 @@ function stationPut(top: number): (x: number, y: number, ink: Rgb) => void {
   return (x, y, ink) => (y >= top ? ground : over).set(x, y, ink);
 }
 
+/**
+ * A station is painted wholly on the floor. Its back is against the wall, so
+ * nobody can pass behind it, and what is chosen stands on it as figures
+ * (`ArenaFurniture`) rising into the row above: painted over figures, the rack's
+ * cloth hid the top half of every thing on its shelf and the bench's back the
+ * heads of whoever sat on it.
+ */
+function stationOnFloor(x: number, y: number, ink: Rgb): void {
+  ground.set(x, y, ink);
+}
+
 /** Its shadow on the floor, thrown down and to the right, as a pillar's is. */
 function stationShadow(left: number, right: number, foot: number): void {
   for (let dy = 1; dy <= 5; dy += 1) {
@@ -693,8 +704,8 @@ const STEEL_DEEP: Rgb = [104, 128, 168];
  * (`ArenaFurniture`), a Pokemon a tile. A bench is a thing to be seen from the door.
  */
 function paintBench(): void {
-  const { left: tileLeft, right: tileRight, top, foot } = stationBox('bench');
-  const put = stationPut(top);
+  const { left: tileLeft, right: tileRight, foot } = stationBox('bench');
+  const put = stationOnFloor;
   const left = tileLeft + 1;
   const right = tileRight - 1;
   const head = foot - 30;
@@ -745,8 +756,8 @@ function paintBench(): void {
  * long shelf. What this raid carries stands on the shelf (`ArenaFurniture`).
  */
 function paintRack(): void {
-  const { left: tileLeft, right: tileRight, top, foot } = stationBox('rack');
-  const put = stationPut(top);
+  const { left: tileLeft, right: tileRight, foot } = stationBox('rack');
+  const put = stationOnFloor;
   const left = tileLeft + 1;
   const right = tileRight - 1;
   const head = foot - 38;
@@ -789,8 +800,8 @@ function paintRack(): void {
  * great brass lock. What is in it comes home whatever happens, and it looks it.
  */
 function paintLocker(): void {
-  const { left: tileLeft, right: tileRight, top, foot } = stationBox('locker');
-  const put = stationPut(top);
+  const { left: tileLeft, right: tileRight, foot } = stationBox('locker');
+  const put = stationOnFloor;
   const left = tileLeft + 2;
   const right = tileRight - 2;
   const head = foot - 38;
