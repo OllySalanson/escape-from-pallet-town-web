@@ -19,6 +19,7 @@ import {
 import { getWorldMap, worldMapName, type WorldMapId } from '../worldMap';
 import type { MapLayers } from '../world/tiles';
 import type { TileSource } from '../world/tileset/catalogue';
+import type { PurseMark } from '../world/purses';
 import { chartSheetsFor } from './chartSheets';
 import { REVEAL_TOTAL_MS, revealFrame } from '../world/chartReveal';
 import { iconUrl } from './icons';
@@ -57,6 +58,8 @@ export interface MapScreenView {
     /** What was known before the place was filled in. */
     readonly wasKnown: (tile: GridPosition) => boolean;
   };
+  /** Trainers the player has walked beside who would still pay their prize (`world/purses.ts`), each marked with a coin. */
+  readonly purses?: readonly PurseMark[];
 }
 
 /** A map's picture in colour and the same under fog, painted once a page: a map does not change while a page is open. */
@@ -118,6 +121,8 @@ export class MapScreen {
   private readonly clock: HTMLElement | null;
   private readonly resize: ResizeObserver | null;
   private readonly standing: GridPosition | null;
+  /** The coins on the chart, each beside the trainer it marks. */
+  private readonly purses: readonly { readonly mark: PurseMark; readonly element: HTMLElement }[];
   /** The picture as seen this opening, colour and fog together, ready to draw from. */
   private source: HTMLCanvasElement | null = null;
   /** For a place coming up: the map as it was, and when the moment began. */
@@ -165,6 +170,21 @@ export class MapScreen {
             : ''
         }
       </div>`;
+    const frameOf = this.overlay.root.querySelector<HTMLElement>('[data-chart-frame]')!;
+    const inChart = (tile: GridPosition): boolean =>
+      tile.x >= this.rect.x && tile.y >= this.rect.y && tile.x < this.rect.x + this.rect.width && tile.y < this.rect.y + this.rect.height;
+    this.purses = (view.purses ?? []).filter((mark) => inChart(mark.tile)).map((mark) => {
+      const element = document.createElement('span');
+      element.className = 'chart-purse';
+      element.hidden = true;
+      element.setAttribute('role', 'img');
+      element.setAttribute('aria-label', `${mark.name} still pays`);
+      element.title = `${mark.name} still pays`;
+      element.innerHTML = `<img src="${iconUrl('money')}" alt="">`;
+      // Under the player's own mark, which is drawn last so it is never hidden.
+      frameOf.insertBefore(element, frameOf.querySelector('[data-chart-here]'));
+      return { mark, element };
+    });
     this.canvas = this.overlay.root.querySelector<HTMLCanvasElement>('[data-chart-canvas]')!;
     this.frame = this.overlay.root.querySelector<HTMLElement>('[data-chart-frame]')!;
     this.here = this.overlay.root.querySelector<HTMLElement>('[data-chart-here]');
@@ -399,6 +419,11 @@ export class MapScreen {
           element.style.height = `${square.height / ratio}px`;
         }
       }
+    }
+    for (const { mark, element } of this.purses) {
+      element.hidden = false;
+      element.style.left = `${(place.left + (mark.tile.x - this.rect.x + 0.5) * place.tilePixels) / ratio}px`;
+      element.style.top = `${(place.top + (mark.tile.y - this.rect.y + 0.5) * place.tilePixels) / ratio}px`;
     }
     if (this.here && this.standing) {
       this.here.hidden = false;
