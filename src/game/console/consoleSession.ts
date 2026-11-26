@@ -21,6 +21,13 @@ export interface ConsoleSessionHooks {
   readonly record?: (line: string) => void;
   /** Where a finished game's score went, so the player can be told if it did not reach Pallet Town. */
   readonly scoreWent?: (game: ConsoleGame, score: number, posted: Posted) => void;
+  /**
+   * A name the game asked for at its end, played with none: the player's from
+   * now on once Pallet Town has said nobody else has it, or null.
+   */
+  readonly claimName?: (typed: string) => Promise<string | null>;
+  /** A finished game went on no board, because no name was kept for it. */
+  readonly scoreUnnamed?: (game: ConsoleGame, score: number, typed: string | null) => void;
 }
 
 /**
@@ -53,8 +60,14 @@ export class ConsoleSession {
     return board;
   }
 
-  /** Starts a game under a name. Returns once it is mounted, or has failed to. */
-  public async play(game: ConsoleGame, playerName: string): Promise<void> {
+  /**
+   * Starts a game, under the player's name or with none: a console in your own
+   * room never stops you to type one first (the harbour re-critic). Played
+   * with none, the game asks at its end, only for a score that earns a place,
+   * and the name it was given is claimed before anything is posted under it.
+   * Returns once it is mounted, or has failed to.
+   */
+  public async play(game: ConsoleGame, playerName: string | null): Promise<void> {
     if (this.current) {
       return;
     }
@@ -66,9 +79,18 @@ export class ConsoleSession {
     try {
       const handle = await game.mount(host, {
         playerName,
-        onGameOver: async (result) => {
+        onGameOver: async ({ name: typed, ...result }) => {
           countPlay({ kind: 'blocks', detail: game.id });
-          const posted: Posted = await this.hooks.leaderboards.post(game.id, playerName, result);
+          const name = playerName ?? (typed && this.hooks.claimName ? await this.hooks.claimName(typed) : null);
+          if (name === null) {
+            this.hooks.record?.(`Finished ${game.name}: ${result.score} (no name)`);
+            if (typed && this.current?.game === game) {
+              this.hooks.scoreUnnamed?.(game, result.score, typed);
+            }
+            return;
+          }
+          playerName = name;
+          const posted: Posted = await this.hooks.leaderboards.post(game.id, name, result);
           this.hooks.record?.(`Finished ${game.name}: ${result.score} (${posted})`);
           if (this.current?.game === game) {
             this.hooks.scoreWent?.(game, result.score, posted);

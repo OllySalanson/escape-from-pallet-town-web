@@ -235,6 +235,7 @@ export class MenuOverlay {
    */
   public refocus(...selectors: string[]): void {
     this.placeCursorNextFrame(() => {
+      this.showPaneHolding(this.lastFocusKey);
       const controls = this.cursorControls();
       // Nothing to put back on a screen just opened: a control with no key of its
       // own would otherwise answer to having no memory at all.
@@ -251,12 +252,40 @@ export class MenuOverlay {
   }
 
   /**
+   * A redraw shows each list's first detail pane, so a press in another row's
+   * pane - GARDEN on MY PC's second Pokémon - came back to a control the
+   * cursor could not reach, and nothing held the cursor at all (the harbour
+   * re-critic). The pane the remembered control is in is shown again first.
+   */
+  private showPaneHolding(key: string | null): void {
+    if (key === null) {
+      return;
+    }
+    const held = [...this.root.querySelectorAll<HTMLElement>(CURSOR_CONTROLS)].find(
+      (control) => control.offsetParent === null && focusKeyOf(control) === key,
+    );
+    const pane = held?.closest<HTMLElement>('[data-shown-by]')?.dataset.shownBy;
+    if (pane === undefined) {
+      return;
+    }
+    const owner = [...this.root.querySelectorAll<HTMLElement>('[data-shows]')].find((each) => each.dataset.shows === pane);
+    this.showDetailFor(owner ?? null);
+  }
+
+  /**
    * Moves the cursor the way an arrow key points, by where the controls are on
    * screen. Returns whether the key was one of the cursor's, so the caller knows
    * to keep it from the browser.
    */
   public moveCursor(key: string): boolean {
     if (key === 'Tab') {
+      // Out of a pane, Tab goes on to the next area and Shift+Tab back to the
+      // row: crossing back and forth, Tab never left a list with a pane, and
+      // MY PC's SUPPLIES were only the arrows' (the harbour re-critic).
+      const inPane = (document.activeElement as HTMLElement | null)?.closest('[data-shown-by]') !== null;
+      if (inPane && !this.shiftHeld && document.activeElement && this.root.contains(document.activeElement)) {
+        return this.hopArea();
+      }
       return this.stepAcrossPane() || this.hopArea();
     }
     const direction = focusDirectionForKey(key);

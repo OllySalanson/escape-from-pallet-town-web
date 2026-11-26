@@ -174,27 +174,38 @@ const unchanged = (state: DecorState, outcome: DecorResult['outcome'] = 'nothing
 });
 
 /** Takes the box's chosen kind into the player's hands, held by its bottom middle. */
-function takeFromBox(state: DecorState, owned: ReadonlyMap<string, number>, index: number): DecorResult {
-  const box = decorBox({ ...state, held: null }, owned);
+function takeFromBox(state: DecorState, context: DecorContext, index: number): DecorResult {
+  const box = decorBox({ ...state, held: null }, context.owned);
   if (box.length === 0) {
     return unchanged({ ...state, held: null }, 'refused', { kind: 'empty-box' });
   }
   const boxIndex = ((index % box.length) + box.length) % box.length;
   const { definition } = box[boxIndex];
-  return {
-    state: {
-      ...state,
-      boxIndex,
-      held: {
-        id: definition.id,
-        facing: 0,
-        grab: { x: Math.floor((definition.width - 1) / 2), y: definition.height - 1 },
-        from: null,
-      },
+  const taken: DecorState = {
+    ...state,
+    boxIndex,
+    held: {
+      id: definition.id,
+      facing: 0,
+      grab: { x: Math.floor((definition.width - 1) / 2), y: definition.height - 1 },
+      from: null,
     },
-    changed: false,
-    outcome: 'took-out',
   };
+  return { state: { ...taken, cursor: nearestFit(taken, context) }, changed: false, outcome: 'took-out' };
+}
+
+/**
+ * The nearest tile to the cursor where the piece in hand could be put down,
+ * nearest first and then the row above: out of the box it started on the
+ * fixture faced, in red and under the player (the harbour re-critic). The
+ * cursor stays put where nothing fits.
+ */
+function nearestFit(state: DecorState, context: DecorContext): GridPosition {
+  const { width, height } = context.plan;
+  const tiles = Array.from({ length: width * height }, (_, index) => ({ x: index % width, y: Math.floor(index / width) }));
+  const distance = (tile: GridPosition) => Math.abs(tile.x - state.cursor.x) + Math.abs(tile.y - state.cursor.y);
+  tiles.sort((a, b) => distance(a) - distance(b) || a.y - b.y || a.x - b.x);
+  return tiles.find((cursor) => heldRefusal({ ...state, cursor }, context) === null) ?? state.cursor;
 }
 
 /** One key, one change. */
@@ -227,7 +238,7 @@ export function decorate(state: DecorState, action: DecorAction, context: DecorC
       }
       const piece = pieceUnderCursor(state);
       if (!piece) {
-        return takeFromBox(state, context.owned, state.boxIndex);
+        return takeFromBox(state, context, state.boxIndex);
       }
       const carrying = standingOn(state, piece);
       if (carrying) {
@@ -285,7 +296,7 @@ export function decorate(state: DecorState, action: DecorAction, context: DecorC
       const held = state.held;
       const layout = held?.from ? inLayerOrder([...state.layout, held.from]) : state.layout;
       const index = held && !held.from ? state.boxIndex + action.step : state.boxIndex;
-      return takeFromBox({ ...state, layout, held: null }, context.owned, index);
+      return takeFromBox({ ...state, layout, held: null }, context, index);
     }
     case 'put-away': {
       if (state.held) {

@@ -10300,6 +10300,25 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .bq-glass {
   overflow: hidden;
 }
+/* A tight stage's mirror is 88 units wide and short, too small for the slot
+   cards, the glass and the turning row: the glass sat over the cards and ran
+   down into the bar (the harbour re-critic). There the cards are the mirror,
+   and the try-on is the card picked on the shelves beside it. */
+:where(.pixel-ui[data-room='tight']) .bq-mirror {
+  grid-template-columns: minmax(0, 1fr);
+  overflow: hidden;
+}
+:where(.pixel-ui[data-room='tight']) .bq-classic,
+:where(.pixel-ui[data-room='tight']) .bq-glass,
+:where(.pixel-ui[data-room='tight']) .bq-turn {
+  display: none;
+}
+:where(.pixel-ui[data-room='tight']) .bq-slots {
+  gap: var(--u);
+}
+:where(.pixel-ui[data-room='tight']) .bq-slot-name {
+  padding-block: 0;
+}
 /* A shelf too low for two rows of cards draws their figures at the art's own
    size (`BoutiqueScene.fitShelf`), so two rows stand whole. */
 :where(.pixel-ui) .boutique-shelves[data-low] .boutique-card .look-figure {

@@ -126,8 +126,8 @@ describe("the shelves' pager", () => {
     expect(none).not.toContain('Gym honours');
     const won = boutiqueMarkup(state({ mode: 'wardrobe', honours: { earned: ['cascade', 'soul'], worn: ['cascade'] } }));
     expect(cards(won, 'data-honour')).toEqual(['cascade', 'soul']);
-    expect(won).toMatch(/data-honour="cascade"[\s\S]*?Worn/);
-    expect(won).toMatch(/data-honour="soul"[\s\S]*?Taken off/);
+    expect(won).toMatch(/data-honour="cascade"[\s\S]*?MISTY's · On/);
+    expect(won).toMatch(/data-honour="soul"[\s\S]*?KOGA's · Off/);
   });
 
   it('shows an honour on in the shop mirror, and the wardrobe mirror as you are', () => {

@@ -2475,10 +2475,11 @@ export class HubScene extends Phaser.Scene {
     const name = escapeAttribute(stored.pokemon.name);
     return this.chip(
       `data-box-move="${stored.id}" ${shows}`,
-      moving ? `Put ${name} down again.` : `Move ${name} to another box. It is in ${escapeAttribute(boxed ?? 'no box')}.`,
+      // "Putting down" a pet is putting it to sleep for good (the harbour re-critic).
+      moving ? `Leave ${name} in ${escapeAttribute(boxed ?? 'its box')}.` : `Move ${name} to another box. It is in ${escapeAttribute(boxed ?? 'no box')}.`,
       // The verb first, then where it is now: a chip that is only a name reads
       // as a label rather than as something to press.
-      moving ? 'Putting down' : `Move · ${escapeAttribute(boxed ?? 'no box')}`,
+      moving ? 'Cancel move' : `Move · ${escapeAttribute(boxed ?? 'no box')}`,
     );
   }
 

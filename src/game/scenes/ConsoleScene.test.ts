@@ -169,10 +169,15 @@ describe('the console in the player\'s room', () => {
     expect(field.setSelectionRange).toHaveBeenLastCalledWith(field.value.length, field.value.length);
   });
 
-  it('asks for a name before a first game, rather than starting one nameless', () => {
-    const { open } = consoleScene();
+  // A console in your own room plays at once; the game asks for a name at its
+  // end, and only for a score that earns a place (the harbour re-critic).
+  it('starts a first game with no name, rather than stopping to ask for one', () => {
+    const { scene, open } = consoleScene();
     open();
+    const play = vi.fn(() => Promise.resolve());
+    (scene as unknown as { session: { play: typeof play; playing: undefined } }).session.play = play;
     FakeMenu.made[0].buttons.get('[data-play]')!.onclick!();
-    expect(FakeMenu.made[0].html).toContain('data-name-form');
+    expect(FakeMenu.made[0].html).not.toContain('data-name-form');
+    expect(play).toHaveBeenCalledWith(expect.objectContaining({ id: 'pallet-blocks' }), null);
   });
 });

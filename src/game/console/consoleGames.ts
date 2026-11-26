@@ -28,12 +28,17 @@ export interface ConsoleGameResult {
   readonly level: number;
   /** Time spent playing, not counting pauses. */
   readonly durationMs: number;
+  /** The name the game asked for at its end, when the console handed it none. */
+  readonly name?: string | null;
 }
 
 /** What the console hands a game it starts. */
 export interface ConsoleGameHost {
-  /** The name typed at the console (`console/playerName.ts`): the game asks for none. */
-  readonly playerName: string;
+  /**
+   * The player's name (`console/playerName.ts`), and then the game asks for
+   * none; or null, and the game asks for one only when a score earns a place.
+   */
+  readonly playerName: string | null;
   /** Called once at the end of every game. */
   readonly onGameOver: (result: ConsoleGameResult) => Promise<void>;
   /** The board the game shows on its own screens in place of its own high scores. */
@@ -70,8 +75,8 @@ export const CONSOLE_GAMES: readonly ConsoleGame[] = [
     async mount(element, host) {
       const { mountPalletBlocks } = await import('./vendor/pallet-blocks/pallet-blocks.js');
       return mountPalletBlocks(element, {
-        playerName: host.playerName,
-        onGameOver: ({ score, lines, level, durationMs }) => host.onGameOver({ score, lines, level, durationMs }),
+        ...(host.playerName ? { playerName: host.playerName } : {}),
+        onGameOver: ({ score, lines, level, durationMs, name }) => host.onGameOver({ score, lines, level, durationMs, name }),
         loadLeaderboard: host.loadLeaderboard,
         onExit: host.onExit,
         // Its own high-score table is kept under a key of ours: the standalone

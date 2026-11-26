@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { CONSOLE_GAME_CLASS, CONSOLE_GAMES, consoleGame, type ConsoleGame } from '../console/consoleGames';
 import { ConsoleSession } from '../console/consoleSession';
-import { boardRows, gamesMenuMarkup, scoreLine, waitingLine } from '../console/gamesMenu';
+import { boardRows, gamesMenuMarkup, scoreLine, unnamedScoreLine, waitingLine } from '../console/gamesMenu';
 import { DeviceBoard, Leaderboards, WaitingScores, type Board } from '../console/leaderboard';
 import {
   checkPlayerName,
@@ -53,7 +53,7 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
   private pausedBase = false;
   private boards = new Map<string, Board>();
   private playerName: string | null = null;
-  private naming: { value: string; then?: string } | null = null;
+  private naming: { value: string } | null = null;
   /** The next draw of the name form selects the name: it was just opened. */
   private selectName = false;
   private status: string | undefined;
@@ -98,6 +98,12 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
       leave: () => this.close(),
       later: (run) => window.setTimeout(run, 0),
       record: recordAction,
+      claimName: (typed) => this.claimTypedName(typed),
+      scoreUnnamed: (_game, score, typed) => {
+        const line = unnamedScoreLine(score, typed);
+        this.status = line;
+        showConsoleNote(line);
+      },
       scoreWent: (_game, score, posted) => {
         const line = scoreLine(posted, score);
         if (line) {
@@ -252,11 +258,11 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
     };
   }
 
-  private openNaming(then?: string): void {
+  private openNaming(): void {
     if (this.naming || this.session.playing) {
       return;
     }
-    this.naming = { value: this.playerName ?? '', ...(then ? { then } : {}) };
+    this.naming = { value: this.playerName ?? '' };
     this.status = undefined;
     this.selectName = true;
     this.render();
@@ -303,17 +309,30 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
     this.keepName(check.name);
   }
 
+  /**
+   * A name typed into a game played with none: the player's, kept as one
+   * typed here would be, once it passes the rule and Pallet Town's claim.
+   */
+  private async claimTypedName(typed: string): Promise<string | null> {
+    const check = checkPlayerName(typed);
+    if (!check.ok) {
+      return null;
+    }
+    const service = nameService();
+    if (service && (await service.claim(check.name).catch(() => 'offline' as const)) !== 'claimed') {
+      return null;
+    }
+    this.playerName = check.name;
+    savePlayerName(check.name);
+    return check.name;
+  }
+
   /** The name is the player's: kept on the device, and the game it was typed for played. */
   private keepName(name: string): void {
-    const then = this.naming?.then;
     this.playerName = name;
     savePlayerName(name);
     this.naming = null;
     this.status = `Your scores go on the boards as ${name}.`;
-    if (then) {
-      this.play(then);
-      return;
-    }
     this.render();
     // The device board marks its own rows by name, so it is read again.
     this.readBoards();
@@ -345,10 +364,6 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
   private play(id: string): void {
     const game = consoleGame(id);
     if (!game || this.session.playing) {
-      return;
-    }
-    if (!this.playerName) {
-      this.openNaming(id);
       return;
     }
     audioManager.play('menuOpen');

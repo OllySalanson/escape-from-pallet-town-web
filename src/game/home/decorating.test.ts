@@ -86,6 +86,16 @@ describe('decorating THE BOLTHOLE', () => {
     expect(play(state, at(10, 6), press)[1]).toMatchObject({ outcome: 'took-out' });
   });
 
+  /** Out of the box onto the faced fixture, every piece began in red (the harbour re-critic). */
+  it('takes a piece out of the box onto the nearest tile it fits, never a refusal', () => {
+    // Facing the kitchen, along the back wall.
+    const state = startDecorating('bolthole', DEFAULT_HOME_LAYOUT, { x: 1, y: 1 });
+    const results = play(state, { kind: 'box', step: 1 }, { kind: 'box', step: 1 }, { kind: 'box', step: 1 });
+    for (const result of results) {
+      expect([result.state.held?.id, heldRefusal(result.state, context)]).toEqual([result.state.held?.id, null]);
+    }
+  });
+
   it('puts a piece away in the box, which empties its place in the room', () => {
     const results = play(start(), at(0, 7), { kind: 'put-away' });
     expect(last(results)).toMatchObject({ outcome: 'boxed', changed: true });

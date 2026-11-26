@@ -18,11 +18,8 @@ export interface GamesMenuState {
   readonly boards: ReadonlyMap<string, Board>;
   /** The name this device plays under, or null if nobody has typed one. */
   readonly playerName: string | null;
-  /**
-   * The name being typed, while the name box is open, and the game waiting on
-   * it when PLAY asked for a name first.
-   */
-  readonly naming: { readonly value: string; readonly then?: string } | null;
+  /** The name being typed, while the name box is open. */
+  readonly naming: { readonly value: string } | null;
   /** A line about what just happened, over the help bar. */
   readonly status?: string;
 }
@@ -33,9 +30,7 @@ export const GAMES_MENU_HINTS = 'ARROWS move · ENTER play · N your name · ESC
  * The keys while the name box is open, where N is a letter and Escape puts the
  * box down rather than leaving for the house (`ConsoleScene.onKey`).
  */
-export function namingHints(waitingGame: ConsoleGame | undefined): string {
-  return `${waitingGame ? 'ENTER play under this name' : 'ENTER keep this name'} · ESC back to the games`;
-}
+export const NAMING_HINTS = 'ENTER keep this name · ESC back to the games';
 
 export function gamesMenuMarkup(state: GamesMenuState): string {
   const rows = state.games
@@ -61,7 +56,7 @@ export function gamesMenuMarkup(state: GamesMenuState): string {
     close: { attribute: 'data-close' },
     aside: state.playerName ? `Playing as ${state.playerName}` : 'No name yet',
     body,
-    hints: state.naming ? namingHints(waitingGame(state)) : GAMES_MENU_HINTS,
+    hints: state.naming ? NAMING_HINTS : GAMES_MENU_HINTS,
     ...(state.status ? { status: state.status } : {}),
   });
 }
@@ -90,21 +85,14 @@ export function boardRows(game: ConsoleGame, board: Board | undefined): string {
   return `${whose}${places}`;
 }
 
-/** The game PLAY was pressed on before there was a name to play under, if any. */
-function waitingGame(state: GamesMenuState): ConsoleGame | undefined {
-  const then = state.naming?.then;
-  return then === undefined ? undefined : state.games.find((game) => game.id === then);
-}
-
 /** The foot of the screen: who is playing and the way in, or the box a name is typed into. */
 function nameBar(state: GamesMenuState): string {
   if (state.naming) {
-    const waiting = waitingGame(state);
-    const okHelp = waiting ? `Play ${waiting.name} under this name.` : 'Keep this name for every board.';
+    const okHelp = 'Keep this name for every board.';
     return pixelCommitBar({
       title: 'Your name',
       lines: [`<small class="px-wrap">Up to ten: ${NAME_CHARACTERS_WORDS}</small>`],
-      actions: `<form class="box-form console-name-form" data-name-form><input class="px-window px-field" name="name" value="${escapeAttribute(state.naming.value)}" maxlength="${PLAYER_NAME_MAX_LENGTH}" autocomplete="off" spellcheck="false" aria-label="Your name" placeholder="NAME" data-help="${escapeAttribute(namingHints(waiting))}" /><button type="submit" class="px-window px-button is-primary" data-help="${escapeAttribute(okHelp)}">OK</button><button type="button" class="px-window px-button" data-name-cancel data-help="Keep the name you had.">Cancel</button></form>`,
+      actions: `<form class="box-form console-name-form" data-name-form><input class="px-window px-field" name="name" value="${escapeAttribute(state.naming.value)}" maxlength="${PLAYER_NAME_MAX_LENGTH}" autocomplete="off" spellcheck="false" aria-label="Your name" placeholder="NAME" data-help="Your scores go on the boards under this name." /><button type="submit" class="px-window px-button is-primary" data-help="${escapeAttribute(okHelp)}">OK</button><button type="button" class="px-window px-button" data-name-cancel data-help="Keep the name you had.">Cancel</button></form>`,
     });
   }
   const named = state.playerName !== null;
@@ -131,6 +119,17 @@ export function scoreLine(posted: Posted, score: number): string | undefined {
     case 'not-postable':
       return `Pallet Town won't take that score, so your ${points} is on this console's board only.`;
   }
+}
+
+/**
+ * What a player is told when the name a game asked for at its end could not
+ * be kept - taken, or not checked - so the score went on no board.
+ */
+export function unnamedScoreLine(score: number, typed: string | null): string {
+  const points = formatScore(score);
+  return typed
+    ? `${typed} could not be checked as yours, so your ${points} is on no board. Pick a name with N at the console.`
+    : `Your ${points} is on no board. Pick a name with N at the console.`;
 }
 
 /** What the menu says after it has tried the scores waiting on this console. */

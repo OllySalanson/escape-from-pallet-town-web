@@ -235,7 +235,7 @@ describe('a raid abandoned by closing the game', () => {
     new SaveManager(storage).settleAbandonedRaid();
 
     const game = new SaveManager(storage).load()!;
-    expect(calendarLines(game)[0]).toBe('DAY 2. Every raid is a day on this calendar, and 1 is crossed off.');
+    expect(calendarLines(game)[0]).toBe('DAY 2. 1 day crossed off, one for each raid.');
     expect(calendarLines(game)[1]).toBe('It has no tick for coming home.');
   });
 
