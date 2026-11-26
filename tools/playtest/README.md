@@ -149,6 +149,13 @@ out - the save and the raid written down beside it - so the AI playtester can be
 started there (`ai-player/act start --storage=<file>`, then CONTINUE): a critic
 playing one place's battles starts in that place.
 
+`standRaid.mjs <test-mode build url> <storage.json> [--insertion=<id>] [--to=x,y] [--hour=H] [--level=N] [--team=..] [--pack=..]`
+is the same for any square of the vale: it deploys at the landing asked for
+(`greystone-vale` is Mill Square, the front door; `greystone-vale-the-quarry` and
+the rest are named after their drop-ins), at the hour asked for, walks to the tile
+asked for and writes the storage out, so a critic's tour of one square starts in it.
+Unset `XDG_RUNTIME_DIR` and point `EPTW_CHROME_LIBS` at `ensure-libs.sh`'s libraries.
+
 `battleKeys.mjs <test-mode build url> <dir> [--port=N]` reads a wild fight's
 opening lines with mouse clicks alone, rests the pointer on ITEM (lit, the cursor
 still on FIGHT), moves with D and runs Right past the end of the row, which must
