@@ -196,3 +196,50 @@ export function nextStepLines(progress: NextStepProgress, vault: NextStepVault =
       : [chaseLine(progress, vault)].filter((line): line is string => line !== undefined)),
   ];
 }
+
+/**
+ * Oak's next thing as a card, for the screen a raid that got out opens on: a
+ * heading saying what kind of thing it is, its name, and where it is. The
+ * captain, 26 Nov 2026, of that screen's sentence "Next, a job: SEALED
+ * DISPATCH. Pick it at the RAID ARENA, before you jump.": "Next job is okay,
+ * but this is just terribly formatted, and it should be way more exciting."
+ */
+export interface NextStepCard {
+  /** What kind of thing is next, as the card's heading: NEXT JOB, NEXT GYM. */
+  readonly heading: string;
+  /** Its name, the card's one big line; empty when the kind is all there is to name. */
+  readonly name: string;
+  /** Where it is, or what to do about it. */
+  readonly where: string;
+}
+
+/** The first of `nextStepLines` as a card, or undefined when Oak has nothing next. */
+export function nextStepCard(progress: NextStepProgress, vault: NextStepVault = {}): NextStepCard | undefined {
+  if (isFirstRaid(progress)) {
+    return { heading: 'NEXT', name: 'YOUR FIRST RAID', where: 'At the RAID ARENA, west across the yard' };
+  }
+  const banked = jobsBanked(progress);
+  const [job] = buildContractBoard(progress).rows;
+  if (banked < NEAR_JOBS) {
+    if (!job) {
+      return banked === 0 ? { heading: 'NEXT', name: 'ANOTHER RAID', where: 'Every raid starts at the RAID ARENA' } : undefined;
+    }
+    return {
+      heading: banked === 0 ? 'NEXT JOB' : `YOUR ${(['FIRST', 'SECOND', 'THIRD', 'FOURTH'][banked] ?? 'NEXT')} JOB`,
+      name: job.name.toUpperCase(),
+      where: banked === 0 ? 'Pick it at the RAID ARENA before you jump' : 'On the rail at the RAID ARENA',
+    };
+  }
+  const landing = landingToWalkTo(progress);
+  if (landing) {
+    return { heading: 'NEW LANDING', name: landing.label.toUpperCase(), where: 'Walk to it on a raid, and you can land there next time' };
+  }
+  const gym = nextGym(progress.defeatedBosses);
+  if (gym) {
+    return { heading: 'NEXT GYM', name: gym.leader.toUpperCase(), where: `At ${gym.building.toUpperCase()} in ${gym.standsIn.toUpperCase()}` };
+  }
+  // "Next, a treasure: ..." and "Next, a legend: ...": the kind is the heading.
+  const chase = chaseLine(progress, vault);
+  const said = chase ? /^Next, (?:an? |the )?([^:]+): (.+)$/.exec(chase) : null;
+  return said ? { heading: `NEXT ${said[1].toUpperCase()}`, name: '', where: said[2] } : undefined;
+}

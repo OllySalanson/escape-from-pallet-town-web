@@ -27,14 +27,13 @@ const LINES: Readonly<Record<string, string>> = {
 /**
  * The letters of the keys that open a screen by name - YOUR THINGS on B, YOUR
  * TEAM on P, the favours, THE MAP, the Pokédex - which a sentence names in an
- * aside: "in YOUR THINGS (B at base)", "IN YOUR THINGS · B AT BASE", "from
+ * aside: "in YOUR THINGS (B at base)", "from
  * YOUR THINGS (B) anywhere at base". To a thumb the aside is a letter there is
  * no key for, and the tray's button is the screen's own name, so it goes.
  */
 const SCREEN_LETTERS = [...new Set([RAID_KEY_LETTERS.bag, RAID_KEY_LETTERS.party, RAID_KEY_LETTERS.objectives, RAID_KEY_LETTERS.map, POKEDEX_KEY])].join('');
 const SCREEN_KEY_ASIDES: readonly RegExp[] = [
   new RegExp(` \\([${SCREEN_LETTERS}](?: (?:anywhere )?at base)?\\)`, 'g'),
-  new RegExp(` · [${SCREEN_LETTERS}] at base\\b`, 'gi'),
 ];
 
 /** The key words, bracketed as a hint writes them and bare as a help line does. */

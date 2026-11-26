@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { resetTouchPlay, setTouchPlay } from './touchPlay';
 import { shortcutsInHint } from './touchShortcuts';
 import { WINDOW_PAUSE_LINES } from '../world/windowPause';
-import { STOW_LABEL } from '../run/resultMoment';
 import { READ_IN_A_RAID } from '../items/teaching';
 import { helpLineKeys, installTouchWording, rewordTexts, sourceText, touchHelpLine, touchWording } from './touchWords';
 
@@ -122,7 +121,6 @@ describe('a screen named by its key in a sentence, on the touch pad', () => {
     expect(touchWording('The things are in YOUR THINGS (B at base) and the Pokémon on YOUR TEAM (P at base), ready for your next raid.')).toBe(
       'The things are in YOUR THINGS and the Pokémon on YOUR TEAM, ready for your next raid.',
     );
-    expect(touchWording(STOW_LABEL)).toBe('IN YOUR THINGS');
     expect(touchWording(READ_IN_A_RAID)).toBe('Read it from YOUR THINGS anywhere at base, or pack it and read it from your pack in a raid.');
   });
 

@@ -147,6 +147,8 @@ the touch pad's OK on the title in a phone-sized window with touch emulated, aft
 two real keyboard presses: NEW GAME must start, which the first OK after a keyboard
 press used not to (`--no-keys` is the control).
 
+`resultMoment.mjs <test-mode build dir> <out dir> [--window=WxH] [--clip]` photographs the stage a raid that got out opens on for a haul, a catch, a job and an empty raid, on a save one raid in so Oak's next job is on its card, and fails any part drawn off the stage; `--clip` records the haul playing in (`docs/screens/result-stage/`).
+
 `menuSprites.mjs <test-mode build dir> [--latency=80] [--cpu=4] [--stale] [--shot=dir]` serves a build as Pages does and times every picture of Bill's shelf (first and second open) and the raid's result from being put on screen to being drawn; `--stale` serves every file as past Pages' ten minutes (`docs/screens/menu-sprites/`).
 
 `slowLoad.mjs <cdp port> <build url> <dir> [kbit/s] [latency ms]` opens the game
