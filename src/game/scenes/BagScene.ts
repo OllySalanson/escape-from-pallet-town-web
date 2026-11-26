@@ -373,7 +373,7 @@ export class BagScene extends Phaser.Scene {
       return;
     }
     // B is what opened this, so B is what the player will press to leave it.
-    if (isOverlayDismissKey(event, 'b', 'Backspace')) {
+    if (isOverlayDismissKey(event, 'b')) {
       event.preventDefault();
       if (this.pupilIndex !== undefined) {
         audioManager.play('cancel');

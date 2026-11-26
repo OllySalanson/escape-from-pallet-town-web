@@ -471,6 +471,9 @@ export class MapMakerScene extends Phaser.Scene {
     this.panel = 'map';
     this.painter = new MapPainter();
     this.overlay = new MenuOverlay(this, 'map-maker pixel-ui', (event) => this.handleKey(event));
+    // Backspace takes the chosen thing off the map here, as Delete does; it is
+    // BACK on every other screen (`asOverlayEvent`).
+    this.overlay.ownKeys = new Set(['Backspace']);
     // Enter in a one-line field is done with it: the field is committed and the
     // cursor goes back to the tools, so the next key is a shortcut again rather
     // than a letter typed in front of the name. On key up, because the keyboard

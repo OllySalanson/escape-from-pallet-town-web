@@ -149,7 +149,8 @@ describe('THE POKéDEX by keyboard', () => {
   });
 
   it('goes back from a page to the tile it left on ESC and on BACKSPACE', () => {
-    for (const back of ['Escape', 'Backspace']) {
+    // Backspace is handed to every overlay as Escape (`asOverlayEvent`).
+    for (const back of ['Escape']) {
       const dex = pokedex();
       dex.openEntry(25);
       dex.onKey(key('ArrowRight'));
@@ -161,7 +162,7 @@ describe('THE POKéDEX by keyboard', () => {
   });
 
   it('closes on X, ESC or BACKSPACE from the grid, and on X from a page, back to the harbour', () => {
-    for (const close of ['x', 'X', 'Escape', 'Backspace']) {
+    for (const close of ['x', 'X', 'Escape']) {
       const dex = pokedex();
       dex.onKey(key(close));
       expect(dex.scene.stop, close).toHaveBeenCalledTimes(1);

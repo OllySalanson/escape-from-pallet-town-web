@@ -344,7 +344,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       event.preventDefault();
       return;
     }
-    if (isOverlayDismissKey(event, 'b', 'Backspace')) {
+    if (isOverlayDismissKey(event, 'b')) {
       event.preventDefault();
       if (this.using?.kind === 'teach' && this.using.chosen !== null) {
         audioManager.play('cancel');

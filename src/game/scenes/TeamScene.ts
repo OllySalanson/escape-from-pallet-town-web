@@ -152,7 +152,7 @@ export class TeamScene extends Phaser.Scene implements ProvidesFeedbackContext {
       event.preventDefault();
       return;
     }
-    if (isOverlayDismissKey(event, 'p', 'Backspace')) {
+    if (isOverlayDismissKey(event, 'p')) {
       event.preventDefault();
       this.close();
       return;

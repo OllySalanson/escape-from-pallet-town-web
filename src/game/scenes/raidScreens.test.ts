@@ -54,8 +54,9 @@ describe('the screens a raid opens over the world', () => {
 
   it('leave the raid by the key that opened them, and by Escape', async () => {
     const keys: Record<(typeof RAID_SCREENS)[number], string> = {
-      BagScene: "isOverlayDismissKey(event, 'b', 'Backspace')",
-      PartyScene: "isOverlayDismissKey(event, 'p', 'Backspace')",
+      // Backspace is Escape on every overlay (`asOverlayEvent`), so none lists it.
+      BagScene: "isOverlayDismissKey(event, 'b')",
+      PartyScene: "isOverlayDismissKey(event, 'p')",
       ObjectivesScene: "isOverlayDismissKey(event, 'o')",
     };
     for (const scene of RAID_SCREENS) {

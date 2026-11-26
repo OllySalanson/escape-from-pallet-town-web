@@ -80,7 +80,7 @@ export class PartyScene extends Phaser.Scene {
 
   private handleKey(event: KeyboardEvent): void {
     // P is what opened this, so P is what the player will press to leave it.
-    if (isOverlayDismissKey(event, 'p', 'Backspace')) {
+    if (isOverlayDismissKey(event, 'p')) {
       event.preventDefault();
       if (this.movingIndex !== undefined) {
         audioManager.play('cancel');
