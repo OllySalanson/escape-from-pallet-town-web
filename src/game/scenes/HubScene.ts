@@ -45,7 +45,6 @@ import {
   traderStockOffers,
   treatmentOptions,
   treatWithItem,
-  formatTraderStacks,
   nextTraderStanding,
   rationLeft,
   moneyHeld,
@@ -91,6 +90,7 @@ import {
   type ItemId,
   type PackItemId,
   type GridPieceRef,
+  MATERIAL_IDS,
 } from '../items';
 import { GridArranging } from '../ui/gridArranging';
 import { describeKey } from '../ui/hoverDescribe';
@@ -184,7 +184,13 @@ import { MenuOverlay } from '../ui/MenuOverlay';
 import { conditionLine } from '../ui/condition';
 import { pokemonDossier } from '../ui/pokemonDossier';
 import { pixelEmptyPartySlot, pixelItemTile, pixelMonTile, pixelPartySlot, pixelStack } from '../ui/monIcon';
-import { drawFixture, fixtureArt } from '../ui/fixturePicture';
+import { drawFixtureScaled, fixtureArt, fixtureDivisor } from '../ui/fixturePicture';
+import { drawRoomPicture, fitRoomPictures, roomPictureMark, roomPictureMarkup } from '../ui/roomPicture';
+import { workshopEffectPicture } from '../ui/workshopEffect';
+import { partTag, partTags, shopCardPane } from '../ui/shopCard';
+import { buildRoom, roomNamed, type BuiltRoom } from '../base/rooms';
+import { roomPosterPicture } from '../base/roomPosters';
+import { TRADER_STANDINGS } from '../hub/trader';
 import {
   COLUMN_MEASURES,
   escapeAttribute,
@@ -201,11 +207,7 @@ import {
 } from '../ui/pixelUi';
 import {
   pricePart,
-  shopDetailPane,
-  shopPaidColumn,
-  shopPriceColumn,
   SHORT_MARK,
-  SHORT_MARK_LEGEND,
   type ShopPricePart,
 } from '../ui/shopDetail';
 import { starterCards } from '../ui/starterPicker';
@@ -306,6 +308,21 @@ type HubView = 'stash' | ArenaPanel | 'reselect' | 'workshop' | 'trader' | 'wall
  * over half of a big window, so the hall is always there beside it. The rim's
  * lies along the foot of the window, because what it is looking at is the pit.
  */
+/** The purse rolls down to what a buy leaves in this many steps, this far apart (`rollMoney`). */
+const MONEY_ROLL_STEPS = 8;
+const MONEY_ROLL_STEP_MS = 40;
+/** A build lands with two knocks this far apart, and its card's gold stars last this long. */
+const BUILD_KNOCK_GAP_MS = 160;
+const BUILD_STARS_MS = 900;
+
+/**
+ * A build's name as its card along the bottom of Brock's Workshop says it, in
+ * one line - LOCKER I, HEALING II, WARD, as the mock-up has them. The card on
+ * the right and the help bar say it in full.
+ */
+export function cardName(name: string): string {
+  return name.replace(/^Secure locker/, 'Locker').replace(/^Healing machine/, 'Healing').replace(/^Quarantine ward/, 'Ward');
+}
 const PANEL_MIN_WIDTH = 320;
 const PANEL_SHARE = 0.56;
 /** The rim card's heading while nobody can go: what the card is saying, before where it would have gone. */
@@ -576,6 +593,7 @@ export class HubScene extends Phaser.Scene {
     this.overlay.onMeasure = (unit) => {
       this.dockPanel(unit);
       fitMapPictures(this.overlay.root, unit, (key, step) => this.drawPicture(key, step));
+      fitRoomPictures(this.overlay.root, unit);
     };
     if (this.goOverIfThereIsNothingToRead()) {
       return;
@@ -1221,8 +1239,14 @@ export class HubScene extends Phaser.Scene {
       this.applyLoadedGame(reloaded);
     }
     this.setView('workshop');
-    audioManager.play('confirm');
     this.setStatus(`${result.upgrade.name} built.`);
+    // Two knocks of Brock's hammer, and a burst of gold stars over the card
+    // of what he has just built.
+    audioManager.play('bump');
+    this.time.delayedCall(BUILD_KNOCK_GAP_MS, () => audioManager.play('bump'));
+    const card = this.overlay?.root.querySelector<HTMLElement>(`[data-built="${upgradeId}"]`);
+    card?.classList.add('is-just-built');
+    this.time.delayedCall(BUILD_STARS_MS, () => card?.classList.remove('is-just-built'));
   }
 
   /**
@@ -1757,8 +1781,10 @@ export class HubScene extends Phaser.Scene {
               // it is the title bar's aside rather than a line inside a pane
               // that scrolls away from the row being priced.
               : this.view === 'trader'
-                ? formatMoney(moneyHeld(this.stash))
-                : this.view === 'wallmap'
+                ? `${itemIcon(CURRENCY_ITEM_ID, '')}<span data-money-roll>${formatMoney(moneyHeld(this.stash))}</span>`
+                : this.view === 'workshop'
+                  ? this.workshopPartsAside()
+                  : this.view === 'wallmap'
                   ? wallMapNote(this.savedGame)
                   : this.view === 'daycare' || this.view === 'trades'
                     ? `${this.stashPokemon.filter((stored) => !awayOnRaid(this.savedGame).has(stored.id)).length} Pokémon at base`
@@ -1775,14 +1801,30 @@ export class HubScene extends Phaser.Scene {
     } else {
       root.innerHTML = markup;
     }
+    // A keeper's room, as the yard draws it for this save (`ui/roomPicture.ts`).
+    root.querySelectorAll<HTMLCanvasElement>('canvas[data-room-picture]').forEach((canvas) => {
+      const built = this.builtRoom(canvas.dataset.roomPicture ?? '');
+      if (built) {
+        drawRoomPicture(
+          canvas,
+          built,
+          (key) => (this.textures.exists(key) ? (this.textures.get(key).getSourceImage() as CanvasImageSource) : undefined),
+          (index) => roomPosterPicture(this.savedGame, built.posters[index]),
+        );
+      }
+    });
+    // Once painted, so the floor it is framed in can be read off the room.
+    if (typeof getComputedStyle === 'function' && root.querySelector('.room-pic')) {
+      fitRoomPictures(root, Number.parseFloat(getComputedStyle(root).getPropertyValue('--u')) || 0);
+    }
     // Brock's rungs are pictures of what they build, drawn from the base's own
     // sheets, which the yard under this screen has already loaded.
     root.querySelectorAll<HTMLCanvasElement>('canvas[data-fixture]').forEach((canvas) => {
       const art = fixtureArt(canvas.dataset.fixture ?? '');
       if (art) {
-        drawFixture(canvas, art, (key) =>
-          this.textures.exists(key) ? (this.textures.get(key).getSourceImage() as CanvasImageSource) : undefined,
-        );
+        const image = (key: string) =>
+          this.textures.exists(key) ? (this.textures.get(key).getSourceImage() as CanvasImageSource) : undefined;
+        drawFixtureScaled(canvas, art, image, Number(canvas.dataset.fixtureDivisor ?? 1));
       }
     });
     const on = (selector: string, handler: (button: HTMLButtonElement, event: MouseEvent) => void): void => {
@@ -2005,6 +2047,32 @@ export class HubScene extends Phaser.Scene {
       return wallMapPicture(this.savedGame, id as WorldMapId, step);
     }
     return undefined;
+  }
+
+  /** The room last built for a picture, and the save it was built from: built again only when the save is. */
+  private builtRooms: { readonly game: RestoredGame; readonly rooms: Map<string, BuiltRoom> } | undefined;
+
+  /** A room of the base as this save has it, for its keeper's screen to show. */
+  private builtRoom(id: string): BuiltRoom | undefined {
+    const room = roomNamed(id);
+    if (!room || !this.savedGame) {
+      return undefined;
+    }
+    if (this.builtRooms?.game !== this.savedGame) {
+      this.builtRooms = { game: this.savedGame, rooms: new Map() };
+    }
+    let built = this.builtRooms.rooms.get(id);
+    if (!built) {
+      built = buildRoom(room, this.savedGame);
+      this.builtRooms.rooms.set(id, built);
+    }
+    return built;
+  }
+
+  /** The markup for a keeper's room as a picture; painted once the screen is on the page. */
+  private roomPicture(id: string, label: string, marks = ''): string {
+    const built = this.builtRoom(id);
+    return built ? roomPictureMarkup(built, label, marks) : '';
   }
 
   /** What a panel's title bar says at a glance: the number that panel is about. */
@@ -3819,191 +3887,146 @@ export class HubScene extends Phaser.Scene {
    */
   private traderView(): string {
     const counter = this.traderCounter;
-    const standing = traderStanding(counter.progress);
-    const next = nextTraderStanding(counter.progress);
-    const left = rationLeft(counter);
     const stock = traderStockOffers(counter);
     const barters = traderBarterOffers(counter);
     // Where the cursor lands on this screen - and nowhere, while a deal is
     // asking: `refocus` takes the *first* `data-cursor-start` in the document,
-    // so a shelf row still carrying one took the cursor off the armed strip and
+    // so a card still carrying one took the cursor off the armed question and
     // the second press of the key that armed the deal bought a Poke Ball.
     const first =
       this.traderArmed !== undefined
         ? undefined
         : (stock.find((offer) => offer.refusal === undefined) ??
           barters.find((offer) => offer.refusal === undefined));
+    const firstId = first === undefined ? undefined : 'item' in first ? first.item.itemId : first.barter.id;
+    // The one card on the right answers for whichever card the cursor is on
+    // (`MenuOverlay.showDetailFor`): none of the card rows holds a pane, so the
+    // panes are swapped across the whole screen.
+    const shownId = this.traderArmed ?? firstId ?? stock[0]?.item.itemId;
 
-    const standingNote = next
-      ? `${traderStandingPoints(counter.progress)} points · ${next.pointsShort} more for ${next.tier.name}`
-      : `${traderStandingPoints(counter.progress)} points · nothing held back`;
-    // Two lines at most. What raises standing is said only while there is a
-    // tier left to raise it to, and said as the three prices rather than as a
-    // sentence about them: the paragraph that was here took a third of the
-    // screen off the two lists the screen is actually for.
-    const standingPane = pixelWindow(
-      `<div class="px-lead">${pixelFigure('bill', 'Bill')}<p class="px-wrap">${standing.note}</p></div>${
-        next
-          ? `<p class="px-wrap px-note">Bank a job +${STANDING_PER_CONTRACT}, beat a boss +${STANDING_PER_BOSS}, spend ${formatMoney(POKEDOLLARS_PER_STANDING)} +1.</p>`
-          : ''
-      }`,
-      { className: 'trader-standing', heading: `Standing · ${standing.name}`, note: standingNote },
-    );
-
-    const shelf = stock
-      .map((offer) => {
-        const name = this.itemName(offer.item.itemId);
-        const limit = traderStockLimit(counter, offer.item);
-        const what = getItemById(offer.item.itemId)?.description ?? '';
-        const open = offer.refusal === undefined && limit > 0;
-        const count = open ? clampCount(this.counterCounts.get(`buy:${offer.item.itemId}`) ?? 1, 1, limit) : 1;
-        const price = shopPriceColumn([
-          {
-            ask: formatMoney(offer.item.price * count),
-            short: offer.refusal === 'money-short' || moneyHeld(this.stash) < offer.item.price * count,
-          },
-        ]);
-        if (open && this.traderArmed === stockDeal(offer.item.itemId)) {
-          const total = formatMoney(offer.item.price * count);
-          return this.armedDeal({
-            id: offer.item.itemId,
-            icon: itemIcon(offer.item.itemId, name),
-            name: count > 1 ? `${name} ×${count}` : name,
-            question: `Pay ${total} for ${count === 1 ? withArticle(name) : `${count} ${name}s`}?${offer.item.rationed && count === left ? " That's your last till you raid." : ''}`,
-            confirm: `data-buy-confirm="${offer.item.itemId}"`,
-            confirmLabel: 'Buy',
-            confirmHelp: `Spends ${total} of your ${formatMoney(moneyHeld(this.stash))}.`,
-            tone: 'primary',
-          });
-        }
-        if (open) {
-          // Off the ration, the ceiling is the purse, not the raid.
-          const ceiling = offer.item.rationed
-            ? limit === 1
-              ? 'That is all till you raid'
-              : `Up to ${limit} till you raid`
-            : limit === 1
-              ? 'That is all your money covers'
-              : `Your money covers ${limit}`;
-          const help = `Buy ${count} ${name} for ${formatMoney(offer.item.price * count)}. ${ceiling}. He asks again.`;
-          // The row is a pair, because a quantity is a control of its own: the
-          // row still buys, and the selector beside it says how many. What the
-          // thing *does* is the row's own line either way - a shelf that only
-          // priced its stock told a player nothing they did not already know.
-          return `<div class="px-pair"><button class="px-row has-icon px-tall px-priced" data-buy="${offer.item.itemId}" data-shows="${offer.item.itemId}" data-help="${escapeAttribute(help)}"${offer === first ? ' data-cursor-start' : ''}>${itemIcon(offer.item.itemId, name)}<span class="px-row-main"><strong class="px-name">${name}${count > 1 ? ` ×${count}` : ''}</strong><small class="px-wrap">${what}</small></span>${price}</button>${countSelector({ kind: 'buy', id: offer.item.itemId, label: name, value: count, min: 1, max: limit, help, limit: traderStockLimitReason(counter, offer.item) })}</div>`;
-        }
-        const tag = pixelTag(offer.refusal === 'money-short' ? 'Short' : offer.refusal === 'ration-spent' ? 'Next raid' : 'Locked');
-        // Never `disabled`: the cursor has to reach a row to say why it is shut.
-        const wiring = `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`;
-        return `<button class="px-row has-icon px-tall px-priced" ${wiring} data-shows="${offer.item.itemId}">${itemIcon(offer.item.itemId, name)}<span class="px-row-main"><strong class="px-name">${name}</strong><small class="px-wrap">${what}</small></span>${price}${tag}</button>`;
-      })
-      .join('');
-    const shelfShown = stock.find((offer) => offer.refusal === undefined) ?? stock[0];
-    const shelfDetails = stock
-      .map((offer) => this.stockDetail(counter, offer, offer === shelfShown))
-      .join('');
-    const shelfPane = pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pricedCounted)}>${shelf}</div>${shelfDetails}${this.berthRow(counter)}`,
-      {
-        className: 'objectives-panel trader-shelf',
-        heading: 'For sale',
-        // A heading bar's note clips at about the width of the longest one that
-        // has to fit, and this pane is the narrow half of the screen: "He sells
-        // a stranger nothing" came out as "HE SELLS A STRANGER NOTHIN". Why he
-        // is selling no more is the standing pane's line, right above it.
-        // Potions and Balls are off the ration, and "2 OF 2 LEFT TILL YOU RAID"
-        // over a shelf that starts with them read as two Balls a raid (break-it
-        // test, 23 Nov 2026). Bill's own words: "and 2 other things till you raid".
-        note: standing.ration === 0 ? 'Potions and Balls for now' : `${left} other${left === 1 ? '' : 's'} till you raid`,
-      },
-    );
-
-    const table = barters
-      .map((offer) => {
-        const { barter } = offer;
-        const taken = offer.refusal === 'already-taken';
-        const limit = traderBarterLimit(counter, barter);
-        const what = getItemById(barter.gives.itemId)?.description ?? barterDetailOnOffer(barter);
-        const repeats = offer.refusal === undefined && !barter.once && limit > 1;
-        const count = repeats ? clampCount(this.counterCounts.get(`barter:${barter.id}`) ?? 1, 1, limit) : 1;
-        if (this.traderArmed === barter.id) {
-          return this.armedDeal({
-            id: barter.id,
-            icon: iconMarkup(barter.icon, barter.name),
-            name: count > 1 ? `${barter.name} ×${count}` : barter.name,
-            question: `Hand over ${itemAmountsFor(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count })))} for good?`,
-            confirm: `data-barter-confirm="${barter.id}"`,
-            confirmLabel: 'Hand it over',
-            confirmHelp: `Spends ${escapeAttribute(itemAmountsFor(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count }))))} for good.`,
-          });
-        }
-        // A struck deal's price column says it is paid, as a built rung's does:
-        // "Traded" there stood beside the TRADED tag and said one word twice.
-        const price = taken
-          ? shopPaidColumn('Paid')
-          : shopPriceColumn(
-              barter.takes.map(({ itemId, quantity }) =>
-                pricePart(
-                  formatTraderStacks([{ itemId, quantity: quantity * count }]),
-                  this.stash.itemCount(itemId),
-                  quantity * count,
-                  'in YOUR THINGS',
-                  itemIcon(itemId, this.itemName(itemId)),
-                ),
-              ),
-            );
-        const tag = taken
-          ? pixelTag('Traded', 'secure', true)
-          : offer.refusal === undefined
-            ? pixelTag('Trade', 'good')
-            : pixelTag(offer.refusal === 'goods-short' ? 'Short' : 'Locked');
-        const goods = barter.takes.map(({ itemId }) => this.itemName(itemId).toLowerCase()).join(' and ');
-        const help =
-          offer.refusal === undefined
-            ? `Hand over ${itemAmountsFor(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count })))} for ${count === 1 ? withArticle(barter.name) : `${count} ${barter.name}s`}. He asks again.`
-            : offer.message ?? '';
-        const wiring =
-          offer.refusal === undefined
-            ? `data-barter="${barter.id}" data-help="${escapeAttribute(help)}"`
-            : `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(help)}"`;
-        const row = `<button class="px-row has-icon px-tall px-priced${taken ? ' is-secured' : ''}" ${wiring} data-shows="${barter.id}"${offer === first ? ' data-cursor-start' : ''}>${iconMarkup(barter.icon, barter.name)}<span class="px-row-main"><strong class="px-name">${barter.name}</strong><small class="px-wrap">${what}</small></span>${price}${taken ? tag : repeats ? '' : tag}</button>`;
-        return repeats
-          ? `<div class="px-pair">${row}${countSelector({ kind: 'barter', id: barter.id, label: barter.name, value: count, min: 1, max: limit, help, limit: `Your ${goods} cover ${limit} at most.` })}</div>`
-          : row;
-      })
-      .join('');
-    const shown = barters.find((offer) => offer.refusal === undefined) ?? barters[0];
-    const details = barters.map((offer) => this.barterDetail(offer, offer === shown)).join('');
-    const tablePane = pixelWindow(`<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pricedCounted)}>${table}</div>${details}`, {
+    const shelf = [
+      ...stock.map((offer) => this.stockCard(counter, offer, offer === first)),
+      this.berthCard(counter),
+    ].join('');
+    const left = rationLeft(counter);
+    const standing = traderStanding(counter.progress);
+    const shelfPane = pixelWindow(`<div class="trader-cards px-scroll">${shelf}</div>`, {
+      className: 'objectives-panel trader-shelf',
+      heading: 'For money',
+      // Potions and Balls are off the ration, and "2 OF 2 LEFT TILL YOU RAID"
+      // over a shelf that starts with them read as two Balls a raid (break-it
+      // test, 23 Nov 2026). Bill's own words: "and 2 other things till you raid".
+      note: standing.ration === 0 ? 'Potions and Balls for now' : `${left} other${left === 1 ? '' : 's'} till you raid`,
+    });
+    const table = barters.map((offer) => this.barterCard(counter, offer, offer === first)).join('');
+    const tablePane = pixelWindow(`<div class="trader-cards is-parts px-scroll">${table}</div>`, {
       className: 'objectives-panel trader-table',
-      heading: 'Out of the hold',
-      // Short, because a heading bar's note clips: "Found goods only · no scrip
-      // buys these" came out as "FOUND GOODS ONLY · NO SI" on the real stage.
+      heading: 'For parts',
       note: 'No money buys these',
     });
-
-    return `<main class="px-body trader-layout">${standingPane}${shelfPane}${tablePane}</main>`;
+    const details = [
+      ...stock.map((offer) => this.stockDetail(counter, offer, offer.item.itemId === shownId)),
+      this.berthDetail(counter, shownId === BERTH_DEAL),
+      ...barters.map((offer) => this.barterDetail(offer, offer.barter.id === shownId)),
+    ].join('');
+    const detailCard = `<section class="px-window trader-detail-card">${details}</section>`;
+    return `<main class="px-body trader-layout"><div class="trader-goods">${shelfPane}${tablePane}</div><div class="trader-side">${detailCard}${this.billCard(counter)}</div></main>`;
   }
 
   /**
-   * The berth, along the bottom of his shelf: one more column of the secure
-   * container, this raid only.
-   *
-   * It stands in the shelf's own window rather than in a third pane because it
-   * is the other thing money buys, and it says "this raid only" in the row
-   * itself - the words that keep it distinct from Brock's locker, which
-   * is the same stack for good. That comparison is the help bar's, not the
-   * row's: spelled out on the row it wrapped to three lines and took the shelf
-   * above it down to two and a half. Its price is the row's own price column,
-   * as every other price on these two screens now is.
+   * Bill himself, in his room: the cottage as the yard draws it, and how far
+   * along his trust the player is - one bar, a stretch a standing, and the next
+   * standing named at its end.
    */
-  private berthRow(counter: TraderCounter): string {
+  private billCard(counter: TraderCounter): string {
+    const standing = traderStanding(counter.progress);
+    const next = nextTraderStanding(counter.progress);
+    const points = traderStandingPoints(counter.progress);
+    const tiers = TRADER_STANDINGS;
+    const segments = tiers
+      .slice(1)
+      .map((tier, index) => {
+        const from = tiers[index].points;
+        const fill = Math.max(0, Math.min(1, (points - from) / (tier.points - from)));
+        return `<i style="--fill:${Math.round(fill * 100)}%"></i>`;
+      })
+      .join('');
+    const room = this.roomPicture('bills-cottage', 'Bill in his cottage');
+    const raise = next
+      ? `Bank a job +${STANDING_PER_CONTRACT}, beat a boss +${STANDING_PER_BOSS}, spend ${formatMoney(POKEDOLLARS_PER_STANDING)} +1.`
+      : standing.note;
+    return `<section class="px-window trader-standing">${room}<div class="trader-trust" data-help="${escapeAttribute(raise)}"><p class="trader-trust-head"><strong>Bill</strong><span class="trader-rank">${standing.name}</span></p><span class="trader-trust-bar" role="img" aria-label="${escapeAttribute(`${points} points`)}">${segments}</span><small>${
+      next ? `${points} / ${next.tier.points}<span class="trader-trust-to"></span>${next.tier.name}` : `${points} · nothing held back`
+    }</small></div></section>`;
+  }
+
+  /** A card on his shelf: the thing, big, its name, and its price on a gold tag. */
+  private stockCard(counter: TraderCounter, offer: TraderStockOffer, start: boolean): string {
+    const id = offer.item.itemId;
+    const name = this.itemName(id);
+    const limit = traderStockLimit(counter, offer.item);
+    const open = offer.refusal === undefined && limit > 0;
+    const count = open ? clampCount(this.counterCounts.get(`buy:${id}`) ?? 1, 1, limit) : 1;
+    const total = formatMoney(offer.item.price * count);
+    if (open && this.traderArmed === stockDeal(id)) {
+      const left = rationLeft(counter);
+      return this.armedDeal({
+        id,
+        icon: itemIcon(id, name),
+        name: count > 1 ? `${name} ×${count}` : name,
+        question: `Pay ${total} for ${count === 1 ? withArticle(name) : `${count} ${name}s`}?${offer.item.rationed && count === left ? " That's your last till you raid." : ''}`,
+        confirm: `data-buy-confirm="${id}"`,
+        confirmLabel: 'Buy',
+        confirmHelp: `Spends ${total} of your ${formatMoney(moneyHeld(this.stash))}.`,
+        tone: 'primary',
+      });
+    }
+    const short = offer.refusal === 'money-short' || moneyHeld(this.stash) < offer.item.price * count;
+    const price = `<span class="price-tag${open ? '' : ' is-off'}${short ? ' is-short' : ''}">${total}</span>`;
+    const why =
+      offer.refusal === 'standing-short'
+        ? `<span class="trader-lock">${iconMarkup('padlock', 'Locked')}${this.standingName(offer.item.standing)}</span>`
+        : offer.refusal === 'ration-spent'
+          ? '<span class="trader-lock">Next raid</span>'
+          : offer.item.rationed
+            ? '<span class="trader-limit">Rationed</span>'
+            : '';
+    const art = `<span class="trader-art">${itemIcon(id, name)}</span>`;
+    const label = `<strong class="px-name">${name}${count > 1 ? ` ×${count}` : ''}</strong>`;
+    if (open) {
+      const ceiling = offer.item.rationed
+        ? limit === 1
+          ? 'That is all till you raid'
+          : `Up to ${limit} till you raid`
+        : limit === 1
+          ? 'That is all your money covers'
+          : `Your money covers ${limit}`;
+      const help = `Buy ${count} ${name} for ${total}. ${ceiling}. He asks again.`;
+      // The card buys; how many is the < 1 > in the card on the right, a
+      // control of its own that Tab crosses to.
+      return `<div class="trader-slot"><button class="px-window px-card trader-card" data-buy="${id}" data-shows="${id}" data-help="${escapeAttribute(help)}"${start ? ' data-cursor-start' : ''}>${art}${label}${why}${price}</button></div>`;
+    }
+    // Never `disabled`: the cursor has to reach a card to say why it is shut.
+    const wiring = `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`;
+    const state = offer.refusal === 'money-short' ? 'is-short' : 'is-locked';
+    return `<div class="trader-slot"><button class="px-window px-card trader-card ${state}" ${wiring} data-shows="${id}">${art}${label}${why}${price}</button></div>`;
+  }
+
+  /** The standing a locked deal waits for, in the one word the card has room for. */
+  private standingName(id: string): string {
+    return TRADER_STANDINGS.find((tier) => tier.id === id)?.name ?? id;
+  }
+
+  /**
+   * The berth, at the end of his shelf: one more column of THE LOCKER, this raid
+   * only - the words that keep it apart from Brock's locker, which is the same
+   * column for good.
+   */
+  private berthCard(counter: TraderCounter): string {
     const offer = checkBerth(counter);
     const paid = offer.refusal === 'already-paid';
-    const squares = berthSquares(this.flow.secureGrid);
-    const heading = '<h3 class="px-subheading">A locker shelf</h3>';
     if (this.traderArmed === BERTH_DEAL) {
-      return `<div class="px-list">${heading}${this.armedDeal({
+      return this.armedDeal({
         id: BERTH_DEAL,
         icon: iconMarkup('supply-crate', 'Locker shelf'),
         name: 'Locker shelf',
@@ -4011,97 +4034,160 @@ export class HubScene extends Phaser.Scene {
         confirm: 'data-berth-confirm',
         confirmLabel: 'Pay for it',
         confirmHelp: `Spends ${formatMoney(TRADER_BERTH_PRICE)} on the coming raid.`,
-      })}</div>`;
+      });
     }
     const wiring = paid
       ? `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`
       : offer.refusal === undefined
-        ? `data-berth data-help="${escapeAttribute(`One more column of THE LOCKER for one raid. Brock builds one for good.`)}"`
+        ? `data-berth data-help="${escapeAttribute('One more column of THE LOCKER for one raid. Brock builds one for good.')}"`
         : `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`;
-    const tag = paid
-      ? pixelTag('Paid', 'secure', true)
-      : offer.refusal === undefined
-        ? pixelTag('Rent', 'good')
-        : pixelTag(offer.refusal === 'money-short' ? 'Short' : 'Locked');
+    const state = paid ? 'is-secured' : offer.refusal === undefined ? '' : offer.refusal === 'money-short' ? 'is-short' : 'is-locked';
     const price = paid
-      ? shopPaidColumn(formatMoney(TRADER_BERTH_PRICE))
-      : shopPriceColumn([
-          { ask: formatMoney(TRADER_BERTH_PRICE), short: offer.refusal === 'money-short' },
-        ]);
-    return `<div class="px-list">${heading}<button class="px-row has-icon px-tall px-priced${paid ? ' is-secured' : ''}" ${wiring}>${iconMarkup('supply-crate', 'Locker shelf')}<span class="px-row-main"><strong class="px-name">Locker shelf</strong><small class="px-wrap">+${squares} safe squares, this raid.</small></span>${price}${tag}</button></div>`;
+      ? pixelTag('Paid', 'secure', true)
+      : `<span class="price-tag${offer.refusal === undefined ? '' : ' is-off'}">${formatMoney(TRADER_BERTH_PRICE)}</span>`;
+    return `<div class="trader-slot"><button class="px-window px-card trader-card ${state}" ${wiring} data-shows="${BERTH_DEAL}"><span class="trader-art">${iconMarkup('supply-crate', 'Locker shelf')}</span><strong class="px-name">Locker shelf</strong><span class="trader-limit">This raid</span>${price}</button></div>`;
   }
 
-  /** What the shelf's pointed-at row is, what it costs, and what is shutting it. */
+  /** A card on his barter table: the thing, big, its name, and the parts it takes as tags. */
+  private barterCard(counter: TraderCounter, offer: TraderBarterOffer, start: boolean): string {
+    const { barter } = offer;
+    const taken = offer.refusal === 'already-taken';
+    const limit = traderBarterLimit(counter, barter);
+    const repeats = offer.refusal === undefined && !barter.once && limit > 1;
+    const count = repeats ? clampCount(this.counterCounts.get(`barter:${barter.id}`) ?? 1, 1, limit) : 1;
+    const takes = barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count }));
+    if (this.traderArmed === barter.id) {
+      return this.armedDeal({
+        id: barter.id,
+        icon: iconMarkup(barter.icon, barter.name),
+        name: count > 1 ? `${barter.name} ×${count}` : barter.name,
+        question: `Hand over ${itemAmountsFor(takes)} for good?`,
+        confirm: `data-barter-confirm="${barter.id}"`,
+        confirmLabel: 'Hand it over',
+        confirmHelp: `Spends ${escapeAttribute(itemAmountsFor(takes))} for good.`,
+      });
+    }
+    const parts = taken
+      ? pixelTag('Traded', 'secure', true)
+      : `<span class="part-tags">${takes
+          .map(({ itemId, quantity }) => this.partTag(itemId, quantity, this.stash.itemCount(itemId)))
+          .join('')}</span>`;
+    const why =
+      offer.refusal === 'standing-short'
+        ? `<span class="trader-lock">${iconMarkup('padlock', 'Locked')}${this.standingName(barter.standing)}</span>`
+        : '';
+    const help = this.barterHelp(offer, count);
+    const wiring =
+      offer.refusal === undefined
+        ? `data-barter="${barter.id}" data-help="${escapeAttribute(help)}"`
+        : `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(help)}"`;
+    const state = taken ? ' is-secured' : offer.refusal === undefined ? '' : offer.refusal === 'goods-short' ? ' is-short' : ' is-locked';
+    const card = `<button class="px-window px-card trader-card${state}" ${wiring} data-shows="${barter.id}"${start ? ' data-cursor-start' : ''}><span class="trader-art">${iconMarkup(barter.icon, barter.name)}</span><strong class="px-name">${barter.name}${count > 1 ? ` ×${count}` : ''}</strong>${why}${parts}</button>`;
+    return `<div class="trader-slot">${card}</div>`;
+  }
+
+  /** What the help bar says on a barter's card, for how many of it. */
+  private barterHelp(offer: TraderBarterOffer, count: number): string {
+    const { barter } = offer;
+    const takes = barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count }));
+    return offer.refusal === undefined
+      ? `Hand over ${itemAmountsFor(takes)} for ${count === 1 ? withArticle(barter.name) : `${count} ${barter.name}s`}. He asks again.`
+      : offer.message ?? '';
+  }
+
+  /** One part a deal or a build takes, as a tag (`ui/shopCard.ts`). */
+  private partTag(itemId: string, quantity: number, held: number): string {
+    return partTag(itemIcon(itemId, this.itemName(itemId)), quantity, held);
+  }
+
+  /**
+   * The card on the right for a thing on his shelf: the thing big, how many
+   * (the < 1 > count, Left and Right as on every count), the money before and
+   * after, one line of what it does, and the key that buys it.
+   */
   private stockDetail(counter: TraderCounter, offer: TraderStockOffer, shown: boolean): string {
     const { item } = offer;
     const held = moneyHeld(this.stash);
-    const left = rationLeft(counter);
-    const ration = traderStanding(counter.progress).ration;
-    const footprint = footprintOf(item.itemId);
-    const squares = footprint.width * footprint.height;
-    return shopDetailPane({
+    const limit = traderStockLimit(counter, item);
+    const open = offer.refusal === undefined && limit > 0;
+    const count = open ? clampCount(this.counterCounts.get(`buy:${item.itemId}`) ?? 1, 1, limit) : 1;
+    const cost = item.price * count;
+    const name = this.itemName(item.itemId);
+    const help = `Buy ${count} ${name} for ${formatMoney(cost)}. He asks again.`;
+    // The count is a control in the card, so it carries the card's own
+    // `data-shows` and the cursor moving into it keeps this card up.
+    const pick = open
+      ? `<span class="shop-pick" data-shows="${item.itemId}">${countSelector({ kind: 'buy', id: item.itemId, label: name, value: count, min: 1, max: limit, help, limit: traderStockLimitReason(counter, item) })}</span>`
+      : '';
+    return shopCardPane({
       id: item.itemId,
       shown,
-      effect: getItemById(item.itemId)?.description ?? this.itemName(item.itemId),
-      // Short on purpose: this pane stands in the narrow half of the screen,
-      // under a list of five, and the row above it has already said what the
-      // thing does. What it adds is the room it takes and the two gates.
-      detail: `${squares} ${squares === 1 ? 'square' : 'squares'} in the pack.`,
-      priceLabel: 'Price',
-      price: [
-        // Money is held as a sum, so both halves are written as one: ₽120 against ₽300.
-        {
-          ask: formatMoney(item.price),
-          held: `${formatMoney(held)} in YOUR THINGS`,
-          short: held < item.price,
-          icon: itemIcon(CURRENCY_ITEM_ID, this.itemName(CURRENCY_ITEM_ID)),
-        },
-        // Potions and Poke Balls are off the ration (`TraderStockItem.rationed`).
-        ...(item.rationed
-          ? [
-              {
-                ask: '1 of his ration',
-                held: ration === 0 ? 'he sells you nothing yet' : `${left} of ${ration} left till you raid`,
-                short: left <= 0,
-              },
-            ]
-          : []),
-      ],
-      ...(offer.refusal === undefined
-        ? { note: item.rationed ? 'A ration not spent is gone with the trip.' : 'As many as you can pay for.' }
-        : { blocked: offer.message ?? '' }),
+      head: { title: name, note: `${formatMoney(item.price)} each`, tone: 'gold' },
+      art: itemIcon(item.itemId, name),
+      show: `<div class="shop-money">${pick}${this.moneyLine(held, cost)}</div>`,
+      line: getItemById(item.itemId)?.description ?? name,
+      ...(offer.refusal === undefined ? {} : { blocked: offer.message ?? '' }),
+      ...(open ? { go: { key: 'ENTER', label: count === 1 ? 'Buy one' : `Buy ${count}` } } : {}),
     });
   }
 
-  /** What one barter hands over and what it hands back, before either is spent. */
+  /** The purse before and after, as the number it will roll down to: ₽640 ▸ ₽550. */
+  private moneyLine(held: number, cost: number): string {
+    return `<p class="shop-roll">${itemIcon(CURRENCY_ITEM_ID, this.itemName(CURRENCY_ITEM_ID))}<span>${formatMoney(held)}</span><span class="shop-arrow"></span><strong class="${held < cost ? 'is-short' : ''}">${formatMoney(Math.max(0, held - cost))}</strong></p>`;
+  }
+
+  /** The locker shelf, whole: what it adds to the coming raid and the money it leaves. */
+  private berthDetail(counter: TraderCounter, shown: boolean): string {
+    const offer = checkBerth(counter);
+    const paid = offer.refusal === 'already-paid';
+    const squares = berthSquares(this.flow.secureGrid);
+    return shopCardPane({
+      id: BERTH_DEAL,
+      shown,
+      head: { title: 'Locker shelf', note: paid ? 'Paid' : 'This raid', tone: 'gold' },
+      art: iconMarkup('supply-crate', 'Locker shelf'),
+      show: paid ? '' : `<div class="shop-money">${this.moneyLine(moneyHeld(this.stash), TRADER_BERTH_PRICE)}</div>`,
+      line: `+${squares} safe squares, this raid.`,
+      ...(paid || offer.refusal === undefined ? {} : { blocked: offer.message ?? '' }),
+      ...(offer.refusal === undefined ? { go: { key: 'ENTER', label: 'Rent it' } } : {}),
+    });
+  }
+
+  /** The card on the right for a barter: the thing big, the parts it takes as tags, and the key. */
   private barterDetail(offer: TraderBarterOffer, shown: boolean): string {
     const { barter } = offer;
     const taken = offer.refusal === 'already-taken';
-    const count = barter.once
-      ? 1
-      : clampCount(this.counterCounts.get(`barter:${barter.id}`) ?? 1, 1, Math.max(1, traderBarterLimit(this.traderCounter, barter)));
-    return shopDetailPane({
+    const limit = traderBarterLimit(this.traderCounter, barter);
+    const repeats = offer.refusal === undefined && !barter.once && limit > 1;
+    const count = repeats ? clampCount(this.counterCounts.get(`barter:${barter.id}`) ?? 1, 1, limit) : 1;
+    const goods = barter.takes.map(({ itemId }) => this.itemName(itemId).toLowerCase()).join(' and ');
+    const pick = repeats
+      ? `<span class="shop-pick" data-shows="${barter.id}">${countSelector({ kind: 'barter', id: barter.id, label: barter.name, value: count, min: 1, max: limit, help: this.barterHelp(offer, count), limit: `Your ${goods} cover ${limit} at most.` })}</span>`
+      : '';
+    // Held back for his trust, the lock and the standing it waits for stand
+    // where ALL HERE would: the parts being in hand is not the question.
+    const held = offer.refusal === 'standing-short';
+    const parts = taken
+      ? ''
+      : partTags(
+          barter.takes.map(({ itemId, quantity }) => ({
+            icon: itemIcon(itemId, this.itemName(itemId)),
+            quantity: quantity * count,
+            held: this.stash.itemCount(itemId),
+          })),
+          'You hand over',
+          held ? `<span class="trader-lock">${iconMarkup('padlock', 'Locked')}${this.standingName(barter.standing)}</span>` : undefined,
+        );
+    return shopCardPane({
       id: barter.id,
       shown,
-      effect: getItemById(barter.gives.itemId)?.description ?? barter.name,
-      detail: barterDetailOnOffer(barter),
-      priceLabel: taken ? 'What it took' : 'You hand over',
-      price: barter.takes.map(({ itemId, quantity }) =>
-        taken
-          ? { ask: formatTraderStacks([{ itemId, quantity }]), icon: itemIcon(itemId, this.itemName(itemId)) }
-          : pricePart(
-              formatTraderStacks([{ itemId, quantity: quantity * count }]),
-              this.stash.itemCount(itemId),
-              quantity * count,
-              'in YOUR THINGS',
-              itemIcon(itemId, this.itemName(itemId)),
-            ),
-      ),
-      ...(taken
-        ? { note: 'Traded, and he only had the one.' }
-        : offer.refusal === undefined
-          ? { note: 'No money changes hands, and found goods are the only thing that buys this.' }
-          : { blocked: offer.message ?? '' }),
+      head: { title: barter.name, note: taken ? 'Traded' : barter.once ? 'Only one' : 'For parts', tone: 'gold' },
+      art: iconMarkup(barter.icon, barter.name),
+      ...(pick ? { show: `<div class="shop-money">${pick}</div>` } : {}),
+      line: getItemById(barter.gives.itemId)?.description ?? barterDetailOnOffer(barter),
+      parts,
+      ...(taken || held || offer.refusal === undefined ? {} : { blocked: offer.message ?? '' }),
+      ...(offer.refusal === undefined ? { go: { key: 'ENTER', label: 'Trade' } } : {}),
     });
   }
 
@@ -4138,19 +4224,44 @@ export class HubScene extends Phaser.Scene {
    * the screen is only a picture of it.
    */
   private dealAtCounter(deal: () => { readonly ok: boolean; readonly message: string }): void {
+    const before = moneyHeld(this.stash);
     const result = deal();
+    let after = before;
     if (result.ok) {
-      audioManager.play('confirm');
       const reloaded = this.saveManager.load();
       if (reloaded) {
         const view = this.view;
         this.applyLoadedGame(reloaded);
         this.view = view;
       }
+      after = moneyHeld(this.stash);
+      // Money over the counter is a coin's sound; parts handed over are a deal.
+      audioManager.play(after < before ? 'coinToss' : 'confirm');
     } else {
       audioManager.play('cancel');
     }
     this.setStatus(result.message);
+    if (after < before) {
+      this.rollMoney(before, after);
+    }
+  }
+
+  /**
+   * The purse in the title pill counts down to what is left, a step a frame
+   * or so, on the scene's own clock - so a stepped test-mode game rolls it too.
+   */
+  private rollMoney(from: number, to: number): void {
+    const steps = MONEY_ROLL_STEPS;
+    const show = (value: number) => {
+      const pill = this.overlay?.root.querySelector<HTMLElement>('[data-money-roll]');
+      if (pill) {
+        pill.textContent = formatMoney(value);
+      }
+    };
+    show(from);
+    for (let step = 1; step <= steps; step += 1) {
+      this.time.delayedCall(MONEY_ROLL_STEP_MS * step, () => show(Math.round(from + ((to - from) * step) / steps)));
+    }
   }
 
   private get workshopLadder(): readonly WorkshopOffer[] {
@@ -4218,18 +4329,23 @@ export class HubScene extends Phaser.Scene {
       .map((offer) => {
         const { upgrade } = offer;
         const art = fixtureArt(upgrade.id);
-        const picture = art
-          ? `<canvas class="px-fixture" data-fixture="${upgrade.id}" width="${art.width}" height="${art.height}" style="--w:${art.width};--h:${art.height}" role="img" aria-label="${escapeAttribute(upgrade.name)}"></canvas>`
+        // A machine taller than the card's picture box (the beacon, the mast)
+        // is drawn smaller by a whole number rather than cut through its top:
+        // every build is whole on its card (`fixtureDivisor`).
+        const divisor = art ? fixtureDivisor(art) : 1;
+        const shown = art ? { width: Math.ceil(art.width / divisor), height: Math.ceil(art.height / divisor) } : undefined;
+        const picture = art && shown
+          ? `<canvas class="px-fixture" data-fixture="${upgrade.id}" data-fixture-divisor="${divisor}" width="${shown.width}" height="${shown.height}" style="--w:${shown.width};--h:${shown.height}" role="img" aria-label="${escapeAttribute(upgrade.name)}"></canvas>`
           : iconMarkup(upgrade.icon, upgrade.name);
         if (this.workshopArmed === upgrade.id) {
           const spent = itemAmountsFor(upgrade.cost.supplies);
-          // Asked in the card's own place on the skyline, the building over the
-          // question: a band across the skyline split it in two and put the two
-          // answers under the fold.
+          // Asked in the card's own place along the row, the building over the
+          // question.
           return this.armedDeal({
             id: upgrade.id,
             icon: `<span class="workshop-stage">${picture}</span>`,
-            name: upgrade.name,
+            // One line, as the card it stands in for: the row stays low.
+            name: cardName(upgrade.name),
             question: `Spend ${spent} on it for good?`,
             confirm: `data-outfit-confirm="${upgrade.id}"`,
             confirmLabel: 'Build it',
@@ -4237,19 +4353,12 @@ export class HubScene extends Phaser.Scene {
           });
         }
         const built = offer.state === 'built';
-        const tag = built
-          ? pixelTag('Built', 'secure', true)
-          : offer.affordable
-            ? pixelTag('Build', 'good')
-            : pixelTag(offer.state === 'locked' ? 'Locked' : 'Short');
-        // Not `disabled`: the cursor has to reach a rung to say what it does.
+        const tag = built ? pixelTag('Built', 'secure', true) : '';
+        // Not `disabled`: the cursor has to reach a build to say what it does.
         const wiring = built
           ? `data-built="${upgrade.id}"`
           : `data-outfit="${upgrade.id}"${offer.affordable ? '' : ' aria-disabled="true"'}`;
-        // One line of the help bar, which is 26 game pixels deep and clips: at
-        // the smallest stage a second line hangs a pixel over its own bar. The
-        // price is on the card and the whole of it is in the pane, so the bar
-        // says what pressing this does and nothing else.
+        // One line of the help bar: what pressing this does and nothing else.
         const help = built
           ? `${upgrade.name} already stands at base.`
           : offer.affordable
@@ -4257,64 +4366,113 @@ export class HubScene extends Phaser.Scene {
             : offer.state === 'locked'
               ? `Locked: built only after ${offer.requires?.name ?? 'an earlier upgrade'}.`
               : this.shortfallLine(offer);
-        // While a rung is asking, only its Keep may start the cursor.
+        // While a build is asking, only its Not now may start the cursor.
         const start = offer === first && this.workshopArmed === undefined;
-        // The card is what the rung builds, as it stands in the yard
+        // The card is what the build is, as it stands in the room
         // (`ui/fixturePicture.ts`): in its colours once built, a grey blueprint
-        // before. Under it, what it does - a shop says that whether or not you
-        // have bought it (`ui/shopDetail.ts`) - and its price as the salvage's
-        // own icons, counted, crossed and red where the vault is short; the whole
-        // of it is in the pane under the skyline.
+        // before. Under it its price as the parts' own icons, counted, crossed
+        // and grey where the base is short - or, for a build that waits on
+        // another, the lock and what it waits for.
         const parts = built ? this.priceAsPaid(upgrade) : this.pricedAgainstVault(offer);
-        const cost = parts
-          .map((part) => {
-            const count = /^(\d+)×/.exec(part.ask)?.[1];
-            // Short is a shape as well as a colour: the drawn cross the legend
-            // over the skyline names, as the shelves have it (`shopDetail.ts`).
-            return `<span class="workshop-cost${part.short ? ' is-short' : ''}">${part.short ? SHORT_MARK : ''}${part.icon ?? ''}<small>${count ? `×${count}` : part.ask}</small></span>`;
-          })
-          .join('');
+        const cost =
+          offer.state === 'locked'
+            ? // The padlock and the build it waits for, in one line: AFTER is the
+              // card on the right's and the help bar's, where there is room.
+              `<span class="workshop-after" aria-label="${escapeAttribute(`After ${offer.requires?.name ?? 'an earlier one'}`)}">${iconMarkup('padlock', 'Locked')}${cardName(offer.requires?.name ?? 'an earlier one')}</span>`
+            : parts
+                .map((part) => {
+                  const count = /^(\d+)×/.exec(part.ask)?.[1];
+                  // Short is a shape as well as a colour: the drawn cross the
+                  // legend over the row names, as the shelves have it.
+                  return `<span class="workshop-cost${part.short ? ' is-short' : ''}">${part.short ? SHORT_MARK : ''}${part.icon ?? ''}<small>${count ? `×${count}` : part.ask}</small></span>`;
+                })
+                .join('');
         const state = built ? 'is-built' : offer.affordable ? 'is-ready' : offer.state === 'locked' ? 'is-locked' : 'is-short';
-        return `<button class="px-window px-card workshop-card ${state}" ${wiring}${start ? ' data-cursor-start' : ''} data-shows="${upgrade.id}" data-help="${escapeAttribute(help)}"><span class="workshop-stage">${picture}</span><strong class="px-name">${upgrade.name.replace(/ ([IVX]+)$/, '\u00a0$1')}</strong><small class="px-wrap workshop-effect">${upgrade.effect}</small><span class="workshop-costs">${cost}</span>${tag}</button>`;
+        return `<button class="px-window px-card workshop-card ${state}" ${wiring}${start ? ' data-cursor-start' : ''} data-shows="${upgrade.id}" data-help="${escapeAttribute(help)}"><span class="workshop-stage">${picture}</span><strong class="px-name">${cardName(upgrade.name).replace(/ ([IVX]+)$/, ' $1')}</strong><small class="px-wrap workshop-effect">${upgrade.effect}</small><span class="workshop-costs">${cost}</span>${tag}</button>`;
       })
       .join('');
-    const shown = first ?? ladder[0];
+    const shown = (this.workshopArmed !== undefined ? ladder.find((offer) => offer.upgrade.id === this.workshopArmed) : undefined) ?? first ?? ladder[0];
     const details = ladder.map((offer) => this.workshopDetail(offer, offer === shown)).join('');
-    // Brock is the man the player walked into this room to talk to, so the
-    // screen is what he builds: the skyline is the whole of it, and his line
-    // is its heading. In a window of his own over the ladder he took the room
-    // the cards needed, and the last rung wrapped under the fold.
-    const builtCount = ladder.filter((offer) => offer.state === 'built').length;
-    return `<main class="px-body workshop-layout">${pixelWindow(
-      `<div class="workshop-skyline px-scroll">${rows}</div>${details}`,
-      {
-        className: 'objectives-panel workshop-ladder',
-        heading: `Brock builds it into the base · ${builtCount}/${WORKSHOP_UPGRADES.length}`,
-        note: SHORT_MARK_LEGEND,
-      },
+    // The room is the stage: Brock in his workshop, whole, with chalk on the
+    // floor where every machine not built yet will stand, and the chosen
+    // build's bay ringed in gold - the gold ring follows the cursor along the row.
+    const marks = this.workshopBays()
+      .map(({ upgradeId, area }) => roomPictureMark(upgradeId, area, upgradeId === shown?.upgrade.id))
+      .join('');
+    const room = `<section class="px-window workshop-room">${this.roomPicture('brocks-workshop', 'Brock in his workshop', marks)}</section>`;
+    const info = `<section class="px-window workshop-info">${details}</section>`;
+    // The builds' row carries no heading strip: how many are built is the
+    // card's BUILT n OF 7, and a short part is the crossed grey tag itself -
+    // the strip's height is what lets the room above be drawn whole.
+    return `<main class="px-body workshop-layout"><div class="workshop-top">${room}${info}</div>${pixelWindow(
+      `<div class="workshop-skyline px-scroll">${rows}</div>`,
+      { className: 'objectives-panel workshop-ladder' },
     )}</main>`;
   }
 
-  /** One rung, whole: what it does, what it costs against this vault, and its gate. */
+  /** Where each build stands, or will stand, in Brock's room: a chalked bay, or the tiles of the thing built. */
+  private workshopBays(): readonly { readonly upgradeId: string; readonly area: { readonly x: number; readonly y: number; readonly width: number; readonly height: number } }[] {
+    const built = this.builtRoom('brocks-workshop');
+    if (!built) {
+      return [];
+    }
+    const chalked = built.posters.flatMap((poster) => (poster.kind === 'chalk-bay' ? [{ upgradeId: poster.upgradeId, area: poster.area }] : []));
+    const standing = built.things.flatMap((thing) => {
+      if (!thing.upgradeId || thing.tiles.length === 0 || chalked.some((bay) => bay.upgradeId === thing.upgradeId)) {
+        return [];
+      }
+      const xs = thing.tiles.map((tile) => tile.x);
+      const ys = thing.tiles.map((tile) => tile.y);
+      const x = Math.min(...xs);
+      const y = Math.min(...ys);
+      return [{ upgradeId: thing.upgradeId, area: { x, y, width: Math.max(...xs) - x + 1, height: Math.max(...ys) - y + 1 } }];
+    });
+    return [...chalked, ...standing];
+  }
+
+  /** What Brock's parts come to at base: each part's picture and how many are spare. */
+  private workshopPartsAside(): string {
+    const parts = MATERIAL_IDS.map((itemId) => ({ itemId, held: spendableSupply(this.workshopVault, itemId) })).filter(({ held }) => held > 0);
+    if (parts.length === 0) {
+      return 'No parts yet';
+    }
+    return `Parts ${parts.map(({ itemId, held }) => `${itemIcon(itemId, this.itemName(itemId))}${held}`).join(' ')}`;
+  }
+
+  /**
+   * One build, in pictures: what it does in a raid, the parts it is built with
+   * as tags against what is spare at base (ALL HERE when every one is), who
+   * builds it and how many are built, and the key that builds it.
+   */
   private workshopDetail(offer: WorkshopOffer, shown: boolean): string {
     const { upgrade } = offer;
     const built = offer.state === 'built';
-    return shopDetailPane({
+    const builtCount = this.builtUpgradeIds.length;
+    const picture = workshopEffectPicture(upgrade.id);
+    const show = picture ? `<div class="ws-raid"><small class="px-label">In a raid</small><div class="ws-picture">${picture}</div></div>` : '';
+    const parts =
+      offer.state === 'locked'
+        ? `<p class="workshop-after">${iconMarkup('padlock', 'Locked')}After ${offer.requires?.name ?? 'an earlier one'}</p>`
+        : partTags(
+            upgrade.cost.supplies.map(({ itemId, quantity }) => ({
+              icon: itemIcon(itemId, this.itemName(itemId)),
+              quantity,
+              held: built ? quantity : spendableSupply(this.workshopVault, itemId),
+            })),
+            built ? 'Built with' : 'Builds with',
+          );
+    return shopCardPane({
       id: upgrade.id,
       shown,
-      effect: upgrade.effect,
-      detail: upgrade.detail,
-      priceLabel: built ? 'What it cost' : 'Price',
-      price: built ? this.priceAsPaid(upgrade) : this.pricedAgainstVault(offer),
-      ...(built
-        ? { note: 'Built. It stands at base for good, on every raid from here.' }
-        : offer.state === 'locked'
-          ? {
-              blocked: `Built only after ${offer.requires?.name ?? 'an earlier upgrade'}, which is still unbuilt.`,
-            }
-          : offer.affordable
-            ? { note: 'You can pay for this now. You are asked once more before anything is spent.' }
-            : { blocked: this.shortfallLine(offer) }),
+      head: {
+        title: upgrade.name,
+        note: built ? 'Built' : offer.affordable ? 'Ready' : offer.state === 'locked' ? 'Locked' : 'Short',
+        tone: built || offer.affordable ? 'green' : 'ink',
+      },
+      show,
+      parts,
+      ...(offer.affordable ? { go: { key: 'ENTER', label: 'Build it' } } : {}),
+      foot: `<p class="ws-tally">${pixelFigure('brock', 'Brock')}<small>Built ${builtCount} of ${WORKSHOP_UPGRADES.length}</small></p>`,
     });
   }
 

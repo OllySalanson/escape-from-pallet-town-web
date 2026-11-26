@@ -1365,6 +1365,35 @@ button {
     transform: none;
   }
 }
+/* Brock's chosen bay: the gold ring winks (`.room-pic-mark`). */
+@keyframes room-pic-mark {
+  50% {
+    box-shadow:
+      0 0 0 var(--u) var(--gold),
+      0 0 0 calc(var(--u) * 2) var(--gold),
+      0 0 0 calc(var(--u) * 3) var(--line);
+  }
+}
+/* A build's gold stars rise off its card and go (`.workshop-card.is-just-built`). */
+@keyframes build-stars {
+  0% {
+    transform: translateY(calc(var(--u) * 12));
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(calc(var(--u) * -6));
+    opacity: 0;
+  }
+}
+/* What a build adds, in gold, blinking (`ui/workshopEffect.ts`). */
+@keyframes ws-new {
+  50% {
+    background: var(--paper);
+  }
+}
 @keyframes mon-flap {
   0% {
     background-position-x: calc(var(--u) * -32 * var(--icon-col));
@@ -1792,6 +1821,7 @@ body.touch-play .feedback-tab {
   --px-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 5' shape-rendering='crispEdges'%3E%3Cpath d='M6 0h1v1h-1zM5 1h1v1h-1zM4 2h1v1h-1zM0 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM2 4h1v1h-1z'/%3E%3C/svg%3E");
   --px-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h-1zM4 0h1v1h-1zM1 1h1v1h-1zM3 1h1v1h-1zM2 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM0 4h1v1h-1zM4 4h1v1h-1z'/%3E%3C/svg%3E");
   --px-close: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h-1zM1 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM3 3h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1z'/%3E%3C/svg%3E");
+  --px-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath fill='%23ffc823' d='M3 0h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM1 6h1v1h-1zM5 6h1v1h-1z'/%3E%3C/svg%3E");
   --px-ball: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath fill='%23221d1e' d='M2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM1 1h1v1h-1zM7 1h1v1h-1zM0 2h1v1h-1zM8 2h1v1h-1zM0 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM8 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM0 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM8 5h1v1h-1zM0 6h1v1h-1zM8 6h1v1h-1zM1 7h1v1h-1zM7 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1z'/%3E%3Cpath fill='%23e3350d' d='M2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1z'/%3E%3Cpath fill='%23ffffff' d='M4 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1z'/%3E%3C/svg%3E");
   --px-hollow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h5v5h-5zM1 1v3h3v-3z' fill-rule='evenodd'/%3E%3C/svg%3E");
 }
@@ -3330,19 +3360,6 @@ body.touch-play .feedback-tab {
      price it charges, both measured off the rows rather than guessed at. */
   height: calc(var(--u) * 88);
 }
-/* Bill's shelf is the narrow half of his screen and its rows have
-   already said what the thing does, so its pane is the price and the gates. */
-:where(.pixel-ui) .trader-shelf .shop-detail {
-  height: calc(var(--u) * 62);
-}
-/* A narrower screen makes a narrower pane, so the same words take more lines:
-   the height goes *up* where the room goes down, and what is left over is the
-   scroll the MORE strip announces. The two blocks still stand side by side,
-   because the price against the vault is the half the row could not say and
-   hiding it under the half the row already said would undo the whole fix. */
-:where(.pixel-ui[data-room='narrow']) .trader-shelf .shop-detail {
-  height: calc(var(--u) * 74);
-}
 /* At `BASE_STAGE` the band is the shallowest it is anywhere, and it is the
    Bill's shelf that sets the number: a list, this band and the berth share
    one pane there, and a band sized for a laptop left the list with no rows in
@@ -3350,16 +3367,6 @@ body.touch-play .feedback-tab {
    the ink that says which of them is short, and the rest is the scroll. */
 :where(.pixel-ui[data-room='tight']) .shop-detail {
   height: calc(var(--u) * 46);
-}
-/* And there Bill has no band at all, on either counter. His screen is
-   four things deep already - his standing, his shelf, the berth and the table -
-   and at that stage a band on top of them left both lists with no rows in them.
-   Nothing is lost that the screen does not already say: the title bar is the
-   purse, the heading is the ration, the row is what the thing does and what it
-   costs, and the help bar is the refusal. The room goes to rows. */
-:where(.pixel-ui[data-room='tight']) .trader-shelf .shop-detail,
-:where(.pixel-ui[data-room='tight']) .trader-table .shop-detail {
-  display: none;
 }
 /* The two blocks share the pane half and half and never wrap onto two lines,
    at any width this game is played at. They are not given a basis to wrap
@@ -4030,111 +4037,6 @@ body.touch-play .feedback-tab {
   margin-bottom: 0;
   padding-bottom: 0;
   box-shadow: none;
-}
-
-/* --- Bill ------------------------------------------------------- */
-/* Standing across the top, then the shelf and the barter table side by side,
-   because the whole design is the difference between the two: one is money and
-   supplies and is rationed, the other is found goods for what money may not
-   buy. One list would read as a shop. */
-:where(.pixel-ui) .trader-layout {
-  height: 100%;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
-}
-/* Two windows still, one above the other: at `BASE_STAGE` half the screen is
-   160 game pixels and a row of his that says what a thing does as well as what
-   it costs came out one word to a line. Stacked, each counter has the width of
-   the screen and its rows read; what it costs is the rows below the fold, which
-   is what the MORE strip is for. They must never become one list - the shelf is
-   money for supplies and the table is found goods for what money cannot buy. */
-:where(.pixel-ui[data-room='tight']) .trader-layout {
-  grid-template-columns: minmax(0, 1fr);
-  /* Seven to six, measured rather than chosen: the shelf has the berth standing
-     in it as well as its stock, so an even split left it short of a whole row
-     and the fold ran through one. A row of stock is 28 game pixels and the MORE
-     strip is 13, so its list needs 41 before it shows anything whole, and its
-     window 92 round that - heading, list, berth. The table's first deal wraps
-     its line to 40 pixels and needs 53, and 76 round it. Those are floors, not
-     shares: at `BASE_STAGE` the split alone gave the shelf 91 and the fold went
-     through the Poke Ball, so the ratio only spends what is left over. */
-  grid-template-rows: auto minmax(calc(var(--u) * 92), 7fr) minmax(calc(var(--u) * 76), 6fr);
-  /* Two pixels between his windows rather than four: 16 + 92 + 76 is all but
-     the whole of what `BASE_STAGE` has under its title bar and over its help
-     bar, and the four pixels are the difference between both floors fitting
-     and neither list showing a whole row. */
-  row-gap: calc(var(--u) * 2);
-}
-/* And his standing is its heading strip alone: the strip already names the tier
-   and counts the points to the next, so his two sentences about it are the
-   first thing to go when a screen this size has four bands to fit and the two
-   lists under them have no rows to show. */
-/* The window keeps its padding - `.pixel-ui .px-window` outranks anything
-   scoped through `:where()` here, which is how a `padding: 0` in this place sat
-   dead for a whole release and left a blank band under the strip - so the strip
-   takes back the four pixels it would have left under itself, and the window is
-   the strip and its frame: sixteen pixels. */
-:where(.pixel-ui[data-room='tight']) .trader-standing > .px-heading {
-  margin-bottom: calc(var(--u) * -3);
-}
-:where(.pixel-ui[data-room='tight']) .trader-standing > p,
-/* The line he says it in is inside the band that stands him beside it now, and
-   the band goes with it: a sentence that survived its own rule by being wrapped
-   cost his shelf a whole row at this size. */
-:where(.pixel-ui[data-room='tight']) .trader-standing > .px-lead {
-  display: none;
-}
-/* Bill drops the same band in the `narrow` room too. There his two counters
-   stand side by side, each with a band pricing its pointed-at row and the
-   shelf with the berth under that as well, and his picture and two sentences
-   over them left the shelf's list nine pixels tall at 856x616 and cut his
-   table's first deal through the middle at 1024x640
-   (`docs/screens/bill-list-row-cut/`). The strip still names his standing
-   and counts the points to the next, which is the part a player acts on.
-   Brock keeps his: his ladder is one list under him, and it has the room. */
-:where(.pixel-ui[data-room='narrow']) .trader-layout > .trader-standing > .px-heading,
-:where(.pixel-ui[data-room='tight']) .trader-layout > .trader-standing > .px-heading {
-  margin-bottom: calc(var(--u) * -3);
-}
-:where(.pixel-ui[data-room='narrow']) .trader-layout > .trader-standing > p,
-:where(.pixel-ui[data-room='tight']) .trader-layout > .trader-standing > p,
-:where(.pixel-ui[data-room='narrow']) .trader-layout > .trader-standing > .px-lead,
-:where(.pixel-ui[data-room='tight']) .trader-layout > .trader-standing > .px-lead {
-  display: none;
-}
-/* The berth keeps its own row and loses the band naming it: the row says BERTH.
-   Fourteen pixels, and they are the difference between the shelf above showing
-   a whole row and showing the top half of one. */
-:where(.pixel-ui[data-room='tight']) .trader-shelf .px-subheading {
-  display: none;
-}
-:where(.pixel-ui) .trader-standing {
-  grid-column: 1 / -1;
-}
-:where(.pixel-ui) .trader-standing > p {
-  margin: 0;
-  padding: calc(var(--u) * 1) calc(var(--u) * 3) 0;
-}
-:where(.pixel-ui) .trader-standing > p.px-note {
-  color: var(--ink-soft);
-  padding-bottom: calc(var(--u) * 2);
-}
-/* The berth is the shelf's own last row, not a third pane: it is the other
-   thing money buys, and a pane of its own would read as a third kind of deal. */
-:where(.pixel-ui) .trader-shelf,
-:where(.pixel-ui) .trader-table {
-  align-self: start;
-  max-height: 100%;
-}
-/* Four bands, not three: the heading, the shelf, the pane that says what the
-   pointed-at row is, and the berth along the bottom. Written against the
-   `:has(.px-detail)` rule above, which would otherwise fold the berth into the
-   pane's band and leave the shelf nothing. */
-.pixel-ui .objectives-panel.trader-shelf:has(.px-detail) {
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
-}
-.pixel-ui .trader-shelf {
-  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
 /* --- The three screens a raid opens over the world ----------------------- *
@@ -7479,6 +7381,566 @@ body.touch-play .feedback-tab {
   align-items: center;
 }
 
+
+/* --- Bill's Cottage, as cards with price tags (`HubScene.traderView`) ------ *
+   The round-3 look: what he sells for money and what he swaps for parts as two
+   rows of cards - the thing big, its name, its price on a gold tag or its
+   parts as tags - and on the right one card that answers for the card the
+   cursor is on, over Bill in his own room with how far his trust has come. */
+:where(.pixel-ui) .trader-layout {
+  height: 100%;
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 140);
+  grid-template-rows: minmax(0, 1fr);
+}
+:where(.pixel-ui) .trader-goods,
+:where(.pixel-ui) .trader-side {
+  min-height: 0;
+  display: grid;
+  gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .trader-goods {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+:where(.pixel-ui) .trader-side {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.pixel-ui .objectives-panel.trader-shelf,
+.pixel-ui .objectives-panel.trader-table {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+:where(.pixel-ui) .trader-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--u) * 72), 1fr));
+  gap: calc(var(--u) * 4) calc(var(--u) * 3);
+  align-content: start;
+  padding: calc(var(--u) * 2) calc(var(--u) * 2) 0;
+}
+:where(.pixel-ui) .trader-cards > .px-arming {
+  grid-column: 1 / -1;
+}
+:where(.pixel-ui) .trader-slot {
+  display: grid;
+  gap: calc(var(--u) * 2);
+  justify-items: center;
+  align-content: start;
+  min-width: 0;
+}
+.pixel-ui .px-card.trader-card {
+  --pad-top: 3;
+  position: relative;
+  width: 100%;
+  min-height: calc(var(--u) * 84);
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  row-gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 4) calc(var(--u) * 2) calc(var(--u) * 3);
+  text-align: center;
+}
+.pixel-ui .px-card.trader-card > .px-name {
+  text-transform: uppercase;
+  white-space: normal;
+}
+:where(.pixel-ui) .trader-art .item-icon,
+:where(.pixel-ui) .trader-art .item-icon img {
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+}
+.pixel-ui .px-card.trader-card:is(.is-locked, .is-short) {
+  --fill: var(--paper-sunk);
+  color: var(--ink-soft);
+}
+.pixel-ui .px-card.trader-card:is(.is-locked, .is-short) .trader-art {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+.pixel-ui .px-card.trader-card.is-secured {
+  --fill: var(--safe-wash);
+}
+/* A price is one tag shape: gold for money, white where it cannot be paid. */
+:where(.pixel-ui) .price-tag {
+  margin-top: auto;
+  padding: 0 calc(var(--u) * 3);
+  background: var(--gold);
+  color: var(--ink);
+  box-shadow: 0 0 0 var(--u) var(--line);
+}
+:where(.pixel-ui) .price-tag.is-off {
+  background: var(--paper);
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .trader-lock,
+:where(.pixel-ui) .trader-limit,
+:where(.pixel-ui) .workshop-after {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  padding: 0 calc(var(--u) * 3);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* Locked: the game's own padlock at its own size, in ink on a grey strip. */
+:where(.pixel-ui) .trader-lock,
+:where(.pixel-ui) .workshop-after {
+  background: var(--mist-2);
+  color: var(--ink);
+}
+:where(.pixel-ui) .trader-limit {
+  background: var(--paper-sunk);
+  color: var(--ink-soft);
+}
+/* A part a deal or a build takes: its picture and how many, green where there
+   is enough, grey where there is not. */
+:where(.pixel-ui) .part-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .part-tag,
+:where(.pixel-ui) .workshop-cost {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 calc(var(--u) * 2) 0 var(--u);
+  background: var(--safe-wash);
+  color: var(--ink);
+  box-shadow: 0 0 0 var(--u) var(--line);
+}
+:where(.pixel-ui) .part-tag.is-short,
+:where(.pixel-ui) .workshop-cost.is-short {
+  background: var(--paper-sunk);
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .part-tag small,
+:where(.pixel-ui) .workshop-cost small {
+  color: inherit;
+}
+
+/* The card on the right answers for the card the cursor is on: its colour
+   strip, the thing big, what it leaves you with, and the key that does it. */
+.pixel-ui .trader-detail-card,
+.pixel-ui .workshop-info {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  padding: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .shop-card {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .shop-card[hidden] {
+  display: none;
+}
+:where(.pixel-ui) .shop-line {
+  margin: 0;
+}
+:where(.pixel-ui) .shop-parts {
+  display: grid;
+  gap: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .shop-parts .part-tags {
+  justify-content: flex-start;
+  align-items: center;
+}
+/* How many, as the < 1 > of a count: the two ends drawn as arrows. */
+:where(.pixel-ui) .shop-pick .px-count {
+  gap: calc(var(--u) * 3);
+}
+.pixel-ui .shop-pick .px-step {
+  --fill: transparent;
+  --edge: transparent;
+  position: relative;
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 12);
+  color: transparent;
+  box-shadow: none;
+}
+.pixel-ui .shop-pick .px-step::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 5);
+  background: var(--ink);
+  mask: var(--px-cursor) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
+}
+.pixel-ui .shop-pick .px-step[data-count-dir='-1']::after {
+  transform: scaleX(-1);
+}
+.pixel-ui .shop-pick .px-step[aria-disabled='true']::after {
+  background: var(--mist-2);
+}
+.pixel-ui .shop-pick .px-step:focus::after {
+  background: var(--cursor);
+}
+:where(.pixel-ui) .shop-pick .px-count > b {
+  min-width: calc(var(--u) * 12);
+  padding: 0 calc(var(--u) * 2);
+  background: var(--ink);
+  color: var(--paper);
+}
+:where(.pixel-ui) .shop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 4);
+  height: calc(var(--u) * 14);
+  margin: calc(var(--u) * -3) calc(var(--u) * -3) 0;
+  padding: 0 calc(var(--u) * 3);
+  background: var(--ink);
+  color: var(--paper);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+}
+:where(.pixel-ui) .shop-head.is-gold {
+  background: var(--gold);
+  color: var(--ink);
+}
+:where(.pixel-ui) .shop-head.is-green {
+  background: var(--go);
+  color: var(--paper);
+}
+:where(.pixel-ui) .shop-show {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 6);
+}
+:where(.pixel-ui) .shop-art .item-icon,
+:where(.pixel-ui) .shop-art .item-icon img {
+  width: calc(var(--u) * 48);
+  height: calc(var(--u) * 48);
+}
+:where(.pixel-ui) .shop-money {
+  display: grid;
+  gap: calc(var(--u) * 2);
+  justify-items: start;
+}
+:where(.pixel-ui) .shop-count {
+  padding: 0 calc(var(--u) * 3);
+  background: var(--ink);
+  color: var(--paper);
+}
+:where(.pixel-ui) .shop-roll {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .shop-roll strong.is-short {
+  color: var(--red-ink);
+}
+/* A drawn arrow: the face has none. */
+:where(.pixel-ui) .shop-arrow,
+:where(.pixel-ui) .ws-arrow,
+:where(.pixel-ui) .trader-trust-to {
+  flex: none;
+  display: inline-block;
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 5);
+  margin: 0 calc(var(--u) * 2);
+  background: var(--ink-soft);
+  mask: var(--px-cursor) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
+}
+/* The key and what it does, drawn as the green button the key presses. */
+:where(.pixel-ui) .shop-go {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  height: calc(var(--u) * 14);
+  padding: 0 calc(var(--u) * 5) 0 calc(var(--u) * 2);
+  background: var(--go);
+  color: var(--paper);
+  text-transform: uppercase;
+  box-shadow:
+    0 0 0 var(--u) var(--line),
+    0 calc(var(--u) * 3) 0 0 var(--line);
+}
+:where(.pixel-ui) .shop-key {
+  padding: 0 calc(var(--u) * 2);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* Bill in his room, and his trust: one bar, a stretch a standing. */
+.pixel-ui .trader-standing {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  padding: var(--u);
+}
+:where(.pixel-ui) .trader-trust {
+  display: grid;
+  gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 3) calc(var(--u) * 3) calc(var(--u) * 2);
+}
+:where(.pixel-ui) .trader-trust-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .trader-rank {
+  padding: 0 calc(var(--u) * 3);
+  background: var(--ink);
+  color: var(--paper);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .trader-trust-bar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--u);
+  height: calc(var(--u) * 6);
+  background: var(--line);
+  box-shadow: 0 0 0 var(--u) var(--line);
+}
+:where(.pixel-ui) .trader-trust-bar > i {
+  background: linear-gradient(90deg, var(--go) var(--fill), var(--paper-sunk) var(--fill));
+}
+:where(.pixel-ui) .trader-trust > small {
+  display: flex;
+  align-items: center;
+  text-transform: uppercase;
+}
+
+/* A keeper's room, as the yard draws it (`ui/roomPicture.ts`): whole, at the
+   largest whole-number scale that fits its box (`--rs`, `fitRoomPictures`),
+   centred on the game-pixel grid, with the room's own wall colour above its
+   middle and its floor's below - never a black or white band. */
+:where(.pixel-ui) .room-pic {
+  --rs: 1;
+  position: relative;
+  min-height: calc(var(--u) * 64);
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(var(--room-wall, var(--ink-2)) 50%, var(--room-floor, var(--ink-2)) 50%);
+}
+:where(.pixel-ui) .room-pic-room {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(var(--u) * var(--rw) * var(--rs));
+  height: calc(var(--u) * var(--rh) * var(--rs));
+}
+:where(.pixel-ui) .room-pic-room > canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+:where(.pixel-ui) .room-pic-keeper {
+  position: absolute;
+  left: calc(var(--u) * var(--kx) * var(--rs));
+  top: calc(var(--u) * (var(--ky) + 16) * var(--rs));
+  transform: translateY(-100%);
+}
+.pixel-ui .room-pic-keeper .px-figure {
+  --figure-scale: var(--rs);
+  display: block;
+}
+/* The bay the chosen build stands in, ringed in gold, the ring winking. */
+:where(.pixel-ui) .room-pic-mark {
+  position: absolute;
+  left: calc(var(--u) * var(--mx) * var(--rs));
+  top: calc(var(--u) * var(--my) * var(--rs));
+  width: calc(var(--u) * var(--mw) * var(--rs));
+  height: calc(var(--u) * var(--mh) * var(--rs));
+  box-shadow:
+    0 0 0 var(--u) var(--gold),
+    0 0 0 calc(var(--u) * 2) var(--line),
+    0 0 0 calc(var(--u) * 3) var(--gold);
+  animation: room-pic-mark 1s step-end infinite;
+}
+:where(.pixel-ui) .room-pic-mark[hidden] {
+  display: none;
+}
+
+/* --- Brock's Workshop: his room above, the builds along the bottom --------- *
+   (`HubScene.workshopView`): the room with chalk where each machine not built
+   yet will stand, the chosen build's bay ringed in gold; a green card that
+   shows what the build does in a raid; and the builds as cards in a row. */
+:where(.pixel-ui) .workshop-layout {
+  height: 100%;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+:where(.pixel-ui) .workshop-top {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 184);
+  gap: calc(var(--u) * 4);
+}
+.pixel-ui .workshop-room {
+  min-height: 0;
+  display: grid;
+  padding: var(--u);
+}
+:where(.pixel-ui) .workshop-skyline {
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--u) * 76), 1fr));
+}
+/* Forty-eight deep, every machine whole in it (`FIXTURE_CARD_HEIGHT`,
+   `fixtureDivisor`), so the row of builds - a picture, a name on one line and
+   its tags - leaves Brock's room the height to be drawn whole at its own size
+   above it, under the controls bar, in a 1280x800 window. */
+:where(.pixel-ui) .workshop-skyline .workshop-stage {
+  height: calc(var(--u) * 48);
+  overflow: hidden;
+}
+.pixel-ui .workshop-card > .workshop-effect {
+  display: none;
+}
+.pixel-ui .workshop-card > .px-name {
+  min-height: calc(var(--u) * 12);
+}
+.pixel-ui .workshop-card.is-built {
+  --fill: var(--paper);
+}
+.pixel-ui .workshop-card.is-locked {
+  --fill: var(--paper-sunk);
+  color: var(--ink-soft);
+}
+/* What a build does in a raid, drawn as the raid shows it (`ui/workshopEffect.ts`). */
+:where(.pixel-ui) .ws-raid {
+  display: grid;
+  gap: calc(var(--u) * 3);
+  width: 100%;
+}
+:where(.pixel-ui) .ws-picture {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(var(--u) * 40);
+  padding: calc(var(--u) * 3);
+  background: var(--ink);
+  color: var(--paper);
+}
+:where(.pixel-ui) .ws-chip,
+:where(.pixel-ui) .ws-becomes {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: calc(var(--u) * 3);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .ws-chip b {
+  color: var(--gold);
+}
+:where(.pixel-ui) .ws-picture .ws-arrow {
+  background: var(--gold);
+}
+:where(.pixel-ui) .ws-squares {
+  display: grid;
+  grid-template-columns: repeat(var(--columns), calc(var(--u) * 8));
+  gap: var(--u);
+}
+:where(.pixel-ui) .ws-squares > i,
+:where(.pixel-ui) .ws-places > i {
+  display: block;
+  width: calc(var(--u) * 8);
+  height: calc(var(--u) * 8);
+  background: var(--safe-wash);
+}
+:where(.pixel-ui) .ws-places {
+  display: flex;
+  gap: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .ws-places > i {
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+}
+:where(.pixel-ui) :is(.ws-squares, .ws-places) > i.is-new {
+  background: var(--gold);
+  animation: ws-new 0.8s step-end infinite;
+}
+:where(.pixel-ui) .ws-bar {
+  display: block;
+  width: calc(var(--u) * 40);
+  height: calc(var(--u) * 6);
+  background: var(--paper-sunk);
+  box-shadow: 0 0 0 var(--u) var(--paper);
+}
+:where(.pixel-ui) .ws-bar > i {
+  display: block;
+  width: var(--fill);
+  height: 100%;
+  background: var(--red);
+}
+:where(.pixel-ui) .ws-bar.is-good > i {
+  background: var(--go);
+}
+:where(.pixel-ui) .ws-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .ws-clock.is-good b {
+  color: var(--safe-wash);
+}
+:where(.pixel-ui) .ws-tally {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  text-transform: uppercase;
+}
+.pixel-ui .ws-tally .px-figure {
+  --figure-scale: 1;
+}
+/* A card's name and its lock are one line each (`cardName`), so the row stays
+   as low as it can be. */
+.pixel-ui .workshop-card > .px-name,
+:where(.pixel-ui) .workshop-after {
+  white-space: nowrap;
+}
+.pixel-ui .workshop-card > .px-name {
+  min-height: 0;
+}
+:where(.pixel-ui) .workshop-after {
+  justify-content: center;
+  gap: var(--u);
+  margin: 0;
+  padding: 0 var(--u);
+}
+:where(.pixel-ui) .trader-cards {
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--u) * 64), 1fr));
+}
+/* Just built: a burst of gold stars rises off the card (`HubScene.buildUpgrade`). */
+.pixel-ui .workshop-card.is-just-built::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--u) * 8);
+  height: calc(var(--u) * 48);
+  pointer-events: none;
+  background:
+    var(--px-star) calc(var(--u) * 10) calc(var(--u) * 30) / calc(var(--u) * 7) calc(var(--u) * 7) no-repeat,
+    var(--px-star) calc(50% + var(--u) * 2) calc(var(--u) * 6) / calc(var(--u) * 7) calc(var(--u) * 7) no-repeat,
+    var(--px-star) calc(100% - var(--u) * 12) calc(var(--u) * 24) / calc(var(--u) * 7) calc(var(--u) * 7) no-repeat,
+    var(--px-star) calc(var(--u) * 22) calc(var(--u) * 4) / calc(var(--u) * 5) calc(var(--u) * 5) no-repeat,
+    var(--px-star) calc(100% - var(--u) * 24) calc(var(--u) * 40) / calc(var(--u) * 5) calc(var(--u) * 5) no-repeat;
+  animation: build-stars 0.9s steps(6, end) forwards;
+}/* The builds' row gives the room above it every pixel it can spare. */
+:where(.pixel-ui) .workshop-ladder .workshop-skyline {
+  padding-top: 0;
+}
+.pixel-ui .workshop-skyline > .workshop-card.px-card {
+  padding-top: var(--u);
+  row-gap: 0;
+}
+/* A build asking once more is its name, the question and the two answers: the
+   gold ring on its bay in the room says which it is, and without its picture
+   the card is no taller than the rest, so the room above stays whole. */
+.pixel-ui .workshop-skyline > .px-arming .workshop-stage {
+  display: none;
+}
 
 /* --- The controls bar under the game (`ui/controlsBar.ts`) ---------------- *
    The game's keys as tiles, in the page beside the game: an ink strip with the
