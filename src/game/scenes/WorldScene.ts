@@ -264,7 +264,7 @@ import {
   firstCatchFigures,
 } from '../world/firstCatch';
 import { usableBattleItems } from '../pokemon/battle/battleItems';
-import { Bag, ITEMS, formatMoney, getItemById, isCurrency, itemAmountsFor, type ItemDefinition, type ItemId } from '../items';
+import { Bag, CURRENCY_ITEM_ID, ITEMS, formatMoney, getItemById, isCurrency, itemAmountsFor, type ItemDefinition, type ItemId } from '../items';
 import {
   areContractStopsComplete,
   completedObjectiveRewards,
@@ -496,6 +496,8 @@ import { pursesOn } from '../world/purses';
 import {
   FRESH_SEARCH,
   SEARCH_RESEATED,
+  madeRoomLine,
+  searchMadeRoom,
   cacheEmptied,
   piecesRevealed,
   piecesToTake,
@@ -10819,6 +10821,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (!search || !session) {
       return;
     }
+    const roomMade: string[] = [];
     for (const index of indices) {
       const state = this.searchStateOf(search.poi);
       const taken = takePiece(state, search.pieces, index);
@@ -10826,7 +10829,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         continue;
       }
       const itemId = search.pieces[index].itemId;
-      if (!this.collectRunItem(itemId, 1)) {
+      const madeRoom = this.collectRunItem(itemId, 1) ? 0 : this.makeRoomWithMoney(search.pieces[index]);
+      if (madeRoom) {
+        roomMade.push(madeRoomLine(formatMoney(madeRoom), ITEMS[itemId].displayName.toUpperCase()));
+      }
+      if (madeRoom === null) {
         audioManager.play('denied');
         search.takingAll = false;
         search.said = searchRefusal(itemId);
@@ -10835,16 +10842,42 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       (session.cachesSearched ??= {})[search.poi.id] = taken;
       audioManager.play('lootPickup');
       // Said in the panel rather than a line: the search is still open.
-      search.said = this.packReseated ? SEARCH_RESEATED : null;
+      search.said = madeRoom > 0 ? searchMadeRoom(formatMoney(madeRoom)) : this.packReseated ? SEARCH_RESEATED : null;
       this.packReseated = false;
     }
     const after = this.searchStateOf(search.poi);
     if (cacheEmptied(after, search.pieces)) {
       this.removePoi(search.poi.id);
       this.closeSearch();
+      if (roomMade.length > 0) {
+        this.interrupt(roomMade);
+      }
       return;
     }
     this.refreshPoiCaption(search.poi);
+  }
+
+  /**
+   * A prize must never block a reward: a find worth the name (a bag's rare or
+   * treasure) the pack has no room for goes in by putting down just enough
+   * money, which lies where the player stands to take back. Koga's ₽1800 filled
+   * the pack, and the TM40 AERIAL ACE in his pouch said NO ROOM (gyms playtest,
+   * 26 Nov 2026). The amount put down, or null when it still would not go in.
+   */
+  private makeRoomWithMoney(piece: SearchPiece): number | null {
+    if (!isPrizeFind(piece)) {
+      return null;
+    }
+    const amount = this.bag.leastToMakeRoom(CURRENCY_ITEM_ID, piece.itemId, 1);
+    if (!amount || !this.bag.remove(CURRENCY_ITEM_ID, amount)) {
+      return null;
+    }
+    if (!this.collectRunItem(piece.itemId, 1)) {
+      this.bag.add(CURRENCY_ITEM_ID, amount);
+      return null;
+    }
+    this.putDownHere(CURRENCY_ITEM_ID, amount);
+    return amount;
   }
 
   /** Redraws a cache's caption to say how much is left in it - if it is drawn at all. */

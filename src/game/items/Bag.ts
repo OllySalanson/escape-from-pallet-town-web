@@ -252,6 +252,34 @@ export class Bag {
     return 'reseated';
   }
 
+  /**
+   * The least of `giving` that, taken out, lets `takeFind` take this: 0 when
+   * it goes in as it is, null when no amount of `giving` would make room.
+   * Freeing more never seats less, so the least is found by halving.
+   */
+  public leastToMakeRoom(giving: string, itemId: string, quantity = 1): number | null {
+    if (this.wouldTakeFind(itemId, quantity)) {
+      return 0;
+    }
+    const held = this.count(giving);
+    const freed = (amount: number) => {
+      const additions = [{ itemId, quantity }];
+      const freeing = [{ itemId: giving, quantity: amount }];
+      return this.fitsAll(additions, freeing) || this.tidyWouldFitAll(additions, freeing);
+    };
+    if (giving === itemId || held === 0 || !freed(held)) {
+      return null;
+    }
+    let low = 1;
+    let high = held;
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if (freed(mid)) high = mid;
+      else low = mid + 1;
+    }
+    return low;
+  }
+
   /** Whether `takeFind` would take this, asked without taking it. */
   public wouldTakeFind(itemId: string, quantity = 1): boolean {
     return isPositiveInteger(quantity) && (this.fits(itemId, quantity) || this.tidyWouldFit(itemId, quantity));

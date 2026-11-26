@@ -118,3 +118,17 @@ describe('a pack carrying Pokemon home', () => {
     expect(vault.add('potion', 99)).toBe(true);
   });
 });
+
+describe('the least of one thing that makes room for another', () => {
+  it('is nothing when the find goes in as it is, and a whole square when it does not', () => {
+    expect(new Bag({ money: 250 }, { width: 2, height: 1 }).leastToMakeRoom('money', 'potion')).toBe(0);
+    // Two squares, both money: one square's worth, ₽250 at most, is the least that frees one.
+    expect(new Bag({ money: 400 }, { width: 2, height: 1 }).leastToMakeRoom('money', 'potion')).toBe(150);
+    expect(new Bag({ money: 500 }, { width: 2, height: 1 }).leastToMakeRoom('money', 'potion')).toBe(250);
+  });
+
+  it('is null when there is none of it, or putting all of it down would not be enough', () => {
+    expect(new Bag({ potion: 2 }, { width: 2, height: 1 }).leastToMakeRoom('money', 'potion')).toBeNull();
+    expect(new Bag({ potion: 1, money: 10 }, { width: 2, height: 1 }).leastToMakeRoom('money', 'bicycle')).toBeNull();
+  });
+});
