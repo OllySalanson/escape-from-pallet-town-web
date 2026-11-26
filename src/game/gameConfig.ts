@@ -30,6 +30,7 @@ import { TitleScene } from './scenes/TitleScene';
 import { WorldScene } from './scenes/WorldScene';
 import { TEST_MODE_LOOP, requestedTestMode, type TestMode } from './dev/testMode';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, computeStage } from './display/stage';
+import { viewportSize } from './display/viewport';
 
 const BASE_SCENES = [
   BootScene,
@@ -73,10 +74,10 @@ export function createGameConfig(
   // it from then on. FIT is deliberately not used: it keeps one backing-store
   // size and resamples it, which is what blurred the art in a short window and
   // pinned the game to 960x720 in a tall one.
-  const stage =
-    typeof window === 'undefined'
-      ? { width: BASE_STAGE_WIDTH, height: BASE_STAGE_HEIGHT, zoom: 3 }
-      : computeStage(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1);
+  const viewport = typeof window === 'undefined' ? null : viewportSize();
+  const stage = viewport
+    ? computeStage(viewport.width, viewport.height, window.devicePixelRatio || 1)
+    : { width: BASE_STAGE_WIDTH, height: BASE_STAGE_HEIGHT, zoom: 3 };
 
   return {
     // Test mode changes how often and how the game is drawn, and nothing else. A

@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import type { MenuOverlay } from './MenuOverlay';
 import { prefersReducedMotion } from './reducedMotion';
+import { viewportSize } from '../display/viewport';
 
 /**
  * A screen that stands down the right of the window, with the game still there
@@ -54,7 +55,7 @@ export function fitSidePanel(root: HTMLElement): SidePanelLayout {
   const unit = Number.parseFloat(layer?.style.getPropertyValue('--px') ?? '') || 2;
   const box = layer?.getBoundingClientRect();
   const across = (box?.width ?? 0) / unit;
-  const visible = Math.floor((window.innerWidth - (box?.left ?? 0)) / unit);
+  const visible = Math.floor((viewportSize().width - (box?.left ?? 0)) / unit);
   if (box && visible < across) {
     root.dataset.layout = 'sheet';
     root.style.width = `${visible * unit}px`;
