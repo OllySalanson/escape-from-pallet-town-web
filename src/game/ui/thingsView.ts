@@ -300,6 +300,8 @@ export interface ThingsScreen {
     readonly used: number;
     readonly total: number;
   };
+  /** Whether the locker card offers ROOM FOR A FIND. */
+  readonly findRoom?: boolean;
   /** What is being carried over each grid, if anything. */
   readonly ghosts?: { readonly stash?: PixelGridGhost; readonly pack?: PixelGridGhost; readonly locker?: PixelGridGhost };
 }
@@ -427,7 +429,9 @@ function lockerCard(view: ThingsScreen): string {
     '',
   )}Locker</span></header><div class="things-locker-body">${grid}<p class="things-kept"><b class="things-count" aria-label="${view.locker.used} of ${
     view.locker.total
-  } squares">${view.locker.used}/${view.locker.total}</b> Kept on a wipe</p></div></section>`;
+  } squares">${view.locker.used}/${view.locker.total}</b> Kept on a wipe</p>${
+    view.findRoom ? '<button type="button" class="px-window px-button things-find-open" data-find-open tabindex="-1">Room for a find</button>' : ''
+  }</div></section>`;
 }
 
 /** Where the thing under the cursor is: still at home, in the pack, in the locker, or being carried. */
@@ -546,6 +550,16 @@ export function memberCard(
   )} <small>Lv${pokemon.level}</small></span><small>${escapeAttribute(said)}</small></div></div><div class="things-hand-keys">${button}</div>`;
 }
 
+/** What the card says on the locker's ROOM FOR A FIND button. */
+export function findDoorCard(): string {
+  return `<div class="things-hand-thing">${iconMarkup('padlock', '')}<div class="things-hand-words"><span>Room for a find</span><small>Squares the locker keeps open for something found on the raid.</small></div></div><div class="things-hand-keys">${keyButton(
+    'ENTER',
+    'Open',
+    'data-hand="finds"',
+    'is-primary',
+  )}</div>`;
+}
+
 /** What the card says on an empty place of the team: P is YOUR TEAM, where who goes is chosen. */
 export function teamDoorCard(): string {
   return `<div class="things-hand-thing"><div class="things-hand-words"><span>A free place</span></div></div><div class="things-hand-keys">${keyButton(
@@ -555,6 +569,51 @@ export function teamDoorCard(): string {
     'is-primary',
   )}</div>`;
 }
+
+/** One find the locker can keep room for, as its list draws it. */
+export interface FindRoomRow {
+  readonly itemId: string;
+  readonly name: string;
+  /** Squares one of it takes. */
+  readonly squares: number;
+  /** How many of it the locker keeps room for now. */
+  readonly kept: number;
+  /** Whether the locker has room for one more. */
+  readonly canKeep: boolean;
+}
+
+/**
+ * ROOM FOR A FIND: every found kind the locker can hold squares open for, with
+ * how many it keeps room for now. ENTER keeps room for one more, BACKSPACE
+ * lets one go; the locker's own squares stand beside the list.
+ */
+export function findRoomBody(rows: readonly FindRoomRow[], locker: ThingsScreen['locker']): string {
+  const list = rows
+    .map(
+      (row, index) =>
+        `<button type="button" class="px-row has-icon things-find${row.kept > 0 ? ' is-kept' : ''}" data-find="${escapeAttribute(row.itemId)}" data-find-index="${index}"${
+          row.canKeep || row.kept > 0 ? '' : ' aria-disabled="true"'
+        }>${itemIcon(row.itemId, row.name)}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${escapeAttribute(
+          row.name,
+        )}</strong><small>${row.squares} ${row.squares === 1 ? 'square' : 'squares'}</small></span></span><span class="px-tag${row.kept > 0 ? ' px-tag-good' : ''}">${
+          row.kept > 0 ? `Kept ×${row.kept}` : row.canKeep ? 'Keep room' : 'No room'
+        }</span></button>`,
+    )
+    .join('');
+  return `<main class="px-body things-finds">${pixelWindow(`<div class="px-list px-scroll">${list || '<p class="px-empty">Nothing to keep room for.</p>'}</div>`, {
+    className: 'things-find-list',
+    heading: 'Room for a find',
+  })}${lockerCard({ ...emptyScreen, locker })}</main>`;
+}
+
+const emptyScreen: ThingsScreen = {
+  stash: {},
+  stashArrangement: EMPTY_ARRANGEMENT,
+  pocket: ALL_POCKETS,
+  team: [],
+  pack: { name: '', layout: packContents({}, { width: 0, height: 0 }), used: 0, total: 0, locked: {} },
+  locker: { layout: packContents({}, { width: 0, height: 0 }), used: 0, total: 0 },
+};
 
 /** The whole screen: home on the left; the next raid's team, pack and locker on the right; what the cursor is on underneath. */
 export function thingsScreen(view: ThingsScreen, hand: string): string {

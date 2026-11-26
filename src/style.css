@@ -8096,6 +8096,31 @@ body.touch-play .feedback-tab {
   gap: calc(var(--u) * 3);
   padding: 0 0 calc(var(--u) * 2);
 }
+/* ROOM FOR A FIND, on the locker card: the list of finds it can keep room
+   for, beside the locker's own squares. */
+.pixel-ui .px-button.things-find-open {
+  justify-self: center;
+  width: min-content;
+  min-width: calc(var(--u) * 50);
+  padding: calc(var(--u) * 2) calc(var(--u) * 3);
+  white-space: normal;
+  text-align: center;
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .things-finds {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: calc(var(--u) * 6);
+}
+:where(.pixel-ui) .things-finds > .things-find-list {
+  max-height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
 :where(.pixel-ui) .things-kept > .things-count {
   display: block;
   width: max-content;

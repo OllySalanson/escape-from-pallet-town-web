@@ -288,6 +288,17 @@ describe('locking from YOUR THINGS', () => {
     expect(locking(scene).flow.secureQuantity('mooring-rope')).toBeGreaterThan(0);
   });
 
+  it('keeps room for a find nobody has at home yet, money included, from ROOM FOR A FIND', () => {
+    const scene = thingsOver({}, 10, true);
+    const internals = scene as unknown as { keepRoomFor(itemId: string, more: boolean): void; findRows(): { itemId: string; kept: number }[] };
+    expect(internals.findRows().map((row) => row.itemId)).toEqual(expect.arrayContaining(['parts-crate', 'money']));
+    internals.keepRoomFor('money', true);
+    expect(locking(scene).flow.secureQuantity('money')).toBeGreaterThan(0);
+    expect(internals.findRows().find((row) => row.itemId === 'money')?.kept).toBe(1);
+    internals.keepRoomFor('money', false);
+    expect(locking(scene).flow.secureQuantity('money')).toBe(0);
+  });
+
   it('says so when the locker is full, and keeps no more', () => {
     const scene = thingsOver({ potion: 8 }, 10, true);
     expect(locking(scene).flow.secureQuantity('potion')).toBe(4);

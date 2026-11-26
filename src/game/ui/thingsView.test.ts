@@ -7,6 +7,7 @@ import {
   handCard,
   homeUseOf,
   memberCard,
+  findRoomBody,
   teamDoorCard,
   pocketOf,
   pocketTabs,
@@ -204,6 +205,29 @@ describe('the screen', () => {
     expect(pack.match(/is-locked/g)).toHaveLength(2);
     // The locker draws the same two, lined as the pack lines them.
     expect(locker.match(/px-grid-block is-locked[^>]*data-grid-piece="item:\d+:potion"/g)).toHaveLength(2);
+  });
+});
+
+describe('ROOM FOR A FIND', () => {
+  it('is a button on the locker card where the screen offers it', () => {
+    expect(thingsScreen(screen({}, { findRoom: true }), '')).toContain('data-find-open');
+    expect(thingsScreen(screen({}), '')).not.toContain('data-find-open');
+  });
+
+  it('lists each find with what the locker keeps for it, and greys one with no room', () => {
+    const locker = { layout: packContents({}, { width: 2, height: 2 }), used: 0, total: 4 };
+    const html = findRoomBody(
+      [
+        { itemId: 'parts-crate', name: 'Parts crate', squares: 4, kept: 1, canKeep: false },
+        { itemId: 'money', name: 'Pokédollars', squares: 1, kept: 0, canKeep: false },
+        { itemId: 'radio-valve', name: 'Radio valve', squares: 2, kept: 0, canKeep: true },
+      ],
+      locker,
+    );
+    expect(html).toMatch(/data-find="parts-crate"[^>]*>.*Kept ×1/);
+    expect(html).toMatch(/data-find="money"[^>]*aria-disabled="true">.*No room/);
+    expect(html).toMatch(/data-find="radio-valve"[^>]*>.*Keep room/);
+    expect(html).toContain('data-grid="locker"');
   });
 });
 
