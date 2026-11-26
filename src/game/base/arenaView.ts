@@ -29,6 +29,7 @@ import {
 } from './arenaHall';
 import { windowLight, type WindowLight } from './homeClock';
 import { addSparsePicture } from './sparsePicture';
+import type { PortalSource } from './arenaPortalView';
 import { TWINKLE_STEP_MS, isDimmed, townLights, type TownLight } from './pitClock';
 import { FLARE_FRAMES, FLARE_HEIGHT, FLARE_WIDTH, RING_OF_FIRE_MS, flareAt } from './ringOfFire';
 import { shareTheRim, showsThroughTheHole, type RimLanding, type RimShare } from './arenaRim';
@@ -391,9 +392,6 @@ function drawRaidMark(on: Phaser.GameObjects.Graphics, mark: RaidMark & { readon
   }
 }
 
-/** How far the floor comes up for how far the hall has gone past, and how far in the view is when the mist has gone. */
-const DIVE_FLOOR_REACH = 0.2;
-const DIVE_MIST_GONE = 6;
 
 /** A way in, seen from high up: a small steady gold light with a dark ring round it, so it reads on sea, wood and cloud. */
 function paintLandingLight(): PaintedPicture {
@@ -799,6 +797,36 @@ export class ArenaView {
       trailInk: TRAIL_INK,
       trailShade: TRAIL_SHADE,
     };
+  }
+
+  /** What the portal shows (`arenaPortalView.ts`): this floor, its mist and its ways in, the pit seen whole. */
+  public portalSource(): PortalSource {
+    const { width, height, scale } = this.frameValue;
+    const tint = MIST_TINTS[this.light];
+    return {
+      floorTexture: floorTexture(this.mapIdValue),
+      mapSpan: Math.max(width, height) * scale,
+      mistTexture: MIST_TEXTURE,
+      mistInk: [(tint >> 16) & 0xff, (tint >> 8) & 0xff, tint & 0xff],
+      landings: this.shareValue.landings.map((landing) => ({ id: landing.id, floorPixel: this.floorPixelOf(landing.tile) })),
+      lightTexture: LIGHT_TEXTURE,
+      lookTexture: LOOK_TEXTURE,
+      lifting: () => this.liftingPatch(),
+    };
+  }
+
+  /** Where the hole the floor shows through is on the screen now, for the portal to draw back from. */
+  public holeOnScreen(): { readonly x: number; readonly y: number; readonly rx: number } {
+    // The camera's scroll as it stands now: its view is only worked out as it draws.
+    const camera = this.scene.cameras.main;
+    const hole = podiumHole();
+    const shift = parallaxShift(PODIUM_PARALLAX, this.lastPlayer);
+    return { x: hole.x + shift.x - camera.scrollX, y: hole.y + shift.y - camera.scrollY, rx: hole.rx };
+  }
+
+  /** The pit's middle, in the hall's pixels. */
+  public get pitMiddle(): { readonly x: number; readonly y: number } {
+    return { x: PIT_MAP_CENTRE.x, y: PIT_MAP_CENTRE.y };
   }
 
   private isWalked(tile: GridPosition): boolean {
@@ -1446,57 +1474,33 @@ export class ArenaView {
 
   // --- a jump ------------------------------------------------------------------
 
+  /** Going over: the portal is what is looked at now, so the pit's own lights, mark and names go. */
+  public hideTheMarks(): void {
+    this.look.setVisible(false);
+    this.nameFrame.setVisible(false);
+    this.nameText.setVisible(false);
+    this.markFrame.setVisible(false);
+    this.markText.setVisible(false);
+    for (const { image } of this.lights) {
+      image.setVisible(false);
+    }
+  }
+
   /** Writes down what the pit shows now, for the fog a raid lifts to lift out of. */
   public rememberBelow(): void {
     lastSeenBelow = { mapId: this.mapIdValue, picture: this.picture };
     this.stillThePit();
   }
 
-  /**
-   * One frame of going down: the camera has gone in by `zoom` on `focus`, and the
-   * floor and the mist go in far less than the hall around them, because they are
-   * so much further away. What falls and what goes past is `arenaDiveView.ts`.
-   */
-  public diveFrame(zoom: number, focus: { readonly x: number; readonly y: number }): void {
-    const layer = (image: { x: number; y: number; setScale(scale: number): unknown; setPosition(x: number, y: number): unknown }, reach: number, restX: number, restY: number): void => {
-      const seen = (1 + (zoom - 1) * reach) / zoom;
-      image.setScale(seen);
-      image.setPosition(focus.x + (restX - focus.x) * seen, focus.y + (restY - focus.y) * seen);
-    };
-    const floorShift = parallaxShift(FLOOR_PARALLAX, this.lastPlayer);
-    const floorX = PIT_MAP_CENTRE.x - PIT_FLOOR_SIZE / 2 + floorShift.x;
-    const floorY = PIT_MAP_CENTRE.y - PIT_FLOOR_SIZE / 2 + floorShift.y;
-    layer(this.floor, DIVE_FLOOR_REACH, floorX, floorY);
-    layer(this.townLightLayer, DIVE_FLOOR_REACH, floorX, floorY);
-    layer(this.memoryLayer, DIVE_FLOOR_REACH, floorX, floorY);
-    layer(this.newestMark, DIVE_FLOOR_REACH, floorX, floorY);
-    this.markFrame.setVisible(false);
-    this.markText.setVisible(false);
-    this.cloudShadow?.setVisible(false);
-    const mistShift = parallaxShift(MIST_PARALLAX, this.lastPlayer);
-    for (const mist of this.mists) {
-      layer(mist, 0.75, PIT_MAP_CENTRE.x + mistShift.x, PIT_MAP_CENTRE.y + mistShift.y);
-    }
-    // The mist goes first: magnified, its dither is a board of squares.
-    const thin = 1 - Math.min(1, (Math.log(zoom) / Math.log(DIVE_MIST_GONE)) * 4);
-    this.mists.forEach((mist, index) => mist.setAlpha(MIST_ALPHAS[index] * (Math.ceil(thin * 4) / 4)));
-    this.look.setVisible(false);
-    this.nameFrame.setVisible(false);
-    this.nameText.setVisible(false);
-    for (const { image } of this.lights) {
-      image.setVisible(false);
-    }
-  }
-
   // --- home again ----------------------------------------------------------------
 
   /**
    * Home from a raid: if it walked any ground that was under cloud when it left,
-   * lays the old cloud back over that ground and starts taking it away. Hands
-   * back the middle of what is lifting, as a tile of the map, or null when there
-   * was nothing new - or nothing to compare with, after a reload.
+   * lays the old cloud back over that ground and starts taking it away, which the
+   * portal shows (`arenaPortalView.ts`). Hands back how much of the map that was,
+   * or null when there was nothing new - or nothing to compare with, after a reload.
    */
-  public liftFogFromLastRaid(): { readonly tile: GridPosition; readonly gained: number } | null {
+  public liftFogFromLastRaid(): { readonly gained: number } | null {
     const before = lastSeenBelow;
     lastSeenBelow = null;
     if (!before || before.mapId !== this.mapIdValue || this.still) {
@@ -1562,9 +1566,13 @@ export class ArenaView {
     const image = this.scene.add.image(0, 0, LIFTING_TEXTURE).setOrigin(0, 0).setDepth(LIFTING_DEPTH);
     this.lifting = { image, texture, pixels, left: boxLeft, top: boxTop, step: 0 };
     return {
-      tile: { x: Math.round((left + right) / 2), y: Math.round((top + bottom) / 2) },
       gained: Math.round(this.walkedShare * 100) - Math.round(oldShare(before.picture) * 100),
     };
+  }
+
+  /** The old cloud still lying over what the last raid walked, on the floor's picture, while it lifts. */
+  public liftingPatch(): { readonly pixels: ImageData; readonly left: number; readonly top: number } | null {
+    return this.lifting ? { pixels: this.lifting.pixels, left: this.lifting.left, top: this.lifting.top } : null;
   }
 
   /** Takes the next step of the old cloud away, on an ordered dither, as the hall's own stone is lit. */

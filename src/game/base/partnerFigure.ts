@@ -145,6 +145,7 @@ export class PartnerFigure {
   /** Whether it greets with the hop and without the chirp. */
   private readonly quietGreeting: boolean;
   private veiled = false;
+  private outOfSight = false;
   /** A shiny one's glints, over its shiny colours (`shinyGlint.ts`). */
   private readonly glints: ShinyGlints | null;
   private readonly scene: Phaser.Scene;
@@ -255,6 +256,11 @@ export class PartnerFigure {
    * place here, and the scene draws the jump from where it stood and what it is.
    * Null if it is not out to go.
    */
+  /** Its sheet while it is out beside the player, for a picture of them both (the portal, `arenaPortalView.ts`). */
+  public get figureTexture(): string | null {
+    return this.placeValue.out && this.sprite.visible ? this.texture : null;
+  }
+
   public leaveForJump(): { readonly x: number; readonly y: number; readonly texture: string; readonly species: FollowerSpeciesId } | null {
     if (!this.placeValue.out || !this.sprite.visible) {
       return null;
@@ -296,6 +302,12 @@ export class PartnerFigure {
   }
 
   /** Whether a caption is seated under it: it goes faint so the writing reads through it. */
+  /** Drawn elsewhere for now (the portal stands it on its edge, `arenaPortalView.ts`), so not here as well. */
+  public setOutOfSight(away: boolean): void {
+    this.outOfSight = away;
+    this.draw();
+  }
+
   public setVeiled(veiled: boolean): void {
     this.veiled = veiled;
   }
@@ -495,7 +507,7 @@ export class PartnerFigure {
     if (this.tuck) {
       alpha = 1 - progress;
     }
-    this.sprite.setAlpha(this.veiled ? Math.min(alpha, PARTNER_VEILED_ALPHA) : alpha);
+    this.sprite.setAlpha(this.outOfSight ? 0 : this.veiled ? Math.min(alpha, PARTNER_VEILED_ALPHA) : alpha);
     if (this.glints) {
       // Round its head, wherever its picture is - mid-step, mid-hop, coming
       // down out of the cloud - and as faint as it is, so one fading into a

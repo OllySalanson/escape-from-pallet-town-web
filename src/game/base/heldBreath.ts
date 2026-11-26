@@ -1,7 +1,6 @@
-import { ARENA_TILE } from './arenaHall';
 
 /**
- * The moment on the rail, before a jump: the player climbs up and stands there,
+ * The moment on the rail, before a jump: the player stands on the portal's edge,
  * the fires drop low, nothing is heard, the house gets to its feet as far as the
  * bet deserves, and what is going over with them stamps across the screen a word
  * at a time under AT RISK, with what is SAFE below it. Then the horn, and they go.
@@ -34,11 +33,6 @@ const WORDS_FROM_MS = 260;
 const WORD_MS = 170;
 /** How long it all holds, after the last word. */
 const HOLD_MS = 420;
-/** How long the climb on to the rail takes. */
-const CLIMB_MS = 150;
-/** How far over the fence the rail is, in tiles, and how far up its top. */
-const CLIMB_REACH = 0.7;
-const CLIMB_RISE = 7;
 
 /** What goes if the raid does: the same things the rim's panel lists as lost. */
 export interface AtRisk {
@@ -200,11 +194,3 @@ export function wordsUpAt(elapsedMs: number, words: number): { readonly count: n
   return { count, newestMs: count === 0 ? 0 : elapsedMs - WORDS_FROM_MS - (count - 1) * WORD_MS };
 }
 
-/** The figure on its way up on to the rail, as an offset from where it stood. Whole pixels. */
-export function climbAt(elapsedMs: number, over: { readonly x: number; readonly y: number }): { readonly x: number; readonly y: number } {
-  const share = Math.max(0, Math.min(1, elapsedMs / CLIMB_MS));
-  return {
-    x: Math.round(over.x * ARENA_TILE * CLIMB_REACH * share),
-    y: Math.round(over.y * ARENA_TILE * CLIMB_REACH * share - CLIMB_RISE * share),
-  };
-}

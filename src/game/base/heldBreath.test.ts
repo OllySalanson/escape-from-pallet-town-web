@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BREATH_LISTENS_AFTER_MS, MOST_WORDS, RAIDS_NAMED_IN_FULL, RAIL_STAMP_EDGE, betOf, breathMs, climbAt, fitRailStamps, railStampRoom, railStamps, stakeWords, wordsUpAt, type AtRisk } from './heldBreath';
+import { BREATH_LISTENS_AFTER_MS, MOST_WORDS, RAIDS_NAMED_IN_FULL, RAIL_STAMP_EDGE, betOf, breathMs, fitRailStamps, railStampRoom, railStamps, stakeWords, wordsUpAt, type AtRisk } from './heldBreath';
 import { tabOverGame } from '../feedback/feedbackTabCover';
 import { BASE_STAGE_WIDTH, computeStage } from '../display/stage';
 
@@ -203,14 +203,4 @@ describe('the held breath', () => {
     }
   });
 
-  it('climbs towards the fence and up, whichever way the fence is, in whole pixels', () => {
-    expect(climbAt(0, { x: 0, y: -1 }).y === 0 && climbAt(0, { x: 0, y: -1 }).x === 0).toBe(true);
-    expect(climbAt(1000, { x: 0, y: -1 }).y).toBeLessThan(-8);
-    expect(climbAt(1000, { x: 1, y: 0 }).x).toBeGreaterThan(8);
-    expect(climbAt(1000, { x: 1, y: 0 }).y).toBeLessThan(0);
-    for (let ms = 0; ms < 200; ms += 7) {
-      const at = climbAt(ms, { x: 0, y: 1 });
-      expect(Number.isInteger(at.x) && Number.isInteger(at.y)).toBe(true);
-    }
-  });
 });

@@ -44,13 +44,14 @@ export class PlaceNameSign {
   private upMs: number | null = null;
   private shown: Rect | null = null;
 
-  public constructor(scene: Phaser.Scene) {
-    this.frame = scene.add.graphics().setScrollFactor(0).setDepth(CANOPY_BAND + 0.3);
+  /** `depth` puts it over something drawn over the world: the portal in THE RAID ARENA, say. */
+  public constructor(scene: Phaser.Scene, depth: number = CANOPY_BAND + 0.3) {
+    this.frame = scene.add.graphics().setScrollFactor(0).setDepth(depth);
     this.text = scene.add
       .text(0, 0, '', { fontFamily: GAME_FONT, fontSize: DIALOG_FONT_SIZE, color: WINDOW_INK })
       .setOrigin(0, 0)
       .setScrollFactor(0)
-      .setDepth(CANOPY_BAND + 0.31)
+      .setDepth(depth + 0.01)
       .setVisible(false);
   }
 

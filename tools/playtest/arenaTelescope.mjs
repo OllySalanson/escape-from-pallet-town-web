@@ -128,6 +128,12 @@ try {
       await step(400);
       continue;
     }
+    // Somebody in the harbour may say something on the way (Oak on the radio, a regular): read on.
+    if (await page.evaluate(`${GAME}.scene.getScene('base')?.dialogBox?.visible === true`)) {
+      await press('Space');
+      await step(200);
+      continue;
+    }
     const key = await keyTowards(null);
     if (key && key !== 'there') await press(key);
     await step(200);
@@ -426,30 +432,34 @@ try {
         top: box.top, bottom: box.bottom, windowHeight: window.innerHeight,
         lists: root.querySelectorAll('.px-scroll, .px-list, .px-row, [data-more]').length,
         overflow: root.scrollHeight > root.clientHeight + 1,
-        pitLeft: box.top - canvas.top,
+        // The portal's lights, in the page's pixels, none of them under the card.
+        lightsClear: (() => { const b = ${GAME}.scene.getScene('base'); const k = canvas.width / b.scale.width; const lights = b.portal.lightsOnScreen();
+          // A window with no room for the portal beside its card (this one is small) has no lights to clear.
+          return lights.every((l) => { const x = canvas.left + l.x * k; const y = canvas.top + l.y * k; return x < box.left || x > box.right || y < box.top || y > box.bottom; }); })(),
         focused: document.activeElement?.hasAttribute('data-start') === true,
       };
     })()`);
     expect('the rim is one card: no list and nothing to scroll', rimCard.lists === 0 && !rimCard.overflow);
-    expect('whole on the screen, with the pit above it', rimCard.bottom <= rimCard.windowHeight && rimCard.pitLeft > 80);
+    expect('whole on the screen, with the whole portal clear of it', rimCard.bottom <= rimCard.windowHeight && rimCard.lightsClear);
     expect('and the cursor on JUMP IN, for the second press', rimCard.focused);
     expect('with the player round at the rail', await base(`b.arenaRim.some((tile) => tile.x === b.currentTile.x && tile.y === b.currentTile.y)`));
     if (landings > 1) {
       const way = () => base('b.kit.flow.insertionId');
       const from = await way();
       const seen = new Set([from]);
-      for (const key of ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft']) {
+      // Up to the LAND row, along it, and back down to JUMP IN (`hub/rimKeys.ts`: one key, one job).
+      for (const key of ['ArrowUp', 'ArrowUp', 'ArrowUp', 'ArrowUp', 'ArrowRight', 'ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowDown']) {
         await page.tap(key, 0);
         await step(300);
         seen.add(await way());
       }
-      expect('the arrows point at other ways in on the map', seen.size > 1);
+      expect('the LAND row points at other ways in on the map', seen.size > 1);
       await step(1200);
       await shot('rim-another-way-in');
       const stillOnJump = await page.evaluate(`document.activeElement?.hasAttribute('data-start') === true`);
-      expect('and leave the cursor on JUMP IN', stillOnJump);
-      // A click on a light in the pit points at it too.
-      const light = await base(`(() => { const a = b.arena; const flow = b.kit.flow; const c = b.cameras.main; const seen = a.share.landings.filter((l) => l.id !== flow.insertionId).map((l) => { const p = a.pointOfLanding(l); return { id: l.id, x: p.x - c.scrollX, y: p.y - c.scrollY }; }).filter((p) => p.x > 8 && p.x < b.scale.width - 8 && p.y > 8 && p.y < ${Math.floor((rimCard.top - (await page.evaluate(`${GAME}.canvas.getBoundingClientRect().top`))) / canvasScale.scale) - 8}); return seen[0] ?? null; })()`);
+      expect('and Down comes back to JUMP IN', stillOnJump);
+      // A click on a light in the portal - the pit seen whole - points at it too.
+      const light = await base(`(() => { const flow = b.kit.flow; return b.portal.lightsOnScreen().find((l) => l.id !== flow.insertionId) ?? null; })()`);
       if (light) {
         await click(light.x, light.y);
         await step(300);
