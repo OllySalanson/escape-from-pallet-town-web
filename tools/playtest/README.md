@@ -126,6 +126,11 @@ thrown from the list, and BALL again must open the list on the Great Balls rathe
 than throw one; then two Enter presses 120ms apart and a double click on BALL must
 open the list and throw nothing (`docs/screens/ball-choice/`).
 
+`graveyardBattle.mjs <test-mode build url> <dir> [--port=N]` plays Olly's fight
+with the churchyard's Gastly: a paralysed lead with a CHERI BERRY packed must hear
+the cure line and find ITEM opening on the berry, and each swap must bring the
+menu back on FIGHT, not POKéMON (`docs/screens/graveyard-battle/`).
+
 `battleKeys.mjs <test-mode build url> <dir> [--port=N]` reads a wild fight's
 opening lines with mouse clicks alone, rests the pointer on ITEM (lit, the cursor
 still on FIGHT), moves with D and runs Right past the end of the row, which must
