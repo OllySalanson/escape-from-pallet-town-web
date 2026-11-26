@@ -4541,23 +4541,13 @@ body.touch-play .feedback-tab {
    two of this face's word spaces, and the gap between pairs twice that - at
    two pixels and four the row read `Attack 7 Defense7 Sp. Atk 8`, a name
    nearer the next stat's number than its own. */
-:where(.pixel-ui) .summary-stats {
+:where(.pixel-ui) .px-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0 calc(var(--u) * 8);
+  gap: calc(var(--u) * 2);
   margin: 0;
-}
-:where(.pixel-ui) .summary-stats > div {
-  min-width: 0;
-  display: flex;
-  justify-content: space-between;
-  gap: calc(var(--u) * 4);
-}
-:where(.pixel-ui) .summary-stats dt {
-  color: var(--ink-soft);
-}
-:where(.pixel-ui) .summary-stats dd {
-  margin: 0;
+  /* Wide enough that a bar says how much at a glance, in a column that is
+     otherwise as narrow as its words. */
+  min-width: calc(var(--u) * 140);
 }
 
 /* --- Where the pointer is, on a screen where it only previews ------------ *
@@ -9651,34 +9641,34 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .team-card-level {
   color: var(--bar-muted);
 }
-:where(.pixel-ui) .team-stat {
+:where(.pixel-ui) .px-stat {
   display: grid;
   grid-template-columns: calc(var(--u) * 40) minmax(0, 1fr) calc(var(--u) * 34);
   align-items: center;
   gap: calc(var(--u) * 3);
   text-transform: uppercase;
 }
-:where(.pixel-ui) .team-stat-n {
+:where(.pixel-ui) .px-stat-n {
   text-align: right;
 }
-:where(.pixel-ui) .team-stat-bar {
+:where(.pixel-ui) .px-stat-bar {
   position: relative;
   height: calc(var(--u) * 5);
   background: var(--paper-sunk);
   box-shadow: 0 0 0 var(--u) var(--line);
 }
-:where(.pixel-ui) .team-stat-bar i {
+:where(.pixel-ui) .px-stat-bar i {
   display: block;
   height: 100%;
   background: var(--ink-2);
 }
-:where(.pixel-ui) .team-stat-bar.is-hp i {
+:where(.pixel-ui) .px-stat-bar.is-hp i {
   background: var(--go);
 }
-:where(.pixel-ui) .team-stat-bar.is-hp-low i {
+:where(.pixel-ui) .px-stat-bar.is-hp-low i {
   background: var(--gold);
 }
-:where(.pixel-ui) .team-stat-bar.is-hp-red i {
+:where(.pixel-ui) .px-stat-bar.is-hp-red i {
   background: var(--red);
 }
 :where(.pixel-ui) .team-moves {

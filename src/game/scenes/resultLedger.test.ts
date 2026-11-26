@@ -334,11 +334,11 @@ describe('the result screen ledger', () => {
       holding: 'Holding nothing',
       deeds: { label: 'Keeping', chips: () => '' },
     });
-    // Each stat is a cell of the stats grid - a `dt` and a `dd` in a `div`,
-    // with no `small` for the fold to find - so the pane's foot once came to
-    // rest across `Attack 7 Defense 16 Sp. Atk 8` in the Pokémon Center.
-    expect(markup).toMatch(/<dl class="summary-stats"><div><dt>Attack<\/dt><dd>\d+<\/dd><\/div>/);
-    expect(SCROLL_ROWS).toContain('.px-dossier-body :is(small, .summary-stats > div)');
+    // Each stat is a row of its own - its name, a bar and its number, with no
+    // `small` for the fold to find - so the pane's foot once came to rest
+    // across `Attack 7 Defense 16 Sp. Atk 8` in the Pokémon Center.
+    expect(markup).toMatch(/<div class="px-stats"><span class="px-stat"><span>ATTACK<\/span><span class="px-stat-bar /);
+    expect(SCROLL_ROWS).toContain('.px-dossier-body :is(small, .px-stats > .px-stat)');
   });
 
   it('hides a row the top of a scrolled pane cuts through, down to the first whole row', () => {
