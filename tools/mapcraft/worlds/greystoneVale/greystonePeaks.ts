@@ -240,6 +240,8 @@ export function greystonePeaks(): MapcraftResult {
         { x: 10, y: 15, lines: ['THE SUMMIT', 'Stormcrown, above you. Nobody has found a way up it from here. It only goes up from under.'] },
       ],
       people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 41, y: 50, name: "OLD FLINT", look: "bald-man", facing: "left", local: true, lines: ["OLD FLINT. Fifty years I cut stone in the Quarry, and never a stone that didn't want cutting. You ask them. Politely.", "The river starts in the Tarn up top, small as a teacup. By The Crossing it carries carts. I knew it when it was little.", "The Goat Track goats are Rhyhorn. The Onix by the Powder Store is Bertram. Don't let him hear you call him an Onix.", "The caves go under the lot. I went in once in '41 and came out in '42. Best not."] },
         // -- The tarn and the bothy ----------------------------------------------------------
         { x: 20, y: 13, name: 'Tarn Fisher', look: 'fisherman', facing: 'up', lines: ['Coldest water in the vale. A fish that lives in this is not in the mood to be caught.', 'I have been here since before the river was. I started it, for all you know.'], calls: ['Too cold to bite.'] },
         { x: 36, y: 13, name: 'Sketcher', look: 'beauty', facing: 'left', lines: ['I am painting the tarn. It has been raining in the painting for three weeks.', 'It is not raining here. That is just how it has turned out.'], beat: { everyMs: 3900, glances: ['left', 'down'] }, calls: ['Do not move. Oh, you moved.'] },

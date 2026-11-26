@@ -311,6 +311,8 @@ export function orchardTerraces(): MapcraftResult {
         { x: 58, y: 32, lines: ['THE LANE', 'East: The Wreck, on the cape. West and up: the farm.'] },
       ],
       people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 30, y: 15, name: "OLD RUSSET", look: "straw-hat", facing: "down", local: true, lines: ["OLD RUSSET. Eighty harvests I've picked these terraces. Every tree's named after an apple. That one's Grandmother.", "The scarecrow in the cornfield moves. We don't talk about who moves it. It's not me. I'm usually having a sit down.", "The terraces step down to the sea, and the ledges are the quick way. My knees like the long way. They're eighty too.", "Leave a coin in the Honesty Box if you take an apple. Honest Tom counts it, and Tom can count."] },
         // The guard at Koga's bar, as FireRed's Route 23 keeps its badge gates:
         // he says which badge opens it, and stands to one side of the way.
         { x: 61, y: 29, name: 'Marsh Guard', look: 'policeman', facing: 'down', lines: ['Past the bar on this road is THE MARSH, and KOGA keeps it. Only a trainer with his SOUL BADGE goes through.', 'His gym is at the east end of Tanglewood, up the Pickers’ way. Mind the poison past here.'] },

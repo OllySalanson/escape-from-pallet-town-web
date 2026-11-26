@@ -1421,6 +1421,7 @@ describe('SaveManager', () => {
       expect(progress?.raidRecord).toEqual({});
       expect(progress?.surveyed).toEqual({});
       expect(progress?.trodden).toEqual({});
+      expect(progress?.placesOnMap).toEqual({});
     },
   );
 
@@ -1467,6 +1468,19 @@ describe('SaveManager', () => {
 
     const held = saves.load()?.raidProgress.trodden?.['floodplain-relay'];
     expect([...troddenTiles(held, width)].sort((a, b) => a - b)).toEqual([1, 2]);
+  });
+
+  it('keeps each place a local has put on THE MAP, once, written the moment it is heard', () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+
+    expect(saves.putPlaceOnMap('greystone-vale', 'MILLBROOK')).toBe(true);
+    expect(saves.putPlaceOnMap('greystone-vale', 'MILLBROOK')).toBe(false);
+    expect(saves.putPlaceOnMap('greystone-vale', 'THE CROSSING')).toBe(true);
+
+    expect(saves.load()?.raidProgress.placesOnMap).toEqual({
+      'greystone-vale': ['MILLBROOK', 'THE CROSSING'],
+    });
   });
 
   it('reads the steps a save from before they were kept took off its survey', () => {

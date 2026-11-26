@@ -69,7 +69,7 @@ const DROP_IN = keysOf<MapFileDropIn>()(['x', 'y', 'area', 'name', 'description'
 const EXIT = keysOf<MapFileExit>()(['x', 'y', 'area', 'name', 'opens']);
 const ITEM_SPOT = keysOf<MapFileItemSpot>()(['x', 'y', 'area', 'hidden', 'key', 'prize', 'secret']);
 const PERSON = keysOf<MapFilePerson>()([
-  'x', 'y', 'area', 'name', 'look', 'facing', 'lines', 'beat', 'calls', 'secret', 'afterBeating',
+  'x', 'y', 'area', 'name', 'look', 'facing', 'lines', 'beat', 'calls', 'secret', 'afterBeating', 'local',
 ]);
 const SPEECH_STAGE = keysOf<MapFileSpeechStage>()(['boss', 'lines']);
 const BEAT = keysOf<MapFileBeat>()(['roam', 'glances', 'everyMs']);

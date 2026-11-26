@@ -335,6 +335,8 @@ export function millbrook(): MapcraftResult {
         { x: 43, y: 48, lines: ['THE ORCHARD', 'Pick what you like. Take what you can carry. The berries grow back.'] },
       ],
       people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 35, y: 35, name: "AUNTIE MAB", look: "old-woman", facing: "left", local: true, lines: ["AUNTIE MAB, love. Seventy years I've sat this square. The Mill turned before I was born. It'll see me out, I expect.", "Old Row's the oldest bit. Gran was born in the third cottage. The pump on the green is older than the Mill. Crosser too.", "Every road in the vale starts here: up to the moor, over the river, down to the mere. Everybody started from Millbrook.", "Even you, love. So you ought to know where you are."] },
         // -- The square --------------------------------------------------------
         { x: 33, y: 25, name: 'Trader', look: 'woman', facing: 'down', lines: ['Fresh from the orchards over the river. Well. Over the road.', 'The road east takes you on to The Crossing.'], beat: { everyMs: 3100, glances: ['down', 'left'] }, calls: ['Fresh apples!', 'Best in the vale!'] },
         { x: 25, y: 33, name: 'Ada', look: 'little-girl', facing: 'right', lines: ['There is a cave up in the peaks. Mum says it goes all the way to the sea.'], beat: { everyMs: 1700, roam: [[0, 1], [0, 2]], glances: ['right', 'up'] }, calls: ['Pip! Wait for me!', 'Not fair!'] },

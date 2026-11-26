@@ -82,6 +82,8 @@ export interface WorldEntity {
    * while it is open.
    */
   secret?: string;
+  /** The place's local: their lines are its tale, which puts the place on THE MAP (`world/locals.ts`). */
+  local?: { readonly name: string };
   /**
    * What they say instead once a boss is beaten, each stage naming its boss
    * (`MapFilePerson.afterBeating`, `linesSpoken`).

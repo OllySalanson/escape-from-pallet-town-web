@@ -148,6 +148,8 @@ export function frostreef(): MapcraftResult {
         },
       ],
       people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 33, y: 19, name: "GRANNY FLOE", look: "old-woman", facing: "down", local: true, lines: ["GRANNY FLOE. I came out on the Ice Run sixty years ago for one afternoon. Missed the tide home. Liked it. Stayed.", "Out here the tide is read off your clock. The Ice Run sails back till it says 1:00. After that, you're mine.", "Berg Cave's floor is all ice: once you start sliding you go till something stops you. Like life. Like my late husband.", "A Lapras sings in the Frozen Lagoon. Something colder lives further in. I knit it scarves. It never says thank you."] },
         {
           x: 27,
           y: 17,

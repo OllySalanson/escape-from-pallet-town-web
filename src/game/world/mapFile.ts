@@ -187,6 +187,12 @@ export const MAP_FILE_LIMITS = {
    * bosses of its own; a guide's few on the game's own.
    */
   maxSpeechStages: 0,
+  /**
+   * The places' locals (`MapFilePerson.local`): none on a player's map yet,
+   * because THE MAP their tale lights is the game's own screen; one a place on
+   * the game's own.
+   */
+  maxLocals: 0,
   /** The widest or deepest a stretch of water Surf opens may be. */
   maxDoorSide: 12,
   maxTrainers: 12,
@@ -276,6 +282,8 @@ export const BUILT_IN_MAP_FILE_LIMITS: MapFileLimits = {
   maxPokemonLevel: 70,
   maxBeatTiles: 8,
   maxSpeechStages: 3,
+  // One local to every place of the vale's plan (`world/locals.ts`).
+  maxLocals: 36,
   maxLockedLandmarks: 2,
   maxLandmarkExits: 2,
   // Two doors for every keeper: Boatswain Cragg's barricades, and two for each
@@ -1494,6 +1502,13 @@ export interface MapFilePerson extends MapFileSpot {
    * the game's own maps (`maxSpeechStages`), whose bosses are measured.
    */
   readonly afterBeating?: readonly MapFileSpeechStage[];
+  /**
+   * The place's local (`world/locals.ts`): somebody who has lived there all
+   * their life and whom everybody knows. Their `lines` are their tale of the
+   * place, and hearing it to the end puts the whole of the place on THE MAP.
+   * Only on the game's own maps (`maxLocals`).
+   */
+  readonly local?: true;
 }
 
 /** What a person says once a boss is beaten (`MapFilePerson.afterBeating`). */
@@ -2214,6 +2229,17 @@ export function readMapFile(
     (beat.glances ?? []).forEach((way) => oneOf(`${what}'s glance`, way, MAP_FILE_FACINGS));
   };
 
+  const locals = (Array.isArray(value.people) ? value.people : []).filter((person) => isRecord(person) && person.local !== undefined);
+  if (locals.length > limits.maxLocals) {
+    problems.push(
+      limits.maxLocals === 0
+        ? 'Nobody on a map can be its local yet: what their tale lights is the game\'s own map.'
+        : `A map may have at most ${limits.maxLocals} locals.`,
+    );
+  }
+  if (locals.some((person) => (person as Record<string, unknown>).local !== true)) {
+    problems.push('A local is marked with true.');
+  }
   optional('people', limits.maxPeople).forEach((person, index) => {
     const what = `Person ${index + 1}`;
     nameOf(what, person.name);
@@ -3394,6 +3420,7 @@ export function buildFileMap(
         ...(person.beat ? { idle: fileBeat(person, at) } : {}),
         ...(person.calls ? { calls: [...person.calls] } : {}),
         ...(person.secret ? { secret: person.secret } : {}),
+        ...(person.local ? { local: { name: person.name } } : {}),
         ...(person.afterBeating
           ? { afterBeating: person.afterBeating.map((stage) => ({ boss: stage.boss, lines: [...stage.lines] })) }
           : {}),

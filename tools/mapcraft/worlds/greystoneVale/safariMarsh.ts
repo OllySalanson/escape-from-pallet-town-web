@@ -290,6 +290,8 @@ export function safariMarsh(): MapcraftResult {
         { x: 24, y: 58, species: 'poliwag' },
       ],
       people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 36, y: 32, name: "MAJOR MARSH", look: "gentleman", facing: "left", local: true, lines: ["MAJOR MARSH. Booked the safari tour in '61. Haven't left. Waiting to see the something long in the Great Pool. Any day.", "Everything here bites, stings or poisons. Lovely spot. The Egg Bank isn't eggs. The Lost Uncle was handed in Wednesday.", "KOGA keeps the gate to the reserve. Ninja chap. Very quiet. Took me thirty years to spot him. He'd been there all along.", "Ranger Moss thinks he's a Pokemon. Between you and me, he's right."] },
         {
           x: 10,
           y: 42,

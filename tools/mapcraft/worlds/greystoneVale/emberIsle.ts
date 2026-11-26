@@ -183,6 +183,8 @@ export function emberIsle(): MapcraftResult {
         { x: 20, y: 57, lines: ['THE BLACK SANDS', 'The island makes its own beach. The boat is at the jetty on the west shore.'] },
       ],
       people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 45, y: 23, name: "OLD CINDERS", look: "worker", facing: "down", local: true, lines: ["OLD CINDERS. Born on this island, I'll go up with it. It's not gone off in a hundred years. It's saving up.", "Every step on the crater's ash brings something up. Hot ground, rich ground. The richest and the worst in the vale.", "The hoard's up there with two smugglers on it. Not smugglers. Collectors. Of a lot of very hot things.", "The skiff runs till your clock reads 2:30, the Cinder Boat from 1:40. Miss both and you'll learn to like charcoal."] },
         {
           x: 57,
           y: 25,

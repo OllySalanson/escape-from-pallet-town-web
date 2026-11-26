@@ -363,6 +363,7 @@ sightseeing.
 - Evolution by level and by five evolution stones.
 - Twelve TMs and HMs to teach, the HMs bartered from Bill, and boulders only Strength will shift.
 - Rain on the high tops, and it changes how the fight goes.
+- A local in every corner of the vale, who's lived there all their life and will tell you so. Hear them out and they ink their whole patch onto your map.
 - Trainers who watch a stretch of road. Step into it and you're paying a toll.
 - Every sound effect synthesised in the browser, except the Pokémon themselves: each one cries its own FireRed cry as it comes out, faints and gets caught.
 

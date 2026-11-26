@@ -379,6 +379,8 @@ export function powerStation(): MapcraftResult {
         ...bunkerSigns(),
       ],
       people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 18, y: 29, name: "MOLLY BULB", look: "old-woman", facing: "right", local: true, lines: ["MOLLY BULB. Forty years I've waited at that stop for the 8:15, every morning. It's never come. I'm not giving up now.", "The turbines stopped the year the Card Key went missing. The town never noticed. We still clock on. Pie on Thursdays.", "The picket's in its ninth year. Management not found. The Turbine Hall hums, empty. Something yellow lives in there.", "The Commodore of the sailing club is my nephew. He's never left the jetty. Lovely boy."] },
         // The guard at Koga's bar, as FireRed's Route 23 keeps its badge gates:
         // he says which badge opens it, and stands to one side of the way.
         { x: 29, y: 59, name: 'Marsh Guard', look: 'policeman', facing: 'right', lines: ['Down this road is THE MARSH, and KOGA has barred it. Only a trainer with his SOUL BADGE goes through.', 'His gym is in Tanglewood, by the Safari road. Everything down there bites back.'] },
