@@ -58,6 +58,10 @@ const DEFAULT_INDICATOR_TEXT = '▼';
  * the thumb to guess which of the pad's keys it meant.
  */
 const TOUCH_INDICATOR_TEXT = 'OK ▼';
+/** The prompt once a key that does not read on has been pressed: the key that does, named. */
+const NAMED_INDICATOR_TEXT = 'SPACE ▼';
+/** How long that named prompt stands without blinking, so it is seen. */
+const NUDGE_STEADY_MS = 1200;
 const DEFAULT_INDICATOR_BLINK_MS = 300;
 
 export class DialogBox extends Phaser.GameObjects.Container {
@@ -81,6 +85,8 @@ export class DialogBox extends Phaser.GameObjects.Container {
   /** How many wrapped rows fit inside the frame, measured once. See `rowsPerBox`. */
   private rowsFitting: number | null = null;
   private indicatorElapsedMs = 0;
+  /** How much longer a nudged prompt stands steady before it blinks again (`nudge`). */
+  private steadyMs = 0;
   private hasTriggeredCompletion = false;
   /** Whether a finished line blinks the prompt that asks for a key. */
   private prompting = true;
@@ -181,6 +187,7 @@ export class DialogBox extends Phaser.GameObjects.Container {
     this.heldMs = 0;
     this.hasTriggeredCompletion = false;
     this.prompting = true;
+    this.steadyMs = 0;
     this.indicatorObject.setText(this.promptText);
     this.indicatorElapsedMs = 0;
     // Render immediately so a newly entered battle never presents an empty
@@ -344,6 +351,23 @@ export class DialogBox extends Phaser.GameObjects.Container {
   }
 
   /**
+   * A key that does not read the line on was pressed - an arrow, trying to walk
+   * away from a line nobody asked for. The prompt names the key that does read
+   * on and stands steady a moment, so the game answers the press without the
+   * arrow doing a second job (the navigation audit, 25 Nov 2026: arrows only
+   * move). Nothing while the line is still being typed or held.
+   */
+  public nudge(): void {
+    if (!this.visible || !this.prompting || this.heldMs > 0 || !this.isCurrentMessageComplete) {
+      return;
+    }
+    this.indicatorObject.setText(touchPlay() ? TOUCH_INDICATOR_TEXT : this.givenPrompt ?? NAMED_INDICATOR_TEXT);
+    this.indicatorObject.setVisible(true);
+    this.indicatorElapsedMs = 0;
+    this.steadyMs = NUDGE_STEADY_MS;
+  }
+
+  /**
    * Keeps the line up for the scene to move on from by itself, with `note`
    * standing steady where the prompt to go on would blink - an evolution,
    * which no key but B can touch, says so there. The next `showMessages`
@@ -360,6 +384,11 @@ export class DialogBox extends Phaser.GameObjects.Container {
     }
     if (this.heldMs > 0) {
       this.indicatorObject.setVisible(false);
+      return;
+    }
+    if (this.steadyMs > 0) {
+      this.steadyMs -= Math.max(0, deltaMs);
+      this.indicatorObject.setVisible(true);
       return;
     }
     this.indicatorElapsedMs += Math.max(0, deltaMs);

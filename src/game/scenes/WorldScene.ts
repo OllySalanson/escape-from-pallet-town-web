@@ -1303,13 +1303,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         readonly isHunter: boolean;
       }
     | undefined;
-  /**
-   * True while a dialogue the player did not open is on screen - the hunter's
-   * arrival, a trainer's line of sight, being caught. It is the difference
-   * between a box you asked for and one that landed in front of you, and it is
-   * what lets a direction key get you out of the second kind.
-   */
-  private unsolicitedDialog = false;
   /** True while the dialogue box is seated at the top, clear of someone it announced. */
   private dialogRaised = false;
   /**
@@ -1529,7 +1522,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Phaser destroyed the float with the last raid's scene; only the state goes.
     this.fishing = undefined;
     this.endCutscene();
-    this.unsolicitedDialog = false;
     this.wayCache = NO_WAY;
     this.wayCacheKey = '';
     this.wayBag = undefined;
@@ -7474,11 +7466,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
-   * A dialogue the player opened advances on the interact keys. A challenge they did
-   * not open - the hunter's capture, a trainer's line of sight - also advances on a
-   * direction key: trying to walk away is what a player actually does when something
-   * they did not ask for lands in front of them, and a key that does nothing reads as
-   * the game having frozen on them.
+   * Every dialogue advances on the interact keys or a click, and on nothing else.
+   * A challenge the player did not open - the hunter's capture, a trainer's line
+   * of sight - used to advance on a direction key too, because trying to walk away
+   * is what a player does when something they did not ask for lands in front of
+   * them, and a key that does nothing reads as the game having frozen. But an arrow
+   * then did two jobs, and Oak's radio, a sign or a person did not answer it (the
+   * navigation audit, 25 Nov 2026: arrows only move). So a direction key under any
+   * line answers by naming the key that reads on (`DialogBox.nudge`).
    */
   private isDialogAdvancePressed(): boolean {
     const clicked = this.boxClicked;
@@ -7486,10 +7481,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (this.isInteractionPressed() || clicked) {
       return true;
     }
-    return (
-      this.unsolicitedDialog &&
-      this.directionKeys.some((key) => this.keyPresses.justPressed(key))
-    );
+    if (this.directionKeys.some((key) => this.keyPresses.justPressed(key))) {
+      this.dialogBox.nudge();
+    }
+    return false;
   }
 
   private handleDialogInput(): void {
@@ -7502,7 +7497,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.spentPresses.spendHeld(this.directionKeys);
       audioManager.play('textAdvance');
       this.dialogBox.dismiss();
-      this.unsolicitedDialog = false;
       this.seatDialog([]);
       return;
     }
@@ -7517,7 +7511,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (this.dialogBox.isCurrentMessageComplete) {
       audioManager.play('textAdvance');
       this.dialogBox.advance();
-      this.unsolicitedDialog = this.unsolicitedDialog && this.dialogBox.visible;
       if (!this.dialogBox.visible) {
         // Back to the bottom, where every line the player asks for is said.
         this.seatDialog([]);
@@ -7529,7 +7522,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
-   * Raises a dialogue the player did not ask for. See `unsolicitedDialog`.
+   * Raises a dialogue the player did not ask for, seated clear of who it is about.
    *
    * @param about Tiles of the people the line is about. The box is seated clear
    * of them by `placeDialog` - the hunter's arrival used to be announced by a
@@ -7539,7 +7532,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Whatever landed in front of the player takes the box the cast was using,
     // and the cast with it: a line that arrives unasked is read, not fished past.
     this.stopFishing();
-    this.unsolicitedDialog = true;
     this.seatDialog(about);
     this.dialogBox.showMessages(
       lines.map((line) => (typeof line === 'string' ? line : line.text)),
@@ -8448,9 +8440,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.player.stop();
     this.player.setFrame(this.playerIdleFrame(this.facing));
     this.onRadio = true;
-    // Unasked for the purposes of the keys: a direction moves it on as it does
-    // any box in the way, because somebody who wants to walk has heard enough.
-    this.unsolicitedDialog = true;
     this.seatDialog([this.currentTile]);
     this.dialogBox.showMessages([...guide.radio]);
     this.radioChip = new RadioChip(
@@ -8779,7 +8768,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private hangUp(): void {
     this.spentPresses.spendHeld(this.directionKeys);
     this.dialogBox.dismiss();
-    this.unsolicitedDialog = false;
     this.seatDialog([]);
     this.settleRadio();
     audioManager.play('menuClose');
@@ -10438,7 +10426,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.takeLootMarksOff(loot!.id);
     // Somebody heard that, and whoever is coming does not wait for a box to be read.
     if (isStake(loot!)) {
-      this.unsolicitedDialog = true;
       this.sendHunterForPlayer();
     }
     const item = ITEMS[loot!.itemId];

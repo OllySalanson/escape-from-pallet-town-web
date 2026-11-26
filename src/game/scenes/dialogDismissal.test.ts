@@ -21,7 +21,9 @@ import { WorldScene } from './WorldScene';
 /**
  * Playtest 3, B6c: dismissing "A RIVAL HUNTER is on your trail!" with
  * ArrowRight also walked one tile right in the same press - towards the hunter.
- * The direction key still answers the box; the press is spent on doing so.
+ * Since the navigation audit (25 Nov 2026) an arrow never reads a line on: it
+ * names the key that does (`DialogBox.nudge`), and the press that reads on is
+ * spent, so a direction key still held as the box closes does not walk.
  */
 function sceneWithHunterWarning() {
   const key = (): StubKey => ({ justDown: false, isDown: false });
@@ -37,12 +39,12 @@ function sceneWithHunterWarning() {
     advance: vi.fn(() => { dialogBox.visible = false; }),
     skip: vi.fn(),
     dismiss: vi.fn(() => { dialogBox.visible = false; }),
+    nudge: vi.fn(),
   };
   const scene = Object.create(WorldScene.prototype) as WorldScene;
   Object.assign(scene as object, {
     controls,
     dialogBox,
-    unsolicitedDialog: true,
     spentPresses: new SpentPresses(),
     // `readInput` also honours a press latched for the frame that processed it.
     directionPresses: new PressLatch(),
@@ -71,25 +73,35 @@ describe('dismissing a dialogue the world raised', () => {
     expect(dialogBox.visible).toBe(false);
   });
 
-  it('answers to the direction key, and does not also walk on that press', () => {
+  it('answers a direction key by naming the key that reads on, and reads nothing on', () => {
     const { internals, controls, dialogBox } = sceneWithHunterWarning();
 
     controls.right.justDown = true;
     controls.right.isDown = true;
     internals.handleDialogInput();
 
+    expect(dialogBox.advance).not.toHaveBeenCalled();
+    expect(dialogBox.nudge).toHaveBeenCalledOnce();
+    expect(dialogBox.visible).toBe(true);
+  });
+
+  it('does not walk on a direction key still held as SPACE closes the box', () => {
+    const { internals, controls, dialogBox } = sceneWithHunterWarning();
+    controls.right.isDown = true;
+    controls.interact[0].justDown = true;
+    internals.handleDialogInput();
+
     expect(dialogBox.advance).toHaveBeenCalledOnce();
     expect(dialogBox.visible).toBe(false);
-    // The next frame: the box is gone, the key is still physically down.
-    controls.right.justDown = false;
     expect(internals.readInput().right).toBe(false);
   });
 
   it('walks on the next press of the same key', () => {
     const { internals, controls } = sceneWithHunterWarning();
-    controls.right.justDown = true;
     controls.right.isDown = true;
+    controls.interact[0].justDown = true;
     internals.handleDialogInput();
+    controls.interact[0].justDown = false;
 
     controls.right.isDown = false;
     internals.readInput();
