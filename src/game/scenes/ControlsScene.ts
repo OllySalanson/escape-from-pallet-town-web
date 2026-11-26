@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { fullScreenOffered, isFullScreen, toggleFullScreen } from '../display/fullScreen';
+import { mapTooltipsOn, setMapTooltips } from '../settings/mapTooltips';
 import { KEY_GUIDE, type KeyGuideGroup } from '../input/keyGuide';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { escapeAttribute, pixelScreen, pixelWindow } from '../ui/pixelUi';
@@ -42,6 +43,8 @@ export interface SettingsState {
   readonly fullScreen: boolean;
   /** Whether the browser lets the page go full screen at all. */
   readonly fullScreenOffered: boolean;
+  /** Whether the harbour's place labels say themselves as the player walks up (`settings/mapTooltips.ts`). */
+  readonly mapTooltips: boolean;
 }
 
 /** SETTINGS: what can be changed, each a row that says what it is set to now. */
@@ -52,6 +55,14 @@ export function settingsBody(state: SettingsState): string {
     + `<span class="cs-switch ${on ? 'is-on' : 'is-off'}">${now}</span></button>`;
   const rows = [
     row('data-sound', 'N', 'Sound', state.soundOn ? 'ON' : 'OFF', state.soundOn, state.soundOn ? 'Turn the sound off.' : 'Turn the sound on.'),
+    row(
+      'data-map-tooltips',
+      '',
+      'Map tooltips',
+      state.mapTooltips ? 'ON' : 'OFF',
+      state.mapTooltips,
+      state.mapTooltips ? 'Names over the places as you walk up. L shows them whenever.' : 'Names only while L is held.',
+    ),
     state.fullScreenOffered
       ? row('data-full-screen', '', 'Full screen', state.fullScreen ? 'ON' : 'OFF', state.fullScreen, state.fullScreen ? 'Back to the window.' : 'Fill the whole screen.')
       : '',
@@ -93,6 +104,7 @@ export class ControlsScene extends Phaser.Scene {
       soundOn: !audioManager.isMuted,
       fullScreen: isFullScreen(document),
       fullScreenOffered: fullScreenOffered(document),
+      mapTooltips: mapTooltipsOn(),
     };
   }
 
@@ -108,7 +120,7 @@ export class ControlsScene extends Phaser.Scene {
       aside: help ? 'Every key' : '',
       close: { attribute: 'data-close' },
       body: help ? helpBody() : settingsBody(this.settings()),
-      hints: help ? 'ESC closes.' : 'SPACE changes the one the cursor is on. ESC closes.',
+      hints: help ? 'ESC back' : 'ARROWS move · ENTER change it · ESC back',
     });
     // HELP has nothing to choose, and a screen never starts its cursor on the
     // way out, so it starts with none: ESC and the X still close it.
@@ -138,6 +150,10 @@ export class ControlsScene extends Phaser.Scene {
     } else if (target.hasAttribute('data-sound')) {
       audioManager.toggleMute();
       this.render('[data-sound]');
+    } else if (target.hasAttribute('data-map-tooltips')) {
+      setMapTooltips(!mapTooltipsOn());
+      audioManager.play('select');
+      this.render('[data-map-tooltips]');
     } else if (target.hasAttribute('data-full-screen')) {
       void toggleFullScreen(document).then(() => this.render('[data-full-screen]'));
     } else if (target.hasAttribute('data-feedback')) {
