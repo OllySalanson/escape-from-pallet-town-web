@@ -226,7 +226,11 @@ describe('VALE SECRETS as a save has found the vale', () => {
     expect(fresh.pages).toHaveLength(SECRETS_BOOK.pages.length);
     const page = (book: typeof fresh, name: string) => book.pages.find((each) => each.heading === name)!.text;
     expect(page(fresh, first.name)).not.toContain('HOLDS:');
-    expect(page(fresh, first.name)).toContain('fills in once you find it');
+    expect(page(fresh, first.name)).toContain('Not found yet.');
+    // "WHEN: any raid" over nooks that wait for a chart, a lead or a flute (the re-critic's third round).
+    for (const secret of SECRETS.filter((each) => !each.when.some((condition) => condition.kind === 'hour' || condition.kind === 'weekday' || condition.kind === 'raid-clock'))) {
+      expect(page(fresh, secret.name)).not.toContain('WHEN:');
+    }
     expect(secretsBookFor(known, true)).toBe(SECRETS_BOOK);
     const item = SECRETS.find((secret) => secret.rewards[0].kind === 'item')!;
     const found = secretsBookFor({ secretsFound: [rewardKey(item, item.rewards[0])], giftsReceived: [] }, false);

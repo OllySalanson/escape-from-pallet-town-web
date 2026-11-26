@@ -911,7 +911,9 @@ export function librarianLines(secretsOpen: boolean): readonly string[] {
   const lecterns = LIBRARY_BOOKS.filter((book) => book.plinth !== 'golden').map((book) => book.title);
   return [
     // The lecterns named, first first: RAIDS teaches the vale, THE BOLTHOLE the house.
-    `Welcome to the ${GREAT_LIBRARY_NAME}! Start with ${lecterns[0]}, on the first lectern${lecterns.length > 1 ? `; ${lecterns.slice(1).join(' and ')} is beside it` : ''}.`,
+    // Where the first book is, plainly: "on the first lectern; X and Y is
+    // beside it" was wrong twice over (the re-critic's third round).
+    `Welcome to the ${GREAT_LIBRARY_NAME}! Start with ${lecterns[0]}, on the lectern just left of the runner.`,
     ...(golden
       ? [
           secretsOpen

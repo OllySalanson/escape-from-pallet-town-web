@@ -89,7 +89,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'Losing',
-        text: 'Lose a raid and you lose your pack, everything in it and every Pokémon you took, all but your partner and whatever you put in THE LOCKER.',
+        text: 'Lose a raid and you lose your pack, everything in it and every Pokémon you took, all but your partner and whatever THE LOCKER holds.',
       },
       {
         heading: 'Help on the way',
@@ -111,7 +111,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'The POKéMON CENTER',
-        text: "NURSE JOY heals your team for nothing. Only bringing a Pokémon round from a faint costs time, off your next raid, and the first heal each day is free. Your boxes are on BILL'S PC there.",
+        text: "NURSE JOY heals your team for nothing. Only bringing a Pokémon round from a faint costs time off your next raid, and even that is free once a day. Your boxes are on BILL'S PC there.",
       },
       {
         heading: "BROCK'S WORKSHOP",

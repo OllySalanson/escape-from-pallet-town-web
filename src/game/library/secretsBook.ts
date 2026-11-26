@@ -147,7 +147,7 @@ export const SECRETS_BOOK: LibraryBook = {
   pages: [
     {
       heading: 'Hidden nooks',
-      text: `${numberWord(SECRETS.length)[0].toUpperCase()}${numberWord(SECRETS.length).slice(1)} nooks lie hidden in GREYSTONE VALE. Each is always there. Most hold their prize only when a condition is met as the raid sets out; a few ask what you do on the way.`,
+      text: `${numberWord(SECRETS.length)[0].toUpperCase()}${numberWord(SECRETS.length).slice(1)} nooks lie hidden in GREYSTONE VALE. Each is always there. Most hold their prize only when a condition is met as the raid sets out; a few ask what you do on the way. A nook's page fills in once you find it.`,
     },
     {
       heading: 'Clues and rumours',
@@ -171,13 +171,18 @@ export function unfoundSecretPage(secret: Secret): BookPage {
   // Where and when, and the rest left to the sign out there: a page of only
   // "not found yet" twenty times over was a prize with nothing in it (the
   // harbour re-critic's second round).
+  // Only a time it waits for is said: "WHEN: any raid" stood over nooks that
+  // wait for a chart, a lead or a flute (the re-critic's third round). The
+  // nook's own kind closes the page, so twenty pages are not one sentence;
+  // that a page fills in once found is said once, on the first page.
   const when = secret.when.filter(isTime).map(conditionWords);
   return {
     heading: secret.name,
     text: [
       `WHERE: ${secret.place.toUpperCase()}${DISTRICT_OF[secret.id] ? `, on ${DISTRICT_OF[secret.id]}` : ''}`,
-      `WHEN: ${when.length > 0 ? when.join(', ') : 'any raid'}`,
-      'What to bring, and what it holds: the sign there hints, and this page fills in once you find it.',
+      ...(when.length > 0 ? [`WHEN: ${when.join(', ')}`] : []),
+      'Not found yet.',
+      secret.shutLines ? 'It waits there, every raid.' : (SUMMONS_WORDS[secret.id] ?? NOOK_WORDS[secret.nook]),
     ].join('\n'),
   };
 }
