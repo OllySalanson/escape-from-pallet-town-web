@@ -1982,6 +1982,18 @@ body.touch-play .feedback-tab {
   border: var(--u) solid #fff6e8;
   animation: chart-here-beat 1.2s steps(4, end) infinite;
 }
+/* A trainer who would still pay (`world/purses.ts`): a gold coin on the chart,
+   square, in whole game pixels, with no ring - the ring and the beat are the
+   player's own mark, which is drawn over it. */
+.chart-screen .chart-purse {
+  position: absolute;
+  width: calc(var(--u) * 4);
+  height: calc(var(--u) * 4);
+  transform: translate(-50%, -50%);
+  background: #f8c030;
+  box-shadow: inset calc(var(--u) * -1) calc(var(--u) * -1) 0 #b87818, 0 0 0 var(--u) #000;
+  pointer-events: none;
+}
 @keyframes chart-here-beat {
   from {
     inset: calc(var(--u) * -2);

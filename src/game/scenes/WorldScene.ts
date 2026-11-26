@@ -492,6 +492,7 @@ import {
   type TrainerBag,
 } from '../world/trainerBags';
 import { prizeDue } from '../world/prizeMoney';
+import { pursesOn } from '../world/purses';
 import {
   FRESH_SEARCH,
   SEARCH_RESEATED,
@@ -8324,6 +8325,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const map = this.currentMap;
     const saved = knownOnChart(map.id, map.width, new SaveManager().load()?.raidProgress);
     const walking = this.runSession?.trodden;
+    const isKnown = (tile: GridPosition): boolean => {
+      const index = tile.y * map.width + tile.x;
+      return saved.has(index) || walking?.has(index) === true;
+    };
     // However the world goes - a scene started without a door or a warp to say
     // so - the map goes with it rather than staying up over the next screen.
     const shutDown = (): void => this.mapScreen?.close();
@@ -8332,12 +8337,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this,
       {
         subject: chartOfMap(map.id),
-        isKnown: (tile) => {
-          const index = tile.y * map.width + tile.x;
-          return saved.has(index) || walking?.has(index) === true;
-        },
+        isKnown,
         standing: chartTileOf(map, this.currentTile),
         ...(this.runSession ? { clockMs: this.runSession.manager.remainingMs() } : {}),
+        purses: pursesOn(
+          map.id,
+          [...(new SaveManager().load()?.raidProgress.trainersPaid ?? []), ...(this.runSession?.trainersPaid ?? [])],
+          isKnown,
+        ),
       },
       () => {
         this.mapScreen = null;
