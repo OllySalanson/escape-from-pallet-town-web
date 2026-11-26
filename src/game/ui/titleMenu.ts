@@ -170,15 +170,35 @@ export function titleHint(menu: TitleMenu, choice: TitleChoiceId): string {
 }
 
 /**
- * Moves the cursor one enabled choice up or down, stopping at the ends. It
- * walks the choices in reading order, so Down from MAKE A MAP is PLAYTEST
- * beside it: every choice is reachable with Up and Down alone.
+ * Moves the cursor one row up or down, stopping at the ends, and keeps to its
+ * column where the row it lands on has one: Down from NEW GAME is MAKE A MAP,
+ * and Down from MAKE A MAP is nowhere, because PLAYTEST stands beside it, not
+ * under it - it is Right. Walked as one list, Down from MAKE A MAP went sideways
+ * to PLAYTEST (the navigation audit, 25 Nov 2026: arrows move the highlight the
+ * way they point). A row with nothing enabled on it is passed over.
  */
 export function moveTitleChoice(menu: TitleMenu, current: TitleChoiceId, step: -1 | 1): TitleChoiceId {
-  const enabled = menu.choices.filter((choice) => choice.enabled);
-  const index = enabled.findIndex((choice) => choice.id === current);
-  const next = Math.max(0, Math.min(enabled.length - 1, (index < 0 ? 0 : index) + step));
-  return enabled[next]?.id ?? current;
+  const rows: TitleChoice[][] = [];
+  for (const choice of menu.choices) {
+    if (choice.beside && rows.length > 0) {
+      rows[rows.length - 1].push(choice);
+    } else {
+      rows.push([choice]);
+    }
+  }
+  const row = rows.findIndex((each) => each.some((choice) => choice.id === current));
+  if (row < 0) {
+    return menu.choices.find((choice) => choice.enabled)?.id ?? current;
+  }
+  const column = rows[row].findIndex((choice) => choice.id === current);
+  for (let next = row + step; next >= 0 && next < rows.length; next += step) {
+    const under = rows[next][Math.min(column, rows[next].length - 1)];
+    const landing = under?.enabled ? under : rows[next].find((choice) => choice.enabled);
+    if (landing) {
+      return landing.id;
+    }
+  }
+  return current;
 }
 
 /**
