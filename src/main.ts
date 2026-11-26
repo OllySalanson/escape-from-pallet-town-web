@@ -14,6 +14,8 @@ import { installTouchWording, rewordTexts } from './game/input/touchWords';
 import { watchMenuWords } from './game/ui/menuWords';
 import { menuLayer } from './game/display/menuStage';
 import { installTouchPad } from './game/ui/touchPad';
+import { installControlsBar } from './game/ui/controlsBar';
+import { openControlsScreen } from './game/scenes/ControlsScene';
 import { audioManager } from './game/audio/AudioManager';
 import { pausesForWindow, watchWindowFocus } from './game/world/windowPause';
 import { keepSavesSafe } from './game/save/keepSavesSafe';
@@ -74,7 +76,19 @@ const stopRewording = onTouchPlayChange(() => {
   rewordTexts(game.scene.scenes);
   menuWords.reword();
 });
-const stopWatchingViewport = watchViewport(game, { playing: touchPlay, onChange: onTouchPlayChange, place: (layout) => touchPad.place(layout) });
+// The keys as buttons, the team and SETTINGS and HELP, under or beside the game
+// where the window has room for them (`ui/controlsBar.ts`).
+const controlsBar = installControlsBar({
+  document,
+  scenes: () => game.scene.getScenes(false).filter((scene) => scene.sys.isActive() || scene.sys.isPaused()),
+  openScreen: (view) => openControlsScreen(game, view, () => feedbackDesk.open()),
+});
+const stopWatchingViewport = watchViewport(
+  game,
+  { playing: touchPlay, onChange: onTouchPlayChange, place: (layout) => touchPad.place(layout) },
+  'app',
+  controlsBar,
+);
 // Counts play for the owner's STATS page, only on the published game, never for
 // a browser a program drives or one that asks not to be tracked, and a tester's
 // (`?tester` once, or the STATS page's switch) apart. See `game/analytics/playCounter.ts`.
@@ -133,6 +147,7 @@ if (import.meta.hot) {
     stopRewording();
     menuWords.stop();
     touchPad.destroy();
+    controlsBar.destroy();
     feedbackDesk.destroy();
     stopWatchingFocus();
     stopGuardingLeave();

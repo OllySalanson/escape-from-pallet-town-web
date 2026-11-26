@@ -18,6 +18,7 @@ import { DigScene } from './scenes/DigScene';
 import { FishingDerbyScene } from './scenes/FishingDerbyScene';
 import { ExtractionScene } from './scenes/ExtractionScene';
 import { LibraryBookScene } from './scenes/LibraryBookScene';
+import { ControlsScene } from './scenes/ControlsScene';
 import { FeedbackScene } from './scenes/FeedbackScene';
 import { HubScene } from './scenes/HubScene';
 import { MapMakerScene } from './scenes/MapMakerScene';
@@ -58,6 +59,8 @@ const BASE_SCENES = [
   ExtractionScene,
   MapMakerScene,
   StatsScene,
+  // HELP and SETTINGS, from the controls bar: above every game scene.
+  ControlsScene,
   // Last, so the panel is above every other scene whatever it opens over.
   FeedbackScene,
 ];

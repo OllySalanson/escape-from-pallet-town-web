@@ -41,7 +41,7 @@ describe('the menus and the pop-ups', () => {
   // drawn in the same colours, so the stylesheet's tokens are these.
   const stylesheet = readFileSync(new URL('../../style.css', import.meta.url), 'utf8');
   const token = (name: string): string =>
-    new RegExp(`\\.menu-overlay\\.pixel-ui \\{[^}]*--${name}:\\s*(#[0-9a-f]{6});`, 'i').exec(stylesheet)?.[1]?.toLowerCase() ?? '';
+    new RegExp(`:root \\{[^}]*--${name}:\\s*(#[0-9a-f]{6});`, 'i').exec(stylesheet)?.[1]?.toLowerCase() ?? '';
 
   it.each([
     ['paper', UI.paper],
