@@ -228,12 +228,12 @@ describe('VALE SECRETS as a save has found the vale', () => {
     expect(fresh.pages).toHaveLength(SECRETS_BOOK.pages.length);
     const page = (book: typeof fresh, name: string) => book.pages.find((each) => each.heading === name)!.text;
     expect(page(fresh, first.name)).not.toMatch(/HOLDS: (a|an) /);
-    expect(page(fresh, first.name)).toContain('HOLDS: not found yet.');
+    expect(page(fresh, first.name)).toContain('NEEDS and HOLDS: not found yet.');
     // What a nook asks is said whole, so "It waits there" never stands alone over one that needs a lead or a flute (the re-critic's fourth round).
     for (const secret of SECRETS) {
       const words = page(fresh, secret.name);
-      expect(words).toMatch(/WHEN:|NEEDS:/);
-      expect(words).not.toMatch(/HOLDS: (a|an) /);
+      expect(words).not.toMatch(/NEEDS: |HOLDS: (a|an) /);
+      expect(words).not.toContain('WHEN: any raid');
     }
     expect(fresh.blurb).toContain('none found yet');
     expect(secretsBookFor(known, true)).toBe(SECRETS_BOOK);

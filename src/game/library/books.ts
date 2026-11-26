@@ -69,7 +69,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'Five minutes',
-        text: 'A raid lasts five minutes. Walking and talking spend the clock; a fight stops it. At zero you have fifteen seconds to get out. Then a hunter comes for you: win, and you fight your way out.',
+        text: 'A raid lasts five minutes. Walking and talking spend the clock; a fight stops it. At zero a hunter comes for you, and you have fifteen seconds to get out. Win that fight and you still do.',
       },
       {
         heading: 'Getting out',
@@ -166,7 +166,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
         // Not "find a cushion on a raid": the vale's raids turn up a few rare
         // pieces only, and the cushions come from the PRIZE WINDOW (the
         // harbour re-critic, 26 Nov 2026).
-        text: 'The table, the plants and anything you bring home can all be moved. Win a cushion at the PRIZE WINDOW and it is yours to put anywhere.',
+        text: 'The table, the plants and anything you bring home can all be moved. Win a cushion at the PRIZE WINDOW and it is yours to put wherever it fits.',
       },
       {
         heading: 'Decorating',

@@ -180,13 +180,18 @@ export function unfoundSecretPage(secret: Secret): BookPage {
   // wait for a chart, a lead or a flute (the re-critic's third round). The
   // nook's own kind closes the page, so twenty pages are not one sentence;
   // that a page fills in once found is said once, on the first page.
-  // What it asks, said whole, and only what it holds kept back: "It waits
-  // there, every raid." stood over nooks that need a GHOST lead or a POKé
-  // FLUTE (the re-critic's fourth round).
-  const page = secretPage(secret);
+  // Where, and when if it waits for a time; what it needs and holds kept
+  // for the sign out there and the rumours. Printed whole, the book was the
+  // rumours' answer key (the re-critic's sixth round); printed bare, twenty
+  // pages of one sentence (its fourth).
+  const when = secret.when.filter(isTime).map(conditionWords);
   return {
     heading: secret.name,
-    text: page.text.replace(/^HOLDS: .*$/m, 'HOLDS: not found yet.'),
+    text: [
+      `WHERE: ${secret.place.toUpperCase()}${DISTRICT_OF[secret.id] ? `, on ${DISTRICT_OF[secret.id]}` : ''}`,
+      ...(when.length > 0 ? [`WHEN: ${when.join(', ')}`] : []),
+      'NEEDS and HOLDS: not found yet. The sign there, and the rumours, tell more.',
+    ].join('\n'),
   };
 }
 
