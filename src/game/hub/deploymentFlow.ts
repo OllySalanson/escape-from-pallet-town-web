@@ -1307,12 +1307,12 @@ export class DeploymentFlow {
 
 /**
  * What the locker says about the partner, on its row and when it is pressed.
- * Said as FireRed would say it, not as the rule it is: the row's PARTNER tag
- * and its own place outside the squares show the rest (the captain, 25 Nov
+ * Who it is, and no more: the row's PARTNER tag and its own place outside
+ * the squares show the rest (the captain, 25 Nov
  * 2026: no advice lines).
  */
 export function partnerPlaceLine(name: string): string {
-  return `${name.toUpperCase()} is your partner. It never leaves your side.`;
+  return `${name.toUpperCase()} is your partner.`;
 }
 
 /** A ball of any kind, as the battle's BALL command counts one (`carriedBalls`). */

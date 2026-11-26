@@ -40,11 +40,10 @@ export interface FriendRoomScreen {
 /** What the screen says about everybody else in the room, as the room's channel has them. */
 export function friendStatusLine(
   friends: readonly { readonly name: string; readonly place: RaidPlace }[],
-  code: string,
   mapName: string,
 ): string {
   if (friends.length === 0) {
-    return `Nobody else is in yet. Your friends type ${code} under Raid with a friend.`;
+    return 'Nobody else is in yet.';
   }
   const each = friends
     .map((friend) => (friend.place === 'lab' ? `${friend.name} is getting ready.` : `${friend.name} is already on ${mapName}.`))

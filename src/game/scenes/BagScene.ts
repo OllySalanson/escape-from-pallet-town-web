@@ -535,9 +535,8 @@ export class BagScene extends Phaser.Scene {
       return '';
     }
     return pixelWindow(
-      // Its icon and its name, and the one sentence: the heading already says it
-      // comes home, so a SAFE tag beside the name said it a third time and ran
-      // into a long name in a narrow column.
+      // Its icon and its name: the heading already says it comes home, so a
+      // sentence or a SAFE tag beside the name only said it again.
       `<div class="px-list"><div class="px-row has-icon is-secured is-partner-place pack-partner">${pixelMonIcon(partner)}<span class="px-row-main"><span class="px-row-line">${pixelPokemonName(partner)}</span></span></div></div>`,
       { className: 'partner-place-window', heading: 'Partner', note: 'comes home' },
     );

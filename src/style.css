@@ -6213,19 +6213,13 @@ body.touch-play .feedback-tab {
   display: grid;
   gap: var(--u);
 }
-/* The pack's partner: its icon and its name on one line, and the sentence
-   across under both - beside a 32-pixel icon in the narrow column of an 800x600
-   sheet it broke a letter at a time. */
+/* The pack's partner: its icon and its name on one line. */
 :where(.pixel-ui) .px-row.pack-partner {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
 }
 :where(.pixel-ui) .px-row.pack-partner > .px-row-main {
   display: contents;
-}
-:where(.pixel-ui) .px-row.pack-partner > .px-row-main > small {
-  grid-column: 1 / -1;
-  grid-row: 2;
 }
 
 /* The raid PARTY's dossier, and the bench's, in a side column or a tight room

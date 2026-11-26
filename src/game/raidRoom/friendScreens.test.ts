@@ -108,7 +108,7 @@ describe('the lab’s raid-with-a-friend screen', () => {
     const html = friendRoomView({
       ...base,
       room: { code: 'BHRK', mapName: 'Floodplain Relay', hostName: 'ASH' },
-      friendLine: friendStatusLine([{ name: 'ASH', place: 'lab' }], 'BHRK', 'Floodplain Relay'),
+      friendLine: friendStatusLine([{ name: 'ASH', place: 'lab' }], 'Floodplain Relay'),
     });
     expect(html).toContain('BHRK');
     expect(html).toContain('ASH’s room');
@@ -119,9 +119,9 @@ describe('the lab’s raid-with-a-friend screen', () => {
   });
 
   it('says who else is in the room held', () => {
-    expect(friendStatusLine([], 'BHRK', 'Route 1')).toContain('type BHRK');
-    expect(friendStatusLine([{ name: 'ASH', place: 'map:route-1' }], 'BHRK', 'Route 1')).toBe('ASH is already on Route 1.');
+    expect(friendStatusLine([], 'Route 1')).toBe('Nobody else is in yet.');
+    expect(friendStatusLine([{ name: 'ASH', place: 'map:route-1' }], 'Route 1')).toBe('ASH is already on Route 1.');
     const three = ['ASH', 'BEA', 'CY'].map((name) => ({ name, place: 'lab' as const }));
-    expect(friendStatusLine(three, 'BHRK', 'Route 1')).toBe('ASH is getting ready. BEA is getting ready. CY is getting ready. The room is full.');
+    expect(friendStatusLine(three, 'Route 1')).toBe('ASH is getting ready. BEA is getting ready. CY is getting ready. The room is full.');
   });
 });

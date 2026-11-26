@@ -6,7 +6,7 @@ game fashion, not just AI lines slapped on." The rule is
 `docs/ai-feel/no-advice-lines.md`.
 
 Each pair is `<screen>-before.png` (main) and `<screen>-after.png` (this
-change), at 1280x800 against a test-mode build. `rack`, `locker`, `bag` and
+change), at 1280x800 against a test-mode build. `lobby` (the bench), `rack`, `locker`, `bag` and
 `boutique` are `node tools/playtest/menuShots.mjs <build url> <dir>
 --window=1280x800 --raid`; `friend-room` is `node adviceShots.mjs <build url>
 <dir> --friend` (beside this file).
@@ -17,7 +17,9 @@ change), at 1280x800 against a test-mode build. `rack`, `locker`, `bag` and
 |---|---|---|
 | Armoury rack, under the pack | "N supplies packed. Lost on a wipe unless they are in the locker. The RAID PACK is lost on a wipe either way." | nothing; a warning still shows when there is one |
 | The locker, under it | "Everything else you take is lost on a wipe." | nothing |
-| The locker, the partner's row (help bar and when pressed) | "BULBASAUR is your partner, so it has a place of its own: a wipe never takes your partner, and it needs no room in THE LOCKER." | "BULBASAUR is your partner. It never leaves your side." |
+| The locker, the partner's row (help bar and when pressed) | "BULBASAUR is your partner, so it has a place of its own: a wipe never takes your partner, and it needs no room in THE LOCKER." | "BULBASAUR is your partner." |
+| The bench, its AT BASE note | "1 hurt · treat them first" / "2 fainted · see Nurse Joy" | "1 hurt" / "2 fainted" |
+| The bench, every Pokémon's help bar | "...on the bench. Your partner: a wipe never takes it." / "...on the bench. Lost on a wipe unless it is in the locker." | "Put BULBASAUR on the bench." |
 | Jump-in card, first job | "More ways in open up when you bring this job home." | nothing |
 | Jump-in card, a friend's room | "Your room CODE · you each raid MAP on your own clock" | "Your room CODE · MAP" |
 | Oak's wall map | "No boss beaten here yet. Beat one and their sign goes up." | "No boss beaten here yet." |
@@ -37,6 +39,8 @@ change), at 1280x800 against a test-mode build. `rack`, `locker`, `bag` and
 | Wardrobe, foot of the list | "N more on the shelves of THE HARBOUR BOUTIQUE, on THE DOCKS, and a few that only turn up on raids." | nothing |
 | Boutique and wardrobe bar | "Everything in the mirror is yours. Put it on and walk out in it." / "Try something on from the shelves: it shows in the mirror first." | nothing |
 | Raid with a friend | the TOGETHER, APART box: "Up to four of you on one map, each with your own team, pack and clock. The loot goes to whoever steps on it first, one hunter chases you all, and a keeper one of you beats opens his doors for everyone. Leave by any exit alone." | gone |
+| Raid with a friend, waiting | "Nobody else is in yet. Your friends type CODE under Raid with a friend." | "Nobody else is in yet." |
+| Favours, someone to ask | "At OAK'S LAB. Look for the !" | "At OAK'S LAB." |
 | Raid with a friend, join | "Four letters, read out by whoever made the room." | gone (the field says CODE) |
 | Raid with a friend, your room | "Read this code to up to three friends. The raid is on MAP." and "Get ready at the RAID ARENA, west of the yard, as for any raid. You jump in when you are ready, not together." | gone; a guest still reads "You are in ASH's room." |
 | Pokémon Jump | "Only some kinds can jump: RATTATA, ODDISH, PSYDUCK, PIKACHU and the like." under CAN'T JUMP | gone from the list (still the answer when a grounded row is pointed at) |

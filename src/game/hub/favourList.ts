@@ -104,7 +104,7 @@ function rowLine(entry: FavourEntry): string {
     case 'in-hand':
       return `In ${errandWhere(errand)}. ${squares} ${squares === 1 ? 'square' : 'squares'} of your pack.`;
     case 'ask':
-      return `At ${favourGiverWhere(errand)}. Look for the !`;
+      return `At ${favourGiverWhere(errand)}.`;
     case 'ask-later':
       return `At ${favourGiverWhere(errand)}. You said not now.`;
     case 'done':

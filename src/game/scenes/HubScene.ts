@@ -2062,7 +2062,7 @@ export class HubScene extends Phaser.Scene {
     const mapName = room ? worldMapName(room.mapId) : '';
     return friendRoomView({
       room: room ? { code: room.code, mapName, hostName: room.hostName } : null,
-      friendLine: room ? friendStatusLine(friendRoom()?.friends() ?? [], room.code, mapName) : '',
+      friendLine: room ? friendStatusLine(friendRoom()?.friends() ?? [], mapName) : '',
       maps: this.roomMaps,
       name: raidName(),
       busy: this.roomBusy,
@@ -2183,7 +2183,7 @@ export class HubScene extends Phaser.Scene {
     const room = this.heldRoom;
     const line = this.overlay?.root.querySelector<HTMLElement>('[data-room-friend]');
     if (room && line) {
-      const said = friendStatusLine(rooms.friends(), room.code, worldMapName(room.mapId));
+      const said = friendStatusLine(rooms.friends(), worldMapName(room.mapId));
       if (line.textContent !== said) {
         line.textContent = said;
       }
@@ -2720,13 +2720,13 @@ export class HubScene extends Phaser.Scene {
     const party = this.flow.party;
     const single = this.stashPokemon.length === 1;
     const nobodyStanding = this.stashPokemon.length > 0 && this.stashPokemon.every((stored) => stored.pokemon.isFainted);
-    // A faint is not a hurt: medicine cannot revive, so "treat them first"
-    // over a fainted partner pointed at Potion chips that refuse it.
+    // A faint is not a hurt, so the two are counted apart: the counts are the
+    // facts, and what to do about them is the player's to see.
     const faintedCount = this.injuredPokemon.filter((stored) => stored.pokemon.isFainted).length;
     const hurtCount = this.injuredPokemon.length - faintedCount;
     const stashNote = faintedCount === 0
-      ? hurtCount ? `${hurtCount} hurt · treat them first` : ''
-      : hurtCount ? `${faintedCount} fainted · ${hurtCount} hurt` : `${faintedCount} fainted · see Nurse Joy`;
+      ? hurtCount ? `${hurtCount} hurt` : ''
+      : hurtCount ? `${faintedCount} fainted · ${hurtCount} hurt` : `${faintedCount} fainted`;
     const summary = party.length === 0
       ? nobodyStanding ? 'Nobody fit to go.' : 'Nobody on the bench yet.'
       : party.map((stored) => stored.pokemon.name).join(', ');
@@ -2748,10 +2748,6 @@ export class HubScene extends Phaser.Scene {
         : pixelEmptyPartySlot();
     }).join('');
     const atBase = this.findablePokemon.filter((stored) => !this.flow.includesPokemon(stored.id));
-    // The partner is never lost on a wipe, and saying it was contradicted every
-    // other screen: a friend with only their starter read "Lost on a wipe unless
-    // it is in the locker" over it (persona playtest, 23 Nov 2026).
-    const partnerId = this.savedGame.stash.partnerId();
     const pokemonRows = atBase
       .map((stored, index) => {
         const name = escapeAttribute(stored.pokemon.name);
@@ -2763,7 +2759,7 @@ export class HubScene extends Phaser.Scene {
         const full = party.length >= MAX_RUN_PARTY;
         const boxed = boxNames[this.stash.boxIndexOf(stored.id)] ?? '';
         return pixelMonTile(stored.pokemon, {
-          attributes: `data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 && party.length === 0 ? ' data-cursor-start' : ''}${fainted || full ? ' aria-disabled="true"' : ''} data-box-name="${escapeAttribute(boxed)}" aria-label="${escapeAttribute(`${stored.pokemon.name}, level ${stored.pokemon.level}, ${boxed}`)}" data-help="${fainted ? faintedRefusal(name, single) : full ? `The bench is full (${MAX_RUN_PARTY}). Take somebody off first.` : `Put ${name}${single ? ', your only Pokémon,' : ''} on the bench. ${stored.id === partnerId ? 'Your partner: a wipe never takes it.' : 'Lost on a wipe unless it is in the locker.'}`}"`,
+          attributes: `data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 && party.length === 0 ? ' data-cursor-start' : ''}${fainted || full ? ' aria-disabled="true"' : ''} data-box-name="${escapeAttribute(boxed)}" aria-label="${escapeAttribute(`${stored.pokemon.name}, level ${stored.pokemon.level}, ${boxed}`)}" data-help="${fainted ? faintedRefusal(name, single) : full ? `The bench is full (${MAX_RUN_PARTY}). Take somebody off first.` : `Put ${name}${single ? ', your only Pokémon,' : ''} on the bench.`}"`,
         });
       })
       .join('');
