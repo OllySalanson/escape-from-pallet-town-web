@@ -285,6 +285,7 @@ import type { BattleSceneData } from './BattleScene';
 import { PokemonParty } from '../pokemon';
 import type { DeploymentFlow } from '../hub/deploymentFlow';
 import { hunterRival, type HunterRival, type HunterRivalId } from '../world/hunters';
+import { roomPeopleSeen } from '../base/roomPeople';
 import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID, getItemById, isFoundOnly, itemCountTag, type ItemId, type PackItemId } from '../items/items';
 import { FALLBACK_PACK_ID, STARTING_PACK_ID, bestPackIn, packSquares } from '../items/packs';
 import { COIN_EVERY_MS, COIN_HINT_AFTER_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIGHT_MS, PIT_GIFT_TILE, giftAt, giftLines, giftWaiting, type PitGift } from '../base/pitCoins';
@@ -1153,8 +1154,17 @@ export class BaseScene extends Phaser.Scene {
         // The harbour's own people and Pokémon out of doors: the SAILOR, the
         // GYM GUIDE and the rest give errands and the chart's leads, and the AI
         // playtester could not see a single one of them (scenario loop, 23 Nov 2026).
+        // In a room: its keeper and people, and the hall's rival and gym leaders.
         people: room
-          ? []
+          ? roomPeopleSeen(
+              {
+                keeper: room.room.keeper,
+                people: room.people ?? [],
+                rival: this.rivalHere ? { name: this.rivalHere.name, tile: this.rivalAt } : null,
+                leaders: this.leadersHere ?? [],
+              },
+              onScreen,
+            )
           : (this.harbourLife?.present() ?? [])
               .filter((figure) => onScreen(figure.tile))
               .map((figure) => ({
