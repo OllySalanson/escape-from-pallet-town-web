@@ -8,7 +8,8 @@ vi.mock('phaser', () => ({
   },
 }));
 
-import { Bag, ITEM_DEFINITIONS } from '../items';
+import { Bag, ITEM_DEFINITIONS, MATERIAL_IDS } from '../items';
+import { itemIconName } from '../ui/icons';
 import {
   BULBASAUR,
   CHARIZARD,
@@ -1695,11 +1696,27 @@ describe('what the base screen leads with', () => {
     expect(units).toBeGreaterThan(kinds);
     const aside = (markup: string) => /class="px-title-aside">([^<]*)</.exec(markup)?.[1];
 
-    hub.setView('workshop');
+    // A screen with no number of its own to lead with: the friend room.
+    (hub as unknown as { setView(view: string): void }).setView('friend');
     expect(aside(markupOf(hub))).toBe(`1 Pokémon · ${kinds} kinds of item`);
     // The boxes' own pane says the same number in the same word.
     hub.setView('stash');
     expect(markupOf(hub)).toContain(`${kinds} kinds`);
+  });
+
+  it("says in Brock's title bar what his parts come to at base, each by its picture", () => {
+    const hub = createFreshHub();
+    hub.setView('workshop');
+    const aside = /class="px-title-aside">([\s\S]*?)<\/div>/.exec(markupOf(hub))?.[1] ?? '';
+    const parts = MATERIAL_IDS.filter((itemId) => hub.stash.itemCount(itemId) > 0);
+    if (parts.length === 0) {
+      expect(aside).toBe('No parts yet');
+    } else {
+      expect(aside.startsWith('Parts ')).toBe(true);
+      for (const itemId of parts) {
+        expect(aside).toContain(`${itemIconName(itemId)}.png`);
+      }
+    }
   });
 
   it('keeps the swap offer, in the stash beside the Pokémon it would trade away', () => {
@@ -2351,12 +2368,18 @@ describe('Brock', () => {
     const lockerOne = ladder.slice(ladder.indexOf('data-outfit="secure-locker-1"'), ladder.indexOf('data-outfit="secure-locker-2"'));
     expect(lockerOne).toMatch(/<span class="workshop-cost"><span class="item-icon"><img src="[^"]*parts-crate\.png"[^]*?<small>×4<\/small>/);
     expect(ladder).not.toContain('Pokémon</small>');
-    // One mooring rope cannot pay the four the second locker asks: crossed and red.
+    // A part the base cannot pay is crossed and grey, on whichever card asks it.
+    expect(ladder).toMatch(/<span class="workshop-cost is-short"><span class="cost-mark" aria-hidden="true"><\/span><span class="item-icon"><img src="[^"]*\.png"[^]*?<small>×\d+<\/small>/);
+    // The second locker waits on the first, and its card says so with a lock
+    // where its price would be: its price is in the card on the right.
     const lockerTwo = ladder.slice(ladder.indexOf('data-outfit="secure-locker-2"'));
-    expect(lockerTwo).toMatch(/<span class="workshop-cost is-short"><span class="cost-mark" aria-hidden="true"><\/span><span class="item-icon"><img src="[^"]*mooring-rope\.png"[^]*?<small>×4<\/small>/);
-    // The heading names the drawn cross, never the colour (playtest 40 #4).
+    const lockerTwoCard = lockerTwo.slice(0, lockerTwo.indexOf('</button>'));
+    expect(lockerTwoCard).toContain('aria-label="After Secure locker I"');
+    expect(lockerTwoCard).toMatch(/padlock\.png[^]*?Locker I<\/span>/);
+    // Short is a drawn cross on the tag as well as grey, never colour alone
+    // (playtest 40 #4), so the row needs no legend strip over it.
     expect(ladder).not.toContain('Red is not yet spare');
-    expect(ladder).toContain('<span class="cost-mark" aria-hidden="true"></span>Not yet spare at base</small>');
+    expect(ladder).toMatch(/class="workshop-cost is-short"><span class="cost-mark" aria-hidden="true"><\/span>/);
     // A rung that cannot be built is still a control, so the cursor can reach it
     // and the pane under the list can say what it does.
     expect(ladder).toMatch(/data-outfit="secure-locker-1"(?![^>]*aria-disabled)[^>]* data-shows/);
@@ -2394,33 +2417,44 @@ describe('Brock', () => {
     expect(built).not.toContain('is-short');
   });
 
-  it('prices the pointed-at rung against what this base actually holds', () => {
+  it('prices the pointed-at build against what this base actually holds, as part tags', () => {
     const { hub } = createWorkshopHub();
 
     hub.setView('workshop');
     const ladder = markupOf(hub);
-    const pane = ladder.slice(ladder.indexOf('data-shown-by="secure-locker-2"'));
+    const paneOf = (id: string): string => {
+      // The card on the right, not the gold ring over the room, which answers to the same id.
+      const from = ladder.slice(ladder.indexOf(`shop-card" data-shown-by="${id}"`));
+      return from.slice(0, from.indexOf('shop-card" data-shown-by=', 1));
+    };
 
-    // What it does, before anything is bought.
-    expect(pane).toContain('A second protected Pokémon, and the room for it.');
-    // The price, each part against what the vault can actually spend on it.
-    expect(pane).toContain('4× Parts crate');
-    expect(pane).toContain('5 spare at base');
-    expect(pane).toContain('4× Mooring rope');
-    expect(pane).toContain('1 spare at base');
-    expect(pane).not.toContain('you can release');
-    // And the door it is behind, by name.
-    expect(pane).toContain('Built only after Secure locker I');
+    // Four parts crates asked, five spare: a green tag, and ALL HERE.
+    const lockerOne = paneOf('secure-locker-1');
+    expect(lockerOne).toMatch(/<span class="part-tag"><span class="item-icon"><img src="[^"]*parts-crate\.png"[^]*?<small>×4<\/small>/);
+    expect(lockerOne).toContain('All here');
+    expect(lockerOne).toContain('Build it');
+    // What it does in a raid, as a picture of THE LOCKER's squares.
+    expect(lockerOne).toContain('In a raid');
+    expect(lockerOne).toContain('ws-squares');
+    // The second waits on the first, and says so by name with a lock.
+    expect(paneOf('secure-locker-2')).toContain('After Secure locker I');
+    expect(paneOf('secure-locker-2')).not.toContain('Build it');
   });
 
-  it('says what a rung still needs rather than leaving it to be worked out', () => {
+  it('shows what a build still needs as grey tags, and offers no key to build it', () => {
     const { hub } = createWorkshopHub();
 
     hub.setView('workshop');
-    const pane = markupOf(hub).slice(markupOf(hub).indexOf('data-shown-by="beacon"'));
+    const markup = markupOf(hub);
+    const from = markup.slice(markup.indexOf('shop-card" data-shown-by="beacon"'));
+    const pane = from.slice(0, from.indexOf('shop-card" data-shown-by=', 1));
 
-    // No lamp oil and no cable at all.
-    expect(pane).toContain('<span class="px-wrap px-warning">Beacon still needs 4 Lamp oils and 3 Cable coils.</span>');
+    // No lamp oil and no cable at all: both crossed and grey, and the head says SHORT.
+    expect(pane).toMatch(/<span class="part-tag is-short"><span class="cost-mark" aria-hidden="true"><\/span><span class="item-icon"><img src="[^"]*lamp-oil\.png"[^]*?<small>×4<\/small>/);
+    expect(pane).toMatch(/<span class="part-tag is-short">[^]*?cable-coil\.png[^]*?<small>×3<\/small>/);
+    expect(pane).toContain('<span>Short</span>');
+    expect(pane).not.toContain('All here');
+    expect(pane).not.toContain('Build it');
   });
 
   it('names the materials it is spending, and asks before it spends them', () => {
@@ -2729,14 +2763,16 @@ describe('HubScene - Bill', () => {
     hub.setView('trader');
     const boat = markupOf(hub);
 
-    expect(boat).toContain('For sale');
-    expect(boat).toContain('Out of the hold');
+    expect(boat).toContain('For money');
+    expect(boat).toContain('For parts');
     expect(boat).toContain('No money buys these');
-    // The shelf prices in money; the table prices in found goods.
+    // The shelf prices in money, on a gold tag; the table prices in found
+    // goods, each part a tag with its picture and how many.
     expect(boat).toContain('data-buy="potion"');
-    expect(boat).toContain('₽120');
+    expect(boat).toContain('<span class="price-tag">₽120</span>');
     expect(boat).toContain('data-barter="barter-quick-claw"');
-    expect(boat).toContain('<small>2× Parts crate</small><small>1× Cable coil</small>');
+    const quickClaw = boat.slice(boat.indexOf('data-barter="barter-quick-claw"'));
+    expect(quickClaw.slice(0, quickClaw.indexOf('</button>'))).toMatch(/parts-crate\.png[^]*?<small>×2<\/small>[^]*?cable-coil\.png[^]*?<small>×1<\/small>/);
     // Nothing on the shelf is gear, at any standing.
     expect(boat).not.toContain('data-buy="quick-claw"');
     expect(boat).not.toContain('data-buy="leftovers"');
@@ -2747,8 +2783,10 @@ describe('HubScene - Bill', () => {
     hub.setView('trader');
     const boat = markupOf(hub);
 
-    expect(boat).toContain('Standing · ');
-    expect(boat).toContain(' points · ');
+    // His standing, by name, and how far it is to the next as a bar and a count.
+    expect(boat).toMatch(/<span class="trader-rank">(Stranger|Regular|Trusted|Partner)<\/span>/);
+    expect(boat).toContain('class="trader-trust-bar"');
+    expect(boat).toMatch(/\d+ \/ \d+<span class="trader-trust-to"><\/span>(Regular|Trusted|Partner)/);
     // What raises it, as the three prices rather than a paragraph about them -
     // and only while there is a tier left to raise it to.
     expect(boat).toContain('Bank a job +2, beat a boss +3, spend ₽200 +1.');
@@ -2786,9 +2824,10 @@ describe('HubScene - Bill', () => {
     const boat = markupOf(hub);
 
     expect(boat).toContain('data-berth');
-    // The price is the row's own price column, as every price on the two
-    // shelves now is; the row's line is kept for what the berth *does*.
-    expect(boat).toContain('<span class="px-price"><small>₽250</small></span>');
+    // The price is the card's own gold tag, as every money price on the shelf
+    // is; the card says THIS RAID, and its pane what the berth *does*.
+    expect(boat).toContain('<span class="price-tag">₽250</span>');
+    expect(boat).toContain('<span class="trader-limit">This raid</span>');
     // The one sentence that tells the two places apart, on the row itself.
     // The squares come from the grid rather than a number typed beside it.
     expect(boat).toMatch(/\+\d+ safe squares, this raid\./);
@@ -2808,9 +2847,11 @@ describe('HubScene - Bill', () => {
     hub.setView('trader');
     const boat = markupOf(hub);
 
-    // The shelf: what a Potion does, and its price beside it.
-    expect(boat).toContain('<strong class="px-name">Potion</strong><small class="px-wrap">Restores 20 HP.</small>');
-    expect(boat).toContain('<span class="px-price"><small>₽120</small></span>');
+    // The shelf: a Potion's card is its picture, name and price; what it does
+    // is the card on the right, which answers for the card the cursor is on.
+    expect(boat).toContain('<strong class="px-name">Potion</strong><span class="price-tag">₽120</span>');
+    const potion = boat.slice(boat.indexOf('data-shown-by="potion"'));
+    expect(potion.slice(0, potion.indexOf('data-shown-by=', 1))).toContain('Restores 20 HP.');
     // The table: what the gear does, from the item's own catalogue line.
     expect(boat).toContain('Sometimes the holder strikes first, whatever the Speed says.');
     expect(boat).toContain("The holder's hits land a third harder and cost it a tenth of its own HP.");
@@ -2820,25 +2861,34 @@ describe('HubScene - Bill', () => {
     const { hub } = createTraderHub(200);
     hub.setView('trader');
     const boat = markupOf(hub);
+    const paneOf = (id: string): string => {
+      const from = boat.slice(boat.indexOf(`data-shown-by="${id}"`));
+      return from.slice(0, from.indexOf('data-shown-by=', 1));
+    };
 
-    const shelf = boat.slice(boat.indexOf('data-shown-by="super-potion"'));
-    // ₽260 against ₽200 held, so the held half is the one written in red.
-    expect(shelf).toContain('<div class="is-short"><dt>');
-    expect(shelf).toContain('<dd><span class="cost-mark" aria-hidden="true"></span>₽200 in YOUR THINGS</dd>');
-    expect(shelf).toContain('<dt><span class="shop-price-nib" aria-hidden="true"></span><span>1 of his ration</span></dt>');
+    // ₽260 against ₽200 held: the purse line runs out, and says so in red.
+    expect(paneOf('super-potion')).toMatch(/<span>₽200<\/span><span class="shop-arrow"><\/span><strong class="is-short">₽0<\/strong>/);
+    // A Potion at ₽120 leaves ₽80, written as the number the purse will roll down to.
+    expect(paneOf('potion')).toMatch(/<span>₽200<\/span><span class="shop-arrow"><\/span><strong class="">₽80<\/strong>/);
 
-    const table = boat.slice(boat.indexOf('data-shown-by="barter-hm03"'));
-    expect(table).toContain('2× Mooring rope');
-    expect(table).toContain('<dd>2 in YOUR THINGS</dd>');
+    // Two mooring ropes asked, two held: a green tag and ALL HERE.
+    const table = paneOf('barter-hm03');
+    expect(table).toMatch(/<span class="part-tag"><span class="item-icon"><img src="[^"]*mooring-rope\.png"[^]*?<small>×2<\/small>/);
+    expect(table).toContain('All here');
   });
 
   it('names the standing a shut deal is waiting on rather than only shutting it', () => {
     const { hub } = createTraderHub();
     hub.setView('trader');
     const boat = markupOf(hub);
-    const pane = boat.slice(boat.indexOf('data-shown-by="barter-life-orb"'));
+    const from = boat.slice(boat.indexOf('data-shown-by="barter-life-orb"'));
+    const pane = from.slice(0, from.indexOf('shop-card" data-shown-by=', 1));
 
-    expect(pane).toContain('<span class="px-wrap px-warning">He keeps that back until you are a partner.</span>');
+    // The padlock and the standing it waits for, where ALL HERE would stand -
+    // never both - and the help bar has his words for it.
+    expect(pane).toMatch(/<span class="trader-lock"><span class="item-icon"><img src="[^"]*padlock\.png"[^]*?Partner<\/span>/);
+    expect(pane).not.toContain('All here');
+    expect(boat).toContain('data-help="He keeps that back until you are a partner."');
   });
 
   /**
@@ -3013,7 +3063,7 @@ describe('HubScene - Bill', () => {
     expect(boat).toContain('data-barter="barter-quick-claw"');
   });
 
-  it('says a struck deal is paid in its price column, once, beside the TRADED tag', () => {
+  it('says a struck deal is traded on its card, once, in place of its parts', () => {
     const { storage } = createTraderHub();
     const save = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: { traderBarters?: string[] } };
     save.raidProgress.traderBarters = ['barter-quick-claw'];
@@ -3026,7 +3076,8 @@ describe('HubScene - Bill', () => {
       boat.slice(boat.indexOf('data-shows="barter-quick-claw"') - 400),
     )![0];
 
-    expect(row).toContain('<span class="px-price is-paid"><small>Paid</small></span>');
+    expect(row).toContain('is-secured');
+    expect(row).not.toContain('part-tag');
     expect(row.match(/Traded/gi)).toHaveLength(1);
   });
 

@@ -114,3 +114,43 @@ export function drawFixture(
     }
   }
 }
+
+/** How tall a build's picture may be on its card, in game pixels. */
+export const FIXTURE_CARD_HEIGHT = 48;
+
+/**
+ * What a fixture's size is divided by to stand whole in a card's picture box:
+ * one where it fits, else the smallest whole number that makes it fit - the
+ * beacon at half, the mast at a third.
+ */
+export function fixtureDivisor(art: Pick<FixtureArt, 'height'>): number {
+  return Math.max(1, Math.ceil(art.height / FIXTURE_CARD_HEIGHT));
+}
+
+/**
+ * The fixture made smaller by a whole number: painted whole, then one pixel in
+ * every `divisor` kept, so a tall machine fits its card with nothing cut and
+ * every pixel still on the grid. Never smoothed.
+ */
+export function drawFixtureScaled(
+  canvas: HTMLCanvasElement,
+  art: FixtureArt,
+  image: (textureKey: string) => CanvasImageSource | undefined,
+  divisor: number,
+): void {
+  if (divisor <= 1) {
+    drawFixture(canvas, art, image);
+    return;
+  }
+  const full = document.createElement('canvas');
+  drawFixture(full, art, image);
+  canvas.width = Math.ceil(art.width / divisor);
+  canvas.height = Math.ceil(art.height / divisor);
+  const context = canvas.getContext('2d');
+  if (!context) {
+    return;
+  }
+  context.imageSmoothingEnabled = false;
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(full, 0, 0, art.width, art.height, 0, 0, canvas.width, canvas.height);
+}
