@@ -79,6 +79,8 @@ import { audioManager } from '../audio/AudioManager';
 
 /** The width the stub reports for "▶ ", which is how far every row is moved right. */
 const CURSOR_GUTTER = 10;
+/** A bag card's picture and the room after it: the cursor stands before the picture, not the name. */
+const BAG_ICON_ROOM = 18;
 
 const cursors = new WeakMap<RenderedText[], { cursor: RenderedText; after: number }[]>();
 const cursorsOf = (texts: RenderedText[]): { cursor: RenderedText; after: number }[] => {
@@ -101,7 +103,7 @@ const read = (texts: RenderedText[]): RenderedText[] =>
     }
     const own = cursorsOf(texts).find(({ after }) => after > index)?.cursor;
     const home = text.x - CURSOR_GUTTER;
-    const chosen = own !== undefined && own.visible && own.x === home && own.y === text.y;
+    const chosen = own !== undefined && own.visible && (own.x === home || own.x === home - BAG_ICON_ROOM) && own.y === text.y;
     return { ...text, x: home, text: `${chosen ? '▶ ' : '  '}${text.text}` };
   });
 
@@ -1031,6 +1033,11 @@ describe('using an item in a battle', () => {
       '  ORAN BERRY x1',
     ]);
     expect(renderedTexts.slice(beforeList).some(({ text }) => text.startsWith('Page 1 of 2'))).toBe(true);
+    // Each row is a card with its item's picture beside the name (the round-3 look's bag in a fight).
+    const pictures = (scene as unknown as { add: { image: { mock: { calls: unknown[][] } } } }).add.image.mock.calls.map((call) => call[2]);
+    for (const id of ['potion', 'super-potion', 'antidote', 'oran-berry']) {
+      expect(pictures).toContain(iconTextureKey(itemIconName(id)));
+    }
 
     battle.moveSelection('down');
     const beforePage = renderedTexts.length;
