@@ -44,9 +44,9 @@ export const SURVEY_RADIUS = 3;
  *
  * Eight grounds and three darks. The grounds are the sheet's own family of
  * greens, tans and stone so the picture reads as the map it is of; the darks
- * are the menus' backdrop blue taken down in three steps, so the unexplored
- * part of a map reads as part of the screen it is on rather than as a hole
- * punched in it.
+ * are the menus' ink taken down in three steps (the round-3 look: no navy in a
+ * menu), so the unexplored part of a map reads as part of the screen it is on
+ * rather than as a hole punched in it. Water alone keeps a colour in the dark.
  */
 export const MINIMAP_PALETTE: Readonly<Record<MinimapChar, string>> = {
   // -- ground, in the map's own characters ---------------------------------
@@ -66,12 +66,12 @@ export const MINIMAP_PALETTE: Readonly<Record<MinimapChar, string>> = {
   // a river and a coastline read through the dark as themselves. What is drawn
   // is a block of `HINT_BLOCK` tiles at a time, which is coarse enough that no
   // lane, door or clearing shows through it.
-  '0': '#2c4558', // open country nobody has walked
-  1: '#21374a', // broken ground
-  2: '#16232f', // wood, rock, wall
+  '0': '#463e40', // open country nobody has walked
+  1: '#352e30', // broken ground
+  2: '#221d1e', // wood, rock, wall
   3: '#1d3d5d', // shallows and banks
   4: '#22496f', // open water
-  '+': '#4a7b98', // the shore of what is known
+  '+': '#8c8486', // the shore of what is known
 
   // -- marks ---------------------------------------------------------------
   I: '#f0c454', // a way in you have
