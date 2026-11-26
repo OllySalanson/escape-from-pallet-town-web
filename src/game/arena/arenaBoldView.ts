@@ -242,7 +242,7 @@ export function rentalPoster(state: RentalPosterState): string {
   )}">Fight</button>`;
   const pays = state.scored
     ? `${RENTAL_WIN_TICKETS} a win · ${RENTAL_RUN_COMPLETE_TICKETS} more for all ${RUN_BOUTS}`
-    : 'Practice: today has paid';
+    : "Practice: only today's first run pays";
   return `<main class="px-body bold-arena is-rental"><div class="bold-burst"></div>${state.tabs}
     <section class="bold-hero">${heroes}
       <div class="bold-side-boxes">

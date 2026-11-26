@@ -222,3 +222,11 @@ describe('a rental bout is the bout the counter said it was', () => {
     expect(settled.dojo.rental?.run?.won).toBe(1);
   });
 });
+
+/** Two of seven pairs taught something false: Dig gains nothing from a sleeper, and Cloud Nine stopped the setter's own rain (the harbour critic tour). */
+describe("today's pair", () => {
+  it('pairs no Pokémon with a combo its own moves or ability undo', () => {
+    expect(RENTAL_PAIRS.map((pair) => pair.payoff)).not.toContain('psyduck');
+    expect(RENTAL_PAIRS.find((pair) => pair.setter === 'gastly')?.payoff).not.toBe('sandshrew');
+  });
+});

@@ -5,7 +5,9 @@ import {
   BLACK_BELTS,
   DOJO_CLASSES,
   DOJO_PRIZE_LEVEL,
+  beltFoe,
   dojoFoe,
+  fighterLines,
   foeParty,
   foeTrainer,
   headRefusal,
@@ -224,5 +226,23 @@ describe('the class ball and board', () => {
     expect(fresh.width).toBe(48);
     const great = classBoardPoster({ wins: 4, losses: 0, beaten: [], classId: 'great-ball', streak: ['bot:xkitx'] }, { width: 3, height: 2 });
     expect(Buffer.from(great.data).equals(Buffer.from(fresh.data))).toBe(false);
+  });
+});
+
+/** Six regulars read out one template, and the Black Belt spoke in rules (the harbour critic tour, 26 Nov 2026). */
+describe('what a fighter on the floor says', () => {
+  it('speaks in their own voice first, then names what they bring', () => {
+    const said = DOJO_REGULARS.map((regular) => fighterLines(regularFoe(regular, 'poke-ball'), undefined)[0]);
+    expect(new Set(said).size).toBe(said.length);
+    for (const [index, regular] of DOJO_REGULARS.entries()) {
+      expect(said[index]).toContain(regular.greeting);
+    }
+  });
+
+  it('has the Black Belt talk like one until the run is earned', () => {
+    const [head] = BLACK_BELTS;
+    const lines = fighterLines(beltFoe(head), undefined);
+    expect(lines[0]).toContain('straight wins');
+    expect(lines.join(' ')).not.toMatch(/only fights a run/);
   });
 });

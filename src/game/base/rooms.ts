@@ -34,7 +34,7 @@ import {
   DOJO_ROOM,
   dojoRegularsToday,
 } from '../arena/dojoCounter';
-import { beltFoe, classBoardLines, dojoClass, fighterLine, regularFoe } from '../arena/classes';
+import { beltFoe, classBoardLines, dojoClass, fighterLines, regularFoe } from '../arena/classes';
 import { classOf } from '../arena/dojoRecord';
 import { cupBoardLines, cupOfTheWeek } from '../arena/cups';
 import type { CastCharacterDesignId } from '../world/characterDesigns';
@@ -2155,13 +2155,13 @@ function drawBattleArena(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
       name: regular.bot.name,
       note: 'In the dojo today',
       tiles: [DOJO_FIGHTER_SPOTS[index].tile],
-      lines: [fighterLine(regularFoe(regular, cls.id), record)],
+      lines: fighterLines(regularFoe(regular, cls.id), record),
     })),
     {
       name: head.name,
       note: `Head of ${cls.name} class`,
       tiles: [DOJO_BELT_SPOT.tile],
-      lines: [fighterLine(head, record)],
+      lines: fighterLines(head, record),
     },
     {
       name: 'THE CLASS BOARD',

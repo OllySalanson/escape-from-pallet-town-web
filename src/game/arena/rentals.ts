@@ -69,12 +69,16 @@ export interface RentalPair {
 
 /** The combos a day's six always hold one of. */
 export const RENTAL_PAIRS: readonly RentalPair[] = [
-  { setter: 'gastly', payoff: 'sandshrew', why: 'GASTLY puts a foe to sleep; SANDSHREW digs in while it naps.' },
+  // Two pairs taught something false (the harbour critic tour, 26 Nov 2026):
+  // Dig gains nothing from a foe that is asleep, and PSYDUCK's Cloud Nine
+  // switched off POLIWHIRL's own rain. A sleeping foe is free hits for a slow
+  // hard hitter, and Dream Eater only lands on a sleeper.
+  { setter: 'gastly', payoff: 'cubone', why: 'GASTLY puts a foe to sleep; CUBONE swings at it while it naps.' },
   { setter: 'tauros', payoff: 'cubone', why: 'TAUROS’s Intimidate softens their hitters; CUBONE hits back hard.' },
   { setter: 'pikachu', payoff: 'raticate', why: 'PIKACHU paralyses; RATICATE bites first and hardest.' },
   { setter: 'ekans', payoff: 'growlithe', why: 'EKANS’s Glare stops them; GROWLITHE Takes Down the still target.' },
   { setter: 'venomoth', payoff: 'kadabra', why: 'VENOMOTH’s Stun Spore slows them; KADABRA picks them off.' },
-  { setter: 'poliwhirl', payoff: 'psyduck', why: 'POLIWHIRL calls the rain; PSYDUCK’s Cloud Nine shuts out a foe’s.' },
+  { setter: 'poliwhirl', payoff: 'gastly', why: 'POLIWHIRL’s Hypnosis puts a foe to sleep; GASTLY’s Dream Eater feeds on it.' },
   { setter: 'magneton', payoff: 'golbat', why: 'MAGNETON paralyses; GOLBAT confuses and bites.' },
 ];
 
