@@ -51,15 +51,25 @@ export function opponentsBody(regulars: readonly DojoFoe[], head: DojoFoe, recor
   }</strong></span><small>${escapeAttribute(foeTeamLine(head))}</small></span>${
     refusal ? pixelTag(`${run.length} of ${STREAK_TO_CHALLENGE}`, 'risk') : pixelTag('Ready', 'good', true)
   }</button>`;
+  // The cursor comes back to the last one fought only if a win there still
+  // counts: it started on a regular already IN RUN, and a second win there
+  // moved nothing (the harbour critic tour, 26 Nov 2026). Else the first who
+  // would make the run longer.
+  const startOn =
+    chosen !== null && !run.includes(chosen)
+      ? chosen
+      : refusal !== null || chosen !== null
+        ? (regulars.find((foe) => !run.includes(foe.id)) ?? regulars[0])?.id
+        : undefined;
   const rows = regulars
-    .map((foe, index) => {
+    .map((foe) => {
       const inRun = run.includes(foe.id);
       const beaten = record?.beaten.includes(foe.id) === true;
       const help = inRun
-        ? `${foe.name} is already in your run: beat somebody else to make it longer. ENTER to fight them anyway.`
+        ? `${foe.name} is already in your run: a win here does not count towards your BLACK BELT. ENTER to fight them anyway.`
         : `${foe.name} brings ${foeTeamLine(foe)}, all at Lv ${DOJO_LEVEL}. ENTER to fight them.`;
       return `<button class="px-row" data-opponent="${escapeAttribute(foe.id)}"${
-        chosen === foe.id || (chosen === null && refusal !== null && index === 0) ? ' data-cursor-start' : ''
+        startOn === foe.id ? ' data-cursor-start' : ''
       } data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${
         foe.name
       }</strong></span><small>${escapeAttribute(foeTeamLine(foe))}</small></span>${

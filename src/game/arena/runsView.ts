@@ -38,9 +38,10 @@ export function modesBody(record: DojoRecord | undefined, cup: Cup, now: Date): 
       : `${cls.name} class · run ${Math.min(streakOf(record).length, STREAK_TO_CHALLENGE)} of ${STREAK_TO_CHALLENGE}`;
   const rentalLine = live
     ? `Run going: ${live.won} of ${RUN_BOUTS}${live.scored ? '' : ' (practice)'} · ${teamWords(live.team)}`
-    : `Borrow three of today's six. ${nextRunScored(record?.rental, now) ? "Today's run pays." : 'Practice: today has paid.'}`;
+    : // Only the day's first run pays, won or lost: "today has paid" was said after a run that paid nothing (the harbour critic tour).
+      `Borrow three of today's six. ${nextRunScored(record?.rental, now) ? "Today's first run pays." : "Practice now: only today's first run pays."}`;
   const rows = [
-    row('class', 'CLASS BOUTS', classLine, pixelTag(cls.name, 'plain'), `Fight the regulars of your class, three in a row, then its Black Belt. ${DOJO_TEAM_SIZE} a side at Lv ${DOJO_LEVEL}.`, true),
+    row('class', 'CLASS BOUTS', classLine, pixelTag(cls.name, 'plain'), `Fight the regulars of your class, three in a row, then its BLACK BELT. Up to ${DOJO_TEAM_SIZE} a side at Lv ${DOJO_LEVEL}.`, true),
     row(
       'cup',
       cup.name,
@@ -60,7 +61,8 @@ export function modesBody(record: DojoRecord | undefined, cup: Cup, now: Date): 
   ].join('');
   return `<main class="px-body">${pixelWindow(`<div class="px-list px-scroll">${rows}</div>`, {
     heading: 'How will you fight?',
-    note: 'Lv 30 · no bag',
+    // Not "Lv 30": one week in seven the LITTLE CUP is at Lv 15 (`cups.ts`).
+    note: 'No bag · nothing lost',
   })}</main>`;
 }
 

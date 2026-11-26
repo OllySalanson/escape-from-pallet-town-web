@@ -151,7 +151,8 @@ export const CUPS: readonly Cup[] = [
     id: 'ground',
     name: 'GROUND CUP',
     rule: 'Every side brings a Ground type.',
-    teaches: 'Ground is the answer to the Power Station.',
+    // Not "the answer to the Power Station", a place a player one raid in has not heard of (the critic tour).
+    teaches: 'Ground is the answer to Electric types.',
     level: DOJO_LEVEL,
     sideProblem: (side) => (side.some((one) => typesOf(one).includes('Ground')) ? null : 'Bring a Ground type: every side needs one this week.'),
     teams: [

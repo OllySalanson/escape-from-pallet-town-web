@@ -408,11 +408,13 @@ function boutLine(foe: DojoFoe | undefined, won: boolean, settled: DojoSettlemen
   if (!settled) {
     return won ? `You beat ${who}!` : `${who} took that one.`;
   }
-  const paid = settled.tickets > 0 ? ` ${settled.tickets} tickets.` : '';
+  // Where they go, said with them: tickets were paid here and explained
+  // nowhere (the harbour critic tour, 26 Nov 2026).
+  const paid = settled.tickets > 0 ? ` ${settled.tickets} tickets, for the PRIZE WINDOW.` : '';
   if (!won) {
     return settled.runLost > 0
       ? `${who} took that one. Your run of ${settled.runLost} is over: start again.`
-      : `${who} took that one. Win three in a row to meet your Black Belt.`;
+      : `${who} took that one. Win three in a row to meet your BLACK BELT.`;
   }
   if (settled.promotedTo) {
     return `You beat ${who}! You are ${dojoClass(settled.promotedTo).name} class now.${paid}`;
@@ -438,11 +440,10 @@ export function receptionLines(record: DojoRecord | undefined): readonly string[
   const held = record ?? { wins: 0, losses: 0, beaten: [] };
   const cls = dojoClass(classOf(held));
   if (held.wins + held.losses === 0) {
+    // Two boxes: the door, the statues and the menu say the rest again (the harbour critic tour).
     return [
-      'Welcome to THE BATTLE ARENA! Bouts here are for sport.',
-      `Everybody fights at Lv ${DOJO_LEVEL}, yours and theirs. Up to three a side, no bag.`,
-      'Nothing you bring can be hurt or lost. Pick who to fight, then your team.',
-      `You start in ${cls.name} class. Win ${STREAK_TO_CHALLENGE} in a row and BLACK BELT ${cls.head.name} will fight you for the next.`,
+      `Welcome! Bouts here are for fun: everyone at Lv ${DOJO_LEVEL}, and nobody gets hurt or loses a thing.`,
+      `Beat ${STREAK_TO_CHALLENGE} regulars in a row and BLACK BELT ${cls.head.name} will fight you for the next class.`,
     ];
   }
   const run = streakOf(held).length;
@@ -455,14 +456,22 @@ export function receptionLines(record: DojoRecord | undefined): readonly string[
   return [`${held.wins} won, ${held.losses} lost. ${where}`];
 }
 
-/** The line a fighter says when faced: who they are, what they bring in this class, and how to fight them. */
-export function fighterLine(foe: DojoFoe, record: DojoRecord | undefined): string {
+/**
+ * What a fighter says when faced: their own voice first, then what they bring.
+ * Six regulars read out one template, a dojo of price tags, and the Black Belt
+ * spoke in the rules ("only fights a run of 3 wins in a row. You have 0"; the
+ * harbour critic tour, 26 Nov 2026). The run is on the class board.
+ */
+export function fighterLines(foe: DojoFoe, record: DojoRecord | undefined): readonly string[] {
   const beaten = record?.beaten.includes(foe.id) ? ' You have beaten them before.' : '';
   if (foe.belt) {
-    const refusal = headRefusal(record);
-    return `${foe.name}: ${foeTeamLine(foe)}.${beaten} ${refusal ?? 'He will fight you now. Ask at the counter.'}`;
+    const ready = headRefusal(record) === null;
+    return [
+      ready ? `${foe.name}: "${foe.greeting}"` : `${foe.name}: "${STREAK_TO_CHALLENGE} straight wins, kid. Then we talk."`,
+      `${foeTeamLine(foe)}.${beaten}${ready ? ' Ask at the counter.' : ''}`,
+    ];
   }
-  return `${foe.name} trains here: ${foeTeamLine(foe)}.${beaten} Ask at the counter for a bout.`;
+  return [`${foe.name}: "${foe.greeting}"`, `${foeTeamLine(foe)}.${beaten} Ask at the counter for a bout.`];
 }
 
 /** What the class board says when faced: the class, the run, and what is next. */
@@ -478,6 +487,6 @@ export function classBoardLines(record: DojoRecord | undefined): readonly string
     `${cls.name} class. ${Math.min(run, STREAK_TO_CHALLENGE)} of ${STREAK_TO_CHALLENGE} wins in a row, against different regulars.`,
     headWillFight(record)
       ? `BLACK BELT ${cls.head.name} will fight you now${next ? ` for ${next.name} class` : ''}.`
-      : `Then BLACK BELT ${cls.head.name}${next ? `, and ${next.name} class` : ''}. A loss only ends the run.`,
+      : `Then BLACK BELT ${cls.head.name}${next ? `, and ${next.name} class` : ''}. A loss ends the run, never your class.`,
   ];
 }
