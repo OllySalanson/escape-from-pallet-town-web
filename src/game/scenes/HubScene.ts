@@ -3263,7 +3263,9 @@ export class HubScene extends Phaser.Scene {
             const named = places.length === 1 ? places[0] : `${places[0]} and ${places.length - 1} more`;
             return told(
               `<span class="px-row-main"><strong>${named}</strong><small class="px-wrap">${shown}</small></span>`,
-              `${places.join(', ')}: ${living}. Found in the tall grass there${
+              // Not "in the tall grass": a cave's floor rolls on every step, and
+              // GREYSTONE CAVES has no grass at all (the harbour re-critic).
+              `${places.join(', ')}: ${living}. Met there in the wild${
                 briefing.night ? ', and it is night: some of it only comes out after dark' : ''
               }.`,
               ' px-tall',
