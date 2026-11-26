@@ -115,8 +115,19 @@ describe('the pixel-ui stylesheet', () => {
   });
 
   it('has one type size: hierarchy is caps, ink and position', () => {
-    const sizes = [...pixelUiRules.matchAll(/font-size:\s*([^;]+);/g)].map((match) => match[1]);
-    expect(new Set(sizes)).toEqual(new Set(['calc(var(--u) * 12.5)', 'inherit']));
+    // THE BATTLE ARENA's cup and rentals are the boutique's Big and Bold look,
+    // Champion Red (Olly's pick of 26 Nov 2026): the one place the face is drawn
+    // big, and then only at a whole multiple of the one size, so its stems stay
+    // whole pixels. Every other rule keeps the one size.
+    const rules = [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)];
+    const sizesWhere = (bold: boolean): string[] =>
+      rules
+        .filter(([, selector]) => /\.bold-/.test(selector) === bold)
+        .flatMap(([, , body]) => [...body.matchAll(/font-size:\s*([^;]+);/g)].map((match) => match[1]));
+    expect(new Set(sizesWhere(false))).toEqual(new Set(['calc(var(--u) * 12.5)', 'inherit']));
+    for (const size of sizesWhere(true)) {
+      expect(['calc(var(--u) * 25)', 'calc(var(--u) * 50)', 'inherit']).toContain(size);
+    }
   });
 
   it('draws square windows: no radius, no soft shadow', () => {

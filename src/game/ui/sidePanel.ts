@@ -43,6 +43,13 @@ export interface SidePanelView {
  * against the layer put SEND off the edge.
  */
 export function fitSidePanel(root: HTMLElement): SidePanelLayout {
+  // A page of a panel's that is drawn as a whole screen asks for it
+  // (`data-whole`): THE BATTLE ARENA's cup and rentals, in Champion Red.
+  if (root.hasAttribute('data-whole')) {
+    root.dataset.layout = 'sheet';
+    root.style.width = '';
+    return 'sheet';
+  }
   const layer = root.parentElement;
   const unit = Number.parseFloat(layer?.style.getPropertyValue('--px') ?? '') || 2;
   const box = layer?.getBoundingClientRect();

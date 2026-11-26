@@ -6,9 +6,11 @@ import { beltFoe, dojoClass, dojoFoe, headRefusal, regularFoe, type DojoFoe } fr
 import { classOf } from '../arena/dojoRecord';
 import { openingTeam, opponentsBody, teamBody } from '../arena/dojoCounterView';
 import { runPeriod, type DojoRun, type DojoRunMode } from '../arena/arenaRuns';
-import { cupFoe, cupOfTheWeek, cupRefusal, cupSideProblem, cupWeek } from '../arena/cups';
-import { liveRentalRun, rentalFoe, rentalTeamProblem, startsNewRun } from '../arena/rentals';
-import { cupBody, modesBody, openingCupTeam, rentalBody } from '../arena/runsView';
+import { CUP_RUN_BOUTS, cupFoe, cupOfTheWeek, cupRefusal, cupSideProblem, cupWeek } from '../arena/cups';
+import { liveRentalRun, nextRunScored, pairToday, rentalFoe, rentalsToday, rentalTeamProblem, startsNewRun } from '../arena/rentals';
+import { cupBody, modesBody, openingCupTeam } from '../arena/runsView';
+import { arenaTabs, cupPoster, rentalPoster, type ArenaFoe, type ArenaWay } from '../arena/arenaBoldView';
+import { dojoRegular } from '../arena/dojoCounter';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
 import type { Pokemon } from '../pokemon';
@@ -18,6 +20,8 @@ import { MenuOverlay } from '../ui/MenuOverlay';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { pixelScreen, pixelTag } from '../ui/pixelUi';
 import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
+import { composeLook, PIECE_HEIGHT, PIECE_WIDTH } from '../look/composeLook';
+import { wearablesAtlas } from '../look/lookTexture';
 
 /** What the counter hands back to the room: who to fight, and the vault's own Pokémon to copy for it. */
 export interface DojoChoice {
@@ -72,6 +76,10 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
   private swapTake: string | null = null;
   /** START AGAIN pressed: the run going is set aside, and today's six are offered. */
   private freshRun = false;
+  /** On the cup's page, choosing who goes from the boxes (the list), rather than the cup itself. */
+  private pickingCup = false;
+  /** Each regular's figure, drawn once a counter (`figureSheet`). */
+  private readonly sheets = new Map<string, string>();
   private readonly saveManager = new SaveManager();
 
   public constructor() {
@@ -94,6 +102,7 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
     this.mode = null;
     this.swapTake = null;
     this.freshRun = false;
+    this.pickingCup = false;
     this.rentalTeam = [];
     if (data.mode) {
       this.enterMode(data.mode);
@@ -142,6 +151,7 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
     this.find = '';
     this.swapTake = null;
     this.freshRun = false;
+    this.pickingCup = false;
     if (mode === 'cup') {
       this.team = [...openingCupTeam(this.entries(), this.team.length > 0 ? this.team : lastDojoTeam, cupOfTheWeek(this.now))];
     }
@@ -159,11 +169,6 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
   private rentalBout(): number {
     const live = this.liveRun();
     return live && !startsNewRun(this.rentalTeam, live) ? live.won + 1 : live && this.rentalTeam.length < 3 ? live.won + 1 : 1;
-  }
-
-  /** Who the next rental bout is against, for the team as it stands. */
-  private rentalOpponent() {
-    return rentalFoe(this.rentalBout(), this.now);
   }
 
   /** Who the next cup bout is against. */
@@ -199,14 +204,29 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
     const recordShown =
       this.freshRun && record ? { ...record, rental: { ...record.rental, run: undefined } } : record;
     const cupNow = this.mode === 'cup' ? this.cupOpponent() : null;
+    // The cup's and the rentals' own pages are the whole screen, in Champion Red;
+    // the first page, the class bouts and the cup's list of who goes stay the panel.
+    const bold = game !== undefined && ((this.mode === 'cup' && !this.pickingCup) || this.mode === 'rental');
+    overlay.root.toggleAttribute('data-whole', bold);
+    overlay.root.classList.toggle('is-bold', bold);
     const body = !game
       ? '<main class="px-body"><p class="px-empty">There is no saved game.</p></main>'
       : this.mode === null
         ? modesBody(record, cupOfTheWeek(this.now), this.now)
         : cupNow
-          ? cupBody(this.entries(), this.team, cupNow.cup, cupNow.foe, cupNow.bout)
+          ? this.pickingCup
+            ? cupBody(this.entries(), this.team, cupNow.cup, cupNow.foe, cupNow.bout)
+            : cupPoster({
+                tabs: arenaTabs('cup', cupNow.cup),
+                cup: cupNow.cup,
+                week: cupWeek(record?.cup, this.now),
+                bout: cupNow.bout,
+                team: this.chosenTeam(),
+                problem: this.team.length === 0 ? 'Choose who goes first.' : cupSideProblem(this.chosenTeam(), cupNow.cup),
+                foes: Array.from({ length: CUP_RUN_BOUTS }, (_, index) => this.arenaFoe(cupFoe(cupNow.cup, index + 1, this.now))),
+              })
           : this.mode === 'rental'
-            ? rentalBody(recordShown, this.rentalTeam, this.rentalOpponent(), this.now, this.swapTake)
+            ? this.rentalPage(recordShown)
             : regular
               ? teamBody(this.entries(), this.team, regular)
               : opponentsBody(
@@ -215,7 +235,7 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
                   record,
                   null,
                 );
-    const picking = regular !== undefined || this.mode === 'cup';
+    const picking = regular !== undefined || (this.mode === 'cup' && this.pickingCup);
     overlay.redraw(
       pixelScreen({
         title: 'Battle Arena',
@@ -230,8 +250,10 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
         hints: picking
           ? 'ARROWS move · ENTER bring or leave out · type in FIND · ESC back'
           : this.mode === 'rental'
-            ? 'ARROWS move · ENTER take or swap · ESC back'
-            : this.mode === null
+            ? 'ARROWS move · ENTER take or swap · SPACE fight · Q E ways to fight · ESC back'
+            : this.mode === 'cup'
+              ? 'ARROWS move · ENTER choose · Q E ways to fight · ESC back'
+              : this.mode === null
               ? 'ARROWS move · ENTER choose · ESC back'
               : 'ARROWS move · ENTER choose who to fight · ESC back',
         ...(status ? { status } : {}),
@@ -267,6 +289,9 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
     overlay.root.querySelectorAll<HTMLButtonElement>('[data-new-run]').forEach((button) => {
       button.onclick = () => this.startAgain();
     });
+    overlay.root.querySelectorAll<HTMLButtonElement>('[data-pick-team]').forEach((button) => {
+      button.onclick = () => this.pickCupTeam();
+    });
     if (picking) {
       const apply = wirePickerFind(overlay.root, (key) => overlay.moveCursor(key), this.find);
       overlay.root.querySelector<HTMLInputElement>('[data-picker-find]')?.addEventListener('input', (event) => {
@@ -291,9 +316,82 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
       this.back();
       return;
     }
+    // On the two Champion Red pages, Q and E step between the three ways to
+    // fight, as the tabs across the top say, and SPACE is the rentals' FIGHT.
+    const bold = (this.mode === 'cup' && !this.pickingCup) || this.mode === 'rental';
+    const letter = event.key.toLowerCase();
+    if (bold && (letter === 'q' || letter === 'e') && !event.ctrlKey && !event.metaKey && !event.altKey && !event.repeat) {
+      event.preventDefault();
+      const ways: readonly ArenaWay[] = ['class', 'cup', 'rental'];
+      const at = ways.indexOf(this.mode as ArenaWay);
+      this.chooseMode(ways[(at + (letter === 'e' ? 1 : ways.length - 1)) % ways.length]);
+      return;
+    }
+    if (this.mode === 'rental' && event.key === ' ' && !event.repeat) {
+      event.preventDefault();
+      this.startFight();
+      return;
+    }
     if (this.overlay?.moveCursor(event.key)) {
       event.preventDefault();
     }
+  }
+
+  /** The cup's list of who goes, from its page's YOUR THREE. */
+  private pickCupTeam(): void {
+    audioManager.play('select');
+    this.pickingCup = true;
+    this.find = '';
+    this.render();
+  }
+
+  /** The rentals' page as the run stands. */
+  private rentalPage(record: RestoredGame['raidProgress']['dojo']): string {
+    const live = this.liveRun();
+    const bout = this.rentalBout();
+    return rentalPoster({
+      tabs: arenaTabs('rental', cupOfTheWeek(this.now)),
+      six: rentalsToday(this.now).map((rental) => rental.species),
+      live,
+      team: this.rentalTeam,
+      swapTake: this.swapTake,
+      pair: pairToday(this.now),
+      bout,
+      foe: this.arenaFoe(rentalFoe(bout, this.now)),
+      scored: live ? live.scored : nextRunScored(record?.rental, this.now),
+    });
+  }
+
+  /** Somebody met in a run, with their figure as they walk the harbour. */
+  private arenaFoe(foe: { readonly id: string; readonly name: string; readonly team: readonly string[] }): ArenaFoe {
+    return { name: foe.name, team: foe.team, sheet: this.figureSheet(foe.id) };
+  }
+
+  /**
+   * A regular's figure sheet, in the look they wear about the harbour
+   * (`base/harbourBots.ts`), drawn once a counter. Empty where the wardrobe's
+   * art is not loaded, so the card shows their name and team without it.
+   */
+  private figureSheet(id: string): string {
+    const drawn = this.sheets.get(id);
+    if (drawn !== undefined) return drawn;
+    const look = dojoRegular(id)?.bot.look;
+    const atlas = look ? wearablesAtlas(this.textures) : null;
+    let url = '';
+    if (look && atlas) {
+      const canvas = document.createElement('canvas');
+      canvas.width = PIECE_WIDTH;
+      canvas.height = PIECE_HEIGHT;
+      const context = canvas.getContext('2d');
+      if (context) {
+        const image = context.createImageData(PIECE_WIDTH, PIECE_HEIGHT);
+        image.data.set(composeLook(atlas, look));
+        context.putImageData(image, 0, 0);
+        url = canvas.toDataURL();
+      }
+    }
+    this.sheets.set(id, url);
+    return url;
   }
 
   /** Somebody the counter can offer, as they fight a player in this save's class. */
@@ -383,6 +481,12 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
 
   /** ESC or the back button: from the team back to the regulars, from a page back to the first, and from there out. */
   private back(): void {
+    if (this.pickingCup) {
+      audioManager.play('cancel');
+      this.pickingCup = false;
+      this.render(['[data-pick-team]']);
+      return;
+    }
     if (this.swapTake) {
       audioManager.play('cancel');
       this.swapTake = null;
