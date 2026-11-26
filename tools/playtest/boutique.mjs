@@ -82,20 +82,25 @@ try {
   const shown = await page.evaluate(`document.querySelectorAll('.boutique-card').length`);
   console.log(`the shelves show ${shown} cards`);
 
-  // A jump chip takes the cursor to its shelf's first card, however far down
-  // (the smallest stage has no chips: its headings are the whole of the way).
-  if (await page.evaluate(`document.querySelector('[data-jump="raid"]')?.offsetParent != null`)) {
-    await page.evaluate(`document.querySelector('[data-jump="raid"]').click()`);
+  // E walks the pager a shelf at a time to Raid finds, the cursor on each shelf's first card.
+  for (let step = 0; step < 8 && !(await page.evaluate(`document.querySelector('[data-shelf-group="raid"]')?.hidden === false`)); step += 1) {
+    await page.tap('KeyE');
     await wait(200);
+  }
+  if (await page.evaluate(`document.querySelector('[data-shelf-group="raid"]')?.hidden === false`)) {
     const jumped = await page.evaluate(`document.activeElement?.dataset.wear ?? null`);
-    if (!jumped) fail('the Raid finds chip did not take the cursor to a card');
-    await shoot('01b-jumped-to-raid-finds');
-    console.log(`the Raid finds chip lands on ${jumped}`);
+    if (!jumped) fail('E did not take the cursor to a card on Raid finds');
+    await shoot('01b-paged-to-raid-finds');
+    console.log(`E pages to Raid finds and lands on ${jumped}`);
   } else {
-    console.log('no jump chips at this size');
+    fail('E never reached the Raid finds shelf');
   }
   // Page Down and Page Up go a shelf at a time, at every size: from the first
   // card, Down lands on the first hat; Up from there goes back to the looks.
+  for (let step = 0; step < 8 && !(await page.evaluate(`document.querySelector('[data-shelf-group="looks"]')?.hidden === false`)); step += 1) {
+    await page.tap('KeyQ');
+    await wait(200);
+  }
   await page.evaluate(`document.querySelector('[data-classic]').focus()`);
   await press('PageDown');
   const paged = await page.evaluate(`document.activeElement?.dataset.wear ?? null`);
@@ -149,6 +154,12 @@ try {
   await page.evaluate(`document.querySelector('[data-whole="${lookId}"]').click()`);
   await wait(200);
   await shoot('03-trying-on');
+  // PUT IT BACK takes the try-on off: the mirror goes back to what is worn.
+  await page.evaluate(`document.querySelector('[data-put-back]').click()`);
+  await wait(200);
+  if (!(await page.evaluate(`document.querySelector('[data-put-back]')?.getAttribute('aria-disabled') === 'true'`))) fail('PUT IT BACK did not put the try-on back');
+  await page.evaluate(`document.querySelector('[data-whole="${lookId}"]').click()`);
+  await wait(200);
   // A script's click is a click no pointer made, so it is held to the key's arming.
   await sleep(700);
   const bar = await page.evaluate(`document.querySelector('.confirm-bar')?.innerText`);
