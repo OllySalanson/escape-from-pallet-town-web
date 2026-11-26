@@ -50,3 +50,16 @@ The round-5 critic: the team strip shows who goes, and nothing on the screen say
   the harbour.
 
 The same scratch driver, focusing a free place and pressing P.
+
+## ROOM FOR A FIND
+
+THE LOCKER's old panel could keep room for any find - a parts crate the board wants, the Pokédollars a raid picks
+up - whether or not one was at home. YOUR THINGS could only do it for a kind at home, and never for money, whose
+block is the title's pill.
+
+- `after-room-for-a-find-button.png` - the locker card's ROOM FOR A FIND, the cursor on it.
+- `after-room-kept-for-money.png` - the list it opens: every find the locker can keep room for (`hub/findRoom.ts`),
+  each with its squares and KEEP ROOM, KEPT ×n or NO ROOM; ENTER on POKÉDOLLARS kept a square open for them, and the
+  locker beside the list shows it.
+
+The same scratch driver: the Pikachu let go of the locker with L, then the button and ENTER on the money.

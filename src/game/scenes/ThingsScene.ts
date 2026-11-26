@@ -23,9 +23,11 @@ import {
   type ItemId,
   type PackItemId,
 } from '../items';
-import { evolutionByStone, type MoveBase, type Pokemon } from '../pokemon';
+import { evolutionByStone, getSpeciesById, type MoveBase, type Pokemon } from '../pokemon';
 import { SaveManager, spareAtBase, type RestoredGame } from '../save/SaveManager';
 import { pokemonCargoCells } from '../pokemon/pokemonCargo';
+import { findsToKeepRoomFor } from '../hub/findRoom';
+import { pokedexOwned } from '../hub/pokedex';
 import { awayOnRaid, outOnRaidLine, PACKED_FOR_RAID_LINE } from '../run/raidInFlight';
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
@@ -39,16 +41,19 @@ import { EVOLVE_MOMENT_ARMING_MS, evolveMomentBody, type EvolveMomentView } from
 import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
 import {
   ALL_POCKETS,
+  findRoomBody,
   handCard,
   homeUseOf,
   memberCard,
   teamDoorCard,
+  findDoorCard,
   pocketTabs,
   stashLayout,
   staysHome,
   stoneTargetsBody,
   thingsScreen,
   whereItIsUsed,
+  type FindRoomRow,
   type HandPlace,
   type PocketTab,
   type ThingsScreen,
@@ -125,6 +130,8 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   private game_: RestoredGame | undefined;
   private flow: DeploymentFlow | undefined;
   private using: Using | null = null;
+  /** Whether ROOM FOR A FIND is showing, over the locker card's button. */
+  private keepingRoom = false;
   private status: string | undefined;
   /** Which pocket's things the stash shows lit; the rest stand back. */
   private pocket: PocketTab = ALL_POCKETS;
@@ -163,6 +170,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     this.startAt = data.start;
     this.toTeam = data.openTeam;
     this.using = null;
+    this.keepingRoom = false;
     this.status = undefined;
     this.moment = undefined;
     this.pocket = ALL_POCKETS;
@@ -184,7 +192,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     // into its own card, never a redraw of the screen under the cursor.
     this.overlay.root.addEventListener('focusin', (event) => {
       const piece =
-        event.target instanceof Element ? event.target.closest<HTMLElement>('[data-grid-piece], [data-team-member], [data-team-open]') : null;
+        event.target instanceof Element ? event.target.closest<HTMLElement>('[data-grid-piece], [data-team-member], [data-team-open], [data-find-open]') : null;
       if (!piece) {
         return;
       }
@@ -367,6 +375,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
         locked: flow.securedContents,
       },
       locker: { layout: locker, used: locker.cellsUsed, total: gridCells(flow.secureGrid) },
+      findRoom: true,
       ghosts: {
         stash: this.arranging.ghostFor('stash'),
         pack: this.arranging.ghostFor('pack'),
@@ -411,6 +420,9 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   private handFor(piece: HTMLElement | null): string {
     if (piece?.hasAttribute('data-team-open')) {
       return teamDoorCard();
+    }
+    if (piece?.hasAttribute('data-find-open')) {
+      return findDoorCard();
     }
     const memberId = piece?.dataset.teamMember;
     const member = memberId ? this.flow?.party.find((one) => one.id === memberId) : undefined;
@@ -508,6 +520,12 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
         this.stoneTargets(item).map(({ pokemon, box }) => ({ pokemon, box })),
       );
       hints = 'ARROWS move · ENTER use it · ESC back';
+    } else if (this.keepingRoom && this.flow) {
+      title = 'Room for a find';
+      back = { label: 'Things', attribute: 'data-find-close' };
+      const locker = this.flow.secureLayout();
+      body = findRoomBody(this.findRows(), { layout: locker, used: locker.cellsUsed, total: gridCells(this.flow.secureGrid) });
+      hints = 'ARROWS move · ENTER keep room · BKSP let it go · ESC back';
     } else {
       const view = game ? this.screenView() : undefined;
       body = view ? thingsScreen(view, '') : '<main class="px-body"><p class="px-empty">There is no saved game.</p></main>';
@@ -529,6 +547,9 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     });
     on('[data-pocket-tab]', (button) => this.showPocket(button.dataset.pocketTab as PocketTab));
     on('[data-team-open]', () => this.goToTeam());
+    on('[data-find-open]', () => this.openFindRoom());
+    on('[data-find-close]', () => this.closeFindRoom());
+    on('[data-find]', (button) => this.keepRoomFor(button.dataset.find ?? '', true));
     // The card's buttons act on the thing the cursor is on, and never take the
     // cursor off it: a pressed button would otherwise be what ENTER pressed next.
     const card = overlay.root.querySelector<HTMLElement>('[data-hand-card]');
@@ -539,7 +560,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
         this.handDeed(button.dataset.hand ?? '');
       }
     });
-    if (!this.using) {
+    if (!this.using && !this.keepingRoom) {
       this.arranging.attach(overlay.root);
     }
     overlay.refocus(
@@ -547,12 +568,13 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       '[data-teach]:not([aria-disabled])',
       '[data-pupil]:not([aria-disabled])',
       '[data-target]:not([aria-disabled])',
+      '[data-find]:not([aria-disabled])',
       '.things-stash .px-grid-block:not(.is-dim)',
       '.things-pack .px-grid-block',
       '[data-close]',
     );
     const focused = typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null);
-    this.showHand(focused?.closest<HTMLElement>('[data-grid-piece], [data-team-member], [data-team-open]') ?? null);
+    this.showHand(focused?.closest<HTMLElement>('[data-grid-piece], [data-team-member], [data-team-open], [data-find-open]') ?? null);
   }
 
   /** A pocket tab: its things lit and the rest stood back, the cursor on its first. */
@@ -581,6 +603,8 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     const key: Partial<Record<string, string>> = { drop: 'Enter', take: 'Enter', turn: 'r', cancel: 'Escape', out: 'Backspace' };
     if (deed === 'team') {
       this.goToTeam();
+    } else if (deed === 'finds') {
+      this.openFindRoom();
     } else if (deed === 'lock' && piece) {
       this.toggleLock(piece);
     } else if (deed === 'pack' && piece) {
@@ -838,6 +862,23 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       return;
     }
     const focused = typeof document === 'undefined' ? null : document.activeElement;
+    if (this.keepingRoom) {
+      const find = focused instanceof HTMLElement ? focused.dataset.find : undefined;
+      if (find && (event.key === 'Enter' || event.key === ' ' || event.key === 'Backspace' || event.key === 'Delete')) {
+        event.preventDefault();
+        this.keepRoomFor(find, event.key === 'Enter' || event.key === ' ');
+        return;
+      }
+      if (isOverlayDismissKey(event, 'b') || event.key === 'Backspace') {
+        event.preventDefault();
+        this.closeFindRoom();
+        return;
+      }
+      if (this.overlay?.moveCursor(event.key)) {
+        event.preventDefault();
+      }
+      return;
+    }
     if (!this.using && this.overlay) {
       const piece = focused instanceof HTMLElement ? focused.closest<HTMLElement>('[data-grid-piece]') : null;
       // ENTER on a thing in the stash puts one in the pack; carrying, or in
@@ -1102,6 +1143,59 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     this.using = null;
     this.status = message;
     this.render([stashPieceSelector(item.id)]);
+  }
+
+  /** Every find the locker can keep room for, with how much it keeps now. */
+  private findRows(): readonly FindRoomRow[] {
+    const flow = this.flow;
+    const game = this.game_;
+    if (!flow || !game) {
+      return [];
+    }
+    const ids = findsToKeepRoomFor({
+      progress: game.raidProgress,
+      held: (itemId) => game.stash.itemCount(itemId) + (game.raidProgress.fossil?.itemId === itemId ? 1 : 0),
+      owns: (speciesId) => {
+        const dexId = getSpeciesById(speciesId)?.dexId;
+        return dexId !== undefined && pokedexOwned(game.raidProgress.pokedexOwned, game.stash).includes(dexId);
+      },
+    });
+    return ids.flatMap((itemId) => {
+      const item = getItemById(itemId);
+      if (!item) {
+        return [];
+      }
+      const { width, height } = footprintOf(itemId);
+      return [
+        {
+          itemId,
+          name: item.displayName,
+          squares: width * height,
+          kept: Math.ceil(flow.secureQuantity(itemId) / stackSizeOf(itemId)),
+          canKeep: flow.secureHasRoomFor(itemId),
+        },
+      ];
+    });
+  }
+
+  private openFindRoom(): void {
+    audioManager.play('select');
+    this.keepingRoom = true;
+    this.render(['[data-find]:not([aria-disabled])']);
+  }
+
+  private closeFindRoom(): void {
+    audioManager.play('cancel');
+    this.keepingRoom = false;
+    this.render(['[data-find-open]']);
+  }
+
+  /** ENTER on a find keeps room for one more of it; BACKSPACE lets one go. */
+  private keepRoomFor(itemId: string, more: boolean): void {
+    if (!itemId) {
+      return;
+    }
+    this.lock(itemId, more, [`[data-find="${itemId}"]`]);
   }
 
   /** On to YOUR TEAM, where who goes is chosen: this screen closes and the harbour opens that one. */
