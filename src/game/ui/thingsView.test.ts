@@ -75,8 +75,16 @@ const screen = (stash: Record<string, number>, overrides: Partial<ThingsScreen> 
   stash,
   stashArrangement: { items: [], cargo: [] },
   pocket: ALL_POCKETS,
-  pack: { name: 'Raid pack', itemId: 'raid-pack', layout: packContents({ potion: 2 }, { width: 6, height: 3 }), used: 2, total: 18 },
-  locker: { layout: packContents({}, { width: 2, height: 2 }), pokemon: [] },
+  team: [],
+  pack: {
+    name: 'Raid pack',
+    itemId: 'raid-pack',
+    layout: packContents({ potion: 2 }, { width: 6, height: 3 }),
+    used: 2,
+    total: 18,
+    locked: {},
+  },
+  locker: { layout: packContents({}, { width: 2, height: 2 }), used: 0, total: 4 },
   ...overrides,
 });
 
@@ -121,13 +129,16 @@ describe('the stash as squares', () => {
 });
 
 describe('the screen', () => {
-  it('draws the stash, the raid pack at risk and the locker safe, and offers nothing to drop', () => {
+  it('draws home safe on one side and the next raid on the other, and offers nothing to drop', () => {
     const html = thingsScreen(screen({ potion: 2, 'fire-stone': 1 }), '');
     expect(html).toContain('data-grid="stash"');
     expect(html).toContain('data-grid="pack"');
-    expect(html).toMatch(/px-tone-risk things-pack.*At risk/);
-    expect(html).toMatch(/px-tone-secure things-locker.*Safe/);
-    expect(html).toContain('<b>2</b><small>of</small><b>18</b>');
+    expect(html).toContain('data-grid="locker"');
+    expect(html).toMatch(/things-stash.*Home<\/span><small>Safe/);
+    expect(html).toMatch(/things-team.*Next raid/);
+    expect(html).toMatch(/px-tone-risk things-pack.*Raid pack.*Lost on a wipe/);
+    expect(html).toMatch(/px-tone-secure things-locker.*Locker.*Kept on a wipe/);
+    expect(html).toContain('>2/18</b>');
     expect(html).not.toMatch(/data-drop|Drop one/);
   });
 
@@ -142,41 +153,84 @@ describe('the screen', () => {
     expect(html).toContain('things-tab is-here" data-pocket-tab="balls"');
   });
 
-  it('gives the partner its own place in the locker, with the rosette', () => {
+  it('marks what can never go on a raid with a house, and nothing else', () => {
+    const html = thingsScreen(screen({ 'mooring-rope': 1, potion: 1, satchel: 1 }), '');
+    expect(html).toMatch(/is-home-only[^>]*data-grid-piece="cargo:mooring-rope"/);
+    expect(html).not.toMatch(/is-home-only[^>]*data-grid-piece="cargo:potion"/);
+    expect(html).not.toMatch(/is-home-only[^>]*data-grid-piece="cargo:satchel"/);
+  });
+
+  it('shows each of the team with what a wipe would do to it', () => {
+    const member = (name: string, speciesId: string, fate: 'partner' | 'locked' | 'risk') => ({
+      name,
+      speciesId,
+      currentHp: 10,
+      maxHp: 10,
+      fate,
+    });
+    const html = thingsScreen(
+      screen({}, { team: [member('Squirtle', 'squirtle', 'partner'), member('Pidgey', 'pidgey', 'locked'), member('Rattata', 'rattata', 'risk')] }),
+      '',
+    );
+    expect(html).toContain('Team 3 of 6');
+    expect(html).toMatch(/is-partner" role="img" aria-label="Squirtle: always comes home".*things-rosette/);
+    expect(html).toMatch(/is-locked" role="img" aria-label="Pidgey: kept by the locker".*padlock/);
+    expect(html).toMatch(/is-risk" role="img" aria-label="Rattata: lost on a wipe".*things-torn/);
+  });
+
+  it('lines the blocks of the pack the locker keeps, and draws a padlock in the locker for each, never the thing twice', () => {
     const html = thingsScreen(
       screen({}, {
-        locker: {
-          layout: packContents({}, { width: 2, height: 2 }),
-          partner: { name: 'Squirtle', dexId: 7, shiny: false },
-          pokemon: [{ name: 'Pikachu', dexId: 25, shiny: false, squares: 4 }],
+        pack: {
+          name: 'Raid pack',
+          itemId: 'raid-pack',
+          layout: packContents({ potion: 3 }, { width: 6, height: 3 }),
+          used: 3,
+          total: 18,
+          locked: { potion: 2 },
         },
+        locker: { layout: packContents({ potion: 2 }, { width: 2, height: 2 }), used: 2, total: 4 },
       }),
       '',
     );
-    expect(html).toContain('4 squares');
-    expect(html).toMatch(/is-partner.*things-rosette.*Squirtle.*Its own place/);
+    const pack = html.slice(html.indexOf('things-pack'), html.indexOf('things-locker'));
+    const locker = html.slice(html.indexOf('things-locker'), html.indexOf('things-hand'));
+    expect(pack.match(/is-locked/g)).toHaveLength(2);
+    // The locker draws the same two, lined as the pack lines them.
+    expect(locker.match(/px-grid-block is-locked[^>]*data-grid-piece="item:\d+:potion"/g)).toHaveLength(2);
   });
 });
 
-describe('the card of what is in hand', () => {
-  it('says what a thing in the stash does and offers to pack it, with the key in the button', () => {
-    const html = handCard(item('potion'), 'stash', true);
+describe('the card of what the cursor is on', () => {
+  it('says what a thing at home does and offers to pack it, with the key in the button', () => {
+    const html = handCard(item('potion'), 'stash', { canPack: true });
     expect(html).toContain(item('potion').description);
     expect(html).toMatch(/<span class="things-cap">ENTER<\/span>Put in the pack/);
     expect(html).not.toContain('aria-disabled');
+    expect(html).not.toMatch(/In hand|Carrying/);
   });
 
-  it('greys out packing what cannot go in the pack', () => {
-    expect(handCard(item('mooring-rope'), 'stash', false)).toMatch(/data-hand="pack"[^>]*aria-disabled="true"/);
+  it('greys out packing when the pack is full, and offers none for what stays at home', () => {
+    expect(handCard(item('potion'), 'stash', { canPack: false })).toMatch(/data-hand="pack"[^>]*aria-disabled="true"/);
+    expect(handCard(item('mooring-rope'), 'stash', { canPack: false })).not.toContain('data-hand="pack"');
+    expect(handCard(item('mooring-rope'), 'stash', { canPack: false })).toContain('Home only');
+  });
+
+  it('wears a pack rather than packing it', () => {
+    expect(handCard(item('satchel'), 'stash', { canPack: true })).toMatch(/ENTER<\/span>Wear it/);
   });
 
   it('offers to teach a disc and use a stone here', () => {
-    expect(handCard(item('tm40-aerial-ace'), 'stash', true)).toContain('data-hand="use"');
-    expect(handCard(item('potion'), 'stash', true)).not.toContain('data-hand="use"');
+    expect(handCard(item('tm40-aerial-ace'), 'stash', { canPack: true })).toContain('data-hand="use"');
+    expect(handCard(item('potion'), 'stash', { canPack: true })).not.toContain('data-hand="use"');
   });
 
-  it('takes one out of the pack, and puts down what is carried', () => {
-    expect(handCard(item('potion'), 'pack', true)).toMatch(/BKSP<\/span>Take one out/);
-    expect(handCard(item('potion'), 'carrying', true)).toMatch(/ENTER<\/span>Put down/);
+  it('locks or unlocks a thing in the pack, takes one out, and puts down what is carried', () => {
+    expect(handCard(item('potion'), 'pack', { canPack: true })).toMatch(/L<\/span>Lock/);
+    expect(handCard(item('potion'), 'pack', { canPack: true, locked: true })).toMatch(/L<\/span>Unlock/);
+    expect(handCard(item('potion'), 'pack', { canPack: true, canLock: false })).toMatch(/data-hand="lock"[^>]*aria-disabled="true"><span class="things-cap">L<\/span>Locker full/);
+    expect(handCard(item('potion'), 'pack', { canPack: true, locked: true, canLock: false })).not.toContain('aria-disabled');
+    expect(handCard(item('potion'), 'pack', { canPack: true })).toMatch(/BKSP<\/span>Take one out/);
+    expect(handCard(item('potion'), 'carrying', { canPack: true })).toMatch(/Carrying.*ENTER<\/span>Put down/);
   });
 });

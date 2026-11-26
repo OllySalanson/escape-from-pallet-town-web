@@ -6078,6 +6078,13 @@ export class BaseScene extends Phaser.Scene {
       this.input.keyboard?.resetKeys();
       this.spentPresses.spendHeld(this.directionKeys());
       this.savedGame = this.saveManager.load() ?? this.savedGame;
+      // In the hall what was packed stands on the rack and the pack chosen is
+      // on the player's back, as it does after the hall's own panels.
+      if (this.kit) {
+        this.furniture?.show(this.kit.flow, partnerOf(this.savedGame.stash)?.id ?? null);
+        this.dressPlayer();
+        this.sayStationNotes();
+      }
       this.showHint(this.hintHere());
     });
     const pit = Boolean(this.place.room?.pit);

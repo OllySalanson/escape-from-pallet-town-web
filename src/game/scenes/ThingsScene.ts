@@ -23,7 +23,6 @@ import {
   type PackItemId,
 } from '../items';
 import { evolutionByStone, type MoveBase, type Pokemon } from '../pokemon';
-import { pokemonCargoCells } from '../pokemon/pokemonCargo';
 import { SaveManager, spareAtBase, type RestoredGame } from '../save/SaveManager';
 import { awayOnRaid, outOnRaidLine, PACKED_FOR_RAID_LINE } from '../run/raidInFlight';
 import { moveChoiceMessage } from '../ui/moveChooser';
@@ -42,6 +41,7 @@ import {
   homeUseOf,
   pocketTabs,
   stashLayout,
+  staysHome,
   stoneTargetsBody,
   thingsScreen,
   whereItIsUsed,
@@ -284,10 +284,17 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   private get arranging(): GridArranging {
     this.arrangingValue ??= new GridArranging({
       packing: (name) =>
-        name === 'stash' ? stashLayout(this.stashContents(), this.stashArrangement) : (this.flow?.bagLayout() ?? null),
+        name === 'stash'
+          ? stashLayout(this.stashContents(), this.stashArrangement)
+          : name === 'locker'
+            ? (this.flow?.secureLayout() ?? null)
+            : (this.flow?.bagLayout() ?? null),
       commit: (name, arrangement) => {
         if (name === 'stash') {
           this.keepStashArrangement(arrangement);
+        } else if (name === 'locker') {
+          this.flow?.arrangeSecure(arrangement);
+          this.keepPack();
         } else {
           this.flow?.arrangeBag(arrangement);
           this.keepPack();
@@ -298,6 +305,8 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       remove: (name, ref) => {
         if (name === 'pack' && ref.kind === 'item') {
           this.takeOut(ref);
+        } else if (name === 'locker' && ref.kind === 'item') {
+          this.lock(ref.itemId, false);
         } else {
           audioManager.play('denied');
         }
@@ -322,31 +331,33 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       return undefined;
     }
     const layout = flow.bagLayout();
-    const partner = flow.partnerOnRaid;
+    const locker = flow.secureLayout();
+    const partnerId = flow.partnerOnRaid?.id;
     return {
       stash: this.stashContents(),
       stashArrangement: this.stashArrangement,
       pocket: this.pocket,
+      team: flow.party.map((one) => ({
+        name: one.pokemon.name,
+        speciesId: one.pokemon.base.id,
+        currentHp: one.pokemon.currentHp,
+        maxHp: one.pokemon.maxHp,
+        fate: one.id === partnerId ? 'partner' : flow.securesPokemon(one.id) ? 'locked' : 'risk',
+      })),
       pack: {
         name: flow.packName,
         itemId: flow.packItemId,
         layout,
         used: layout.cellsUsed,
         total: gridCells(flow.bagGrid),
+        locked: flow.securedContents,
       },
-      locker: {
-        layout: flow.secureLayout(),
-        ...(partner
-          ? { partner: { name: partner.pokemon.name, dexId: partner.pokemon.base.dexId, shiny: partner.pokemon.shiny } }
-          : {}),
-        pokemon: flow.securedPokemon.map((one) => ({
-          name: one.pokemon.name,
-          dexId: one.pokemon.base.dexId,
-          shiny: one.pokemon.shiny,
-          squares: pokemonCargoCells(one.pokemon.base.id),
-        })),
+      locker: { layout: locker, used: locker.cellsUsed, total: gridCells(flow.secureGrid) },
+      ghosts: {
+        stash: this.arranging.ghostFor('stash'),
+        pack: this.arranging.ghostFor('pack'),
+        locker: this.arranging.ghostFor('locker'),
       },
-      ghosts: { stash: this.arranging.ghostFor('stash'), pack: this.arranging.ghostFor('pack') },
     };
   }
 
@@ -357,18 +368,47 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       return;
     }
     card.innerHTML = this.handFor(piece);
+    this.markTwins(piece);
+  }
+
+  /**
+   * A kept thing is drawn twice - lined in the pack, and in the locker that
+   * keeps it - so the cursor on either lights the other: one thing, kept.
+   */
+  private markTwins(piece: HTMLElement | null): void {
+    const root = this.overlay?.root;
+    if (!root?.querySelectorAll) {
+      return;
+    }
+    root.querySelectorAll('.is-twin').forEach((each) => each.classList.remove('is-twin'));
+    const owner = piece?.dataset.gridOwner;
+    const thing = piece ? this.thingOf(piece) : undefined;
+    if (!thing || !piece?.classList.contains('is-locked') || (owner !== 'pack' && owner !== 'locker')) {
+      return;
+    }
+    // The n-th kept block of a kind in one is the n-th in the other: one pair lit.
+    const kept = (grid: string): HTMLElement[] => [
+      ...root.querySelectorAll<HTMLElement>(`[data-grid-owner="${grid}"].is-locked[data-grid-piece$=":${thing}"]`),
+    ];
+    const at = kept(owner).indexOf(piece);
+    kept(owner === 'pack' ? 'locker' : 'pack')[at]?.classList.add('is-twin');
   }
 
   private handFor(piece: HTMLElement | null): string {
     const held = this.arranging.held;
     if (held) {
       const itemId = held.ref.kind === 'cargo' ? held.ref.cargoId : held.ref.itemId;
-      return handCard(getItemById(itemId), 'carrying', false);
+      return handCard(getItemById(itemId), 'carrying', { canPack: false });
     }
     const thing = piece ? this.thingOf(piece) : undefined;
     const item = thing ? getItemById(thing) : undefined;
-    const place: HandPlace = piece?.dataset.gridOwner === 'pack' ? 'pack' : 'stash';
-    return handCard(item, place, item ? this.canPack(item) : false);
+    const owner = piece?.dataset.gridOwner;
+    const place: HandPlace = owner === 'pack' || owner === 'locker' ? owner : 'stash';
+    return handCard(item, place, {
+      canPack: item ? this.canPack(item) : false,
+      locked: Boolean(piece?.classList.contains('is-locked')),
+      canLock: item ? (this.flow?.secureHasRoomFor(item.id as ItemId) ?? false) : false,
+    });
   }
 
   /** Whether a thing in the stash can go in the pack at all, before asking for room. */
@@ -404,7 +444,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     let title = 'Your things';
     let back: { label: string; attribute: string } | undefined;
     let body: string;
-    let hints = 'ARROWS move · ENTER put it in the pack · Q E pocket · ESC back';
+    let hints = 'ARROWS move · ENTER pack · BKSP out · L lock · Q E pocket · ESC back';
     const machine = item ? machineForItem(item) : undefined;
     if (item && this.using?.kind === 'teach' && machine) {
       title = 'Teach a move';
@@ -499,7 +539,9 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const piece = focused?.closest<HTMLElement>('[data-grid-piece]') ?? null;
     const key: Partial<Record<string, string>> = { drop: 'Enter', take: 'Enter', turn: 'r', cancel: 'Escape', out: 'Backspace' };
-    if (deed === 'pack' && piece) {
+    if (deed === 'lock' && piece) {
+      this.toggleLock(piece);
+    } else if (deed === 'pack' && piece) {
       this.packOne(this.thingOf(piece));
     } else if (deed === 'use' && piece) {
       const thing = this.thingOf(piece);
@@ -524,6 +566,46 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     }
     this.saveManager.choosePack(flow.packedContents, flow.leftOut);
     this.saveManager.recordContainerArrangements(flow.bagArrangement, flow.secureArrangement);
+    // What the locker keeps is remembered as its preference, which is what the
+    // next screen fills it from (`secureAutofill.ts`).
+    this.saveManager.recordSecurePreference(flow.securePreference);
+  }
+
+  /** L on a block of the pack: the locker keeps one more of it, or one fewer if this block is kept. */
+  private toggleLock(piece: HTMLElement): void {
+    const thing = this.thingOf(piece);
+    if (!thing || piece.dataset.gridOwner !== 'pack') {
+      audioManager.play('denied');
+      return;
+    }
+    this.lock(thing, !piece.classList.contains('is-locked'));
+  }
+
+  /** One more block of a kind in the locker, or one fewer. */
+  private lock(itemId: string, more: boolean): boolean {
+    const flow = this.flow;
+    if (!flow) {
+      return false;
+    }
+    const id = itemId as ItemId;
+    const blocks = Math.ceil(flow.secureQuantity(id) / stackSizeOf(id));
+    const refusal = flow.setSecureSquares(id, blocks + (more ? 1 : -1));
+    const moved = Math.ceil(flow.secureQuantity(id) / stackSizeOf(id)) !== blocks;
+    if (!moved) {
+      this.refuse(refusal ?? 'The locker is full.', itemId, `.things-pack [data-grid-piece$=":${itemId}"]${more ? ':not(.is-locked)' : ''}`);
+      this.overlay?.root.querySelector?.('.things-locker')?.classList.add('is-refusing');
+      return false;
+    }
+    audioManager.play(more ? 'haulDrop' : 'cancel');
+    recordAction(`${more ? 'Locked' : 'Unlocked'} ${getItemById(itemId)?.displayName ?? itemId}`);
+    this.keepPack();
+    this.render([
+      more
+        ? `.things-pack [data-grid-piece$=":${itemId}"].is-locked`
+        : `.things-pack [data-grid-piece$=":${itemId}"]:not(.is-locked)`,
+      '.things-pack .px-grid-block',
+    ]);
+    return true;
   }
 
   private keepStashArrangement(arrangement: GridArrangement): void {
@@ -556,11 +638,15 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       this.render([stashPieceSelector(item.id), '.things-pack .px-grid-block']);
       return true;
     }
+    if (staysHome(item.id)) {
+      // It never goes on a raid: the house on it and HOME ONLY on its card say so.
+      audioManager.play('denied');
+      return false;
+    }
     const atHome = this.stashContents()[item.id] ?? 0;
     const packed = flow.itemQuantity(item.id as ItemId);
     const refusal = flow.setItemQuantity(item.id as ItemId, packed + Math.min(stackSizeOf(item.id), atHome));
     if (refusal !== undefined || flow.itemQuantity(item.id as ItemId) <= packed) {
-      // A material or the like does nothing in a raid, so nothing moved: say where it is used.
       this.refuse(refusal ?? `${item.displayName}: ${whereItIsUsed(item)}`, item.id);
       return false;
     }
@@ -607,6 +693,12 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     if (from === 'stash' && to === 'pack' && ref.kind === 'cargo') {
       return this.packOne(ref.cargoId, { x, y, rotated });
     }
+    if (from === 'pack' && to === 'locker' && ref.kind === 'item') {
+      return this.lock(ref.itemId, true);
+    }
+    if (from === 'locker' && to !== 'locker' && ref.kind === 'item') {
+      return this.lock(ref.itemId, false);
+    }
     if (from === 'pack' && to === 'stash' && ref.kind === 'item') {
       const placement = placementOf(flow.bagLayout(), ref);
       const itemId = ref.itemId as ItemId;
@@ -632,11 +724,11 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     return false;
   }
 
-  private refuse(message: string, itemId: string): void {
+  private refuse(message: string, itemId: string, ...prefer: readonly string[]): void {
     audioManager.play('denied');
     this.status = message;
     this.statusThing = itemId;
-    this.render([stashPieceSelector(itemId)]);
+    this.render([...prefer, stashPieceSelector(itemId)]);
   }
 
   private onKey(event: KeyboardEvent): void {
@@ -663,6 +755,11 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       if (!this.arranging.held && piece?.dataset.gridOwner === 'stash' && (event.key === 'Enter' || event.key === ' ')) {
         event.preventDefault();
         this.packOne(this.thingOf(piece));
+        return;
+      }
+      if (!this.arranging.held && piece && event.key.toLowerCase() === 'l') {
+        event.preventDefault();
+        this.toggleLock(piece);
         return;
       }
       if (!this.arranging.held && piece?.dataset.gridOwner === 'stash' && event.key.toLowerCase() === 'u') {

@@ -130,6 +130,19 @@ body {
   }
 }
 /* The red arrow over the thing the cursor is on in YOUR THINGS, bobbing. */
+@keyframes things-shake {
+  0%,
+  100% {
+    transform: none;
+  }
+  25%,
+  75% {
+    transform: translateX(calc(var(--u) * -2));
+  }
+  50% {
+    transform: translateX(calc(var(--u) * 2));
+  }
+}
 @keyframes things-bob {
   from {
     translate: 0 0;
@@ -7153,35 +7166,36 @@ body.touch-play .feedback-tab {
    and an icon is drawn at twice its size in it, so nothing is resampled. */
 .pixel-ui.things-menu {
   --sq: 32;
+  --px-house: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath fill='%231d6c2e' d='M4 0h1v1h-1zM3 1h1v1h-1zM5 1h1v1h-1zM2 2h1v1h-1zM6 2h1v1h-1zM1 3h1v1h-1zM7 3h1v1h-1zM0 4h9v1h-9zM1 5h1v4h-1zM7 5h1v4h-1zM2 8h5v1h-5zM4 6h1v2h-1z'/%3E%3Cpath fill='%23d7f5dc' d='M4 1h1v1h-1zM3 2h3v1h-3zM2 3h5v1h-5zM2 5h2v3h-2zM5 5h2v3h-2zM4 5h1v1h-1z'/%3E%3C/svg%3E");
   --px-rosette: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 10' shape-rendering='crispEdges'%3E%3Cpath fill='%231d6c2e' d='M2 0h5v1h-5zM1 1h1v1h-1zM7 1h1v1h-1zM0 2h1v3h-1zM8 2h1v3h-1zM1 5h1v1h-1zM7 5h1v1h-1zM2 6h5v1h-5zM2 7h2v1h-2zM5 7h2v1h-2zM1 8h2v1h-2zM6 8h2v1h-2zM1 9h1v1h-1zM7 9h1v1h-1z'/%3E%3Cpath fill='%232f9e46' d='M2 1h5v1h-5zM1 2h1v3h-1zM7 2h1v3h-1zM2 5h5v1h-5z'/%3E%3Cpath fill='%23ffc823' d='M2 2h5v3h-5z'/%3E%3C/svg%3E");
 }
 :where(.pixel-ui) .things-layout {
   height: 100%;
   min-height: 0;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas:
-    'stash pack'
-    'stash locker'
-    'hand locker';
+    'stash team team'
+    'stash pack locker'
+    'hand hand hand';
   align-content: stretch;
-  column-gap: calc(var(--u) * 6);
+  column-gap: calc(var(--u) * 3);
   row-gap: calc(var(--u) * 6);
 }
 .pixel-ui .things-layout > .things-stash {
   grid-area: stash;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+.pixel-ui .things-layout > .things-team {
+  grid-area: team;
 }
 .pixel-ui .things-layout > .things-pack {
   grid-area: pack;
 }
 .pixel-ui .things-layout > .things-locker {
   grid-area: locker;
-  min-height: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
 }
 .pixel-ui .things-layout > .things-hand {
   grid-area: hand;
@@ -7189,8 +7203,8 @@ body.touch-play .feedback-tab {
   align-items: center;
   justify-content: space-between;
   gap: calc(var(--u) * 6);
-  min-height: calc(var(--u) * 44);
-  padding: calc(var(--u) * 4) calc(var(--u) * 6);
+  height: calc(var(--u) * 40);
+  padding: calc(var(--u) * 3) calc(var(--u) * 6);
 }
 /* The squares, bigger than the raid's, and an icon at twice its size in each. */
 .pixel-ui.things-menu .px-grid > * {
@@ -7211,6 +7225,18 @@ body.touch-play .feedback-tab {
   transform: rotate(90deg);
 }
 .pixel-ui.things-menu .px-grid-block.is-turned > .item-icon {
+  transform: scale(2) rotate(90deg);
+}
+.pixel-ui.things-menu .px-grid-block.is-big > .item-icon {
+  transform: scale(4);
+}
+.pixel-ui.things-menu .px-grid-block.is-big.is-turned > .item-icon {
+  transform: scale(4) rotate(90deg);
+}
+.pixel-ui.things-menu[data-room='tight'] .px-grid-block.is-big > .item-icon {
+  transform: scale(2);
+}
+.pixel-ui.things-menu[data-room='tight'] .px-grid-block.is-big.is-turned > .item-icon {
   transform: scale(2) rotate(90deg);
 }
 .pixel-ui.things-menu .px-grid-cells > i {
@@ -7260,14 +7286,47 @@ body.touch-play .feedback-tab {
   background: var(--gold-wash);
 }
 
-/* The stash: tabs across its heading, ALL first, the lit one gold. */
-.pixel-ui .things-stash > .things-tabs {
-  padding-left: 0;
-}
+/* Home: its name over it, then the pocket tabs on a strip of their own, ALL
+   first, the lit one gold. */
 :where(.pixel-ui) .things-tab-strip {
   display: flex;
+  align-items: center;
   min-width: 0;
   overflow: hidden;
+  background: var(--ink);
+}
+.pixel-ui .things-tab-strip > .things-cap {
+  flex: none;
+  min-width: calc(var(--u) * 10);
+  height: calc(var(--u) * 10);
+  margin: 0 calc(var(--u) * 2);
+  background: var(--bar-muted);
+  color: var(--ink);
+}
+.pixel-ui .things-tab-strip > .things-cap:last-child {
+  margin-left: auto;
+}
+:where(.pixel-ui) .things-side-name {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+}
+/* A house, drawn: what never leaves home wears it, and so does HOME's name. */
+:where(.pixel-ui) .things-house {
+  flex: none;
+  display: inline-block;
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 9);
+  background: var(--px-house) center / 100% 100% no-repeat;
+}
+.pixel-ui.things-menu .px-grid-block > .things-home-mark {
+  position: absolute;
+  left: var(--u);
+  top: var(--u);
+}
+.pixel-ui.things-menu .px-grid-block > .things-home-mark {
+  width: calc(var(--u) * 11);
+  height: calc(var(--u) * 11);
 }
 .pixel-ui .things-tab {
   height: calc(var(--u) * 14);
@@ -7284,7 +7343,7 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .things-stash-scroll {
   min-height: 0;
-  padding: calc(var(--u) * 4) calc(var(--u) * 2) 0;
+  padding: calc(var(--u) * 3) 0 0;
   overflow-x: hidden;
   display: grid;
   align-content: start;
@@ -7296,64 +7355,173 @@ body.touch-play .feedback-tab {
   margin-top: calc(var(--u) * 4);
 }
 
-/* The pack: the squares, and how full beside them, the one number twice its size. */
+/* The pack and the locker: each one's name, and how full on the heading. */
 :where(.pixel-ui) .things-pack-name,
 :where(.pixel-ui) .things-lock-name {
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 3);
 }
-:where(.pixel-ui) .things-pack-body {
-  display: flex;
-  align-items: flex-start;
-  gap: calc(var(--u) * 6);
-  padding: calc(var(--u) * 2) calc(var(--u) * 2) calc(var(--u) * 2);
-}
 :where(.pixel-ui) .things-count {
-  display: grid;
-  justify-items: center;
-  width: calc(var(--u) * 26);
-  padding-top: calc(var(--u) * 4);
-  text-transform: uppercase;
+  margin-left: calc(var(--u) * 3);
+  padding: 0 calc(var(--u) * 2);
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 400;
 }
-:where(.pixel-ui) .things-count > b {
-  display: block;
-  width: calc(var(--u) * 13);
-  height: calc(var(--u) * 12);
-  margin-bottom: calc(var(--u) * 12);
-  transform: scale(2);
-  transform-origin: 50% 0;
-  text-align: center;
-}
-:where(.pixel-ui) .things-count > small {
-  margin-bottom: calc(var(--u) * 2);
+:where(.pixel-ui) .things-pack-body {
+  padding: 0 0 calc(var(--u) * 2);
 }
 
-/* The locker: who is kept safe, big, on green; the partner with its rosette. */
-:where(.pixel-ui) .things-locker-body {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  align-content: flex-start;
-  gap: calc(var(--u) * 6);
-  padding: calc(var(--u) * 2);
-  min-height: 0;
-  overflow: hidden;
-}
-:where(.pixel-ui) .things-locker-place {
-  display: grid;
-  justify-items: center;
-  gap: var(--u);
-  width: calc(var(--u) * 76);
-  padding: calc(var(--u) * 3) 0 calc(var(--u) * 4);
-  background: var(--safe-wash);
-  box-shadow: inset 0 0 0 var(--u) var(--safe);
-  text-transform: uppercase;
-}
-:where(.pixel-ui) .things-locker-name {
+/* The next raid's team: each one's icon and what a wipe would do to it - the
+   rosette for the partner, a padlock for the one the locker keeps, a red torn
+   corner for one that would be lost. */
+:where(.pixel-ui) .things-team-strip {
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 3);
+  padding: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .things-member {
+  position: relative;
+  display: block;
+  padding: calc(var(--u) * 1);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 var(--u) var(--line);
+}
+:where(.pixel-ui) .things-member:is(.is-partner, .is-locked) {
+  background: var(--safe-wash);
+  box-shadow: inset 0 0 0 var(--u) var(--safe);
+}
+:where(.pixel-ui) .things-member.is-risk {
+  box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--red);
+}
+:where(.pixel-ui) .things-member.is-free {
+  width: calc(var(--u) * 34);
+  height: calc(var(--u) * 34);
+  background: var(--paper-sunk);
+  box-shadow: none;
+}
+:where(.pixel-ui) .things-member-mark {
+  position: absolute;
+  right: calc(var(--u) * -3);
+  bottom: calc(var(--u) * -3);
+  display: flex;
+}
+:where(.pixel-ui) .things-torn {
+  position: absolute;
+  right: calc(var(--u) * -1);
+  bottom: calc(var(--u) * 21);
+  width: calc(var(--u) * 13);
+  height: calc(var(--u) * 13);
+  background: var(--red);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 75% 60%, 55% 70%, 40% 45%);
+}
+/* The rosette and the padlock big enough to read, hung off the tile's corner
+   so the Pokémon stays whole. */
+:where(.pixel-ui) .things-member-mark > .things-rosette {
+  width: calc(var(--u) * 13);
+  height: calc(var(--u) * 15);
+}
+:where(.pixel-ui) .things-member-mark > .item-icon {
+  transform: scale(1);
+}
+
+
+/* The pack worn: its picture in a slot of its own at the end of the team, as
+   the gear a raid goes out in. */
+:where(.pixel-ui) .things-worn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: calc(var(--u) * 34);
+  height: calc(var(--u) * 34);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 var(--u) var(--red);
+}
+.pixel-ui .things-worn-place {
+  margin-left: auto;
+}
+/* Each place of the team over a word: SAFE in green, AT RISK in red, WORN
+   under the pack. */
+:where(.pixel-ui) .things-place {
+  display: grid;
+  justify-items: center;
+  gap: var(--u);
+}
+:where(.pixel-ui) .things-tag {
+  height: calc(var(--u) * 8);
+  line-height: calc(var(--u) * 8);
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--safe-ink);
+}
+:where(.pixel-ui) .things-member.is-risk + .things-tag,
+:where(.pixel-ui) .things-worn + .things-tag {
+  color: var(--red);
+}
+.pixel-ui .things-worn > .item-icon {
+  transform: scale(2);
+}
+/* What the locker keeps of the pack: lined in green stitching, a padlock on
+   its corner. It is still the pack's squares, so it is drawn on them. */
+.pixel-ui.things-menu .px-grid-block.is-locked {
+  background: var(--safe-wash);
+  outline: var(--u) dashed var(--safe);
+  outline-offset: calc(var(--u) * -3);
+}
+.pixel-ui.things-menu .px-grid-block.is-locked::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--u) * 1);
+  top: calc(var(--u) * 1);
+  width: calc(var(--u) * 10);
+  height: calc(var(--u) * 10);
+  background: url('/assets/icons/padlock.png') center / 100% 100% no-repeat;
+  image-rendering: pixelated;
+}
+
+/* The other drawing of a kept thing, lit while the cursor is on one: the
+   lined Potion in the pack and the one in the locker are the same Potion. */
+.pixel-ui.things-menu .px-grid-block.is-locked.is-twin {
+  z-index: 1;
+  box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--gold);
+}
+.pixel-ui.things-menu .px-grid-block.is-kept-free > .item-icon {
+  opacity: 0.4;
+}
+/* L refused for want of room: the locker shakes once, its count in red. */
+.pixel-ui .things-locker.is-refusing {
+  animation: things-shake 0.3s steps(6, end);
+}
+.pixel-ui .things-locker.is-refusing .things-count {
+  background: var(--red);
+}
+
+/* The locker: its own squares, holding what it keeps of the pack drawn as the
+   pack draws it, a Pokémon's face, or a find's shape kept free for it. */
+:where(.pixel-ui) .things-locker-body {
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--u) * 3);
+  padding: 0 0 calc(var(--u) * 2);
+}
+:where(.pixel-ui) .things-kept > .things-count {
+  display: block;
+  width: max-content;
+  margin: 0 auto calc(var(--u) * 2);
+  background: var(--safe);
+  color: var(--paper);
+}
+:where(.pixel-ui) .things-kept {
+  margin: 0;
+  width: min-content;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--safe-ink);
+}
+.pixel-ui.things-menu .things-locker-grid .px-grid-block {
+  background: var(--safe-wash);
 }
 :where(.pixel-ui) .things-rosette {
   flex: none;
@@ -7376,14 +7544,25 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .things-hand-words {
   display: grid;
   min-width: 0;
+  overflow: hidden;
   text-transform: uppercase;
 }
 :where(.pixel-ui) .things-hand-words small {
   color: var(--ink-soft);
   text-transform: none;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+:where(.pixel-ui) .things-home-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  margin-left: calc(var(--u) * 4);
+  padding: 0 calc(var(--u) * 2);
+  background: var(--safe-wash);
+  color: var(--safe-ink);
 }
 :where(.pixel-ui) .things-hand-keys {
   display: flex;
