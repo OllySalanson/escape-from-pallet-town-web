@@ -147,7 +147,7 @@ describe('THE GAME CORNER as an arcade', () => {
     const full = payGame(record, 'pokemon-jump', 7000, NOW).record;
     expect(jumpCabinetNote({ gameCorner: full }, NOW)).toBe('Today 7,000 · paid all 30 today');
     expect(jumpCabinetNote({ gameCorner: full }, new Date(2026, 10, 8, 9, 0))).toBe('Your best 7,000');
-    expect(berryCabinetNote({ gameCorner: full }, NOW)).toBe('Bring a DODUO or DODRIO');
+    expect(berryCabinetNote({ gameCorner: full }, NOW)).toBe('The house lends a DODUO');
   });
 
   it('hangs the HIGH SCORES board on the back wall beside the counter, faced from the floor in front of it', () => {

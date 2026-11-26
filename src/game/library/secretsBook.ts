@@ -155,7 +155,7 @@ export const SECRETS_BOOK: LibraryBook = {
     },
     {
       heading: 'Keeping what you find',
-      text: 'A prize lost with the pack was never found: its nook holds it again the next time its condition is met. Once a nook has given all it has, it holds a berry.',
+      text: 'A prize lost with the pack was never found: its nook holds it again the next time its condition is met. A hidden spot that has given all it has holds a berry.',
     },
     ...SECRETS.map(secretPage),
   ],

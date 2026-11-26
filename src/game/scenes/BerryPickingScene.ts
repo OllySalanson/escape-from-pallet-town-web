@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { RESULT_HOLD_MS } from '../ui/spatialFocus';
 import { audioManager } from '../audio/AudioManager';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
@@ -75,6 +76,8 @@ type Phase =
  * by `SaveManager.playGame`, one write.
  */
 export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackContext {
+  /** When the last game ended: AGAIN takes no press for `RESULT_HOLD_MS` after. */
+  private finishedAt = Number.NEGATIVE_INFINITY;
   private overlay: MenuOverlay | undefined;
   private pausedBase = false;
   private game_: RestoredGame | undefined;
@@ -207,6 +210,10 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
           audioManager.play('denied');
           return;
         }
+        // The score is seen before AGAIN takes a press: SPACE jumps, and the
+        // press still going at the end started the next game over the result
+        // (the harbour re-critic, 26 Nov 2026).
+        if (this.time.now - this.finishedAt < RESULT_HOLD_MS) return;
         this.startGame();
       };
     }
@@ -336,6 +343,7 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
     this.tearDownStage();
     this.picking = undefined;
     this.phase = { kind: 'menu' };
+    this.finishedAt = this.time.now;
     this.showMenu('[data-play]');
   }
 

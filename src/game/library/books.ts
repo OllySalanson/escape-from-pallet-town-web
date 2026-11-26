@@ -69,7 +69,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'Downstairs',
-        text: 'The badge case has a slot for every badge there is to win, and beating its keeper fills it. The telly says who hunts where you land next raid. The window keeps your own clock, from dawn to night.',
+        text: 'The badge case has a slot for every badge there is to win, and each shines there once it is won. The telly says who hunts where you land next raid. The window keeps your own clock, from dawn to night.',
       },
       {
         heading: 'MY PC',
@@ -85,7 +85,10 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'Make it yours',
-        text: 'Everything in the house can be moved: the table, the plants, and anything you bring home. Find a cushion on a raid, carry it back, and it is yours to put anywhere.',
+        // Not "find a cushion on a raid": the vale's raids turn up a few rare
+        // pieces only, and the cushions come from the PRIZE WINDOW (the
+        // harbour re-critic, 26 Nov 2026).
+        text: 'Everything in the house can be moved: the table, the plants, and anything you bring home. Win a cushion at the PRIZE WINDOW and it is yours to put anywhere.',
       },
       {
         heading: 'Decorating',
@@ -105,7 +108,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'Getting furniture',
-        text: 'Most furniture is found on raids, and a piece lost with the pack is gone. The PRIZE WINDOW at PIER SQUARE sells some for TICKETS, like a {item:pika-cushion}. Every kind in your POKéDEX gives you a doll of it.',
+        text: 'The PRIZE WINDOW at PIER SQUARE sells furniture for TICKETS, like a {item:pika-cushion}. A few rare pieces turn up on raids, and are gone if the pack is lost. Every kind in your POKéDEX gives you a doll of it.',
       },
       {
         heading: 'The garden',

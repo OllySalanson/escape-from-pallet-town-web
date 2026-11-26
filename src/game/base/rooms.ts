@@ -1,6 +1,6 @@
 import type { HonourId } from '../look/gymHonours';
 import type { GridPosition } from '../movement/gridMovement';
-import { getWorkshopUpgrade, WORKSHOP_UPGRADES } from '../hub/workshop';
+import { getWorkshopUpgrade, recoveryPriceShare, wardTreatmentsPerRaid, WORKSHOP_UPGRADES } from '../hub/workshop';
 import { formatRecoveryClock, pokemonNeedingRecovery, recoveryPrices } from '../hub/recovery';
 import type { RestoredGame } from '../save/SaveManager';
 import type { Rect } from '../ui/labelPlacement';
@@ -987,9 +987,12 @@ function drawLibrary(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
       note: 'Old books on old things',
       tiles: [4, 10].flatMap((y) => [0, 1, 2, 12, 13, 14].map((x) => ({ x, y }))),
       lines: [
-        onLecterns.length === 1
-          ? 'Shelf after shelf of old books. The one worth reading is open on its lectern.'
-          : 'Shelf after shelf of old books. The ones worth reading are open on the lecterns.',
+        // The golden book counted too, once it opens (the harbour re-critic).
+        open && golden
+          ? 'Shelf after shelf of old books. The ones worth reading are open on the lectern and the golden plinth.'
+          : onLecterns.length === 1
+            ? 'Shelf after shelf of old books. The one worth reading is open on its lectern.'
+            : 'Shelf after shelf of old books. The ones worth reading are open on the lecterns.',
       ],
     },
     // Quiet, as the window is: the furniture is the picture, and a caption
@@ -1851,9 +1854,24 @@ function drawCenter(room: BaseRoom, game: RestoredGame): Drawn {
     for (const prop of display.props) sketch.plant(prop.x, prop.y, prop.name);
   }
   const waiting = pokemonNeedingRecovery(game.stash).length;
+  // The Center's signs say what is true today, not what each build gives on
+  // its own: machine I read "Revive for 0:15" with machine II making it 0:05,
+  // and the ward "3 fainted brought round free" with its beds used (the
+  // harbour re-critic, 26 Nov 2026).
+  const built = game.raidProgress.workshopUpgrades;
+  const bedsLeft = Math.max(0, wardTreatmentsPerRaid(built) - game.wardTreatmentsUsed);
+  const today = (thing: RoomThing): RoomThing => {
+    if (thing.upgradeId === 'recovery-bay-1' && built.includes('recovery-bay-2')) {
+      return { ...thing, note: `Joined by machine II: revive for ${formatRecoveryClock(recoveryPrices(recoveryPriceShare(built)).reviveMs)}` };
+    }
+    if (thing.upgradeId === 'quarantine-ward') {
+      return { ...thing, note: bedsLeft === 0 ? 'Beds full till your next raid' : `${bedsLeft} ${bedsLeft === 1 ? 'bed' : 'beds'} free: revives on the house` };
+    }
+    return thing;
+  };
   const things: RoomThing[] = [
     { name: "BILL'S PC", note: 'Your boxes and your banked goods', tiles: [CENTER_PC], opens: 'boxes' },
-    ...thingsFor(displays),
+    ...thingsFor(displays).map(today),
   ];
   const sprites = [...restingBalls(waiting)];
   if (waiting > 0) {
@@ -2406,7 +2424,7 @@ function drawUpstairs(room: BaseRoom, game: RestoredGame): Drawn {
     {
       name: 'YOUR BED',
       // Not its first line again: the caption and the line were copies (the critic tour).
-      note: 'Sleep it off',
+      note: 'Lie down a while',
       tiles: [
         { x: 1, y: 5 },
         { x: 1, y: 6 },
