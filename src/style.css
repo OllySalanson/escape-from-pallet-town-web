@@ -123,6 +123,12 @@ body {
 }
 /* They come in from the edge they stand on, a game pixel a step, rather than appearing over the hall. */
 /* The moment a disc is read (`teachMomentBody`); its rules are in the Pixel UI block. */
+/* The shiny MAGIKARP's two gold stars on THE PRIZE WINDOW's shelf, taking turns. */
+@keyframes prize-glint {
+  50% {
+    opacity: 0;
+  }
+}
 /* The red arrow over the thing the cursor is on in YOUR THINGS, bobbing. */
 @keyframes things-bob {
   from {
@@ -5459,6 +5465,400 @@ body.touch-play .feedback-tab {
    buttons are read whole rather than wrapped a word a line in half of it. */
 :where(.pixel-ui) .game-corner-layout .px-list[data-columns] > .px-arming {
   grid-column: 1 / -1;
+}
+/* --- THE PRIZE WINDOW: things on shelves (`gameCornerView.ts`) -------------
+   The prize room drawn as a place (Olly's pick of 26 Nov 2026,
+   `docs/screens/prize-shelves/`): a wooden wall of shelves, every prize
+   standing on a plank with a gold ticket for its price, and the clerk's
+   counter on the right answering for the one under the cursor. The wood is
+   the room's own picture, as a fixture's art is, so it keeps its browns; the
+   chrome round it is the menus' palette. Items stand at two game pixels a
+   source pixel and the house's furniture at one, so all four shelves fit the
+   authored screen; a Pokémon stands at its own size. */
+.pixel-ui .prize-room {
+  grid-template-rows: minmax(0, 1fr);
+  align-content: stretch;
+  height: 100%;
+}
+.pixel-ui .px-window.prize-room-window {
+  --wood: #8a5a34;
+  --wood-seam: #7a4e2c;
+  --plank: #c08850;
+  --plank-lit: #e0b070;
+  --plank-shade: #4a2c14;
+  --brass: #d8b048;
+  --brass-ink: #3a2410;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 132);
+  min-height: 0;
+  padding: 0;
+  background: repeating-linear-gradient(90deg, var(--wood) 0 calc(var(--u) * 23), var(--wood-seam) calc(var(--u) * 23) calc(var(--u) * 24));
+}
+.pixel-ui .prize-wall {
+  --fill: var(--plank-shade);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  /* No foot: the MORE strip sticks to the content's edge (`style.test.ts`). */
+  padding: calc(var(--u) * 4) calc(var(--u) * 6) 0;
+}
+/* The MORE strip is the wall's dark plank, its words white. */
+.pixel-ui .prize-wall[data-more]::after {
+  color: var(--paper);
+}
+/* The shelves stand in the middle of a wall with room to spare. */
+.pixel-ui .prize-shelves {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 4);
+  margin: auto;
+}
+.pixel-ui .prize-shelf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: calc(var(--u) * 2) calc(var(--u) * 10);
+}
+.pixel-ui .prize-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--u) * 3);
+  min-width: 0;
+}
+.pixel-ui .prize-things {
+  display: flex;
+  flex-wrap: wrap;
+}
+/* A brass plate under the plank, naming the group. */
+.pixel-ui .prize-plate {
+  margin: 0;
+  padding: 0 calc(var(--u) * 3);
+  background: var(--brass);
+  color: var(--brass-ink);
+  box-shadow: 0 0 0 var(--u) var(--plank-shade);
+  text-transform: uppercase;
+  font: inherit;
+  white-space: nowrap;
+}
+/* One prize: its picture standing on a length of plank, its ticket on the
+   plank's edge. The plank is the cell's own, so planks join along a row and a
+   shelf that wraps is a plank a line. */
+.pixel-ui .prize-thing {
+  --art: 32;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: calc(var(--u) * 54);
+  padding: calc(var(--u) * 3) 0 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: center;
+}
+.pixel-ui .prize-thing.is-pokemon {
+  --art: 64;
+  width: calc(var(--u) * 80);
+}
+.pixel-ui .prize-group.is-house .prize-thing {
+  --art: 16;
+  width: calc(var(--u) * 26);
+}
+.pixel-ui .prize-thing::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--u) * (var(--art) + 3));
+  height: calc(var(--u) * 6);
+  background: linear-gradient(var(--plank-lit) 0 calc(var(--u) * 1), var(--plank) calc(var(--u) * 1) calc(var(--u) * 4), var(--plank-shade) calc(var(--u) * 4));
+}
+.pixel-ui .prize-art {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: calc(var(--u) * var(--art));
+}
+.pixel-ui .prize-thing .item-icon,
+.pixel-ui .prize-thing .item-icon img,
+.pixel-ui .prize-card-art .item-icon,
+.pixel-ui .prize-card-art .item-icon img {
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+}
+.pixel-ui .prize-group.is-house .prize-thing .item-icon,
+.pixel-ui .prize-group.is-house .prize-thing .item-icon img {
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+}
+.pixel-ui .prize-mon {
+  display: block;
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 64);
+}
+.pixel-ui .prize-mon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+/* A gold ticket with a notch at each end; grey for a price not yet in reach. */
+.pixel-ui .prize-ticket {
+  position: relative;
+  display: inline-block;
+  padding: 0 calc(var(--u) * 4);
+  background: var(--gold);
+  color: var(--ink);
+  box-shadow: inset 0 calc(var(--u) * -1) 0 var(--gold-ink);
+  white-space: nowrap;
+  -webkit-mask:
+    radial-gradient(circle calc(var(--u) * 2) at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle calc(var(--u) * 2) at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle calc(var(--u) * 2) at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle calc(var(--u) * 2) at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
+}
+.pixel-ui .prize-ticket.is-off {
+  background: var(--mist-2);
+  color: var(--ink-soft);
+  box-shadow: inset 0 calc(var(--u) * -1) 0 var(--ink-soft);
+}
+.pixel-ui .prize-ticket.is-rest {
+  background: var(--go);
+  color: var(--paper);
+  box-shadow: inset 0 calc(var(--u) * -1) 0 var(--safe-ink);
+}
+.pixel-ui .prize-thing > .prize-ticket,
+.pixel-ui .prize-thing > .prize-stamp {
+  margin-top: calc(var(--u) * 1);
+  z-index: 1;
+}
+/* The name under a Pokémon, hanging below its plank. */
+.pixel-ui .prize-label {
+  margin-top: calc(var(--u) * 3);
+  padding: 0 calc(var(--u) * 3);
+  background: var(--paper);
+  box-shadow: 0 0 0 var(--u) var(--line);
+  white-space: nowrap;
+}
+.pixel-ui .prize-label small {
+  margin-left: calc(var(--u) * 3);
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+/* Out for now, for a reason that is not tickets: faded, with the reason. */
+.pixel-ui .prize-thing.is-out .prize-art,
+.pixel-ui .prize-thing.is-yours .prize-art {
+  opacity: 0.5;
+}
+.pixel-ui .prize-thing.is-out .prize-art {
+  filter: grayscale(1);
+}
+.pixel-ui .prize-note {
+  position: relative;
+  z-index: 1;
+  margin-top: calc(var(--u) * 1);
+  padding: 0 calc(var(--u) * 2);
+  background: var(--ink);
+  color: var(--paper);
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+.pixel-ui .prize-stamp {
+  display: inline-block;
+  padding: 0 calc(var(--u) * 3);
+  background: var(--paper);
+  color: var(--red);
+  box-shadow: inset 0 0 0 var(--u) var(--red);
+  text-transform: uppercase;
+}
+/* The shiny MAGIKARP glints: FireRed's gold star, twice, taking turns. */
+.pixel-ui .prize-thing.is-shiny .prize-art::before,
+.pixel-ui .prize-thing.is-shiny .prize-art::after {
+  content: '';
+  position: absolute;
+  width: calc(var(--u) * 8);
+  height: calc(var(--u) * 8);
+  background: url('/assets/battle/shiny-star.png') center / 100% 100% no-repeat;
+  image-rendering: pixelated;
+  animation: prize-glint 1.2s steps(1) infinite;
+}
+.pixel-ui .prize-thing.is-shiny .prize-art::before {
+  right: calc(var(--u) * 2);
+  top: calc(var(--u) * 6);
+}
+.pixel-ui .prize-thing.is-shiny .prize-art::after {
+  left: calc(var(--u) * 2);
+  top: calc(var(--u) * 30);
+  animation-delay: 0.6s;
+}
+/* The cursor: a red frame round the thing, which stands up a pixel. */
+.pixel-ui .prize-thing:focus::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 calc(var(--u) * -2);
+  box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--cursor), 0 0 0 var(--u) var(--paper);
+  pointer-events: none;
+}
+.pixel-ui .prize-thing:focus .prize-art {
+  transform: translateY(calc(var(--u) * -2));
+}
+/* --- The clerk's counter --- */
+.pixel-ui .prize-counter {
+  position: relative;
+  display: grid;
+  grid-template-rows: calc(var(--u) * 56) minmax(0, 1fr) auto;
+  min-height: 0;
+  padding: 0 calc(var(--u) * 5) calc(var(--u) * 5);
+  gap: calc(var(--u) * 4);
+}
+/* The clerk stands behind the counter, cut at the waist by its top. */
+.pixel-ui .prize-clerk {
+  justify-self: end;
+  align-self: end;
+  margin-right: calc(var(--u) * 10);
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 56);
+  background-size: calc(var(--u) * 128) calc(var(--u) * 256);
+  background-position: 0 0;
+  image-rendering: pixelated;
+}
+.pixel-ui .prize-counter::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--u) * 56);
+  bottom: 0;
+  background: linear-gradient(var(--plank-lit) 0 calc(var(--u) * 1), var(--plank) calc(var(--u) * 1) calc(var(--u) * 6), var(--plank-shade) calc(var(--u) * 6) calc(var(--u) * 7), var(--wood) calc(var(--u) * 7));
+  box-shadow: inset calc(var(--u) * 1) 0 0 var(--plank-shade);
+}
+.pixel-ui .prize-counter-top,
+.pixel-ui .prize-won {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+}
+.pixel-ui .prize-card {
+  display: grid;
+  justify-items: start;
+  gap: calc(var(--u) * 3);
+  padding: calc(var(--u) * 4);
+  background: var(--paper);
+  box-shadow: 0 0 0 var(--u) var(--line);
+}
+.pixel-ui .prize-card[hidden] {
+  display: none;
+}
+/* The chosen prize stands on the counter beside the clerk. */
+.pixel-ui .prize-card-art {
+  position: absolute;
+  z-index: 1;
+  left: calc(var(--u) * 8);
+  top: calc(var(--u) * -36);
+}
+.pixel-ui .prize-card-name {
+  text-transform: uppercase;
+}
+.pixel-ui .prize-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 2);
+}
+.pixel-ui .prize-chip {
+  padding: 0 calc(var(--u) * 3);
+  background: var(--ink);
+  color: var(--paper);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pixel-ui .prize-chip.is-out {
+  background: var(--paper-sunk);
+  color: var(--ink);
+}
+.pixel-ui .prize-sum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+.pixel-ui .prize-go {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  margin: 0;
+  text-transform: uppercase;
+}
+.pixel-ui .prize-key {
+  padding: 0 calc(var(--u) * 3);
+  background: var(--go);
+  color: var(--paper);
+}
+.pixel-ui .prize-question {
+  margin: 0;
+  text-transform: uppercase;
+}
+.pixel-ui .prize-answers {
+  display: flex;
+  gap: calc(var(--u) * 4);
+}
+.pixel-ui .prize-rumour {
+  margin: calc(var(--u) * 4) 0 0;
+  padding: calc(var(--u) * 3);
+  background: var(--paper);
+  box-shadow: 0 0 0 var(--u) var(--line);
+}
+.pixel-ui .prize-won {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  padding: calc(var(--u) * 2) calc(var(--u) * 3);
+  background: var(--ink);
+  color: var(--paper);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pixel-ui .prize-meter {
+  position: relative;
+  flex: 1;
+  height: calc(var(--u) * 4);
+  background: var(--ink-2);
+  box-shadow: 0 0 0 var(--u) var(--plank);
+}
+.pixel-ui .prize-meter > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--gold);
+}
+/* The smallest screen stacks the counter under the wall. */
+.pixel-ui:where([data-room='tight']) .px-window.prize-room-window {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.pixel-ui:where([data-room='tight']) .prize-counter {
+  grid-template-rows: auto auto;
+  padding-top: calc(var(--u) * 5);
+}
+.pixel-ui:where([data-room='tight']) .prize-clerk,
+.pixel-ui:where([data-room='tight']) .prize-card-art {
+  display: none;
+}
+.pixel-ui:where([data-room='tight']) .prize-counter::before {
+  top: 0;
+}
+/* ...and the counter is one line: the name, the sum and the key. */
+.pixel-ui:where([data-room='tight']) .prize-card:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.pixel-ui:where([data-room='tight']) .prize-chips,
+.pixel-ui:where([data-room='tight']) .prize-won {
+  display: none;
 }
 /* --- The PLAYTEST BOARD (`dev/playtestBoardView.ts`) ------------------------
    One long list in a side panel: it scrolls inside the window, never past it. */

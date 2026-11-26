@@ -92,7 +92,9 @@ describe('THE PRIZE WINDOW asks before it spends tickets', () => {
     const { scene, clock, markup, tickets, surfMats, focused } = prizeWindow();
     scene.ask('surf-mat');
     expect(markup()).toMatch(/data-prize-cancel data-cursor-start[^>]*>Not now</);
-    expect(markup()).toContain('Spend 200 of your 1,000 tickets on Surf Mat?');
+    // The counter asks, with the sum it comes to: 1,000 - 200 = 800.
+    expect(markup()).toContain('Buy Surf Mat?');
+    expect(markup()).toContain('<span class="prize-ticket is-rest">800</span>');
     expect(focused()).toBe('[data-prize-cancel]');
     clock.now += 80;
     // The second ENTER presses what the cursor is on.
@@ -154,7 +156,7 @@ describe('THE PRIZE WINDOW in a tab the save has moved on from', () => {
     scene.ask('tm11-sunny-day');
     expect(markup()).not.toContain('data-prize-cancel');
     expect(markup()).toMatch(/role="status">400 more tickets\.</);
-    expect(markup()).toContain('<strong>200 tickets</strong>');
+    expect(markup()).toContain('px-tag-secure">200 tickets</span>');
     expect(markup()).not.toContain('1,000 tickets');
     expect(tickets()).toBe(200);
   });
@@ -162,7 +164,7 @@ describe('THE PRIZE WINDOW in a tab the save has moved on from', () => {
   it('BUY refused because the other tab spent the tickets meanwhile catches up and says so', () => {
     const { scene, storage, clock, markup, tickets } = prizeWindow();
     scene.ask('tm11-sunny-day');
-    expect(markup()).toContain('Spend 600 of your 1,000 tickets');
+    expect(markup()).toContain('Buy TM11 Sunny Day?');
     expect(new SaveManager(storage).buyTicketPrize('poke-flute')).not.toBeNull();
     clock.now += RELEASE_ARMING_MS;
     scene.buy('tm11-sunny-day');

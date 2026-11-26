@@ -360,7 +360,8 @@ export function today(record: GameCornerRecord, now: Date): TicketDay {
   return record.day?.day === day ? record.day : { day, paid: {}, berries: {}, bought: {}, best: {} };
 }
 
-function paidToday(day: TicketDay): number {
+/** What the cabinets have paid today, every source together: what the daily ceiling is counted against. */
+export function paidToday(day: TicketDay): number {
   return Object.values(day.paid).reduce((sum, value) => sum + (value ?? 0), 0);
 }
 

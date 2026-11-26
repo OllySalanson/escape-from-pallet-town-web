@@ -1,9 +1,7 @@
 import type { RaidProgress } from '../save/SaveManager';
 import {
-  BERRIES_A_DAY,
   BERRY_TICKET_TIERS,
   COURSE_TICKET_TIERS,
-  DAILY_TICKET_CEILING,
   JUMP_TICKET_TIERS,
   today,
   NO_GAME_CORNER,
@@ -148,5 +146,3 @@ export function prizeClerkLines(progress: Pick<RaidProgress, 'gameCorner'>): rea
     : [`Welcome to the PRIZE WINDOW! You have ${number(tickets)} tickets. What will it be?`];
 }
 
-/** The window's own small print, under its list. */
-export const PRIZE_WINDOW_NOTE = `HELD BERRIES: ${BERRIES_A_DAY} a day. Each weather TM: one a week. At most ${DAILY_TICKET_CEILING} tickets a day.`;
