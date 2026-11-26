@@ -870,6 +870,16 @@ map maker as possible" (the palette board, 2026-10-10).
   was a row short and left its door off, so it was cut 7x5 as the other gyms
   are, and the sheet repacked. Every other piece's pixels are unchanged.
 
+### `day-care-pen.png` - THE DAY-CARE's stage
+
+**Derived from files already in this repository, nothing fetched.** The yard's
+Day-Care pen and the lawn round it, as the game draws them, cut out by
+`scripts/draw-day-care-stage.mjs`, which draws the yard with the game's own base
+renderer (`tools/base/renderBase.mts`) and crops the pen's box. Every pixel is
+one of the yard's tiles, so it carries those tiles' entries (`frlg-base.png`,
+`frlg-tiles.png` and the rest the yard is laid from), FireRed ripped art
+accepted knowingly.
+
 ### `arena-hall.png` - THE RAID ARENA's great hall
 
 - **What it is.** The tiles of the round hall behind the Arena's door: its stone

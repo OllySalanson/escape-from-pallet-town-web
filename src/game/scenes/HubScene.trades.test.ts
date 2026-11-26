@@ -75,9 +75,10 @@ describe('THE TRADER’s list', () => {
     const storage = new MemoryStorage();
     seedSave(storage);
     const html = speakToHim(storage).overlay.root.innerHTML;
-    expect(html).toContain('Which Pokémon will you trade?');
-    expect(html).toContain('Trade for MIMIEN');
-    expect(html).toContain('Trade and back');
+    expect(html).toContain('Who goes?');
+    // What comes back is shown, standing opposite: his MIMIEN, and one sent over and back, grown.
+    expect(html).toContain('<p class="tr-name">MIMIEN</p>');
+    expect(html).toContain('grown</p>');
     expect(html).toContain('He has no trade for a PIDGEY.');
     // The two he would take come before the one he would not.
     expect(html.indexOf('data-trade=')).toBeLessThan(html.indexOf('He has no trade for a PIDGEY.'));

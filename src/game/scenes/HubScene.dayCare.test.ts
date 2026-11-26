@@ -75,11 +75,13 @@ function speakToHim(storage: MemoryStorage): DayCareHub {
 }
 
 describe('the Day-Care screen', () => {
-  it('asks which Pokémon to raise, and leaving one takes it out of the vault', () => {
+  it('asks who stays, shows them in his pen, and leaving one takes it out of the vault', () => {
     const storage = new MemoryStorage();
     const ids = seedSave(storage);
     const hub = speakToHim(storage);
-    expect(hub.overlay.root.innerHTML).toContain('Which Pokémon should I raise?');
+    expect(hub.overlay.root.innerHTML).toContain('Who stays?');
+    expect(hub.overlay.root.innerHTML).toContain('day-care-pen.png');
+    expect(hub.overlay.root.innerHTML).toContain(`data-day-care-leave="${ids.charmander}"`);
 
     hub.leaveAtDayCare(ids.charmander);
 

@@ -232,6 +232,8 @@ import { quickerLandingFor, rewardLine, standingJobWalk } from '../objectives/st
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import { joyRailLine, recoveryTermsFor } from '../hub/centerCounter';
 import { DAY_CARE_LEAST_RAID_MS, dayCareRefusal, leftLines, raidsCompleted } from '../hub/dayCare';
+import { dayCareBody } from '../hub/dayCareView';
+import { tradesBody } from '../hub/tradesView';
 import { tradeDealFor, tradeHelp, tradeQuestion, tradeRefusal } from '../hub/trades';
 import { TRADER_POSITION } from '../base/harbourLife';
 import { skyNote, skyTurns } from '../base/homeClock';
@@ -4554,45 +4556,21 @@ export class HubScene extends Phaser.Scene {
     const found = this.findablePokemon;
     const shown = [...found.filter(takes), ...found.filter((stored) => !takes(stored))];
     const boxNames = this.stash.listBoxes().map((box) => box.name);
-    const rows = shown
-      .map((stored, index) => {
+    const partner = this.stash.partner()?.id;
+    return dayCareBody(
+      shown.map((stored) => {
         const refusal = dayCareRefusal(this.stash, stored.id, away);
-        const name = escapeAttribute(stored.pokemon.name);
-        const wiring =
-          refusal === undefined
-            ? `data-day-care-leave="${stored.id}" data-help="Leave ${name} with him. It grows half a level with every raid of ${DAY_CARE_LEAST_RAID_MS / 1000} seconds or more."`
-            : `data-refused="${escapeAttribute(refusal)}" aria-disabled="true" data-help="${escapeAttribute(refusal)}"`;
-        // FireRed's PC box, as Bill's PC is: the icon at its health's pace over
-        // its level and bar, the ones he would take first, its box said to a
-        // reader and in the pane under the box.
-        const boxed = boxNames[this.stash.boxIndexOf(stored.id)] ?? '';
-        return pixelMonTile(stored.pokemon, {
-          classes: away.has(stored.id) ? ['is-away'] : [],
-          attributes: `${wiring} data-shows="${stored.id}" data-box-name="${escapeAttribute(boxed)}" aria-label="${escapeAttribute(`${stored.pokemon.name}, level ${stored.pokemon.level}, ${boxed}${refusal === undefined ? '' : `, ${refusal}`}`)}"${index === 0 ? ' data-cursor-start' : ''}`,
-        });
-      })
-      .join('');
-    const details = shown
-      .map((stored, index) =>
-        this.pokemonDetail(stored, index === 0, {
-          label: 'Day-Care',
-          chips: (shows) => {
-            const refusal = dayCareRefusal(this.stash, stored.id, away);
-            const boxed = boxNames[this.stash.boxIndexOf(stored.id)];
-            return (boxed ? `<span class="px-note">Kept in ${escapeAttribute(boxed)}</span>` : '') + this.chip(
-              refusal === undefined ? `data-day-care-leave="${stored.id}" ${shows}` : `data-refused="${escapeAttribute(refusal)}" ${shows}`,
-              refusal ?? `Leave ${stored.pokemon.name} with him.`,
-              'Leave it with him',
-              refusal !== undefined,
-            );
-          },
-        }),
-      )
-      .join('');
-    return `<main class="px-body daycare-layout">${pixelWindow(
-      `<div class="px-mon-tiles px-scroll">${this.browseBar(false)}${rows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>${details}`,
-      { className: 'stash-roster', heading: 'Which Pokémon should I raise?', note: this.atBaseNote(away) },
-    )}</main>`;
+        return {
+          id: stored.id,
+          pokemon: stored.pokemon,
+          ...(refusal === undefined ? {} : { refusal }),
+          box: boxNames[this.stash.boxIndexOf(stored.id)] ?? '',
+          away: away.has(stored.id),
+          partner: stored.id === partner,
+        };
+      }),
+      { browse: this.browseBar(false), note: this.atBaseNote(away) },
+    );
   }
 
   /**
@@ -4609,45 +4587,6 @@ export class HubScene extends Phaser.Scene {
     const found = this.findablePokemon;
     const shown = [...found.filter((stored) => refusal(stored) === undefined), ...found.filter((stored) => refusal(stored) !== undefined)];
     const boxNames = this.stash.listBoxes().map((box) => box.name);
-    // FireRed's PC box, as the Day-Care's is: the ones he would trade first.
-    // Never a start while a trade is asking: `refocus` takes the first one, and
-    // the press that armed it would make it (`traderView`'s rule).
-    const rows = shown
-      .map((stored, index) => {
-        const why = refusal(stored);
-        const deal = dealOf(stored);
-        const name = stored.pokemon.name;
-        const wiring = deal
-          ? `data-trade="${stored.id}" data-help="${escapeAttribute(tradeHelp(name, deal))}"`
-          : `data-refused="${escapeAttribute(why ?? '')}" aria-disabled="true" data-help="${escapeAttribute(why ?? '')}"`;
-        const boxed = boxNames[this.stash.boxIndexOf(stored.id)] ?? '';
-        const start = index === 0 && this.tradeArmed === undefined ? ' data-cursor-start' : '';
-        return pixelMonTile(stored.pokemon, {
-          classes: away.has(stored.id) ? ['is-away'] : [],
-          attributes: `${wiring} data-shows="${stored.id}" data-box-name="${escapeAttribute(boxed)}" aria-label="${escapeAttribute(`${name}, level ${stored.pokemon.level}, ${boxed}${why === undefined ? '' : `, ${why}`}`)}"${start}`,
-        });
-      })
-      .join('');
-    const shownFirst = this.tradeArmed ?? shown[0]?.id;
-    const details = shown
-      .map((stored) =>
-        this.pokemonDetail(stored, stored.id === shownFirst, {
-          label: 'Trader',
-          chips: (shows) => {
-            const why = refusal(stored);
-            const deal = dealOf(stored);
-            const boxed = boxNames[this.stash.boxIndexOf(stored.id)];
-            const kept = boxed ? `<span class="px-note">Kept in ${escapeAttribute(boxed)}</span>` : '';
-            return (
-              kept +
-              (deal
-                ? this.chip(`data-trade="${stored.id}" ${shows}`, tradeHelp(stored.pokemon.name, deal), deal.kind === 'swap' ? `Trade for ${deal.trade.nickname}` : 'Trade and back')
-                : this.chip(`data-refused="${escapeAttribute(why ?? '')}" ${shows}`, why ?? '', 'Trade', true))
-            );
-          },
-        }),
-      )
-      .join('');
     const armed = shown.find((stored) => stored.id === this.tradeArmed);
     const armedDeal = armed ? dealOf(armed) : undefined;
     // A trade of his is for good, so it is asked, in the bar the partner swap
@@ -4661,10 +4600,29 @@ export class HubScene extends Phaser.Scene {
             actions: `<button class="px-window px-button is-${armedDeal.kind === 'swap' ? 'danger' : 'primary'}" data-trade-confirm="${armed.id}" data-shows="${armed.id}" data-help="${escapeAttribute(tradeHelp(armed.pokemon.name, armedDeal))}">${armedDeal.kind === 'swap' ? `Trade for ${armedDeal.trade.nickname}` : 'Trade and back'}</button><button class="px-window px-button" data-deal-cancel data-cursor-start data-shows="${armed.id}" data-help="Nothing changes.">Keep it</button>`,
           })
         : '';
-    return `<main class="px-body daycare-layout">${pixelWindow(
-      `<div class="px-mon-tiles px-scroll">${this.browseBar(false)}${rows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>${details}`,
-      { className: 'stash-roster', heading: 'Which Pokémon will you trade?', note: this.atBaseNote(away) },
-    )}${asking}</main>`;
+    const partner = this.stash.partner()?.id;
+    return tradesBody(
+      shown.map((stored) => {
+        const why = refusal(stored);
+        const deal = dealOf(stored);
+        return {
+          id: stored.id,
+          pokemon: stored.pokemon,
+          ...(deal ? { deal } : {}),
+          ...(why === undefined ? {} : { refusal: why }),
+          box: boxNames[this.stash.boxIndexOf(stored.id)] ?? '',
+          away: away.has(stored.id),
+          partner: stored.id === partner,
+        };
+      }),
+      {
+        browse: this.browseBar(false),
+        note: this.atBaseNote(away),
+        owned: new Set(this.savedGame.raidProgress.pokedexOwned ?? []),
+        ...(this.tradeArmed === undefined ? {} : { armed: this.tradeArmed }),
+        asking,
+      },
+    );
   }
 
   /** One trade with THE TRADER, made in one write, and said back on the lawn. */
