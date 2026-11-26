@@ -10,9 +10,9 @@ import { countPlay, raidEnding } from '../analytics/playCounter';
 import { friendRoom } from '../raidRoom/friendRoom';
 import { audioManager } from '../audio/AudioManager';
 import { isPlaytestRun } from '../dev/playtestMode';
-import { nextStepLines, vaultOf } from '../hub/nextStep';
+import { nextStepCard, vaultOf, type NextStepCard } from '../hub/nextStep';
 import { RAID_KEY_LETTERS } from '../input/keyBindings';
-import { resultMoment, STOW_LABEL, type HaulStow, type ResultMoment } from '../run/resultMoment';
+import { resultMoment, type HaulStow, type ResultMoment } from '../run/resultMoment';
 import { SaveManager } from '../save/SaveManager';
 import { formatElapsedClock } from '../run/raidClock';
 import {
@@ -29,11 +29,12 @@ import type {
   ReportItem,
   ReportPokemon,
 } from '../run/extractionReport';
-import { formatMoney, isCurrency, itemAmountFor, itemCountTag } from '../items';
+import { formatMoney, itemAmountFor, itemCountTag } from '../items';
 import { publicAssetUrl } from '../publicAssetUrl';
 import { pokemonSpritePath } from '../pokemon/pokemonSprites';
-import { BRIEFING_ICONS, iconUrl, itemIcon, itemIconName, objectiveIcon, WORLD_ICONS } from '../ui/icons';
+import { BRIEFING_ICONS, iconUrl, itemIcon, itemIconName, objectiveIcon } from '../ui/icons';
 import { MenuOverlay } from '../ui/MenuOverlay';
+import { whenPicturesDrawn } from '../ui/menuPictures';
 import type { SceneDescription } from '../dev/testDescribe';
 import { formatExperience } from '../ui/pokemonSummary';
 import { pixelCommitBar, pixelHpBar, pixelScreen, pixelShinyStar, pixelTag, pixelWindow } from '../ui/pixelUi';
@@ -74,6 +75,13 @@ const INPUT_LOCK_MS = 900;
  * last of those presses being held down a moment too long.
  */
 const SETTLED_LOCK_MS = 350;
+
+/** The longest the stage waits for its pictures before it plays anyway. */
+const MOMENT_PICTURE_WAIT_MS = 500;
+/** The money starts counting as the headline lands, and counts in this many steps, this far apart. */
+const MONEY_COUNT_DELAY_MS = 350;
+const MONEY_COUNT_STEPS = 16;
+const MONEY_COUNT_STEP_MS = 40;
 
 /** Keys that are only ever half of a keypress, so they never advance a beat. */
 const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab']);
@@ -324,7 +332,7 @@ export class ExtractionScene extends Phaser.Scene {
     control.onclick = () => this.leave();
     control.disabled = true;
     this.hookFullReport();
-    this.hookStow();
+    this.hookMoment();
     this.time.delayedCall(lockMs, () => {
       this.locked = false;
       control.disabled = false;
@@ -398,79 +406,115 @@ export class ExtractionScene extends Phaser.Scene {
   }
 
   /**
-   * The haul going into YOUR THINGS on the moment (`stowMarkup`): the hops are
-   * CSS, and each one landing is what sounds, so the sound is never ahead of or
-   * behind the picture on a slow frame. A drop each, the sack gulping, and the
-   * chime as the last is in and its name is written under it. A contract's
-   * fanfare says the same and more, and it sounds as the screen answers
-   * whatever the sack is doing, so the sack stays quiet then. Reduced motion
-   * draws it already in, and the chime waits for the screen to answer, or it
-   * runs into the extraction jingle.
+   * The stage a raid that got out opens on comes to life once its pictures
+   * are drawn (`ui/menuPictures.ts`), so nothing drops in as a blank box: the
+   * headline lands, the money counts up, each thing drops into HOME with a
+   * thud of its own, and the chime sounds as the last is in. The drops are
+   * CSS and each landing is what sounds, so the sound is never ahead of or
+   * behind the picture on a slow frame. A contract's fanfare says the same
+   * and more as the screen answers, so the chime stays quiet then. Reduced
+   * motion draws it all already there, and the chime waits for the screen to
+   * answer, or it runs into the extraction jingle.
    */
-  private hookStow(): void {
-    const stow = this.overlay.root.querySelector<HTMLElement>('[data-haul-stow]');
-    if (!stow) {
+  private hookMoment(): void {
+    const stage = this.overlay.root.querySelector<HTMLElement>('[data-moment-stage]');
+    if (!stage) {
       return;
     }
-    const things = [...stow.querySelectorAll<HTMLElement>('[data-stow-thing]')];
+    fitMomentStage(stage);
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(() => fitMomentStage(stage)).observe(stage);
+    }
+    const counter = stage.querySelector<HTMLElement>('[data-money-count]');
+    const money = Number(counter?.dataset.moneyCount ?? 0);
+    const things = [...stage.querySelectorAll<HTMLElement>('[data-stow-thing]')];
     const still = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
-    if (still || things.length === 0) {
-      stow.classList.add('is-stowed');
-      this.chimeAtLock = true;
+    if (still) {
+      stage.classList.add('is-playing', 'is-still');
+      if (counter) counter.textContent = formatMoney(money);
+      this.chimeAtLock = things.length > 0;
       return;
     }
-    const chime = () => {
-      stow.classList.add('is-stowed');
-      if (!this.contractToSound()) {
-        audioManager.play('haulStowed');
-      }
-    };
-    const bag = stow.querySelector<HTMLElement>('[data-stow-bag]');
     let landed = 0;
     for (const thing of things) {
       thing.addEventListener('animationend', (event) => {
-        if (event.animationName !== 'haul-stow-hop' || !stow.isConnected) {
+        if (event.animationName !== 'moment-drop' || !stage.isConnected) {
           return;
         }
         landed += 1;
-        if (bag) {
-          // Restarted for every catch: off, a reflow, and on again.
-          bag.classList.remove('is-gulping');
-          void bag.offsetWidth;
-          bag.classList.add('is-gulping');
-        }
+        thing.closest('.moment-home-cell')?.classList.add('is-in');
         if (landed < things.length) {
           audioManager.play('haulDrop');
-        } else {
-          chime();
+        } else if (!this.contractToSound()) {
+          audioManager.play('haulStowed');
         }
       });
     }
+    void whenPicturesDrawn(stage, MOMENT_PICTURE_WAIT_MS).then(() => {
+      if (!stage.isConnected) {
+        return;
+      }
+      stage.classList.add('is-playing');
+      if (counter && money > 0) {
+        this.time.delayedCall(MONEY_COUNT_DELAY_MS, () => this.countMoney(counter, money));
+      }
+    });
+  }
+
+  /** The money banked counting up from nothing, a plink every few steps, as a till does. */
+  private countMoney(counter: HTMLElement, money: number): void {
+    const steps = Math.min(MONEY_COUNT_STEPS, money);
+    const tick = (step: number) => {
+      if (!counter.isConnected) {
+        return;
+      }
+      counter.textContent = formatMoney(Math.round((money * step) / steps));
+      if (step % 3 === 0 || step === steps) {
+        audioManager.play('coinPlink');
+      }
+      if (step < steps) {
+        this.time.delayedCall(MONEY_COUNT_STEP_MS, () => tick(step + 1));
+      }
+    };
+    tick(1);
   }
 
   /**
-   * What the raid put in YOUR THINGS, in a row beside an open sack: each hops
-   * in after the one nearer it and settles in its mouth, the sack gulps, and its name
-   * and key are written under it (`run/resultMoment.ts`). Each thing knows its place in the row,
-   * so how far it hops to the sack's mouth is the stylesheet's sum.
+   * HOME, the pane YOUR THINGS keeps what is safe in, with a cell for each
+   * thing the raid put there: each drops in from above, one after another,
+   * and its count shows as it lands. The captain could not tell what the sack
+   * that stood here meant (26 Nov 2026); HOME is the word and the house the
+   * mark YOUR THINGS uses for the same place.
    */
-  private stowMarkup(stow: HaulStow): string {
+  private homeMarkup(stow: HaulStow): string {
     const cells = [
       ...stow.things.map(
         (thing) =>
-          `<img src="${iconUrl(itemIconName(thing.itemId))}" alt="" />${
-            thing.quantity > 1 || isCurrency(thing.itemId) ? `<span class="haul-stow-count">${escapeHtml(itemCountTag(thing.itemId, thing.quantity))}</span>` : ''
+          `<span class="moment-home-thing" data-stow-thing><img src="${iconUrl(itemIconName(thing.itemId))}" alt="" /></span>${
+            thing.quantity > 1 ? `<span class="moment-home-count">${escapeHtml(itemCountTag(thing.itemId, thing.quantity))}</span>` : ''
           }`,
       ),
-      ...(stow.more > 0 ? [`<span class="haul-stow-more">+${stow.more}</span>`] : []),
+      ...(stow.more > 0 ? [`<span class="moment-home-thing is-more" data-stow-thing>+${stow.more}</span>`] : []),
     ];
-    const middle = (cells.length - 1) / 2;
     const said = [...stow.things.map((thing) => itemAmountFor(thing.itemId, thing.quantity)), ...(stow.more > 0 ? [`${stow.more} more`] : [])].join(', ');
-    return `<div class="haul-stow" data-haul-stow style="--n: ${cells.length}" role="img" aria-label="${escapeHtml(`${said}, into YOUR THINGS`)}"><div class="haul-stow-row">${cells
-      .map((cell, index) => `<span class="haul-stow-thing" data-stow-thing style="--at: ${index}; --from: ${index - middle}; --deep: ${index % 2}">${cell}</span>`)
-      .join('')}</div><div class="haul-stow-bag" data-stow-bag><img class="haul-stow-back" src="${iconUrl(WORLD_ICONS.thingsBag)}" alt="" /><img class="haul-stow-front" src="${iconUrl(
-      WORLD_ICONS.thingsBagFront,
-    )}" alt="" /></div><span class="px-name haul-stow-label" aria-hidden="true">${escapeHtml(STOW_LABEL)}</span></div>`;
+    return `<div class="moment-home" data-haul-stow role="img" aria-label="${escapeHtml(`${said}, into HOME`)}"><span class="moment-home-head">Home</span><div class="moment-home-cells">${cells
+      .map((cell, index) => `<span class="moment-home-cell" style="--at: ${index}">${cell}</span>`)
+      .join('')}</div></div>`;
+  }
+
+  /** Oak's next thing (`hub/nextStep.ts`) as a card: what kind of thing, its name, and where. */
+  private nextCardMarkup(card: NextStepCard, after: number): string {
+    return `<div class="moment-next" data-next-card style="--at: ${after}"><span class="moment-next-head">${escapeHtml(card.heading)}</span>${
+      card.name ? `<strong class="bold-moment-next-name">${escapeHtml(card.name)}</strong>` : ''
+    }<span class="px-wrap moment-next-where">${escapeHtml(card.where)}</span></div>`;
+  }
+
+  /** What the raid's clock had left as it got out, or what it took on a playtest run. */
+  private timeLeft(): string {
+    if (isPlaytestRun()) {
+      return `Took ${formatElapsedClock(this.report.elapsedMs)}`;
+    }
+    return `${formatElapsedClock(this.report.durationMs - this.report.elapsedMs)} left`;
   }
 
   /** The moment's FULL REPORT button, while the moment is on screen. */
@@ -499,9 +543,11 @@ export class ExtractionScene extends Phaser.Scene {
   }
 
   /**
-   * What a raid that got out opens on (`run/resultMoment.ts`): the deed, one
-   * picture, what else came home, and Oak's next thing - with the full report
-   * one key away. The overnight critic's problem 10: the result was a ledger.
+   * What a raid that got out opens on (`run/resultMoment.ts`): a dark stage,
+   * the deed in big words, the money and the clock, what came home dropping
+   * into HOME, and Oak's next thing as a card - the full report one key away.
+   * The captain, 26 Nov 2026: the white card it replaced was "so white after
+   * you come out of the game ... it's just ugly and not in theme".
    */
   private momentMarkup(moment: ResultMoment): string {
     const report = this.report;
@@ -512,23 +558,28 @@ export class ExtractionScene extends Phaser.Scene {
         : moment.picture.kind === 'item'
           ? `<img class="moment-picture is-item" src="${iconUrl(itemIconName(moment.picture.itemId))}" alt="" />`
           : this.honourPicture();
-    const next = this.nextThing();
+    // A close call on the clock is said by the clock itself, in red; any other
+    // close call (out after the clock, out with a hunter on your tail) is a sticker.
+    const closeCall = report.closeCall;
+    const closeOnClock = closeCall !== undefined && / LEFT$/.test(closeCall);
+    const sticker = closeCall && !closeOnClock ? `<span class="moment-sticker">${escapeHtml(closeCall)}</span>` : '';
+    const money =
+      moment.money > 0
+        ? `<span class="moment-stat is-money"><img src="${iconUrl(itemIconName('money'))}" alt="" /><span class="bold-moment-money" data-money-count="${moment.money}" aria-label="${escapeHtml(
+            formatMoney(moment.money),
+          )}">${formatMoney(0)}</span></span>`
+        : '';
+    const clock = `<span class="moment-stat is-clock${closeOnClock ? ' is-close' : ''}"><img src="${iconUrl(BRIEFING_ICONS.raidClock)}" alt="" /><span>${escapeHtml(this.timeLeft())}</span></span>`;
+    const drops = moment.stow ? moment.stow.things.length + (moment.stow.more > 0 ? 1 : 0) : 0;
+    const card = this.nextCard();
     return pixelScreen({
       place: escapeHtml(report.eyebrow),
       title: '',
-      aside: escapeHtml(this.clockAside()),
-      // The help line says what becomes of the result, as the full report's
-      // does, over the keys line every screen keeps.
       helpDefault: escapeHtml(this.momentNote()),
       hints: this.resultKeys(true),
-      body: `<main class="px-body extraction-moment-layout">${pixelWindow(
-        `${picture}<strong class="px-name moment-headline" data-moment-headline>${escapeHtml(moment.headline)}</strong>${
-          report.closeCall ? `<span class="px-wrap">${escapeHtml(report.closeCall)}</span>` : ''
-        }${moment.line ? `<span class="px-wrap">${escapeHtml(moment.line)}</span>` : ''}${moment.stow ? this.stowMarkup(moment.stow) : ''}${
-          next ? `<span class="px-wrap moment-next">${escapeHtml(next)}</span>` : ''
-        }`,
-        { className: 'extraction-moment px-tone-primary', tag: 'div' },
-      )}${pixelCommitBar({
+      body: `<main class="px-body extraction-moment-layout"><section class="moment-stage" data-moment-stage style="--drops: ${drops}"><div class="moment-hero">${picture}<div class="moment-deed"><strong class="bold-moment-headline" data-moment-headline>${escapeHtml(
+        moment.headline,
+      )}</strong>${sticker}${moment.line ? `<span class="px-wrap moment-line">${escapeHtml(moment.line)}</span>` : ''}</div></div><div class="moment-stats">${money}${moment.stow ? this.homeMarkup(moment.stow) : ''}${clock}</div>${card ? this.nextCardMarkup(card, drops) : ''}</section>${pixelCommitBar({
         title: escapeHtml(this.momentFooterTitle()),
         lines: [],
         actions: `<button class="px-window px-button" data-full-report>Full report [L]</button><button class="px-window px-button is-primary" data-continue>${currentTry() ? 'Back to the map maker' : 'Back to the Arena'}</button>`,
@@ -537,33 +588,37 @@ export class ExtractionScene extends Phaser.Scene {
   }
 
   /**
-   * The moment's bar: "BANKED" alone, beside two buttons, read as a word left
-   * over from the ledger (the critic's third pass), so it says the money banked,
-   * or that the raid is saved.
+   * The moment's bar says nothing over its two buttons unless something went
+   * wrong: the money banked is counted up on the stage above it.
    */
   private momentFooterTitle(): string {
-    const title = this.footerTitle();
-    if (title !== 'Banked') {
-      return title;
-    }
-    const money = this.report.ledger.items.filter((item) => isCurrency(item.itemId)).reduce((sum, item) => sum + item.quantity, 0);
-    return money > 0 ? `${formatMoney(money)} banked` : 'Saved';
+    return this.report.saved ? '' : this.footerTitle();
   }
 
   /**
-   * The moment's note: where a raid that brought home only Pokemon left them, in
-   * the words the rail uses next ("waiting at base"), not the full report's
-   * "Everything above is on BILL'S PC" - a name a first raid has never heard,
-   * over one Pidgey (the critic's fourth pass).
+   * The moment's note, only when there is something the stage cannot show: a
+   * raid the browser would not save, word from base, or where a caught Pokémon
+   * went. What came home and
+   * where it went is shown, never said ("in your things, B at base", the
+   * captain, 26 Nov 2026).
    */
   private momentNote(): string {
     const { ledger, saved } = this.report;
-    if (saved && ledger.items.length === 0 && ledger.pokemon.length > 0) {
+    if (!saved) {
+      return this.footerNote();
+    }
+    const word = this.report.baseNote ?? this.report.recoveryStillOwed;
+    if (word) {
+      return word;
+    }
+    // A caught Pokémon is the stage's picture, but not where it went: in the
+    // words the rail uses next (the critic's fourth pass).
+    if (ledger.pokemon.length > 0) {
       const names = ledger.pokemon.map((pokemon) => pokemon.name.toUpperCase());
       const who = names.length === 1 ? `${names[0]} is` : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]} are`;
       return `${who} waiting at base for your next raid.`;
     }
-    return this.footerNote();
+    return '';
   }
 
   /**
@@ -594,14 +649,13 @@ export class ExtractionScene extends Phaser.Scene {
     return `<span class="moment-picture is-honour" role="img" aria-label="You, wearing it" style="--honour-strip:url('${canvas.toDataURL()}')"></span>`;
   }
 
-  /** Oak's one next thing (`hub/nextStep.ts`), read off the save this raid was just banked into. */
-  private nextThing(): string | undefined {
+  /** Oak's next thing (`hub/nextStep.ts`), read off the save this raid was just banked into. */
+  private nextCard(): NextStepCard | undefined {
     if (currentTry() || isPlaytestRun()) {
       return undefined;
     }
     const game = new SaveManager().load();
-    const [line] = game ? nextStepLines(game.raidProgress, vaultOf(game.stash)) : [];
-    return line;
+    return game ? nextStepCard(game.raidProgress, vaultOf(game.stash)) : undefined;
   }
 
   private leave(): void {
@@ -1099,6 +1153,30 @@ function itemTile(item: ReportItem, tag: RowTag, index: number): string {
 
 function itemText(item: ReportItem): string {
   return `${item.quantity}× ${item.label}`;
+}
+
+/**
+ * Draws the stage smaller a step at a time until it fits its window: an
+ * 800x600 window has room for a catch and six things only with the gaps
+ * closed, the cells at one icon a cell, and the card's second line gone.
+ */
+function fitMomentStage(stage: HTMLElement): void {
+  // Asked of its parts rather than of `scrollHeight`, which counts the burst
+  // drawn behind them, clipped, as overflow.
+  const fits = (): boolean => {
+    const box = stage.getBoundingClientRect();
+    return [...stage.children].every((part) => {
+      const at = part.getBoundingClientRect();
+      return at.top >= box.top - 0.5 && at.bottom <= box.bottom + 0.5;
+    });
+  };
+  stage.classList.remove('is-tight', 'is-tighter');
+  for (const step of ['is-tight', 'is-tighter']) {
+    if (fits()) {
+      return;
+    }
+    stage.classList.add(step);
+  }
 }
 
 function escapeHtml(value: string): string {

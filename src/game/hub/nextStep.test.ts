@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { CHART_PIECES } from '../treasure/treasureMap';
 import { Stash } from '../stash';
 import { CHARMANDER, Pokemon } from '../pokemon';
-import { chaseLine, FIRST_RAID_NEXT_LINE, jobsBanked, landingToWalkTo, LEGEND_REACH_LEVELS, nextStepLines, VALE_LEGENDS, vaultOf } from './nextStep';
+import { chaseLine, FIRST_RAID_NEXT_LINE, jobsBanked, landingToWalkTo, LEGEND_REACH_LEVELS, nextStepCard, nextStepLines, VALE_LEGENDS, vaultOf } from './nextStep';
 
 const raided = (raids: number, more: Partial<RaidProgress> = {}): RaidProgress => ({
   ...DEFAULT_RAID_PROGRESS,
@@ -138,5 +138,51 @@ describe('the one next thing Oak says', () => {
       expect(vault.held?.('bottled-chart')).toBe(1);
       expect(chaseLine(done, vault)).toContain('take that bottled chart');
     });
+  });
+});
+
+/**
+ * The captain, 26 Nov 2026, of the result screen's next-job sentence: "Next job
+ * is okay, but this is just terribly formatted." The same next thing as a card.
+ */
+describe("Oak's next thing as a card", () => {
+  beforeEach(() => retireMapsForTests(RETIRED_MAPS));
+  afterEach(() => retireMapsForTests([]));
+
+  it('names the job on the rail after the first raid, and where to pick it', () => {
+    const card = nextStepCard(raided(1));
+    const [line] = nextStepLines(raided(1));
+    expect(card?.heading).toBe('NEXT JOB');
+    expect(line).toContain(card!.name);
+    expect(card?.where).toBe('Pick it at the RAID ARENA before you jump');
+  });
+
+  it('counts the job after a banked one', () => {
+    expect(nextStepCard(raided(2, { standingContractsBanked: 1 }))?.heading).toBe('YOUR SECOND JOB');
+  });
+
+  it('then a landing to walk to, then the next gym, as the lines do', () => {
+    const progress = raided(4, { standingContractsBanked: 2 });
+    expect(nextStepCard(progress)).toEqual({
+      heading: 'NEW LANDING',
+      name: landingToWalkTo(progress)!.label.toUpperCase(),
+      where: 'Walk to it on a raid, and you can land there next time',
+    });
+    let walked = progress;
+    for (let landing = landingToWalkTo(walked); landing; landing = landingToWalkTo(walked)) {
+      walked = { ...walked, reachedInsertions: [...(walked.reachedInsertions ?? []), landing.id] };
+    }
+    expect(nextStepCard(walked)).toMatchObject({ heading: 'NEXT GYM', name: 'MISTY' });
+  });
+
+  it('heads a treasure or a legend by its kind, once both badges are won', () => {
+    const done = raided(20, { standingContractsBanked: 9, defeatedBosses: [MISTY_BOSS_ID, KOGA_BOSS_ID] });
+    let walked = done;
+    for (let landing = landingToWalkTo(walked); landing; landing = landingToWalkTo(walked)) {
+      walked = { ...walked, reachedInsertions: [...(walked.reachedInsertions ?? []), landing.id] };
+    }
+    const card = nextStepCard(walked);
+    expect(card?.heading).toBe('NEXT TREASURE');
+    expect(card?.where).toMatch(/^a bottle has washed up/);
   });
 });

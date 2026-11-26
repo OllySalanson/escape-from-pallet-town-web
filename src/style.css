@@ -195,11 +195,6 @@ body {
     transform: none;
   }
 }
-/* The haul going into YOUR THINGS on a raid's result (`.haul-stow`): a thing
-   hops up out of its row, over and down into the sack's mouth, and settles
-   there behind its lip with its top showing, so the sack ends up full.
-   `--hop-x` is how far its row puts it from the sack, `--nudge` where in the
-   mouth it settles and `--rest` how deep. */
 /* The result card's player turning round in a gym honour just won (`.moment-picture.is-honour`). */
 @keyframes honour-turn {
   0% { background-position: 0% 0; }
@@ -207,48 +202,50 @@ body {
   40% { background-position: 66.667% 0; }
   80% { background-position: 100% 0; }
 }
-@keyframes haul-stow-hop {
+/* The stage a raid that got out opens on (`.moment-stage`): the headline
+   lands, the clock and money come up, each thing drops into HOME and bounces
+   once, and the next thing rises in under it. */
+@keyframes moment-land {
   0% {
-    transform: translate(0, 0);
-  }
-  40% {
-    transform: translate(calc(var(--hop-x) * 0.5), calc(var(--px) * -15));
-  }
-  70% {
-    transform: translate(calc(var(--hop-x) + var(--nudge)), calc(var(--px) * -13));
-  }
-  88% {
-    transform: translate(calc(var(--hop-x) + var(--nudge)), calc(var(--rest) + var(--px) * 2.5));
-  }
-  100% {
-    transform: translate(calc(var(--hop-x) + var(--nudge)), var(--rest));
-  }
-}
-/* A thing's count, gone as it hops. */
-@keyframes haul-stow-count-off {
-  to {
     opacity: 0;
+    transform: scale(0.4);
   }
-}
-/* The sack catching one: squashed, then up again, from its foot. */
-@keyframes haul-stow-gulp {
-  0% {
-    transform: scale(1.1, 0.88);
-  }
-  50% {
-    transform: scale(0.95, 1.06);
+  60% {
+    opacity: 1;
+    transform: scale(1.15);
   }
   100% {
+    opacity: 1;
     transform: none;
   }
 }
-/* Its name, once the last thing is in. */
-@keyframes haul-stow-said {
+@keyframes moment-rise {
   from {
-    opacity: 1;
-    transform: translateY(calc(var(--u) * 4));
+    opacity: 0;
+    transform: translateY(calc(var(--u) * 8));
   }
   to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes moment-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(calc(var(--u) * -40));
+  }
+  15% {
+    opacity: 1;
+  }
+  65% {
+    opacity: 1;
+    transform: none;
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(calc(var(--u) * -6));
+  }
+  100% {
     opacity: 1;
     transform: none;
   }
@@ -3921,174 +3918,304 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .extraction-verdict {
   display: grid;
 }
-/* The moment a raid that got out opens on (`run/resultMoment.ts`): the deed,
-   one picture, a line or two, and the way on - the ledger is one key away. */
+/* The moment a raid that got out opens on (`run/resultMoment.ts`): a dark
+   stage under the menus' own title strip, so leaving the raid feels like a win
+   rather than a white page (the captain, 26 Nov 2026: "It's so white after
+   you come out of the game ... it's just ugly and not in theme"). The deed in
+   big gold words, the money counting up and the clock it beat, each thing
+   dropping into HOME, and the next thing as a card. The ledger is one key away. */
 :where(.pixel-ui) .extraction-moment-layout {
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
   height: 100%;
 }
-:where(.pixel-ui) .extraction-moment {
+:where(.pixel-ui) .moment-stage {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: calc(var(--u) * 4);
+  gap: calc(var(--u) * 8);
+  min-height: 0;
+  padding: calc(var(--u) * 8);
+  border: calc(var(--u) * 2) solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
   text-align: center;
 }
-:where(.pixel-ui) .extraction-moment .moment-picture {
+/* A burst of the ink's own two shades behind the deed, as THE BATTLE ARENA's
+   red one stands behind its hero. */
+:where(.pixel-ui) .moment-stage::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: calc(var(--u) * -170);
+  width: calc(var(--u) * 480);
+  height: calc(var(--u) * 480);
+  translate: -50% 0;
+  clip-path: circle(50%);
+  background: repeating-conic-gradient(from 0deg at 50% 50%, var(--ink-2) 0 8deg, var(--ink) 8deg 16deg);
+}
+/* A picture - the catch, the player in a won honour - stands beside the deed
+   rather than over it, so the stage fits an 800x600 window. */
+:where(.pixel-ui) .moment-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 8);
+}
+:where(.pixel-ui) .moment-deed {
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .moment-picture {
   image-rendering: pixelated;
 }
-:where(.pixel-ui) .extraction-moment .moment-picture.is-pokemon {
-  width: calc(var(--u) * 128);
-  height: calc(var(--u) * 128);
-}
-/* Under 300 game pixels down, the picture is drawn at its own size, so the
-   sack fits under it. */
-:where(.pixel-ui[data-short]) .extraction-moment .moment-picture.is-pokemon {
+:where(.pixel-ui) .moment-picture.is-pokemon {
   width: calc(var(--u) * 64);
   height: calc(var(--u) * 64);
 }
-:where(.pixel-ui) .extraction-moment .moment-picture.is-item {
+/* Under 300 game pixels down, the picture is drawn at its own size, so the
+   rest of the stage fits under it. */
+:where(.pixel-ui[data-short]) .moment-picture.is-pokemon {
   width: calc(var(--u) * 48);
   height: calc(var(--u) * 48);
 }
-:where(.pixel-ui) .extraction-moment .moment-picture.is-honour {
+:where(.pixel-ui) .moment-picture.is-item {
+  width: calc(var(--u) * 48);
+  height: calc(var(--u) * 48);
+}
+:where(.pixel-ui) .moment-picture.is-honour {
   /* The player's own figure, 16x32, turning round once in what they just won:
      facing you, a side, the back - held there longest - and the other side. */
   display: block;
-  width: calc(var(--u) * 64);
-  height: calc(var(--u) * 128);
+  width: calc(var(--u) * 48);
+  height: calc(var(--u) * 96);
   background-image: var(--honour-strip);
   background-size: 400% 100%;
   background-repeat: no-repeat;
+  image-rendering: pixelated;
   animation: honour-turn 3.6s steps(1, end) infinite;
 }
-:where(.pixel-ui[data-short]) .extraction-moment .moment-picture.is-honour {
+:where(.pixel-ui[data-short]) .moment-picture.is-honour {
   width: calc(var(--u) * 32);
   height: calc(var(--u) * 64);
 }
-@media (prefers-reduced-motion: reduce) {
-  :where(.pixel-ui) .extraction-moment .moment-picture.is-honour {
-    animation: none;
-  }
+/* The deed: the one size twice over, leaning, gold on the ink with a hard
+   red shadow - THE BATTLE ARENA's Big and Bold look (`.bold-title`). */
+:where(.pixel-ui) .bold-moment-headline {
+  font-size: calc(var(--u) * 25);
+  line-height: calc(var(--u) * 24);
+  font-style: italic;
+  color: var(--gold);
+  text-transform: uppercase;
+  -webkit-text-stroke: calc(var(--u) * 2) var(--ink);
+  paint-order: stroke fill;
+  text-shadow: calc(var(--u) * 2) calc(var(--u) * 2) 0 var(--red-ink);
+  max-width: calc(var(--u) * 300);
 }
-:where(.pixel-ui) .extraction-moment .moment-headline {
-  /* One type size (style.test.ts): the headline stands out by its place under
-     the picture and a gap below it, never by size. */
-  margin-bottom: calc(var(--u) * 4);
+:where(.pixel-ui) .moment-line {
+  color: var(--bar-muted);
+  max-width: calc(var(--u) * 280);
 }
-:where(.pixel-ui) .extraction-moment .moment-next {
-  color: var(--ink-soft, inherit);
+:where(.pixel-ui) .moment-sticker {
+  padding: 0 calc(var(--u) * 6);
+  background: var(--red);
+  color: var(--paper);
+  transform: skewX(-12deg);
+  box-shadow: calc(var(--u) * 2) calc(var(--u) * 2) 0 var(--paper);
 }
-/* The haul going into YOUR THINGS (`ExtractionScene.stowMarkup`): a row of
-   the things beside an open sack, drawn twice - whole behind them, its front
-   from the lip down in front - so each is seen to go in. The sack is drawn at
-   twice a thing's scale (`--px`), so its mouth is as wide as a thing. The row
-   waits beside the sack rather than over it, so it costs the card the sack's
-   height and no more: over a caught Pokémon's picture, one above the other ran
-   off an 800x600 window. */
-:where(.pixel-ui) .haul-stow {
-  /* One pixel of a thing's icon: 2x, and 1x where the screen is short. */
-  --px: calc(var(--u) * 2);
-  --cell: calc(var(--px) * 17);
-  --gap: calc(var(--px) * 6);
-  position: relative;
-  isolation: isolate;
-  display: grid;
-  justify-items: center;
-  row-gap: calc(var(--u) * 4);
-  /* Room over the sack for the top of a hop. */
-  margin: calc(var(--px) * 6) 0 calc(var(--u) * 2);
-}
-:where(.pixel-ui[data-short]) .haul-stow {
-  --px: var(--u);
-  margin-top: calc(var(--px) * 2);
-}
-/* The sack is the middle of the card, where it rests once all is in; the row
-   waits to its left, out of the way of the card's own centring. */
-:where(.pixel-ui) .haul-stow-row {
-  position: absolute;
-  top: calc(var(--px) * 10);
-  right: calc(50% + var(--px) * 16 + var(--gap));
+/* The money, HOME and the clock in one row: the two numbers on chips of the
+   ink's lighter shade either side of what came home. */
+:where(.pixel-ui) .moment-stats {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: calc(var(--u) * 8);
 }
-:where(.pixel-ui) .haul-stow-thing {
-  /* From the middle of its cell to the middle of the sack. */
-  --hop-x: calc((var(--n) - var(--at) - 0.5) * var(--cell) + var(--gap) + var(--px) * 16);
-  /* Spread across the mouth no wider than its tied neck, and every other one a
-     little deeper, so they settle as a heap rather than a row, their tops out. */
-  --nudge: calc(var(--from) * var(--px) * 0.8);
-  --rest: calc(var(--px) * (-11 + var(--deep) * 3));
+:where(.pixel-ui) .moment-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+  min-height: calc(var(--u) * 28);
+  padding: 0 calc(var(--u) * 8) 0 calc(var(--u) * 4);
+  border: calc(var(--u) * 2) solid var(--paper);
+  background: var(--ink-2);
+  color: var(--paper);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .moment-stat img {
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+  image-rendering: pixelated;
+}
+:where(.pixel-ui) .moment-stat.is-money {
+  border-color: var(--gold);
+}
+:where(.pixel-ui) .bold-moment-money {
+  font-size: calc(var(--u) * 25);
+  line-height: calc(var(--u) * 24);
+  color: var(--gold);
+  /* The digits never shove the chip about as they count. */
+  font-variant-numeric: tabular-nums;
+}
+:where(.pixel-ui) .moment-stat.is-clock.is-close {
+  border-color: var(--red);
+  background: var(--red-ink);
+}
+/* HOME, the pane YOUR THINGS keeps what is safe in: its green strip and house,
+   and a cell a thing, drawn at twice its size as YOUR THINGS draws it. */
+:where(.pixel-ui) .moment-home {
+  --cell: calc(var(--u) * 34);
+  display: grid;
+  border: calc(var(--u) * 2) solid var(--paper);
+  background: var(--paper);
+  box-shadow: calc(var(--u) * 3) calc(var(--u) * 3) 0 var(--shade);
+}
+:where(.pixel-ui) .moment-home-head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  padding: 0 calc(var(--u) * 4);
+  background: var(--go);
+  color: var(--paper);
+  text-align: left;
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .moment-home-head::before {
+  content: '';
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 9);
+  background: var(--px-house) center / 100% 100% no-repeat;
+  image-rendering: pixelated;
+}
+:where(.pixel-ui) .moment-home-cells {
+  display: flex;
+  gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .moment-home-cell {
   position: relative;
-  z-index: 2;
   display: grid;
   place-items: center;
   width: var(--cell);
-  height: calc(var(--px) * 16);
-  /* The one nearest the sack first, so none hops over another still waiting. */
-  --delay: calc(0.6s + (var(--n) - 1 - var(--at)) * 0.2s);
-  animation: haul-stow-hop 0.5s steps(14, end) var(--delay) forwards;
+  height: var(--cell);
+  background: var(--paper-sunk);
 }
-:where(.pixel-ui) .haul-stow-thing img {
-  width: calc(var(--px) * 16);
-  height: calc(var(--px) * 16);
-  image-rendering: pixelated;
-}
-:where(.pixel-ui) .haul-stow-more {
+:where(.pixel-ui) .moment-home-thing {
+  display: grid;
+  place-items: center;
   color: var(--ink);
-}
-/* How many of it, under it as a tile has it, until it hops. */
-:where(.pixel-ui) .haul-stow-count {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  translate: -50% 0;
-  margin-top: calc(var(--u) * -3);
-  color: var(--ink-soft);
-  white-space: nowrap;
-  animation: haul-stow-count-off 0.1s steps(1, start) var(--delay) forwards;
-}
-:where(.pixel-ui) .haul-stow-bag {
-  position: relative;
-  width: calc(var(--px) * 32);
-  height: calc(var(--px) * 32);
-}
-:where(.pixel-ui) .haul-stow-bag img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  image-rendering: pixelated;
-  transform-origin: 50% 94%;
-}
-:where(.pixel-ui) .haul-stow-back {
-  z-index: 1;
-}
-:where(.pixel-ui) .haul-stow-front {
-  z-index: 3;
-}
-:where(.pixel-ui) .haul-stow-bag.is-gulping img {
-  animation: haul-stow-gulp 0.24s steps(4, end);
-}
-:where(.pixel-ui) .haul-stow-label {
   opacity: 0;
 }
-:where(.pixel-ui) .haul-stow.is-stowed .haul-stow-label {
-  animation: haul-stow-said 0.2s steps(2, end) forwards;
+:where(.pixel-ui) .moment-home-thing img {
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+  image-rendering: pixelated;
+}
+/* How many of it, on its corner as YOUR THINGS writes it, once it is in. */
+:where(.pixel-ui) .moment-home-count {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 0 calc(var(--u) * 1);
+  background: var(--ink);
+  color: var(--paper);
+  opacity: 0;
+}
+:where(.pixel-ui) .moment-home-cell.is-in .moment-home-count {
+  opacity: 1;
+}
+/* Oak's next thing, as a card: a gold strip says what kind, then its name. */
+:where(.pixel-ui) .moment-next {
+  display: grid;
+  justify-items: start;
+  min-width: calc(var(--u) * 180);
+  max-width: calc(var(--u) * 300);
+  border: calc(var(--u) * 2) solid var(--paper);
+  background: var(--paper);
+  color: var(--ink);
+  text-align: left;
+  box-shadow: calc(var(--u) * 3) calc(var(--u) * 3) 0 var(--gold);
+  opacity: 0;
+}
+:where(.pixel-ui) .moment-next-head {
+  justify-self: stretch;
+  padding: 0 calc(var(--u) * 4);
+  background: var(--gold);
+  color: var(--ink);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .bold-moment-next-name {
+  padding: calc(var(--u) * 3) calc(var(--u) * 4) 0;
+  font-size: calc(var(--u) * 25);
+  line-height: calc(var(--u) * 24);
+  font-style: italic;
+  color: var(--ink);
+}
+:where(.pixel-ui) .moment-next-where {
+  padding: 0 calc(var(--u) * 4) calc(var(--u) * 2);
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .moment-stage.is-tight,
+:where(.pixel-ui) .moment-stage.is-tight .moment-stats {
+  gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .moment-stage.is-tight {
+  padding: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .moment-stage.is-tight .moment-home {
+  --cell: calc(var(--u) * 26);
+}
+:where(.pixel-ui) .moment-stage.is-tight .moment-home-thing img {
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+}
+:where(.pixel-ui) .moment-stage.is-tight .moment-picture.is-pokemon {
+  width: calc(var(--u) * 48);
+  height: calc(var(--u) * 48);
+}
+:where(.pixel-ui) .moment-stage.is-tight .bold-moment-next-name {
+  font-size: inherit;
+  line-height: inherit;
+}
+:where(.pixel-ui) .moment-stage.is-tighter .moment-line,
+:where(.pixel-ui) .moment-stage.is-tighter .moment-next-where {
+  display: none;
+}
+/* Before its pictures are drawn the stage holds still, then plays in order:
+   the deed, the money and clock, a drop a fifth of a second apart, the card. */
+:where(.pixel-ui) .moment-hero,
+:where(.pixel-ui) .moment-stats {
+  opacity: 0;
+}
+:where(.pixel-ui) .moment-stage.is-playing .moment-hero {
+  animation: moment-land 0.3s steps(6, end) both;
+}
+:where(.pixel-ui) .moment-stage.is-playing .moment-stats {
+  animation: moment-rise 0.2s steps(4, end) 0.3s both;
+}
+:where(.pixel-ui) .moment-stage.is-playing .moment-home-thing {
+  animation: moment-drop 0.45s steps(12, end) calc(0.7s + var(--at) * 0.2s) both;
+}
+:where(.pixel-ui) .moment-stage.is-playing .moment-next {
+  animation: moment-rise 0.25s steps(5, end) calc(0.9s + var(--drops) * 0.2s) both;
+}
+:where(.pixel-ui) .moment-stage.is-still .moment-hero,
+:where(.pixel-ui) .moment-stage.is-still .moment-stats,
+:where(.pixel-ui) .moment-stage.is-still .moment-home-thing,
+:where(.pixel-ui) .moment-stage.is-still .moment-home-count,
+:where(.pixel-ui) .moment-stage.is-still .moment-next {
+  animation: none;
+  opacity: 1;
 }
 @media (prefers-reduced-motion: reduce) {
-  /* Already in the sack, as it ends. */
-  :where(.pixel-ui) .haul-stow-thing {
+  :where(.pixel-ui) .moment-picture.is-honour {
     animation: none;
-    transform: translate(calc(var(--hop-x) + var(--nudge)), var(--rest));
-  }
-  :where(.pixel-ui) .haul-stow-count {
-    animation: none;
-    opacity: 0;
-  }
-  :where(.pixel-ui) .haul-stow.is-stowed .haul-stow-label {
-    animation: none;
-    opacity: 1;
   }
 }
 
@@ -7776,7 +7903,8 @@ body.touch-play .feedback-tab {
    right, red because it can be lost; the locker under it, green because it
    cannot; and what is in hand along the foot. A square here is 32 game pixels
    and an icon is drawn at twice its size in it, so nothing is resampled. */
-.pixel-ui.things-menu {
+.pixel-ui.things-menu,
+:where(.pixel-ui) .moment-home {
   --sq: 32;
   --px-house: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath fill='%231d6c2e' d='M4 0h1v1h-1zM3 1h1v1h-1zM5 1h1v1h-1zM2 2h1v1h-1zM6 2h1v1h-1zM1 3h1v1h-1zM7 3h1v1h-1zM0 4h9v1h-9zM1 5h1v4h-1zM7 5h1v4h-1zM2 8h5v1h-5zM4 6h1v2h-1z'/%3E%3Cpath fill='%23d7f5dc' d='M4 1h1v1h-1zM3 2h3v1h-3zM2 3h5v1h-5zM2 5h2v3h-2zM5 5h2v3h-2zM4 5h1v1h-1z'/%3E%3C/svg%3E");
   --px-rosette: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 10' shape-rendering='crispEdges'%3E%3Cpath fill='%231d6c2e' d='M2 0h5v1h-5zM1 1h1v1h-1zM7 1h1v1h-1zM0 2h1v3h-1zM8 2h1v3h-1zM1 5h1v1h-1zM7 5h1v1h-1zM2 6h5v1h-5zM2 7h2v1h-2zM5 7h2v1h-2zM1 8h2v1h-2zM6 8h2v1h-2zM1 9h1v1h-1zM7 9h1v1h-1z'/%3E%3Cpath fill='%232f9e46' d='M2 1h5v1h-5zM1 2h1v3h-1zM7 2h1v3h-1zM2 5h5v1h-5z'/%3E%3Cpath fill='%23ffc823' d='M2 2h5v3h-5z'/%3E%3C/svg%3E");

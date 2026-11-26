@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ExtractionReport } from './extractionReport';
-import { resultMoment, STOW_LABEL, STOW_SHOWN } from './resultMoment';
+import { resultMoment, STOW_SHOWN } from './resultMoment';
 
 const EMPTY = { pokemon: [], items: [] };
 const report = (more: Partial<ExtractionReport>): ExtractionReport =>
@@ -13,41 +13,65 @@ const report = (more: Partial<ExtractionReport>): ExtractionReport =>
   }) as unknown as ExtractionReport;
 const pidgey = { name: 'Pidgey', dexId: 16, level: 3, currentHp: 5, maxHp: 15 };
 
-/** The critic's problem 10: the result was a ledger. A raid that got out opens on what it did. */
-describe("the moment a raid that got out opens on", () => {
-  it('heads a catch with the catch, its picture, and what else came home', () => {
+/**
+ * The critic's problem 10: the result was a ledger. Then the captain: "way too
+ * much words" (25 Nov 2026). A raid that got out opens on its deed in a few
+ * big words, and shows the rest.
+ */
+describe('the moment a raid that got out opens on', () => {
+  const item = (itemId: string, quantity = 1) => ({ itemId, label: itemId, quantity });
+  const banked = (items: readonly ReturnType<typeof item>[], more: Partial<ExtractionReport> = {}) =>
+    report({ saved: true, ledger: { pokemon: [], items }, ledgerFound: { pokemon: [], items }, ...more });
+
+  it('heads a catch with the catch and its picture, and says only what is not shown', () => {
     const moment = resultMoment(
       report({
-        ledgerFound: { pokemon: [pidgey], items: [{ itemId: 'money', label: 'Pokédollars', quantity: 85 }] },
+        saved: true,
+        ledger: { pokemon: [pidgey], items: [item('money', 85)] },
+        ledgerFound: { pokemon: [pidgey], items: [item('money', 85)] },
         progress: [{ name: 'Charmander', dexId: 4, fromLevel: 5, toLevel: 6, experienceGained: 60, experienceToNextLevel: 40 }],
       }),
     );
     expect(moment).toEqual({
-      headline: 'PIDGEY CAUGHT AND CARRIED HOME',
+      headline: 'PIDGEY CAUGHT!',
       picture: { kind: 'pokemon', dexId: 16, shiny: false },
-      line: '₽85 came home too. CHARMANDER grew to Lv 6.',
+      line: 'CHARMANDER grew to Lv 6!',
+      money: 85,
       stow: null,
     });
   });
 
   it('names two catches, and counts more', () => {
     const meowth = { ...pidgey, name: 'Meowth', dexId: 52 };
-    expect(resultMoment(report({ ledgerFound: { pokemon: [pidgey, meowth], items: [] } }))?.headline).toBe('PIDGEY AND MEOWTH CARRIED HOME');
-    expect(resultMoment(report({ ledgerFound: { pokemon: [pidgey, meowth, pidgey], items: [] } }))?.headline).toBe('3 POKÉMON CARRIED HOME');
+    expect(resultMoment(report({ ledgerFound: { pokemon: [pidgey, meowth], items: [] } }))?.headline).toBe('PIDGEY AND MEOWTH CAUGHT!');
+    expect(resultMoment(report({ ledgerFound: { pokemon: [pidgey, meowth, pidgey], items: [] } }))?.headline).toBe('3 POKÉMON CAUGHT!');
   });
 
-  it('heads a banked job, and money with the money', () => {
+  it('heads a banked job, its reward dropping into HOME with the rest', () => {
+    const reward = [item('linen-roll')];
     const job = resultMoment(
       report({
+        saved: true,
         contract: { description: 'Line survey', complete: true, reward: '1 Linen roll' },
-        ledgerPaid: { pokemon: [], items: [{ itemId: 'linen-roll', label: 'Linen roll', quantity: 1 }] },
+        ledger: { pokemon: [], items: reward },
+        ledgerPaid: { pokemon: [], items: reward },
       }),
     );
-    expect(job?.headline).toBe('JOB DONE AND BANKED');
-    expect(job?.picture).toEqual({ kind: 'item', itemId: 'linen-roll' });
-    expect(resultMoment(report({ ledgerFound: { pokemon: [], items: [{ itemId: 'money', label: 'P', quantity: 110 }] } }))?.headline).toBe(
-      'HOME WITH ₽110',
-    );
+    expect(job?.headline).toBe('JOB DONE!');
+    expect(job?.picture).toBeNull();
+    expect(job?.stow).toEqual({ things: reward, more: 0 });
+  });
+
+  it('heads a haul with getting out, and counts its money rather than dropping it', () => {
+    const moment = resultMoment(banked([item('money', 10), item('mooring-rope'), item('lamp-oil')]));
+    expect(moment).toEqual({
+      headline: 'YOU GOT OUT!',
+      picture: null,
+      line: '',
+      money: 10,
+      stow: { things: [item('mooring-rope'), item('lamp-oil')], more: 0 },
+    });
+    expect(resultMoment(banked([item('money', 110)]))).toMatchObject({ headline: 'YOU GOT OUT!', money: 110, stow: null, picture: null });
   });
 
   it('heads a badge with the badge', () => {
@@ -62,37 +86,24 @@ describe("the moment a raid that got out opens on", () => {
       report({ badgesWon: ['You won the CASCADE BADGE! MISTY no longer holds THE COAST.'], honoursWon: ['cascade'] }),
     );
     expect(moment?.picture).toEqual({ kind: 'honour', honour: 'cascade' });
-    expect(moment?.line).toBe('MISTY no longer holds THE COAST. You wear the CASCADE NECKERCHIEF now, for everybody to see.');
+    expect(moment?.line).toBe('MISTY no longer holds THE COAST. You wear the CASCADE NECKERCHIEF now.');
   });
 
   it('says an empty raid kindly, and leaves a lost one to its own sequence', () => {
-    expect(resultMoment(report({}))?.headline).toBe('HOME SAFE, HANDS EMPTY');
+    expect(resultMoment(report({}))).toMatchObject({ headline: 'HOME SAFE', line: 'Nothing found this time.', money: 0, stow: null });
     expect(resultMoment(report({ outcome: 'WIPED' }))).toBeNull();
   });
 
-  describe('what is seen going into YOUR THINGS', () => {
-    const item = (itemId: string, quantity = 1) => ({ itemId, label: itemId, quantity });
-    const banked = (items: readonly ReturnType<typeof item>[]) =>
-      report({ saved: true, ledger: { pokemon: [], items }, ledgerFound: { pokemon: [], items } });
+  it('says in words a haul that could not be saved, which has nothing to show going in', () => {
+    const unsaved = report({ saved: false, ledger: { pokemon: [], items: [item('potion')] }, ledgerFound: { pokemon: [], items: [item('money', 5), item('potion')] } });
+    expect(resultMoment(unsaved)).toMatchObject({ money: 0, stow: null, line: 'Home with ₽5 and 1 Potion.' });
+  });
 
-    it('drops everything banked into the sack, money first, and names the screen and its key', () => {
+  describe('what is seen dropping into HOME', () => {
+    it('drops every kind of thing banked, never the money', () => {
       const moment = resultMoment(banked([item('potion', 2), item('money', 85), item('great-ball')]));
-      expect(moment?.stow).toEqual({ things: [item('money', 85), item('potion', 2), item('great-ball')], more: 0 });
-      expect(STOW_LABEL).toBe('IN YOUR THINGS · B AT BASE');
-    });
-
-    it('lets the things in the sack be the picture of a raid that brought home only things', () => {
-      expect(resultMoment(banked([item('potion')]))?.picture).toBeNull();
-    });
-
-    it('does not say again in words what is seen going into the sack', () => {
-      const pidgeyToo = report({
-        saved: true,
-        ledger: { pokemon: [pidgey], items: [item('potion', 2)] },
-        ledgerFound: { pokemon: [pidgey], items: [item('potion', 2)] },
-        progress: [{ name: 'Charmander', dexId: 4, fromLevel: 5, toLevel: 6, experienceGained: 60, experienceToNextLevel: 40 }],
-      });
-      expect(resultMoment(pidgeyToo)?.line).toBe('CHARMANDER grew to Lv 6.');
+      expect(moment?.stow).toEqual({ things: [item('potion', 2), item('great-ball')], more: 0 });
+      expect(moment?.money).toBe(85);
     });
 
     it('keeps the row to six, the last a count of the rest', () => {
