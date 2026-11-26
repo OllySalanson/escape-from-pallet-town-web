@@ -895,13 +895,32 @@ export const GOLDEN_PLINTH: GridPosition = { x: 7, y: 6 };
 /** Where the librarian stands, behind her desk under the back window. */
 export const LIBRARIAN_TILE: GridPosition = { x: 7, y: 2 };
 const LIBRARY_DESK: GridPosition = { x: 6, y: 3 };
+/** The bookcases along the back wall, two tiles wide, by their left-hand column; the end one (`END_BOOKCASE`) is MARLOW's. */
+const LIBRARY_BACK_CASES: readonly number[] = [0, 2, 5, 8, 11];
+/** The globe and the fern either side of the desk, each a tile wide and two tall, by their top tile. */
+const LIBRARY_GLOBE: GridPosition = { x: 4, y: 3 };
+const LIBRARY_FERN: GridPosition = { x: 10, y: 3 };
 
-/** What the librarian says when spoken to across her desk. */
-export const LIBRARIAN_LINES: readonly string[] = [
-  `Welcome to the ${GREAT_LIBRARY_NAME}. Each book here is about one part of the harbour, and I've more on order.`,
-  resolveBookText("Step up to a lectern and have a read. {key:walk} turn the pages, or just click the one you want."),
-  "Nothing's lent out, so read as often as you like.",
-];
+/**
+ * What the librarian says when spoken to across her desk: the books on the
+ * lecterns, how to read one, and the golden one - what it is, and what earns
+ * it (`library/secretsBookLock.ts`), so the plinth never sends a player to
+ * somebody with nothing to say about it.
+ */
+export function librarianLines(secretsOpen: boolean): readonly string[] {
+  const golden = LIBRARY_BOOKS.find((book) => book.plinth === 'golden');
+  return [
+    `Welcome to the ${GREAT_LIBRARY_NAME}. The book on the lectern there is all about your house.`,
+    resolveBookText("Step up and have a read. {key:walk} turn the pages, or just click the one you want."),
+    ...(golden
+      ? [
+          secretsOpen
+            ? `You've beaten MISTY, so ${golden.title} is unchained. Every hidden nook in the vale is in it.`
+            : `The golden one is ${golden.title}: every hidden nook in the vale. I unchain it for whoever beats MISTY.`,
+        ]
+      : []),
+  ];
+}
 
 /**
  * THE GREAT LIBRARY: bookcases the length of the back wall with windows
@@ -914,7 +933,7 @@ function drawLibrary(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
   const sketch = shell(room);
   const hunt = game.raidProgress.treasureHunt ?? NO_TREASURE_HUNT;
   const light = windowLight(now);
-  for (const x of [0, 2, 5, 8, 11]) sketch.plant(x, 0, 'libCase');
+  for (const x of LIBRARY_BACK_CASES) sketch.plant(x, 0, 'libCase');
   // The end bookcase, which MARLOW swings open onto THE CHART ROOM for good
   // once he has seen the bottled chart (`../treasure/treasureMap.ts`).
   sketch.plant(END_BOOKCASE.x, END_BOOKCASE.y, hunt.roomOpen ? 'libSecretOpen' : 'libCase');
@@ -923,8 +942,8 @@ function drawLibrary(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
     sketch.plant(0, y, 'libStack');
     sketch.plant(12, y, 'libStack');
   }
-  sketch.plant(4, 3, 'libGlobe');
-  sketch.plant(10, 3, 'libFern');
+  sketch.plant(LIBRARY_GLOBE.x, LIBRARY_GLOBE.y, 'libGlobe');
+  sketch.plant(LIBRARY_FERN.x, LIBRARY_FERN.y, 'libFern');
   sketch.plant(LIBRARY_DESK.x, LIBRARY_DESK.y, 'libDesk');
   // The runner leads from the door to the golden plinth.
   for (let y = GOLDEN_PLINTH.y + 2; y < LIBRARY_ROOM.mat.y; y += 1) {
@@ -944,8 +963,8 @@ function drawLibrary(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
     };
   });
   const golden = LIBRARY_BOOKS.find((book) => book.plinth === 'golden');
+  const open = secretsBookOpens(game.raidProgress);
   if (golden) {
-    const open = secretsBookOpens(game.raidProgress);
     sketch.plant(GOLDEN_PLINTH.x, GOLDEN_PLINTH.y, open ? 'libGolden' : 'libGoldenLocked');
     const tiles = [GOLDEN_PLINTH, { x: GOLDEN_PLINTH.x, y: GOLDEN_PLINTH.y + 1 }];
     things.push(
@@ -961,13 +980,41 @@ function drawLibrary(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
       note: 'Knows where every book is',
       tiles: [LIBRARIAN_TILE],
       alsoFaced: deskFront,
-      lines: LIBRARIAN_LINES,
+      lines: librarianLines(open),
     },
     {
       name: 'THE STACKS',
       note: 'Old books on old things',
       tiles: [4, 10].flatMap((y) => [0, 1, 2, 12, 13, 14].map((x) => ({ x, y }))),
-      lines: ['Shelf after shelf of old books. The ones worth reading are open on the lecterns.'],
+      lines: [
+        onLecterns.length === 1
+          ? 'Shelf after shelf of old books. The one worth reading is open on its lectern.'
+          : 'Shelf after shelf of old books. The ones worth reading are open on the lecterns.',
+      ],
+    },
+    // Quiet, as the window is: the furniture is the picture, and a caption
+    // over each would be a room of labels. Each still answers when faced,
+    // where it used to say nothing (the harbour critic tour, 26 Nov 2026).
+    {
+      name: 'THE BOOKCASES',
+      note: 'Atlases and tide tables',
+      tiles: LIBRARY_BACK_CASES.flatMap((x) => [x, x + 1].map((column) => ({ x: column, y: 1 }))),
+      lines: ['Old atlases and tide tables, too precious to take down.'],
+      quiet: true,
+    },
+    {
+      name: 'THE GLOBE',
+      note: 'An old globe of KANTO',
+      tiles: [LIBRARY_GLOBE, { x: LIBRARY_GLOBE.x, y: LIBRARY_GLOBE.y + 1 }],
+      lines: ['An old globe of KANTO. Somebody has pencilled GREYSTONE VALE onto it by hand.'],
+      quiet: true,
+    },
+    {
+      name: 'THE FERN',
+      note: 'In a brass pot',
+      tiles: [LIBRARY_FERN, { x: LIBRARY_FERN.x, y: LIBRARY_FERN.y + 1 }],
+      lines: ['A fern in a brass pot, watered on the hour.'],
+      quiet: true,
     },
     {
       // Quiet: the sky is the picture, and a caption over a window is a label on the weather.

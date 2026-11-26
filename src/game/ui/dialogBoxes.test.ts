@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIBRARIAN_LINES } from '../base/rooms';
+import { librarianLines } from '../base/rooms';
 import { getItemById } from '../items/items';
 import { SECRETS_BOOK_LOCKED_LINES } from '../library/secretsBookLock';
 import {
@@ -124,7 +124,8 @@ describe('the treasure hunt, the library and the secrets', () => {
       pinnedLines(piece, { ...pinnedOne, pinned: CHART_PIECES.slice(0, index + 1).map((each) => each.id) }, name(piece.itemId), 'CHARMANDER'),
     ),
     ...chestOpenedLines(name, 'CHARMANDER'),
-    ...LIBRARIAN_LINES,
+    ...librarianLines(false),
+    ...librarianLines(true),
     ...SECRETS_BOOK_LOCKED_LINES,
     ...SECRETS.map((secret) => secret.foundLine),
     ...RUMOURS.map((rumour) => rumour.line),

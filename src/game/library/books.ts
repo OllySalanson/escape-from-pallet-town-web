@@ -1,4 +1,5 @@
 import type { LecternColour } from '../base/librarySheet';
+import { CONSOLE_GAMES } from '../console/consoleGames';
 import { SECRETS_BOOK } from './secretsBook';
 
 /**
@@ -19,9 +20,12 @@ import { SECRETS_BOOK } from './secretsBook';
  * `title` and `blurb`, so `pages` starts with the first page that teaches.
  *
  * To add a book: write it here, give it a colour, and the room lays another
- * lectern for it (`LIBRARY_LECTERNS`). Two are written so far: THE BOLTHOLE
- * on its lectern, and VALE SECRETS on the golden plinth, its pages written
- * from the secrets themselves (`secretsBook.ts`).
+ * lectern for it (`LIBRARY_LECTERNS`) - and the librarian's welcome, which
+ * talks of the one book on the lectern (`librarianLines` in `base/rooms.ts`),
+ * changes with it. Two are written so far: THE BOLTHOLE on its lectern, and
+ * VALE SECRETS on the golden plinth, its pages written from the secrets
+ * themselves (`secretsBook.ts`), which opens once MISTY is beaten
+ * (`secretsBookLock.ts`).
  */
 
 export const GREAT_LIBRARY_NAME = 'GREAT LIBRARY';
@@ -52,32 +56,44 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
   {
     id: 'bolthole',
     title: 'THE BOLTHOLE',
-    blurb: 'Your own house, and how to keep it',
+    blurb: 'Your own house, and how to make it yours',
     colour: 'gold',
     pages: [
       {
         heading: 'Your own house',
-        text: 'THE BOLTHOLE is yours: the house with window boxes at the east end of KEEPERS\' ROW. Nobody hunts you here. Walk onto its door to go in, and step down off the mat to come out.',
+        text: 'THE BOLTHOLE is the house with window boxes at the east end of KEEPERS\' ROW, and it is yours from the first day. Nobody hunts you here. Walk onto its door to go in, and step off the mat to come out.',
       },
       {
-        heading: 'Your name',
-        text: 'The first time you come home from a raid you are asked YOUR NAME. It goes on your door, and over your head for other players to see. Nobody else may have the same one.',
+        heading: 'Your name on the door',
+        text: 'Once you have a name, it goes over your door, and over your head for other players to see. You are asked for it when your first raid comes home, and at CONTINUE until you pick one.',
       },
       {
         heading: 'Downstairs',
-        text: 'THE BADGE CASE holds a badge for each boss you beat. THE TELLY says which hunter will be waiting where you land next raid. THE WINDOW keeps your own clock: day, dusk or night.',
+        text: 'The badge case has a slot for every badge there is to win, and beating its keeper fills it. The telly says who hunts where you land next raid. The window keeps your own clock, from dawn to night.',
       },
       {
-        heading: 'Upstairs',
-        text: 'Step on the stair mat to go up. MY PC holds your boxes, as BILL\'S PC does. YOUR WARDROBE changes what you wear, and THE CONSOLE plays games with a leaderboard.',
+        heading: 'MY PC',
+        text: 'Step on the stair mat to go up. MY PC holds your boxes of Pokémon and YOUR THINGS, and counts your POKéDEX. The PC at the POKéMON CENTER is the same storage.',
       },
       {
-        heading: 'More upstairs',
-        text: 'A PENNANT hangs for each place you have got home from. THE CALENDAR crosses off a day for every raid. YOUR BED gives you a dream, but only NURSE JOY heals.',
+        heading: 'The rest of upstairs',
+        text: `YOUR WARDROBE changes what you wear. THE CONSOLE plays ${CONSOLE_GAMES.map((game) => game.name).join(' and ')}, with a Pallet Town leaderboard. Your bed gives you a dream, but only NURSE JOY heals.`,
+      },
+      {
+        heading: 'The pennants and the calendar',
+        text: 'A pennant hangs for every place you have come home from. The calendar crosses off a day for every raid, and ticks the ones you came home from.',
+      },
+      {
+        heading: 'Make it yours',
+        text: 'Everything in the house can be moved: the table, the plants, and anything you bring home. Find a cushion on a raid, carry it back, and it is yours to put anywhere.',
       },
       {
         heading: 'Decorating',
-        text: 'Press {key:decorate} at home. {key:interact} picks a piece up and puts it down, {key:turnPiece} turns it, {key:boxBack} and {key:boxNext} walk the box, and {key:putAway} puts it away. {key:decorate} again when done.',
+        text: 'Press {key:decorate} at home to start, and again to stop. {key:interact} picks a piece up and puts it down, and {key:turnPiece} turns it. {key:back} puts what you hold back where it was.',
+      },
+      {
+        heading: 'Your furniture box',
+        text: 'Pieces you have not put out wait in your furniture box. {key:boxBack} and {key:boxNext} take them out one by one, and {key:putAway} puts a piece back in.',
       },
       {
         heading: 'With the mouse',
@@ -89,15 +105,15 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'Getting furniture',
-        text: 'The PRIZE WINDOW on THE PROMENADE sells furniture for TICKETS, like a {item:pika-cushion}. Every kind in your POKéDEX gives you a doll of it. A piece not out is kept in the box.',
+        text: 'Most furniture is found on raids, and a piece lost with the pack is gone. The PRIZE WINDOW at PIER SQUARE sells some for TICKETS, like a {item:pika-cushion}. Every kind in your POKéDEX gives you a doll of it.',
       },
       {
         heading: 'The garden',
-        text: 'Up to six Pokémon from your boxes walk the lawn by the house. Talk to one to hear who it is and which box it is from, and to put it on your next team.',
+        text: 'Up to six Pokémon from your boxes walk the lawn east of the house: the ones you pick on a PC, or else your six highest level. Talk to one to put it on your next team.',
       },
       {
         heading: 'Visiting',
-        text: 'Read the sign in your front garden to knock on another player\'s door. If they let you in, stay as long as you like, but nothing of theirs can be moved. Face a visitor in your own house to see them out.',
+        text: 'Once you have a name, read the sign by your door to knock on another player\'s. If they let you in, stay as long as you like, but nothing of theirs can be moved. Face a visitor in your own house to see them out.',
       },
     ],
   },

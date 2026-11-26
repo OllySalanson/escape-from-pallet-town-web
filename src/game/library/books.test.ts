@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { LECTERN_COLOURS } from '../base/librarySheet';
-import { LIBRARIAN_LINES, LIBRARY_LECTERNS } from '../base/rooms';
+import { librarianLines, LIBRARY_LECTERNS } from '../base/rooms';
 import { bookNamed, LIBRARY_BOOKS } from './books';
-import { conditionWords, NOTES, SECRETS_BOOK, SECRETS_BOOK_ID, secretPage } from './secretsBook';
+import { conditionWords, DISTRICT_OF, NOTES, SECRETS_BOOK, SECRETS_BOOK_ID, secretPage } from './secretsBook';
 import { secretsBookOpens, unlockedInPlay } from './secretsBookLock';
 import { SECRETS } from '../world/secrets';
+import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
+import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../world/valeQuarters';
 import { bookLeaves, bookLayout, lineWidth, linesOnAPage, SMALLEST_SCREEN, wordsWidth, wrapWords } from './bookLayout';
 import { bookTokens, looseMarks, resolveBookText, tokenResolves } from './bookText';
 import { LIBRARY_CONTROLS } from './controls';
@@ -124,7 +126,7 @@ describe('THE GREAT LIBRARY’s books', () => {
   });
 
   it('has the librarian name keys through the same table', () => {
-    for (const line of LIBRARIAN_LINES) {
+    for (const line of [...librarianLines(false), ...librarianLines(true)]) {
       expect(looseMarks(line.replace(/\[[A-Z ]+\]/g, ''))).toEqual([]);
       expect(line).not.toMatch(/\{key:/);
     }
@@ -171,6 +173,21 @@ describe('VALE SECRETS, the golden book', () => {
     expect(page('the-sleeper-in-the-pines')).toContain('It waits there, every raid.');
   });
 
+  /** "Pull it, and something answers" was printed under the heron and the doll, which nobody pulls (the harbour critic tour, 26 Nov 2026). */
+  it('says how each nook is worked, and tells only the bell to be pulled', () => {
+    const page = (id: string) => secretPage(SECRETS.find((secret) => secret.id === id)!).text;
+    expect(SECRETS.filter((secret) => page(secret.id).includes('Pull it')).map((secret) => secret.id)).toEqual(['the-drowned-bell']);
+    expect(page('the-heron-that-is-not')).toContain('Stand still');
+    expect(page('the-lapras-doll')).toContain('Come in dry');
+  });
+
+  it('names the district of a place called what its secret is called', () => {
+    for (const secret of SECRETS.filter((each) => each.place.toUpperCase() === each.name)) {
+      expect([secret.id, DISTRICT_OF[secret.id] !== undefined]).toEqual([secret.id, true]);
+    }
+    expect(secretPage(SECRETS.find((secret) => secret.id === 'the-lost-fold')!).text).toContain('WHERE: THE LOST FOLD, on HIGH MOOR');
+  });
+
   it('writes notes only for secrets that exist', () => {
     for (const id of Object.keys(NOTES)) {
       expect([id, SECRETS.some((secret) => secret.id === id)]).toEqual([id, true]);
@@ -178,12 +195,20 @@ describe('VALE SECRETS, the golden book', () => {
   });
 
   /**
-   * How the book unlocks in the game proper is not decided yet: until it is,
-   * it opens in the explorer run and nowhere else.
+   * It opens in the explorer run always, and in the game proper once MISTY
+   * is beaten - which the librarian says, both ways (it was chained shut for
+   * every save, and she never mentioned it: the harbour critic tour).
    */
-  it('opens in the explorer run, and is locked in the game proper', () => {
+  it('opens in the explorer run, and in the game proper once MISTY is beaten', () => {
+    const progress = (defeatedBosses: readonly string[]) => ({ ...DEFAULT_RAID_PROGRESS, defeatedBosses });
     expect(secretsBookOpens(undefined, true)).toBe(true);
     expect(secretsBookOpens(undefined, false)).toBe(false);
     expect(unlockedInPlay(undefined)).toBe(false);
+    expect(unlockedInPlay(progress([]))).toBe(false);
+    expect(unlockedInPlay(progress([KOGA_BOSS_ID]))).toBe(false);
+    expect(unlockedInPlay(progress([MISTY_BOSS_ID]))).toBe(true);
+    expect(secretsBookOpens(progress([MISTY_BOSS_ID]), false)).toBe(true);
+    expect(librarianLines(false).join(' ')).toContain('whoever beats MISTY');
+    expect(librarianLines(true).join(' ')).toContain('unchained');
   });
 });
