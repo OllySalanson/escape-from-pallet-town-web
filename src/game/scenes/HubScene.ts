@@ -168,6 +168,7 @@ import { conditionLine } from '../ui/condition';
 import { pokemonDossier } from '../ui/pokemonDossier';
 import { pixelItemTile, pixelMonTile } from '../ui/monIcon';
 import { drawFixtureScaled, fixtureArt, fixtureDivisor } from '../ui/fixturePicture';
+import { canBeMoved } from '../base/fixtures';
 import { drawRoomPicture, fitRoomPictures, roomPictureMark, roomPictureMarkup, watchRoomPictures } from '../ui/roomPicture';
 import { workshopEffectPicture } from '../ui/workshopEffect';
 import { partTag, partTags, shopCardPane } from '../ui/shopCard';
@@ -1190,6 +1191,19 @@ export class HubScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * Out into the yard to choose where a build stands (`base/fixturePlacing.ts`):
+   * BUILD IT spends its parts when it is put down there, MOVE IT costs nothing.
+   */
+  private placeInYard(upgradeId: string, mode: 'build' | 'move'): void {
+    // Two tabs share one save: one that has moved on is caught up instead.
+    if (this.movedOnElsewhere()) {
+      return;
+    }
+    audioManager.play('confirm');
+    this.scene.start('base', { savedGame: this.saveManager.load() ?? this.savedGame, placing: { upgradeId, mode } });
+  }
+
   /** The only way into a raid: a plan the player walked through and confirmed. */
   private startRun(): void {
     if (this.deploying) {
@@ -1820,11 +1834,26 @@ export class HubScene extends Phaser.Scene {
     // first press arms it and the second is a different button, with the cursor
     // on the one that keeps them (`armedDeal`), exactly as Bill's barters do.
     on('[data-outfit]', (button) => this.armUpgrade(button.dataset.outfit!));
-    on('[data-built]', (button) =>
-      this.setStatus(`${getWorkshopUpgrade(button.dataset.built!)?.name ?? 'That upgrade'} already stands at base.`),
-    );
+    on('[data-built]', (button) => {
+      const upgradeId = button.dataset.built!;
+      // A build with somewhere else to stand is moved out in the yard, for nothing.
+      if (canBeMoved(upgradeId)) {
+        this.placeInYard(upgradeId, 'move');
+      } else {
+        this.setStatus(`${getWorkshopUpgrade(upgradeId)?.name ?? 'That upgrade'} already stands at base.`);
+      }
+    });
     on('[data-outfit-confirm]', (button, event) => {
-      if (!this.clickedTooSoon(event, '[data-deal-cancel]')) this.buildUpgrade(button.dataset.outfitConfirm!);
+      if (this.clickedTooSoon(event, '[data-deal-cancel]')) return;
+      const upgradeId = button.dataset.outfitConfirm!;
+      // Where it stands is chosen out in the yard, and the parts are spent
+      // there, when it is put down; a build with one place is built here.
+      if (canBeMoved(upgradeId)) {
+        this.workshopArmed = undefined;
+        this.placeInYard(upgradeId, 'build');
+      } else {
+        this.buildUpgrade(upgradeId);
+      }
     });
     // Money and the trip's ration are spent for good too, so a shelf row asks
     // before it buys, as the barters below do: a double ENTER on a Potion
@@ -3886,9 +3915,13 @@ export class HubScene extends Phaser.Scene {
           : `data-outfit="${upgrade.id}"${offer.affordable ? '' : ' aria-disabled="true"'}`;
         // One line of the help bar: what pressing this does and nothing else.
         const help = built
-          ? `${upgrade.name} already stands at base.`
+          ? canBeMoved(upgrade.id)
+            ? `Move ${upgrade.name}: pick another place for it in the yard. It costs nothing.`
+            : `${upgrade.name} already stands at base.`
           : offer.affordable
-            ? `Build ${upgrade.name}: you are asked once more before anything is spent.`
+            ? canBeMoved(upgrade.id)
+              ? `Build ${upgrade.name}: you are asked once more, then pick where it stands in the yard.`
+              : `Build ${upgrade.name}: you are asked once more before anything is spent.`
             : offer.state === 'locked'
               ? `Locked: built only after ${offer.requires?.name ?? 'an earlier upgrade'}.`
               : this.shortfallLine(offer);
@@ -4000,7 +4033,11 @@ export class HubScene extends Phaser.Scene {
       },
       show,
       parts,
-      ...(offer.affordable ? { go: { key: 'ENTER', label: 'Build it' } } : {}),
+      ...(offer.affordable
+        ? { go: { key: 'ENTER', label: 'Build it' } }
+        : built && canBeMoved(upgrade.id)
+          ? { go: { key: 'ENTER', label: 'Move it' } }
+          : {}),
       foot: `<p class="ws-tally">${pixelFigure('brock', 'Brock')}<small>Built ${builtCount} of ${WORKSHOP_UPGRADES.length}</small></p>`,
     });
   }

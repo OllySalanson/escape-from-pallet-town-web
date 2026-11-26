@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { GridPosition } from '../movement/gridMovement';
 import { WORKSHOP_UPGRADES } from '../hub/workshop';
-import { BASE_LANDING, BASE_SIGNS, BASE_SPAWN, getBaseMap } from './baseMap';
+import { BASE_LANDING, BASE_SIGNS, BASE_SPAWN, getBaseMap, getBaseMapWithEveryPlace } from './baseMap';
 import { DAY_CARE_KEEPER } from './dayCarePen';
 import { BASE_DOORS } from './doors';
-import { standingFixtures } from './fixtures';
+import { everyPlaceFilled, standingFixtures } from './fixtures';
 import { harbourBeatTiles, harbourLifeAt, onLand } from './harbourLife';
 import { gardenTiles } from './homeGarden';
 import { HARBOUR_LANDMARKS } from './landmarks';
@@ -41,8 +41,11 @@ const CORNERS = [
   [-1, -1],
 ] as const;
 
-function harbourWalked(built: readonly string[], hour: 'day' | 'night') {
-  const map = getBaseMap(built);
+/** Every build in every place a player may put it, at once (`everyPlaceFilled`). */
+const EVERY_PLACE = 'every place';
+
+function harbourWalked(built: readonly string[] | typeof EVERY_PLACE, hour: 'day' | 'night') {
+  const map = built === EVERY_PLACE ? getBaseMapWithEveryPlace() : getBaseMap(built);
   const life = harbourLifeAt(hour).filter(onLand);
   const held = new Set<string>([
     ...life.flatMap((figure) => harbourBeatTiles(figure).map((tile) => `${tile.x},${tile.y}`)),
@@ -101,7 +104,9 @@ function harbourWalked(built: readonly string[], hour: 'day' | 'night') {
 describe.each([
   ['nothing built', [] as readonly string[]],
   ['every rung built', EVERY_RUNG],
-])('THE HARBOUR walked two abreast, with %s', (_name, built) => {
+  // Wherever a player puts their builds is less than this, so it walks too.
+  ['every build in every place it may stand', EVERY_PLACE],
+] as const)('THE HARBOUR walked two abreast, with %s', (_name, built) => {
   describe.each(['day', 'night'] as const)('by %s', (hour) => {
     const harbour = harbourWalked(built, hour);
 
@@ -122,7 +127,7 @@ describe.each([
         ...BASE_DOORS.map((door) => ({ name: `the door of ${door.name}`, steps: toStand(door.returnTo.x, door.returnTo.y) })),
         ...BASE_SIGNS.map((sign) => ({ name: `the sign ${sign.lines[0]}`, steps: toFace([sign]) })),
         ...HARBOUR_LANDMARKS.map((landmark) => ({ name: landmark.name, steps: toFace(landmark.faced ?? [landmark.at]) })),
-        ...standingFixtures(built).map((fixture) => ({ name: fixture.name, steps: toFace([fixture.at]) })),
+        ...(built === EVERY_PLACE ? everyPlaceFilled() : standingFixtures(built)).map((fixture) => ({ name: `${fixture.name} at ${fixture.at.x},${fixture.at.y}`, steps: toFace([fixture.at]) })),
         ...harbour.life.map((figure) => ({ name: figure.id, steps: toFace(harbourBeatTiles(figure)) })),
         { name: DAY_CARE_KEEPER.name, steps: toFace([DAY_CARE_KEEPER.position]) },
       ];

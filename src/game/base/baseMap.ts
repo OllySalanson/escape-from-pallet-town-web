@@ -4,7 +4,7 @@ import { buildMapLayers, type MapLayers } from '../world/tiles';
 import type { Material } from '../world/tileset/materials';
 import { BASE_TILESET, type BasePropName } from './baseTileset';
 import { BASE_DOORS } from './doors';
-import { standingFixtures } from './fixtures';
+import { everyPlaceFilled, standingFixtures, type BaseFixture, type FixturePlaces } from './fixtures';
 import { HARBOUR_LANDMARKS } from './landmarks';
 import { START_X as DERBY_START_X } from '../minigames/derbyLevels';
 
@@ -334,7 +334,7 @@ export interface BaseMapDefinition {
  * its fence, a ring round the patch of grass the Pokemon left there walks
  * about in (`dayCarePen.ts`).
  */
-function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName> {
+function sketchBase(fixtures: readonly BaseFixture[]): MapSketch<BasePropName> {
   const map = new MapSketch<BasePropName>({
     width: BASE_MAP_WIDTH,
     height: BASE_MAP_HEIGHT,
@@ -499,7 +499,7 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
 
   // And what the player has built. Planted last, so a fixture is the last word
   // on its own tiles exactly as a landmark is on a raid map.
-  for (const fixture of standingFixtures(builtUpgradeIds)) {
+  for (const fixture of fixtures) {
     for (const prop of fixture.props) {
       map.plant(prop.x, prop.y, prop.name);
     }
@@ -743,21 +743,47 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
 
 const built = new Map<string, BaseMapDefinition>();
 
+/** What a save says about its base: the rungs built and where each stands. */
+export interface BaseBuilds {
+  readonly workshopUpgrades: readonly string[];
+  readonly fixturePlaces?: FixturePlaces;
+}
+
 /**
- * The base as it stands for a player who has built these rungs.
+ * The base as it stands for a player who has built these rungs, each in the
+ * place they chose for it (`fixtures.ts`).
  *
- * Remembered by which rungs are up, the way `getWorldMap` remembers a map by
- * which doors are open: a base is a different map per state rather than a flag
- * checked while drawing, so the collision the player walks is the collision the
- * things they built actually make.
+ * Remembered by which rungs are up and where, the way `getWorldMap` remembers a
+ * map by which doors are open: a base is a different map per state rather than
+ * a flag checked while drawing, so the collision the player walks is the
+ * collision the things they built actually make.
  */
-export function getBaseMap(builtUpgradeIds: readonly string[] = []): BaseMapDefinition {
-  const key = [...builtUpgradeIds].sort().join('|');
-  const remembered = built.get(key);
-  if (remembered) {
-    return remembered;
+export function getBaseMap(builtUpgradeIds: readonly string[] = [], places: FixturePlaces = {}): BaseMapDefinition {
+  const fixtures = standingFixtures(builtUpgradeIds, places);
+  const key = fixtures.map((fixture) => `${fixture.upgradeId}@${fixture.at.x},${fixture.at.y}`).sort().join('|');
+  return remembered(key, () => sketchBase(fixtures));
+}
+
+/** The base a save's own builds make (`getBaseMap`). */
+export function getBaseMapFor(builds: BaseBuilds): BaseMapDefinition {
+  return getBaseMap(builds.workshopUpgrades, builds.fixturePlaces);
+}
+
+/**
+ * Every build standing in every one of its places at once (`everyPlaceFilled`):
+ * not a base anybody has, but the most of one there could be, which is what
+ * the regulars plan their walks on and what the yard's walks are held to.
+ */
+export function getBaseMapWithEveryPlace(): BaseMapDefinition {
+  return remembered('every place', () => sketchBase(everyPlaceFilled()));
+}
+
+function remembered(key: string, sketched: () => MapSketch<BasePropName>): BaseMapDefinition {
+  const known = built.get(key);
+  if (known) {
+    return known;
   }
-  const sketch = sketchBase(builtUpgradeIds);
+  const sketch = sketched();
   const layers = buildMapLayers(sketch, BASE_TILESET);
   const definition: BaseMapDefinition = {
     width: sketch.width,

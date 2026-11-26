@@ -115,7 +115,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: "BROCK'S WORKSHOP",
-        text: 'BROCK builds things that stay built: a bigger LOCKER, healing machines for the Center, a ward, a radio mast and a beacon. He takes materials you bring home from raids.',
+        text: 'BROCK builds things that stay built: a bigger LOCKER, healing machines, a ward, a radio mast and a beacon, for materials from raids. You pick where most of them stand.',
       },
       {
         heading: "BILL'S COTTAGE",

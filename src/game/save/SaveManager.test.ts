@@ -2351,6 +2351,34 @@ describe('SaveManager', () => {
     expect(saves.load()!.stash.itemCount('potion')).toBe(3);
   });
 
+  it('builds in the place chosen, moves for nothing, and keeps the place over a reload', () => {
+    const storage = new MemoryStorage();
+    const saves = outfittedSave(storage);
+    expect(saves.placeFixture('secure-locker-1', 1)).toBe(false);
+    expect(saves.buildWorkshopUpgrade('secure-locker-1', 1)).toMatchObject({ ok: true, saved: true });
+    expect(new SaveManager(storage).load()!.raidProgress.fixturePlaces).toEqual({ 'secure-locker-1': 1 });
+
+    const stash = JSON.stringify(saves.load()!.stash.listPokemon());
+    const crates = saves.load()!.stash.itemCount('parts-crate');
+    // Back to its first place, which is written as no place at all.
+    expect(saves.placeFixture('secure-locker-1', 0)).toBe(true);
+    expect(saves.load()!.raidProgress.fixturePlaces).toBeUndefined();
+    expect(saves.load()!.stash.itemCount('parts-crate')).toBe(crates);
+    expect(JSON.stringify(saves.load()!.stash.listPokemon())).toBe(stash);
+    // A place it does not have is refused.
+    expect(saves.placeFixture('secure-locker-1', 99)).toBe(false);
+  });
+
+  it('reads only a place a build has, and ignores the rest', () => {
+    const storage = new MemoryStorage();
+    const saves = outfittedSave(storage);
+    saves.buildWorkshopUpgrade('secure-locker-1');
+    const raw = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: Record<string, unknown> };
+    raw.raidProgress.fixturePlaces = { 'secure-locker-1': 1, 'radio-mast': 99, nonsense: 1, beacon: 'far' };
+    storage.setItem(SAVE_KEY, JSON.stringify(raw));
+    expect(new SaveManager(storage).load()!.raidProgress.fixturePlaces).toEqual({ 'secure-locker-1': 1 });
+  });
+
   it('brings home only the materials a wipe was told were secured', () => {
     const storage = new MemoryStorage();
     const saves = outfittedSave(storage);

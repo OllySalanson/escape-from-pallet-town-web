@@ -1,7 +1,7 @@
 import { honoursWorn } from '../look/gymHonours';
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
-import { getBaseMap, type BaseMapDefinition } from '../base/baseMap';
+import { getBaseMapFor, type BaseMapDefinition } from '../base/baseMap';
 import { BASE_TILESET } from '../base/baseTileset';
 import { PARTNER_SPRITE_Y_OFFSET } from '../base/partnerFigure';
 import { partnerFrame, partnerTextureKey, type PartnerSpeciesId } from '../base/partner';
@@ -440,7 +440,7 @@ export class ArenaIntroScene extends Phaser.Scene {
         .setOrigin(0, 0)
         .setDepth(DEPTH.night),
     );
-    this.arenaMap = getBaseMap(savedGame.raidProgress.workshopUpgrades);
+    this.arenaMap = getBaseMapFor(savedGame.raidProgress);
     this.layTiles(this.arenaMap.layers, BASE_TILESET.sources, ARENA_ORIGIN, 'arena');
 
     this.sneak();

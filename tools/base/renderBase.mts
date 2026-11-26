@@ -25,7 +25,8 @@
  * goods (5200 is every tier). `--beaten=bossId,..`
  * and `--survey=path.json` (a save's `raidProgress.surveyed`) are what the
  * wall map in Oak's Lab draws: the keepers' signs, and the ground a raid has
- * walked. `--marks` names the doors, the mat, the keeper and every fixture,
+ * walked. `--everywhere` stands every build in every place it may be put at
+ * once (`everyPlaceFilled`). `--marks` names the doors, the mat, the keeper and every fixture,
  * `--collision` hatches what is solid, `--beats` hatches in blue every tile a
  * person or Pokémon in the yard may stand on (`harbourLife.ts`, by day) and the
  * Day-Care Man's, which together are what a player walking it meets
@@ -52,8 +53,8 @@ import { BASE_TILESET } from '../../src/game/base/baseTileset';
 import { BASE_SHEET_SOURCE } from '../../src/game/base/baseSheet';
 import { BASE_PIECES } from '../../src/game/base/generated/basePieces';
 import { BASE_DOORS } from '../../src/game/base/doors';
-import { BASE_FIXTURES, standingFixtures } from '../../src/game/base/fixtures';
-import { BASE_LANDING, BASE_SPAWN, getBaseMap } from '../../src/game/base/baseMap';
+import { BASE_FIXTURES, everyPlaceFilled, standingFixtures } from '../../src/game/base/fixtures';
+import { BASE_LANDING, BASE_SPAWN, getBaseMap, getBaseMapWithEveryPlace } from '../../src/game/base/baseMap';
 import { BASE_ROOMS, buildRoom, roomNamed } from '../../src/game/base/rooms';
 import { wallMapPoster } from '../../src/game/base/wallMap';
 import { roomPosterPicture } from '../../src/game/base/roomPosters';
@@ -177,7 +178,10 @@ if (roomFlag !== undefined && !room) {
 const dateFlag = option('date');
 const drawnAt = dateFlag === undefined ? new Date() : new Date(dateFlag);
 const drawnRoom = room ? buildRoom(room, game, drawnAt) : null;
-const yard = getBaseMap(built);
+// `--everywhere`: every build in every place it may be put at once
+// (`everyPlaceFilled`), which is the yard the regulars and the tests plan on.
+const everywhere = process.argv.includes('--everywhere');
+const yard = everywhere ? getBaseMapWithEveryPlace() : getBaseMap(built);
 const place: {
   width: number;
   height: number;
@@ -400,7 +404,7 @@ if (flags.has('--marks')) {
     for (const door of BASE_DOORS) {
       for (const tile of door.tiles) mark(tile.x, tile.y, 'DOOR', [255, 214, 92]);
     }
-    for (const fixture of standingFixtures(built)) {
+    for (const fixture of everywhere ? everyPlaceFilled() : standingFixtures(built)) {
       mark(
         fixture.at.x,
         fixture.at.y,

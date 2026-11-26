@@ -3,7 +3,7 @@ import { needsRecovery } from '../hub/recovery';
 import type { RaidProgress, RestoredGame } from '../save/SaveManager';
 import type { StashedPokemon } from '../stash/Stash';
 import { isFigureSpecies } from '../world/pokemonFigures';
-import { BASE_FIXTURES } from './fixtures';
+import { everyPlaceFilled } from './fixtures';
 
 /**
  * THE BOLTHOLE's garden: the lawn between the house and the Day-Care's fence,
@@ -42,11 +42,11 @@ export const GARDEN_SIZE = 6;
 export const GARDEN = { x: 41, y: 7, width: 5, height: 5 } as const;
 
 /**
- * Where anything built is read from (`fixtures.ts`): the mast is faced from
+ * Where anything built is read from, in any place it may be put (`fixtures.ts`): the mast is faced from
  * the lawn in front of its foot, which is in the garden, and nothing may stand
  * there - a thing nobody can face is a thing nobody can read.
  */
-const READ_FROM = new Set(BASE_FIXTURES.map(({ at }) => `${at.x},${at.y + 1}`));
+const READ_FROM = new Set(everyPlaceFilled().map(({ at }) => `${at.x},${at.y + 1}`));
 
 /** Every tile of the garden a Pokémon may stand on, row by row. */
 export function gardenTiles(): readonly GridPosition[] {
