@@ -581,7 +581,7 @@ describe('BattleScene command presentation', () => {
 
     expect(summaryLine.text).toBe('FIRE · SPECIAL · POWER 40 · PP 25/25 · SAME-TYPE x1.5');
     expect(matchupLine.text).toBe('vs BULBASAUR: SUPER EFFECTIVE x2');
-    expect(matchupLine.setColor).toHaveBeenLastCalledWith('#166534');
+    expect(matchupLine.setColor).toHaveBeenLastCalledWith('#1d6c2e');
   });
 
   it('prints a no-effect matchup in an ink that reads on the panel and is not the neutral one (playtest 40)', () => {
@@ -2012,7 +2012,7 @@ describe("HEAL, the wild fight's sixth command", () => {
     const battle = scene as unknown as { onMessagesComplete(): void; dispatchAction(action: { type: string }): void; mode: string; bag: Bag };
     for (let step = 0; step < 5 && battle.mode !== 'main'; step += 1) battle.onMessagesComplete();
     // Drawn as a refusal is: it would do nothing.
-    expect(renderedTexts.filter(({ text }) => text.includes('HEAL')).at(-1)?.style.color).toBe('#9b1c1c');
+    expect(renderedTexts.filter(({ text }) => text.includes('HEAL')).at(-1)?.style.color).toBe(UI.inkSoft.css);
     const before = battle.bag.count('potion');
     battle.dispatchAction({ type: 'quick-heal' });
     expect(battle.bag.count('potion')).toBe(before);
