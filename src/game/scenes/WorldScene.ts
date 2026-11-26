@@ -1,3 +1,4 @@
+import type { BarTeamMember } from '../ui/controlsBar';
 import { honoursEarned, orderedHonours, type HonourId } from '../look/gymHonours';
 import { FIRST_RAID_BRIEFING } from '../hub/firstRaid';
 import { rewardKey, secretById, secretOpenAt, type SecretReward } from '../world/secrets';
@@ -6764,6 +6765,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * PACK and TEAM always, SAY and PING in a raid room, and the phrases while
    * the room's list is open, which are then the only keys that mean anything.
    */
+  /** The raid's party, for the team on the controls bar (`ui/controlsBar.ts`). */
+  public barTeam(): readonly BarTeamMember[] {
+    return this.runSession ? this.party.pokemon : [];
+  }
+
   public touchShortcuts(): readonly TouchShortcut[] {
     // While a box waits to be read, the pack and the party are not opened
     // (`updateRaid` returns before it reads them); OAK and LOOK still answer.

@@ -1,3 +1,4 @@
+import type { BarTeamMember } from '../ui/controlsBar';
 import { honoursWorn, type HonourId } from '../look/gymHonours';
 import Phaser from 'phaser';
 import { thingLine } from '../base/thingLine';
@@ -1052,6 +1053,21 @@ export class BaseScene extends Phaser.Scene {
    * partner, decorating and the phrase list are moments with keys of their
    * own and none of the yard's.
    */
+  /** The save the bar's team was last read from, and that team: read again only when the save is. */
+  private barTeamOf: { readonly game: RestoredGame; readonly team: readonly BarTeamMember[] } | undefined;
+
+  /** The next raid's team, for the team on the controls bar (`ui/controlsBar.ts`). */
+  public barTeam(): readonly BarTeamMember[] {
+    const game = this.savedGame;
+    if (!game) {
+      return [];
+    }
+    if (this.barTeamOf?.game !== game) {
+      this.barTeamOf = { game, team: flowForGame(game).party.map((stored) => stored.pokemon) };
+    }
+    return this.barTeamOf.team;
+  }
+
   public touchShortcuts(): readonly TouchShortcut[] {
     // The glass is a moment with keys of its own and none of the yard's: the
     // pad offered LOOK, FAVOURS and the rest, dead, and no ZOOM or NEXT.

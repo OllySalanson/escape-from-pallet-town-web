@@ -1734,28 +1734,9 @@ body.touch-play .feedback-tab {
   }
 }
 
-/* ==========================================================================
-   Pixel UI: the DOM screens drawn in the game's own visual language.
-
-   An overlay opts in with the `pixel-ui` class (see `MenuOverlay`), and its
-   markup comes from `src/game/ui/pixelUi.ts`. Three rules hold everywhere:
-
-   1. Every measurement is a whole number of game pixels. `--u` is one of them,
-      in CSS pixels, set on the menu layer by `display/menuStage.ts` - so a window's
-      border is exactly as thick as one drawn on the canvas, at every zoom, and
-      nothing here may be sized in `px`, `vw` or a fractional `--u`.
-   2. One typeface at one size. Orange Kid's stem is 0.08em, so 12.5 game pixels
-      is the size at which a stem is one game pixel - the same letters the raid
-      HUD draws. Hierarchy is caps, ink and position, never a second size.
-   3. One frame: `pixelWindow.ts`'s one-pixel `#171717` border with clear
-      corners over a cream fill, reproduced by `.px-window` as backgrounds so it
-      needs no clip and can carry a tone through `--fill`.
-
-   Orange Kid has no arrows and no tick, so none may be typed: the cursor and
-   the tick are drawn (`--px-cursor`, `--px-tick`), as `drawMenuCursor` is.
-   ========================================================================== */
-.menu-overlay.pixel-ui {
-  --u: var(--px, 2px);
+/* The menus' palette, on the page rather than on a screen, so the controls
+   bar under the game (`ui/controlsBar.ts`) and every screen share it. */
+:root {
   /* The menus' palette (`src/game/ui/uiPalette.ts`): a Poke Ball, opened. Five
      colours, one job each (the captain, 25 Nov 2026: "It must be the new way of
      doing it ... Do not keep any of the old menu style"; the round-3 look,
@@ -1804,6 +1785,30 @@ body.touch-play .feedback-tab {
   --px-close: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h-1zM1 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM3 3h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1z'/%3E%3C/svg%3E");
   --px-ball: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath fill='%23221d1e' d='M2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM1 1h1v1h-1zM7 1h1v1h-1zM0 2h1v1h-1zM8 2h1v1h-1zM0 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM8 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM0 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM8 5h1v1h-1zM0 6h1v1h-1zM8 6h1v1h-1zM1 7h1v1h-1zM7 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1z'/%3E%3Cpath fill='%23e3350d' d='M2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1z'/%3E%3Cpath fill='%23ffffff' d='M4 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1z'/%3E%3C/svg%3E");
   --px-hollow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h5v5h-5zM1 1v3h3v-3z' fill-rule='evenodd'/%3E%3C/svg%3E");
+}
+
+/* ==========================================================================
+   Pixel UI: the DOM screens drawn in the game's own visual language.
+
+   An overlay opts in with the `pixel-ui` class (see `MenuOverlay`), and its
+   markup comes from `src/game/ui/pixelUi.ts`. Three rules hold everywhere:
+
+   1. Every measurement is a whole number of game pixels. `--u` is one of them,
+      in CSS pixels, set on the menu layer by `display/menuStage.ts` - so a window's
+      border is exactly as thick as one drawn on the canvas, at every zoom, and
+      nothing here may be sized in `px`, `vw` or a fractional `--u`.
+   2. One typeface at one size. Orange Kid's stem is 0.08em, so 12.5 game pixels
+      is the size at which a stem is one game pixel - the same letters the raid
+      HUD draws. Hierarchy is caps, ink and position, never a second size.
+   3. One frame: `pixelWindow.ts`'s one-pixel `#171717` border with clear
+      corners over a cream fill, reproduced by `.px-window` as backgrounds so it
+      needs no clip and can carry a tone through `--fill`.
+
+   Orange Kid has no arrows and no tick, so none may be typed: the cursor and
+   the tick are drawn (`--px-cursor`, `--px-tick`), as `drawMenuCursor` is.
+   ========================================================================== */
+.menu-overlay.pixel-ui {
+  --u: var(--px, 2px);
   overflow: hidden;
   /* Behind a screen is the place it was opened in, crisp and dimmed: the
      paused scene is still drawn under the menu layer. */
@@ -7196,3 +7201,246 @@ body.touch-play .feedback-tab {
   align-items: center;
 }
 
+
+/* --- The controls bar under the game (`ui/controlsBar.ts`) ---------------- *
+   The game's keys as tiles, in the page beside the game: an ink strip with the
+   Poke Ball's red seam, the screen's keys either side of the team, and
+   SETTINGS and HELP at the end. Its pixel is its own (`--px`, set where it is
+   placed, `display/controlsBarLayout.ts`). */
+.pixel-ui.controls-bar {
+  --u: var(--px, 2px);
+  --px-gear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h1v1h-1zM3 0h1v1h-1zM5 0h1v1h-1zM0 1h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM1 6h1v1h-1zM3 6h1v1h-1zM5 6h1v1h-1z'/%3E%3C/svg%3E");
+  position: fixed;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  padding: var(--u) calc(var(--u) * 3);
+  background: var(--bar);
+  box-shadow:
+    0 calc(var(--u) * -2) 0 var(--red),
+    0 calc(var(--u) * -3) 0 var(--line);
+  color: var(--ink);
+  font-family: 'Orange Kid', monospace;
+  font-size: calc(var(--u) * 12.5);
+  line-height: calc(var(--u) * 12);
+  text-transform: uppercase;
+  user-select: none;
+  /* Its own layer, for the same grey-edged letters every screen has. */
+  will-change: transform;
+}
+.pixel-ui.controls-bar[hidden] {
+  display: none;
+}
+.pixel-ui.controls-bar[data-side='below'] {
+  height: calc(var(--u) * 36);
+}
+.pixel-ui.controls-bar[data-side='left'] {
+  width: calc(var(--u) * 72);
+  flex-direction: column;
+  align-items: stretch;
+  padding: calc(var(--u) * 3);
+  box-shadow:
+    calc(var(--u) * 2) 0 0 var(--red),
+    calc(var(--u) * 3) 0 0 var(--line);
+}
+.pixel-ui.controls-bar :where(button) {
+  appearance: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.pixel-ui.controls-bar .cb-keys,
+.pixel-ui.controls-bar .cb-system {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  min-width: 0;
+}
+.pixel-ui.controls-bar .cb-keys {
+  flex: 1 1 0;
+}
+.pixel-ui.controls-bar .cb-keys:first-child {
+  justify-content: flex-end;
+}
+.pixel-ui.controls-bar[data-side='left'] :is(.cb-keys, .cb-system) {
+  flex: none;
+  flex-direction: column;
+  align-items: stretch;
+}
+.pixel-ui.controls-bar[data-side='left'] .cb-system {
+  margin-top: auto;
+}
+/* A tile: white, one line of ink, a keycap in ink, a picture, the word. */
+.pixel-ui.controls-bar .cb-tile,
+.pixel-ui.controls-bar .cb-team {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  height: calc(var(--u) * 22);
+  padding: 0 calc(var(--u) * 4) 0 calc(var(--u) * 3);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 var(--u) var(--line);
+  white-space: nowrap;
+}
+.pixel-ui.controls-bar .cb-cap {
+  flex: none;
+  display: grid;
+  place-items: center;
+  min-width: calc(var(--u) * 12);
+  height: calc(var(--u) * 12);
+  padding: 0 calc(var(--u) * 2);
+  background: var(--ink);
+  color: var(--paper);
+}
+.pixel-ui.controls-bar .cb-tile.is-extra {
+  box-shadow: inset 0 0 0 var(--u) var(--line), inset 0 calc(var(--u) * -2) 0 var(--gold);
+}
+.pixel-ui.controls-bar :is(.cb-tile, .cb-team).is-inert {
+  background: var(--paper-sunk);
+  color: var(--ink-soft);
+  cursor: default;
+}
+.pixel-ui.controls-bar :is(.cb-tile, .cb-team).is-inert .cb-cap {
+  background: var(--ink-soft);
+}
+.pixel-ui.controls-bar :is(.cb-tile, .cb-team):not(.is-inert):hover {
+  background: var(--paper-lit);
+  box-shadow: inset 0 0 0 var(--u) var(--gold-ink);
+}
+.pixel-ui.controls-bar :is(.cb-tile, .cb-team):not(.is-inert):active {
+  transform: translateY(var(--u));
+}
+/* The team, front and centre: who is in the party, each at its pace, a pip of
+   health under it. */
+.pixel-ui.controls-bar .cb-team {
+  flex: none;
+  height: calc(var(--u) * 34);
+  padding: 0 calc(var(--u) * 4);
+  gap: calc(var(--u) * 4);
+}
+.pixel-ui.controls-bar .cb-team-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+.pixel-ui.controls-bar .cb-mons {
+  display: flex;
+  gap: 0;
+}
+.pixel-ui.controls-bar .cb-mon {
+  position: relative;
+  width: calc(var(--u) * 28);
+  height: calc(var(--u) * 32);
+  display: flex;
+  justify-content: center;
+}
+.pixel-ui.controls-bar .cb-mon .px-mon-icon {
+  flex: none;
+}
+.pixel-ui.controls-bar .cb-mon.is-out .px-mon-icon {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+.pixel-ui.controls-bar .cb-hp {
+  position: absolute;
+  left: calc(var(--u) * 4);
+  right: calc(var(--u) * 4);
+  bottom: 0;
+  height: calc(var(--u) * 3);
+  background: var(--paper-sunk);
+  box-shadow: 0 0 0 var(--u) var(--line);
+}
+.pixel-ui.controls-bar .cb-hp i {
+  display: block;
+  height: 100%;
+  background: var(--go);
+}
+.pixel-ui.controls-bar .cb-mon.is-yellow .cb-hp i {
+  background: var(--gold);
+}
+.pixel-ui.controls-bar .cb-mon.is-red .cb-hp i {
+  background: var(--red);
+}
+.pixel-ui.controls-bar[data-side='left'] .cb-team {
+  flex-direction: column;
+  height: auto;
+  padding: calc(var(--u) * 3);
+}
+.pixel-ui.controls-bar[data-side='left'] .cb-team-head {
+  flex-direction: row;
+}
+.pixel-ui.controls-bar[data-side='left'] .cb-mons {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.pixel-ui.controls-bar[data-side='left'] .cb-tile .item-icon {
+  display: none;
+}
+.pixel-ui.controls-bar .cb-gear {
+  flex: none;
+  width: calc(var(--u) * 12);
+  height: calc(var(--u) * 12);
+  background: var(--ink);
+  mask: var(--px-gear) center / calc(var(--u) * 7) calc(var(--u) * 7) no-repeat;
+  -webkit-mask: var(--px-gear) center / calc(var(--u) * 7) calc(var(--u) * 7) no-repeat;
+}
+
+/* --- HELP and SETTINGS (`scenes/ControlsScene.ts`) ------------------------ */
+:where(.pixel-ui) .cs-help {
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--u) * 150), 1fr));
+  align-items: start;
+}
+:where(.pixel-ui) .cs-keys {
+  display: grid;
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .cs-key {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .cs-cap {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: calc(var(--u) * 12);
+  height: calc(var(--u) * 12);
+  padding: 0 calc(var(--u) * 2);
+  background: var(--ink);
+  color: var(--paper);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .cs-does {
+  margin-left: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .cs-settings {
+  justify-items: center;
+}
+:where(.pixel-ui) .cs-settings > .px-window {
+  width: min(100%, calc(var(--u) * 220));
+}
+:where(.pixel-ui) .cs-setting-name {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .cs-switch {
+  padding: 0 calc(var(--u) * 4);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .cs-switch.is-on {
+  background: var(--go);
+  color: var(--paper);
+}
+:where(.pixel-ui) .cs-switch.is-off {
+  background: var(--paper-sunk);
+  color: var(--ink-soft);
+}

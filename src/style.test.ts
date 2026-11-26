@@ -101,7 +101,8 @@ describe('the pixel-ui stylesheet', () => {
   it('measures everything in game pixels, so nothing lands between two of them', () => {
     // `--u` itself falls back to two CSS pixels before the stage scaler has run.
     const lengths = pixelUiRules
-      .replace('--u: var(--px, 2px);', '')
+      // ...on a screen's root and on the controls bar's, which has a pixel of its own.
+      .replaceAll('--u: var(--px, 2px);', '')
       .match(/\b\d*\.?\d+(?:px|vw|vh|cqw|cqh|em|rem|ch)\b/g);
     expect(lengths ?? []).toEqual([]);
   });
@@ -109,7 +110,8 @@ describe('the pixel-ui stylesheet', () => {
   it('only ever multiplies the game pixel by a whole number, except for the one type size', () => {
     const multiples = [...pixelUiRules.matchAll(/var\(--u\) \* (-?[\d.]+)/g)].map((match) => match[1]);
     expect(multiples.length).toBeGreaterThan(50);
-    expect(multiples.filter((value) => !/^-?\d+$/.test(value))).toEqual(['12.5']);
+    // The type size, set once on a screen's root and once on the controls bar's.
+    expect(new Set(multiples.filter((value) => !/^-?\d+$/.test(value)))).toEqual(new Set(['12.5']));
   });
 
   it('has one type size: hierarchy is caps, ink and position', () => {

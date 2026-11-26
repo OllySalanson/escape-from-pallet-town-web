@@ -1,3 +1,4 @@
+import { controlsBarPlacement, type BarPlacement } from './controlsBarLayout';
 import { applyMenuStage, menuLayer } from './menuStage';
 import { computeStage, onDevicePixel, type StageSize } from './stage';
 import { computeTouchLayout, type Rect, type SafeInsets, type TouchLayout } from './touchLayout';
@@ -60,6 +61,11 @@ export function applyStage(
   return stage;
 }
 
+/** What the viewport watcher needs to stand the controls bar beside the game (`ui/controlsBar.ts`). */
+export interface BarFit {
+  place(placement: BarPlacement | null, canvas: { readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null): void;
+}
+
 /** What the viewport watcher needs to lay the window out round the touch pad. */
 export interface TouchFit {
   /** Whether the game is being played by touch now (`input/touchPlay.ts`). */
@@ -100,16 +106,26 @@ export function readSafeInsets(document: Document): SafeInsets {
  * Returns a teardown so a hot reload cannot leave a second listener resizing a
  * destroyed game.
  */
-export function watchViewport(game: ScalableGame, touch?: TouchFit, parentId = 'app'): () => void {
+export function watchViewport(game: ScalableGame, touch?: TouchFit, parentId = 'app', bar?: BarFit): () => void {
   const parent = () => document.getElementById(parentId);
   const update = () => {
     const ratio = window.devicePixelRatio || 1;
     const width = window.innerWidth;
-    const height = window.innerHeight;
-    const layout = touch?.playing() ? computeTouchLayout(width, height, ratio, readSafeInsets(document)) : null;
-    applyStage(game, parent(), width, height, ratio, layout ? { stage: layout.stage, box: layout.canvas } : undefined);
+    const fullHeight = window.innerHeight;
+    const layout = touch?.playing() ? computeTouchLayout(width, fullHeight, ratio, readSafeInsets(document)) : null;
+    // The controls bar takes room below or beside the game only off the touch
+    // pad, and only where it costs the game no zoom (`controlsBarLayout.ts`):
+    // below, the game and the menus are laid out in the window less the bar.
+    const placement = bar && !layout ? controlsBarPlacement(width, fullHeight, ratio) : null;
+    const height = placement?.gameViewportHeight ?? fullHeight;
+    const stage = applyStage(game, parent(), width, height, ratio, layout ? { stage: layout.stage, box: layout.canvas } : undefined);
     applyMenuStage(menuLayer(), width, height, ratio, layout?.menus);
     touch?.place(layout);
+    const box = parent()?.getBoundingClientRect();
+    bar?.place(
+      placement,
+      placement && box ? { x: box.left, y: box.top, width: stage.width * stage.zoom, height: stage.height * stage.zoom } : null,
+    );
   };
   update();
   window.addEventListener('resize', update);
