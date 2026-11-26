@@ -130,6 +130,10 @@ open the list and throw nothing (`docs/screens/ball-choice/`).
 with the churchyard's Gastly, a paralysed lead and a CHERI BERRY packed: each swap
 must bring the menu back on FIGHT, not POKéMON (`docs/screens/graveyard-battle/`).
 
+`battleLines.mjs <test-mode build url> <dir> [--port=N]` prints and photographs
+every line of a wild Gastly fight against a Charmander on 7 HP, through one SCRATCH,
+so two builds' fights can be laid side by side (`docs/screens/battle-lines/`).
+
 `battleKeys.mjs <test-mode build url> <dir> [--port=N]` reads a wild fight's
 opening lines with mouse clicks alone, rests the pointer on ITEM (lit, the cursor
 still on FIGHT), moves with D and runs Right past the end of the row, which must

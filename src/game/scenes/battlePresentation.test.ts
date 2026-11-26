@@ -27,7 +27,6 @@ import { FRAME_DEPTH } from '../ui/uiPalette';
 import {
   BATTLE_SCREEN_WIDTH,
   statusPlateLayout,
-  lowHpItemHint,
   combatantSpot,
   seatedSpriteY,
   STATUS_TAG_GAP,
@@ -76,7 +75,6 @@ import {
   statusAfterLine,
   statusBeforeLines,
   DOUBLE_PLAYER_GROUND,
-  typeLesson,
 } from './battlePresentation';
 
 const battleSceneSource = await readFile(new URL('./BattleScene.ts', import.meta.url), 'utf8');
@@ -1032,61 +1030,6 @@ describe('where a Pokemon stands on the field', () => {
       expect(spot.ground).toBe(DOUBLE_PLAYER_GROUND);
     }
     expect(combatantSpot('player', 0, 2).x).toBeLessThan(combatantSpot('player', 1, 2).x);
-  });
-});
-
-describe('the medicine hint', () => {
-  it('names the low Pokémon and the medicine to give it', () => {
-    expect(lowHpItemHint([{ name: 'Charmander', hp: 2, maxHp: 18 }], 'Potion')).toBe(
-      'CHARMANDER is low on HP! Choose ITEM to give it a POTION.',
-    );
-  });
-
-  it('finds the low one of two in a double battle', () => {
-    expect(
-      lowHpItemHint(
-        [
-          { name: 'Charmeleon', hp: 40, maxHp: 44 },
-          { name: 'Bulbasaur', hp: 9, maxHp: 39 },
-        ],
-        'Super Potion',
-      ),
-    ).toMatch(/^BULBASAUR is low on HP!/);
-  });
-
-  it('says nothing above a quarter, of a fainted Pokémon, or with nothing to give', () => {
-    expect(lowHpItemHint([{ name: 'Charmander', hp: 5, maxHp: 18 }], 'Potion')).toBeNull();
-    expect(lowHpItemHint([{ name: 'Charmander', hp: 0, maxHp: 18 }], 'Potion')).toBeNull();
-    expect(lowHpItemHint([{ name: 'Charmander', hp: 2, maxHp: 18 }], null)).toBeNull();
-  });
-});
-
-describe('the one line that teaches the type chart', () => {
-  const units = {
-    'player:0': { types: [PokemonType.Water], moves: [MOVE_CATALOGUE['water-gun'], MOVE_CATALOGUE.tackle] },
-    'enemy:0': { types: [PokemonType.Fire], moves: [MOVE_CATALOGUE.ember, MOVE_CATALOGUE.scratch] },
-  } as const;
-  const unit = (side: 'player' | 'enemy', slot: number) => units[`${side}:${slot}` as keyof typeof units] ?? null;
-  const used = (user: 'player' | 'enemy', move: string) =>
-    ({ type: 'used-move', user, target: user === 'player' ? 'enemy' : 'player', name: 'X', move, damage: 5 }) as const;
-
-  it('names the types after the first hit they changed, in the game\'s capitals', () => {
-    const events = [used('player', MOVE_CATALOGUE['water-gun'].name), { type: 'effectiveness', multiplier: 2 } as const];
-    expect(typeLesson(events, unit)).toEqual({ index: 1, line: 'WATER beats FIRE!' });
-    expect(typeLesson([used('enemy', MOVE_CATALOGUE.ember.name), { type: 'effectiveness', multiplier: 0.5 }], unit)).toEqual({
-      index: 1,
-      line: 'FIRE does little to WATER.',
-    });
-  });
-
-  it('says nothing about a hit types did not change, or a move it cannot name', () => {
-    expect(typeLesson([used('player', MOVE_CATALOGUE.tackle.name)], unit)).toBeUndefined();
-    expect(typeLesson([used('player', 'STRUGGLE'), { type: 'effectiveness', multiplier: 2 }], unit)).toBeUndefined();
-  });
-
-  it('is a few words, never a wall of text', () => {
-    const line = typeLesson([used('player', MOVE_CATALOGUE['water-gun'].name), { type: 'effectiveness', multiplier: 2 }], unit)!.line;
-    expect(line.split(' ').length).toBeLessThanOrEqual(5);
   });
 });
 

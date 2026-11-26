@@ -73,7 +73,7 @@ import type { ExtractionReport } from '../run/extractionReport';
 import { HUNTER_SEARCH_MS, createHunterState } from '../world/hunter';
 import { SaveManager } from '../save/SaveManager';
 import { BattleScene, CATCH_SHAKE_LINE_MS } from './BattleScene';
-import { CATCH_TIP_LINE, combatantSpot, seatedSpriteY } from './battlePresentation';
+import { combatantSpot, seatedSpriteY } from './battlePresentation';
 import { iconTextureKey, itemIconName } from '../ui/icons';
 import { audioManager } from '../audio/AudioManager';
 
@@ -1719,8 +1719,6 @@ describe('a replacement sent in after a faint', () => {
 
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    // A lead on 1 HP with Potions in the pack hears the medicine hint first (`lowHpItemHint`).
-    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
     renderedTexts.filter(({ text }) => text.includes('GROWL')).at(-1)!.handlers.pointerdown();
     dialog.isCurrentMessageComplete = true;
@@ -1777,31 +1775,13 @@ describe('the menu after a Pokémon is sent out', () => {
   });
 });
 
-describe('the medicine hint', () => {
-  it('says once a fight that a Potion can be used, before the commands, when the lead is low', () => {
+describe('medicine in a fight', () => {
+  // Olly, 26 Nov 2026: no lines that teach. A low Pokémon is told by its plate
+  // alone, as in FireRed, and the commands come back on FIGHT.
+  it('says nothing about medicine when the lead is low, and the commands come back on FIGHT', () => {
     const pidgey = new Pokemon(PIDGEY, 5);
     pidgey.currentHp = 1;
     const { scene, dialog } = createBattleSceneHarness({
-      party: new PokemonParty([pidgey]),
-      wild: new Pokemon(getSpeciesById('rattata')!, 3),
-    });
-    const battle = scene as unknown as { onMessagesComplete(): void; mode: string };
-
-    battle.onMessagesComplete();
-    expect(dialog.shownMessages).toContain('PIDGEY is low on HP! Choose ITEM to give it a POTION.');
-    expect(battle.mode).toBe('events');
-    battle.onMessagesComplete();
-    expect(battle.mode).toBe('main');
-    battle.onMessagesComplete();
-    expect(dialog.shownMessages.filter((line) => line.includes('low on HP'))).toHaveLength(1);
-  });
-
-  it('brings the commands back on ITEM, the command it names, so a SPACE too many does not attack', () => {
-    // The SPACE that read the line on opened FIGHT and the next fired the
-    // first move (AI playtest, 23 Nov 2026).
-    const pidgey = new Pokemon(PIDGEY, 5);
-    pidgey.currentHp = 1;
-    const { scene } = createBattleSceneHarness({
       party: new PokemonParty([pidgey]),
       wild: new Pokemon(getSpeciesById('rattata')!, 3),
     });
@@ -1811,11 +1791,10 @@ describe('the medicine hint', () => {
       selectedCommand: number;
       mainActions(): readonly { readonly type: string }[];
     };
-
-    battle.onMessagesComplete();
     battle.onMessagesComplete();
     expect(battle.mode).toBe('main');
-    expect(battle.mainActions()[battle.selectedCommand]?.type).toBe('choose-item');
+    expect(dialog.shownMessages.some((line) => line.includes('low on HP'))).toBe(false);
+    expect(battle.mainActions()[battle.selectedCommand]?.type).toBe('choose-fight');
   });
 
   it('puts the cursor back on FIGHT once the Potion is drunk, so an OK masher attacks again', () => {
@@ -1839,8 +1818,7 @@ describe('the medicine hint', () => {
     };
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
     battle.onMessagesComplete();
-    battle.onMessagesComplete();
-    expect(battle.mainActions()[battle.selectedCommand]?.type).toBe('choose-item');
+    battle.selectedCommand = battle.mainActions().findIndex((action) => action.type === 'choose-item');
     battle.pendingItem = usableBattleItems(battle.bag).find((item) => item.effect.type === 'heal');
     expect(battle.pendingItem).toBeDefined();
     battle.useItem(0);
@@ -1853,8 +1831,10 @@ describe('the medicine hint', () => {
   });
 });
 
-describe('the catch tip', () => {
-  it('says once a fight, after a healthy Pokémon breaks free, that a hurt one is easier to hold', () => {
+describe('a ball a healthy Pokémon breaks out of', () => {
+  // Olly, 26 Nov 2026: no lines that teach. The ball's own FireRed line is
+  // all a break-out says, however healthy the Pokémon was.
+  it("says only FireRed's line, with no tip after it", () => {
     const { scene, dialog } = createBattleSceneHarness({
       party: new PokemonParty([new Pokemon(SQUIRTLE, 8)]),
       wild: new Pokemon(getSpeciesById('caterpie')!, 4),
@@ -1863,32 +1843,15 @@ describe('the catch tip', () => {
     // Every shake fails, and Caterpie's Tackle misses.
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
     battle.onMessagesComplete();
-    for (let throwNumber = 0; throwNumber < 2; throwNumber += 1) {
-      battle.throwBall(0);
-      dialog.isCurrentMessageComplete = true;
-      for (let step = 0; step < 40 && battle.mode !== 'main'; step += 1) {
-        battle.onMessagesComplete();
-      }
-    }
-
-    const said = dialog.shownMessages;
-    expect(said.filter((line) => line === CATCH_TIP_LINE)).toHaveLength(1);
-    expect(said.indexOf(CATCH_TIP_LINE)).toBe(said.findIndex((line) => line.includes('broke free')) + 1);
-  });
-
-  it('says nothing when the Pokémon was already worn down', () => {
-    const caterpie = new Pokemon(getSpeciesById('caterpie')!, 4);
-    caterpie.currentHp = 3;
-    const { scene, dialog } = createBattleSceneHarness({ party: new PokemonParty([new Pokemon(SQUIRTLE, 8)]), wild: caterpie });
-    const battle = scene as unknown as { onMessagesComplete(): void; throwBall(index: number): void; mode: string };
-    vi.spyOn(Math, 'random').mockReturnValue(0.99);
-    battle.onMessagesComplete();
     battle.throwBall(0);
     dialog.isCurrentMessageComplete = true;
     for (let step = 0; step < 40 && battle.mode !== 'main'; step += 1) {
       battle.onMessagesComplete();
     }
-    expect(dialog.shownMessages).not.toContain(CATCH_TIP_LINE);
+    const said = dialog.shownMessages;
+    const brokeFree = said.findIndex((line) => line.includes('broke free'));
+    expect(brokeFree).toBeGreaterThanOrEqual(0);
+    expect(said.some((line) => line.includes('plenty of fight'))).toBe(false);
   });
 });
 
@@ -1906,8 +1869,6 @@ describe('the forced replacement list', () => {
     });
     const { scene, renderedTexts, dialog } = harness;
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
-    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    // A lead on 1 HP with Potions in the pack hears the medicine hint first (`lowHpItemHint`).
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
     renderedTexts.filter(({ text }) => text.includes('GROWL')).at(-1)!.handlers.pointerdown();
@@ -3412,8 +3373,6 @@ describe("a Pokemon's own cry", () => {
 
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     onMessagesComplete(scene);
-    // A lead on 1 HP with Potions in the pack hears the medicine hint first (`lowHpItemHint`).
-    onMessagesComplete(scene);
     renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
     renderedTexts.filter(({ text }) => text.includes('GROWL')).at(-1)!.handlers.pointerdown();
     dialog.isCurrentMessageComplete = true;
@@ -4259,8 +4218,6 @@ describe('both sides fainting on the same turn', () => {
     const before = charmander.experience;
 
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
-    fight.onMessagesComplete();
-    // A lead on 1 HP with Potions in the pack hears the medicine hint first (`lowHpItemHint`).
     fight.onMessagesComplete();
     renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
     renderedTexts.filter(({ text }) => text.includes('DOUBLE-EDGE')).at(-1)!.handlers.pointerdown();
