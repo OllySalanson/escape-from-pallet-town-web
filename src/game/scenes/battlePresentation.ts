@@ -830,8 +830,13 @@ export const makeRoomPageNote = (page: number, rows: number): string => {
  */
 export const KEEP_PACK_ROW = 'KEEP THE PACK';
 
-/** What the refusal says before the panel opens: the price, and what it buys. */
-export const MAKE_ROOM_INVITE = 'Choose what to put down - what you drop stays here.';
+/**
+ * What a ball says when the pack is full and the panel to make room opens:
+ * FireRed's few words, and the panel says the rest. It said "BULBASAUR needs 4
+ * squares, and 1 is free. Choose what to put down - what you drop stays here."
+ * (the churchyard critic, round 3, 26 Nov 2026; Olly: the game's own way).
+ */
+export const PACK_FULL_LINE = 'No room in the pack!';
 
 /**
  * Said when the pack is full and none of it is yours to put down: everything in

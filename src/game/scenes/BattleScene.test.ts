@@ -2595,7 +2595,8 @@ describe('a catch the pack has no room for', () => {
 
     // Nothing is spent to find out, whichever ball was chosen.
     expect(bag.count('poke-ball')).toBe(1);
-    expect(dialog.shownMessages[0]).toContain('BULBASAUR needs 4 squares');
+    // FireRed's few words; the panel that opens says the rest (Olly: the game's own way).
+    expect(dialog.shownMessages[0]).toBe('No room in the pack!');
     // The refusal is read, and then the panel asks the question it raises.
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     expect((scene as unknown as { mode: string }).mode).toBe('make-room');
