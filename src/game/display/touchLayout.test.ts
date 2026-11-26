@@ -93,4 +93,37 @@ describe('laying a touch screen out round the pad', () => {
     expect(sideways.dpad.x).toBeGreaterThanOrEqual(47);
     expect(sideways.buttons.x + sideways.buttons.width).toBeLessThanOrEqual(844 - 47);
   });
+
+  it.each(PHONES)('gives a screen with more keys another row upright, above the tray and clear of the game, at %ix%i', (width, height, ratio) => {
+    // YOUR THINGS names eleven keys with the harbour's; two rows of four held
+    // eight, and the third row was drawn under the d-pad.
+    const two = computeTouchLayout(width, height, ratio);
+    const three = computeTouchLayout(width, height, ratio, undefined, 3);
+    // Nothing the thumbs or the eyes have learned moves.
+    expect(three.canvas).toEqual(two.canvas);
+    expect(three.dpad).toEqual(two.dpad);
+    expect(three.buttons).toEqual(two.buttons);
+    expect(three.padScale).toBe(two.padScale);
+    if (two.orientation === 'landscape') {
+      expect(three.trayRows).toBe(2);
+      return;
+    }
+    const tray = three.trays[0];
+    expect(tray.y + tray.height).toBe(two.trays[0].y + two.trays[0].height);
+    expect(overlaps(tray, three.canvas)).toBe(false);
+    expect(overlaps(three.menus, tray)).toBe(false);
+    if (three.trayRows === 3) {
+      expect(tray.height).toBeGreaterThan(two.trays[0].height);
+    } else {
+      // A short phone has no room over the tray: it keeps two rows, and the
+      // pad draws the keys smaller (`chipHeightIn`).
+      expect(three.trayRows).toBe(2);
+      expect(tray).toEqual(two.trays[0]);
+    }
+  });
+
+  it('has the room for a third row on a tall phone', () => {
+    expect(computeTouchLayout(412, 915, 2.625, undefined, 3).trayRows).toBe(3);
+    expect(computeTouchLayout(412, 915, 2.625, undefined, 1).trayRows).toBe(2);
+  });
 });

@@ -100,7 +100,21 @@ const stopWatchingFullScreenKey = watchFullScreenKey(window, document);
 const stopWatchingFullScreen = onFullScreenChange(document, () => stageFrame.refresh());
 const stopWatchingViewport = watchViewport(
   game,
-  { playing: () => padWanted(), onChange: onTouchPlayChange, place: (layout) => touchPad.place(layout) },
+  {
+    playing: () => padWanted(),
+    // Laid out again when touch play starts or stops, and when the screen up
+    // names more keys than the tray's rows hold.
+    onChange: (listener) => {
+      const stopPlay = onTouchPlayChange(listener);
+      const stopRows = touchPad.onTrayRowsChange(listener);
+      return () => {
+        stopPlay();
+        stopRows();
+      };
+    },
+    place: (layout) => touchPad.place(layout),
+    trayRows: () => touchPad.trayRows(),
+  },
   'app',
   controlsBar,
   {

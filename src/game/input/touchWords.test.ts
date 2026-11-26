@@ -92,6 +92,19 @@ describe('a menu\'s help line on the touch pad', () => {
     expect(helpLineKeys('ARROWS move · LEFT/RIGHT a pocket · ENTER use a disc or stone · B close')).toEqual([]);
   });
 
+  it('offers YOUR THINGS\' keys: OUT on Backspace and the pocket pair walking back and forward', () => {
+    // 'BKSP out' and 'Q E tab' were read as nothing and as an E POCKET key on Q.
+    expect(helpLineKeys('ARROWS move · ENTER pack · BKSP out · L lock · Q E tab · ESC back')).toEqual([
+      { code: 'Backspace', label: 'OUT' },
+      { code: 'KeyL', label: 'LOCK' },
+      { code: 'KeyQ', label: '< TAB' },
+      { code: 'KeyE', label: 'TAB >' },
+    ]);
+    expect(touchHelpLine('ARROWS move · ENTER pack · BKSP out · L lock · Q E tab · ESC back')).toBe(
+      'D-PAD move · OK pack · [OUT] · [LOCK] · [< TAB >] · BACK',
+    );
+  });
+
   it('says each key by its tray word and the rest in the pad\'s words', () => {
     expect(touchHelpLine('ARROWS move · ENTER use · X drop · ESC back to the raid')).toBe('D-PAD move · OK use · [DROP] · BACK to the raid');
     expect(touchHelpLine('ARROWS read · O or ESC back to the raid')).toBe('D-PAD read · BACK to the raid');

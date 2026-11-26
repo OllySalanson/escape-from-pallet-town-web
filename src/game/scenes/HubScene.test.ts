@@ -109,7 +109,7 @@ describe('the lobby as a screen of the game', () => {
       expect(screen).toContain('class="px-title"');
       expect(screen).toMatch(/class="px-help[ "]/);
       // And every one names its keys on the line that never goes (the navigation audit).
-      expect(screen).toMatch(/<span class="px-keys" data-keys>[^<]+</);
+      expect(screen).toMatch(/<span class="px-keys" data-keys="[^"]+">[^<]+</);
       // The modern-web vocabulary it replaced, which the raid's own screens still use.
       expect(screen).not.toMatch(/class="[^"]*(?<![\w-])(panel|entity-row|button|menu-shell)(?![\w-])/);
     }

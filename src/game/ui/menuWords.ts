@@ -24,6 +24,21 @@ export function namingTrayKeys(sentence: string, keys: readonly { readonly code:
   });
 }
 
+/**
+ * The lines a screen names its own keys on, as written for a keyboard: the
+ * keys line that never goes (`data-keys`, `pixelScreen`) and a help line's own
+ * default (`data-help-default`, which YOUR TEAM keeps its LEAD on). The touch
+ * pad's tray offers the letter keys they name (`helpLineKeys`). Only the
+ * last screen's: the one on top.
+ */
+export function screenKeyLines(root: ParentNode): string[] {
+  const last = (selector: string, read: (element: HTMLElement) => string | undefined): string =>
+    [...root.querySelectorAll<HTMLElement>(selector)].map(read).at(-1) ?? '';
+  return [last('[data-keys]', (element) => element.dataset.keys), last('[data-help-default]', (element) => element.dataset.helpDefault)].filter(
+    (line) => line !== '',
+  );
+}
+
 export interface MenuWords {
   /** Says every piece of text in the layer again, the pad's way or the keyboard's. */
   reword(): void;
@@ -41,6 +56,10 @@ export function watchMenuWords(layer: HTMLElement, playing: () => boolean): Menu
     // A help line still saying its screen's own keys, rather than the help for
     // the control the cursor is on, names each key by the tray button's word.
     const parent = node.parentElement;
+    // The keys line under it, which never goes (`pixelScreen`), likewise.
+    if (parent?.matches('[data-keys]') === true && parent.dataset.keys === source) {
+      return touchHelpLine(source);
+    }
     const inHelp = parent?.matches('[data-help-text]') === true;
     if (inHelp && parent.dataset.helpDefault === source) {
       return touchHelpLine(source);
@@ -48,7 +67,7 @@ export function watchMenuWords(layer: HTMLElement, playing: () => boolean): Menu
     // The help for the control the cursor is on, naming one of the screen's
     // letter keys in a sentence - "X drops one Potion." - names it by its
     // tray word instead.
-    const keys = inHelp ? helpLineKeys(parent.dataset.helpDefault ?? '') : [];
+    const keys = inHelp ? helpLineKeys(screenKeyLines(parent.closest('.px-help') ?? parent).join(' · ')) : [];
     return touchWording(namingTrayKeys(source, keys));
   };
 

@@ -1,7 +1,8 @@
-import type { TouchLayout, Rect } from '../display/touchLayout';
+import { TRAY_ROWS, type TouchLayout, type Rect } from '../display/touchLayout';
 import { sendKey, type KeyTarget } from '../input/syntheticKeys';
 import { dimsTouchTray, hasTouchShortcuts, sameShortcuts, withMoment, type TouchShortcut } from '../input/touchShortcuts';
 import { helpLineKeys } from '../input/touchWords';
+import { screenKeyLines } from './menuWords';
 import { arrowRuns, bottomEdgeRuns, crossRuns, discRuns, iconRuns, outlineRuns, runsPath, topEdgeRuns, type PadIcon, type PixelRun } from './touchPadArt';
 
 /**
@@ -43,6 +44,10 @@ export interface TouchPadHost {
 export interface TouchPad {
   /** Draws the pad into a layout, or takes it away (null). */
   place(layout: TouchLayout | null): void;
+  /** The rows of keys the screen up names, for the tray across an upright phone (`computeTouchLayout`'s `trayRows`). */
+  trayRows(): number;
+  /** Called when that changes, so the window is laid out again round the tray. Returns the unsubscribe. */
+  onTrayRowsChange(listener: () => void): () => void;
   destroy(): void;
 }
 
@@ -115,6 +120,39 @@ export function padTextSize(devicePixelRatio: number, stems = 1): number {
  * its side, the rest over the right - and the keys a moment or a screen adds
  * after them, never between, so a key once learned by where it is stays there.
  */
+/** The rows `count` keys take in a tray `columns` wide: never fewer than the tray is laid out for. */
+export function rowsFor(count: number, columns: number): number {
+  return Math.max(TRAY_ROWS, Math.ceil(count / Math.max(1, columns)));
+}
+
+/**
+ * How tall a key is drawn in a tray: as designed, or smaller where the keys
+ * need more rows than the tray has room for (a short phone, or one on its
+ * side, with a screen naming many keys) - smaller rather than spilling under
+ * the d-pad, where a key could not be pressed and the d-pad could not either.
+ */
+export function chipHeightIn(trayHeight: number, count: number, columns: number, designed: number, gap = 8): number {
+  const rows = Math.max(1, Math.ceil(count / Math.max(1, columns)));
+  return Math.max(1, Math.min(designed, Math.floor((trayHeight - gap * (rows - 1)) / rows)));
+}
+
+/**
+ * The order a tray draws its keys in, top row first, `null` an empty place.
+ * Keys past the two rows a tray is laid out for go in rows *over* them,
+ * because the tray grew upward: drawn after them, the first two rows would
+ * each have moved up one, and a standing key never moves under a thumb that
+ * has learned where it is. A tray given no more rows keeps its keys in order.
+ */
+export function trayOrder<T>(keys: readonly T[], columns: number, rowsGiven: number): (T | null)[] {
+  const held = TRAY_ROWS * columns;
+  if (rowsGiven <= TRAY_ROWS || keys.length <= held) {
+    return [...keys];
+  }
+  const over = keys.slice(held);
+  const spare = (columns - (over.length % columns)) % columns;
+  return [...over, ...Array.from({ length: spare }, () => null), ...keys.slice(0, held)];
+}
+
 export function shareKeys<T extends { readonly code: string; readonly extra?: boolean }>(keys: readonly T[], trays: number): T[][] {
   const standing = keys.filter((key) => !key.extra);
   const extra = keys.filter((key) => key.extra);
@@ -196,6 +234,9 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
   let openedBy: string | null = null;
   let openedAt = 0;
   let sawScreen = false;
+  /** The rows the keys up now want across an upright phone, and who to tell when that changes. */
+  let wantedRows = TRAY_ROWS;
+  const rowListeners = new Set<() => void>();
 
   const buzz = () => {
     try {
@@ -451,9 +492,9 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
     // The key whose screen is up is lit, until that screen is put away.
     const screenUp = document.querySelector('#screens > .menu-overlay') !== null;
     // A screen's own letter keys join the tray while it is up: the pack's
-    // DROP, the team's LEAD - read off its help line, as it teaches them.
-    const helpLines = screenUp ? [...document.querySelectorAll<HTMLElement>('#screens [data-help-default]')] : [];
-    const help = helpLines.at(-1)?.dataset.helpDefault ?? '';
+    // DROP, the team's LEAD - read off its keys line, as it teaches them.
+    const layer = document.querySelector('#screens');
+    const help = screenUp && layer ? screenKeyLines(layer).join(' · ') : '';
     const list = withMoment(shortcutsFrom(host.scenes(), shown), helpLineKeys(help));
     if (screenUp) {
       sawScreen = true;
@@ -463,20 +504,41 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
     for (const chip of trays.querySelectorAll<HTMLElement>('.tp-chip')) {
       chip.classList.toggle('is-open', screenUp && chip.dataset.key === openedBy);
     }
-    if (!layout || (sameShortcuts(list, shown) && trays.querySelectorAll('.tp-chip').length === list.length)) {
+    if (!layout || (sameShortcuts(list, shown) && trays.querySelectorAll('.tp-chip:not(.is-spare)').length === list.length)) {
       return;
     }
     shown = list;
+    // Upright, a screen naming more keys than two rows hold asks for the room
+    // for another row (YOUR THINGS: OUT, LOCK and its pockets); the window is
+    // laid out again round it and this drawn again into the new tray.
+    const rows = layout.orientation === 'portrait' ? rowsFor(list.length, layout.trayColumns) : TRAY_ROWS;
+    if (rows !== wantedRows) {
+      wantedRows = rows;
+      for (const listener of [...rowListeners]) {
+        listener();
+      }
+      if (shown !== list) {
+        return;
+      }
+    }
     const shared = shareKeys(list, layout.trays.length);
+    const designedChip = Math.round(48 * Math.min(1, layout.padScale));
     [...trays.children].forEach((tray, index) => {
       const keys = shared[index] ?? [];
       const box = layout!.trays[index];
       const columns = layout!.trayColumns;
       const gap = 8;
       (tray as HTMLElement).style.setProperty('--tp-chip-width', `${Math.floor((box.width - gap * (columns - 1)) / columns)}px`);
+      (tray as HTMLElement).style.setProperty('--tp-chip-height', `${chipHeightIn(box.height, keys.length, columns, designedChip, gap)}px`);
+      const rowsGiven = layout!.orientation === 'portrait' ? layout!.trayRows : TRAY_ROWS;
       tray.replaceChildren(
-        ...keys.map((shortcut) => {
+        ...trayOrder(keys, columns, rowsGiven).map((shortcut) => {
           const chip = document.createElement('div');
+          if (!shortcut) {
+            chip.className = 'tp-chip is-spare';
+            chip.setAttribute('aria-hidden', 'true');
+            return chip;
+          }
           chip.className = ['tp-chip', shortcut.extra ? 'is-extra' : '', shortcut.inert ? 'is-inert' : ''].filter(Boolean).join(' ');
           // A dead key presses nothing: it has no key to press.
           if (!shortcut.inert) {
@@ -496,6 +558,11 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
   }, 200);
 
   return {
+    trayRows: () => wantedRows,
+    onTrayRowsChange(listener) {
+      rowListeners.add(listener);
+      return () => rowListeners.delete(listener);
+    },
     place(next) {
       layout = next;
       if (!next) {
