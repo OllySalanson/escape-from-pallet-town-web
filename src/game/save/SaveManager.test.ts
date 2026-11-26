@@ -3510,3 +3510,21 @@ describe('a sleeping Pokemon', () => {
     expect(copyPokemon(pokemon).sleepTurns).toBe(0);
   });
 });
+
+describe('the garden THE CHEST chooses', () => {
+  it('writes who walks about the garden over the save as it stands, keeping only Pokémon the vault holds', () => {
+    const storage = new MemoryStorage();
+    const stash = createStartingStash(CHARMANDER);
+    stash.addPokemon(new Pokemon(PIDGEY, 9), 'pidgey-1');
+    stash.addPokemon(new Pokemon(PIDGEY, 7), 'pidgey-2');
+    const saves = new SaveManager(storage);
+    saves.save({ party: new PokemonParty(), mapId: 'pallet-town', position: { x: 6, y: 8 }, bag: new Bag(), stash });
+    // Another tab moves the save on before the chest writes: its change stands.
+    const other = new SaveManager(storage);
+    expect(other.chooseBench(['pidgey-2'])).toBe(true);
+    expect(saves.chooseGarden(['pidgey-1', 'nobody', 'pidgey-1'])).toBe(true);
+    const after = saves.load()!;
+    expect(after.raidProgress.garden).toEqual(['pidgey-1']);
+    expect(after.raidProgress.lastBench).toContain('pidgey-2');
+  });
+});

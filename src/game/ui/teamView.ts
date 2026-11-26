@@ -108,10 +108,12 @@ function keyLine(key: string, words: string, tone: 'go' | 'plain' = 'plain'): st
  * health, its five stats and how far to its next level as bars, its moves as
  * type chips, and what ENTER and L do to it. The only place its words are.
  */
-function teamCard(entry: PickerEntry, going: boolean, lead: boolean, partner: boolean, size: number): string {
-  const { pokemon } = entry;
-  const types = [pokemon.base.primaryType, pokemon.base.secondaryType].filter((type): type is NonNullable<typeof type> => Boolean(type));
-  const held = getHeldItem(pokemon.heldItemId);
+/**
+ * A Pokémon's figures, as a card shows them: its health, its five stats and
+ * how far to its next level as bars, and its moves as type chips. YOUR TEAM's
+ * card and THE CHEST's both stand on it, so the two never drift.
+ */
+export function pokemonCardFigures(pokemon: PickerEntry['pokemon']): string {
   const { stats } = pokemon;
   const top = Math.max(STAT_BAR_TOP, stats.attack, stats.defense, stats.spAttack, stats.spDefense, stats.speed);
   const progress = experienceProgress(pokemon);
@@ -124,6 +126,31 @@ function teamCard(entry: PickerEntry, going: boolean, lead: boolean, partner: bo
   const moves = pokemon.moves
     .map((move) => `<span class="px-type px-type-${move.base.type.toLowerCase()} team-move">${escapeAttribute(move.base.name)}</span>`)
     .join('');
+  const tone = pokemon.currentHp / Math.max(1, pokemon.maxHp) > 0.5 ? 'is-hp' : pokemon.currentHp / Math.max(1, pokemon.maxHp) > 0.2 ? 'is-hp-low' : 'is-hp-red';
+  return pixelStatBar('HP', pokemon.currentHp, pokemon.maxHp, tone).replace(
+    `<span class="px-stat-n">${pokemon.currentHp}</span>`,
+    `<span class="px-stat-n">${pokemon.currentHp}/${pokemon.maxHp}</span>`,
+  )
+    + pixelStatBar('ATTACK', stats.attack, top)
+    + pixelStatBar('DEFENCE', stats.defense, top)
+    + pixelStatBar('SP. ATK', stats.spAttack, top)
+    + pixelStatBar('SP. DEF', stats.spDefense, top)
+    + pixelStatBar('SPEED', stats.speed, top)
+    + next
+    + `<div class="team-moves">${moves}</div>`;
+}
+
+/** A Pokémon's types, as the badges a card's strip carries. */
+export function pokemonTypeBadges(pokemon: PickerEntry['pokemon']): string {
+  return [pokemon.base.primaryType, pokemon.base.secondaryType]
+    .filter((type): type is NonNullable<typeof type> => Boolean(type))
+    .map((type) => pixelTypeBadge(type))
+    .join('');
+}
+
+function teamCard(entry: PickerEntry, going: boolean, lead: boolean, partner: boolean, size: number): string {
+  const { pokemon } = entry;
+  const held = getHeldItem(pokemon.heldItemId);
   const deeds = going
     ? [
         size > 1 ? keyLine('ENTER', 'Leave at home') : '',
@@ -136,18 +163,8 @@ function teamCard(entry: PickerEntry, going: boolean, lead: boolean, partner: bo
         : [keyLine('ENTER', 'Take on the raid', 'go')];
   const where = [entry.box, ...(held ? [`${itemIcon(held.id, held.displayName)}${escapeAttribute(held.displayName)}`] : [])].join(' · ');
   return `<section class="px-window team-card" data-shown-by="${escapeAttribute(entry.id)}" hidden>`
-    + `<header class="px-heading"><span>${partner ? partnerRosette() : ''}${pixelPokemonName(pokemon)}<span class="team-card-level">LV${pokemon.level}</span></span><small>${types.map((type) => pixelTypeBadge(type)).join('')}</small></header>`
-    + pixelStatBar('HP', pokemon.currentHp, pokemon.maxHp, pokemon.currentHp / Math.max(1, pokemon.maxHp) > 0.5 ? 'is-hp' : pokemon.currentHp / Math.max(1, pokemon.maxHp) > 0.2 ? 'is-hp-low' : 'is-hp-red').replace(
-      `<span class="px-stat-n">${pokemon.currentHp}</span>`,
-      `<span class="px-stat-n">${pokemon.currentHp}/${pokemon.maxHp}</span>`,
-    )
-    + pixelStatBar('ATTACK', stats.attack, top)
-    + pixelStatBar('DEFENCE', stats.defense, top)
-    + pixelStatBar('SP. ATK', stats.spAttack, top)
-    + pixelStatBar('SP. DEF', stats.spDefense, top)
-    + pixelStatBar('SPEED', stats.speed, top)
-    + next
-    + `<div class="team-moves">${moves}</div>`
+    + `<header class="px-heading"><span>${partner ? partnerRosette() : ''}${pixelPokemonName(pokemon)}<span class="team-card-level">LV${pokemon.level}</span></span><small>${pokemonTypeBadges(pokemon)}</small></header>`
+    + pokemonCardFigures(pokemon)
     + `<footer class="team-card-foot"><small class="team-card-where">${where}</small><span class="team-keys">${deeds.join('')}</span></footer>`
     + '</section>';
 }
