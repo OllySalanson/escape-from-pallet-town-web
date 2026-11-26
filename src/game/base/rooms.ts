@@ -913,7 +913,10 @@ export function librarianLines(secretsOpen: boolean): readonly string[] {
     // The lecterns named, first first: RAIDS teaches the vale, THE BOLTHOLE the house.
     // Where the first book is, plainly: "on the first lectern; X and Y is
     // beside it" was wrong twice over (the re-critic's third round).
-    `Welcome to the ${GREAT_LIBRARY_NAME}! Start with ${lecterns[0]}, on the lectern just left of the runner.`,
+    // A player past MISTY is no newcomer: welcomed back, not told where to start (the re-critic).
+    secretsOpen
+      ? `Welcome back to the ${GREAT_LIBRARY_NAME}.`
+      : `Welcome to the ${GREAT_LIBRARY_NAME}! Start with ${lecterns[0]}, on the lectern just left of the runner.`,
     ...(golden
       ? [
           secretsOpen

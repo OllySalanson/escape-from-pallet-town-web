@@ -147,11 +147,12 @@ export const SECRETS_BOOK: LibraryBook = {
   pages: [
     {
       heading: 'Hidden nooks',
-      text: `${numberWord(SECRETS.length)[0].toUpperCase()}${numberWord(SECRETS.length).slice(1)} nooks lie hidden in GREYSTONE VALE. Each is always there. Most hold their prize only when a condition is met as the raid sets out; a few ask what you do on the way. A nook's page fills in once you find it.`,
+      text: `${numberWord(SECRETS.length)[0].toUpperCase()}${numberWord(SECRETS.length).slice(1)} nooks lie hidden in GREYSTONE VALE. Each is always there. Most hold their prize only when a condition is met as the raid sets out; a few ask what you do on the way.`,
     },
     {
       heading: 'Clues and rumours',
-      text: 'A sign near every nook names the place and hints at the rest. In the harbour, the board, the ANGLER, the S.S. ANNE\'s captain, the SEAGALLOP\'s sailor, BILL and the PRIZE CLERK tell rumours; THE RUMOUR MILL sells them.',
+      // Shorter: its last line ran off the paper at 400x256 (the re-critic's fourth round).
+      text: 'A sign near every nook names the place and hints at the rest. Half the harbour trades rumours - the board, the ANGLER, BILL and more - and THE RUMOUR MILL sells them.',
     },
     {
       heading: 'Keeping what you find',
@@ -175,15 +176,13 @@ export function unfoundSecretPage(secret: Secret): BookPage {
   // wait for a chart, a lead or a flute (the re-critic's third round). The
   // nook's own kind closes the page, so twenty pages are not one sentence;
   // that a page fills in once found is said once, on the first page.
-  const when = secret.when.filter(isTime).map(conditionWords);
+  // What it asks, said whole, and only what it holds kept back: "It waits
+  // there, every raid." stood over nooks that need a GHOST lead or a POKé
+  // FLUTE (the re-critic's fourth round).
+  const page = secretPage(secret);
   return {
     heading: secret.name,
-    text: [
-      `WHERE: ${secret.place.toUpperCase()}${DISTRICT_OF[secret.id] ? `, on ${DISTRICT_OF[secret.id]}` : ''}`,
-      ...(when.length > 0 ? [`WHEN: ${when.join(', ')}`] : []),
-      'Not found yet.',
-      secret.shutLines ? 'It waits there, every raid.' : (SUMMONS_WORDS[secret.id] ?? NOOK_WORDS[secret.nook]),
-    ].join('\n'),
+    text: page.text.replace(/^HOLDS: .*$/m, 'HOLDS: not found yet.'),
   };
 }
 
@@ -200,8 +199,11 @@ function secretFound(secret: Secret, known: SecretsKnown): boolean {
 export function secretsBookFor(known: SecretsKnown, explorerRun: boolean): LibraryBook {
   if (explorerRun) return SECRETS_BOOK;
   const rules = SECRETS_BOOK.pages.slice(0, SECRETS_BOOK.pages.length - SECRETS.length);
+  const found = SECRETS.filter((secret) => secretFound(secret, known)).length;
   return {
     ...SECRETS_BOOK,
+    // How far along, on the title page (the re-critic's fourth round).
+    blurb: `${SECRETS_BOOK.blurb}: ${found === 0 ? 'none found yet' : `${numberWord(found)} found`}`,
     pages: [...rules, ...SECRETS.map((secret) => (secretFound(secret, known) ? secretPage(secret) : unfoundSecretPage(secret)))],
   };
 }

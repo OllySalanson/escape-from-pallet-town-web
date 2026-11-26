@@ -225,12 +225,15 @@ describe('VALE SECRETS as a save has found the vale', () => {
     const fresh = secretsBookFor(known, false);
     expect(fresh.pages).toHaveLength(SECRETS_BOOK.pages.length);
     const page = (book: typeof fresh, name: string) => book.pages.find((each) => each.heading === name)!.text;
-    expect(page(fresh, first.name)).not.toContain('HOLDS:');
-    expect(page(fresh, first.name)).toContain('Not found yet.');
-    // "WHEN: any raid" over nooks that wait for a chart, a lead or a flute (the re-critic's third round).
-    for (const secret of SECRETS.filter((each) => !each.when.some((condition) => condition.kind === 'hour' || condition.kind === 'weekday' || condition.kind === 'raid-clock'))) {
-      expect(page(fresh, secret.name)).not.toContain('WHEN:');
+    expect(page(fresh, first.name)).not.toMatch(/HOLDS: (a|an) /);
+    expect(page(fresh, first.name)).toContain('HOLDS: not found yet.');
+    // What a nook asks is said whole, so "It waits there" never stands alone over one that needs a lead or a flute (the re-critic's fourth round).
+    for (const secret of SECRETS) {
+      const words = page(fresh, secret.name);
+      expect(words).toContain('WHEN:');
+      expect(words).not.toMatch(/HOLDS: (a|an) /);
     }
+    expect(fresh.blurb).toContain('none found yet');
     expect(secretsBookFor(known, true)).toBe(SECRETS_BOOK);
     const item = SECRETS.find((secret) => secret.rewards[0].kind === 'item')!;
     const found = secretsBookFor({ secretsFound: [rewardKey(item, item.rewards[0])], giftsReceived: [] }, false);

@@ -65,7 +65,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
     pages: [
       {
         heading: 'The jump',
-        text: 'Every raid starts at THE RAID ARENA, west across the yard. Choose who comes at THE BENCH and what you carry at THE ARMOURY RACK, then step up to the rail and jump.',
+        text: 'Every raid starts at THE RAID ARENA, on ARENA SQUARE at the west end of the harbour. Choose who comes at THE BENCH and what you carry at THE ARMOURY RACK, then step up to the rail and jump.',
       },
       {
         heading: 'Five minutes',
@@ -77,7 +77,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'The hunters',
-        text: 'Every part of the vale has a hunter. Caught, you fight one of theirs for each of yours that can still fight. Running from one costs forty seconds of your clock, and twenty more each time after.',
+        text: 'Every part of the vale has a hunter. Caught, you fight one of theirs for each of yours that can still fight. Running from one costs forty seconds of your clock, and twenty more each time after, up to two minutes.',
       },
       {
         heading: 'Your pack',
@@ -160,10 +160,6 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       {
         heading: 'The rest of upstairs',
         text: `YOUR WARDROBE changes what you wear. THE CONSOLE plays ${CONSOLE_GAMES.map((game) => game.name).join(' and ')}, with a Pallet Town leaderboard. Your bed gives you a dream, but only NURSE JOY heals.`,
-      },
-      {
-        heading: 'The pennants and the calendar',
-        text: 'A pennant hangs for every place you have come home from. The calendar crosses off a day for every raid, and ticks the ones you came home from.',
       },
       {
         heading: 'Make it yours',
