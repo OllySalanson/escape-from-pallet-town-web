@@ -66,6 +66,13 @@ export function askedDealIndex(key: string, at: number, count: number): number {
  */
 export const RELEASE_ARMING_MS = 500;
 
+/**
+ * How long a game's result stands before AGAIN takes a press: long enough to
+ * read the score, when the key that played the game (SPACE jumps, casts,
+ * picks) is still being pressed as it ends.
+ */
+export const RESULT_HOLD_MS = 1_500;
+
 /** How far apart two spans are along one axis; zero when they overlap. */
 const gap = (aStart: number, aEnd: number, bStart: number, bEnd: number): number =>
   Math.max(0, bStart - aEnd, aStart - bEnd);

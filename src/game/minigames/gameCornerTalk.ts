@@ -61,7 +61,8 @@ export function jumpCabinetLines(): readonly string[] {
 
 /** The second line on the BERRY PICKING cabinet's caption. */
 export function berryCabinetNote(progress: Pick<RaidProgress, 'gameCorner'>, now: Date): string {
-  return cabinetNote(progress, now, 'berry-picking', 'Bring a DODUO or DODRIO');
+  // The house lends a DODUO, so nobody needs to bring one (`houseLoans.ts`).
+  return cabinetNote(progress, now, 'berry-picking', 'The house lends a DODUO');
 }
 
 /** What BERRY PICKING says when it is read rather than played. */
@@ -130,7 +131,9 @@ export function attendantLines(progress: Pick<RaidProgress, 'gameCorner'>): read
   // Two boxes, where six were read on every visit (the harbour critic tour,
   // 26 Nov 2026): what a cabinet pays is on its own screen, and its lamps.
   const lines = [
-    'Welcome to the GAME CORNER! Good scores win TICKETS, once a day a cabinet, to spend at the PRIZE WINDOW next door.',
+    // Not "once a day a cabinet": a game pays once a day for its best score,
+    // and a better score later pays the difference (`tickets.ts`, `payGame`; the re-critic).
+    "Welcome to the GAME CORNER! Your best score each day wins TICKETS, to spend at the PRIZE WINDOW next door.",
     "POKéMON JUMP's down the left, BERRY PICKING's down the right. Nobody to jump or pick? I'll lend you one of ours.",
   ];
   if (record.tickets > 0) {

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { getSpeciesById } from '../pokemon/species';
 import { audioManager } from '../audio/AudioManager';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
@@ -13,7 +14,7 @@ import { HOUSE_JUMPER, loanBasics } from '../minigames/houseLoans';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { drawPixelWindow, WINDOW_PAPER, WINDOW_INK } from '../ui/pixelWindow';
-import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
+import { RELEASE_ARMING_MS, RESULT_HOLD_MS } from '../ui/spatialFocus';
 import { jumpTeamMarkup, prizeWindowMarkup, type JumpCandidate, type JumpTeamState } from '../minigames/gameCornerView';
 import {
   advancePokemonJump,
@@ -74,6 +75,8 @@ type Phase =
  * one write each.
  */
 export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackContext {
+  /** When the last game ended: AGAIN takes no press for `RESULT_HOLD_MS` after. */
+  private finishedAt = Number.NEGATIVE_INFINITY;
   private overlay: MenuOverlay | undefined;
   private pausedBase = false;
   private mode: GameCornerSceneData['mode'] = 'jump';
@@ -227,6 +230,10 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
           audioManager.play('denied');
           return;
         }
+        // The score is seen before AGAIN takes a press: SPACE jumps, and the
+        // press still going at the end started the next game over the result
+        // (the harbour re-critic, 26 Nov 2026).
+        if (this.time.now - this.finishedAt < RESULT_HOLD_MS) return;
         this.startGame();
       };
     }
@@ -472,6 +479,7 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     this.jump = undefined;
     this.phase = { kind: 'menu' };
     this.openedAt = this.time.now;
+    this.finishedAt = this.time.now;
     this.showMenu('[data-play]');
   }
 
@@ -532,10 +540,11 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     const jumpers = this.jump?.jumpers ?? [];
     const spacing = Math.min(80, Math.floor((width - 40) / Math.max(1, jumpers.length)));
     const left = Math.round(width / 2 - (spacing * (jumpers.length - 1)) / 2);
-    const stash = this.game_?.stash;
     this.jumperFeet = [];
     this.jumperSprites = jumpers.map((jumper, index) => {
-      const dexId = stash?.listPokemon().find((stored) => stored.pokemon.base.id === jumper.species)?.pokemon.base.dexId ?? 1;
+      // By its kind, not by a stored Pokémon: the house's lent PIKACHU is in no
+      // box, and fell back to dex 1, a BULBASAUR (the re-critic, 26 Nov 2026).
+      const dexId = getSpeciesById(jumper.species)?.dexId ?? 1;
       const feet = ground + backPictureEmptyRows(dexId) + JUMPER_SINK;
       this.jumperFeet.push(feet);
       return this.add.image(left + index * spacing, feet, pokemonTextureKey('back', dexId)).setOrigin(0.5, 1).setDepth(3);
