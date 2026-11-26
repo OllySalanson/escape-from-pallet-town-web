@@ -326,7 +326,7 @@ describe('battle presentation', () => {
     expect(itemLessonMessage(hurt)!.length).toBeLessThanOrEqual(68);
   });
 
-  it('reports the HP a hit took, so a defeat can be read back from the log', () => {
+  it("says only FireRed's 'used MOVE!' for a hit, leaving the HP to the bar", () => {
     expect(
       eventToMessage({
         type: 'used-move',
@@ -337,7 +337,7 @@ describe('battle presentation', () => {
         damage: 18,
         isStab: true,
       }),
-    ).toBe('Foe BULBASAUR used VINE WHIP! -18 HP · SAME-TYPE x1.5');
+    ).toBe('Foe BULBASAUR used VINE WHIP!');
     expect(
       eventToMessage({
         type: 'used-move',
@@ -347,7 +347,7 @@ describe('battle presentation', () => {
         move: 'Tackle',
         damage: 4,
       }),
-    ).toBe('Your SQUIRTLE used TACKLE! -4 HP');
+    ).toBe('Your SQUIRTLE used TACKLE!');
     expect(eventToMessage({ type: 'effectiveness', multiplier: 2 })).toBe("It's super effective!");
   });
 
@@ -1041,10 +1041,10 @@ describe('where a Pokemon stands on the field', () => {
 });
 
 describe('a single-target hit in a double battle', () => {
-  it('says whose HP it took, and a single battle says nothing more', () => {
+  it("says FireRed's 'used MOVE!' alone, as a single battle does: the bar that moves says whose HP it took", () => {
     const hit = { type: 'used-move', user: 'enemy', target: 'player', name: 'Staryu', move: 'Tackle', damage: 6 } as const;
-    expect(eventToMessage({ ...hit, targetName: 'Bulbasaur' })).toBe('Foe STARYU used TACKLE! Your BULBASAUR -6 HP');
-    expect(eventToMessage(hit)).toBe('Foe STARYU used TACKLE! -6 HP');
+    expect(eventToMessage({ ...hit, targetName: 'Bulbasaur' })).toBe('Foe STARYU used TACKLE!');
+    expect(eventToMessage(hit)).toBe('Foe STARYU used TACKLE!');
   });
 });
 
