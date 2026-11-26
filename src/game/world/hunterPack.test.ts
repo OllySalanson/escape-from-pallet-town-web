@@ -11,6 +11,8 @@ import {
   HUNTER_CHASE_STEP_MS,
   HUNTER_COME_FOR_MS,
   ENRAGE_REACH_MS,
+  FIGHT_HEARD_MS,
+  FIGHT_TRAMPLED_STEPS,
   ENRAGE_SEND_STEPS,
   HUNTER_ENRAGED_STEP_MS,
   HUNTER_FIGHT_CATCH_UP_STEPS,
@@ -424,6 +426,60 @@ describe('the enrage sends one hunter from the same walk off, wherever you stand
     fled.pack.fledFrom(fled.hunter, { x: 100, y: 2 }, 20_000);
     expect(fled.pack.enrage(world, [gate])).toBeNull();
     expect(fled.hunter.mode).toBe('stunned');
+  });
+});
+
+describe('a fight is loud', () => {
+  // The critic trained in one patch of tall grass for 2:20, about thirty
+  // fights, and no hunter came: the training spot was the hiding spot
+  // (review, problem 13). Now the patch's keeper hears a fight and comes to
+  // look, and the grass round it hides nobody for a minute.
+  // The keeper stands further off than a chase is searched: it walks its patch to the fight.
+  const field = grid(Array.from({ length: 9 }, () => `${'.'.repeat(54)}${','.repeat(12)}....`));
+  const fightAt = { x: 60, y: 4 };
+  const patch = groundOf({ x: 0, y: 0, width: 70, height: 9 }, { x: 2, y: 4 });
+
+  /** A player standing in the grass at the fight, the pack advanced; ms until caught, or Infinity. */
+  const msToCatch = (pack: HunterPack): number => {
+    for (let ms = 0; ms <= 15_000; ms += 16) {
+      const world = worldOf(field, fightAt, { playerInGrass: field.grass(fightAt) && pack.grassHides(fightAt) });
+      pack.advance(world, 16);
+      if (pack.catcher(fightAt)) {
+        return ms;
+      }
+    }
+    return Number.POSITIVE_INFINITY;
+  };
+
+  it('brings the keeper of the patch to the fight, and the grass no longer hides the player there', () => {
+    const { pack, hunter } = hunterIn(patch, { mode: 'patrol', position: { x: 2, y: 4 }, facing: 'left' });
+    expect(pack.heardFight(fightAt)).toEqual([{ kind: 'heard', hunter }]);
+    expect(pack.grassHides(fightAt)).toBe(false);
+    expect(msToCatch(pack)).toBeLessThan(12_000);
+  });
+
+  it('lets a player hide in the grass when no fight was heard', () => {
+    const { pack } = hunterIn(patch, { mode: 'patrol', position: { x: 2, y: 4 }, facing: 'left' });
+    expect(msToCatch(pack)).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it('tramples only the grass round the fight, and only for a minute', () => {
+    const { pack } = hunterIn(patch, { mode: 'patrol', position: { x: 2, y: 4 } });
+    pack.heardFight(fightAt);
+    expect(pack.grassHides({ x: fightAt.x + FIGHT_TRAMPLED_STEPS, y: fightAt.y })).toBe(false);
+    expect(pack.grassHides({ x: fightAt.x + FIGHT_TRAMPLED_STEPS + 1, y: fightAt.y })).toBe(true);
+    pack.advance(worldOf(field, { x: 69, y: 0 }), FIGHT_HEARD_MS);
+    expect(pack.grassHides(fightAt)).toBe(true);
+  });
+
+  it('leaves a keeper already after you, fled from or beaten as it was', () => {
+    const fled = hunterIn(patch, { mode: 'chase', position: { x: 10, y: 4 } });
+    fled.pack.fledFrom(fled.hunter, { x: 10, y: 4 }, 20_000);
+    expect(fled.pack.heardFight(fightAt)).toEqual([]);
+    expect(fled.hunter.mode).toBe('stunned');
+    const beaten = hunterIn(patch, { mode: 'beaten' });
+    expect(beaten.pack.heardFight(fightAt)).toEqual([]);
+    expect(beaten.hunter.mode).toBe('beaten');
   });
 });
 

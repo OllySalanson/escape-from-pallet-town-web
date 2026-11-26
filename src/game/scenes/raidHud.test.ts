@@ -41,6 +41,10 @@ describe('the hunter chip', () => {
     });
   });
 
+  it('says when the patch\'s keeper heard a fight and is coming to look', () => {
+    expect(hunterChipView({ ...FAR, who: 'BRUNO', shout: 'heard' })).toEqual({ label: 'BRUNO HEARD THAT', tone: 'closing' });
+  });
+
   it('names the rival hunting the raid', () => {
     expect(hunterChipView({ ...FAR, who: 'MISTY', distance: 5, direction: 'NW' })).toEqual({
       label: 'MISTY NW 5',

@@ -1422,6 +1422,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private packShouter: PackHunter | null = null;
   /** The hunter that last gave up on the player, and when, so the chip can say so. */
   private packLost: { readonly hunter: PackHunter; readonly atMs: number } | null = null;
+  /** When the patch's keeper last heard a fight and set off to look (`HunterPack.heardFight`), so the chip can say so. */
+  private packHeard: { readonly atMs: number } | null = null;
   /** The "?" over each hunter of the pack looking about for the player where it lost them. */
   private packSearchMarks = new Map<string, Phaser.GameObjects.Graphics>();
   /** When the pack came out on to the map, for the edges' arrival pulses; nobody is named. */
@@ -1510,6 +1512,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.packSearchMarks.clear();
     this.packShouter = null;
     this.packLost = null;
+    this.packHeard = null;
     this.packCameOutAtMs = Number.NEGATIVE_INFINITY;
     this.packWorldCache = null;
     this.spin = null;
@@ -7189,7 +7192,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /** What the hunter chip shouts for a moment after the hunter arrives, or null. */
-  private hunterShout(): 'arrived' | 'back' | 'lost' | null {
+  private hunterShout(): 'arrived' | 'back' | 'lost' | 'heard' | null {
     const pack = this.hunterPackHere();
     const lost = this.packLost;
     if (
@@ -7200,6 +7203,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       (!this.hunterArrived || this.hunterArrived.atMs < lost.atMs)
     ) {
       return 'lost';
+    }
+    const heard = this.packHeard;
+    if (pack && heard && this.time.now - heard.atMs < HUNTER_SHOUT_MS && (!this.hunterArrived || this.hunterArrived.atMs < heard.atMs)) {
+      return 'heard';
     }
     const arrived = this.hunterArrived;
     if (!arrived || this.hunterState.defeated || this.time.now - arrived.atMs >= HUNTER_SHOUT_MS) {
@@ -12323,7 +12330,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       player: { ...this.currentTile },
       heading: { ...(this.targetTile ?? this.currentTile) },
       playerMoving: this.targetTile !== null,
-      playerInGrass: isTallGrassInMap(map, this.currentTile),
+      // Grass round a fight just heard hides nobody (`HunterPack.grassHides`).
+      playerInGrass: isTallGrassInMap(map, this.currentTile) && (this.hunterPackHere()?.grassHides(this.currentTile) ?? true),
       // Under a roof that hides you, or out on the water: nobody on the shore
       // can follow a boat.
       playerHidden: this.playerIsHidden() || this.runSession?.shoreLeftBehind?.mapId === map.id,
@@ -12437,6 +12445,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.packLost = { hunter: event.hunter, atMs: this.time.now };
       return;
     }
+    if (event.kind === 'heard') {
+      // It heard the fight and is on its way: the chip says who, and the edges warn.
+      this.packShouter = event.hunter;
+      this.packHeard = { atMs: this.time.now };
+      audioManager.play('hunterNear');
+      return;
+    }
     if (event.kind !== 'noticed') {
       return;
     }
@@ -12507,6 +12522,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.hunterState = createHunterState();
     if (fromBattle) {
       pack.afterFight(this.packWorld(), engaged);
+      // Any other fight is loud: the patch's keeper comes to look, and the grass round it hides nobody for a while.
+      if (!engaged) {
+        pack.heardFight(this.currentTile).forEach((event) => this.onPackEvent(event));
+      }
     }
   }
 
