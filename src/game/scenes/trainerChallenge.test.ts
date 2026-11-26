@@ -81,7 +81,6 @@ const stubKeys = () => {
     d: key(),
     party: key(),
     bag: key(),
-    save: key(),
     objectives: key(),
     interact: [key()],
   };
