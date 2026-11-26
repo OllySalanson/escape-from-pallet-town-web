@@ -987,9 +987,12 @@ function drawLibrary(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
       note: 'Old books on old things',
       tiles: [4, 10].flatMap((y) => [0, 1, 2, 12, 13, 14].map((x) => ({ x, y }))),
       lines: [
-        onLecterns.length === 1
-          ? 'Shelf after shelf of old books. The one worth reading is open on its lectern.'
-          : 'Shelf after shelf of old books. The ones worth reading are open on the lecterns.',
+        // The golden book counted too, once it opens (the harbour re-critic).
+        open && golden
+          ? 'Shelf after shelf of old books. The ones worth reading are open on the lectern and the golden plinth.'
+          : onLecterns.length === 1
+            ? 'Shelf after shelf of old books. The one worth reading is open on its lectern.'
+            : 'Shelf after shelf of old books. The ones worth reading are open on the lecterns.',
       ],
     },
     // Quiet, as the window is: the furniture is the picture, and a caption
