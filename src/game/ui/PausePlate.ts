@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import { GAME_FONT } from './gameFont';
-import { WINDOW_CREAM, WINDOW_INK_VALUE, drawPixelWindow, toCssColor } from './pixelWindow';
+import { WINDOW_PAPER, WINDOW_INK_VALUE, drawPixelWindow, toCssColor } from './pixelWindow';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from './screenType';
 
 /**
@@ -67,7 +67,7 @@ export class PausePlate {
     const plateHeight = Math.ceil(this.title.height) + TITLE_GAP + Math.ceil(this.body.height) + PADDING_Y * 2;
     const x = Math.round((width - plateWidth) / 2);
     const y = pausePlateTop(height, plateHeight, playerScreenY);
-    drawPixelWindow(this.frame, { x, y, width: plateWidth, height: plateHeight }, { fill: WINDOW_CREAM });
+    drawPixelWindow(this.frame, { x, y, width: plateWidth, height: plateHeight }, { fill: WINDOW_PAPER });
     this.title.setPosition(x + PADDING_X + Math.floor((inner - titleWidth) / 2), y + PADDING_Y);
     this.body.setPosition(
       x + PADDING_X + Math.floor((inner - bodyWidth) / 2),

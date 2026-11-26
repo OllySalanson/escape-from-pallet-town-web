@@ -9,7 +9,7 @@ import { MenuOverlay } from '../ui/MenuOverlay';
 import { pickerBasics, pickerEntries, pickerOrder, wirePickerFind } from '../ui/boxPicker';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
-import { drawPixelWindow, WINDOW_CREAM, WINDOW_INK } from '../ui/pixelWindow';
+import { drawPixelWindow, WINDOW_PAPER, WINDOW_INK } from '../ui/pixelWindow';
 import { berryTeamMarkup, type BerryCandidate, type BerryTeamState } from '../minigames/gameCornerView';
 import {
   advanceBerryPicking,
@@ -432,7 +432,7 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
       .setDepth(3);
     this.squares = this.add.graphics().setDepth(11);
     const panel = this.add.graphics().setDepth(10);
-    drawPixelWindow(panel, { x: 4, y: 4, width: 84, height: 32 }, { fill: WINDOW_CREAM });
+    drawPixelWindow(panel, { x: 4, y: 4, width: 84, height: 32 }, { fill: WINDOW_PAPER });
     // What the ten squares at the top right are: the misses left, a berry on
     // the ground greying one from the end. Labelled BERRIES DROPPED, a full row
     // read as ten dropped and the game lost (playtest wave 3, finding 5).

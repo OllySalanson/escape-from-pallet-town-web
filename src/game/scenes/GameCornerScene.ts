@@ -10,7 +10,7 @@ import { MenuOverlay } from '../ui/MenuOverlay';
 import { pickerBasics, pickerEntries, pickerOrder, wirePickerFind } from '../ui/boxPicker';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
-import { drawPixelWindow, WINDOW_CREAM, WINDOW_INK } from '../ui/pixelWindow';
+import { drawPixelWindow, WINDOW_PAPER, WINDOW_INK } from '../ui/pixelWindow';
 import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
 import { jumpTeamMarkup, prizeWindowMarkup, type JumpCandidate, type JumpTeamState } from '../minigames/gameCornerView';
 import {
@@ -540,7 +540,7 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     this.jumperLip = lip;
     this.vineFront = this.add.graphics().setDepth(4);
     const panel = this.add.graphics().setDepth(10);
-    drawPixelWindow(panel, { x: 4, y: 4, width: 84, height: 32 }, { fill: WINDOW_CREAM });
+    drawPixelWindow(panel, { x: 4, y: 4, width: 84, height: 32 }, { fill: WINDOW_PAPER });
     this.scoreText = this.add
       .text(9, 6, '', { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: WINDOW_INK, lineSpacing: 0 })
       .setDepth(11);

@@ -712,7 +712,7 @@ export class ArenaIntroScene extends Phaser.Scene {
     const x = 8;
     const y = where === 'top' ? LETTERBOX + 6 : this.scale.height - LETTERBOX - 6 - 22;
     const frame = this.ui(this.add.graphics().setDepth(DEPTH.ui + 7));
-    drawPixelWindow(frame, { x, y, width, height: 22 }, { fill: 0x18203a, border: 0xf8f8f0 });
+    drawPixelWindow(frame, { x, y, width, height: 22 }, { fill: 0x221d1e, border: 0xf8f8f0 });
     text.setPosition(x + 6 + iconWidth, y + 4);
     const parts: Phaser.GameObjects.GameObject[] = [frame, text];
     if (iconKey) {

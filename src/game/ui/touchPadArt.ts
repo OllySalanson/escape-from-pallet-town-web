@@ -199,6 +199,18 @@ export const PAD_ICONS = {
     '###########',
     '...........',
   ],
+  // A cog: SETTINGS (`scenes/ControlsScene.ts`), as the controls bar's is.
+  settings: [
+    '....###....',
+    '.#.#####.#.',
+    '..#######..',
+    '.###...###.',
+    '####...####',
+    '.###...###.',
+    '..#######..',
+    '.#.#####.#.',
+    '....###....',
+  ],
 } as const;
 
 export type PadIcon = keyof typeof PAD_ICONS;

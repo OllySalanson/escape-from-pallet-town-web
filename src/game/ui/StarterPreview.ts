@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import { ballPreviewLines } from '../base/starterTable';
 import type { PokemonBase } from '../pokemon';
-import { drawPixelWindow, WINDOW_CREAM, WINDOW_INK } from './pixelWindow';
+import { drawPixelWindow, WINDOW_PAPER, WINDOW_INK } from './pixelWindow';
 import { GAME_FONT } from './gameFont';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from './screenType';
 
@@ -59,7 +59,7 @@ export class StarterPreview {
     this.lines.setText(ballPreviewLines(species).join('\n')).setY(linesTop);
     const height = linesTop + Math.ceil(this.lines.height) + PADDING;
     this.frame.clear();
-    drawPixelWindow(this.frame, { x: 0, y: 0, width: WIDTH, height }, { fill: WINDOW_CREAM });
+    drawPixelWindow(this.frame, { x: 0, y: 0, width: WIDTH, height }, { fill: WINDOW_PAPER });
   }
 
   public destroy(): void {

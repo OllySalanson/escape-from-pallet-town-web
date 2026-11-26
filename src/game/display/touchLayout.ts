@@ -134,13 +134,19 @@ export function computeTouchLayout(
     : portrait(width, height, devicePixelRatio, insets, Math.max(TRAY_ROWS, Math.floor(trayRows)));
 }
 
+/** The page's own buttons - SOUND, SETTINGS and FEEDBACK - side by side. */
+export const SYSTEM_BUTTONS = 3;
+function systemWidth(): number {
+  return PAD.systemSize * SYSTEM_BUTTONS + PAD.chipGap * (SYSTEM_BUTTONS - 1);
+}
+
 function portrait(width: number, height: number, ratio: number, insets: SafeInsets, wantedRows: number): TouchLayout {
   const left = insets.left + PAD.margin;
   const right = width - insets.right - PAD.margin;
-  // The top bar: SOUND and FEEDBACK, and the game straight under it, as a
+  // The top bar: SOUND, SETTINGS and FEEDBACK, and the game straight under it, as a
   // Game Boy's screen sits at the top of its face.
   const systemTop = insets.top + PAD.margin / 2;
-  const system = rect(right - PAD.systemSize * 2 - PAD.chipGap, systemTop, PAD.systemSize * 2 + PAD.chipGap, PAD.systemSize);
+  const system = rect(right - systemWidth(), systemTop, systemWidth(), PAD.systemSize);
   const roomTop = systemTop + PAD.systemSize + PAD.margin / 2;
   const trayHeight = (scale: number, rows = TRAY_ROWS) => Math.round(PAD.chipHeight * Math.min(1, scale)) * rows + PAD.chipGap * (rows - 1);
   const padHeight = (scale: number) =>
@@ -218,7 +224,10 @@ function landscape(width: number, height: number, ratio: number, insets: SafeIns
   });
   const leftInner = inset(leftColumn);
   const rightInner = inset(rightColumn);
-  const system = rect(leftInner.x, top, PAD.systemSize * 2 + PAD.chipGap, PAD.systemSize);
+  // As big as the portrait bar's, or as big as three fit in the column beside
+  // the game on a small phone on its side.
+  const systemSize = Math.min(PAD.systemSize, Math.floor((leftInner.width - PAD.chipGap * (SYSTEM_BUTTONS - 1)) / SYSTEM_BUTTONS));
+  const system = rect(leftInner.x, top, systemSize * SYSTEM_BUTTONS + PAD.chipGap * (SYSTEM_BUTTONS - 1), systemSize);
   const leftTrayTop = system.y + system.height + PAD.chipGap;
   return {
     orientation: 'landscape',

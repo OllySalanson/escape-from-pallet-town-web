@@ -8,7 +8,7 @@ import { lookHeadDrop, lookTexture, lookWalkKey } from '../look/lookTexture';
 import { GAME_FONT } from '../ui/gameFont';
 import { CLASS_BALL_SIZE, classBallPixels } from '../arena/classBall';
 import type { DojoClassId } from '../arena/dojoRecord';
-import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
+import { WINDOW_PAPER, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { CHIP_FONT_SIZE } from '../ui/screenType';
 import { CAPTION_BAND, FIGURE_BAND, atRow } from '../world/depths';
 import { TILE_SIZE } from '../worldMap';
@@ -683,7 +683,7 @@ function drawPlate(drawn: Drawn): void {
   drawPixelWindow(
     drawn.plate,
     { x: 0, y: 0, width: plateWidthOf(drawn.name), height: plateHeightOf(drawn.name) },
-    { fill: WINDOW_CREAM },
+    { fill: WINDOW_PAPER },
   );
   if (drawn.ball) {
     const top = Math.max(1, Math.round((plateHeightOf(drawn.name) - CLASS_BALL_SIZE) / 2));
