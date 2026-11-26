@@ -107,8 +107,17 @@ export interface PixelScreenOptions {
   /** Right-hand side of the title bar: a count, or the route's progress rail. */
   readonly aside?: string;
   readonly body: string;
-  /** What the keys do here. Replaced by a focused control's own `data-help`. */
+  /**
+   * What the keys do here: the bottom line of the help bar, which never
+   * disappears (the navigation audit, 25 Nov 2026, rule 9). A focused
+   * control's own `data-help` is the line above it.
+   */
   readonly hints: string;
+  /**
+   * What the help line says while the control the cursor is on has nothing of
+   * its own to say - a note about the screen as a whole. Empty by default.
+   */
+  readonly helpDefault?: string;
   /** A message about what just happened. It takes the help bar while it lasts. */
   readonly status?: string;
 }
@@ -170,7 +179,12 @@ export function pixelScreen(options: PixelScreenOptions): string {
   const status = options.status
     ? `<span class="px-status-line" role="status">${options.status}</span>`
     : '';
-  const help = `<p class="px-help${status ? ' has-status' : ''}"><span data-help-text data-help-default="${escapeAttribute(options.hints)}">${options.hints}</span>${status}</p>`;
+  // The help for whatever the cursor is on, over the keys line that never
+  // goes: before, the help took the keys line's place from the first frame,
+  // and every hall panel hid its keys (the navigation audit, 25 Nov 2026).
+  const helpDefault = options.helpDefault ?? '';
+  const keys = options.hints ? `<span class="px-keys" data-keys>${options.hints}</span>` : '';
+  const help = `<p class="px-help${status ? ' has-status' : ''}${keys ? ' has-keys' : ''}"><span data-help-text data-help-default="${escapeAttribute(helpDefault)}">${helpDefault}</span>${status}${keys}</p>`;
   return `<div class="px-screen"><header class="px-title">${back}<h1>${place}${options.title}</h1>${aside}${close}</header>${options.body}${help}</div>`;
 }
 

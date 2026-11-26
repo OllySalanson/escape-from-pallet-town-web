@@ -5,9 +5,9 @@
 // A new save with a long stash walks into THE RAID ARENA and opens the rack.
 // Left and Right are the counts' there, so the PACK side was reached only by Down
 // through every supply row (the navigation audit, 25 Nov 2026). Tab must go from
-// the supplies to the pack, then to DONE on the bar, then (past the panel's HALL
-// header) back to the supply row it left; Shift+Tab must go the other way; and
-// Tab must never leave the panel.
+// the supplies to the pack, then to the X in the header, then back to the supply
+// row it left; Shift+Tab must go the other way; and Tab must never leave the
+// panel.
 // Each step is logged and the pack photographed; it exits non-zero on the first
 // that goes wrong.
 import { mkdirSync } from 'node:fs';
@@ -70,7 +70,7 @@ try {
     page.evaluate(`(() => {
       const a = document.activeElement;
       if (!a || !document.querySelector('#screens')?.contains(a)) return { area: 'outside', what: a?.tagName ?? null };
-      const area = a.closest('.pack-window') ? 'pack' : a.closest('.loadout-stash') ? 'supplies' : a.closest('.confirm-bar') ? 'bar' : 'other';
+      const area = a.closest('.pack-window') ? 'pack' : a.closest('.loadout-stash') ? 'supplies' : a.closest('.px-title') ? 'header' : 'other';
       return { area, what: a.getAttribute('aria-label') || a.innerText.trim().slice(0, 30) };
     })()`);
   const start = await where();
@@ -86,22 +86,18 @@ try {
   expect('Tab goes to the pack', pack.area === 'pack');
   await page.screenshot(`${out}/after-tab-to-pack.png`);
   await press('Tab');
-  const bar = await where();
-  console.log(`Tab: ${JSON.stringify(bar)}`);
-  expect('Tab again goes to the bar', bar.area === 'bar');
-  // The panel's own header (HALL) is an area too; round past it to the supplies.
-  let back = await where();
-  for (let k = 0; k < 3 && back.area !== 'supplies'; k += 1) {
-    await press('Tab');
-    back = await where();
-    console.log(`Tab: ${JSON.stringify(back)}`);
-  }
-  expect('and round again to the supply row it left', back.area === 'supplies' && back.what === row.what);
+  const close = await where();
+  console.log(`Tab: ${JSON.stringify(close)}`);
+  expect('Tab again goes to the header and its X', close.area === 'header');
+  await press('Tab');
+  const back = await where();
+  console.log(`Tab: ${JSON.stringify(back)}`);
+  expect('and Tab again round to the supply row it left', back.area === 'supplies' && back.what === row.what);
   await press('Tab', 8);
   await press('Tab', 8);
   const shiftBack = await where();
   console.log(`Shift+Tab twice: ${JSON.stringify(shiftBack)}`);
-  expect('Shift+Tab goes the other way, past the header to the bar', shiftBack.area === 'bar');
+  expect('Shift+Tab goes the other way, past the header to the pack', shiftBack.area === 'pack');
   for (let k = 0; k < 6; k += 1) await press('Tab');
   expect('Tab never leaves the panel', (await where()).area !== 'outside');
   if (faults.length > 0) {
