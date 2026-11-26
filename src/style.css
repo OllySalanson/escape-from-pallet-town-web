@@ -1787,6 +1787,81 @@ body.touch-play .feedback-tab {
   --px-hollow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h5v5h-5zM1 1v3h3v-3z' fill-rule='evenodd'/%3E%3C/svg%3E");
 }
 
+/* A place coming up out of the fog (`world/chartReveal.ts`): its edge flashes
+   gold, then its name goes up over it with a burst of stars. */
+.chart-screen .chart-reveal-edge,
+.chart-screen .chart-reveal-cheer {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+.chart-screen .chart-reveal-edge {
+  border: var(--u) solid #f0c454;
+  box-shadow: 0 0 0 var(--u) #000, inset 0 0 0 var(--u) #000;
+}
+.chart-screen .chart-reveal-cheer {
+  display: grid;
+  place-items: center;
+}
+.chart-screen .chart-reveal-cheer[hidden],
+.chart-screen .chart-reveal-edge[hidden] {
+  display: none;
+}
+/* With no zoom to name - a place coming up - the X still keeps to the corner. */
+.chart-screen .chart-zoom[hidden] ~ .chart-close {
+  margin-left: auto;
+}
+.chart-screen .chart-reveal-name {
+  position: relative;
+  z-index: 1;
+  padding: calc(var(--u) * 2) calc(var(--u) * 5);
+  background: #f0c454;
+  color: #241c08;
+  white-space: nowrap;
+  box-shadow: 0 0 0 var(--u) #000, var(--u) var(--u) 0 var(--u) #000;
+  animation: chart-reveal-pop 0.36s steps(4, end) both;
+}
+@keyframes chart-reveal-pop {
+  from {
+    transform: scale(0);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+.chart-screen .chart-reveal-cheer i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--u) * 4);
+  height: calc(var(--u) * 4);
+  background: #fff6c8;
+  box-shadow: 0 0 0 var(--u) #f0c454, 0 0 0 calc(var(--u) * 2) #000;
+  opacity: 0;
+  animation: chart-reveal-star 1.4s steps(8, end) 0.1s both;
+}
+.chart-screen .chart-reveal-cheer i:nth-child(2) { --dx: 0; --dy: -1; }
+.chart-screen .chart-reveal-cheer i:nth-child(3) { --dx: 0.7; --dy: -0.7; }
+.chart-screen .chart-reveal-cheer i:nth-child(4) { --dx: 1; --dy: 0; }
+.chart-screen .chart-reveal-cheer i:nth-child(5) { --dx: 0.7; --dy: 0.7; }
+.chart-screen .chart-reveal-cheer i:nth-child(6) { --dx: 0; --dy: 1; }
+.chart-screen .chart-reveal-cheer i:nth-child(7) { --dx: -0.7; --dy: 0.7; }
+.chart-screen .chart-reveal-cheer i:nth-child(8) { --dx: -1; --dy: 0; }
+.chart-screen .chart-reveal-cheer i:nth-child(9) { --dx: -0.7; --dy: -0.7; }
+@keyframes chart-reveal-star {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+  to {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx) * var(--u) * 40), calc(-50% + var(--dy) * var(--u) * 40));
+  }
+}
+
 /* ==========================================================================
    Pixel UI: the DOM screens drawn in the game's own visual language.
 

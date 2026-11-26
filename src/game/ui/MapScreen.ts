@@ -18,6 +18,7 @@ import {
 } from '../world/chart';
 import { getWorldMap, worldMapName, type WorldMapId } from '../worldMap';
 import { chartSheetsFor } from './chartSheets';
+import { REVEAL_TOTAL_MS, revealFrame } from '../world/chartReveal';
 import { iconUrl } from './icons';
 import { MenuOverlay } from './MenuOverlay';
 import { isOverlayDismissKey } from './overlayKeyboard';
@@ -42,6 +43,17 @@ export interface MapScreenView {
   readonly standing: GridPosition | null;
   /** The raid clock, in a raid. */
   readonly clockMs?: number;
+  /**
+   * A place coming up out of the fog (`world/chartReveal.ts`): the map opens on
+   * the whole place as it was without it, the square flashes and fills in, its
+   * name goes up with a jingle, and the map goes away by itself.
+   */
+  readonly reveal?: {
+    readonly name: string;
+    readonly rect: ChartRect;
+    /** What was known before the place was filled in. */
+    readonly wasKnown: (tile: GridPosition) => boolean;
+  };
 }
 
 /** A map's picture in colour and the same under fog, painted once a page: a map does not change while a page is open. */
@@ -86,6 +98,14 @@ export class MapScreen {
   private readonly standing: GridPosition | null;
   /** The picture as seen this opening, colour and fog together, ready to draw from. */
   private source: HTMLCanvasElement | null = null;
+  /** For a place coming up: the map as it was, and when the moment began. */
+  private before: HTMLCanvasElement | null = null;
+  private readonly reveal: MapScreenView['reveal'];
+  private revealStart: number | null = null;
+  private revealFrameId: number | undefined;
+  private cheered = false;
+  private readonly edge: HTMLElement | null;
+  private readonly cheer: HTMLElement | null;
   private zoom: ChartZoom;
   /** The tile the close view is centred on, moved by the arrows. */
   private centre: GridPosition;
@@ -99,22 +119,29 @@ export class MapScreen {
     this.onClose = onClose;
     this.rect = chartRectOf(view.mapId);
     this.standing = view.standing;
+    this.reveal = view.reveal;
     // Somewhere on the map, it opens close round where they stand: a walk is a
-    // road at that size, and a hair's width with the whole vale on screen.
-    this.zoom = view.standing ? 'close' : 'whole';
+    // road at that size, and a hair's width with the whole vale on screen. A
+    // place coming up is seen whole, with the vale round it.
+    this.zoom = view.standing && !view.reveal ? 'close' : 'whole';
     this.centre = view.standing ?? { x: this.rect.x + Math.floor(this.rect.width / 2), y: this.rect.y + Math.floor(this.rect.height / 2) };
     this.overlay = new MenuOverlay(scene, 'chart-screen', (event) => this.onKey(event));
     this.overlay.root.setAttribute('aria-label', `Map of ${worldMapName(view.mapId)}`);
     this.overlay.root.innerHTML = `
       <div class="chart-bar">
         <h2 class="chart-name">${worldMapName(view.mapId).toUpperCase()}</h2>
-        <button type="button" class="chart-zoom" data-chart-zoom></button>
+        <button type="button" class="chart-zoom" data-chart-zoom${view.reveal ? ' hidden' : ''}></button>
         ${view.clockMs === undefined ? '' : `<p class="chart-clock"><img src="${iconUrl('raid-clock')}" alt=""><span data-chart-clock>${formatRaidClock(view.clockMs)}</span></p>`}
         <button type="button" class="chart-close" data-chart-close aria-label="Close the map"></button>
       </div>
       <div class="chart-frame" data-chart-frame>
         <canvas class="chart-canvas" data-chart-canvas></canvas>
         ${view.standing ? '<span class="chart-here" data-chart-here hidden></span>' : ''}
+        ${
+          view.reveal
+            ? `<span class="chart-reveal-edge" data-chart-edge hidden></span><span class="chart-reveal-cheer" data-chart-cheer hidden><span class="chart-reveal-name">${view.reveal.name}</span>${'<i></i>'.repeat(8)}</span>`
+            : ''
+        }
       </div>`;
     this.canvas = this.overlay.root.querySelector<HTMLCanvasElement>('[data-chart-canvas]')!;
     this.frame = this.overlay.root.querySelector<HTMLElement>('[data-chart-frame]')!;
@@ -122,6 +149,8 @@ export class MapScreen {
     this.zoomTag = this.overlay.root.querySelector<HTMLElement>('[data-chart-zoom]')!;
     this.zoomTag.onclick = () => this.toggleZoom();
     this.clock = this.overlay.root.querySelector<HTMLElement>('[data-chart-clock]');
+    this.edge = this.overlay.root.querySelector<HTMLElement>('[data-chart-edge]');
+    this.cheer = this.overlay.root.querySelector<HTMLElement>('[data-chart-cheer]');
     this.overlay.root.querySelector<HTMLButtonElement>('[data-chart-close]')!.onclick = () => this.close();
     this.nameZoom();
     this.resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => this.draw());
@@ -134,12 +163,13 @@ export class MapScreen {
         }
         const light = chartLight(this.rect, view.isKnown);
         this.knownTiles = light.filter((each) => each === 'known').length;
-        const seen = fogChart(colour, fogged, this.rect, light);
-        const source = document.createElement('canvas');
-        source.width = seen.width;
-        source.height = seen.height;
-        source.getContext('2d')?.putImageData(new ImageData(seen.data, seen.width, seen.height), 0, 0);
-        this.source = source;
+        this.source = toCanvas(fogChart(colour, fogged, this.rect, light));
+        if (view.reveal) {
+          this.before = toCanvas(fogChart(colour, fogged, this.rect, chartLight(this.rect, view.reveal.wasKnown)));
+          this.revealStart = performance.now();
+          this.playReveal();
+          return;
+        }
         this.draw();
       },
       () => {
@@ -168,11 +198,19 @@ export class MapScreen {
     }
   }
 
+  /** Whether a place is still coming up: for a playtest to read. */
+  public get revealing(): boolean {
+    return this.reveal !== undefined && !this.closed && (this.revealStart === null || performance.now() - this.revealStart < REVEAL_TOTAL_MS);
+  }
+
   public close(): void {
     if (this.closed) {
       return;
     }
     this.closed = true;
+    if (this.revealFrameId !== undefined) {
+      cancelAnimationFrame(this.revealFrameId);
+    }
     this.resize?.disconnect();
     this.overlay.destroy();
     this.source = null;
@@ -181,6 +219,15 @@ export class MapScreen {
   }
 
   private onKey(event: KeyboardEvent): void {
+    if (this.reveal) {
+      // A place coming up is watched, not driven: a key once the name is up
+      // goes on, and ESC goes on at any moment, the place already filled in.
+      if (event.key === 'Escape' || (this.cheered && (event.key === ' ' || event.key === 'Enter' || event.key.toLowerCase() === RAID_KEY_LETTERS.map.toLowerCase()))) {
+        event.preventDefault();
+        this.close();
+      }
+      return;
+    }
     if (isOverlayDismissKey(event, RAID_KEY_LETTERS.map)) {
       event.preventDefault();
       this.close();
@@ -218,11 +265,49 @@ export class MapScreen {
     this.zoomTag.textContent = keyHint(CHART_ZOOM_KEY, this.zoom === 'close' ? 'WHOLE' : 'CLOSER');
   }
 
-  /** The picture at the size the frame is now, in the screen's own pixels. */
-  private draw(): void {
+  /** Where a rectangle of the map is in the frame, in device pixels. */
+  private squareOnScreen(rect: ChartRect, place: { readonly tilePixels: number; readonly left: number; readonly top: number }): { x: number; y: number; width: number; height: number } {
+    return {
+      x: place.left + (rect.x - this.rect.x) * place.tilePixels,
+      y: place.top + (rect.y - this.rect.y) * place.tilePixels,
+      width: rect.width * place.tilePixels,
+      height: rect.height * place.tilePixels,
+    };
+  }
+
+  /** One frame of a place coming up, and the next asked for until it is over. */
+  private playReveal(): void {
+    if (this.closed || this.revealStart === null) {
+      return;
+    }
+    const frame = revealFrame(performance.now() - this.revealStart);
+    this.draw(frame.risen);
+    if (this.edge) {
+      this.edge.hidden = !frame.edge || frame.cheer;
+    }
+    if (frame.cheer && !this.cheered) {
+      this.cheered = true;
+      if (this.cheer) {
+        this.cheer.hidden = false;
+      }
+      audioManager.play('placeFilledIn');
+    }
+    if (frame.done) {
+      this.close();
+      return;
+    }
+    this.revealFrameId = requestAnimationFrame(() => this.playReveal());
+  }
+
+  /** The picture at the size the frame is now, in the screen's own pixels: for a place coming up, `risen` of it come up. */
+  private draw(risen = 1): void {
     const source = this.source;
     if (!source || this.closed) {
       return;
+    }
+    if (this.reveal && this.revealStart !== null && risen === 1 && !this.cheered) {
+      // A resize mid-moment redraws the frame the moment is on.
+      risen = revealFrame(performance.now() - this.revealStart).risen;
     }
     const ratio = window.devicePixelRatio || 1;
     const width = Math.max(1, Math.round(this.frame.clientWidth * ratio));
@@ -238,20 +323,72 @@ export class MapScreen {
     // A game pixel in device pixels: close up, a tile is four of them, whole.
     const unit = Number.parseFloat(getComputedStyle(this.overlay.root).getPropertyValue('--u')) || 2;
     const cellPixels = Math.max(1, Math.round((unit * ratio * CLOSE_TILE_GAME_PIXELS) / CHART_CELLS));
-    const place = placeChart(this.rect, { width, height }, this.zoom, this.centre, cellPixels);
+    const place = this.reveal
+      ? placeChart(this.rect, { width, height }, 'close', revealCentre(this.reveal.rect), revealCellPixels(this.reveal.rect, height))
+      : placeChart(this.rect, { width, height }, this.zoom, this.centre, cellPixels);
     // Close up the cells are drawn whole and sharp; the whole place is shrunk
     // smoothly, because a quarter-tile is finer than the screen has pixels for
     // and a nearest pick would drop one-tile lanes.
-    context.imageSmoothingEnabled = this.zoom === 'whole';
+    context.imageSmoothingEnabled = this.zoom === 'whole' && !this.reveal;
     context.imageSmoothingQuality = 'high';
     context.clearRect(0, 0, width, height);
-    context.drawImage(source, place.left, place.top, this.rect.width * place.tilePixels, this.rect.height * place.tilePixels);
+    const drawn = { width: this.rect.width * place.tilePixels, height: this.rect.height * place.tilePixels };
+    const reveal = this.reveal;
+    if (reveal && this.before && risen < 1) {
+      context.drawImage(this.before, place.left, place.top, drawn.width, drawn.height);
+      // The colour comes up from the middle of the square to its corners.
+      const square = this.squareOnScreen(reveal.rect, place);
+      if (risen > 0) {
+        context.save();
+        context.beginPath();
+        context.arc(square.x + square.width / 2, square.y + square.height / 2, (Math.hypot(square.width, square.height) / 2) * risen, 0, Math.PI * 2);
+        context.clip();
+        context.drawImage(source, place.left, place.top, drawn.width, drawn.height);
+        context.restore();
+      }
+    } else {
+      context.drawImage(source, place.left, place.top, drawn.width, drawn.height);
+    }
+    if (reveal) {
+      const square = this.squareOnScreen(reveal.rect, place);
+      for (const element of [this.edge, this.cheer]) {
+        if (element) {
+          element.style.left = `${square.x / ratio}px`;
+          element.style.top = `${square.y / ratio}px`;
+          element.style.width = `${square.width / ratio}px`;
+          element.style.height = `${square.height / ratio}px`;
+        }
+      }
+    }
     if (this.here && this.standing) {
       this.here.hidden = false;
       this.here.style.left = `${(place.left + (this.standing.x - this.rect.x + 0.5) * place.tilePixels) / ratio}px`;
       this.here.style.top = `${(place.top + (this.standing.y - this.rect.y + 0.5) * place.tilePixels) / ratio}px`;
     }
   }
+}
+
+/** The middle of a place coming up: the moment is framed on it. */
+function revealCentre(rect: ChartRect): GridPosition {
+  return { x: rect.x + Math.floor(rect.width / 2), y: rect.y + Math.floor(rect.height / 2) };
+}
+
+/**
+ * How close a place coming up is drawn: as many whole device pixels a cell as
+ * leave it about half the frame high, so it is the thing on screen and the fog
+ * all round it says where in the vale it is.
+ */
+function revealCellPixels(rect: ChartRect, frameHeight: number): number {
+  return Math.max(1, Math.floor((frameHeight * 0.55) / (rect.height * CHART_CELLS)));
+}
+
+/** A picture as a canvas to draw from. */
+function toCanvas(picture: ChartPicture): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = picture.width;
+  canvas.height = picture.height;
+  canvas.getContext('2d')?.putImageData(new ImageData(picture.data, picture.width, picture.height), 0, 0);
+  return canvas;
 }
 
 /** The arrows and W, A, S and D pan the close view, as they walk everywhere else. */

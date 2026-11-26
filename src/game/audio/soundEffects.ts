@@ -478,6 +478,13 @@ export const SOUND_EFFECTS = {
     moment: 'Over the line first in a race',
     tones: run([523, 659, 784, 1047, 784, 1047], 0.08, 0.07, 0.065),
   },
+  placeFilledIn: {
+    channel: 'fanfare',
+    moment: "A place comes up out of the fog on THE MAP, its local's tale heard (`ui/MapScreen.ts`)",
+    // Climbing, then a held top note under a triangle: the race's run, slower and
+    // warmer, because this is something kept rather than something won.
+    tones: [...run([392, 523, 659, 784], 0.09, 0.06, 0.09), tri(1047, 0.42, 0.06, 0.36), tri(523, 0.42, 0.04, 0.36)],
+  },
   raceGold: {
     channel: 'fanfare',
     moment: 'Over the line in GOLD time',
