@@ -16,9 +16,11 @@ import { MINIMUM_SUPPLIES, Stash } from '../stash';
 import { ICON_NAMES } from '../ui/icons';
 import { EXTRACTION_POINTS } from '../world/extractionPoints';
 import { WORLD_GATES } from '../world/gates';
+import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
 import { WORLD_MAPS, WORLD_MAP_NAMES, type BuiltInMapId } from '../worldMap';
 import { WORKSHOP_UPGRADES, workshopMaterialKinds } from './workshop';
 import {
+  barterDetail,
   barterShortfall,
   barterTaken,
   reofferedWhenNoneHeld,
@@ -318,6 +320,32 @@ describe('the barter table', () => {
     // The pane prints the item's own line above the detail, so the detail adds
     // to it rather than saying it again.
     expect(pickaxe?.detail).not.toContain('buried under rubble');
+  });
+
+  /**
+   * The fresh critic, 25 Nov 2026: with only the vale offered, Bill sent a
+   * player to Route 1 for a Fire Stone and sold a Surf that opened nothing
+   * they could raid. A deal says its places against the maps on offer.
+   */
+  it('names only places a player can raid, and says the same as `detail` with every map in play', () => {
+    for (const barter of TRADER_BARTERS) {
+      expect(barterDetail(barter, () => true), barter.id).toBe(barter.detail);
+    }
+    retireMapsForTests(RETIRED_MAPS);
+    try {
+      const said = TRADER_BARTERS.filter((barter) => barter.detailOnOffer).map((barter) => barterDetail(barter)).join(' ');
+      for (const retired of ['Route 1', 'Pallet', 'the Floodplain', 'Four of the maps']) {
+        expect(said).not.toContain(retired);
+      }
+      const of = (id: string): string => barterDetail(TRADER_BARTERS.find((barter) => barter.id === id)!);
+      expect(of('barter-water-stone')).toContain('GULL STRAND');
+      expect(of('barter-leaf-stone')).toContain('ORCHARD TERRACES');
+      expect(of('barter-fire-stone')).toContain('he is the only way to one');
+      expect(of('barter-pickaxe')).toContain('None of the maps you can raid');
+      expect(of('barter-hm03')).toContain('No crossing on any map you can raid asks for it yet');
+    } finally {
+      retireMapsForTests([]);
+    }
   });
 
   it('says every shipped map a field-move HM opens a door on', () => {
