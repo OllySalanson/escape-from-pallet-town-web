@@ -4,6 +4,7 @@ import { PokemonType } from '../pokemon/PokemonType';
 import { KANTO_POKEDEX_SIZE, dueMilestone, nextMilestone, pokedexOwned } from '../hub/pokedex';
 import { hunterRival, rivalForRaid, type HunterRivalId } from '../world/hunters';
 import { worldMapName, type WorldMapId } from '../worldMap';
+import { teamCondition } from '../hub/recovery';
 
 /**
  * What the things in THE BOLTHOLE say, worked out from the save.
@@ -31,7 +32,8 @@ export function nextRival(game: RestoredGame): HunterRivalId {
  * give them one. Each is what the telly says while that rival is next.
  */
 const TONIGHT: Readonly<Record<HunterRivalId, string>> = {
-  blue: 'KANTO TONIGHT: BLUE, grandson of PROFESSOR OAK, tells our reporter he is "never more than one step behind you, loser."',
+  // One box: "KANTO TONIGHT: BLUE," was cut off on a page of its own (the harbour critic tour).
+  blue: 'KANTO TONIGHT: OAK’s grandson BLUE says he is "never more than one step behind you, loser."',
   lorelei: 'KANTO TONIGHT: a cold snap over the vale. LORELEI of the ELITE FOUR says it will "freeze the next one who comes out."',
   bruno: 'KANTO TONIGHT: BRUNO of the ELITE FOUR has been training in the caves of the vale all week. "Hoo hah!" was all he would tell us.',
   agatha: 'KANTO TONIGHT: AGATHA of the ELITE FOUR says PROFESSOR OAK is "an old duff" and his new helper "a child." We think she means you.',
@@ -42,7 +44,9 @@ export function tellyLines(game: RestoredGame): readonly string[] {
   const rival = hunterRival(nextRival(game));
   // A raid alone is hunted by one to every district, and this rival keeps the
   // landing (`hunterPack.ts`): "the one on your trail" promised a single hunter.
-  return [TONIGHT[rival.id], `Next raid, ${rival.name} hunts where you land, and there is one in every district.`];
+  // "There is one in every district" read as a LORELEI in every district, to a
+  // player who had never heard the word (the harbour critic tour).
+  return [TONIGHT[rival.id], `Next raid, ${rival.name} hunts the spot you land in, and every other part of the vale has a hunter of its own.`];
 }
 
 /** The raids this save has gone on, map by map, read off the save's own record. */
@@ -51,6 +55,7 @@ function record(game: RestoredGame): {
   readonly home: number;
   readonly lost: number;
   readonly favourite: { readonly mapId: string; readonly raids: number } | null;
+  readonly places: number;
 } {
   const entries = Object.entries(game.raidProgress.raidRecord ?? {});
   const raids = raidsDeployed(game.raidProgress);
@@ -62,7 +67,8 @@ function record(game: RestoredGame): {
   const best = entries
     .filter(([, each]) => each.deployed > 0)
     .sort((a, b) => b[1].deployed - a[1].deployed || a[0].localeCompare(b[0]))[0];
-  return { raids, home, lost, favourite: best ? { mapId: best[0], raids: best[1].deployed } : null };
+  const places = entries.filter(([, each]) => each.deployed > 0).length;
+  return { raids, home, lost, favourite: best ? { mapId: best[0], raids: best[1].deployed } : null, places };
 }
 
 const times = (count: number): string =>
@@ -101,8 +107,10 @@ export function calendarLines(game: RestoredGame): readonly string[] {
     `DAY ${calendarDay(game)}. Every raid is a day on this calendar, and ${log.raids} ${log.raids === 1 ? 'is' : 'are'} crossed off.`,
     ticks(log.home, log.raids),
     // The raid log the PC used to read, before the PC became storage: where
-    // the player keeps going back to is written in the margin.
-    ...(log.favourite
+    // the player keeps going back to is written in the margin - once there is
+    // more than one place to choose between. With one map it only said the
+    // total again (the harbour critic tour, 26 Nov 2026).
+    ...(log.favourite && log.places > 1
       ? [`In the margin: ${worldMapName(log.favourite.mapId as WorldMapId).toUpperCase()}, ${times(log.favourite.raids)}.`]
       : []),
   ];
@@ -123,10 +131,17 @@ export function bedLines(game: RestoredGame): readonly string[] {
   const dream = log.favourite
     ? `You dream of ${worldMapName(log.favourite.mapId as WorldMapId).toUpperCase()}. ${rival.name} is there, one step behind you... and you wake up.`
     : `You dream of the jump. OAK's voice: "Come home with the pack on your back." And you wake up.`;
+  // The last line reads the team: it sent a fully healed team to NURSE JOY
+  // (the harbour critic tour, 26 Nov 2026).
+  const partner = game.stash.partner()?.pokemon.name;
   return [
-    'You lie down in your own bed. Nobody hunts you here.',
+    'You lie down. Nobody hunts you here.',
     dream,
-    'You feel rested. Your Pokémon still need NURSE JOY for that.',
+    teamCondition(game.stash) !== null
+      ? 'You feel rested. Your Pokémon still need NURSE JOY for that.'
+      : partner
+        ? `You feel rested. So does ${partner.toUpperCase()}.`
+        : 'You feel rested.',
   ];
 }
 

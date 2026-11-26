@@ -39,7 +39,7 @@ describe('the pennants along the bedroom wall', () => {
     });
     // In the string's own order: the Floodplain first.
     expect(earnedPennants(home).map((pennant) => pennant.mapId)).toEqual(['floodplain-relay', 'route-1']);
-    expect(pennantsNote(home)).toBe(`2 of ${STRUNG_PENNANTS.length} places come home from`);
+    expect(pennantsNote(home)).toBe(`Home from 2 of ${STRUNG_PENNANTS.length} places`);
     expect(pennantLines(home).slice(1)).toEqual(['FLOODPLAIN RELAY: home 4 times.', 'ROUTE 1: home once.']);
   });
 

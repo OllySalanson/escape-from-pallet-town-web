@@ -117,7 +117,10 @@ try {
     await walkTo(tab, side.at);
     await press(tab, side.key);
     await press(tab, 'Space');
-    const asked = await until(tab, 'the sign asking whose door', (s) => s.dialog?.includes('Select the player you want to knock on the door of.') ?? false);
+    // The sign's own words first, then whose door (the harbour critic tour, 26 Nov 2026).
+    await until(tab, 'the sign read', (s) => s.dialog?.includes('Nobody hunts you here.') ?? false);
+    await press(tab, 'Space');
+    const asked = await until(tab, 'the sign asking whose door', (s) => s.dialog?.includes('Whose door do you fancy knocking on?') ?? false);
     if (asked.knockScreen) throw new Error('the list came up before the sign was read');
     if (shot) await tab.screenshot(shot);
     await press(tab, 'Space');

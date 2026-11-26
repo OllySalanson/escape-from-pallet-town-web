@@ -15,9 +15,11 @@ import {
   DEFAULT_HOME_LAYOUT,
   homeLayoutOf,
   ownedFurniture,
+  pieceTiles,
   placedPiece,
   placementRefusal,
   readHomeLayout,
+  refusalLine,
   type FloorPlan,
   type PlacedPiece,
   type Placement,
@@ -113,10 +115,36 @@ describe('putting a piece down', () => {
 
   it('never covers the door mat or the stairs', () => {
     expect(refusal(plan, [], piece({ id: 'small-chair', x: 7, y: 8 }))).toEqual({ kind: 'on-a-mat' });
-    expect(refusal(plan, [], piece({ id: 'small-chair', x: 12, y: 2 }))).toEqual({ kind: 'on-a-mat' });
+    expect(refusal(plan, [], piece({ id: 'small-chair', x: 12, y: 2 }))).toEqual({ kind: 'on-a-mat', stairs: true });
     expect(refusal(upstairsPlan, [], piece({ id: 'small-chair', room: 'bolthole-upstairs', x: 13, y: 2 }))).toEqual({
       kind: 'on-a-mat',
+      stairs: true,
     });
+    expect(refusalLine({ kind: 'on-a-mat' })).toBe('KEEP THE DOOR MAT CLEAR');
+    expect(refusalLine({ kind: 'on-a-mat', stairs: true })).toBe('KEEP THE STAIRS CLEAR');
+  });
+
+  /**
+   * The table and its rug carried over the door mat said "A MAT GOES ON BARE
+   * FLOOR" (the harbour critic tour, 26 Nov 2026): the mats are asked about
+   * before bare floor, whichever tile of the piece comes first.
+   */
+  it('names the door mat, not bare floor, when a piece with a rug would cover it', () => {
+    const table = furnitureNamed('dining-table');
+    expect(table).toBeDefined();
+    let found = false;
+    for (let x = 0; x < plan.width && !found; x += 1) {
+      for (let y = 0; y < plan.height && !found; y += 1) {
+        const placed = piece({ id: table!.id, x, y });
+        const covers = pieceTiles(placed).some((tile) => tile.x === 7 && tile.y === 8);
+        if (!covers) continue;
+        const said = refusal(plan, [], placed);
+        if (said?.kind === 'off-floor') continue;
+        expect(said).toEqual({ kind: 'on-a-mat' });
+        found = true;
+      }
+    }
+    expect(found).toBe(true);
   });
 
   it('lays a mat on bare floor only, and lets something stand on it', () => {

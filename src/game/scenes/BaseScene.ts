@@ -109,7 +109,7 @@ import {
 } from '../world/depths';
 import type { TileSource } from '../world/tileset/catalogue';
 import { brimRuns, type MapLayers } from '../world/tiles';
-import { BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, MOORED_ROWING_BOATS, NOTICE_BOARD, getBaseMap } from '../base/baseMap';
+import { BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, HOME_SIGN, MOORED_ROWING_BOATS, NOTICE_BOARD, getBaseMap } from '../base/baseMap';
 import { noticeFor } from '../base/harbourNotices';
 import { dayNumber, rumourFrom, type RumourSource } from '../world/rumours';
 import { amberWeeps, fossilAwake, fossilMachineLines, fossilsForTheMachine } from '../hub/fossils';
@@ -6767,11 +6767,31 @@ export class BaseScene extends Phaser.Scene {
    * yet is told why nobody would answer instead.
    */
   private readKnockSign(sign: GridPosition): void {
+    // The sign's own words first: knocking used to replace them, so "Home.
+    // Nobody hunts you here." was never read while the harbour was shared.
+    const own = HOME_SIGN.lines.slice(1);
     if (!harbour()?.seenAs) {
-      this.say(['Nobody will answer a knock from somebody they cannot see. Give your house a name first.'], [sign]);
+      // And the way to a name, here: "Give your house a name first" pointed at
+      // nothing in the yard, the only way being CONTINUE on the title (the
+      // harbour critic tour, 26 Nov 2026).
+      this.say([...own, 'Nobody answers a knock from a stranger.'], [sign], () =>
+        this.askInBox('Put your name on your door?', (yes) => {
+          if (!yes || this.namePrompt) {
+            return;
+          }
+          this.standStill();
+          this.namePrompt = openNameScreen(this, { where: 'home', service: nameService() }, (end) => {
+            this.nameScreenEnded();
+            if (typeof end === 'object') {
+              this.takeTheName(end.name);
+            }
+            this.showHint(this.hintHere());
+          });
+        }),
+      );
       return;
     }
-    this.say([KNOCK_SIGN_LINE], [sign], () => this.openKnock());
+    this.say([...own, KNOCK_SIGN_LINE], [sign], () => this.openKnock());
   }
 
   /**

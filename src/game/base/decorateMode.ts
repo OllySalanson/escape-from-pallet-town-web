@@ -326,7 +326,7 @@ export class DecorateMode {
     const kinds = decorBox({ ...this.state, held: null }, context.owned).length;
     const refusal = this.refusal ?? (held ? heldRefusal(this.state, context) : null);
     let title = 'DECORATING';
-    let status = kinds === 0 ? 'THE BOX IS EMPTY' : `${kinds} ${kinds === 1 ? 'KIND' : 'KINDS'} OF THING IN THE BOX`;
+    let status = kinds === 0 ? 'THE BOX IS EMPTY' : `${kinds} ${kinds === 1 ? 'THING' : 'THINGS'} IN YOUR BOX`;
     let ink = WINDOW_INK;
     if (definition) {
       title = held && !held.from && kinds > 0 ? `${definition.name}  ${this.state.boxIndex + 1}/${kinds}` : definition.name;
@@ -360,11 +360,14 @@ export class DecorateMode {
 function whereFrom(definition: FurnitureDefinition | undefined): string {
   switch (definition?.source.kind) {
     case 'house':
-      return "THE HOUSE'S OWN";
+      // Not "THE HOUSE'S OWN", a code label on a desk that had never stood in
+      // the house; and a doll is for a kind owned, the starter Oak gave too
+      // (the harbour critic tour, 26 Nov 2026).
+      return 'CAME WITH THE HOUSE';
     case 'found':
       return definition.rare ? 'SUPER RARE - FOUND ON A RAID' : 'FOUND ON A RAID';
     case 'doll':
-      return 'FOR ONE YOU BROUGHT HOME';
+      return 'ONE FOR EVERY KIND YOU OWN';
     default:
       return '';
   }
