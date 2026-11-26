@@ -424,9 +424,12 @@ export const captionBySentence = (text: string): readonly string[] => {
   const sentences = text.match(/[^.!?]+[.!?]+(\s|$)/g)?.map((sentence) => sentence.trim()) ?? [
     text,
   ];
-  return sentences
+  const shorter = sentences
     .map((_, kept) => sentences.slice(0, sentences.length - kept).join(' '))
     .filter(Boolean);
+  // An empty line is still a line: a status move's second line is empty now,
+  // and `fitCaption` given nothing to choose from handed back undefined.
+  return shorter.length > 0 ? shorter : [''];
 };
 
 export const fitCaption = (
@@ -681,10 +684,12 @@ export const describeMoveGuidance = (
     return {
       summary: `${move.base.type.toUpperCase()} · STATUS · ${pp}`,
       compactSummary: `${move.base.type.toUpperCase()} · STATUS · ${pp}`,
-      // The line above already says the type and that it is a status move, so
-      // a generated description's opening sentence saying the same is dropped.
-      matchup:
-        move.base.description.replace(/^An? \w+ status move\.\s*/, '') || 'No direct damage.',
+      // FireRed's fight shows a move's type and PP and nothing of what it
+      // does: that is the summary screen's to say, in FireRed's own words
+      // (`generated/moveDescriptions.ts`). The rules line it said here ("Lowers
+      // the target's Attack by one stage.") was the churchyard critic's (round
+      // 3, 26 Nov 2026). An ability that refuses the move still says so.
+      matchup: '',
       tone: 'neutral',
       effectiveness: 1,
       ...refused,

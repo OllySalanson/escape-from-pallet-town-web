@@ -28,7 +28,7 @@ import { WeatherId } from '../battle/weather';
 export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   'absorb': new MoveBase({
     name: 'Absorb',
-    description: 'A Grass special attack. Heals the user for 50% of the damage dealt.',
+    description: 'An attack that absorbs half the damage it inflicted to restore HP.',
     type: PokemonType.Grass,
     power: 20,
     accuracy: 100,
@@ -38,7 +38,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'acid': new MoveBase({
     name: 'Acid',
-    description: 'A Poison physical attack. Hits both foes. 10% chance to lower both foes\' Defense by one stage.',
+    description: 'The foe is sprayed with a harsh, hide- melting acid that may lower DEFENSE.',
     type: PokemonType.Poison,
     power: 40,
     accuracy: 100,
@@ -49,7 +49,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'acid-armor': new MoveBase({
     name: 'Acid Armor',
-    description: 'A Poison status move. Raises the user\'s Defense by two stages.',
+    description: 'The user alters its cells to liquefy itself and sharply raise DEFENSE.',
     type: PokemonType.Poison,
     power: 0,
     accuracy: 100,
@@ -61,7 +61,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'aerial-ace': new MoveBase({
     name: 'Aerial Ace',
-    description: 'A Flying physical attack. Never misses.',
+    description: 'An extremely fast attack against one target. It can\'t be evaded.',
     type: PokemonType.Flying,
     power: 60,
     accuracy: 100,
@@ -72,7 +72,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'agility': new MoveBase({
     name: 'Agility',
-    description: 'A Psychic status move. Raises the user\'s Speed by two stages.',
+    description: 'The user relaxes and lightens its body to sharply boost its SPEED.',
     type: PokemonType.Psychic,
     power: 0,
     accuracy: 100,
@@ -84,7 +84,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'air-cutter': new MoveBase({
     name: 'Air Cutter',
-    description: 'A Flying physical attack. Hits both foes. Lands a critical hit more often.',
+    description: 'The foe is hit with razor-like wind. It has a high critical-hit ratio.',
     type: PokemonType.Flying,
     power: 55,
     accuracy: 95,
@@ -95,7 +95,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'amnesia': new MoveBase({
     name: 'Amnesia',
-    description: 'A Psychic status move. Raises the user\'s Sp. Def by two stages.',
+    description: 'Forgets about something and sharply raises SP. DEF.',
     type: PokemonType.Psychic,
     power: 0,
     accuracy: 100,
@@ -107,7 +107,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'ancient-power': new MoveBase({
     name: 'Ancient Power',
-    description: 'A Rock physical attack. 10% chance to raise the user\'s Attack, Defense, Sp. Atk, Sp. Def, Speed by one stage.',
+    description: 'An ancient power is used to attack. It may also raise all the user\'s stats.',
     type: PokemonType.Rock,
     power: 60,
     accuracy: 100,
@@ -117,7 +117,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'astonish': new MoveBase({
     name: 'Astonish',
-    description: 'A Ghost physical attack. 30% chance to make the target flinch.',
+    description: 'An attack using a startling shout. It also may make the foe flinch.',
     type: PokemonType.Ghost,
     power: 30,
     accuracy: 100,
@@ -128,7 +128,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'aurora-beam': new MoveBase({
     name: 'Aurora Beam',
-    description: 'An Ice special attack. 10% chance to lower the target\'s Attack by one stage.',
+    description: 'A rainbow-colored attack beam. It may lower the foe\'s ATTACK stat.',
     type: PokemonType.Ice,
     power: 65,
     accuracy: 100,
@@ -138,7 +138,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'barrage': new MoveBase({
     name: 'Barrage',
-    description: 'A Normal physical attack. Hits 2 to 5 times.',
+    description: 'Round objects are hurled at the foe to strike two to five times.',
     type: PokemonType.Normal,
     power: 15,
     accuracy: 85,
@@ -148,7 +148,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'barrier': new MoveBase({
     name: 'Barrier',
-    description: 'A Psychic status move. Raises the user\'s Defense by two stages.',
+    description: 'The user creates a sturdy wall that sharply raises its DEFENSE stat.',
     type: PokemonType.Psychic,
     power: 0,
     accuracy: 100,
@@ -160,7 +160,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'bite': new MoveBase({
     name: 'Bite',
-    description: 'A Dark special attack. 30% chance to make the target flinch.',
+    description: 'The user bites with vicious fangs. It may make the foe flinch.',
     type: PokemonType.Dark,
     power: 60,
     accuracy: 100,
@@ -171,7 +171,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'blizzard': new MoveBase({
     name: 'Blizzard',
-    description: 'An Ice special attack. Hits both foes. 10% chance to leave both foes frozen.',
+    description: 'The foe is blasted with a blizzard. It may freeze the foe solid.',
     type: PokemonType.Ice,
     power: 120,
     accuracy: 70,
@@ -182,7 +182,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'body-slam': new MoveBase({
     name: 'Body Slam',
-    description: 'A Normal physical attack. 30% chance to leave the target paralysed.',
+    description: 'The user drops its full body on the foe. It may leave the foe paralysed.',
     type: PokemonType.Normal,
     power: 85,
     accuracy: 100,
@@ -193,7 +193,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'bone-club': new MoveBase({
     name: 'Bone Club',
-    description: 'A Ground physical attack. 10% chance to make the target flinch.',
+    description: 'The foe is clubbed with a bone held in hand. It may make the foe flinch.',
     type: PokemonType.Ground,
     power: 65,
     accuracy: 85,
@@ -203,7 +203,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'bone-rush': new MoveBase({
     name: 'Bone Rush',
-    description: 'A Ground physical attack. Hits 2 to 5 times.',
+    description: 'The user strikes the foe with a bone in hand two to five times.',
     type: PokemonType.Ground,
     power: 25,
     accuracy: 80,
@@ -213,7 +213,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'bonemerang': new MoveBase({
     name: 'Bonemerang',
-    description: 'A Ground physical attack. Hits 2 to 2 times.',
+    description: 'The user throws a bone that hits the foe once, then once again on return.',
     type: PokemonType.Ground,
     power: 50,
     accuracy: 90,
@@ -223,7 +223,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'bounce': new MoveBase({
     name: 'Bounce',
-    description: 'A Flying physical attack. 30% chance to leave the target paralysed. Spends the first turn winding up.',
+    description: 'The user bounces on the foe on the 2nd turn. It may paralyse the foe.',
     type: PokemonType.Flying,
     power: 85,
     accuracy: 85,
@@ -235,7 +235,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'brick-break': new MoveBase({
     name: 'Brick Break',
-    description: 'A Fighting physical attack. No side effect.',
+    description: 'An attack that also breaks any barrier like LIGHT SCREEN and REFLECT.',
     type: PokemonType.Fighting,
     power: 75,
     accuracy: 100,
@@ -245,7 +245,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'bubble': new MoveBase({
     name: 'Bubble',
-    description: 'A Water special attack. Hits both foes. 10% chance to lower both foes\' Speed by one stage.',
+    description: 'A spray of bubbles hits the foe. It may lower the foe\'s SPEED stat.',
     type: PokemonType.Water,
     power: 20,
     accuracy: 100,
@@ -256,7 +256,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'bubble-beam': new MoveBase({
     name: 'Bubble Beam',
-    description: 'A Water special attack. 10% chance to lower the target\'s Speed by one stage.',
+    description: 'A spray of bubbles strikes the foe. It may lower the foe\'s SPEED stat.',
     type: PokemonType.Water,
     power: 65,
     accuracy: 100,
@@ -266,7 +266,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'calm-mind': new MoveBase({
     name: 'Calm Mind',
-    description: 'A Psychic status move. Raises the user\'s Sp. Atk, Sp. Def by one stage.',
+    description: 'The user focuses its mind to raise the SP. ATK and SP. DEF stats.',
     type: PokemonType.Psychic,
     power: 0,
     accuracy: 100,
@@ -278,7 +278,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'comet-punch': new MoveBase({
     name: 'Comet Punch',
-    description: 'A Normal physical attack. Hits 2 to 5 times.',
+    description: 'The foe is hit with a flurry of punches that strike two to five times.',
     type: PokemonType.Normal,
     power: 18,
     accuracy: 85,
@@ -289,7 +289,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'confuse-ray': new MoveBase({
     name: 'Confuse Ray',
-    description: 'A Ghost status move. Leaves the target confused.',
+    description: 'The foe is exposed to a sinister ray that triggers confusion.',
     type: PokemonType.Ghost,
     power: 0,
     accuracy: 100,
@@ -299,7 +299,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'confusion': new MoveBase({
     name: 'Confusion',
-    description: 'A Psychic special attack. 10% chance to leave the target confused.',
+    description: 'A weak telekinetic attack that may also leave the foe confused.',
     type: PokemonType.Psychic,
     power: 50,
     accuracy: 100,
@@ -309,7 +309,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'constrict': new MoveBase({
     name: 'Constrict',
-    description: 'A Normal physical attack. 10% chance to lower the target\'s Speed by one stage.',
+    description: 'The foe is attacked with long tentacles or vines. It may lower SPEED.',
     type: PokemonType.Normal,
     power: 10,
     accuracy: 100,
@@ -320,7 +320,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'cosmic-power': new MoveBase({
     name: 'Cosmic Power',
-    description: 'A Psychic status move. Raises the user\'s Defense, Sp. Def by one stage.',
+    description: 'The user absorbs a mystic power to raise its DEFENSE and SP. DEF.',
     type: PokemonType.Psychic,
     power: 0,
     accuracy: 100,
@@ -332,7 +332,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'covet': new MoveBase({
     name: 'Covet',
-    description: 'A Normal physical attack. No side effect.',
+    description: 'A cutely executed attack that also steals the foe\'s hold item.',
     type: PokemonType.Normal,
     power: 40,
     accuracy: 100,
@@ -342,7 +342,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'crabhammer': new MoveBase({
     name: 'Crabhammer',
-    description: 'A Water special attack. Lands a critical hit more often.',
+    description: 'A large pincer is used to hammer the foe. It has a high critical-hit ratio.',
     type: PokemonType.Water,
     power: 90,
     accuracy: 85,
@@ -353,7 +353,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'cross-chop': new MoveBase({
     name: 'Cross Chop',
-    description: 'A Fighting physical attack. Lands a critical hit more often.',
+    description: 'The foe is hit with double chops. It has a high critical-hit ratio.',
     type: PokemonType.Fighting,
     power: 100,
     accuracy: 80,
@@ -364,7 +364,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'crunch': new MoveBase({
     name: 'Crunch',
-    description: 'A Dark special attack. 20% chance to lower the target\'s Sp. Def by one stage.',
+    description: 'The foe is crunched with sharp fangs. It may lower the foe\'s SP. DEF.',
     type: PokemonType.Dark,
     power: 80,
     accuracy: 100,
@@ -375,7 +375,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'defense-curl': new MoveBase({
     name: 'Defense Curl',
-    description: 'A Normal status move. Raises the user\'s Defense by one stage.',
+    description: 'The user curls up to conceal weak spots and raise its DEFENSE stat.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -387,7 +387,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'dig': new MoveBase({
     name: 'Dig',
-    description: 'A Ground physical attack. Spends the first turn winding up.',
+    description: 'An attack that hits on the 2nd turn. Can also be used to exit dungeons.',
     type: PokemonType.Ground,
     power: 60,
     accuracy: 100,
@@ -398,7 +398,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'dizzy-punch': new MoveBase({
     name: 'Dizzy Punch',
-    description: 'A Normal physical attack. 20% chance to leave the target confused.',
+    description: 'The foe is hit with a rhythmic punch that may leave it confused.',
     type: PokemonType.Normal,
     power: 70,
     accuracy: 100,
@@ -409,7 +409,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'double-edge': new MoveBase({
     name: 'Double-Edge',
-    description: 'A Normal physical attack. The user takes 33% of the damage dealt.',
+    description: 'A reckless, life- risking tackle that also hurts the user a little.',
     type: PokemonType.Normal,
     power: 120,
     accuracy: 100,
@@ -420,7 +420,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'double-kick': new MoveBase({
     name: 'Double Kick',
-    description: 'A Fighting physical attack. Hits 2 to 2 times.',
+    description: 'Two legs are used to quickly kick the foe twice in one turn.',
     type: PokemonType.Fighting,
     power: 30,
     accuracy: 100,
@@ -431,7 +431,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'double-slap': new MoveBase({
     name: 'Double Slap',
-    description: 'A Normal physical attack. Hits 2 to 5 times.',
+    description: 'The foe is slapped repeatedly, back and forth, two to five times.',
     type: PokemonType.Normal,
     power: 15,
     accuracy: 85,
@@ -442,7 +442,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'double-team': new MoveBase({
     name: 'Double Team',
-    description: 'A Normal status move. Raises the user\'s evasion by one stage.',
+    description: 'The user creates illusory copies of itself to raise its evasiveness.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -454,7 +454,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'dragon-breath': new MoveBase({
     name: 'Dragon Breath',
-    description: 'A Dragon special attack. 30% chance to leave the target paralysed.',
+    description: 'The foe is hit with an incredible blast of breath that may also paralyse.',
     type: PokemonType.Dragon,
     power: 60,
     accuracy: 100,
@@ -464,7 +464,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'dragon-dance': new MoveBase({
     name: 'Dragon Dance',
-    description: 'A Dragon status move. Raises the user\'s Attack, Speed by one stage.',
+    description: 'A mystic, powerful dance that boosts the user\'s ATTACK and SPEED stats.',
     type: PokemonType.Dragon,
     power: 0,
     accuracy: 100,
@@ -476,7 +476,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'dream-eater': new MoveBase({
     name: 'Dream Eater',
-    description: 'A Psychic special attack. Heals the user for 50% of the damage dealt. Only works on a sleeping target.',
+    description: 'Absorbs half the damage it inflicted on a sleeping foe to restore HP.',
     type: PokemonType.Psychic,
     power: 100,
     accuracy: 100,
@@ -487,7 +487,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'drill-peck': new MoveBase({
     name: 'Drill Peck',
-    description: 'A Flying physical attack. No side effect.',
+    description: 'A corkscrewing attack with the sharp beak acting as a drill.',
     type: PokemonType.Flying,
     power: 80,
     accuracy: 100,
@@ -497,7 +497,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'dynamic-punch': new MoveBase({
     name: 'Dynamic Punch',
-    description: 'A Fighting physical attack. 100% chance to leave the target confused.',
+    description: 'The foe is punched with the user\'s full power. It confuses the foe if it hits.',
     type: PokemonType.Fighting,
     power: 100,
     accuracy: 50,
@@ -508,7 +508,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'earthquake': new MoveBase({
     name: 'Earthquake',
-    description: 'A Ground physical attack. No side effect.',
+    description: 'An earthquake that strikes all POKéMON in battle excluding the user.',
     type: PokemonType.Ground,
     power: 100,
     accuracy: 100,
@@ -517,7 +517,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'egg-bomb': new MoveBase({
     name: 'Egg Bomb',
-    description: 'A Normal physical attack. No side effect.',
+    description: 'A large egg is hurled with great force at the foe to inflict damage.',
     type: PokemonType.Normal,
     power: 100,
     accuracy: 75,
@@ -526,7 +526,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'ember': new MoveBase({
     name: 'Ember',
-    description: 'A Fire special attack. 10% chance to leave the target burned.',
+    description: 'The foe is attacked with small flames. The foe may suffer a burn.',
     type: PokemonType.Fire,
     power: 40,
     accuracy: 100,
@@ -536,7 +536,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'explosion': new MoveBase({
     name: 'Explosion',
-    description: 'A Normal physical attack. The user faints. Halves the target\'s Defense for the hit.',
+    description: 'The user explodes to inflict terrible damage even while fainting itself.',
     type: PokemonType.Normal,
     power: 250,
     accuracy: 100,
@@ -546,7 +546,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'extreme-speed': new MoveBase({
     name: 'Extreme Speed',
-    description: 'A Normal physical attack. Always strikes first.',
+    description: 'A blindingly speedy charge attack that always goes before any other.',
     type: PokemonType.Normal,
     power: 80,
     accuracy: 100,
@@ -557,7 +557,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'fake-out': new MoveBase({
     name: 'Fake Out',
-    description: 'A Normal physical attack. 100% chance to make the target flinch. Always strikes first.',
+    description: 'An attack that hits first and causes flinching. Usable only on 1st turn.',
     type: PokemonType.Normal,
     power: 40,
     accuracy: 100,
@@ -569,7 +569,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'fake-tears': new MoveBase({
     name: 'Fake Tears',
-    description: 'A Dark status move. Lowers the target\'s Sp. Def by two stages.',
+    description: 'The user feigns crying to sharply lower the foe\'s SP. DEF stat.',
     type: PokemonType.Dark,
     power: 0,
     accuracy: 100,
@@ -579,7 +579,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'false-swipe': new MoveBase({
     name: 'False Swipe',
-    description: 'A Normal physical attack. No side effect.',
+    description: 'A restrained attack that always leaves the foe with at least 1 HP.',
     type: PokemonType.Normal,
     power: 40,
     accuracy: 100,
@@ -589,7 +589,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'feather-dance': new MoveBase({
     name: 'Feather Dance',
-    description: 'A Flying status move. Lowers the target\'s Attack by two stages.',
+    description: 'The foe is covered with a mass of down that sharply cuts the ATTACK stat.',
     type: PokemonType.Flying,
     power: 0,
     accuracy: 100,
@@ -599,7 +599,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'feint-attack': new MoveBase({
     name: 'Feint Attack',
-    description: 'A Dark special attack. Never misses.',
+    description: 'The user draws up close to the foe disarmingly, then hits without fail.',
     type: PokemonType.Dark,
     power: 60,
     accuracy: 100,
@@ -610,7 +610,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'fire-blast': new MoveBase({
     name: 'Fire Blast',
-    description: 'A Fire special attack. 10% chance to leave the target burned.',
+    description: 'The foe is hit with an intense flame. It may leave the target with a burn.',
     type: PokemonType.Fire,
     power: 120,
     accuracy: 85,
@@ -620,7 +620,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'fire-punch': new MoveBase({
     name: 'Fire Punch',
-    description: 'A Fire special attack. 10% chance to leave the target burned.',
+    description: 'The foe is punched with a fiery fist. It may leave the foe with a burn.',
     type: PokemonType.Fire,
     power: 75,
     accuracy: 100,
@@ -631,7 +631,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'flame-wheel': new MoveBase({
     name: 'Flame Wheel',
-    description: 'A Fire special attack. 10% chance to leave the target burned.',
+    description: 'The user makes a fiery charge at the foe. It may cause a burn.',
     type: PokemonType.Fire,
     power: 60,
     accuracy: 100,
@@ -642,7 +642,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'flamethrower': new MoveBase({
     name: 'Flamethrower',
-    description: 'A Fire special attack. 10% chance to leave the target burned.',
+    description: 'The foe is scorched with intense flames. The foe may suffer a burn.',
     type: PokemonType.Fire,
     power: 95,
     accuracy: 100,
@@ -652,7 +652,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'flatter': new MoveBase({
     name: 'Flatter',
-    description: 'A Dark status move. Raises the target\'s Sp. Atk by one stage. Leaves the target confused.',
+    description: 'Flattery is used to confuse the foe, but its SP. ATK also rises.',
     type: PokemonType.Dark,
     power: 0,
     accuracy: 100,
@@ -662,7 +662,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'fury-attack': new MoveBase({
     name: 'Fury Attack',
-    description: 'A Normal physical attack. Hits 2 to 5 times.',
+    description: 'The foe is jabbed repeatedly with a horn or beak two to five times.',
     type: PokemonType.Normal,
     power: 15,
     accuracy: 85,
@@ -673,7 +673,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'fury-cutter': new MoveBase({
     name: 'Fury Cutter',
-    description: 'A Bug physical attack. No side effect.',
+    description: 'An attack that grows stronger on each successive hit.',
     type: PokemonType.Bug,
     power: 10,
     accuracy: 95,
@@ -683,7 +683,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'fury-swipes': new MoveBase({
     name: 'Fury Swipes',
-    description: 'A Normal physical attack. Hits 2 to 5 times.',
+    description: 'The foe is raked with sharp claws or scythes two to five times.',
     type: PokemonType.Normal,
     power: 18,
     accuracy: 80,
@@ -694,7 +694,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'giga-drain': new MoveBase({
     name: 'Giga Drain',
-    description: 'A Grass special attack. Heals the user for 50% of the damage dealt.',
+    description: 'A harsh attack that absorbs half the damage it inflicted to restore HP.',
     type: PokemonType.Grass,
     power: 60,
     accuracy: 100,
@@ -704,7 +704,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'glare': new MoveBase({
     name: 'Glare',
-    description: 'A Normal status move. Leaves the target paralysed.',
+    description: 'The user intimidates the foe with the design on its belly to cause paralysis.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 75,
@@ -714,7 +714,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'growl': new MoveBase({
     name: 'Growl',
-    description: 'A Normal status move. Lands on both foes. Lowers both foes\' Attack by one stage.',
+    description: 'The user growls in a cute way, making the foe lower its ATTACK stat.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -726,7 +726,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'growth': new MoveBase({
     name: 'Growth',
-    description: 'A Normal status move. Raises the user\'s Sp. Atk by one stage.',
+    description: 'The user\'s body is forced to grow, raising the SP. ATK stat.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -738,7 +738,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'gust': new MoveBase({
     name: 'Gust',
-    description: 'A Flying physical attack. No side effect.',
+    description: 'Strikes the foe with a gust of wind whipped up by wings.',
     type: PokemonType.Flying,
     power: 40,
     accuracy: 100,
@@ -747,7 +747,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'harden': new MoveBase({
     name: 'Harden',
-    description: 'A Normal status move. Raises the user\'s Defense by one stage.',
+    description: 'The user stiffens all the muscles in its body to raise its DEFENSE stat.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -759,7 +759,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'headbutt': new MoveBase({
     name: 'Headbutt',
-    description: 'A Normal physical attack. 30% chance to make the target flinch.',
+    description: 'The user sticks its head out and rams. It may make the foe flinch.',
     type: PokemonType.Normal,
     power: 70,
     accuracy: 100,
@@ -770,7 +770,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'heat-wave': new MoveBase({
     name: 'Heat Wave',
-    description: 'A Fire special attack. Hits both foes. 10% chance to leave both foes burned.',
+    description: 'The user exhales a heated breath to attack. It may also inflict a burn.',
     type: PokemonType.Fire,
     power: 100,
     accuracy: 90,
@@ -781,7 +781,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'high-jump-kick': new MoveBase({
     name: 'High Jump Kick',
-    description: 'A Fighting physical attack. No side effect.',
+    description: 'A strong jumping knee kick. If it misses, the user is hurt.',
     type: PokemonType.Fighting,
     power: 85,
     accuracy: 90,
@@ -791,7 +791,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'horn-attack': new MoveBase({
     name: 'Horn Attack',
-    description: 'A Normal physical attack. No side effect.',
+    description: 'The foe is jabbed with a sharply pointed horn to inflict damage.',
     type: PokemonType.Normal,
     power: 65,
     accuracy: 100,
@@ -801,7 +801,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'hydro-pump': new MoveBase({
     name: 'Hydro Pump',
-    description: 'A Water special attack. No side effect.',
+    description: 'A high volume of water is blasted at the foe under great pressure.',
     type: PokemonType.Water,
     power: 120,
     accuracy: 80,
@@ -810,7 +810,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'hyper-beam': new MoveBase({
     name: 'Hyper Beam',
-    description: 'A Normal physical attack. The user must recharge the turn after.',
+    description: 'A severely damaging attack that makes the user rest on the next turn.',
     type: PokemonType.Normal,
     power: 150,
     accuracy: 90,
@@ -820,7 +820,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'hyper-fang': new MoveBase({
     name: 'Hyper Fang',
-    description: 'A Normal physical attack. 10% chance to make the target flinch.',
+    description: 'The foe is attacked with sharp fangs. It may make the foe flinch.',
     type: PokemonType.Normal,
     power: 80,
     accuracy: 90,
@@ -831,7 +831,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'hyper-voice': new MoveBase({
     name: 'Hyper Voice',
-    description: 'A Normal physical attack. Hits both foes.',
+    description: 'The user lets loose a horribly loud shout with the power to damage.',
     type: PokemonType.Normal,
     power: 90,
     accuracy: 100,
@@ -842,7 +842,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'hypnosis': new MoveBase({
     name: 'Hypnosis',
-    description: 'A Psychic status move. Leaves the target asleep.',
+    description: 'Hypnotic suggestion is used to make the foe fall into a deep sleep.',
     type: PokemonType.Psychic,
     power: 0,
     accuracy: 60,
@@ -852,7 +852,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'ice-beam': new MoveBase({
     name: 'Ice Beam',
-    description: 'An Ice special attack. 10% chance to leave the target frozen.',
+    description: 'The foe is struck with an icy beam. It may freeze the foe solid.',
     type: PokemonType.Ice,
     power: 95,
     accuracy: 100,
@@ -862,7 +862,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'ice-punch': new MoveBase({
     name: 'Ice Punch',
-    description: 'An Ice special attack. 10% chance to leave the target frozen.',
+    description: 'The foe is punched with an icy fist. It may leave the foe frozen.',
     type: PokemonType.Ice,
     power: 75,
     accuracy: 100,
@@ -873,7 +873,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'icicle-spear': new MoveBase({
     name: 'Icicle Spear',
-    description: 'An Ice special attack. Hits 2 to 5 times.',
+    description: 'Sharp icicles are fired at the foe. It strikes two to five times.',
     type: PokemonType.Ice,
     power: 10,
     accuracy: 100,
@@ -883,7 +883,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'icy-wind': new MoveBase({
     name: 'Icy Wind',
-    description: 'An Ice special attack. Hits both foes. Lowers both foes\' Speed by one stage.',
+    description: 'A chilling wind is used to attack. It also lowers the SPEED stat.',
     type: PokemonType.Ice,
     power: 55,
     accuracy: 95,
@@ -894,7 +894,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'iron-tail': new MoveBase({
     name: 'Iron Tail',
-    description: 'A Steel physical attack. 30% chance to lower the target\'s Defense by one stage.',
+    description: 'An attack with a steel-hard tail. It may lower the foe\'s DEFENSE stat.',
     type: PokemonType.Steel,
     power: 100,
     accuracy: 75,
@@ -905,7 +905,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'jump-kick': new MoveBase({
     name: 'Jump Kick',
-    description: 'A Fighting physical attack. No side effect.',
+    description: 'The user jumps up high, then kicks. If it misses, the user hurts itself.',
     type: PokemonType.Fighting,
     power: 70,
     accuracy: 95,
@@ -915,7 +915,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'karate-chop': new MoveBase({
     name: 'Karate Chop',
-    description: 'A Fighting physical attack. Lands a critical hit more often.',
+    description: 'The foe is attacked with a sharp chop. It has a high critical-hit ratio.',
     type: PokemonType.Fighting,
     power: 50,
     accuracy: 100,
@@ -926,7 +926,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'kinesis': new MoveBase({
     name: 'Kinesis',
-    description: 'A Psychic status move. Lowers the target\'s accuracy by one stage.',
+    description: 'The user distracts the foe by bending a spoon. It may lower accuracy.',
     type: PokemonType.Psychic,
     power: 0,
     accuracy: 80,
@@ -936,7 +936,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'knock-off': new MoveBase({
     name: 'Knock Off',
-    description: 'A Dark special attack. No side effect.',
+    description: 'Knocks down the foe\'s held item to prevent its use during the battle.',
     type: PokemonType.Dark,
     power: 20,
     accuracy: 100,
@@ -946,7 +946,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'leech-life': new MoveBase({
     name: 'Leech Life',
-    description: 'A Bug physical attack. Heals the user for 50% of the damage dealt.',
+    description: 'An attack that absorbs half the damage it inflicted to restore HP.',
     type: PokemonType.Bug,
     power: 20,
     accuracy: 100,
@@ -957,7 +957,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'leech-seed': new MoveBase({
     name: 'Leech Seed',
-    description: 'A Grass status move. Seeds the target, sapping 1/8 of its HP each turn. Grass types are immune.',
+    description: 'A seed is planted on the foe to steal some HP for the user on every turn.',
     type: PokemonType.Grass,
     power: 0,
     accuracy: 90,
@@ -967,7 +967,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'leer': new MoveBase({
     name: 'Leer',
-    description: 'A Normal status move. Lands on both foes. Lowers both foes\' Defense by one stage.',
+    description: 'The foe is given an intimidating look that lowers its DEFENSE stat.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -978,7 +978,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'lick': new MoveBase({
     name: 'Lick',
-    description: 'A Ghost physical attack. 30% chance to leave the target paralysed.',
+    description: 'The foe is licked and hit with a long tongue. It may also paralyse.',
     type: PokemonType.Ghost,
     power: 20,
     accuracy: 100,
@@ -989,7 +989,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'lovely-kiss': new MoveBase({
     name: 'Lovely Kiss',
-    description: 'A Normal status move. Leaves the target asleep.',
+    description: 'The user forces a kiss on the foe with a scary face that induces sleep.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 75,
@@ -999,7 +999,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'mach-punch': new MoveBase({
     name: 'Mach Punch',
-    description: 'A Fighting physical attack. Always strikes first.',
+    description: 'A punch thrown at blinding speed. It is certain to strike first.',
     type: PokemonType.Fighting,
     power: 40,
     accuracy: 100,
@@ -1010,7 +1010,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'magical-leaf': new MoveBase({
     name: 'Magical Leaf',
-    description: 'A Grass special attack. Never misses.',
+    description: 'The foe is attacked with a strange leaf that cannot be evaded.',
     type: PokemonType.Grass,
     power: 60,
     accuracy: 100,
@@ -1020,7 +1020,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'meditate': new MoveBase({
     name: 'Meditate',
-    description: 'A Psychic status move. Raises the user\'s Attack by one stage.',
+    description: 'The user meditates to awaken its power and raise its ATTACK stat.',
     type: PokemonType.Psychic,
     power: 0,
     accuracy: 100,
@@ -1032,7 +1032,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'mega-drain': new MoveBase({
     name: 'Mega Drain',
-    description: 'A Grass special attack. Heals the user for 50% of the damage dealt.',
+    description: 'A tough attack that drains half the damage it inflicted to restore HP.',
     type: PokemonType.Grass,
     power: 40,
     accuracy: 100,
@@ -1042,7 +1042,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'mega-kick': new MoveBase({
     name: 'Mega Kick',
-    description: 'A Normal physical attack. No side effect.',
+    description: 'The foe is attacked by a kick fired with muscle-packed power.',
     type: PokemonType.Normal,
     power: 120,
     accuracy: 75,
@@ -1052,7 +1052,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'mega-punch': new MoveBase({
     name: 'Mega Punch',
-    description: 'A Normal physical attack. No side effect.',
+    description: 'The foe is slugged by a punch thrown with muscle-packed power.',
     type: PokemonType.Normal,
     power: 80,
     accuracy: 85,
@@ -1062,7 +1062,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'megahorn': new MoveBase({
     name: 'Megahorn',
-    description: 'A Bug physical attack. No side effect.',
+    description: 'A brutal ramming attack delivered with a tough and impressive horn.',
     type: PokemonType.Bug,
     power: 120,
     accuracy: 85,
@@ -1072,7 +1072,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'metal-claw': new MoveBase({
     name: 'Metal Claw',
-    description: 'A Steel physical attack. 10% chance to raise the user\'s Attack by one stage.',
+    description: 'The foe is attacked with steel claws. It may also raise the user\'s ATTACK.',
     type: PokemonType.Steel,
     power: 50,
     accuracy: 95,
@@ -1083,7 +1083,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'metal-sound': new MoveBase({
     name: 'Metal Sound',
-    description: 'A Steel status move. Lowers the target\'s Sp. Def by two stages.',
+    description: 'A horrible metallic screech is used to sharply lower the foe\'s SP. DEF.',
     type: PokemonType.Steel,
     power: 0,
     accuracy: 85,
@@ -1094,7 +1094,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'meteor-mash': new MoveBase({
     name: 'Meteor Mash',
-    description: 'A Steel physical attack. 20% chance to raise the user\'s Attack by one stage.',
+    description: 'The foe is hit with a hard, fast punch. It may also raise the user\'s ATTACK.',
     type: PokemonType.Steel,
     power: 100,
     accuracy: 85,
@@ -1105,7 +1105,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'minimize': new MoveBase({
     name: 'Minimize',
-    description: 'A Normal status move. Raises the user\'s evasion by one stage.',
+    description: 'The user compresses all the cells in its body to raise its evasiveness.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -1117,7 +1117,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'moonlight': new MoveBase({
     name: 'Moonlight',
-    description: 'A Normal status move. Restores 50% of the user\'s health.',
+    description: 'Restores the user\'s HP. The amount of HP regained varies with the weather.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -1129,7 +1129,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'mud-shot': new MoveBase({
     name: 'Mud Shot',
-    description: 'A Ground physical attack. Lowers the target\'s Speed by one stage.',
+    description: 'The user attacks by hurling mud. It also reduces the foe\'s SPEED.',
     type: PokemonType.Ground,
     power: 55,
     accuracy: 95,
@@ -1139,7 +1139,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'mud-slap': new MoveBase({
     name: 'Mud-Slap',
-    description: 'A Ground physical attack. Lowers the target\'s accuracy by one stage.',
+    description: 'Mud is hurled in the foe\'s face to inflict damage and lower its accuracy.',
     type: PokemonType.Ground,
     power: 20,
     accuracy: 100,
@@ -1149,7 +1149,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'pay-day': new MoveBase({
     name: 'Pay Day',
-    description: 'A Normal physical attack. No side effect.',
+    description: 'Numerous coins are hurled at the foe. Money is earned after battle.',
     type: PokemonType.Normal,
     power: 40,
     accuracy: 100,
@@ -1158,7 +1158,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'peck': new MoveBase({
     name: 'Peck',
-    description: 'A Flying physical attack. No side effect.',
+    description: 'The foe is jabbed with a sharply pointed beak or horn.',
     type: PokemonType.Flying,
     power: 35,
     accuracy: 100,
@@ -1168,7 +1168,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'pin-missile': new MoveBase({
     name: 'Pin Missile',
-    description: 'A Bug physical attack. Hits 2 to 5 times.',
+    description: 'Sharp pins are shot at the foe and hit two to five times at once.',
     type: PokemonType.Bug,
     power: 14,
     accuracy: 85,
@@ -1178,7 +1178,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'poison-fang': new MoveBase({
     name: 'Poison Fang',
-    description: 'A Poison physical attack. 30% chance to leave the target poisoned.',
+    description: 'The foe is bitten with toxic fangs. It may also badly poison the foe.',
     type: PokemonType.Poison,
     power: 50,
     accuracy: 100,
@@ -1189,7 +1189,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'poison-gas': new MoveBase({
     name: 'Poison Gas',
-    description: 'A Poison status move. Leaves the target poisoned.',
+    description: 'The foe is sprayed with a cloud of toxic gas that may poison the foe.',
     type: PokemonType.Poison,
     power: 0,
     accuracy: 55,
@@ -1199,7 +1199,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'poison-powder': new MoveBase({
     name: 'Poison Powder',
-    description: 'A Poison status move. Leaves the target poisoned.',
+    description: 'A cloud of toxic dust is scattered. It may poison the foe.',
     type: PokemonType.Poison,
     power: 0,
     accuracy: 75,
@@ -1209,7 +1209,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'poison-sting': new MoveBase({
     name: 'Poison Sting',
-    description: 'A Poison physical attack. 30% chance to leave the target poisoned.',
+    description: 'The foe is stabbed with a toxic barb, etc. It may poison the foe.',
     type: PokemonType.Poison,
     power: 15,
     accuracy: 100,
@@ -1219,7 +1219,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'pound': new MoveBase({
     name: 'Pound',
-    description: 'A Normal physical attack. No side effect.',
+    description: 'A physical attack delivered with a long tail or a foreleg, etc.',
     type: PokemonType.Normal,
     power: 40,
     accuracy: 100,
@@ -1229,7 +1229,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'powder-snow': new MoveBase({
     name: 'Powder Snow',
-    description: 'An Ice special attack. Hits both foes. 10% chance to leave both foes frozen.',
+    description: 'Blasts the foe with a snowy gust. It may cause freezing.',
     type: PokemonType.Ice,
     power: 40,
     accuracy: 100,
@@ -1240,7 +1240,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'psybeam': new MoveBase({
     name: 'Psybeam',
-    description: 'A Psychic special attack. 10% chance to leave the target confused.',
+    description: 'A peculiar ray is shot at the foe. It may leave the foe confused.',
     type: PokemonType.Psychic,
     power: 65,
     accuracy: 100,
@@ -1250,7 +1250,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'psychic': new MoveBase({
     name: 'Psychic',
-    description: 'A Psychic special attack. 10% chance to lower the target\'s Sp. Def by one stage.',
+    description: 'A strong telekinetic attack. It may also lower the foe\'s SP. DEF stat.',
     type: PokemonType.Psychic,
     power: 90,
     accuracy: 100,
@@ -1260,7 +1260,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'pursuit': new MoveBase({
     name: 'Pursuit',
-    description: 'A Dark special attack. No side effect.',
+    description: 'An attack move that works especially well on a foe that is switching out.',
     type: PokemonType.Dark,
     power: 40,
     accuracy: 100,
@@ -1270,7 +1270,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'quick-attack': new MoveBase({
     name: 'Quick Attack',
-    description: 'A Normal physical attack. Always strikes first.',
+    description: 'An almost invisibly fast attack that is certain to strike first.',
     type: PokemonType.Normal,
     power: 40,
     accuracy: 100,
@@ -1281,7 +1281,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'rage': new MoveBase({
     name: 'Rage',
-    description: 'A Normal physical attack. No side effect.',
+    description: 'An attack that becomes stronger each time the user is hit in battle.',
     type: PokemonType.Normal,
     power: 20,
     accuracy: 100,
@@ -1291,7 +1291,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'rain-dance': new MoveBase({
     name: 'Rain Dance',
-    description: 'A Water status move. Brings on rain. Never misses.',
+    description: 'A heavy rain falls for five turns, powering up WATER- type moves.',
     type: PokemonType.Water,
     power: 0,
     accuracy: 100,
@@ -1302,7 +1302,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'rapid-spin': new MoveBase({
     name: 'Rapid Spin',
-    description: 'A Normal physical attack. No side effect.',
+    description: 'An attack that frees the user from BIND, WRAP, LEECH SEED, and SPIKES.',
     type: PokemonType.Normal,
     power: 20,
     accuracy: 100,
@@ -1312,7 +1312,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'razor-leaf': new MoveBase({
     name: 'Razor Leaf',
-    description: 'A Grass special attack. Hits both foes. Lands a critical hit more often.',
+    description: 'The foe is hit with a cutting leaf. It has a high critical-hit ratio.',
     type: PokemonType.Grass,
     power: 55,
     accuracy: 95,
@@ -1323,7 +1323,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'recover': new MoveBase({
     name: 'Recover',
-    description: 'A Normal status move. Restores 50% of the user\'s health.',
+    description: 'A self-healing move that restores HP by up to half of the user\'s maximum HP.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -1335,7 +1335,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'revenge': new MoveBase({
     name: 'Revenge',
-    description: 'A Fighting physical attack. Always strikes last.',
+    description: 'An attack move that gains in intensity if the target has hurt the user.',
     type: PokemonType.Fighting,
     power: 60,
     accuracy: 100,
@@ -1346,7 +1346,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'rock-blast': new MoveBase({
     name: 'Rock Blast',
-    description: 'A Rock physical attack. Hits 2 to 5 times.',
+    description: 'The user hurls two to five hard rocks at the foe to attack.',
     type: PokemonType.Rock,
     power: 25,
     accuracy: 80,
@@ -1356,7 +1356,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'rock-throw': new MoveBase({
     name: 'Rock Throw',
-    description: 'A Rock physical attack. No side effect.',
+    description: 'The foe is attacked with a shower of small, easily thrown rocks.',
     type: PokemonType.Rock,
     power: 50,
     accuracy: 90,
@@ -1365,7 +1365,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'rolling-kick': new MoveBase({
     name: 'Rolling Kick',
-    description: 'A Fighting physical attack. 30% chance to make the target flinch.',
+    description: 'A quick kick from a rolling spin. It may make the foe flinch.',
     type: PokemonType.Fighting,
     power: 60,
     accuracy: 85,
@@ -1376,7 +1376,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'sand-attack': new MoveBase({
     name: 'Sand Attack',
-    description: 'A Ground status move. Lowers the target\'s accuracy by one stage.',
+    description: 'A lot of sand is hurled in the foe\'s face, reducing its accuracy.',
     type: PokemonType.Ground,
     power: 0,
     accuracy: 100,
@@ -1386,7 +1386,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'sandstorm': new MoveBase({
     name: 'Sandstorm',
-    description: 'A Rock status move. Whips up a sandstorm. Never misses.',
+    description: 'A 5-turn sandstorm that damages all types except ROCK, GROUND, and STEEL.',
     type: PokemonType.Rock,
     power: 0,
     accuracy: 100,
@@ -1397,7 +1397,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'scary-face': new MoveBase({
     name: 'Scary Face',
-    description: 'A Normal status move. Lowers the target\'s Speed by two stages.',
+    description: 'Frightens the foe with a scary face to sharply reduce its SPEED.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 90,
@@ -1407,7 +1407,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'scratch': new MoveBase({
     name: 'Scratch',
-    description: 'A Normal physical attack. No side effect.',
+    description: 'Hard, pointed, and sharp claws rake the foe.',
     type: PokemonType.Normal,
     power: 40,
     accuracy: 100,
@@ -1417,7 +1417,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'screech': new MoveBase({
     name: 'Screech',
-    description: 'A Normal status move. Lowers the target\'s Defense by two stages.',
+    description: 'An ear-splitting screech is emitted to sharply reduce the foe\'s DEFENSE.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 85,
@@ -1428,7 +1428,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'self-destruct': new MoveBase({
     name: 'Self-Destruct',
-    description: 'A Normal physical attack. The user faints. Halves the target\'s Defense for the hit.',
+    description: 'The user blows up to inflict severe damage, even making itself faint.',
     type: PokemonType.Normal,
     power: 200,
     accuracy: 100,
@@ -1438,7 +1438,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'shadow-ball': new MoveBase({
     name: 'Shadow Ball',
-    description: 'A Ghost physical attack. 20% chance to lower the target\'s Sp. Def by one stage.',
+    description: 'A shadowy blob is hurled at the foe. May also lower the foe\'s SP. DEF.',
     type: PokemonType.Ghost,
     power: 80,
     accuracy: 100,
@@ -1448,7 +1448,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'shadow-punch': new MoveBase({
     name: 'Shadow Punch',
-    description: 'A Ghost physical attack. Never misses.',
+    description: 'The user throws a punch from the shadows. It cannot be evaded.',
     type: PokemonType.Ghost,
     power: 60,
     accuracy: 100,
@@ -1459,7 +1459,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'sharpen': new MoveBase({
     name: 'Sharpen',
-    description: 'A Normal status move. Raises the user\'s Attack by one stage.',
+    description: 'The user reduces its polygon count to sharpen edges and raise ATTACK.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -1471,7 +1471,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'signal-beam': new MoveBase({
     name: 'Signal Beam',
-    description: 'A Bug physical attack. 10% chance to leave the target confused.',
+    description: 'The foe is hit with a flashing beam that may also cause confusion.',
     type: PokemonType.Bug,
     power: 75,
     accuracy: 100,
@@ -1481,7 +1481,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'silver-wind': new MoveBase({
     name: 'Silver Wind',
-    description: 'A Bug physical attack. 10% chance to raise the user\'s Attack, Defense, Sp. Atk, Sp. Def, Speed by one stage.',
+    description: 'The foe is attacked with a silver dust. It may raise all the user\'s stats.',
     type: PokemonType.Bug,
     power: 60,
     accuracy: 100,
@@ -1491,7 +1491,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'sing': new MoveBase({
     name: 'Sing',
-    description: 'A Normal status move. Leaves the target asleep.',
+    description: 'A soothing song in a calming voice lulls the foe into a deep slumber.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 55,
@@ -1502,7 +1502,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'skull-bash': new MoveBase({
     name: 'Skull Bash',
-    description: 'A Normal physical attack. Spends the first turn winding up.',
+    description: 'The user raises its DEFENSE in the 1st turn, then attacks in the 2nd turn.',
     type: PokemonType.Normal,
     power: 100,
     accuracy: 100,
@@ -1513,7 +1513,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'sky-attack': new MoveBase({
     name: 'Sky Attack',
-    description: 'A Flying physical attack. 30% chance to make the target flinch. Lands a critical hit more often. Spends the first turn winding up.',
+    description: 'A 2nd-turn attack move with a high critical-hit ratio. The foe may flinch.',
     type: PokemonType.Flying,
     power: 140,
     accuracy: 90,
@@ -1525,7 +1525,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'sky-uppercut': new MoveBase({
     name: 'Sky Uppercut',
-    description: 'A Fighting physical attack. No side effect.',
+    description: 'The user attacks with an uppercut thrown skywards with force.',
     type: PokemonType.Fighting,
     power: 85,
     accuracy: 90,
@@ -1535,7 +1535,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'slam': new MoveBase({
     name: 'Slam',
-    description: 'A Normal physical attack. No side effect.',
+    description: 'The foe is struck with a long tail, vines, etc.',
     type: PokemonType.Normal,
     power: 80,
     accuracy: 75,
@@ -1545,7 +1545,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'slash': new MoveBase({
     name: 'Slash',
-    description: 'A Normal physical attack. Lands a critical hit more often.',
+    description: 'The foe is slashed with claws, etc. It has a high critical-hit ratio.',
     type: PokemonType.Normal,
     power: 70,
     accuracy: 100,
@@ -1556,7 +1556,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'sleep-powder': new MoveBase({
     name: 'Sleep Powder',
-    description: 'A Grass status move. Leaves the target asleep.',
+    description: 'A sleep-inducing dust is scattered in high volume around a foe.',
     type: PokemonType.Grass,
     power: 0,
     accuracy: 75,
@@ -1566,7 +1566,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'sludge': new MoveBase({
     name: 'Sludge',
-    description: 'A Poison physical attack. 30% chance to leave the target poisoned.',
+    description: 'Toxic sludge is hurled at the foe. It may poison the target.',
     type: PokemonType.Poison,
     power: 65,
     accuracy: 100,
@@ -1576,7 +1576,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'sludge-bomb': new MoveBase({
     name: 'Sludge Bomb',
-    description: 'A Poison physical attack. 30% chance to leave the target poisoned.',
+    description: 'Filthy sludge is hurled at the foe. It may poison the target.',
     type: PokemonType.Poison,
     power: 90,
     accuracy: 100,
@@ -1586,7 +1586,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'smog': new MoveBase({
     name: 'Smog',
-    description: 'A Poison physical attack. 40% chance to leave the target poisoned.',
+    description: 'The foe is attacked with exhaust gases. It may also poison the foe.',
     type: PokemonType.Poison,
     power: 20,
     accuracy: 70,
@@ -1596,7 +1596,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'smokescreen': new MoveBase({
     name: 'Smokescreen',
-    description: 'A Normal status move. Lowers the target\'s accuracy by one stage.',
+    description: 'An obscuring cloud of smoke or ink reduces the foe\'s accuracy.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -1606,7 +1606,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'snore': new MoveBase({
     name: 'Snore',
-    description: 'A Normal physical attack. 30% chance to make the target flinch.',
+    description: 'An attack that can be used only while asleep. It may cause flinching.',
     type: PokemonType.Normal,
     power: 40,
     accuracy: 100,
@@ -1617,7 +1617,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'soft-boiled': new MoveBase({
     name: 'Soft-Boiled',
-    description: 'A Normal status move. Restores 50% of the user\'s health.',
+    description: 'Heals the user by up to half its full HP. It can be used to heal an ally.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -1629,7 +1629,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'solar-beam': new MoveBase({
     name: 'Solar Beam',
-    description: 'A Grass special attack. Spends the first turn winding up.',
+    description: 'A 2-turn move that blasts the foe with absorbed energy in the 2nd turn.',
     type: PokemonType.Grass,
     power: 120,
     accuracy: 100,
@@ -1639,7 +1639,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'spark': new MoveBase({
     name: 'Spark',
-    description: 'An Electric special attack. 30% chance to leave the target paralysed.',
+    description: 'An electrically charged tackle that may also paralyse the foe.',
     type: PokemonType.Electric,
     power: 65,
     accuracy: 100,
@@ -1650,7 +1650,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'spike-cannon': new MoveBase({
     name: 'Spike Cannon',
-    description: 'A Normal physical attack. Hits 2 to 5 times.',
+    description: 'Sharp spikes are fired at the foe to strike two to five times.',
     type: PokemonType.Normal,
     power: 20,
     accuracy: 100,
@@ -1660,7 +1660,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'splash': new MoveBase({
     name: 'Splash',
-    description: 'A Normal status move. No side effect.',
+    description: 'The user just flops and splashes around without having any effect.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -1671,7 +1671,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'spore': new MoveBase({
     name: 'Spore',
-    description: 'A Grass status move. Leaves the target asleep.',
+    description: 'The user scatters bursts of fine spores that induce sleep.',
     type: PokemonType.Grass,
     power: 0,
     accuracy: 100,
@@ -1681,7 +1681,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'stomp': new MoveBase({
     name: 'Stomp',
-    description: 'A Normal physical attack. 30% chance to make the target flinch.',
+    description: 'The foe is stomped with a big foot. It may make the foe flinch.',
     type: PokemonType.Normal,
     power: 65,
     accuracy: 100,
@@ -1692,7 +1692,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'string-shot': new MoveBase({
     name: 'String Shot',
-    description: 'A Bug status move. Lands on both foes. Lowers both foes\' Speed by one stage.',
+    description: 'The foe is bound with strings shot from the mouth to reduce its SPEED.',
     type: PokemonType.Bug,
     power: 0,
     accuracy: 95,
@@ -1703,7 +1703,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'stun-spore': new MoveBase({
     name: 'Stun Spore',
-    description: 'A Grass status move. Leaves the target paralysed.',
+    description: 'Paralyzing dust is scattered wildly. It may paralyse the foe.',
     type: PokemonType.Grass,
     power: 0,
     accuracy: 75,
@@ -1713,7 +1713,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'submission': new MoveBase({
     name: 'Submission',
-    description: 'A Fighting physical attack. The user takes 25% of the damage dealt.',
+    description: 'A reckless, full- body throw attack that also hurts the user a little.',
     type: PokemonType.Fighting,
     power: 80,
     accuracy: 80,
@@ -1724,7 +1724,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'sunny-day': new MoveBase({
     name: 'Sunny Day',
-    description: 'A Fire status move. Brings out harsh sunlight. Never misses.',
+    description: 'The sun blazes for five turns, powering up FIRE-type moves.',
     type: PokemonType.Fire,
     power: 0,
     accuracy: 100,
@@ -1735,7 +1735,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'superpower': new MoveBase({
     name: 'Superpower',
-    description: 'A Fighting physical attack. Lowers the user\'s Attack, Defense by one stage.',
+    description: 'A powerful attack, but it also lowers the user\'s ATTACK and DEFENSE stats.',
     type: PokemonType.Fighting,
     power: 120,
     accuracy: 100,
@@ -1746,7 +1746,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'supersonic': new MoveBase({
     name: 'Supersonic',
-    description: 'A Normal status move. Leaves the target confused.',
+    description: 'The user generates odd sound waves. It may confuse the foe.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 55,
@@ -1757,7 +1757,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'swagger': new MoveBase({
     name: 'Swagger',
-    description: 'A Normal status move. Raises the target\'s Attack by two stages. Leaves the target confused.',
+    description: 'A move that makes the foe confused, but also sharply raises its ATTACK.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 90,
@@ -1767,7 +1767,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'sweet-scent': new MoveBase({
     name: 'Sweet Scent',
-    description: 'A Normal status move. Lands on both foes. Lowers both foes\' evasion by one stage.',
+    description: 'Allures the foe to reduce evasiveness. It also attracts wild POKéMON.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -1778,7 +1778,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'swift': new MoveBase({
     name: 'Swift',
-    description: 'A Normal physical attack. Hits both foes. Never misses.',
+    description: 'Star-shaped rays that never miss are fired at all foes in battle.',
     type: PokemonType.Normal,
     power: 60,
     accuracy: 100,
@@ -1789,7 +1789,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'swords-dance': new MoveBase({
     name: 'Swords Dance',
-    description: 'A Normal status move. Raises the user\'s Attack by two stages.',
+    description: 'A frenetic dance of fighting. It sharply raises the ATTACK stat.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -1801,7 +1801,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'synthesis': new MoveBase({
     name: 'Synthesis',
-    description: 'A Grass status move. Restores 50% of the user\'s health.',
+    description: 'Restores the user\'s HP. The amount of HP regained varies with the weather.',
     type: PokemonType.Grass,
     power: 0,
     accuracy: 100,
@@ -1813,7 +1813,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'tackle': new MoveBase({
     name: 'Tackle',
-    description: 'A Normal physical attack. No side effect.',
+    description: 'A physical attack in which the user charges, full body, into the foe.',
     type: PokemonType.Normal,
     power: 35,
     accuracy: 95,
@@ -1823,7 +1823,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'tail-whip': new MoveBase({
     name: 'Tail Whip',
-    description: 'A Normal status move. Lands on both foes. Lowers both foes\' Defense by one stage.',
+    description: 'The user wags its tail cutely, making the foe lower its DEFENSE stat.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -1834,7 +1834,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'take-down': new MoveBase({
     name: 'Take Down',
-    description: 'A Normal physical attack. The user takes 25% of the damage dealt.',
+    description: 'A reckless, full- body charge attack that also hurts the user a little.',
     type: PokemonType.Normal,
     power: 90,
     accuracy: 85,
@@ -1845,7 +1845,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'thunder': new MoveBase({
     name: 'Thunder',
-    description: 'An Electric special attack. 30% chance to leave the target paralysed.',
+    description: 'A brutal lightning attack that may also leave the foe paralysed.',
     type: PokemonType.Electric,
     power: 120,
     accuracy: 70,
@@ -1855,7 +1855,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'thunder-punch': new MoveBase({
     name: 'Thunder Punch',
-    description: 'An Electric special attack. 10% chance to leave the target paralysed.',
+    description: 'The foe is punched with an electrified fist. It may leave the foe paralysed.',
     type: PokemonType.Electric,
     power: 75,
     accuracy: 100,
@@ -1866,7 +1866,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'thunder-shock': new MoveBase({
     name: 'Thunder Shock',
-    description: 'An Electric special attack. 10% chance to leave the target paralysed.',
+    description: 'An electric shock attack that may also leave the foe paralysed.',
     type: PokemonType.Electric,
     power: 40,
     accuracy: 100,
@@ -1876,7 +1876,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'thunder-wave': new MoveBase({
     name: 'Thunder Wave',
-    description: 'An Electric status move. Leaves the target paralysed.',
+    description: 'A weak electric shock that is sure to cause paralysis if it hits.',
     type: PokemonType.Electric,
     power: 0,
     accuracy: 100,
@@ -1886,7 +1886,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'thunderbolt': new MoveBase({
     name: 'Thunderbolt',
-    description: 'An Electric special attack. 10% chance to leave the target paralysed.',
+    description: 'A strong electrical attack that may also leave the foe paralysed.',
     type: PokemonType.Electric,
     power: 95,
     accuracy: 100,
@@ -1896,7 +1896,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'tickle': new MoveBase({
     name: 'Tickle',
-    description: 'A Normal status move. Lowers the target\'s Attack, Defense by one stage.',
+    description: 'The foe is made to laugh, reducing its ATTACK and DEFENSE stats.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -1906,7 +1906,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'twineedle': new MoveBase({
     name: 'Twineedle',
-    description: 'A Bug physical attack. 20% chance to leave the target poisoned. Hits 2 to 2 times.',
+    description: 'The foe is stabbed twice with foreleg stingers. It may poison the foe.',
     type: PokemonType.Bug,
     power: 25,
     accuracy: 100,
@@ -1917,7 +1917,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'twister': new MoveBase({
     name: 'Twister',
-    description: 'A Dragon special attack. Hits both foes. 20% chance to make both foes flinch.',
+    description: 'A vicious twister attacks the foe. It may make the foe flinch.',
     type: PokemonType.Dragon,
     power: 40,
     accuracy: 100,
@@ -1928,7 +1928,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'vice-grip': new MoveBase({
     name: 'Vise Grip',
-    description: 'A Normal physical attack. No side effect.',
+    description: 'Huge, impressive pincers grip and squeeze the foe.',
     type: PokemonType.Normal,
     power: 55,
     accuracy: 100,
@@ -1938,7 +1938,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'vine-whip': new MoveBase({
     name: 'Vine Whip',
-    description: 'A Grass special attack. No side effect.',
+    description: 'The foe is struck with slender, whip- like vines.',
     type: PokemonType.Grass,
     power: 35,
     accuracy: 100,
@@ -1948,7 +1948,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'vital-throw': new MoveBase({
     name: 'Vital Throw',
-    description: 'A Fighting physical attack. Always strikes last. Never misses.',
+    description: 'Makes the user attack after the foe. In return, it will not miss.',
     type: PokemonType.Fighting,
     power: 70,
     accuracy: 100,
@@ -1960,7 +1960,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'water-gun': new MoveBase({
     name: 'Water Gun',
-    description: 'A Water special attack. No side effect.',
+    description: 'The foe is struck with a lot of water expelled forcibly from the mouth.',
     type: PokemonType.Water,
     power: 40,
     accuracy: 100,
@@ -1969,7 +1969,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'waterfall': new MoveBase({
     name: 'Waterfall',
-    description: 'A Water special attack. No side effect.',
+    description: 'A powerful charge attack. It can also be used to climb a waterfall.',
     type: PokemonType.Water,
     power: 80,
     accuracy: 100,
@@ -1979,7 +1979,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'will-o-wisp': new MoveBase({
     name: 'Will-O-Wisp',
-    description: 'A Fire status move. Leaves the target burned.',
+    description: 'A sinister, bluish white flame is shot at the foe to inflict a burn.',
     type: PokemonType.Fire,
     power: 0,
     accuracy: 75,
@@ -1989,7 +1989,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'wing-attack': new MoveBase({
     name: 'Wing Attack',
-    description: 'A Flying physical attack. No side effect.',
+    description: 'The foe is struck with large, imposing wings spread wide.',
     type: PokemonType.Flying,
     power: 60,
     accuracy: 100,
@@ -1999,7 +1999,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'withdraw': new MoveBase({
     name: 'Withdraw',
-    description: 'A Water status move. Raises the user\'s Defense by one stage.',
+    description: 'The user withdraws its body in its hard shell, raising its DEFENSE stat.',
     type: PokemonType.Water,
     power: 0,
     accuracy: 100,
@@ -2011,7 +2011,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'zap-cannon': new MoveBase({
     name: 'Zap Cannon',
-    description: 'An Electric special attack. 100% chance to leave the target paralysed.',
+    description: 'An electric blast is fired like a cannon to inflict damage and paralyse.',
     type: PokemonType.Electric,
     power: 100,
     accuracy: 50,

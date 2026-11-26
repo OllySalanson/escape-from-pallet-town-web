@@ -3,6 +3,20 @@ import { PrimaryStatus } from './battle/status';
 import { PokemonType } from './PokemonType';
 import { WeatherId } from './battle/weather';
 import { GENERATED_MOVES } from './generated/moveCatalogue';
+import { FIRERED_MOVE_DESCRIPTIONS } from './generated/moveDescriptions';
+
+/**
+ * A hand-authored move is described in FireRed's own words, as the generated
+ * catalogue is (`generated/moveDescriptions.ts`), keyed by PokeAPI's
+ * identifier. A move with none is a mistake caught when the module loads.
+ */
+const fireRedDescription = (identifier: string): string => {
+  const text = FIRERED_MOVE_DESCRIPTIONS[identifier];
+  if (!text) {
+    throw new Error(`No FireRed description for ${identifier}: run node tools/moves/frlgMoveDescriptions.mjs`);
+  }
+  return text;
+};
 
 /**
  * Tackle and Vine Whip are FireRed's own rows from the import (35/95/35 and
@@ -26,7 +40,7 @@ export const TACKLE = GENERATED_MOVES.tackle;
  */
 export const STRUGGLE = new MoveBase({
   name: 'Struggle',
-  description: 'Used only when no move has PP left. Typeless; the user takes a quarter of the damage dealt.',
+  description: fireRedDescription('struggle'),
   type: PokemonType.Normal,
   power: 50,
   accuracy: 100,
@@ -53,7 +67,7 @@ export const STRUGGLE = new MoveBase({
  */
 export const GROWL = new MoveBase({
   name: 'Growl',
-  description: "Lowers the target's Attack by one stage.",
+  description: fireRedDescription('growl'),
   type: PokemonType.Normal,
   power: 0,
   accuracy: 100,
@@ -74,7 +88,7 @@ export const GROWL = new MoveBase({
  */
 export const TAIL_WHIP = new MoveBase({
   name: 'Tail Whip',
-  description: "Lowers the target's Defense by one stage.",
+  description: fireRedDescription('tail-whip'),
   type: PokemonType.Normal,
   power: 0,
   accuracy: 100,
@@ -86,7 +100,7 @@ export const TAIL_WHIP = new MoveBase({
 
 export const SCRATCH = new MoveBase({
   name: 'Scratch',
-  description: 'A plain raking blow. No side effect.',
+  description: fireRedDescription('scratch'),
   type: PokemonType.Normal,
   power: 40,
   accuracy: 100,
@@ -97,7 +111,7 @@ export const SCRATCH = new MoveBase({
 
 export const EMBER = new MoveBase({
   name: 'Ember',
-  description: 'A small flame. May leave a burn.',
+  description: fireRedDescription('ember'),
   type: PokemonType.Fire,
   power: 40,
   accuracy: 100,
@@ -108,7 +122,7 @@ export const EMBER = new MoveBase({
 
 export const WATER_GUN = new MoveBase({
   name: 'Water Gun',
-  description: 'A jet of water. No side effect.',
+  description: fireRedDescription('water-gun'),
   type: PokemonType.Water,
   power: 40,
   accuracy: 100,
@@ -120,7 +134,7 @@ export const VINE_WHIP = GENERATED_MOVES['vine-whip'];
 
 export const POISON_POWDER = new MoveBase({
   name: 'Poison Powder',
-  description: 'Poisons the target. It loses HP each turn.',
+  description: fireRedDescription('poison-powder'),
   type: PokemonType.Poison,
   power: 0,
   accuracy: 75,
@@ -131,7 +145,7 @@ export const POISON_POWDER = new MoveBase({
 
 export const SING = new MoveBase({
   name: 'Sing',
-  description: 'Puts the target to sleep for a few turns.',
+  description: fireRedDescription('sing'),
   // Unity's Sing.asset and ThunderWave.asset both carry type 8 (Poison), which
   // is a data-entry slip beside PoisonPowder rather than a design choice. Typing
   // drives immunity and the move guidance panel, so both are corrected here.
@@ -146,7 +160,7 @@ export const SING = new MoveBase({
 
 export const SUPERSONIC = new MoveBase({
   name: 'Supersonic',
-  description: 'Confuses the target. It may hurt itself.',
+  description: fireRedDescription('supersonic'),
   type: PokemonType.Normal,
   power: 0,
   accuracy: 55,
@@ -158,7 +172,7 @@ export const SUPERSONIC = new MoveBase({
 
 export const THUNDER_WAVE = new MoveBase({
   name: 'Thunder Wave',
-  description: 'Paralyses the target. It may lose turns.',
+  description: fireRedDescription('thunder-wave'),
   type: PokemonType.Electric,
   power: 0,
   accuracy: 100,
@@ -195,7 +209,7 @@ export const THUNDER_WAVE = new MoveBase({
 
 export const SLEEP_POWDER = new MoveBase({
   name: 'Sleep Powder',
-  description: 'Puts the target to sleep for a few turns.',
+  description: fireRedDescription('sleep-powder'),
   type: PokemonType.Grass,
   power: 0,
   accuracy: 75,
@@ -206,7 +220,7 @@ export const SLEEP_POWDER = new MoveBase({
 
 export const RAZOR_LEAF = new MoveBase({
   name: 'Razor Leaf',
-  description: 'A volley of sharp leaves. Crits often.',
+  description: fireRedDescription('razor-leaf'),
   type: PokemonType.Grass,
   power: 55,
   accuracy: 95,
@@ -218,7 +232,7 @@ export const RAZOR_LEAF = new MoveBase({
 
 export const SCARY_FACE = new MoveBase({
   name: 'Scary Face',
-  description: "Lowers the target's Speed by two stages.",
+  description: fireRedDescription('scary-face'),
   type: PokemonType.Normal,
   power: 0,
   accuracy: 90,
@@ -229,7 +243,7 @@ export const SCARY_FACE = new MoveBase({
 
 export const FLAMETHROWER = new MoveBase({
   name: 'Flamethrower',
-  description: 'A hard jet of fire. May leave a burn.',
+  description: fireRedDescription('flamethrower'),
   type: PokemonType.Fire,
   power: 95,
   accuracy: 100,
@@ -240,7 +254,7 @@ export const FLAMETHROWER = new MoveBase({
 
 export const HEAT_WAVE = new MoveBase({
   name: 'Heat Wave',
-  description: 'A blast of searing wind. May burn.',
+  description: fireRedDescription('heat-wave'),
   type: PokemonType.Fire,
   power: 100,
   accuracy: 90,
@@ -252,7 +266,7 @@ export const HEAT_WAVE = new MoveBase({
 
 export const SLASH = new MoveBase({
   name: 'Slash',
-  description: 'A raking cut with claws. Crits often.',
+  description: fireRedDescription('slash'),
   type: PokemonType.Normal,
   power: 70,
   accuracy: 100,
@@ -264,7 +278,7 @@ export const SLASH = new MoveBase({
 
 export const WING_ATTACK = new MoveBase({
   name: 'Wing Attack',
-  description: 'A strike with spread wings. No side effect.',
+  description: fireRedDescription('wing-attack'),
   type: PokemonType.Flying,
   power: 60,
   accuracy: 100,
@@ -275,7 +289,7 @@ export const WING_ATTACK = new MoveBase({
 
 export const GUST = new MoveBase({
   name: 'Gust',
-  description: 'A whipped-up wind. No side effect.',
+  description: fireRedDescription('gust'),
   type: PokemonType.Flying,
   power: 40,
   accuracy: 100,
@@ -285,7 +299,7 @@ export const GUST = new MoveBase({
 
 export const FEATHER_DANCE = new MoveBase({
   name: 'Feather Dance',
-  description: "Lowers the target's Attack by two stages.",
+  description: fireRedDescription('feather-dance'),
   type: PokemonType.Flying,
   power: 0,
   accuracy: 100,
@@ -296,7 +310,7 @@ export const FEATHER_DANCE = new MoveBase({
 
 export const BUBBLE = new MoveBase({
   name: 'Bubble',
-  description: "A spray of bubbles. May cut the target's Speed.",
+  description: fireRedDescription('bubble'),
   type: PokemonType.Water,
   power: 20,
   accuracy: 100,
@@ -308,7 +322,7 @@ export const BUBBLE = new MoveBase({
 
 export const HYDRO_PUMP = new MoveBase({
   name: 'Hydro Pump',
-  description: 'A torrent of water. Powerful, and it misses.',
+  description: fireRedDescription('hydro-pump'),
   type: PokemonType.Water,
   power: 120,
   accuracy: 80,
@@ -318,7 +332,7 @@ export const HYDRO_PUMP = new MoveBase({
 
 export const THUNDER_SHOCK = new MoveBase({
   name: 'Thunder Shock',
-  description: 'A weak jolt. May paralyse the target.',
+  description: fireRedDescription('thunder-shock'),
   type: PokemonType.Electric,
   power: 40,
   accuracy: 100,
@@ -329,7 +343,7 @@ export const THUNDER_SHOCK = new MoveBase({
 
 export const THUNDERBOLT = new MoveBase({
   name: 'Thunderbolt',
-  description: 'A strong jolt. May paralyse the target.',
+  description: fireRedDescription('thunderbolt'),
   type: PokemonType.Electric,
   power: 95,
   accuracy: 100,
@@ -361,7 +375,7 @@ export const THUNDERBOLT = new MoveBase({
 
 export const BITE = new MoveBase({
   name: 'Bite',
-  description: 'A savage bite. May make the target flinch.',
+  description: fireRedDescription('bite'),
   type: PokemonType.Dark,
   power: 60,
   accuracy: 100,
@@ -373,7 +387,7 @@ export const BITE = new MoveBase({
 
 export const METAL_CLAW = new MoveBase({
   name: 'Metal Claw',
-  description: "A rake with steel claws. May raise the user's Attack.",
+  description: fireRedDescription('metal-claw'),
   type: PokemonType.Steel,
   power: 50,
   accuracy: 95,
@@ -410,7 +424,7 @@ export const METAL_CLAW = new MoveBase({
 /** Priority. Goes first whatever the Speed, which nothing could express before. */
 export const QUICK_ATTACK = new MoveBase({
   name: 'Quick Attack',
-  description: 'A blindingly fast strike. Always goes first.',
+  description: fireRedDescription('quick-attack'),
   type: PokemonType.Normal,
   power: 40,
   accuracy: 100,
@@ -423,7 +437,7 @@ export const QUICK_ATTACK = new MoveBase({
 /** Multi-hit. Two to five times, on generation III's own weighting. */
 export const DOUBLE_SLAP = new MoveBase({
   name: 'Double Slap',
-  description: 'Slaps two to five times in one turn.',
+  description: fireRedDescription('double-slap'),
   type: PokemonType.Normal,
   power: 15,
   accuracy: 85,
@@ -436,7 +450,7 @@ export const DOUBLE_SLAP = new MoveBase({
 /** Recoil: a third of the damage dealt, back onto the user. */
 export const DOUBLE_EDGE = new MoveBase({
   name: 'Double-Edge',
-  description: 'A reckless tackle. The user takes a third of it back.',
+  description: fireRedDescription('double-edge'),
   type: PokemonType.Normal,
   power: 120,
   accuracy: 100,
@@ -449,7 +463,7 @@ export const DOUBLE_EDGE = new MoveBase({
 /** A stat stage on the **user**, and a move that cannot miss. */
 export const AGILITY = new MoveBase({
   name: 'Agility',
-  description: "Raises the user's own Speed by two stages.",
+  description: fireRedDescription('agility'),
   type: PokemonType.Psychic,
   power: 0,
   accuracy: 100,
@@ -463,7 +477,7 @@ export const AGILITY = new MoveBase({
 /** An accuracy stage, which `StatStages` had no room for until now. */
 export const SMOKESCREEN = new MoveBase({
   name: 'Smokescreen',
-  description: "Lowers the target's accuracy by one stage.",
+  description: fireRedDescription('smokescreen'),
   type: PokemonType.Normal,
   power: 0,
   accuracy: 100,
@@ -475,7 +489,7 @@ export const SMOKESCREEN = new MoveBase({
 /** The other half of that pair: an evasion stage, on the user. */
 export const DOUBLE_TEAM = new MoveBase({
   name: 'Double Team',
-  description: "Raises the user's own evasion by one stage.",
+  description: fireRedDescription('double-team'),
   type: PokemonType.Normal,
   power: 0,
   accuracy: 100,
@@ -489,7 +503,7 @@ export const DOUBLE_TEAM = new MoveBase({
 /** Healing. Nothing but damage and the status tick used to write HP. */
 export const SYNTHESIS = new MoveBase({
   name: 'Synthesis',
-  description: 'Restores half of the user’s maximum HP.',
+  description: fireRedDescription('synthesis'),
   type: PokemonType.Grass,
   power: 0,
   accuracy: 100,
@@ -503,7 +517,7 @@ export const SYNTHESIS = new MoveBase({
 /** Two-turn: one turn absorbing light, the next firing. */
 export const SOLAR_BEAM = new MoveBase({
   name: 'Solar Beam',
-  description: 'Absorbs light for a turn, then fires on the next.',
+  description: fireRedDescription('solar-beam'),
   type: PokemonType.Grass,
   power: 120,
   accuracy: 100,
@@ -515,7 +529,7 @@ export const SOLAR_BEAM = new MoveBase({
 /** Effect chance at its most common weight, on a primary status. */
 export const BODY_SLAM = new MoveBase({
   name: 'Body Slam',
-  description: 'A full-body drop. May paralyse the target.',
+  description: fireRedDescription('body-slam'),
   type: PokemonType.Normal,
   power: 85,
   accuracy: 100,
@@ -528,7 +542,7 @@ export const BODY_SLAM = new MoveBase({
 /** Confusion as a rolled secondary rather than a guaranteed one. */
 export const PSYBEAM = new MoveBase({
   name: 'Psybeam',
-  description: 'A peculiar ray. May confuse the target.',
+  description: fireRedDescription('psybeam'),
   type: PokemonType.Psychic,
   power: 65,
   accuracy: 100,
@@ -558,7 +572,7 @@ export const PSYBEAM = new MoveBase({
 /** TM09. Grass, and Special: the per-move split is generation IV's. */
 export const BULLET_SEED = new MoveBase({
   name: 'Bullet Seed',
-  description: 'Fires two to five seeds in one turn.',
+  description: fireRedDescription('bullet-seed'),
   type: PokemonType.Grass,
   power: 10,
   accuracy: 100,
@@ -570,7 +584,7 @@ export const BULLET_SEED = new MoveBase({
 /** TM13. The one Ice move that is strong and sure at once: Blizzard misses, the rest are weaker. */
 export const ICE_BEAM = new MoveBase({
   name: 'Ice Beam',
-  description: 'A beam of cold. May freeze the target.',
+  description: fireRedDescription('ice-beam'),
   type: PokemonType.Ice,
   power: 95,
   accuracy: 100,
@@ -582,7 +596,7 @@ export const ICE_BEAM = new MoveBase({
 /** TM23. Hard and inaccurate, and it softens what it does connect with. */
 export const IRON_TAIL = new MoveBase({
   name: 'Iron Tail',
-  description: "A heavy steel tail. May lower the target's Defense.",
+  description: fireRedDescription('iron-tail'),
   type: PokemonType.Steel,
   power: 100,
   accuracy: 75,
@@ -595,7 +609,7 @@ export const IRON_TAIL = new MoveBase({
 /** TM28. Two-turn, like Solar Beam - a turn underground, then the hit. */
 export const DIG = new MoveBase({
   name: 'Dig',
-  description: 'Burrows on the first turn and strikes on the second.',
+  description: fireRedDescription('dig'),
   type: PokemonType.Ground,
   power: 60,
   accuracy: 100,
@@ -608,7 +622,7 @@ export const DIG = new MoveBase({
 /** TM40. No accuracy roll at all, like Swift and Feint Attack. */
 export const AERIAL_ACE = new MoveBase({
   name: 'Aerial Ace',
-  description: 'A sweep too fast to dodge. It never misses.',
+  description: fireRedDescription('aerial-ace'),
   type: PokemonType.Flying,
   power: 60,
   accuracy: 100,
@@ -626,7 +640,7 @@ export const AERIAL_ACE = new MoveBase({
  */
 export const ROCK_TOMB = new MoveBase({
   name: 'Rock Tomb',
-  description: "Boulders hurled at the target. Lowers the target's Speed.",
+  description: fireRedDescription('rock-tomb'),
   type: PokemonType.Rock,
   power: 50,
   accuracy: 80,
@@ -644,7 +658,7 @@ export const ROCK_TOMB = new MoveBase({
  */
 export const CUT = new MoveBase({
   name: 'Cut',
-  description: 'A slash with a claw or a blade. It also clears growth in the field.',
+  description: fireRedDescription('cut'),
   type: PokemonType.Normal,
   power: 50,
   accuracy: 95,
@@ -665,7 +679,7 @@ export const CUT = new MoveBase({
  */
 export const SURF = new MoveBase({
   name: 'Surf',
-  description: 'A wave that sweeps the field. It also carries its user over deep water.',
+  description: fireRedDescription('surf'),
   type: PokemonType.Water,
   power: 95,
   accuracy: 100,
@@ -680,7 +694,7 @@ export const SURF = new MoveBase({
  */
 export const ROCK_SMASH = new MoveBase({
   name: 'Rock Smash',
-  description: "A blow that often lowers the target's Defense.",
+  description: fireRedDescription('rock-smash'),
   type: PokemonType.Fighting,
   power: 20,
   accuracy: 100,
@@ -697,7 +711,7 @@ export const ROCK_SMASH = new MoveBase({
  */
 export const STRENGTH = new MoveBase({
   name: 'Strength',
-  description: 'A full-strength blow. It also lets its user push boulders in the field.',
+  description: fireRedDescription('strength'),
   type: PokemonType.Normal,
   power: 80,
   accuracy: 100,
@@ -724,7 +738,7 @@ export const STRENGTH = new MoveBase({
  */
 export const RAIN_DANCE = new MoveBase({
   name: 'Rain Dance',
-  description: 'Calls down rain for five turns: Water hits harder, Fire softer.',
+  description: fireRedDescription('rain-dance'),
   type: PokemonType.Water,
   power: 0,
   accuracy: 100,

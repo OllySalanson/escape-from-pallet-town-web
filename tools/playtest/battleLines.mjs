@@ -1,6 +1,6 @@
 // What a fight says, line by line, with a picture of each (`docs/screens/battle-lines/`).
 //
-//   node tools/playtest/battleLines.mjs <test-mode build url> <dir> [--port=N] [--hp=N] [--status=burn] [--move=NAME] [--items] [--party]
+//   node tools/playtest/battleLines.mjs <test-mode build url> <dir> [--port=N] [--hp=N] [--status=burn] [--move=NAME] [--items] [--party] [--moves]
 //
 // Deploys a new save into Greystone Vale with a Charmander on 7 HP leading a
 // Pikachu, Potions packed, and starts a wild Gastly fight. Reads every line
@@ -12,7 +12,8 @@
 // powers it), and `--items` opens ITEM before the move and photographs the
 // list with the line under its first medicine. `--status=burn` (or any
 // status) puts the Charmander in it, and `--party` opens POKéMON before the
-// move and photographs the list.
+// move and photographs the list. `--moves` opens FIGHT, puts the cursor on
+// the move asked for and photographs the list and the lines under it.
 import { attachBrowser, launchBrowser, PIXEL_WINDOW, sleep, writeScreenshot } from './browser.mjs';
 import { GAME, deploy, sceneIs } from './deploy.mjs';
 
@@ -92,6 +93,16 @@ try {
     console.log(`ITEM: ${(await page.evaluate(`${BATTLE}.describeForTest().commands.join(' | ')`))}`);
     console.log(`under it: ${await page.evaluate(`${BATTLE}.moveGuidanceTexts[0]?.text ?? ''`)}`);
     await writeScreenshot(`${dir}/${++shot}-items.png`, (await page.send('Page.captureScreenshot', { format: 'png' })).data);
+    await press('Escape');
+    await sleep(600);
+  }
+  if (args.includes('--moves')) {
+    await page.evaluate(`${BATTLE}.dispatchAction({ type: 'choose-fight' })`);
+    await sleep(600);
+    await page.evaluate(`(() => { const b = ${BATTLE}; b.selectedCommand = Math.max(0, b.state.player.moves.findIndex((m) => m.base.name.toUpperCase() === ${JSON.stringify(moveName)})); b.showCommands(); })()`);
+    await sleep(600);
+    console.log(`FIGHT on ${moveName}: ${(await page.evaluate(`${BATTLE}.moveGuidanceTexts.map((t) => t.text).join(' / ')`))}`);
+    await writeScreenshot(`${dir}/${++shot}-moves.png`, (await page.send('Page.captureScreenshot', { format: 'png' })).data);
     await press('Escape');
     await sleep(600);
   }
