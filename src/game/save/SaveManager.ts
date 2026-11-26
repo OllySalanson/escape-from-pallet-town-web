@@ -124,7 +124,7 @@ import {
 } from '../stash/Stash';
 import { getWorldMap, isWorldMapId, type WorldMapId } from '../worldMap';
 import type { GrowthRate } from '../pokemon/generated/speciesCatalogue';
-import { mergeSurvey, type SurveyRecord } from '../world/survey';
+import { mergeSurvey, type SurveyRecord, type SurveyedMap } from '../world/survey';
 import { mergeTrodden, troddenFromSurvey } from '../world/trodden';
 import { activeSaveSlot, PLAYTEST_SAVE_KEY, TRY_IT_SAVE_KEY, type SaveSlot } from '../dev/playtestMode';
 import { isFirstWordsId, type FirstWordsId } from '../hub/firstWords';
@@ -633,6 +633,13 @@ export interface RaidProgress {
    * save from before the locals, which is nobody heard yet.
    */
   readonly placesOnMap?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * The tiles of THE HARBOUR's yard the player has stood on, in the survey's
+   * bitset: THE MAP at home is the harbour, in colour where they have walked
+   * (`BaseScene.openMap`). Absent on a save from before it, which is a harbour
+   * still in fog until it is walked.
+   */
+  readonly harbourWalked?: SurveyedMap;
 }
 
 /** One map's raid history. Every other number on the drop-in screen is derived. */
@@ -2150,6 +2157,23 @@ export class SaveManager {
   }
 
   /**
+   * Adds the tiles of THE HARBOUR's yard just walked to the ones already kept,
+   * for THE MAP at home. It changes nothing a raid in flight holds, so it may
+   * be written while one is out, like a key learned.
+   */
+  public recordHarbourSteps(width: number, steps: Iterable<number>): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    const raidProgress: RaidProgress = {
+      ...game.raidProgress,
+      harbourWalked: mergeSurvey(game.raidProgress.harbourWalked, width, steps),
+    };
+    return this.save({ ...game, raidProgress });
+  }
+
+  /**
    * Puts a place on THE MAP, its local's tale heard to the end
    * (`world/locals.ts`). It changes nothing a raid in flight holds, so it is
    * written the moment it is heard, as a key learned is, and a raid lost
@@ -3505,6 +3529,13 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // player who has walked half the vale does not open THE MAP on fog.
     trodden: value.trodden === undefined ? troddenFromSurvey(clampSurvey(value.surveyed)) : clampSurvey(value.trodden),
     placesOnMap: clampPlacesOnMap(value.placesOnMap),
+    ...(isRecord(value.harbourWalked) &&
+    typeof value.harbourWalked.width === 'number' &&
+    Number.isSafeInteger(value.harbourWalked.width) &&
+    value.harbourWalked.width > 0 &&
+    typeof value.harbourWalked.tiles === 'string'
+      ? { harbourWalked: { width: value.harbourWalked.width, tiles: value.harbourWalked.tiles } }
+      : {}),
     // The starting area is never lost, so a save written before Floodplain Relay
     // became the first raid still opens on an insertion the player can use, and
     // a save that already banked the contract gets every level the contract now

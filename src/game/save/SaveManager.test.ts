@@ -1470,6 +1470,17 @@ describe('SaveManager', () => {
     expect([...troddenTiles(held, width)].sort((a, b) => a - b)).toEqual([1, 2]);
   });
 
+  it("keeps the harbour yard's walked tiles for THE MAP at home, added to and never replaced", () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+    expect(saves.load()?.raidProgress.harbourWalked).toBeUndefined();
+
+    expect(saves.recordHarbourSteps(90, [5, 6])).toBe(true);
+    expect(saves.recordHarbourSteps(90, [6, 95])).toBe(true);
+
+    expect([...surveyedTiles(saves.load()?.raidProgress.harbourWalked, 90)].sort((a, b) => a - b)).toEqual([5, 6, 95]);
+  });
+
   it('keeps each place a local has put on THE MAP, once, written the moment it is heard', () => {
     const storage = new MemoryStorage();
     const saves = freshSave(storage);
