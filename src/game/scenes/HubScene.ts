@@ -1351,13 +1351,17 @@ export class HubScene extends Phaser.Scene {
     // tab costs its pack rather than nothing (`run/raidInFlight.ts`).
     // It names the Pokemon that went, which are the raid's until it ends: two
     // tabs share one save, and the base in the other may not touch them.
-    const inFlight = createRaidInFlight(
-      requireInsertion(deployment.insertionId).mapId,
-      items,
-      deployment.stashSecureSlot.items ?? [],
-      deployment.packItemId,
-      deployment.party.map((stored) => stored.id),
-    );
+    const inFlight = {
+      ...createRaidInFlight(
+        requireInsertion(deployment.insertionId).mapId,
+        items,
+        deployment.stashSecureSlot.items ?? [],
+        deployment.packItemId,
+        deployment.party.map((stored) => stored.id),
+      ),
+      // Where it went in, for the raid log (`run/raidLog.ts`).
+      insertionId: deployment.insertionId,
+    };
     const recorded = this.saveManager.recordRaidInFlight(inFlight);
     if (recorded) {
       raidHeartbeat.start(inFlight.id, () => new SaveManager().raidInFlightId() === inFlight.id);

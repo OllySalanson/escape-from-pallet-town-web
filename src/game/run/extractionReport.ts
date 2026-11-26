@@ -227,8 +227,8 @@ export interface ExtractionReport {
   /** What the raid put the player through: escapes, fights, the clock. */
   readonly pressure: readonly string[];
   /**
-   * The party as it went down, in deployment order. Present only when the raid
-   * was lost in a battle, which is the one ending with a line-up to show.
+   * The party as the raid was lost, in deployment order: as it went down in a
+   * battle, or as it stood when the clock ran out. Present only on a lost raid.
    */
   readonly fallen?: readonly FallenPokemon[];
   /** What won the fight the raid was lost in, when it was lost in one. */
@@ -546,7 +546,9 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       ),
       ...pressureLines(snapshot, escaped, input.leftBehind ?? []),
     ],
-    ...(input.cause === 'defeated' ? { fallen: fallenParty(snapshot, input.lastStand) } : {}),
+    ...(input.cause === 'defeated' ? { fallen: fallenParty(snapshot, input.lastStand ?? 'last') } : {}),
+    // The clock takes the whole line-up at once, so nobody stands front and centre.
+    ...(input.cause === 'timer' ? { fallen: fallenParty(snapshot, null) } : {}),
     ...(input.cause === 'defeated' && input.lostTo ? { lostTo: input.lostTo } : {}),
     ...(input.cause === 'defeated' && input.beatenBy ? { beatenBy: input.beatenBy } : {}),
     ...badgeLines(input.bossesBeaten ?? []),
@@ -596,12 +598,14 @@ function wipedBaseNote(fitToRaid: boolean, restocked: readonly Stack[]): string 
  *
  * The last-stand flag falls back to the final member rather than going missing:
  * a losing battle always has one Pokemon out when it ends, and a caller that
- * cannot name it should still get a line-up with a subject.
+ * cannot name it should still get a line-up with a subject. Null names nobody:
+ * the clock runs out on the whole line-up at once.
  */
-function fallenParty(snapshot: RunSnapshot, lastStand: Pokemon | undefined): FallenPokemon[] {
+function fallenParty(snapshot: RunSnapshot, lastStand: Pokemon | 'last' | null): FallenPokemon[] {
   const deployed = snapshot.loadout?.party ?? [];
   const party = [...deployed, ...snapshot.caughtPokemon];
-  const standing = party.includes(lastStand as Pokemon) ? lastStand : deployed[deployed.length - 1];
+  const standing =
+    lastStand === null ? null : party.includes(lastStand as Pokemon) ? lastStand : deployed[deployed.length - 1];
   return party.map((member) => ({
     ...toReportPokemon(member),
     secured: protectedPokemon(snapshot).includes(member),

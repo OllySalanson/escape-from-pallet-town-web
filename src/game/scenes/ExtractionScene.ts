@@ -32,7 +32,7 @@ import type {
 import { formatMoney, isCurrency, itemAmountFor, itemCountTag } from '../items';
 import { publicAssetUrl } from '../publicAssetUrl';
 import { pokemonSpritePath } from '../pokemon/pokemonSprites';
-import { iconUrl, itemIcon, itemIconName, objectiveIcon, WORLD_ICONS } from '../ui/icons';
+import { BRIEFING_ICONS, iconUrl, itemIcon, itemIconName, objectiveIcon, WORLD_ICONS } from '../ui/icons';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import type { SceneDescription } from '../dev/testDescribe';
 import { formatExperience } from '../ui/pokemonSummary';
@@ -996,21 +996,29 @@ export class ExtractionScene extends Phaser.Scene {
  */
 function defeatMarkup(sequence: DefeatSequence): string {
   const cast = sequence.figures.map((figure, index) => defeatFigure(figure, index)).join('');
-  return `<div class="defeat-stage" data-defeat data-beat="" role="group" aria-label="Raid lost">
+  const timer = sequence.cause === 'timer';
+  // Out of time, the raid's own clock rings out over a line-up still standing.
+  const clock = timer
+    ? `<div class="defeat-clock" aria-hidden="true"><img src="${iconUrl(BRIEFING_ICONS.raidClock)}" alt="" /></div>`
+    : '';
+  return `<div class="defeat-stage" data-defeat data-beat="" data-cause="${sequence.cause}" role="group" aria-label="Raid lost">
     <div class="defeat-flash" aria-hidden="true"></div>
+    ${clock}
     <div class="defeat-field">
       <div class="defeat-cast">
         <figure class="defeat-figure is-trainer">
-          <span class="defeat-sprite"><span class="defeat-trainer" aria-label="You, face down in the grass"></span></span>
-          <span class="defeat-plate"><b>You</b><span class="defeat-meta"><small>Down</small></span></span>
+          <span class="defeat-sprite"><span class="defeat-trainer" aria-label="${timer ? 'You, out of time' : 'You, face down in the grass'}"></span></span>
+          <span class="defeat-plate"><b>You</b><span class="defeat-meta"><small>${timer ? 'Out of time' : 'Down'}</small></span></span>
         </figure>
         ${cast}
       </div>
     </div>
-    <div class="defeat-caption is-entering" aria-live="polite">
-      <p class="defeat-headline" data-defeat-headline></p>
-      <p class="defeat-detail" data-defeat-detail></p>
-      <p class="defeat-advance"><span data-defeat-prompt></span> <span class="defeat-advance-cursor" aria-hidden="true">${escapeHtml(sequence.promptIndicator)}</span></p>
+    <div class="defeat-caption-room">
+      <div class="defeat-caption is-entering" aria-live="polite">
+        <p class="defeat-headline" data-defeat-headline></p>
+        <p class="defeat-detail" data-defeat-detail></p>
+        <p class="defeat-advance"><span data-defeat-prompt></span> <span class="defeat-advance-cursor" aria-hidden="true">${escapeHtml(sequence.promptIndicator)}</span></p>
+      </div>
     </div>
   </div>`;
 }

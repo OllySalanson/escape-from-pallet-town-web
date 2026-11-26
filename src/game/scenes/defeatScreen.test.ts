@@ -240,7 +240,7 @@ function createScene(): { scene: ExtractionScene; start: ReturnType<typeof vi.fn
 
 const DURATION_MS = 300_000;
 
-function defeatReport(secureSecond = true): ExtractionReport {
+function defeatReport(secureSecond = true, cause: 'defeated' | 'timer' = 'defeated'): ExtractionReport {
   const party = [new Pokemon(CHARMANDER, 12), new Pokemon(BULBASAUR, 9)];
   const manager = new RunManager();
   const secureSlot = secureSecond ? { pokemon: [party[1]] } : {};
@@ -250,13 +250,15 @@ function defeatReport(secureSecond = true): ExtractionReport {
     secureSlot,
   );
   manager.tick(90_000);
-  for (const member of party) {
-    member.takeDamage(member.maxHp);
+  if (cause === 'defeated') {
+    for (const member of party) {
+      member.takeDamage(member.maxHp);
+    }
   }
   const result = manager.resolveWipe(secureSlot);
   return buildExtractionReport({
     outcome: 'WIPED',
-    cause: 'defeated',
+    cause,
     snapshot: manager.snapshot(),
     durationMs: DURATION_MS,
     lost: { pokemon: result.lostPokemon, items: result.lostItems },
@@ -304,6 +306,22 @@ describe('the result screen on a defeat', () => {
     // Supplies at stake are drawn with the game's own item art, never a glyph.
     expect(root.html).toContain('/assets/icons/potion.png');
     expect(root.html).not.toContain('data-continue');
+  });
+
+  it('opens a raid lost to the clock on the clock ringing out over the party still standing', () => {
+    const { root, advance } = open(defeatReport(true, 'timer'));
+    const headline = root.stage.child('[data-defeat-headline]');
+
+    expect(root.html).toContain('data-cause="timer"');
+    expect(root.html).toContain('/assets/icons/raid-clock.png');
+    expect(root.html).toContain('Out of time');
+    advance(READ_MS);
+    expect(root.stage.dataset.beat).toBe('clock');
+    expect(headline.textContent).toBe('THE CLOCK RAN OUT.');
+
+    press(' ');
+    expect(root.stage.dataset.beat).toBe('clock taken');
+    expect(headline.textContent).toBe('THE RAID KEPT THEM.');
   });
 
   it('plays its beats in order on the key it advertises, keeping each one as it reaches the next', () => {

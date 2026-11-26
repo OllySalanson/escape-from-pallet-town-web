@@ -159,6 +159,7 @@ import { readHomeLayout, type Placement } from '../home/arrangement';
 import { betterMedal, courseById, type RaceMedal, type RaceRecord } from '../world/races';
 import { readTrail, type RaceTrail } from '../world/raceGhost';
 import { saveWritten } from './keepSavesSafe';
+import { closeRaidLog, raidLogStart, readRaidLog, withRaidLogged, type RaidLogEnding, type RaidLogEntry, type RaidLogStart } from '../run/raidLog';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
 /** Beside a slot's save: how far its raid in flight has got (`writeRaidResume`). */
@@ -355,6 +356,8 @@ export interface RaidProgress {
   readonly pit?: PitRecord;
   /** What the pit remembers of the raids that went down into it (`world/raidMemory.ts`). */
   readonly raidMemory?: RaidMemory;
+  /** The last thirty raids: who and what went, came home and was lost (`run/raidLog.ts`). Absent is none. */
+  readonly raidLog?: readonly RaidLogEntry[];
   /**
    * The first words already said (`../hub/firstWords`): Professor Oak and Nurse
    * Joy speak a few lines the first time each of their screens opens, once per
@@ -849,6 +852,25 @@ function withGiftsAndHoardsBanked(game: RestoredGame, result: RunResult): Restor
   };
 }
 
+/**
+ * The progress with the raid in flight written into the raid log
+ * (`run/raidLog.ts`), measured off `settled` - the vault as the ending has
+ * left it, before anything is restocked. Unchanged when no raid was in flight.
+ */
+function withRaidEnded(
+  progress: RaidProgress,
+  start: RaidLogStart | null,
+  settled: Stash,
+  ending: RaidLogEnding,
+  elapsedMs?: number,
+): RaidProgress {
+  if (start === null) {
+    return progress;
+  }
+  const raidLog = withRaidLogged(progress.raidLog, closeRaidLog(start, settled, ending, new Date(), elapsedMs));
+  return raidLog === undefined ? progress : { ...progress, raidLog };
+}
+
 /** What every raid ending clears: the recovery a resolved raid has now paid for. */
 const RAID_RESOLVED = {
   pendingRecoveryMs: 0,
@@ -1336,14 +1358,16 @@ export class SaveManager {
     if (!loaded || !endsRaidInFlight(loaded, raidId)) {
       return false;
     }
+    const start = raidLogStart(loaded.raidInFlight, loaded.stash);
     const game = withGiftsAndHoardsBanked(loaded, result);
 
     applySettlement(game.stash, settlement);
     game.stash.bankRun(result);
+    const raidProgress = withRaidEnded(game.raidProgress, start, game.stash, 'out', elapsedMs);
     // The raid this debt paid for has now resolved, so it is settled. Charging
     // on resolution rather than on deployment is what stops a player healing,
     // deploying into the shortened raid and reloading the page to shed the bill.
-    return this.save({ ...game, ...resolvedBy(game, elapsedMs) });
+    return this.save({ ...game, raidProgress, ...resolvedBy(game, elapsedMs) });
   }
 
   /**
@@ -1369,7 +1393,10 @@ export class SaveManager {
     if (!loaded || !endsRaidInFlight(loaded, raidId)) {
       return { saved: false, granted: false };
     }
+    const start = raidLogStart(loaded.raidInFlight, loaded.stash);
     const game = withGiftsAndHoardsBanked(loaded, result);
+    // Written last of all, so a contract's reward is logged as come home with the raid.
+    const logged = (progress: RaidProgress): RaidProgress => withRaidEnded(progress, start, game.stash, 'out', elapsedMs);
 
     applySettlement(game.stash, settlement);
     game.stash.bankRun(result);
@@ -1379,7 +1406,7 @@ export class SaveManager {
         !isStandingBoardOpen(game.raidProgress.completedContracts) ||
         standingRoundOf(contractId) !== game.raidProgress.standingContractsBanked
       ) {
-        return { saved: this.save({ ...game, ...resolvedBy(game, elapsedMs) }), granted: false };
+        return { saved: this.save({ ...game, raidProgress: logged(game.raidProgress), ...resolvedBy(game, elapsedMs) }), granted: false };
       }
       for (const { itemId, quantity } of carried.reward.items) {
         game.stash.addItem(itemId, quantity);
@@ -1391,12 +1418,12 @@ export class SaveManager {
         ...game.raidProgress,
         standingContractsBanked: game.raidProgress.standingContractsBanked + 1,
       };
-      return { saved: this.save({ ...game, raidProgress, ...resolvedBy(game, elapsedMs) }), granted: true };
+      return { saved: this.save({ ...game, raidProgress: logged(raidProgress), ...resolvedBy(game, elapsedMs) }), granted: true };
     }
 
     const contract = getContract(contractId);
     if (!contract || game.raidProgress.completedContracts.includes(contractId)) {
-      return { saved: this.save({ ...game, ...resolvedBy(game, elapsedMs) }), granted: false };
+      return { saved: this.save({ ...game, raidProgress: logged(game.raidProgress), ...resolvedBy(game, elapsedMs) }), granted: false };
     }
 
     const completedContracts = [...game.raidProgress.completedContracts, contractId];
@@ -1416,7 +1443,7 @@ export class SaveManager {
       game.stash.addItem(itemId, quantity);
     }
     return {
-      saved: this.save({ ...game, raidProgress, ...resolvedBy(game, elapsedMs) }),
+      saved: this.save({ ...game, raidProgress: logged(raidProgress), ...resolvedBy(game, elapsedMs) }),
       granted: true,
     };
   }
@@ -2582,6 +2609,7 @@ export class SaveManager {
     if (!game || !raid || liveElsewhere(raid.id)) {
       return null;
     }
+    const start = raidLogStart(raid, game.stash);
     const brought = Object.entries(raid.items).map(([itemId, quantity]) => ({ itemId, quantity }));
     const secured = Object.entries(raid.secured)
       .filter(([itemId]) => !isFoundOnly(itemId))
@@ -2611,6 +2639,7 @@ export class SaveManager {
       game.stash.removeItem(raid.packItemId, 1);
     }
     const afterLoss = game.stash.listItems();
+    const withLog = withRaidEnded(game.raidProgress, start, game.stash, 'walked-away');
     game.stash.ensurePlayable(
       game.starterSpeciesId ? getStarterSpecies(game.starterSpeciesId) : undefined,
     );
@@ -2622,7 +2651,7 @@ export class SaveManager {
       .map(([itemId, quantity]) => ({ itemId, quantity: quantity - (afterLoss[itemId] ?? 0) }))
       .filter(({ quantity }) => quantity > 0);
     // Walking away from a raid is losing it, or a run could be saved by closing the tab.
-    const raidProgress = countShortRaid(extendRun(game.raidProgress, 'wiped'));
+    const raidProgress = countShortRaid(extendRun(withLog, 'wiped'));
     // And it has paid for nothing, as a raid out before the first hunter has:
     // what is owed - the heal booked against its clock, the ward's bed, Bill's
     // ration - is owed by the next raid that runs. Its length is not known
@@ -3052,11 +3081,14 @@ export class SaveManager {
     condition: readonly RaidCondition[] = [],
     packItemId?: string,
     raidId?: string,
+    ending: 'clock' | 'fainted' = 'fainted',
+    elapsedMs?: number,
   ): { readonly saved: boolean; readonly restocked: readonly { readonly itemId: string; readonly quantity: number }[] } {
     const game = this.load();
     if (!game || !endsRaidInFlight(game, raidId)) {
       return { saved: false, restocked: [] };
     }
+    const start = raidLogStart(game.raidInFlight, game.stash);
 
     game.stash.applyRaidCondition(condition);
     game.stash.applyWipeLoss(broughtPokemonIds, broughtItems, secureSlot, {
@@ -3084,6 +3116,7 @@ export class SaveManager {
       game.stash.removeItem(packItemId, 1);
     }
     const afterLoss = game.stash.listItems();
+    const raidProgress = withRaidEnded(game.raidProgress, start, game.stash, ending, elapsedMs);
     // A wipe must never hand the player back a run they cannot attempt: a fresh
     // starter when none survived, and whatever the kit is short of either way,
     // including when the secure slot saved a Pokemon but no items. It is the
@@ -3096,7 +3129,7 @@ export class SaveManager {
     const restocked = Object.entries(after)
       .map(([itemId, quantity]) => ({ itemId, quantity: quantity - (afterLoss[itemId] ?? 0) }))
       .filter(({ quantity }) => quantity > 0);
-    const saved = this.save({ ...game, ...paidOff(game, true) });
+    const saved = this.save({ ...game, raidProgress, ...paidOff(game, true) });
     return { saved, restocked: saved ? restocked : [] };
   }
 }
@@ -3440,6 +3473,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     ...(readBoutUnderWay(value.boutUnderWay) === undefined ? {} : { boutUnderWay: readBoutUnderWay(value.boutUnderWay) }),
     ...(Array.isArray(value.gymsMet) ? { gymsMet: uniqueStrings(value.gymsMet).filter((id) => gymOf(id) !== undefined) } : {}),
     ...(value.raidMemory === undefined ? {} : { raidMemory: readRaidMemory(value.raidMemory) }),
+    ...(readRaidLog(value.raidLog) === undefined ? {} : { raidLog: readRaidLog(value.raidLog) }),
     ...(Array.isArray(value.firstWordsHeard)
       ? { firstWordsHeard: uniqueStrings(value.firstWordsHeard).filter(isFirstWordsId) }
       : {}),

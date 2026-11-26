@@ -1,7 +1,9 @@
 import { describeGroup, describeLoss, type ExtractionReport, type ReportItem } from './extractionReport';
 
 /**
- * The three beats a lost raid opens on, before the result screen's accounting.
+ * The three beats a lost raid opens on, before the result screen's accounting:
+ * a raid lost in a fight opens on its party falling, and one lost to the clock
+ * on the clock ringing out over a party still standing.
  *
  * A defeat is the only moment in the loop where the secure-slot decision is
  * finally paid, so the sequence is built to answer that decision rather than to
@@ -48,7 +50,7 @@ export interface DefeatFigure {
   readonly lastStand: boolean;
 }
 
-export type DefeatBeatId = 'fall' | 'taken' | 'held';
+export type DefeatBeatId = 'fall' | 'clock' | 'taken' | 'held';
 
 export interface DefeatBeat {
   readonly id: DefeatBeatId;
@@ -64,6 +66,8 @@ export interface DefeatBeat {
 }
 
 export interface DefeatSequence {
+  /** What lost the raid: a fight, whose line-up falls, or the clock, whose stands. */
+  readonly cause: 'defeated' | 'timer';
   /** The party and the supplies at stake, in the order they are drawn. */
   readonly figures: readonly DefeatFigure[];
   readonly beats: readonly DefeatBeat[];
@@ -121,20 +125,46 @@ const BEAT_HOLD_MS = 650;
 const MAX_FIGURES = 8;
 
 /**
- * Builds the sequence for a report, or null when the report is not a defeat.
+ * Builds the sequence for a report, or null when the report is not a loss.
  *
- * A raid lost to the clock is a different failure with no line-up on the ground,
- * and an extraction is not a failure at all; both go straight to the accounting.
+ * A raid lost to the clock stands its party up too: what the raid kept is
+ * the whole point of losing one, and a loss read off a ledger went unseen - a
+ * player came home from one sure they still had the Pidgey and Magikarp it
+ * took (Olly, 25 Nov 2026). An extraction is not a failure at all, and goes
+ * straight to the accounting.
  */
 export function buildDefeatSequence(report: ExtractionReport): DefeatSequence | null {
   const fallen = report.fallen ?? [];
-  if (report.outcome !== 'WIPED' || report.cause !== 'defeated' || fallen.length === 0) {
+  if (report.outcome !== 'WIPED' || fallen.length === 0) {
     return null;
   }
 
   const figures = buildFigures(report);
   const takenNames = describeLoss(report);
   const heldNames = describeGroup(report.secured);
+  const held = heldBeat(heldNames, report.partner?.name, report.secureFilledForYou === true);
+  if (report.cause === 'timer') {
+    return {
+      cause: 'timer',
+      figures,
+      beats: [
+        {
+          id: 'clock',
+          headline: 'THE CLOCK RAN OUT.',
+          detail: 'Every exit shut with you still inside.',
+          prompt: ADVANCE_PROMPT,
+        },
+        keptByTheRaid(takenNames, report.kitAtBase),
+        held,
+      ],
+      leadInMs: LEAD_IN_MS,
+      holdMs: BEAT_HOLD_MS,
+      promptIndicator: PROMPT_INDICATOR,
+    };
+  }
+  if (report.cause !== 'defeated') {
+    return null;
+  }
   const standing = fallen.find((member) => member.lastStand) ?? fallen[fallen.length - 1];
 
   const beats: DefeatBeat[] = [
@@ -152,10 +182,23 @@ export function buildDefeatSequence(report: ExtractionReport): DefeatSequence | 
       prompt: ADVANCE_PROMPT,
     },
     report.lostTo === 'wild' ? lostToTheWild(takenNames, report.kitAtBase) : strippedByTrainer(takenNames, report.kitAtBase),
-    heldBeat(heldNames, report.partner?.name, report.secureFilledForYou === true),
+    held,
   ];
 
-  return { figures, beats, leadInMs: LEAD_IN_MS, holdMs: BEAT_HOLD_MS, promptIndicator: PROMPT_INDICATOR };
+  return { cause: 'defeated', figures, beats, leadInMs: LEAD_IN_MS, holdMs: BEAT_HOLD_MS, promptIndicator: PROMPT_INDICATOR };
+}
+
+/** The clock ran out: nobody went through the bag, the raid simply kept what was not protected. */
+function keptByTheRaid(takenNames: string | null, kitAtBase: string | undefined): DefeatBeat {
+  return {
+    id: 'taken',
+    headline: takenNames === null ? 'NOTHING WAS LOST.' : 'THE RAID KEPT THEM.',
+    detail:
+      takenNames === null
+        ? 'Everything you carried out was already protected.'
+        : `${capitalise(takenNames)} stayed behind, gone for good.${kitLine(kitAtBase)}`,
+    prompt: ADVANCE_PROMPT,
+  };
 }
 
 /**

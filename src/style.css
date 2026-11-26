@@ -775,6 +775,89 @@ button {
     opacity: 0;
   }
 }
+/* Out of time: the raid's own clock rings out over a line-up still standing,
+   and the line-up is what it costs. Nobody falls - the clock is nobody's fight
+   - so what the raid keeps fades out where it stood, and what was protected
+   hops up in full colour. */
+.defeat-stage[data-beat~='clock'] .defeat-flash {
+  background: #ff6b5a;
+  animation: defeat-flash 300ms steps(3) forwards;
+}
+.defeat-clock {
+  display: grid;
+  place-items: center;
+  width: 80px;
+  height: 80px;
+  border: 4px solid #a8564a;
+  background: #2a1013;
+  box-shadow:
+    0 0 0 4px #080609,
+    6px 6px 0 rgb(0 0 0 / 50%);
+  opacity: 0;
+}
+.defeat-clock img {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+}
+.defeat-stage[data-beat~='clock'] .defeat-clock {
+  animation: defeat-clock-ring 900ms steps(9) forwards;
+}
+@keyframes defeat-clock-ring {
+  0% {
+    opacity: 1;
+    transform: scale(1.5) rotate(0);
+  }
+  15% {
+    transform: scale(1.2) rotate(-14deg);
+  }
+  30% {
+    transform: scale(1.1) rotate(14deg);
+  }
+  45% {
+    transform: scale(1) rotate(-10deg);
+  }
+  60% {
+    transform: rotate(10deg);
+  }
+  75% {
+    transform: rotate(-4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(0);
+    filter: grayscale(0.6) brightness(0.8);
+  }
+}
+.defeat-stage[data-cause='timer'][data-beat~='taken'] .defeat-figure[data-fate='taken']:not(.is-trainer) .defeat-sprite {
+  animation: defeat-left-behind 640ms steps(6) forwards;
+  animation-delay: calc(var(--figure-index, 0) * 90ms);
+}
+@keyframes defeat-left-behind {
+  0% {
+    transform: translateY(0) scale(1);
+    filter: none;
+  }
+  100% {
+    /* Dimmed as well by the taken beat's own fade, on the picture inside. */
+    transform: translateY(10px) scale(0.78);
+    filter: grayscale(1) brightness(0.6);
+  }
+}
+.defeat-stage[data-cause='timer'][data-beat~='held'] .defeat-figure[data-kind][data-fate='held'] .defeat-sprite {
+  animation: defeat-hop 420ms steps(4) forwards;
+}
+@keyframes defeat-hop {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-18px);
+  }
+  100% {
+    transform: translateY(-8px);
+  }
+}
 /* The field is only ever a band of ground under the line-up: the overworld's
    grass is 16px art built for a top-down camera and reads as wallpaper here. */
 .defeat-field {
@@ -1124,6 +1207,21 @@ button {
     transform: translateY(0) scale(1);
   }
 }
+/* The caption's room is kept for its longest beat - a headline, three lines
+   and the prompt - and the caption hangs from the top of it, so a beat whose
+   words run a line longer than the last never lifts the line-up above it: the
+   stage is centred, and a growing caption moved every figure up the screen
+   at each beat. */
+.defeat-caption-room {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  width: 100%;
+  min-height: calc(
+    2 * clamp(9px, 1.8vw, 15px) + 8px + 0.95 * clamp(24px, 4.2vw, 40px) + 8px + 3.6 * clamp(14px, 1.9vw, 20px) + 7px +
+      1.3 * clamp(15px, 2.1vw, 22px)
+  );
+}
 .defeat-caption {
   position: relative;
   z-index: 1;
@@ -1141,7 +1239,7 @@ button {
     10px 10px 0 rgb(0 0 0 / 50%);
   text-align: center;
 }
-.defeat-stage:not([data-beat~='fall']) .defeat-caption {
+.defeat-stage:not([data-beat~='fall']):not([data-beat~='clock']) .defeat-caption {
   opacity: 0;
 }
 /* Only the words animate in. Fading the whole panel made its heavy frame blink
