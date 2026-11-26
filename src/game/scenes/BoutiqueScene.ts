@@ -6,7 +6,7 @@ import { boutiqueMarkup, honoursIfChosen, mirrorFigures, shelfStep, turningFigur
 import { honourArts, honourById, honoursEarned, honoursKey, honoursWorn, isHonourId, type HonourId } from '../look/gymHonours';
 import { dressIn, type WornPackBody } from '../look/wornPack';
 import { composeLook, PIECE_HEIGHT, PIECE_WIDTH } from '../look/composeLook';
-import { lookKey, readLook, wearing, type PlayerLook } from '../look/look';
+import { lookKey, readLook, sameLook, wearing, type PlayerLook } from '../look/look';
 import { wearablesAtlas } from '../look/lookTexture';
 import { ownedWearables, wholeLookById } from '../look/wardrobe';
 import { BOUTIQUE_NAME } from '../look/wearables';
@@ -267,6 +267,12 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
     const worn = this.overlay?.root.querySelector<HTMLElement>('[data-worn]');
     if (worn) {
       worn.innerHTML = wornRows({ trying: shown, owned: this.state().owned, honours: this.honoursWorn() });
+    }
+    // And the mirror says it is a try-on: it stayed headed "what you have on"
+    // over a look the cursor was only pointing at (the harbour re-critic).
+    const note = mirror?.closest('.px-window')?.querySelector<HTMLElement>('.px-heading small');
+    if (note) {
+      note.textContent = sameLook(shown, this.state().wearing) ? 'what you have on' : 'trying on';
     }
   }
 
