@@ -135,7 +135,7 @@ export function outdoorPickMarkup(state: OutdoorPickState): string {
     close: { attribute: 'data-close' },
     aside: pixelTag(`${number(state.tickets)} tickets`, 'secure'),
     body,
-    hints: 'Arrows choose · ENTER picks this one · ESC leaves',
+    hints: 'ARROWS move · ENTER picks this one · ESC back',
     ...(state.status ? { status: state.status } : {}),
   });
 }

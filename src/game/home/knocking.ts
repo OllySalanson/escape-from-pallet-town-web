@@ -19,7 +19,7 @@ export const KNOCK_ASK_EVERY_MS = 1_500;
 export const KNOCK_WAIT_MS = 65_000;
 
 /** What the foot of the knock screen says the keys do. */
-export const KNOCK_HINTS = 'ARROWS choose · ENTER knock · ESC back';
+export const KNOCK_HINTS = 'ARROWS move · ENTER knock · ESC back';
 
 /**
  * What THE BOLTHOLE's garden sign says, in the ordinary text box, before the

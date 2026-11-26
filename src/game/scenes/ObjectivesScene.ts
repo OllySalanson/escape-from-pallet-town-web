@@ -144,7 +144,7 @@ export class ObjectivesScene extends Phaser.Scene {
       close: { attribute: 'data-close' },
       aside: 'Raid paused',
       body,
-      hints: 'ARROWS read · O or ESC back to the raid',
+      hints: 'ARROWS read · ESC back',
     });
     this.menuOverlay.root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
     this.menuOverlay.focus('.px-list button', '[data-close]');

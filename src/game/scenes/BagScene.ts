@@ -463,8 +463,8 @@ export class BagScene extends Phaser.Scene {
             aside: CLOCK_STOPPED,
             body: using ? this.recipientBody(using) : this.pocketBody(),
             hints: using
-              ? 'ARROWS move · ENTER give it · ESC back to the pack'
-              : 'ARROWS move · ENTER use · X drop · ESC back to the raid',
+              ? 'ARROWS move · ENTER give it · ESC back'
+              : 'ARROWS move · ENTER use · X drop · ESC back',
             status,
           },
     );

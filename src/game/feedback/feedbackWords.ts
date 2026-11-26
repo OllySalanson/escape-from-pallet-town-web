@@ -27,7 +27,7 @@ export const PANEL_PAUSED = 'Game paused';
 /** Above the box. */
 export const PANEL_ASK = 'What happened out there? What would make it better?';
 
-export const PANEL_HINTS = 'TYPE or TALK · TAB to the buttons · ESC close';
+export const PANEL_HINTS = 'TYPE or TALK · TAB to the buttons · ESC back';
 
 /** SEND with nothing typed and nothing recorded. */
 export const EMPTY_SEND_LINE = 'Dead air. Type something, or press TALK.';

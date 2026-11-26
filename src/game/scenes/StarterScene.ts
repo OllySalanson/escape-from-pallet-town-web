@@ -52,7 +52,7 @@ export class StarterScene extends Phaser.Scene {
       place: 'New game',
       title: CANNOT_SAVE_TITLE,
       close: { attribute: 'data-title data-sfx="confirm"' },
-      hints: 'ESC back to the title',
+      hints: 'ESC back',
       body: `<main class="px-body starter-shell"><p class="starter-brief">Nothing was started.</p>${pixelWindow(
         `<p class="px-wrap cannot-save">${CANNOT_SAVE_MESSAGE}</p>`,
         { heading: 'Saving is switched off' },

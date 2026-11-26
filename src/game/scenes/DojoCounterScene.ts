@@ -232,7 +232,7 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
           : this.mode === 'rental'
             ? 'ARROWS move · ENTER take or swap · ESC back'
             : this.mode === null
-              ? 'ARROWS move · ENTER choose · ESC close'
+              ? 'ARROWS move · ENTER choose · ESC back'
               : 'ARROWS move · ENTER choose who to fight · ESC back',
         ...(status ? { status } : {}),
       }),

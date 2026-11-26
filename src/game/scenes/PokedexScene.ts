@@ -181,7 +181,7 @@ export class PokedexScene extends Phaser.Scene implements ProvidesFeedbackContex
       // Said here only where the band has no room to say it (`.dex-aside`).
       aside: `<span class="dex-aside">${pixelTag(`${dex.owned.length} of ${KANTO_POKEDEX_SIZE}`)}</span>`,
       body: dexListBody(this.state, this.cursor),
-      hints: `ARROWS move · ENTER opens a page · ${POKEDEX_KEY} close`,
+      hints: 'ARROWS move · ENTER opens a page · ESC back',
     });
     overlay.root.querySelectorAll<HTMLButtonElement>('[data-close]').forEach((button) => {
       button.onclick = () => this.close();

@@ -27,7 +27,7 @@ export interface GamesMenuState {
   readonly status?: string;
 }
 
-export const GAMES_MENU_HINTS = 'ARROWS choose · ENTER play · N your name · ESC back to the house';
+export const GAMES_MENU_HINTS = 'ARROWS move · ENTER play · N your name · ESC back';
 
 /**
  * The keys while the name box is open, where N is a letter and Escape puts the

@@ -181,7 +181,7 @@ export function outcomeMarkup(outcome: FeedbackOutcome, tag: string, retrying = 
     `<p class="px-wrap">${words.line}</p><p class="feedback-tag-row"><span class="feedback-tag">${tag}</span><span class="px-wrap">${TAG_NOTE}</span></p>${retry}`,
     { heading: words.headline, className: `feedback-outcome is-${outcome}` },
   )}</main>`;
-  return pixelScreen({ title: PANEL_TITLE, close: { attribute: 'data-close' }, aside: PANEL_PAUSED, body, hints: 'ESC back to the game' });
+  return pixelScreen({ title: PANEL_TITLE, close: { attribute: 'data-close' }, aside: PANEL_PAUSED, body, hints: 'ESC back' });
 }
 
 function escapeHtml(value: string): string {

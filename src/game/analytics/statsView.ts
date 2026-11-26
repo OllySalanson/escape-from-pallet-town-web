@@ -29,7 +29,7 @@ export type StatsState =
 /** How tall the tallest day's bar is, in game pixels. */
 export const CHART_HEIGHT = 40;
 
-export const STATS_HINTS = 'ARROWS read · R check again · ESC back to the title';
+export const STATS_HINTS = 'ARROWS read · R check again · ESC back';
 
 const number = (value: number): string => value.toLocaleString('en-GB');
 
