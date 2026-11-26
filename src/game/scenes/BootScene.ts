@@ -197,7 +197,7 @@ export class BootScene extends Phaser.Scene {
     dusk.fillRect(0, 0, width, height);
     const barWidth = Math.min(120, width - 64);
     const bar = { x: Math.floor((width - barWidth) / 2), y: Math.floor(height * 0.62), width: barWidth, height: 7 };
-    drawPixelWindow(dusk, bar, { fill: 0x0f1f33 });
+    drawPixelWindow(dusk, bar, { fill: 0x221d1e });
     const fill = this.add.graphics();
     this.load.on('progress', (progress: number) => {
       fill.clear();

@@ -22,15 +22,18 @@
 }
 
 :root {
-  --menu-bg: #0b1220;
-  --menu-surface: #111c2e;
-  --menu-raised: #18263c;
-  --menu-border: #2b3e59;
-  --menu-text: #edf4ff;
-  --menu-muted: #9cafc7;
-  --menu-accent: #55d6be;
-  --menu-accent-dark: #123b3a;
-  --menu-danger: #ff917b;
+  --menu-bg: #1c1819;
+  --menu-surface: #221d1e;
+  --menu-raised: #3b3436;
+  --menu-border: #625a5d;
+  --menu-text: #ffffff;
+  --menu-muted: #b9b1b4;
+  --menu-accent: #ffc823;
+  --menu-accent-dark: #3b3436;
+  --menu-danger: #f06a4a;
+  /* The mark over the player's head in the world (`PLAYER_MARKER_COLOUR`):
+     teal, used nowhere else on the map, so nothing there is mistaken for it. */
+  --player-mark: #55d6be;
   --space-1: 8px;
   --space-2: 12px;
   --space-3: 18px;
@@ -53,7 +56,7 @@ body {
 #app {
   /* A frame drawn outside the layout box: a border here would eat pixels off
      the canvas and put the art back on a fractional scale. */
-  box-shadow: 0 0 0 2px #253d55;
+  box-shadow: 0 0 0 2px #221d1e;
   width: 640px;
   height: 480px;
   max-width: 100vw;
@@ -88,7 +91,7 @@ body {
    the screen no pixels - `MENU_INSET` is the room kept for it - and only while
    a screen is in the layer, or an empty one drew a rectangle round the raid. */
 #screens:not(:empty) {
-  box-shadow: 0 0 0 2px #253d55;
+  box-shadow: 0 0 0 2px #221d1e;
 }
 #screens .menu-overlay {
   pointer-events: auto;
@@ -286,15 +289,15 @@ body {
    it showing. */
 #screens:has(> .menu-overlay.pixel-ui:not([data-layout='side']):not(.arena-panel)) {
   box-shadow:
-    0 0 0 2px #253d55,
+    0 0 0 2px #221d1e,
     0 0 0 200vmax #000;
 }
-/* With the touch pad up the page round a screen is the pad's own navy, so the
-   pad does not jump from navy to black under a thumb as a screen opens. */
+/* With the touch pad up the page round a screen is the pad's own ink, so the
+   pad does not jump from ink to black under a thumb as a screen opens. */
 body.touch-play #screens:has(> .menu-overlay.pixel-ui:not([data-layout='side']):not(.arena-panel)) {
   box-shadow:
-    0 0 0 2px #253d55,
-    0 0 0 200vmax #0e1b27;
+    0 0 0 2px #221d1e,
+    0 0 0 200vmax #121011;
 }
 
 /* The bot check (`maker/playerSignIn.ts`), over everything - every menu and a console game - because a
@@ -453,7 +456,7 @@ button {
 }
 
 .panel{
-  background: rgb(17 28 46 / 90%);
+  background: rgb(34 29 30 / 90%);
   border: 1px solid var(--menu-border);
   border-radius: var(--radius);
   padding: var(--space-3);
@@ -577,7 +580,7 @@ button {
 .test-lab-list button:hover,
 .test-lab-list button.selected {
   border-color: var(--menu-accent);
-  background: #1d3950;
+  background: #3b3436;
 }
 .lab-state {
   width: 20px;
@@ -627,7 +630,7 @@ button {
 .sound-board-grid button:hover,
 .sound-board-grid button.selected {
   border-color: var(--menu-accent);
-  background: #1d3950;
+  background: #3b3436;
 }
 .sound-board-grid small {
   color: var(--menu-muted);
@@ -1220,21 +1223,21 @@ button {
   padding: 0;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  border: 2px solid #24344c;
+  border: 2px solid #221d1e;
   border-left: 0;
   border-radius: 0;
-  background: #3c5c86;
-  color: #f8f0c8;
+  background: #221d1e;
+  color: #ffffff;
   font-family: 'Orange Kid', monospace;
   font-size: 25px;
   line-height: 26px;
   letter-spacing: 0;
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 2px 0 0 #0b1220;
+  box-shadow: 2px 0 0 #e3350d;
 }
 .feedback-tab:hover {
-  background: #5a82b0;
+  background: #3b3436;
 }
 .feedback-tab[hidden] {
   display: none;
@@ -1753,52 +1756,58 @@ body.touch-play .feedback-tab {
    ========================================================================== */
 .menu-overlay.pixel-ui {
   --u: var(--px, 2px);
-  /* The pop-ups' palette (`src/game/ui/uiPalette.ts`): FireRed's window - cream
-     paper, a navy line, a blue rim - and a red cursor, so a question asked in
-     the yard and the screen it opens are one surface (the captain, 25 Nov
-     2026: "shite colours"; `docs/screens/menu-system/`). */
-  --ink: #303030;
-  --ink-soft: #645e4a;
-  --frame: #24344c;
-  --cream: #f0eccc;
-  --cream-lit: #fff6c8;
-  --cream-dim: #e2ddb8;
-  --backdrop: #16263a;
-  --backdrop-band: #1b2f48;
-  /* The title and help bars are the frame's own navy, so they read as part of
-     the window; a panel's heading is the rim's shade, a step lighter. */
-  --bar: #24344c;
-  --heading: #3c5c86;
-  --bar-text: #f8f0c8;
-  --bar-muted: #c4daf0;
-  --rim: #5a82b0;
-  --rim-light: #b4d0ec;
-  --rim-shade: #3c5c86;
-  --cursor: #d83828;
-  --confirm: #2c7e48;
-  --confirm-lit: #3a9a5a;
-  --teal: #55d6be;
-  --teal-wash: #dde6e6;
-  /* Teal dark enough to be a mark on cream (4.9:1); --teal is 1.5:1 there and
-     reads only on the dark bar (playtest 39 D1). */
-  --teal-ink: #236a3c;
-  --gold: #f0c454;
-  --gold-wash: #f2e5ab;
-  --red: #b0201c;
-  --red-wash: #f0d3bd;
+  /* The menus' palette (`src/game/ui/uiPalette.ts`): a Poke Ball, opened. Five
+     colours, one job each (the captain, 25 Nov 2026: "It must be the new way of
+     doing it ... Do not keep any of the old menu style"; the round-3 look,
+     `docs/screens/menu-look/`):
+       ink and white - everything else: words, paper, lines, title strips;
+       red   - can be lost: the raid pack, a wipe, the cursor's arrow, and the
+               one exception, the title strip's seam;
+       gold  - the chosen thing, and prices;
+       green - safe, ready, go: the main button, the locker, healing.
+     No navy, blue or cream anywhere in a menu's own colours. */
+  --ink: #221d1e;
+  --ink-2: #3b3436;
+  --ink-soft: #625a5d;
+  --line: #221d1e;
+  --paper: #ffffff;
+  /* The row under the cursor: gold's own wash. */
+  --paper-lit: #fff1b8;
+  /* Wells and empty slots. */
+  --paper-sunk: #e7e6ea;
+  --mist-2: #c9c7ce;
+  /* Behind a screen: the place you are in, dimmed, so a menu is always over
+     somewhere rather than over a pattern. */
+  --backdrop: rgb(18 16 17 / 72%);
+  /* The title strip, a window's heading strip and the help strip: ink. */
+  --bar: #221d1e;
+  --heading: #221d1e;
+  --bar-text: #ffffff;
+  --bar-muted: #b9b1b4;
+  --cursor: #e3350d;
+  --go: #2f9e46;
+  --go-lit: #39b553;
+  --safe: #2f9e46;
+  --safe-wash: #d7f5dc;
+  --safe-ink: #1d6c2e;
+  --gold: #ffc823;
+  --gold-ink: #8a6700;
+  --gold-wash: #fff1b8;
+  --red: #e3350d;
+  --red-ink: #a32208;
+  --risk-wash: #fde3dc;
+  --shade: rgb(0 0 0 / 42%);
   --px-cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h1v1h1v1h-1v1h-1v1h-1z'/%3E%3C/svg%3E");
   --px-more: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 3' shape-rendering='crispEdges'%3E%3Cpath fill='%235d5c47' d='M0 0h5v1h-1v1h-1v1h-1v-1h-1v-1h-1z'/%3E%3C/svg%3E");
   --px-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 5' shape-rendering='crispEdges'%3E%3Cpath d='M6 0h1v1h-1zM5 1h1v1h-1zM4 2h1v1h-1zM0 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM2 4h1v1h-1z'/%3E%3C/svg%3E");
   --px-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h-1zM4 0h1v1h-1zM1 1h1v1h-1zM3 1h1v1h-1zM2 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM0 4h1v1h-1zM4 4h1v1h-1z'/%3E%3C/svg%3E");
   --px-close: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h-1zM1 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM3 3h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1z'/%3E%3C/svg%3E");
+  --px-ball: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath fill='%23221d1e' d='M2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM1 1h1v1h-1zM7 1h1v1h-1zM0 2h1v1h-1zM8 2h1v1h-1zM0 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM8 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM0 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM8 5h1v1h-1zM0 6h1v1h-1zM8 6h1v1h-1zM1 7h1v1h-1zM7 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1z'/%3E%3Cpath fill='%23e3350d' d='M2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1z'/%3E%3Cpath fill='%23ffffff' d='M4 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1z'/%3E%3C/svg%3E");
   --px-hollow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h5v5h-5zM1 1v3h3v-3z' fill-rule='evenodd'/%3E%3C/svg%3E");
   overflow: hidden;
-  /* A calm checker of two blues, eight pixels a square, the way the party
-     screen of the games this is dressed as is never one flat colour. Two-pixel
-     bands read as a CRT's scan lines. */
-  background:
-    conic-gradient(var(--backdrop-band) 25%, var(--backdrop) 0 50%, var(--backdrop-band) 0 75%, var(--backdrop) 0)
-    0 0 / calc(var(--u) * 16) calc(var(--u) * 16);
+  /* Behind a screen is the place it was opened in, crisp and dimmed: the
+     paused scene is still drawn under the menu layer. */
+  background: var(--backdrop);
   color: var(--ink);
   font-family: 'Orange Kid', monospace;
   font-size: calc(var(--u) * 12.5);
@@ -1868,48 +1877,39 @@ body.touch-play .feedback-tab {
   will-change: transform;
 }
 :where(.pixel-ui) .px-screen::after {
-  /* The pop-ups' frame round the whole screen (`drawFramedWindow`): a line
-     with clear corners, a two-pixel blue rim and a bevel, four pixels deep.
-     Painted over the screen's own edge rather than padded inside it - there it
-     lies on the navy bars and the body's own padding, so a column that was
-     exactly full stays full. Only round the screen: a rim round every panel
-     inside it would crowd the rows. So a screen reads as one window of the
-     game, as the question in the yard does. */
+  /* One line of ink round the whole screen, its corners clear, as every card
+     in it is drawn: painted over the screen's own edge rather than padded
+     inside it, so a column that was exactly full stays full. A side panel
+     needs it to stand off the map beside it. */
   content: '';
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
   background:
-    linear-gradient(var(--rim-light), var(--rim-light)) calc(var(--u) * 3) calc(var(--u) * 3) / calc(100% - var(--u) * 6) var(--u) no-repeat,
-    linear-gradient(var(--rim-light), var(--rim-light)) calc(var(--u) * 3) calc(var(--u) * 3) / var(--u) calc(100% - var(--u) * 6) no-repeat,
-    linear-gradient(var(--rim-shade), var(--rim-shade)) left calc(var(--u) * 4) bottom calc(var(--u) * 3) / calc(100% - var(--u) * 7) var(--u) no-repeat,
-    linear-gradient(var(--rim-shade), var(--rim-shade)) right calc(var(--u) * 3) top calc(var(--u) * 4) / var(--u) calc(100% - var(--u) * 7) no-repeat,
-    linear-gradient(var(--rim), var(--rim)) var(--u) var(--u) / calc(100% - var(--u) * 2) calc(var(--u) * 2) no-repeat,
-    linear-gradient(var(--rim), var(--rim)) left var(--u) bottom var(--u) / calc(100% - var(--u) * 2) calc(var(--u) * 2) no-repeat,
-    linear-gradient(var(--rim), var(--rim)) var(--u) var(--u) / calc(var(--u) * 2) calc(100% - var(--u) * 2) no-repeat,
-    linear-gradient(var(--rim), var(--rim)) right var(--u) top var(--u) / calc(var(--u) * 2) calc(100% - var(--u) * 2) no-repeat,
-    linear-gradient(var(--frame), var(--frame)) var(--u) 0 / calc(100% - var(--u) * 2) var(--u) no-repeat,
-    linear-gradient(var(--frame), var(--frame)) var(--u) 100% / calc(100% - var(--u) * 2) var(--u) no-repeat,
-    linear-gradient(var(--frame), var(--frame)) 0 var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat,
-    linear-gradient(var(--frame), var(--frame)) 100% var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat;
+    linear-gradient(var(--line), var(--line)) var(--u) 0 / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--line), var(--line)) var(--u) 100% / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--line), var(--line)) 0 var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat,
+    linear-gradient(var(--line), var(--line)) 100% var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat;
 }
+/* The title strip: ink, with the Poke Ball's red seam under it - two pixels of
+   red and one of ink - and a Poke Ball before the screen's name. The seam is
+   the one place red does not mean "can be lost". */
 :where(.pixel-ui) .px-title {
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 6);
-  /* Its top four pixels are under the screen's frame: two more, and the words
-     stand clear of it, accents and all - at sixteen the frame took the mark off
-     POKÉDEX's E. */
   height: calc(var(--u) * 18);
-  padding: calc(var(--u) * 2) calc(var(--u) * 6) 0;
+  padding: 0 calc(var(--u) * 4) 0 calc(var(--u) * 5);
   background: var(--bar);
-  box-shadow: 0 var(--u) 0 var(--frame);
+  box-shadow:
+    0 calc(var(--u) * 2) 0 var(--red),
+    0 calc(var(--u) * 3) 0 var(--line);
   color: var(--bar-text);
   text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
-  /* Over the body, so its one-pixel underline is never painted out. */
+  /* Over the body, so its seam is never painted out. */
   position: relative;
   z-index: 1;
 }
@@ -1921,16 +1921,25 @@ body.touch-play .feedback-tab {
   min-width: 0;
   overflow: hidden;
   text-overflow: clip;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 5);
+}
+:where(.pixel-ui) .px-title h1::before {
+  content: '';
+  flex: none;
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 9);
+  background: var(--px-ball) center / 100% 100% no-repeat;
 }
 :where(.pixel-ui) .px-place {
   position: relative;
   color: var(--bar-muted);
   margin-right: calc(var(--u) * 10);
 }
-/* A drawn chevron in the rim's blue between the place and the screen's name,
-   so THE DOCKS and THE HARBOUR BOUTIQUE read as where, then what - with only a
-   gap between them they ran together as one name (critic sweep, 25 Nov 2026).
-   Drawn, because the face has no arrows. */
+/* A drawn chevron in red between the place and the screen's name, so THE DOCKS
+   and THE HARBOUR BOUTIQUE read as where, then what. Drawn, because the face
+   has no arrows. */
 :where(.pixel-ui) .px-place::after {
   content: '';
   position: absolute;
@@ -1938,14 +1947,26 @@ body.touch-play .feedback-tab {
   top: calc(50% - var(--u) * 3);
   width: calc(var(--u) * 3);
   height: calc(var(--u) * 5);
-  background: var(--rim);
+  background: var(--red);
   mask: var(--px-cursor) center / 100% 100% no-repeat;
   -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
 }
+/* The one number that matters on a screen (₽640, 2 OF 6) is a white pill on
+   the strip, beside the X. */
 :where(.pixel-ui) .px-title-aside {
   min-width: 0;
   overflow: hidden;
-  color: var(--bar-muted);
+  height: calc(var(--u) * 12);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  padding: 0 calc(var(--u) * 4);
+  background: var(--paper);
+  color: var(--ink);
+}
+:where(.pixel-ui) .px-title-aside:empty,
+.pixel-ui.pokedex-menu:not([data-room='tight'], [data-short]) .px-title-aside:has(> .dex-aside:only-child) {
+  display: none;
 }
 .pixel-ui .px-back {
   position: relative;
@@ -1966,17 +1987,18 @@ body.touch-play .feedback-tab {
   -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
   transform: scaleX(-1);
 }
-/* The way out of a screen is a little X at the right end of its title bar
-   (the captain, 25 Nov 2026), drawn rather than typed, in the bar's own muted
-   ink until the cursor is on it. Square, so a thumb has a whole tile to hit. */
+/* The way out of a screen is a little X at the right end of its title strip
+   (the captain, 25 Nov 2026): a white square with a drawn ink X, red with a
+   white X while the cursor is on it. Square, so a thumb has a whole tile to hit. */
 .pixel-ui .px-close {
   flex: 0 0 auto;
   position: relative;
-  width: calc(var(--u) * 14);
-  height: calc(var(--u) * 14);
-  margin: 0 calc(var(--u) * -3) 0 0;
+  width: calc(var(--u) * 13);
+  height: calc(var(--u) * 13);
+  margin: 0;
   padding: 0;
-  color: var(--bar-muted);
+  background: var(--paper);
+  color: var(--ink);
 }
 :where(.pixel-ui) .px-close::before {
   content: '';
@@ -1991,41 +2013,40 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .px-close:focus,
 :where(.pixel-ui[data-pointer='previews']) .px-close:hover:not(:focus) {
-  color: var(--cream-lit);
-  background: var(--cursor);
+  color: var(--paper);
+  background: var(--red);
 }
 :where(.pixel-ui) .px-back:focus::before {
   background: var(--cursor);
 }
 :where(.pixel-ui) .px-back:focus {
-  color: var(--cream-lit);
+  color: var(--paper);
   background: none;
 }
 :where(.pixel-ui) .px-body {
-  /* The checker again, under the windows: a side panel's root is clear so the
-     map shows beside it, and the gaps between its windows showed the arena's
-     floor through them. On the body, never the screen, which must stay a
+  /* The dimmed place again, under the cards: a side panel's root is clear so
+     the map shows beside it. On the body, never the screen, which must stay a
      transparent layer (below). */
-  background:
-    conic-gradient(var(--backdrop-band) 25%, var(--backdrop) 0 50%, var(--backdrop-band) 0 75%, var(--backdrop) 0)
-    0 0 / calc(var(--u) * 16) calc(var(--u) * 16);
+  background: var(--backdrop);
   min-height: 0;
-  padding: calc(var(--u) * 4);
+  padding: calc(var(--u) * 6) calc(var(--u) * 4) calc(var(--u) * 4);
   display: grid;
   gap: calc(var(--u) * 4);
   align-content: start;
+}
+/* A full screen's root is already dimmed, so its body is not dimmed twice. */
+.menu-overlay.pixel-ui > .px-screen > .px-body,
+.menu-overlay.pixel-ui > * > .px-screen > .px-body {
+  background: none;
 }
 /* Two lines, always: the games this is dressed as keep a description box of a
    fixed height under every list, because a bar that grew with its sentence
    would move the whole screen each time the cursor did. */
 :where(.pixel-ui) .px-help {
-  /* Two lines and the screen's frame under them. */
   height: calc(var(--u) * 30);
   padding: var(--u) calc(var(--u) * 6) 0;
   background: var(--bar);
-  /* A rule of the rim's shade over it, so it reads as a band of its own and
-     not as the frame's bottom edge grown thick. */
-  box-shadow: 0 calc(var(--u) * -1) 0 var(--heading);
+  box-shadow: 0 calc(var(--u) * -1) 0 var(--line);
   color: var(--bar-text);
   overflow: hidden;
 }
@@ -2066,8 +2087,8 @@ body.touch-play .feedback-tab {
 /* Two classes deep, so a window that is also a button keeps its frame against
    the reset above. */
 .pixel-ui .px-window {
-  --fill: var(--cream);
-  --edge: var(--frame);
+  --fill: var(--paper);
+  --edge: var(--line);
   min-width: 0;
   min-height: 0;
   padding: calc(var(--u) * 4);
@@ -2078,21 +2099,25 @@ body.touch-play .feedback-tab {
     linear-gradient(var(--edge), var(--edge)) 100% var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat,
     linear-gradient(var(--fill), var(--fill)) var(--u) var(--u) / calc(100% - var(--u) * 2)
       calc(100% - var(--u) * 2) no-repeat;
+  /* A card stands on the place behind it: a hard pixel shadow under it, one
+     pixel in from each side so it follows the clear corners. */
+  box-shadow: 0 calc(var(--u) * 3) 0 calc(var(--u) * -1) var(--shade);
 }
-.pixel-ui .px-tone-care {
-  --fill: var(--teal-wash);
-}
+/* What kind of card it is, said by its heading strip's colour, never by a tint
+   over its paper: green is safe (healing, the locker), red can be lost (the
+   raid pack). */
+.pixel-ui .px-tone-care,
 .pixel-ui .px-tone-secure {
-  --fill: var(--gold-wash);
+  --heading: var(--safe);
 }
 .pixel-ui .px-tone-risk {
-  --fill: var(--red-wash);
+  --heading: var(--red);
 }
 /* A section heading is the window's lid: the title bar again, in miniature,
    bled out to the window's own frame. The face has no bold cut and there is
    one type size, so inversion is the only lever left that puts a heading above
    the sentences under it - and it is the one the games this is dressed as
-   pull. It stood in plain ink over a `--cream-dim` hairline, which on cream is
+   pull. It stood in plain ink over a `--paper-sunk` hairline, which on cream is
    all but invisible, so STASH and the rows beneath it carried exactly the same
    weight and a screen of true things read as a wall. Fourteen pixels deep to
    the title bar's sixteen, and as wide as its window rather than the screen,
@@ -2132,6 +2157,9 @@ body.touch-play .feedback-tab {
   align-items: center;
   height: calc(var(--u) * 14);
 }
+:where(.pixel-ui) :is(.px-tone-care, .px-tone-secure, .px-tone-risk) .px-heading small {
+  color: var(--bar-text);
+}
 :where(.pixel-ui) .px-heading small {
   flex: 0 0 auto;
   /* Wrapped alone it still sits at the right, as it does beside its name. */
@@ -2169,7 +2197,7 @@ body.touch-play .feedback-tab {
     /* Thumb and track both drawn, for the same reason the webkit rules draw a
        track: a thumb over nothing says how far down you are, not how far there
        is left to go. */
-    scrollbar-color: var(--ink-soft) var(--cream-dim);
+    scrollbar-color: var(--ink-soft) var(--paper-sunk);
   }
 }
 /* A pane with more below the fold says so, in words: a strip of its own fill
@@ -2208,7 +2236,7 @@ body.touch-play .feedback-tab {
     var(--px-more) right calc(var(--u) * 3) bottom calc(var(--u) * 5) / calc(var(--u) * 5)
       calc(var(--u) * 3) no-repeat,
     linear-gradient(rgb(23 23 23 / 25%), rgb(23 23 23 / 25%)) 0 0 / 100% var(--u) no-repeat,
-    linear-gradient(var(--fill, var(--cream)), var(--fill, var(--cream)));
+    linear-gradient(var(--fill, var(--paper)), var(--fill, var(--paper)));
 }
 /* The pane's top edge never cuts a row through its waist either. The cursor
    scrolls a row into view by just enough to show it, which left the row above
@@ -2243,11 +2271,11 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .px-scroll::-webkit-scrollbar-track,
 :where(.pixel-ui) .maker-viewport::-webkit-scrollbar-track {
-  background: var(--cream-dim);
-  box-shadow: inset var(--u) 0 0 var(--frame);
+  background: var(--paper-sunk);
+  box-shadow: inset var(--u) 0 0 var(--line);
 }
 :where(.pixel-ui) .maker-viewport::-webkit-scrollbar-corner {
-  background: var(--cream-dim);
+  background: var(--paper-sunk);
 }
 :where(.pixel-ui) .px-list {
   display: grid;
@@ -2354,32 +2382,33 @@ body.touch-play .feedback-tab {
   min-width: 0;
 }
 :where(.pixel-ui) .px-row.is-selected {
-  background: var(--teal-wash);
+  /* Chosen is gold: a gold outline round the row. */
+  box-shadow: inset 0 0 0 var(--u) var(--gold);
 }
 :where(.pixel-ui) .px-row.is-secured {
-  background: var(--gold-wash);
+  background: var(--safe-wash);
 }
 :where(.pixel-ui) .px-tone-secure .px-row.is-secured,
 :where(.pixel-ui) .px-tone-secure .px-row.is-selected {
-  background: var(--cream-lit);
+  background: none;
 }
 .pixel-ui button.px-row:focus,
 .pixel-ui .px-chip:focus,
 .pixel-ui .px-step:focus {
-  background: var(--cream-lit);
+  background: var(--paper-lit);
 }
 /* A pane of words the arrow keys read through (`data-reads` in
    `MenuOverlay.ts`) is lit like a row while the cursor is in it. */
 .pixel-ui .px-scroll[data-reads]:focus {
   outline: none;
-  --fill: var(--cream-lit);
-  background: var(--cream-lit);
+  --fill: var(--paper-lit);
+  background: var(--paper-lit);
 }
 .pixel-ui button.px-row.is-selected:focus {
-  background: var(--cream-lit);
+  background: var(--paper-lit);
 }
 .pixel-ui button.px-row.is-secured:focus {
-  background: #f8edbd;
+  background: var(--paper-lit);
 }
 /* The cursor: `drawMenuCursor`'s five-pixel triangle, in whatever ink the
    control is set in. It only exists on the focused control, so there is one. */
@@ -2414,24 +2443,27 @@ body.touch-play .feedback-tab {
   color: var(--ink-soft);
 }
 :where(.pixel-ui) .px-tag-good {
-  color: var(--teal-ink);
+  color: var(--safe-ink);
 }
 :where(.pixel-ui) .px-tag-risk {
-  color: var(--red);
+  color: var(--red-ink);
 }
 :where(.pixel-ui) .px-tag-secure {
-  color: #7a5a00;
+  color: var(--gold-ink);
 }
 /* A tag that is a fact rather than an offer carries the drawn tick. */
 /* On a bar - the title's aside, a heading's note - a tag is a light ink, as
    the bar's own words are: the paper's green and red are dark on navy. */
-:where(.pixel-ui) :is(.px-title, .px-heading) .px-tag-good {
+:where(.pixel-ui) .px-heading .px-tag-good {
   color: #9ad8a8;
 }
-:where(.pixel-ui) :is(.px-title, .px-heading) .px-tag-risk {
+:where(.pixel-ui) .px-heading .px-tag-risk {
   color: #ffa090;
 }
-:where(.pixel-ui) :is(.px-title, .px-heading) .px-tag-secure {
+:where(.pixel-ui) :is(.px-tone-care, .px-tone-secure, .px-tone-risk) .px-heading :is(.px-tag-good, .px-tag-risk) {
+  color: var(--bar-text);
+}
+:where(.pixel-ui) .px-heading .px-tag-secure {
   color: var(--gold);
 }
 :where(.pixel-ui) .px-tag.has-tick::after {
@@ -2455,28 +2487,37 @@ body.touch-play .feedback-tab {
   white-space: nowrap;
 }
 .pixel-ui .px-button {
-  --fill: var(--cream-lit);
+  --fill: var(--paper);
+  /* A button stands up off the card it is on: a pixel of ink under it, one in
+     from each side, so it reads as something to press. */
+  box-shadow: 0 calc(var(--u) * 2) 0 calc(var(--u) * -1) var(--ink);
+}
+/* A chip, a field and a stepper's ends are part of the card they are on. */
+.pixel-ui .px-chip,
+.pixel-ui .px-field,
+.pixel-ui .px-step {
+  box-shadow: none;
 }
 .pixel-ui .px-button.is-primary {
-  --fill: var(--confirm);
+  --fill: var(--go);
   color: #ffffff;
 }
 .pixel-ui .px-button.is-danger {
   --fill: var(--red);
-  color: var(--cream-lit);
+  color: var(--paper);
 }
 .pixel-ui .px-button:focus {
-  --fill: #ffffff;
+  --fill: var(--paper-lit);
 }
 .pixel-ui .px-button.is-primary:focus {
-  --fill: var(--confirm-lit);
+  --fill: var(--go-lit);
 }
 .pixel-ui .px-button.is-danger:focus {
-  --fill: #d0302a;
+  --fill: #f04a22;
 }
 .pixel-ui .px-button:disabled,
 .pixel-ui .px-button[aria-disabled='true'] {
-  --fill: var(--cream-dim);
+  --fill: var(--paper-sunk);
   --edge: var(--ink-soft);
   color: var(--ink-soft);
   cursor: not-allowed;
@@ -2489,22 +2530,22 @@ body.touch-play .feedback-tab {
 .pixel-ui .px-button[aria-disabled='true']:focus,
 .pixel-ui .px-button.is-primary[aria-disabled='true']:focus,
 .pixel-ui .px-button.is-danger[aria-disabled='true']:focus {
-  --fill: var(--cream-dim);
+  --fill: var(--paper-sunk);
   color: var(--ink-soft);
 }
 .pixel-ui .px-chip {
-  --fill: var(--cream);
+  --fill: var(--paper);
   --pad-top: 1;
   padding: var(--u) calc(var(--u) * 4) var(--u) calc(var(--u) * 8);
 }
 .pixel-ui .px-chip[aria-disabled='true'] {
-  --fill: var(--cream-dim);
+  --fill: var(--paper-sunk);
   --edge: var(--ink-soft);
   color: var(--ink-soft);
 }
 /* The two ends of a supply stepper: square, because a minus sign has no width. */
 .pixel-ui .px-step {
-  --fill: var(--cream);
+  --fill: var(--paper);
   width: calc(var(--u) * 12);
   height: calc(var(--u) * 12);
   padding: 0;
@@ -2514,12 +2555,12 @@ body.touch-play .feedback-tab {
 }
 .pixel-ui .px-step:disabled,
 .pixel-ui .px-step[aria-disabled='true'] {
-  --fill: var(--cream-dim);
+  --fill: var(--paper-sunk);
   --edge: var(--ink-soft);
   color: var(--ink-soft);
 }
 .pixel-ui .px-step:focus {
-  --fill: var(--cream-lit);
+  --fill: var(--paper-lit);
 }
 :where(.pixel-ui) .px-stepper {
   display: flex;
@@ -2544,8 +2585,8 @@ body.touch-play .feedback-tab {
   padding: var(--u);
   /* The frame, and inside it the empty part of the bar. */
   background:
-    linear-gradient(#55554a, #55554a) content-box,
-    var(--frame);
+    linear-gradient(var(--ink-2), var(--ink-2)) content-box,
+    var(--line);
 }
 :where(.pixel-ui) .px-hp-fill {
   display: block;
@@ -2569,8 +2610,8 @@ body.touch-play .feedback-tab {
   height: calc(var(--u) * 4);
   padding: var(--u);
   background:
-    linear-gradient(#55554a, #55554a) content-box,
-    var(--frame);
+    linear-gradient(var(--ink-2), var(--ink-2)) content-box,
+    var(--line);
 }
 :where(.pixel-ui) .px-xp-fill {
   display: block;
@@ -2680,73 +2721,80 @@ body.touch-play .feedback-tab {
   transform-origin: 50% 100%;
 }
 :where(.pixel-ui) .px-type {
-  /* Every fill holds the cream letters at WCAG AA, 4.5 to 1 or better, so a
-     tag reads for everybody (playtest 40; `style.test.ts` measures them). */
-  display: inline-block;
-  padding: 0 calc(var(--u) * 3);
-  background: #55707e;
-  box-shadow: 0 0 0 var(--u) var(--frame);
-  color: var(--cream-lit);
+  /* A type is an ink chip with a small square of FireRed's own colour for the
+     type, so a type's colour never competes with the menus' five (red, gold,
+     green, ink, white). The letters are always white on ink. */
+  --type: #a8a878;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  padding: 0 calc(var(--u) * 4) 0 calc(var(--u) * 3);
+  background: var(--ink-2);
+  color: var(--paper);
   text-transform: uppercase;
-  /* Centred, because the box is widened to the pixel grid after its words are
-     measured and, in the stash's portrait pane, stretched: FIRE sat hard left. */
-  text-align: center;
   margin: var(--u) calc(var(--u) * 3) var(--u) var(--u);
 }
+:where(.pixel-ui) .px-type::before {
+  content: '';
+  flex: none;
+  width: calc(var(--u) * 4);
+  height: calc(var(--u) * 4);
+  background: var(--type);
+  box-shadow: 0 0 0 var(--u) rgb(255 255 255 / 25%);
+}
 :where(.pixel-ui) .px-type-fire {
-  background: #a83e20;
+  --type: #f08030;
 }
 :where(.pixel-ui) .px-type-grass {
-  background: #2f7a3e;
+  --type: #78c850;
 }
 :where(.pixel-ui) .px-type-water {
-  background: #3a6fc0;
+  --type: #6890f0;
 }
 :where(.pixel-ui) .px-type-electric {
-  background: #8a6a00;
+  --type: #f8d030;
 }
 :where(.pixel-ui) .px-type-poison {
-  background: #8a4aa0;
+  --type: #a040a0;
 }
 :where(.pixel-ui) .px-type-flying {
-  background: #5068a8;
+  --type: #a890f0;
 }
 :where(.pixel-ui) .px-type-bug {
-  background: #5e7414;
+  --type: #a8b820;
 }
-:where(.pixel-ui) .px-type-normal,
+:where(.pixel-ui) .px-type-normal {
+  --type: #a8a878;
+}
 :where(.pixel-ui) .px-type-fairy {
-  background: #686650;
+  --type: #ee99ac;
 }
-/* The other nine each have a fill of their own, in FireRed's own hue for the
-   type darkened to hold AA: on the shared default a Fighting tag and a Steel
-   tag were the same grey box. */
 :where(.pixel-ui) .px-type-fighting {
-  background: #962a20;
+  --type: #c03028;
 }
 :where(.pixel-ui) .px-type-ground {
-  background: #7c5c26;
+  --type: #e0c068;
 }
 :where(.pixel-ui) .px-type-rock {
-  background: #6c6430;
+  --type: #b8a038;
 }
 :where(.pixel-ui) .px-type-psychic {
-  background: #b0305c;
+  --type: #f85888;
 }
 :where(.pixel-ui) .px-type-ice {
-  background: #287478;
+  --type: #98d8d8;
 }
 :where(.pixel-ui) .px-type-ghost {
-  background: #5c4882;
+  --type: #705898;
 }
 :where(.pixel-ui) .px-type-dragon {
-  background: #5a30c0;
+  --type: #7038f8;
 }
 :where(.pixel-ui) .px-type-dark {
-  background: #4e3e34;
+  --type: #705848;
 }
 :where(.pixel-ui) .px-type-steel {
-  background: #5c6478;
+  --type: #b8b8d0;
 }
 
 /* --- The commitment bar: every screen that commits ends on it ----------- */
@@ -2772,7 +2820,7 @@ body.touch-play .feedback-tab {
   margin-left: auto;
 }
 :where(.pixel-ui) .confirm-bar.is-arming {
-  --fill: var(--red-wash);
+  --fill: var(--risk-wash);
 }
 
 /* --- Somebody speaking: first words over the foot of a screen ------------ */
@@ -2795,7 +2843,7 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .px-minimap {
   position: absolute;
   image-rendering: pixelated;
-  box-shadow: 0 0 0 var(--u) var(--frame);
+  box-shadow: 0 0 0 var(--u) var(--line);
 }
 :where(.pixel-ui) .px-minimap:not([data-painted]) {
   visibility: hidden;
@@ -2809,7 +2857,7 @@ body.touch-play .feedback-tab {
   column-gap: calc(var(--u) * 6);
   margin: 0;
   padding: calc(var(--u) * 2) calc(var(--u) * 3);
-  box-shadow: 0 var(--u) 0 var(--frame);
+  box-shadow: 0 var(--u) 0 var(--line);
 }
 /* A value is set a fixed step after its own label, so the values still stand
    in one column when the facts are stacked. Pushed to the far end of its
@@ -2844,7 +2892,7 @@ body.touch-play .feedback-tab {
   width: calc(var(--u) * 3);
   height: calc(var(--u) * 3);
   background: var(--pip);
-  box-shadow: 0 0 0 var(--u) var(--frame);
+  box-shadow: 0 0 0 var(--u) var(--line);
   margin-right: var(--u);
 }
 
@@ -2863,8 +2911,8 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .px-subheading {
   margin: calc(var(--u) * 3) 0 var(--u);
   padding: var(--u) calc(var(--u) * 3);
-  background: var(--cream-dim);
-  box-shadow: 0 var(--u) 0 var(--frame);
+  background: var(--paper-sunk);
+  box-shadow: 0 var(--u) 0 var(--line);
   color: var(--ink);
   text-transform: uppercase;
 }
@@ -2890,10 +2938,10 @@ body.touch-play .feedback-tab {
   color: var(--red);
 }
 .pixel-ui .px-card:focus {
-  --fill: var(--cream-lit);
+  --fill: var(--paper-lit);
 }
 .pixel-ui .px-card.px-tone-primary:focus {
-  --fill: var(--cream-lit);
+  --fill: var(--paper-lit);
 }
 
 /* --- The wall map in Oak's Lab ----------------------------------------- */
@@ -3081,7 +3129,7 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .px-detail {
   margin-top: calc(var(--u) * 2);
   padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
-  box-shadow: 0 calc(var(--u) * -1) 0 var(--frame);
+  box-shadow: 0 calc(var(--u) * -1) 0 var(--line);
 }
 :where(.pixel-ui) .px-detail[hidden] {
   display: none;
@@ -3177,7 +3225,7 @@ body.touch-play .feedback-tab {
   align-self: start;
 }
 :where(.pixel-ui) .px-price.is-paid {
-  color: #7a5a00;
+  color: var(--gold-ink);
 }
 
 
@@ -3292,13 +3340,13 @@ body.touch-play .feedback-tab {
    shelf is friction; it is the row saying the thing out loud before it spends
    something that cannot be got back. */
 :where(.pixel-ui) .px-arming {
-  background: var(--red-wash);
+  background: var(--risk-wash);
 }
 :where(.pixel-ui) .px-arming > .px-bar-actions {
   padding: calc(var(--u) * 2) calc(var(--u) * 3);
 }
 :where(.pixel-ui) .px-ready {
-  color: var(--teal-ink);
+  color: var(--safe-ink);
 }
 /* The roster takes the room and the supplies keep a lane of their own: what the
    screen is for is finding one Pokemon among many, and the supplies are a list
@@ -3420,10 +3468,10 @@ body.touch-play .feedback-tab {
   padding: calc(var(--u) * 4);
 }
 .pixel-ui .starter-card.is-selected {
-  --fill: var(--teal-wash);
+  --fill: var(--safe-wash);
 }
 .pixel-ui .starter-card.is-selected:focus {
-  --fill: var(--cream-lit);
+  --fill: var(--paper-lit);
 }
 :where(.pixel-ui) .starter-number {
   position: absolute;
@@ -3436,14 +3484,14 @@ body.touch-play .feedback-tab {
    size reads as nothing at all; this is a dark teal ring inside the frame, with
    the frame and its clear corners left alone. */
 :where(.pixel-ui) .starter-card:hover:not(:focus) {
-  --fill: var(--cream-lit);
+  --fill: var(--paper-lit);
   box-shadow: none;
 }
 :where(.pixel-ui) .starter-card:hover:not(:focus)::after {
   content: '';
   position: absolute;
   inset: var(--u);
-  border: var(--u) solid var(--teal-ink);
+  border: var(--u) solid var(--safe-ink);
   pointer-events: none;
 }
 .pixel-ui .starter-card .px-type {
@@ -3648,7 +3696,7 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .gamble-verdict {
   margin-top: calc(var(--u) * 3);
   padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
-  box-shadow: 0 calc(var(--u) * -1) 0 var(--frame);
+  box-shadow: 0 calc(var(--u) * -1) 0 var(--line);
 }
 
 /* --- The chequered containers: the pack, and the one a wipe cannot take ---
@@ -3662,7 +3710,7 @@ body.touch-play .feedback-tab {
   display: grid;
   justify-self: start;
   padding: var(--u);
-  background: var(--frame);
+  background: var(--line);
 }
 :where(.pixel-ui) .px-grid > * {
   grid-area: 1 / 1;
@@ -3672,13 +3720,13 @@ body.touch-play .feedback-tab {
   gap: var(--u);
 }
 :where(.pixel-ui) .px-grid-cells > i {
-  background: var(--cream-dim);
+  background: var(--paper-sunk);
 }
 :where(.pixel-ui) .px-grid-block {
   position: relative;
   display: grid;
   place-items: center;
-  background: var(--cream-lit);
+  background: var(--paper-lit);
 }
 /* The count a stack carries, tucked into the block's own corner. */
 :where(.pixel-ui) .px-grid-block > b {
@@ -3692,10 +3740,10 @@ body.touch-play .feedback-tab {
    each other without a second cursor. */
 :where(.pixel-ui) .px-grid-block.is-marked {
   background: var(--gold-wash);
-  box-shadow: inset 0 0 0 var(--u) var(--frame);
+  box-shadow: inset 0 0 0 var(--u) var(--line);
 }
 :where(.pixel-ui) .px-grid.is-secure .px-grid-block {
-  background: var(--teal-wash);
+  background: var(--safe-wash);
 }
 /* Cargo: a Pokemon being carried home, four squares, six or nine by how far
    along its line it is. It is drawn in the gold the marked block uses because
@@ -3704,7 +3752,7 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .px-grid-block.is-cargo,
 :where(.pixel-ui) .px-grid.is-secure .px-grid-block.is-cargo {
   background: var(--gold-wash);
-  box-shadow: inset 0 0 0 var(--u) var(--frame);
+  box-shadow: inset 0 0 0 var(--u) var(--line);
   align-content: center;
   justify-items: center;
   gap: 0;
@@ -3770,10 +3818,10 @@ body.touch-play .feedback-tab {
   z-index: 1;
   pointer-events: none;
   box-shadow: inset 0 0 0 var(--u) var(--ink);
-  background: var(--teal-wash);
+  background: var(--safe-wash);
 }
 :where(.pixel-ui) .px-grid-ghost.is-bad {
-  background: var(--red-wash);
+  background: var(--risk-wash);
   box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--red);
 }
 /* The strip under a container: the way back to an automatic pack. It is a chip
@@ -3843,8 +3891,8 @@ body.touch-play .feedback-tab {
   gap: calc(var(--u) * 2);
   padding-bottom: calc(var(--u) * 2);
   margin-bottom: var(--u);
-  background: var(--fill, var(--cream));
-  box-shadow: 0 var(--u) 0 var(--frame);
+  background: var(--fill, var(--paper));
+  box-shadow: 0 var(--u) 0 var(--line);
 }
 :where(.pixel-ui) .box-line {
   display: flex;
@@ -3874,7 +3922,7 @@ body.touch-play .feedback-tab {
   padding: calc(var(--u) * 2) calc(var(--u) * 4);
 }
 .pixel-ui .px-field:focus {
-  --fill: var(--cream-lit);
+  --fill: var(--paper-lit);
 }
 .pixel-ui .px-field::placeholder {
   color: var(--ink-soft);
@@ -4284,15 +4332,15 @@ body.touch-play .feedback-tab {
   align-items: start;
   column-gap: calc(var(--u) * 6);
   padding: calc(var(--u) * 3) calc(var(--u) * 4) calc(var(--u) * 3) calc(var(--u) * 8);
-  background: var(--cream-dim);
+  background: var(--paper-sunk);
 }
 .pixel-ui button.px-row.teach-pupil:focus {
-  background: var(--cream-lit);
+  background: var(--paper-lit);
 }
 .pixel-ui button.px-row.teach-pupil.is-selected,
 .pixel-ui button.px-row.teach-pupil.is-selected:focus {
-  background: var(--teal-wash);
-  box-shadow: inset 0 0 0 var(--u) var(--teal-ink);
+  background: var(--safe-wash);
+  box-shadow: inset 0 0 0 var(--u) var(--safe-ink);
 }
 /* A card that cannot be chosen still explains itself, so it is dimmed rather
    than taken out: no fill of its own, its words in the soft ink and its
@@ -4352,7 +4400,7 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .confirm-bar.teach-bar.is-armed,
 :where(.pixel-ui) .confirm-bar.move-chooser-actions.is-armed {
-  --fill: var(--teal-wash);
+  --fill: var(--safe-wash);
 }
 /* At the smallest stage the words are the screen: the portraits go, a card's
    moves run on as a line rather than a column, and what is said twice - the
@@ -4435,9 +4483,9 @@ body.touch-play .feedback-tab {
   height: calc(var(--u) * 24);
   box-shadow:
     inset 0 0 0 var(--u) var(--ink),
-    inset 0 0 0 calc(var(--u) * 4) var(--cream-lit),
+    inset 0 0 0 calc(var(--u) * 4) var(--paper-lit),
     inset 0 0 0 calc(var(--u) * 7) var(--red),
-    inset 0 0 0 calc(var(--u) * 9) var(--cream-lit);
+    inset 0 0 0 calc(var(--u) * 9) var(--paper-lit);
   background: var(--red);
   animation: teach-moment-shake 0.3s steps(3, end) 0.9s 1;
 }
@@ -4537,17 +4585,17 @@ body.touch-play .feedback-tab {
   align-items: start;
   padding-top: calc(var(--u) * 3);
   padding-bottom: calc(var(--u) * 3);
-  background: var(--cream-dim);
+  background: var(--paper-sunk);
 }
 .pixel-ui .move-chooser-new .px-row.move-card {
-  background: var(--cream-lit);
+  background: var(--paper-lit);
 }
 .pixel-ui button.px-row.move-card:focus {
-  background: var(--cream-lit);
+  background: var(--paper-lit);
 }
 .pixel-ui button.px-row.move-card.is-forgetting,
 .pixel-ui button.px-row.move-card.is-forgetting:focus {
-  background: var(--red-wash);
+  background: var(--risk-wash);
   box-shadow: inset 0 0 0 var(--u) var(--red);
 }
 :where(.pixel-ui) .move-card .px-row-line > .px-tag {
@@ -4650,7 +4698,7 @@ body.touch-play .feedback-tab {
   margin: 0;
 }
 .pixel-ui .px-chip.maker-tool.is-selected {
-  --fill: var(--teal-wash);
+  --fill: var(--safe-wash);
 }
 /* What is chosen - tool, brush, place, zoom - is said by the drawn tick as well
    as the teal wash, which an eye that sees no colour reads as cream once the
@@ -4696,7 +4744,7 @@ body.touch-play .feedback-tab {
 }
 .pixel-ui .maker-fold:hover,
 .pixel-ui .maker-fold:focus {
-  background: var(--cream-lit);
+  background: var(--paper-lit);
   text-decoration: underline;
   text-decoration-thickness: var(--u);
   text-underline-offset: calc(var(--u) * 2);
@@ -4706,7 +4754,7 @@ body.touch-play .feedback-tab {
   width: calc(var(--u) * 16);
   height: calc(var(--u) * 16);
   image-rendering: pixelated;
-  box-shadow: 0 0 0 var(--u) var(--frame);
+  box-shadow: 0 0 0 var(--u) var(--line);
 }
 /* The zoom buttons wrap onto a second row rather than run out of the map's
    window over the checks beside it, which they did in any window under about
@@ -4729,7 +4777,7 @@ body.touch-play .feedback-tab {
   padding: calc(var(--u) * 3) calc(var(--u) * 3) 0;
 }
 .pixel-ui .px-chip.maker-area.is-selected {
-  --fill: var(--teal-wash);
+  --fill: var(--safe-wash);
 }
 :where(.pixel-ui) .maker-viewport {
   min-height: 0;
@@ -4856,7 +4904,7 @@ body.touch-play .feedback-tab {
   width: calc(var(--u) * 7);
   height: calc(var(--u) * 5);
   margin-top: calc(var(--u) * 4);
-  background: var(--teal-ink);
+  background: var(--safe-ink);
   mask: var(--px-tick) center / 100% 100% no-repeat;
   -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
 }
@@ -4996,7 +5044,7 @@ body.touch-play .feedback-tab {
   display: grid;
   gap: var(--u);
   padding: calc(var(--u) * 2) calc(var(--u) * 3);
-  box-shadow: inset 0 calc(var(--u) * -1) 0 var(--frame);
+  box-shadow: inset 0 calc(var(--u) * -1) 0 var(--line);
 }
 :where(.pixel-ui) .maker-sent .maker-note {
   display: block;
@@ -5010,7 +5058,7 @@ body.touch-play .feedback-tab {
 .menu-overlay.pixel-ui.side-panel {
   inset: 0 0 0 auto;
   width: calc(var(--u) * 232);
-  box-shadow: calc(var(--u) * -1) 0 0 var(--frame);
+  box-shadow: calc(var(--u) * -1) 0 0 var(--line);
 }
 .menu-overlay.pixel-ui.side-panel[data-layout='sheet'] {
   inset: 0;
@@ -5098,7 +5146,7 @@ body.touch-play .feedback-tab {
   width: calc(var(--u) * 50);
   height: calc(var(--u) * 32);
   object-fit: contain;
-  background: var(--frame);
+  background: var(--line);
   /* A thumbnail is the game shrunk, not magnified: smooth reads truer here. */
   image-rendering: auto;
 }
@@ -5289,12 +5337,12 @@ body.touch-play .feedback-tab {
   column-gap: var(--u);
   align-items: end;
   height: calc(var(--u) * 40);
-  border-bottom: var(--u) solid var(--frame);
+  border-bottom: var(--u) solid var(--line);
 }
 :where(.pixel-ui) .stats-bar {
   display: block;
   height: calc(var(--u) * var(--bar));
-  background: var(--teal);
+  background: var(--safe);
 }
 :where(.pixel-ui) .stats-bar.is-today {
   background: var(--gold);
@@ -5403,7 +5451,7 @@ body.touch-play .feedback-tab {
   justify-content: center;
   gap: calc(var(--u) * 4) calc(var(--u) * 8);
   padding: calc(var(--u) * 4) 0;
-  background: var(--cream-lit);
+  background: var(--paper-lit);
 }
 :where(.pixel-ui) .boutique-worn-row {
   display: flex;
@@ -5440,10 +5488,10 @@ body.touch-play .feedback-tab {
   row-gap: calc(var(--u) * 1);
 }
 .pixel-ui .boutique-card.is-selected {
-  --fill: var(--teal-wash);
+  --fill: var(--safe-wash);
 }
 .pixel-ui .boutique-card.is-selected:focus {
-  --fill: var(--cream-lit);
+  --fill: var(--paper-lit);
 }
 .pixel-ui .boutique-card.is-raid {
   --fill: var(--gold-wash);
@@ -5493,7 +5541,7 @@ body.touch-play .feedback-tab {
 }
 .pixel-ui .rim-card .rim-close:focus,
 :where(.pixel-ui[data-pointer='previews']) .rim-card .rim-close:hover:not(:focus) {
-  color: var(--cream-lit);
+  color: var(--paper-lit);
 }
 /* Why nobody can go, heading the card (`HubScene.rimView`). */
 :where(.pixel-ui) .rim-refusal {
@@ -5536,8 +5584,8 @@ body.touch-play .feedback-tab {
   top: 0;
   bottom: 0;
   /* A button's own window: lit paper in the navy line, white under the cursor. */
-  background: var(--cream-lit);
-  box-shadow: inset 0 0 0 var(--u) var(--frame);
+  background: var(--paper-lit);
+  box-shadow: inset 0 0 0 var(--u) var(--line);
 }
 .pixel-ui .rim-choice:focus {
   outline: none;
@@ -5596,14 +5644,14 @@ body.touch-play .feedback-tab {
   width: calc(var(--u) * 9);
   height: calc(var(--u) * 11);
   background: var(--red);
-  color: var(--cream-lit);
+  color: var(--paper-lit);
 }
 /* The arrows are the menus' cursor, pointing each way, in the frame's blue. */
 :where(.pixel-ui) .rim-step {
   justify-self: center;
   width: calc(var(--u) * 3);
   height: calc(var(--u) * 5);
-  background: var(--frame);
+  background: var(--line);
   mask: var(--px-cursor) center / 100% 100% no-repeat;
   -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
 }
@@ -5662,8 +5710,8 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .rim-ball {
   width: calc(var(--u) * 7);
   height: calc(var(--u) * 7);
-  background: linear-gradient(var(--red) 0 calc(var(--u) * 3), var(--frame) 0 calc(var(--u) * 4), #ffffff 0);
-  box-shadow: 0 0 0 var(--u) var(--frame);
+  background: linear-gradient(var(--red) 0 calc(var(--u) * 3), var(--line) 0 calc(var(--u) * 4), #ffffff 0);
+  box-shadow: 0 0 0 var(--u) var(--line);
   clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
 }
 /* The four tiles: two abreast, each a lighter sheet on the card's paper with
@@ -5681,8 +5729,8 @@ body.touch-play .feedback-tab {
   min-width: 0;
   overflow: hidden;
   padding: calc(var(--u) * 2) calc(var(--u) * 4) calc(var(--u) * 3);
-  background: var(--cream-lit);
-  box-shadow: inset 0 0 0 var(--u) rgb(36 52 76 / 22%);
+  background: var(--paper-lit);
+  box-shadow: inset 0 0 0 var(--u) rgb(34 29 30 / 22%);
 }
 /* A phone on its side: the controls take less, and each tile its short words. */
 :where(.pixel-ui[data-rim-narrow]) .rim-grid {
@@ -5822,7 +5870,7 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .rim-pip {
   width: calc(var(--u) * 8);
   height: calc(var(--u) * 7);
-  background: var(--cream-dim);
+  background: var(--paper-sunk);
   box-shadow: inset 0 0 0 var(--u) var(--ink-soft);
 }
 :where(.pixel-ui) .rim-pip.is-lit {
@@ -5840,7 +5888,7 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .rim-walk-bar {
   position: relative;
   height: calc(var(--u) * 6);
-  background: var(--cream-dim);
+  background: var(--paper-sunk);
   box-shadow: inset 0 0 0 var(--u) var(--ink-soft);
 }
 :where(.pixel-ui) .rim-walk-allow,
@@ -5876,7 +5924,7 @@ body.touch-play .feedback-tab {
   justify-self: start;
   padding-top: 0;
   padding-bottom: 0;
-  color: var(--teal-ink);
+  color: var(--safe-ink);
 }
 /* Where the raid's clock runs out, a notch, so a walk past it is seen going past it. */
 :where(.pixel-ui) .rim-walk-end {
@@ -5885,7 +5933,7 @@ body.touch-play .feedback-tab {
   top: calc(var(--u) * -2);
   bottom: calc(var(--u) * -2);
   width: var(--u);
-  background: var(--frame);
+  background: var(--line);
 }
 /* The help line: the sentence about whatever is pointed at or highlighted,
    two lines deep whatever it says, so the card never changes height under the
@@ -5895,7 +5943,7 @@ body.touch-play .feedback-tab {
   min-height: calc(var(--u) * 26);
   margin: 0;
   padding-top: calc(var(--u) * 2);
-  box-shadow: inset 0 var(--u) 0 rgb(36 52 76 / 22%);
+  box-shadow: inset 0 var(--u) 0 rgb(34 29 30 / 22%);
 }
 :where(.pixel-ui) .rim-keys {
   float: right;
@@ -6007,8 +6055,8 @@ body.touch-play .feedback-tab {
 
 /* A slot: a small window, the icon at its left and the name over the level and bar. */
 .pixel-ui .px-party-slot {
-  --fill: var(--cream);
-  --edge: var(--frame);
+  --fill: var(--paper);
+  --edge: var(--line);
   position: relative;
   display: flex;
   align-items: center;
@@ -6029,15 +6077,15 @@ body.touch-play .feedback-tab {
   --fill: var(--gold-wash);
 }
 .pixel-ui .px-party-slot:focus {
-  --fill: var(--cream-lit);
-  --edge: var(--red);
+  --fill: var(--paper-lit);
+  --edge: var(--gold-ink);
   outline: none;
 }
 .pixel-ui .px-party-slot.is-lead:focus {
-  --fill: #f8edbd;
+  --fill: var(--paper-lit);
 }
 .pixel-ui .px-party-slot.is-empty {
-  --fill: var(--cream-dim);
+  --fill: var(--paper-sunk);
   --edge: var(--ink-soft);
   justify-content: center;
 }
@@ -6048,7 +6096,7 @@ body.touch-play .feedback-tab {
 /* Picked up to be moved: FireRed lifts the slot out of line; here it turns the
    colour of a thing in the hand. */
 .pixel-ui .px-party-slot.is-holding {
-  --fill: var(--red-wash);
+  --fill: var(--risk-wash);
   --edge: var(--red);
 }
 /* What it is holding, on the icon's corner, as FireRed marks a held item in its
@@ -6112,7 +6160,7 @@ body.touch-play .feedback-tab {
 .pixel-ui .px-mon-tile:focus {
   --edge: var(--red);
   outline: none;
-  background-color: var(--cream-lit);
+  background-color: var(--paper-lit);
 }
 .pixel-ui .px-mon-tile[aria-disabled='true']:not(.is-fainted) > .px-mon-icon {
   opacity: 0.55;
@@ -6133,7 +6181,7 @@ body.touch-play .feedback-tab {
   align-items: flex-end;
   gap: calc(var(--u) * 4);
   padding-top: var(--u);
-  border-top: var(--u) solid var(--frame);
+  border-top: var(--u) solid var(--line);
 }
 :where(.pixel-ui) .team-card-words {
   display: grid;
@@ -6167,7 +6215,7 @@ body.touch-play .feedback-tab {
   scroll-snap-align: start;
 }
 .pixel-ui .px-mon-tile.is-selected {
-  background-color: var(--teal-wash);
+  background-color: var(--safe-wash);
 }
 .pixel-ui .px-mon-tile.is-away > .px-mon-icon {
   opacity: 0.45;
@@ -6215,7 +6263,7 @@ body.touch-play .feedback-tab {
 .pixel-ui .px-item-tile:focus {
   --edge: var(--red);
   outline: none;
-  background-color: var(--cream-lit);
+  background-color: var(--paper-lit);
 }
 .pixel-ui .px-item-tile.is-riding {
   background-color: var(--gold-wash);
@@ -6367,7 +6415,7 @@ body.touch-play .feedback-tab {
   align-content: start;
   padding: 0 0 0 calc(var(--u) * 4);
   border-top: none;
-  border-left: var(--u) solid var(--frame);
+  border-left: var(--u) solid var(--line);
 }
 :where(.pixel-ui[data-layout='sheet']) .team-card > .team-card-words {
   display: contents;
@@ -6433,14 +6481,14 @@ body.touch-play .feedback-tab {
 }
 .pixel-ui .result-tile.is-banked,
 .pixel-ui .result-tile.is-survived {
-  background-color: var(--teal-wash);
+  background-color: var(--safe-wash);
 }
 .pixel-ui .result-tile.is-reward,
 .pixel-ui .result-tile.is-secured {
   background-color: var(--gold-wash);
 }
 .pixel-ui .result-tile.is-lost {
-  background-color: var(--red-wash);
+  background-color: var(--risk-wash);
 }
 .pixel-ui .result-tile.is-lost > .item-icon {
   filter: grayscale(1);
@@ -6452,13 +6500,13 @@ body.touch-play .feedback-tab {
   right: calc(var(--u) * 2);
   width: calc(var(--u) * 7);
   height: calc(var(--u) * 5);
-  background: var(--teal-ink);
+  background: var(--safe-ink);
   mask: var(--px-tick) center / 100% 100% no-repeat;
   -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
 }
 .pixel-ui .result-tile.is-reward::after,
 .pixel-ui .result-tile.is-secured::after {
-  background: #7a5a00;
+  background: var(--gold-ink);
 }
 .pixel-ui .result-tile.is-lost::after {
   width: calc(var(--u) * 5);
@@ -6525,8 +6573,8 @@ body.touch-play .feedback-tab {
   row-gap: calc(var(--u) * 2);
   padding: calc(var(--u) * 2) calc(var(--u) * 2) calc(var(--u) * 3);
   text-align: center;
-  background: var(--red-wash);
-  box-shadow: inset 0 0 0 var(--u) var(--frame);
+  background: var(--risk-wash);
+  box-shadow: inset 0 0 0 var(--u) var(--line);
 }
 .pixel-ui .workshop-skyline > .px-arming > .px-row {
   grid-template-columns: minmax(0, 1fr);
@@ -6576,10 +6624,10 @@ body.touch-play .feedback-tab {
   --fill: var(--gold-wash);
 }
 .pixel-ui .workshop-card.is-built:focus {
-  --fill: #f8edbd;
+  --fill: var(--paper-lit);
 }
 .pixel-ui .workshop-card.is-ready {
-  --edge: var(--teal-ink);
+  --edge: var(--safe-ink);
 }
 :where(.pixel-ui) .workshop-costs {
   display: flex;
@@ -6601,6 +6649,16 @@ body.touch-play .feedback-tab {
 }
 .pixel-ui .workshop-card > .workshop-effect {
   color: var(--ink-soft);
+}
+
+/* --- The chosen card: gold all round ------------------------------------ *
+   Whatever card the cursor is on - a party slot, a build, a shelf card - is
+   outlined in gold, two pixels deep: gold is the chosen thing. */
+.pixel-ui :is(.px-card, .px-party-slot, .workshop-card):focus {
+  --edge: var(--gold-ink);
+  box-shadow:
+    0 0 0 var(--u) var(--gold),
+    0 calc(var(--u) * 3) 0 calc(var(--u) * -1) var(--shade);
 }
 
 /* --- A stack of a thing (`pixelStack`): how many are taken of how many ------
@@ -6639,7 +6697,7 @@ body.touch-play .feedback-tab {
   gap: calc(var(--u) * 4);
   padding: calc(var(--u) * 2) calc(var(--u) * 2) 0;
   /* The line the tabs stand on; the lit tab's paper runs over it into the list. */
-  box-shadow: inset 0 calc(var(--u) * -1) 0 var(--frame);
+  box-shadow: inset 0 calc(var(--u) * -1) 0 var(--line);
 }
 :where(.pixel-ui) .things-pocket-tabs {
   display: flex;
@@ -6656,10 +6714,10 @@ body.touch-play .feedback-tab {
   width: calc(var(--u) * 22);
   height: calc(var(--u) * 20);
   background:
-    linear-gradient(var(--frame), var(--frame)) var(--u) 0 / calc(100% - var(--u) * 2) var(--u) no-repeat,
-    linear-gradient(var(--frame), var(--frame)) 0 var(--u) / var(--u) 100% no-repeat,
-    linear-gradient(var(--frame), var(--frame)) 100% var(--u) / var(--u) 100% no-repeat,
-    linear-gradient(var(--cream-dim), var(--cream-dim));
+    linear-gradient(var(--line), var(--line)) var(--u) 0 / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--line), var(--line)) 0 var(--u) / var(--u) 100% no-repeat,
+    linear-gradient(var(--line), var(--line)) 100% var(--u) / var(--u) 100% no-repeat,
+    linear-gradient(var(--paper-sunk), var(--paper-sunk));
 }
 .pixel-ui .things-pocket:not(.is-here) > .item-icon {
   filter: grayscale(1);
@@ -6674,9 +6732,9 @@ body.touch-play .feedback-tab {
   margin-bottom: calc(var(--u) * -1);
   background:
     linear-gradient(var(--cursor), var(--cursor)) var(--u) 0 / calc(100% - var(--u) * 2) calc(var(--u) * 2) no-repeat,
-    linear-gradient(var(--frame), var(--frame)) 0 var(--u) / var(--u) 100% no-repeat,
-    linear-gradient(var(--frame), var(--frame)) 100% var(--u) / var(--u) 100% no-repeat,
-    linear-gradient(var(--cream), var(--cream));
+    linear-gradient(var(--line), var(--line)) 0 var(--u) / var(--u) 100% no-repeat,
+    linear-gradient(var(--line), var(--line)) 100% var(--u) / var(--u) 100% no-repeat,
+    linear-gradient(var(--paper), var(--paper));
 }
 /* The strip is a row of its own between the heading and the list: the window's
    grid had rows for a heading, a list and a pane, and the strip took the list's
@@ -6708,7 +6766,7 @@ body.touch-play .feedback-tab {
 }
 /* A pocket starts on a rule in the list, the strip having named it. */
 .pixel-ui .px-row.starts-pocket {
-  box-shadow: inset 0 var(--u) 0 var(--frame);
+  box-shadow: inset 0 var(--u) 0 var(--line);
 }
 
 /* --- THE POKéDEX (`ui/pokedexView.ts`, `scenes/PokedexScene.ts`) --------------
@@ -6783,8 +6841,8 @@ body.touch-play .feedback-tab {
   flex: none;
   width: calc(var(--u) * (151 * var(--dex-step) + 2));
   height: calc(var(--u) * 10);
-  background: var(--cream-dim);
-  box-shadow: inset 0 0 0 var(--u) var(--frame);
+  background: var(--paper-sunk);
+  box-shadow: inset 0 0 0 var(--u) var(--line);
 }
 :where(.pixel-ui) .dex-rail-fill {
   position: absolute;
@@ -6792,7 +6850,7 @@ body.touch-play .feedback-tab {
   top: var(--u);
   width: calc(var(--u) * var(--owned) * var(--dex-step));
   height: calc(var(--u) * 8);
-  background: var(--teal-ink);
+  background: var(--safe-ink);
 }
 :where(.pixel-ui) .dex-pip {
   position: absolute;
@@ -6800,8 +6858,8 @@ body.touch-play .feedback-tab {
   left: calc(var(--u) * (var(--at) * var(--dex-step) - 2));
   width: calc(var(--u) * 6);
   height: calc(var(--u) * 6);
-  background: var(--cream-lit);
-  box-shadow: inset 0 0 0 var(--u) var(--frame);
+  background: var(--paper-lit);
+  box-shadow: inset 0 0 0 var(--u) var(--line);
 }
 :where(.pixel-ui) .dex-pip.is-paid {
   background: var(--gold);
@@ -6821,7 +6879,7 @@ body.touch-play .feedback-tab {
   top: calc(var(--u) * -6);
   width: calc(var(--u) * 7);
   height: calc(var(--u) * 5);
-  background: var(--teal-ink);
+  background: var(--safe-ink);
   mask: var(--px-tick) center / 100% 100% no-repeat;
   -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
 }
@@ -6894,7 +6952,7 @@ body.touch-play .feedback-tab {
 .pixel-ui .dex-tile:focus {
   --edge: var(--red);
   outline: none;
-  background-color: var(--cream-lit);
+  background-color: var(--paper-lit);
 }
 /* A hundred and fifty-one icons stand still; only the one under the cursor
    moves, as FireRed's chosen icon bounces. */
@@ -6951,7 +7009,7 @@ body.touch-play .feedback-tab {
   display: grid;
   place-items: center;
   height: calc(var(--u) * 66);
-  border-bottom: var(--u) solid var(--frame);
+  border-bottom: var(--u) solid var(--line);
 }
 :where(.pixel-ui) .dex-figures {
   display: flex;
@@ -6976,7 +7034,7 @@ body.touch-play .feedback-tab {
   display: grid;
   gap: var(--u);
   padding-top: calc(var(--u) * 2);
-  border-top: var(--u) solid var(--frame);
+  border-top: var(--u) solid var(--line);
 }
 :where(.pixel-ui) .dex-entry-head {
   display: grid;
@@ -7089,7 +7147,7 @@ body.touch-play .feedback-tab {
   height: calc(var(--u) * 34);
 }
 :where(.pixel-ui) .dex-kin.is-here {
-  background: var(--cream-lit);
+  background: var(--paper-lit);
   box-shadow: inset 0 0 0 var(--u) var(--red);
 }
 .pixel-ui .dex-kin > .px-mon-icon {
@@ -7113,7 +7171,7 @@ body.touch-play .feedback-tab {
    screen of checker (critic sweep, 25 Nov 2026). The game it was asked over
    shows through, dimmed, as it does round a question in the yard. */
 .menu-overlay.pixel-ui.player-name-menu {
-  background: rgb(10 20 32 / 70%);
+  background: var(--backdrop);
 }
 .pixel-ui.player-name-menu .px-body {
   background: none;

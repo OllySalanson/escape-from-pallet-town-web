@@ -114,10 +114,11 @@ export function worldCharacterTint(role: WorldCharacterRole): number {
 }
 
 /**
- * `--menu-accent` from `src/style.css`, the interface's own accent, and used
- * nowhere else in the overworld: extraction is green and red, loot amber,
- * caches and the field kit blue. Nothing else on the map can be mistaken for
- * it, and it is not an alarm colour.
+ * `--player-mark` from `src/style.css`, and used nowhere else in the
+ * overworld: extraction is green and red, loot amber, caches and the field kit
+ * blue. Nothing else on the map can be mistaken for it, and it is not an alarm
+ * colour. It was the menus' accent until the menus took the round-3 look (gold
+ * is their chosen thing, and gold on the map is loot).
  */
 export const PLAYER_MARKER_COLOUR = 0x55d6be;
 

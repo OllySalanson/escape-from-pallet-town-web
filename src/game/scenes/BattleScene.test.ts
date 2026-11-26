@@ -2476,7 +2476,7 @@ describe("the battle's keys and mouse", () => {
     item.handlers.pointerover();
     expect(battle.selectedCommand).toBe(0);
     expect(battle.mode).toBe('main');
-    expect(item.setColor).toHaveBeenLastCalledWith(UI.frameRim.css);
+    expect(item.setColor).toHaveBeenLastCalledWith(UI.pointed.css);
     item.handlers.pointerout();
     expect(item.setColor).toHaveBeenLastCalledWith(WINDOW_INK);
 

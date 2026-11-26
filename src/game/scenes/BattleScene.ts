@@ -2380,7 +2380,7 @@ export class BattleScene extends Phaser.Scene {
     if (text.text.includes('FNT') || this.refusesLabel(text.text)) {
       return;
     }
-    text.setColor(UI.frameRim.css);
+    text.setColor(UI.pointed.css);
   }
 
   /** The pointer has left a row: its ink and the cursor's guidance come back. */

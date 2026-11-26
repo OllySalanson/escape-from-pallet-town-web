@@ -44,15 +44,13 @@ describe('the menus and the pop-ups', () => {
     new RegExp(`\\.menu-overlay\\.pixel-ui \\{[^}]*--${name}:\\s*(#[0-9a-f]{6});`, 'i').exec(stylesheet)?.[1]?.toLowerCase() ?? '';
 
   it.each([
-    ['cream', UI.paper],
-    ['cream-lit', UI.paperLit],
-    ['cream-dim', UI.paperSunk],
+    ['paper', UI.paper],
+    ['paper-lit', UI.paperLit],
+    ['paper-sunk', UI.paperSunk],
     ['ink', UI.ink],
     ['ink-soft', UI.inkSoft],
-    ['frame', UI.frameLine],
-    ['rim', UI.frameRim],
-    ['rim-light', UI.frameLight],
-    ['rim-shade', UI.frameShade],
+    ['line', UI.frameLine],
+    ['red', UI.seam],
     ['cursor', UI.cursor],
   ])('paint --%s as the pop-ups do', (name, colour) => {
     expect(token(name)).toBe(colour.css);

@@ -3,10 +3,10 @@
  *
  * One palette for the canvas (dialogue, questions, the phrase list) and the DOM
  * menus alike, so a question asked in the yard and the shop it opens are one
- * surface. It is FireRed's window - cream paper in a blue-rimmed frame, a red
- * cursor - rather than the dark web-modal box it replaces (the captain, 25 Nov
- * 2026: "shite colours, shite design"). `docs/screens/menu-system/` is the why
- * and the before and after.
+ * surface. It is the round-3 menu look, "a Poke Ball, opened": white paper in
+ * a line of ink, a red cursor, gold for the row under it (the captain, 25 Nov
+ * 2026: "Do not keep any of the old menu style"). `docs/screens/menu-look/` is
+ * the why and the before and after.
  *
  * Phaser wants a number for graphics and a string for text, so each colour is
  * both; `uiPalette.test.ts` holds the text to WCAG AA on the paper it sits on.
@@ -16,27 +16,25 @@ const both = (value: number) => ({ value, css: `#${value.toString(16).padStart(6
 
 export const UI = {
   /** The paper every window is filled with. */
-  paper: both(0xf0eccc),
-  /** The row or answer under the cursor. */
-  paperLit: both(0xfff6c8),
+  paper: both(0xffffff),
+  /** The row or answer under the cursor: gold's wash. */
+  paperLit: both(0xfff1b8),
   /** Wells and empty slots, sunk into the paper. */
-  paperSunk: both(0xe2ddb8),
+  paperSunk: both(0xe7e6ea),
   /** Words. */
-  ink: both(0x303030),
+  ink: both(0x221d1e),
   /** Notes, counts, the answer not under the cursor. */
-  inkSoft: both(0x645e4a),
-  /** The frame's outer line. */
-  frameLine: both(0x24344c),
-  /** The frame's blue rim. */
-  frameRim: both(0x5a82b0),
-  /** The rim's lit edge, on the top and left. */
-  frameLight: both(0xb4d0ec),
-  /** The rim's shaded edge, on the bottom and right. */
-  frameShade: both(0x3c5c86),
+  inkSoft: both(0x625a5d),
+  /** The frame's line, and the title strip. */
+  frameLine: both(0x221d1e),
+  /** The Poke Ball's red seam under a title strip. */
+  seam: both(0xe3350d),
+  /** A row the pointer rests on, in gold's own dark ink: pointing only lights. */
+  pointed: both(0x8a6700),
   /** The cursor, and the prompt to read on. */
-  cursor: both(0xd83828),
+  cursor: both(0xe3350d),
   /** The cursor's shadow, down its lower right. */
-  cursorShadow: both(0x882018),
+  cursorShadow: both(0xa32208),
 } as const;
 
 /**

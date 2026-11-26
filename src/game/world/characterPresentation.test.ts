@@ -202,11 +202,11 @@ describe('the player marker', () => {
     expect(accents).toEqual([PLAYER_MARKER_COLOUR]);
   });
 
-  it('takes the accent from --menu-accent in the stylesheet rather than inventing one', async () => {
+  it('takes its colour from --player-mark in the stylesheet rather than inventing one', async () => {
     const stylesheet = await readFile(new URL('../../style.css', import.meta.url), 'utf8');
     const accent = `#${PLAYER_MARKER_COLOUR.toString(16).padStart(6, '0')}`;
 
-    expect(stylesheet).toContain(`--menu-accent: ${accent};`);
+    expect(stylesheet).toContain(`--player-mark: ${accent};`);
   });
 
   it('holds the head mark clear of the hair', () => {
