@@ -28,6 +28,7 @@ import {
   BATTLE_SCREEN_WIDTH,
   statusPlateLayout,
   lowHpItemHint,
+  statusCureHint,
   combatantSpot,
   seatedSpriteY,
   STATUS_TAG_GAP,
@@ -1058,6 +1059,23 @@ describe('the medicine hint', () => {
     expect(lowHpItemHint([{ name: 'Charmander', hp: 5, maxHp: 18 }], 'Potion')).toBeNull();
     expect(lowHpItemHint([{ name: 'Charmander', hp: 0, maxHp: 18 }], 'Potion')).toBeNull();
     expect(lowHpItemHint([{ name: 'Charmander', hp: 2, maxHp: 18 }], null)).toBeNull();
+  });
+});
+
+describe('the cure hint', () => {
+  it('names the status and the cure the pack holds for it', () => {
+    expect(
+      statusCureHint([{ name: 'Pikachu', hp: 20, status: 'paralysis' }], (status) =>
+        status === 'paralysis' ? 'Cheri Berry' : null,
+      ),
+    ).toBe('PIKACHU is paralysed! Choose ITEM to give it a CHERI BERRY.');
+  });
+
+  it('says nothing without a status, without a cure, or of a fainted Pokémon', () => {
+    const cheri = (status: string) => (status === 'paralysis' ? 'Cheri Berry' : null);
+    expect(statusCureHint([{ name: 'Pikachu', hp: 20, status: null }], cheri)).toBeNull();
+    expect(statusCureHint([{ name: 'Pikachu', hp: 20, status: 'poison' }], cheri)).toBeNull();
+    expect(statusCureHint([{ name: 'Pikachu', hp: 0, status: 'paralysis' }], cheri)).toBeNull();
   });
 });
 

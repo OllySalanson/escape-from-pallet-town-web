@@ -805,6 +805,40 @@ export const lowHpItemHint = (
 };
 
 /**
+ * The one line that says a status can be cured in a fight, said before the
+ * commands when a Pokémon of yours has one and the pack holds what cures it -
+ * the low-HP line's twin. A newcomer paralysed by the graveyard's Gastly lost
+ * turn after turn with no idea a CHERI BERRY would end it, and went looking for
+ * an ANTIDOTE (Olly, 26 Nov 2026). `cureFor` names the pack's cure for a
+ * status, or null. Null when nobody standing has a status the pack can cure.
+ */
+export const statusCureHint = (
+  team: readonly { readonly name: string; readonly hp: number; readonly status: PrimaryStatus | null }[],
+  cureFor: (status: PrimaryStatus) => string | null,
+): string | null => {
+  for (const each of team) {
+    if (each.hp <= 0 || each.status === null) {
+      continue;
+    }
+    const cure = cureFor(each.status);
+    if (cure !== null) {
+      return `${each.name.toUpperCase()} ${statusHeld(each.status)}! Choose ITEM to give it a ${cure.toUpperCase()}.`;
+    }
+  }
+  return null;
+};
+
+/** "is paralysed", the state a status leaves a Pokémon in, as the cure hint says it. */
+const statusHeld = (status: PrimaryStatus): string =>
+  ({
+    poison: 'is poisoned',
+    burn: 'is burned',
+    paralysis: 'is paralysed',
+    sleep: 'is asleep',
+    freeze: 'is frozen',
+  })[status];
+
+/**
  * Making room for a catch, from inside the fight that refused it.
  *
  * A pack with no room used to refuse the ball and tell the player to drop

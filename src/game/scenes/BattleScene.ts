@@ -147,6 +147,7 @@ import {
   BATTLE_PANEL,
   NO_BATTLE_ITEMS_MESSAGE,
   lowHpItemHint,
+  statusCureHint,
   typeLesson,
   CATCH_TIP_LINE,
   earnsCatchTip,
@@ -752,6 +753,9 @@ export class BattleScene extends Phaser.Scene {
   private prizePaidBefore = false;
   /** Whether this fight has said that medicine can be used in it (`lowHpItemHint`): once a fight. */
   private lowHpHintSaid = false;
+  private statusCureHintSaid = false;
+  /** The item a hint just named, which the ITEM list opens on once. */
+  private hintedItemId: string | undefined;
   /** Whether this fight has taught a line of the type chart (`typeLesson`): once a fight. */
   private typeLessonSaid = false;
   /** Whether this fight has said a hurt Pokémon is easier to catch (`CATCH_TIP_LINE`): once a fight. */
@@ -993,6 +997,8 @@ export class BattleScene extends Phaser.Scene {
     this.thrownBallId = undefined;
     this.victoryRewardsGranted = false;
     this.lowHpHintSaid = false;
+    this.statusCureHintSaid = false;
+    this.hintedItemId = undefined;
     this.typeLessonSaid = false;
     this.catchTipSaid = false;
     this.party = data.party ?? new PokemonParty([new Pokemon(CHARMANDER, 10)]);
@@ -3611,7 +3617,12 @@ export class BattleScene extends Phaser.Scene {
     }
     this.mode = 'items';
     this.pendingItem = undefined;
-    this.selectedCommand = 0;
+    // Opened straight after a hint, on the item the hint named: on the first
+    // row, a player pressing OK through the line gave a POTION to a Pokémon
+    // that needed its CHERI BERRY.
+    const hinted = usableBattleItems(this.bag).findIndex((item) => item.id === this.hintedItemId);
+    this.hintedItemId = undefined;
+    this.selectedCommand = Math.max(0, hinted);
     this.showCommands();
   }
 
@@ -3675,10 +3686,7 @@ export class BattleScene extends Phaser.Scene {
     // after it come back on FIGHT. Remembering ITEM, a player pressing only OK
     // drank the pack dry and never attacked again (overnight critic, 25 Nov
     // 2026, on a phone's one big button).
-    const fight = this.mainActions().findIndex((action) => action.type === 'choose-fight');
-    if (fight >= 0) {
-      this.lastMainCommand = fight;
-    }
+    this.rememberFight();
     this.state = use.state;
     this.persistActivePokemonHp();
     // Whichever slot the medicine was drunk in - the plate that has to move is
@@ -3773,6 +3781,12 @@ export class BattleScene extends Phaser.Scene {
       this.showPartyMessage(`${pokemon.name.toUpperCase()} is already in battle!`);
       return;
     }
+
+    // A Pokemon just sent out is there to fight: the menu after it comes back
+    // on FIGHT, whichever way it came in. Remembering SWITCH, a player who
+    // swapped to Pikachu and pressed OK to attack opened the team again
+    // (Olly, 26 Nov 2026, against the graveyard's Gastly).
+    this.rememberFight();
 
     if (this.aboutToUseSwitching) {
       this.completeAboutToUseSwitch(pokemon);
@@ -3898,6 +3912,14 @@ export class BattleScene extends Phaser.Scene {
    * turn to spend here, because the Pokemon the swap is being made against has
    * not been sent out yet.
    */
+  /** The next time the command menu opens, it opens on FIGHT. */
+  private rememberFight(): void {
+    const fight = this.mainActions().findIndex((action) => action.type === 'choose-fight');
+    if (fight >= 0) {
+      this.lastMainCommand = fight;
+    }
+  }
+
   private completeAboutToUseSwitch(pokemon: PokemonInstance): void {
     const outgoingName = this.state.player.pokemon.name.toUpperCase();
     this.aboutToUseSwitching = false;
@@ -4352,10 +4374,47 @@ export class BattleScene extends Phaser.Scene {
       return false;
     }
     this.lowHpHintSaid = true;
+    this.hintedItemId = healer?.id;
     // The menu comes back on ITEM, the command the line names. On FIGHT, the
     // SPACE that read the line on opened FIGHT and the next fired the first
     // move, and a Bulbasaur on 5/32 went down to Starmie with Potions packed
     // (AI playtest, 23 Nov 2026) - as KEEP THE PACK returns to BALL (#718).
+    const item = this.mainActions().findIndex((action) => action.type === 'choose-item');
+    if (item >= 0) {
+      this.lastMainCommand = item;
+    }
+    this.mode = 'events';
+    this.commandContainer.setVisible(false);
+    this.dialog.showMessages([line]);
+    return true;
+  }
+
+  /**
+   * Once a fight, before the commands: a Pokémon of yours has a status and the
+   * pack holds its cure (`statusCureHint`). The menu comes back on ITEM, the
+   * command it names, as the low-HP line's does.
+   */
+  private sayStatusCureHint(): boolean {
+    if (this.statusCureHintSaid || this.exhibition) {
+      return false;
+    }
+    const cures = usableBattleItems(this.bag).filter((item) => this.bag.count(item.id) > 0);
+    let named: string | undefined;
+    const line = statusCureHint(
+      [this.state.player, this.state.playerPartner]
+        .filter((unit): unit is BattleCombatant => unit !== null)
+        .map((unit) => ({ name: unit.pokemon.name, hp: unit.currentHp, status: unit.primaryStatus })),
+      (status) => {
+        const cure = cures.find((item) => item.effect.type === 'cure-status' && item.effect.status === status);
+        named = cure?.id;
+        return cure?.displayName ?? null;
+      },
+    );
+    if (line === null) {
+      return false;
+    }
+    this.statusCureHintSaid = true;
+    this.hintedItemId = named;
     const item = this.mainActions().findIndex((action) => action.type === 'choose-item');
     if (item >= 0) {
       this.lastMainCommand = item;
@@ -4453,7 +4512,7 @@ export class BattleScene extends Phaser.Scene {
         this.useMove(locked);
         return;
       }
-      if (this.sayLowHpHint()) {
+      if (this.sayLowHpHint() || this.sayStatusCureHint()) {
         return;
       }
       this.mode = 'main';
