@@ -1493,7 +1493,7 @@ describe('a level reached in the middle of a trainer battle', () => {
       ).plates.get('player0')!.levelText.text,
     ).toBe('Lv 7');
     readThroughNarration(scene, dialog);
-    expect(dialog.shownMessages).toContain('SQUIRTLE grew to Lv 7!');
+    expect(dialog.shownMessages).toContain('SQUIRTLE grew to LV. 7!');
   });
 
   it('says what the knockout paid straight after the faint, before the next Pokemon comes in', () => {
@@ -3279,12 +3279,12 @@ describe('the blink a blow lands with', () => {
 
   it('does not blink or shake for a move that only lowers a stat', () => {
     const { blinked, shake, dialog } = fight(GROWL, TAIL_WHIP);
-    expect(dialog.shownMessages).toContain("Wild RATTATA's Attack fell!");
-    expect(dialog.shownMessages).toContain("Your PIDGEY's Defense fell!");
+    expect(dialog.shownMessages).toContain("Wild RATTATA's ATTACK fell!");
+    expect(dialog.shownMessages).toContain("Your PIDGEY's DEFENSE fell!");
     // The foe's move is named on the line before what it did, so a fall never
     // reads as the player's own move lowering their own stat (the overnight
     // playtest of 20 Nov 2026 asked).
-    const fell = dialog.shownMessages.indexOf("Your PIDGEY's Defense fell!");
+    const fell = dialog.shownMessages.indexOf("Your PIDGEY's DEFENSE fell!");
     expect(dialog.shownMessages[fell - 1]).toBe('Wild RATTATA used TAIL WHIP!');
     expect(blinked).toEqual([]);
     expect(shake).not.toHaveBeenCalled();
@@ -3292,15 +3292,15 @@ describe('the blink a blow lands with', () => {
 
   it('says a stat moved by two stages sharply rose or harshly fell, as FireRed does', () => {
     const { dialog } = fight(GENERATED_MOVES.agility, GENERATED_MOVES.screech);
-    expect(dialog.shownMessages).toContain("Your PIDGEY's Speed sharply rose!");
-    expect(dialog.shownMessages).toContain("Your PIDGEY's Defense harshly fell!");
+    expect(dialog.shownMessages).toContain("Your PIDGEY's SPEED sharply rose!");
+    expect(dialog.shownMessages).toContain("Your PIDGEY's DEFENSE harshly fell!");
   });
 
   it("says a stat already at its cap won't go higher, as FireRed does, rather than saying nothing", () => {
     const { dialog } = fight(GENERATED_MOVES.agility, GENERATED_MOVES.screech, 6);
     const used = dialog.shownMessages.indexOf('Your PIDGEY used AGILITY!');
     expect(used).toBeGreaterThanOrEqual(0);
-    expect(dialog.shownMessages[used + 1]).toBe("Your PIDGEY's Speed won't go higher!");
+    expect(dialog.shownMessages[used + 1]).toBe("Your PIDGEY's SPEED won't go higher!");
   });
 
   it("says whose attack missed, as FireRed does, rather than an attack nobody threw", () => {
@@ -3662,7 +3662,7 @@ describe('an evolution B can stop, as FireRed lets you', () => {
 
     expect(charmander.level).toBe(16);
     expect(dialog.visibleText).toBe('What? CHARMANDER is evolving!');
-    const grew = dialog.shownMessages.indexOf('CHARMANDER grew to Lv 16!');
+    const grew = dialog.shownMessages.indexOf('CHARMANDER grew to LV. 16!');
     expect(grew).toBeGreaterThanOrEqual(0);
     expect(dialog.shownMessages.indexOf('What? CHARMANDER is evolving!')).toBeGreaterThan(grew);
     // Nothing but B moves it on: a press of the key that reads lines is ignored.

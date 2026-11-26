@@ -1,6 +1,6 @@
 // What a fight says, line by line, with a picture of each (`docs/screens/battle-lines/`).
 //
-//   node tools/playtest/battleLines.mjs <test-mode build url> <dir> [--port=N] [--hp=N] [--move=NAME] [--items]
+//   node tools/playtest/battleLines.mjs <test-mode build url> <dir> [--port=N] [--hp=N] [--status=burn] [--move=NAME] [--items] [--party]
 //
 // Deploys a new save into Greystone Vale with a Charmander on 7 HP leading a
 // Pikachu, Potions packed, and starts a wild Gastly fight. Reads every line
@@ -10,7 +10,9 @@
 // `--hp=N` starts the Charmander on N HP instead, `--move=EMBER` uses that
 // move instead of SCRATCH (EMBER at a third of its HP or less is where BLAZE
 // powers it), and `--items` opens ITEM before the move and photographs the
-// list with the line under its first medicine.
+// list with the line under its first medicine. `--status=burn` (or any
+// status) puts the Charmander in it, and `--party` opens POKéMON before the
+// move and photographs the list.
 import { attachBrowser, launchBrowser, PIXEL_WINDOW, sleep, writeScreenshot } from './browser.mjs';
 import { GAME, deploy, sceneIs } from './deploy.mjs';
 
@@ -79,7 +81,7 @@ try {
   await page.waitFor(`document.readyState === 'complete'`);
   await deploy(page, url, { press, click, until, wait: sleep, starter: 'Charmander', team: ['pikachu:12'], level: 12, stash: PACK, pack: PACK });
   await until(sceneIs('world'), 'the world');
-  await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); w.party.pokemon[0].currentHp = ${hp}; w.transitionToBattle({ wild: { speciesId: 'gastly', level: 12, shiny: false }, teachingBattle: false }); })()`);
+  await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); w.party.pokemon[0].currentHp = ${hp}; w.party.pokemon[0].primaryStatus = ${JSON.stringify(option('status') ?? null)}; w.transitionToBattle({ wild: { speciesId: 'gastly', level: 12, shiny: false }, teachingBattle: false }); })()`);
   await until(sceneIs('battle'), 'the battle');
   await sleep(1200);
   await readLines();
@@ -90,6 +92,14 @@ try {
     console.log(`ITEM: ${(await page.evaluate(`${BATTLE}.describeForTest().commands.join(' | ')`))}`);
     console.log(`under it: ${await page.evaluate(`${BATTLE}.moveGuidanceTexts[0]?.text ?? ''`)}`);
     await writeScreenshot(`${dir}/${++shot}-items.png`, (await page.send('Page.captureScreenshot', { format: 'png' })).data);
+    await press('Escape');
+    await sleep(600);
+  }
+  if (args.includes('--party')) {
+    await page.evaluate(`${BATTLE}.dispatchAction({ type: 'choose-pokemon' })`);
+    await sleep(800);
+    console.log(`POKéMON: ${(await page.evaluate(`${BATTLE}.describeForTest().commands.join(' | ')`))}`);
+    await writeScreenshot(`${dir}/${++shot}-party.png`, (await page.send('Page.captureScreenshot', { format: 'png' })).data);
     await press('Escape');
     await sleep(600);
   }
