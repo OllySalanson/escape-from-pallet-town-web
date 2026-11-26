@@ -569,6 +569,11 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       '[data-pupil]:not([aria-disabled])',
       '[data-target]:not([aria-disabled])',
       '[data-find]:not([aria-disabled])',
+      // A full locker leaves every find row shut, and the cursor fell to the X,
+      // so the ENTER the keys line said would keep room closed the screen (the
+      // harbour critic tour, 26 Nov 2026): it holds a shut row, or the way back.
+      '[data-find]',
+      '[data-find-close]',
       '.things-stash .px-grid-block:not(.is-dim)',
       '.things-pack .px-grid-block',
       '[data-close]',

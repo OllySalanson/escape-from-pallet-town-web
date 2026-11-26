@@ -358,6 +358,24 @@ const jobWalks = new Map<string, number | undefined>();
  * out of clock. It is measured when asked rather than when the board is dealt,
  * because a board is dealt for hundreds of seeds and shown for one.
  */
+/**
+ * How much more than a job's straight walk a raid should allow for it: the
+ * stops, the fights and the getting lost. The rim says a job needs this much
+ * of the clock, and the Gym Guide names only a job that fits one raid.
+ */
+export const JOB_WALK_ALLOWANCE = 2.5;
+
+/**
+ * Whether a standing job, walked from its map's front door, fits in one raid
+ * of `raidMs` once `JOB_WALK_ALLOWANCE` is allowed for it. A job that is not a
+ * standing one, or has nothing to walk to, fits.
+ */
+export function standingJobFits(contract: RaidContract, progress: StandingBoardProgress, raidMs: number): boolean {
+  const door = frontDoorFor(contract.mapId);
+  const walk = door ? standingJobWalk(contract, door.position, progress) : undefined;
+  return walk === undefined || walk * STEP_DURATION_MS * JOB_WALK_ALLOWANCE <= raidMs;
+}
+
 export function standingJobWalk(
   contract: RaidContract,
   from: GridPosition,

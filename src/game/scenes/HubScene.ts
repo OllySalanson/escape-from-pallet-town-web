@@ -207,7 +207,7 @@ import { caughtLegends } from '../world/legends';
 import { awayOnRaid, createRaidInFlight, outOnRaidLine, PACKED_FOR_RAID_LINE, raidHeartbeat } from '../run/raidInFlight';
 import { isFirstRaid } from '../hub/firstRaid';
 import { hasRaidStake } from '../world/raidStake';
-import { quickerLandingFor, rewardLine, standingJobWalk } from '../objectives/standingBoard';
+import { JOB_WALK_ALLOWANCE, quickerLandingFor, rewardLine, standingJobWalk } from '../objectives/standingBoard';
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import { joyRailLine, recoveryTermsFor } from '../hub/centerCounter';
 import { DAY_CARE_LEAST_RAID_MS, dayCareRefusal, leftLines, raidsCompleted } from '../hub/dayCare';
@@ -360,7 +360,6 @@ function tagWords(tag: string): string {
  * took two to three times the straight walk, and a player who trusted the
  * straight figure alone ran out of clock (tester 4's release blocker 3).
  */
-const JOB_WALK_ALLOWANCE = 2.5;
 
 /** What the rim says of a raid another window is playing, on the card and on the press. */
 const RAID_ELSEWHERE_LINE = 'A raid is already under way in another window. Finish it there first.';
@@ -2635,7 +2634,7 @@ export class HubScene extends Phaser.Scene {
         ? [`The job needs ${formatRecoveryClock(job.walk * STEP_DURATION_MS * JOB_WALK_ALLOWANCE)} of your ${formatRecoveryClock(this.raidClockMs)}.`]
         : []),
     ].slice(0, 2);
-    return `${pressing.length > 0 ? `${pressing.join(' ')} ` : ''}Over the fence: there is no way back from here, and the raid starts.`;
+    return `${pressing.length > 0 ? `${pressing.join(' ')} ` : ''}Down into the pit: there is no way back from here, and the raid starts.`;
   }
 
   /** The card's value rows, top to bottom: where, which job, which sky. */
@@ -2934,7 +2933,14 @@ export class HubScene extends Phaser.Scene {
         ...(this.flow.packItemId === undefined ? [] : [{ itemId: this.flow.packItemId, name: this.flow.packName }]),
         ...this.flow.riskedItems.map((item) => ({ itemId: item.itemId, name: this.itemName(item.itemId), quantity: item.quantity })),
       ],
-      kept: securedItems.map((item) => ({ itemId: item.itemId, name: this.itemName(item.itemId), quantity: item.quantity })),
+      // Room kept for a find is room, never a stack: "Pokédollars ×250" stood
+      // on the card of a save holding ₽0, the slot's size read as money
+      // carried (the harbour critic tour, 26 Nov 2026).
+      kept: securedItems.map((item) =>
+        isFoundOnly(item.itemId)
+          ? { itemId: item.itemId, name: `room for ${this.itemName(item.itemId)}` }
+          : { itemId: item.itemId, name: this.itemName(item.itemId), quantity: item.quantity },
+      ),
       lostPokemon: this.flow.riskedPokemon.map(({ pokemon }) => ({ speciesId: pokemon.base.id, name: pokemon.name })),
       help: `At risk: ${lost.length === 0 ? 'nothing: all of it is in the locker' : lost.join(', ')}.${
         goneForGood.length === 0 ? '' : ` A wipe: ${goneForGood.join(', ')}: lost for good.`

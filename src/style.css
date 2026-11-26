@@ -6918,7 +6918,9 @@ body.touch-play .feedback-tab {
   min-width: 0;
   overflow: hidden;
   padding: calc(var(--u) * 2) calc(var(--u) * 4) calc(var(--u) * 3);
-  background: var(--paper-lit);
+  /* White, as every card is: --paper-lit is gold's wash, the look's "chosen",
+     and all four tiles read as chosen (the harbour critic tour, 26 Nov 2026). */
+  background: var(--paper);
   box-shadow: inset 0 0 0 var(--u) rgb(34 29 30 / 22%);
 }
 /* A phone on its side: the controls take less, and each tile its short words. */

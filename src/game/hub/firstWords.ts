@@ -68,11 +68,12 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
     speaker: ARENA_KEEPER_DESIGN,
     name: ARENA_KEEPER_NAME,
     lines: [
-      "That's GREYSTONE VALE down the pit. Don't ask how. It was here first.",
-      'Walk up and press. The BENCH is who comes. The RACK is what you carry.',
-      'The LOCKER comes home whatever happens. A catch takes 4 squares or more, so leave room.',
-      'The cloud in the pit is whatever you have not walked yet.',
-      'And a rival hunter comes looking. If they catch you, you fight.',
+      // Three boxes, and the catch rule beside the pack it is about: after the
+      // LOCKER it read as "leave room in the locker" (the harbour critic tour,
+      // 26 Nov 2026).
+      "That's GREYSTONE VALE down the pit. The cloud is ground you haven't walked yet.",
+      'BENCH: who comes. RACK: what you carry. LOCKER: what comes home whatever happens.',
+      'Leave room in your pack: a caught Pokémon takes four squares. And mind the hunter!',
     ],
   },
   center: {
