@@ -54,7 +54,6 @@ interface CenterInternals {
   setView(view: 'stash'): void;
   render(): void;
   recover(ids: readonly string[]): void;
-  treat(pokemonId: string, itemId: string): void;
   giveGear(pokemonId: string, itemId: string): void;
   takeGear(pokemonId: string): void;
   pickUp(pokemonId: string): void;
@@ -144,7 +143,6 @@ const charmanderInStorage = (storage: MemoryStorage) =>
 /** Every write the Center makes, as the button that makes it does. */
 const CENTER_WRITES: readonly [string, (hub: CenterInternals) => void][] = [
   ['recovery', (hub) => hub.recover(['charmander-1'])],
-  ['treatment', (hub) => hub.treat('charmander-1', 'potion')],
   ['giving gear', (hub) => hub.giveGear('bulbasaur-1', 'quick-claw')],
   ['taking gear', (hub) => hub.takeGear('charmander-1')],
   ['NEW BOX', (hub) => hub.addBoxAndShow()],

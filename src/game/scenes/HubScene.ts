@@ -1,27 +1,22 @@
 import { honoursWorn } from '../look/gymHonours';
 import { namesSeenTwice, rimNameOf, rimTeamLine } from '../hub/rimTeam';
 import { raidConditions } from '../world/secrets';
-import { CHART_PIECES, chartWhole, NO_TREASURE_HUNT } from '../treasure/treasureMap';
+import { chartWhole, NO_TREASURE_HUNT } from '../treasure/treasureMap';
 import Phaser from 'phaser';
 import { readLook } from '../look/look';
 import { countPlay, mapDetail } from '../analytics/playCounter';
 import type { FeedbackDetail } from '../feedback/feedbackContext';
 import { audioManager } from '../audio/AudioManager';
-import type { SoundEffectName } from '../audio/soundEffects';
 import type {
   DeploymentFlow} from '../hub';
 import {
-  secureNeverReason,
   applyRecovery,
   healDayOf,
-  partnerPlaceLine,
   beaconUnlockAtMs,
   checkBerth,
-  faintedRefusal,
   formatRecoveryClock,
   getWorkshopUpgrade,
   hasBeacon,
-  MAX_RUN_PARTY,
   needsRecovery,
   WORKSHOP_UPGRADES,
   workshopOffers,
@@ -43,8 +38,6 @@ import {
   traderStanding,
   traderStandingPoints,
   traderStockOffers,
-  treatmentOptions,
-  treatWithItem,
   nextTraderStanding,
   rationLeft,
   moneyHeld,
@@ -62,7 +55,6 @@ import {
   type WorkshopUpgrade,
   type WorkshopVault,
   type RecoveryTerms,
-  type TreatmentOption,
 } from '../hub';
 import {
   Bag,
@@ -71,32 +63,20 @@ import {
   itemCountTag,
   HOLDABLE_ITEM_DEFINITIONS,
   ITEM_DEFINITIONS,
-  FOUND_ONLY_IDS,
-  isErrandItem,
-  blocksFor,
-  cargoCells,
-  footprintOf,
   getHeldItem,
   getItemById,
-  gridCells,
   isCurrency,
   isFoundOnly,
-  isFurniture,
-  isWearableItem,
   itemAmountsFor,
   READ_IN_A_RAID,
   USE_A_STONE,
   type ItemDefinition,
   type ItemId,
-  type PackItemId,
-  type GridPieceRef,
   MATERIAL_IDS,
 } from '../items';
-import { GridArranging } from '../ui/gridArranging';
-import { describeKey } from '../ui/hoverDescribe';
+import { } from '../ui/gridArranging';
 import { ItemHoverHelp } from '../ui/itemHoverHelp';
 import { flowForGame, offeredInsertions, type ArenaKit } from '../base/arenaKit';
-import { cargoSquaresLabel, pokemonCargo } from '../pokemon/pokemonCargo';
 import { PokemonParty, type PokemonBase } from '../pokemon';
 import { getSpeciesById } from '../pokemon/species';
 import { activeRunManager } from '../run';
@@ -183,7 +163,7 @@ import { moveChoiceMessage } from '../ui/moveChooser';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { conditionLine } from '../ui/condition';
 import { pokemonDossier } from '../ui/pokemonDossier';
-import { pixelEmptyPartySlot, pixelItemTile, pixelMonTile, pixelPartySlot, pixelStack } from '../ui/monIcon';
+import { pixelItemTile, pixelMonTile } from '../ui/monIcon';
 import { drawFixtureScaled, fixtureArt, fixtureDivisor } from '../ui/fixturePicture';
 import { drawRoomPicture, fitRoomPictures, roomPictureMark, roomPictureMarkup } from '../ui/roomPicture';
 import { workshopEffectPicture } from '../ui/workshopEffect';
@@ -197,13 +177,10 @@ import {
   pixelColumns,
   pixelCommitBar,
   pixelFigure,
-  pixelHpBar,
   pixelScreen,
-  pixelGrid,
   pixelTag,
   pixelWindow,
   takeDownPixelStatus,
-  pixelPokemonName,
 } from '../ui/pixelUi';
 import {
   pricePart,
@@ -246,20 +223,6 @@ import { awayFromGarden, awayLine, gardenPokemon, toggleGarden, withGarden } fro
 import { pokedexNote } from '../base/homeLines';
 import { withArticle } from '../ui/article';
 
-/**
- * What the help bar says while the cursor is on a block of a container.
- *
- * It is one line because it is read while the player is looking at the squares
- * rather than at the words, and it names the three keys that do anything:
- * taking, turning and putting down. The pointer needs no instructions.
- */
-/**
- * The same, on a container at base whose pieces go back to the vault with a
- * right-click or DEL (`GridArrangingHost.remove`): one at a time, so a stack of
- * Poké Balls is taken down a ball a click.
- */
-const ARRANGE_AND_REMOVE_HELP =
-  'ENTER picks this up · arrows carry it · R turns it · RIGHT-CLICK or DEL takes one out.';
 
 export interface HubSceneData {
   readonly savedGame?: RestoredGame;
@@ -297,12 +260,18 @@ export interface HubSceneData {
  * What the hall's panels show: who comes (`bench`), what they carry (`rack`),
  * what comes home whatever happens (`locker`), and where they would land (`rim`).
  */
+/**
+ * A station of THE RAID ARENA's hall. Only the rim is a panel of this scene:
+ * the bench opens YOUR TEAM and the rack and the locker YOUR THINGS
+ * (`BaseScene.openHallPanel`).
+ */
 export type ArenaPanel = 'bench' | 'rack' | 'locker' | 'rim';
+type HubPanel = Extract<ArenaPanel, 'rim'>;
 
-const ARENA_PANELS: readonly string[] = ['bench', 'rack', 'locker', 'rim'] satisfies readonly ArenaPanel[];
+const ARENA_PANELS: readonly string[] = ['rim'] satisfies readonly HubPanel[];
 
 /** Every base screen, and the hall's panels. */
-type HubView = 'stash' | ArenaPanel | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare' | 'trades' | 'friend';
+type HubView = 'stash' | HubPanel | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare' | 'trades' | 'friend';
 
 /**
  * How much of the menu layer a panel over the hall may take, in game pixels: as
@@ -418,15 +387,6 @@ export class HubScene extends Phaser.Scene {
   private enteredAt: GridPosition | undefined;
   /** The map on Oak's wall being read close up, or undefined while all four are. */
   private wallMapInspect: WorldMapId | undefined;
-  /**
-   * Picking a piece up and putting it down, in both containers.
-   *
-   * The two grids on this screen are one controller because only one piece is
-   * ever in the player's hand: the pack and the secure container are two
-   * containers, not two cursors. What the rules are lives in
-   * `items/gridArrange.ts`; what is being carried lives here.
-   */
-  private arrangingValue: GridArranging | undefined;
   /** What an item does, after the pointer or the cursor rests on it (`ui/itemHoverHelp.ts`). */
   private hoverHelp: ItemHoverHelp | undefined;
   /** Whose summary is on screen, while the summary view is the one showing. */
@@ -564,7 +524,6 @@ export class HubScene extends Phaser.Scene {
     } else {
       this.flow = flowForGame(loaded);
     }
-    this.arranging.release();
     this.view = 'stash';
     this.reselectStarterId = this.startingStarterId();
     this.swapArmed = false;
@@ -849,16 +808,6 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * A recovery price as a tag says it - `Center −0:30`, or `Ward free` when the
-   * ward's bed would take this one. Short, because it shares a row with a name
-   * and a health bar; the help bar below is where it is spelt out.
-   */
-  private recoveryPriceLabel(stored: StashedPokemon): string {
-    const priceMs = this.recoveryPriceMs(stored);
-    return `${this.inWardBed(stored) ? 'Ward' : 'Center'} ${priceMs === 0 ? 'free' : `−${formatRecoveryClock(priceMs)}`}`;
-  }
-
-  /**
    * The price alone, for a stash row: beside a ten-letter name and its health
    * bar there is room for `−0:45` and not for the word in front of it.
    */
@@ -918,32 +867,6 @@ export class HubScene extends Phaser.Scene {
       this.writeGame()
         ? `${treated} recovered for ${cost}. Next raid clock: ${formatRecoveryClock(this.raidClockMs)}.`
         : `${treated} recovered, but the recovery could not be saved.`,
-    );
-  }
-
-  /**
-   * Spends one medicine out of the stash on a Pokemon at base.
-   *
-   * The stash is the same vault the half-built loadout draws from, so the
-   * loadout's own supply counts shrink with it and a deployed stack can never
-   * outgrow what is actually held - see `DeploymentFlow.items`.
-   */
-  private treat(pokemonId: string, itemId: string): void {
-    if (this.movedOnElsewhere() || this.outOnRaid(pokemonId) || this.packedForRaid(itemId)) {
-      return;
-    }
-    const result = treatWithItem(this.stash, pokemonId, itemId);
-    if (!result.used) {
-      this.refuse(result.message);
-      return;
-    }
-
-    audioManager.play('heal');
-
-    this.setStatus(
-      this.writeGame()
-        ? result.message
-        : `${result.message} The treatment could not be saved.`,
     );
   }
 
@@ -1033,83 +956,6 @@ export class HubScene extends Phaser.Scene {
   private startingStarterId(): StarterSpeciesId {
     const heldId = this.stash.listPokemon()[0]?.pokemon.base.id;
     return heldId === 'charmander' || heldId === 'squirtle' ? heldId : 'bulbasaur';
-  }
-
-  /**
-   * The strip under a container: what is in your hand, and the way out of it.
-   *
-   * TIDY is the automatic pack made into a deed rather than the only behaviour
-   * there is - the packer will turn a piece on its side to make a mix fit, and
-   * a player who does not want to fiddle should have that without fiddling. It
-   * says what it will do, because it throws away an arrangement somebody made.
-   */
-  private arrangeBar(name: 'pack' | 'secure'): string {
-    const what = name === 'pack' ? 'pack' : 'container';
-    // The chip and nothing else. What the keys do is the help bar's line, said
-    // while the cursor is on a block - which is the only moment it is wanted,
-    // and the only place on this screen with room for a sentence: the pack
-    // stands in a column a third of the stage wide, where a line of
-    // instructions wrapped to three rows and clipped the chip in half.
-    return `<div class="px-grid-bar"><button class="px-window px-chip" data-tidy="${name}" data-help="${escapeAttribute(`Pack the ${what} again from scratch, turning pieces on their side where that is what makes the mix fit. It replaces how you have laid it out.`)}">Tidy</button></div>`;
-  }
-
-  /**
-   * Built on first use rather than as a field, because a scene is a Phaser
-   * scene: nothing guarantees the constructor ran before `init` does, and the
-   * suite drives this one off the prototype.
-   */
-  private get arranging(): GridArranging {
-    this.arrangingValue ??= new GridArranging({
-      packing: (name) => (name === 'secure' ? this.flow.secureLayout() : this.flow.bagLayout()),
-      commit: (name, arrangement) => {
-        if (name === 'secure') {
-          this.flow.arrangeSecure(arrangement);
-        } else {
-          this.flow.arrangeBag(arrangement);
-        }
-        this.render();
-      },
-      redraw: () => this.render(),
-      remove: (name, ref) => {
-        this.removeFromContainer(name, ref);
-        return true;
-      },
-      say: (message) => this.setStatus(message),
-      sound: (kind) =>
-        audioManager.play(kind === 'refused' ? 'denied' : kind === 'take' ? 'menuOpen' : 'select'),
-    });
-    return this.arrangingValue;
-  }
-
-  /**
-   * One of a piece back to the vault, as its row's minus would: one of an item
-   * out of the pack, one square of it out of the secure container, a secured
-   * Pokémon out of the container whole.
-   */
-  private removeFromContainer(name: string, ref: GridPieceRef): void {
-    if (ref.kind === 'cargo') {
-      if (name === 'secure') {
-        this.answer(this.flow.toggleSecurePokemon(ref.cargoId), 'cancel');
-      }
-      return;
-    }
-    const itemId = ref.itemId as ItemId;
-    const item = this.itemName(itemId);
-    const left = this.flow.itemQuantity(itemId) - 1;
-    const refusal =
-      name === 'secure' ? this.flow.adjustSecureItem(itemId, -1) : this.flow.setItemQuantity(itemId, left);
-    if (refusal !== undefined) {
-      this.refuse(refusal);
-      return;
-    }
-    audioManager.play('cancel');
-    this.setStatus(
-      name === 'secure'
-        ? `Took a square of ${item} out of THE LOCKER.`
-        : left > 0
-          ? `Took one ${item} out of the pack. ${left} still packed.`
-          : `Took ${item} out of the pack.`,
-    );
   }
 
   private setView(view: HubView): void {
@@ -1571,13 +1417,6 @@ export class HubScene extends Phaser.Scene {
   }
 
   private handleKey(event: KeyboardEvent): void {
-    // A piece in the player's hand owns the arrow keys, R, ENTER and ESC, so it
-    // is asked before the cursor is: carrying something and pressing Left has
-    // exactly one meaning, and it is not "move to the pane on the left".
-    if (this.arranging.handleKey(event, document.activeElement)) {
-      event.preventDefault();
-      return;
-    }
     if (event.key === 'Escape' && (this.boxMoving || this.boxEditing)) {
       event.preventDefault();
       audioManager.play('cancel');
@@ -1689,11 +1528,7 @@ export class HubScene extends Phaser.Scene {
       }
       return;
     }
-    if (kind === 'item') {
-      this.answer(this.flow.setItemQuantity(id as ItemId, target), 'select');
-    } else if (kind === 'secure') {
-      this.answer(this.flow.setSecureSquares(id as ItemId, target), 'select');
-    } else if (kind === 'buy' || kind === 'barter') {
+    if (kind === 'buy' || kind === 'barter') {
       this.counterCounts.set(`${kind}:${id}`, target);
       audioManager.play('select');
     } else {
@@ -1728,9 +1563,6 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'daycare') return 'Day-Care';
     if (this.view === 'trades') return 'The Trader';
     if (this.view === 'friend') return 'Raid with a friend';
-    if (this.view === 'bench') return 'The bench';
-    if (this.view === 'rack') return 'The armoury rack';
-    if (this.view === 'locker') return 'The locker';
     return 'The rim';
   }
 
@@ -1745,15 +1577,8 @@ export class HubScene extends Phaser.Scene {
     return undefined;
   }
 
-  /**
-   * What the keys do, said once along the bottom of every screen, on a line of
-   * its own that never goes. The rack says its own: Left and Right are the
-   * counts', so Tab is the way across to the pack (`areaHopIndex`).
-   */
+  /** What the keys do, said once along the bottom of every screen, on a line of its own that never goes. */
   private get hints(): string {
-    if (this.view === 'rack') {
-      return 'UP DOWN move · LEFT RIGHT how many · TAB the pack · ESC back';
-    }
     return 'ARROWS move · ENTER choose · ESC back';
   }
 
@@ -1856,18 +1681,7 @@ export class HubScene extends Phaser.Scene {
       change();
       this.render();
     };
-    this.arranging.attach(root);
     this.hoverHelp?.redrawn();
-    on('[data-tidy]', (button) => {
-      if (button.dataset.tidy === 'secure') {
-        this.flow.tidySecure();
-      } else {
-        this.flow.tidyBag();
-      }
-      this.arranging.release();
-      audioManager.play('select');
-      this.render();
-    });
     on('[data-back]', () => this.goBack());
     on('[data-close]', () => this.leaveToBase());
     // A value row on the rim's card: its left arrow goes back, anywhere else on it goes on.
@@ -1989,41 +1803,8 @@ export class HubScene extends Phaser.Scene {
       const name = this.stashPokemon.find((stored) => stored.id === button.dataset.fit)?.pokemon.name;
       this.setStatus(`${name ?? 'That Pokémon'} is fit. There is nothing to recover.`);
     });
-    on('[data-pokemon]', (button) => {
-      const after = this.view === 'bench' ? benchCursorAfter(button) : undefined;
-      const refusal = this.flow.togglePokemon(button.dataset.pokemon!);
-      this.answer(refusal, 'select');
-      if (refusal === undefined && after) {
-        this.overlay.focus(...after);
-      }
-    });
-    on('[data-pack]', (button) => {
-      this.answer(this.flow.choosePack(button.dataset.pack! as PackItemId), 'select');
-      this.kit?.dress();
-    });
-    on('[data-treat-item]', (button) => this.treat(button.dataset.treatPokemon!, button.dataset.treatItem!));
     on('[data-gear-give]', (button) => this.giveGear(button.dataset.gearPokemon!, button.dataset.gearGive!));
     on('[data-gear-take]', (button) => this.takeGear(button.dataset.gearTake!));
-    // Pressing the partner's row says what its help line says: there is nothing
-    // to toggle, and a refusal's sound would be wrong about a Pokémon that is safe.
-    on('[data-partner-place]', () => {
-      const partner = this.flow.partnerOnRaid;
-      if (partner) {
-        audioManager.play('select');
-        this.setStatus(partnerPlaceLine(partner.pokemon.name));
-      }
-    });
-    on('[data-secure-pokemon]', (button) => {
-      // It refuses by the squares now, so the message is the whole point of the
-      // press: an Ivysaur that will not go into a 2x2 container says why, on
-      // the same status line every other refusal on this screen uses.
-      const refusal = this.flow.toggleSecurePokemon(button.dataset.securePokemon!);
-      if (refusal) {
-        this.answer(refusal, 'select');
-        return;
-      }
-      rerender(() => undefined);
-    });
     // Another map to look down on.
     on('[data-insertion]', (button) => {
       this.pointAtLanding(button.dataset.insertion as RunInsertionId);
@@ -2097,9 +1878,6 @@ export class HubScene extends Phaser.Scene {
 
   /** What a panel's title bar says at a glance: the number that panel is about. */
   private panelAside(): string {
-    if (this.view === 'bench') return `${this.flow.party.length}/${MAX_RUN_PARTY} Pokémon`;
-    if (this.view === 'rack') return `${this.flow.bagCells.used}/${this.flow.bagCells.total} squares`;
-    if (this.view === 'locker') return `${this.flow.secureCells.used}/${this.flow.secureCells.total} squares`;
     return isPlaytestRun() ? '' : formatRecoveryClock(this.raidClockMs);
   }
 
@@ -2112,9 +1890,6 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'daycare') return this.dayCareView();
     if (this.view === 'trades') return this.tradesView();
     if (this.view === 'friend') return this.friendView();
-    if (this.view === 'bench') return this.benchView();
-    if (this.view === 'rack') return this.rackView();
-    if (this.view === 'locker') return this.lockerView();
     return this.rimView();
   }
 
@@ -2291,61 +2066,6 @@ export class HubScene extends Phaser.Scene {
     mapId: WorldMapId,
   ): readonly [RunInsertionId, RunInsertion] | undefined {
     return this.unlockedInsertions.find(([, insertion]) => insertion.mapId === mapId);
-  }
-
-  /** One line of condition, so "fainted" is never hidden behind an HP number. */
-  private conditionLine(stored: StashedPokemon): string {
-    return conditionLine(stored.pokemon);
-  }
-
-  /**
-   * Name, health bar and state on one line; the condition in words under it,
-   * and the gear it is carrying on the end of that.
-   *
-   * The gear is said here rather than only in the stash, because this one line
-   * is every list a Pokemon appears in at base - the stash, the loadout, the
-   * secure slot and the final check - and what a Pokemon takes into the raid is
-   * exactly the thing the last two of those are asking about.
-   */
-  private pokemonRowBody(stored: StashedPokemon, tag: string, boxName?: string): string {
-    const { pokemon } = stored;
-    const held = getHeldItem(pokemon.heldItemId);
-    return `<span class="px-row-main"><span class="px-row-line">${pixelPokemonName(pokemon)}${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${this.conditionLine(stored)}${held ? ` \u00b7 holding ${held.displayName}` : ''}${boxName ? ` \u00b7 ${escapeAttribute(boxName)}` : ''}</small></span>${tag}`;
-  }
-
-  /**
-   * The treatment surface, in the pane about the Pokemon it would treat.
-   *
-   * It offers both prices side by side before either is paid: one medicine out
-   * of the stash, or a full restore at the Pokemon Center for raid time. What
-   * each would do is in the help bar the moment the cursor is on it, and a
-   * medicine that would do nothing can still be pointed at to be told why - a
-   * player should never have to spend a Potion to find out what it does.
-   *
-   * It used to be a strip under every hurt row, which on a stash of two dozen
-   * made half the rows three lines tall and the list unscannable - and it is
-   * about the one Pokemon the cursor is on, which is what a detail pane is.
-   */
-  private careChips(stored: StashedPokemon, shows: string): string {
-    const { pokemon } = stored;
-    if (awayOnRaid(this.savedGame).has(stored.id)) {
-      return `<span class="px-note">${OUT_ON_A_RAID_NOTE}</span>`;
-    }
-    if (!needsRecovery(pokemon)) {
-      return '<span class="px-note">Fit to raid.</span>';
-    }
-    const options = treatmentOptions(this.stash, pokemon);
-    const medicine = options.length
-      ? options.map((option) => this.careOption(stored.id, option, shows)).join('')
-      : '<span class="px-note">No medicine at base.</span>';
-    const bay = `<button class="px-window px-chip" data-recover="${stored.id}" ${shows} data-help="${this.recoveryHelp(stored)}">${this.recoveryPriceLabel(stored)}</button>`;
-    return `${pokemon.isFainted ? '<span class="px-note">Fainted.</span>' : ''}${medicine}${bay}`;
-  }
-
-  private careOption(pokemonId: string, option: TreatmentOption, shows = ''): string {
-    // Not `disabled`: a disabled control cannot take the cursor, and the cursor
-    // is how this screen says why a medicine would do nothing.
-    return `<button class="px-window px-chip" data-treat-pokemon="${pokemonId}" data-treat-item="${option.itemId}" ${shows} data-help="${escapeAttribute(`${option.displayName}: ${option.effect}.`)}"${option.usable ? '' : ' aria-disabled="true"'}>${option.displayName} ×${option.held}</button>`;
   }
 
   /**
@@ -2805,186 +2525,6 @@ export class HubScene extends Phaser.Scene {
       return 'Your pack is full, so a catch has nowhere to go: a Pokémon needs 4 free squares.';
     }
     return '';
-  }
-
-  /**
-   * THE BENCH: who comes. Everything at base, the row under the cursor answered
-   * by its dossier, which is also where a hurt Pokémon is treated and gear is
-   * given or taken. Whoever is ticked here sits on the stone in the hall.
-   */
-  private benchView(): string {
-    const party = this.flow.party;
-    const single = this.stashPokemon.length === 1;
-    const nobodyStanding = this.stashPokemon.length > 0 && this.stashPokemon.every((stored) => stored.pokemon.isFainted);
-    // A faint is not a hurt, so the two are counted apart: the counts are the
-    // facts, and what to do about them is the player's to see.
-    const faintedCount = this.injuredPokemon.filter((stored) => stored.pokemon.isFainted).length;
-    const hurtCount = this.injuredPokemon.length - faintedCount;
-    const stashNote = faintedCount === 0
-      ? hurtCount ? `${hurtCount} hurt` : ''
-      : hurtCount ? `${faintedCount} fainted · ${hurtCount} hurt` : `${faintedCount} fainted`;
-    const summary = party.length === 0
-      ? nobodyStanding ? 'Nobody fit to go.' : 'Nobody on the bench yet.'
-      : party.map((stored) => stored.pokemon.name).join(', ');
-    // The rack and the rim say what is not packed; on the bench it is about nothing in view.
-    const warning = this.packWarning({ balls: false });
-    // FireRed's party and PC box, as YOUR TEAM draws the same question
-    // (`ui/teamView.ts`): the bench as six slots - the lead's gold, an empty one
-    // a dim Poké Ball - and everybody else at base as party icons under them,
-    // each tile's box said to a reader and on the help bar.
-    const boxNames = this.stash.listBoxes().map((box) => box.name);
-    const benchHelp = (stored: StashedPokemon): string => `Take ${escapeAttribute(stored.pokemon.name)} back off the bench.`;
-    const slots = Array.from({ length: MAX_RUN_PARTY }, (_, index) => {
-      const stored = party[index];
-      return stored
-        ? pixelPartySlot(stored.pokemon, {
-            lead: index === 0,
-            attributes: `data-pokemon="${stored.id}" data-shows="${stored.id}" aria-label="${escapeAttribute(`${stored.pokemon.name}, level ${stored.pokemon.level}${index === 0 ? ', leads' : ''}, ${boxNames[this.stash.boxIndexOf(stored.id)] ?? ''}`)}" data-help="${benchHelp(stored)}"`,
-          })
-        : pixelEmptyPartySlot();
-    }).join('');
-    const atBase = this.findablePokemon.filter((stored) => !this.flow.includesPokemon(stored.id));
-    const pokemonRows = atBase
-      .map((stored, index) => {
-        const name = escapeAttribute(stored.pokemon.name);
-        // The cursor starts on the first Pokemon, not on the sort chip above
-        // the list: an Enter on arrival re-sorted the stash (playtest 44 #2).
-        // A fainted Pokemon is refused by the flow (`togglePokemon`), so its tile
-        // is a cursor stop that says why rather than an ADD that does nothing.
-        const fainted = stored.pokemon.isFainted;
-        const full = party.length >= MAX_RUN_PARTY;
-        const boxed = boxNames[this.stash.boxIndexOf(stored.id)] ?? '';
-        return pixelMonTile(stored.pokemon, {
-          attributes: `data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 && party.length === 0 ? ' data-cursor-start' : ''}${fainted || full ? ' aria-disabled="true"' : ''} data-box-name="${escapeAttribute(boxed)}" aria-label="${escapeAttribute(`${stored.pokemon.name}, level ${stored.pokemon.level}, ${boxed}`)}" data-help="${fainted ? faintedRefusal(name, single) : full ? `The bench is full (${MAX_RUN_PARTY}). Take somebody off first.` : `Put ${name}${single ? ', your only Pokémon,' : ''} on the bench.`}"`,
-        });
-      })
-      .join('');
-    const details = this.findablePokemon
-      .map((stored, index) =>
-        this.pokemonDetail(stored, index === 0, {
-          label: 'Condition',
-          chips: (shows) => this.careChips(stored, shows),
-        }),
-      )
-      .join('');
-    return `<main class="px-body loadout-layout bench-layout">${pixelWindow(
-      `<div class="px-party-slots bench-slots">${slots}</div><div class="px-mon-tiles px-scroll">${this.browseBar(false)}${pokemonRows || `<p class="px-empty">${this.findablePokemon.length > 0 ? 'Everybody is on the bench.' : 'No Pokémon answers that.'}</p>`}</div>${details}`,
-      { className: 'loadout-stash', heading: 'At base', note: stashNote },
-    )}${pixelCommitBar({
-      title: `${party.length}/${MAX_RUN_PARTY} on the bench`,
-      // The slots say who; the bar says only what is wrong, when something is.
-      lines: [
-        ...(party.length === 0 ? [`<span class="px-wrap">${summary}</span>`] : []),
-        ...(warning ? [`<small class="px-wrap px-warning">${warning}</small>`] : []),
-      ],
-      actions: '',
-    })}</main>`;
-  }
-
-  /**
-   * THE ARMOURY RACK: what this raid carries. What goes in the pack, how it is
-   * laid out, and which pack it is, because a pack is gear the player chooses
-   * and loses rather than a size the game gives them.
-   */
-  private rackView(): string {
-    const supplyRows = this.stashItems
-      .filter((item) => !isFoundOnly(item.id))
-      .map((item, index) => {
-        const packed = this.flow.itemQuantity(item.id as ItemId);
-        const held = this.stash.itemCount(item.id);
-        const footprint = footprintOf(item.id);
-        const size = footprint.width === 1 && footprint.height === 1
-          ? '1 square'
-          : `${footprint.width * footprint.height} squares`;
-        // Medicine goes in by default (`MEDICINE_PREPACK_SHARE`), and the row
-        // says so for as long as it is the default rather than a choice, so
-        // the player can see what was packed for them and take it back out.
-        const prepacked = this.flow.isPrepacked(item.id as ItemId);
-        const help = escapeAttribute(
-          `${item.displayName}: ${item.description}${usedInARaid(item)} ${size} each, ${held} at base.${
-            prepacked ? ' Packed for you - medicine goes in by default. Take it out if you want the squares.' : ''
-          }`,
-        );
-        // The pack is the second cap after the vault, so a row says both: what
-        // it costs in squares, and how many of it the base still holds. A plus
-        // that would not fit is left reachable and refuses out loud, because a
-        // control the cursor cannot land on can never say why.
-        const limit = this.flow.packLimit(item.id as ItemId);
-        // A plus that stops short because of how the pack is *laid out* is not
-        // the same fact as a pack that is full, and the row owes the difference:
-        // one of them has Tidy as its answer and the other has nothing.
-        const tidied = this.flow.packLimitTidied(item.id as ItemId);
-        const limitReason = limit < held
-          ? tidied > limit
-            ? `The pack has room for ${limit} ${item.displayName} as you have laid it out - ${tidied} if it is packed again. Tidy is under the squares.`
-            : `The pack has room for ${limit} ${item.displayName} beside what else is packed.`
-          : held === 1
-            ? 'The only one at base is packed.'
-            : held === 2
-              ? 'Both at base are packed.'
-              : `Every one of the ${held} at base is packed.`;
-        // How many are packed against how many are at base, as the thing
-        // itself: a pile of its icon, the packed ones lit (`pixelStack`). The
-        // squares each takes and whether it was packed for you are the help
-        // bar's, which says them the moment the cursor is on the row.
-        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}" data-describes="${describeKey('item', item.id)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong class="px-name">${item.displayName}</strong>${pixelStack(item, packed, held)}</span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason, cursorStart: index === 0 })}</div>`;
-      })
-      .join('');
-    const cells = this.flow.bagCells;
-    const warning = this.packWarning();
-    const firstCount = supplyRows.indexOf('data-count-dir');
-    return `<main class="px-body loadout-layout">${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${firstCount < 0 ? '<p class="px-empty">No supplies at base.</p>' : supplyRows}</div>`,
-      { className: 'loadout-stash', heading: 'Supplies' },
-    )}<div class="loadout-side">${pixelWindow(
-      `<div class="pack-body px-scroll">${pixelGrid(this.flow.bagLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
-        label: `Pack, ${cells.used} of ${cells.total} squares full`,
-        arrange: { name: 'pack', ghost: this.arranging.ghostFor('pack'), help: ARRANGE_AND_REMOVE_HELP },
-      })}${this.arrangeBar('pack')}${this.packRows()}</div>`,
-      {
-        className: 'pack-window',
-        heading: 'Pack',
-        note: `${cells.used}/${cells.total} squares`,
-      },
-    )}</div>${pixelCommitBar({
-      title: this.flow.packName,
-      lines: warning ? [`<small class="px-wrap px-warning">${warning}</small>`] : [],
-      actions: '',
-    })}</main>`;
-  }
-
-  /**
-   * The packs at base, under the squares they would give you.
-   *
-   * It is a list of rows rather than a cycling control because the choice is
-   * the point: a Hauler frame carries a fortune home and is a fortune to lose,
-   * a Satchel risks almost nothing because it holds almost nothing, and the row
-   * says both numbers before anything is chosen. A pack too small for what is
-   * already packed is still reachable and refuses out loud - a control the
-   * cursor cannot land on can never say why.
-   */
-  private packRows(): string {
-    const choices = this.flow.packChoices;
-    if (choices.length === 0) {
-      return '<p class="px-empty">No pack at base.</p>';
-    }
-    const rows = choices
-      .map((choice) => {
-        const spare = choice.held - 1;
-        const help = escapeAttribute(
-          `${choice.name}: ${choice.squares} squares. ${
-            choice.wouldNotHold ??
-            (spare > 0
-              ? `${spare} spare at base, so losing this one is not losing them all.`
-              : 'Your only one. Lose this raid and it is gone.')
-          }`,
-        );
-        return `<button class="px-row has-icon${choice.chosen ? ' is-selected' : ''}" data-pack="${choice.itemId}" data-help="${help}">${itemIcon(choice.itemId, choice.name)}<span class="px-row-main"><strong class="px-name">${choice.name}</strong><small>${choice.squares} squares${choice.held > 1 ? ` · ${choice.held} at base` : ''}</small></span>${
-          choice.chosen ? pixelTag('', 'good', true) : pixelTag(choice.wouldNotHold ? 'Full' : 'Wear')
-        }</button>`;
-      })
-      .join('');
-    return `<h3 class="px-subheading">Wearing</h3><div class="px-list pack-choices">${rows}</div>`;
   }
 
   /**
@@ -3691,170 +3231,6 @@ export class HubScene extends Phaser.Scene {
               : `<p class="px-note px-wrap">${unseen} more place${unseen === 1 ? '' : 's'} on this map nobody here has walked.</p>`
         }`;
     return wildlife;
-  }
-
-  /** THE LOCKER: what comes home whatever happens to the raid. */
-  private lockerView(): string {
-    const party = this.flow.party;
-    const slots = this.flow.securePokemonSlots;
-    // A Pokemon costs squares of the same container its supplies do, four, six
-    // or nine by how far along its line it is, so the row says the price before
-    // the press and the help bar says what it would buy or cost.
-    const pokemonRows = party
-      .map((stored) => {
-        if (this.flow.isPartnerPlace(stored.id)) {
-          // The partner's own place: no squares, no slot, no press that could
-          // take it out, and the row says so in the secure tone the container uses.
-          return `<button class="px-row is-secured is-partner-place" data-partner-place data-shows="${stored.id}" data-help="${escapeAttribute(partnerPlaceLine(stored.pokemon.name))}">${this.pokemonRowBody(stored, pixelTag('PARTNER', 'secure', true))}</button>`;
-        }
-        const secured = this.flow.securesPokemon(stored.id);
-        const piece = pokemonCargo(stored.id, stored.pokemon);
-        const squares = cargoSquaresLabel(cargoCells(piece));
-        // The row never offers what the press would refuse: a Pokemon too big
-        // for this container says what would make room, and one too big for
-        // any says so, rather than inviting a press that cannot work.
-        const fit = secured ? 'fits' : this.flow.secureFit(stored.id);
-        const help = secured
-          ? `In THE LOCKER: it comes home even if you wipe. It is taking ${squares}.`
-          : fit === 'never'
-            ? `Too big for THE LOCKER at any size: ${secureNeverReason(piece, this.flow.secureGrid)}. A wipe will take it.`
-            : fit === 'grow'
-              ? `It needs ${squares}, more than THE LOCKER's ${this.flow.secureGrid.width}x${this.flow.secureGrid.height}. To make it safe, ${this.flow.secureGrowthAdvice}.`
-              : `Put this Pokémon in THE LOCKER so a wipe cannot take it. It needs ${squares}.`;
-        // The price is on the row whether or not it is paid: a secured Pokemon
-        // still says what it is taking, because the next question the screen is
-        // asked is what would fit if it came out.
-        return `<button class="px-row${secured ? ' is-secured' : ''}" data-secure-pokemon="${stored.id}" data-shows="${stored.id}" data-help="${escapeAttribute(help)}">${this.pokemonRowBody(stored, secured ? pixelTag(squares.toUpperCase(), 'secure', true) : pixelTag(squares.toUpperCase(), 'plain'))}</button>`;
-      })
-      .join('');
-    // One stepper a kind, exactly as the loadout packs: the container is squares
-    // now, so "how much of this comes home" is a number rather than a tick, and
-    // the same two keys answer it on both screens.
-    // The pane is narrow: the row says how many squares one costs and nothing
-    // else, because a second clause wrapped every row onto three lines and a
-    // list of three-line rows is a list nobody scrolls. What is packed, and
-    // what a material's room is for, are in the help bar the cursor fills.
-    // (A pile of the thing, as the rack draws, was tried here and cost two of
-    // the seven rows in view at 1280x800: the menu overhaul's notes.)
-    const secureRow = (itemId: ItemId, help: string): string => {
-      // Squares, not units. They are the same number for everything a square
-      // holds one of, and for money - a bundle to a square - the stepper
-      // would otherwise count in hundreds in a box four characters wide.
-      const held = blocksFor(itemId, this.flow.secureQuantity(itemId));
-      const footprint = footprintOf(itemId);
-      const size = footprint.width * footprint.height;
-      const limit = this.flow.secureLimit(itemId);
-      const packed = this.flow.itemQuantity(itemId);
-      const roomLine = held >= limit
-        ? 'THE LOCKER cannot seat any more of this beside what is in it.'
-        : `THE LOCKER has room for ${limit} square${limit === 1 ? '' : 's'} of this beside what is in it.`;
-      const limitReason = isFoundOnly(itemId)
-        ? roomLine
-        : packed === 0
-          ? 'Pack some of this first - THE LOCKER protects what you carry.'
-          : limit >= blocksFor(itemId, packed)
-            ? 'Everything you packed of this is already in THE LOCKER.'
-            : roomLine;
-      return `<div class="px-row has-icon${held ? ' is-secured' : ''}">${itemIcon(itemId, this.itemName(itemId))}<span class="px-row-main"><strong class="px-name">${this.itemName(itemId)}</strong><small>${size === 1 ? '1 square' : `${size} squares`}</small></span>${countSelector({ kind: 'secure', id: itemId, label: this.itemName(itemId), value: held, max: limit, help, limit: limitReason })}</div>`;
-    };
-    const itemRows = this.flow.items
-      .map((item) =>
-        secureRow(
-          item.itemId,
-          `${this.itemName(item.itemId)}: ${item.quantity} packed. What you put in THE LOCKER comes home even if you wipe.`,
-        ),
-      )
-      .join('');
-    // A material, and the money beside it, are found rather than packed, so the
-    // container holds room for them: whatever of that kind is still in the pack
-    // when the raid is lost comes home, up to the squares set aside here. Money
-    // no room was kept for is money a wipe takes.
-    // Somebody's errand is offered only while its thing is out there to be
-    // found: four squares kept for a crate that is already home, or that
-    // nobody has asked for, would be four squares kept for nothing.
-    const wanted = errandsToLay(this.savedGame.raidProgress, (itemId) => this.heldOrOnTheMachine(itemId), (speciesId) => this.pokedexOwns(speciesId)).map(
-      (errand) => errand.itemId as string,
-    );
-    // Furniture is found-only too, and the one kind no room is kept for: a
-    // trophy comes home in a pack that comes home (`items.ts`, FOUND_ONLY_IDS).
-    // A torn chart is room kept for a hunt that has started: on a new save the
-    // rows named three chart pieces nobody had heard of (AI playtest, 22 Nov 2026).
-    const hunting = (this.savedGame.raidProgress.treasureHunt?.pinned.length ?? 0) > 0;
-    const materialRows = FOUND_ONLY_IDS.filter(
-      (itemId) =>
-        !isFurniture(itemId) &&
-        !isWearableItem(itemId) &&
-        (!isErrandItem(itemId) || wanted.includes(itemId)) &&
-        (hunting || !CHART_PIECES.some((piece) => piece.itemId === itemId)),
-    ).map((itemId) =>
-      secureRow(
-        itemId,
-        `${this.itemName(itemId)}: room kept for what you find. It is never packed, so this is squares held open for it.`,
-      ),
-    ).join('');
-    const cells = this.flow.secureCells;
-    return `<main class="px-body secure-layout">${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${pokemonRows || '<p class="px-empty">Nobody is on the bench yet.</p>'}</div>${this.secureRoomNote()}`,
-      { className: 'secure-group', heading: 'Pokémon', note: `${this.flow.securedPokemon.length}/${slots} ${slots === 1 ? 'slot' : 'slots'}` },
-    )}${pixelWindow(
-      // The squares and the list are one child of the window, or the window's
-      // second row takes both and the container scrolls away with the list.
-      `<div class="secure-body">${pixelGrid(this.flow.secureLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
-        className: 'is-secure',
-        label: `THE LOCKER, ${cells.used} of ${cells.total} squares full${this.flow.securedCargo.length ? `, holding ${this.flow.securedCargo.map((piece) => piece.name).join(' and ')}` : ''}`,
-        arrange: { name: 'secure', ghost: this.arranging.ghostFor('secure'), help: ARRANGE_AND_REMOVE_HELP },
-      })}${this.arrangeBar('secure')}<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${itemRows ? `${itemRows}` : ''}<h3 class="px-subheading">Room for what you find</h3>${materialRows}</div></div>`,
-      {
-        className: 'secure-group',
-        heading: 'In the locker',
-        note: `${cells.used}/${cells.total} squares`,
-      },
-    )}${pixelCommitBar({
-      className: 'px-tone-secure secure-intro',
-      title: 'Comes home whatever happens',
-      lines: [],
-      actions: '',
-    })}</main>`;
-  }
-
-  /**
-   * Why the container holds what it holds, said rather than left to be deduced.
-   *
-   * The base container is four squares and a first-stage Pokemon is four
-   * squares, so filling itself with your best Pokemon fills it completely -
-   * that is the design, but a player who finds the plus buttons dead deserves
-   * the sentence rather than the silence. The same line says what would change
-   * it: a bigger container, or letting the Pokemon go.
-   */
-  private secureRoomNote(): string {
-    const cargo = this.flow.securedCargo;
-    const free = gridCells(this.flow.secureGrid) - this.flow.secureCells.used;
-    const grow = this.flow.secureGrowthAdvice;
-    const shape = `${this.flow.secureGrid.width}x${this.flow.secureGrid.height}`;
-    if (cargo.length === 0) {
-      // Nothing is protected. That is only worth a line when it is because
-      // nothing *can* be - an all-evolved party against a container that has
-      // not grown - because otherwise the player put the Pokemon out on purpose.
-      // The partner is never a question for the container: it has its own place.
-      const contenders = this.flow.party.filter((stored) => !this.flow.isPartnerPlace(stored.id));
-      const fits = contenders.map((stored) => this.flow.secureFit(stored.id));
-      if (fits.length === 0 || fits.includes('fits')) {
-        return '';
-      }
-      // Only grown advice it can follow: a party nobody can ever secure is told
-      // so, and a container with nothing left to build is not told to grow.
-      if (!fits.includes('grow')) {
-        return `<p class="px-note px-wrap">Nothing in this party fits THE LOCKER at any size: it only ever grows sideways from ${this.flow.secureGrid.height} squares tall. A wipe will take ${fits.length === 1 ? 'it' : 'them'}.</p>`;
-      }
-      const smallest = contenders
-        .map((stored) => cargoCells(pokemonCargo(stored.id, stored.pokemon)))
-        .sort((a, b) => a - b)[0];
-      return `<p class="px-note px-wrap">Nothing in this party fits: THE LOCKER is ${shape} and the smallest here needs ${cargoSquaresLabel(smallest)}. To make room, ${grow}.</p>`;
-    }
-    const names = cargo.map((piece) => piece.name.toUpperCase()).join(' and ');
-    return free === 0
-      ? `<p class="px-note px-wrap">${names} ${cargo.length === 1 ? 'fills' : 'fill'} THE LOCKER - there is no room left for supplies. Let ${cargo.length === 1 ? 'it' : 'them'} go to carry gear instead${grow ? ', or grow THE LOCKER' : ''}.</p>`
-      : `<p class="px-note px-wrap">${names} ${cargo.length === 1 ? 'leaves' : 'leave'} ${cargoSquaresLabel(free)} for supplies.</p>`;
   }
 
   /**
@@ -4763,21 +4139,6 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * The deployment flow answers a request with a message only when it refuses
-   * it, so the message's presence is what decides the sound.
-   */
-  private answer(refusal: string | undefined, accepted?: SoundEffectName): void {
-    if (refusal !== undefined) {
-      this.refuse(refusal);
-      return;
-    }
-    if (accepted) {
-      audioManager.play(accepted);
-    }
-    this.setStatus(undefined);
-  }
-
-  /**
    * Shows a status line, and takes it down again without touching the screen.
    *
    * Taking it down used to be a whole `render()` on a 2.2s timer, and a render
@@ -4821,18 +4182,6 @@ function usedInARaid(item: ItemDefinition): string {
     default:
       return '';
   }
-}
-
-/**
- * Where THE BENCH's cursor goes once the tile pressed has moved, to the slots
- * or off them: with the Pokémon pressed, wherever it now stands. Left to the
- * redraw it fell back to the screen's first control, the lead's slot, so a
- * second Enter took the partner off the team (the overnight retest's key
- * masher, 23 Nov 2026). Following the Pokémon, a second Enter only undoes the
- * first.
- */
-function benchCursorAfter(button: HTMLElement): readonly string[] {
-  return [`[data-pokemon="${button.dataset.pokemon!}"]`];
 }
 
 /**

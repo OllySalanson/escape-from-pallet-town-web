@@ -36,7 +36,7 @@ const GOING_OVER = `(() => { const scenes = ${GAME}.scene.getScenes(true).map((s
  * clicking its row again would take it back out.
  */
 // A Pokémon on the bench is a slot (`.px-party-slot`), one at base a tile named
-// only in its `aria-label` (the menu overhaul's bench, `HubScene.benchView`);
+// only in its `aria-label` (the menu overhaul's bench, since folded into YOUR TEAM);
 // a row of the old list carried its name in its text and `is-selected` when chosen.
 /**
  * A Pokemon on the bench, and one already going. YOUR TEAM is the bench since
