@@ -31,6 +31,9 @@
   --menu-accent: #ffc823;
   --menu-accent-dark: #3b3436;
   --menu-danger: #f06a4a;
+  /* The mark over the player's head in the world (`PLAYER_MARKER_COLOUR`):
+     teal, used nowhere else on the map, so nothing there is mistaken for it. */
+  --player-mark: #55d6be;
   --space-1: 8px;
   --space-2: 12px;
   --space-3: 18px;
