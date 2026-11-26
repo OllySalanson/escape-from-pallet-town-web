@@ -68,6 +68,8 @@ import type { SceneDescription } from '../dev/testDescribe';
  */
 
 const DUSK = 0x0a1428;
+/** The menus' ink: the prompt's plate and the buttons' shadow are menu, not dusk. */
+const PLATE_INK = 0x121011;
 const RAID_RED = 0xb0201c;
 
 const TITLE_MAIN = '#f8f5d7';
@@ -688,7 +690,7 @@ export class TitleScene extends Phaser.Scene {
       const selected = row.id === this.choice && choice.enabled;
       const lift = selected ? 1 : 0;
       const shadow = this.add.graphics().setDepth(9);
-      shadow.fillStyle(DUSK, SHADOW_ALPHA);
+      shadow.fillStyle(PLATE_INK, SHADOW_ALPHA);
       shadow.fillRect(row.x + 1, row.y + 2, row.width, row.height);
       this.trackMenu(shadow);
       const bar = this.add.graphics().setDepth(10);
@@ -763,7 +765,7 @@ export class TitleScene extends Phaser.Scene {
     const height = Math.ceil(words.height) + PROMPT_PLATE_PAD_Y * 2;
     this.promptPlate
       .clear()
-      .fillStyle(DUSK, PROMPT_PLATE_ALPHA)
+      .fillStyle(PLATE_INK, PROMPT_PLATE_ALPHA)
       .fillRect(left - PROMPT_PLATE_PAD_X, Math.round(words.y) - PROMPT_PLATE_PAD_Y, inked + PROMPT_PLATE_PAD_X * 2, height);
   }
 

@@ -46,6 +46,7 @@ const SCREENS = {
   'your-things': open('openThings()'),
   'your-team': open('openTeam()'),
   pokedex: open('openPokedex()'),
+  'the-map': open('openMap()'),
   favours: open('openFavours()'),
   phrases: open('openPhrases()'),
   feedback: key('KeyF'),

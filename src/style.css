@@ -1896,17 +1896,39 @@ body.touch-play .feedback-tab {
   user-select: none;
 }
 .chart-screen .chart-bar {
+  /* Every screen's title strip (`.px-title`): ink with the Poke Ball's red
+     seam under it, a drawn ball before the name, the clock in a white pill and
+     the X a white square. */
   display: flex;
   align-items: center;
-  gap: calc(var(--u) * 8);
-  width: 100%;
-  min-height: calc(var(--u) * 14);
+  gap: calc(var(--u) * 6);
+  justify-self: stretch;
+  width: auto;
+  height: calc(var(--u) * 18);
+  margin: calc(var(--u) * -6) calc(var(--u) * -8) calc(var(--u) * 3);
+  padding: 0 calc(var(--u) * 4) 0 calc(var(--u) * 5);
+  background: var(--bar);
+  box-shadow:
+    0 calc(var(--u) * 2) 0 var(--red),
+    0 calc(var(--u) * 3) 0 var(--line);
+  color: var(--bar-text);
+  text-transform: uppercase;
 }
 .chart-screen .chart-name {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 5);
   margin: 0;
   font: inherit;
   letter-spacing: 0;
-  text-shadow: var(--u) var(--u) 0 #000;
+}
+.chart-screen .chart-name::before {
+  content: '';
+  flex: none;
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 9);
+  background: var(--px-ball) center / 100% 100% no-repeat;
 }
 .chart-screen .chart-zoom {
   appearance: none;
@@ -1914,44 +1936,61 @@ body.touch-play .feedback-tab {
   padding: 0;
   border: 0;
   background: none;
-  color: #c9c4b2;
+  color: var(--bar-muted);
   font: inherit;
+  text-transform: inherit;
   cursor: pointer;
-  text-shadow: var(--u) var(--u) 0 #000;
 }
 .chart-screen .chart-zoom:hover,
 .chart-screen .chart-zoom:focus-visible {
-  color: #f0c454;
+  color: var(--gold);
   outline: none;
 }
 .chart-screen .chart-clock {
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 2);
+  height: calc(var(--u) * 12);
   margin: 0;
-  text-shadow: var(--u) var(--u) 0 #000;
+  padding: 0 calc(var(--u) * 4) 0 var(--u);
+  background: var(--paper);
+  color: var(--ink);
 }
 .chart-screen .chart-clock img {
   width: calc(var(--u) * 16);
   height: calc(var(--u) * 16);
   image-rendering: pixelated;
 }
-/* The little X the captain asked every screen to close with (25 Nov 2026). */
+/* The little X the captain asked every screen to close with (25 Nov 2026):
+   a white square with an ink X, red with a white X under the pointer. */
 .chart-screen .chart-close {
   appearance: none;
+  position: relative;
+  flex: none;
   width: calc(var(--u) * 13);
   height: calc(var(--u) * 13);
   margin: 0;
   padding: 0;
   border: 0;
-  background: #f4f1e6;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h2v1h1v1h1v-1h1v-1h2v2h-1v1h-1v1h1v1h1v2h-2v-1h-1v-1h-1v1h-1v1h-2v-2h1v-1h1v-1h-1v-1h-1z'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h2v1h1v1h1v-1h1v-1h2v2h-1v1h-1v1h1v1h1v2h-2v-1h-1v-1h-1v1h-1v1h-2v-2h1v-1h1v-1h-1v-1h-1z'/%3E%3C/svg%3E") center / contain no-repeat;
+  background: var(--paper);
+  color: var(--ink);
   cursor: pointer;
+}
+.chart-screen .chart-close::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 7);
+  background: currentColor;
+  -webkit-mask: var(--px-close) center / 100% 100% no-repeat;
+  mask: var(--px-close) center / 100% 100% no-repeat;
 }
 .chart-screen .chart-close:hover,
 .chart-screen .chart-close:focus-visible {
-  background: #f0c454;
+  background: var(--red);
+  color: var(--paper);
   outline: none;
 }
 .chart-screen .chart-frame {
