@@ -270,7 +270,7 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
     }
     // And the mirror says it is a try-on: it stayed headed "what you have on"
     // over a look the cursor was only pointing at (the harbour re-critic).
-    const note = mirror?.closest('.px-window')?.querySelector<HTMLElement>('.px-heading small');
+    const note = this.overlay?.root.querySelector<HTMLElement>('.boutique-mirror-window .px-heading small');
     if (note) {
       note.textContent = sameLook(shown, this.state().wearing) ? 'what you have on' : 'trying on';
     }
