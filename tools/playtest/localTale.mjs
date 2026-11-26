@@ -119,6 +119,25 @@ try {
     await wait(300);
   }
   console.log(lines.map((line) => `     > ${line}`).join('\n'));
+  // The place comes up on THE MAP the moment the last box is read: the world
+  // paused under it, so it costs the raid nothing, and gone by itself.
+  const clockBefore = await page.evaluate(`${DESCRIBE}.scene.world?.raid?.remainingMs ?? ${WORLD}.runSession.manager.remainingMs()`);
+  await wait(200);
+  const REVEAL = `${WORLD}.revealScreen`;
+  check(await page.evaluate(`${REVEAL} !== null && ${WORLD}.sys.isPaused()`), 'the map comes up with the raid paused under it');
+  await until(`${REVEAL}?.knownTiles != null`, 'the map drawn');
+  const real = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const t0 = Date.now();
+  for (const [at, name] of [[900, '2b-reveal-flash'], [1900, '2c-reveal-rising'], [2900, '2d-reveal-cheer']]) {
+    await real(Math.max(0, at - (Date.now() - t0)));
+    await shot(name);
+  }
+  for (let i = 0; i < 100 && (await page.evaluate(`${REVEAL} !== null`)); i += 1) await real(100);
+  // A scene's resume is queued for its next frame, and this loop only moves when stepped.
+  await wait(200);
+  check(await page.evaluate(`${REVEAL} === null && !${WORLD}.sys.isPaused()`), `and goes away by itself, in ${Date.now() - t0}ms`);
+  const clockAfter = await page.evaluate(`${WORLD}.runSession.manager.remainingMs()`);
+  check(clockBefore - clockAfter < 500, `the raid clock was not charged for it (${clockBefore} then ${clockAfter})`);
   check(lines.some((line) => line.startsWith(localName)), 'the tale opens on their name');
   check(lines.at(-1)?.includes('filled in'), `it ends with the inking: "${lines.at(-1)}"`);
   const places = await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress.placesOnMap`);

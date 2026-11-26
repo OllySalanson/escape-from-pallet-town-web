@@ -1324,6 +1324,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private mapScreen: MapScreen | null = null;
   /** M was pressed mid-step: the map opens on the tile the step ends on, as the radio does. */
   private mapDue = false;
+  /** A place a local has just filled in, to come up on THE MAP once their last box is read (`revealPlace`). */
+  private revealDue: string | null = null;
+  /** THE MAP while a place comes up on it, the world paused under it. */
+  private revealScreen: MapScreen | null = null;
   /** The "!" over each local whose tale is still to be heard (`markUnheardLocal`). */
   private localMarks = new Map<string, Phaser.GameObjects.Graphics>();
   private radioChip: RadioChip | undefined;
@@ -1484,6 +1488,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.mapScreen = null;
     this.localMarks = new Map();
     this.mapDue = false;
+    this.revealDue = null;
+    this.revealScreen?.close();
+    this.revealScreen = null;
     this.bagLines = [];
     this.bagsFalling = [];
     this.trainerGlints.clear();
@@ -2777,6 +2784,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     if (this.radioDue) {
       this.radioDue = false;
       this.callOak();
+      return;
+    }
+
+    // A place a local has just filled in comes up on the map the moment their
+    // last box is read.
+    if (this.revealDue !== null) {
+      const place = this.revealDue;
+      this.revealDue = null;
+      this.revealPlace(place);
       return;
     }
 
@@ -7811,6 +7827,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.localMarks.delete(entity.id);
       audioManager.play('landmarkWorked');
       this.dialogBox.hold(PLACE_ON_MAP_HOLD_MS);
+      this.revealDue = place.name;
     });
   }
 
@@ -8315,6 +8332,63 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.events.off(Phaser.Scenes.Events.SHUTDOWN, shutDown);
         // A direction let go while the map was up was never heard going down.
         this.spentPresses.spendHeld(this.directionKeys);
+      },
+    );
+  }
+
+  /**
+   * A place a local has just filled in comes up out of the fog on THE MAP
+   * (`world/chartReveal.ts`): the map opens on the whole place as it was, the
+   * square flashes and fills in, its name goes up, and the map goes away by
+   * itself. It is a moment the game plays rather than one the player spends,
+   * so the world is paused under it, as under the pack: no clock, no hunter.
+   */
+  private revealPlace(placeName: string): void {
+    const map = this.currentMap;
+    const district = districtsForMap(map.id).find(
+      (each) => each.name === placeName && placeOfLocal(map.id, each.areas[0] ?? { x: -1, y: -1 }) === each,
+    );
+    const rect = district?.areas[0];
+    if (!rect) {
+      return;
+    }
+    const progress = new SaveManager().load()?.raidProgress;
+    const walking = this.runSession?.trodden;
+    const after = knownOnChart(map.id, map.width, progress);
+    const before = knownOnChart(
+      map.id,
+      map.width,
+      progress && {
+        ...progress,
+        placesOnMap: {
+          ...progress.placesOnMap,
+          [map.id]: (progress.placesOnMap?.[map.id] ?? []).filter((name) => name !== placeName),
+        },
+      },
+    );
+    const known =
+      (set: ReadonlySet<number>) =>
+      (tile: GridPosition): boolean => {
+        const index = tile.y * map.width + tile.x;
+        return set.has(index) || walking?.has(index) === true;
+      };
+    this.showIdlePose();
+    this.events.once(Phaser.Scenes.Events.RESUME, () => {
+      this.input.keyboard?.resetKeys();
+      this.spentPresses.spendHeld(this.directionKeys);
+    });
+    this.scene.pause();
+    this.revealScreen = new MapScreen(
+      this,
+      {
+        mapId: map.id,
+        isKnown: known(after),
+        standing: chartTileOf(map, this.currentTile),
+        reveal: { name: placeName, rect, wasKnown: known(before) },
+      },
+      () => {
+        this.revealScreen = null;
+        this.scene.resume();
       },
     );
   }
