@@ -185,8 +185,14 @@ export async function openHallPanel(page, panel, options = {}) {
   const until = options.until ?? ((expression, what) => page.waitFor(expression, { what }));
   const settle = options.wait ?? sleep;
   const settleMs = options.settleMs ?? 180;
-  // The bench is YOUR TEAM on the hall's own choices (\`BaseScene.openHallPanel\`).
-  const showing = panel === 'bench' ? sceneIs('team') : `${sceneIs('hub')} && ${GAME}.scene.getScene('hub').view === ${JSON.stringify(panel)}`;
+  // The bench is YOUR TEAM and the rack and the locker are YOUR THINGS, on the
+  // hall's own choices (\`BaseScene.openHallPanel\`).
+  const showing =
+    panel === 'bench'
+      ? sceneIs('team')
+      : panel === 'rack' || panel === 'locker'
+        ? `${sceneIs('things')} && Boolean(document.querySelector('#screens .things-menu'))`
+        : `${sceneIs('hub')} && ${GAME}.scene.getScene('hub').view === ${JSON.stringify(panel)}`;
   for (let guard = 0; guard < 160; guard += 1) {
     if (await page.evaluate(showing)) {
       return;
@@ -195,7 +201,7 @@ export async function openHallPanel(page, panel, options = {}) {
     if (panel === 'rim' && (await page.evaluate(GOING_OVER))) {
       return;
     }
-    if ((await page.evaluate(sceneIs('hub'))) || (await page.evaluate(sceneIs('team')))) {
+    if ((await page.evaluate(sceneIs('hub'))) || (await page.evaluate(sceneIs('team'))) || (await page.evaluate(sceneIs('things')))) {
       await press('Escape');
       await settle(settleMs);
       continue;
@@ -490,62 +496,58 @@ async function enterRaid(page, { press, click, until, wait, insertion, starter, 
     }
     await sleep(150);
   }
-  await openHallPanel(page, 'rack', { press, until, wait });
-  // --pack=itemId[:n],.. packs exactly n of a supply by the rack row's own
-  // count selector - the minus down to none, then the plus once per unit, so
-  // the driver is stopped by exactly what stops a player (`ui/countSelector.ts`).
-  // The stash's medicine is packed by default (`DeploymentFlow.packMedicine`),
-  // so a driver that clicks straight through deploys with the vault's Potions,
-  // and `--pack=potion:0` is how a raid is sent out with none.
-  for (const entry of pack) {
-    const [itemId, count = '1'] = entry.split(':');
-    for (let guard = 0; guard < 99; guard += 1) {
-      const removed = await page.evaluate(
-        `(() => { const b = document.querySelector('button[data-count-kind="item"][data-count-id=${JSON.stringify(itemId)}][data-count-dir="-1"]'); if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
-      );
-      if (!removed) {
-        break;
+  // --pack=itemId[:n],.. packs exactly n of a supply, and --secure=itemId[:n],..
+  // keeps n squares of a kind in the locker, both in YOUR THINGS - the rack and
+  // the locker open it - by the keys a player presses: BACKSPACE takes one out
+  // of the pack, ENTER packs one from home, L keeps one (a found kind's room is
+  // kept from home). The stash's medicine is packed by default
+  // (\`DeploymentFlow.packMedicine\`), so \`--pack=potion:0\` is how a raid goes
+  // out with none.
+  if (pack.length > 0 || secure.length > 0) {
+    await openHallPanel(page, 'rack', { press, until, wait });
+    const things = '#screens .things-menu';
+    const focusAndPress = async (selector, key) => {
+      const found = await page.evaluate(`(() => { const b = document.querySelector(${JSON.stringify(`${things} ${selector}`)}); if (!b) return false; b.focus(); return true; })()`);
+      if (found) {
+        await press(key);
+        await sleep(150);
       }
-      await sleep(150);
-    }
-    for (let i = 0; i < Number(count); i += 1) {
-      await until(
-        `(() => { const b = document.querySelector('button[data-count-kind="item"][data-count-id=${JSON.stringify(itemId)}][data-count-dir="1"]'); if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
-        `the pack to take one more ${itemId}`,
-      );
-      await sleep(150);
-    }
-  }
-  // --secure=itemId[:n],.. takes the secure-slot detour and puts that many
-  // squares of each kind into the container, by the row's own stepper rather
-  // than by a word on it. It is the only way anything the container protects is
-  // checked end to end - and the only way at all for a kind that is *found*
-  // rather than packed, whose row is room reserved for something not held yet.
-  for (const entry of secure) {
-    const [itemId, count = '1'] = entry.split(':');
-    if (entry === secure[0]) {
-      await openHallPanel(page, 'locker', { press, until, wait });
-      // The container fills itself with the party's best Pokemon, and a
-      // first-stage one is four squares of the four a save starts with - so a
-      // driver asking for gear has to take the Pokemon out first, exactly as a
-      // player choosing gear over protection would.
-      for (let guard = 0; guard < 6; guard += 1) {
-        const removed = await page.evaluate(
-          `(() => { const b = document.querySelector('button[data-secure-pokemon].is-secured'); if (!b) return false; b.click(); return true; })()`,
-        );
-        if (!removed) {
-          break;
+      return found;
+    };
+    for (const entry of pack) {
+      const [itemId, count = '1'] = entry.split(':');
+      for (let guard = 0; guard < 99 && (await focusAndPress(`[data-grid="pack"] [data-grid-piece$=":${itemId}"]`, 'Backspace')); guard += 1) {
+        // one out at a time, until none is packed
+      }
+      for (let i = 0; i < Number(count); i += 1) {
+        if (!(await focusAndPress(`[data-grid-piece="cargo:${itemId}"]`, 'Enter'))) {
+          throw new Error(`deploy: no ${itemId} at home to pack`);
         }
-        await sleep(250);
       }
     }
-    for (let i = 0; i < Number(count); i += 1) {
-      await until(
-        `(() => { const b = document.querySelector('button[data-count-kind="secure"][data-count-id=${JSON.stringify(itemId)}][data-count-dir="1"]'); if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
-        `the container to take one more ${itemId}`,
-      );
-      await sleep(250);
+    if (secure.length > 0) {
+      // The locker keeps the team's best Pokémon by itself, and a first-stage
+      // one is all four squares a save starts with - so a driver asking for
+      // gear lets the Pokémon go first, as a player choosing gear would.
+      for (let guard = 0; guard < 6 && (await focusAndPress('[data-team-member].is-locked', 'KeyL')); guard += 1) {
+        // one let go at a time
+      }
     }
+    for (const entry of secure) {
+      const [itemId, count = '1'] = entry.split(':');
+      for (let guard = 0; guard < 99 && (await focusAndPress(`[data-grid="locker"] [data-grid-piece$=":${itemId}"]`, 'Backspace')); guard += 1) {
+        // one let go at a time, until the locker keeps none
+      }
+      for (let i = 0; i < Number(count); i += 1) {
+        const kept = (await focusAndPress(`[data-grid="pack"] [data-grid-piece$=":${itemId}"]:not(.is-locked)`, 'KeyL')) ||
+          (await focusAndPress(`[data-grid-piece="cargo:${itemId}"]`, 'KeyL'));
+        if (!kept) {
+          throw new Error(`deploy: nothing of ${itemId} for the locker to keep`);
+        }
+      }
+    }
+    await press('Escape');
+    await until(`!${sceneIs('things')}`, 'the hall again after YOUR THINGS');
   }
   // Where to drop in is chosen at the rim, by the id a row carries, because two
   // rows can share a map's name - and from there it is over the fence.

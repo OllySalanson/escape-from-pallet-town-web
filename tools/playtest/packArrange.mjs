@@ -74,29 +74,26 @@ try {
     await sleep(350);
   };
   /** Puts the cursor on one block of a container, the way an arrow key would. */
-  const focusPiece = (name, piece) =>
+  const focusPiece = (name, piece, kind) =>
     page.evaluate(
-      `(() => { const b = document.querySelector('[data-grid=${JSON.stringify(name)}] [data-grid-piece=${JSON.stringify(piece)}]'); if (!b) return false; b.focus(); return true; })()`,
+      `(() => { const b = document.querySelector('[data-grid=${JSON.stringify(name)}] ${piece ? `[data-grid-piece=${JSON.stringify(piece)}]` : `[data-grid-piece$=":${kind}"]`}'); if (!b) return false; b.focus(); return true; })()`,
     );
-  /** Packs one more of a supply by the loadout row's own stepper. */
+  /** Packs one more of a supply from home in YOUR THINGS, by ENTER on it. */
   const packOne = async (itemId) => {
     await until(
-      `(() => { const b = document.querySelector('button[data-count-kind="item"][data-count-id=${JSON.stringify(itemId)}][data-count-dir="1"]'); if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
-      `the pack to take one more ${itemId}`,
+      `(() => { const b = document.querySelector('[data-grid="stash"] [data-grid-piece="cargo:${itemId}"]'); if (!b) return false; b.focus(); return true; })()`,
+      `${itemId} at home to pack`,
     );
-    await sleep(200);
+    await press('Enter');
   };
 
-  /** Takes every one of a supply back out, by the same stepper's minus. */
+  /** Takes every one of a supply back out of the pack, by BACKSPACE on it. */
   const unpack = async (itemId) => {
     for (let guard = 0; guard < 99; guard += 1) {
-      const removed = await page.evaluate(
-        `(() => { const b = document.querySelector('button[data-count-kind="item"][data-count-id=${JSON.stringify(itemId)}][data-count-dir="-1"]'); if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
-      );
-      if (!removed) {
+      if (!(await focusPiece('pack', null, itemId))) {
         return;
       }
-      await sleep(150);
+      await press('Backspace');
     }
   };
 
@@ -216,14 +213,10 @@ try {
   console.log(`dragged:              ${dragged}`);
   check(dragged !== before, 'letting go puts it down where the pointer was');
 
-  // --- The secure container is a container too ------------------------------
-  await openHallPanel(page, 'locker', { press, until });
-  await sleep(300);
-  const secureBefore = await page.evaluate(layoutOf('secure'));
-  check(secureBefore !== null, 'the secure container draws blocks the cursor can reach as well');
+  // --- The locker is a container too, beside the pack -----------------------
+  const secureBefore = await page.evaluate(layoutOf('locker'));
+  check(secureBefore !== null, 'the locker draws blocks the cursor can reach as well');
   await page.screenshot(`${outDir}/secure.png`);
-  await openHallPanel(page, 'rack', { press, until });
-  await sleep(300);
 
   // --- Adding something must not re-shuffle what was arranged ---------------
   await packOne('poke-ball');
@@ -237,6 +230,8 @@ try {
   );
 
   // --- Into the raid, and the pack opens laid out the same way --------------
+  await press('Escape');
+  await until(`!${sceneIs('things')}`, 'the hall again');
   await jumpIn(page, { press, until });
   await sleep(900);
   // The raid opens on its briefing, and the world reads no other key until the

@@ -54,6 +54,12 @@ export interface SecurePreference {
   readonly pokemon: boolean;
   /** What else was in it last time, in the order it was chosen. */
   readonly items: readonly SecurePreferenceStack[];
+  /**
+   * The Pokémon the player chose to keep, by stash id: they go in before the
+   * highest level does. Absent on a container the player never chose a
+   * Pokémon for, and on every save written before YOUR THINGS could choose one.
+   */
+  readonly pokemonIds?: readonly string[];
 }
 
 /**
@@ -116,7 +122,12 @@ export function autofillSecureSlot(
   const pokemonIds: string[] = [];
   const cargo: GridCargo[] = [];
   if (preference.pokemon) {
-    for (const candidate of [...candidates].sort(partnerThenLevel)) {
+    const chosen = preference.pokemonIds ?? [];
+    const rank = (candidate: SecureCandidate): number => {
+      const at = chosen.indexOf(candidate.id);
+      return at < 0 ? chosen.length : at;
+    };
+    for (const candidate of [...candidates].sort((a, b) => rank(a) - rank(b) || partnerThenLevel(a, b))) {
       if (pokemonIds.length >= pokemonSlots) {
         break;
       }
@@ -212,5 +223,8 @@ export function readSecurePreference(value: unknown): SecurePreference {
         : [];
     })
     : [];
-  return { pokemon: record.pokemon !== false, items };
+  const pokemonIds = Array.isArray(record.pokemonIds)
+    ? record.pokemonIds.filter((id): id is string => typeof id === 'string')
+    : [];
+  return { pokemon: record.pokemon !== false, items, ...(pokemonIds.length > 0 ? { pokemonIds } : {}) };
 }

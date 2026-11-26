@@ -2462,6 +2462,15 @@ export class BaseScene extends Phaser.Scene {
       this.openTeam();
       return;
     }
+    // The rack and the locker are YOUR THINGS, on the hall's own choices: one
+    // screen for what the next raid carries and keeps, wherever it is asked
+    // (the pack flow of 26 Nov 2026).
+    if (view === 'rack' || view === 'locker') {
+      this.walkPlan = null;
+      this.standStill();
+      this.openThings(view === 'locker' ? 'locker' : undefined);
+      return;
+    }
     this.walkPlan = null;
     this.arenaPanel = view;
     this.standStill();
@@ -6096,7 +6105,7 @@ export class BaseScene extends Phaser.Scene {
    * pack the rack has out. Coming back, the save is read again, because a disc
    * or a stone may have been used.
    */
-  private openThings(): void {
+  private openThings(start?: ThingsSceneData['start']): void {
     if (this.leaving || this.choosing) {
       return;
     }
@@ -6123,6 +6132,8 @@ export class BaseScene extends Phaser.Scene {
     this.scene.launch('things', {
       pausedBase: true,
       ...(this.kit ? { flow: this.kit.flow } : {}),
+      ...(start ? { start } : {}),
+      ...(start ? { start } : {}),
       view: {
         covers: (gamePixels) => this.panelLean.setCover(pit ? 0 : gamePixels),
         frame: (deltaMs) => {

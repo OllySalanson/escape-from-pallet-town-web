@@ -134,8 +134,9 @@ try {
   await shot('hall-bench');
   await page.keyDown('Escape'); await step(1); await page.keyUp('Escape'); await wait(300);
   await openHallPanel(page, 'rack', waitOpt);
-  await until(`Boolean(document.querySelector('[data-pack="ranger-pack"]'))`, 'the rack');
-  await page.evaluate(`document.querySelector('[data-pack="ranger-pack"]').click()`);
+  // The rack is YOUR THINGS: ENTER on a pack at home wears it.
+  await until(`(() => { const b = document.querySelector('#screens .things-menu [data-grid-piece="cargo:ranger-pack"]'); if (!b) return false; b.focus(); return true; })()`, 'the rack');
+  await press('Enter');
   await step(2);
   await expectTexture(BASE, (key) => key.endsWith('#ranger-pack'), 'chosen at the rack');
   await shot('hall-rack-ranger');

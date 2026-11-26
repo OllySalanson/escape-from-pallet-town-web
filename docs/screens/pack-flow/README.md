@@ -24,3 +24,18 @@ persona counted eight Potions where there were four, and a Tarkov veteran read t
 Made against a test-mode build (`VITE_EPTW_TEST_MODE=1 npx vite build`) at 1200x768 by `tools/playtest/yourThings.mjs`
 (`01b-unlocked.png` is `after-kept-potions.png`) and a scratch driver that seeds a save with a team of three, two parts
 crates, a Bicycle and a Ranger pack or a Hauler frame, then focuses things and presses ENTER.
+
+## The hall's rack and locker are the same screen, and L is the locker's key
+
+- `before-hall-rack.png`, `before-hall-locker.png` - THE ARMOURY RACK and THE LOCKER were panels of their own: the
+  same pack chosen again as rows of -/+ counts, and the locker's Pokémon and supplies as more counts.
+- `after-hall-rack.png` - walking up to the rack (or the locker, which starts the cursor on the locker) opens YOUR
+  THINGS on the hall's own choices.
+- `after-lock-a-pokemon.png` - the cursor on the team's Rattata: the tile is gold with the bobbing arrow, and L says
+  what it will do, LOCK · PIKACHU OUT, because the locker's one place is taken. The partner's tag is PARTNER.
+- `after-pokemon-locked.png` - L pressed: Rattata is SAFE with the padlock and in the locker; Pikachu is AT RISK.
+- `after-room-for-a-find.png` - Rattata let go, then L on two parts crates at home: the locker keeps a crate's room for
+  one found on the raid, drawn faded, and the card says ROOM KEPT.
+
+`after-hall-rack.png` is `tools/playtest/arenaHall.mjs` (`4-rack.png`); the rest are the scratch driver above, pressing
+L on the team tile and on the crate.

@@ -257,6 +257,35 @@ describe('locking from YOUR THINGS', () => {
     expect(locking(scene).flow.secureQuantity('potion')).toBe(3);
   });
 
+  it('keeps the Pokémon chosen on the team strip, and opens with it kept next time', () => {
+    // The partner and two more: both at level 20, and the locker would keep the Pidgey by itself.
+    const scene = thingsOver({}, 10, true, 'pidgey', 'rattata');
+    const saves = (scene as unknown as { saveManager: SaveManager }).saveManager;
+    const ids = saves.load()!.stash.listPokemon().map((one) => one.id);
+    const rattata = saves.load()!.stash.listPokemon().find((one) => one.pokemon.base.id === 'rattata')!.id;
+    saves.chooseBench(ids);
+    scene.reload();
+    const flow = (scene as unknown as { flow: { securesPokemon(id: string): boolean } }).flow;
+    expect(flow.securesPokemon(rattata)).toBe(false);
+    (scene as unknown as { lockPokemon(id: string): void }).lockPokemon(rattata);
+    expect(flow.securesPokemon(rattata)).toBe(true);
+    expect(saved(scene).raidProgress.securePreference?.pokemonIds).toEqual([rattata]);
+    scene.reload();
+    expect((scene as unknown as { flow: { securesPokemon(id: string): boolean } }).flow.securesPokemon(rattata)).toBe(true);
+  });
+
+  it('never puts the partner in the locker', () => {
+    const scene = thingsOver({}, 10, true);
+    (scene as unknown as { lockPokemon(id: string): void }).lockPokemon('home-1');
+    expect(saved(scene).raidProgress.securePreference?.pokemonIds ?? []).toEqual([]);
+  });
+
+  it('keeps room in the locker for a find dragged onto it from home', () => {
+    const scene = thingsOver({ 'mooring-rope': 1 }, 10, true);
+    expect(locking(scene).transfer('stash', 'locker', { kind: 'cargo', cargoId: 'mooring-rope' }, 0, 0, false)).toBe(true);
+    expect(locking(scene).flow.secureQuantity('mooring-rope')).toBeGreaterThan(0);
+  });
+
   it('says so when the locker is full, and keeps no more', () => {
     const scene = thingsOver({ potion: 8 }, 10, true);
     expect(locking(scene).flow.secureQuantity('potion')).toBe(4);

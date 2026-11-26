@@ -8,6 +8,7 @@ import {
   footprintOf,
   getItemById,
   gridCells,
+  isFoundOnly,
   isCurrency,
   itemCountTag,
   machineForItem,
@@ -24,6 +25,7 @@ import {
 } from '../items';
 import { evolutionByStone, type MoveBase, type Pokemon } from '../pokemon';
 import { SaveManager, spareAtBase, type RestoredGame } from '../save/SaveManager';
+import { pokemonCargoCells } from '../pokemon/pokemonCargo';
 import { awayOnRaid, outOnRaidLine, PACKED_FOR_RAID_LINE } from '../run/raidInFlight';
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
@@ -39,6 +41,7 @@ import {
   ALL_POCKETS,
   handCard,
   homeUseOf,
+  memberCard,
   pocketTabs,
   stashLayout,
   staysHome,
@@ -55,6 +58,8 @@ export interface ThingsSceneData {
   readonly pausedBase: boolean;
   /** The hall's own choices, while the player is in THE RAID ARENA: the pack shown is the one on the rack. */
   readonly flow?: DeploymentFlow;
+  /** Where the cursor starts: THE RAID ARENA's locker opens this screen on the locker. */
+  readonly start?: 'locker';
   /** The harbour under the screen. YOUR THINGS covers it whole, so it is only told it is uncovered. */
   readonly view?: SidePanelView;
 }
@@ -112,6 +117,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   private pausedBase = false;
   private hallFlow: DeploymentFlow | undefined;
   private view: SidePanelView | undefined;
+  private startAt: ThingsSceneData['start'];
   private game_: RestoredGame | undefined;
   private flow: DeploymentFlow | undefined;
   private using: Using | null = null;
@@ -150,6 +156,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     this.pausedBase = data.pausedBase;
     this.hallFlow = data.flow;
     this.view = data.view;
+    this.startAt = data.start;
     this.using = null;
     this.status = undefined;
     this.moment = undefined;
@@ -171,7 +178,8 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     // The card under the stash answers for the thing the cursor is on: written
     // into its own card, never a redraw of the screen under the cursor.
     this.overlay.root.addEventListener('focusin', (event) => {
-      const piece = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-grid-piece]') : null;
+      const piece =
+        event.target instanceof Element ? event.target.closest<HTMLElement>('[data-grid-piece], [data-team-member]') : null;
       if (!piece) {
         return;
       }
@@ -182,7 +190,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       }
       this.showHand(piece);
     });
-    this.render();
+    this.render(this.startAt === 'locker' ? ['.things-locker .px-grid-block', '.things-pack .px-grid-block'] : []);
   }
 
   public feedbackContext(): readonly FeedbackDetail[] {
@@ -338,6 +346,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       stashArrangement: this.stashArrangement,
       pocket: this.pocket,
       team: flow.party.map((one) => ({
+        id: one.id,
         name: one.pokemon.name,
         speciesId: one.pokemon.base.id,
         currentHp: one.pokemon.currentHp,
@@ -395,6 +404,18 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   }
 
   private handFor(piece: HTMLElement | null): string {
+    const memberId = piece?.dataset.teamMember;
+    const member = memberId ? this.flow?.party.find((one) => one.id === memberId) : undefined;
+    if (member && this.flow) {
+      const flow = this.flow;
+      const partner = flow.partnerOnRaid?.id === member.id;
+      return memberCard(member.pokemon, {
+        fate: partner ? 'partner' : flow.securesPokemon(member.id) ? 'locked' : 'risk',
+        squares: pokemonCargoCells(member.pokemon.base.id),
+        canLock: flow.secureFit(member.id) === 'fits',
+        ...(this.swapsOut(member.id) ? { swapsOut: this.swapsOut(member.id) } : {}),
+      });
+    }
     const held = this.arranging.held;
     if (held) {
       const itemId = held.ref.kind === 'cargo' ? held.ref.cargoId : held.ref.itemId;
@@ -408,7 +429,17 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       canPack: item ? this.canPack(item) : false,
       locked: Boolean(piece?.classList.contains('is-locked')),
       canLock: item ? (this.flow?.secureHasRoomFor(item.id as ItemId) ?? false) : false,
+      roomKept: Boolean(item && place === 'stash' && (this.flow?.secureQuantity(item.id as ItemId) ?? 0) > 0),
     });
+  }
+
+  /** Who the locker would let go to keep this one: its places are all taken by others. */
+  private swapsOut(id: string): string | undefined {
+    const flow = this.flow;
+    if (!flow || flow.securesPokemon(id) || flow.securedPokemon.length < flow.securePokemonSlots) {
+      return undefined;
+    }
+    return flow.securedPokemon[0]?.pokemon.name.toUpperCase();
   }
 
   /** Whether a thing in the stash can go in the pack at all, before asking for room. */
@@ -444,7 +475,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     let title = 'Your things';
     let back: { label: string; attribute: string } | undefined;
     let body: string;
-    let hints = 'ARROWS move · ENTER pack · BKSP out · L lock · Q E pocket · ESC back';
+    let hints = 'ARROWS move · ENTER pack · BKSP out · L lock · Q E tab · ESC back';
     const machine = item ? machineForItem(item) : undefined;
     if (item && this.using?.kind === 'teach' && machine) {
       title = 'Teach a move';
@@ -512,7 +543,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       '[data-close]',
     );
     const focused = typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null);
-    this.showHand(focused?.closest<HTMLElement>('[data-grid-piece]') ?? null);
+    this.showHand(focused?.closest<HTMLElement>('[data-grid-piece], [data-team-member]') ?? null);
   }
 
   /** A pocket tab: its things lit and the rest stood back, the cursor on its first. */
@@ -537,7 +568,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   /** What a button on the in-hand card does: the same as its key. */
   private handDeed(deed: string): void {
     const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const piece = focused?.closest<HTMLElement>('[data-grid-piece]') ?? null;
+    const piece = focused?.closest<HTMLElement>('[data-grid-piece], [data-team-member]') ?? null;
     const key: Partial<Record<string, string>> = { drop: 'Enter', take: 'Enter', turn: 'r', cancel: 'Escape', out: 'Backspace' };
     if (deed === 'lock' && piece) {
       this.toggleLock(piece);
@@ -573,16 +604,55 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
 
   /** L on a block of the pack: the locker keeps one more of it, or one fewer if this block is kept. */
   private toggleLock(piece: HTMLElement): void {
-    const thing = this.thingOf(piece);
-    if (!thing || piece.dataset.gridOwner !== 'pack') {
-      audioManager.play('denied');
+    const member = piece.closest<HTMLElement>('[data-team-member]')?.dataset.teamMember;
+    if (member) {
+      this.lockPokemon(member);
       return;
     }
-    this.lock(thing, !piece.classList.contains('is-locked'));
+    const thing = this.thingOf(piece);
+    const owner = piece.dataset.gridOwner;
+    if (thing && owner === 'pack') {
+      this.lock(thing, !piece.classList.contains('is-locked'));
+    } else if (thing && owner === 'locker') {
+      this.lock(thing, false);
+    } else if (thing && owner === 'stash' && isFoundOnly(thing) && staysHome(thing)) {
+      // Room kept in the locker for a find of this kind: it is not carried out,
+      // so the locker keeps its squares free for one carried home.
+      this.lock(thing, true, [stashPieceSelector(thing)]);
+    } else {
+      audioManager.play('denied');
+    }
+  }
+
+  /** L on one of the team: the locker keeps that Pokémon, or lets it go. The partner has its own place. */
+  private lockPokemon(id: string): void {
+    const flow = this.flow;
+    if (!flow) {
+      return;
+    }
+    const again = [`[data-team-member="${id}"]`];
+    if (flow.partnerOnRaid?.id === id) {
+      audioManager.play('denied');
+      this.render(again);
+      return;
+    }
+    const was = flow.securesPokemon(id);
+    const refusal = flow.toggleSecurePokemon(id);
+    if (refusal !== undefined || flow.securesPokemon(id) === was) {
+      audioManager.play('denied');
+      this.status = refusal;
+      this.render(again);
+      this.overlay?.root.querySelector?.('.things-locker')?.classList.add('is-refusing');
+      return;
+    }
+    audioManager.play(was ? 'cancel' : 'haulDrop');
+    recordAction(`${was ? 'Unlocked' : 'Locked'} ${flow.party.find((one) => one.id === id)?.pokemon.name ?? id}`);
+    this.keepPack();
+    this.render(again);
   }
 
   /** One more block of a kind in the locker, or one fewer. */
-  private lock(itemId: string, more: boolean): boolean {
+  private lock(itemId: string, more: boolean, prefer?: readonly string[]): boolean {
     const flow = this.flow;
     if (!flow) {
       return false;
@@ -592,7 +662,11 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     const refusal = flow.setSecureSquares(id, blocks + (more ? 1 : -1));
     const moved = Math.ceil(flow.secureQuantity(id) / stackSizeOf(id)) !== blocks;
     if (!moved) {
-      this.refuse(refusal ?? 'The locker is full.', itemId, `.things-pack [data-grid-piece$=":${itemId}"]${more ? ':not(.is-locked)' : ''}`);
+      this.refuse(
+        refusal ?? 'The locker is full.',
+        itemId,
+        ...(prefer ?? [`.things-pack [data-grid-piece$=":${itemId}"]${more ? ':not(.is-locked)' : ''}`]),
+      );
       this.overlay?.root.querySelector?.('.things-locker')?.classList.add('is-refusing');
       return false;
     }
@@ -600,9 +674,11 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     recordAction(`${more ? 'Locked' : 'Unlocked'} ${getItemById(itemId)?.displayName ?? itemId}`);
     this.keepPack();
     this.render([
+      ...(prefer ?? []),
       more
         ? `.things-pack [data-grid-piece$=":${itemId}"].is-locked`
         : `.things-pack [data-grid-piece$=":${itemId}"]:not(.is-locked)`,
+      `.things-locker [data-grid-piece$=":${itemId}"]`,
       '.things-pack .px-grid-block',
     ]);
     return true;
@@ -696,6 +772,9 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     if (from === 'pack' && to === 'locker' && ref.kind === 'item') {
       return this.lock(ref.itemId, true);
     }
+    if (from === 'stash' && to === 'locker' && ref.kind === 'cargo' && isFoundOnly(ref.cargoId) && staysHome(ref.cargoId)) {
+      return this.lock(ref.cargoId, true, [stashPieceSelector(ref.cargoId)]);
+    }
     if (from === 'locker' && to !== 'locker' && ref.kind === 'item') {
       return this.lock(ref.itemId, false);
     }
@@ -757,9 +836,10 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
         this.packOne(this.thingOf(piece));
         return;
       }
-      if (!this.arranging.held && piece && event.key.toLowerCase() === 'l') {
+      const member = focused instanceof HTMLElement ? focused.closest<HTMLElement>('[data-team-member]') : null;
+      if (!this.arranging.held && (piece ?? member) && event.key.toLowerCase() === 'l') {
         event.preventDefault();
-        this.toggleLock(piece);
+        this.toggleLock((piece ?? member) as HTMLElement);
         return;
       }
       if (!this.arranging.held && piece?.dataset.gridOwner === 'stash' && event.key.toLowerCase() === 'u') {

@@ -730,9 +730,11 @@ export class DeploymentFlow {
     if (!this.secureTouched) {
       return this.preference;
     }
+    const pokemonIds = this.securedPokemon.map((stored) => stored.id);
     return {
-      pokemon: this.securedPokemon.length > 0,
+      pokemon: pokemonIds.length > 0,
       items: this.securedItems.map(({ itemId, quantity }) => ({ itemId, quantity })),
+      ...(pokemonIds.length > 0 ? { pokemonIds } : {}),
     };
   }
 

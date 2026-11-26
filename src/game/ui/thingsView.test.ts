@@ -6,6 +6,7 @@ import {
   ableCount,
   handCard,
   homeUseOf,
+  memberCard,
   pocketOf,
   pocketTabs,
   stashCargo,
@@ -162,6 +163,7 @@ describe('the screen', () => {
 
   it('shows each of the team with what a wipe would do to it', () => {
     const member = (name: string, speciesId: string, fate: 'partner' | 'locked' | 'risk') => ({
+      id: `${speciesId}-1`,
       name,
       speciesId,
       currentHp: 10,
@@ -173,9 +175,10 @@ describe('the screen', () => {
       '',
     );
     expect(html).toContain('Team 3 of 6');
-    expect(html).toMatch(/is-partner" role="img" aria-label="Squirtle: always comes home".*things-rosette/);
-    expect(html).toMatch(/is-locked" role="img" aria-label="Pidgey: kept by the locker".*padlock/);
-    expect(html).toMatch(/is-risk" role="img" aria-label="Rattata: lost on a wipe".*things-torn/);
+    expect(html).toMatch(/things-tag">Partner<.*things-tag">Safe<.*things-tag">At risk</);
+    expect(html).toMatch(/is-partner" data-team-member="squirtle-1" tabindex="-1" aria-label="Squirtle: always comes home".*things-rosette/);
+    expect(html).toMatch(/is-locked" data-team-member="pidgey-1" tabindex="-1" aria-label="Pidgey: kept by the locker".*padlock/);
+    expect(html).toMatch(/is-risk" data-team-member="rattata-1" tabindex="-1" aria-label="Rattata: lost on a wipe".*things-torn/);
   });
 
   it('lines the blocks of the pack the locker keeps, and draws a padlock in the locker for each, never the thing twice', () => {
@@ -201,6 +204,19 @@ describe('the screen', () => {
   });
 });
 
+describe('the card of one of the team', () => {
+  const pikachu = new Pokemon(getSpeciesById('pikachu')!, 9);
+  it('offers to lock one that fits, unlock one kept, and nothing for the partner', () => {
+    expect(memberCard(pikachu, { fate: 'risk', squares: 4, canLock: true })).toMatch(/L<\/span>Lock/);
+    expect(memberCard(pikachu, { fate: 'risk', squares: 4, canLock: true })).toContain('4 squares · lost on a wipe');
+    expect(memberCard(pikachu, { fate: 'locked', squares: 4, canLock: true })).toMatch(/L<\/span>Unlock/);
+    expect(memberCard(pikachu, { fate: 'risk', squares: 9, canLock: false })).toMatch(/aria-disabled="true"><span class="things-cap">L<\/span>Too big/);
+    expect(memberCard(pikachu, { fate: 'partner', squares: 4, canLock: true })).not.toContain('data-hand');
+    // The locker's one place is taken: keeping this one lets the other go, and the button says who.
+    expect(memberCard(pikachu, { fate: 'risk', squares: 4, canLock: true, swapsOut: 'RATTATA' })).toMatch(/L<\/span>Lock · RATTATA out/);
+  });
+});
+
 describe('the card of what the cursor is on', () => {
   it('says what a thing at home does and offers to pack it, with the key in the button', () => {
     const html = handCard(item('potion'), 'stash', { canPack: true });
@@ -214,6 +230,10 @@ describe('the card of what the cursor is on', () => {
     expect(handCard(item('potion'), 'stash', { canPack: false })).toMatch(/data-hand="pack"[^>]*aria-disabled="true"/);
     expect(handCard(item('mooring-rope'), 'stash', { canPack: false })).not.toContain('data-hand="pack"');
     expect(handCard(item('mooring-rope'), 'stash', { canPack: false })).toContain('Home only');
+    // A find's room can be kept in the locker; a furniture piece's too, as THE LOCKER always allowed.
+    expect(handCard(item('mooring-rope'), 'stash', { canPack: false, canLock: true })).toMatch(/L<\/span>Keep room/);
+    expect(handCard(item('mooring-rope'), 'stash', { canPack: false, canLock: false })).toMatch(/aria-disabled="true"><span class="things-cap">L<\/span>Locker full/);
+    expect(handCard(item('mooring-rope'), 'stash', { canPack: false, canLock: false, roomKept: true })).toMatch(/L<\/span>Room kept/);
   });
 
   it('wears a pack rather than packing it', () => {

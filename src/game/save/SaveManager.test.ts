@@ -2562,6 +2562,17 @@ describe('SaveManager', () => {
       });
     });
 
+    it('carries the Pokémon the player chose to keep back out of storage', () => {
+      const storage = new MemoryStorage();
+      storage.setItem(SAVE_KEY, saveWithPreference(7, { pokemon: true, items: [], pokemonIds: ['pikachu-1'] }));
+
+      expect(new SaveManager(storage).load()?.raidProgress.securePreference).toEqual({
+        pokemon: true,
+        items: [],
+        pokemonIds: ['pikachu-1'],
+      });
+    });
+
     it('records what a deploy left in the container, and survives the reload', () => {
       const storage = new MemoryStorage();
       const saves = new SaveManager(storage);

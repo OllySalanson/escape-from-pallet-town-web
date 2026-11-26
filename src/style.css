@@ -7957,6 +7957,31 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .things-member.is-risk {
   box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--red);
 }
+/* A tile of the team is a control: the cursor on it is the gold the grids'
+   cursor is, with the same red arrow bobbing over it. */
+.pixel-ui .things-member {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.pixel-ui.things-menu .things-member:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--gold);
+}
+.pixel-ui.things-menu .things-member:focus::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - var(--u) * 3);
+  top: calc(var(--u) * -6);
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 4);
+  background: var(--red);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  animation: things-bob 0.6s steps(2, jump-none) infinite alternate;
+}
 :where(.pixel-ui) .things-member.is-free {
   width: calc(var(--u) * 34);
   height: calc(var(--u) * 34);
