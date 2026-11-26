@@ -161,6 +161,13 @@ describe('battle presentation', () => {
     expect(formatPartyRow(butterfree, 1)).toBe('BUTTERFREE Lv 14 32/32');
     expect(formatPartyRow(butterfree, 2)).toBe('BUTTERFREE 32/32');
     expect(formatPartyRow(fainted, 2)).toBe('BUTTERFREE FNT');
+    // A status stands in the level's place in every form, as FireRed's party
+    // screen draws it (the churchyard critic, round 3: a burned Gastly on 3 HP
+    // was sent in unwarned and fainted to the burn).
+    const burned = { ...butterfree, currentHp: 3, primaryStatus: 'burn' as const };
+    expect(formatPartyRow(burned, 0)).toBe('BUTTERFREE BRN HP 3/32');
+    expect(formatPartyRow(burned, 2)).toBe('BUTTERFREE BRN 3/32');
+    expect(formatPartyRow({ ...fainted, primaryStatus: 'poison' as const }, 0)).toBe('BUTTERFREE Lv 14 FNT');
     const width = (row: string): number => row.length * 5.6;
     expect(partyRowForm([squirtle, squirtle], 11, width)).toBe(0);
     // In the right-hand column the full row is 140 pixels against 131.
@@ -180,7 +187,7 @@ describe('battle presentation', () => {
         { type: 'stat-stage-changed', user: 'enemy', name: 'Rattata', stat: 'attack', stages: -1 },
         wild,
       ),
-    ).toBe("Wild RATTATA's Attack fell!");
+    ).toBe("Wild RATTATA's ATTACK fell!");
     expect(eventToMessage({ type: 'fainted', user: 'enemy', name: 'Pidgey' }, trainer)).toBe(
       'Foe PIDGEY fainted!',
     );

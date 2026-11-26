@@ -148,10 +148,16 @@ export const formatPartyRow = (
     readonly currentHp: number;
     readonly maxHp: number;
     readonly isFainted: boolean;
+    readonly primaryStatus?: PrimaryStatus | null;
   },
   form = 0,
 ): string => {
-  const level = form >= 2 ? '' : ` ${levelLabel(pokemon.level)}`;
+  // A status stands where the level does, as FireRed's party screen draws its
+  // icon there - and in every form, because it decides who can be sent in: a
+  // newcomer sent a burned Gastly on 3 HP in and it fainted to the burn (the
+  // churchyard critic, round 3, 26 Nov 2026).
+  const status = pokemon.isFainted ? null : statusAbbreviation(pokemon.primaryStatus ?? null, 0);
+  const level = status ? ` ${status}` : form >= 2 ? '' : ` ${levelLabel(pokemon.level)}`;
   const health = pokemon.isFainted
     ? 'FNT'
     : `${form >= 1 ? '' : 'HP '}${pokemon.currentHp}/${pokemon.maxHp}`;
@@ -1838,16 +1844,19 @@ const statusLabel = (status: string): string =>
 const statChangeWords = (stages: number): string =>
   stages > 0 ? (stages >= 2 ? 'sharply rose' : 'rose') : stages <= -2 ? 'harshly fell' : 'fell';
 
+/**
+ * A stat as FireRed's battle names it (pret/pokefirered `gStatNamesTable`):
+ * the five numbers in capitals, accuracy and evasiveness - stages only, never
+ * a number on a Pokemon - in small letters, as FireRed writes them.
+ */
 const statLabel = (stat: string): string =>
   ({
-    attack: 'Attack',
-    defense: 'Defense',
-    spAttack: 'Sp. Attack',
-    spDefense: 'Sp. Defense',
-    speed: 'Speed',
-    // Neither of these is a number on a Pokemon - they exist only as stages -
-    // but they are named on the same line as the five that are.
+    attack: 'ATTACK',
+    defense: 'DEFENSE',
+    spAttack: 'SP. ATK',
+    spDefense: 'SP. DEF',
+    speed: 'SPEED',
     accuracy: 'accuracy',
-    evasion: 'evasion',
+    evasion: 'evasiveness',
   })[stat] ?? stat;
 

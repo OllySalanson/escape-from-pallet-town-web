@@ -311,7 +311,7 @@ describe('the abilities that refuse something', () => {
 
     expect(refusals('clear-body', tickle)).toEqual(["Wild TENTACOOL's CLEAR BODY prevents stat loss!"]);
     expect(refusals('keen-eye', SMOKESCREEN)).toEqual(["Wild TENTACOOL's KEEN EYE prevents accuracy loss!"]);
-    expect(refusals('hyper-cutter', tickle)).toEqual(["Wild TENTACOOL's HYPER CUTTER prevents Attack loss!"]);
+    expect(refusals('hyper-cutter', tickle)).toEqual(["Wild TENTACOOL's HYPER CUTTER prevents ATTACK loss!"]);
   });
 
   it('refuses a status from the other side, and a flinch is one of them', () => {
@@ -643,13 +643,13 @@ describe('the abilities that work off the clock, the bench and the exit', () => 
     const opening = createBattleState(armed(species({ name: 'Bulbasaur', abilityId: null }), 20, TACKLE), scary);
 
     expect(openingAbilityEvents(opening).map((event) => eventToMessage(event))).toEqual([
-      "Foe ARBOK's INTIMIDATE cuts your BULBASAUR's Attack!",
+      "Foe ARBOK's INTIMIDATE cuts your BULBASAUR's ATTACK!",
     ]);
 
     const plain = createBattleState(armed(species({ name: 'Bulbasaur', abilityId: null }), 20, TACKLE), armed(species({ name: 'Pidgey', abilityId: null }), 20));
     const switched = replacePlayerPokemon(plain, armed(species({ name: 'Ekans', abilityId: 'intimidate' }), 20, TACKLE));
     expect(switched.events.map((event) => eventToMessage(event, 'Wild'))).toEqual([
-      "Your EKANS's INTIMIDATE cuts Wild PIDGEY's Attack!",
+      "Your EKANS's INTIMIDATE cuts Wild PIDGEY's ATTACK!",
     ]);
   });
 

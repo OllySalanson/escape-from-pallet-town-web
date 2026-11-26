@@ -134,7 +134,9 @@ must bring the menu back on FIGHT, not POKéMON (`docs/screens/graveyard-battle/
 every line of a wild Gastly fight against a Charmander on 7 HP, through one SCRATCH,
 so two builds' fights can be laid side by side (`docs/screens/battle-lines/`);
 `--hp=N`, `--move=NAME` and `--items` start it on other HP, use another move, and
-photograph the ITEM list first (`docs/screens/firered-lines/`).
+photograph the ITEM list first (`docs/screens/firered-lines/`); `--status=burn`
+and `--party` put the Charmander in a status and photograph the POKéMON list
+(`docs/screens/firered-words/`).
 
 `battleKeys.mjs <test-mode build url> <dir> [--port=N]` reads a wild fight's
 opening lines with mouse clicks alone, rests the pointer on ITEM (lit, the cursor

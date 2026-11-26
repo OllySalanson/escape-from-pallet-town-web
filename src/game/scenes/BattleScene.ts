@@ -4820,7 +4820,8 @@ export class BattleScene extends Phaser.Scene {
       });
       messages.push(
         ...result.levelsGained.map((level) => ({
-          message: `${grewAs.toUpperCase()} grew to ${levelLabel(level)}!`,
+          // FireRed's sText_PkmnGrewToLv.
+          message: `${grewAs.toUpperCase()} grew to LV. ${level}!`,
           sound: 'levelUp' as const,
         })),
       );
