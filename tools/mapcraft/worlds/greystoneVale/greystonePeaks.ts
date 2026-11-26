@@ -199,7 +199,11 @@ export function greystonePeaks(): MapcraftResult {
     // hunter's blind window would not cover the walk out of the west side
     // (`hunterFlee.test.ts`), as the woods' hidden ways out answer it there.
     exits: [{ x: 6, y: 57, name: 'Goat Track', opens: { when: 'always' } }],
-    dropIns: [{ x: 56, y: 13, name: 'The Quarry', description: 'The quarry bench under the crag, beside the cliff the Greystone Caves open in.' }],
+    // Down the west side of the quarry, clear of the Onix coiled at the Powder
+    // Store: landed in the cut beside it, the way south walked into its reach
+    // two steps out, and running put the player back in it (gyms playtest,
+    // 26 Nov 2026; `guardsPlaced.test.ts` holds every landing clear of a guard).
+    dropIns: [{ x: 48, y: 15, name: 'The Quarry', description: 'The quarry bench under the crag, beside the cliff the Greystone Caves open in.' }],
     itemSpots: [
       { x: 11, y: 13 },
       { x: 56, y: 19 },
