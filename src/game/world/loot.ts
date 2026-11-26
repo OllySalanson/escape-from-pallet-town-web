@@ -141,6 +141,13 @@ export function squaresFindNeeds(itemId: ItemId, quantity: number, carried: numb
   return Math.max(1, cellsFor(itemId, carried + quantity) - cellsFor(itemId, carried));
 }
 
+/** A find on the ground as a line names it: MEDICINE BAG, 3 POTIONS, ₽40. */
+export function findName(itemId: ItemId, quantity: number): string {
+  return quantity === 1 && !isCurrency(itemId)
+    ? ITEMS[itemId].displayName.toUpperCase()
+    : itemAmountFor(itemId, quantity).toUpperCase();
+}
+
 /**
  * What ground loot says when it will not go into the pack: the find, and the
  * squares it needs.
@@ -153,10 +160,7 @@ export function squaresFindNeeds(itemId: ItemId, quantity: number, carried: numb
  */
 export function lootRefusalLine(itemId: ItemId, quantity: number, carried: number): string {
   const squares = squaresFindNeeds(itemId, quantity, carried);
-  const name =
-    quantity === 1 && !isCurrency(itemId)
-      ? ITEMS[itemId].displayName.toUpperCase()
-      : itemAmountFor(itemId, quantity).toUpperCase();
+  const name = findName(itemId, quantity);
   return `No room for ${name} - it needs ${squares} ${squares === 1 ? 'square' : 'squares'}. Drop something from the PACK and come back for it.`;
 }
 
