@@ -50,6 +50,13 @@ export class MenuOverlay {
    */
   public onPointed: ((control: HTMLElement | null) => void) | undefined;
 
+  /**
+   * Keys this screen keeps as themselves rather than as what they stand for on
+   * every other overlay (`asOverlayEvent`): the map maker keeps Backspace, which
+   * takes the chosen thing off the map there rather than going back.
+   */
+  public ownKeys: ReadonlySet<string> = new Set();
+
   public constructor(
     scene: Phaser.Scene,
     className: string,
@@ -73,7 +80,7 @@ export class MenuOverlay {
       if (document.activeElement !== focused && event.key.startsWith('Arrow')) {
         audioManager.play('select');
       }
-    }, window);
+    }, window, () => this.ownKeys);
     // Capture, so the baseline sounds before the button's own handler runs and
     // that handler's more specific effect is the one left standing.
     this.clickSoundHandler = (event) => {

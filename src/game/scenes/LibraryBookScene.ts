@@ -365,7 +365,6 @@ export class LibraryBookScene extends Phaser.Scene implements ProvidesFeedbackCo
       case 'ArrowLeft':
       case 'a':
       case 'A':
-      case 'Backspace':
         event.preventDefault();
         this.requestTurn('back');
         return;

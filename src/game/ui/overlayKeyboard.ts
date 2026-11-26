@@ -57,7 +57,11 @@ export interface OverlayKeyboardHost {
 
 interface OverlayClaim {
   readonly handler: (event: KeyboardEvent) => void;
+  /** Keys this overlay keeps as themselves rather than as what they stand for (`asOverlayEvent`). */
+  readonly ownKeys: () => ReadonlySet<string>;
 }
+
+const NO_OWN_KEYS: ReadonlySet<string> = new Set();
 
 const claims: OverlayClaim[] = [];
 let host: OverlayKeyboardHost | undefined;
@@ -85,29 +89,43 @@ function onKeyDown(event: KeyboardEvent): void {
     event.preventDefault();
     return;
   }
-  owner.handler(asArrowEvent(event));
+  owner.handler(asOverlayEvent(event, owner.ownKeys()));
   pressFocusedButton(event);
 }
 
-const ARROW_BY_LETTER: Readonly<Record<string, string>> = {
+/** The keys an overlay is handed as another key: W, A, S, D as arrows, and Backspace as BACK. */
+const STANDS_FOR: Readonly<Record<string, string>> = {
   w: 'ArrowUp',
   a: 'ArrowLeft',
   s: 'ArrowDown',
   d: 'ArrowRight',
+  backspace: 'Escape',
 };
 
 /**
- * W, A, S and D, handed to an overlay as the arrows they stand for: they walk,
- * and move the cursor in every answer box, the title and the jump-in card, and
- * did nothing in any panel, so a hand resting on them found the panels dead
- * (the navigation audit, 25 Nov 2026). One place, so every screen - its
- * cursor, its pocket jumps, its page turns - takes them as it takes the
- * arrows. A field being typed in never gets here (`isTypingTarget`), so there
- * they stay letters; with Ctrl, Alt or Meta they are the browser's.
+ * A key handed to an overlay as the key it stands for, so every screen - its
+ * cursor, its pocket jumps, its page turns, its way out - takes it as it takes
+ * that key (the navigation audit, 25 Nov 2026).
+ *
+ * - W, A, S and D are the arrows: they walk, and move the cursor in every
+ *   answer box, the title and the jump-in card, and did nothing in any panel.
+ * - Backspace is BACK, as Escape is: one step back, or the screen put away.
+ *   It closed YOUR THINGS, YOUR TEAM and the Pokédex and did nothing on the
+ *   favours, the hall's panels, Bill's PC, the boutique and the games.
+ *
+ * A field being typed in never gets here (`isTypingTarget`), so there they
+ * stay letters and Backspace deletes; with Ctrl, Alt or Meta they are the
+ * browser's. Backspace is still a delete where it already was one: on a piece
+ * of a pack, the twin of DEL and a right-click (the captain, 2026-10-29), and
+ * on an overlay that keeps it as its own (`ownKeys`) - the map maker, where it
+ * takes the chosen thing off the map.
  */
-export function asArrowEvent(event: KeyboardEvent): KeyboardEvent {
-  const arrow = typeof event.key === 'string' ? ARROW_BY_LETTER[event.key.toLowerCase()] : undefined;
-  if (!arrow || event.ctrlKey || event.metaKey || event.altKey) {
+export function asOverlayEvent(event: KeyboardEvent, ownKeys: ReadonlySet<string> = NO_OWN_KEYS): KeyboardEvent {
+  const arrow = typeof event.key === 'string' ? STANDS_FOR[event.key.toLowerCase()] : undefined;
+  if (!arrow || event.ctrlKey || event.metaKey || event.altKey || ownKeys.has(event.key)) {
+    return event;
+  }
+  if (event.key === 'Backspace' && onPackPiece(event.target)) {
     return event;
   }
   return new Proxy(event, {
@@ -119,6 +137,12 @@ export function asArrowEvent(event: KeyboardEvent): KeyboardEvent {
       return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(target) : value;
     },
   });
+}
+
+/** Whether a key went to a piece of a pack, where Backspace takes it out. */
+function onPackPiece(target: unknown): boolean {
+  const element = target as { closest?: (selector: string) => unknown } | null;
+  return typeof element?.closest === 'function' && element.closest('[data-grid-piece]') !== null;
 }
 
 /**
@@ -149,8 +173,9 @@ function pressFocusedButton(event: KeyboardEvent): void {
 export function claimOverlayKeyboard(
   handler: (event: KeyboardEvent) => void,
   target: OverlayKeyboardHost,
+  ownKeys: () => ReadonlySet<string> = () => NO_OWN_KEYS,
 ): () => void {
-  const claim: OverlayClaim = { handler };
+  const claim: OverlayClaim = { handler, ownKeys };
   claims.push(claim);
   if (!host) {
     host = target;

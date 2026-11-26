@@ -286,7 +286,7 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
   }
 
   private onKey(event: KeyboardEvent): void {
-    if (isOverlayDismissKey(event, 'Backspace')) {
+    if (isOverlayDismissKey(event)) {
       event.preventDefault();
       this.back();
       return;

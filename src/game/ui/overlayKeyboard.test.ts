@@ -322,6 +322,32 @@ describe('an open overlay owns the keyboard', () => {
     overlay.destroy();
   });
 
+  it('hands it Backspace as BACK, as Escape, so every panel goes back on either', () => {
+    // The navigation audit (25 Nov 2026): Backspace closed YOUR THINGS, YOUR
+    // TEAM and the Pokédex and did nothing on the favours or the hall's panels.
+    const overlay = openOverlay();
+
+    fakeWindow.press('Backspace');
+
+    expect(overlay.keys).toEqual(['Escape']);
+    overlay.destroy();
+  });
+
+  it('leaves Backspace a delete where it was one: in a text field, on a pack piece, and on a screen that keeps it', () => {
+    const typed: string[] = [];
+    const scene = { events: { once: () => {} } } as never;
+    const overlay = new MenuOverlay(scene, 'test-menu', (event) => typed.push(event.key));
+
+    fakeWindow.press({ key: 'Backspace', target: { tagName: 'INPUT' } });
+    fakeWindow.press({ key: 'Backspace', target: { tagName: 'BUTTON', closest: (selector: string) => (selector === '[data-grid-piece]' ? {} : null) } });
+    overlay.ownKeys = new Set(['Backspace']);
+    fakeWindow.press('Backspace');
+
+    // The field is its own (nothing reaches the screen); the piece and the map maker get Backspace.
+    expect(typed).toEqual(['Backspace', 'Backspace']);
+    overlay.destroy();
+  });
+
   it('takes a held Enter or Space as one press: the repeats work nothing, on screen or in the browser', () => {
     // Playtest 26 #7: Enter held on `Review & deploy` ran through the final
     // check into the raid, and held on a Potion drank the pack. The browser
@@ -453,8 +479,8 @@ describe('what closes an overlay', () => {
 describe('every mid-raid overlay closes on the key the HUD says opened it', () => {
   it.each([
     ['ObjectivesScene', "isOverlayDismissKey(event, 'o')"],
-    ['PartyScene', "isOverlayDismissKey(event, 'p', 'Backspace')"],
-    ['BagScene', "isOverlayDismissKey(event, 'b', 'Backspace')"],
+    ['PartyScene', "isOverlayDismissKey(event, 'p')"],
+    ['BagScene', "isOverlayDismissKey(event, 'b')"],
   ])('%s', async (scene, expected) => {
     const source = await readFile(new URL(`../scenes/${scene}.ts`, import.meta.url), 'utf8');
     expect(source).toContain(expected);

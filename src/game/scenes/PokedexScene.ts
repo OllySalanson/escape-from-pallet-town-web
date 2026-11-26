@@ -237,7 +237,7 @@ export class PokedexScene extends Phaser.Scene implements ProvidesFeedbackContex
       return;
     }
     if (this.openPage !== null) {
-      if (isOverlayDismissKey(event, 'Backspace')) {
+      if (isOverlayDismissKey(event)) {
         event.preventDefault();
         this.backToList();
         return;
@@ -261,7 +261,7 @@ export class PokedexScene extends Phaser.Scene implements ProvidesFeedbackContex
       }
       return;
     }
-    if (isOverlayDismissKey(event, POKEDEX_KEY, 'Backspace')) {
+    if (isOverlayDismissKey(event, POKEDEX_KEY)) {
       event.preventDefault();
       this.close();
       return;
