@@ -612,7 +612,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     detailOnOffer: (offered) =>
       WORLD_GATES.some((gate) => gate.fieldMove === 'surf' && offered(gate.mapId))
         ? 'It opens the shoal crossing on the Floodplain for good. Forty-two of the 151 read it - the Water starter line, and the Psyduck and Poliwag that live in the reeds.'
-        : 'No crossing on any map you can raid asks for it yet, but an HM is never used up. Forty-two of the 151 read it - the Water starter line, and the Psyduck and Poliwag that live in the reeds.',
+        : 'No crossing on any map you can raid asks for it yet, but in a fight Surf is a 95-power Water move, and an HM is never used up. Forty-two of the 151 read it - the Water starter line, and the Psyduck and Poliwag that live in the reeds.',
     icon: 'hm03-surf',
     gives: { itemId: 'hm03-surf', quantity: 1 },
     takes: [
