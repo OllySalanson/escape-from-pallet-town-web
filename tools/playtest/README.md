@@ -145,6 +145,8 @@ the touch pad's OK on the title in a phone-sized window with touch emulated, aft
 two real keyboard presses: NEW GAME must start, which the first OK after a keyboard
 press used not to (`--no-keys` is the control).
 
+`menuSprites.mjs <test-mode build dir> [--latency=80] [--cpu=4] [--stale] [--shot=dir]` serves a build as Pages does and times every picture of Bill's shelf (first and second open) and the raid's result from being put on screen to being drawn; `--stale` serves every file as past Pages' ten minutes (`docs/screens/menu-sprites/`).
+
 `slowLoad.mjs <cdp port> <build url> <dir> [kbit/s] [latency ms]` opens the game
 on a throttled line with the cache off and photographs the first load until the
 title is up, for what a friend on poor wifi sees before the game can draw

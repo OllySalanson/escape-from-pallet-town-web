@@ -40,6 +40,7 @@ import {
 import { FURNITURE_PATH, FURNITURE_TEXTURE } from '../base/furnitureArt';
 import { isTestLabRequested } from '../dev/testLabAccess';
 import { ICON_NAMES, iconTextureKey } from '../ui/icons';
+import { keepPicturesLoaded, menuPictureUrls } from '../ui/menuPictures';
 import { awaitGameFont } from '../ui/gameFont';
 import { publicAssetUrl } from '../publicAssetUrl';
 import { drawPixelWindow } from '../ui/pixelWindow';
@@ -173,6 +174,11 @@ export class BootScene extends Phaser.Scene {
   public create(): void {
     this.createPlayerAnimations();
     this.createDesignAnimations();
+    // Phaser has just fetched every icon and species into its own textures,
+    // which a menu's `<img>` cannot draw from: the same files are held for the
+    // DOM too, from the cache, so no menu's first open waits on its pictures
+    // (`ui/menuPictures.ts`).
+    void keepPicturesLoaded(menuPictureUrls(Object.values(SPECIES_BY_ID).map((species) => species.dexId)));
     // The game font is an asset like any other, so it is waited for here rather
     // than hoped for later: Phaser paints canvas text with whatever face is
     // ready at that instant and never repaints it, so a battle drawn before the
