@@ -1397,23 +1397,12 @@ export const BROKE_FREE_LINES = [
 
 export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string => {
   switch (event.type) {
-    case 'used-move': {
-      // The HP figure is the whole point: a loss has to be explicable from the
-      // log alone, not inferred from a bar that has already finished animating.
-      // The same-type bonus is named because it is otherwise the largest
-      // invisible term in the damage calculation.
-      const opening = `${combatantName(event, foe)} used ${event.move.toUpperCase()}!`;
-      if (!event.damage) {
-        return opening;
-      }
-      const stab = event.isStab ? ` · SAME-TYPE ${formatMultiplier(STAB_MULTIPLIER)}` : '';
-      // In a double battle the hit says whose HP it took, as a spread move's lines do.
-      const struck =
-        event.targetName !== undefined && event.target !== undefined
-          ? `${combatantName({ user: event.target, name: event.targetName }, foe)} `
-          : '';
-      return `${opening} ${struck}-${event.damage} HP${stab}`;
-    }
+    case 'used-move':
+      // FireRed's sText_PkmnUsedMove, and nothing after it: the HP bar says
+      // what the hit took, as FireRed's does. It carried "-15 HP · SAME-TYPE
+      // x1.5", arithmetic on nearly every line of every fight (the churchyard
+      // critic, round 3, 26 Nov 2026; Olly: the game's own way).
+      return `${combatantName(event, foe)} used ${event.move.toUpperCase()}!`;
     case 'spread-damage': {
       // The move named itself on the line above; this says what it took off
       // this one. One number could only be a sum of the two hits, and a sum
