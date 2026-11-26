@@ -48,9 +48,12 @@ export function recoveryTermsFor(
  * Her plain word on what healing costs, said with a price (AI playtest 5, 22 Nov
  * 2026). Never with today's free heal: its own line already says it is free, and
  * the rule said beside it, and again after, was the same thing three times in
- * one visit (the first-time-friend retest, 22 Nov 2026).
+ * one visit (the first-time-friend retest, 22 Nov 2026). So it is only ever said
+ * once today's free heal is used, and right after "Healing would take 0:35":
+ * opening on "Healing is free." and closing on "the first each day is free" read
+ * as her taking the price back (night raid critic, 26 Nov 2026).
  */
-export const HEAL_RULE_LINE = `Healing is free. Bringing a Pokémon round from a faint costs at most ${formatRecoveryClock(MAX_PENDING_RECOVERY_MS)} of a raid, and the first each day is free.`;
+export const HEAL_RULE_LINE = `A scratch mends free. Only a faint costs, at most ${formatRecoveryClock(MAX_PENDING_RECOVERY_MS)} of a raid, and today's free one is used: tomorrow's first is free.`;
 
 type CounterGame = Pick<RestoredGame, 'stash' | 'pendingRecoveryMs' | 'wardTreatmentsUsed' | 'freeHealDay'> & {
   readonly raidProgress: Pick<RaidProgress, 'workshopUpgrades'>;

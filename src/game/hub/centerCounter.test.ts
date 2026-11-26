@@ -106,13 +106,15 @@ describe('Nurse Joy at her counter', () => {
     // Said once: the free line, and not the rule beside it (retest, 22 Nov 2026).
     expect(offer.lines).not.toContain(HEAL_RULE_LINE);
     expect(offer.lines.join(' ').match(/free/g)).toHaveLength(1);
-    expect(HEAL_RULE_LINE).toBe('Healing is free. Bringing a Pokémon round from a faint costs at most 1:00 of a raid, and the first each day is free.');
+    expect(HEAL_RULE_LINE).toBe("A scratch mends free. Only a faint costs, at most 1:00 of a raid, and today's free one is used: tomorrow's first is free.");
     // A free heal opens on YES, as FireRed's does.
     expect(offer.spendsForGood).toBe(false);
     // Taken today, she charges, and still says the rule; tomorrow it is free again.
     const taken = { ...game, freeHealDay: healDayOf(today) };
     expect(centerOffer(taken, false, today).lines[0]).toContain('Healing would take');
     expect(centerOffer(taken, false, today).lines).toContain(HEAL_RULE_LINE);
+    // With a price quoted, nothing after it says healing is free (night raid critic, 26 Nov 2026).
+    expect(centerOffer(taken, false, today).lines.join(' ')).not.toMatch(/Healing is free|first each day is free/);
     expect(centerOffer(taken, false, new Date(2026, 10, 23, 9)).lines[0]).toContain('first heal today is free');
   });
 
