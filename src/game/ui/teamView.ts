@@ -66,13 +66,15 @@ export function leadLine(name: string): string {
 }
 
 /** Said when ENTER would leave the team empty: nobody is ever left with no team (playtest wave 3, finding 11). */
-export const LAST_ONE_STAYS = 'Somebody has to go. Take another first.';
+// Not "Take another first": said to a player whose only Pokémon it is, there
+// is no other to take (the harbour critic tour, 26 Nov 2026).
+export const LAST_ONE_STAYS = 'Somebody has to go, so it stays.';
 
 /** What the help bar says of a slot or a tile, and the status line after it is pressed: short, because the card says the rest. */
 export function teamRowHelp(entry: PickerEntry, going: boolean, lead: boolean, size: number): string {
   const name = entry.pokemon.name;
   if (going && size === 1) {
-    return `${name} is the whole team. Take another first.`;
+    return `${name} is the whole team, so it always goes.`;
   }
   if (going) {
     return lead ? `${name} leads. ENTER leaves it at home.` : `${name} is going. ENTER leaves it at home, L puts it in front.`;

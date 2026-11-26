@@ -57,9 +57,10 @@ export function marshalLines(
     return [`You look ready. ${cleanLandings} clean landings running, and the stands are counting.`];
   }
   if (boutRival) {
-    return [`You look ready. ${boutRival} is on the far floor, if you want a bout first.`];
+    return [`You look ready. ${boutRival} is on the far floor, if you want to practise first.`];
   }
-  return ['You look ready. Pick a spot on the rim. A telescope east and west shows it all.'];
+  // One landing on offer, there is no spot to pick (the harbour critic tour).
+  return ['You look ready. Jump from the rail. A telescope east and west shows the vale.'];
 }
 
 /** Whether Bill would sell this save a ball of any kind today. */

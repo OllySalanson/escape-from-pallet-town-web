@@ -6208,6 +6208,9 @@ export class BaseScene extends Phaser.Scene {
       this.savedGame = this.saveManager.load() ?? this.savedGame;
       if (this.kit) {
         this.furniture?.show(this.kit.flow, partnerOf(this.savedGame.stash)?.id ?? null);
+        // THE BENCH's caption says who is coming as it now stands: it still
+        // named the old team after YOUR TEAM closed (the harbour critic tour).
+        this.sayStationNotes();
       }
       this.showHint(this.hintHere());
     });

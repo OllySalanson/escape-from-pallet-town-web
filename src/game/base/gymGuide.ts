@@ -1,5 +1,7 @@
 import { buildContractBoard } from '../hub/contractBoard';
-import { errandPlace, errandThing, errandsInHand, type ErrandProgress } from '../hub/errands';
+import type { ErrandProgress } from '../hub/errands';
+import { boardContracts, standingJobFits } from '../objectives/standingBoard';
+import { RAID_DURATION_MS } from '../run/raidClock';
 import { FIRST_WORDS, hasHeard, type FirstWordsId } from '../hub/firstWords';
 import { honoursWorn, type HonourId } from '../look/gymHonours';
 import type { StandingBoardProgress } from '../objectives/standingBoard';
@@ -12,9 +14,9 @@ import { nextGym } from '../world/valeQuarters';
  * Every raid starts through that door, so he is the one person a player passes
  * on the way out, and what they are going out for is the thing worth hearing
  * there. The contract board is work from nobody, read off a list in Oak's Lab;
- * here somebody says it - the job on the board, what it pays, and whose
- * favours are in hand and where their things lie - in the ordinary dialogue
- * box, as the captain asked a quest to be ("a normal Pokémon chat"). It is
+ * here somebody says it - the job on the board that fits one raid, and what
+ * it pays, in one line, then the next gym - in the ordinary dialogue box, as
+ * the captain asked a quest to be ("a normal Pokémon chat"). It is
  * said, never offered: a contract is taken by choosing where to drop in, and
  * nothing here changes what the board asks or pays (`contractBoard.ts` is the
  * one source of every word about a contract).
@@ -36,21 +38,21 @@ export function gymGuideLines(
   const explains = gymGuideHasStakesNews(progress);
   const told = explains ? { ...progress, firstWordsHeard: [...(progress.firstWordsHeard ?? []), 'stakes'] } : progress;
   const board = buildContractBoard(told);
-  const [job] = board.rows;
+  // A job he names is one a raid can do: he named LINE SURVEY while the rim
+  // said it needed 6:39 of a 5:00 clock (the harbour critic tour, 26 Nov 2026).
+  const contracts = boardContracts(told);
+  const job = board.rows.find((row) => {
+    const contract = contracts.find((each) => each.id === row.contractId);
+    return !contract || standingJobFits(contract, told, RAID_DURATION_MS);
+  });
   const greeting = explains || noticed ? '' : 'Yo, champ! ';
+  // One line, the job and its pay: he read out the board, every favour in
+  // hand and the gym, seventeen boxes before his question (the critic tour).
+  // The rest is on Oak's board, and a favour is its giver's to remind.
   const work = job
-    ? [
-        `${greeting}Today's job: ${job.name.toUpperCase()}.`,
-        sentence(job.description),
-        ...(job.asks ? [sentence(job.asks)] : []),
-        sentence(`It pays ${job.reward}`),
-        ...(board.rows.length > 1 ? [`There is more on the board in OAK'S LAB.`] : []),
-      ]
-    : [`${greeting}Nothing on the board today. Raid for what the vale holds!`];
-  const favours = errandsInHand(progress).map(
-    (errand) => `${errand.name} is waiting on ${errandThing(errand).toUpperCase()}, from ${errandPlace(errand)}.`,
-  );
-  return [...(noticed ? FIRST_WORDS[noticed].lines : []), ...(explains ? FIRST_WORDS.stakes.lines : []), ...work, ...favours, ...gymAdvice(told), 'Kit up through that door!'];
+    ? [`${greeting}Today's job: ${job.name.toUpperCase()}. It pays ${job.reward.replace(/[.!?]$/, '')}.`]
+    : [`${greeting}Nothing on the board fits one raid today. Raid for what the vale holds!`];
+  return [...(noticed ? FIRST_WORDS[noticed].lines : []), ...(explains ? FIRST_WORDS.stakes.lines : []), ...work, ...gymAdvice(told)];
 }
 
 /**
@@ -113,12 +115,9 @@ export function gymAdvice(progress: {
   return [
     ...gym.advice,
     met
-      ? `You've met ${gym.leader.toUpperCase()}. Spar for free in THE RAID ARENA's hall!`
-      : `Meet ${gym.leader.toUpperCase()} once to spar for free in THE RAID ARENA's hall.`,
+      ? // "Practise", the word the far floor's question uses: three words for one free fight read as three things (the critic tour).
+        `You've met ${gym.leader.toUpperCase()}. Practise for free in THE RAID ARENA's hall!`
+      : `Meet ${gym.leader.toUpperCase()} once, then practise for free in THE RAID ARENA's hall.`,
   ];
 }
 
-/** A line as a sentence: a full stop on the end, unless it has one. */
-function sentence(text: string): string {
-  return /[.!?]$/.test(text) ? text : `${text}.`;
-}
