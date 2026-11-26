@@ -350,6 +350,8 @@ export interface PixelGridOptions {
   readonly cargoBody?: (placement: GridCargoPlacement) => string;
   /** Extra classes for a cargo block: the stash dims what the pocket tab leaves out. */
   readonly cargoClass?: (placement: GridCargoPlacement) => string;
+  /** Extra classes for an item block, by its place in the packing: YOUR THINGS lines the ones the locker keeps. */
+  readonly blockClass?: (placement: GridPacking['placements'][number], index: number) => string;
 }
 
 /** What the screen is carrying over this container, if anything. */
@@ -421,9 +423,10 @@ export function pixelGrid(packing: GridPacking, icon: (itemId: string) => string
     .map((placement, index) => {
       const marked = options.highlight === placement.itemId ? ' is-marked' : '';
       const count = placement.quantity > 1 ? `<b>${placement.quantity}</b>` : '';
+      const extra = options.blockClass?.(placement, index) ?? '';
       return block(
         pieceRefKey(itemRefAt(packing, index)),
-        `px-grid-block${marked}${placement.rotated ? ' is-turned' : ''}`,
+        `px-grid-block${marked}${placement.rotated ? ' is-turned' : ''}${extra ? ` ${extra}` : ''}`,
         describeKey('item', placement.itemId),
         placement,
         `${icon(placement.itemId)}${count}`,

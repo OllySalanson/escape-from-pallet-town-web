@@ -20,6 +20,7 @@ import {
   EMPTY_ARRANGEMENT,
   footprintOf,
   getItemById,
+  isFoundOnly,
   ItemCategory,
   machineForItem,
   packContents,
@@ -31,7 +32,8 @@ import {
 import { canLearnFromMachine } from '../pokemon/machines';
 import { evolutionByStone, stoneUsers, type Pokemon } from '../pokemon';
 import { iconMarkup, itemIcon } from './icons';
-import { escapeAttribute, pixelColumns, pixelGrid, pixelPortrait, pixelWindow, COLUMN_MEASURES, type PixelGridGhost } from './pixelUi';
+import { pixelMonIcon } from './monIcon';
+import { escapeAttribute, pixelColumns, pixelGrid, pixelWindow, COLUMN_MEASURES, type PixelGridGhost } from './pixelUi';
 
 /** The pockets storage is read in, in the order they are read. */
 export const THINGS_POCKETS = [
@@ -251,13 +253,25 @@ export function pocketTabs(contents: Readonly<Record<string, number>>): readonly
   return [ALL_POCKETS, ...storedPockets(contents).map(({ pocket }) => pocket)];
 }
 
-/** One Pokémon in the locker: the partner's own place, or one held in the container's squares. */
-export interface LockerPokemon {
+/** What a wipe does to one of the next raid's team: always home, kept by the locker, or lost. */
+export type TeamFate = 'partner' | 'locked' | 'risk';
+
+/** One of the next raid's team, as its strip draws it. */
+export interface TeamMember {
   readonly name: string;
-  readonly dexId: number;
-  readonly shiny: boolean;
-  /** Squares it takes in the container; absent for the partner, who has a place of its own. */
-  readonly squares?: number;
+  readonly speciesId: string;
+  readonly currentHp: number;
+  readonly maxHp: number;
+  readonly fate: TeamFate;
+}
+
+/**
+ * Whether a thing can never be carried into a raid: found goods for Brock,
+ * clothes, furniture, an errand's parcel. A pack is worn rather than packed,
+ * so it is not one of these.
+ */
+export function staysHome(itemId: string): boolean {
+  return isFoundOnly(itemId) && getItemById(itemId)?.effect.type !== 'pack';
 }
 
 /** What YOUR THINGS draws. */
@@ -266,20 +280,25 @@ export interface ThingsScreen {
   readonly stash: Readonly<Record<string, number>>;
   readonly stashArrangement: GridArrangement;
   readonly pocket: PocketTab;
+  /** Who goes on the next raid, in order, each with what a wipe would do to them. */
+  readonly team: readonly TeamMember[];
   readonly pack: {
     readonly name: string;
     readonly itemId?: string;
     readonly layout: GridPacking;
     readonly used: number;
     readonly total: number;
+    /** How many of each kind the locker keeps: the first of that kind's blocks are lined. */
+    readonly locked: Readonly<Record<string, number>>;
   };
+  /** The locker's own squares: what it keeps, laid out as it holds it. */
   readonly locker: {
     readonly layout: GridPacking;
-    readonly partner?: LockerPokemon;
-    readonly pokemon: readonly LockerPokemon[];
+    readonly used: number;
+    readonly total: number;
   };
   /** What is being carried over each grid, if anything. */
-  readonly ghosts?: { readonly stash?: PixelGridGhost; readonly pack?: PixelGridGhost };
+  readonly ghosts?: { readonly stash?: PixelGridGhost; readonly pack?: PixelGridGhost; readonly locker?: PixelGridGhost };
 }
 
 /** The partner's mark: a green rosette, drawn, because the face has no such glyph. */
@@ -287,20 +306,47 @@ export function rosette(): string {
   return '<span class="things-rosette" role="img" aria-label="Partner"></span>';
 }
 
+const FATE_WORDS: Readonly<Record<TeamFate, string>> = {
+  partner: 'always comes home',
+  locked: 'kept by the locker',
+  risk: 'lost on a wipe',
+};
+
+function teamMark(fate: TeamFate): string {
+  if (fate === 'partner') {
+    return rosette();
+  }
+  if (fate === 'locked') {
+    return iconMarkup('padlock', '');
+  }
+  return '<span class="things-torn" aria-hidden="true"></span>';
+}
+
+/**
+ * A thing two squares or more each way is drawn twice as big again, so a
+ * parts crate is a crate filling its four squares rather than a small picture
+ * adrift in a big white one.
+ */
+function bigBlock(piece: { readonly width: number; readonly height: number }): string {
+  return Math.min(piece.width, piece.height) >= 2 ? 'is-big' : '';
+}
+
 function stashCard(view: ThingsScreen): string {
   const tabs = pocketTabs(view.stash);
   const layout = stashLayout(view.stash, view.stashArrangement);
   const grid = pixelGrid(layout, (itemId) => itemIcon(itemId), {
     className: 'things-stash-grid',
-    label: 'At base',
-    arrange: { name: 'stash', ghost: view.ghosts?.stash, help: 'ENTER puts one in the pack · R turns it · drag it anywhere' },
+    label: 'Home',
+    arrange: { name: 'stash', ghost: view.ghosts?.stash },
     cargoBody: (piece) => {
       const count = view.stash[piece.cargoId] ?? 0;
-      return `${itemIcon(piece.cargoId, piece.name)}${count > 1 ? `<b>×${count}</b>` : ''}`;
+      const home = staysHome(piece.cargoId) ? '<span class="things-house things-home-mark" role="img" aria-label="Stays at home"></span>' : '';
+      return `${itemIcon(piece.cargoId, piece.name)}${home}${count > 1 ? `<b>×${count}</b>` : ''}`;
     },
     cargoClass: (piece) => {
       const item = getItemById(piece.cargoId);
-      return view.pocket !== ALL_POCKETS && item && pocketOf(item) !== view.pocket ? 'is-dim' : '';
+      const dim = view.pocket !== ALL_POCKETS && item && pocketOf(item) !== view.pocket ? 'is-dim' : '';
+      return [dim, staysHome(piece.cargoId) ? 'is-home-only' : '', bigBlock(piece)].filter(Boolean).join(' ');
     },
   });
   const strip = tabs
@@ -309,58 +355,105 @@ function stashCard(view: ThingsScreen): string {
         `<button type="button" class="things-tab${tab === view.pocket ? ' is-here' : ''}" data-pocket-tab="${tab}" tabindex="-1">${POCKET_TAB_WORDS[tab]}</button>`,
     )
     .join('');
-  const empty =
-    Object.keys(view.stash).length === 0 ? '<p class="px-empty things-empty">Nothing at base.</p>' : '';
-  return `<section class="px-window things-stash"><header class="px-heading things-tabs"><span class="things-tab-strip">${strip}</span><small>At base</small></header><div class="px-scroll things-stash-scroll">${grid}${empty}</div></section>`;
+  const empty = Object.keys(view.stash).length === 0 ? '<p class="px-empty things-empty">Nothing at home.</p>' : '';
+  return `<section class="px-window px-tone-secure things-stash"><header class="px-heading"><span class="things-side-name"><span class="things-house" aria-hidden="true"></span>Home</span><small>Safe</small></header><nav class="things-tab-strip"><span class="things-cap" aria-hidden="true">Q</span>${strip}<span class="things-cap" aria-hidden="true">E</span></nav><div class="px-scroll things-stash-scroll">${grid}${empty}</div></section>`;
+}
+
+/** How many go on a raid at most: the strip always shows this many places. */
+const TEAM_PLACES = 6;
+
+function teamCard(view: ThingsScreen): string {
+  const tile = (body: string, className: string, label: string, tag: string): string =>
+    `<span class="things-place"><span class="things-member ${className}" role="img" aria-label="${escapeAttribute(label)}">${body}</span><small class="things-tag">${tag}</small></span>`;
+  const members = view.team
+    .map((one) =>
+      tile(
+        `${pixelMonIcon({ name: one.name, currentHp: one.currentHp, maxHp: one.maxHp, base: { id: one.speciesId } })}<span class="things-member-mark">${teamMark(one.fate)}</span>`,
+        `is-${one.fate}`,
+        `${one.name}: ${FATE_WORDS[one.fate]}`,
+        one.fate === 'risk' ? 'At risk' : 'Safe',
+      ),
+    )
+    .join('');
+  const free = '<span class="things-place" aria-hidden="true"><span class="things-member is-free"></span><small class="things-tag"></small></span>'.repeat(
+    Math.max(0, TEAM_PLACES - view.team.length),
+  );
+  const worn = view.pack.itemId
+    ? `<span class="things-place things-worn-place"><span class="things-worn" role="img" aria-label="Wearing the ${escapeAttribute(
+        view.pack.name,
+      )}">${itemIcon(view.pack.itemId, view.pack.name)}</span><small class="things-tag">Worn</small></span>`
+    : '';
+  return `<section class="px-window things-team"><header class="px-heading"><span class="things-side-name">Next raid</span><small>Team ${view.team.length} of ${TEAM_PLACES}</small></header><div class="things-team-strip">${members}${free}${worn}</div></section>`;
 }
 
 function packCard(view: ThingsScreen): string {
+  const lined = new Map(Object.entries(view.pack.locked));
   const grid = pixelGrid(view.pack.layout, (itemId) => itemIcon(itemId), {
     className: 'things-pack-grid',
     label: `The next raid's ${view.pack.name}`,
-    arrange: { name: 'pack', ghost: view.ghosts?.pack, help: 'ENTER picks it up · BACKSPACE takes one out · R turns it' },
+    arrange: { name: 'pack', ghost: view.ghosts?.pack },
+    // The locker keeps so many of a kind, and those are the first blocks of it.
+    blockClass: (placement) => {
+      const left = lined.get(placement.itemId) ?? 0;
+      lined.set(placement.itemId, left - placement.quantity);
+      return [left > 0 ? 'is-locked' : '', bigBlock(placement)].filter(Boolean).join(' ');
+    },
   });
-  const pack = view.pack.itemId ? itemIcon(view.pack.itemId, view.pack.name) : '';
-  return `<section class="px-window px-tone-risk things-pack"><header class="px-heading"><span class="things-pack-name">${pack}${escapeAttribute(view.pack.name)}</span><small>At risk</small></header><div class="things-pack-body">${grid}<p class="things-count" aria-label="${view.pack.used} of ${view.pack.total} squares"><b>${view.pack.used}</b><small>of</small><b>${view.pack.total}</b></p></div></section>`;
-}
-
-function lockerPlace(one: LockerPokemon, partner: boolean): string {
-  return `<div class="things-locker-place${partner ? ' is-partner' : ''}">${pixelPortrait(one.dexId, one.name, one.shiny)}<span class="things-locker-name">${partner ? rosette() : ''}${escapeAttribute(one.name)}</span><small>${partner ? 'Its own place' : `${one.squares ?? 0} squares`}</small></div>`;
+  return `<section class="px-window px-tone-risk things-pack"><header class="px-heading"><span class="things-pack-name">${escapeAttribute(
+    view.pack.name,
+  )}<b class="things-count" aria-label="${view.pack.used} of ${view.pack.total} squares">${view.pack.used}/${view.pack.total}</b></span><small>Lost on a wipe</small></header><div class="things-pack-body">${grid}</div></section>`;
 }
 
 function lockerCard(view: ThingsScreen): string {
-  const places = [
-    ...view.locker.pokemon.map((one) => lockerPlace(one, false)),
-    ...(view.locker.partner ? [lockerPlace(view.locker.partner, true)] : []),
-  ];
-  const items =
-    view.locker.layout.placements.length > 0
-      ? pixelGrid(view.locker.layout, (itemId) => itemIcon(itemId), { className: 'is-secure things-locker-grid', label: 'In the locker' })
-      : '';
-  const body = places.length > 0 || items ? `${places.join('')}${items}` : '<p class="px-empty">Empty</p>';
-  return `<section class="px-window px-tone-secure things-locker"><header class="px-heading"><span class="things-lock-name">${iconMarkup('padlock', '')}The locker</span><small>Safe</small></header><div class="things-locker-body">${body}</div></section>`;
+  // What it keeps of the pack is drawn as it is drawn in the pack - the thing,
+  // lined, with the padlock on its corner - so the two read as one thing kept,
+  // never two; room kept for a find is that find's shape, faded.
+  const grid = pixelGrid(view.locker.layout, (itemId) => itemIcon(itemId), {
+    className: 'is-secure things-locker-grid',
+    label: 'What the locker keeps',
+    arrange: { name: 'locker', ghost: view.ghosts?.locker },
+    blockClass: (placement) => [isFoundOnly(placement.itemId) ? 'is-kept-free' : 'is-locked', bigBlock(placement)].filter(Boolean).join(' '),
+  });
+  return `<section class="px-window px-tone-secure things-locker"><header class="px-heading"><span class="things-lock-name">${iconMarkup(
+    'padlock',
+    '',
+  )}Locker</span></header><div class="things-locker-body">${grid}<p class="things-kept"><b class="things-count" aria-label="${view.locker.used} of ${
+    view.locker.total
+  } squares">${view.locker.used}/${view.locker.total}</b> Kept on a wipe</p></div></section>`;
 }
 
-/** Where the thing in hand is: still in the stash, in the pack, or being carried. */
-export type HandPlace = 'stash' | 'pack' | 'carrying';
+/** Where the thing under the cursor is: still at home, in the pack, in the locker, or being carried. */
+export type HandPlace = 'stash' | 'pack' | 'locker' | 'carrying';
 
 /** A button with its key inside it, as every button on these screens says what it does. */
 function keyButton(key: string, words: string, attribute: string, tone: '' | 'is-primary' | 'is-danger' = '', disabled = false): string {
   return `<button type="button" class="px-window px-button things-key${tone ? ` ${tone}` : ''}" ${attribute} tabindex="-1"${disabled ? ' aria-disabled="true"' : ''}><span class="things-cap">${key}</span>${words}</button>`;
 }
 
+/** What the card offers for the thing the cursor is on. */
+export interface HandOptions {
+  /** There is room in the pack for one more of it. */
+  readonly canPack: boolean;
+  /** For a thing in the pack: the locker already keeps this one. */
+  readonly locked?: boolean;
+  /** For a thing in the pack: the locker has room to keep one more of it. */
+  readonly canLock?: boolean;
+}
+
 /**
- * The card under the stash: the thing the cursor is on, in hand - its picture,
- * what it does in a few words, how many squares it takes - and what the keys do
- * to it now, each a button with the key in it.
+ * The card under the stash: the thing the cursor is on - its picture, what it
+ * does in a few words, how many squares it takes - and what the keys do to it
+ * now, each a button with the key in it. CARRYING heads it only while it is
+ * picked up; otherwise it is just the thing's name.
  */
-export function handCard(item: ItemDefinition | undefined, place: HandPlace, canPack: boolean): string {
+export function handCard(item: ItemDefinition | undefined, place: HandPlace, options: HandOptions): string {
   if (!item) {
-    return '<div class="things-hand-thing"><div class="things-hand-words"><small>In hand</small><span>Nothing</span></div></div>';
+    return '<div class="things-hand-thing"><div class="things-hand-words"><span>Nothing here</span></div></div>';
   }
   const { width, height } = footprintOf(item.id);
   const squares = width * height;
   const use = homeUseOf(item);
+  const home = staysHome(item.id);
   const buttons =
     place === 'carrying'
       ? [
@@ -370,25 +463,43 @@ export function handCard(item: ItemDefinition | undefined, place: HandPlace, can
         ]
       : place === 'pack'
         ? [
-            keyButton('ENTER', 'Pick up', 'data-hand="take"'),
+            keyButton(
+              'L',
+              options.locked ? 'Unlock' : options.canLock === false ? 'Locker full' : 'Lock',
+              'data-hand="lock"',
+              options.locked ? '' : 'is-primary',
+              !options.locked && options.canLock === false,
+            ),
             keyButton('BKSP', 'Take one out', 'data-hand="out"', 'is-danger'),
             keyButton('R', 'Turn', 'data-hand="turn"'),
           ]
-        : [
-            keyButton('ENTER', 'Put in the pack', 'data-hand="pack"', 'is-primary', !canPack),
-            ...(use ? [keyButton('U', use === 'teach' ? 'Teach' : 'Use', 'data-hand="use"')] : []),
-            keyButton('R', 'Turn', 'data-hand="turn"'),
-          ];
-  return `<div class="things-hand-thing">${itemIcon(item.id, item.displayName)}<div class="things-hand-words"><span><small>${
-    place === 'carrying' ? 'Carrying' : 'In hand'
-  }</small> ${escapeAttribute(item.displayName)}</span><small>${squares} ${squares === 1 ? 'square' : 'squares'} · ${escapeAttribute(
-    item.description,
-  )}</small></div></div><div class="things-hand-keys">${buttons.join('')}</div>`;
+        : place === 'locker'
+          ? [keyButton('BKSP', 'Unlock', 'data-hand="out"', 'is-danger')]
+          : [
+              ...(home
+                ? []
+                : [
+                    keyButton(
+                      'ENTER',
+                      item.effect.type === 'pack' ? 'Wear it' : 'Put in the pack',
+                      'data-hand="pack"',
+                      'is-primary',
+                      !options.canPack,
+                    ),
+                  ]),
+              ...(use ? [keyButton('U', use === 'teach' ? 'Teach' : 'Use', 'data-hand="use"')] : []),
+              keyButton('R', 'Turn', 'data-hand="turn"'),
+            ];
+  const size = `${squares} ${squares === 1 ? 'square' : 'squares'}`;
+  const tag = home && place === 'stash' ? ' <span class="things-home-tag"><span class="things-house" aria-hidden="true"></span>Home only</span>' : '';
+  return `<div class="things-hand-thing">${itemIcon(item.id, item.displayName)}<div class="things-hand-words"><span>${
+    place === 'carrying' ? '<small>Carrying</small> ' : ''
+  }${escapeAttribute(item.displayName)}${tag}</span><small>${size} · ${escapeAttribute(item.description)}</small></div></div><div class="things-hand-keys">${buttons.join('')}</div>`;
 }
 
-/** The whole screen: the stash, the raid pack and the locker, and what is in hand. */
+/** The whole screen: home on the left; the next raid's team, pack and locker on the right; what the cursor is on underneath. */
 export function thingsScreen(view: ThingsScreen, hand: string): string {
-  return `<main class="px-body things-layout">${stashCard(view)}${packCard(view)}${lockerCard(view)}<section class="px-window things-hand" data-hand-card>${hand}</section></main>`;
+  return `<main class="px-body things-layout">${stashCard(view)}${teamCard(view)}${packCard(view)}${lockerCard(view)}<section class="px-window things-hand" data-hand-card>${hand}</section></main>`;
 }
 
 /** Who a stone would go to: every Pokémon the player has, with whether it would work, best first. */

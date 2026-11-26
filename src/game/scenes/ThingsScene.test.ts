@@ -42,11 +42,19 @@ function thingsWithAStone(...others: readonly string[]): ThingsInternals {
 
 /** YOUR THINGS over a save holding a Pikachu of `level`, whoever else is named (at level 20), and `items`. */
 function thingsHolding(items: Record<string, number>, level: number, ...others: readonly string[]): ThingsInternals {
+  return thingsOver(items, level, false, ...others);
+}
+
+/** As `thingsHolding`, with the Pikachu as the partner when `partner` says so: it then takes no room in the locker. */
+function thingsOver(items: Record<string, number>, level: number, partner: boolean, ...others: readonly string[]): ThingsInternals {
   const stash = new Stash();
   for (const speciesId of others) {
     stash.addPokemon(new Pokemon(getSpeciesById(speciesId)!, 20));
   }
   stash.addPokemon(new Pokemon(getSpeciesById('pikachu')!, level), 'home-1');
+  if (partner) {
+    stash.adoptPartner('home-1');
+  }
   for (const [itemId, quantity] of Object.entries(items)) {
     stash.addItem(itemId, quantity);
   }
@@ -210,10 +218,51 @@ describe('packing from YOUR THINGS', () => {
     expect(packing(scene).stashContents()['poke-ball']).toBe(1);
   });
 
-  it('refuses to pack what does nothing in a raid, and packs none of it', () => {
+  it('refuses to pack what never goes on a raid, and packs none of it', () => {
     const scene = thingsHolding({ 'mooring-rope': 2 }, 10);
     expect(packing(scene).packOne('mooring-rope')).toBe(false);
     expect(saved(scene).raidProgress.lastPack?.['mooring-rope'] ?? 0).toBe(0);
+  });
+});
+
+describe('locking from YOUR THINGS', () => {
+  interface Locking {
+    lock(itemId: string, more: boolean): boolean;
+    transfer(from: string, to: string, ref: unknown, x: number, y: number, rotated: boolean): boolean;
+    flow: { secureQuantity(itemId: string): number; itemQuantity(itemId: string): number };
+    status: string | undefined;
+  }
+  const locking = (scene: ThingsInternals) => scene as unknown as Locking;
+  const saved = (scene: ThingsInternals) => (scene as unknown as { saveManager: SaveManager }).saveManager.load()!;
+
+  it('lets go of a Potion it kept, remembers that, and opens that way next time', () => {
+    // The partner is going alone, so the locker has kept the packed medicine by itself.
+    const scene = thingsOver({ potion: 3 }, 10, true);
+    expect(locking(scene).flow.secureQuantity('potion')).toBe(3);
+    expect(locking(scene).lock('potion', false)).toBe(true);
+    expect(locking(scene).flow.secureQuantity('potion')).toBe(2);
+    expect(saved(scene).raidProgress.securePreference?.items).toContainEqual({ itemId: 'potion', quantity: 2 });
+    scene.reload();
+    expect(locking(scene).flow.secureQuantity('potion')).toBe(2);
+    expect(locking(scene).lock('potion', true)).toBe(true);
+    expect(locking(scene).flow.secureQuantity('potion')).toBe(3);
+  });
+
+  it('unlocks a block dragged out of the locker, and locks one dragged onto it', () => {
+    const scene = thingsOver({ potion: 3 }, 10, true);
+    const ref = { kind: 'item', itemId: 'potion', index: 0 };
+    expect(locking(scene).transfer('locker', 'pack', ref, 0, 0, false)).toBe(true);
+    expect(locking(scene).flow.secureQuantity('potion')).toBe(2);
+    expect(locking(scene).transfer('pack', 'locker', ref, 0, 0, false)).toBe(true);
+    expect(locking(scene).flow.secureQuantity('potion')).toBe(3);
+  });
+
+  it('says so when the locker is full, and keeps no more', () => {
+    const scene = thingsOver({ potion: 8 }, 10, true);
+    expect(locking(scene).flow.secureQuantity('potion')).toBe(4);
+    expect(locking(scene).lock('potion', true)).toBe(false);
+    expect(locking(scene).flow.secureQuantity('potion')).toBe(4);
+    expect(scene.overlay.root.innerHTML).toMatch(/locker|room/i);
   });
 });
 

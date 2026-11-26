@@ -118,6 +118,21 @@ try {
   await wait(300);
   await openThings('in the yard');
   await shoot('01-yard-things');
+  // Everything is on the screen whole: the stash's eight columns, and the pack
+  // and the locker inside the window (the round-2 pack flow, 26 Nov 2026).
+  const spill = await page.evaluate(`(() => {
+    const menu = document.querySelector('#screens .things-menu');
+    const scroll = menu.querySelector('.things-stash-scroll');
+    const edge = menu.querySelector('.things-layout').getBoundingClientRect();
+    const out = [];
+    if (scroll.scrollWidth > scroll.clientWidth) out.push('the stash is cut off at the side');
+    for (const card of menu.querySelectorAll('.things-team, .things-pack, .things-locker, .things-hand')) {
+      const box = card.getBoundingClientRect();
+      if (box.right > edge.right + 1 || box.bottom > edge.bottom + 1) out.push(card.className + ' spills out');
+    }
+    return out;
+  })()`);
+  if (spill.length > 0) fail(spill.join('; '));
   // Every pocket is a tab over the stash grid (`ui/thingsView.ts`), ALL first.
   const headings = await page.evaluate(`[...document.querySelectorAll('#screens .things-menu .things-tab')].map((h) => h.textContent)`);
   console.log(`pockets: ${headings.join(', ')}`);
@@ -138,15 +153,36 @@ try {
   await press('KeyQ');
   await wait(200);
   if (await page.evaluate(`Boolean(document.querySelector('#screens .things-menu [data-drop]'))`)) fail('something can be dropped');
-  if (!(await page.evaluate(`document.querySelector('#screens .things-menu .things-pack')?.textContent.includes('At risk')`))) {
+  if (!(await page.evaluate(`document.querySelector('#screens .things-menu .things-pack')?.textContent.includes('Lost on a wipe')`))) {
     fail('the next raid pack is not shown');
   }
-  // A thing that does nothing in a raid says where it is used when ENTER would pack it.
+  if (!(await page.evaluate(`document.querySelector('#screens .things-menu .things-team')?.textContent.includes('Next raid')`))) {
+    fail('the next raid team is not shown');
+  }
+  // L on a Potion in the pack the locker keeps lets go of it, and L again keeps
+  // it: the block's lining comes and goes, and the save remembers.
+  const lined = () => page.evaluate(`document.querySelectorAll('#screens .things-menu [data-grid="pack"] .is-locked').length`);
+  const linedBefore = await lined();
+  await page.evaluate(`document.querySelector('#screens .things-menu [data-grid="pack"] .is-locked[data-grid-piece$=":potion"]')?.focus()`);
+  await press('KeyL');
+  await wait(200);
+  if ((await lined()) !== linedBefore - 1) fail(`L let go of nothing (${linedBefore} -> ${await lined()})`);
+  await shoot('01b-unlocked');
+  await page.evaluate(`document.querySelector('#screens .things-menu [data-grid="pack"] [data-grid-piece$=":potion"]:not(.is-locked)')?.focus()`);
+  await press('KeyL');
+  await wait(200);
+  if ((await lined()) !== linedBefore) fail('L kept nothing');
+  console.log(`L lets go of a kept Potion and keeps it again (${linedBefore} lined)`);
+  // A thing that never goes on a raid wears a house, says HOME ONLY on its
+  // card, offers no ENTER, and ENTER packs none of it.
   await page.evaluate(`document.querySelector('#screens .things-menu [data-grid-piece="cargo:cable-coil"]').focus()`);
   await press('Enter');
   await wait(200);
-  const said = await page.evaluate(`document.querySelector('#screens .things-menu .px-status-line')?.textContent ?? ''`);
-  if (!/Brock/.test(said)) fail(`a cable coil says "${said}"`);
+  const card = await page.evaluate(`document.querySelector('#screens .things-menu [data-hand-card]')?.textContent ?? ''`);
+  if (!/Home only/i.test(card) || /Put in the pack/i.test(card)) fail(`a cable coil's card says "${card}"`);
+  if (await page.evaluate(`Boolean(document.querySelector('#screens .things-menu [data-grid="pack"] [data-grid-piece$=":cable-coil"]'))`)) {
+    fail('a cable coil went in the pack');
+  }
   await shoot('02-where-it-is-used');
 
   // A TM read at home: U on it.
