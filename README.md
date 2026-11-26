@@ -383,7 +383,7 @@ sightseeing.
 | <kbd>O</kbd> | Professor Oak on the radio; again for the whole field guide | Every favour you have been asked, on one screen |
 | <kbd>L</kbd> (hold) | Look: every caption on screen speaks | Look |
 | <kbd>T</kbd> | Raiding with a friend: pick a quick phrase to say | Pick a quick phrase to say |
-| <kbd>M</kbd> | The map, close round you: everywhere you've stood is in colour, the rest is fog. <kbd>Z</kbd> for the whole vale, the arrows to look about. The raid clock keeps ticking while you look | The harbour, in colour wherever you've walked it |
+| <kbd>M</kbd> | The map, close round you: everywhere you've stood is in colour, the rest is fog. <kbd>Z</kbd> for the whole vale, the arrows to look about. The raid clock keeps ticking while you look | The whole vale, to plan the next raid on |
 | <kbd>N</kbd> | Sound off, and on again. The game remembers which | Sound off, and on again |
 | <kbd>H</kbd> | Nothing: the decorating stays at home | In THE BOLTHOLE: move the furniture about. <kbd>R</kbd> turns a piece, <kbd>Q</kbd> <kbd>E</kbd> walk the box |
 | <kbd>F</kbd> | Call Oak's lab: tell us what just happened, with a picture of it | Call Oak's lab |

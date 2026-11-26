@@ -142,8 +142,9 @@ describe('the knock sign in the garden', () => {
   it('asks whose door in the text box, then opens the list of players once that is read', () => {
     const yard = yardBeforeTheSign();
     (yard.scene.tryInteract as () => void).call(yard.scene);
-    expect(yard.shown).toEqual([[KNOCK_SIGN_LINE]]);
-    expect(KNOCK_SIGN_LINE).toBe('Select the player you want to knock on the door of.');
+    // The sign's own words first, then the question (`BaseScene.readKnockSign`).
+    expect(yard.shown).toEqual([[...HOME_SIGN.lines.slice(1), KNOCK_SIGN_LINE]]);
+    expect(KNOCK_SIGN_LINE).toBe('Whose door do you fancy knocking on?');
     // The list waits until the line has been read.
     expect(knockScreens).toHaveLength(0);
     yard.press();

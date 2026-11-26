@@ -1,4 +1,4 @@
-# M at home is THE HARBOUR
+# M at home is THE HARBOUR (undone: see `../m-map-raid-only/`)
 
 Taken on 26 Nov 2026 by `tools/playtest/mapScreen.mjs` against a test-mode build
 at `PIXEL_WINDOW` (1200x768): a new save's first raid, then home, a short walk

@@ -327,9 +327,10 @@ import { wallMapPicture } from '../base/wallMap';
 import { landingPlace, requireInsertion, runInsertion, type RunInsertionId } from '../run/runGeneration';
 import type { ArenaPanel } from './HubScene';
 import type { WorldSceneData } from './WorldScene';
-import { worldMapName, type WorldMapId } from '../worldMap';
-import { MapScreen } from '../ui/MapScreen';
-import { surveyedTiles } from '../world/survey';
+import { getWorldMap, worldMapName, type WorldMapId } from '../worldMap';
+import { MapScreen, chartOfMap } from '../ui/MapScreen';
+import { homeChartMap, knownOnChart } from '../world/chartKnown';
+import { pursesOn } from '../world/purses';
 import { FIRST_WORDS, hasHeard, heldLandingNews, mapsMovedNews, spokenLines, type FirstWordsId } from '../hub/firstWords';
 import { FIRST_JUMP_ANSWERS, firstJumpQuestion, goesStraightOver, isFirstRaid } from '../hub/firstRaid';
 import { benchOffer, benchOfferQuestion } from '../hub/benchOffer';
@@ -451,9 +452,6 @@ import { furnitureDepth, furnitureImage, furnitureRect } from '../base/furniture
  * the door mat starts the keeper talking without crossing the room. Nothing
  * spends a line of dialogue on the way in.
  */
-
-/** How many new tiles of the yard are walked before they are written to the save (`BaseScene.writeHarbourSteps`). */
-const HARBOUR_STEPS_PER_WRITE = 20;
 
 const CAMERA_ZOOM = 1;
 /** Whether this page has counted a walk into the harbour yet (`analytics/playCounter.ts`). */
@@ -811,9 +809,6 @@ export class BaseScene extends Phaser.Scene {
    */
   /** THE MAP, while it is open over the harbour. */
   private mapScreen: MapScreen | null = null;
-  /** Tiles of the yard stood on and not yet written to the save, and the ones that are (`noteHarbourStep`). */
-  private harbourSteps = new Set<number>();
-  private harbourWalkedKnown = new Set<number>();
   private listAskedMidStep: 'favours' | 'things' | 'team' | 'dex' | 'map' | 'talk' | null = null;
   /** What this player is saying, over their head while they say it. */
   private ownBubble: SpeechBubble | null = null;
@@ -1324,8 +1319,6 @@ export class BaseScene extends Phaser.Scene {
     this.phrasePicker = null;
     this.listAskedMidStep = null;
     this.mapScreen = null;
-    this.harbourSteps = new Set();
-    this.harbourWalkedKnown = new Set(surveyedTiles(loaded.raidProgress.harbourWalked, getBaseMap(loaded.raidProgress.workshopUpgrades).width));
     this.ownBubble = null;
     this.harbourLife = null;
     this.fishing = null;
@@ -1552,8 +1545,6 @@ export class BaseScene extends Phaser.Scene {
     };
     this.input.on('pointerdown', clicked);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      // The yard's last steps, before it is left for a room, a menu or a raid.
-      this.writeHarbourSteps();
       this.input.off('pointerdown', clicked);
       this.scale.off(Phaser.Scale.Events.RESIZE, relayout);
       // Decorating listens on the canvas itself, which outlives the scene.
@@ -5174,7 +5165,6 @@ export class BaseScene extends Phaser.Scene {
       }
       return;
     }
-    this.noteHarbourStep(this.currentTile);
     const door = doorAt(this.currentTile);
     if (door) {
       this.enterRoom(door);
@@ -6240,18 +6230,17 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /**
-   * THE MAP at home (`ui/MapScreen.ts`) is THE HARBOUR, because M is the map of
-   * where you are (firstmate for the captain, 26 Nov 2026): drawn from the yard
-   * as it is built today, in colour wherever the player has walked it, fog
-   * everywhere else. In a room the player is shown at its door. Nothing runs at
-   * home, so the harbour waits under it as it does under the Pokédex.
+   * THE MAP at home (`ui/MapScreen.ts`): the raid's map, never the harbour's
+   * (the captain, 26 Nov 2026: "we don't want the map of the harbour, we just
+   * want the map of the raid"). It is the place the next raid's landings are
+   * on, in colour wherever the player has ever stood there, with nobody on it.
+   * Nothing runs at home, so the harbour waits under it as it does under the
+   * Pokédex.
    */
   private openMap(): void {
     if (this.leaving || this.choosing) {
       return;
     }
-    this.noteHarbourStep(this.currentTile);
-    this.writeHarbourSteps();
     const game = new SaveManager().load();
     if (!game) {
       return;
@@ -6260,24 +6249,18 @@ export class BaseScene extends Phaser.Scene {
     this.player.stop();
     this.player.setFrame(getIdleFrame(this.facing));
     this.showHint('');
-    const upgrades = game.raidProgress.workshopUpgrades;
-    const yard = getBaseMap(upgrades);
-    const walked = surveyedTiles(game.raidProgress.harbourWalked, yard.width);
-    const room = this.place.room?.room;
+    const mapId = homeChartMap(game.raidProgress);
+    const map = getWorldMap(mapId);
+    const walked = knownOnChart(mapId, map.width, game.raidProgress);
+    const isKnown = (tile: GridPosition): boolean => walked.has(tile.y * map.width + tile.x);
     this.scene.pause();
     this.mapScreen = new MapScreen(
       this,
       {
-        subject: {
-          // The yard is drawn from what has been built in it, so each build is its own picture.
-          key: `harbour:${[...upgrades].sort().join(',')}`,
-          name: 'The Harbour',
-          layers: yard.layers,
-          sources: BASE_TILESET.sources,
-          rect: { x: 0, y: 0, width: yard.width, height: yard.height },
-        },
-        isKnown: (tile) => walked.has(tile.y * yard.width + tile.x),
-        standing: room ? (doorNamed(room.id)?.returnTo ?? null) : { ...this.currentTile },
+        subject: chartOfMap(mapId),
+        isKnown,
+        standing: null,
+        purses: pursesOn(mapId, game.raidProgress.trainersPaid ?? [], isKnown),
       },
       () => {
         this.mapScreen = null;
@@ -6287,38 +6270,6 @@ export class BaseScene extends Phaser.Scene {
         this.showHint(this.hintHere());
       },
     );
-  }
-
-  /** A tile of the yard stood on, for THE MAP at home: kept here, written now and then (`writeHarbourSteps`). */
-  private noteHarbourStep(tile: GridPosition): void {
-    if (this.place.room) {
-      return;
-    }
-    const index = tile.y * this.place.width + tile.x;
-    if (this.harbourWalkedKnown.has(index) || this.harbourSteps.has(index)) {
-      return;
-    }
-    this.harbourSteps.add(index);
-    if (this.harbourSteps.size >= HARBOUR_STEPS_PER_WRITE) {
-      this.writeHarbourSteps();
-    }
-  }
-
-  /**
-   * The yard's new steps into the save. A save is the whole game written down,
-   * so not a write a step: every `HARBOUR_STEPS_PER_WRITE` new tiles, when the
-   * map opens, and when the yard is left - through a door, or off on a raid.
-   */
-  private writeHarbourSteps(): void {
-    if (this.harbourSteps.size === 0 || this.place.room) {
-      return;
-    }
-    if (new SaveManager().recordHarbourSteps(this.place.width, this.harbourSteps)) {
-      for (const index of this.harbourSteps) {
-        this.harbourWalkedKnown.add(index);
-      }
-    }
-    this.harbourSteps.clear();
   }
 
   /**

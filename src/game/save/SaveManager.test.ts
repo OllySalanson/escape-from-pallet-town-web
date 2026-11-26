@@ -1470,15 +1470,16 @@ describe('SaveManager', () => {
     expect([...troddenTiles(held, width)].sort((a, b) => a - b)).toEqual([1, 2]);
   });
 
-  it("keeps the harbour yard's walked tiles for THE MAP at home, added to and never replaced", () => {
+  it('loads a save that kept the harbour yard\'s walked tiles, and lets them go: THE MAP is only ever a raid\'s', () => {
     const storage = new MemoryStorage();
     const saves = freshSave(storage);
-    expect(saves.load()?.raidProgress.harbourWalked).toBeUndefined();
+    const stored = JSON.parse(storage.getItem(SAVE_KEY) ?? '{}') as { raidProgress: Record<string, unknown> };
+    stored.raidProgress.harbourWalked = { width: 90, tiles: 'AAA' };
+    storage.setItem(SAVE_KEY, JSON.stringify(stored));
 
-    expect(saves.recordHarbourSteps(90, [5, 6])).toBe(true);
-    expect(saves.recordHarbourSteps(90, [6, 95])).toBe(true);
-
-    expect([...surveyedTiles(saves.load()?.raidProgress.harbourWalked, 90)].sort((a, b) => a - b)).toEqual([5, 6, 95]);
+    const loaded = saves.load();
+    expect(loaded).not.toBeNull();
+    expect(loaded?.raidProgress).not.toHaveProperty('harbourWalked');
   });
 
   it('keeps each place a local has put on THE MAP, once, written the moment it is heard', () => {

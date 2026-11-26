@@ -36,10 +36,12 @@ import { CHART_ZOOM_KEY, RAID_KEY_LETTERS, keyHint } from '../input/keyBindings'
  * It fills the game's screen. In a raid the world goes on under it - the raid
  * clock runs, as the captain asked, and the hunter keeps walking - so the clock
  * is drawn on it, ticking, and anything the world raises closes it
- * (`WorldScene.updateRaid`). At home nothing is running, and the harbour waits.
+ * (`WorldScene.updateRaid`). At home nothing is running, and the harbour waits
+ * under it - but the map is still the raid's, never the harbour's (the captain,
+ * 26 Nov 2026: "we just want the map of the raid"; `BaseScene.openMap`).
  */
 export interface MapScreenView {
-  /** What the map is of: a raid's map, or THE HARBOUR (`chartOfMap`, `BaseScene.openMap`). */
+  /** The raid map it is of (`chartOfMap`). */
   readonly subject: ChartSubject;
   /** Whether a tile of the map is known: stood on, in any raid. */
   readonly isKnown: (tile: GridPosition) => boolean;
@@ -70,9 +72,8 @@ interface PaintedChart {
 
 /**
  * What THE MAP is of: a place's tile layers, the sheets they are drawn from, the
- * part of it shown, and its name. Where the player is decides it - a raid's map
- * in a raid, THE HARBOUR at home (firstmate for the captain, 26 Nov 2026: "M
- * shows the map of where you are").
+ * part of it shown, and its name. It is always a raid's map (`chartOfMap`):
+ * the one being raided, or at home the one the next raid lands on.
  */
 export interface ChartSubject {
   /** What its picture is kept under while the page is open: a place drawn differently is a different key. */
@@ -367,8 +368,8 @@ export class MapScreen {
     // A game pixel in device pixels: close up, a tile is four of them, whole.
     const unit = Number.parseFloat(getComputedStyle(this.overlay.root).getPropertyValue('--u')) || 2;
     const cellPixels = Math.max(1, Math.round((unit * ratio * CLOSE_TILE_GAME_PIXELS) / CHART_CELLS));
-    // A place small enough to fit whole at least as big as close up - THE
-    // HARBOUR - is only ever shown whole, and Z has nothing to change.
+    // A place small enough to fit whole at least as big as close up - a small
+    // player map - is only ever shown whole, and Z has nothing to change.
     const whole = placeChart(this.rect, { width, height }, 'whole', this.centre, cellPixels);
     const fitsWhole = whole.tilePixels >= cellPixels * CHART_CELLS;
     this.zoomTag.hidden = Boolean(this.reveal) || fitsWhole;
