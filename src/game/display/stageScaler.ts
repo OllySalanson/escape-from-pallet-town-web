@@ -2,6 +2,7 @@ import { BAR_COLUMN_WIDTH, BAR_HEIGHT, BAR_MARGIN, barColumnLeft, controlsBarPla
 import { applyMenuStage, menuLayer } from './menuStage';
 import { computeStage, onDevicePixel, type StageSize } from './stage';
 import { computeTouchLayout, type Rect, type SafeInsets, type TouchLayout } from './touchLayout';
+import { viewportSize } from './viewport';
 
 /**
  * Keeps the running game's screen matched to the browser window.
@@ -130,8 +131,7 @@ export function watchViewport(game: ScalableGame, touch?: TouchFit, parentId = '
   const parent = () => document.getElementById(parentId);
   const update = () => {
     const ratio = window.devicePixelRatio || 1;
-    const width = window.innerWidth;
-    const fullHeight = window.innerHeight;
+    const { width, height: fullHeight } = viewportSize();
     const layout = touch?.playing() ? computeTouchLayout(width, fullHeight, ratio, readSafeInsets(document)) : null;
     // The controls bar takes room below or beside the game only off the touch
     // pad, and only where it costs the game no zoom (`controlsBarLayout.ts`):
