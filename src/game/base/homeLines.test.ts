@@ -90,13 +90,14 @@ describe("what the things in THE BOLTHOLE say", () => {
         baseGame({
           progress: {
             raidRecord: { 'greystone-vale': { deployed: 1, extracted: ending === 'out' ? 1 : 0, wiped: ending === 'out' ? 0 : 1 } },
-            raidLog: [{ at: '2026-11-26T12:00:00Z', mapId: 'greystone-vale', ending, took: side(['a']), home, lost: side([]) }],
+            raidLog: [{ at: '2026-11-26T12:00:00Z', mapId: 'greystone-vale', ending, took: side(['a'], { potion: 1 }), home, lost: side([]) }],
           },
         }),
       ).at(-1);
     // The partner who went and came back is no catch.
-    expect(logged('out', side(['a', 'b'], { potion: 2, 'parts-crate': 1 }))).toBe("Yesterday's square: a tick, with 3 finds and 1 catch.");
-    expect(logged('out', side(['a']))).toBe("Yesterday's square: a tick, and empty hands.");
+    // Nor is the Potion packed and brought back.
+    expect(logged('out', side(['a', 'b'], { potion: 2, 'parts-crate': 1 }))).toBe("Yesterday's square: a tick, with 2 finds and 1 catch.");
+    expect(logged('out', side(['a'], { potion: 1 }))).toBe("Yesterday's square: a tick, and empty hands.");
     expect(logged('clock')).toBe("Yesterday's square: a cross. The clock ran out.");
     expect(calendarLines(baseGame()).join(' ')).not.toContain('Yesterday');
   });

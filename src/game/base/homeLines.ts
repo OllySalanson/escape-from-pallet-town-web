@@ -130,7 +130,12 @@ function lastSquare(game: RestoredGame): readonly string[] {
   // `home` is the team that got back as well as every find, so a catch is one that did not go.
   const went = new Set(last.took.pokemon.map((each) => each.id));
   const caught = last.home.pokemon.filter((each) => !went.has(each.id)).length;
-  const found = Object.values(last.home.items).reduce((total, count) => total + count, 0);
+  // And what came home packed is no find: three Potions taken out and brought
+  // back read as "3 finds" (the harbour re-critic).
+  const found = Object.entries(last.home.items).reduce(
+    (total, [id, count]) => total + Math.max(0, count - (last.took.items[id] ?? 0)),
+    0,
+  );
   const said = [
     ...(found > 0 ? [`${found} ${found === 1 ? 'find' : 'finds'}`] : []),
     ...(caught > 0 ? [`${caught} ${caught === 1 ? 'catch' : 'catches'}`] : []),

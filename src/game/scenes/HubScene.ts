@@ -1601,7 +1601,7 @@ export class HubScene extends Phaser.Scene {
    * other view's only way out is the X, back into the room it is kept in.
    */
   private get stepBack(): { readonly label: string; readonly attribute: string } | undefined {
-    if (this.view === 'reselect') return { label: 'Bill’s PC', attribute: 'data-back' };
+    if (this.view === 'reselect') return { label: this.atHome ? 'My PC' : 'Bill’s PC', attribute: 'data-back' };
     if (this.view === 'wallmap' && this.wallMapInspect) return { label: 'Wall map', attribute: 'data-back' };
     return undefined;
   }
