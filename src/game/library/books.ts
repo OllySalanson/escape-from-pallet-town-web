@@ -162,6 +162,10 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
         text: 'In THE CHEST, {key:team} shows every Pokémon you keep in one grid. Drag one onto NEXT RAID or GARDEN, or press ENTER or G. Click one to see its card.',
       },
       {
+        heading: 'Giving things',
+        text: 'Drag a berry, a stone or a disc from TO GIVE onto a Pokémon, or click it and then the Pokémon. You are asked once before anything is given.',
+      },
+      {
         heading: 'MY PC',
         text: 'Step on the stair mat to go up. MY PC holds your boxes of Pokémon, and counts your POKéDEX. The PC at the POKéMON CENTER is the same storage.',
       },

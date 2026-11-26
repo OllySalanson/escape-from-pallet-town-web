@@ -5,10 +5,26 @@ import { gardenPokemon, toggleGarden } from '../base/homeGarden';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
 import type { DeploymentFlow } from '../hub/deploymentFlow';
-import { awayOnRaid, outOnRaidLine } from '../run/raidInFlight';
-import { SaveManager, type RestoredGame } from '../save/SaveManager';
+import { getItemById, machineForItem, teachFromMachine, useFieldItem, type ItemDefinition } from '../items';
+import type { MoveBase } from '../pokemon';
+import { awayOnRaid, outOnRaidLine, PACKED_FOR_RAID_LINE } from '../run/raidInFlight';
+import { SaveManager, spareAtBase, type RestoredGame } from '../save/SaveManager';
 import { pickerEntries } from '../ui/boxPicker';
-import { CHEST_POKEMON_KEYS, chestPokemonBody, chestTabs, type ChestPokemonState } from '../ui/chestPokemonView';
+import {
+  CHEST_POKEMON_KEYS,
+  chestAsk,
+  chestGifts,
+  chestKept,
+  chestPokemonBody,
+  chestTabs,
+  giftAnswer,
+  giftKind,
+  type ChestPokemonState,
+} from '../ui/chestPokemonView';
+import { EVOLVE_MOMENT_ARMING_MS, evolveMomentBody, type EvolveMomentView } from '../ui/evolveMoment';
+import { moveChoiceMessage } from '../ui/moveChooser';
+import { openMoveChooser } from '../ui/MoveChooserOverlay';
+import { pupilVerdict } from '../ui/teachScreen';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { pixelScreen } from '../ui/pixelUi';
@@ -31,11 +47,17 @@ export interface ChestPokemonSceneData {
 /** How far a pointer must move with a Pokémon held before it is carried rather than clicked. */
 const DRAG_START_PX = 6;
 
-/** A Pokémon being carried by the pointer: which, from where, and the picture following it. */
+/**
+ * Something being carried by the pointer, and the picture following it: a
+ * Pokémon (by stash id, from the grid or one of the two places), a thing to
+ * give (by item id, from TO GIVE), or what a Pokémon holds (by its stash id,
+ * off its card).
+ */
 interface Carried {
+  readonly kind: 'mon' | 'gift' | 'held';
   readonly id: string;
   /** Where it was picked up: the grid, or one of the two places. */
-  readonly from: 'chest' | 'team' | 'garden';
+  readonly from: 'chest' | 'team' | 'garden' | 'gifts' | 'held';
   readonly x: number;
   readonly y: number;
   ghost: HTMLElement | null;
@@ -62,6 +84,14 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
   private title = 'Your things';
   private toThings: (() => void) | undefined;
   private carried: Carried | null = null;
+  /** The Pokémon whose card is on show. */
+  private shown: string | undefined;
+  /** A thing chosen to give with a click or ENTER, waiting for a Pokémon to be chosen. */
+  private armed: string | null = null;
+  /** The question on screen: give this to that Pokémon? */
+  private asking: { readonly itemId: string; readonly pokemonId: string } | null = null;
+  /** A stone has just evolved one: the moment is the screen until it has been seen. */
+  private moment: (EvolveMomentView & { readonly openedAt: number; readonly pokemonId: string }) | undefined;
   private readonly saveManager = new SaveManager();
 
   public constructor() {
@@ -77,6 +107,10 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
     this.toThings = data.openThings;
     this.status = undefined;
     this.carried = null;
+    this.shown = undefined;
+    this.armed = null;
+    this.asking = null;
+    this.moment = undefined;
     this.reload();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.dropCarried();
@@ -94,6 +128,14 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
     this.overlay.root.addEventListener('pointermove', (event) => this.pointerMove(event));
     this.overlay.root.addEventListener('pointerup', (event) => this.pointerUp(event));
     this.overlay.root.addEventListener('pointercancel', () => this.dropCarried());
+    // The card stays on the last Pokémon looked at while the cursor is elsewhere -
+    // on TO GIVE, a key or the question - so its place is never a hole.
+    this.overlay.root.addEventListener('focusin', (event) => {
+      const shows = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-shows]')?.dataset.shows;
+      if (shows) {
+        this.shown = shows;
+      }
+    });
     this.render();
   }
 
@@ -135,7 +177,9 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
       return undefined;
     }
     const partnerId = game.stash.partner()?.id;
+    const items = Object.keys(game.stash.listItems()).flatMap((id) => getItemById(id) ?? []);
     return {
+      gifts: chestGifts(items, (id) => spareAtBase(game, id)),
       entries: pickerEntries(game.stash),
       team: flow.party.map((stored) => stored.id),
       garden: gardenPokemon(game).map((stored) => stored.id),
@@ -149,6 +193,18 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
     if (!overlay) {
       return;
     }
+    if (this.moment) {
+      overlay.redraw(
+        pixelScreen({
+          title: this.title,
+          body: evolveMomentBody(this.moment, 'Back to the chest.'),
+          hints: 'Any key · back to the chest',
+        }),
+      );
+      overlay.root.querySelector<HTMLButtonElement>('[data-moment-done]')?.addEventListener('click', () => this.endMoment());
+      overlay.refocus('[data-moment-done]');
+      return;
+    }
     const status = this.status;
     this.status = undefined;
     const state = this.state();
@@ -156,6 +212,7 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
       pixelScreen({
         title: this.title,
         tabs: chestTabs('pokemon'),
+        ...(state ? { aside: chestKept(state.entries.length) } : {}),
         close: { attribute: 'data-close' },
         body: state ? chestPokemonBody(state) : '<main class="px-body"><p class="px-empty">There is no saved game.</p></main>',
         hints: CHEST_POKEMON_KEYS,
@@ -171,7 +228,49 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
     overlay.root.querySelectorAll<HTMLButtonElement>('[data-mon-key]').forEach((button) => {
       button.onclick = () => this.act(button.dataset.key, button.dataset.monKey!);
     });
-    overlay.refocus(...prefer, '.chest-mons [data-cursor-start]', '[data-close]');
+    if (this.armed) {
+      overlay.root.querySelector(`[data-gift="${CSS.escape(this.armed)}"]`)?.classList.add('is-armed');
+    }
+    const asking = this.asking;
+    const game = this.game_;
+    const item = asking ? getItemById(asking.itemId) : undefined;
+    const pokemon = asking ? game?.stash.listPokemon().find((stored) => stored.id === asking.pokemonId)?.pokemon : undefined;
+    const answer = item && pokemon ? giftAnswer(item, pokemon, false) : undefined;
+    if (asking && item && pokemon && answer?.ok) {
+      overlay.root.querySelector('.px-body')?.insertAdjacentHTML('beforeend', chestAsk(item, pokemon, answer.question));
+      overlay.root.querySelector<HTMLButtonElement>('[data-ask-yes]')!.onclick = () => this.answer(true);
+      overlay.root.querySelector<HTMLButtonElement>('[data-ask-no]')!.onclick = () => this.answer(false);
+      overlay.focus('[data-ask-yes]');
+      this.shown = asking.pokemonId;
+      overlay.root.querySelectorAll<HTMLElement>('.chest-card').forEach((card) => {
+        card.hidden = card.dataset.shownBy !== asking.pokemonId;
+      });
+      return;
+    }
+    this.asking = null;
+    // A press names where the cursor goes next (the Pokémon it was done to);
+    // a plain redraw puts it back where it was.
+    if (prefer.length > 0) {
+      overlay.focus(...prefer, '.chest-mons [data-cursor-start]', '[data-close]');
+    } else {
+      overlay.refocus('.chest-mons [data-cursor-start]', '[data-close]');
+    }
+    // After the cursor is placed, which is the next frame.
+    requestAnimationFrame(() => requestAnimationFrame(() => this.keepACardShown()));
+  }
+
+  /** Shows the card of the Pokémon last looked at when the cursor's own control shows none. */
+  private keepACardShown(): void {
+    const root = this.overlay?.root;
+    if (!root || root.querySelector('.chest-card:not([hidden])')) {
+      return;
+    }
+    const card =
+      (this.shown ? root.querySelector<HTMLElement>(`.chest-card[data-shown-by="${CSS.escape(this.shown)}"]`) : null) ??
+      root.querySelector<HTMLElement>('.chest-card');
+    if (card) {
+      card.hidden = false;
+    }
   }
 
   /** The Pokémon under the keyboard's cursor, if it is on one. */
@@ -180,6 +279,36 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
   }
 
   private onKey(event: KeyboardEvent): void {
+    // Any key ends the evolution moment once it has been seen.
+    if (this.moment) {
+      event.preventDefault();
+      if (!event.repeat && this.time.now - this.moment.openedAt >= EVOLVE_MOMENT_ARMING_MS) {
+        this.endMoment();
+      }
+      return;
+    }
+    if (this.asking) {
+      const pressed = event.key.toLowerCase();
+      if (!event.repeat && (pressed === 'escape' || pressed === 'backspace' || pressed === 'n')) {
+        event.preventDefault();
+        this.answer(false);
+      } else if (!event.repeat && pressed === 'y') {
+        event.preventDefault();
+        this.answer(true);
+      } else if (!event.repeat && (event.key === 'Enter' || event.key === ' ')) {
+        // ENTER is YES, FireRed's lit answer, unless the cursor was moved to NO.
+        event.preventDefault();
+        this.answer(!(document.activeElement as HTMLElement | null)?.closest('[data-ask-no]'));
+      } else if (this.overlay?.moveCursor(event.key)) {
+        event.preventDefault();
+      }
+      return;
+    }
+    if (this.armed && isOverlayDismissKey(event, 'Backspace')) {
+      event.preventDefault();
+      this.disarm();
+      return;
+    }
     if (event.repeat && event.key.toLowerCase() === 'p') {
       event.preventDefault();
       return;
@@ -202,10 +331,21 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
       this.goToThings();
       return;
     }
-    const under = this.underCursor();
-    if (under && !event.repeat && (event.key === 'Enter' || event.key === ' ' || key === 'g' || key === 'l')) {
+    const gift = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('[data-gift]')?.dataset.gift;
+    if (gift && !event.repeat && (event.key === 'Enter' || event.key === ' ')) {
       event.preventDefault();
-      this.act(event.key === 'Enter' || event.key === ' ' ? 'team' : key === 'g' ? 'garden' : 'lead', under);
+      this.arm(gift);
+      return;
+    }
+    const under = this.underCursor();
+    if (under && this.armed && !event.repeat && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      this.offer(this.armed, under);
+      return;
+    }
+    if (under && !event.repeat && (event.key === 'Enter' || event.key === ' ' || key === 'g' || key === 'l' || key === 't')) {
+      event.preventDefault();
+      this.act(event.key === 'Enter' || event.key === ' ' ? 'team' : key === 'g' ? 'garden' : key === 'l' ? 'lead' : 'take', under);
       return;
     }
     if (this.overlay?.moveCursor(event.key)) {
@@ -218,6 +358,222 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
     if (job === 'team') this.toggleTeam(id);
     else if (job === 'garden') this.toggleGardenFor(id);
     else if (job === 'lead') this.lead(id);
+    else if (job === 'take') this.takeBack(id);
+  }
+
+  // --- giving things to a Pokémon ---------------------------------------------
+
+  /** A thing chosen with a click or ENTER: the next Pokémon chosen is asked about. */
+  private arm(itemId: string): void {
+    const item = getItemById(itemId);
+    if (!item) {
+      return;
+    }
+    this.armed = itemId;
+    audioManager.play('select');
+    // FireRed's own question, as its bag asks it.
+    this.status = `${item.displayName.toUpperCase()}: to which POKéMON?`;
+    this.render([`[data-gift="${CSS.escape(itemId)}"]`]);
+  }
+
+  private disarm(): void {
+    const itemId = this.armed;
+    this.armed = null;
+    audioManager.play('cancel');
+    this.render(itemId ? [`[data-gift="${CSS.escape(itemId)}"]`] : []);
+  }
+
+  /** A thing let go over a Pokémon, or chosen for one: the question, or why not. */
+  private offer(itemId: string, pokemonId: string): void {
+    this.armed = null;
+    const item = getItemById(itemId);
+    const pokemon = this.game_?.stash.listPokemon().find((stored) => stored.id === pokemonId)?.pokemon;
+    if (!item || !pokemon) {
+      return;
+    }
+    const answer = giftAnswer(item, pokemon, awayOnRaid(this.game_!).has(pokemonId));
+    if (!answer.ok) {
+      this.refuse(answer.why, pokemonId);
+      return;
+    }
+    audioManager.play('select');
+    this.asking = { itemId, pokemonId };
+    this.render();
+  }
+
+  private answer(yes: boolean): void {
+    const asking = this.asking;
+    this.asking = null;
+    if (!asking) {
+      return;
+    }
+    if (!yes) {
+      audioManager.play('cancel');
+      this.render([this.on(asking.pokemonId)]);
+      return;
+    }
+    const item = getItemById(asking.itemId);
+    if (!item) {
+      return;
+    }
+    const kind = giftKind(item);
+    if (kind === 'hold') this.giveToHold(item, asking.pokemonId);
+    else if (kind === 'stone') this.useStone(item, asking.pokemonId);
+    else if (kind === 'disc') this.teach(item, asking.pokemonId);
+  }
+
+  private giveToHold(item: ItemDefinition, id: string): void {
+    const name = this.nameOf(id);
+    if (!this.saveManager.giveHeldAtHome(id, item.id)) {
+      this.refuse(this.heldByRaid(item.id, id) ?? `${name} could not be given the ${item.displayName}.`, id);
+      return;
+    }
+    this.reload();
+    audioManager.play('select');
+    recordAction(`Gave ${name} the ${item.displayName}`);
+    this.status = `${name.toUpperCase()} is holding the ${item.displayName.toUpperCase()}.`;
+    this.render([this.on(id)]);
+    this.landOn(id);
+  }
+
+  private takeBack(id: string): void {
+    const held = this.game_?.stash.listPokemon().find((stored) => stored.id === id)?.pokemon.heldItemId;
+    const item = held ? getItemById(held) : undefined;
+    if (!item) {
+      return;
+    }
+    if (!this.saveManager.takeHeldAtHome(id)) {
+      this.refuse(this.heldByRaid(item.id, id) ?? 'There is nothing to take.', id);
+      return;
+    }
+    this.reload();
+    audioManager.play('cancel');
+    recordAction(`Took the ${item.displayName} back off ${this.nameOf(id)}`);
+    this.status = `The ${item.displayName.toUpperCase()} is back in the chest.`;
+    this.render([this.on(id)]);
+  }
+
+  /** A stone on one of the player's Pokémon: it evolves, with the moment, or nothing is spent. */
+  private useStone(item: ItemDefinition, id: string): void {
+    let message = '';
+    let before: { readonly dexId: number; readonly name: string } | undefined;
+    let after: { readonly dexId: number; readonly name: string; readonly shiny: boolean } | undefined;
+    const written = this.saveManager.useAtHome(item.id, id, (stored) => {
+      before = { dexId: stored.base.dexId, name: stored.base.name };
+      const result = useFieldItem(item, stored);
+      message = result.message;
+      after = { dexId: stored.base.dexId, name: stored.base.name, shiny: stored.shiny };
+      return { changed: result.used, spent: result.used };
+    });
+    if (!written || !before || !after) {
+      this.refuse(this.heldByRaid(item.id, id) ?? (message || "It won't have any effect."), id);
+      return;
+    }
+    audioManager.play('evolved');
+    const dexId = after.dexId;
+    void audioManager.loadCries([dexId]).then(() => audioManager.play('cry', { species: dexId }));
+    recordAction(`Used ${item.displayName} at home`);
+    this.reload();
+    this.moment = {
+      fromDexId: before.dexId,
+      fromName: before.name,
+      toDexId: after.dexId,
+      toName: after.name,
+      shiny: after.shiny,
+      said: message,
+      openedAt: this.time.now,
+      pokemonId: id,
+    };
+    this.render();
+  }
+
+  private endMoment(): void {
+    const moment = this.moment;
+    this.moment = undefined;
+    if (!moment) {
+      return;
+    }
+    this.status = moment.said;
+    this.render([this.on(moment.pokemonId)]);
+  }
+
+  /** A disc read to one of the player's Pokémon: learned there, or a move forgotten for it on the move chooser. */
+  private teach(item: ItemDefinition, id: string): void {
+    const machine = machineForItem(item);
+    const pokemon = this.game_?.stash.listPokemon().find((stored) => stored.id === id)?.pokemon;
+    if (!machine || !pokemon) {
+      return;
+    }
+    const settle = (learned: boolean, message: string): void => {
+      audioManager.play(learned ? 'heal' : 'denied');
+      if (learned) {
+        recordAction(`Read ${item.displayName} at home`);
+      }
+      this.reload();
+      this.status = message;
+      this.render([this.on(id)]);
+      if (learned) {
+        this.landOn(id);
+      }
+    };
+    if (pupilVerdict(machine, pokemon) !== 'replaces') {
+      let message = '';
+      const written = this.saveManager.useAtHome(item.id, id, (stored) => {
+        const outcome = teachFromMachine(item, stored);
+        message = outcome.kind === 'choose' ? '' : outcome.message;
+        return { changed: outcome.kind === 'learned', spent: outcome.kind === 'learned' && outcome.machineIsSpent };
+      });
+      settle(written !== undefined, message || this.heldByRaid(item.id, id) || `${pokemon.name.toUpperCase()} could not learn it.`);
+      return;
+    }
+    const move = machine.move;
+    openMoveChooser(
+      this,
+      {
+        pokemon,
+        incoming: move,
+        canDefer: false,
+        source: `${machine.number} ${move.name}`,
+        spendsSource: !machine.reusable,
+        beside: true,
+      },
+      (choice) => {
+        if (choice.kind !== 'forget') {
+          settle(false, moveChoiceMessage(pokemon.name, move, null));
+          return;
+        }
+        let forgotten: MoveBase | null = null;
+        const written = this.saveManager.useAtHome(item.id, id, (stored) => {
+          const outcome = teachFromMachine(item, stored);
+          if (outcome.kind !== 'choose') {
+            return { changed: false, spent: false };
+          }
+          forgotten = stored.resolvePendingMove(outcome.move, choice.index)?.forgotten ?? null;
+          return { changed: forgotten !== null, spent: forgotten !== null && !machine.reusable };
+        });
+        settle(written !== undefined, moveChoiceMessage(pokemon.name, move, written ? forgotten : null));
+      },
+    );
+  }
+
+  /** Why a thing cannot be used on a Pokémon a raid in another window holds, or undefined. */
+  private heldByRaid(itemId: string, id: string): string | undefined {
+    const game = this.saveManager.load() ?? this.game_;
+    if (!game) {
+      return undefined;
+    }
+    if (awayOnRaid(game).has(id)) {
+      return outOnRaidLine(this.nameOf(id));
+    }
+    return game.stash.itemCount(itemId) > 0 && spareAtBase(game, itemId) < 1 ? PACKED_FOR_RAID_LINE : undefined;
+  }
+
+  /** The Pokémon that was just given something bounces where it stands. */
+  private landOn(id: string): void {
+    const tile = this.overlay?.root.querySelector<HTMLElement>(this.on(id));
+    tile?.classList.remove('is-given');
+    void tile?.offsetWidth;
+    tile?.classList.add('is-given');
   }
 
   /** Where the screen puts the cursor back after a press: on the Pokémon that was pressed, in the grid. */
@@ -337,12 +693,26 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
     if (event.button !== 0) {
       return;
     }
-    const piece = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-mon]');
+    if (this.asking || this.moment) {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    const gift = target?.closest<HTMLElement>('[data-gift]');
+    if (gift) {
+      this.carried = { kind: 'gift', id: gift.dataset.gift!, from: 'gifts', x: event.clientX, y: event.clientY, ghost: null };
+      return;
+    }
+    const held = target?.closest<HTMLElement>('[data-held]');
+    if (held) {
+      this.carried = { kind: 'held', id: held.dataset.held!, from: 'held', x: event.clientX, y: event.clientY, ghost: null };
+      return;
+    }
+    const piece = target?.closest<HTMLElement>('[data-mon]');
     if (!piece || piece.matches('[data-mon-key]')) {
       return;
     }
     const from = (piece.dataset.place as 'team' | 'garden' | undefined) ?? 'chest';
-    this.carried = { id: piece.dataset.mon!, from, x: event.clientX, y: event.clientY, ghost: null };
+    this.carried = { kind: 'mon', id: piece.dataset.mon!, from, x: event.clientX, y: event.clientY, ghost: null };
   }
 
   private pointerMove(event: PointerEvent): void {
@@ -354,9 +724,14 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
       if (Math.hypot(event.clientX - carried.x, event.clientY - carried.y) < DRAG_START_PX) {
         return;
       }
-      const picture = this.overlay?.root.querySelector<HTMLImageElement>(`.chest-mons [data-mon="${CSS.escape(carried.id)}"] img`);
+      const picture =
+        carried.kind === 'gift'
+          ? this.overlay?.root.querySelector<HTMLImageElement>(`[data-gift="${CSS.escape(carried.id)}"] img`)
+          : carried.kind === 'held'
+            ? this.overlay?.root.querySelector<HTMLImageElement>(`[data-held="${CSS.escape(carried.id)}"] img`)
+            : this.overlay?.root.querySelector<HTMLImageElement>(`.chest-mons [data-mon="${CSS.escape(carried.id)}"] img`);
       const ghost = document.createElement('div');
-      ghost.className = 'chest-ghost';
+      ghost.className = carried.kind === 'mon' ? 'chest-ghost' : 'chest-ghost is-thing';
       if (picture) {
         ghost.appendChild(picture.cloneNode(true));
       }
@@ -366,7 +741,37 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
     }
     carried.ghost.style.left = `${event.clientX}px`;
     carried.ghost.style.top = `${event.clientY}px`;
+    if (carried.kind === 'gift') {
+      this.markGiftOver(this.monAt(event.clientX, event.clientY));
+      return;
+    }
     this.markDrop(this.dropAt(event.clientX, event.clientY));
+  }
+
+  /** The Pokémon under the pointer: a grid tile, a place's slot, or the card on show. */
+  private monAt(x: number, y: number): string | undefined {
+    for (const node of document.elementsFromPoint(x, y) as HTMLElement[]) {
+      const tile = node.closest?.<HTMLElement>('[data-mon]:not([data-mon-key])');
+      if (tile) return tile.dataset.mon;
+      const card = node.closest?.<HTMLElement>('[data-shown-by]:not([hidden])');
+      if (card) return card.dataset.shownBy;
+    }
+    return undefined;
+  }
+
+  /** Over a Pokémon with a thing: green where it would go, red where it would not. */
+  private markGiftOver(id: string | undefined): void {
+    const root = this.overlay?.root;
+    root?.querySelectorAll('.is-gift-yes, .is-gift-no').forEach((node) => node.classList.remove('is-gift-yes', 'is-gift-no'));
+    const item = this.carried?.kind === 'gift' ? getItemById(this.carried.id) : undefined;
+    const pokemon = id ? this.game_?.stash.listPokemon().find((stored) => stored.id === id)?.pokemon : undefined;
+    if (!root || !item || !pokemon || !id) {
+      return;
+    }
+    const ok = giftAnswer(item, pokemon, awayOnRaid(this.game_!).has(id)).ok;
+    root.querySelectorAll(`[data-mon="${CSS.escape(id)}"]:not([data-mon-key]), [data-shown-by="${CSS.escape(id)}"]`).forEach((node) =>
+      node.classList.add(ok ? 'is-gift-yes' : 'is-gift-no'),
+    );
   }
 
   private pointerUp(event: PointerEvent): void {
@@ -375,14 +780,33 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
       return;
     }
     const dragged = carried.ghost !== null;
+    const over = dragged ? this.monAt(event.clientX, event.clientY) : undefined;
     const drop = dragged ? this.dropAt(event.clientX, event.clientY) : undefined;
     this.dropCarried();
+    if (carried.kind === 'gift') {
+      if (!dragged) {
+        this.arm(carried.id);
+      } else if (over) {
+        this.offer(carried.id, over);
+      }
+      return;
+    }
+    if (carried.kind === 'held') {
+      if (dragged && drop === 'gifts') {
+        this.takeBack(carried.id);
+      }
+      return;
+    }
     if (!dragged) {
-      // A click: the Pokémon is chosen, and its card is shown.
+      // A click: with a thing chosen to give, the question; otherwise the Pokémon is chosen and its card shown.
+      if (this.armed) {
+        this.offer(this.armed, carried.id);
+        return;
+      }
       this.overlay?.refocus(this.on(carried.id));
       return;
     }
-    if (!drop || drop === carried.from) {
+    if (!drop || drop === carried.from || drop === 'gifts') {
       return;
     }
     if (drop === 'team') {
@@ -397,15 +821,17 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
   }
 
   /** Which place the pointer is over: THE NEXT RAID, the GARDEN, or back in the chest's grid. */
-  private dropAt(x: number, y: number): 'chest' | 'team' | 'garden' | undefined {
+  private dropAt(x: number, y: number): 'chest' | 'team' | 'garden' | 'gifts' | undefined {
     const zone = document.elementsFromPoint(x, y).map((node) => (node as HTMLElement).closest?.<HTMLElement>('[data-drop]')).find(Boolean);
     const place = zone?.dataset.drop;
-    return place === 'team' || place === 'garden' || place === 'chest' ? place : undefined;
+    return place === 'team' || place === 'garden' || place === 'chest' || place === 'gifts' ? place : undefined;
   }
 
   private markDrop(place: string | undefined): void {
+    // A Pokémon goes to a place or back to the grid; what one holds goes back to TO GIVE.
+    const fits = this.carried?.kind === 'held' ? ['gifts'] : ['team', 'garden', 'chest'];
     this.overlay?.root.querySelectorAll<HTMLElement>('[data-drop]').forEach((zone) => {
-      zone.classList.toggle('is-drop', zone.dataset.drop === place && place !== this.carried?.from);
+      zone.classList.toggle('is-drop', zone.dataset.drop === place && place !== this.carried?.from && fits.includes(place ?? ''));
     });
   }
 
@@ -414,6 +840,7 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
     this.carried = null;
     this.overlay?.root.classList.remove('is-carrying');
     this.markDrop(undefined);
+    this.markGiftOver(undefined);
   }
 
   private goToThings(): void {

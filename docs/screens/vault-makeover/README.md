@@ -40,3 +40,24 @@ Pokemon, then you can see its stats and stuff. And put it in the garden."
 - ![](pokemon-tab-05-clicked-geodude.png) A click is a look: Geodude's card, and nothing changed.
 
 Made with `node tools/playtest/chestPokemon.mjs <test-mode build url>/?testmode=pixels <dir> --window=1280x800`.
+
+# Giving things to a Pokémon (part 3)
+
+The captain: "they shouldn't be these horrible stacked buttons like the
+berries, for example, you should be able to drag them and drop them onto the
+Pokémon, and then it'll pop up being like, give Oran Berry".
+
+| Before | After |
+|---|---|
+| ![](before-bills-pc.png) A stack of "Give ORAN BERRY ×3" buttons under each Pokémon. | ![](give-09-ask-berry.png) Click the berry, click Machop: one question. |
+
+- ![](give-real-berry-over.png) At real speed: the berry carried over Pikachu, which lights green.
+- ![](give-06-stone-over-charmander.png) A Thunder Stone over Charmander: red and shaking, and nothing is asked.
+- ![](give-07-ask-stone.png) Dropped on Eevee instead: USE THE THUNDER STONE ON EEVEE? ...
+- ![](give-08-evolved.png) ... and YES evolves it.
+- ![](give-10-machop-holds.png) Machop holding its Sitrus Berry: on its tile, in its card, and T to take it back.
+- ![](give-11-taken-back.png) Both berries back in TO GIVE: T on Pikachu, and Machop's dragged off its card.
+- ![](give-02-pokemon-tab.png) The tab now: NEXT RAID and GARDEN across the top, three whole rows of Pokémon, the card and TO GIVE beside them, and how many are kept in the title bar.
+
+Made with `node tools/playtest/chestPokemon.mjs <test-mode build url>/?testmode=pixels <dir> --window=1280x800`;
+the real-speed picture against a plain build with a real mouse.

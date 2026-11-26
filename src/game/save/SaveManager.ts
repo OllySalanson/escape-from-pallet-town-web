@@ -2287,6 +2287,33 @@ export class SaveManager {
   }
 
   /**
+   * Gives one of the player's Pokémon at base a thing to hold, out of storage,
+   * from THE CHEST (`scenes/ChestPokemonScene.ts`): whatever it held before goes
+   * back into storage in the same write. Loads first, as `useAtHome` does, and
+   * refuses a Pokémon out on a raid in another window or the last of a thing
+   * packed for one.
+   */
+  public giveHeldAtHome(pokemonId: string, itemId: string): RestoredGame | undefined {
+    const game = this.load();
+    if (!game || spareAtBase(game, itemId) < 1 || awayOnRaid(game).has(pokemonId)) {
+      return undefined;
+    }
+    if (!game.stash.giveHeldItem(pokemonId, itemId)) {
+      return undefined;
+    }
+    return this.save(game) ? game : undefined;
+  }
+
+  /** Takes what one of the player's Pokémon at base is holding back into storage. */
+  public takeHeldAtHome(pokemonId: string): RestoredGame | undefined {
+    const game = this.load();
+    if (!game || awayOnRaid(game).has(pokemonId) || !game.stash.takeHeldItem(pokemonId)) {
+      return undefined;
+    }
+    return this.save(game) ? game : undefined;
+  }
+
+  /**
    * Buys every piece of a try-on this save does not own yet, out of the vault:
    * Pokédollars for the priced pieces, found goods for the barter ones, in one
    * write, and then wears it. A raid-only piece is refused, and so is a bill
