@@ -63,8 +63,8 @@ const HINT = resolveBookText('{key:walk} or click a page to turn');
  * of its own, so a turning page is that page's own pixels in strips.
  *
  * The right arrow, D, SPACE or ENTER (or a click on the right page) turns on;
- * the left arrow, A or BACKSPACE (or a click on the left page) turns back; ESC
- * closes. A press while a page is still going over is kept for when it lands,
+ * the left arrow or A (or a click on the left page) turns back; ESC or
+ * BACKSPACE closes, as BACK does on every overlay. A press while a page is still going over is kept for when it lands,
  * so the book can be leafed through as fast as the keys are pressed.
  */
 export class LibraryBookScene extends Phaser.Scene implements ProvidesFeedbackContext {
@@ -350,7 +350,7 @@ export class LibraryBookScene extends Phaser.Scene implements ProvidesFeedbackCo
   // --- input -----------------------------------------------------------------
 
   private onKey(event: KeyboardEvent): void {
-    if (event.repeat && (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ')) {
+    if (event.repeat && (event.key === 'Escape' || event.key === 'Backspace' || event.key === 'Enter' || event.key === ' ')) {
       return;
     }
     switch (event.key) {
@@ -369,6 +369,7 @@ export class LibraryBookScene extends Phaser.Scene implements ProvidesFeedbackCo
         this.requestTurn('back');
         return;
       case 'Escape':
+      case 'Backspace':
         event.preventDefault();
         this.close();
         return;

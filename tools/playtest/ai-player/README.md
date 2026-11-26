@@ -29,7 +29,8 @@ serves it, opens it in the machine's watched headless browser
 (`fm-browser.sh`, named `eptw-ai-player`; `--port=N` uses a CDP browser you
 started instead) and pauses it. The game only moves when a command steps it.
 `start --resume=<run-id>` carries a run on in a new browser from the save its
-folder holds. One game is open at a time: a `start` stops the run that was
+folder holds, and `start --save=<file>` starts from a save of your own (a
+seeded state, or one copied out of another run). One game is open at a time: a `start` stops the run that was
 current first (copying its save out, as `stop` does) and closes this run's own
 old tab, so a night of starts never leaves tabs and servers running behind it.
 

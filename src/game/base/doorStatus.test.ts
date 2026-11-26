@@ -15,6 +15,7 @@ import { LIBRARY_BOOKS } from '../library/books';
 import { doorStatusLine } from './doorStatus';
 import { baseGame as newGame } from './baseGames.testkit';
 import { BADGES } from './badgeCase';
+import { MISTY_BOSS_ID } from '../world/valeQuarters';
 
 class MemoryStorage implements StorageLike {
   private readonly values = new Map<string, string>();
@@ -194,8 +195,21 @@ describe("what each of the base's doors says", () => {
     const library = doorNamed('great-library');
     expect(isHouseDoor(library)).toBe(false);
     expect(isHouseDoor(doorNamed('bolthole'))).toBe(true);
-    expect(doorStatusLine(library, baseGame())).toBe(`${LIBRARY_BOOKS.length} books to read`);
+    expect(doorStatusLine(library, baseGame())).toMatch(/^\d+ books? to read$/);
     expect(BASE_DOORS.filter(isHouseDoor).map((door) => door.id)).toEqual(['bolthole']);
+  });
+
+  /**
+   * The golden book is chained shut until MISTY is beaten, and the door said
+   * "2 books to read" over a room with one that opened (the harbour critic
+   * tour, 26 Nov 2026): it counts the books a player can open.
+   */
+  it("counts on THE GREAT LIBRARY's door only the books that open", () => {
+    const library = doorNamed('great-library');
+    const lecterns = LIBRARY_BOOKS.filter((book) => book.plinth !== 'golden').length;
+    const said = (count: number) => `${count} ${count === 1 ? 'book' : 'books'} to read`;
+    expect(doorStatusLine(library, baseGame())).toBe(said(lecterns));
+    expect(doorStatusLine(library, baseGame({ progress: { defeatedBosses: [MISTY_BOSS_ID] } }))).toBe(said(lecterns + 1));
   });
 
   /** The name is over the door (`home/houseName.ts`), so the line under it never says it again. */

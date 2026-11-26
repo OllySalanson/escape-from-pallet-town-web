@@ -3,7 +3,7 @@
 // screen looks like after it. See PLAYTEST.md beside this for how an AI plays
 // with it, and README.md for how a person starts and watches a run.
 //
-//   node tools/playtest/ai-player/act.mjs start --persona=veteran|newcomer [--resume=<run-id>] [--port=CDP]
+//   node tools/playtest/ai-player/act.mjs start --persona=veteran|newcomer [--resume=<run-id>] [--save=<file>] [--port=CDP]
 //   node tools/playtest/ai-player/act.mjs look [--json]
 //   node tools/playtest/ai-player/act.mjs walk <x> <y> | walk <name on screen> | walk way | walk left [tiles]
 //   node tools/playtest/ai-player/act.mjs talk [up|down|left|right]
@@ -198,7 +198,9 @@ async function start() {
   const serverPid = (await portAnswers(serverPort)) ? old?.serverPid : await startServer(serverPort);
   const url = `http://127.0.0.1:${serverPort}/escape-from-pallet-town-web/?testmode=1`;
   const savePath = join(runDir(runId), 'save.json');
-  const save = existsSync(savePath) ? readFileSync(savePath, 'utf8') : null;
+  // `--save=<file>` starts from a save of the caller's own (a seeded state, or
+  // one copied out of another run) rather than the run's.
+  const save = flags.save ? readFileSync(resolve(flags.save), 'utf8') : existsSync(savePath) ? readFileSync(savePath, 'utf8') : null;
   const { page, targetId } = await openGame(cdpPort, url, save);
   writeSession(runId, { cdpPort, targetId, serverPort, serverPid, url, browserName: flags.port ? null : BROWSER_NAME, touchedAt: Date.now() });
   setCurrentRun(runId);

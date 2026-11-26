@@ -25,9 +25,29 @@ export const SECRETS_BOOK_ID = 'vale-secrets';
 /** What a secret's data cannot say: how its nook is got at, where that is more than walking up. */
 export const NOTES: Readonly<Record<string, string>> = {
   'the-lost-fold': 'A STRENGTH boulder on HIGH MOOR shuts the fold.',
-  'x-marks-the-spot': 'Past MISTY.',
-  'the-drowned-bell': 'Past MISTY.',
+  'x-marks-the-spot': 'Behind MISTY\'s gate.',
   'the-shadow-in-the-crypt': 'Under THE MOOR CHAPEL.',
+};
+
+/**
+ * The district a secret's place lies in, for a place named the same as the
+ * secret itself: "WHERE: THE LOST FOLD" under the heading THE LOST FOLD told
+ * a reader nothing (the harbour critic tour, 26 Nov 2026). `books.test.ts`
+ * holds every such secret to a row here.
+ */
+export const DISTRICT_OF: Readonly<Record<string, string>> = {
+  'the-lost-fold': 'HIGH MOOR',
+  'the-lost-picnic': 'TANGLEWOOD',
+};
+
+/**
+ * How a `summons` nook is worked, where it is not pulled: the heron answers a
+ * player standing still and the doll one who came in dry, and "Pull it" was
+ * printed for both (the critic tour).
+ */
+const SUMMONS_WORDS: Readonly<Record<string, string>> = {
+  'the-heron-that-is-not': 'Stand still, and something answers.',
+  'the-lapras-doll': 'Come in dry, and something answers.',
 };
 
 const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
@@ -109,11 +129,11 @@ export function secretPage(secret: Secret): BookPage {
   const when = secret.when.filter(isTime).map(conditionWords);
   const bring = secret.when.filter((condition) => !isTime(condition)).map(conditionWords);
   const lines = [
-    `WHERE: ${secret.place.toUpperCase()}`,
+    `WHERE: ${secret.place.toUpperCase()}${DISTRICT_OF[secret.id] ? `, on ${DISTRICT_OF[secret.id]}` : ''}`,
     `WHEN: ${when.length > 0 ? when.join(', ') : 'any raid'}`,
     ...(bring.length > 0 ? [`BRING: ${bring.join('; ')}`] : []),
     `HOLDS: ${secret.rewards.map(rewardWords).join(', then ')}`,
-    `${secret.shutLines ? 'It waits there, every raid.' : NOOK_WORDS[secret.nook]}${NOTES[secret.id] ? ` ${NOTES[secret.id]}` : ''}`,
+    `${secret.shutLines ? 'It waits there, every raid.' : (SUMMONS_WORDS[secret.id] ?? NOOK_WORDS[secret.nook])}${NOTES[secret.id] ? ` ${NOTES[secret.id]}` : ''}`,
   ];
   return { heading: secret.name, text: lines.join('\n') };
 }
@@ -127,11 +147,11 @@ export const SECRETS_BOOK: LibraryBook = {
   pages: [
     {
       heading: 'Hidden nooks',
-      text: `${numberWord(SECRETS.length)[0].toUpperCase()}${numberWord(SECRETS.length).slice(1)} nooks lie hidden in GREYSTONE VALE. Each is always there, but holds its prize only when its condition is met as the raid sets out. None of it is luck.`,
+      text: `${numberWord(SECRETS.length)[0].toUpperCase()}${numberWord(SECRETS.length).slice(1)} nooks lie hidden in GREYSTONE VALE. Each is always there. Most hold their prize only when a condition is met as the raid sets out; a few ask what you do on the way.`,
     },
     {
       heading: 'Clues and rumours',
-      text: 'A sign stands near every nook, naming the place and hinting at the rest. In the harbour, the board, the ANGLER, the S.S. ANNE\'s captain, the SEAGALLOP\'s sailor, BILL and the PRIZE CLERK tell rumours.',
+      text: 'A sign near every nook names the place and hints at the rest. In the harbour, the board, the ANGLER, the S.S. ANNE\'s captain, the SEAGALLOP\'s sailor, BILL and the PRIZE CLERK tell rumours; THE RUMOUR MILL sells them.',
     },
     {
       heading: 'Keeping what you find',
