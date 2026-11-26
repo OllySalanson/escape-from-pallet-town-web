@@ -894,6 +894,11 @@ export const GOLDEN_PLINTH: GridPosition = { x: 7, y: 6 };
 /** Where the librarian stands, behind her desk under the back window. */
 export const LIBRARIAN_TILE: GridPosition = { x: 7, y: 2 };
 const LIBRARY_DESK: GridPosition = { x: 6, y: 3 };
+/** Either side of the librarian, behind her desk: hers, not a way round it (the harbour re-critic). */
+const BEHIND_THE_DESK: readonly GridPosition[] = [
+  { x: LIBRARY_DESK.x, y: LIBRARY_DESK.y - 1 },
+  { x: LIBRARY_DESK.x + 2, y: LIBRARY_DESK.y - 1 },
+];
 /** The bookcases along the back wall, two tiles wide, by their left-hand column; the end one (`END_BOOKCASE`) is MARLOW's. */
 const LIBRARY_BACK_CASES: readonly number[] = [0, 2, 5, 8, 11];
 /** The globe and the fern either side of the desk, each a tile wide and two tall, by their top tile. */
@@ -1041,7 +1046,7 @@ function drawLibrary(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
       tiles: [{ x: END_BOOKCASE.x + 1, y: END_BOOKCASE.y + 1 }],
       lines: [`The end bookcase stands open on its hinge. ${CHART_ROOM_NAME} is through the gap on its left.`],
     });
-    return { sketch, catalogue: LIBRARY, things, sprites: [], people, solid: [LIBRARIAN_TILE] };
+    return { sketch, catalogue: LIBRARY, things, sprites: [], people, solid: [LIBRARIAN_TILE, ...BEHIND_THE_DESK] };
   }
   // Until then MARLOW stands by it, keeping it shut - and it is not quite like
   // the others, for anybody who looks (it said nothing; the re-critic).
@@ -1054,7 +1059,7 @@ function drawLibrary(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
   });
   people.push({ id: MARLOW.id, design: MARLOW.design, tile: MARLOW_LIBRARY_TILE, facing: 'left' });
   things.push({ name: MARLOW.name, note: MARLOW.note, tiles: [MARLOW_LIBRARY_TILE], does: 'chart-keeper' });
-  return { sketch, catalogue: LIBRARY, things, sprites: [], people, solid: [LIBRARIAN_TILE, MARLOW_LIBRARY_TILE] };
+  return { sketch, catalogue: LIBRARY, things, sprites: [], people, solid: [LIBRARIAN_TILE, ...BEHIND_THE_DESK, MARLOW_LIBRARY_TILE] };
 }
 
 /** The columns of the back wall its three tall windows stand in, between the bookcases. */

@@ -183,14 +183,17 @@ describe('the rooms behind the base doors', () => {
       for (const each of BASE_ROOMS) {
         const built = buildRoom(each, game);
         for (const thing of built.things) {
-          const beside = thing.tiles.some((tile) =>
-            [
-              [0, -1],
-              [0, 1],
-              [-1, 0],
-              [1, 0],
-            ].some(([dx, dy]) => built.collision[tile.y + dy]?.[tile.x + dx] === false),
-          );
+          // A thing faced across a counter (`alsoFaced`) is read from there: the
+          // librarian is spoken to across her desk, with nobody behind it.
+          const beside =
+            [...thing.tiles, ...(thing.alsoFaced ?? [])].some((tile) =>
+              [
+                [0, -1],
+                [0, 1],
+                [-1, 0],
+                [1, 0],
+              ].some(([dx, dy]) => built.collision[tile.y + dy]?.[tile.x + dx] === false),
+            );
           expect([each.id, thing.name, beside]).toEqual([each.id, thing.name, true]);
           for (const tile of thing.tiles) {
             expect([each.id, thing.name, built.collision[tile.y][tile.x]]).toEqual([

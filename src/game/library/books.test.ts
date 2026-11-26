@@ -76,7 +76,9 @@ describe('THE GREAT LIBRARY’s books', () => {
   it('fits every page on one page, at the smallest screen and the usual one', () => {
     for (const screen of [SMALLEST_SCREEN, { width: 400, height: 256 }]) {
       const layout = bookLayout(screen.width, screen.height);
-      const room = linesOnAPage(layout);
+      // A line kept spare: pages the measure passed still ran into their page
+      // number in the browser (the harbour re-critic's fourth and fifth rounds).
+      const room = linesOnAPage(layout) - 1;
       const width = lineWidth(layout);
       const size = layout.body.size;
       // A heading that runs to a second line pushes the words down two of theirs.
@@ -168,19 +170,19 @@ describe('VALE SECRETS, the golden book', () => {
     const page = (id: string) => secretPage(SECRETS.find((secret) => secret.id === id)!).text;
     expect(page('the-long-shadow')).toContain('WHEN: at dusk');
     expect(page('the-tappers-sunday')).toContain('WHEN: on a Sunday');
-    expect(resolveBookText(page('the-red-one'))).toContain('BRING: an Old Rod or a Good Rod packed');
-    expect(page('the-navvies-wager')).toContain('BRING: lead with a FIGHTING type');
+    expect(resolveBookText(page('the-red-one'))).toContain('NEEDS: an Old Rod or a Good Rod packed');
+    expect(page('the-navvies-wager')).toContain('NEEDS: lead with a FIGHTING type');
     expect(conditionWords({ kind: 'field-move', move: 'rock-smash' })).toBe('a Pokémon that knows ROCK SMASH');
     expect(page('the-drowned-bell')).toContain('WHEN: 1:00 to 2:00 into the raid');
-    expect(page('the-drowned-bell')).toContain('BRING: the CASCADE BADGE won');
-    expect(resolveBookText(page('the-sleeper-in-the-pines'))).toContain('BRING: a Poké Flute');
-    expect(page('the-sleeper-in-the-pines')).toContain('It waits there, every raid.');
+    expect(page('the-drowned-bell')).toContain('NEEDS: the CASCADE BADGE won');
+    expect(resolveBookText(page('the-sleeper-in-the-pines'))).toContain('NEEDS: a Poké Flute');
+    expect(page('the-sleeper-in-the-pines')).toContain('It waits there.');
   });
 
   /** "Pull it, and something answers" was printed under the heron and the doll, which nobody pulls (the harbour critic tour, 26 Nov 2026). */
   it('says how each nook is worked, and tells only the bell to be pulled', () => {
     const page = (id: string) => secretPage(SECRETS.find((secret) => secret.id === id)!).text;
-    expect(SECRETS.filter((secret) => page(secret.id).includes('Pull it')).map((secret) => secret.id)).toEqual(['the-drowned-bell']);
+    expect(SECRETS.filter((secret) => /Pull (it|the rope)/.test(page(secret.id))).map((secret) => secret.id)).toEqual(['the-drowned-bell']);
     expect(page('the-heron-that-is-not')).toContain('Stand still');
     expect(page('the-lapras-doll')).toContain('Come in dry');
   });
@@ -230,7 +232,7 @@ describe('VALE SECRETS as a save has found the vale', () => {
     // What a nook asks is said whole, so "It waits there" never stands alone over one that needs a lead or a flute (the re-critic's fourth round).
     for (const secret of SECRETS) {
       const words = page(fresh, secret.name);
-      expect(words).toContain('WHEN:');
+      expect(words).toMatch(/WHEN:|NEEDS:/);
       expect(words).not.toMatch(/HOLDS: (a|an) /);
     }
     expect(fresh.blurb).toContain('none found yet');

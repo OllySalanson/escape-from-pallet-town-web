@@ -26,7 +26,8 @@ export const SECRETS_BOOK_ID = 'vale-secrets';
 export const NOTES: Readonly<Record<string, string>> = {
   'the-lost-fold': 'A STRENGTH boulder on HIGH MOOR shuts the fold.',
   'x-marks-the-spot': 'Behind MISTY\'s gate.',
-  'the-shadow-in-the-crypt': 'Under THE MOOR CHAPEL.',
+  // The chapel is shut but on a night raid (`moorChapel.ts`; the re-critic's fifth round).
+  'the-shadow-in-the-crypt': 'Under the CHAPEL, by night.',
 };
 
 /**
@@ -46,6 +47,7 @@ export const DISTRICT_OF: Readonly<Record<string, string>> = {
  * printed for both (the critic tour).
  */
 const SUMMONS_WORDS: Readonly<Record<string, string>> = {
+  'the-drowned-bell': 'Pull the rope.',
   'the-heron-that-is-not': 'Stand still, and something answers.',
   'the-lapras-doll': 'Come in dry, and something answers.',
 };
@@ -130,10 +132,12 @@ export function secretPage(secret: Secret): BookPage {
   const bring = secret.when.filter((condition) => !isTime(condition)).map(conditionWords);
   const lines = [
     `WHERE: ${secret.place.toUpperCase()}${DISTRICT_OF[secret.id] ? `, on ${DISTRICT_OF[secret.id]}` : ''}`,
-    `WHEN: ${when.length > 0 ? when.join(', ') : 'any raid'}`,
-    ...(bring.length > 0 ? [`BRING: ${bring.join('; ')}`] : []),
+    // A time only when it waits for one, and NEEDS, not BRING: a badge,
+    // standing still and dry boots are not carried (the re-critic's fifth round).
+    ...(when.length > 0 ? [`WHEN: ${when.join(', ')}`] : []),
+    ...(bring.length > 0 ? [`NEEDS: ${bring.join('; ')}`] : []),
     `HOLDS: ${secret.rewards.map(rewardWords).join(', then ')}`,
-    `${secret.shutLines ? 'It waits there, every raid.' : (SUMMONS_WORDS[secret.id] ?? NOOK_WORDS[secret.nook])}${NOTES[secret.id] ? ` ${NOTES[secret.id]}` : ''}`,
+    `${secret.shutLines ? 'It waits there.' : (SUMMONS_WORDS[secret.id] ?? NOOK_WORDS[secret.nook])}${NOTES[secret.id] ? ` ${NOTES[secret.id]}` : ''}`,
   ];
   return { heading: secret.name, text: lines.join('\n') };
 }

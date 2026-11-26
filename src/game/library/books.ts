@@ -69,7 +69,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'Five minutes',
-        text: 'A raid lasts five minutes. Walking and talking spend the clock; a fight stops it. When it reaches zero you have fifteen seconds to get out, and then the raid is lost.',
+        text: 'A raid lasts five minutes. Walking and talking spend the clock; a fight stops it. At zero you have fifteen seconds to get out. Then a hunter comes for you: win, and you fight your way out.',
       },
       {
         heading: 'Getting out',
@@ -77,7 +77,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'The hunters',
-        text: 'Every part of the vale has a hunter. Caught, you fight one of theirs for each of yours that can still fight. Running from one costs forty seconds of your clock, and twenty more each time after, up to two minutes.',
+        text: 'Every part of the vale has a hunter. Caught, you fight one of theirs for each of yours still standing. Running costs forty seconds, then twenty more each time, up to two minutes.',
       },
       {
         heading: 'Your pack',
@@ -111,7 +111,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'The POKéMON CENTER',
-        text: "NURSE JOY heals your team for nothing. Only bringing a Pokémon round from a faint costs time off your next raid, and even that is free once a day. Your boxes are on BILL'S PC there.",
+        text: "NURSE JOY heals your team for nothing. Only a faint costs time off your next raid, and even that is free once a day. Your boxes are on BILL'S PC there.",
       },
       {
         heading: "BROCK'S WORKSHOP",
@@ -127,7 +127,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'Practice and play',
-        text: 'THE BATTLE ARENA holds practice bouts where nothing is lost. The DAY-CARE MAN, past your house, raises one Pokémon while you raid.',
+        text: 'THE BATTLE ARENA holds bouts for sport, where nothing is lost. The DAY-CARE MAN, past your house, raises one Pokémon while you raid.',
       },
       {
         heading: 'Anywhere in the harbour',
@@ -146,12 +146,12 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
         text: 'THE BOLTHOLE is the house with window boxes at the east end of KEEPERS\' ROW, and it is yours from the first day. Nobody hunts you here. Walk onto its door to go in, and step off the mat to come out.',
       },
       {
-        heading: 'Your name on the door',
+        heading: 'Your name',
         text: 'Once you have a name, it goes over your door, and over your head for other players to see. You are asked for it when your first raid comes home, and at CONTINUE until you pick one.',
       },
       {
         heading: 'Downstairs',
-        text: 'The badge case has a slot for every badge there is to win, and each shines there once it is won. The telly says who hunts where you land next raid. The window keeps your own clock, from dawn to night.',
+        text: 'The badge case holds every badge you win. The telly says who hunts where you land next raid. The window keeps your own clock, from dawn to night.',
       },
       {
         heading: 'MY PC',
@@ -166,7 +166,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
         // Not "find a cushion on a raid": the vale's raids turn up a few rare
         // pieces only, and the cushions come from the PRIZE WINDOW (the
         // harbour re-critic, 26 Nov 2026).
-        text: 'Everything in the house can be moved: the table, the plants, and anything you bring home. Win a cushion at the PRIZE WINDOW and it is yours to put anywhere.',
+        text: 'The table, the plants and anything you bring home can all be moved. Win a cushion at the PRIZE WINDOW and it is yours to put anywhere.',
       },
       {
         heading: 'Decorating',
@@ -190,7 +190,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'Visiting',
-        text: 'Once you have a name, read the sign by your door to knock on another player\'s. If they let you in, stay as long as you like, but nothing of theirs can be moved. Face a visitor in your own house to see them out.',
+        text: 'Once you have a name, read the sign by your door to knock on another player\'s. Let in, stay as long as you like, but move nothing. Face a visitor at home to see them out.',
       },
     ],
   },
