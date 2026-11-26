@@ -136,7 +136,7 @@ import {
 import { prizeLeftLine, prizeLine, prizePaidBeforeLine } from '../world/prizeMoney';
 import { Bag, CURRENCY_ITEM_ID, formatMoney, heldItemName, type ItemDefinition, type ItemId } from '../items';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, MAX_STAGE_HEIGHT, MAX_STAGE_WIDTH, baseCompositionOffset } from '../display/stage';
-import { WINDOW_INK, drawFramedWindow } from '../ui/pixelWindow';
+import { WINDOW_INK, drawFramedWindow, drawPixelWindow } from '../ui/pixelWindow';
 import { UI } from '../ui/uiPalette';
 import { GAME_FONT } from '../ui/gameFont';
 import { CAPTION_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
@@ -289,6 +289,13 @@ type BattleAction =
   | { readonly type: 'drop-for-room'; readonly choiceIndex: number };
 
 const COMMAND_Y = BATTLE_PANEL.y;
+/** A bag card's picture, at the art's own size, and the room it takes before the name. */
+const BAG_ICON_ROOM = 18;
+const BAG_ICON_SIZE = 16;
+/** How far a bag card reaches left of its picture. */
+const BAG_CARD_PAD = 1;
+/** The chosen bag card's outline: gold, dark enough to hold on the gold wash. */
+const BAG_CARD_EDGE = 0xb98a00;
 /**
  * How long an evolution plays before it is done, which is how long B has to
  * stop it. FireRed's own runs about eight seconds of sparkles; this has none
@@ -708,6 +715,13 @@ export class BattleScene extends Phaser.Scene {
   private cursorRows: readonly Phaser.GameObjects.Text[] = [];
   private rowHomes = new WeakMap<Phaser.GameObjects.Text, number>();
   private rowCursor?: Phaser.GameObjects.Text;
+  /**
+   * The bag's cards (ITEM and BALL): the chosen card's gold fill and outline,
+   * drawn under the rows, and where each card on the page stands. Empty in
+   * every other list.
+   */
+  private bagCard?: Phaser.GameObjects.Graphics;
+  private bagCardRects: readonly { readonly x: number; readonly y: number; readonly width: number; readonly height: number }[] = [];
   private readonly cursorGutters = new Map<string, number>();
   /** The ball on the field during a throw, and which ball it is. */
   private ballSprite?: Phaser.GameObjects.Image;
@@ -1962,9 +1976,30 @@ export class BattleScene extends Phaser.Scene {
           return text;
         })
       : [];
+    // The bag is cards (the round-3 look's "bag in a fight"): each row its
+    // item's picture beside its name and count, the chosen one gold.
+    const bag = this.bagRowItems(start, labels.length);
+    this.bagCard = undefined;
+    this.bagCardRects = [];
+    if (bag) {
+      this.bagCard = this.add.graphics();
+      this.commandContainer.add(this.bagCard);
+      const gutter = this.cursorGutter('13px');
+      this.bagCardRects = labels.map((_, index) => {
+        const layout = moveCommandLayout(index);
+        return { x: layout.x + gutter - BAG_CARD_PAD, y: COMMAND_Y + layout.y, width: layout.width - gutter + BAG_CARD_PAD, height: layout.height };
+      });
+      bag.forEach((itemId, index) => {
+        const card = this.bagCardRects[index];
+        this.commandContainer.add(
+          // Placed by its middle: the art is 16 square, so its edges stay on whole pixels.
+          this.add.image(card.x + BAG_CARD_PAD + BAG_ICON_SIZE / 2, card.y + BAG_ICON_SIZE / 2, iconTextureKey(itemIconName(itemId))),
+        );
+      });
+    }
     this.commandTexts = labels.map((label, index) => {
       const layout = this.isRowListMode ? moveCommandLayout(index) : undefined;
-      const position = layout ?? mainCommandLayout(index, labels.length);
+      const position = bag && layout ? { ...layout, x: layout.x + BAG_ICON_ROOM, width: layout.width - BAG_ICON_ROOM } : (layout ?? mainCommandLayout(index, labels.length));
       const text = this.add.text(
         position.x,
         COMMAND_Y + position.y,
@@ -1975,9 +2010,9 @@ export class BattleScene extends Phaser.Scene {
           color: this.refusesLabel(label) ? PANEL_REFUSAL_INK : WINDOW_INK,
           ...(layout
             ? {
-                fixedWidth: layout.width,
+                fixedWidth: bag ? layout.width - BAG_ICON_ROOM : layout.width,
                 fixedHeight: layout.height,
-                wordWrap: { width: layout.width },
+                wordWrap: { width: bag ? layout.width - BAG_ICON_ROOM : layout.width },
               }
             : {}),
         },
@@ -1990,6 +2025,22 @@ export class BattleScene extends Phaser.Scene {
       this.commandContainer.add(text);
       return text;
     });
+  }
+
+  /** The ids of the items on the bag's page on screen (ITEM and BALL), or undefined in any other list. */
+  private bagRowItems(start: number, count: number): readonly string[] | undefined {
+    const items = this.mode === 'items' ? usableBattleItems(this.bag) : this.mode === 'balls' ? carriedBalls(this.bag) : undefined;
+    return items?.slice(start, start + count).map((item) => item.id);
+  }
+
+  /** The chosen bag card, gold: its fill and a one-pixel outline with the corners clear, under the rows. */
+  private drawBagCard(cursor: number): void {
+    const card = this.bagCardRects[cursor];
+    this.bagCard?.clear();
+    if (!this.bagCard || !card) {
+      return;
+    }
+    drawPixelWindow(this.bagCard, card, { fill: UI.paperLit.value, border: BAG_CARD_EDGE });
   }
 
   /** The frame every state of the bottom panel is drawn in: the dialogue's own. */
@@ -2435,10 +2486,13 @@ export class BattleScene extends Phaser.Scene {
         text.text.includes('FNT') || this.refusesLabel(text.text) ? PANEL_REFUSAL_INK : WINDOW_INK,
       );
       if (index === cursor) {
-        this.rowCursor?.setPosition(this.rowHomes.get(text) ?? text.x, text.y);
+        // A bag card's row starts after its picture; the cursor stands before the card.
+        const home = (this.rowHomes.get(text) ?? text.x) - (this.bagCardRects.length > 0 ? BAG_ICON_ROOM : 0);
+        this.rowCursor?.setPosition(home, text.y);
       }
     });
     this.rowCursor?.setVisible(cursor >= 0 && cursor < this.commandTexts.length);
+    this.drawBagCard(cursor);
   }
 
   /**
