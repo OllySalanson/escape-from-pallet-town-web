@@ -245,13 +245,18 @@ describe('run generation', () => {
         layouts.set(layout, (layouts.get(layout) ?? 0) + 1);
       }
       expect(faults).toEqual([]);
-      // How much is live varies, from half the pool to all of it...
-      expect([...liveCounts].sort((a, b) => a - b)).toEqual(
-        Array.from(
-          { length: pool.length - Math.ceil(pool.length / 2) + 1 },
-          (_, index) => Math.ceil(pool.length / 2) + index,
-        ),
-      );
+      // How much is live varies, from half the pool to all of it... Never
+      // outside those two, and reaching to within a few of each: asking for
+      // every one of seventy-odd counts to turn up in five hundred raids was a
+      // roll, and a new rare piece anywhere on the map moved the stream and
+      // lost it (TM28 Dig and TM09 Bullet Seed in Millbrook, #924). Missing the
+      // top four counts in five hundred raids by fair rolls is one in 10^11.
+      const half = Math.ceil(pool.length / 2);
+      const counts = [...liveCounts].sort((a, b) => a - b);
+      const ends = { fewest: counts[0], most: counts[counts.length - 1] };
+      expect(counts.filter((count) => count < half || count > pool.length)).toEqual([]);
+      expect(ends.fewest - half, `fewest live ${ends.fewest} of ${pool.length}`).toBeLessThan(4);
+      expect(pool.length - ends.most, `most live ${ends.most} of ${pool.length}`).toBeLessThan(4);
       // ...a rare piece is neither guaranteed nor a formality: where this raid
       // can reach the place it belongs to, it lies on the ground about as often
       // as it is authored to and never every raid; where it cannot - the Water
