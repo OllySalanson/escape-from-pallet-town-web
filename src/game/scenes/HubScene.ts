@@ -828,7 +828,7 @@ export class HubScene extends Phaser.Scene {
     const priceMs = this.recoveryPriceMs(stored);
     const place = this.inWardBed(stored) ? 'Ward bed' : 'Pokémon Center';
     return priceMs === 0
-      ? `${place}: full restore, and it costs this raid nothing.`
+      ? `${place}: full restore, and it costs your next raid nothing.`
       : `${place}: full restore for −${formatRecoveryClock(priceMs)} of raid time.`;
   }
 

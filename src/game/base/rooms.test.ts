@@ -656,3 +656,17 @@ describe('THE END BOOKCASE, open', () => {
     expect([bookcase?.note, ...(bookcase?.lines ?? [])].every((words) => /gap on its left/.test(words ?? ''))).toBe(true);
   });
 });
+
+/** The Center's signs said each build's own price and a full ward, whatever was built and used (the harbour re-critic, 26 Nov 2026). */
+describe("THE POKéMON CENTER's signs", () => {
+  it('say the revive the machines built really give, and the ward beds left', () => {
+    const game = baseGame({ built: ['recovery-bay-1', 'recovery-bay-2', 'quarantine-ward'] });
+    const notes = (wardUsed: number) =>
+      buildRoom(roomNamed('pokemon-centre')!, { ...game, wardTreatmentsUsed: wardUsed }).things.map((thing) => `${thing.name}: ${thing.note}`);
+    expect(notes(0).join(' | ')).toContain('HEALING MACHINE I: Joined by machine II: revive for 0:05');
+    expect(notes(0).join(' | ')).toContain('3 beds free');
+    expect(notes(2).join(' | ')).toContain('1 bed free');
+    expect(notes(3).join(' | ')).toContain('Beds full till your next raid');
+  });
+});
+
