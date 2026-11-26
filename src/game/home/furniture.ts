@@ -52,6 +52,8 @@ export type FurnitureArt =
 export type FurnitureSource =
   | { readonly kind: 'house'; readonly count: number }
   | { readonly kind: 'found'; readonly itemId: string }
+  /** Kept in the vault as an item, as a find is, but won at THE DIG rather than found on a raid. */
+  | { readonly kind: 'dug'; readonly itemId: string }
   | { readonly kind: 'doll'; readonly dexId: number };
 
 export interface FurnitureDefinition {
@@ -387,6 +389,15 @@ const PIECES: readonly FurnitureDefinition[] = [
     piece: 'glass-ornament',
     source: found('glass-ornament'),
     rare: true,
+  }),
+  piece({
+    id: 'sand-ornament',
+    name: 'SAND ORNAMENT',
+    // Emerald's own words for it.
+    line: 'An ornament made of sand, from THE DIG. It crumbles if touched.',
+    layer: 'standing',
+    piece: 'sand-ornament',
+    source: { kind: 'dug', itemId: 'sand-ornament' },
   }),
 ];
 

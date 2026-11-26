@@ -83,6 +83,8 @@ const PIECES = [
   { name: 'gold-shield', decor: 'GOLD_SHIELD', icon: 'gold-shield' },
   { name: 'silver-shield', decor: 'SILVER_SHIELD', icon: 'silver-shield' },
   { name: 'glass-ornament', decor: 'GLASS_ORNAMENT', icon: 'glass-ornament' },
+  // THE DIG's top find on THE BEACH (`minigames/dig.ts`).
+  { name: 'sand-ornament', decor: 'SAND_ORNAMENT', icon: 'sand-ornament' },
 
   // --- cushions
   { name: 'round-cushion', picture: 'cushions/round_cushion', info: 'RoundCushion' },

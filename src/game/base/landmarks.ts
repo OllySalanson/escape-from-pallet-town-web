@@ -133,7 +133,7 @@ export const OUTDOOR_GAME_LANDMARKS: readonly HarbourLandmark[] = [
     // down from the boardwalk rather than at their foot.
     id: 'dig',
     name: 'THE DIG',
-    note: 'Ten digs: what is buried is yours',
+    note: 'Ten digs: berries and an ornament go home',
     props: [{ name: 'digSign', x: 70, y: 19 }],
     at: { x: 70, y: 19 },
     near: [{ x: 69, y: 19 }, { x: 69, y: 20 }, { x: 70, y: 21 }, { x: 71, y: 21 }],

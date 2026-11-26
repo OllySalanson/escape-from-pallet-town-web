@@ -181,7 +181,8 @@ export const PROMENADE_SIGN: BaseSign = {
   y: 11,
   lines: [
     'THE PROMENADE',
-    'The front, round the bay: the DERBY starts here, the GAME CORNER is on PIER SQUARE, the DIG is on the beach, the FISHING DERBY off the end of the PLEASURE PIER and the FIELD-MOVE COURSE out on THE POINT. Walk it at dusk when the lamps come on.',
+    // One box: the four-box directory of five places is left to each place's own sign (the harbour critic tour).
+    'Races here, games on PIER SQUARE, digging on the beach, fishing off the pier, a course on THE POINT.',
   ],
 };
 
@@ -194,7 +195,7 @@ export const GAME_CORNER_SIGN: BaseSign = {
   y: 11,
   lines: [
     'THE GAME CORNER',
-    'POKéMON JUMP and BERRY PICKING inside - bring your best jumpers, and a DODRIO. TICKETS are kept at home and spent at the PRIZE WINDOW next door.',
+    'POKéMON JUMP and BERRY PICKING inside - bring your best jumpers, and a DODUO or DODRIO. TICKETS are kept at home and spent at the PRIZE WINDOW next door.',
   ],
 };
 
@@ -202,14 +203,27 @@ export const GAME_CORNER_SIGN: BaseSign = {
 export const GARDENS_SIGN: BaseSign = {
   x: 103,
   y: 11,
-  lines: ['THE GARDENS', 'The band plays Sundays. Mind the beds.'],
+  // No band plays, on any day (the harbour critic tour, 26 Nov 2026).
+  lines: ['THE GARDENS', 'Sit a while. Mind the beds.'],
+};
+
+/**
+ * THE POINT's coin telescope, read as a sign: faced, it answered with the
+ * partner's small talk, a prop with nothing behind it (the harbour critic
+ * tour, 26 Nov 2026). Its post is drawn by `map.plant(..., 'coinTelescope')`.
+ */
+export const COIN_TELESCOPE: BaseSign = {
+  x: 120,
+  y: 16,
+  lines: ['THE COIN TELESCOPE', 'It wants a coin you have not got. Through the dusty glass: the open sea, and nothing on it.'],
 };
 
 /** At the pleasure pier's gate, on PIER SQUARE's foot against its rail, beside the way on. */
 export const PLEASURE_PIER_SIGN: BaseSign = {
   x: 81,
   y: 15,
-  lines: ['THE PLEASURE PIER', 'Out over the sea. Mind the gulls.'],
+  // Kanto has no gull to mind; the FISHING DERBY is off its end.
+  lines: ['THE PLEASURE PIER', 'Out over the sea. The big ones bite off the end.'],
 };
 
 /**
@@ -244,6 +258,7 @@ export const BASE_SIGNS: readonly BaseSign[] = [
   GAME_CORNER_SIGN,
   PLEASURE_PIER_SIGN,
   GARDENS_SIGN,
+  COIN_TELESCOPE,
   BREAKWATER_SIGN,
   NOTICE_BOARD,
   HOME_SIGN,
@@ -722,7 +737,7 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
   for (const x of [117, 118, 119, 121, 122, 123]) map.plant(x, 16, 'railing');
   map.plant(115, 11, 'troughYellow');
   map.plant(118, 15, 'seaBench');
-  map.plant(120, 16, 'coinTelescope');
+  map.plant(COIN_TELESCOPE.x, COIN_TELESCOPE.y, 'coinTelescope');
   map.plant(122, 15, 'seaBench');
 }
 

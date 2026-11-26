@@ -1364,8 +1364,12 @@ holders Nintendo / Creatures / Game Freak, no licence from them.
   doll and cushion from its picture, shelf-packed onto a new 256x176 sheet. It
   writes `src/game/home/generated/furniturePieces.ts`, which is the only thing
   that knows where a piece sits on the sheet.
-- **The furniture icons** - `icons/pika-cushion.png` and the twenty others
-  named after a piece a raid can find - are the same pieces at 16x16, written
+- **The SAND ORNAMENT** (added 2026-11-26, Emerald's `DECOR_SAND_ORNAMENT`,
+  cut by the same script from the same pinned commit) is THE DIG's top find
+  on THE BEACH (`src/game/minigames/dig.ts`), which paid it out by id before
+  the piece existed (the harbour critic tour, 26 Nov 2026).
+- **The furniture icons** - `icons/pika-cushion.png` and the twenty-one others
+  named after a piece a raid or THE DIG can find - are the same pieces at 16x16, written
   by the same script: a one-tile piece is its own icon, and a bigger one is
   shrunk by a whole factor, every pixel the colour most of its block is. They
   are the one exception to "Pixel icons, authored for this repository".

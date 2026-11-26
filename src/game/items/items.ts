@@ -1154,6 +1154,17 @@ export const ITEMS = {
     description: 'A silver shield on a stand. Super rare. Furniture: bring it home and put it down in THE BOLTHOLE.',
     effect: { type: 'furniture' },
   },
+  // Emerald's own, and only ever dug up: THE DIG's top find on THE BEACH
+  // (`minigames/dig.ts`). It was paid out by id before it existed, and the
+  // vault held a thing nothing could name (the harbour critic tour).
+  'sand-ornament': {
+    id: 'sand-ornament',
+    displayName: 'Sand Ornament',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 2 },
+    description: 'An ornament made of sand, dug up on THE BEACH. Furniture: put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
   'glass-ornament': {
     id: 'glass-ornament',
     displayName: 'Glass Ornament',

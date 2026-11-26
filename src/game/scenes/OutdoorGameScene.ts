@@ -8,6 +8,7 @@ import { GAME_FONT } from '../ui/gameFont';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { pickerBasics, pickerEntries, pickerOrder, wirePickerFind, type PickerEntry } from '../ui/boxPicker';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
+import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { outdoorPickMarkup, type OutdoorCandidate, type OutdoorCourse, type OutdoorPickState } from '../minigames/outdoorView';
 import { NO_GAME_CORNER, type DerbySource, type GameCornerRecord, type GamePayout, type TicketSource } from '../minigames/tickets';
@@ -48,6 +49,8 @@ export abstract class OutdoorGameScene extends Phaser.Scene implements ProvidesF
   protected last: OutdoorPickState['last'];
   /** Whether a game is being played (the canvas) rather than chosen (the screen). */
   protected playing = false;
+  /** When the last game ended, so AGAIN takes no press for a moment after (`endGame`). */
+  private endedAt: number | undefined;
   protected readonly saveManager = new SaveManager();
   private find = '';
   private stageParts: Phaser.GameObjects.GameObject[] = [];
@@ -241,6 +244,9 @@ export abstract class OutdoorGameScene extends Phaser.Scene implements ProvidesF
           audioManager.play('denied');
           return;
         }
+        if (this.endedAt !== undefined && this.time.now - this.endedAt < RELEASE_ARMING_MS) {
+          return;
+        }
         this.startGame();
       };
     }
@@ -292,7 +298,12 @@ export abstract class OutdoorGameScene extends Phaser.Scene implements ProvidesF
     recordAction(`${this.words.title} scored ${score}`);
     this.tearDownStage();
     this.playing = false;
-    this.showMenu('[data-play]');
+    // The cursor comes back to who played, never to AGAIN: SPACE casts in
+    // THE FISHING DERBY, and the press still going at the buzzer started a
+    // new two-minute derby over the result before it was read (the harbour
+    // critic tour, 26 Nov 2026). AGAIN also takes nothing for a moment.
+    this.endedAt = this.time.now;
+    this.showMenu('[data-player-pick].is-selected');
   }
 
   // --- drawing helpers -------------------------------------------------------------
