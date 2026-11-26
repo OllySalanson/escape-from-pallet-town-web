@@ -205,6 +205,20 @@ export function searchRefusal(itemId: ItemId): string {
   return `NO ROOM FOR ${ITEMS[itemId].displayName.toUpperCase()}: ${keyHint('B', 'PACK')}`;
 }
 
+/**
+ * What the panel says when money was put down to make room for a find: a
+ * trainer's prize filled the pack and the find in their bag would not go in
+ * (Koga's ₽1800, and the TM40 AERIAL ACE in his pouch, gyms playtest 26 Nov 2026).
+ */
+export function searchMadeRoom(amount: string): string {
+  return `PUT DOWN ${amount} TO MAKE ROOM`;
+}
+
+/** Said in a box when the search closed on the find money made room for, so the money underfoot is never a mystery. */
+export function madeRoomLine(amount: string, itemName: string): string {
+  return `You put down ${amount} to make room for the ${itemName}. It's on the ground here.`;
+}
+
 /** What the panel says when taking a piece made the pack re-seat itself round it. */
 export const SEARCH_RESEATED = 'YOUR PACK RE-PACKED ITSELF';
 
