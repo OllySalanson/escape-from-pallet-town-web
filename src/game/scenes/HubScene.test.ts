@@ -2383,7 +2383,7 @@ describe('Brock', () => {
 
     // Unbought: the card says what it does, and the price is under it.
     const unbought = rowOf('quarantine-ward');
-    expect(unbought).toContain('One revive per raid, free of clock.');
+    expect(unbought).toContain('Three revives per raid, free of clock.');
     expect(unbought).toContain('<span class="workshop-costs">');
     // Built: the same line, still there, gold and tagged BUILT, and what it
     // cost with nothing marked short.
@@ -2566,26 +2566,26 @@ describe('Brock', () => {
     expect(runSession.plan?.extractionPoints.some((point) => point.label === 'BEACON')).toBe(false);
   });
 
-  it('quotes the bay at this base\'s prices and spends the ward bed once', () => {
+  it('quotes the bay at this base\'s prices and spends the ward\'s three beds once', () => {
     const { hub } = createWorkshopHub(['recovery-bay-1', 'quarantine-ward']);
-    const first = hub.stash.listPokemon().find(({ id }) => id === 'pidgey-1')!;
-    const second = hub.stash.listPokemon().find(({ id }) => id === 'pidgey-2')!;
-    first.pokemon.takeDamage(first.pokemon.maxHp);
-    second.pokemon.takeDamage(second.pokemon.maxHp);
+    const everyone = hub.stash.listPokemon();
+    for (const stored of everyone) stored.pokemon.takeDamage(stored.pokemon.maxHp);
+    const [first, second, third, fourth] = everyone;
     const terms = { priceShare: 0.5, wardTreatments: 0 };
 
     // The bill is in the stash, beside the Pokémon it is for.
     hub.setView('stash');
     expect(markupOf(hub)).toContain('Ward bed: ');
 
-    // The bed brings the first one round for nothing.
-    hub.recover(['pidgey-1']);
+    // The beds bring three round for nothing: a raid party back from a wipe.
+    hub.recover([first.id]);
+    hub.recover([second.id, third.id]);
     expect(hub.pendingRecoveryMs).toBe(0);
 
-    // No bed left, so the second revive is charged, at the bay's discount.
-    const revivePriceMs = recoveryCostMs(second.pokemon, terms);
+    // No bed left, so the fourth revive is charged, at the bay's discount.
+    const revivePriceMs = recoveryCostMs(fourth.pokemon, terms);
     expect(revivePriceMs).toBe(recoveryPrices(0.5).reviveMs);
-    hub.recover(['pidgey-2']);
+    hub.recover([fourth.id]);
     expect(hub.pendingRecoveryMs).toBe(revivePriceMs);
     expect(markupOf(hub)).not.toContain('Ward bed: ');
   });

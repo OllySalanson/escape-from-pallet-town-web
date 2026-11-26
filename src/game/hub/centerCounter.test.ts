@@ -91,7 +91,7 @@ describe('Nurse Joy at her counter', () => {
     expect(centerOffer(ward).lines).toContain(`THE WARD takes ${name}, so bringing it round is free.`);
     expect(centerOffer(ward).lines[0]).toContain("Healing won't cost your next raid a second.");
     // The bed used this raid: she says so, rather than nothing.
-    expect(centerOffer({ ...ward, wardTreatmentsUsed: 1 }).lines).toContain('THE WARD’s bed is used until your next raid.');
+    expect(centerOffer({ ...ward, wardTreatmentsUsed: 3 }).lines).toContain('THE WARD’s beds are used until your next raid.');
     // Without the ward, not a word about it.
     expect(centerOffer(game).lines.join(' ')).not.toContain('WARD');
   });

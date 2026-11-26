@@ -1247,7 +1247,7 @@ export const WORKSHOP_DISPLAY: readonly RungDisplay[] = [
   {
     upgradeId: 'quarantine-ward',
     name: 'THE WARD’S MONITORS',
-    note: 'One revive a raid, off the clock',
+    note: 'Three revives a raid, off the clock',
     props: [{ name: 'whMonitorDesk', x: 5, y: 2 }],
   },
 ];
@@ -1274,7 +1274,7 @@ export const CENTER_DISPLAY: readonly RungDisplay[] = [
   {
     upgradeId: 'quarantine-ward',
     name: 'THE WARD',
-    note: 'One revive a raid, off the clock',
+    note: 'Three revives a raid, off the clock',
     props: [{ name: 'wardBed', x: 2, y: 5 }],
   },
 ];

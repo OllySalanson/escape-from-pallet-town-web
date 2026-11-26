@@ -141,14 +141,14 @@ describe('what the upgrade list derives', () => {
     expect(workshopSecurePokemon(['secure-locker-1', 'secure-locker-2'])).toBe(1);
     expect(recoveryPriceShare(['recovery-bay-1'])).toBe(0.5);
     expect(recoveryPriceShare(['recovery-bay-1', 'recovery-bay-2'])).toBe(0.15);
-    expect(wardTreatmentsPerRaid(['quarantine-ward'])).toBe(1);
+    expect(wardTreatmentsPerRaid(['quarantine-ward'])).toBe(3);
     expect(hasHunterIntel(['radio-mast'])).toBe(true);
     expect(hasBeacon(['beacon'])).toBe(true);
   });
 
   it('cannot be inflated by a repeated or unknown id', () => {
     expect(workshopSecureItemStacks(['secure-locker-1', 'secure-locker-1'])).toBe(1);
-    expect(wardTreatmentsPerRaid(['quarantine-ward', 'quarantine-ward', 'golden-ward'])).toBe(1);
+    expect(wardTreatmentsPerRaid(['quarantine-ward', 'quarantine-ward', 'golden-ward'])).toBe(3);
   });
 
   it('opens the beacon halfway through whatever clock the raid deploys with', () => {
