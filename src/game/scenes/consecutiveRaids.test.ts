@@ -267,6 +267,27 @@ const makeControls = (): Record<string, FakeKey> => {
   return controls;
 };
 
+/** The fight the raid ends in at 0:15, as far as it has got (`WorldScene.makeLastStand`). */
+function lastStand(scene: WorldScene): string | undefined {
+  return (scene as unknown as { runSession?: { lastStand?: string } }).runSession?.lastStand;
+}
+
+/** The 0:15 fight lost, as `settlePackAfterFight` records it, and the clock asked again. */
+function loseLastStand(scene: WorldScene): void {
+  const internals = scene as unknown as {
+    runSession?: { lastStand?: string };
+    pendingTrainerBattle: unknown;
+    cutscene: unknown;
+    advanceRunClock(deltaMs: number): void;
+  };
+  if (internals.runSession?.lastStand === 'fighting') {
+    internals.runSession.lastStand = 'lost';
+    internals.pendingTrainerBattle = null;
+    internals.cutscene = undefined;
+  }
+  internals.advanceRunClock(16);
+}
+
 describe('two raids in a row on one WorldScene instance', () => {
   it('leaves the second raid playable after the first is extracted from', () => {
     const controls = makeControls();
@@ -300,6 +321,32 @@ describe('two raids in a row on one WorldScene instance', () => {
     pressRight(scene, controls);
 
     expect(internals.targetTile).toEqual({ x: spawn.x + 1, y: spawn.y });
+  });
+
+  it('gets a raid out by the nearest open exit when the 0:15 fight is won', () => {
+    // "A fight I can win is drama" (critic's review, problem 14): won, the
+    // player fights their way out rather than losing to the clock.
+    const controls = makeControls();
+    const scene = new WorldScene();
+    attachSceneStubs(scene, controls);
+    const manager = new RunManager();
+    startRaid(scene, manager, 'floodplain-relay', 1);
+    const internals = scene as unknown as {
+      runSession?: { lastStand?: string };
+      dialogBox: { visible: boolean };
+      pendingTrainerBattle: unknown;
+      cutscene: unknown;
+      advanceRunClock(deltaMs: number): void;
+    };
+    internals.dialogBox.visible = false;
+    internals.advanceRunClock(RAID_DURATION_MS);
+    internals.advanceRunClock(ENRAGE_GRACE_MS);
+    expect(lastStand(scene)).toBe('fighting');
+    internals.runSession!.lastStand = 'won';
+    internals.pendingTrainerBattle = null;
+    internals.cutscene = undefined;
+    internals.advanceRunClock(16);
+    expect(manager.phase).toBe(RunPhase.Escaped);
   });
 
   /**
@@ -341,6 +388,11 @@ describe('two raids in a row on one WorldScene instance', () => {
       (scene as unknown as { dialogBox: { visible: boolean } }).dialogBox.visible = false;
       internals.advanceRunClock(RAID_DURATION_MS);
       internals.advanceRunClock(ENRAGE_GRACE_MS);
+      // At 0:15 the raid ends in the enraged hunter's fight (`makeLastStand`)...
+      expect(lastStand(scene)).toBe('fighting');
+      expect(internals.pendingTrainerBattle).not.toBeNull();
+      // ...and lost, it is lost to the clock as it always was.
+      loseLastStand(scene);
       expect(manager.phase).toBe(RunPhase.Wiped);
     } else {
       // A defeat resolves inside BattleScene, so the world is left exactly as it
@@ -429,6 +481,7 @@ describe('two raids in a row on one WorldScene instance', () => {
     internals.dialogBox.visible = false;
     internals.advanceRunClock(RAID_DURATION_MS);
     internals.advanceRunClock(ENRAGE_GRACE_MS);
+    loseLastStand(scene);
 
     expect(manager.phase).toBe(RunPhase.Wiped);
     const started = (scene as unknown as { scene: { start: ReturnType<typeof vi.fn> } }).scene
@@ -488,6 +541,7 @@ describe('two raids in a row on one WorldScene instance', () => {
       internals.dialogBox.visible = false;
       internals.advanceRunClock(RAID_DURATION_MS);
       internals.advanceRunClock(ENRAGE_GRACE_MS);
+      loseLastStand(scene);
 
       expect(manager.phase).toBe(RunPhase.Wiped);
       const after = new SaveManager(storage).load()!;

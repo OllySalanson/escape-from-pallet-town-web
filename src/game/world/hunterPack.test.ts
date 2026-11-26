@@ -415,6 +415,14 @@ describe('the enrage sends one hunter from the same walk off, wherever you stand
     expect(near.hunter.position).toEqual(far.hunter.position);
   });
 
+  it('sends one even when the pack never came out, to a player who never left the landing', () => {
+    const { pack, hunter } = hunterIn(groundOf({ x: 0, y: 0, width: 240, height: 5 }, { x: 2, y: 2 }), { mode: 'waiting' });
+    const world = worldOf(road, player, { enraged: true });
+    expect(pack.enrage(world, [gate])).toEqual({ hunter, back: false });
+    expect(hunter.mode).toBe('chase');
+    expect(Math.abs(hunter.position.x - player.x) + Math.abs(hunter.position.y - player.y)).toBe(ENRAGE_SEND_STEPS);
+  });
+
   it('brings a beaten keeper back, once, and leaves one just fled from blind', () => {
     const { pack, hunter } = hunterIn(groundOf({ x: 0, y: 0, width: 240, height: 5 }, { x: 2, y: 2 }), { mode: 'beaten' });
     const world = worldOf(road, player, { enraged: true });

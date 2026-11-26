@@ -130,6 +130,12 @@ export interface ActiveRunSession {
   hunterPacks?: Map<WorldMapId, HunterPack>;
   /** Whether this raid has had its minute-left word about the enrage (`WorldScene.warnOfEnrage`). */
   enrageWarned?: boolean;
+  /**
+   * The fight the raid ends in when the enrage's fifteen seconds run out
+   * (`WorldScene.makeLastStand`): begun, then won (out by the nearest open
+   * exit) or not (lost to the clock, as it always was).
+   */
+  lastStand?: 'fighting' | 'won' | 'lost';
   /** A new save's first chase has come (`RunPlan.stagedChase`), so a fight does not bring it twice. */
   stagedChaseCome?: boolean;
   /** A later raid's arrow has come back for the way out (`world/raidArrow.ts`), so a fight does not bring its pop twice. */

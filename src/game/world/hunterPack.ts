@@ -995,7 +995,9 @@ export class HunterPack {
     }
     const distanceTo = (hunter: PackHunter): number =>
       Math.abs(hunter.position.x - world.player.x) + Math.abs(hunter.position.y - world.player.y);
-    const free = this.hunters.filter((hunter) => hunter.mode !== 'stunned' && hunter.mode !== 'waiting');
+    // One still to come counts too: a player who never left the landing never
+    // brought the pack out, and stood there through the enrage untouched.
+    const free = this.hunters.filter((hunter) => hunter.mode !== 'stunned');
     const hunter =
       free.find((candidate) => inGround(candidate.ground, world.player)) ??
       [...free].sort((one, other) => distanceTo(one) - distanceTo(other))[0];
@@ -1004,7 +1006,7 @@ export class HunterPack {
     }
     const back = hunter.mode === 'beaten';
     const tile = this.comingFrom(world, ways, ENRAGE_SEND_STEPS);
-    if (!tile && back) {
+    if (!tile && (back || hunter.mode === 'waiting')) {
       return null;
     }
     const from = tile ?? hunter.position;
