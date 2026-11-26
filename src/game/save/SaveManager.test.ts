@@ -3528,3 +3528,29 @@ describe('the garden THE CHEST chooses', () => {
     expect(after.raidProgress.lastBench).toContain('pidgey-2');
   });
 });
+
+describe('THE CHEST gives a Pokémon something to hold, and takes it back', () => {
+  it('moves the thing out of storage onto the Pokémon, handing back what it held, and back again', () => {
+    const storage = new MemoryStorage();
+    const stash = createStartingStash(CHARMANDER);
+    stash.addPokemon(new Pokemon(PIDGEY, 9), 'pidgey-1');
+    stash.addItem('oran-berry', 1);
+    stash.addItem('sitrus-berry', 1);
+    const saves = new SaveManager(storage);
+    saves.save({ party: new PokemonParty(), mapId: 'pallet-town', position: { x: 6, y: 8 }, bag: new Bag(), stash });
+    expect(saves.giveHeldAtHome('pidgey-1', 'oran-berry')).toBeDefined();
+    const held = () => saves.load()!.stash.listPokemon().find((one) => one.id === 'pidgey-1')!.pokemon.heldItemId;
+    expect(held()).toBe('oran-berry');
+    expect(saves.load()!.stash.itemCount('oran-berry')).toBe(0);
+    // A second thing swaps: the first comes back into storage.
+    expect(saves.giveHeldAtHome('pidgey-1', 'sitrus-berry')).toBeDefined();
+    expect(held()).toBe('sitrus-berry');
+    expect(saves.load()!.stash.itemCount('oran-berry')).toBe(1);
+    expect(saves.takeHeldAtHome('pidgey-1')).toBeDefined();
+    expect(held()).toBeNull();
+    expect(saves.load()!.stash.itemCount('sitrus-berry')).toBe(1);
+    // Nothing to give, nothing to take: nothing written.
+    expect(saves.giveHeldAtHome('pidgey-1', 'leftovers')).toBeUndefined();
+    expect(saves.takeHeldAtHome('pidgey-1')).toBeUndefined();
+  });
+});

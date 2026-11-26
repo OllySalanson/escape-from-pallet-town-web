@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { Pokemon, getSpeciesById } from '../pokemon';
 import { Stash } from '../stash';
 import { pickerEntries } from './boxPicker';
-import { CHEST_COLUMNS, CHEST_POKEMON_KEYS, chestPokemonBody, chestTabs, whereItIs, type ChestPokemonState } from './chestPokemonView';
+import { getItemById } from '../items';
+import { CHEST_COLUMNS, CHEST_POKEMON_KEYS, chestAsk, chestGifts, chestKept, chestPokemonBody, giftAnswer, chestTabs, whereItIs, type ChestPokemonState } from './chestPokemonView';
 
 const stashOf = (...members: readonly (readonly [string, number])[]): Stash => {
   const stash = new Stash();
@@ -32,7 +33,7 @@ describe("THE CHEST's POKéMON tab", () => {
     const html = chestPokemonBody(stateOf(stash));
     expect(gridIds(html)).toEqual(['pidgey-1', 'mankey-2', 'rattata-0']);
     expect(html).not.toMatch(/Box [0-9]/);
-    expect(html).toContain('3 kept');
+    expect(chestKept(3)).toContain('3 kept');
   });
 
   it('draws each one as its own picture, with its level, its health and its marks', () => {
@@ -45,9 +46,9 @@ describe("THE CHEST's POKéMON tab", () => {
     expect(html).toMatch(/class="chest-mon is-garden" data-mon="oddish-2"[^>]*>.*?chest-mark is-garden/);
   });
 
-  it('fills the grid out with empty places, a row at a time and four rows at least', () => {
+  it('fills the grid out with empty places, a row at a time and three rows at least', () => {
     const few = chestPokemonBody(stateOf(stashOf(['rattata', 5])));
-    expect(few.match(/chest-mon-gap/g)).toHaveLength(CHEST_COLUMNS * 4 - 1);
+    expect(few.match(/chest-mon-gap/g)).toHaveLength(CHEST_COLUMNS * 3 - 1);
     const members = Array.from({ length: 18 }, (_one, index) => ['rattata', index + 2] as const);
     const many = chestPokemonBody(stateOf(stashOf(...members)));
     expect((many.match(/chest-mon-gap/g) ?? []).length).toBe(2);
@@ -91,5 +92,47 @@ describe("THE CHEST's POKéMON tab", () => {
     expect(chestTabs('things')).toMatch(/class="chest-tab is-here" data-chest-tab="things"/);
     expect(CHEST_POKEMON_KEYS).toContain('G garden');
     expect(CHEST_POKEMON_KEYS).toContain('B things');
+  });
+});
+
+describe('giving a thing to a Pokémon from THE CHEST', () => {
+  const item = (id: string) => getItemById(id)!;
+  const mon = (species: string, level = 10) => new Pokemon(getSpeciesById(species)!, level);
+
+  it('offers things to hold, then stones, then discs - only those, and only what is spare', () => {
+    const items = ['potion', 'tm40-aerial-ace', 'thunder-stone', 'oran-berry', 'poke-ball', 'leftovers'].map(item);
+    const spare: Record<string, number> = { potion: 3, 'tm40-aerial-ace': 1, 'thunder-stone': 1, 'oran-berry': 2, 'poke-ball': 5, leftovers: 0 };
+    expect(chestGifts(items, (id) => spare[id] ?? 0).map((gift) => [gift.item.id, gift.kind, gift.count])).toEqual([
+      ['oran-berry', 'hold', 2],
+      ['thunder-stone', 'stone', 1],
+      ['tm40-aerial-ace', 'disc', 1],
+    ]);
+  });
+
+  it('asks FireRed\'s question when it can go, and says why when it cannot', () => {
+    expect(giftAnswer(item('oran-berry'), mon('pikachu'), false)).toEqual({ ok: true, question: 'Give the ORAN BERRY to PIKACHU?' });
+    const holding = mon('pikachu');
+    holding.heldItemId = 'oran-berry';
+    expect(giftAnswer(item('oran-berry'), holding, false)).toEqual({ ok: false, why: 'PIKACHU is holding an ORAN BERRY already.' });
+    expect(giftAnswer(item('thunder-stone'), mon('eevee'), false)).toEqual({ ok: true, question: 'Use the THUNDER STONE on EEVEE?' });
+    expect(giftAnswer(item('thunder-stone'), mon('charmander'), false)).toEqual({ ok: false, why: "It won't have any effect." });
+    // FireRed's own learners: Pidgey reads Aerial Ace, Pikachu cannot.
+    expect(giftAnswer(item('tm40-aerial-ace'), mon('pidgey'), false)).toEqual({ ok: true, question: 'Teach AERIAL ACE to PIDGEY?' });
+    expect(giftAnswer(item('tm40-aerial-ace'), mon('pikachu'), false)).toEqual({ ok: false, why: "PIKACHU can't learn AERIAL ACE." });
+    expect(giftAnswer(item('oran-berry'), mon('pikachu'), true).ok).toBe(false);
+  });
+
+  it('draws the question as the thing, an arrow, the Pokémon, and YES and NO', () => {
+    const html = chestAsk(item('oran-berry'), mon('pikachu'), 'Give the ORAN BERRY to PIKACHU?');
+    expect(html).toMatch(/data-ask .*oran-berry.*chest-ask-arrow.*front\/25\.png.*Give the ORAN BERRY to PIKACHU\?.*data-ask-yes>Yes.*data-ask-no>No/);
+  });
+
+  it('stands TO GIVE beside the card, and the card offers what it holds back', () => {
+    const stash = stashOf(['pikachu', 14]);
+    stash.listPokemon()[0].pokemon.heldItemId = 'oran-berry';
+    const html = chestPokemonBody(stateOf(stash, { gifts: chestGifts([item('sitrus-berry')], () => 1) }));
+    expect(html).toMatch(/chest-give.*data-gift="sitrus-berry"/);
+    expect(html).toMatch(/data-held="pikachu-0" data-drop="held"/);
+    expect(html).toMatch(/data-key="take"[^>]*>.*Take Oran Berry/);
   });
 });

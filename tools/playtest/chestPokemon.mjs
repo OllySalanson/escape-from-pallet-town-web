@@ -8,6 +8,11 @@
 //   - a Pokémon dragged from the grid onto THE NEXT RAID joins the team (and
 //     leaves the garden), and one dragged from the GARDEN back onto the grid
 //     comes in;
+//   - things are given: a stone over a Pokémon it does nothing for goes red and
+//     asks nothing, dropped on Eevee it asks and evolves it; a berry clicked and
+//     then a Pokémon clicked asks and is held; a disc chosen with ENTER and a
+//     Pokémon with ENTER asks, N says no and YES teaches; T and a drag off the
+//     card take what is held back into the chest;
 //   - B goes back to THINGS, and every change is in the save.
 //
 //   node tools/playtest/chestPokemon.mjs <test-mode build url> <out dir> [--port=CDP port] [--window=WxH]
@@ -67,6 +72,9 @@ try {
     page.send('Input.dispatchMouseEvent', { type, x: at.x, y: at.y, button: 'left', buttons: type === 'mousePressed' || type === 'mouseMoved' ? 1 : 0, clickCount: type === 'mouseMoved' ? 0 : 1 });
   /** Presses on one thing, carries it in steps to another, and lets go. */
   const drag = async (fromSelector, toSelector) => {
+    // Scrolled into view first, as a player would before picking it up.
+    await page.evaluate(`document.querySelector(${JSON.stringify(fromSelector)})?.scrollIntoView({ block: 'nearest' })`);
+    await step(2);
     const from = await centre(fromSelector);
     const to = await centre(toSelector);
     if (!from || !to) fail(`nothing to drag from ${fromSelector} to ${toSelector}`);
@@ -98,6 +106,7 @@ try {
       if (index < 8) save.stash.boxes[0].pokemonIds.push(id); else second.push(id);
     });
     save.stash.boxes.push({ name: 'Box 2', pokemonIds: second });
+    save.stash.items = { ...(save.stash.items ?? {}), 'oran-berry': 2, 'sitrus-berry': 1, 'thunder-stone': 1, 'tm40-aerial-ace': 1 };
     localStorage.setItem('${SAVE_KEY}', JSON.stringify(save));
   })()`);
 
@@ -157,6 +166,8 @@ try {
   await shoot('04-dragged');
   // A click is a look, never a change.
   const before = await page.evaluate(`${tab}.teamIds.join()`);
+  await page.evaluate(`document.querySelector('#screens .chest-mons [data-mon="geodude-98"]').scrollIntoView({ block: 'nearest' })`);
+  await step(2);
   const geodude = await centre('#screens .chest-mons [data-mon="geodude-98"]');
   await mouse('mouseMoved', geodude);
   await mouse('mousePressed', geodude);
@@ -170,6 +181,89 @@ try {
   const bench = save.raidProgress.lastBench ?? [];
   if (bench[0] !== 'pikachu-90' || !bench.includes('machop-91')) fail(`the save's team is ${bench}`);
   if ((save.raidProgress.garden ?? []).some((id) => id === 'psyduck-93' || id === 'rattata-102')) fail(`the save's garden is ${save.raidProgress.garden}`);
+
+  // Giving things (part 3). A stone over a Pokémon it does nothing for goes red and asks nothing.
+  const count = async (id) => (await saved()).stash.items?.[id] ?? 0;
+  const holds = async (id) => (await saved()).stash.pokemon.find((one) => one.id === id)?.pokemon.heldItemId ?? null;
+  const asking = () => page.evaluate(`Boolean(document.querySelector('#screens [data-ask]'))`);
+  const charmander = grid[0];
+  {
+    await page.evaluate(`document.querySelector('#screens .chest-mons [data-mon="${charmander}"]').scrollIntoView({ block: 'nearest' })`);
+    await step(2);
+    const from = await centre('#screens [data-gift="thunder-stone"]');
+    const to = await centre(`#screens .chest-mons [data-mon="${charmander}"]`);
+    await mouse('mouseMoved', from);
+    await mouse('mousePressed', from);
+    for (let i = 1; i <= 8; i += 1) {
+      await mouse('mouseMoved', { x: from.x + ((to.x - from.x) * i) / 8, y: from.y + ((to.y - from.y) * i) / 8 });
+      await step(1);
+    }
+    if (!(await page.evaluate(`document.querySelector('#screens .chest-mons [data-mon="${charmander}"]').classList.contains('is-gift-no')`))) fail('a Thunder Stone over Charmander is not marked as no');
+    await shoot('06-stone-over-charmander');
+    await mouse('mouseReleased', to);
+    await wait(200);
+    if (await asking()) fail('a Thunder Stone on Charmander asked a question');
+  }
+  // Onto Eevee: the question, YES, and the evolution.
+  await drag('#screens [data-gift="thunder-stone"]', '#screens .chest-mons [data-mon="eevee-95"]');
+  if (!(await asking())) fail('a Thunder Stone on Eevee asked nothing');
+  const words = await page.evaluate(`document.querySelector('#screens .chest-ask-words').textContent`);
+  if (!/USE THE THUNDER STONE ON EEVEE\?/i.test(words)) fail(`the question was "${words}"`);
+  await shoot('07-ask-stone');
+  await press('Enter');
+  await until(`Boolean(document.querySelector('#screens [data-evolve-moment]'))`, 'the evolution');
+  await wait(1400);
+  await shoot('08-evolved');
+  await press('Space');
+  await until(`Boolean(document.querySelector('#screens .chest-mon-grid'))`, 'the grid after the evolution');
+  const eevee = (await saved()).stash.pokemon.find((one) => one.id === 'eevee-95')?.pokemon.speciesId;
+  if (eevee !== 'jolteon') fail(`Eevee became ${eevee}`);
+  if ((await count('thunder-stone')) !== 0) fail('the stone was not spent');
+  // Click the Sitrus Berry, click Machop, click YES.
+  const sitrus = await centre('#screens [data-gift="sitrus-berry"]');
+  await mouse('mouseMoved', sitrus); await mouse('mousePressed', sitrus); await mouse('mouseReleased', sitrus);
+  await wait(150);
+  await page.evaluate(`document.querySelector('#screens .chest-mons [data-mon="machop-91"]').scrollIntoView({ block: 'nearest' })`);
+  await step(2);
+  const machop = await centre('#screens .chest-mons [data-mon="machop-91"]');
+  await mouse('mouseMoved', machop); await mouse('mousePressed', machop); await mouse('mouseReleased', machop);
+  await wait(150);
+  if (!(await asking())) fail('click, click asked nothing');
+  await shoot('09-ask-berry');
+  const yes = await centre('#screens [data-ask-yes]');
+  await mouse('mouseMoved', yes); await mouse('mousePressed', yes); await mouse('mouseReleased', yes);
+  await wait(200);
+  if ((await holds('machop-91')) !== 'sitrus-berry') fail(`Machop holds ${await holds('machop-91')}`);
+  await shoot('10-machop-holds');
+  // Keys: the disc chosen with ENTER, Pidgey with ENTER: N says no, then YES teaches it.
+  const teachPidgey = async () => {
+    await page.evaluate(`document.querySelector('#screens [data-gift="tm40-aerial-ace"]').focus()`);
+    await step(2);
+    await press('Enter');
+    await page.evaluate(`document.querySelector('#screens .chest-mons [data-mon="pidgey-97"]').focus()`);
+    await step(2);
+    await press('Enter');
+  };
+  await teachPidgey();
+  if (!(await asking())) fail('ENTER, ENTER asked nothing');
+  await press('KeyN');
+  if (await asking()) fail('N left the question up');
+  await teachPidgey();
+  await press('Enter');
+  await wait(200);
+  const pidgeyMoves = (await saved()).stash.pokemon.find((one) => one.id === 'pidgey-97')?.pokemon.moves ?? [];
+  if (!JSON.stringify(pidgeyMoves).includes('Aerial Ace')) fail(`Pidgey knows ${JSON.stringify(pidgeyMoves)}`);
+  // Taking back: T on Pikachu, and Machop's berry dragged off its card into TO GIVE.
+  const oranBefore = await count('oran-berry');
+  await page.evaluate(`document.querySelector('#screens .chest-mons [data-mon="pikachu-90"]').focus()`);
+  await step(2);
+  await press('KeyT');
+  if ((await holds('pikachu-90')) !== null || (await count('oran-berry')) !== oranBefore + 1) fail('T did not take the Oran Berry back');
+  await page.evaluate(`document.querySelector('#screens .chest-mons [data-mon="machop-91"]').focus()`);
+  await step(2);
+  await drag('#screens [data-held="machop-91"]', '#screens [data-drop="gifts"]');
+  if ((await holds('machop-91')) !== null) fail('dragging the Sitrus Berry off Machop did not take it back');
+  await shoot('11-taken-back');
 
   // B: back to the chest's THINGS.
   await press('KeyB');

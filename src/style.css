@@ -140,6 +140,20 @@ body {
   }
 }
 /* The red arrow over the thing the cursor is on in YOUR THINGS, bobbing. */
+/* THE CHEST: a thing over a Pokémon it cannot go to shakes; a Pokémon given something hops. */
+@keyframes chest-no {
+  50% {
+    translate: var(--u) 0;
+  }
+}
+@keyframes chest-hop {
+  40% {
+    translate: 0 calc(var(--u) * -6);
+  }
+  70% {
+    translate: 0 var(--u);
+  }
+}
 @keyframes things-shake {
   0%,
   100% {
@@ -10512,14 +10526,15 @@ body.touch-play .feedback-tab {
 /* THE CHEST's POKéMON tab (`ui/chestPokemonView.ts`): the grid on the left with
    the garden under it, the next raid and the card on the right. */
 :where(.pixel-ui) .chest-mons-layout {
+  position: relative;
   height: 100%;
   min-height: 0;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas:
-    'mons team'
+    'team garden'
     'mons card'
-    'mons garden';
+    'mons give';
   column-gap: calc(var(--u) * 3);
   row-gap: calc(var(--u) * 6);
 }
@@ -10527,7 +10542,12 @@ body.touch-play .feedback-tab {
   grid-area: mons;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+:where(.pixel-ui) .px-title-aside:has(.things-chest) {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
 }
 .pixel-ui .chest-mons-layout > .chest-team {
   grid-area: team;
@@ -10539,6 +10559,9 @@ body.touch-play .feedback-tab {
 }
 .pixel-ui .chest-mons-layout > .chest-garden {
   grid-area: garden;
+}
+.pixel-ui .chest-mons-layout > .chest-give {
+  grid-area: give;
 }
 :where(.pixel-ui) .chest-mon-scroll {
   min-height: 0;
@@ -10750,6 +10773,7 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .chest-card-foot .team-card-where {
   margin-left: auto;
+  white-space: nowrap;
 }
 :where(.pixel-ui) .chest-key {
   appearance: none;
@@ -10771,4 +10795,130 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .chest-key.is-on {
   background: var(--safe-wash);
+}
+
+/* TO GIVE: THE CHEST's berries, held things, stones and discs, a bag square each. */
+:where(.pixel-ui) .chest-gifts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--u);
+  padding: var(--u);
+  background: var(--line);
+  justify-self: start;
+}
+:where(.pixel-ui) .chest-gifts > .px-empty {
+  background: var(--paper);
+  margin: 0;
+  padding: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .chest-gift {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+  background: var(--gold-wash);
+  color: var(--ink-soft);
+  cursor: grab;
+}
+:where(.pixel-ui) .chest-gift * {
+  pointer-events: none;
+}
+:where(.pixel-ui) .chest-gift > .item-icon {
+  transform: scale(2);
+}
+:where(.pixel-ui) .chest-gift > b {
+  position: absolute;
+  right: var(--u);
+  bottom: 0;
+  font-weight: 400;
+}
+:where(.pixel-ui) .chest-gift:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--cursor);
+}
+/* Chosen with a click or ENTER, waiting for a Pokémon: it lifts. */
+:where(.pixel-ui) .chest-gift.is-armed {
+  background: var(--safe-wash);
+  box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--go);
+}
+:where(.pixel-ui) .chest-gift.is-armed > .item-icon {
+  transform: scale(2) translateY(calc(var(--u) * -2));
+}
+:where(.pixel-ui) .chest-held-square {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+}
+:where(.pixel-ui) button.chest-held-square {
+  cursor: grab;
+}
+:where(.pixel-ui) button.chest-held-square * {
+  pointer-events: none;
+}
+/* A thing carried over a Pokémon: green where it would go, red and shaking where it would not. */
+:where(.pixel-ui) :is(.chest-mon, .chest-slot, .chest-card).is-gift-yes {
+  box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--go);
+  background: var(--safe-wash);
+}
+:where(.pixel-ui) :is(.chest-mon, .chest-slot, .chest-card).is-gift-no {
+  box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--red);
+  background: var(--risk-wash);
+  animation: chest-no 0.24s steps(2) infinite;
+}
+/* Given something: the Pokémon hops where it stands. */
+:where(.pixel-ui) .chest-mon.is-given .px-portrait {
+  animation: chest-hop 0.4s steps(4);
+}
+.pixel-ui .chest-ghost.is-thing {
+  transform: translate(-50%, -50%) scale(calc(var(--zoom, 2) * 2));
+}
+/* FireRed's two-button question, over the tab. */
+:where(.pixel-ui) .chest-ask {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  background: #12101166;
+}
+.pixel-ui .chest-ask-window {
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--u) * 6);
+  padding: calc(var(--u) * 8) calc(var(--u) * 10);
+  min-width: calc(var(--u) * 190);
+}
+:where(.pixel-ui) .chest-ask-pics {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 6);
+}
+:where(.pixel-ui) .chest-ask-pics > .item-icon {
+  transform: scale(2);
+  margin: 0 calc(var(--u) * 8);
+}
+:where(.pixel-ui) .chest-ask-arrow {
+  width: calc(var(--u) * 4);
+  height: calc(var(--u) * 8);
+  background: var(--px-cursor) center / 100% 100% no-repeat;
+}
+:where(.pixel-ui) .chest-ask-words {
+  margin: 0;
+  text-transform: uppercase;
+  text-align: center;
+}
+:where(.pixel-ui) .chest-ask-buttons {
+  display: flex;
+  gap: calc(var(--u) * 6);
+}
+:where(.pixel-ui) .chest-ask-buttons .px-button {
+  min-width: calc(var(--u) * 50);
 }
