@@ -168,8 +168,13 @@ export function nextStepLines(progress: NextStepProgress, vault: NextStepVault =
       : ['Next, a raid for whatever the vale holds. Every raid starts at the RAID ARENA.'];
   }
   if (banked < NEAR_JOBS) {
+    // Counted, so a job of the same name as the one banked reads as the next
+    // one (first-hour playtest, 26 Nov 2026), and true on every raid until it
+    // is done: "a new" was said again after raids that banked nothing, as if
+    // one just had (gyms playtest, 26 Nov 2026).
+    const count = ['first', 'second', 'third', 'fourth'][banked] ?? 'next';
     return [
-      `${job ? `Next, a new ${job.name.toUpperCase()} is on the rail.` : 'Another job will be on the rail.'}${mayAskAFavour(progress) ? ' And folk about the harbour may ask you a favour now.' : ''}`,
+      `${job ? `Next, your ${count} job: ${job.name.toUpperCase()}, on the rail.` : 'Another job will be on the rail.'}${mayAskAFavour(progress) ? ' And folk about the harbour may ask you a favour now.' : ''}`,
     ];
   }
   const gym = nextGym(progress.defeatedBosses);
