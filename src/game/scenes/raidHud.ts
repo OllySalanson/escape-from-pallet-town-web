@@ -245,7 +245,7 @@ export interface HunterChipInput {
    * or come back for the enrage - or, after a hunter of the pack gives up on
    * the player, that it has lost them.
    */
-  readonly shout?: 'arrived' | 'back' | 'lost' | null;
+  readonly shout?: 'arrived' | 'back' | 'lost' | 'heard' | null;
   /** True while an escape is still holding the hunter off the trail. */
   readonly searching: boolean;
   readonly searchRemainingMs?: number;
@@ -337,6 +337,9 @@ function hunterContactView(input: HunterChipInput): HunterChipView | null {
   }
   // The shout outranks the distance (the hunter arrives inside it) but not the
   // two lines above, which are only true after it has been fled or lost.
+  if (input.shout === 'heard') {
+    return { label: `${who} HEARD THAT`, tone: 'closing' };
+  }
   if (input.shout) {
     return { label: input.shout === 'back' ? `${who} IS BACK` : `${who} ON YOUR TAIL`, tone: 'closing' };
   }

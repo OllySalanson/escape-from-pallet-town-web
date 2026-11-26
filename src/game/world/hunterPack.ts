@@ -127,6 +127,15 @@ export const ENRAGE_REACH_MS = 6_000;
 export const ENRAGE_SEND_STEPS = Math.round(ENRAGE_REACH_MS / HUNTER_ENRAGED_STEP_MS);
 /** The furthest the enrage's hunter searches its way to you: from where it was sent, with room for the long way round. */
 const HUNTER_ENRAGED_CHASE_LIMIT = ENRAGE_SEND_STEPS * 2;
+/**
+ * How long, on the pack's clock, the grass round a fight stops hiding you, and
+ * how far round it (`grassHides`). A fight is loud: the critic trained two
+ * minutes twenty in one patch of tall grass, about thirty fights, and no hunter
+ * came, so the best place to level up was also the best place to hide
+ * (review, problem 13, 25 Nov 2026).
+ */
+export const FIGHT_HEARD_MS = 60_000;
+export const FIGHT_TRAMPLED_STEPS = 5;
 /** The smallest district that is a hunter's patch, in tiles across and down. */
 export const HUNTER_GROUND_MIN_SIDE = 32;
 
@@ -213,7 +222,9 @@ export type PackEvent =
   | { readonly kind: 'noticed'; readonly hunter: PackHunter }
   | { readonly kind: 'snagged'; readonly hunter: PackHunter }
   | { readonly kind: 'gave-up'; readonly hunter: PackHunter }
-  | { readonly kind: 'caught'; readonly hunter: PackHunter };
+  | { readonly kind: 'caught'; readonly hunter: PackHunter }
+  /** It heard a fight and is coming to look (`heardFight`). */
+  | { readonly kind: 'heard'; readonly hunter: PackHunter };
 
 /** What the pack reads of the world on a frame. Indexes are `y * width + x`. */
 export interface PackWorld {
@@ -714,6 +725,8 @@ export class HunterPack {
   cameOut = false;
   /** Whether the enrage has brought a beaten keeper back yet: it does so once. */
   enrageAnswered = false;
+  /** Where the last fight was, and until when on the pack's clock the grass round it hides nobody (`heardFight`). */
+  trampled: { readonly at: GridPosition; readonly untilMs: number } | null = null;
 
   constructor(hunters: PackHunter[]) {
     this.hunters = hunters;
@@ -1213,7 +1226,8 @@ export class HunterPack {
       hunter.position,
       contactGoals(target),
       target,
-      hunter.enraged ? HUNTER_ENRAGED_CHASE_LIMIT : HUNTER_CHASE_LIMIT,
+      // Running to a tile it has not seen you on - a fight it heard - is a walk across its patch, not a chase.
+      hunter.enraged ? HUNTER_ENRAGED_CHASE_LIMIT : hunter.sees ? HUNTER_CHASE_LIMIT : HUNTER_WALK_LIMIT,
     );
     const seesYou = hunter.enraged || hunter.sees;
     hunter.gap = route && seesYou ? route.length : null;
@@ -1416,6 +1430,42 @@ export class HunterPack {
       hunter.facing = directionTowards(hunter.position, world.player, hunter.facing);
       hunter.straight = 0;
     }
+  }
+
+  /**
+   * A fight that was not with a hunter, at `at`: the grass round it hides
+   * nobody for `FIGHT_HEARD_MS`, and the keeper of the patch it was in, if it
+   * is about its own business, runs over to look - and finds whoever is still
+   * standing in that grass. A keeper already after you, fled from or beaten is
+   * left as it is. Answers what the screen should say.
+   */
+  heardFight(at: GridPosition): PackEvent[] {
+    this.trampled = { at: { ...at }, untilMs: this.clockMs + FIGHT_HEARD_MS };
+    const keeper = this.hunters.find((hunter) => inGround(hunter.ground, at));
+    if (!keeper || !isAbroad(keeper) || keeper.enraged || !(keeper.mode === 'patrol' || keeper.mode === 'return' || keeper.mode === 'search')) {
+      return [];
+    }
+    Object.assign(keeper, {
+      mode: 'chase',
+      timerMs: 0,
+      lastSeen: { ...at },
+      seenAtMs: Number.NEGATIVE_INFINITY,
+      sees: false,
+      snagged: false,
+      straight: 0,
+      gap: null,
+    });
+    return [{ kind: 'heard', hunter: keeper }];
+  }
+
+  /** Whether tall grass at `tile` hides the player now: not round a fight just heard (`heardFight`). */
+  grassHides(tile: GridPosition): boolean {
+    const trampled = this.trampled;
+    return (
+      trampled === null ||
+      this.clockMs >= trampled.untilMs ||
+      Math.max(Math.abs(tile.x - trampled.at.x), Math.abs(tile.y - trampled.at.y)) > FIGHT_TRAMPLED_STEPS
+    );
   }
 
   /**
