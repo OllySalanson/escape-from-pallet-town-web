@@ -213,7 +213,7 @@ describe('RaidHud prize chip', () => {
     const { scene, texts, images } = stubScene(400);
     const hud = new RaidHud(scene);
     hud.render(
-      { ...STATE, prize: { label: '2 PARTS CRATES', itemId: 'parts-crate', detail: 'NE · 118 STEPS', room: 'NO ROOM: NEEDS 2 SQUARES' } },
+      { ...STATE, prize: { label: '2 PARTS CRATES', itemId: 'parts-crate', detail: 'NE · 118 STEPS', room: 'PACK FULL: NEEDS 2 SQUARES · [B] PACK' } },
       0,
     );
     const icons = images.filter((image) => image.visible);
@@ -221,7 +221,7 @@ describe('RaidHud prize chip', () => {
     expect(icons[0].texture).toMatch(/^icon-/);
     const shown = texts.filter((text) => text.visible).map((text) => text.lines);
     expect(shown).toContainEqual(['2 PARTS CRATES', 'NE · 118 STEPS']);
-    expect(shown).toContainEqual(['NO ROOM: NEEDS 2 SQUARES']);
+    expect(shown).toContainEqual(['PACK FULL: NEEDS 2 SQUARES · [B] PACK']);
     hud.render(STATE, 0);
     expect(images.some((image) => image.visible)).toBe(false);
   });

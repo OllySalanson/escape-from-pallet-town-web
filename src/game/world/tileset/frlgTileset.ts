@@ -223,6 +223,19 @@ const PROPS = {
     width: 4,
     walkable: [[1, 2], [2, 2]],
   }),
+  /**
+   * The same outcrop as a way through the rock rather than out of the map:
+   * the steps, the landing at their head and the grass in the cut above it are
+   * all ground, so a band of cliff with this in it is climbed by its steps.
+   * `rockStair` is the extraction stair, where stepping onto the steps is the
+   * end of the raid; this is what a map file's `rock-stair` plants, and Gull
+   * Strand's cliff path down to the cove shipped as a flight of steps that
+   * nobody could climb (`stairs.test.ts`).
+   */
+  rockStairway: object('stair', FRLG_OBJECTS.BOULDERS, {
+    width: 4,
+    walkable: [[1, 0], [2, 0], [1, 1], [2, 1], [1, 2], [2, 2]],
+  }),
 
   // --- Built ----------------------------------------------------------------
   /**

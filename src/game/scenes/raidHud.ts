@@ -431,7 +431,13 @@ export function prizeChipView(input: PrizeChipInput | null): PrizeChipView | nul
     detail: `${input.direction} · ${input.distance} ${input.distance === 1 ? 'STEP' : 'STEPS'}`,
     ...(input.noRoomSquares === undefined
       ? {}
-      : { room: `NO ROOM: NEEDS ${input.noRoomSquares} ${input.noRoomSquares === 1 ? 'SQUARE' : 'SQUARES'}` }),
+      : {
+          // Which room, and where it is made: a bare "NO ROOM: NEEDS 4 SQUARES"
+          // left a newcomer asking room in what, and squares of what (the
+          // captain, 26 Nov 2026). The PACK is where the squares are, and B
+          // opens it, as the bar along the bottom says.
+          room: `PACK FULL: NEEDS ${input.noRoomSquares} ${input.noRoomSquares === 1 ? 'SQUARE' : 'SQUARES'} · ${keyHint('B', 'PACK')}`,
+        }),
   };
 }
 
