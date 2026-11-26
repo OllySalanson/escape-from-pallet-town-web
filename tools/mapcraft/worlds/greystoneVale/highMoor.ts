@@ -254,6 +254,8 @@ export function highMoor(): MapcraftResult {
         { x: 33, y: 49, species: 'psyduck', beat: { everyMs: 2300, roam: [[-1, 0]] } },
       ],
       people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 28, y: 47, name: "UNCLE GORSE", look: "old-man", facing: "left", local: true, lines: ["UNCLE GORSE, to everyone. I count the Little Stones each morning. Seven when I was a lad. Nine now. Nobody brought any.", "Touch the Grey Stones for luck as you go by. I've touched them sixty years and I've had sixty years, so there you are.", "Moor Spring tastes of egg, so you know it's good for you. The flock are Nidoran. Don't call them sheep. They mind.", "If you hear bells after dark up by the Lost Fold, you never heard them. Not from me."] },
         { x: 35, y: 58, name: 'Drover Boy', look: 'youngster', facing: 'down', lines: ['Grandad says they know the way home.', 'They do. They go there. All the time. Without me.'], beat: { everyMs: 3100, glances: ['right', 'down'] }, calls: ['Come back! Please!'] },
         { x: 24, y: 57, name: 'Lina', look: 'lass', facing: 'down', lines: ['I count them every time and get a different number.', 'I got six once. There were never six.'], beat: { everyMs: 3700, glances: ['left', 'right'] }, calls: ['One, two, three... wait.'] },
         { x: 36, y: 49, name: 'Tarn Fisher', look: 'fisherman', facing: 'up', lines: ['Up on the moor the water has nothing in it but sky.', 'I come for the quiet. Well. I did.'] },

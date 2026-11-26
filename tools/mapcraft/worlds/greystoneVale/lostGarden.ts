@@ -176,6 +176,10 @@ export function lostGarden(): MapcraftResult {
     ],
     extra: {
       landmarks: [{ x: 32, y: 31, name: 'The Glasshouse', kind: 'herbs' }],
+      people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 49, y: 25, name: "MISS PRIMROSE", look: "beauty", facing: "down", local: true, lines: ["MISS PRIMROSE. Father was station master. He made this garden for Mother and walled it so nobody would find it.", "The Glasshouse was his. The roses were hers. The berry trees are mine. The boulders were here first. They're nobody's.", "Behind the falls, through the cave, stones on the plates: the only way in. Father thought of everything but visitors.", "The Old Bloom flowers once a year. You've come on a good day. Every day is a good day in here."] },
+      ],
       signs: [{ x: 21, y: 33, lines: ["STATION MASTER'S GARDEN", 'Please keep to the paths.'] }],
       berryTrees: [
         { x: 26, y: 15, berry: 'oran' },

@@ -257,6 +257,8 @@ export function sunkenQuarter(): MapcraftResult {
       ],
       berryTrees: [{ x: 35, y: 41, berry: 'oran' }],
       people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 42, y: 16, name: "CRIER CLEM", look: "old-man", facing: "down", local: true, lines: ["CRIER CLEM. I've cried the hours here since I was a boy. The town went under the sea. I didn't see why the hours should.", "Middle Street's the high street now. The old high street's under the harbour. The fish market's forty yards inland.", "Past Cragg's barricades the Drowned Town comes up at low water. The stair opens at half three. The bell says otherwise.", "Hear ye, hear ye: it's raining. It's always raining. That's the news."] },
         { x: 24, y: 19, name: 'Flood Warden', look: 'sailor', facing: 'down', lines: ['The sea came over the wall and never went home.', 'The sandbags hold the lower streets. Most days.'], beat: { everyMs: 3600, glances: ['down', 'right'] }, calls: ['Mind your feet down there!'] },
         { x: 47, y: 23, name: 'Harbourmaster', look: 'captain', facing: 'down', lines: ['The sea took the lower town in one winter.', 'At low water you can walk the old streets to the stair.'], beat: { everyMs: 3900, glances: ['down', 'left'] }, calls: ['High water at four.'] },
         // -- The Old Quay -----------------------------------------------------------------

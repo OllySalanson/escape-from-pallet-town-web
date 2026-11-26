@@ -53,7 +53,7 @@ import {
   getWalkAnimationKey,
   getWalkFrames,
 } from '../playerFrames';
-import type { CharacterDesignId } from '../world/characterDesigns';
+import { getCharacterDesign, type CharacterDesignId } from '../world/characterDesigns';
 import {
   getWorldCharacterAppearance,
   headMarkCoversSomebody,
@@ -311,7 +311,7 @@ import { openNamingScreen } from '../ui/NamingScreenOverlay';
 import { placeCaptions, placeDialog, seatedOver, type CaptionPlacement, type Rect } from '../ui/labelPlacement';
 import { PARTNER_FRAME, arrivalPlace } from '../base/partner';
 import { publicAssetUrl } from '../publicAssetUrl';
-import { PartnerFigure, type PartnerHost } from '../base/partnerFigure';
+import { BUBBLE_HEIGHT, BUBBLE_WIDTH, PartnerFigure, drawEmoteBubble, type PartnerHost } from '../base/partnerFigure';
 import { ShinyGlints, glintHeadStart } from '../base/shinyGlint';
 import { raidFollower, sameFollower, shinyFollowerSheets, type RaidFollower } from '../world/raidFollower';
 import { advanceLookMs, isLooking } from '../ui/captionReveal';
@@ -361,7 +361,8 @@ import {
 import { WeatherId } from '../pokemon/battle/weather';
 import { SURVEY_RADIUS, tilesAround } from '../world/minimap';
 import { chartTileOf } from '../world/chart';
-import { troddenTiles } from '../world/trodden';
+import { knownOnChart } from '../world/chartKnown';
+import { PLACE_ON_MAP_HOLD_MS, placeOfLocal, taleLines } from '../world/locals';
 import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { UI } from '../ui/uiPalette';
 import { HINT_MARGIN, HINT_PADDING_X, HINT_PADDING_Y, spaceHint } from '../ui/hintLine';
@@ -1330,6 +1331,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private mapScreen: MapScreen | null = null;
   /** M was pressed mid-step: the map opens on the tile the step ends on, as the radio does. */
   private mapDue = false;
+  /** The "!" over each local whose tale is still to be heard (`markUnheardLocal`). */
+  private localMarks = new Map<string, Phaser.GameObjects.Graphics>();
   private radioChip: RadioChip | undefined;
   /** The pointer came down while a box was up: read as the key that moves it on. */
   private boxClicked = false;
@@ -1486,6 +1489,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // Closed, not forgotten: a screen left up would hold the keyboard over whatever came next.
     this.mapScreen?.close();
     this.mapScreen = null;
+    this.localMarks = new Map();
     this.mapDue = false;
     this.bagLines = [];
     this.bagsFalling = [];
@@ -3709,6 +3713,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     this.createLedgeLabels();
     this.idleFigures = createIdleFigures(this.currentMap.entities, Math.random);
+    // Read once for every local on the map, and only on a map that has one.
+    let heard: readonly string[] | undefined;
     for (const entity of this.currentMap.entities) {
       if (this.wasMet(entity) || this.racerAway(entity)) {
         continue;
@@ -3744,6 +3750,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         continue;
       }
       this.createFigure(entity.id, entity.position, entity.facing, 'npc', entity.design);
+      if (entity.local) {
+        heard ??= this.placesHeard();
+        this.markUnheardLocal(entity, heard);
+      }
     }
 
     for (const encounter of this.trainersForCurrentMap()) {
@@ -7735,6 +7745,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
 
+    if (entity?.local) {
+      this.tellTale(entity, entity.local.name);
+      return;
+    }
+
     const gift = entity ? giftGivenBy(entity.id) : undefined;
     if (gift) {
       this.dialogBox.showMessages([...this.speakForGift(gift, entity!.dialogLines)]);
@@ -7753,6 +7768,58 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     this.dialogBox.showMessages(spokenLines(linesSpoken(entity!, this.defeatedBosses), this.hunterRival().name));
+  }
+
+  /** The places of this map whose local this save has heard to the end. */
+  private placesHeard(): readonly string[] {
+    return new SaveManager().load()?.raidProgress.placesOnMap?.[this.currentMap.id] ?? [];
+  }
+
+  /**
+   * The harbour's "!" over a local whose tale this save has not heard to the
+   * end, so the person everybody knows is the one a player walks up to. A
+   * local keeps no beat (`locals.test.ts`), so it is placed once.
+   */
+  private markUnheardLocal(entity: WorldEntity, heard: readonly string[]): void {
+    const place = placeOfLocal(this.currentMap.id, entity.position);
+    if (!place || heard.includes(place.name)) {
+      return;
+    }
+    const sprite = this.npcSprites.get(entity.id);
+    const head = entity.design ? getCharacterDesign(entity.design).headPixelY : CHARACTER_HEAD_PIXEL_Y;
+    const mark = drawEmoteBubble(this, 'exclaim').setPosition(
+      Math.round(entity.position.x * TILE_SIZE + TILE_SIZE / 2 - BUBBLE_WIDTH / 2),
+      (sprite?.y ?? entity.position.y * TILE_SIZE) + head - BUBBLE_HEIGHT,
+    );
+    this.localMarks.set(entity.id, mark);
+    this.mapObjects.push(mark);
+  }
+
+  /**
+   * A place's local tells their tale (`world/locals.ts`), and the first time it
+   * is heard to the end they fill the whole place in on the player's map. It is
+   * written down the moment that last box is up, held for a beat like any
+   * thing given, so a tale skipped with ESC puts nothing on the map, and one
+   * heard puts it there for good, whatever happens to the raid after. Another
+   * tab having heard it first is the place on the map all the same.
+   */
+  private tellTale(entity: WorldEntity, name: string): void {
+    const place = placeOfLocal(this.currentMap.id, entity.position);
+    const known = place === undefined || this.placesHeard().includes(place.name);
+    const lines = taleLines(name, entity.dialogLines, place?.name ?? '', known);
+    this.dialogBox.showMessages(lines, (index) => {
+      if (known || !place || index !== lines.length - 1) {
+        return;
+      }
+      new SaveManager().putPlaceOnMap(this.currentMap.id, place.name);
+      if (!this.placesHeard().includes(place.name)) {
+        return;
+      }
+      this.localMarks.get(entity.id)?.destroy();
+      this.localMarks.delete(entity.id);
+      audioManager.play('landmarkWorked');
+      this.dialogBox.hold(PLACE_ON_MAP_HOLD_MS);
+    });
   }
 
   /**
@@ -8234,7 +8301,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     this.showIdlePose();
     const map = this.currentMap;
-    const saved = troddenTiles(new SaveManager().load()?.raidProgress.trodden?.[map.id], map.width);
+    const saved = knownOnChart(map.id, map.width, new SaveManager().load()?.raidProgress);
     const walking = this.runSession?.trodden;
     // However the world goes - a scene started without a door or a warp to say
     // so - the map goes with it rather than staying up over the next screen.

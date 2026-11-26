@@ -270,6 +270,8 @@ export function pineHollow(): MapcraftResult {
         { x: 35, y: 55, species: 'snorlax', level: 25, secret: 'the-sleeper-in-the-pines' },
       ],
       people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 20, y: 17, name: "MOTHER SAP", look: "old-woman", facing: "down", local: true, lines: ["MOTHER SAP. Seventy years I've tapped these pines. They know my hum, and I know theirs. Nobody else knows the way in.", "Three clearings, one trail. The Weeping Pine gives amber if you hum to it. Not loud. It's shy.", "The bees took the Bee Warden's hat in the spring. They take turns wearing it. We've let them keep it.", "Don't tell them in the Peaks how you got here. They'd only come and put a sign up."] },
         { x: 9, y: 12, name: 'Old Wren', look: 'old-woman', facing: 'right', lines: ['Nobody signs the trails in Pine Hollow. You find them or you do not.', 'The deer go south out of the hollow, down to the broadleaf wood.'], beat: { everyMs: 4200, glances: ['right', 'up'] }, calls: ['Who sent you?'] },
         { x: 18, y: 13, name: 'Water Girl', look: 'lass', facing: 'up', lines: ['Coldest spring in the vale. Gran says it cures everything.', 'She says that about everything. I just carry it.'], beat: { everyMs: 2200, glances: ['up', 'right'] }, calls: ['Mind the pails!'] },
         { x: 12, y: 21, name: 'Col Walker', look: 'hiker', facing: 'right', lines: ['Over the col from the peaks and this is what you get. Trees.', 'There is a charcoal track goes out of the nook south of here, if you know it. I never told you.'], beat: { everyMs: 3700, glances: ['right', 'down'] }, calls: ['Trees. More trees.'] },

@@ -618,6 +618,12 @@ export interface RaidProgress {
    * it was kept is given what its survey says it walked when it is read.
    */
   readonly trodden?: SurveyRecord;
+  /**
+   * The places whose local has told their tale to the end, by map and then by
+   * the place's name (`world/locals.ts`): each is on THE MAP whole. Absent on every
+   * save from before the locals, which is nobody heard yet.
+   */
+  readonly placesOnMap?: Readonly<Record<string, readonly string[]>>;
 }
 
 /** One map's raid history. Every other number on the drop-in screen is derived. */
@@ -711,6 +717,7 @@ export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   raidRecord: {},
   surveyed: {},
   trodden: {},
+  placesOnMap: {},
 };
 
 export interface SaveData {
@@ -2134,6 +2141,28 @@ export class SaveManager {
   }
 
   /**
+   * Puts a place on THE MAP, its local's tale heard to the end
+   * (`world/locals.ts`). It changes nothing a raid in flight holds, so it is
+   * written the moment it is heard, as a key learned is, and a raid lost
+   * afterwards has still heard it. Returns whether it was new.
+   */
+  public putPlaceOnMap(mapId: string, placeName: string): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    const held = game.raidProgress.placesOnMap ?? {};
+    if (held[mapId]?.includes(placeName)) {
+      return false;
+    }
+    const raidProgress: RaidProgress = {
+      ...game.raidProgress,
+      placesOnMap: { ...held, [mapId]: [...(held[mapId] ?? []), placeName] },
+    };
+    return this.save({ ...game, raidProgress });
+  }
+
+  /**
    * Registers kinds as seen in the Pokédex (`../hub/pokedex`), as a fight shows
    * them. Loads first and writes only what is new, so a kind met a hundred
    * times costs one write; returns the kinds newly registered. It changes
@@ -3452,6 +3481,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // Read off the survey on a save written before the steps were kept, so a
     // player who has walked half the vale does not open THE MAP on fog.
     trodden: value.trodden === undefined ? troddenFromSurvey(clampSurvey(value.surveyed)) : clampSurvey(value.trodden),
+    placesOnMap: clampPlacesOnMap(value.placesOnMap),
     // The starting area is never lost, so a save written before Floodplain Relay
     // became the first raid still opens on an insertion the player can use, and
     // a save that already banked the contract gets every level the contract now
@@ -3542,6 +3572,20 @@ function clampRaidRecord(value: unknown): Readonly<Record<string, MapRaidRecord>
     };
   }
   return record;
+}
+
+/** The places on THE MAP, by map: names only, each once, on a map the game still has. */
+function clampPlacesOnMap(value: unknown): Record<string, string[]> {
+  if (!isRecord(value)) {
+    return {};
+  }
+  const places: Record<string, string[]> = {};
+  for (const [mapId, held] of Object.entries(value)) {
+    if (isWorldMapId(mapId)) {
+      places[mapId] = uniqueStrings(held);
+    }
+  }
+  return places;
 }
 
 /**

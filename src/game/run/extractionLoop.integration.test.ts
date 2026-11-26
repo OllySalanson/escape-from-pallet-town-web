@@ -897,6 +897,7 @@ describe('extraction loop integration', () => {
       raidRecord: {},
       surveyed: {},
       trodden: {},
+      placesOnMap: {},
       // Every write registers the kinds in the vault (`hub/pokedex.ts`): the
       // starter's line, which is Bulbasaur's.
       pokedexOwned: [1],

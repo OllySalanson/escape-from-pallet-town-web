@@ -448,6 +448,8 @@ export function reedmere(): MapcraftResult {
         { x: 40, y: 50, lines: ['THE TURBARY', 'Peat for the whole marsh. Cut it, stack it, turn it, swear at it.'] },
       ],
       people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 45, y: 28, name: "NANNA SEDGE", look: "old-woman", facing: "right", local: true, lines: ["NANNA SEDGE. The mere's got no bottom, Dad said. He went down to look in '52. Came up with a boot. Not his.", "The dry way round is the long way round. The boardwalks are quicker but they wobble. So do I.", "Mere End's the town: stilt houses, the Drowned Duck, eels Thursdays. The hermit owes the Old Soak eleven years of ale.", "Down south there's a cove nobody talks about. I don't talk about it either. Loudest thing in Reedmere, that quiet."] },
         // The guard at Misty's bar, as FireRed's Route 23 keeps its badge gates:
         // he says which badge opens it, and stands to one side of the way.
         { x: 21, y: 62, name: 'Coast Guard', look: 'policeman', facing: 'left', lines: ['Past these sandbags is THE COAST, and MISTY keeps them. Only a trainer with her CASCADE BADGE goes through.', 'Beat her at Cerulean Gym on the strand and they come down for good. Mind the rain past them. It never stops.'],

@@ -171,6 +171,8 @@ export function stormcrown(): MapcraftResult {
         ...life.signs,
       ],
       people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 55, y: 26, name: "OLD THUNDER", look: "hiker", facing: "left", local: true, lines: ["OLD THUNDER. Lightning's had me nine times up here. I've had it back twice. We're near enough even.", "One way up: under the whole mountain through the caves and out the Chimney. If you're here, you're mad. Welcome.", "Rain on every fight. Something small and pink watches from the Cairn. I leave it a sandwich. It leaves me the crusts.", "The Cloud Stair goes over the top. On a clear day you can see the whole vale. There's never been a clear day."] },
         {
           x: 49,
           y: 25,

@@ -312,6 +312,8 @@ export function theCrossing(): MapcraftResult {
         { x: 56, y: 58, species: 'rattata', level: 7 },
       ],
       people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 12, y: 33, name: "FERRYMAN JACK", look: "fisherman", facing: "up", local: true, lines: ["FERRYMAN JACK. I rowed folk over this river before the bridge. Ninety years that bridge has been free. I'm still open.", "Nobody takes the ferry now: there's the bridge, and stepping stones for the brave. I row the Heron Man over Sundays.", "Bridge End: the inn, the market, a toll house that takes no toll. The coach went in the river once. The Ponyta swam out.", "Every road in the vale crosses this water somewhere. So in a way you're all my passengers."] },
         // -- The West Bank ------------------------------------------------------------
         { x: 9, y: 29, name: 'Carter', look: 'heavy-man', facing: 'down', lines: ['Everything Millbrook sells comes over that bridge, and I have carried all of it.', 'My back would like a word with the people who built a village on the wrong side of a river.'], beat: { everyMs: 3300, roam: [[1, 0], [2, 0]], glances: ['right'] }, calls: ['Mind your backs!'] },
         { x: 8, y: 37, name: 'Ostler', look: 'straw-hat', facing: 'right', lines: ['That Ponyta bites. No, it does not. It burns. I do not know why I said bites.'], beat: { everyMs: 3500, glances: ['up', 'down'] }, calls: ['Steady! Steady there!'] },

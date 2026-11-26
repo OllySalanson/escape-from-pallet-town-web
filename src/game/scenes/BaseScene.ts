@@ -329,7 +329,7 @@ import type { ArenaPanel } from './HubScene';
 import type { WorldSceneData } from './WorldScene';
 import { getWorldMap, worldMapName, type WorldMapId } from '../worldMap';
 import { MapScreen } from '../ui/MapScreen';
-import { troddenTiles } from '../world/trodden';
+import { knownOnChart } from '../world/chartKnown';
 import { FIRST_WORDS, hasHeard, heldLandingNews, mapsMovedNews, spokenLines, type FirstWordsId } from '../hub/firstWords';
 import { FIRST_JUMP_ANSWERS, firstJumpQuestion, goesStraightOver, isFirstRaid } from '../hub/firstRaid';
 import { benchOffer, benchOfferQuestion } from '../hub/benchOffer';
@@ -6146,7 +6146,7 @@ export class BaseScene extends Phaser.Scene {
     this.showHint('');
     const mapId = runInsertion(availableInsertionIds(game.raidProgress)[0] ?? '')?.mapId ?? 'greystone-vale';
     const map = getWorldMap(mapId);
-    const walked = troddenTiles(game.raidProgress.trodden?.[mapId], map.width);
+    const walked = knownOnChart(mapId, map.width, game.raidProgress);
     this.scene.pause();
     this.mapScreen = new MapScreen(
       this,

@@ -304,6 +304,8 @@ export function tanglewood(): MapcraftResult {
         ...life.landmarks,
       ],
       people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 34, y: 36, name: "LOST LETTICE", look: "old-woman", facing: "right", local: true, lines: ["LOST LETTICE, they call me. I got lost in Tanglewood when I was six. That was seventy years ago. Never found my way out.", "Mislaid was founded by accident: a cart took a wrong turn and the family stayed. The pub's called The Way Out. It isn't.", "The lanes go round and come back. The Halfway Stone is halfway between here and here. KOGA's gym is in here somewhere.", "Never wanted to leave, mind. You'll be lost in a minute. Here, let me show you where."] },
         // -- The woodmen's stand -------------------------------------------------------------
         { x: 5, y: 34, name: 'Woodman', look: 'black-belt', facing: 'down', lines: ['We only cut the edge. Nobody who went in to cut the middle has sent any wood back.', 'Keep to the road. I know everybody says it. Keep to it anyway.'], beat: { everyMs: 3200, roam: [[0, 1]], glances: ['down', 'right'] }, calls: ['Timber! Sort of.'] },
         { x: 9, y: 35, name: 'Young Woodman', look: 'boy', facing: 'left', lines: ['There was a deer path here somewhere, just off the road. It comes out at a gap.', 'If you ever need to leave in a hurry. Which you will. People do.'], beat: { everyMs: 2500, glances: ['up', 'down'] }, calls: ['Mind your head!'] },

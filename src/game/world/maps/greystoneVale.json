@@ -6122,6 +6122,20 @@
  ],
  "people": [
   {
+   "x": 99,
+   "y": 163,
+   "name": "AUNTIE MAB",
+   "look": "old-woman",
+   "facing": "left",
+   "local": true,
+   "lines": [
+    "AUNTIE MAB, love. Seventy years on this square. The whole vale has gone past me twice, and most of it waved.",
+    "Four roads meet here: up to the moor, over to The Crossing, down to the mere, and the Westward Road out. All start here.",
+    "Old Row's the oldest bit. Ott grows his beans there, and Mrs Marlow says they're hers. Forty years, that's been going.",
+    "Everybody who ever left Millbrook was back by teatime. Mind you are too, love."
+   ]
+  },
+  {
    "x": 97,
    "y": 153,
    "name": "Trader",
@@ -6756,6 +6770,20 @@
    "area": "millbrook-ott-s-cottage"
   },
   {
+   "x": 92,
+   "y": 111,
+   "name": "UNCLE GORSE",
+   "look": "old-man",
+   "facing": "left",
+   "local": true,
+   "lines": [
+    "UNCLE GORSE, to everyone. I count the Little Stones each morning. Seven when I was a lad. Nine now. Nobody brought any.",
+    "Touch the Grey Stones for luck as you go by. I've touched them sixty years and I've had sixty years, so there you are.",
+    "Moor Spring tastes of egg, so you know it's good for you. The flock are Nidoran. Don't call them sheep. They mind.",
+    "If you hear bells after dark up by the Lost Fold, you never heard them. Not from me."
+   ]
+  },
+  {
    "x": 99,
    "y": 122,
    "name": "Drover Boy",
@@ -7122,6 +7150,20 @@
     "He came back. He does not go up at night now. He does not say why. Nor does the dog."
    ],
    "area": "moor-shepherd-s-cottage"
+  },
+  {
+   "x": 169,
+   "y": 114,
+   "name": "OLD FLINT",
+   "look": "bald-man",
+   "facing": "left",
+   "local": true,
+   "lines": [
+    "OLD FLINT, they call me. Fifty years I cut stone in the Quarry, and never a stone that didn't want it. Ask first.",
+    "The river starts in the Tarn up top, small as a teacup. By The Crossing it carries carts. I knew it when it was little.",
+    "Rope's at Gantry's Stores. Buy two. The mountain eats the first one. The Onix by the Powder Store is Bertram. Say hello.",
+    "The caves go under the lot. I went in once in '41 and came out in '42. Best not."
+   ]
   },
   {
    "x": 148,
@@ -7496,6 +7538,20 @@
    "area": "peaks-the-quarry-hut"
   },
   {
+   "x": 212,
+   "y": 81,
+   "name": "MOTHER SAP",
+   "look": "old-woman",
+   "facing": "down",
+   "local": true,
+   "lines": [
+    "MOTHER SAP. Seventy years I've tapped these pines. They know my hum, and I know theirs. Nobody else knows the way in.",
+    "Three clearings, one trail. The Weeping Pine gives amber if you hum to it. Not loud. It's shy.",
+    "The bees took the Bee Warden's hat in the spring. They take turns wearing it. We've let them keep it.",
+    "Don't tell them in the Peaks how you got here. They'd only come and put a sign up."
+   ]
+  },
+  {
    "x": 201,
    "y": 76,
    "name": "Old Wren",
@@ -7808,6 +7864,20 @@
     "The oak glade is east. There. Now you know as much as I do."
    ],
    "area": "pines-old-wren-s"
+  },
+  {
+   "x": 140,
+   "y": 161,
+   "name": "FERRYMAN JACK",
+   "look": "fisherman",
+   "facing": "up",
+   "local": true,
+   "lines": [
+    "FERRYMAN JACK. I rowed folk over this river before the bridge. Ninety years that bridge has been free. I'm still open.",
+    "Nobody takes the ferry now: there's the bridge, and stepping stones for the brave. I row the Heron Man over Sundays.",
+    "Bridge End: the inn, the market, a toll house that takes no toll. The coach went in the river once. The Ponyta swam out.",
+    "Every road in the vale crosses this water somewhere. So in a way you're all my passengers."
+   ]
   },
   {
    "x": 137,
@@ -8283,6 +8353,20 @@
     "They stand just out of the slot. I have started to take it personally."
    ],
    "area": "crossing-the-heron-hide"
+  },
+  {
+   "x": 226,
+   "y": 164,
+   "name": "LOST LETTICE",
+   "look": "old-woman",
+   "facing": "right",
+   "local": true,
+   "lines": [
+    "LOST LETTICE, they call me. I got lost in Tanglewood when I was six. That was seventy years ago. Never found my way out.",
+    "Mislaid was founded by accident: a cart took a wrong turn and the family stayed. The pub's called The Way Out. It isn't.",
+    "The lanes go round and come back. The Halfway Stone is halfway between here and here. KOGA's gym is in here somewhere.",
+    "Never wanted to leave, mind. You'll be lost in a minute. Here, let me show you where."
+   ]
   },
   {
    "x": 197,
@@ -9116,6 +9200,20 @@
    "area": "tanglewood-the-map-room"
   },
   {
+   "x": 109,
+   "y": 220,
+   "name": "NANNA SEDGE",
+   "look": "old-woman",
+   "facing": "right",
+   "local": true,
+   "lines": [
+    "NANNA SEDGE. The mere's got no bottom, Dad said. He went down to look in '52. Came up with a boot. Not his.",
+    "The dry way round is the long way round. The boardwalks are quicker but they wobble. So do I.",
+    "Mere End's the town: stilt houses, the Drowned Duck, eels Thursdays. The hermit owes the Old Soak eleven years of ale.",
+    "Down south there's a cove nobody talks about. I don't talk about it either. Loudest thing in Reedmere, that quiet."
+   ]
+  },
+  {
    "x": 85,
    "y": 254,
    "name": "Coast Guard",
@@ -9784,6 +9882,20 @@
    "area": "reedmere-the-net-loft"
   },
   {
+   "x": 164,
+   "y": 235,
+   "name": "MOTHER GULL",
+   "look": "old-woman",
+   "facing": "down",
+   "local": true,
+   "lines": [
+    "MOTHER GULL. I've fed these gulls every morning since I could lift a bucket. They've all got names. They don't use them.",
+    "Old Bertie still lights the Old Light every night. Nobody's told him to stop, and he wouldn't hear them if they did.",
+    "Fisher Row, the Quay, the Rope Walk where they walk backwards. MISTY's gym sits up the hill, wet as you like.",
+    "Everything the river brings down from the vale ends up on my sand sooner or later. Even you, it looks like."
+   ]
+  },
+  {
    "x": 173,
    "y": 254,
    "name": "Coast Guard",
@@ -10310,6 +10422,20 @@
    "area": "strand-mrs-sprat-s"
   },
   {
+   "x": 222,
+   "y": 207,
+   "name": "OLD RUSSET",
+   "look": "straw-hat",
+   "facing": "down",
+   "local": true,
+   "lines": [
+    "OLD RUSSET, that's me. Eighty harvests on these terraces. Every tree's named for an apple. That one's Grandmother.",
+    "The scarecrow in the cornfield moves. We don't talk about who moves it. It's not me. I'm usually having a sit down.",
+    "The terraces step down to the sea, and the ledges are the quick way. My knees like the long way. They're eighty too.",
+    "Leave a coin in the Honesty Box for an apple. Nobody watches it. Well. Nobody but the scarecrow."
+   ]
+  },
+  {
    "x": 253,
    "y": 221,
    "name": "Marsh Guard",
@@ -10748,6 +10874,20 @@
     "Forty years of that. Have I told you about the farm? Lovely farm. Have I told you?"
    ],
    "area": "orchard-the-pressing-room"
+  },
+  {
+   "x": 274,
+   "y": 93,
+   "name": "MOLLY BULB",
+   "look": "old-woman",
+   "facing": "right",
+   "local": true,
+   "lines": [
+    "MOLLY BULB. Born in the switchyard in a power cut and named after the first thing Dad found. Never left since.",
+    "The flood stopped the turbines and Management went home. The lads have picketed nine years. I bring the tea.",
+    "The gate wants the Card Key, and that's lost in the pines next door. Nobody's looked. It's ever so far. Next door.",
+    "The 8:15 to Millbrook has never once come. I wait every morning anyway. You meet ever such nice people in a queue."
+   ]
   },
   {
    "x": 285,
@@ -11384,6 +11524,20 @@
    "area": "station-the-union-hall"
   },
   {
+   "x": 292,
+   "y": 160,
+   "name": "MAJOR MARSH",
+   "look": "gentleman",
+   "facing": "left",
+   "local": true,
+   "lines": [
+    "MAJOR MARSH. Born in a reed hut by the Great Pool. The rank is my own idea. Nobody out here has ever argued with it.",
+    "Something long lives in the Great Pool. I've watched for it eighty years, and it has watched back. We nod.",
+    "Everything out here bites, stings or poisons. Bring something for poison, and mind KOGA's bars on the roads in.",
+    "The Egg Bank eggs are not mine. I've been asked not to sit on them, and I'm a man of my word."
+   ]
+  },
+  {
    "x": 266,
    "y": 170,
    "name": "Warden",
@@ -11864,6 +12018,20 @@
     "Nobody has claimed me yet. There is a form, and I am told it is in the marsh."
    ],
    "area": "safari-the-property-office"
+  },
+  {
+   "x": 292,
+   "y": 222,
+   "name": "LITTLE MAISIE",
+   "look": "old-woman",
+   "facing": "down",
+   "local": true,
+   "lines": [
+    "LITTLE MAISIE. I was six when the liner ran aground. Everyone got off. I didn't fancy the walk. I'm eighty-one now.",
+    "The first-class lot on the Lido are still waiting for their dinner. I've told them. They won't have it.",
+    "The two Stans have been a week getting the ship's piano up the trail. The tuner's gone to meet it. It's flat.",
+    "The Ice Run goes out to Frostreef from the pier when the tide says. I've never been. Too chilly. I prefer a wreck."
+   ]
   },
   {
    "x": 295,
@@ -12382,6 +12550,20 @@
    "area": "wreck-the-ship-inn"
   },
   {
+   "x": 170,
+   "y": 272,
+   "name": "CRIER CLEM",
+   "look": "old-man",
+   "facing": "down",
+   "local": true,
+   "lines": [
+    "CRIER CLEM. I've cried the hours here since I was a boy. The town went under the sea. I didn't see why the hours should.",
+    "Middle Street's the high street now. The old high street's under the harbour. The fish market's forty yards inland.",
+    "Past Cragg's barricades the Drowned Town comes up at low water. The stair opens at half three. The bell says otherwise.",
+    "Hear ye, hear ye: it's raining. It's always raining. That's the news."
+   ]
+  },
+  {
    "x": 152,
    "y": 275,
    "name": "Flood Warden",
@@ -12734,6 +12916,20 @@
    "area": "quarter-the-tide-house"
   },
   {
+   "x": 89,
+   "y": 276,
+   "name": "INNOCENT IVY",
+   "look": "old-woman",
+   "facing": "right",
+   "local": true,
+   "lines": [
+    "INNOCENT IVY. All my life in this cove and I've never seen a smuggler. Not one. I've looked very hard the other way.",
+    "Officer Pym's watched for a sail for thirty years. Mrs Pym puts a lamp in the window while he watches. For company.",
+    "Those barrels are fish. Silk fish. Very rare. Sid sells them. And the skiff to the burning island is for, er, fishing.",
+    "If anybody asks, you came for the view. It's a lovely view. Look at it, and not at the boat shed."
+   ]
+  },
+  {
    "x": 74,
    "y": 269,
    "name": "Eel Catcher",
@@ -13052,6 +13248,20 @@
    "area": "cove-aunt-lizzie-s"
   },
   {
+   "x": 183,
+   "y": 26,
+   "name": "OLD THUNDER",
+   "look": "hiker",
+   "facing": "left",
+   "local": true,
+   "lines": [
+    "OLD THUNDER. Lightning's had me nine times up here. I've had it back twice. We're near enough even.",
+    "One way up: under the whole mountain through the caves and out the Chimney. If you're here, you're mad. Welcome.",
+    "Rain on every fight. Something small and pink watches from the Cairn. I leave it a sandwich. It leaves me the crusts.",
+    "The Cloud Stair goes over the top. On a clear day you can see the whole vale. There's never been a clear day."
+   ]
+  },
+  {
    "x": 177,
    "y": 25,
    "name": "Climber",
@@ -13083,6 +13293,20 @@
    "lines": [
     "I am mapping the deepest floor.",
     "Up the far passage there is daylight, and a storm."
+   ]
+  },
+  {
+   "x": 42,
+   "y": 93,
+   "name": "WIDOW MOTH",
+   "look": "channeler",
+   "facing": "left",
+   "local": true,
+   "lines": [
+    "WIDOW MOTH. I light the lantern at the Cross each night so the drovers find the chapel. Dead, mind. They still come.",
+    "The ghosts like a hymn. They don't know the words, and these days neither do I. We hum.",
+    "The fog only lifts after dark, along the sheep track. Day folk never find us. Night folk never leave. You'll be fine.",
+    "Something in the shadow of the crypt laughs at my jokes. Nobody else does."
    ]
   },
   {
@@ -13122,6 +13346,34 @@
    ]
   },
   {
+   "x": 369,
+   "y": 89,
+   "name": "MISS PRIMROSE",
+   "look": "beauty",
+   "facing": "down",
+   "local": true,
+   "lines": [
+    "MISS PRIMROSE. Father was station master. He made this garden for Mother and walled it so nobody would find it.",
+    "The Glasshouse was his. The roses were hers. The berry trees are mine. The boulders were here first. They're nobody's.",
+    "Behind the falls, through the cave, stones on the plates: the only way in. Father thought of everything but visitors.",
+    "The Old Bloom flowers once a year. You've come on a good day. Every day is a good day in here."
+   ]
+  },
+  {
+   "x": 353,
+   "y": 339,
+   "name": "GRANNY FLOE",
+   "look": "old-woman",
+   "facing": "down",
+   "local": true,
+   "lines": [
+    "GRANNY FLOE, born on the ice. Mother came out on the Ice Run for an afternoon, missed the tide, and had me. Never left.",
+    "Out here the tide is read off your clock. The Ice Run sails back till it says 1:00. After that, you're mine.",
+    "Berg Cave's floor is all ice: once you start sliding you go till something stops you. Like life. Like my late husband.",
+    "A Lapras sings in the Frozen Lagoon. Something colder lives further in. I knit it scarves. It never says thank you."
+   ]
+  },
+  {
    "x": 347,
    "y": 337,
    "name": "Old Whaler",
@@ -13143,6 +13395,20 @@
    "lines": [
     "The hole down is in the far corner, past the ice.",
     "Stop against the right boulder and you are there. Stop against the wrong one and you go round again."
+   ]
+  },
+  {
+   "x": 45,
+   "y": 343,
+   "name": "OLD CINDERS",
+   "look": "worker",
+   "facing": "down",
+   "local": true,
+   "lines": [
+    "OLD CINDERS, they call me. Born on this island, I'll go up with it. Not gone off in a hundred years. Saving up.",
+    "Every step on the crater's ash brings something up. Hot ground, rich ground. The richest and the worst in the vale.",
+    "The hoard's up there with two smugglers on it. Not smugglers. Collectors. Of a lot of very hot things.",
+    "The skiff runs till your clock reads 2:30, the Cinder Boat from 1:40. Miss both and you'll learn to like charcoal."
    ]
   },
   {

@@ -293,6 +293,8 @@ export function theWreck(): MapcraftResult {
         { x: 27, y: 14, lines: ['PLEASE KEEP LEFT', 'Piano in road.'] },
       ],
       people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 36, y: 30, name: "LITTLE MAISIE", look: "old-woman", facing: "down", local: true, lines: ["LITTLE MAISIE. I was six when the liner ran aground. Everyone got off. I didn't fancy the walk. I'm eighty-one now.", "The first-class lot on the Lido are still waiting for their dinner. I've told them. They won't have it.", "The two Stans have been a week getting the ship's piano up the trail. The tuner's gone to meet it. It's flat.", "The Ice Run goes out to Frostreef from the pier when the tide says. I've never been. Too chilly. I prefer a wreck."] },
         { x: 39, y: 40, name: 'Auctioneer', look: 'gentleman', facing: 'down', lines: ['Lot forty-two, a lifeboat, one careful owner. Who will start me at something?', 'Everything must go. It has mostly gone once already.'], beat: { everyMs: 2600, glances: ['down', 'left', 'right'] }, calls: ['Who will start me?', 'Sold, to the man in the sea!'] },
         { x: 35, y: 41, name: 'Bidder', look: 'bald-man', facing: 'up', lines: ['I came for a porthole. I have bought nine, and something I was told was a chair.', 'I have no boat. I have a shed with very good views of the shed.'], beat: { everyMs: 3100, glances: ['up', 'right'] }, calls: ['Mine! Is that mine?'] },
         { x: 41, y: 41, name: 'Dealer', look: 'rich-boy', facing: 'left', lines: ['Silver, if you can find any. That is all that is worth the walk.', 'The sea took the plate. The camp took the spoons. I have a very good price on some forks.'], beat: { everyMs: 2900, glances: ['left', 'up'] } },

@@ -270,6 +270,8 @@ export function smugglersCove(): MapcraftResult {
         { x: 26, y: 17, berry: 'chesto' },
       ],
       people: [
+        // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
+        { x: 25, y: 20, name: "INNOCENT IVY", look: "old-woman", facing: "right", local: true, lines: ["INNOCENT IVY. All my life in this cove and I've never seen a smuggler. Not one. I've looked very hard the other way.", "Officer Pym's watched for a sail for thirty years. Mrs Pym puts a lamp in the window while he watches. For company.", "Those barrels are fish. Silk fish. Very rare. Sid sells them. And the skiff to the burning island is for, er, fishing.", "If anybody asks, you came for the view. It's a lovely view. Look at it, and not at the boat shed."] },
         // -- The eel pool ----------------------------------------------------------------
         { x: 10, y: 13, name: 'Eel Catcher', look: 'fisherman', facing: 'up', lines: ['Everything the marsh drains comes down this brook, and I catch it.', 'Eels. I catch eels. There has never been a keg in this pool, and I have told him so.'], beat: { everyMs: 3300, glances: ['up', 'right'] }, calls: ['Eels! Only eels!'] },
         { x: 20, y: 9, name: 'Eel Girl', look: 'tuber-girl', facing: 'left', lines: ['There is a gap in the trees past the pool. You go out that way, if a man in a hat comes.', 'I do not know why. Dad says it is for the eels.'], beat: { everyMs: 2100, roam: [[-1, 0]], glances: ['left'] }, calls: ['Hat coming!'] },

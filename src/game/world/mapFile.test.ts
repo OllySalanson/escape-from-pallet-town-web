@@ -88,6 +88,17 @@ describe('reading a map file', () => {
     expect(readMapFile(crowded, { limits: BUILT_IN_MAP_FILE_LIMITS }).ok).toBe(true);
   });
 
+  it("lets only the game's own maps have a local, whose tale lights THE MAP", () => {
+    const at = SAMPLE.dropIns[0];
+    const local = { x: at.x + 1, y: at.y, name: 'OLD ONE', look: 'old-man', facing: 'down', lines: ['OLD ONE. Hello.'], local: true };
+    const withLocal = edited({ people: [...(SAMPLE.people ?? []), local] });
+    expect(problemsOf(withLocal).join(' ')).toContain('local');
+    const asGame = readMapFile(withLocal, { limits: BUILT_IN_MAP_FILE_LIMITS });
+    expect(asGame.ok).toBe(true);
+    const marked = edited({ people: [...(SAMPLE.people ?? []), { ...local, local: 'yes' }] });
+    expect(readMapFile(marked, { limits: BUILT_IN_MAP_FILE_LIMITS }).ok).toBe(false);
+  });
+
   it("only ever lets the game's own maps hold more and be bigger, never smaller", () => {
     for (const key of Object.keys(MAP_FILE_LIMITS) as (keyof typeof MAP_FILE_LIMITS)[]) {
       if (key.startsWith('min')) {
