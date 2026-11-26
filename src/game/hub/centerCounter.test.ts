@@ -106,7 +106,7 @@ describe('Nurse Joy at her counter', () => {
     // Said once: the free line, and not the rule beside it (retest, 22 Nov 2026).
     expect(offer.lines).not.toContain(HEAL_RULE_LINE);
     expect(offer.lines.join(' ').match(/free/g)).toHaveLength(1);
-    expect(HEAL_RULE_LINE).toBe("A scratch mends free. Only a faint costs, at most 1:00 of a raid, and today's free one is used: tomorrow's first is free.");
+    expect(HEAL_RULE_LINE).toBe("Only a faint costs. Your free heal today's been used; you get another tomorrow.");
     // A free heal opens on YES, as FireRed's does.
     expect(offer.spendsForGood).toBe(false);
     // Taken today, she charges, and still says the rule; tomorrow it is free again.

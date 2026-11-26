@@ -1,5 +1,7 @@
 import { hunterIntelLine } from '../scenes/raidHud';
 import { iconMarkup } from './icons';
+import { getWorkshopUpgrade } from '../hub/workshop';
+import { formatRecoveryClock, recoveryPrices } from '../hub/recovery';
 
 /**
  * What each of Brock's builds does in a raid, as a little picture of the raid
@@ -41,7 +43,8 @@ export function workshopEffectPicture(upgradeId: string): string {
       // The chip the HUD prints with the mast up, in its own words.
       return `<span class="ws-chip">${iconMarkup('radio-mast', 'Radio mast')}<span>HUNTER LV6 x2</span><span class="ws-arrow" aria-hidden="true"></span><b>${hunterIntelLine({ level: 6, teamSize: 2, next: { level: 9, teamSize: 3, inMs: 80_000 } })}</b></span>`;
     case 'beacon':
-      return `<span class="ws-chip">${clock('LATE')}<span class="ws-arrow" aria-hidden="true"></span>${iconMarkup('extraction-open', 'A way out')}<b>WHERE YOU LANDED</b></span>`;
+      // It opens at half the clock (`BEACON_UNLOCK_SHARE`): "LATE" sold it as later than it is.
+      return `<span class="ws-chip">${clock('HALFWAY')}<span class="ws-arrow" aria-hidden="true"></span>${iconMarkup('extraction-open', 'A way out')}<b>WHERE YOU LANDED</b></span>`;
     case 'secure-locker-1':
       return becomes(squares(2, 2, 0), squares(3, 2, 1));
     case 'secure-locker-2':
@@ -53,9 +56,13 @@ export function workshopEffectPicture(upgradeId: string): string {
       // The raid clock a revive costs, before and after: under half.
       return `<span class="ws-chip">${iconMarkup('raid-clock', 'Raid clock')}${becomes(`<span class="ws-bar"><i style="--fill:100%"></i></span>`, `<span class="ws-bar is-good"><i style="--fill:45%"></i></span>`)}</span>`;
     case 'recovery-bay-2':
-      return becomes(clock('REVIVE'), clock('0:05', 'is-good'));
-    case 'quarantine-ward':
-      return `<span class="ws-chip">${iconMarkup('medicine-bag', 'A revive')}<b>+1 REVIVE A RAID</b>${clock('0:00', 'is-good')}</span>`;
+      return becomes(clock('REVIVE'), clock(formatRecoveryClock(recoveryPrices(getWorkshopUpgrade('recovery-bay-2')?.recoveryPriceShare ?? 1).reviveMs), 'is-good'));
+    case 'quarantine-ward': {
+      // Read off the build, so it cannot drift again: it said "+1" for two
+      // days after the ward was raised to three (the harbour critic tour).
+      const beds = getWorkshopUpgrade('quarantine-ward')?.wardTreatments ?? 0;
+      return `<span class="ws-chip">${iconMarkup('medicine-bag', 'A revive')}<b>+${beds} ${beds === 1 ? 'REVIVE' : 'REVIVES'} A RAID</b>${clock('0:00', 'is-good')}</span>`;
+    }
     default:
       return '';
   }

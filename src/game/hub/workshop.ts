@@ -1,6 +1,7 @@
 import type { SupplyItemId } from '../items';
 import type { ContractStack } from '../objectives/contracts';
 import { Stash } from '../stash';
+import { formatRecoveryClock, RECOVERY_REVIVE_MS, recoveryPrices } from './recovery';
 
 /**
  * Brock's Workshop: permanent upgrades to the lab, paid for out of the vault.
@@ -112,6 +113,10 @@ export interface WorkshopUpgrade {
  * `workshop.test.ts` holds the order, and that the ladder is not cheaper than
  * it was.
  */
+/** What the healing machines leave of a revive's price: said in their lines as the time it comes to. */
+const MACHINE_I_SHARE = 0.5;
+const MACHINE_II_SHARE = 0.15;
+
 export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
   {
     id: 'radio-mast',
@@ -132,7 +137,8 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     id: 'beacon',
     icon: 'extraction-open',
     name: 'Beacon',
-    effect: 'Late in a raid, the spot you landed on is a way out too.',
+    // Halfway, not "late": it opens at `BEACON_UNLOCK_SHARE` of the clock.
+    effect: 'Halfway through a raid, the spot you landed on is a way out too.',
     detail: 'It marks where you land on every map, and opens halfway through the raid clock.',
     cost: {
       supplies: [
@@ -145,8 +151,11 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
   {
     id: 'secure-locker-1',
     icon: 'supply-crate',
-    name: 'Secure locker I',
-    effect: 'One more column of THE LOCKER.',
+    // One name a build, said the same at its bay, by Brock and on its card:
+    // the room called this THE FIRST LOCKER, Brock "Secure locker I" and the
+    // card LOCKER I (the harbour critic tour, 26 Nov 2026).
+    name: 'Locker I',
+    effect: 'Two more squares in THE LOCKER.',
     detail: 'More of what you carry comes home from every raid - even a lost one.',
     cost: {
       supplies: [{ itemId: 'parts-crate', quantity: 4 }],
@@ -156,7 +165,7 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
   {
     id: 'secure-locker-2',
     icon: 'supply-crate',
-    name: 'Secure locker II',
+    name: 'Locker II',
     effect: 'A second protected Pokémon, and the room for it.',
     detail:
       'A Pokémon takes four squares, so the slot alone would have been a promise THE LOCKER could not keep: it brings a column with it.',
@@ -180,19 +189,19 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     id: 'recovery-bay-1',
     icon: 'super-potion',
     name: 'Healing machine I',
-    effect: 'Reviving costs under half.',
+    effect: `Bringing a Pokémon round from a faint costs ${formatRecoveryClock(recoveryPrices(MACHINE_I_SHARE).reviveMs)} of your next raid, not ${formatRecoveryClock(RECOVERY_REVIVE_MS)}.`,
     detail: 'Brock fits the Center with a better machine: bringing a Pokémon round from a faint - the one thing Nurse Joy charges for - costs under half the raid time.',
     cost: { supplies: [{ itemId: 'linen-roll', quantity: 4 }] },
     // Since HP and status were made free, a revive is all a machine can cut,
     // and a quarter off 0:35 was ten seconds a faint for four linen - a rung
     // nobody would build (the fresh critic, 25 Nov 2026). Under half is 0:15.
-    recoveryPriceShare: 0.5,
+    recoveryPriceShare: MACHINE_I_SHARE,
   },
   {
     id: 'recovery-bay-2',
     icon: 'super-potion',
     name: 'Healing machine II',
-    effect: 'Reviving takes five seconds.',
+    effect: `Bringing a Pokémon round from a faint costs ${formatRecoveryClock(recoveryPrices(MACHINE_II_SHARE).reviveMs)} of your next raid.`,
     detail: 'A second machine beside the first: bringing a Pokémon round from a faint takes five seconds of the next raid, the least any treatment costs. Only the ward is quicker.',
     requires: 'recovery-bay-1',
     cost: {
@@ -203,13 +212,14 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     },
     // The quoting step's floor: a faint still costs something, so it stays
     // the worst outcome of a fight (`recovery.ts`).
-    recoveryPriceShare: 0.15,
+    recoveryPriceShare: MACHINE_II_SHARE,
   },
   {
     id: 'quarantine-ward',
     icon: 'antidote',
-    name: 'Quarantine ward',
-    effect: 'Three revives per raid, free of clock.',
+    // "Quarantine" was left over from when it cured status, which is free now.
+    name: 'The ward',
+    effect: 'Between raids, three fainted Pokémon brought round free.',
     detail:
       'Between raids, Nurse Joy brings up to three fainted Pokémon round free of clock: a whole raid party back from a wipe, for nothing.',
     cost: {

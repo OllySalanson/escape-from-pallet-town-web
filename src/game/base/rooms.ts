@@ -1,7 +1,7 @@
 import type { HonourId } from '../look/gymHonours';
 import type { GridPosition } from '../movement/gridMovement';
-import { WORKSHOP_UPGRADES } from '../hub/workshop';
-import { pokemonNeedingRecovery } from '../hub/recovery';
+import { getWorkshopUpgrade, WORKSHOP_UPGRADES } from '../hub/workshop';
+import { formatRecoveryClock, pokemonNeedingRecovery, recoveryPrices } from '../hub/recovery';
 import type { RestoredGame } from '../save/SaveManager';
 import type { Rect } from '../ui/labelPlacement';
 import { MapSketch } from '../world/mapGrid';
@@ -1246,23 +1246,47 @@ interface RungDisplay {
  * Oak's down the east. What a thing stands in front of throws its shade on the
  * plate below it (`shade`), and the shade goes when the thing does.
  */
+/**
+ * A build's name in the room, as Brock says it and its card shows it: one name
+ * a build. It was four (THE RADIO SET, Radio mast, RADIO MAST, "It hears the
+ * hunter"; the harbour critic tour, 26 Nov 2026).
+ */
+function rungName(upgradeId: string): string {
+  return (getWorkshopUpgrade(upgradeId)?.name ?? upgradeId).toUpperCase();
+}
+
+/** A healing machine's caption: what a revive costs with it standing, in raid time. */
+function reviveNote(upgradeId: string): string {
+  const share = getWorkshopUpgrade(upgradeId)?.recoveryPriceShare ?? 1;
+  return `Revive for ${formatRecoveryClock(recoveryPrices(share).reviveMs)} of a raid`;
+}
+
+/** The ward's caption: how many it brings round, said as what it is for. */
+function wardNote(): string {
+  const beds = getWorkshopUpgrade('quarantine-ward')?.wardTreatments ?? 0;
+  return `${beds} fainted brought round free`;
+}
+
+/** What the wall tally in Brock's workshop is called: the plans of everything he builds. */
+export const BROCKS_PLANS = 'BROCK’S PLANS';
+
 export const WORKSHOP_DISPLAY: readonly RungDisplay[] = [
   {
     upgradeId: 'radio-mast',
-    name: 'THE RADIO SET',
-    note: 'It hears the hunter',
+    name: rungName('radio-mast'),
+    note: 'Hear the hunter coming',
     props: [{ name: 'whTerminals', x: 1, y: 0 }],
   },
   {
     upgradeId: 'beacon',
-    name: 'THE BEACON’S LAMP',
-    note: 'It lights your landing',
+    name: rungName('beacon'),
+    note: 'A way out where you land',
     props: [{ name: 'whGenerator', x: 11, y: 0 }],
   },
   {
     upgradeId: 'secure-locker-1',
-    name: 'THE FIRST LOCKER',
-    note: 'What a lost raid cannot take',
+    name: rungName('secure-locker-1'),
+    note: 'Two more safe squares',
     props: [{ name: 'whCrate', x: 2, y: 4 }],
     shade: [
       { name: 'whShadow', x: 2, y: 6 },
@@ -1271,7 +1295,7 @@ export const WORKSHOP_DISPLAY: readonly RungDisplay[] = [
   },
   {
     upgradeId: 'secure-locker-2',
-    name: 'THE SECOND LOCKER',
+    name: rungName('secure-locker-2'),
     note: 'Room for a second Pokémon',
     props: [{ name: 'whCrate', x: 2, y: 7 }],
     shade: [
@@ -1281,20 +1305,20 @@ export const WORKSHOP_DISPLAY: readonly RungDisplay[] = [
   },
   {
     upgradeId: 'recovery-bay-1',
-    name: 'HEALING MACHINE I',
-    note: 'A revive costs under half',
+    name: rungName('recovery-bay-1'),
+    note: reviveNote('recovery-bay-1'),
     props: [{ name: 'healingMachineModel', x: 11, y: 4 }],
   },
   {
     upgradeId: 'recovery-bay-2',
-    name: 'HEALING MACHINE II',
-    note: 'A revive in five seconds',
+    name: rungName('recovery-bay-2'),
+    note: reviveNote('recovery-bay-2'),
     props: [{ name: 'healingMachineModel', x: 11, y: 7 }],
   },
   {
     upgradeId: 'quarantine-ward',
-    name: 'THE WARD’S MONITORS',
-    note: 'Three revives a raid, off the clock',
+    name: rungName('quarantine-ward'),
+    note: wardNote(),
     props: [{ name: 'whMonitorDesk', x: 5, y: 2 }],
   },
 ];
@@ -1308,20 +1332,20 @@ export const WORKSHOP_DISPLAY: readonly RungDisplay[] = [
 export const CENTER_DISPLAY: readonly RungDisplay[] = [
   {
     upgradeId: 'recovery-bay-1',
-    name: 'HEALING MACHINE I',
-    note: 'A revive costs under half',
+    name: rungName('recovery-bay-1'),
+    note: reviveNote('recovery-bay-1'),
     props: [{ name: 'pcHealingMachine', x: 2, y: 0 }],
   },
   {
     upgradeId: 'recovery-bay-2',
-    name: 'HEALING MACHINE II',
-    note: 'A revive in five seconds',
+    name: rungName('recovery-bay-2'),
+    note: reviveNote('recovery-bay-2'),
     props: [{ name: 'pcHealingMachine', x: 12, y: 0 }],
   },
   {
     upgradeId: 'quarantine-ward',
-    name: 'THE WARD',
-    note: 'Three revives a raid, off the clock',
+    name: rungName('quarantine-ward'),
+    note: wardNote(),
     props: [{ name: 'wardBed', x: 2, y: 5 }],
   },
 ];
@@ -1877,7 +1901,9 @@ function drawWorkshop(room: BaseRoom, game: RestoredGame): Drawn {
     tiles: solidTiles(display.props),
   }));
   const tally: RoomThing = {
-    name: 'THE LADDER',
+    // "THE LADDER" was the code's word for the list, painted on the wall,
+    // and no ladder was drawn (the harbour critic tour, 26 Nov 2026).
+    name: BROCKS_PLANS,
     note: `${displays.length} of ${WORKSHOP_DISPLAY.length} built`,
     tiles: wallTiles(LADDER_TALLY),
     opens: 'ladder',

@@ -15,7 +15,7 @@ const vaultHolding = (items: Readonly<Record<string, number>>) => {
 describe('Brock on a rung', () => {
   it('says what it does and what it takes, and asks only if it can be paid for', () => {
     const quote = brockQuoteFor(vaultHolding({ 'parts-crate': 4 }), [], 'secure-locker-1');
-    expect(quote.lines[0]).toBe('Secure locker I. One more column of THE LOCKER.');
+    expect(quote.lines[0]).toBe('Locker I. Two more squares in THE LOCKER.');
     expect(quote.lines[1]).toBe("That takes 4 Parts crates, and you've got it.");
     expect(quote.question).toBe(BUILD_QUESTION);
     expect(quote.upgradeId).toBe('secure-locker-1');
@@ -27,9 +27,14 @@ describe('Brock on a rung', () => {
     expect(quote.question).toBeUndefined();
   });
 
+  it('says where materials come from when none of the price is held, rather than reading the price back', () => {
+    const quote = brockQuoteFor(vaultHolding({}), [], 'secure-locker-1');
+    expect(quote.lines[1]).toBe("That takes 4 Parts crates. Raids turn them up, and Oak's jobs pay in them.");
+  });
+
   it('says which rung has to go in first', () => {
     const quote = brockQuoteFor(vaultHolding({ 'parts-crate': 9, 'mooring-rope': 9 }), [], 'secure-locker-2');
-    expect(quote.lines[1]).toContain('after Secure locker I');
+    expect(quote.lines[1]).toContain('after Locker I');
     expect(quote.question).toBeUndefined();
   });
 

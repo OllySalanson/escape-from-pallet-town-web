@@ -292,7 +292,7 @@ const BUILD_STARS_MS = 900;
  * the right and the help bar say it in full.
  */
 export function cardName(name: string): string {
-  return name.replace(/^Secure locker/, 'Locker').replace(/^Healing machine/, 'Healing').replace(/^Quarantine ward/, 'Ward');
+  return name.replace(/^Healing machine/, 'Healing').replace(/^The ward$/, 'Ward');
 }
 const PANEL_MIN_WIDTH = 320;
 const PANEL_SHARE = 0.56;
@@ -410,6 +410,8 @@ export class HubScene extends Phaser.Scene {
   private traderArmed: string | undefined;
   /** The Pokémon THE TRADER's list is asking about (`hub/trades.ts`), by stash id. */
   private tradeArmed: string | undefined;
+  /** The PC row whose heal has been asked about (`recoverAsked`), until it is answered or anything else is said. */
+  private recoverArmed: string | null = null;
   /**
    * When the last irreversible deal was armed (`armRelease`), so a pointer
    * click that lands on its confirm button straight away can be told for the
@@ -823,6 +825,28 @@ export class HubScene extends Phaser.Scene {
     return priceMs === 0
       ? `${place}: full restore, and it costs this raid nothing.`
       : `${place}: full restore for −${formatRecoveryClock(priceMs)} of raid time.`;
+  }
+
+  /**
+   * A heal pressed on a row of the Center's PC. One that costs raid time asks
+   * first and heals on the second press of the same row, as Joy's own
+   * question opens on NOT NOW: it spent 0:35 on one ENTER three tiles from
+   * her guarded counter (the harbour critic tour, 26 Nov 2026). A free one
+   * heals at once, as hers does.
+   */
+  private recoverAsked(id: string): void {
+    const stored = this.stash.listPokemon().find((each) => each.id === id);
+    const priceMs = stored ? this.recoveryPriceMs(stored) : 0;
+    if (priceMs > 0 && this.recoverArmed !== id) {
+      this.recoverArmed = id;
+      this.setStatus(`Spend ${formatRecoveryClock(priceMs)} of your next raid bringing ${stored!.pokemon.name} round? ENTER again to heal.`);
+      // The question stays up until it is answered, not for a status line's two seconds.
+      this.statusTimer?.remove();
+      this.statusTimer = undefined;
+      return;
+    }
+    this.recoverArmed = null;
+    this.recover([id]);
   }
 
   /**
@@ -1800,7 +1824,7 @@ export class HubScene extends Phaser.Scene {
       this.dealAtCounter(() => this.saveManager.buyTraderBerth());
     });
     on('[data-refused]', (button) => this.setStatus(button.dataset.refused));
-    on('[data-recover]', (button) => this.recover([button.dataset.recover!]));
+    on('[data-recover]', (button) => this.recoverAsked(button.dataset.recover!));
     on('[data-garden]', (button) => this.toggleGarden(button.dataset.garden!));
     on('[data-supply]', (button) => this.setStatus(button.dataset.help));
     on('[data-fit]', (button) => {
@@ -3443,7 +3467,7 @@ export class HubScene extends Phaser.Scene {
     const wiring = paid
       ? `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`
       : offer.refusal === undefined
-        ? `data-berth data-help="${escapeAttribute('One more column of THE LOCKER for one raid. Brock builds one for good.')}"`
+        ? `data-berth data-help="${escapeAttribute('Two more squares in THE LOCKER for one raid. Brock builds them for good.')}"`
         : `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`;
     const state = paid ? 'is-secured' : offer.refusal === undefined ? '' : offer.refusal === 'money-short' ? 'is-short' : 'is-locked';
     const price = paid
@@ -3754,6 +3778,8 @@ export class HubScene extends Phaser.Scene {
             confirm: `data-outfit-confirm="${upgrade.id}"`,
             confirmLabel: 'Build it',
             confirmHelp: `Spends ${escapeAttribute(spent)} for good.`,
+            // Green, the look's go: a build is a gain, and red is for what can be lost.
+            tone: 'primary',
           });
         }
         const built = offer.state === 'built';
@@ -4159,6 +4185,8 @@ export class HubScene extends Phaser.Scene {
    * one, and all it removes is the line it was started for.
    */
   private setStatus(message: string | undefined): void {
+    // A heal asked about is asked about only while its question is up.
+    if (message === undefined || !message.startsWith('Spend ')) this.recoverArmed = null;
     this.statusTimer?.remove();
     this.statusTimer = undefined;
     this.status = message ?? '';
