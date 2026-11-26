@@ -58,17 +58,10 @@ describe('the GAMES menu', () => {
     expect(defaultHelp).not.toContain('back to the house');
     expect(defaultHelp).toContain('ENTER keep this name');
     expect(defaultHelp).toContain('ESC back to the games');
-    // The box itself answers for the cursor while it is in it.
-    expect(html).toMatch(/<input[^>]*data-help="[^"]*ENTER keep this name[^"]*"/);
-  });
-
-  it('promises a game from the name box only when one is waiting on the name', () => {
-    const renaming = gamesMenuMarkup(state({ naming: { value: 'AS' } }));
-    expect(renaming).not.toContain('Play under this name.');
-    expect(renaming).toMatch(/data-help="Keep this name for every board\."[^>]*>OK</);
-    const beforePlaying = gamesMenuMarkup(state({ playerName: null, naming: { value: '', then: 'pallet-blocks' } }));
-    expect(beforePlaying).toMatch(/data-help="Play PALLET BLOCKS under this name\."[^>]*>OK</);
-    expect(/data-keys="[^"]*">([^<]*)</.exec(beforePlaying)?.[1]).toContain('ENTER play under this name');
+    // The box answers for itself, not with the keys line again: the two said
+    // the same words, one over the other (the harbour re-critic).
+    expect(html).toMatch(/<input[^>]*data-help="Your scores go on the boards under this name\."/);
+    expect(html).toMatch(/data-help="Keep this name for every board\."[^>]*>OK</);
   });
 
   it('puts a refusal where the help bar is', () => {

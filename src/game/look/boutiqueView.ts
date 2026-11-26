@@ -56,8 +56,9 @@ const SLOT_WORDS: Readonly<Record<LookSlot, string>> = {
   body: 'Outfit',
 };
 
-export const BOUTIQUE_HINTS = 'ARROWS move · ENTER try it on, then ENTER buys · Q E shelf · TAB shelf or bar · ESC back';
-export const WARDROBE_HINTS = 'ARROWS move · ENTER try it on, then ENTER wears it · Q E shelf · TAB clothes or bar · ESC back';
+// Short enough to stand whole on the smallest stage's keys line (the harbour re-critic).
+export const BOUTIQUE_HINTS = 'ARROWS move · ENTER try on, again to buy · Q E shelf · TAB bar · ESC back';
+export const WARDROBE_HINTS = 'ARROWS move · ENTER try on, again to wear · Q E shelf · TAB bar · ESC back';
 
 /** The rows of the figure's sheet the mirror shows, one facing each: down, left, up, right. */
 const MIRROR_ROWS = [0, 3, 2, 1] as const;
@@ -78,7 +79,9 @@ export function lookFigure(sheet: string, options: { readonly row?: number; read
 export function boutiqueMarkup(state: BoutiqueState): string {
   const shop = state.mode === 'shop';
   const shelves = shop ? shopShelves(state) : wardrobeShelves(state);
-  const count = shop ? WEARABLES.length : WEARABLES.filter((piece) => state.owned.has(piece.id)).length;
+  // The wardrobe counts what is yours, the honours too, and not out of all 209:
+  // "3 pieces of 209" said how little a newcomer had (the harbour re-critic).
+  const count = shop ? WEARABLES.length : WEARABLES.filter((piece) => state.owned.has(piece.id)).length + state.honours.earned.length;
   const body = `<main class="px-body boutique-layout"><div class="boutique-panes">${mirror(state)}${pixelWindow(
     `${shelfPager(shelves)}<div class="px-list px-scroll boutique-shelves" data-shelves ${pixelColumns(COLUMN_MEASURES.wearable)}>${shelves}</div>`,
     {
@@ -86,7 +89,7 @@ export function boutiqueMarkup(state: BoutiqueState): string {
       // The heading counts the looks too, as the MORE strip counts every card:
       // "209 PIECES" over "240 MORE" read as two counts that could not both be
       // right (veteran playtest, 20 Nov 2026).
-      note: shop ? `${WHOLE_LOOKS.length + 1} looks · ${count} pieces` : `${count} piece${count === 1 ? '' : 's'} of ${WEARABLES.length}`,
+      note: shop ? `${WHOLE_LOOKS.length + 1} looks · ${count} pieces` : `${count} piece${count === 1 ? '' : 's'} yours`,
       className: 'boutique-shelves-window',
     },
   )}</div>${commitBar(state)}</main>`;
@@ -237,7 +240,7 @@ function honourCard(state: BoutiqueState, honour: GymHonour): string {
   const worn = state.honours.worn.includes(honour.id);
   const leader = honour.leader.toUpperCase();
   const shop = state.mode === 'shop';
-  const line = !earned ? `Beat ${leader}` : shop ? `${leader}'s · Yours` : `${leader}'s · ${worn ? 'Worn' : 'Taken off'}`;
+  const line = !earned ? `Beat ${leader}` : shop ? `${leader}'s · Yours` : `${leader}'s · ${worn ? 'On' : 'Off'}`;
   const help = !earned
     ? `${honour.name}: ${honour.note} Not for sale: ${leader} gives it to whoever beats them.`
     : shop
@@ -262,7 +265,7 @@ function classicCard(state: BoutiqueState): string {
   const on = state.trying === null;
   const help = 'The clothes you came to the harbour in. Free, and always yours.';
   const start = state.mode === 'wardrobe' && state.honours.earned.length > 0 ? '' : ' data-cursor-start';
-  return `<button class="px-window px-card boutique-card${on ? ' is-selected' : ''}" data-classic${start} data-help="${escapeAttribute(help)}">${lookFigure(state.sheet(null), { label: 'The classic look' })}<strong>The classic look</strong><small class="px-wrap">${on ? 'On in the mirror' : 'Free'}</small></button>`;
+  return `<button class="px-window px-card boutique-card${on ? ' is-selected' : ''}" data-classic${start} data-help="${escapeAttribute(help)}">${lookFigure(state.sheet(null), { label: 'The classic look' })}<strong>The classic look</strong><small class="px-wrap">${on ? 'On in the mirror' : 'Always yours'}</small></button>`;
 }
 
 /**
@@ -299,7 +302,7 @@ function pieceCard(state: BoutiqueState, piece: Wearable): string {
   const on = state.trying !== null && Object.values(state.trying).includes(piece.id);
   const owned = state.owned.has(piece.id);
   const sold = !owned && piece.rarity !== 'raid' && piece.rarity !== 'starter';
-  const line = owned ? 'Yours' : priceLine(piece);
+  const line = owned ? (Object.values(state.wearing ?? {}).includes(piece.id) ? 'Yours · on' : 'Yours') : priceLine(piece);
   const help = `${piece.name}: ${piece.note}${owned ? '' : piece.rarity === 'raid' ? ' Only ever found on a raid.' : ` ${priceLine(piece)}.`}`;
   return `<button class="px-window px-card boutique-card${on ? ' is-selected' : ''}${piece.rarity === 'raid' ? ' is-raid' : ''}" data-wear="${piece.id}" data-help="${escapeAttribute(help)}">${lookFigure(state.sheet(look), { label: piece.name })}<strong>${piece.name}</strong>${sold ? priceChips(billFor([piece])) : `<small class="px-wrap${owned ? ' px-note' : ''}">${line}</small>`}</button>`;
 }

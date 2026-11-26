@@ -2482,7 +2482,8 @@ function drawUpstairs(room: BaseRoom, game: RestoredGame): Drawn {
         { x: 3, y: 1 },
         { x: 4, y: 1 },
       ],
-      lines: ['Toys on top, and below them every book about Kanto you have ever been given.'],
+      // Nobody gives you a book; the books are at the library (the harbour re-critic).
+      lines: ['Toys on top, and a few comics. The proper books are at THE GREAT LIBRARY.'],
     },
     {
       name: 'THE CALENDAR',

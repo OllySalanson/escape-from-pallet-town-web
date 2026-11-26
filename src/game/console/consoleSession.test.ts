@@ -23,7 +23,10 @@ function fakeGame(options: { fails?: boolean } = {}) {
   return { game, seen };
 }
 
-function harness(board: Board = { where: 'pallet-town', entries: [{ name: 'BROCK', score: 900, mine: false }] }) {
+function harness(
+  board: Board = { where: 'pallet-town', entries: [{ name: 'BROCK', score: 900, mine: false }] },
+  claims: Readonly<Record<string, string | null>> = {},
+) {
   const log: string[] = [];
   const posted: { game: string; name: string; score: ConsoleScore }[] = [];
   const hosts: { removed: boolean }[] = [];
@@ -46,6 +49,8 @@ function harness(board: Board = { where: 'pallet-town', entries: [{ name: 'BROCK
     boardRead: (game, read) => log.push(`board ${game.id} ${read.where}`),
     leave: () => log.push('back to the house'),
     later: (run) => void queued.push(run),
+    claimName: (typed) => Promise.resolve(typed in claims ? claims[typed] : typed),
+    scoreUnnamed: (game, score, typed) => log.push(`unnamed ${game.id} ${score} ${typed}`),
   });
   return { session, log, posted, hosts, queued };
 }
@@ -67,6 +72,33 @@ describe('handing a game over from the console and back', () => {
     await session.play(game, 'ASH');
     await seen.host!.onGameOver({ score: 4200, lines: 12, level: 2, durationMs: 95_000 });
     expect(posted).toEqual([{ game: 'pallet-blocks', name: 'ASH', score: { score: 4200, lines: 12, level: 2, durationMs: 95_000 } }]);
+  });
+
+  /**
+   * A console in your own room plays at once: named nowhere yet, the game asks
+   * at its end, and only for a score that earns a place (the harbour re-critic).
+   */
+  it('plays with no name, and posts a score under the name the game asked for once it is claimed', async () => {
+    const { game, seen } = fakeGame();
+    const { session, posted } = harness();
+    await session.play(game, null);
+    expect(seen.host?.playerName).toBeNull();
+    await seen.host!.onGameOver({ score: 4200, lines: 12, level: 2, durationMs: 95_000, name: 'MAY' });
+    expect(posted).toEqual([{ game: 'pallet-blocks', name: 'MAY', score: { score: 4200, lines: 12, level: 2, durationMs: 95_000 } }]);
+    // The next game in the sitting goes under it too, without asking.
+    await seen.host!.onGameOver({ score: 100, lines: 1, level: 1, durationMs: 9_000, name: null });
+    expect(posted.map((each) => each.name)).toEqual(['MAY', 'MAY']);
+  });
+
+  it('posts nothing under a name it could not claim, and says so; nor a score the game asked no name for', async () => {
+    const { game, seen } = fakeGame();
+    const { session, posted, log } = harness(undefined, { BROCK: null });
+    await session.play(game, null);
+    await seen.host!.onGameOver({ score: 300, lines: 2, level: 1, durationMs: 9_000, name: null });
+    await seen.host!.onGameOver({ score: 4200, lines: 12, level: 2, durationMs: 95_000, name: 'BROCK' });
+    expect(posted).toEqual([]);
+    expect(log).toContain('unnamed pallet-blocks 4200 BROCK');
+    expect(log.filter((line) => line.startsWith('unnamed'))).toHaveLength(1);
   });
 
   it("shows the console's board on the game's own screens", async () => {

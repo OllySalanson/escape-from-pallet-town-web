@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { raidsDeployed, type MapRaidRecord, type RaidProgress } from '../save/SaveManager';
+import type { RaidLogEnding } from '../run/raidLog';
 import { HUNTER_RIVALS, hunterRival, rivalForRaid } from '../world/hunters';
 import { baseGame } from './baseGames.testkit';
 import {
@@ -43,7 +44,7 @@ describe("what the things in THE BOLTHOLE say", () => {
       'route-1': { deployed: 2, extracted: 1, wiped: 1 },
     });
     expect(calendarLines(game)).toEqual([
-      'DAY 10. Every raid is a day on this calendar, and 9 are crossed off.',
+      'DAY 10. 9 days crossed off, one for each raid.',
       '6 of them have a tick for coming home.',
       'In the margin: FLOODPLAIN RELAY, 7 times.',
     ]);
@@ -72,11 +73,33 @@ describe("what the things in THE BOLTHOLE say", () => {
     expect(calendarDay(game)).toBe(4);
     // One place raided: the margin would only say the total again (the harbour critic tour).
     expect(calendarLines(game)).toEqual([
-      'DAY 4. Every raid is a day on this calendar, and 3 are crossed off.',
+      'DAY 4. 3 days crossed off, one for each raid.',
       '2 of them have a tick for coming home.',
     ]);
     const two = raids({ 'route-1': { deployed: 3, extracted: 2, wiped: 1 }, 'pallet-town': { deployed: 1, extracted: 1, wiped: 0 } });
     expect(calendarLines(two).at(-1)).toBe('In the margin: ROUTE 1, 3 times.');
+  });
+
+  it("says yesterday's square: what came home, or what ended it", () => {
+    const side = (ids: string[], items: Record<string, number> = {}) => ({
+      pokemon: ids.map((id) => ({ id, species: 'pidgey', level: 3 })),
+      items,
+    });
+    const logged = (ending: RaidLogEnding, home = side([])) =>
+      calendarLines(
+        baseGame({
+          progress: {
+            raidRecord: { 'greystone-vale': { deployed: 1, extracted: ending === 'out' ? 1 : 0, wiped: ending === 'out' ? 0 : 1 } },
+            raidLog: [{ at: '2026-11-26T12:00:00Z', mapId: 'greystone-vale', ending, took: side(['a'], { potion: 1 }), home, lost: side([]) }],
+          },
+        }),
+      ).at(-1);
+    // The partner who went and came back is no catch.
+    // Nor is the Potion packed and brought back.
+    expect(logged('out', side(['a', 'b'], { potion: 2, 'parts-crate': 1 }))).toBe("Yesterday's square: a tick, with 2 finds and 1 catch.");
+    expect(logged('out', side(['a'], { potion: 1 }))).toBe("Yesterday's square: a tick, and empty hands.");
+    expect(logged('clock')).toBe("Yesterday's square: a cross. The clock ran out.");
+    expect(calendarLines(baseGame()).join(' ')).not.toContain('Yesterday');
   });
 
   it('says the ticks as a sentence, whatever the count', () => {

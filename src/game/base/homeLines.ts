@@ -5,6 +5,7 @@ import { KANTO_POKEDEX_SIZE, dueMilestone, nextMilestone, pokedexOwned } from '.
 import { hunterRival, rivalForRaid, type HunterRivalId } from '../world/hunters';
 import { worldMapName, type WorldMapId } from '../worldMap';
 import { teamCondition } from '../hub/recovery';
+import type { RaidLogEnding } from '../run/raidLog';
 
 /**
  * What the things in THE BOLTHOLE say, worked out from the save.
@@ -104,8 +105,11 @@ export function calendarLines(game: RestoredGame): readonly string[] {
     return [`DAY 1. A calendar, pinned by the stairs. Nothing crossed off yet.`];
   }
   return [
-    `DAY ${calendarDay(game)}. Every raid is a day on this calendar, and ${log.raids} ${log.raids === 1 ? 'is' : 'are'} crossed off.`,
+    // What it shows, not the rule it keeps ("Every raid is a day on this
+    // calendar", the harbour re-critic), and the last square said as what happened.
+    `DAY ${calendarDay(game)}. ${log.raids} ${log.raids === 1 ? 'day' : 'days'} crossed off, one for each raid.`,
     ticks(log.home, log.raids),
+    ...lastSquare(game),
     // The raid log the PC used to read, before the PC became storage: where
     // the player keeps going back to is written in the margin - once there is
     // more than one place to choose between. With one map it only said the
@@ -115,6 +119,35 @@ export function calendarLines(game: RestoredGame): readonly string[] {
       : []),
   ];
 }
+
+/** Yesterday's square, from the raid log: what came home, or what ended it. */
+function lastSquare(game: RestoredGame): readonly string[] {
+  const last = game.raidProgress.raidLog?.at(-1);
+  if (!last) return [];
+  if (last.ending !== 'out') {
+    return [`Yesterday's square: ${LOST_SQUARE[last.ending]}`];
+  }
+  // `home` is the team that got back as well as every find, so a catch is one that did not go.
+  const went = new Set(last.took.pokemon.map((each) => each.id));
+  const caught = last.home.pokemon.filter((each) => !went.has(each.id)).length;
+  // And what came home packed is no find: three Potions taken out and brought
+  // back read as "3 finds" (the harbour re-critic).
+  const found = Object.entries(last.home.items).reduce(
+    (total, [id, count]) => total + Math.max(0, count - (last.took.items[id] ?? 0)),
+    0,
+  );
+  const said = [
+    ...(found > 0 ? [`${found} ${found === 1 ? 'find' : 'finds'}`] : []),
+    ...(caught > 0 ? [`${caught} ${caught === 1 ? 'catch' : 'catches'}`] : []),
+  ];
+  return [`Yesterday's square: a tick, ${said.length === 0 ? 'and empty hands' : `with ${said.join(' and ')}`}.`];
+}
+
+const LOST_SQUARE: Readonly<Record<Exclude<RaidLogEnding, 'out'>, string>> = {
+  clock: 'a cross. The clock ran out.',
+  fainted: 'a cross. Everybody fainted.',
+  'walked-away': 'a cross. You walked away from it.',
+};
 
 /** How many of the crossed-off days are ticked, said as a sentence rather than as a count. */
 function ticks(home: number, raids: number): string {
@@ -134,11 +167,14 @@ export function bedLines(game: RestoredGame): readonly string[] {
   // The last line reads the team: it sent a fully healed team to NURSE JOY
   // (the harbour critic tour, 26 Nov 2026).
   const partner = game.stash.partner()?.pokemon.name;
+  const hurt = teamCondition(game.stash);
   return [
     'You lie down. Nobody hunts you here.',
     dream,
-    teamCondition(game.stash) !== null
-      ? 'You feel rested. Your Pokémon still need NURSE JOY for that.'
+    // Said whose and what, and who mends it: "still need NURSE JOY for that"
+    // pointed at nothing (the harbour re-critic).
+    hurt !== null
+      ? `You feel rested, but ${hurt}. NURSE JOY can see to that.`
       : partner
         ? `You feel rested. So does ${partner.toUpperCase()}.`
         : 'You feel rested.',
