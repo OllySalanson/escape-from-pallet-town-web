@@ -1609,7 +1609,8 @@ export class HubScene extends Phaser.Scene {
    * other view's only way out is the X, back into the room it is kept in.
    */
   private get stepBack(): { readonly label: string; readonly attribute: string } | undefined {
-    if (this.view === 'reselect') return { label: this.atHome ? 'My PC' : 'Bill’s PC', attribute: 'data-back' };
+    // Named for the PC it was opened from: `atHome` is the PC's own view, so asked here it was never true.
+    if (this.view === 'reselect') return { label: this.enteredFrom === 'bolthole-upstairs' ? 'My PC' : 'Bill’s PC', attribute: 'data-back' };
     if (this.view === 'wallmap' && this.wallMapInspect) return { label: 'Wall map', attribute: 'data-back' };
     return undefined;
   }
@@ -1790,6 +1791,27 @@ export class HubScene extends Phaser.Scene {
     on('[data-box-cancel]', () => rerender(() => { this.boxEditing = undefined; this.boxMoving = undefined; }));
     this.wireBoxForm(root);
     on('[data-swap-arm]', () => rerender(() => { this.swapArmed = true; this.armRelease(); }));
+    // The swap's button names the starter under the cursor: it named the one
+    // clicked last while the gold ring stood on another, on a screen that
+    // releases a Pokémon for good (the harbour re-critic). Only the bar is
+    // redrawn, never the screen under the cursor.
+    root.querySelectorAll<HTMLButtonElement>('[data-starter]').forEach((card) => {
+      card.onfocus = () => {
+        const id = card.dataset.starter as StarterSpeciesId;
+        const spare = this.sparePartner;
+        const bar = root.querySelector<HTMLElement>('[data-swap-footer]');
+        if (!spare || !bar || id === this.reselectStarterId) return;
+        this.reselectStarterId = id;
+        this.swapArmed = false;
+        root.querySelectorAll<HTMLElement>('[data-starter]').forEach((each) => {
+          each.classList.toggle('is-selected', each === card);
+          each.setAttribute('aria-pressed', String(each === card));
+        });
+        bar.innerHTML = this.swapFooter(spare, getStarterSpecies(id));
+        const arm = bar.querySelector<HTMLButtonElement>('[data-swap-arm]');
+        if (arm) arm.onclick = () => rerender(() => { this.swapArmed = true; this.armRelease(); });
+      };
+    });
     on('[data-swap-cancel]', () => rerender(() => { this.swapArmed = false; }));
     on('[data-swap-confirm]', (_button, event) => {
       if (!this.clickedTooSoon(event, '[data-swap-cancel]')) this.confirmSwap();
@@ -2486,11 +2508,12 @@ export class HubScene extends Phaser.Scene {
     const name = escapeAttribute(stored.pokemon.name);
     return this.chip(
       `data-box-move="${stored.id}" ${shows}`,
-      // "Putting down" a pet is putting it to sleep for good (the harbour re-critic).
-      moving ? `Leave ${name} in ${escapeAttribute(boxed ?? 'its box')}.` : `Move ${name} to another box. It is in ${escapeAttribute(boxed ?? 'no box')}.`,
+      // "Putting down" a pet is putting it to sleep for good, and a second
+      // CANCEL beside the bar's own was one too many (the harbour re-critic).
+      moving ? `Pick ${name}'s new box in the bar above, or press this again to leave it in ${escapeAttribute(boxed ?? 'its box')}.` : `Move ${name} to another box. It is in ${escapeAttribute(boxed ?? 'no box')}.`,
       // The verb first, then where it is now: a chip that is only a name reads
       // as a label rather than as something to press.
-      moving ? 'Cancel move' : `Move · ${escapeAttribute(boxed ?? 'no box')}`,
+      moving ? 'Moving' : `Move · ${escapeAttribute(boxed ?? 'no box')}`,
     );
   }
 
@@ -4001,7 +4024,7 @@ export class HubScene extends Phaser.Scene {
     if (!spare) return '<main class="px-body"><p class="px-window px-empty">You have more than one Pokémon, so there is nothing to swap.</p></main>';
     const chosen = getStarterSpecies(this.reselectStarterId);
     const held = `${spare.pokemon.name} (Level ${spare.pokemon.level})`;
-    return `<main class="px-body starter-shell reselect-shell"><p class="starter-brief">${held} is your last Pokémon. Swapping releases it for good for a level 5 starter as hurt as it is now, with no supplies.</p><div class="starter-grid" ${pixelColumns(100, { maximum: 3, widest: 132 })}>${starterCards(this.reselectStarterId, { heldSpeciesId: spare.pokemon.base.id, selectHelp: 'Swap to this starter.' })}</div>${this.swapFooter(spare, chosen)}</main>`;
+    return `<main class="px-body starter-shell reselect-shell"><p class="starter-brief">${held} is your last Pokémon. Swapping releases it for good for a level 5 starter as hurt as it is now, with no supplies.</p><div class="starter-grid" ${pixelColumns(100, { maximum: 3, widest: 132 })}>${starterCards(this.reselectStarterId, { heldSpeciesId: spare.pokemon.base.id, selectHelp: 'Swap to this starter.' })}</div><div data-swap-footer>${this.swapFooter(spare, chosen)}</div></main>`;
   }
 
   private swapFooter(spare: StashedPokemon, chosen: PokemonBase): string {

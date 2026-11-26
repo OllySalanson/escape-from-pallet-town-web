@@ -248,7 +248,7 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
       const mirror = this.overlay?.root.querySelector<HTMLElement>('[data-mirror]');
       if (mirror) mirror.innerHTML = mirrorFigures(this.sheet(this.trying, honoursIfChosen(this.state(), honour)));
       const worn = this.overlay?.root.querySelector<HTMLElement>('[data-worn]');
-      if (worn) worn.innerHTML = wornRows({ trying: this.trying, owned: this.state().owned });
+      if (worn) worn.innerHTML = wornRows({ trying: this.trying, owned: this.state().owned, honours: honoursIfChosen(this.state(), honour) });
       return;
     }
     if (target.dataset.wear) look = wearing(this.trying, target.dataset.wear);
@@ -266,7 +266,7 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
     // And what it is made of, so the list under the mirror is the figure in it.
     const worn = this.overlay?.root.querySelector<HTMLElement>('[data-worn]');
     if (worn) {
-      worn.innerHTML = wornRows({ trying: shown, owned: this.state().owned });
+      worn.innerHTML = wornRows({ trying: shown, owned: this.state().owned, honours: this.honoursWorn() });
     }
   }
 

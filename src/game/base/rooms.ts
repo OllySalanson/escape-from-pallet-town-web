@@ -2478,7 +2478,7 @@ function drawUpstairs(room: BaseRoom, game: RestoredGame): Drawn {
     },
     {
       name: 'THE BOOKCASE',
-      note: 'Toys on top, books below',
+      note: 'Toys on top, comics below',
       tiles: [
         { x: 3, y: 1 },
         { x: 4, y: 1 },

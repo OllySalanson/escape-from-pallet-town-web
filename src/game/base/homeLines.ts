@@ -162,7 +162,8 @@ export function bedLines(game: RestoredGame): readonly string[] {
   const log = record(game);
   const rival = hunterRival(nextRival(game));
   const dream = log.favourite
-    ? `You dream of ${worldMapName(log.favourite.mapId as WorldMapId).toUpperCase()}. ${rival.name} is there, one step behind you... and you wake up.`
+    // Said who she is: a newcomer had met the name only on the telly downstairs (the harbour re-critic).
+    ? `You dream of ${worldMapName(log.favourite.mapId as WorldMapId).toUpperCase()}. ${rival.name}, the next hunter after you, is one step behind... and you wake up.`
     : `You dream of the jump. OAK's voice: "Come home with the pack on your back." And you wake up.`;
   // The last line reads the team: it sent a fully healed team to NURSE JOY
   // (the harbour critic tour, 26 Nov 2026).

@@ -72,7 +72,7 @@ export function nameCountLine(typed: string, heard: NameCheck | 'asking' | null 
 /** What the screen says about a name the rules would not take. */
 export function nameProblemLine(problem: Extract<PlayerNameCheck, { ok: false }>['problem']): string {
   return problem === 'empty'
-    ? 'Type a name first: letters and numbers, up to ten.'
+    ? 'Type a name first.'
     : 'Not that name. Everybody who plays sees it - pick another.';
 }
 
