@@ -61,7 +61,8 @@ export function teamFrom(scenes: readonly unknown[]): readonly BarTeamMember[] {
  * Boutique, Bill's, Brock's, the Pokédex: the topmost running scene answers
  * none. The keys of the harbour under it would be offered otherwise, and LOOK
  * or MAP pressed there does nothing; so the bar offers none of them, and the
- * team stands on it unpressed. A fight over a raid dims the raid's keys
+ * team stands on it unpressed. A screen with no scene of its own (THE MAP)
+ * leaves every scene paused, which counts the same. A fight over a raid dims the raid's keys
  * instead (`dimsTouchTray`), as the touch pad does.
  */
 export function menuOverTheGame(scenes: readonly unknown[]): boolean {
@@ -71,7 +72,9 @@ export function menuOverTheGame(scenes: readonly unknown[]): boolean {
       return !hasTouchShortcuts(scene) && !dimsTouchTray(scene);
     }
   }
-  return false;
+  // Nothing running at all: a screen drawn over a paused scene with no scene
+  // of its own - THE MAP (`ui/MapScreen.ts`) - is up.
+  return scenes.length > 0;
 }
 
 /** The team's own key: the team tile presses it. */
