@@ -22,7 +22,7 @@ import { SECRETS_BOOK } from './secretsBook';
  * To add a book: write it here, give it a colour, and the room lays another
  * lectern for it (`LIBRARY_LECTERNS`) - and the librarian's welcome, which
  * names the lecterns' books (`librarianLines` in `base/rooms.ts`), changes
- * with it. Three are written so far: RAIDS and THE BOLTHOLE on lecterns, and
+ * with it. Four are written so far: RAIDS, THE HARBOUR and THE BOLTHOLE on lecterns, and
  * VALE SECRETS on the golden plinth, its pages written from the secrets
  * themselves (`secretsBook.ts`), which opens once MISTY is beaten
  * (`secretsBookLock.ts`).
@@ -65,7 +65,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
     pages: [
       {
         heading: 'The jump',
-        text: 'Every raid starts at THE RAID ARENA, west across the yard. Choose who comes at THE BENCH and what you carry at THE RACK, then step up to the rail and jump.',
+        text: 'Every raid starts at THE RAID ARENA, west across the yard. Choose who comes at THE BENCH and what you carry at THE ARMOURY RACK, then step up to the rail and jump.',
       },
       {
         heading: 'Five minutes',
@@ -77,7 +77,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'The hunters',
-        text: 'Every part of the vale has a hunter. Caught, you fight one of theirs for each of yours that can still fight. Running from them costs forty seconds of your clock.',
+        text: 'Every part of the vale has a hunter. Caught, you fight one of theirs for each of yours that can still fight. Running from one costs forty seconds of your clock, and twenty more each time after.',
       },
       {
         heading: 'Your pack',
@@ -85,7 +85,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'Catching',
-        text: 'Throw a POKé BALL in a wild fight. A Pokémon you catch rides home in your pack and takes four squares of it, so leave room.',
+        text: 'Throw a POKé BALL in a wild fight. A Pokémon you catch rides home in your pack: four squares, six once it has evolved, nine twice. Leave room.',
       },
       {
         heading: 'Losing',
@@ -94,6 +94,44 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       {
         heading: 'Help on the way',
         text: '{key:oak} calls PROFESSOR OAK on the radio for where to go next. {key:map} shows the ground you have walked, and {key:team} your team.',
+      },
+    ],
+  },
+  // Who does what about the harbour, for a player just home who has met
+  // nobody yet (the harbour re-critic's second round: two lecterns of ten).
+  {
+    id: 'harbour',
+    title: 'THE HARBOUR',
+    blurb: 'Who does what, and where to find them',
+    colour: 'blue',
+    pages: [
+      {
+        heading: "OAK'S LAB",
+        text: "PROFESSOR OAK pins jobs on the board by his wall, and pays for them once you get home. His PC is your POKéDEX, and he has a gift for every few kinds you own.",
+      },
+      {
+        heading: 'The POKéMON CENTER',
+        text: "NURSE JOY heals your team for nothing. Only bringing a Pokémon round from a faint costs time, off your next raid, and the first heal each day is free. Your boxes are on BILL'S PC there.",
+      },
+      {
+        heading: "BROCK'S WORKSHOP",
+        text: 'BROCK builds things that stay built: a bigger LOCKER, healing machines for the Center, a ward, a radio mast and a beacon. He takes materials you bring home from raids.',
+      },
+      {
+        heading: "BILL'S COTTAGE",
+        text: 'BILL sells Potions and POKé BALLS to anybody, and swaps his tools for the parts you bring home. Bank jobs and beat bosses, and he trusts you with more.',
+      },
+      {
+        heading: 'Out on the front',
+        text: 'Past THE GREEN is THE PROMENADE. Its games pay TICKETS, which the PRIZE WINDOW at PIER SQUARE swaps for berries, discs, furniture and more.',
+      },
+      {
+        heading: 'Practice and play',
+        text: 'THE BATTLE ARENA holds practice bouts where nothing is lost. The DAY-CARE MAN, past your house, raises one Pokémon while you raid.',
+      },
+      {
+        heading: 'Anywhere in the harbour',
+        text: '{key:pack} opens YOUR THINGS, {key:team} YOUR TEAM and {key:map} THE MAP. {key:oak} lists the favours people have asked of you.',
       },
     ],
   },
@@ -141,10 +179,6 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       {
         heading: 'Your furniture box',
         text: 'Pieces you have not put out wait in your furniture box. {key:boxBack} and {key:boxNext} take them out one by one, and {key:putAway} puts a piece back in.',
-      },
-      {
-        heading: 'With the mouse',
-        text: 'While decorating, the cursor follows the mouse. A click picks up or puts down, a right click turns the piece, and the wheel walks the box.',
       },
       {
         heading: 'Where things go',

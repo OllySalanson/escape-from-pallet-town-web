@@ -168,11 +168,16 @@ export const SECRETS_BOOK: LibraryBook = {
  * 26 Nov 2026); it fills in a page at a time as the POKéDEX does.
  */
 export function unfoundSecretPage(secret: Secret): BookPage {
+  // Where and when, and the rest left to the sign out there: a page of only
+  // "not found yet" twenty times over was a prize with nothing in it (the
+  // harbour re-critic's second round).
+  const when = secret.when.filter(isTime).map(conditionWords);
   return {
     heading: secret.name,
     text: [
       `WHERE: ${secret.place.toUpperCase()}${DISTRICT_OF[secret.id] ? `, on ${DISTRICT_OF[secret.id]}` : ''}`,
-      'Not found yet. A sign there hints at the rest, and this page fills in once you have found it.',
+      `WHEN: ${when.length > 0 ? when.join(', ') : 'any raid'}`,
+      'What to bring, and what it holds: the sign there hints, and this page fills in once you find it.',
     ].join('\n'),
   };
 }

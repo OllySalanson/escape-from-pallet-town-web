@@ -16,7 +16,6 @@ import { GAME_CORNER_SHEET_PIECES } from './gameCornerSheet';
 import { DOJO_SHEET_PIECES } from './dojoSheet';
 import { LECTERN_COLOURS, LIBRARY_SHEET_PIECES, lecternPiece, type LecternColour } from './librarySheet';
 import { GREAT_LIBRARY_NAME, LIBRARY_BOOKS } from '../library/books';
-import { resolveBookText } from '../library/bookText';
 import { SECRETS_BOOK_LOCKED_LINES, secretsBookOpens } from '../library/secretsBookLock';
 import {
   chartBoardNote,
@@ -913,7 +912,6 @@ export function librarianLines(secretsOpen: boolean): readonly string[] {
   return [
     // The lecterns named, first first: RAIDS teaches the vale, THE BOLTHOLE the house.
     `Welcome to the ${GREAT_LIBRARY_NAME}! Start with ${lecterns[0]}, on the first lectern${lecterns.length > 1 ? `; ${lecterns.slice(1).join(' and ')} is beside it` : ''}.`,
-    resolveBookText("{key:walk} turn the pages, or click the page you want to turn."),
     ...(golden
       ? [
           secretsOpen
@@ -991,7 +989,7 @@ function drawLibrary(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
       lines: [
         // The golden book counted too, once it opens (the harbour re-critic).
         open && golden
-          ? 'Shelf after shelf of old books. The ones worth reading are open on the lectern and the golden plinth.'
+          ? 'Shelf after shelf of old books. The ones worth reading are open on the lecterns and the golden plinth.'
           : onLecterns.length === 1
             ? 'Shelf after shelf of old books. The one worth reading is open on its lectern.'
             : 'Shelf after shelf of old books. The ones worth reading are open on the lecterns.',
