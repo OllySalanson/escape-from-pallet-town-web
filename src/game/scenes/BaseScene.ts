@@ -1065,7 +1065,12 @@ export class BaseScene extends Phaser.Scene {
       return [];
     }
     if (this.barTeamOf?.game !== game) {
-      this.barTeamOf = { game, team: flowForGame(game).party.map((stored) => stored.pokemon) };
+      // Nobody chosen yet is somebody going, as YOUR TEAM and the hall stand it
+      // (`DeploymentFlow.packSomebodyIfBenchEmpty`), so the bar shows the team
+      // the next raid would take rather than an empty tile.
+      const flow = flowForGame(game);
+      flow.packSomebodyIfBenchEmpty();
+      this.barTeamOf = { game, team: flow.party.map((stored) => stored.pokemon) };
     }
     return this.barTeamOf.team;
   }

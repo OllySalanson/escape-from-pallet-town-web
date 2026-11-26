@@ -88,6 +88,11 @@ describe('the controls bar under a full-screen menu', () => {
     expect(menuOverTheGame([running(harbour), paused()])).toBe(false);
   });
 
+  it('offers none of them under a screen drawn over a paused scene, THE MAP', () => {
+    expect(menuOverTheGame([paused(harbour)])).toBe(true);
+    expect(menuOverTheGame([])).toBe(false);
+  });
+
   it('leaves a fight to dim the raid keys rather than take them away', () => {
     expect(menuOverTheGame([paused(harbour), running({ dimsTouchTray: true })])).toBe(false);
   });
