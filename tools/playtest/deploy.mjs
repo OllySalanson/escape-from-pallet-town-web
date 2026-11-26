@@ -175,7 +175,8 @@ export async function openHallPanel(page, panel, options = {}) {
   const until = options.until ?? ((expression, what) => page.waitFor(expression, { what }));
   const settle = options.wait ?? sleep;
   const settleMs = options.settleMs ?? 180;
-  const showing = `${sceneIs('hub')} && ${GAME}.scene.getScene('hub').view === ${JSON.stringify(panel)}`;
+  // The bench is YOUR TEAM on the hall's own choices (\`BaseScene.openHallPanel\`).
+  const showing = panel === 'bench' ? sceneIs('team') : `${sceneIs('hub')} && ${GAME}.scene.getScene('hub').view === ${JSON.stringify(panel)}`;
   for (let guard = 0; guard < 160; guard += 1) {
     if (await page.evaluate(showing)) {
       return;
@@ -184,7 +185,7 @@ export async function openHallPanel(page, panel, options = {}) {
     if (panel === 'rim' && (await page.evaluate(GOING_OVER))) {
       return;
     }
-    if (await page.evaluate(sceneIs('hub'))) {
+    if ((await page.evaluate(sceneIs('hub'))) || (await page.evaluate(sceneIs('team')))) {
       await press('Escape');
       await settle(settleMs);
       continue;

@@ -108,6 +108,13 @@ SHA: it is a single grassland panel cropped out of the montage sheet
 `Assets/Art/Battle/Battle Backgrounds.png` in `c488ea6` ("Fix battle backdrop
 asset", #30).
 
+`battle/platform.png` and `battle/field-bands.png` are cut from
+`battle/background-grass.png` by `scripts/cut-battle-platform.mjs`: the foe's
+grass platform alone, read off by its own colours with the sky behind it left
+clear, and one column of the sky and grass bands, for YOUR TEAM's stage. It
+carries everything said here and below about the file it is cut from, the
+unsettled question included.
+
 ### Species sprites - replaced, see below
 
 The seven species sprites used to be carried over from

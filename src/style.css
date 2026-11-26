@@ -1870,6 +1870,14 @@ body.touch-play .feedback-tab {
   }
 }
 
+/* The chosen thing's red arrow bobs (`.team-stand:focus::before`). Outside the
+   Pixel UI block, whose every rule is scoped to a screen. */
+@keyframes px-bob {
+  50% {
+    transform: translateY(var(--u));
+  }
+}
+
 /* The menus' palette, on the page rather than on a screen, so the controls
    bar under the game (`ui/controlsBar.ts`) and every screen share it. */
 :root {
@@ -1921,6 +1929,7 @@ body.touch-play .feedback-tab {
   --px-close: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h-1zM1 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM3 3h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1z'/%3E%3C/svg%3E");
   --px-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath fill='%23ffc823' d='M3 0h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM1 6h1v1h-1zM5 6h1v1h-1z'/%3E%3C/svg%3E");
   --px-ball: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath fill='%23221d1e' d='M2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM1 1h1v1h-1zM7 1h1v1h-1zM0 2h1v1h-1zM8 2h1v1h-1zM0 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM8 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM0 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM8 5h1v1h-1zM0 6h1v1h-1zM8 6h1v1h-1zM1 7h1v1h-1zM7 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1z'/%3E%3Cpath fill='%23e3350d' d='M2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1z'/%3E%3Cpath fill='%23ffffff' d='M4 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1z'/%3E%3C/svg%3E");
+  --px-rosette: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 10' shape-rendering='crispEdges'%3E%3Cpath fill='%231d6c2e' d='M2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM1 1h1v1h-1zM7 1h1v1h-1zM0 2h1v1h-1zM8 2h1v1h-1zM0 3h1v1h-1zM8 3h1v1h-1zM0 4h1v1h-1zM8 4h1v1h-1zM1 5h1v1h-1zM7 5h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM2 7h1v1h-1zM6 7h1v1h-1zM1 8h1v1h-1zM7 8h1v1h-1zM1 9h1v1h-1zM7 9h1v1h-1z'/%3E%3Cpath fill='%232f9e46' d='M2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM3 7h1v1h-1zM5 7h1v1h-1zM2 8h1v1h-1zM6 8h1v1h-1z'/%3E%3Cpath fill='%23ffffff' d='M4 2h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM4 4h1v1h-1z'/%3E%3C/svg%3E");
   --px-hollow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h5v5h-5zM1 1v3h3v-3z' fill-rule='evenodd'/%3E%3C/svg%3E");
 }
 
@@ -6057,34 +6066,6 @@ body.touch-play .feedback-tab {
   gap: 0;
 }
 
-/* --- YOUR TEAM and the raid's PARTY, drawn as FireRed's party and PC box ----
-   (`ui/teamView.ts`, `scenes/PartyScene.ts`, the slot from `ui/monIcon.ts`).
-   Six slots two abreast over a grid of party icons, and one card at the foot
-   for the Pokémon under the cursor: the words are there for one at a time. */
-:where(.pixel-ui) .team-layout {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--u) * 4);
-  min-height: 0;
-  height: 100%;
-}
-:where(.pixel-ui) .team-layout > .px-window {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-/* The boxes give up room before anything else does, and scroll inside. */
-:where(.pixel-ui) .team-layout > .team-boxes {
-  flex: 0 1 auto;
-}
-:where(.pixel-ui) .team-boxes > * {
-  flex: none;
-}
-:where(.pixel-ui) .team-boxes > .px-mon-tiles {
-  flex: 0 1 auto;
-  min-height: calc(var(--u) * 41);
-}
 /* A grid of Pokémon as FireRed's PC box draws one: YOUR TEAM's boxes and Bill's
    PC. */
 :where(.pixel-ui) .px-mon-tiles {
@@ -6253,7 +6234,8 @@ body.touch-play .feedback-tab {
     linear-gradient(var(--edge), var(--edge)) 100% var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat;
 }
 .pixel-ui .px-mon-tile:focus {
-  --edge: var(--red);
+  --edge: var(--gold-ink);
+  box-shadow: 0 0 0 var(--u) var(--gold);
   outline: none;
   background-color: var(--paper-lit);
 }
@@ -6270,33 +6252,6 @@ body.touch-play .feedback-tab {
   margin-top: calc(var(--u) * 4);
 }
 
-/* The card for the one under the cursor: the portrait beside its words. */
-:where(.pixel-ui) .team-card:not([hidden]) {
-  display: flex;
-  align-items: flex-end;
-  gap: calc(var(--u) * 4);
-  padding-top: var(--u);
-  border-top: var(--u) solid var(--line);
-}
-:where(.pixel-ui) .team-card-words {
-  display: grid;
-  min-width: 0;
-  padding-bottom: calc(var(--u) * 2);
-}
-:where(.pixel-ui) .team-card-words > .px-row-line {
-  gap: calc(var(--u) * 3);
-}
-:where(.pixel-ui) .team-card-level,
-:where(.pixel-ui) .team-card-where {
-  color: var(--ink-soft);
-}
-:where(.pixel-ui) .team-card-types {
-  gap: calc(var(--u) * 2);
-}
-:where(.pixel-ui) .team-card-where .item-icon {
-  display: inline-block;
-  vertical-align: top;
-}
 /* Bill's PC as FireRed's PC box: the box's bar and the partner swap stand
    across the whole grid, a Pokémon being moved is lit as a row being moved is,
    and one out on a raid in another window is dim until that raid ends. */
@@ -6471,84 +6426,6 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui[data-short]) .bench-layout .px-slot-gear {
   left: calc(var(--u) * 20);
   bottom: calc(var(--u) * 8);
-}
-/* A sheet (the panel as the whole screen, in a window with no room beside the
-   map) is wide and short: the card stands beside the boxes rather than under
-   them, or at 800x600 it took all but one cut row of them. */
-:where(.pixel-ui[data-layout='sheet']) .team-layout > .team-boxes {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 150);
-  grid-template-rows: auto auto minmax(0, 1fr);
-  column-gap: calc(var(--u) * 4);
-}
-:where(.pixel-ui[data-layout='sheet']) .team-boxes > .px-heading,
-:where(.pixel-ui[data-layout='sheet']) .team-boxes > .picker-find {
-  grid-column: 1 / -1;
-}
-:where(.pixel-ui[data-layout='sheet']) .team-boxes > .px-mon-tiles {
-  grid-column: 1;
-  grid-row: 3;
-}
-:where(.pixel-ui[data-layout='sheet']) .team-boxes > .team-card {
-  grid-column: 2;
-  grid-row: 3;
-  min-height: 0;
-}
-:where(.pixel-ui[data-layout='sheet']) .team-card:not([hidden]) {
-  /* The portrait with the type badges stacked beside it, and the words under
-     both: the column is narrow and short, and one under another they ran off
-     its foot. */
-  display: grid;
-  grid-template-columns: calc(var(--u) * 64) minmax(0, 1fr);
-  column-gap: calc(var(--u) * 4);
-  align-content: start;
-  padding: 0 0 0 calc(var(--u) * 4);
-  border-top: none;
-  border-left: var(--u) solid var(--line);
-}
-:where(.pixel-ui[data-layout='sheet']) .team-card > .team-card-words {
-  display: contents;
-}
-:where(.pixel-ui[data-layout='sheet']) .team-card > .team-card-words > * {
-  grid-column: 1 / -1;
-}
-:where(.pixel-ui[data-layout='sheet']) .team-card > .team-card-words > .team-card-types {
-  grid-row: 1;
-  grid-column: 2;
-  flex-direction: column;
-  align-items: flex-start;
-  align-self: start;
-  margin-top: calc(var(--u) * 8);
-}
-/* And where it lives under the badges, in the same cell, so only the name and
-   the bar are under the portrait. */
-:where(.pixel-ui[data-layout='sheet']) .team-card > .team-card-words > .team-card-where {
-  grid-row: 1;
-  grid-column: 2;
-  align-self: end;
-}
-:where(.pixel-ui[data-short]) .team-card > .px-portrait {
-  /* A screen short of height (`data-short`, `isShortRoom`): at 800x512 the
-     card ran past its frame, its name and HP under it and its LEAD tick on the
-     hint line. The words are the card; the slot above already shows who it is. */
-  display: none;
-}
-:where(.pixel-ui[data-short]) .team-card:not([hidden]) {
-  /* The name and the bar across, then the type badges and where it lives side
-     by side on one line: three lines are what a short screen has room for. */
-  grid-template-columns: auto minmax(0, 1fr);
-}
-:where(.pixel-ui[data-short]) .team-card > .team-card-words > .team-card-types {
-  grid-row: 3;
-  grid-column: 1;
-  flex-direction: row;
-  align-self: center;
-  margin-top: 0;
-}
-:where(.pixel-ui[data-short]) .team-card > .team-card-words > .team-card-where {
-  grid-row: 3;
-  grid-column: 2;
-  align-self: center;
 }
 @media (prefers-reduced-motion: reduce) {
   .pixel-ui .px-mon-icon {
@@ -8281,4 +8158,291 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .cs-switch.is-off {
   background: var(--paper-sunk);
   color: var(--ink-soft);
+}
+
+/* --- A keycap, and the partner's rosette: parts every screen may use ------ */
+:where(.pixel-ui) .px-keycap {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: calc(var(--u) * 12);
+  height: calc(var(--u) * 12);
+  padding: 0 calc(var(--u) * 2);
+  background: var(--ink);
+  color: var(--paper);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .px-rosette {
+  flex: none;
+  display: inline-block;
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 10);
+  margin-right: calc(var(--u) * 2);
+  background: var(--px-rosette) center / 100% 100% no-repeat;
+}
+
+/* --- YOUR TEAM on the battle field's own grass (`ui/teamView.ts`) --------- *
+   The team stands big on platforms cut from the battle's backdrop
+   (`scripts/cut-battle-platform.mjs`), the backdrop's sky and grass bands
+   stretched across the stage from one column of it; the card for the one under
+   the cursor stands at the right, and the boxes run along the bottom. */
+:where(.pixel-ui) .team-layout {
+  grid-template-rows: minmax(calc(var(--u) * 132), 1fr) auto;
+  padding: 0;
+  gap: 0;
+  min-height: 0;
+  height: 100%;
+}
+:where(.pixel-ui) .team-stage {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  /* The backdrop's own sky and grass, one column of it stretched across the
+     stage and drawn twice as tall, its grass along the stage's foot; above
+     it, its top band's sky. */
+  background: url('/assets/battle/field-bands.png') left bottom / 100% calc(var(--u) * 258) no-repeat;
+  background-color: #40e8f8;
+  image-rendering: pixelated;
+}
+:where(.pixel-ui) .team-line {
+  position: absolute;
+  left: calc(var(--u) * 4);
+  right: calc(var(--u) * 164);
+  bottom: calc(var(--u) * 6);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+/* Each one stands on its platform at twice the art's size, as big as the
+   battle draws a foe, with its plate on the grass under it. Abreast, the
+   platforms run together into one mound. */
+:where(.pixel-ui) .team-stand {
+  position: relative;
+  flex: 0 1 calc(var(--u) * 132);
+  min-width: calc(var(--u) * 40);
+  height: calc(var(--u) * 180);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0;
+  overflow: visible;
+}
+/* With four or more, every other one stands a row back, so six fit a stage
+   that holds three abreast. */
+:where(.pixel-ui) .team-stand.is-back {
+  z-index: 0;
+  transform: translateY(calc(var(--u) * -30));
+}
+:where(.pixel-ui) .team-stand:not(.is-back) {
+  z-index: 1;
+}
+:where(.pixel-ui) .team-platform {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--u) * 6);
+  width: calc(var(--u) * 262);
+  height: calc(var(--u) * 84);
+  max-width: none;
+  transform: translateX(-50%);
+}
+.pixel-ui .team-stand .px-portrait {
+  position: relative;
+  z-index: 1;
+  width: calc(var(--u) * 128);
+  height: calc(var(--u) * 128);
+  margin-bottom: calc(var(--u) * 40);
+  overflow: visible;
+}
+.pixel-ui .team-stand .px-portrait img {
+  transform: scale(calc(var(--zoom, 2) * 2));
+}
+:where(.pixel-ui) .team-stand.is-fainted .px-portrait img {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+:where(.pixel-ui) .team-plate {
+  position: absolute;
+  z-index: 2;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  height: calc(var(--u) * 14);
+  padding: 0 calc(var(--u) * 4);
+  background: var(--paper);
+  box-shadow: 0 0 0 var(--u) var(--line), 0 calc(var(--u) * 3) 0 0 var(--shade);
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .team-plate-level {
+  color: var(--ink-soft);
+}
+.pixel-ui .team-stand:focus {
+  outline: none;
+}
+.pixel-ui .team-stand:focus .team-plate,
+:where(.pixel-ui[data-pointer='previews']) .team-stand:hover .team-plate {
+  background: var(--paper-lit);
+  box-shadow: 0 0 0 var(--u) var(--gold-ink), 0 0 0 calc(var(--u) * 2) var(--gold), 0 calc(var(--u) * 3) 0 0 var(--shade);
+}
+/* The chosen one is lifted, with the red arrow bobbing over its plate. */
+.pixel-ui .team-stand:focus .px-portrait {
+  transform: translateY(calc(var(--u) * -3));
+}
+.pixel-ui .team-stand:focus::before {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  bottom: calc(var(--u) * 17);
+  left: calc(50% - var(--u) * 4);
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 4);
+  background: var(--red);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  animation: px-bob 0.8s steps(2) infinite;
+}
+:where(.pixel-ui) .team-cards {
+  position: absolute;
+  top: calc(var(--u) * 6);
+  right: calc(var(--u) * 4);
+  width: calc(var(--u) * 156);
+}
+.pixel-ui .team-card {
+  display: grid;
+  gap: calc(var(--u) * 2);
+  padding-top: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .team-card[hidden] {
+  display: none;
+}
+:where(.pixel-ui) .team-card .px-heading > span:first-child {
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .team-card .px-heading .px-type {
+  margin: 0;
+}
+:where(.pixel-ui) .team-card-level {
+  color: var(--bar-muted);
+}
+:where(.pixel-ui) .team-stat {
+  display: grid;
+  grid-template-columns: calc(var(--u) * 40) minmax(0, 1fr) calc(var(--u) * 34);
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .team-stat-n {
+  text-align: right;
+}
+:where(.pixel-ui) .team-stat-bar {
+  position: relative;
+  height: calc(var(--u) * 5);
+  background: var(--paper-sunk);
+  box-shadow: 0 0 0 var(--u) var(--line);
+}
+:where(.pixel-ui) .team-stat-bar i {
+  display: block;
+  height: 100%;
+  background: var(--ink-2);
+}
+:where(.pixel-ui) .team-stat-bar.is-hp i {
+  background: var(--go);
+}
+:where(.pixel-ui) .team-stat-bar.is-hp-low i {
+  background: var(--gold);
+}
+:where(.pixel-ui) .team-stat-bar.is-hp-red i {
+  background: var(--red);
+}
+:where(.pixel-ui) .team-moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 2);
+  margin-top: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .team-moves .px-type {
+  margin: 0;
+}
+:where(.pixel-ui) .team-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 4);
+  margin-top: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .team-card-where {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .team-keys {
+  display: flex;
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .team-key {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  height: calc(var(--u) * 14);
+  padding: 0 calc(var(--u) * 4) 0 var(--u);
+  background: var(--paper);
+  box-shadow: 0 0 0 var(--u) var(--line);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+:where(.pixel-ui) .team-key.is-go {
+  background: var(--go);
+  color: var(--paper);
+}
+:where(.pixel-ui) .team-key.is-go .px-keycap {
+  background: var(--paper);
+  color: var(--ink);
+}
+:where(.pixel-ui) .team-key.is-off {
+  background: var(--paper-sunk);
+  color: var(--ink-soft);
+  padding-left: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .team-boxes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, auto);
+  margin: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .team-boxes .px-mon-tiles {
+  max-height: calc(var(--u) * 62);
+}
+:where(.pixel-ui) .team-box-tile .px-mon-tile-line {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .team-box-level {
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .team-plate-lead {
+  padding: 0 calc(var(--u) * 2);
+  background: var(--gold);
+  color: var(--ink);
+}
+/* A tile that names its Pokémon under the icon - YOUR TEAM's boxes - is wide
+   enough for a ten-letter name and tall enough for its level under it. The
+   partner's rosette stands on its corner, clear of the name. */
+:where(.pixel-ui) .px-mon-tiles:has(> .team-box-tile) {
+  grid-template-columns: repeat(auto-fill, calc(var(--u) * 52));
+}
+.pixel-ui .px-mon-tile.team-box-tile {
+  position: relative;
+  width: calc(var(--u) * 52);
+  height: calc(var(--u) * 58);
+}
+.pixel-ui .px-mon-tile .px-rosette {
+  position: absolute;
+  top: calc(var(--u) * 2);
+  left: calc(var(--u) * 2);
 }

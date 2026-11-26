@@ -8,9 +8,9 @@ import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { pixelScreen } from '../ui/pixelUi';
-import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
+import type { SidePanelView } from '../ui/sidePanel';
 import { pickerEntries, wirePickerFind } from '../ui/boxPicker';
-import { LAST_ONE_STAYS, leadLine, TEAM_HINTS, TEAM_HINTS_NO_LEAD, teamBody, teamRowHelp } from '../ui/teamView';
+import { LAST_ONE_STAYS, leadLine, TEAM_HINTS, TEAM_HINTS_NO_LEAD, teamBody, teamPill, teamRowHelp } from '../ui/teamView';
 
 export interface TeamSceneData {
   /** Only resume the harbour when this screen paused it. */
@@ -71,9 +71,10 @@ export class TeamScene extends Phaser.Scene implements ProvidesFeedbackContext {
   }
 
   public create(): void {
-    this.overlay = new MenuOverlay(this, 'team-menu side-panel pixel-ui', (event) => this.onKey(event));
+    // The whole screen, over the paused harbour: the team stands on the
+    // battle field's grass, big, as it does in a fight (the round-3 look).
+    this.overlay = new MenuOverlay(this, 'team-menu pixel-ui', (event) => this.onKey(event));
     this.overlay.root.setAttribute('aria-label', 'Your team');
-    dockSidePanel(this, this.overlay, this.view);
     // The help line names L only where L would put somebody in front.
     this.overlay.root.addEventListener('focusin', () => this.teachLeadWhereItWorks());
     this.render();
@@ -126,6 +127,9 @@ export class TeamScene extends Phaser.Scene implements ProvidesFeedbackContext {
     overlay.redraw(
       pixelScreen({
         title: 'Your team',
+        ...(game && flow
+          ? { aside: teamPill({ entries: pickerEntries(game.stash), team: flow.party.map((stored) => stored.id), partnerId: game.stash.partner()?.id }) }
+          : {}),
         close: { attribute: 'data-close' },
         body,
         hints: TEAM_HINTS,
