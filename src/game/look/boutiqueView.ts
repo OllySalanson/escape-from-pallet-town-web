@@ -17,7 +17,7 @@ import { COLUMN_MEASURES, escapeAttribute, pixelColumns, pixelScreen, pixelWindo
 import { lookKey, sameLook, wearing, type LookSlot, type PlayerLook } from './look';
 import { billFor, billLine, checkBill, lookPriceLine, priceLine, SHELF_ORDER, shelfPieces, unownedIn, WHOLE_LOOKS, type WearableBill, type WholeLook } from './wardrobe';
 import { BOUTIQUE_NAME, wearableById, WEARABLES, type Wearable } from './wearables';
-import { GYM_HONOURS, type GymHonour, type HonourId } from './gymHonours';
+import { GYM_HONOURS, honourById, type GymHonour, type HonourId } from './gymHonours';
 
 export type BoutiqueMode = 'shop' | 'wardrobe';
 
@@ -97,7 +97,8 @@ export function boutiqueMarkup(state: BoutiqueState): string {
     title: shop ? BOUTIQUE_NAME : 'Your wardrobe',
     place: shop ? 'The Docks' : 'The Bolthole',
     close: { attribute: 'data-close' },
-    aside: `${formatMoney(state.held('money'))}`,
+    // Money only where something is sold: the wardrobe sells nothing (the harbour re-critic).
+    ...(shop ? { aside: formatMoney(state.held('money')) } : {}),
     body,
     hints: shop ? BOUTIQUE_HINTS : WARDROBE_HINTS,
     ...(state.status ? { status: state.status } : {}),
@@ -112,7 +113,7 @@ export function boutiqueMarkup(state: BoutiqueState): string {
 export function mirror(state: BoutiqueState): string {
   const now = lookFigure(state.sheet(state.wearing), { label: 'What you have on now', scale: 2 });
   return pixelWindow(
-    `<div class="bq-mirror"><div class="bq-slots" data-worn>${wornRows(state)}</div><div class="bq-glass" data-mirror>${mirrorFigures(state.sheet(state.trying))}</div></div>`
+    `<div class="bq-mirror"><div class="bq-slots" data-worn>${wornRows({ ...state, honours: state.honours.worn })}</div><div class="bq-glass" data-mirror>${mirrorFigures(state.sheet(state.trying))}</div></div>`
       + `<div class="bq-turn"><span class="bq-now" title="What you have on now">${now}</span><span class="bq-to" aria-label="to"></span><span class="bq-turns" data-mirror-turns title="Trying on">${turningFigures(state.sheet(state.trying))}</span></div>`,
     {
       heading: 'The mirror',
@@ -127,9 +128,9 @@ export function mirrorFigures(sheet: string): string {
   return lookFigure(sheet, { row: 0, walking: true, label: 'You, in the mirror', scale: 4 });
 }
 
-/** The try-on turning round: its four facings, small. */
+/** The try-on turning round: its four facings, small, at the size the screen's room sets (`.bq-turns`). */
 export function turningFigures(sheet: string): string {
-  return MIRROR_ROWS.map((row) => lookFigure(sheet, { row, scale: 2, label: 'You, turning round' })).join('');
+  return MIRROR_ROWS.map((row) => lookFigure(sheet, { row, label: 'You, turning round' })).join('');
 }
 
 /** One part of a look on a card of its own: what is on, and its price when it is not yours. */
@@ -141,13 +142,21 @@ function slotCard(slot: LookSlot, piece: Wearable | undefined, owned: ReadonlySe
   return `<div class="bq-slot${piece ? '' : ' is-empty'}${slot === 'body' ? ' is-kit' : ''}${fresh ? ' is-new' : ''}" title="${escapeAttribute(piece ? `${piece.name}${mine ? '' : `: ${priceLine(piece)}`}` : SLOT_WORDS[slot])}"><span class="bq-slot-head">${SLOT_WORDS[slot]}${fresh ? (piece.rarity === 'raid' ? ' · raid find' : ' · new') : ''}</span><span class="bq-slot-name">${piece ? piece.name : 'None'}</span></div>`;
 }
 
-/** What the mirror's look is made of, a card a part: head, top, legs and a full kit. */
-export function wornRows(state: Pick<BoutiqueState, 'trying' | 'owned'>): string {
+/**
+ * What the mirror's look is made of, a card a part: head, top, legs and a full
+ * kit, and the gym honours on over it. The classic look is one card of its
+ * own: four NONEs under "what you have on" read as wearing nothing, and the
+ * honour the player won was nowhere (the harbour re-critic).
+ */
+export function wornRows(state: Pick<BoutiqueState, 'trying' | 'owned'> & { readonly honours?: readonly HonourId[] }): string {
   const look = state.trying;
   const piece = (slot: LookSlot): Wearable | undefined => wearableById(look?.[slot] ?? '');
+  const honours = (state.honours ?? []).flatMap((id) => honourById(id)?.name ?? []);
+  const won = honours.length === 0
+    ? ''
+    : `<div class="bq-slot is-kit" title="${escapeAttribute(honours.join(', '))}"><span class="bq-slot-head">Honours</span><span class="bq-slot-name">${honours.join(', ')}</span></div>`;
   if (!look) {
-    return (['head', 'top', 'legs', 'body'] as const).map((slot) => slotCard(slot, undefined, state.owned)).join('')
-      + '<p class="bq-classic">The classic look: the clothes you came to the harbour in.</p>';
+    return `<div class="bq-slot is-kit" title="The clothes you came to the harbour in"><span class="bq-slot-head">Outfit</span><span class="bq-slot-name">The classic look</span></div>${won}`;
   }
   const kit = piece('body');
   return [
@@ -155,7 +164,7 @@ export function wornRows(state: Pick<BoutiqueState, 'trying' | 'owned'>): string
     slotCard('top', kit ? undefined : piece('top'), state.owned),
     slotCard('legs', kit ? undefined : piece('legs'), state.owned),
     slotCard('body', kit, state.owned),
-  ].join('');
+  ].join('') + won;
 }
 
 /** The short word each shelf's jump chip says, by the shelf it goes to. */

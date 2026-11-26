@@ -4600,6 +4600,13 @@ export class BaseScene extends Phaser.Scene {
       const line = '[SPACE] LOOK DOWN';
       return coin ? `${line}   ${coin}` : line;
     }
+    // A thing at home with something to say says SPACE, beside the house's
+    // own key: the calendar, the bed, the pennants and the bookcase answered a
+    // key the hint line never named (the harbour re-critic).
+    if (faced && this.place.room?.home && !faced.quiet && ((faced.lines?.length ?? 0) > 0 || faced.does !== undefined)) {
+      const house = this.houseKeys();
+      return house ? `[SPACE] ${faced.name}   ${house}` : `[SPACE] ${faced.name}`;
+    }
     // The player's own house always says where its furniture is.
     return this.houseKeys();
   }

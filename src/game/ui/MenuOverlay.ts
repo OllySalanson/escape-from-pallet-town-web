@@ -620,6 +620,17 @@ export class MenuOverlay {
       }
       const cover = scrollCoverHeight(box, rows, unit);
       pane.style.setProperty('--more-cover', `${cover}px`);
+      // The row the cursor is on is never folded under the strip: on MY PC a
+      // lone Pokémon crossed the strip's line, went under it whole, and the
+      // cursor stood on nothing anybody could see (the harbour re-critic). The
+      // pane scrolls it clear, and the scroll asks all this again.
+      const focused = document.activeElement;
+      if (focused instanceof HTMLElement && pane.contains(focused)) {
+        const under = focused.getBoundingClientRect().bottom - (box.bottom - cover);
+        if (under > 0.5 && pane.scrollTop + pane.clientHeight < pane.scrollHeight - 0.5) {
+          pane.scrollTop += Math.ceil(under);
+        }
+      }
       // The strip is as tall as the row it was raised to cover, which is not
       // always far enough for the row beside it: a pane in two columns whose
       // lines do not share a rhythm (Bill's, a price beside a note) was folded

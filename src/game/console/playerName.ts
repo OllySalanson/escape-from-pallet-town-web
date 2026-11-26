@@ -66,7 +66,7 @@ export function checkPlayerName(raw: string): PlayerNameCheck {
 /** What the console says about a name it refused. */
 export function playerNameProblemLine(problem: 'empty' | 'unkind'): string {
   return problem === 'empty'
-    ? 'Type a name first: letters and numbers, up to ten.'
+    ? 'Type a name first.'
     : 'Not that name. Everybody who plays sees the boards - pick another.';
 }
 

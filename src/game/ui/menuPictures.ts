@@ -53,13 +53,14 @@ export function isPictureHeld(url: string): boolean {
 /**
  * Every picture a menu can draw: the icons, each species as it stands in a
  * menu, and the sheets the stylesheet draws from (party icons, the player's
- * figure, the shiny star, the padlock, the battle's ground).
+ * figure, the shiny star, the padlock, the battle's ground, THE CHEST at the
+ * head of storage).
  */
 export function menuPictureUrls(dexIds: Iterable<number>): readonly string[] {
   return [
     ...ICON_NAMES.map((name) => iconUrl(name)),
     ...[...dexIds].map((dexId) => publicAssetUrl(pokemonSpritePath('front', dexId))),
-    ...['assets/pokemon-icons.png', 'assets/character.png', 'assets/battle/shiny-star.png', 'assets/battle/platform.png', 'assets/battle/field-bands.png'].map(
+    ...['assets/pokemon-icons.png', 'assets/character.png', 'assets/battle/shiny-star.png', 'assets/battle/platform.png', 'assets/battle/field-bands.png', 'assets/storage-chest.png'].map(
       (path) => publicAssetUrl(path),
     ),
   ];

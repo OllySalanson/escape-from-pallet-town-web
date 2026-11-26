@@ -96,7 +96,9 @@ describe('a board in the GAMES menu', () => {
   it('says plainly when it is only this console\'s board', () => {
     const html = boardRows(blocks, { where: 'device', entries: [{ name: 'ASH', score: 50, mine: true }] });
     expect(text(html)).toContain('This console only');
-    expect(text(html)).toContain('Pallet Town did not answer');
+    // Said plainly and in ink: nothing is lost, and Pallet Town is a place, not a server (the harbour re-critic).
+    expect(text(html)).toContain('The online boards are not answering');
+    expect(html).not.toContain('px-warning');
     expect(text(html)).not.toContain('one score a player');
   });
 

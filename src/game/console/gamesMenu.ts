@@ -72,7 +72,7 @@ export function boardRows(game: ConsoleGame, board: Board | undefined): string {
   const whose =
     board.where === 'pallet-town'
       ? '<h3 class="px-subheading">Pallet Town · one score a player</h3>'
-      : `<h3 class="px-subheading">This console only</h3><button class="px-row" aria-disabled="true" data-shows="${game.id}" data-help="Pallet Town did not answer, so these are the scores played on this console. Yours still count here."><span class="px-row-main"><span class="px-wrap px-warning">Pallet Town did not answer, so these are the scores played here.</span></span></button>`;
+      : `<h3 class="px-subheading">This console only</h3><button class="px-row" aria-disabled="true" data-shows="${game.id}" data-help="The online boards are not answering, so these are the scores played on this console. Yours still count here."><span class="px-row-main"><span class="px-wrap">The online boards are not answering, so these are this console's scores.</span></span></button>`;
   if (board.entries.length === 0) {
     return `${whose}<p class="px-empty px-wrap">No scores yet.</p>`;
   }

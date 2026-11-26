@@ -3839,6 +3839,10 @@ body.touch-play .feedback-tab {
   grid-row: 5;
   margin-top: calc(var(--u) * 4);
 }
+/* The swap's bar, redrawn alone as the cursor crosses the cards. */
+:where(.pixel-ui) .starter-shell > [data-swap-footer] {
+  display: grid;
+}
 :where(.pixel-ui) .starter-brief {
   justify-self: center;
   color: var(--bar-text);
@@ -10248,9 +10252,6 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .bq-slot-name {
   padding: var(--u) calc(var(--u) * 2) 0;
 }
-:where(.pixel-ui) .bq-classic {
-  color: var(--ink-soft);
-}
 /* The glass: the try-on big, on a stepped pixel shadow. */
 :where(.pixel-ui) .bq-glass {
   position: relative;
@@ -10289,6 +10290,9 @@ body.touch-play .feedback-tab {
   background: var(--ink);
   mask: var(--px-cursor) center / 100% 100% no-repeat;
   -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
+}
+:where(.pixel-ui) .bq-turns .look-figure {
+  --figure-scale: 2;
 }
 :where(.pixel-ui) .bq-turns {
   display: flex;
@@ -10443,17 +10447,25 @@ body.touch-play .feedback-tab {
   overflow: hidden;
 }
 /* A tight stage's mirror is 88 units wide and short, too small for the slot
-   cards, the glass and the turning row: the glass sat over the cards and ran
-   down into the bar (the harbour re-critic). There the cards are the mirror,
-   and the try-on is the card picked on the shelves beside it. */
+   cards beside the glass: the glass sat over the cards and ran down into the
+   bar (the harbour re-critic). There the cards stand over the try-on turning
+   round, small, and the big glass and what you have on now go. */
 :where(.pixel-ui[data-room='tight']) .bq-mirror {
   grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
 }
-:where(.pixel-ui[data-room='tight']) .bq-classic,
 :where(.pixel-ui[data-room='tight']) .bq-glass,
-:where(.pixel-ui[data-room='tight']) .bq-turn {
+:where(.pixel-ui[data-room='tight']) .bq-now,
+:where(.pixel-ui[data-room='tight']) .bq-to {
   display: none;
+}
+:where(.pixel-ui[data-room='tight']) .bq-turn {
+  justify-content: center;
+  padding-top: var(--u);
+  margin-top: var(--u);
+}
+:where(.pixel-ui[data-room='tight']) .bq-turns .look-figure {
+  --figure-scale: 1;
 }
 :where(.pixel-ui[data-room='tight']) .bq-slots {
   gap: var(--u);
