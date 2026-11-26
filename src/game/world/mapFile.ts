@@ -459,7 +459,7 @@ export const MAP_FILE_BUILDINGS = {
   // Clear-cornered, so a rock planted on sand stands on sand (the vale's
   // playtest found Gull Strand's in squares of lawn).
   rock: 'rockClear',
-  'rock-stair': 'rockStair',
+  'rock-stair': 'rockStairway',
   'round-boulder': 'roundBoulder',
   'wet-rock': 'wetRock',
   // What stands on ice, out of doors: Icefall Cave's own (`playerMapTileset.ts`).

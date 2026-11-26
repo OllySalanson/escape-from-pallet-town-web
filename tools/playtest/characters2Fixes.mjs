@@ -48,7 +48,7 @@ try {
   // What the arrow is doing, on either build: `main` keeps the mark itself in the cache.
   const way = () =>
     page.evaluate(`(() => { const w = ${world}; w.raidWay?.(); const c = w.wayCache; const mark = c && 'mark' in c ? c.mark : c;
-      const prize = w.raidHud?.prizeText; return { out: mark?.out ?? null, target: mark ? { x: (mark.target.x - 8) / 16, y: (mark.target.y - 8) / 16 } : null, cue: w.objectiveCue, prize: prize?.visible ? String(prize.text).replace(/\\n/g, ' / ') : '' }; })()`);
+      const prize = w.raidHud?.prizeText; const room = w.raidHud?.prizeRoomText; return { out: mark?.out ?? null, target: mark ? { x: (mark.target.x - 8) / 16, y: (mark.target.y - 8) / 16 } : null, cue: w.objectiveCue, prize: prize?.visible ? [String(prize.text), room?.visible ? String(room.text) : ''].filter(Boolean).join(' / ').replace(/\\n/g, ' / ') : '' }; })()`);
   const said = () => page.evaluate(`String(${base}.dialogBox.textObject?.text ?? '').replace(/\\n/g, ' ')`);
 
   /** A fresh game, the save edited, and back in through CONTINUE. */
@@ -95,24 +95,32 @@ try {
 
   if (wanted('stake')) {
     // Fault 1: the stake will not go in the pack, and the arrow lets it go.
-    await gameWith(`(save) => { save.raidProgress.arenaIntroSeen = true; }`);
+    // A save that has been out before: a new save's first raid is the first
+    // catch, which holds the arrow and the chips until the Pidgey is caught.
+    await gameWith(`(save) => { ${hasBeenOut} }`);
     await walkIntoBase(page, 'raid-arena', { press, until, wait });
     await jumpIn(page, { press, until, wait });
     await readThrough(world);
     await page.evaluate(`(() => { const w = ${world}; const stake = w.lootForCurrentMap().find((l) => l.id.endsWith('/stake'));
       stake.itemId = 'parts-crate'; stake.quantity = 2;
       const takes = () => w.bag.fits(stake.itemId, stake.quantity) || w.bag.tidyWouldFit(stake.itemId, stake.quantity);
-      for (let guard = 0; guard < 40 && takes(); guard += 1) { if (!w.bag.add('potion', 1)) break; } })()`);
+      // Packed with whatever goes in: a potion stacks, so a pack of them never fills.
+      for (const filler of ['radio-valve', 'cable-coil', 'lamp-oil', 'mooring-rope', 'linen-roll', 'potion']) for (let guard = 0; guard < 40 && takes(); guard += 1) { if (w.bag.takeFind(filler, 1) === 'refused') break; } })()`);
     await step(12);
     const full = await way();
     await shot('stake-no-room');
-    check('a stake the pack cannot take sends the arrow out', full.out === true, JSON.stringify(full));
-    check('the prize chip says how much room it needs', /NO ROOM: NEEDS \d+ SQUARES/.test(full.prize), full.prize);
-    await page.evaluate(`(() => { const w = ${world}; while (w.bag.count('potion') > 0 && !(w.bag.fits('parts-crate', 2) || w.bag.tidyWouldFit('parts-crate', 2))) w.bag.remove('potion', 1); })()`);
+    // The save has been out before, so it carries a job, and the arrow is the
+    // job's (`WorldScene.raidWay`): what is asked is that it never leads to a
+    // stake that will not go in.
+    const stakeAt = await page.evaluate(`(() => { const p = ${world}.lootForCurrentMap().find((l) => l.id.endsWith('/stake')).position; return { x: p.x, y: p.y }; })()`);
+    const atStake = (mark) => mark.target?.x === stakeAt.x && mark.target?.y === stakeAt.y;
+    check('a stake the pack cannot take never holds the arrow', !atStake(full), JSON.stringify(full));
+    check('the prize chip says how much room it needs', /PACK FULL: NEEDS \d+ SQUARES/.test(full.prize), full.prize);
+    await page.evaluate(`(() => { const w = ${world}; for (const filler of ['potion', 'linen-roll', 'mooring-rope', 'lamp-oil', 'cable-coil', 'radio-valve']) while (w.bag.count(filler) > 0 && !(w.bag.fits('parts-crate', 2) || w.bag.tidyWouldFit('parts-crate', 2))) w.bag.remove(filler, 1); })()`);
     await step(12);
     const room = await way();
     await shot('stake-room-made');
-    check('room made, the gold arrow comes back for it', room.out === false && /^TAKE /.test(room.cue), JSON.stringify(room));
+    check('room made, the chip stops asking for it', !/PACK FULL/.test(room.prize), JSON.stringify(room));
   }
 
   if (wanted('job')) {

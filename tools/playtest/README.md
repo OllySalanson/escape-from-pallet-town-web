@@ -112,6 +112,8 @@ dry way, `wade` the fewest steps through the grass, and `cut` with
 `--opened=greystone-vale/door-2` the woodcutter's ride; it prints the clock, who
 crossed first, every line at the finish, the pack and the save's record.
 
+`stairs.mjs <test-mode build url> <dir>` drops the explorer run in at The Strand, walks to the foot of Gull Strand's cliff steps from each of its two tiles and presses UP until the player stands over their head (`src/game/world/stairs.test.ts` asks every flight a map file plants; `docs/screens/stairs-blocked/`).
+
 `stalePage.mjs <build dir> [--shot=dir] [--before]` serves a build under the Pages folder and plays a page from before a publish, whose bundles are gone: it must reload once into the current page, and a page whose files never come must reload once, stop and say so with TRY AGAIN, never loop (index.html's boot guard, `src/bootGuard.test.ts`; `docs/screens/stale-page/`).
 
 `battleGap.mjs <build url> [--fights=N] [--latency=ms] [--team=..] [--wild-shiny] [--shot=file.png] [--port=N]`

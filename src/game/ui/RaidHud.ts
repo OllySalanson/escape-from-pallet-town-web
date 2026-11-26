@@ -91,7 +91,7 @@ const WEATHER_STYLE: ChipStyle = { fill: 0xa9c3d6, ink: 0x14232e };
  * was a slab of mustard with the find spelled out in it (the captain, 25 Nov
  * 2026: "the big yellow square saying two parts crates"); the picture says what
  * it is before the words do, and the gold still marks it out from every other
- * chip. NO ROOM is the pop-ups' red, on a line of its own.
+ * chip. PACK FULL is the pop-ups' red, on a line of its own.
  */
 const PRIZE_EDGE = 0xe8b43c;
 const PRIZE_EDGE_WIDTH = 2;

@@ -233,7 +233,7 @@ describe('the prize chip', () => {
     expect(prizeChipView({ name: '2 Parts crates', direction: 'NE', distance: 140, noRoomSquares: 8 })).toEqual({
       label: '2 PARTS CRATES',
       detail: 'NE · 140 STEPS',
-      room: 'NO ROOM: NEEDS 8 SQUARES',
+      room: 'PACK FULL: NEEDS 8 SQUARES · [B] PACK',
     });
   });
 
