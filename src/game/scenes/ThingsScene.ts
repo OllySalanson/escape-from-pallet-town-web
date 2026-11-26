@@ -5,35 +5,57 @@ import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
 import type { DeploymentFlow } from '../hub/deploymentFlow';
 import {
+  footprintOf,
   getItemById,
   gridCells,
+  isCurrency,
   itemCountTag,
   machineForItem,
+  placementOf,
+  seatPiece,
+  stackSizeOf,
   teachFromMachine,
   useFieldItem,
+  type GridArrangement,
+  type GridPieceRef,
   type ItemDefinition,
   type ItemId,
+  type PackItemId,
 } from '../items';
 import { evolutionByStone, type MoveBase, type Pokemon } from '../pokemon';
+import { pokemonCargoCells } from '../pokemon/pokemonCargo';
 import { SaveManager, spareAtBase, type RestoredGame } from '../save/SaveManager';
 import { awayOnRaid, outOnRaidLine, PACKED_FOR_RAID_LINE } from '../run/raidInFlight';
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { MenuOverlay } from '../ui/MenuOverlay';
+import { GridArranging } from '../ui/gridArranging';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { takeDownPixelStatus, pixelScreen } from '../ui/pixelUi';
-import { dockSidePanel, type SidePanelView } from '../ui/sidePanel';
+import type { SidePanelView } from '../ui/sidePanel';
 import { canChoosePupil, pupilOutcome, pupilVerdict, teachBody } from '../ui/teachScreen';
 import { EVOLVE_MOMENT_ARMING_MS, evolveMomentBody, type EvolveMomentView } from '../ui/evolveMoment';
 import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
-import { homeUseOf, pocketJump, stoneTargetsBody, thingsBody, whereItIsUsed } from '../ui/thingsView';
+import {
+  ALL_POCKETS,
+  handCard,
+  homeUseOf,
+  pocketTabs,
+  stashLayout,
+  stoneTargetsBody,
+  thingsScreen,
+  whereItIsUsed,
+  type HandPlace,
+  type PocketTab,
+  type ThingsScreen,
+} from '../ui/thingsView';
 
 export interface ThingsSceneData {
   /** Only resume the harbour when this screen paused it. */
   readonly pausedBase: boolean;
   /** The hall's own choices, while the player is in THE RAID ARENA: the pack shown is the one on the rack. */
   readonly flow?: DeploymentFlow;
-  /** The harbour beside the panel, told what the panel covers. */
+  /** The harbour under the screen. YOUR THINGS covers it whole, so it is only told it is uncovered. */
   readonly view?: SidePanelView;
 }
 
@@ -49,14 +71,41 @@ type Using =
   | { readonly kind: 'evolve'; readonly itemId: string };
 
 /**
+ * Where a thing let go over a grid stands: where it was let go, moved in just
+ * far enough that the whole of it is on the grid - let go with its top-left on
+ * the last square, a rod two squares long would hang off the foot.
+ */
+export function withinGrid(
+  size: { readonly width: number; readonly height: number },
+  itemId: string,
+  at: { readonly x: number; readonly y: number; readonly rotated: boolean },
+): { readonly x: number; readonly y: number } {
+  const footprint = footprintOf(itemId);
+  const width = at.rotated ? footprint.height : footprint.width;
+  const height = at.rotated ? footprint.width : footprint.height;
+  return {
+    x: Math.max(0, Math.min(at.x, size.width - width)),
+    y: Math.max(0, Math.min(at.y, size.height - height)),
+  };
+}
+
+/** The control a kind of thing in the stash is, by its id. */
+export function stashPieceSelector(itemId: string): string {
+  return `[data-grid-piece="cargo:${itemId}"]`;
+}
+
+/**
  * YOUR THINGS, on B anywhere in the harbour (`ui/thingsView.ts` says what and
- * why): a side panel over the paused harbour, the raid pack's shape and parts.
+ * why): the stash as squares, the next raid's pack beside it and the locker
+ * under that, over the dimmed harbour (the captain, 25 Nov 2026: "how you can
+ * drag things around, just like Tarkov").
  *
- * It reads the vault and writes it in only two ways, each through
- * `SaveManager.useAtHome`, which loads first: a disc read to one of the
- * player's Pokémon - the raid's own teach screen and move chooser, offered to
- * every box rather than a party - and an evolution stone, with the fanfare and
- * the new cry a stone in the field has. Nothing can be dropped.
+ * A thing moved from the stash into the pack is packed for the next raid, and
+ * back out of it is unpacked - the same choices the arena hall's rack makes
+ * (`DeploymentFlow`), written as the rack writes them (`SaveManager.choosePack`)
+ * the moment they are made. The stash's own layout is the save's
+ * `stashArrangement`. A disc is read and a stone used from here, each through
+ * `SaveManager.useAtHome`, which loads first. Nothing can be dropped.
  */
 export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext {
   private overlay: MenuOverlay | undefined;
@@ -67,18 +116,20 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   private flow: DeploymentFlow | undefined;
   private using: Using | null = null;
   private status: string | undefined;
+  /** Which pocket's things the stash shows lit; the rest stand back. */
+  private pocket: PocketTab = ALL_POCKETS;
+  private arrangingValue: GridArranging | undefined;
   /**
-   * The row a status line was said about, while it is up: moved off that row,
-   * the line is taken down rather than left answering the row the cursor is on
-   * now - 'Potion: Give it to a hurt Pokemon...' stood under the Poke Ball
-   * (AI playtest, 22 Nov 2026).
+   * The thing a status line was said about, while it is up: moved off it, the
+   * line is taken down rather than left answering the thing the cursor is on
+   * now (AI playtest, 22 Nov 2026).
    */
   private statusThing: string | undefined;
   private shownStatusThing: string | undefined;
   /**
    * The moment a stone has just evolved one of the player's Pokémon
    * (`evolveMomentBody`), held until it has been seen and a key ends it. What
-   * the list says afterwards is its `said`.
+   * the screen says afterwards is its `said`.
    */
   private moment: (EvolveMomentView & { readonly itemId: string; readonly openedAt: number }) | undefined;
   /**
@@ -102,6 +153,8 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     this.using = null;
     this.status = undefined;
     this.moment = undefined;
+    this.pocket = ALL_POCKETS;
+    this.arrangingValue = undefined;
     this.askedAt = Number.NEGATIVE_INFINITY;
     this.reload();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -113,26 +166,23 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   }
 
   public create(): void {
-    this.overlay = new MenuOverlay(this, 'things-menu side-panel pixel-ui', (event) => this.onKey(event));
+    this.overlay = new MenuOverlay(this, 'things-menu pixel-ui', (event) => this.onKey(event));
     this.overlay.root.setAttribute('aria-label', 'Your things');
-    dockSidePanel(this, this.overlay, this.view);
-    // The pocket strip lights the pocket the cursor is in (`pocketStrip`): a
-    // class moved on focus, never a redraw.
+    // The card under the stash answers for the thing the cursor is on: written
+    // into its own card, never a redraw of the screen under the cursor.
     this.overlay.root.addEventListener('focusin', (event) => {
-      const thing = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-thing]')?.dataset.thing : undefined;
-      if (this.shownStatusThing !== undefined && thing !== undefined && thing !== this.shownStatusThing && this.overlay) {
+      const piece = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-grid-piece]') : null;
+      if (!piece) {
+        return;
+      }
+      const thing = this.thingOf(piece);
+      if (this.shownStatusThing !== undefined && thing !== this.shownStatusThing && this.overlay) {
         takeDownPixelStatus(this.overlay.root);
         this.shownStatusThing = undefined;
       }
-      const pocket = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-pocket]')?.dataset.pocket : undefined;
-      if (!pocket) return;
-      this.showPocket(pocket);
+      this.showHand(piece);
     });
     this.render();
-  }
-
-  public update(_time: number, deltaMs: number): void {
-    this.view?.frame(deltaMs);
   }
 
   public feedbackContext(): readonly FeedbackDetail[] {
@@ -142,7 +192,6 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     ];
   }
 
-  /** The vault as it is stored now, and the next raid's pack worked out from it. */
   /**
    * Why a disc or a stone cannot be used here on this Pokémon while a raid is
    * out in another window, or undefined when it can: the Pokémon went on it,
@@ -160,12 +209,18 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     return game.stash.itemCount(itemId) > 0 && spareAtBase(game, itemId) < 1 ? PACKED_FOR_RAID_LINE : undefined;
   }
 
+  /** The vault as it is stored now, and the next raid's pack worked out from it. */
   private reload(): void {
     this.game_ = this.saveManager.load() ?? this.game_;
     if (this.hallFlow && this.game_) {
       this.hallFlow.rebase(this.game_.stash);
     }
     this.flow = this.hallFlow ?? (this.game_ ? flowForGame(this.game_) : undefined);
+    // As YOUR TEAM does: an empty bench stands the partner on it, so the
+    // locker shows who it would keep and the pack is the one they would carry.
+    if (!this.hallFlow) {
+      this.flow?.packSomebodyIfBenchEmpty();
+    }
   }
 
   private get homePokemon(): readonly HomePokemon[] {
@@ -200,6 +255,130 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     return [...all.filter(able), ...all.filter((one) => !able(one))];
   }
 
+  /**
+   * What is at base and not in the next raid's pack, by id: what the stash
+   * draws. Money is the title's, and the pack being worn is on the player's back.
+   */
+  private stashContents(): Readonly<Record<string, number>> {
+    const game = this.game_;
+    const flow = this.flow;
+    if (!game || !flow) {
+      return {};
+    }
+    return Object.fromEntries(
+      Object.keys(game.stash.listItems())
+        .filter((itemId) => !isCurrency(itemId))
+        .map((itemId) => {
+          const worn = flow.packItemId === itemId ? 1 : 0;
+          return [itemId, spareAtBase(game, itemId) - flow.itemQuantity(itemId as ItemId) - worn] as const;
+        })
+        .filter(([, quantity]) => quantity > 0),
+    );
+  }
+
+  private get stashArrangement(): GridArrangement {
+    return this.game_?.raidProgress.stashArrangement ?? { items: [], cargo: [] };
+  }
+
+  /** Picking up, carrying and putting down, in the stash and the pack and across them. */
+  private get arranging(): GridArranging {
+    this.arrangingValue ??= new GridArranging({
+      packing: (name) =>
+        name === 'stash' ? stashLayout(this.stashContents(), this.stashArrangement) : (this.flow?.bagLayout() ?? null),
+      commit: (name, arrangement) => {
+        if (name === 'stash') {
+          this.keepStashArrangement(arrangement);
+        } else {
+          this.flow?.arrangeBag(arrangement);
+          this.keepPack();
+        }
+        this.render();
+      },
+      redraw: () => this.render(),
+      remove: (name, ref) => {
+        if (name === 'pack' && ref.kind === 'item') {
+          this.takeOut(ref);
+        } else {
+          audioManager.play('denied');
+        }
+        return true;
+      },
+      transfer: (from, to, ref, x, y, rotated) => this.transfer(from, to, ref, x, y, rotated),
+      say: (message) => this.say(message),
+      sound: (kind) => audioManager.play(kind === 'refused' ? 'denied' : kind === 'take' ? 'menuOpen' : 'haulDrop'),
+    });
+    return this.arrangingValue;
+  }
+
+  /** The kind of thing a stash or pack piece is. */
+  private thingOf(piece: HTMLElement): string | undefined {
+    const key = piece.dataset.gridPiece ?? '';
+    return key.startsWith('cargo:') ? key.slice('cargo:'.length) : /^item:\d+:(.+)$/.exec(key)?.[1];
+  }
+
+  private screenView(): ThingsScreen | undefined {
+    const flow = this.flow;
+    if (!flow) {
+      return undefined;
+    }
+    const layout = flow.bagLayout();
+    const partner = flow.partnerOnRaid;
+    return {
+      stash: this.stashContents(),
+      stashArrangement: this.stashArrangement,
+      pocket: this.pocket,
+      pack: {
+        name: flow.packName,
+        itemId: flow.packItemId,
+        layout,
+        used: layout.cellsUsed,
+        total: gridCells(flow.bagGrid),
+      },
+      locker: {
+        layout: flow.secureLayout(),
+        ...(partner
+          ? { partner: { name: partner.pokemon.name, dexId: partner.pokemon.base.dexId, shiny: partner.pokemon.shiny } }
+          : {}),
+        pokemon: flow.securedPokemon.map((one) => ({
+          name: one.pokemon.name,
+          dexId: one.pokemon.base.dexId,
+          shiny: one.pokemon.shiny,
+          squares: pokemonCargoCells(one.pokemon.base.id),
+        })),
+      },
+      ghosts: { stash: this.arranging.ghostFor('stash'), pack: this.arranging.ghostFor('pack') },
+    };
+  }
+
+  /** The in-hand card for a piece, written into its own card. */
+  private showHand(piece: HTMLElement | null): void {
+    const card = this.overlay?.root.querySelector<HTMLElement>('[data-hand-card]');
+    if (!card) {
+      return;
+    }
+    card.innerHTML = this.handFor(piece);
+  }
+
+  private handFor(piece: HTMLElement | null): string {
+    const held = this.arranging.held;
+    if (held) {
+      const itemId = held.ref.kind === 'cargo' ? held.ref.cargoId : held.ref.itemId;
+      return handCard(getItemById(itemId), 'carrying', false);
+    }
+    const thing = piece ? this.thingOf(piece) : undefined;
+    const item = thing ? getItemById(thing) : undefined;
+    const place: HandPlace = piece?.dataset.gridOwner === 'pack' ? 'pack' : 'stash';
+    return handCard(item, place, item ? this.canPack(item) : false);
+  }
+
+  /** Whether a thing in the stash can go in the pack at all, before asking for room. */
+  private canPack(item: ItemDefinition): boolean {
+    if (item.effect.type === 'pack') {
+      return true;
+    }
+    return (this.flow?.packLimit(item.id as ItemId) ?? 0) > (this.flow?.itemQuantity(item.id as ItemId) ?? 0);
+  }
+
   private render(prefer: readonly string[] = []): void {
     const overlay = this.overlay;
     const game = this.game_;
@@ -225,7 +404,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     let title = 'Your things';
     let back: { label: string; attribute: string } | undefined;
     let body: string;
-    let hints = 'ARROWS move · LEFT RIGHT a pocket · ENTER use a disc or stone · ESC back';
+    let hints = 'ARROWS move · ENTER put it in the pack · Q E pocket · ESC back';
     const machine = item ? machineForItem(item) : undefined;
     if (item && this.using?.kind === 'teach' && machine) {
       title = 'Teach a move';
@@ -251,7 +430,8 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       );
       hints = 'ARROWS move · ENTER use it · ESC back';
     } else {
-      body = this.flow && game ? this.listBody(game, this.flow) : '<main class="px-body"><p class="px-empty">There is no saved game.</p></main>';
+      const view = game ? this.screenView() : undefined;
+      body = view ? thingsScreen(view, '') : '<main class="px-body"><p class="px-empty">There is no saved game.</p></main>';
     }
     overlay.root.innerHTML = pixelScreen({ title, back, close: { attribute: 'data-close' }, aside: money, body, hints, status });
     const on = (selector: string, act: (button: HTMLButtonElement) => void): void => {
@@ -261,7 +441,6 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     };
     on('[data-close]', () => this.close());
     on('[data-stop]', () => this.stopUsing());
-    on('[data-thing]', (button) => this.pressThing(button.dataset.thing!));
     on('[data-target]', (button) => this.useStoneOn(Number(button.dataset.target)));
     on('[data-pupil]', (button) => this.choosePupil(Number(button.dataset.pupil)));
     on('[data-teach]', () => this.teach());
@@ -269,63 +448,195 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       audioManager.play('cancel');
       this.unchoosePupil();
     });
-    overlay.refocus(...prefer, '[data-teach]:not([aria-disabled])', '[data-pupil]:not([aria-disabled])', '[data-target]:not([aria-disabled])', '[data-thing]', '[data-close]');
-    // A tab is a pocket to open: its first row, with the list showing that pocket.
-    overlay.root.querySelectorAll<HTMLElement>('[data-pocket-tab]').forEach((tab) => {
-      tab.onclick = () => {
-        const pocket = tab.dataset.pocketTab;
-        this.showPocket(pocket);
-        overlay.root.querySelector<HTMLButtonElement>(`[data-thing][data-pocket="${pocket}"]`)?.focus({ preventScroll: true });
-      };
+    on('[data-pocket-tab]', (button) => this.showPocket(button.dataset.pocketTab as PocketTab));
+    // The card's buttons act on the thing the cursor is on, and never take the
+    // cursor off it: a pressed button would otherwise be what ENTER pressed next.
+    const card = overlay.root.querySelector<HTMLElement>('[data-hand-card]');
+    card?.addEventListener('mousedown', (event) => event.preventDefault());
+    card?.addEventListener('click', (event) => {
+      const button = (event.target as Element | null)?.closest<HTMLElement>('[data-hand]');
+      if (button && button.getAttribute('aria-disabled') !== 'true') {
+        this.handDeed(button.dataset.hand ?? '');
+      }
     });
-    // The list was drawn whole again: which pocket it shows is asked afresh.
-    delete overlay.root.dataset.pocketShown;
+    if (!this.using) {
+      this.arranging.attach(overlay.root);
+    }
+    overlay.refocus(
+      ...prefer,
+      '[data-teach]:not([aria-disabled])',
+      '[data-pupil]:not([aria-disabled])',
+      '[data-target]:not([aria-disabled])',
+      '.things-stash .px-grid-block:not(.is-dim)',
+      '.things-pack .px-grid-block',
+      '[data-close]',
+    );
     const focused = typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null);
-    this.showPocket(focused?.closest<HTMLElement>('[data-pocket]')?.dataset.pocket);
+    this.showHand(focused?.closest<HTMLElement>('[data-grid-piece]') ?? null);
+  }
+
+  /** A pocket tab: its things lit and the rest stood back, the cursor on its first. */
+  private showPocket(pocket: PocketTab): void {
+    this.pocket = pocket;
+    audioManager.play('select');
+    this.render(['.things-stash .px-grid-block:not(.is-dim)']);
+    // The cursor goes to the pocket's first thing, never stays on one it stood back.
+    this.overlay?.focus('.things-stash .px-grid-block:not(.is-dim)');
+  }
+
+  /** Q and E walk the pocket tabs. */
+  private stepPocket(step: 1 | -1): void {
+    const tabs = pocketTabs(this.stashContents());
+    const at = Math.max(0, tabs.indexOf(this.pocket));
+    const next = tabs[Math.min(tabs.length - 1, Math.max(0, at + step))];
+    if (next && next !== this.pocket) {
+      this.showPocket(next);
+    }
+  }
+
+  /** What a button on the in-hand card does: the same as its key. */
+  private handDeed(deed: string): void {
+    const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const piece = focused?.closest<HTMLElement>('[data-grid-piece]') ?? null;
+    const key: Partial<Record<string, string>> = { drop: 'Enter', take: 'Enter', turn: 'r', cancel: 'Escape', out: 'Backspace' };
+    if (deed === 'pack' && piece) {
+      this.packOne(this.thingOf(piece));
+    } else if (deed === 'use' && piece) {
+      const thing = this.thingOf(piece);
+      if (thing) {
+        this.pressThing(thing);
+      }
+    } else if (key[deed]) {
+      this.onKey(new KeyboardEvent('keydown', { key: key[deed] }));
+    }
+  }
+
+  private say(message: string): void {
+    this.status = message;
+    this.render();
+  }
+
+  /** The pack as it stands now, written as the rack writes it. */
+  private keepPack(): void {
+    const flow = this.flow;
+    if (!flow) {
+      return;
+    }
+    this.saveManager.choosePack(flow.packedContents, flow.leftOut);
+    this.saveManager.recordContainerArrangements(flow.bagArrangement, flow.secureArrangement);
+  }
+
+  private keepStashArrangement(arrangement: GridArrangement): void {
+    this.saveManager.recordStashArrangement(arrangement);
+    this.game_ = this.saveManager.load() ?? this.game_;
+    if (this.hallFlow && this.game_) {
+      this.hallFlow.rebase(this.game_.stash);
+    }
   }
 
   /**
-   * The list shows one pocket at a time, the one its raised tab names: the tabs
-   * stood over every pocket at once and read as filters that did not filter -
-   * MEDICINE over Poké Balls and a pack (the feature tester, 25 Nov 2026). The
-   * other pockets' rows are hidden rather than redrawn, so the cursor (which
-   * passes over hidden controls) stays in the pocket, and LEFT and RIGHT open
-   * the next one (`jumpPocket`). With one pocket there are no tabs and nothing
-   * to hide.
+   * One stack of a thing from the stash into the pack - or, for a pack, the
+   * pack itself onto the player's back - seated where it was let go when it
+   * was dragged there. Returns whether it went.
    */
-  private showPocket(pocket: string | undefined): void {
-    const overlay = this.overlay;
-    if (!overlay?.root.querySelector('.things-pockets')) {
-      return;
+  private packOne(itemId: string | undefined, at?: { readonly x: number; readonly y: number; readonly rotated: boolean }): boolean {
+    const flow = this.flow;
+    const item = itemId ? getItemById(itemId) : undefined;
+    if (!flow || !item) {
+      return false;
     }
-    const rows = [...overlay.root.querySelectorAll<HTMLElement>('[data-thing][data-pocket]')];
-    const shown = pocket ?? rows[0]?.dataset.pocket;
-    if (!shown || overlay.root.dataset.pocketShown === shown) {
-      return;
+    if (item.effect.type === 'pack') {
+      const refusal = flow.choosePack(item.id as PackItemId);
+      if (refusal !== undefined) {
+        this.refuse(refusal, item.id);
+        return false;
+      }
+      audioManager.play('haulDrop');
+      this.keepPack();
+      this.render([stashPieceSelector(item.id), '.things-pack .px-grid-block']);
+      return true;
     }
-    overlay.root.dataset.pocketShown = shown;
-    for (const row of rows) {
-      row.hidden = row.dataset.pocket !== shown;
+    const atHome = this.stashContents()[item.id] ?? 0;
+    const packed = flow.itemQuantity(item.id as ItemId);
+    const refusal = flow.setItemQuantity(item.id as ItemId, packed + Math.min(stackSizeOf(item.id), atHome));
+    if (refusal !== undefined || flow.itemQuantity(item.id as ItemId) <= packed) {
+      // A material or the like does nothing in a raid, so nothing moved: say where it is used.
+      this.refuse(refusal ?? `${item.displayName}: ${whereItIsUsed(item)}`, item.id);
+      return false;
     }
-    overlay.root.querySelectorAll<HTMLElement>('[data-pocket-tab]').forEach((tab) => {
-      tab.classList.toggle('is-here', tab.dataset.pocketTab === shown);
-    });
-    overlay.remeasure();
+    if (at) {
+      const layout = flow.bagLayout();
+      const blocks = layout.placements.filter((placement) => placement.itemId === item.id).length;
+      const seat = withinGrid(layout.size, item.id, at);
+      const seated = seatPiece(layout, { kind: 'item', itemId: item.id, index: blocks - 1 }, seat.x, seat.y, at.rotated);
+      if (seated) {
+        flow.arrangeBag(seated);
+      }
+    }
+    audioManager.play('haulDrop');
+    recordAction(`Packed ${item.displayName}`);
+    this.keepPack();
+    const still = (this.stashContents()[item.id] ?? 0) > 0;
+    this.render(still ? [stashPieceSelector(item.id)] : ['.things-pack .px-grid-block']);
+    return true;
   }
 
-  private listBody(game: RestoredGame, flow: DeploymentFlow): string {
-    const layout = flow.bagLayout();
-    return thingsBody({
-      // What is at base: a raid out in another window has what it packed (`spareAtBase`).
-      contents: Object.fromEntries(
-        Object.keys(game.stash.listItems())
-          .map((itemId) => [itemId, spareAtBase(game, itemId)] as const)
-          .filter(([, quantity]) => quantity > 0),
-      ),
-      pokemon: this.homePokemon.map((one) => one.pokemon),
-      packed: (itemId) => flow.itemQuantity(itemId as ItemId),
-      pack: { name: flow.packName, layout, used: layout.cellsUsed, total: gridCells(flow.bagGrid) },
-    });
+  /** One of a thing out of the pack and back to the stash: BACKSPACE, or a right-click. */
+  private takeOut(ref: Extract<GridPieceRef, { kind: 'item' }>): void {
+    const flow = this.flow;
+    if (!flow) {
+      return;
+    }
+    const itemId = ref.itemId as ItemId;
+    const refusal = flow.setItemQuantity(itemId, flow.itemQuantity(itemId) - 1);
+    if (refusal !== undefined) {
+      this.refuse(refusal, itemId);
+      return;
+    }
+    audioManager.play('cancel');
+    this.keepPack();
+    this.render([`[data-grid-piece="item:${ref.index}:${itemId}"]`, `[data-grid-piece^="item:"][data-grid-piece$=":${itemId}"]`, stashPieceSelector(itemId)]);
+  }
+
+  /** A piece let go over the other grid: stash into pack packs it, pack into stash unpacks it. */
+  private transfer(from: string, to: string, ref: GridPieceRef, x: number, y: number, rotated: boolean): boolean {
+    const flow = this.flow;
+    if (!flow) {
+      return false;
+    }
+    if (from === 'stash' && to === 'pack' && ref.kind === 'cargo') {
+      return this.packOne(ref.cargoId, { x, y, rotated });
+    }
+    if (from === 'pack' && to === 'stash' && ref.kind === 'item') {
+      const placement = placementOf(flow.bagLayout(), ref);
+      const itemId = ref.itemId as ItemId;
+      const wasHome = (this.stashContents()[itemId] ?? 0) > 0;
+      const refusal = flow.setItemQuantity(itemId, flow.itemQuantity(itemId) - (placement && 'quantity' in placement ? placement.quantity : 1));
+      if (refusal !== undefined) {
+        this.refuse(refusal, itemId);
+        return false;
+      }
+      this.keepPack();
+      if (!wasHome) {
+        const stash = stashLayout(this.stashContents(), this.stashArrangement);
+        const seat = withinGrid(stash.size, itemId, { x, y, rotated });
+        const seated = seatPiece(stash, { kind: 'cargo', cargoId: itemId }, seat.x, seat.y, rotated);
+        if (seated) {
+          this.keepStashArrangement(seated);
+        }
+      }
+      audioManager.play('haulDrop');
+      this.render([stashPieceSelector(itemId)]);
+      return true;
+    }
+    return false;
+  }
+
+  private refuse(message: string, itemId: string): void {
+    audioManager.play('denied');
+    this.status = message;
+    this.statusThing = itemId;
+    this.render([stashPieceSelector(itemId)]);
   }
 
   private onKey(event: KeyboardEvent): void {
@@ -344,6 +655,34 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       event.preventDefault();
       return;
     }
+    const focused = typeof document === 'undefined' ? null : document.activeElement;
+    if (!this.using && this.overlay) {
+      const piece = focused instanceof HTMLElement ? focused.closest<HTMLElement>('[data-grid-piece]') : null;
+      // ENTER on a thing in the stash puts one in the pack; carrying, or in
+      // the pack, it is the arranging's: pick up and put down.
+      if (!this.arranging.held && piece?.dataset.gridOwner === 'stash' && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        this.packOne(this.thingOf(piece));
+        return;
+      }
+      if (!this.arranging.held && piece?.dataset.gridOwner === 'stash' && event.key.toLowerCase() === 'u') {
+        event.preventDefault();
+        const thing = this.thingOf(piece);
+        if (thing) {
+          this.pressThing(thing);
+        }
+        return;
+      }
+      if (this.arranging.handleKey(event, focused)) {
+        event.preventDefault();
+        return;
+      }
+      if (!this.arranging.held && (event.key.toLowerCase() === 'q' || event.key.toLowerCase() === 'e')) {
+        event.preventDefault();
+        this.stepPocket(event.key.toLowerCase() === 'q' ? -1 : 1);
+        return;
+      }
+    }
     if (isOverlayDismissKey(event, 'b')) {
       event.preventDefault();
       if (this.using?.kind === 'teach' && this.using.chosen !== null) {
@@ -357,66 +696,9 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       }
       return;
     }
-    if (this.jumpPocket(event.key)) {
-      event.preventDefault();
-      return;
-    }
     if (this.overlay?.moveCursor(event.key)) {
       event.preventDefault();
     }
-  }
-
-  /**
-   * Page Up and Page Down (and Left and Right, wherever the list is one column
-   * wide and they would go nowhere) move a whole pocket;
-   * Home and End go to the first and last pocket (`pocketJump`).
-   */
-  private jumpPocket(key: string): boolean {
-    const overlay = this.overlay;
-    if (!overlay || this.using) {
-      return false;
-    }
-    // Left and Right go a pocket whenever the list is one column wide, where
-    // they would go nowhere else: the side column always, and a whole-screen
-    // sheet too narrow for a second column (many laptops have no Page keys).
-    const list = overlay.root.querySelector<HTMLElement>('[data-thing]')?.closest<HTMLElement>('[data-columns]');
-    const side = overlay.root.dataset.layout === 'side' || !list?.style.gridTemplateColumns;
-    const step =
-      key === 'PageDown' || (side && key === 'ArrowRight')
-        ? 1
-        : key === 'PageUp' || (side && key === 'ArrowLeft')
-          ? -1
-          : key === 'Home'
-            ? 'first'
-            : key === 'End'
-              ? 'last'
-              : null;
-    if (step === null) {
-      return false;
-    }
-    const rows = [...overlay.root.querySelectorAll<HTMLButtonElement>('[data-thing][data-pocket]')];
-    if (rows.length === 0) {
-      return false;
-    }
-    const current = Math.max(0, rows.indexOf(document.activeElement as HTMLButtonElement));
-    const to = rows[pocketJump(rows.map((row) => row.dataset.pocket ?? ''), current, step)];
-    if (to && to !== document.activeElement) {
-      // The pocket is shown before the cursor goes to it: a hidden row takes no focus.
-      this.showPocket(to.dataset.pocket);
-      // The pocket's own heading at the top of the pane, not cut off above
-      // the row: a jump lands on a pocket, so the pocket says which it is.
-      to.focus({ preventScroll: true });
-      const pane = to.closest<HTMLElement>('.px-scroll');
-      const heading = to.previousElementSibling;
-      if (pane && heading?.matches('.px-subheading')) {
-        // Exactly at the top: any higher and the pane counts the heading as a
-        // row cut through its waist and masks it (`MenuOverlay.markTopCut`).
-        pane.scrollTop += heading.getBoundingClientRect().top - pane.getBoundingClientRect().top;
-      }
-      // The MORE strips and the top cut are measured again for where it is now.
-      overlay.remeasure();
-    }
-    return true;
   }
 
   private pressThing(itemId: string): void {
@@ -429,7 +711,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       audioManager.play('denied');
       this.status = `${item.displayName}: ${whereItIsUsed(item)}`;
       this.statusThing = item.id;
-      this.render([`[data-thing="${item.id}"]`]);
+      this.render([stashPieceSelector(item.id)]);
       return;
     }
     audioManager.play('select');
@@ -438,10 +720,11 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     this.render();
   }
 
+
   private stopUsing(): void {
     const was = this.using?.itemId;
     this.using = null;
-    this.render(was ? [`[data-thing="${was}"]`] : []);
+    this.render(was ? [stashPieceSelector(was)] : []);
   }
 
   private choosePupil(index: number): void {
@@ -597,7 +880,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       return;
     }
     this.status = message;
-    this.render([`[data-thing="${item.id}"]`]);
+    this.render([stashPieceSelector(item.id)]);
   }
 
   /** Whether a press is the second half of the double-tap that asked the question it would answer. */
@@ -613,7 +896,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     }
     this.moment = undefined;
     this.status = moment.said;
-    this.render([`[data-thing="${moment.itemId}"]`]);
+    this.render([stashPieceSelector(moment.itemId)]);
   }
 
   private settle(item: ItemDefinition, learned: boolean, message: string): void {
@@ -624,7 +907,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     this.reload();
     this.using = null;
     this.status = message;
-    this.render([`[data-thing="${item.id}"]`]);
+    this.render([stashPieceSelector(item.id)]);
   }
 
   private close(): void {

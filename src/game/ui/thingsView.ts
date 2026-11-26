@@ -17,18 +17,21 @@
  * Phaser-free, so the pockets and the words are tested without a browser.
  */
 import {
+  EMPTY_ARRANGEMENT,
+  footprintOf,
   getItemById,
-  isCurrency,
-  itemCountTag,
   ItemCategory,
   machineForItem,
+  packContents,
+  type GridArrangement,
+  type GridCargo,
   type GridPacking,
   type ItemDefinition,
 } from '../items';
 import { canLearnFromMachine } from '../pokemon/machines';
 import { evolutionByStone, stoneUsers, type Pokemon } from '../pokemon';
-import { itemIcon } from './icons';
-import { escapeAttribute, pixelColumns, pixelGrid, pixelTag, pixelWindow, COLUMN_MEASURES } from './pixelUi';
+import { iconMarkup, itemIcon } from './icons';
+import { escapeAttribute, pixelColumns, pixelGrid, pixelPortrait, pixelWindow, COLUMN_MEASURES, type PixelGridGhost } from './pixelUi';
 
 /** The pockets storage is read in, in the order they are read. */
 export const THINGS_POCKETS = [
@@ -185,144 +188,207 @@ export function storedPockets(
   });
 }
 
-/** What the screen is told: storage, the next raid's pack, and the Pokémon a disc or stone could go to. */
-export interface ThingsView {
-  readonly contents: Readonly<Record<string, number>>;
-  readonly pokemon: readonly Pokemon[];
-  /** How many of a thing are packed for the next raid. */
-  readonly packed: (itemId: string) => number;
+/** The stash is this many squares across; it grows downwards, never sideways. */
+export const STASH_COLUMNS = 8;
+/** However little is kept, the stash shows at least this many rows. */
+export const STASH_MIN_ROWS = 7;
+/** How far down a stash may be laid out before it is trimmed to what it holds. */
+const STASH_DEPTH = 400;
+
+/** The pocket tab that shows every pocket at once. */
+export const ALL_POCKETS = 'all';
+export type PocketTab = ThingsPocket | typeof ALL_POCKETS;
+
+/** A pocket's name on its tab: one short word, as the mock-up's strip has them. */
+export const POCKET_TAB_WORDS: Readonly<Record<PocketTab, string>> = {
+  all: 'All',
+  medicine: 'Medicine',
+  balls: 'Balls',
+  discs: 'Discs',
+  stones: 'Stones',
+  held: 'Held',
+  tools: 'Tools',
+  packs: 'Packs',
+  found: 'Found',
+  furniture: 'Furniture',
+  clothes: 'Clothes',
+};
+
+/**
+ * Every kind of thing at base as one piece of the stash grid: its own
+ * footprint (`items.ts`), and the kind as its id, because the stash draws a
+ * kind once with how many there are rather than a block a stack as the pack
+ * does. In pocket order, then name, so an unarranged stash reads medicine
+ * first and clothes last.
+ */
+export function stashCargo(contents: Readonly<Record<string, number>>): GridCargo[] {
+  return storedPockets(contents).flatMap(({ things }) =>
+    [...things]
+      .sort((a, b) => a.item.displayName.localeCompare(b.item.displayName))
+      .map(({ item }) => {
+        const footprint = footprintOf(item.id);
+        return { cargoId: item.id, name: item.displayName, width: footprint.width, height: footprint.height };
+      }),
+  );
+}
+
+/**
+ * The stash as squares (the captain, 25 Nov 2026: "how you can drag things
+ * around, just like Tarkov"): every kind seated where the player put it
+ * (`raidProgress.stashArrangement`) and the rest laid in after, then cut to
+ * what it holds and one spare row under that, so there is always a row to put
+ * a thing down in and the grid grows as it fills.
+ */
+export function stashLayout(contents: Readonly<Record<string, number>>, arrangement: GridArrangement = EMPTY_ARRANGEMENT): GridPacking {
+  const laid = packContents({}, { width: STASH_COLUMNS, height: STASH_DEPTH }, stashCargo(contents), arrangement);
+  const bottom = laid.cargo.reduce((deepest, piece) => Math.max(deepest, piece.y + piece.height), 0);
+  const height = Math.max(STASH_MIN_ROWS, bottom + 1);
+  return { ...laid, size: { width: STASH_COLUMNS, height }, cellsTotal: STASH_COLUMNS * height };
+}
+
+/** The pockets the stash has something in, after ALL, for its tabs. */
+export function pocketTabs(contents: Readonly<Record<string, number>>): readonly PocketTab[] {
+  return [ALL_POCKETS, ...storedPockets(contents).map(({ pocket }) => pocket)];
+}
+
+/** One Pokémon in the locker: the partner's own place, or one held in the container's squares. */
+export interface LockerPokemon {
+  readonly name: string;
+  readonly dexId: number;
+  readonly shiny: boolean;
+  /** Squares it takes in the container; absent for the partner, who has a place of its own. */
+  readonly squares?: number;
+}
+
+/** What YOUR THINGS draws. */
+export interface ThingsScreen {
+  /** What is at base and not packed, by id. */
+  readonly stash: Readonly<Record<string, number>>;
+  readonly stashArrangement: GridArrangement;
+  readonly pocket: PocketTab;
   readonly pack: {
     readonly name: string;
+    readonly itemId?: string;
     readonly layout: GridPacking;
     readonly used: number;
     readonly total: number;
   };
+  readonly locker: {
+    readonly layout: GridPacking;
+    readonly partner?: LockerPokemon;
+    readonly pokemon: readonly LockerPokemon[];
+  };
+  /** What is being carried over each grid, if anything. */
+  readonly ghosts?: { readonly stash?: PixelGridGhost; readonly pack?: PixelGridGhost };
 }
 
-/**
- * Where a pocket jump lands: the first row of the pocket after (`1`) or before
- * (`-1`) the one the cursor is in, or the first row of the first or last
- * pocket. `pockets` is the pocket of every row, in list order. Storage holds
- * ninety-odd kinds in a playtest's vault, and a row at a time that was ninety
- * presses from MEDICINE to CLOTHES (wave 1's playtest, item 6). Returns the
- * index of the row to move to, or `current` when there is nowhere further.
- */
-export function pocketJump(pockets: readonly string[], current: number, step: 1 | -1 | 'first' | 'last'): number {
-  const starts = pockets.flatMap((pocket, index) => (index === 0 || pockets[index - 1] !== pocket ? [index] : []));
-  if (starts.length === 0) {
-    return current;
-  }
-  if (step === 'first') return starts[0];
-  if (step === 'last') return starts[starts.length - 1];
-  const here = Math.max(0, starts.filter((start) => start <= current).length - 1);
-  if (step === -1 && current > starts[here]) {
-    // Partway down a pocket, back goes to its own first row first.
-    return starts[here];
-  }
-  return starts[Math.min(starts.length - 1, Math.max(0, here + step))];
+/** The partner's mark: a green rosette, drawn, because the face has no such glyph. */
+export function rosette(): string {
+  return '<span class="things-rosette" role="img" aria-label="Partner"></span>';
 }
 
-function thingRow(view: ThingsView, thing: StoredThing, startsPocket: boolean): string {
-  const { item, count } = thing;
-  const use = homeUseOf(item);
-  // The pane under the list already says what it is and where it is used, so
-  // the help bar says only what the keys do here (wave 1's playtest: the same
-  // sentence twice on one screen).
-  const help = `${item.displayName}: ${
-    use === 'teach'
-      ? 'ENTER chooses who learns it.'
-      : use === 'evolve'
-        ? 'ENTER chooses who it evolves.'
-        : item.category === ItemCategory.Medicine
-          ? `given at ${MEDICINE_AT_BASE}.`
-          : 'not used from this screen.'
-  } LEFT and RIGHT go a pocket at a time.`;
-  const packed = view.packed(item.id);
-  // The tag carries its own count: a bare PACKED beside the storage count read
-  // as "PACKED x10" for ten balls in storage and three in the pack (veteran
-  // playtest, 20 Nov 2026).
-  const tag = packed > 0 ? pixelTag(`${packed} packed`, 'plain') : '';
-  return `<button class="px-row has-icon${startsPocket ? ' starts-pocket' : ''}" data-thing="${item.id}" data-pocket="${pocketOf(item)}" data-shows="${item.id}"${
-    use ? ` data-use="${use}"` : ''
-  } data-help="${escapeAttribute(help)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${item.displayName}</strong>${tag}</span></span><span class="px-tag">${itemCountTag(item.id, count)}</span></button>`;
-}
-
-function thingDetail(view: ThingsView, thing: StoredThing, first: boolean): string {
-  const { item, count } = thing;
-  const packed = view.packed(item.id);
-  const facts = [`${isCurrency(item.id) ? itemCountTag(item.id, count) : count} in storage`];
-  if (packed > 0) {
-    // Of them: the rack packs out of storage, and '3 in storage · 3 packed'
-    // read as six Potions (AI playtest, 22 Nov 2026).
-    // The pack window beside it is headed NEXT RAID, so 'for the next raid' is
-    // left to it and the line stays one line.
-    facts.push(packed === count ? `all ${count} packed` : `${packed} of them packed`);
-  }
-  const use = homeUseOf(item);
-  if (use) {
-    const able = ableCount(item, view.pokemon);
-    facts.push(`${able} of yours ${use === 'teach' ? 'can learn it' : 'it would evolve'}`);
-  }
-  return `<div class="px-detail" data-shown-by="${item.id}"${first ? '' : ' hidden'}><span class="px-wrap">${item.description} ${whereItIsUsed(item)}</span><div class="care-options"><small class="px-label">${facts.join(' · ')}</small></div></div>`;
-}
-
-/**
- * The pockets as HeartGold's bag stands them: a strip across the top, one icon a
- * pocket - the first thing in it - with the cursor's own pocket lit
- * (`ThingsScene` toggles `is-here` as the cursor moves; nothing is redrawn). It
- * is a picture of where LEFT and RIGHT go, which jump a pocket at a time, so a
- * player sees how many pockets there are and which one they are in without
- * reading a band.
- */
-export function pocketStrip(pockets: readonly { readonly pocket: ThingsPocket; readonly things: readonly StoredThing[] }[]): string {
-  if (pockets.length < 2) {
-    return '';
-  }
-  // The pockets as tabs - the lit one raised and joined to the list under it,
-  // as a bag's pockets are - then every pocket's name and how many kinds it
-  // holds, of which only the lit pocket's shows. The name stood alone beside
-  // a row of grey icons and read as a stray word ("Medicine", the captain,
-  // 25 Nov 2026); on a tab, counted, it is the section the list is in.
-  return `<div class="things-pockets" aria-hidden="true"><div class="things-pocket-tabs">${pockets
-    .map(({ pocket, things }, index) => `<span class="things-pocket${index === 0 ? ' is-here' : ''}" data-pocket-tab="${pocket}" title="${escapeAttribute(THINGS_POCKET_LABELS[pocket])}">${itemIcon(things[0].item.id)}</span>`)
-    .join('')}</div>${pockets
-    .map(({ pocket, things }, index) => `<span class="things-pocket-name${index === 0 ? ' is-here' : ''}" data-pocket-tab="${pocket}">${THINGS_POCKET_LABELS[pocket]}<small>${things.length} ${things.length === 1 ? 'kind' : 'kinds'}</small></span>`)
-    .join('')}</div>`;
-}
-
-/** The whole body: storage in pockets, and the next raid's pack beneath it as the squares it is. */
-export function thingsBody(view: ThingsView): string {
-  const pockets = storedPockets(view.contents);
-  const strip = pocketStrip(pockets);
-  // With the strip over the list, a pocket is named there (and lit while the
-  // cursor is in it); in the list a pocket starts on a one-pixel rule rather
-  // than a band, because the bands cost two rows of the list at 1280x800. With
-  // one pocket there is no strip, and its band names it.
-  const rows = pockets
-    .flatMap(({ pocket, things }, index) =>
-      strip
-        ? things.map((thing, at) => thingRow(view, thing, index > 0 && at === 0))
-        : [`<h3 class="px-subheading">${THINGS_POCKET_LABELS[pocket]}</h3>`, ...things.map((thing) => thingRow(view, thing, false))],
+function stashCard(view: ThingsScreen): string {
+  const tabs = pocketTabs(view.stash);
+  const layout = stashLayout(view.stash, view.stashArrangement);
+  const grid = pixelGrid(layout, (itemId) => itemIcon(itemId), {
+    className: 'things-stash-grid',
+    label: 'At base',
+    arrange: { name: 'stash', ghost: view.ghosts?.stash, help: 'ENTER puts one in the pack · R turns it · drag it anywhere' },
+    cargoBody: (piece) => {
+      const count = view.stash[piece.cargoId] ?? 0;
+      return `${itemIcon(piece.cargoId, piece.name)}${count > 1 ? `<b>×${count}</b>` : ''}`;
+    },
+    cargoClass: (piece) => {
+      const item = getItemById(piece.cargoId);
+      return view.pocket !== ALL_POCKETS && item && pocketOf(item) !== view.pocket ? 'is-dim' : '';
+    },
+  });
+  const strip = tabs
+    .map(
+      (tab) =>
+        `<button type="button" class="things-tab${tab === view.pocket ? ' is-here' : ''}" data-pocket-tab="${tab}" tabindex="-1">${POCKET_TAB_WORDS[tab]}</button>`,
     )
     .join('');
-  const details = pockets
-    .flatMap(({ things }) => things)
-    .map((thing, index) => thingDetail(view, thing, index === 0))
-    .join('');
-  const kinds = pockets.reduce((sum, { things }) => sum + things.length, 0);
-  const stored = pixelWindow(
-    `${strip}<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.supply)}>${
-      rows || '<p class="px-empty">Storage is empty.</p>'
-    }</div>${details}`,
-    { className: 'raid-pockets things-storage', heading: 'In storage', note: `${kinds} ${kinds === 1 ? 'kind' : 'kinds'}` },
-  );
-  const grid = pixelGrid(view.pack.layout, (itemId) => itemIcon(itemId), { label: 'The next raid pack' });
-  const pack = pixelWindow(grid, {
-    className: 'pack-window things-pack',
-    heading: `Next raid: ${view.pack.name}`,
-    note: `${view.pack.used}/${view.pack.total} squares`,
+  const empty =
+    Object.keys(view.stash).length === 0 ? '<p class="px-empty things-empty">Nothing at base.</p>' : '';
+  return `<section class="px-window things-stash"><header class="px-heading things-tabs"><span class="things-tab-strip">${strip}</span><small>At base</small></header><div class="px-scroll things-stash-scroll">${grid}${empty}</div></section>`;
+}
+
+function packCard(view: ThingsScreen): string {
+  const grid = pixelGrid(view.pack.layout, (itemId) => itemIcon(itemId), {
+    className: 'things-pack-grid',
+    label: `The next raid's ${view.pack.name}`,
+    arrange: { name: 'pack', ghost: view.ghosts?.pack, help: 'ENTER picks it up · BACKSPACE takes one out · R turns it' },
   });
-  return `<main class="px-body raid-bag-layout things-layout">${stored}<div class="raid-bag-side">${pack}</div></main>`;
+  const pack = view.pack.itemId ? itemIcon(view.pack.itemId, view.pack.name) : '';
+  return `<section class="px-window px-tone-risk things-pack"><header class="px-heading"><span class="things-pack-name">${pack}${escapeAttribute(view.pack.name)}</span><small>At risk</small></header><div class="things-pack-body">${grid}<p class="things-count" aria-label="${view.pack.used} of ${view.pack.total} squares"><b>${view.pack.used}</b><small>of</small><b>${view.pack.total}</b></p></div></section>`;
+}
+
+function lockerPlace(one: LockerPokemon, partner: boolean): string {
+  return `<div class="things-locker-place${partner ? ' is-partner' : ''}">${pixelPortrait(one.dexId, one.name, one.shiny)}<span class="things-locker-name">${partner ? rosette() : ''}${escapeAttribute(one.name)}</span><small>${partner ? 'Its own place' : `${one.squares ?? 0} squares`}</small></div>`;
+}
+
+function lockerCard(view: ThingsScreen): string {
+  const places = [
+    ...view.locker.pokemon.map((one) => lockerPlace(one, false)),
+    ...(view.locker.partner ? [lockerPlace(view.locker.partner, true)] : []),
+  ];
+  const items =
+    view.locker.layout.placements.length > 0
+      ? pixelGrid(view.locker.layout, (itemId) => itemIcon(itemId), { className: 'is-secure things-locker-grid', label: 'In the locker' })
+      : '';
+  const body = places.length > 0 || items ? `${places.join('')}${items}` : '<p class="px-empty">Empty</p>';
+  return `<section class="px-window px-tone-secure things-locker"><header class="px-heading"><span class="things-lock-name">${iconMarkup('padlock', '')}The locker</span><small>Safe</small></header><div class="things-locker-body">${body}</div></section>`;
+}
+
+/** Where the thing in hand is: still in the stash, in the pack, or being carried. */
+export type HandPlace = 'stash' | 'pack' | 'carrying';
+
+/** A button with its key inside it, as every button on these screens says what it does. */
+function keyButton(key: string, words: string, attribute: string, tone: '' | 'is-primary' | 'is-danger' = '', disabled = false): string {
+  return `<button type="button" class="px-window px-button things-key${tone ? ` ${tone}` : ''}" ${attribute} tabindex="-1"${disabled ? ' aria-disabled="true"' : ''}><span class="things-cap">${key}</span>${words}</button>`;
+}
+
+/**
+ * The card under the stash: the thing the cursor is on, in hand - its picture,
+ * what it does in a few words, how many squares it takes - and what the keys do
+ * to it now, each a button with the key in it.
+ */
+export function handCard(item: ItemDefinition | undefined, place: HandPlace, canPack: boolean): string {
+  if (!item) {
+    return '<div class="things-hand-thing"><div class="things-hand-words"><small>In hand</small><span>Nothing</span></div></div>';
+  }
+  const { width, height } = footprintOf(item.id);
+  const squares = width * height;
+  const use = homeUseOf(item);
+  const buttons =
+    place === 'carrying'
+      ? [
+          keyButton('ENTER', 'Put down', 'data-hand="drop"', 'is-primary'),
+          keyButton('R', 'Turn', 'data-hand="turn"'),
+          keyButton('ESC', 'Put back', 'data-hand="cancel"'),
+        ]
+      : place === 'pack'
+        ? [
+            keyButton('ENTER', 'Pick up', 'data-hand="take"'),
+            keyButton('BKSP', 'Take one out', 'data-hand="out"', 'is-danger'),
+            keyButton('R', 'Turn', 'data-hand="turn"'),
+          ]
+        : [
+            keyButton('ENTER', 'Put in the pack', 'data-hand="pack"', 'is-primary', !canPack),
+            ...(use ? [keyButton('U', use === 'teach' ? 'Teach' : 'Use', 'data-hand="use"')] : []),
+            keyButton('R', 'Turn', 'data-hand="turn"'),
+          ];
+  return `<div class="things-hand-thing">${itemIcon(item.id, item.displayName)}<div class="things-hand-words"><span><small>${
+    place === 'carrying' ? 'Carrying' : 'In hand'
+  }</small> ${escapeAttribute(item.displayName)}</span><small>${squares} ${squares === 1 ? 'square' : 'squares'} · ${escapeAttribute(
+    item.description,
+  )}</small></div></div><div class="things-hand-keys">${buttons.join('')}</div>`;
+}
+
+/** The whole screen: the stash, the raid pack and the locker, and what is in hand. */
+export function thingsScreen(view: ThingsScreen, hand: string): string {
+  return `<main class="px-body things-layout">${stashCard(view)}${packCard(view)}${lockerCard(view)}<section class="px-window things-hand" data-hand-card>${hand}</section></main>`;
 }
 
 /** Who a stone would go to: every Pokémon the player has, with whether it would work, best first. */

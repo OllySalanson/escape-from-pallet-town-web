@@ -164,32 +164,26 @@ try {
   await wait(300);
   await backToYard();
 
-  // 4. B: storage a pocket at a time.
+  // 4. B: the stash a pocket at a time, on Q and E.
   await press('KeyB');
-  await until(`!!document.querySelector('.things-menu [data-thing]')`, 'YOUR THINGS');
+  await until(`!!document.querySelector('.things-menu [data-grid-owner="stash"]')`, 'YOUR THINGS');
   await wait(400);
   await shoot('06-things');
-  const pocketOf = () => page.evaluate(`document.activeElement?.dataset?.pocket ?? null`);
+  const pocketOf = () => page.evaluate(`document.querySelector('.things-menu .things-tab.is-here')?.dataset.pocketTab ?? null`);
   const pockets = [await pocketOf()];
   for (let jump = 0; jump < 12; jump += 1) {
-    await press('PageDown');
+    await press('KeyE');
     await wait(100);
     const now = await pocketOf();
     if (now === pockets.at(-1)) break;
     pockets.push(now);
   }
-  console.log(`pockets by Page Down: ${pockets.join(' > ')}`);
-  if (pockets.length < 5) fail(`Page Down went through only ${pockets.length} pockets`);
+  console.log(`pockets by E: ${pockets.join(' > ')}`);
+  if (pockets.length < 5) fail(`E went through only ${pockets.length} pockets`);
   await shoot('07-things-last-pocket');
-  await press('Home');
-  await wait(100);
-  if ((await pocketOf()) !== pockets[0]) fail('Home did not go back to the first pocket');
   // A disc read at home: the teach screen's cards and its help bar.
-  while ((await pocketOf()) !== 'discs') {
-    await press('PageDown');
-    await wait(100);
-  }
-  await press('Enter');
+  await page.evaluate(`document.querySelector('.things-menu [data-grid-piece^="cargo:tm"], .things-menu [data-grid-piece^="cargo:hm"]')?.focus()`);
+  await press('KeyU');
   await until(`!!document.querySelector('.things-menu [data-pupil]')`, 'the teach screen');
   await wait(300);
   await press('Enter');

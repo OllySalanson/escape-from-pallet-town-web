@@ -2756,6 +2756,40 @@ describe('SaveManager', () => {
     });
   });
 
+  describe("YOUR THINGS's stash layout", () => {
+    const saveWithArrangement = (version: number): string =>
+      JSON.stringify({ version, party: [], mapId: 'pallet-town', position: { x: 1, y: 1 }, items: [], bag: {}, stash: { pokemon: [], items: {} } });
+
+    it.each([1, 2, 3, 4, 5, 6, 7])('reads a version %i save that never moved a thing as the automatic layout', (version) => {
+      const storage = new MemoryStorage();
+      storage.setItem(SAVE_KEY, saveWithArrangement(version));
+      expect(new SaveManager(storage).load()?.raidProgress.stashArrangement).toBeUndefined();
+    });
+
+    it('records the seats and hands them back after a reload, dropping anything that is not one', () => {
+      const storage = new MemoryStorage();
+      const saves = new SaveManager(storage);
+      const stash = new Stash();
+      stash.addPokemon(new Pokemon(CHARMANDER, 5), 'partner');
+      saves.save({ party: new PokemonParty([]), mapId: 'pallet-town', position: { x: 1, y: 1 }, bag: new Bag(), stash });
+
+      expect(
+        saves.recordStashArrangement({
+          items: [],
+          cargo: [
+            { cargoId: 'potion', x: 3, y: 1, rotated: false },
+            { x: 0, y: 0, rotated: false } as never,
+          ],
+        }),
+      ).toBe(true);
+
+      expect(new SaveManager(storage).load()?.raidProgress.stashArrangement).toEqual({
+        items: [],
+        cargo: [{ cargoId: 'potion', x: 3, y: 1, rotated: false }],
+      });
+    });
+  });
+
   describe('storage boxes', () => {
     const oldSave = (version: number): string =>
       JSON.stringify({

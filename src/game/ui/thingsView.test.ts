@@ -2,16 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { getItemById, ITEMS, packContents } from '../items';
 import { Pokemon, getSpeciesById } from '../pokemon';
 import {
-  pocketJump,
-  pocketStrip,
+  ALL_POCKETS,
   ableCount,
+  handCard,
   homeUseOf,
   pocketOf,
+  pocketTabs,
+  stashCargo,
+  stashLayout,
+  STASH_COLUMNS,
+  STASH_MIN_ROWS,
   storedPockets,
-  thingsBody,
+  thingsScreen,
   THINGS_POCKETS,
   whereItIsUsed,
   MEDICINE_AT_BASE,
+  type ThingsScreen,
 } from './thingsView';
 
 const item = (id: string) => getItemById(id)!;
@@ -54,14 +60,6 @@ describe('medicine at base', () => {
     for (const id of ['potion', 'super-potion', 'antidote']) {
       expect(whereItIsUsed(item(id))).toContain(MEDICINE_AT_BASE);
     }
-    const html = thingsBody({
-      contents: { potion: 2, 'poke-ball': 1 },
-      pokemon: [],
-      packed: () => 0,
-      pack: { name: 'Raid pack', layout: packContents({}, { width: 6, height: 3 }), used: 0, total: 18 },
-    });
-    expect(html).toContain(`Potion: given at ${MEDICINE_AT_BASE}.`);
-    expect(html).not.toContain('nothing to use it on here');
   });
 });
 
@@ -73,84 +71,112 @@ describe('a disc or a stone counts who it would do something for', () => {
   });
 });
 
-describe('the body', () => {
-  it('shows every pocket and the next raid pack, and offers nothing to drop', () => {
-    const html = thingsBody({
-      contents: { potion: 2, 'tm40-aerial-ace': 1, 'fire-stone': 1, money: 40 },
-      pokemon: [new Pokemon(getSpeciesById('vulpix')!, 12)],
-      packed: (itemId) => (itemId === 'potion' ? 2 : 0),
-      pack: { name: 'Raid pack', layout: packContents({ potion: 2 }, { width: 6, height: 3 }), used: 2, total: 18 },
-    });
-    expect(html).toContain('Medicine');
-    expect(html).toContain('Discs');
-    expect(html).toContain('Stones');
-    expect(html).toContain('Found goods');
-    expect(html).toContain('Next raid: Raid pack');
-    expect(html).toContain('2/18 squares');
-    expect(html).toContain('1 of yours it would evolve');
+const screen = (stash: Record<string, number>, overrides: Partial<ThingsScreen> = {}): ThingsScreen => ({
+  stash,
+  stashArrangement: { items: [], cargo: [] },
+  pocket: ALL_POCKETS,
+  pack: { name: 'Raid pack', itemId: 'raid-pack', layout: packContents({ potion: 2 }, { width: 6, height: 3 }), used: 2, total: 18 },
+  locker: { layout: packContents({}, { width: 2, height: 2 }), pokemon: [] },
+  ...overrides,
+});
+
+describe('the stash as squares', () => {
+  it('lays each kind of thing once, as big as it is, with a spare row under the last', () => {
+    const layout = stashLayout({ potion: 4, 'mooring-rope': 2, 'poke-ball': 1 });
+    expect(layout.size.width).toBe(STASH_COLUMNS);
+    expect(layout.cargo.map((piece) => piece.cargoId).sort()).toEqual(['mooring-rope', 'poke-ball', 'potion']);
+    const rope = layout.cargo.find((piece) => piece.cargoId === 'mooring-rope')!;
+    const footprint = item('mooring-rope').footprint ?? { width: 1, height: 1 };
+    expect(rope.width * rope.height).toBe(footprint.width * footprint.height);
+    const bottom = Math.max(...layout.cargo.map((piece) => piece.y + piece.height));
+    expect(layout.size.height).toBe(Math.max(STASH_MIN_ROWS, bottom + 1));
+  });
+
+  it('always leaves a spare row, however full it is', () => {
+    const contents = Object.fromEntries(
+      Object.values(ITEMS)
+        .slice(0, 40)
+        .map((one) => [one.id, 1] as const),
+    );
+    const layout = stashLayout(contents);
+    const lastRow = layout.size.height - 1;
+    expect(layout.cargo.every((piece) => piece.y + piece.height - 1 < lastRow)).toBe(true);
+  });
+
+  it('keeps a thing where the player put it', () => {
+    const layout = stashLayout({ potion: 1, 'poke-ball': 1 }, { items: [], cargo: [{ cargoId: 'poke-ball', x: 5, y: 8, rotated: false }] });
+    expect(layout.cargo.find((piece) => piece.cargoId === 'poke-ball')).toMatchObject({ x: 5, y: 8 });
+    // The spare row is under the lowest thing, wherever that is.
+    expect(layout.size.height).toBe(10);
+  });
+
+  it('reads medicine first and clothes last when nothing has been moved', () => {
+    const order = stashCargo({ 'red-cap': 1, potion: 1, 'poke-ball': 1 }).map((piece) => piece.cargoId);
+    expect(order.indexOf('potion')).toBeLessThan(order.indexOf('poke-ball'));
+  });
+
+  it('offers a tab for every pocket it has something in, after ALL', () => {
+    expect(pocketTabs({ potion: 1, 'fire-stone': 1 })).toEqual(['all', 'medicine', 'stones']);
+  });
+});
+
+describe('the screen', () => {
+  it('draws the stash, the raid pack at risk and the locker safe, and offers nothing to drop', () => {
+    const html = thingsScreen(screen({ potion: 2, 'fire-stone': 1 }), '');
+    expect(html).toContain('data-grid="stash"');
+    expect(html).toContain('data-grid="pack"');
+    expect(html).toMatch(/px-tone-risk things-pack.*At risk/);
+    expect(html).toMatch(/px-tone-secure things-locker.*Safe/);
+    expect(html).toContain('<b>2</b><small>of</small><b>18</b>');
     expect(html).not.toMatch(/data-drop|Drop one/);
   });
 
-  it('says how many of a thing are packed, apart from how many are in storage', () => {
-    // Read as "POKÉ BALL PACKED ×10" with three packed of ten (veteran playtest, 20 Nov 2026).
-    const html = thingsBody({
-      contents: { 'poke-ball': 10 },
-      pokemon: [],
-      packed: (itemId) => (itemId === 'poke-ball' ? 3 : 0),
-      pack: { name: 'Satchel', layout: packContents({ 'poke-ball': 3 }, { width: 4, height: 3 }), used: 3, total: 12 },
-    });
-    const row = html.slice(html.indexOf('data-thing="poke-ball"'), html.indexOf('</button>', html.indexOf('data-thing="poke-ball"')));
-    expect(row).toMatch(/px-tag-plain">3 packed</);
-    // And the detail says the packed ones are some of those in storage, not
-    // more besides (AI playtest, 22 Nov 2026: '3 in storage · 3 packed' read as six).
-    expect(html).toContain('10 in storage · 3 of them packed');
+  it('counts each kind on its own corner', () => {
+    expect(thingsScreen(screen({ potion: 3 }), '')).toContain('<b>×3</b>');
   });
 
-  it('says all of them when every one is packed', () => {
-    const html = thingsBody({
-      contents: { potion: 3 },
-      pokemon: [],
-      packed: () => 3,
-      pack: { name: 'Satchel', layout: packContents({ potion: 3 }, { width: 4, height: 3 }), used: 3, total: 12 },
-    });
-    expect(html).toContain('3 in storage · all 3 packed');
-  });
-});
-
-describe('a pocket at a time', () => {
-  const pockets = ['medicine', 'medicine', 'medicine', 'balls', 'discs', 'discs', 'clothes'];
-
-  it('goes to the next pocket and the one before', () => {
-    expect(pocketJump(pockets, 0, 1)).toBe(3);
-    expect(pocketJump(pockets, 3, 1)).toBe(4);
-    expect(pocketJump(pockets, 5, 1)).toBe(6);
-    expect(pocketJump(pockets, 6, -1)).toBe(4);
-    expect(pocketJump(pockets, 4, -1)).toBe(3);
+  it("stands back the things a pocket tab leaves out, and lights the tab", () => {
+    const html = thingsScreen(screen({ potion: 1, 'poke-ball': 1 }, { pocket: 'balls' }), '');
+    expect(html).toMatch(/is-cargo is-dim[^>]*data-grid-piece="cargo:potion"/);
+    expect(html).not.toMatch(/is-cargo is-dim[^>]*data-grid-piece="cargo:poke-ball"/);
+    expect(html).toContain('things-tab is-here" data-pocket-tab="balls"');
   });
 
-  it('goes back to the top of its own pocket before the one above', () => {
-    expect(pocketJump(pockets, 2, -1)).toBe(0);
-    expect(pocketJump(pockets, 5, -1)).toBe(4);
-  });
-
-  it('stops at the ends, and Home and End go there', () => {
-    expect(pocketJump(pockets, 6, 1)).toBe(6);
-    expect(pocketJump(pockets, 0, -1)).toBe(0);
-    expect(pocketJump(pockets, 4, 'first')).toBe(0);
-    expect(pocketJump(pockets, 1, 'last')).toBe(6);
-    expect(pocketJump([], 0, 1)).toBe(0);
+  it('gives the partner its own place in the locker, with the rosette', () => {
+    const html = thingsScreen(
+      screen({}, {
+        locker: {
+          layout: packContents({}, { width: 2, height: 2 }),
+          partner: { name: 'Squirtle', dexId: 7, shiny: false },
+          pokemon: [{ name: 'Pikachu', dexId: 25, shiny: false, squares: 4 }],
+        },
+      }),
+      '',
+    );
+    expect(html).toContain('4 squares');
+    expect(html).toMatch(/is-partner.*things-rosette.*Squirtle.*Its own place/);
   });
 });
 
-describe('the pockets as a strip of icons', () => {
-  it('stands one icon a pocket, in pocket order, the first lit, and none for a single pocket', () => {
-    const pockets = storedPockets({ potion: 2, 'poke-ball': 3, 'thunder-stone': 1 });
-    const strip = pocketStrip(pockets);
-    expect([...strip.matchAll(/class="things-pocket(?: is-here)?" data-pocket-tab="(\w+)"/g)].map((match) => match[1])).toEqual(['medicine', 'balls', 'stones']);
-    expect(strip).toMatch(/things-pocket is-here" data-pocket-tab="medicine"/);
-    // And the lit pocket's name beside them with how many kinds it holds, the others' hidden.
-    expect(strip).toMatch(/things-pocket-name is-here" data-pocket-tab="medicine">Medicine<small>1 kind<\/small></);
-    expect(strip.match(/is-here/g)).toHaveLength(2);
-    expect(pocketStrip(storedPockets({ potion: 2 }))).toBe('');
+describe('the card of what is in hand', () => {
+  it('says what a thing in the stash does and offers to pack it, with the key in the button', () => {
+    const html = handCard(item('potion'), 'stash', true);
+    expect(html).toContain(item('potion').description);
+    expect(html).toMatch(/<span class="things-cap">ENTER<\/span>Put in the pack/);
+    expect(html).not.toContain('aria-disabled');
+  });
+
+  it('greys out packing what cannot go in the pack', () => {
+    expect(handCard(item('mooring-rope'), 'stash', false)).toMatch(/data-hand="pack"[^>]*aria-disabled="true"/);
+  });
+
+  it('offers to teach a disc and use a stone here', () => {
+    expect(handCard(item('tm40-aerial-ace'), 'stash', true)).toContain('data-hand="use"');
+    expect(handCard(item('potion'), 'stash', true)).not.toContain('data-hand="use"');
+  });
+
+  it('takes one out of the pack, and puts down what is carried', () => {
+    expect(handCard(item('potion'), 'pack', true)).toMatch(/BKSP<\/span>Take one out/);
+    expect(handCard(item('potion'), 'carrying', true)).toMatch(/ENTER<\/span>Put down/);
   });
 });

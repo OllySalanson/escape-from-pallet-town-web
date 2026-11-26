@@ -583,6 +583,15 @@ export interface RaidProgress {
   readonly packArrangement?: GridArrangement;
   readonly secureArrangement?: GridArrangement;
   /**
+   * How the player laid out YOUR THINGS's stash grid (`ui/thingsView.ts`): one
+   * seat a kind of thing, by item id as a cargo seat, because the stash draws a
+   * kind as one block with its count. Seats, never a grid, for the same reason
+   * as the two above: a kind no longer owned drops its seat and anything with
+   * no seat is laid out automatically. Absent on a save that has never moved a
+   * thing in the stash, which is the automatic layout, so no version bump.
+   */
+  readonly stashArrangement?: GridArrangement;
+  /**
    * Where everything in THE BOLTHOLE stands (`../home/arrangement`): each piece
    * put down, by furniture id, room, tile and which way round. It is the one
    * thing about the house that is stored - what the save owns is derived from
@@ -2795,6 +2804,19 @@ export class SaveManager {
     return this.save({ ...game, raidProgress });
   }
 
+  /**
+   * Remembers how YOUR THINGS's stash grid is laid out (`stashArrangement`).
+   * Loads first, as every write outside the hub does, so a second tab's newer
+   * save is written over by nothing but this one field.
+   */
+  public recordStashArrangement(arrangement: GridArrangement): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    return this.save({ ...game, raidProgress: { ...game.raidProgress, stashArrangement: arrangement } });
+  }
+
   public recordReachedInsertion(insertionId: string): boolean {
     const game = this.load();
     if (
@@ -3472,6 +3494,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     ...(Number.isInteger(value.shortRaids) && (value.shortRaids as number) > 0 ? { shortRaids: value.shortRaids as number } : {}),
     packArrangement: readArrangement(value.packArrangement),
     secureArrangement: readArrangement(value.secureArrangement),
+    ...(value.stashArrangement === undefined ? {} : { stashArrangement: readArrangement(value.stashArrangement) }),
     ...(Array.isArray(value.homeLayout) ? { homeLayout: readHomeLayout(value.homeLayout) } : {}),
     // A save written before the record was kept has been nowhere, which is
     // what an empty record says: the drop-in screen reads that as "you have
