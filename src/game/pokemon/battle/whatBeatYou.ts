@@ -40,9 +40,15 @@ interface Fact {
 
 /**
  * The line, or null. `turns` is every batch of events the fight resolved, in
- * order (the opening send-out first); `weather` is the weather the fight began in.
+ * order (the opening send-out first); `weather` is the weather the fight began in;
+ * `runsFailed` is how often the player chose RUN and was told "Can't escape!",
+ * which is a turn handed to the other side that no event of the fight records.
  */
-export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather: WeatherId | null = null): string | null {
+export function whatBeatYou(
+  turns: readonly (readonly BattleEvent[])[],
+  weather: WeatherId | null = null,
+  runsFailed = 0,
+): string | null {
   let current: WeatherId | null = weather;
   /** Foes whose ability speeds them in the weather, by name, and the ability. */
   const quickened = new Map<string, string>();
@@ -260,11 +266,25 @@ export function whatBeatYou(turns: readonly (readonly BattleEvent[])[], weather:
   // Swift Swim: HORSEA moved first twice' was said over a fight Staryu's
   // Tackles won by 8 to 2, with Horsea long since knocked out (AI playtest,
   // 22 Nov 2026). A hit is a turn's damage, so it weighs a little over a turn.
+  const [hitter] = [...foeHitters.entries()].sort((a, b) => b[1] - a[1]);
   if (dealt.enemy.hits >= WHAT_BEAT_YOU_LEAST && theirs >= Math.max(2, yours * 2)) {
-    const [hitter] = [...foeHitters.entries()].sort((a, b) => b[1] - a[1]);
+    // 'you for about 0' read as hits that did nothing, over a fight the
+    // player never once attacked in (the gyms playtest of 26 Nov 2026).
     facts.push({
-      line: `Damage: ${foeHitters.size === 1 ? hitter[0].toUpperCase() : 'they'} hit for about ${theirs} a turn, you for about ${yours}.`,
+      line: `Damage: ${foeHitters.size === 1 ? hitter[0].toUpperCase() : 'they'} hit for about ${theirs} a turn${
+        dealt.player.hits === 0 ? ', and yours never hit back' : `, you for about ${yours}`
+      }.`,
       weight: dealt.enemy.hits * (theirs >= yours * 3 ? 1.5 : 1.1),
+    });
+  }
+  // A run that failed gave the other side a free turn and kept the player in a
+  // fight they had chosen to leave. A Pidgey that tried to run from a wild
+  // Staryu twice and fell was told 'STARYU hit for about 9 a turn, you for
+  // about 0' (the gyms playtest of 26 Nov 2026): the runs were the story.
+  if (runsFailed > 0) {
+    facts.push({
+      line: `Can't escape: ${hitter ? hitter[0].toUpperCase() : 'it'} kept you from running ${times(runsFailed)}.`,
+      weight: runsFailed * 2,
     });
   }
   if (facts.length === 0 && foeFirst >= Math.max(3, Math.ceil(turnsPlayed * 0.75))) {

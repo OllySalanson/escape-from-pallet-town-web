@@ -787,6 +787,21 @@ describe('escaping a wild encounter', () => {
     expect((scene as unknown as { wildEscapeAttempts: number }).wildEscapeAttempts).toBe(1);
   });
 
+  it('says the runs that failed when the fight is lost, not hits the player never threw', () => {
+    // The gyms playtest of 26 Nov 2026: two "Can't escape!" and a faint were
+    // put down to 'you for about 0'.
+    const { scene, renderedTexts } = createBattleSceneHarness({ wild: fasterWild() });
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const fighting = scene as unknown as { onMessagesComplete(): void; showCommands(): void; mode: string; whatBeatThePlayer(): string | null };
+    fighting.onMessagesComplete();
+    read(renderedTexts)[4].handlers.pointerdown();
+    fighting.mode = 'main';
+    fighting.showCommands();
+    read(renderedTexts)[4].handlers.pointerdown();
+
+    expect(fighting.whatBeatThePlayer()).toBe("Can't escape: PIDGEY kept you from running twice.");
+  });
+
   it('improves the odds it shows after every failure, so the exit is never closed off', () => {
     const { scene, renderedTexts } = createBattleSceneHarness({ wild: fasterWild() });
     vi.spyOn(Math, 'random').mockReturnValue(0.99);

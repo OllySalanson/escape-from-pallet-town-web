@@ -4985,7 +4985,7 @@ export class BattleScene extends Phaser.Scene {
 
   /** What beat the player in this fight, if one thing stands out (`whatBeatYou`). */
   private whatBeatThePlayer(): string | null {
-    return whatBeatYou(this.fightTurns ?? [], this.fightWeather ?? null);
+    return whatBeatYou(this.fightTurns ?? [], this.fightWeather ?? null, this.wildEscapeAttempts);
   }
 
   private showCombatEvents(

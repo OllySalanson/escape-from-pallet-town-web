@@ -124,6 +124,23 @@ describe('what beat you', () => {
     expect(whatBeatYou(even)).toBe('Speed: STARYU moved first 4 times.');
   });
 
+  it('names the runs that failed, rather than hits the player never threw', () => {
+    // The gyms playtest of 26 Nov 2026: a Pidgey tried to run from a wild Staryu
+    // in Smugglers' Cove, was told "Can't escape!" twice and fell, and the
+    // result said 'STARYU hit for about 9 a turn, you for about 0'.
+    const hit = (damage: number, move: string): BattleEvent => ({ type: 'used-move', user: 'enemy', name: 'Staryu', move, damage });
+    const turns: BattleEvent[][] = [[hit(3, 'Rapid Spin')], [hit(14, 'Water Gun'), { type: 'fainted', user: 'player', name: 'Pidgey' }]];
+    expect(whatBeatYou(turns, 'rain', 2)).toBe("Can't escape: STARYU kept you from running twice.");
+    // Without the runs, the trade is still lopsided, and says plainly that nothing of yours landed.
+    expect(whatBeatYou(turns, 'rain')).toBe('Damage: STARYU hit for about 9 a turn, and yours never hit back.');
+  });
+
+  it('lets a much harder hitter outweigh a single failed run', () => {
+    const hit = (user: 'player' | 'enemy', name: string, damage: number): BattleEvent => ({ type: 'used-move', user, name, move: 'Tackle', damage });
+    const turns: BattleEvent[][] = Array.from({ length: 4 }, () => [hit('enemy', 'Staryu', 9), hit('player', 'Squirtle', 2)]);
+    expect(whatBeatYou(turns, null, 1)).toBe('Damage: STARYU hit for about 9 a turn, you for about 2.');
+  });
+
   it('says a lopsided trade over a swimmer that raced only twice', () => {
     // 'Rain and Swift Swim: HORSEA moved first twice' over a fight Staryu's
     // Tackles won 8 to 2 (AI playtest, 22 Nov 2026).
