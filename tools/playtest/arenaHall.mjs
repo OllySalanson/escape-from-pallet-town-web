@@ -186,11 +186,12 @@ try {
   expect('and opens no screen', !(await page.evaluate(sceneIs('hub'))));
   expect('and the mark comes down', !(await base('Boolean(b.keeperMark)')));
 
-  // The three panels, each opened where it stands, each backing out to the same tile.
-  for (const [station, along, heading, name] of [
-    ['bench', 3, 'The bench', '3-bench'],
-    ['rack', 1, 'The armoury rack', '4-rack'],
-    ['locker', 0, 'The locker', '5-locker'],
+  // The three stations, each opened where it stands, each backing out to the
+  // same tile: the bench is YOUR TEAM and the rack and the locker YOUR THINGS.
+  for (const [station, along, scene, heading, name] of [
+    ['bench', 3, 'team', 'Your team', '3-bench'],
+    ['rack', 1, 'things', 'Your things', '4-rack'],
+    ['locker', 0, 'things', 'Your things', '5-locker'],
   ]) {
     const tile = await front(station, along);
     await walkTo(tile);
@@ -198,19 +199,20 @@ try {
     await step(200);
     await shot(`${name}-front`);
     await press('Space');
-    await until(sceneIs('hub'), `the ${station}`);
+    await until(sceneIs(scene), `the ${station}`);
     await step(600);
     await shot(name);
-    expect(`the ${station} opens over the room`, (await hub('h.view')) === station && (await page.evaluate(sceneIs('base'))));
+    expect(`the ${station} opens over the room`, await page.evaluate(sceneIs('base')));
     expect(`it is headed ${heading}`, (await page.evaluate(`document.querySelector('.px-title h1')?.textContent`)) === heading);
     if (station === 'rack') {
       // A ball, for something to read on the rack from across the room.
-      await page.evaluate(`document.querySelector('button[data-count-kind="item"][data-count-id="poke-ball"][data-count-dir="1"]')?.click()`);
+      await page.evaluate(`document.querySelector('#screens .things-menu [data-grid-piece="cargo:poke-ball"]')?.focus()`);
+      await press('Enter');
       await step(300);
     }
     await press('Escape');
     await step(400);
-    expect(`backing out of the ${station} stands the player where they were`, await base(`b.currentTile.x === ${tile.x} && b.currentTile.y === ${tile.y} && !b.arenaPanel`));
+    expect(`backing out of the ${station} stands the player where they were`, await base(`b.currentTile.x === ${tile.x} && b.currentTile.y === ${tile.y} && !b.arenaPanel && !${sceneIs(scene)}`));
   }
 
   // To the rim, up the runner.

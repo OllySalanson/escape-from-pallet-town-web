@@ -258,6 +258,8 @@ export type TeamFate = 'partner' | 'locked' | 'risk';
 
 /** One of the next raid's team, as its strip draws it. */
 export interface TeamMember {
+  /** Its stash id, for L to keep it in the locker or let it go. */
+  readonly id: string;
   readonly name: string;
   readonly speciesId: string;
   readonly currentHp: number;
@@ -363,16 +365,20 @@ function stashCard(view: ThingsScreen): string {
 const TEAM_PLACES = 6;
 
 function teamCard(view: ThingsScreen): string {
-  const tile = (body: string, className: string, label: string, tag: string): string =>
-    `<span class="things-place"><span class="things-member ${className}" role="img" aria-label="${escapeAttribute(label)}">${body}</span><small class="things-tag">${tag}</small></span>`;
+  // Each of the team is a control the cursor lands on, so L can keep it in the locker.
   const members = view.team
-    .map((one) =>
-      tile(
-        `${pixelMonIcon({ name: one.name, currentHp: one.currentHp, maxHp: one.maxHp, base: { id: one.speciesId } })}<span class="things-member-mark">${teamMark(one.fate)}</span>`,
-        `is-${one.fate}`,
-        `${one.name}: ${FATE_WORDS[one.fate]}`,
-        one.fate === 'risk' ? 'At risk' : 'Safe',
-      ),
+    .map(
+      (one) =>
+        `<span class="things-place"><button type="button" class="things-member is-${one.fate}" data-team-member="${escapeAttribute(
+          one.id,
+        )}" tabindex="-1" aria-label="${escapeAttribute(`${one.name}: ${FATE_WORDS[one.fate]}`)}">${pixelMonIcon({
+          name: one.name,
+          currentHp: one.currentHp,
+          maxHp: one.maxHp,
+          base: { id: one.speciesId },
+        })}<span class="things-member-mark">${teamMark(one.fate)}</span></button><small class="things-tag">${
+          one.fate === 'risk' ? 'At risk' : one.fate === 'partner' ? 'Partner' : 'Safe'
+        }</small></span>`,
     )
     .join('');
   const free = '<span class="things-place" aria-hidden="true"><span class="things-member is-free"></span><small class="things-tag"></small></span>'.repeat(
@@ -438,6 +444,8 @@ export interface HandOptions {
   readonly locked?: boolean;
   /** For a thing in the pack: the locker has room to keep one more of it. */
   readonly canLock?: boolean;
+  /** For a find at home: the locker already keeps room for one. */
+  readonly roomKept?: boolean;
 }
 
 /**
@@ -477,7 +485,13 @@ export function handCard(item: ItemDefinition | undefined, place: HandPlace, opt
           ? [keyButton('BKSP', 'Unlock', 'data-hand="out"', 'is-danger')]
           : [
               ...(home
-                ? []
+                ? isFoundOnly(item.id)
+                  ? [
+                      options.roomKept
+                        ? keyButton('L', 'Room kept', 'data-hand="lock"', '', options.canLock === false)
+                        : keyButton('L', options.canLock === false ? 'Locker full' : 'Keep room', 'data-hand="lock"', '', options.canLock === false),
+                    ]
+                  : []
                 : [
                     keyButton(
                       'ENTER',
@@ -495,6 +509,39 @@ export function handCard(item: ItemDefinition | undefined, place: HandPlace, opt
   return `<div class="things-hand-thing">${itemIcon(item.id, item.displayName)}<div class="things-hand-words"><span>${
     place === 'carrying' ? '<small>Carrying</small> ' : ''
   }${escapeAttribute(item.displayName)}${tag}</span><small>${size} · ${escapeAttribute(item.description)}</small></div></div><div class="things-hand-keys">${buttons.join('')}</div>`;
+}
+
+/** What the card says of one of the team: who, how much of the locker it would take, and L. */
+export function memberCard(
+  pokemon: { readonly name: string; readonly level: number; readonly currentHp: number; readonly maxHp: number; readonly base: { readonly id: string } },
+  options: {
+    readonly fate: TeamFate;
+    readonly squares: number;
+    readonly canLock: boolean;
+    /** Who the locker would let go to keep this one, when it has no place left. */
+    readonly swapsOut?: string;
+  },
+): string {
+  const button =
+    options.fate === 'partner'
+      ? ''
+      : keyButton(
+          'L',
+          options.fate === 'locked'
+            ? 'Unlock'
+            : !options.canLock
+              ? 'Too big'
+              : options.swapsOut
+                ? `Lock · ${escapeAttribute(options.swapsOut)} out`
+                : 'Lock',
+          'data-hand="lock"',
+          options.fate === 'locked' ? '' : 'is-primary',
+          options.fate !== 'locked' && !options.canLock,
+        );
+  const said = options.fate === 'partner' ? `Partner · ${FATE_WORDS.partner}` : `${options.squares} squares · ${FATE_WORDS[options.fate]}`;
+  return `<div class="things-hand-thing">${pixelMonIcon(pokemon)}<div class="things-hand-words"><span>${escapeAttribute(
+    pokemon.name,
+  )} <small>Lv${pokemon.level}</small></span><small>${escapeAttribute(said)}</small></div></div><div class="things-hand-keys">${button}</div>`;
 }
 
 /** The whole screen: home on the left; the next raid's team, pack and locker on the right; what the cursor is on underneath. */

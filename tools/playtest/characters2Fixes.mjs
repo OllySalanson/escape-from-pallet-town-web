@@ -156,22 +156,6 @@ try {
     check('Bill names the way in', bill.some((line) => /Bank \d+ jobs? off Oak's board/.test(line)), bill.join(' | '));
   }
 
-  if (wanted('rack')) {
-    // Fault 9: the rack's box about a row stands beside it, not over the next.
-    await gameWith(`(save) => { ${hasBeenOut} }`);
-    await walkIntoBase(page, 'raid-arena', { press, until, wait });
-    await openHallPanel(page, 'rack', { press, until, wait });
-    await until(`${sceneIs('hub')} && document.querySelector('[data-describes] [data-count-dir]')`, 'the rack');
-    await press('ArrowDown');
-    await press('ArrowUp');
-    // The box keeps the page's own clock, not the stepped one.
-    await sleep(1400);
-    await shot('rack-hover');
-    const covered = await page.evaluate(`(() => { const tip = document.querySelector('.px-tip'); if (!tip) return 'no box';
-      const t = tip.getBoundingClientRect(); const names = [...document.querySelectorAll('.px-row strong')];
-      return names.filter((n) => { const r = n.getBoundingClientRect(); return r.right > t.left && t.right > r.left && r.bottom > t.top && t.bottom > r.top; }).map((n) => n.innerText).join(', '); })()`);
-    check('the hover box covers no row’s name', covered === '', covered || 'none covered');
-  }
 
 } finally {
   await browser.close();

@@ -278,10 +278,11 @@ try {
   // Pack something, so the final check is photographed with a loadout on it
   // rather than as two empty windows: what those screens look like full is the
   // question, and an empty one answers it for nobody.
+  // The rack is YOUR THINGS: a click on a thing at home and ENTER packs it.
   await openHallPanel(page, 'rack');
   for (const itemId of ['potion', 'poke-ball', 'super-potion']) {
-    await clickSel(`[data-count-id="${itemId}"][data-count-dir="1"]`);
-    await clickSel(`[data-count-id="${itemId}"][data-count-dir="1"]`);
+    await page.evaluate(`document.querySelector('#screens .things-menu [data-grid-piece="cargo:${itemId}"]')?.focus()`);
+    await page.tap('Enter', 60);
   }
   await shoot('rack');
   await openHallPanel(page, 'locker');

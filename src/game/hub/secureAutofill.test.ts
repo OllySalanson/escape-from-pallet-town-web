@@ -105,6 +105,12 @@ describe('what the secure container fills itself with', () => {
     ).toEqual([]);
   });
 
+  it('keeps the Pokémon the player chose ahead of a higher level, and falls back to level when it is not going', () => {
+    const chose = { pokemon: true, items: [], pokemonIds: ['low'] };
+    expect(autofillSecureSlot([pidgey('high', 30), pidgey('low', 4)], chose, BASE_SECURE_GRID, 1, held).pokemonIds).toEqual(['low']);
+    expect(autofillSecureSlot([pidgey('high', 30), pidgey('other', 4)], chose, BASE_SECURE_GRID, 1, held).pokemonIds).toEqual(['high']);
+  });
+
   it('leads with the highest-level Pokemon', () => {
     const fill = autofillSecureSlot(
       [pidgey('low', 4), pidgey('high', 18), pidgey('middle', 9)],
@@ -205,6 +211,15 @@ describe('what the secure container fills itself with', () => {
 });
 
 describe('a stored container preference', () => {
+  it('reads the Pokémon the player chose, and only ids', () => {
+    expect(readSecurePreference({ pokemon: true, items: [], pokemonIds: ['a', 7, 'b'] })).toEqual({
+      pokemon: true,
+      items: [],
+      pokemonIds: ['a', 'b'],
+    });
+    expect(readSecurePreference({ pokemon: true, items: [] })).not.toHaveProperty('pokemonIds');
+  });
+
   it('reads a save written before it existed as the default', () => {
     expect(readSecurePreference(undefined)).toEqual(DEFAULT_SECURE_PREFERENCE);
     expect(readSecurePreference(null)).toEqual(DEFAULT_SECURE_PREFERENCE);

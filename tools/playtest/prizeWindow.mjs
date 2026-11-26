@@ -173,11 +173,15 @@ try {
   await walkIntoBase(page, 'raid-arena', { press, until, wait });
   await until(takePokemon('Charmander'), 'Charmander on the bench');
   await openHallPanel(page, 'rack', { press, until, wait });
+  // The rack is YOUR THINGS: ENTER on the flute at home packs it.
   await until(
-    `(() => { const b = document.querySelector('button[data-count-kind="item"][data-count-id="poke-flute"][data-count-dir="1"]'); if (!b || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
+    `(() => { const b = document.querySelector('#screens .things-menu [data-grid-piece="cargo:poke-flute"]'); if (!b) return false; b.focus(); return true; })()`,
     'the rack to pack the flute',
   );
+  await press('Enter');
   await wait(200);
+  await press('Escape');
+  await until(`!${sceneIs('things')}`, 'the hall after the rack');
   await shoot('09-flute-packed');
   await jumpIn(page, { press, until, wait });
   for (let line = 0; line < 20 && (await page.evaluate(`${GAME}.scene.getScene('world').dialogBox.visible`)); line += 1) {

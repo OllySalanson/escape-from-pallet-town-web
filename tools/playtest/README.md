@@ -136,11 +136,6 @@ the mouse on a Pokédex tile: the highlight must stay where it opened, the help 
 must answer the tile pointed at and the cursor's again once the pointer leaves,
 and a click must still press (`docs/screens/pointer-only/`).
 
-`rackTab.mjs <test-mode build url> <dir> [--port=N]` opens THE ARMOURY RACK on a
-long stash and presses Tab: supplies, then the pack, then the header's X, then
-round to the supply row it left; Shift+Tab the other way; never out of the panel
-(`docs/screens/rack-tab/`).
-
 `touchAfterKeys.mjs <test-mode build url> [shot.png] [--port=N] [--no-keys]` taps
 the touch pad's OK on the title in a phone-sized window with touch emulated, after
 two real keyboard presses: NEW GAME must start, which the first OK after a keyboard
@@ -347,7 +342,7 @@ does not leave it - `docs/screens/base-rooms/` is what it photographs.
 
 `hallPlaces.mjs <test-mode build url> <dir> <raids> <rival|leader> [--pixels] [--lose]` fights the rival or a gym leader on THE RAID ARENA's far floor from a fresh save that has met Misty, and logs where everybody stands before the fight, on the way back and once the ladder has moved on - nobody who stays may move (`docs/screens/arena-misty-swap/`).
 
-`arenaHall.mjs <url> <dir> [--tour] [--window=] [--still] [--port=]` gets ready for a raid in THE RAID ARENA's great hall as a player and goes over the fence: the marshal, the bench, the rack, the locker, the rim, the jump, the landing, and the cloud lifting on the way home - `docs/screens/arena-raid-start/`. `deploy.mjs` is how every other driver does the same: `walkIntoBase(page, 'raid-arena')` walks through the door and up to the bench, `openHallPanel(page, 'rack')` walks on to the next and opens it, and `jumpIn(page, { insertion, press, until, wait })` goes to the rim and over.
+`arenaHall.mjs <url> <dir> [--tour] [--window=] [--still] [--port=]` gets ready for a raid in THE RAID ARENA's great hall as a player and goes over the fence: the marshal, the bench, the rack, the locker, the rim, the jump, the landing, and the cloud lifting on the way home - `docs/screens/arena-raid-start/`. `deploy.mjs` is how every other driver does the same: `walkIntoBase(page, 'raid-arena')` walks through the door and up to the bench, `openHallPanel(page, 'rack')` walks on to the next and opens it (the bench is YOUR TEAM, the rack and the locker YOUR THINGS), and `jumpIn(page, { insertion, press, until, wait })` goes to the rim and over.
 
 `raidArena.mjs <url> <dir>` plays the one way into a raid: a fresh save walks to
 the Raid Arena at the harbour's west end, opens the bench in its hall, walks back
@@ -447,19 +442,20 @@ row in the loadout.
   save's vault before the lobby opens. The loadout's stepper cannot pack more
   than the vault holds, so this is what makes a pack filled to its **last
   square** reachable - which is the only state the pack-full refusals happen in.
-- `--pack=itemId[:n],..` - packs exactly `n` of a supply by the loadout row's
-  own stepper (down to none, then up). **The stash's medicine is packed by
+- `--pack=itemId[:n],..` - packs exactly `n` stacks of a supply in YOUR THINGS,
+  which the hall's rack opens: BACKSPACE on its pack blocks down to none, then
+  ENTER on it at home once a stack. **The stash's medicine is packed by
   default** (`DeploymentFlow.packMedicine`, up to half the pack), so a driver
   that clicks through deploys with the vault's Potions, and `--pack=potion:0` is
   how a raid goes out with none.
 - `--secure=itemId[:n],..` - takes the secure-slot detour on the way out and
-  puts `n` (default one) squares of each kind into the container, by the row's
-  own stepper. It is the only way the container is checked end to end, and the
-  only way at all for a kind that is *found* rather than packed - a material, a
-  bundle of Pokedollars - whose row is room reserved for something not held yet. The
-  container fills itself with the party's best Pokemon now, and a first-stage
-  one takes all four squares a save starts with, so this first takes the
-  Pokemon back out - which is the choice a player asking for gear makes too.
+  has the locker keep `n` (default one) blocks of each kind, in YOUR THINGS: L
+  on a pack block, or on the kind at home for one that is *found* rather than
+  packed - a material, a bundle of Pokedollars - whose block is room kept for
+  something not held yet. It is the only way the locker is checked end to end.
+  The locker keeps the team's best Pokemon by itself, and a first-stage one
+  takes all four squares a save starts with, so this first lets the Pokemon go
+  (L on its team tile) - which is the choice a player asking for gear makes too.
 
 `raid.mjs` has four more. `--read=itemId` reads a disc in the raid's own bag -
 the only place a machine is ever used - to the first party Pokemon FireRed lets
