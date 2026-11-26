@@ -17,6 +17,12 @@ export interface WildEncounter {
    */
   legendary?: boolean;
   /**
+   * How many times this legend has got away from the throw before
+   * (`raidProgress.legendMisses`, `legends.ts`'s `legendWear`), read by the
+   * world as the fight is queued. Absent on anything that is not a legend.
+   */
+  legendMisses?: number;
+  /**
    * The vale's secret this one is, by its reward key (`secrets.ts`): what the
    * fight tags it with (`Pokemon.fromSecret`), so that banking it is what
    * finds the secret.

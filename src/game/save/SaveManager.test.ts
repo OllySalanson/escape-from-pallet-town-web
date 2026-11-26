@@ -1749,6 +1749,23 @@ describe('SaveManager', () => {
     expect(manager.load()!.raidProgress).toEqual({ ...before.raidProgress, trainersPaid: ['greystone-vale/trainer-scout-tam'] });
   });
 
+  it('counts each time a legend got away, by its Pokédex number, and keeps only sound counts', () => {
+    const storage = new MemoryStorage();
+    const manager = new SaveManager(storage);
+    manager.save({ party: new PokemonParty([]), mapId: 'pallet-town', position: { x: 1, y: 1 } });
+    expect(manager.load()!.raidProgress.legendMisses).toBeUndefined();
+
+    expect(manager.recordLegendMiss(145)).toBe(true);
+    expect(manager.recordLegendMiss(145)).toBe(true);
+    expect(manager.recordLegendMiss(144)).toBe(true);
+    expect(manager.load()!.raidProgress.legendMisses).toEqual({ '145': 2, '144': 1 });
+
+    const raw = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: Record<string, unknown> };
+    raw.raidProgress.legendMisses = { '145': 2, zapdos: 3, '146': -1, '150': 1.5 };
+    storage.setItem(SAVE_KEY, JSON.stringify(raw));
+    expect(manager.load()!.raidProgress.legendMisses).toEqual({ '145': 2 });
+  });
+
   it('records a reached drop-in point once, and never one the lobby already offers', () => {
     const storage = new MemoryStorage();
     const manager = new SaveManager(storage);

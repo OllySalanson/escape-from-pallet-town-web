@@ -72,7 +72,7 @@ import { moveChoiceMessage } from '../ui/moveChooser';
 import { MoveCategory, MoveTarget, type MoveBase } from '../pokemon/MoveBase';
 import { layDroppedPiece, prizesLeftBehind } from '../world/loot';
 import type { WildEncounter } from '../world/wildEncounters';
-import { legendFledLine, legendOneThrowLine, legendTooStrongLine } from '../world/legends';
+import { legendFledLine, legendOneThrowLine, legendTooStrongLine, legendWear, legendWornLine } from '../world/legends';
 import { owesItemLesson } from '../world/teachingEncounter';
 import { audioManager } from '../audio/AudioManager';
 import { pokemonTextureKey } from '../pokemon/pokemonSprites';
@@ -821,6 +821,8 @@ export class BattleScene extends Phaser.Scene {
    * every other fight.
    */
   private legendThrow: 'fighting' | 'offered' | 'thrown' | null = null;
+  /** How many times this legend has got away from the throw before (`legendWear`). */
+  private legendMisses = 0;
   /** The list "Let ZAPDOS go?" was asked over, and where its cursor was, for a NO to go back to. */
   private letGoFrom: 'balls' | 'make-room' = 'balls';
   private letGoCursor = 0;
@@ -1023,6 +1025,7 @@ export class BattleScene extends Phaser.Scene {
     this.pendingResultScreen = false;
     this.pendingBattleExit = false;
     this.legendThrow = data.wild?.legendary ? 'fighting' : null;
+    this.legendMisses = data.wild?.legendary ? Math.max(0, data.wild.legendMisses ?? 0) : 0;
     this.wildEscapeAttempts = 0;
     // Phaser reuses this scene instance after it returns to the overworld.
     // A completed first battle must not leave the return guard armed for the
@@ -2532,7 +2535,7 @@ export class BattleScene extends Phaser.Scene {
             foe.currentHp,
             foe.pokemon.maxHp,
             foe.primaryStatus,
-            ballModifierOf(ball),
+            this.ballModifierFor(ball),
           )
         : undefined;
       this.moveGuidanceTexts[0]
@@ -3423,12 +3426,13 @@ export class BattleScene extends Phaser.Scene {
    * up and goes, and the fight is over: there is no turn after it to take.
    */
   private throwAtBeatenLegend(ball: ItemDefinition): void {
+    const modifier = this.ballModifierFor(ball);
     this.legendThrow = 'thrown';
     const result = resolveCatchAttempt(
       // The fight is won; the throw is asked of it as though it were still on.
       { ...this.state, outcome: 'active' },
       () => Math.random(),
-      ballModifierOf(ball),
+      modifier,
       ball.displayName,
     );
     this.mode = 'events';
@@ -3442,7 +3446,13 @@ export class BattleScene extends Phaser.Scene {
     // The one throw is spent, and the legend is gone: written down now, as the
     // world the fight hands back to, so a reload is not a second throw.
     this.writeFightOver();
-    this.showCombatEvents(result.events, [], [this.legendFleesNote()]);
+    new SaveManager().recordLegendMiss(this.state.enemy.pokemon.base.dexId);
+    this.showCombatEvents(result.events, [], [this.legendFleesNote(), { message: legendWornLine(this.state.enemy.pokemon.name) }]);
+  }
+
+  /** A ball's modifier, and at a beaten legend's one throw how worn down it is (`legendWear`). */
+  private ballModifierFor(ball: ItemDefinition): number {
+    return ballModifierOf(ball) * (this.legendThrow === 'offered' ? legendWear(this.legendMisses) : 1);
   }
 
   /**
