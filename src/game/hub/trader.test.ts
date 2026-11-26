@@ -17,6 +17,7 @@ import { ICON_NAMES } from '../ui/icons';
 import { EXTRACTION_POINTS } from '../world/extractionPoints';
 import { WORLD_GATES } from '../world/gates';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
+import { SURF } from '../pokemon/moves';
 import { WORLD_MAPS, WORLD_MAP_NAMES, type BuiltInMapId } from '../worldMap';
 import { WORKSHOP_UPGRADES, workshopMaterialKinds } from './workshop';
 import {
@@ -343,6 +344,8 @@ describe('the barter table', () => {
       expect(of('barter-fire-stone')).toContain('he is the only way to one');
       expect(of('barter-pickaxe')).toContain('None of the maps you can raid');
       expect(of('barter-hm03')).toContain('No crossing on any map you can raid asks for it yet');
+      // What it is still worth with no crossing to open: the move itself.
+      expect(of('barter-hm03')).toContain(`Surf is a ${SURF.power}-power Water move`);
     } finally {
       retireMapsForTests([]);
     }
