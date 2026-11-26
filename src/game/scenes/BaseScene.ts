@@ -256,7 +256,7 @@ import {
 import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubScene, HubSceneData } from './HubScene';
 import type { ArenaIntroSceneData } from './ArenaIntroScene';
-import { ARENA_DARK_BELOW, ARENA_DOOR_STEP, ARENA_MAT, ARENA_MAT_REACH, ARENA_STATIONS, ARENA_TELESCOPES, DOOR_OPENING, PIT_RIM, STATION_PLATE_RISE, acrossOval, arenaStationAt, arenaTelescopeAt, cameraEased, cameraLean, isOuterWall, isTunnel, railBeside, type ArenaStationId } from '../base/arenaHall';
+import { ARENA_DARK_BELOW, ARENA_DOOR_STEP, ARENA_MAT, ARENA_MAT_REACH, ARENA_STATIONS, ARENA_TELESCOPES, DOOR_OPENING, PIT_RIM, STATION_PLATE_RISE, acrossOval, arenaStationAt, arenaTelescopeAt, cameraEased, cameraLean, isOuterWall, isTunnel, railBeside, railLean, touchesRail, type ArenaStationId } from '../base/arenaHall';
 import { crowdShare, crowdTakesTheView, lapLine, moodAsTheyGo, moodOnTheRail, standsBehind, type CrowdMood } from '../base/arenaCrowd';
 import { doorsBar, doorsWelcome } from '../base/arenaDoors';
 import { ArenaDoorsView } from '../base/arenaDoorsView';
@@ -2301,7 +2301,8 @@ export class BaseScene extends Phaser.Scene {
 
   /**
    * The hall's camera. It leans out over the pit from wherever the player stands
-   * (`cameraLean`), keeps them in what a panel leaves of the screen, and with the
+   * (`cameraLean`), right out over it while they stand against the fence
+   * (`railLean`), keeps them in what a panel leaves of the screen, and with the
    * rim's panel up comes right round to the way in being looked at. Eased, because
    * it is a person looking somewhere and not a cut.
    */
@@ -2325,7 +2326,11 @@ export class BaseScene extends Phaser.Scene {
       y: this.player.y - PLAYER_SPRITE_Y_OFFSET + TILE_SIZE / 2,
     };
     const cover = this.panelCover();
-    const lean = cameraLean(middle, { width: this.scale.width - cover.right, height: this.scale.height - cover.bottom });
+    const seen = { width: this.scale.width - cover.right, height: this.scale.height - cover.bottom };
+    // Up against the fence the view goes right out over the pit, the player
+    // at the edge of the screen, and eases back as they step away from it.
+    const atRail = touchesRail(this.targetTile ?? this.currentTile);
+    const lean = atRail ? railLean(middle, seen) : cameraLean(middle, seen);
     // Where the middle of what can be seen should look at, as the camera's own middle.
     let centre = {
       x: middle.x + lean.x + cover.right / 2,
