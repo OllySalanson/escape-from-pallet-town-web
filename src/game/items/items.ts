@@ -1707,13 +1707,15 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
   // base bench refused it already; this is the rule they share, so the raid pack
   // refuses it too.
   if (pokemon.isFainted && (item.effect.type === 'heal' || item.effect.type === 'cure-status')) {
-    return { used: false, message: `It will not have any effect on a fainted Pokémon.` };
+    return { used: false, message: WONT_HAVE_EFFECT_LINE };
   }
+  // FireRed's party menu names the Pokémon in its capitals, as the fight does.
+  const name = pokemon.name.toUpperCase();
   switch (item.effect.type) {
     case 'heal': {
       const healed = pokemon.heal(item.effect.amount);
       return healed > 0
-        ? { used: true, message: hpRestoredLine(pokemon.name, healed) }
+        ? { used: true, message: hpRestoredLine(name, healed) }
         : { used: false, message: WONT_HAVE_EFFECT_LINE };
     }
     case 'cure-status':
@@ -1721,7 +1723,7 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
         return { used: false, message: WONT_HAVE_EFFECT_LINE };
       }
       pokemon.primaryStatus = null;
-      return { used: true, message: curedLine(pokemon.name, item.effect.status) };
+      return { used: true, message: curedLine(name, item.effect.status) };
     case 'capture-modifier':
       return { used: false, message: `${item.displayName} can only be used in battle.` };
     case 'material':

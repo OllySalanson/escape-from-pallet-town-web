@@ -6143,7 +6143,7 @@
    "facing": "down",
    "lines": [
     "Fresh from the orchards over the river. Well. Over the road.",
-    "The road east takes you on to The Crossing."
+    "Two for one on the bruised ones. They’re all bruised."
    ],
    "beat": {
     "everyMs": 3100,
@@ -6164,7 +6164,7 @@
    "look": "little-girl",
    "facing": "right",
    "lines": [
-    "There is a cave up in the peaks. Mum says it goes all the way to the sea."
+    "There’s a cave up in the peaks. Mum says it goes all the way to the sea."
    ],
    "beat": {
     "everyMs": 1700,
@@ -6196,7 +6196,7 @@
    "facing": "right",
    "lines": [
     "Race you to the fountain!",
-    "I always win. Ada says that does not count because I start closer.",
+    "I always win. Ada says that doesn’t count because I start closer.",
     "My big sister LINNET races grown-ups, down by the alley. All the way to the mere. She always wins."
    ],
    "beat": {
@@ -6310,7 +6310,7 @@
    "facing": "down",
    "lines": [
     "Nothing in this pond but Magikarp and regret.",
-    "Mind, if you have a rod, press at the water. It costs you nothing but time."
+    "Forty years I’ve sat here. The Magikarp have sat here longer."
    ],
    "calls": [
     "Shh. They can hear you.",
@@ -6324,8 +6324,8 @@
    "look": "heavy-man",
    "facing": "left",
    "lines": [
-    "I lost my purse somewhere round this yard. Do not tell the board.",
-    "It told everyone."
+    "I lost my purse somewhere round this yard. Don’t tell the notice board.",
+    "Too late. It’s told everyone."
    ],
    "beat": {
     "everyMs": 3300,
@@ -6373,7 +6373,7 @@
    "facing": "down",
    "lines": [
     "Dig, plant, chase off the Oddish. Dig, plant, chase off the Oddish.",
-    "It is a living. It is not a good one."
+    "It’s a living. It’s not a good one."
    ],
    "beat": {
     "everyMs": 2300,
@@ -6425,7 +6425,7 @@
    "look": "lass",
    "facing": "right",
    "lines": [
-    "There is a garden behind the woodcutter’s, walled off by one small tree.",
+    "There’s a garden behind the woodcutter’s, walled off by one small tree.",
     "Old Hazel left it. Nobody with a Cut has been past in years."
    ],
    "beat": {
@@ -6513,7 +6513,7 @@
    "facing": "left",
    "lines": [
     "Every Pidgey in the vale nests in my roof.",
-    "East of the village the road goes over the bridge at The Crossing."
+    "I’ve stopped counting the eggs. I’ve nearly stopped counting the roof."
    ],
    "beat": {
     "everyMs": 3000,
@@ -6540,7 +6540,7 @@
    "look": "beauty",
    "facing": "left",
    "lines": [
-    "Best in show, nine years running. There is no show. I started it. I judge it."
+    "Best in show, nine years running. There’s no show. I started it. I judge it."
    ],
    "beat": {
     "everyMs": 3300,
@@ -6565,7 +6565,7 @@
    "look": "hiker",
    "facing": "right",
    "lines": [
-    "Is this the way to the marsh? I have been going round this tree for some time.",
+    "Is this the way to the marsh? I’ve been going round this tree for some time.",
     "South, you say. Down the lane. Yes. Obviously."
    ],
    "beat": {
@@ -6613,7 +6613,7 @@
    "look": "gentleman",
    "facing": "down",
    "lines": [
-    "I keep the gate. There is no gate. It is a very quiet job.",
+    "I keep the gate. There’s no gate. It’s a very quiet job.",
     "East: The Crossing, and the only bridge for miles."
    ],
    "beat": {
@@ -6624,7 +6624,7 @@
     ]
    },
    "calls": [
-    "Mind the gate. There is none."
+    "Mind the gate. There’s none."
    ]
   },
   {
@@ -6634,8 +6634,8 @@
    "look": "picnicker",
    "facing": "right",
    "lines": [
-    "The Westward Road goes out of the vale, if you need to go out in a hurry.",
-    "Most people who come through do."
+    "I came in by the Westward Road for one night. That was in the spring.",
+    "Everyone who leaves in a hurry goes out that way. I keep meaning to."
    ],
    "beat": {
     "everyMs": 3800,
@@ -6654,7 +6654,7 @@
    "look": "picnicker",
    "facing": "up",
    "lines": [
-    "The berries grow back by the next raid. Do not ask me how. I just pick."
+    "Pick a bush clean and it’s full again next time. Don’t ask me how. I just pick."
    ],
    "beat": {
     "everyMs": 2600,
@@ -6714,7 +6714,7 @@
    "facing": "right",
    "lines": [
     "The pool is full of Magikarp!",
-    "Nobody believes me. There is something on the island too. Mind the gaps."
+    "Nobody believes me. There’s something on the island too. Mind the gaps."
    ],
    "calls": [
     "Magikarp! Loads of them!",
@@ -6728,20 +6728,20 @@
    "look": "youngster",
    "facing": "left",
    "lines": [
-    "Mind the sacks. I have counted them. I am going to count them again.",
-    "The wheel has not stopped in eighty years. Nobody knows how to stop it."
+    "Mind the sacks. I’ve counted them. I’m going to count them again.",
+    "The wheel hasn’t stopped in eighty years. Nobody knows how to stop it."
    ],
    "area": "millbrook-the-mill"
   },
   {
    "x": 4,
    "y": 6,
-   "name": "Nurse",
+   "name": "Waiting Trainer",
    "look": "beauty",
    "facing": "right",
    "lines": [
-    "The machines are spoken for, I am afraid. There is a raid on, you know.",
-    "If you are hurt, the pump on the green has medicine by it. Nobody counts it."
+    "Nobody’s been behind that counter all day. Gone out on a raid, I heard.",
+    "If yours are hurt, there’s medicine by the pump on the green. Nobody counts it."
    ],
    "area": "millbrook-millbrook-center"
   },
@@ -6753,7 +6753,7 @@
    "facing": "down",
    "lines": [
     "Sorry, nothing on the shelves till the boat comes in.",
-    "Professor Oak’s parcel? We sent it out by the lane. It will be lying about somewhere."
+    "Professor Oak’s parcel? We sent it out by the lane. It’ll be lying about somewhere."
    ],
    "area": "millbrook-millbrook-mart"
   },
@@ -13495,7 +13495,7 @@
    "y": 154,
    "lines": [
     "NOTICES",
-    "LOST: one coin purse, at the mill, on Tuesday. Reward. Ask nobody. They will only look for it.",
+    "LOST: one coin purse, at the mill, on Tuesday. Reward. Ask nobody. They’ll only look for it.",
     "FOR SALE: pond. Slightly used.",
     "WANTED: somebody with a Cut to do Hazel’s hedge. It has been years."
    ]
