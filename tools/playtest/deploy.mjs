@@ -38,8 +38,18 @@ const GOING_OVER = `(() => { const scenes = ${GAME}.scene.getScenes(true).map((s
 // A Pokémon on the bench is a slot (`.px-party-slot`), one at base a tile named
 // only in its `aria-label` (the menu overhaul's bench, `HubScene.benchView`);
 // a row of the old list carried its name in its text and `is-selected` when chosen.
+/**
+ * A Pokemon on the bench, and one already going. YOUR TEAM is the bench since
+ * #919: the team stands as `.team-stand` and the boxes are `.team-box-tile`,
+ * both `[data-member]`; before it, every row was `button[data-pokemon]`, going
+ * as `.px-party-slot` (or the old list's `.is-selected`).
+ */
+const BENCH_ROW = 'button[data-pokemon], [data-member]';
+const GOING = ['is-selected', 'px-party-slot', 'team-stand'];
+const going = `(b) => ${JSON.stringify(GOING)}.some((name) => b.classList.contains(name))`;
+
 export const takePokemon = (name = null) =>
-  `(() => { const label = (b) => ((b.getAttribute('aria-label') ?? '') + ' ' + b.innerText).toLowerCase(); const rows = [...document.querySelectorAll('button[data-pokemon]')].filter((b) => ${JSON.stringify(name?.toLowerCase() ?? null)} === null || label(b).includes(${JSON.stringify(name?.toLowerCase() ?? '')})); if (rows.length === 0) return false; if (rows.some((b) => b.classList.contains('is-selected') || b.classList.contains('px-party-slot'))) return true; const row = rows.find((b) => b.getAttribute('aria-disabled') !== 'true'); if (!row) return false; row.click(); return true; })()`;
+  `(() => { const label = (b) => ((b.getAttribute('aria-label') ?? '') + ' ' + b.innerText).toLowerCase(); const rows = [...document.querySelectorAll(${JSON.stringify(BENCH_ROW)})].filter((b) => ${JSON.stringify(name?.toLowerCase() ?? null)} === null || label(b).includes(${JSON.stringify(name?.toLowerCase() ?? '')})); if (rows.length === 0) return false; if (rows.some(${going})) return true; const row = rows.find((b) => b.getAttribute('aria-disabled') !== 'true'); if (!row) return false; row.click(); return true; })()`;
 
 /**
  * Walks the base to one of its keepers' doors, goes in, and speaks to the keeper.
@@ -453,11 +463,11 @@ async function enterRaid(page, { press, click, until, wait, insertion, starter, 
   // (`DeploymentFlow.packSomebodyIfBenchEmpty`) - so whoever is on it steps
   // off first, as a player changing who leads has them do.
   if (lead) {
-    await until(`document.querySelector('button[data-pokemon]') !== null`, 'the bench to list the vault');
+    await until(`document.querySelector(${JSON.stringify(BENCH_ROW)}) !== null`, 'the bench to list the vault');
     for (let guard = 0; guard < 6; guard += 1) {
       const stoodDown = await page.evaluate(
         // A Pokemon on the bench is a slot now (\`.px-party-slot\`); \`is-selected\` was the old list's row.
-        `(() => { const b = document.querySelector('button[data-pokemon].px-party-slot, button[data-pokemon].is-selected'); if (!b) return false; b.click(); return true; })()`,
+        `(() => { const b = [...document.querySelectorAll(${JSON.stringify(BENCH_ROW)})].find(${going}); if (!b) return false; b.click(); return true; })()`,
       );
       if (!stoodDown) {
         break;
@@ -473,7 +483,7 @@ async function enterRaid(page, { press, click, until, wait, insertion, starter, 
   // would take it back out.
   for (let guard = 0; guard < 6 && team.length > 0; guard += 1) {
     const added = await page.evaluate(
-      `(() => { const b = document.querySelector('button[data-pokemon]:not(.is-selected):not(.px-party-slot)'); if (!b || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
+      `(() => { const b = [...document.querySelectorAll(${JSON.stringify(BENCH_ROW)})].find((row) => !(${going})(row)); if (!b || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
     );
     if (!added) {
       break;

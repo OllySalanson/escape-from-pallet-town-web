@@ -1462,12 +1462,20 @@ export class HunterPack {
 
   /** Whether tall grass at `tile` hides the player now: not round a fight just heard (`heardFight`). */
   grassHides(tile: GridPosition): boolean {
+    return this.trampledLeftMs(tile) === null;
+  }
+
+  /** How long the grass at `tile` still gives the player away, round a fight just heard; null where it hides as ever. */
+  trampledLeftMs(tile: GridPosition): number | null {
     const trampled = this.trampled;
-    return (
+    if (
       trampled === null ||
       this.clockMs >= trampled.untilMs ||
       Math.max(Math.abs(tile.x - trampled.at.x), Math.abs(tile.y - trampled.at.y)) > FIGHT_TRAMPLED_STEPS
-    );
+    ) {
+      return null;
+    }
+    return trampled.untilMs - this.clockMs;
   }
 
   /**

@@ -266,6 +266,13 @@ export interface HunterChipInput {
    */
   readonly enraged?: boolean;
   /**
+   * How long the grass the player stands in still gives them away, round a
+   * fight a hunter heard (`HunterPack.trampledLeftMs`): the chip counts it
+   * down, so the rule is on screen rather than a thing to guess (the critic's
+   * second pass, 26 Nov 2026).
+   */
+  readonly heardLeftMs?: number | null;
+  /**
    * Present only on a raid deployed from a base with the radio mast, and only
    * while there is still a hunter to report on.
    */
@@ -344,6 +351,10 @@ function hunterContactView(input: HunterChipInput): HunterChipView | null {
     return { label: input.shout === 'back' ? `${who} IS BACK` : `${who} ON YOUR TAIL`, tone: 'closing' };
   }
   if (input.distance === null || (input.distance > HUNTER_ALERT_DISTANCE && input.enraged !== true)) {
+    // Nobody near, but the grass here still gives the player away.
+    if (input.heardLeftMs !== undefined && input.heardLeftMs !== null) {
+      return { label: `${who} HEARD THAT ${formatRaidClock(input.heardLeftMs)}`, tone: 'closing' };
+    }
     return null;
   }
   // In the prize chip's words (`SE · 7 STEPS`), so two chips one above the other

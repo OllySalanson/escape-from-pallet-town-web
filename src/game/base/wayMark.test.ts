@@ -6,6 +6,19 @@ const VIEW = { left: 100, top: 200, width: 400, height: 256 };
 describe('the way shown in a raid', () => {
   const figure = { x: 300, y: 330 };
 
+  it('stands past the partner at the player\'s heel, never on it', () => {
+    // Off screen to the east, the walk setting off east: the chevron beside the player.
+    const target = { x: 900, y: 330 };
+    const plain = chevronRoundFigure(target, target, VIEW, figure, 0);
+    expect(plain.angle).toBe(90);
+    // Just out of a door the partner stands on that side: one figure further out.
+    const pushed = chevronRoundFigure(target, target, VIEW, figure, 0, [], { x: figure.x + 16, y: figure.y });
+    expect(pushed.x).toBe(plain.x + 16);
+    expect(pushed.y).toBe(plain.y);
+    // Behind the player, where it walks, it is in nobody's way.
+    expect(chevronRoundFigure(target, target, VIEW, figure, 0, [], { x: figure.x - 16, y: figure.y })).toEqual(plain);
+  });
+
   it('stands over the thing once it is on the screen', () => {
     expect(chevronRoundFigure({ x: 300, y: 320 }, { x: 300, y: 320 }, VIEW, figure, 0).angle).toBe(180);
   });

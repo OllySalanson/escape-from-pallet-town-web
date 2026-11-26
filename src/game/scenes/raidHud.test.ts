@@ -45,6 +45,13 @@ describe('the hunter chip', () => {
     expect(hunterChipView({ ...FAR, who: 'BRUNO', shout: 'heard' })).toEqual({ label: 'BRUNO HEARD THAT', tone: 'closing' });
   });
 
+  it('counts down how long the grass round a heard fight gives the player away, while nobody is near', () => {
+    expect(hunterChipView({ ...FAR, who: 'BRUNO', heardLeftMs: 58_000 })).toEqual({ label: 'BRUNO HEARD THAT 0:58', tone: 'closing' });
+    // A hunter in reach says where it is instead: that is the more urgent line.
+    expect(hunterChipView({ ...FAR, who: 'BRUNO', heardLeftMs: 58_000, distance: 5, direction: 'N' })?.label).toBe('BRUNO · N · 5 STEPS');
+    expect(hunterChipView({ ...FAR, who: 'BRUNO', heardLeftMs: null })).toBeNull();
+  });
+
   it('names the rival hunting the raid', () => {
     expect(hunterChipView({ ...FAR, who: 'MISTY', distance: 5, direction: 'NW' })).toEqual({
       label: 'MISTY · NW · 5 STEPS',

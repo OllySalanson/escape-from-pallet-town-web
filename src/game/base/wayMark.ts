@@ -190,6 +190,8 @@ function riseClear(x: number, y: number, captions: readonly ScreenRect[]): numbe
 
 /** How far from the middle of the figure the raid's chevron stands: clear of its head mark and of every chip. */
 const ROUND_THE_FIGURE = 30;
+/** A figure's size on the map, which a partner in the chevron's way pushes it out by. */
+const FIGURE_PX = 16;
 
 /**
  * Where the raid's chevron stands: over the thing once it is on the screen, and
@@ -204,6 +206,8 @@ export function chevronRoundFigure(
   elapsedMs: number,
   /** The captions on show, in the world: it stands on none of them. */
   captions: readonly ScreenRect[] = [],
+  /** The middle of whoever walks at the player's heel: the chevron stands past them, never on them. */
+  follower?: { readonly x: number; readonly y: number },
 ): { readonly x: number; readonly y: number; readonly angle: number } {
   if (isOnScreen(target, view)) {
     return chevronTowards(target, view, figure, elapsedMs, captions);
@@ -212,7 +216,16 @@ export function chevronRoundFigure(
   const dx = aim.x - figure.x;
   const dy = aim.y - figure.y;
   const across = Math.abs(dx) >= Math.abs(dy);
-  const reach = ROUND_THE_FIGURE + bob;
+  // A partner on the side the walk sets off - just through a door, or turned
+  // back the way they came - had the chevron drawn over it (the critic's
+  // second pass, 26 Nov 2026): it stands a figure further out instead.
+  const along = across ? Math.sign(dx) : Math.sign(dy);
+  const inTheWay =
+    follower !== undefined &&
+    Math.abs(across ? follower.y - figure.y : follower.x - figure.x) < FIGURE_PX &&
+    Math.sign(across ? follower.x - figure.x : follower.y - figure.y) === along &&
+    Math.abs(across ? follower.x - figure.x : follower.y - figure.y) <= ROUND_THE_FIGURE;
+  const reach = ROUND_THE_FIGURE + (inTheWay ? FIGURE_PX : 0) + bob;
   return {
     x: Math.round(figure.x - view.left + (across ? Math.sign(dx) * reach : 0)),
     y: Math.round(figure.y - view.top + (across ? 0 : Math.sign(dy) * reach)),
@@ -337,6 +350,7 @@ export class RaidWayMark {
     player: { readonly x: number; readonly y: number },
     elapsedMs: number,
     captions: readonly ScreenRect[] = [],
+    follower?: { readonly x: number; readonly y: number },
   ): void {
     if (!way) {
       this.image.setVisible(false);
@@ -350,6 +364,7 @@ export class RaidWayMark {
       player,
       this.still ? 0 : elapsedMs,
       captions,
+      follower,
     );
     const since = this.poppedAtMs === undefined ? WAY_OUT_POP_MS : elapsedMs - this.poppedAtMs;
     if (since >= WAY_OUT_POP_MS) {
