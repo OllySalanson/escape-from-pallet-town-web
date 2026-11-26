@@ -123,6 +123,15 @@ body {
 }
 /* They come in from the edge they stand on, a game pixel a step, rather than appearing over the hall. */
 /* The moment a disc is read (`teachMomentBody`); its rules are in the Pixel UI block. */
+/* The red arrow over the thing the cursor is on in YOUR THINGS, bobbing. */
+@keyframes things-bob {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: 0 calc(var(--u) * 2);
+  }
+}
 @keyframes teach-moment-fly {
   from {
     left: 0;
@@ -6693,77 +6702,271 @@ body.touch-play .feedback-tab {
   color: var(--ink-soft);
 }
 
-/* --- YOUR THINGS's pockets as a strip of icons (`ui/thingsView.ts`) --------
-   HeartGold's bag: one icon a pocket across the top of storage, the cursor's
-   pocket lit and raised, the rest dim - a picture of where LEFT and RIGHT go. */
-:where(.pixel-ui) .things-pockets {
-  display: flex;
-  align-items: flex-end;
-  gap: calc(var(--u) * 4);
-  padding: calc(var(--u) * 2) calc(var(--u) * 2) 0;
-  /* The line the tabs stand on; the lit tab's paper runs over it into the list. */
-  box-shadow: inset 0 calc(var(--u) * -1) 0 var(--line);
+/* --- YOUR THINGS as the stash grid (`ui/thingsView.ts`, `scenes/ThingsScene.ts`) -
+   The captain's Tarkov (25 Nov 2026): the stash on the left as squares, each
+   thing as big as it is with how many on its corner; the next raid's pack top
+   right, red because it can be lost; the locker under it, green because it
+   cannot; and what is in hand along the foot. A square here is 32 game pixels
+   and an icon is drawn at twice its size in it, so nothing is resampled. */
+.pixel-ui.things-menu {
+  --sq: 32;
+  --px-rosette: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 10' shape-rendering='crispEdges'%3E%3Cpath fill='%231d6c2e' d='M2 0h5v1h-5zM1 1h1v1h-1zM7 1h1v1h-1zM0 2h1v3h-1zM8 2h1v3h-1zM1 5h1v1h-1zM7 5h1v1h-1zM2 6h5v1h-5zM2 7h2v1h-2zM5 7h2v1h-2zM1 8h2v1h-2zM6 8h2v1h-2zM1 9h1v1h-1zM7 9h1v1h-1z'/%3E%3Cpath fill='%232f9e46' d='M2 1h5v1h-5zM1 2h1v3h-1zM7 2h1v3h-1zM2 5h5v1h-5z'/%3E%3Cpath fill='%23ffc823' d='M2 2h5v3h-5z'/%3E%3C/svg%3E");
 }
-:where(.pixel-ui) .things-pocket-tabs {
+:where(.pixel-ui) .things-layout {
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'stash pack'
+    'stash locker'
+    'hand locker';
+  align-content: stretch;
+  column-gap: calc(var(--u) * 6);
+  row-gap: calc(var(--u) * 6);
+}
+.pixel-ui .things-layout > .things-stash {
+  grid-area: stash;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.pixel-ui .things-layout > .things-pack {
+  grid-area: pack;
+}
+.pixel-ui .things-layout > .things-locker {
+  grid-area: locker;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.pixel-ui .things-layout > .things-hand {
+  grid-area: hand;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 6);
+  min-height: calc(var(--u) * 44);
+  padding: calc(var(--u) * 4) calc(var(--u) * 6);
+}
+/* The squares, bigger than the raid's, and an icon at twice its size in each. */
+.pixel-ui.things-menu .px-grid > * {
+  grid-template-columns: repeat(var(--cols), calc(var(--u) * var(--sq)));
+  grid-template-rows: repeat(var(--rows), calc(var(--u) * var(--sq)));
+}
+.pixel-ui.things-menu .px-grid-block > .item-icon {
+  transform: scale(2);
+}
+/* A window too small for the big squares keeps the raid's own size. */
+.pixel-ui.things-menu[data-room='tight'] {
+  --sq: 16;
+}
+.pixel-ui.things-menu[data-room='tight'] .px-grid-block > .item-icon {
+  transform: none;
+}
+.pixel-ui.things-menu[data-room='tight'] .px-grid-block.is-turned > .item-icon {
+  transform: rotate(90deg);
+}
+.pixel-ui.things-menu .px-grid-block.is-turned > .item-icon {
+  transform: scale(2) rotate(90deg);
+}
+.pixel-ui.things-menu .px-grid-cells > i {
+  background: var(--paper-sunk);
+}
+.pixel-ui.things-menu .px-grid-block {
+  background: var(--paper);
+}
+/* How many, on the block's own corner: white on ink. */
+.pixel-ui.things-menu .px-grid-block > b {
+  right: var(--u);
+  bottom: var(--u);
+  padding: 0 calc(var(--u) * 2);
+  background: var(--ink);
+  color: var(--paper);
+  line-height: calc(var(--u) * 11);
+}
+/* A pocket tab not lit: its things stand back. */
+.pixel-ui.things-menu .px-grid-block.is-dim > .item-icon {
+  filter: grayscale(1);
+  opacity: 0.3;
+}
+.pixel-ui.things-menu .px-grid-block.is-dim > b {
+  background: var(--ink-soft);
+}
+/* The thing the cursor is on: gold all round, and the red arrow bobbing over it. */
+.pixel-ui.things-menu .px-grid button.px-grid-block:focus {
+  z-index: 2;
+  box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--gold);
+}
+.pixel-ui.things-menu .px-grid button.px-grid-block:focus::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - var(--u) * 3);
+  top: calc(var(--u) * -6);
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 4);
+  background: var(--red);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  animation: things-bob 0.6s steps(2, jump-none) infinite alternate;
+}
+/* A thing carried over the other container: that container is where it goes. */
+.pixel-ui.things-menu .px-grid.is-drop-target {
+  box-shadow: 0 0 0 calc(var(--u) * 2) var(--gold);
+}
+.pixel-ui.things-menu .px-grid-ghost {
+  background: var(--gold-wash);
+}
+
+/* The stash: tabs across its heading, ALL first, the lit one gold. */
+.pixel-ui .things-stash > .things-tabs {
+  padding-left: 0;
+}
+:where(.pixel-ui) .things-tab-strip {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+}
+.pixel-ui .things-tab {
+  height: calc(var(--u) * 14);
+  padding: 0 calc(var(--u) * 4);
+  color: var(--bar-muted);
+  text-transform: uppercase;
+}
+.pixel-ui .things-tab.is-here {
+  background: var(--gold);
+  color: var(--ink);
+}
+.pixel-ui .things-tab:not(.is-here):hover {
+  color: var(--paper);
+}
+:where(.pixel-ui) .things-stash-scroll {
+  min-height: 0;
+  padding: calc(var(--u) * 4) calc(var(--u) * 2) 0;
+  overflow-x: hidden;
+  display: grid;
+  align-content: start;
+}
+.pixel-ui .things-stash-scroll > .px-grid {
+  justify-self: center;
+}
+:where(.pixel-ui) .things-empty {
+  margin-top: calc(var(--u) * 4);
+}
+
+/* The pack: the squares, and how full beside them, the one number twice its size. */
+:where(.pixel-ui) .things-pack-name,
+:where(.pixel-ui) .things-lock-name {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .things-pack-body {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--u) * 6);
+  padding: calc(var(--u) * 2) calc(var(--u) * 2) calc(var(--u) * 2);
+}
+:where(.pixel-ui) .things-count {
+  display: grid;
+  justify-items: center;
+  width: calc(var(--u) * 26);
+  padding-top: calc(var(--u) * 4);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .things-count > b {
+  display: block;
+  width: calc(var(--u) * 13);
+  height: calc(var(--u) * 12);
+  margin-bottom: calc(var(--u) * 12);
+  transform: scale(2);
+  transform-origin: 50% 0;
+  text-align: center;
+}
+:where(.pixel-ui) .things-count > small {
+  margin-bottom: calc(var(--u) * 2);
+}
+
+/* The locker: who is kept safe, big, on green; the partner with its rosette. */
+:where(.pixel-ui) .things-locker-body {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--u);
-  min-width: 0;
+  align-items: flex-start;
+  align-content: flex-start;
+  gap: calc(var(--u) * 6);
+  padding: calc(var(--u) * 2);
+  min-height: 0;
+  overflow: hidden;
 }
-/* A pocket is a tab: a frame on three sides with its corners clear, sunk while
-   it is not the one the cursor is in. */
-:where(.pixel-ui) .things-pocket {
+:where(.pixel-ui) .things-locker-place {
   display: grid;
-  place-items: center;
-  width: calc(var(--u) * 22);
-  height: calc(var(--u) * 20);
-  background:
-    linear-gradient(var(--line), var(--line)) var(--u) 0 / calc(100% - var(--u) * 2) var(--u) no-repeat,
-    linear-gradient(var(--line), var(--line)) 0 var(--u) / var(--u) 100% no-repeat,
-    linear-gradient(var(--line), var(--line)) 100% var(--u) / var(--u) 100% no-repeat,
-    linear-gradient(var(--paper-sunk), var(--paper-sunk));
-}
-.pixel-ui .things-pocket:not(.is-here) > .item-icon {
-  filter: grayscale(1);
-  opacity: 0.55;
-}
-/* The lit pocket: paper, two pixels taller, its foot over the line it stands on
-   so it is one piece with the list under it. A red mark along its top says
-   which, for an eye that sees no difference in the paper. */
-.pixel-ui .things-pocket.is-here {
-  position: relative;
-  height: calc(var(--u) * 23);
-  margin-bottom: calc(var(--u) * -1);
-  background:
-    linear-gradient(var(--cursor), var(--cursor)) var(--u) 0 / calc(100% - var(--u) * 2) calc(var(--u) * 2) no-repeat,
-    linear-gradient(var(--line), var(--line)) 0 var(--u) / var(--u) 100% no-repeat,
-    linear-gradient(var(--line), var(--line)) 100% var(--u) / var(--u) 100% no-repeat,
-    linear-gradient(var(--paper), var(--paper));
-}
-/* The strip is a row of its own between the heading and the list: the window's
-   grid had rows for a heading, a list and a pane, and the strip took the list's
-   squeezable one and was drawn under the list's first band. */
-.pixel-ui .raid-bag-layout > .px-window.things-storage:has(.things-pockets) {
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-}
-/* The lit pocket's name and how many kinds it holds, beside the tabs; the
-   others' stand hidden. */
-:where(.pixel-ui) .things-pocket-name {
-  display: flex;
-  flex-direction: column;
-  align-self: center;
-  min-width: 0;
-  padding-bottom: calc(var(--u) * 2);
+  justify-items: center;
+  gap: var(--u);
+  width: calc(var(--u) * 76);
+  padding: calc(var(--u) * 3) 0 calc(var(--u) * 4);
+  background: var(--safe-wash);
+  box-shadow: inset 0 0 0 var(--u) var(--safe);
   text-transform: uppercase;
+}
+:where(.pixel-ui) .things-locker-name {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .things-rosette {
+  flex: none;
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 10);
+  background: var(--px-rosette) center / 100% 100% no-repeat;
+}
+
+/* In hand: the thing at twice its size, its name and what it does, and the keys. */
+:where(.pixel-ui) .things-hand-thing {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 10);
+  min-width: 0;
+}
+.pixel-ui .things-hand-thing > .item-icon {
+  margin: 0 calc(var(--u) * 4);
+  transform: scale(2);
+}
+:where(.pixel-ui) .things-hand-words {
+  display: grid;
+  min-width: 0;
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .things-hand-words small {
+  color: var(--ink-soft);
+  text-transform: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
-:where(.pixel-ui) .things-pocket-name > small {
-  color: var(--ink-soft);
+:where(.pixel-ui) .things-hand-keys {
+  display: flex;
+  flex: none;
+  gap: calc(var(--u) * 4);
 }
-:where(.pixel-ui) .things-pocket-name:not(.is-here) {
-  display: none;
+.pixel-ui .px-button.things-key {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  padding: calc(var(--u) * 2) calc(var(--u) * 5) calc(var(--u) * 2) calc(var(--u) * 2);
 }
+:where(.pixel-ui) .things-cap {
+  display: inline-grid;
+  place-items: center;
+  min-width: calc(var(--u) * 12);
+  height: calc(var(--u) * 12);
+  padding: 0 calc(var(--u) * 2);
+  background: var(--ink);
+  color: var(--paper);
+}
+.pixel-ui .px-button.things-key:is(.is-primary, .is-danger) .things-cap {
+  background: var(--paper);
+  color: var(--ink);
+}
+
 /* A row of a pocket the tabs are not showing (`ThingsScene.showPocket`): a row
    is laid out as a grid, which outranks the browser's own rule for [hidden]. */
 .pixel-ui .px-row[data-pocket][hidden] {

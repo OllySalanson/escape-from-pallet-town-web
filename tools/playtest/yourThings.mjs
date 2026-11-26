@@ -4,8 +4,10 @@
 //
 //   - B in the yard opens the panel, every pocket shows, nothing can be dropped,
 //     and B closes it onto the harbour again;
-//   - TM40 is read to the partner at home, and the disc is gone from storage;
-//   - two quick ENTERs on a Thunder Stone open the list of who it is for and
+//   - ENTER on a thing packs it, and on one that does nothing in a raid says
+//     where it is used;
+//   - TM40 is read to the partner at home (U on it), and the disc is gone from storage;
+//   - U then a quick ENTER on a Thunder Stone open the list of who it is for and
 //     evolve nobody; then it is used on the Pikachu, which evolves on a moment
 //     of its own that a key ends, and is a Raichu at home;
 //   - B opens it in every room of the harbour, and in THE RAID ARENA's hall,
@@ -116,33 +118,40 @@ try {
   await wait(300);
   await openThings('in the yard');
   await shoot('01-yard-things');
-  // Every pocket is named: on the strip of pocket icons over the list (the menu
-  // overhaul, `ui/thingsView.ts`), or by a band when there is one pocket.
-  const headings = await page.evaluate(`[...document.querySelectorAll('#screens .things-menu .px-subheading, #screens .things-menu .things-pocket-name')].map((h) => h.textContent)`);
+  // Every pocket is a tab over the stash grid (`ui/thingsView.ts`), ALL first.
+  const headings = await page.evaluate(`[...document.querySelectorAll('#screens .things-menu .things-tab')].map((h) => h.textContent)`);
   console.log(`pockets: ${headings.join(', ')}`);
-  for (const pocket of ['Medicine', 'Poké Balls', 'Discs', 'Stones', 'Tools', 'Packs', 'Found goods']) {
+  for (const pocket of ['All', 'Balls', 'Discs', 'Stones', 'Tools', 'Packs', 'Found']) {
     if (!headings.includes(pocket)) fail(`no ${pocket} pocket`);
   }
-  // RIGHT jumps a pocket, and the strip's light goes with the cursor.
-  await page.evaluate(`document.querySelector('#screens .things-menu [data-thing]').focus()`);
-  await press('ArrowRight');
-  const lit = await page.evaluate(`[...document.querySelectorAll('#screens .things-menu .things-pocket.is-here')].map((tab) => tab.dataset.pocketTab).join()`);
-  const at = await page.evaluate(`document.activeElement?.dataset?.pocket ?? ''`);
-  console.log(`RIGHT: cursor in ${at}, strip lit on ${lit}`);
-  if (at !== 'balls' || lit !== 'balls') fail(`RIGHT left the cursor in ${at} and the strip lit on ${lit}`);
-  await press('ArrowLeft');
+  // The medicine is all in the pack already (the rack packs it by default), so
+  // it is in the pack's squares and not the stash's.
+  if (!(await page.evaluate(`Boolean(document.querySelector('#screens .things-menu [data-grid="pack"] [data-grid-piece$=":potion"]'))`))) {
+    fail('the packed Potions are not in the pack');
+  }
+  // E lights the next pocket's tab and puts the cursor on its first thing.
+  await press('KeyE');
+  await wait(200);
+  const lit = await page.evaluate(`document.querySelector('#screens .things-menu .things-tab.is-here')?.dataset.pocketTab ?? ''`);
+  console.log(`E: tab lit on ${lit}`);
+  if (lit !== 'balls') fail(`E lit the ${lit} tab`);
+  await press('KeyQ');
+  await wait(200);
   if (await page.evaluate(`Boolean(document.querySelector('#screens .things-menu [data-drop]'))`)) fail('something can be dropped');
-  if (!(await page.evaluate(`document.querySelector('#screens .things-menu .things-pack')?.textContent.includes('Next raid')`))) {
+  if (!(await page.evaluate(`document.querySelector('#screens .things-menu .things-pack')?.textContent.includes('At risk')`))) {
     fail('the next raid pack is not shown');
   }
-  // A row that is not used here says where it is.
-  await click('[data-thing="cable-coil"]');
+  // A thing that does nothing in a raid says where it is used when ENTER would pack it.
+  await page.evaluate(`document.querySelector('#screens .things-menu [data-grid-piece="cargo:cable-coil"]').focus()`);
+  await press('Enter');
+  await wait(200);
   const said = await page.evaluate(`document.querySelector('#screens .things-menu .px-status-line')?.textContent ?? ''`);
   if (!/Brock/.test(said)) fail(`a cable coil says "${said}"`);
   await shoot('02-where-it-is-used');
 
-  // A TM read at home.
-  await click('[data-thing="tm40-aerial-ace"]');
+  // A TM read at home: U on it.
+  await page.evaluate(`document.querySelector('#screens .things-menu [data-grid-piece="cargo:tm40-aerial-ace"]').focus()`);
+  await press('KeyU');
   await shoot('03-teach-at-home');
   await click('[data-pupil="0"]');
   // A press within RELEASE_ARMING_MS (500ms) of the question appearing is the
@@ -160,8 +169,8 @@ try {
   // A stone used at home. Two quick ENTERs on its row open the list of who it
   // is for and evolve nobody: the second is the double-tap's, and it lands on
   // the first able Pokémon on a list nobody has seen (playtest of PRs 490-508).
-  await page.evaluate(`document.querySelector('#screens .things-menu [data-thing="thunder-stone"]').focus()`);
-  await press('Enter');
+  await page.evaluate(`document.querySelector('#screens .things-menu [data-grid-piece="cargo:thunder-stone"]').focus()`);
+  await press('KeyU');
   await press('Enter');
   await wait(100);
   if (!(await page.evaluate(`Boolean(document.querySelector('#screens .things-menu [data-target]'))`))) {

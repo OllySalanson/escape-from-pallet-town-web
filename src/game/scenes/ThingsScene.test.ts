@@ -168,3 +168,61 @@ describe('a double press on a stone or a disc at home', () => {
     expect(count(scene, 'tm23-iron-tail')).toBe(0);
   });
 });
+
+/**
+ * YOUR THINGS as the stash grid (the captain, 25 Nov 2026): a thing moved
+ * from the stash into the pack is packed for the next raid, and back out is
+ * unpacked, written to the save as the arena's rack writes it.
+ */
+describe('packing from YOUR THINGS', () => {
+  interface Packing {
+    packOne(itemId: string, at?: { x: number; y: number; rotated: boolean }): boolean;
+    transfer(from: string, to: string, ref: unknown, x: number, y: number, rotated: boolean): boolean;
+    takeOut(ref: { kind: 'item'; itemId: string; index: number }): void;
+    stashContents(): Record<string, number>;
+  }
+  const packing = (scene: ThingsInternals) => scene as unknown as Packing;
+  const saved = (scene: ThingsInternals) => (scene as unknown as { saveManager: SaveManager }).saveManager.load()!;
+
+  it('packs one stack on ENTER and writes it to the save, out of what the stash shows', () => {
+    const scene = thingsHolding({ 'poke-ball': 4 }, 10);
+    const before = packing(scene).stashContents()['poke-ball'] ?? 0;
+    expect(packing(scene).packOne('poke-ball')).toBe(true);
+    const packed = saved(scene).raidProgress.lastPack?.['poke-ball'] ?? 0;
+    expect(packed).toBeGreaterThan(0);
+    expect(packing(scene).stashContents()['poke-ball'] ?? 0).toBe(4 - packed);
+    expect(before).toBeGreaterThanOrEqual(packing(scene).stashContents()['poke-ball'] ?? 0);
+  });
+
+  it('seats a thing dragged into the pack where it was let go', () => {
+    // A rod, which nothing packs by itself the way medicine and balls are.
+    const scene = thingsHolding({ 'old-rod': 1 }, 10);
+    expect(packing(scene).transfer('stash', 'pack', { kind: 'cargo', cargoId: 'old-rod' }, 3, 1, false)).toBe(true);
+    const seats = saved(scene).raidProgress.packArrangement?.items ?? [];
+    expect(seats).toContainEqual(expect.objectContaining({ itemId: 'old-rod', x: 3, y: 1 }));
+  });
+
+  it('takes one back out to the stash', () => {
+    const scene = thingsHolding({ 'poke-ball': 1 }, 10);
+    packing(scene).packOne('poke-ball');
+    packing(scene).takeOut({ kind: 'item', itemId: 'poke-ball', index: 0 });
+    expect(saved(scene).raidProgress.lastPack?.['poke-ball'] ?? 0).toBe(0);
+    expect(packing(scene).stashContents()['poke-ball']).toBe(1);
+  });
+
+  it('refuses to pack what does nothing in a raid, and packs none of it', () => {
+    const scene = thingsHolding({ 'mooring-rope': 2 }, 10);
+    expect(packing(scene).packOne('mooring-rope')).toBe(false);
+    expect(saved(scene).raidProgress.lastPack?.['mooring-rope'] ?? 0).toBe(0);
+  });
+});
+
+describe('a thing let go at the edge of a grid', () => {
+  it('stands where it was let go, moved in just far enough to be all on the grid', async () => {
+    const { withinGrid } = await import('./ThingsScene');
+    // The Old Rod is a square wide and two tall: let go on the foot row it stands one higher.
+    expect(withinGrid({ width: 6, height: 3 }, 'old-rod', { x: 5, y: 2, rotated: false })).toEqual({ x: 5, y: 1 });
+    expect(withinGrid({ width: 6, height: 3 }, 'old-rod', { x: 5, y: 2, rotated: true })).toEqual({ x: 4, y: 2 });
+    expect(withinGrid({ width: 6, height: 3 }, 'poke-ball', { x: 2, y: 1, rotated: false })).toEqual({ x: 2, y: 1 });
+  });
+});

@@ -114,6 +114,14 @@ export interface GridArrangingHost {
    * gesture to the browser.
    */
   remove?(name: string, ref: GridPieceRef): boolean;
+  /**
+   * A piece carried out of one container and let go over another: YOUR
+   * THINGS's stash and the raid pack (`scenes/ThingsScene.ts`), where moving a
+   * thing across packs it or puts it back. `x` and `y` are the square its
+   * top-left would stand on. Answers whether the move was taken; a screen
+   * without it keeps every piece in the container it came from.
+   */
+  transfer?(from: string, to: string, ref: GridPieceRef, x: number, y: number, rotated: boolean): boolean;
 }
 
 /** How far a pointer must travel before a press counts as a drag. */
@@ -131,6 +139,8 @@ export class GridArranging {
   private dragging = false;
   /** Set when a drag put a piece down, so the click that follows is not a second deed. */
   private swallowClick = false;
+  /** The other container the carried piece is over, and the square it would stand on there. */
+  private foreign: { readonly grid: HTMLElement; readonly x: number; readonly y: number } | undefined;
 
   public constructor(host: GridArrangingHost) {
     this.host = host;
@@ -142,6 +152,7 @@ export class GridArranging {
 
   /** Nothing is being carried: called when a screen changes out from under one. */
   public release(): void {
+    this.overForeign(undefined);
     this.heldPiece = undefined;
     this.pressedAt = undefined;
     this.dragging = false;
@@ -317,14 +328,46 @@ export class GridArranging {
       }
     }
     const held = this.heldPiece;
-    if (!held || held.owner !== gridName(grid)) {
+    if (!held) {
       return;
     }
     const cell = cellAt(grid, event.clientX, event.clientY);
     if (!cell) {
       return;
     }
+    if (held.owner !== gridName(grid)) {
+      this.overForeign(grid, cell.x - this.grabX, cell.y - this.grabY);
+      return;
+    }
+    this.overForeign(undefined);
     this.hoverTo(grid, cell.x - this.grabX, cell.y - this.grabY);
+  }
+
+  /** Marks the other container a carried piece is over as where it would go, or none. */
+  private overForeign(grid: HTMLElement | undefined, x = 0, y = 0): void {
+    if (!this.host.transfer) {
+      return;
+    }
+    if (this.foreign && this.foreign.grid !== grid) {
+      this.foreign.grid.classList.remove('is-drop-target');
+    }
+    this.foreign = grid ? { grid, x: Math.max(0, x), y: Math.max(0, y) } : undefined;
+    grid?.classList.add('is-drop-target');
+  }
+
+  /** Lets the carried piece go over the other container: the screen decides what that means. */
+  private transferTo(grid: HTMLElement, x: number, y: number): boolean {
+    const held = this.heldPiece;
+    if (!held || !this.host.transfer) {
+      return false;
+    }
+    this.overForeign(undefined);
+    this.heldPiece = undefined;
+    const taken = this.host.transfer(held.owner, gridName(grid), held.ref, Math.max(0, x), Math.max(0, y), held.rotated);
+    if (!taken) {
+      this.host.redraw();
+    }
+    return true;
   }
 
   private onPointerUp(): void {
@@ -334,6 +377,10 @@ export class GridArranging {
     this.dragging = false;
     if (dragged && this.heldPiece) {
       this.swallowClick = true;
+      const foreign = this.foreign;
+      if (foreign && this.transferTo(foreign.grid, foreign.x, foreign.y)) {
+        return;
+      }
       this.putDown();
     }
   }
@@ -346,6 +393,11 @@ export class GridArranging {
     const name = gridName(grid);
     if (this.heldPiece) {
       if (this.heldPiece.owner !== name) {
+        // Click, carry, click on the other container: the same move as a drag.
+        const cell = cellAt(grid, event.clientX, event.clientY);
+        if (cell) {
+          this.transferTo(grid, cell.x, cell.y);
+        }
         return;
       }
       this.putDown();

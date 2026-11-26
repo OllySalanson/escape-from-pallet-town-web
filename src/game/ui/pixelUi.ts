@@ -1,4 +1,4 @@
-import { itemRefAt, pieceRefKey, type GridPacking } from '../items';
+import { itemRefAt, pieceRefKey, type GridCargoPlacement, type GridPacking } from '../items';
 import { publicAssetUrl } from '../publicAssetUrl';
 import { CHARACTER_FEET_PIXEL_Y } from '../playerFrames';
 import { pokemonSpritePath } from '../pokemon/pokemonSprites';
@@ -343,6 +343,13 @@ export interface PixelGridOptions {
    * which is what every read-only container stays.
    */
   readonly arrange?: PixelGridArranging;
+  /**
+   * What a cargo block holds, in place of its picture: YOUR THINGS's stash
+   * draws a kind of thing as one cargo block, its icon and its count.
+   */
+  readonly cargoBody?: (placement: GridCargoPlacement) => string;
+  /** Extra classes for a cargo block: the stash dims what the pocket tab leaves out. */
+  readonly cargoClass?: (placement: GridCargoPlacement) => string;
 }
 
 /** What the screen is carrying over this container, if anything. */
@@ -427,14 +434,18 @@ export function pixelGrid(packing: GridPacking, icon: (itemId: string) => string
     .map((placement) =>
       block(
         pieceRefKey({ kind: 'cargo', cargoId: placement.cargoId }),
-        `px-grid-block is-cargo${options.highlight === placement.cargoId ? ' is-marked' : ''}`,
+        `px-grid-block is-cargo${options.highlight === placement.cargoId ? ' is-marked' : ''}${options.cargoClass ? ` ${options.cargoClass(placement)}` : ''}`.trimEnd(),
         describeKey('cargo', placement.cargoId),
         placement,
         // The sprite and nothing else: a species name is eight to ten letters
         // and the block is two squares wide, so writing it in there spilled
         // over the frame and over the art. The name is the row the cursor is
         // on, and the screen reader gets it from the label.
-        placement.art ? `<img src="${placement.art}" alt="" />` : `<em>${escapeAttribute(placement.name.slice(0, 1))}</em>`,
+        options.cargoBody
+          ? options.cargoBody(placement)
+          : placement.art
+            ? `<img src="${placement.art}" alt="" />`
+            : `<em>${escapeAttribute(placement.name.slice(0, 1))}</em>`,
         // A picture of a Pokemon is a picture; the same block on a container
         // the player arranges is a button, and a button is not an image.
         ` aria-label="${escapeAttribute(placement.name)}"${arranging ? '' : ' role="img"'}`,
