@@ -355,6 +355,7 @@ import { takeUpRaid } from '../run/raidResume';
 import { ABANDONED_BOUT_LINE, newBoutId, type BoutUnderWay } from '../arena/boutUnderWay';
 import { isHomeRoom, ownedFurniture, type Placement } from '../home/arrangement';
 import { STORAGE_CHEST_SHEET } from '../home/furniture';
+import type { ChestPokemonSceneData } from './ChestPokemonScene';
 import { DecorateMode, type DecorateHost } from '../base/decorateMode';
 import { loadPlayerName } from '../console/playerName';
 import { houseTitle } from '../home/houseName';
@@ -6172,9 +6173,10 @@ export class BaseScene extends Phaser.Scene {
         this.sayStationNotes();
       }
       this.showHint(this.hintHere());
-      // P on YOUR THINGS, or a click on its team, goes on to YOUR TEAM.
+      // P on the chest's THINGS, or a click on its POKéMON tab or its team,
+      // goes on to the POKéMON tab.
       if (thenTeam) {
-        this.time.delayedCall(0, () => this.openTeam());
+        this.time.delayedCall(0, () => this.openChestPokemon(chest));
       }
     });
     let thenTeam = false;
@@ -6200,6 +6202,63 @@ export class BaseScene extends Phaser.Scene {
         },
       },
     } satisfies ThingsSceneData);
+  }
+
+  /**
+   * THE CHEST's POKéMON tab (`scenes/ChestPokemonScene.ts`): every Pokémon in
+   * one grid, the next raid's team and the garden, a side panel over the paused
+   * harbour. B or its THINGS tab goes back to the chest's things. Opened at the
+   * chest, the lid stays up while either tab is open.
+   */
+  private openChestPokemon(chest: boolean): void {
+    if (this.leaving || this.choosing) {
+      return;
+    }
+    this.learnKey('team');
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    if (chest) {
+      this.chestImage?.setFrame(STORAGE_CHEST_SHEET.open);
+    }
+    this.events.once(Phaser.Scenes.Events.RESUME, () => {
+      this.chestImage?.setFrame(STORAGE_CHEST_SHEET.shut);
+      this.input.keyboard?.resetKeys();
+      this.spentPresses.spendHeld(this.directionKeys());
+      this.savedGame = this.saveManager.load() ?? this.savedGame;
+      if (this.kit) {
+        this.furniture?.show(this.kit.flow, partnerOf(this.savedGame.stash)?.id ?? null);
+        this.sayStationNotes();
+      }
+      // Opened in the yard, the garden beside the house is who the tab left out there.
+      if (this.garden) {
+        this.plantGarden();
+      }
+      this.showHint(this.hintHere());
+      if (thenThings) {
+        this.time.delayedCall(0, () => this.openThings(undefined, chest));
+      }
+    });
+    let thenThings = false;
+    const pit = Boolean(this.place.room?.pit);
+    this.scene.pause();
+    this.scene.launch('chest-pokemon', {
+      pausedBase: true,
+      openThings: () => {
+        thenThings = true;
+      },
+      ...(this.kit ? { flow: this.kit.flow } : {}),
+      ...(chest ? { chest } : {}),
+      view: {
+        covers: (gamePixels) => this.panelLean.setCover(pit ? 0 : gamePixels),
+        frame: (deltaMs) => {
+          if (!pit) {
+            this.panelLean.settle(deltaMs);
+            this.containWorldLabels();
+          }
+        },
+      },
+    } satisfies ChestPokemonSceneData);
   }
 
   /**

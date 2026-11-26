@@ -158,6 +158,10 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
         text: 'THE CHEST by the stairs keeps everything you own between raids. Face it and press {key:interact} to open it, or press {key:pack} anywhere in the harbour to look inside.',
       },
       {
+        heading: 'Your Pokémon in THE CHEST',
+        text: 'In THE CHEST, {key:team} shows every Pokémon you keep in one grid. Drag one onto NEXT RAID or GARDEN, or press ENTER or G. Click one to see its card.',
+      },
+      {
         heading: 'MY PC',
         text: 'Step on the stair mat to go up. MY PC holds your boxes of Pokémon, and counts your POKéDEX. The PC at the POKéMON CENTER is the same storage.',
       },

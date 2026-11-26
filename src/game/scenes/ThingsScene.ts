@@ -31,6 +31,7 @@ import { pokedexOwned } from '../hub/pokedex';
 import { awayOnRaid, outOnRaidLine, PACKED_FOR_RAID_LINE } from '../run/raidInFlight';
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
+import { chestTabs } from '../ui/chestPokemonView';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { GridArranging } from '../ui/gridArranging';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
@@ -500,10 +501,14 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     let title = this.title;
     let back: { label: string; attribute: string } | undefined;
     let body: string;
-    let hints = `ARROWS move · ENTER pack · BKSP out · L lock · Q E tab${this.toTeam ? ' · P team' : ''} · ESC back`;
+    let hints = `ARROWS move · ENTER pack · BKSP out · L lock · Q E tab${this.toTeam ? ' · P Pokémon' : ''} · ESC back`;
+    // The chest's two tabs, where the other one can be gone to: not while a
+    // disc, a stone or the locker's room has the screen.
+    let tabs = this.toTeam ? chestTabs('things') : undefined;
     const machine = item ? machineForItem(item) : undefined;
     if (item && this.using?.kind === 'teach' && machine) {
       title = 'Teach a move';
+      tabs = undefined;
       back = { label: 'Things', attribute: 'data-stop' };
       body = teachBody({
         item,
@@ -519,6 +524,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
           : 'ENTER teach · ESC choose someone else';
     } else if (item && this.using?.kind === 'evolve') {
       title = 'Use a stone';
+      tabs = undefined;
       back = { label: 'Things', attribute: 'data-stop' };
       body = stoneTargetsBody(
         item,
@@ -527,6 +533,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       hints = 'ARROWS move · ENTER use it · ESC back';
     } else if (this.keepingRoom && this.flow) {
       title = 'Room for a find';
+      tabs = undefined;
       back = { label: 'Things', attribute: 'data-find-close' };
       const locker = this.flow.secureLayout();
       body = findRoomBody(this.findRows(), { layout: locker, used: locker.cellsUsed, total: gridCells(this.flow.secureGrid) });
@@ -535,7 +542,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       const view = game ? this.screenView() : undefined;
       body = view ? thingsScreen(view, '') : '<main class="px-body"><p class="px-empty">There is no saved game.</p></main>';
     }
-    overlay.root.innerHTML = pixelScreen({ title, back, close: { attribute: 'data-close' }, aside: money, body, hints, status });
+    overlay.root.innerHTML = pixelScreen({ title, back, close: { attribute: 'data-close' }, aside: money, tabs, body, hints, status });
     const on = (selector: string, act: (button: HTMLButtonElement) => void): void => {
       overlay.root.querySelectorAll<HTMLButtonElement>(selector).forEach((button) => {
         button.onclick = () => act(button);
@@ -552,6 +559,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     });
     on('[data-pocket-tab]', (button) => this.showPocket(button.dataset.pocketTab as PocketTab));
     on('[data-team-open]', () => this.goToTeam());
+    on('[data-chest-tab="pokemon"]', () => this.goToTeam());
     on('[data-find-open]', () => this.openFindRoom());
     on('[data-find-close]', () => this.closeFindRoom());
     on('[data-find]', (button) => this.keepRoomFor(button.dataset.find ?? '', true));

@@ -2796,6 +2796,21 @@ export class SaveManager {
   }
 
   /**
+   * Who walks about THE BOLTHOLE's garden, by stash id (`base/homeGarden.ts`
+   * works out who may), written over the save as it stands now, so a second
+   * tab's raid or wipe is never written back over.
+   */
+  public chooseGarden(pokemonIds: readonly string[]): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    const kept = new Set(game.stash.listPokemon().map((stored) => stored.id));
+    const garden = [...new Set(pokemonIds)].filter((id) => kept.has(id));
+    return this.save({ ...game, raidProgress: { ...game.raidProgress, garden } });
+  }
+
+  /**
    * The next raid's team, chosen outside the hall: YOUR TEAM on P
    * (`scenes/TeamScene.ts`). It writes the same `lastBench` the hall's bench
    * opens on, so the bench holds who was chosen in the yard. No raid has gone

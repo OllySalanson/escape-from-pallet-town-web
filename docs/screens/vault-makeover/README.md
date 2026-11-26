@@ -24,3 +24,19 @@ the player home.
 Made with `node tools/playtest/chest.mjs <test-mode build url>/?testmode=pixels <dir> --window=1280x800`
 against a `VITE_EPTW_TEST_MODE=1` build (`tools/playtest/README.md`, "Memory").
 The before pictures are the same build of `main` at 8ba3ce0e.
+
+# THE CHEST's POKéMON tab (part 2)
+
+The captain: "It should just be a grid system, and then when you click on a
+Pokemon, then you can see its stats and stuff. And put it in the garden."
+
+| Before | After |
+|---|---|
+| ![](before-bills-pc.png) Boxes, PREV, NEXT, SORT, FIND, RENAME, NEW BOX, and a garden chip. | ![](pokemon-tab-02-pokemon-tab.png) Every Pokémon in one grid, big, in the order kept; THE NEXT RAID and the GARDEN beside it. |
+
+- ![](pokemon-tab-01-things-tab.png) THE CHEST has two tabs now: THINGS, and P for POKéMON.
+- ![](pokemon-tab-03-pikachu-leads.png) ENTER takes Pikachu on the next raid and L puts it in front; its berry shows in its corner and on its card.
+- ![](pokemon-tab-04-dragged.png) Machop dragged onto NEXT RAID, Rattata dragged out of the GARDEN back into the grid.
+- ![](pokemon-tab-05-clicked-geodude.png) A click is a look: Geodude's card, and nothing changed.
+
+Made with `node tools/playtest/chestPokemon.mjs <test-mode build url>/?testmode=pixels <dir> --window=1280x800`.

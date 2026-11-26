@@ -106,6 +106,8 @@ export interface PixelScreenOptions {
   readonly back?: { readonly label: string; readonly attribute: string };
   /** Right-hand side of the title bar: a count, or the route's progress rail. */
   readonly aside?: string;
+  /** Tabs that stand in the title bar after the name: THE CHEST's THINGS and POKéMON (`chestTabs`). */
+  readonly tabs?: string;
   readonly body: string;
   /**
    * What the keys do here: the bottom line of the help bar, which never
@@ -188,7 +190,7 @@ export function pixelScreen(options: PixelScreenOptions): string {
   // (`screenKeyLines`), and the text itself is reworded for a thumb.
   const keys = options.hints ? `<span class="px-keys" data-keys="${escapeAttribute(options.hints)}">${options.hints}</span>` : '';
   const help = `<p class="px-help${status ? ' has-status' : ''}${keys ? ' has-keys' : ''}"><span data-help-text data-help-default="${escapeAttribute(helpDefault)}">${helpDefault}</span>${status}${keys}</p>`;
-  return `<div class="px-screen"><header class="px-title">${back}<h1>${place}${options.title}</h1>${aside}${close}</header>${options.body}${help}</div>`;
+  return `<div class="px-screen"><header class="px-title">${back}<h1>${place}${options.title}</h1>${options.tabs ?? ''}${aside}${close}</header>${options.body}${help}</div>`;
 }
 
 /**

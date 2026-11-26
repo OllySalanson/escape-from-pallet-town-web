@@ -10466,3 +10466,309 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .boutique-shelves[data-low] .boutique-card .look-figure {
   --figure-scale: 1;
 }
+
+/* THE CHEST's two tabs, THINGS and POKéMON, in the title bar after its name
+   (`chestTabs` in `ui/chestPokemonView.ts`): the one you are on is lit paper,
+   the other a word on the bar, each with the key that goes there. */
+:where(.pixel-ui) .px-title:has(.chest-tabs) h1 {
+  flex: none;
+}
+:where(.pixel-ui) .chest-tabs {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  margin-right: auto;
+}
+:where(.pixel-ui) .chest-tab {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  font: inherit;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  height: calc(var(--u) * 14);
+  padding: 0 calc(var(--u) * 4) 0 calc(var(--u) * 2);
+  color: var(--bar-muted);
+  background: transparent;
+  cursor: pointer;
+}
+:where(.pixel-ui) .chest-tab .things-cap {
+  margin: 0;
+  background: var(--bar-muted);
+  color: var(--ink);
+}
+:where(.pixel-ui) .chest-tab.is-here {
+  background: var(--paper);
+  color: var(--ink);
+  cursor: default;
+}
+:where(.pixel-ui) .chest-tab.is-here .things-cap {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* THE CHEST's POKéMON tab (`ui/chestPokemonView.ts`): the grid on the left with
+   the garden under it, the next raid and the card on the right. */
+:where(.pixel-ui) .chest-mons-layout {
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'mons team'
+    'mons card'
+    'mons garden';
+  column-gap: calc(var(--u) * 3);
+  row-gap: calc(var(--u) * 6);
+}
+.pixel-ui .chest-mons-layout > .chest-mons {
+  grid-area: mons;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.pixel-ui .chest-mons-layout > .chest-team {
+  grid-area: team;
+}
+.pixel-ui .chest-mons-layout > .chest-cards {
+  grid-area: card;
+  min-height: 0;
+  display: grid;
+}
+.pixel-ui .chest-mons-layout > .chest-garden {
+  grid-area: garden;
+}
+:where(.pixel-ui) .chest-mon-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+/* Four of the bag's squares a Pokémon, on the bag's own ink lines. */
+:where(.pixel-ui) .chest-mon-grid {
+  display: grid;
+  grid-template-columns: repeat(4, calc(var(--u) * 65));
+  grid-auto-rows: calc(var(--u) * 65);
+  gap: var(--u);
+  padding: var(--u);
+  background: var(--line);
+  justify-content: start;
+}
+:where(.pixel-ui) .chest-mon {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--ink);
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--paper);
+  cursor: grab;
+}
+:where(.pixel-ui) .chest-mon * {
+  pointer-events: none;
+}
+:where(.pixel-ui) .chest-mon .px-portrait {
+  position: absolute;
+  inset: 0 0 auto 0;
+  margin: 0 auto;
+  transform: translateY(calc(var(--u) * -4));
+}
+:where(.pixel-ui) .chest-mon.is-team {
+  background: var(--gold-wash);
+}
+:where(.pixel-ui) .chest-mon.is-garden {
+  background: var(--safe-wash);
+}
+:where(.pixel-ui) .chest-mon.is-away,
+:where(.pixel-ui) .chest-mon.is-fainted {
+  background: var(--paper-sunk);
+}
+:where(.pixel-ui) .chest-mon.is-away .px-portrait {
+  opacity: 0.45;
+}
+:where(.pixel-ui) .chest-mon:focus-visible,
+:where(.pixel-ui) .chest-mon:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--cursor);
+}
+:where(.pixel-ui) .chest-mon-lv {
+  position: absolute;
+  left: calc(var(--u) * 3);
+  bottom: calc(var(--u) * 5);
+  line-height: 1;
+}
+:where(.pixel-ui) .chest-mon > .px-hp {
+  position: absolute;
+  left: calc(var(--u) * 3);
+  bottom: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .chest-mon-marks {
+  position: absolute;
+  top: calc(var(--u) * 2);
+  right: calc(var(--u) * 2);
+  display: grid;
+  gap: var(--u);
+  justify-items: end;
+}
+:where(.pixel-ui) .chest-mark {
+  display: block;
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 9);
+  background: center / 100% 100% no-repeat;
+}
+:where(.pixel-ui) .chest-mark.is-team {
+  background-image: var(--px-ball);
+}
+:where(.pixel-ui) .chest-mark.is-garden {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath fill='%231d6c2e' d='M1 1h1v8h-1zM4 1h1v8h-1zM7 1h1v8h-1zM0 3h9v1h-9zM0 6h9v1h-9z'/%3E%3Cpath fill='%2339b553' d='M1 0h1v1h-1zM4 0h1v1h-1zM7 0h1v1h-1z'/%3E%3C/svg%3E");
+}
+:where(.pixel-ui) .chest-mark.is-held {
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+}
+/* An empty place in the grid: four of the bag's empty squares. */
+:where(.pixel-ui) .chest-mon-gap {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--u);
+}
+:where(.pixel-ui) .chest-mon-gap > i {
+  background: var(--paper-sunk);
+}
+/* THE NEXT RAID's six and the GARDEN's six: a bag square each, the party icon in it. */
+:where(.pixel-ui) .chest-slots {
+  display: flex;
+  gap: calc(var(--u) * 3);
+  padding: var(--u);
+}
+:where(.pixel-ui) .chest-slot {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 33);
+  height: calc(var(--u) * 33);
+  background: var(--paper-lit);
+  box-shadow: inset 0 0 0 var(--u) var(--line);
+  cursor: grab;
+}
+:where(.pixel-ui) .chest-garden .chest-slot {
+  background: var(--safe-wash);
+}
+:where(.pixel-ui) .chest-slot.is-free {
+  background: var(--paper-sunk);
+  box-shadow: none;
+}
+:where(.pixel-ui) .chest-slot .px-mon-icon {
+  margin: 0;
+}
+:where(.pixel-ui) .chest-slot .px-rosette {
+  position: absolute;
+  right: var(--u);
+  bottom: var(--u);
+}
+:where(.pixel-ui) .chest-slot:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--cursor);
+}
+/* A place a carried Pokémon would go if let go here. */
+:where(.pixel-ui) [data-drop].is-drop {
+  outline: calc(var(--u) * 2) solid var(--go);
+  outline-offset: calc(var(--u) * -1);
+}
+:where(.pixel-ui) [data-drop].is-drop .chest-slot.is-free {
+  background: var(--safe-wash);
+}
+.pixel-ui.is-carrying,
+.pixel-ui.is-carrying * {
+  cursor: grabbing;
+}
+/* The Pokémon on the pointer, as big as in the grid. */
+.pixel-ui .chest-ghost {
+  position: fixed;
+  z-index: 5;
+  pointer-events: none;
+  transform: translate(-50%, -60%) scale(var(--zoom, 2));
+  opacity: 0.9;
+}
+.pixel-ui .chest-ghost img {
+  display: block;
+  image-rendering: pixelated;
+}
+/* The card: its picture and what it holds beside its figures, its keys along the foot. */
+:where(.pixel-ui) .chest-card {
+  align-content: start;
+}
+:where(.pixel-ui) .chest-card-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: calc(var(--u) * 6);
+}
+:where(.pixel-ui) .chest-card-side {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .chest-held {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .chest-held-square {
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 20);
+  height: calc(var(--u) * 20);
+  background: var(--paper-sunk);
+  box-shadow: inset 0 0 0 var(--u) var(--line);
+}
+:where(.pixel-ui) .chest-card-figures {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+}
+:where(.pixel-ui) .chest-card-foot {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  margin-top: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .chest-keys {
+  display: flex;
+  gap: calc(var(--u) * 3);
+  flex-wrap: wrap;
+}
+:where(.pixel-ui) .chest-card-foot .team-card-where {
+  margin-left: auto;
+}
+:where(.pixel-ui) .chest-key {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  font: inherit;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  height: calc(var(--u) * 13);
+  padding: 0 calc(var(--u) * 3) 0 0;
+  background: var(--paper-sunk);
+  color: var(--ink);
+  cursor: pointer;
+}
+:where(.pixel-ui) .chest-key .things-cap {
+  margin: 0;
+}
+:where(.pixel-ui) .chest-key.is-on {
+  background: var(--safe-wash);
+}
