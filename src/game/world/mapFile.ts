@@ -3448,13 +3448,9 @@ export function buildFileMap(
         kind: 'npc',
         position: at(standing),
         facing: 'down',
-        // One that will not fight says so, and where the ones that will are:
-        // a cry and nothing else read as a bug to players who had come to
-        // catch the Oddish on the path (AI playtest, 22 Nov 2026).
-        dialogLines:
-          standing.level || standing.secret || standing.legendary
-            ? [pokemonCry(standing.species)]
-            : [pokemonCry(standing.species), SCENERY_POKEMON_LINE],
+        // A cry, as a Pokemon in FireRed's world answers: one that will not
+        // fight is not explained (Olly, 26 Nov 2026: no lines that teach).
+        dialogLines: [pokemonCry(standing.species)],
         pokemon: standing.species,
         ...(standing.level !== undefined ? { wildLevel: standing.level } : {}),
         ...(standing.legendary ? { legendary: true } : {}),
@@ -3667,5 +3663,4 @@ export function trainerDefeatLine(name: string): string {
   return TRAINER_DEFEAT_LINES[hash % TRAINER_DEFEAT_LINES.length];
 }
 
-/** What a Pokémon that stands on a map and will not fight is said to be doing. */
-export const SCENERY_POKEMON_LINE = "It isn't looking for a fight. The ones to catch jump out of tall grass and caves.";
+

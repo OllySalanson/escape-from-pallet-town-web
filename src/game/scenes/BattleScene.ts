@@ -146,10 +146,6 @@ import { anyoneFitToRaid } from '../hub/recovery';
 import {
   BATTLE_PANEL,
   NO_BATTLE_ITEMS_MESSAGE,
-  lowHpItemHint,
-  typeLesson,
-  CATCH_TIP_LINE,
-  earnsCatchTip,
   PARTY_COLUMNS,
   formatPartyRow,
   levelLabel,
@@ -750,12 +746,6 @@ export class BattleScene extends Phaser.Scene {
   private prizeMoney = 0;
   /** Whether this trainer paid this save before (`BattleSceneData.prizePaidBefore`). */
   private prizePaidBefore = false;
-  /** Whether this fight has said that medicine can be used in it (`lowHpItemHint`): once a fight. */
-  private lowHpHintSaid = false;
-  /** Whether this fight has taught a line of the type chart (`typeLesson`): once a fight. */
-  private typeLessonSaid = false;
-  /** Whether this fight has said a hurt Pokémon is easier to catch (`CATCH_TIP_LINE`): once a fight. */
-  private catchTipSaid = false;
   /**
    * The bag the raid is carrying, not the persisted overworld bag. They are
    * different inventories, and reading the wrong one is how a wipe report came
@@ -992,9 +982,6 @@ export class BattleScene extends Phaser.Scene {
     this.ballSprite = undefined;
     this.thrownBallId = undefined;
     this.victoryRewardsGranted = false;
-    this.lowHpHintSaid = false;
-    this.typeLessonSaid = false;
-    this.catchTipSaid = false;
     this.party = data.party ?? new PokemonParty([new Pokemon(CHARMANDER, 10)]);
     this.bag = data.bag ?? new Bag({ 'poke-ball': STARTING_POKE_BALLS });
     // Phaser reuses this scene, so a medicine chosen in the last fight and never
@@ -3231,7 +3218,7 @@ export class BattleScene extends Phaser.Scene {
     this.persistActivePokemonHp();
     this.noteWhoFacesWhom();
     this.refreshStatusLabels();
-    const rewardMessages = this.withTypeLesson(previousState, result.events, this.awardTrainerDefeatExperience(previousState, result.events));
+    const rewardMessages = this.awardTrainerDefeatExperience(previousState, result.events);
     // And again with the experience the turn paid, which is paid after it is resolved.
     this.writeFight();
     this.pendingChoices = [];
@@ -3446,8 +3433,6 @@ export class BattleScene extends Phaser.Scene {
       this.throwAtBeatenLegend(ball);
       return;
     }
-    const target = this.state.enemy;
-    const healthy = earnsCatchTip(target.currentHp, target.pokemon.maxHp);
     const result = resolveCatchAttempt(
       this.state,
       () => Math.random(),
@@ -3456,12 +3441,6 @@ export class BattleScene extends Phaser.Scene {
     );
     this.state = result.state;
     let events = result.events;
-    const brokeFree = events.findIndex((event) => event.type === 'broke-free');
-    const tip = new Map<number, readonly StagedNote[]>();
-    if (brokeFree >= 0 && healthy && !this.catchTipSaid) {
-      this.catchTipSaid = true;
-      tip.set(brokeFree, [{ message: CATCH_TIP_LINE }]);
-    }
     if (this.state.outcome === 'caught') {
       this.storeCaughtPokemon();
     } else {
@@ -3474,7 +3453,7 @@ export class BattleScene extends Phaser.Scene {
     this.prepareForcedReplacement();
     this.mode = 'events';
     this.commandContainer.setVisible(false);
-    this.showCombatEvents(events, [], [], tip);
+    this.showCombatEvents(events);
   }
 
   /**
@@ -4343,40 +4322,6 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
-  /**
-   * Says, once a fight, that medicine can be used in it, when one of yours is
-   * low and the pack holds something to heal it (`lowHpItemHint`). The line is
-   * read like any other, and its end brings the commands back.
-   */
-  private sayLowHpHint(): boolean {
-    if (this.lowHpHintSaid || this.exhibition) {
-      return false;
-    }
-    const healer = usableBattleItems(this.bag).find((item) => item.effect.type === 'heal' && this.bag.count(item.id) > 0);
-    const line = lowHpItemHint(
-      [this.state.player, this.state.playerPartner]
-        .filter((unit): unit is BattleCombatant => unit !== null)
-        .map((unit) => ({ name: unit.pokemon.name, hp: unit.currentHp, maxHp: unit.pokemon.maxHp })),
-      healer?.displayName ?? null,
-    );
-    if (line === null) {
-      return false;
-    }
-    this.lowHpHintSaid = true;
-    // The menu comes back on ITEM, the command the line names. On FIGHT, the
-    // SPACE that read the line on opened FIGHT and the next fired the first
-    // move, and a Bulbasaur on 5/32 went down to Starmie with Potions packed
-    // (AI playtest, 23 Nov 2026) - as KEEP THE PACK returns to BALL (#718).
-    const item = this.mainActions().findIndex((action) => action.type === 'choose-item');
-    if (item >= 0) {
-      this.lastMainCommand = item;
-    }
-    this.mode = 'events';
-    this.commandContainer.setVisible(false);
-    this.dialog.showMessages([line]);
-    return true;
-  }
-
   private onMessagesComplete(): void {
     if (this.pendingBattleExit) {
       this.pendingBattleExit = false;
@@ -4462,9 +4407,6 @@ export class BattleScene extends Phaser.Scene {
       const locked = this.lockedChoices();
       if (locked.length > 0 && locked.length === this.choosingSlots().length) {
         this.useMove(locked);
-        return;
-      }
-      if (this.sayLowHpHint()) {
         return;
       }
       this.mode = 'main';
@@ -4959,32 +4901,6 @@ export class BattleScene extends Phaser.Scene {
       }
     });
     return rewards;
-  }
-
-  /**
-   * The lines after a turn's events, with the fight's first type lesson added
-   * after the hit it is about (`typeLesson`), read from who stood where before
-   * the turn - a foe that fainted to the hit is gone from the state after it.
-   */
-  private withTypeLesson(
-    before: BattleState,
-    events: readonly BattleEvent[],
-    after: ReadonlyMap<number, readonly StagedNote[]>,
-  ): ReadonlyMap<number, readonly StagedNote[]> {
-    if (this.typeLessonSaid) {
-      return after;
-    }
-    const lesson = typeLesson(events, (side, slot) => {
-      const unit = unitAt(before, slotRef(side, slot));
-      return unit ? { types: getCombatantTypes(unit), moves: unit.pokemon.moves.map((move) => move.base) } : null;
-    });
-    if (!lesson) {
-      return after;
-    }
-    this.typeLessonSaid = true;
-    const lines = new Map(after);
-    lines.set(lesson.index, [lesson.line, ...(after.get(lesson.index) ?? [])]);
-    return lines;
   }
 
   /** The fight's first events, kept as its first turn for the line that says what beat you. */
