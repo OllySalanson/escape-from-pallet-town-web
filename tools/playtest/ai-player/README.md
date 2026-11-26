@@ -26,11 +26,11 @@ tools/playtest/ai-player/act stop                       # closes the tab, the br
 
 `start` makes a test-mode build in `.build/` (once; `--rebuild` makes it again),
 serves it, opens it in the machine's watched headless browser
-(`fm-browser.sh`, named `eptw-ai-player`; `--port=N` uses a CDP browser you
+(`fm-browser.sh`, named `eptw-ai-player-` and a short hash of the repository's path, so two worktrees never share one - `EPTW_AI_BROWSER_NAME` overrides it; `--port=N` uses a CDP browser you
 started instead) and pauses it. The game only moves when a command steps it.
 `start --resume=<run-id>` carries a run on in a new browser from the save its
 folder holds, and `start --save=<file>` starts from a save of your own (a
-seeded state, or one copied out of another run). `--harbour=local` keeps the
+seeded state, or one copied out of another run). `start --storage=<file>` starts from a whole page's storage instead (a save and the raid written down beside it, as `graveyardRaid.mjs` writes), so CONTINUE takes a raid up mid-raid; every action copies the run's storage out to `storage.json` beside `save.json`, and `--resume` takes that up first, so a lost tab keeps its raid. `--harbour=local` keeps the
 shared harbour and friend rooms on in that one browser, as a real player has them. One game is open at a time: a `start` stops the run that was
 current first (copying its save out, as `stop` does) and closes this run's own
 old tab, so a night of starts never leaves tabs and servers running behind it.
@@ -64,6 +64,7 @@ Each run carries on across sessions until it is finished: its save and its
 - `actions.jsonl` - every action, how long it took and what it changed
 - `memory.md` - the AI's own notes, for the next session
 - `save.json` - the game's save after the last action
+- `storage.json` - every key of the game's storage after the last action, the save and the raid written down beside it, which `--resume` takes up
 
 ## The dashboard
 
