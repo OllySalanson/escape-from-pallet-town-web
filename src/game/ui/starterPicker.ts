@@ -7,12 +7,15 @@ import { pixelPortrait, pixelTypeBadge } from './pixelUi';
  * briefing and the lobby swap always describe them in the same words.
  */
 export const STARTER_NOTES: Readonly<Record<StarterSpeciesId, string>> = {
-  // Not 'Strong special bulk': 'bulk' is a word only players of the games know,
-  // and it read beside Squirtle's line as a different kind of claim (persona
-  // playtest, 23 Nov 2026). Base Sp. Def 65 against Squirtle's 64 and Charmander's 50.
-  bulbasaur: 'Best special defense',
-  charmander: 'Quickest of the three',
-  squirtle: 'Best physical defense',
+  // What each is good for in a fight, in words a newcomer can use. Not 'Strong
+  // special bulk' (persona playtest, 23 Nov 2026), and not 'Best special
+  // defense' either, which was the same stat jargon (the harbour critic tour,
+  // 26 Nov 2026). Grass hits Water twice as hard, and MISTY's gym is the vale's
+  // first (`world/valeQuarters.ts`); base Speed 65 against 45 and 43; base
+  // Defense 65 against 49 and 43.
+  bulbasaur: 'Beats the first gym’s water types',
+  charmander: 'The quickest: often hits first',
+  squirtle: 'Hardest to knock down with a tackle',
 };
 
 export interface StarterCardOptions {

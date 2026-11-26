@@ -945,7 +945,9 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
     return {
       template: 'survey',
       name: 'Line survey',
-      description: `Read all ${SURVEY_STAKES} survey stakes ${where}`,
+      // A stake is a marked post: said on the notice, because "survey stakes"
+      // alone was the board's "ley lines" to the owner (25 Nov 2026).
+      description: `Find the ${SURVEY_STAKES} survey stakes ${where}, marked posts in the ground, and read each one`,
       markers: stakes.map((position, index) => ({
         position,
         label: `SURVEY STAKE ${index + 1}\n${compass(ground.map, position).toUpperCase()}`,
@@ -990,7 +992,7 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
     return {
       template: 'dispatch',
       name: 'Sealed dispatch',
-      description: `Carry the dispatch case ${where} out through ${titleCase(exit.label)}`,
+      description: `Find the dispatch case ${where} and carry it out`,
       requiredExitLabel: exit.label,
       markers: [
         {
@@ -1070,7 +1072,7 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
     return {
       template: 'sealed',
       name: `Past the ${titleCase(gate)}`,
-      description: `Recover what is cached behind the ${titleCase(gate)} ${where}`,
+      description: `Recover what is cached ${where}`,
       sealedBehind: { gateLabel: gate, bossName: district.bossName },
       ...(exit ? { requiredExitLabel: exit.label } : {}),
       markers: stops.map((position, index) => ({

@@ -80,12 +80,19 @@ describe('a line shared out between dialogue boxes', () => {
   it('never cuts a name in two', () => {
     // Oak's board (AI playtests, 22 Nov 2026) read 'SEALED DISPATCH: Carry the
     // dispatch case in Greystone' and then 'Vale out through Deer Gap. ...'.
-    const line = 'SEALED DISPATCH: Carry the dispatch case in Greystone Vale out through Deer Gap. Banks only through DEER GAP · A stronger hunter.';
+    const line = 'SEALED DISPATCH: Find the dispatch case in Greystone Vale and carry it out. Only DEER GAP takes it home. The hunter is tougher.';
     const boxes = shareLine(line, ROWS, wrap);
     expect(boxes.join(' ')).toBe(line);
     for (const [first, second] of [['Greystone', 'Vale'], ['Deer', 'Gap.'], ['DEER', 'GAP']]) {
       expect(boxes.some((box) => box.endsWith(first) && boxes[boxes.indexOf(box) + 1]?.startsWith(second))).toBe(false);
     }
+  });
+
+  it('keeps a way out named in capitals whole on the board (the harbour critic tour)', () => {
+    const line = 'SEALED DISPATCH: Find the dispatch case in Greystone Vale and carry it out. Only CHARCOAL TRACK takes it home. The hunter is tougher. Reward: 2× Parts crate and a Lv 7 Pikachu, waiting at base.';
+    const boxes = shareLine(line, ROWS, wrap);
+    expect(boxes.join(' ')).toBe(line);
+    expect(boxes.some((box) => box.endsWith('CHARCOAL'))).toBe(false);
   });
 
   it('pauses at a colon before a comma', () => {

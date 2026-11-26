@@ -322,8 +322,9 @@ the keeper's screen. A redrawn base moves the walk with it, which a table of
 tiles copied in here would not. Most keepers have no screen behind the mat: for
 `pokemon-centre` it walks on to BILL'S PC, which is the boxes, for `brocks-workshop`
 to the tally on his wall, which is the whole ladder, for `bills-cottage` to his PC,
-which is the whole list, and for `oaks-lab` it stops on the mat with nothing said
-(`openFriendRoom` is Oak's question from there). `inRoomTalk.mjs` plays all of that
+which is the whole list, and for `oaks-lab` it stops on the mat with nothing said.
+`raid-arena` with `{ hallOnly: true }` stops on the hall's floor, and
+`openFriendRoom` walks to the marshal and answers her friend question. `inRoomTalk.mjs` plays all of that
 talk, and the radio, as a player meets it; `workshopBill.mjs` plays Brock's chalk
 and Bill's shelves, by keys and by mouse; `billShelf.mjs <url> <dir> [--port=N]
 [--before]` presses twice, three frames apart, at both of Bill's shelves - his

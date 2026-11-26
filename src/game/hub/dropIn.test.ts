@@ -284,6 +284,19 @@ describe('what the drop-in screen says about a place', () => {
     );
   });
 
+  /**
+   * A gym is a room with no grass in it: Oak's wall listed CERULEAN GYM and
+   * FUCHSIA GYM with the map's fallback four living in them (the harbour
+   * critic tour, 26 Nov 2026).
+   */
+  it('lists no wildlife for a place where no step rolls for it', () => {
+    const vale = frontDoorFor('greystone-vale')!.id;
+    const places = buildDropInBriefing(vale, contextFor(vale)).wildlife.map((place) => place.place);
+    expect(places).not.toContain('CERULEAN GYM');
+    expect(places).not.toContain('FUCHSIA GYM');
+    expect(places.length).toBeGreaterThan(10);
+  });
+
   it('tells you what lives only in the places you have walked', () => {
     const dark = buildDropInBriefing('viridian-forest', contextFor('viridian-forest'));
     expect(dark.wildlife.every((place) => !place.known)).toBe(true);

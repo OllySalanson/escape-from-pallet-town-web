@@ -152,8 +152,8 @@ describe('the lobby’s contract board', () => {
     const board = buildContractBoard({ ...DEFAULT_RAID_PROGRESS, completedContracts: [CHAIN[0], CHAIN[1]] });
     expect(board).toMatchObject({ heading: 'Job board', note: '2 open · rewards require extraction' });
     expect(board.rows.map((row) => [row.name, row.asks])).toEqual([
-      ['Cordon ledger', 'Banks only through WEST CULVERT'],
-      ['Warden’s resupply', 'Pack 2× Potion'],
+      ['Cordon ledger', 'Only WEST CULVERT takes it home'],
+      ['Warden’s resupply', 'Bring 2× Potion'],
     ]);
   });
 
@@ -185,7 +185,7 @@ describe('the lobby’s contract board', () => {
       sealedBehind: { gateLabel: 'OVERLOOK GATE', bossName: 'WARDEN WREN' },
     });
     expect(row.asks).toBe(
-      'Behind OVERLOOK GATE, held by WARDEN WREN · Banks only through OVERLOOK STILE · Pack 2× Potion · A much stronger hunter',
+      'Behind OVERLOOK GATE, held by WARDEN WREN · Only OVERLOOK STILE takes it home · Bring 2× Potion · The hunter is much tougher',
     );
     expect(row.reward).toBe(RAID_CONTRACTS[3].reward.summary);
     expect(contractBoardRow(RAID_CONTRACTS[0]).asks).toBe('');

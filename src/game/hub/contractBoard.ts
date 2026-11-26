@@ -66,10 +66,13 @@ export function contractBoardRow(contract: RaidContract): ContractBoardRow {
       ...(contract.sealedBehind
         ? [`Behind ${contract.sealedBehind.gateLabel}, held by ${contract.sealedBehind.bossName}`]
         : []),
-      ...(contract.requiredExitLabel ? [`Banks only through ${contract.requiredExitLabel}`] : []),
-      ...(carryIn.length > 0 ? [`Pack ${formatStacks(carryIn)}`] : []),
+      // Said as a player would pin it up, never the code's own words: "Banks
+      // only through" and a bare "A stronger hunter." were the board's "ley
+      // lines" moment (the owner, 25 Nov 2026; the harbour critic tour).
+      ...(contract.requiredExitLabel ? [`Only ${contract.requiredExitLabel} takes it home`] : []),
+      ...(carryIn.length > 0 ? [`Bring ${formatStacks(carryIn)}`] : []),
       // Not 'Hunter +1 tier', a designer's stat line nobody could read (AI playtest, 22 Nov 2026).
-      ...(pressure > 0 ? [pressure === 1 ? 'A stronger hunter' : 'A much stronger hunter'] : []),
+      ...(pressure > 0 ? [pressure === 1 ? 'The hunter is tougher' : 'The hunter is much tougher'] : []),
     ].join(' · '),
     reward: contract.reward.summary,
     hunterPressure: pressure,

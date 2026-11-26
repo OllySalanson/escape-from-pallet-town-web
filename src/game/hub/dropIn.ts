@@ -254,23 +254,41 @@ export interface DropInContext {
   readonly night: boolean;
 }
 
-/** Every table a raid on this map can roll on, with the place it belongs to. */
+/**
+ * Every table a raid on this map can roll on, with the place it belongs to. A
+ * place with no table of its own rolls on the map's fallback, but only where a
+ * step there rolls at all (`stepRolls`): a gym or a cottage with no grass in
+ * it holds nothing, and Oak's wall listed CERULEAN GYM and FUCHSIA GYM with
+ * the same four wild Pokémon living in them (the harbour critic tour).
+ */
 function wildlifeOf(
-  mapId: WorldMapId,
+  map: WorldMapDefinition,
   dayFallback: WildEncounterTable | undefined,
   night: boolean,
 ): readonly {
   readonly district: MapDistrict | undefined;
   readonly table: WildEncounterTable;
 }[] {
-  const districts = districtsForMap(mapId);
+  const districts = districtsForMap(map.id);
   const fallback = dayFallback && forTheHour(dayFallback, night);
   if (districts.length === 0) {
     return fallback ? [{ district: undefined, table: fallback }] : [];
   }
   return districts
-    .map((district) => ({ district, table: districtTableFor(district, night) ?? fallback }))
+    .map((district) => ({ district, table: districtTableFor(district, night) ?? (rollsAnywhere(map, district) ? fallback : undefined) }))
     .filter((entry): entry is { district: MapDistrict; table: WildEncounterTable } => entry.table !== undefined);
+}
+
+/** Whether a step anywhere in a place rolls for wildlife. */
+function rollsAnywhere(map: WorldMapDefinition, district: MapDistrict): boolean {
+  return district.areas.some((area) => {
+    for (let y = area.y; y < area.y + area.height; y += 1) {
+      for (let x = area.x; x < area.x + area.width; x += 1) {
+        if (stepRolls(map, { x, y }) && districtAt(map.id, { x, y })?.id === district.id) return true;
+      }
+    }
+    return false;
+  });
 }
 
 /** The encounter-weighted mean level of one table: arithmetic, not a battle. */
@@ -318,7 +336,7 @@ export function buildDropInBriefing(
     0,
   );
 
-  const tables = wildlifeOf(mapId, context.map.encounters, context.night);
+  const tables = wildlifeOf(context.map, context.map.encounters, context.night);
   const levels = tables.flatMap(({ table }) => table.entries.flatMap((entry) => [entry.minLevel, entry.maxLevel]));
   const wild = {
     min: levels.length === 0 ? 0 : Math.min(...levels),

@@ -378,7 +378,10 @@ export function wallMapNote(game: RestoredGame): string {
   const beaten = entries.reduce((sum, entry) => sum + entry.signs.length, 0);
   const keepers = entries.reduce((sum, entry) => sum + entry.signs.length + entry.held, 0);
   const walked = entries.filter((entry) => entry.walked).length;
-  return beaten === 0
-    ? `${walked} of ${entries.length} maps walked`
-    : `${beaten} of ${keepers} keepers beaten`;
+  // One word for a boss everywhere on Oak's wall: it said "keepers" here,
+  // "bosses" on a card and "doors held" in the close-up, and in the harbour a
+  // keeper is Oak, Joy, Brock or Bill (the harbour critic tour, 26 Nov 2026).
+  // With one map on the wall, how many maps are walked is no news.
+  if (beaten > 0) return `${beaten} of ${keepers} bosses beaten`;
+  return entries.length > 1 || keepers === 0 ? `${walked} of ${entries.length} maps walked` : `${keepers} ${keepers === 1 ? 'boss' : 'bosses'} to beat`;
 }

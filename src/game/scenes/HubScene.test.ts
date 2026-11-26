@@ -2852,7 +2852,7 @@ describe('the wall map in Oak’s Lab', () => {
     expect(markup).toContain('TOLLMAN BRIGGS');
     expect(markup).toContain('WARDEN WREN');
     expect(markup).not.toContain('MILLER VANCE');
-    expect(markup).toContain('2 of 11 keepers beaten');
+    expect(markup).toContain('2 of 11 bosses beaten');
   });
 
   it('reads one map close up, and backs out to all of them before leaving the lab', () => {

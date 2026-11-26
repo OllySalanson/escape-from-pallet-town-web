@@ -2615,7 +2615,11 @@ export class BaseScene extends Phaser.Scene {
       this.clearKeeperMark();
     }
     this.standStill();
-    this.say(lines, [keeper.position]);
+    // A newcomer's first words are the room's; after them she asks whether
+    // the raid is going with a friend. A room is made before the team is
+    // picked, so she asks whatever she has just said about the bench.
+    const asks = lines !== FIRST_WORDS.loadout.lines;
+    this.say(lines, [keeper.position], asks ? () => this.offerFriendRoom(room) : undefined);
   }
 
   // -- over the fence ----------------------------------------------------------
@@ -5680,7 +5684,7 @@ export class BaseScene extends Phaser.Scene {
         return;
       }
       if (thing?.reads === 'board') {
-        this.readTheBoard(room, [target]);
+        this.readTheBoard([target]);
         return;
       }
       if (thing?.opens === 'ladder' || thing?.opens === 'list') {
@@ -6917,7 +6921,7 @@ export class BaseScene extends Phaser.Scene {
     if (screen === 'lab') {
       this.sayFirstWords('lab', about, () =>
         favourThen(() =>
-          this.oakGives(about, () => this.oakSaysWhatIsNext(room, about)),
+          this.oakGives(about, () => this.oakSaysWhatIsNext(about)),
         ),
       );
       return;
@@ -7546,13 +7550,12 @@ export class BaseScene extends Phaser.Scene {
 
   /**
    * The cork board, a notice a line (`base/labBoard.ts`): read off the wall, or
-   * read out by Oak from the mat with whatever news he has first. Raiding with a
-   * friend is the last thing pinned to it.
+   * read out by Oak from the mat with whatever news he has first.
    */
-  private readTheBoard(room: BaseRoom, about: readonly GridPosition[]): void {
+  private readTheBoard(about: readonly GridPosition[]): void {
     this.player.stop();
     this.player.setFrame(getIdleFrame(this.facing));
-    this.say(boardLines(this.savedGame), about, () => this.offerFriendRoom(room));
+    this.say(boardLines(this.savedGame), about);
   }
 
   /**
@@ -7560,19 +7563,21 @@ export class BaseScene extends Phaser.Scene {
    * where the rest is pinned - never the board read out. He read every notice
    * and rumour after every word, thirteen boxes on the critic's save, every
    * time (problem 8, 25 Nov 2026); the board is read off the wall beside him.
-   * The end of the near jobs is said once, before the rest.
+   * The end of the near jobs is said once, before the rest. Raiding with a
+   * friend is the RAID ARENA's marshal's to offer, where raids start: asked
+   * after every word Oak and his board said, it was the one thing a player
+   * remembered of the lab (the owner, 25 Nov 2026: "it's all stuck in there").
    */
-  private oakSaysWhatIsNext(room: BaseRoom, about: readonly GridPosition[]): void {
+  private oakSaysWhatIsNext(about: readonly GridPosition[]): void {
     const game = this.savedGame;
     const speak = (): void => {
       const lines = [...oakNews(game, isPlaytestRun()), ...nextStepLines(game.raidProgress, vaultOf(game.stash)), ...boardPointer(game, jobsNamed(game.raidProgress))];
       if (lines.length === 0) {
-        this.offerFriendRoom(room);
         return;
       }
       this.player.stop();
       this.player.setFrame(getIdleFrame(this.facing));
-      this.say(lines, about, () => this.offerFriendRoom(room));
+      this.say(lines, about);
     };
     if (jobsBanked(game.raidProgress) >= NEAR_JOBS) {
       this.sayFirstWords('nearWork', about, speak);
@@ -7581,7 +7586,7 @@ export class BaseScene extends Phaser.Scene {
     speak();
   }
 
-  /** Raiding with a friend: the last thing Oak or his board has to say. */
+  /** Raiding with a friend: the last thing the RAID ARENA's marshal asks, once she has said what the raid wants. */
   private offerFriendRoom(room: BaseRoom): void {
     if (!friendRoomsOffered()) {
       return;

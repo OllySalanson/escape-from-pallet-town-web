@@ -3,7 +3,7 @@
 // screen looks like after it. See PLAYTEST.md beside this for how an AI plays
 // with it, and README.md for how a person starts and watches a run.
 //
-//   node tools/playtest/ai-player/act.mjs start --persona=veteran|newcomer [--resume=<run-id>] [--save=<file>] [--port=CDP]
+//   node tools/playtest/ai-player/act.mjs start --persona=veteran|newcomer [--resume=<run-id>] [--save=<file>] [--harbour=local] [--port=CDP]
 //   node tools/playtest/ai-player/act.mjs look [--json]
 //   node tools/playtest/ai-player/act.mjs walk <x> <y> | walk <name on screen> | walk way | walk left [tiles]
 //   node tools/playtest/ai-player/act.mjs talk [up|down|left|right]
@@ -196,7 +196,11 @@ async function start() {
   const ownServer = old?.serverPid && alive(old.serverPid) && (await portAnswers(old.serverPort));
   const serverPort = ownServer || (old?.serverPort && !(await portAnswers(old.serverPort))) ? old.serverPort : await freePort();
   const serverPid = (await portAnswers(serverPort)) ? old?.serverPid : await startServer(serverPort);
-  const url = `http://127.0.0.1:${serverPort}/escape-from-pallet-town-web/?testmode=1`;
+  // `--harbour=local` keeps the shared harbour and friend rooms on, in this
+  // browser alone, as a real player has them: test mode otherwise switches
+  // them off, and Oak's friend question was never seen in a playtest.
+  const harbour = flags.harbour ? `&harbour=${encodeURIComponent(flags.harbour)}` : '';
+  const url = `http://127.0.0.1:${serverPort}/escape-from-pallet-town-web/?testmode=1${harbour}`;
   const savePath = join(runDir(runId), 'save.json');
   // `--save=<file>` starts from a save of the caller's own (a seeded state, or
   // one copied out of another run) rather than the run's.

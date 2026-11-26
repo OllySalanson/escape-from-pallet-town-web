@@ -15,17 +15,17 @@ const lab = roomNamed('oaks-lab')!;
 const BEEN_OUT = { raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } };
 
 describe("Oak's cork board", () => {
-  it('reads one notice a line, saying what the board always said about a contract', () => {
+  it('reads a job in two lines: what it is, then its terms and its reward', () => {
     const game = baseGame({ progress: BEEN_OUT });
     const [row] = buildContractBoard(game.raidProgress).rows;
     const lines = boardLines(game);
 
-    expect(lines).toHaveLength(buildContractBoard(game.raidProgress).rows.length);
+    expect(lines).toHaveLength(buildContractBoard(game.raidProgress).rows.length * 2);
     expect(lines[0]).toContain(row.name.toUpperCase());
     expect(lines[0]).toContain(row.description);
-    expect(lines[0]).toContain(`Reward: ${row.reward}`);
-    if (row.asks) {
-      expect(lines[0]).toContain(row.asks);
+    expect(lines[1]).toContain(`Reward: ${row.reward}`);
+    for (const ask of row.asks ? row.asks.split(' · ') : []) {
+      expect(lines[1]).toContain(`${ask}.`);
     }
   });
 
@@ -36,7 +36,7 @@ describe("Oak's cork board", () => {
     expect(buildContractBoard(after.raidProgress).rows.length).toBeGreaterThan(0);
     expect(boardLines(fresh)).not.toContain(bankedJobsLine(0));
     expect(boardLines(after)[0]).toBe(bankedJobsLine(1));
-    expect(bankedJobsLine(1)).toBe("You've banked 1 job. What's pinned up now is new, with new stops:");
+    expect(bankedJobsLine(1)).toBe('1 job done so far. These are new ones, in new places:');
     expect(bankedJobsLine(3)).toContain('3 jobs');
   });
 
