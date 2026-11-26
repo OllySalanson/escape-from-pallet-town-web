@@ -9,7 +9,7 @@ import { watchViewport } from './game/display/stageScaler';
 import { installFeedbackDesk } from './game/feedback/feedbackDesk';
 import { followTesterLink, installPlayCounter, isAutomatedBrowser } from './game/analytics/playCounter';
 import { installPixelText } from './game/ui/pixelText';
-import { onTouchPlayChange, touchPlay, watchTouchPlay } from './game/input/touchPlay';
+import { onTouchPlayChange, padWanted, touchPlay, watchTouchPlay } from './game/input/touchPlay';
 import { installTouchWording, rewordTexts } from './game/input/touchWords';
 import { watchMenuWords } from './game/ui/menuWords';
 import { menuLayer } from './game/display/menuStage';
@@ -100,7 +100,7 @@ const stopWatchingFullScreenKey = watchFullScreenKey(window, document);
 const stopWatchingFullScreen = onFullScreenChange(document, () => stageFrame.refresh());
 const stopWatchingViewport = watchViewport(
   game,
-  { playing: touchPlay, onChange: onTouchPlayChange, place: (layout) => touchPad.place(layout) },
+  { playing: () => padWanted(), onChange: onTouchPlayChange, place: (layout) => touchPad.place(layout) },
   'app',
   controlsBar,
   {
