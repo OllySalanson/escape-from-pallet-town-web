@@ -285,7 +285,7 @@ describe('a map with the inside of a building', () => {
       distance: steps,
       direction: 'S',
     });
-    expect(chip?.label).toBe('HUNTER S 2');
+    expect(chip?.label).toBe('HUNTER · S · 2 STEPS');
   });
 
   it('names the contract stop nearest the room by the walk out through its door', () => {

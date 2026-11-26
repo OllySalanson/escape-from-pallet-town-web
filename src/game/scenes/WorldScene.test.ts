@@ -316,7 +316,7 @@ describe('hunter disengagement wiring', () => {
     // The old HUD said nothing about the hunter unless the player had escaped
     // one, so an arrival announced once in a dialogue box then went silent.
     expect(hunterChipView({ searching: false, distance: 4, direction: 'NW' })).toEqual({
-      label: 'HUNTER NW 4',
+      label: 'HUNTER · NW · 4 STEPS',
       tone: 'closing',
     });
     expect(hunterChipView({ searching: false, distance: null, direction: 'HERE' })).toBeNull();

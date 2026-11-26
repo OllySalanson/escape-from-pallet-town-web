@@ -25,7 +25,7 @@ describe('the hunter chip', () => {
 
   it('warns which way a near hunter is, exactly as it did before the mast existed', () => {
     expect(hunterChipView({ ...FAR, distance: 5, direction: 'NW' })).toEqual({
-      label: 'HUNTER NW 5',
+      label: 'HUNTER · NW · 5 STEPS',
       tone: 'closing',
     });
     expect(hunterChipView({ ...FAR, searching: true, searchRemainingMs: 8_200 })).toEqual({
@@ -36,7 +36,7 @@ describe('the hunter chip', () => {
 
   it("counts the enrage's hunter down from wherever it is, so the last fifteen seconds read as a race", () => {
     expect(hunterChipView({ ...FAR, who: 'LORELEI', distance: 74, direction: 'W', enraged: true })).toEqual({
-      label: 'LORELEI W 74',
+      label: 'LORELEI · W · 74 STEPS',
       tone: 'closing',
     });
   });
@@ -47,7 +47,7 @@ describe('the hunter chip', () => {
 
   it('names the rival hunting the raid', () => {
     expect(hunterChipView({ ...FAR, who: 'MISTY', distance: 5, direction: 'NW' })).toEqual({
-      label: 'MISTY NW 5',
+      label: 'MISTY · NW · 5 STEPS',
       tone: 'closing',
     });
     expect(hunterChipView({ ...FAR, who: 'MISTY', searching: true, searchRemainingMs: 8_200 })?.label).toBe(
@@ -101,7 +101,7 @@ describe('the radio mast', () => {
     const intel = hunterIntelFor(130_000, 300_000, false, DEFAULT_HUNTER_TUNING, party);
 
     expect(hunterChipView({ ...FAR, distance: 3, direction: 'E', intel })).toEqual({
-      label: 'HUNTER E 3',
+      label: 'HUNTER · E · 3 STEPS',
       tone: 'closing',
       detail: 'LV9 x1, LV10 x1 IN 0:50',
     });

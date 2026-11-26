@@ -346,7 +346,9 @@ function hunterContactView(input: HunterChipInput): HunterChipView | null {
   if (input.distance === null || (input.distance > HUNTER_ALERT_DISTANCE && input.enraged !== true)) {
     return null;
   }
-  return { label: `${who} ${input.direction} ${input.distance}`, tone: 'closing' };
+  // In the prize chip's words (`SE · 7 STEPS`), so two chips one above the other
+  // read the same way (critic's second pass, 26 Nov 2026).
+  return { label: `${who} · ${input.direction} · ${input.distance} ${input.distance === 1 ? 'STEP' : 'STEPS'}`, tone: 'closing' };
 }
 
 // ---------------------------------------------------------------------------
