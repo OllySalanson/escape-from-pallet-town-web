@@ -1470,9 +1470,10 @@ export class BaseScene extends Phaser.Scene {
         boats: this.boats,
         crowns: this.crownBoxes(),
         lanterns: new Set(BASE_TILESET.props.promenadeLamp.brim?.tiles ?? []),
-        // The lamp at the top of the harbour light's roof.
+        // The lamp in the harbour light's glass, under its cap
+        // (`harbourLight` in `scripts/draw-promenade.mjs`).
         beacon: beacon
-          ? { x: (beacon.x + BASE_TILESET.props[beacon.name].width / 2) * TILE_SIZE, y: beacon.y * TILE_SIZE + 5 }
+          ? { x: (beacon.x + BASE_TILESET.props[beacon.name].width / 2) * TILE_SIZE, y: beacon.y * TILE_SIZE + 12 }
           : null,
       });
     }

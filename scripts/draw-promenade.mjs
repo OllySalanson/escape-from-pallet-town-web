@@ -1459,6 +1459,242 @@ function coinTelescope() {
   return image;
 }
 
+// --- Brock's builds --------------------------------------------------------
+//
+// Two of Brock's builds stood in the yard as the CC0 sheet's grey stone: THE
+// MAST as a stone tower seven tiles tall, and THE HARBOUR LIGHT as a stone
+// roundhouse (the owner, 26 Nov 2026: "why is it just a big tower? Brock needs
+// artwork"). They are drawn here, in the same hand as the front: a radio mast
+// that reads as one - a red and white lattice with a dish and a light on top -
+// and a striped lighthouse, two tiles wide, three and four tall. THE SECOND
+// MACHINE and THE WARD were the same brown hut twice, which read as a pair of
+// kennels: they are a treatment tent and a ward cabin of their own now.
+
+const MAST = { r: '#e05038', R: '#f88868', q: '#a02818', w: INK.white, W: INK.shade, k: INK.outline, i: INK.iron, s: INK.ironLight };
+
+/** One pixel line from (x0, y0) to (x1, y1). */
+function line(image, x0, y0, x1, y1, colour) {
+  const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+  for (let step = 0; step <= steps; step += 1) {
+    const t = steps === 0 ? 0 : step / steps;
+    set(image, Math.round(x0 + (x1 - x0) * t), Math.round(y0 + (y1 - y0) * t), hex(colour));
+  }
+}
+
+/**
+ * THE MAST, 2x3 - so a card in BROCK'S WORKSHOP shows it whole at its own
+ * size, where four tiles was halved to a smudge: a lattice aerial on a concrete footing, red and white in bands
+ * as a real one is painted, cross-braced, with a dish on its side turned to the
+ * sea and a red light at its tip.
+ */
+function radioMast() {
+  const image = canvas(2 * TILE, 3 * TILE);
+  const top = 10;
+  const foot = 40;
+  const panel = 6;
+  const half = (y) => Math.round(3 + ((y - top) * 7) / (foot - top));
+  // The bracing: one X a panel and a bar across its top, in dark iron, drawn
+  // first so the legs stand over its ends.
+  for (let y0 = foot; y0 > top; y0 -= panel) {
+    const y1 = Math.max(top, y0 - panel);
+    line(image, 16 - half(y0) + 2, y0 - 1, 15 + half(y1) - 2, y1 + 1, MAST.i);
+    line(image, 15 + half(y0) - 2, y0 - 1, 16 - half(y1) + 2, y1 + 1, MAST.i);
+    line(image, 16 - half(y1), y1, 15 + half(y1), y1, MAST.k);
+  }
+  // The legs: two pixels of the band's colour inside an outline, lit from the
+  // left, in red and white bands a panel deep.
+  for (let y = top; y <= foot; y += 1) {
+    const red = Math.floor((foot - y) / panel) % 2 === 0;
+    const left = 16 - half(y);
+    const right = 15 + half(y);
+    set(image, left - 1, y, hex(MAST.k));
+    set(image, left, y, hex(red ? MAST.R : MAST.w));
+    set(image, left + 1, y, hex(red ? MAST.r : MAST.W));
+    set(image, right - 1, y, hex(red ? MAST.r : MAST.W));
+    set(image, right, y, hex(red ? MAST.q : MAST.W));
+    set(image, right + 1, y, hex(MAST.k));
+  }
+  // The mast above the lattice, banded too.
+  for (let y = 4; y < top; y += 1) draw(image, 14, y, ['kssk'], { k: MAST.k, s: y % 4 < 2 ? MAST.r : MAST.w });
+  // The red light on its tip.
+  draw(image, 12, 0, ['..kkkk..', '.kRHHrk.', '.krRrqk.', '..kkkk..'], { ...MAST, H: INK.lampHot });
+  // A dish on its arm, turned out to sea.
+  draw(image, 19, 18, ['ksk'], MAST);
+  draw(
+    image,
+    21,
+    13,
+    [
+      '..kkk...',
+      '.kwwWk..',
+      'kwwwWWk.',
+      'kwwwwWk.',
+      'kwwwwWWk',
+      'kwwswWWk',
+      'kwwwwWWk',
+      'kwwwwWk.',
+      'kwwwWWk.',
+      '.kwwWk..',
+      '..kkk...',
+    ],
+    MAST,
+  );
+  // The concrete footing, with the cable box at its side.
+  draw(
+    image,
+    4,
+    41,
+    [
+      '.kkkkkkkkkkkkkkkkkkkkkk.',
+      'kllllllllllllllllllllllk',
+      'kssssssssssssssssssssssk',
+      'kssssssssssssssssssssssk',
+      'kddddddddddddddddddddddk',
+      'kkkkkkkkkkkkkkkkkkkkkkkk',
+    ],
+    { k: INK.outline, l: INK.stoneLight, s: INK.stone, d: INK.stoneDark },
+  );
+  draw(image, 0, 39, ['kkkkk', 'kgggk', 'kgGgk', 'kgggk', 'kdddk', 'kdddk', 'kkkkk'], { k: INK.outline, g: INK.ironLight, G: INK.lamp, d: INK.iron });
+  return image;
+}
+
+/**
+ * THE HARBOUR LIGHT, 2x4: a round tower in red and white bands on a stone
+ * footing, a gallery with its rail, the lamp room's glass with the light in
+ * it, and a red cap - lit from the top left, as everything on the front is.
+ */
+function harbourLight() {
+  const image = canvas(2 * TILE, 4 * TILE);
+  const red = { c: '#d83828', d: '#982018', l: '#f87060' };
+  const white = { c: INK.white, d: INK.shade, l: INK.white };
+  const towerTop = 19;
+  const towerFoot = 56;
+  for (let y = towerTop; y <= towerFoot; y += 1) {
+    const half = Math.round(6 + ((y - towerTop) * 4) / (towerFoot - towerTop));
+    const band = Math.floor((y - towerTop) / 9) % 2 === 0 ? red : white;
+    const left = 16 - half;
+    const right = 15 + half;
+    for (let x = left; x <= right; x += 1) {
+      const colour = x === left || x === right ? INK.outline : x <= left + 2 ? band.l : x >= right - 3 ? band.d : band.c;
+      set(image, x, y, hex(colour));
+    }
+  }
+  // A window in the white band, and the door at the foot.
+  draw(image, 14, 30, ['kkkk', 'kbbk', 'kbbk', 'kkkk'], { k: INK.outline, b: '#4870a0' });
+  draw(image, 14, 49, ['kkkk', 'kwwk', 'kwwk', 'kwwk', 'kwwk', 'kwwk', 'kwwk', 'kwwk'], { k: INK.outline, w: INK.woodDark });
+  // The gallery, its rail and the lamp room.
+  draw(
+    image,
+    5,
+    9,
+    [
+      '.....kkkkkkkkkkkk.....',
+      '.....kHHYYYYYYOOk.....',
+      '.....kHYYkYYkYOOk.....',
+      '.....kYYYkYYkYOOk.....',
+      '.....kYYYkYYkOOOk.....',
+      '.....kkkkkkkkkkkk.....',
+      'kkkkkkkkkkkkkkkkkkkkkk',
+      'kskskskskskskskskskssk',
+      'kkkkkkkkkkkkkkkkkkkkkk',
+      '.kiiiiiiiiiiiiiiiiiik.',
+    ],
+    { k: INK.outline, H: INK.lampHot, Y: INK.lamp, O: INK.lampDeep, s: INK.ironLight, i: INK.iron },
+  );
+  draw(
+    image,
+    9,
+    1,
+    ['......kk......', '....kkrrkk....', '...krrrrrrk...', '..klrrrrrrdk..', '.klrrrrrrrrdk.', 'kkkkkkkkkkkkkk', '..............', '..............'],
+    { k: INK.outline, r: red.c, l: red.l, d: red.d },
+  );
+  draw(image, 15, 0, ['kk'], { k: INK.outline });
+  // The stone footing.
+  draw(
+    image,
+    3,
+    57,
+    [
+      'kkkkkkkkkkkkkkkkkkkkkkkkkk',
+      'kllllllllllllllllllllllllk',
+      'kssssssssssssssssssssssssk',
+      'kssssssssssssssssssssssssk',
+      'kddddddddddddddddddddddddk',
+      'kkkkkkkkkkkkkkkkkkkkkkkkkk',
+    ],
+    { k: INK.outline, l: INK.stoneLight, s: INK.stone, d: INK.stoneDark },
+  );
+  return image;
+}
+
+/** Brock's own palette for the Center's machines: canvas, its shade, and the Center's red. */
+const WARD = { k: INK.outline, w: INK.white, W: INK.shade, g: '#a0a0b8', r: '#e04848', R: '#f88080', q: '#a02828', t: '#48a8a0', T: '#80d8c8', u: '#287068', b: '#4870a0', B: '#90b8e0', d: INK.woodDark };
+
+/**
+ * THE SECOND MACHINE, 2x3: a treatment tent beside the Center - white canvas
+ * pitched on a ridge with a red pennant at its peak, a red cross on its side,
+ * and the flap tied back on a bed inside.
+ */
+function treatmentTent() {
+  const image = canvas(2 * TILE, 3 * TILE);
+  const peak = 6;
+  const ground = 45;
+  for (let y = peak; y <= ground; y += 1) {
+    const half = Math.round(2 + ((y - peak) * 14) / (ground - peak));
+    for (let x = 16 - half; x <= 15 + half; x += 1) {
+      const edge = x === 16 - half || x === 15 + half;
+      set(image, x, y, hex(edge ? WARD.k : x < 16 ? WARD.w : WARD.W));
+    }
+  }
+  draw(image, 0, ground, ['kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk'], WARD);
+  // The doorway: a dark triangle, the bed in it, the flaps tied back in red.
+  const doorTop = 22;
+  for (let y = doorTop; y < ground; y += 1) {
+    const half = Math.round(((y - doorTop) * 8) / (ground - doorTop));
+    for (let x = 16 - half; x <= 15 + half; x += 1) set(image, x, y, hex(INK.stoneDark));
+    set(image, 15 - half, y, hex(WARD.r));
+    set(image, 16 + half, y, hex(WARD.q));
+  }
+  draw(image, 11, 38, ['kkkkkkkkkk', 'kwwwBBwwwk', 'kWWWWWWWWk', 'kggggggggk', 'k........k'], { ...WARD, '.': undefined });
+  // The cross on its side and the pennant on its peak.
+  draw(image, 5, 27, ['.kkk.', 'kkrkk', 'krrrk', 'kkrkk', '.kkk.'], WARD);
+  draw(image, 15, 0, ['kk...', 'krrk.', 'kRrrk', 'kk...', 'kk...', 'kk...'], WARD);
+  return image;
+}
+
+/**
+ * THE WARD, 2x3: a cabin of its own, white boards under a teal roof, a red
+ * cross over its door and a window either side - set apart, as a ward is.
+ */
+function wardCabin() {
+  const image = canvas(2 * TILE, 3 * TILE);
+  draw(
+    image,
+    0,
+    1,
+    [
+      '..kkkkkkkkkkkkkkkkkkkkkkkkkkkk..',
+      '.kTTTTTTTTTTTTTTTTTTTTTTTTTTttk.',
+      'kTTttttttttttttttttttttttttttuuk',
+      'kTtttttttttttttttttttttttttttuuk',
+      'kttttttttttttttttttttttttttttuuk',
+      'kttttttttttttttttttttttttttuuuuk',
+      'kuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuk',
+      'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk',
+    ],
+    WARD,
+  );
+  for (let y = 9; y < 46; y += 1) {
+    draw(image, 1, y, [y % 4 === 0 ? 'kWWWWWWWWWWWWWWWWWWWWWWWWWWWWWk' : 'kwwwwwwwwwwwwwwwwwwwwwwwwwwWWWk'], WARD);
+  }
+  // The cross over the door, the door, and a window either side.
+  draw(image, 13, 11, ['.kkkk.', 'kkrrkk', 'krrrrk', 'kkrrkk', '.kkkk.'], WARD);
+  draw(image, 12, 30, ['kkkkkkkk', 'kddddddk', 'kddddddk', 'kddddddk', 'kddddGdk', 'kddddddk', 'kddddddk', 'kddddddk', 'kddddddk', 'kddddddk', 'kddddddk', 'kddddddk', 'kddddddk', 'kddddddk', 'kddddddk', 'kkkkkkkk'], { ...WARD, G: INK.gold });
+  for (const x of [3, 22]) draw(image, x, 21, ['kkkkkkk', 'kBBbBBk', 'kBbbbBk', 'kkkkkkk', 'kbbbbbk', 'kbbbbbk', 'kkkkkkk'], WARD);
+  draw(image, 0, 46, ['kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk'], WARD);
+  return image;
+}
+
 // --- The sheet -----------------------------------------------------------
 
 /**
@@ -1514,6 +1750,10 @@ const LAYOUT = [
   ['bandstand', 0, 17, bandstand],
   ['pierArch', 4, 17, pierArch],
   ['coinTelescope', 9, 17, coinTelescope],
+  ['radioMast', 10, 17, radioMast],
+  ['harbourLight', 12, 17, harbourLight],
+  ['treatmentTent', 14, 17, treatmentTent],
+  ['wardCabin', 11, 14, wardCabin],
 ];
 
 const towns = readPng(new URL('public/assets/frlg-towns.png', ROOT).pathname);

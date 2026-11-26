@@ -58,13 +58,15 @@ export const BASE_FIXTURES: readonly BaseFixture[] = [
     upgradeId: 'radio-mast',
     name: 'THE MAST',
     note: 'The aerial that hears the hunter',
-    // Seven tiles of stone rising out of the wood beside THE BOLTHOLE: the
-    // tallest thing in the base, for the rung most players build first. A first
-    // purchase should change the skyline, and the house the player lives in is
-    // where they will see it from.
+    // A red and white lattice aerial with a dish and a light on its tip, on
+    // the lawn beside THE BOLTHOLE: the house the player lives in is where they
+    // will see it from. It was the CC0 sheet's stone tower, seven tiles of grey
+    // that read as a silo (the owner, 26 Nov 2026: "why is it just a big
+    // tower?"); it is drawn for what it is now (`scripts/draw-promenade.mjs`),
+    // three tiles tall, on the same foot.
     // It stands a tile clear of the house and a tile clear of the Day-Care's
     // fence: against the house's wall the two read as one building.
-    props: [{ name: 'tower', x: 42, y: 4 }],
+    props: [{ name: 'radioMast', x: 43, y: 8 }],
     at: { x: 43, y: 10 },
   },
   {
@@ -73,8 +75,10 @@ export const BASE_FIXTURES: readonly BaseFixture[] = [
     note: 'It burns for your landing',
     // At the head of the breakwater, which is the harbour mouth and where a
     // light goes: the Seagallop comes in past it, and at night its beam
-    // sweeps the bay (`harbourNight.ts`).
-    props: [{ name: 'roundhouse', x: 38, y: 27 }],
+    // sweeps the bay (`harbourNight.ts`). A red and white lighthouse
+    // (`scripts/draw-promenade.mjs`), where the CC0 sheet's grey roundhouse
+    // stood.
+    props: [{ name: 'harbourLight', x: 39, y: 28 }],
     at: { x: 40, y: 31 },
   },
   {
@@ -104,7 +108,9 @@ export const BASE_FIXTURES: readonly BaseFixture[] = [
     upgradeId: 'recovery-bay-2',
     name: 'THE SECOND MACHINE',
     note: 'Twice the beds, half the wait',
-    props: [{ name: 'hut', x: 26, y: 3 }],
+    // A treatment tent, pitched beside the first machine's canopy. It was the
+    // CC0 sheet's hut, the same hut as the ward's, and the two read as kennels.
+    props: [{ name: 'treatmentTent', x: 26, y: 3 }],
     at: { x: 26, y: 5 },
   },
   {
@@ -114,8 +120,10 @@ export const BASE_FIXTURES: readonly BaseFixture[] = [
     // At the end of the clearing behind the lab and the workshop, with its colours
     // flying: that is what a quarantine ward is, and it is why it does not
     // stand beside the bay.
+    // A white cabin of its own with a red cross over the door
+    // (`scripts/draw-promenade.mjs`).
     props: [
-      { name: 'hut', x: 29, y: 3 },
+      { name: 'wardCabin', x: 29, y: 3 },
       { name: 'bannerPair', x: 31, y: 3 },
     ],
     at: { x: 29, y: 5 },
