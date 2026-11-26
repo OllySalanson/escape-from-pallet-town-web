@@ -2392,6 +2392,14 @@ export class BaseScene extends Phaser.Scene {
     if (!kit || this.arenaPanel || this.leaving) {
       return;
     }
+    // The bench is YOUR TEAM, on the hall's own choices: one screen for who
+    // goes, wherever it is asked (the round-3 look, 25 Nov 2026).
+    if (view === 'bench') {
+      this.walkPlan = null;
+      this.standStill();
+      this.openTeam();
+      return;
+    }
     this.walkPlan = null;
     this.arenaPanel = view;
     this.standStill();

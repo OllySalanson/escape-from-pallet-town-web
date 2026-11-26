@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Pokemon, getSpeciesById } from '../pokemon';
 import { Stash } from '../stash';
 import { pickerEntries } from './boxPicker';
-import { leadLine, TEAM_HINTS, teamBody, teamRowHelp, teamRows } from './teamView';
+import { leadLine, TEAM_HINTS, teamBody, teamPill, teamRowHelp, teamRows } from './teamView';
 
 const stashOf = (...members: readonly (readonly [string, number])[]): Stash => {
   const stash = new Stash();
@@ -23,41 +23,43 @@ describe('YOUR TEAM', () => {
     ]);
   });
 
-  it('names the box on every slot and tile, the lead, and who cannot go', () => {
-    const stash = stashOf(['rattata', 5], ['pidgey', 9]);
+  it('names the box on every stand and tile, the lead, the partner and who cannot go', () => {
+    const stash = stashOf(['rattata', 5], ['pidgey', 9], ['oddish', 7]);
     stash.listPokemon()[1].pokemon.currentHp = 0;
-    const html = teamBody({ entries: pickerEntries(stash), team: ['rattata-0'], partnerId: 'rattata-0' });
-    expect(html).toContain('Next raid');
-    expect(html).toContain('In your boxes');
-    expect(html).toContain('Lead');
-    expect(html).toContain('partner');
+    const html = teamBody({ entries: pickerEntries(stash), team: ['rattata-0', 'oddish-2'], partnerId: 'rattata-0' });
+    expect(html).toContain('In the boxes');
+    expect(html).toContain('team-plate-lead">Lead');
+    expect(html).toContain('aria-label="Partner"');
     expect(html).toContain('Fainted');
     expect(html).toContain('data-picker-find');
     expect(html).toContain('data-member="pidgey-1"');
-    // The box is on every slot and tile for a reader and the find, and in the card for the eye.
-    expect(html.match(/data-member="[^"]+"[^>]*data-box-name="Box 1"/g)).toHaveLength(2);
-    expect(html).toMatch(/team-card-where">Box 1 · partner/);
-    // The lead's slot is the gold one, and a fainted Pokémon's icon stands still.
-    expect(html).toMatch(/class="px-party-slot is-lead" data-member="rattata-0"/);
+    // The box is on every stand and tile for a reader and the find, and in the card for the eye.
+    expect(html.match(/data-member="[^"]+"[^>]*data-box-name="Box 1"/g)).toHaveLength(3);
+    expect(html).toMatch(/team-card-where">Box 1/);
+    // A fainted Pokémon's icon stands still.
     expect(html).toMatch(/data-member="pidgey-1"[^>]*>.*?px-mon-icon is-still/);
   });
 
-  it('always draws six slots, an empty one a Poké Ball, so how many are going is seen', () => {
+  it('stands everyone going on the field, the lead first, and counts them in the title', () => {
     const stash = stashOf(['rattata', 5], ['pidgey', 9]);
-    const html = teamBody({ entries: pickerEntries(stash), team: ['rattata-0'] });
-    expect(html.match(/class="px-party-slot[" ]/g)).toHaveLength(6);
-    expect(html.match(/px-party-slot is-empty/g)).toHaveLength(5);
+    const state = { entries: pickerEntries(stash), team: ['rattata-0'] };
+    const html = teamBody(state);
+    expect(html.match(/class="team-stand[" ]/g)).toHaveLength(1);
+    expect(html).toMatch(/class="team-stand" data-member="rattata-0"/);
+    expect(teamPill(state)).toContain('1 OF 6');
     // Only the boxes are found in: the team is six at most and always in view.
-    expect(html).not.toMatch(/class="px-party-slot[^"]*"[^>]*data-find/);
+    expect(html).not.toMatch(/class="team-stand[^"]*"[^>]*data-find/);
   });
 
   it('says the team is full rather than taking a seventh', () => {
     const members = ['rattata', 'pidgey', 'mankey', 'krabby', 'psyduck', 'oddish', 'diglett'] as const;
     const stash = stashOf(...members.map((species) => [species, 5] as const));
-    const html = teamBody({ entries: pickerEntries(stash), team: stash.listPokemon().slice(0, 6).map((stored) => stored.id) });
-    expect(html).toContain('6 of 6');
+    const state = { entries: pickerEntries(stash), team: stash.listPokemon().slice(0, 6).map((stored) => stored.id) };
+    const html = teamBody(state);
+    expect(teamPill(state)).toContain('6 OF 6');
     expect(html).toMatch(/data-member="diglett-6"[^>]*aria-disabled="true"/);
     expect(html).toContain('The team is full (6)');
+    expect(html).toContain('Team full');
   });
 });
 

@@ -23,18 +23,12 @@
  */
 import { getHeldItem } from '../items';
 import { MAX_RUN_PARTY, faintedRefusal } from '../hub/deploymentFlow';
+import { publicAssetUrl } from '../publicAssetUrl';
 import { ABLE_TO_FIGHT, pickerFindField, pickerOrder, pickerRowAttributes, type PickerEntry } from './boxPicker';
 import { itemIcon } from './icons';
-import { pixelEmptyPartySlot, pixelMonTile, pixelPartySlot } from './monIcon';
-import {
-  escapeAttribute,
-  pixelHpBar,
-  pixelPokemonName,
-  pixelPortrait,
-  pixelTag,
-  pixelTypeBadge,
-  pixelWindow,
-} from './pixelUi';
+import { pixelMonIcon, pixelMonTile } from './monIcon';
+import { escapeAttribute, pixelHpBar, pixelPokemonName, pixelPortrait, pixelTypeBadge } from './pixelUi';
+import { experienceProgress, formatExperience } from './pokemonSummary';
 
 export interface TeamViewState {
   /** Every Pokémon in every box (`pickerEntries`). */
@@ -97,58 +91,120 @@ function spokenName(entry: PickerEntry): string {
   return `${entry.pokemon.name}, level ${entry.pokemon.level}, ${entry.box}`;
 }
 
-/** The card at the foot for one Pokémon: the only place its words are. */
-function teamCard(entry: PickerEntry, going: boolean, lead: boolean, partner: boolean): string {
+/** The green rosette the partner wears: the one Pokémon a wipe can never take. */
+export function partnerRosette(): string {
+  return '<span class="px-rosette" role="img" aria-label="Partner" title="Partner"></span>';
+}
+
+/** The highest any of FireRed's stats reaches at the levels a raid is played at, so a bar reads at a glance. */
+const STAT_BAR_TOP = 60;
+
+/** One stat as a bar and its number. */
+function statLine(name: string, value: number, top: number, tone = ''): string {
+  const fill = Math.max(0, Math.min(1, value / Math.max(1, top)));
+  return `<span class="team-stat"><span>${name}</span><span class="team-stat-bar ${tone}"><i style="width:${Math.round(fill * 100)}%"></i></span><span class="team-stat-n">${value}</span></span>`;
+}
+
+/** What ENTER does to the one under the cursor, with the key inside, as every button in the look says it. */
+function keyLine(key: string, words: string, tone: 'go' | 'plain' = 'plain'): string {
+  return `<span class="team-key ${tone === 'go' ? 'is-go' : ''}"><span class="px-keycap">${key}</span>${words}</span>`;
+}
+
+/**
+ * The card for the one under the cursor: its name and types on the strip, its
+ * health, its five stats and how far to its next level as bars, its moves as
+ * type chips, and what ENTER and L do to it. The only place its words are.
+ */
+function teamCard(entry: PickerEntry, going: boolean, lead: boolean, partner: boolean, size: number): string {
   const { pokemon } = entry;
   const types = [pokemon.base.primaryType, pokemon.base.secondaryType].filter((type): type is NonNullable<typeof type> => Boolean(type));
   const held = getHeldItem(pokemon.heldItemId);
-  const tag = going
-    ? pixelTag(lead ? 'Lead' : 'Going', 'good', true)
+  const { stats } = pokemon;
+  const top = Math.max(STAT_BAR_TOP, stats.attack, stats.defense, stats.spAttack, stats.spDefense, stats.speed);
+  const progress = experienceProgress(pokemon);
+  const next = progress.atTopOfCurve
+    ? '<span class="team-stat"><span>NEXT LV</span><span class="team-stat-n">TOP</span></span>'
+    : statLine('NEXT LV', progress.intoLevel, progress.levelSpan, 'is-xp').replace(
+        `<span class="team-stat-n">${progress.intoLevel}</span>`,
+        `<span class="team-stat-n">${formatExperience(progress.intoLevel)}/${formatExperience(progress.levelSpan)}</span>`,
+      );
+  const moves = pokemon.moves
+    .map((move) => `<span class="px-type px-type-${move.base.type.toLowerCase()} team-move">${escapeAttribute(move.base.name)}</span>`)
+    .join('');
+  const deeds = going
+    ? [
+        size > 1 ? keyLine('ENTER', 'Leave at home') : '',
+        lead ? '' : keyLine('L', 'Put in front'),
+      ]
     : pokemon.isFainted
-      ? pixelTag('Fainted', 'risk')
-      : '';
-  const where = [entry.box, ...(partner ? ['partner'] : [])].join(' · ');
-  return `<div class="px-detail team-card" data-shown-by="${escapeAttribute(entry.id)}" hidden>${pixelPortrait(pokemon.base.dexId ?? 0, pokemon.name, pokemon.shiny)}<div class="team-card-words"><span class="px-row-line">${pixelPokemonName(pokemon)}<span class="team-card-level">Lv ${pokemon.level}</span>${tag}</span><span class="px-row-line">${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}<small>${pokemon.currentHp}/${pokemon.maxHp}</small></span><span class="px-row-line team-card-types">${types.map((type) => pixelTypeBadge(type)).join('')}</span><small class="team-card-where">${escapeAttribute(where)}${held ? ` · ${itemIcon(held.id, held.displayName)}${escapeAttribute(held.displayName)}` : ''}</small></div></div>`;
+      ? ['<span class="team-key is-off">Fainted</span>']
+      : size >= MAX_RUN_PARTY
+        ? ['<span class="team-key is-off">Team full</span>']
+        : [keyLine('ENTER', 'Take on the raid', 'go')];
+  const where = [entry.box, ...(held ? [`${itemIcon(held.id, held.displayName)}${escapeAttribute(held.displayName)}`] : [])].join(' · ');
+  return `<section class="px-window team-card" data-shown-by="${escapeAttribute(entry.id)}" hidden>`
+    + `<header class="px-heading"><span>${partner ? partnerRosette() : ''}${pixelPokemonName(pokemon)}<span class="team-card-level">LV${pokemon.level}</span></span><small>${types.map((type) => pixelTypeBadge(type)).join('')}</small></header>`
+    + statLine('HP', pokemon.currentHp, pokemon.maxHp, pokemon.currentHp / Math.max(1, pokemon.maxHp) > 0.5 ? 'is-hp' : pokemon.currentHp / Math.max(1, pokemon.maxHp) > 0.2 ? 'is-hp-low' : 'is-hp-red').replace(
+      `<span class="team-stat-n">${pokemon.currentHp}</span>`,
+      `<span class="team-stat-n">${pokemon.currentHp}/${pokemon.maxHp}</span>`,
+    )
+    + statLine('ATTACK', stats.attack, top)
+    + statLine('DEFENCE', stats.defense, top)
+    + statLine('SP. ATK', stats.spAttack, top)
+    + statLine('SP. DEF', stats.spDefense, top)
+    + statLine('SPEED', stats.speed, top)
+    + next
+    + `<div class="team-moves">${moves}</div>`
+    + `<footer class="team-card-foot"><small class="team-card-where">${where}</small><span class="team-keys">${deeds.join('')}</span></footer>`
+    + '</section>';
 }
 
-/** One of the six, as FireRed's party slot (`pixelPartySlot`). */
-function teamSlot(entry: PickerEntry, lead: boolean, size: number, first: boolean): string {
-  const attributes = `data-member="${escapeAttribute(entry.id)}" data-shows="${escapeAttribute(entry.id)}" data-box-name="${escapeAttribute(entry.box)}" aria-label="${escapeAttribute(spokenName(entry))}"${first ? ' data-cursor-start' : ''} data-help="${escapeAttribute(teamRowHelp(entry, true, lead, size))}"`;
-  return pixelPartySlot(entry.pokemon, { lead, attributes });
+/**
+ * One of the team, standing big on the battle field's own grass, as it stands
+ * in a fight: its front sprite on a platform, its plate under it - name, level
+ * and health - and the partner's rosette. The lead stands first.
+ */
+function teamStand(entry: PickerEntry, index: number, size: number, partner: boolean): string {
+  const { pokemon } = entry;
+  const lead = index === 0;
+  const attributes = `data-member="${escapeAttribute(entry.id)}" data-shows="${escapeAttribute(entry.id)}" data-box-name="${escapeAttribute(entry.box)}" aria-label="${escapeAttribute(spokenName(entry))}"${lead ? ' data-cursor-start' : ''} data-help="${escapeAttribute(teamRowHelp(entry, true, lead, size))}"`;
+  return `<button class="team-stand${pokemon.isFainted ? ' is-fainted' : ''}${index % 2 === 1 && size > 3 ? ' is-back' : ''}" ${attributes}>`
+    + `<img class="team-platform" src="${publicAssetUrl('assets/battle/platform.png')}" alt="" aria-hidden="true" />`
+    + pixelPortrait(pokemon.base.dexId ?? 0, pokemon.name, pokemon.shiny)
+    + `<span class="team-plate">${partner ? partnerRosette() : ''}${lead && size > 1 ? '<span class="team-plate-lead">Lead</span>' : ''}<span class="team-plate-name">${pixelPokemonName(pokemon)}</span><span class="team-plate-level">LV${pokemon.level}</span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp, 24)}</span>`
+    + '</button>';
 }
 
-/** One in a box: the icon over its level and a short bar, as FireRed's PC box with the two facts a team is picked by. */
-function boxTile(entry: PickerEntry, size: number, first: boolean): string {
+/** One in a box: the icon at its pace, its name and level, as the PC box stands them. */
+function boxTile(entry: PickerEntry, size: number, first: boolean, partner: boolean): string {
   const disabled = entry.pokemon.isFainted || size >= MAX_RUN_PARTY;
   return pixelMonTile(entry.pokemon, {
+    classes: ['team-box-tile'],
     attributes: `data-member="${escapeAttribute(entry.id)}" data-shows="${escapeAttribute(entry.id)}" ${pickerRowAttributes(entry)} aria-label="${escapeAttribute(spokenName(entry))}"${first ? ' data-cursor-start' : ''}${disabled ? ' aria-disabled="true"' : ''} data-help="${escapeAttribute(teamRowHelp(entry, false, false, size))}"`,
+    line: `${partner ? partnerRosette() : ''}<span class="team-box-name">${escapeAttribute(entry.pokemon.name)}</span><span class="team-box-level">LV${entry.pokemon.level}</span>`,
   });
 }
 
-/** The panel's body: the six slots, the boxes, and the card for the one under the cursor. */
+/** The title strip's pill: who is going, as their icons, and how many of six. */
+export function teamPill(state: TeamViewState): string {
+  const { team } = teamRows(state);
+  return `${team.map((entry) => pixelMonIcon(entry.pokemon)).join('')}<span>${team.length} OF ${MAX_RUN_PARTY}</span>`;
+}
+
+/** The screen's body: the team on the stage, the card for the one under the cursor, and the boxes along the bottom. */
 export function teamBody(state: TeamViewState): string {
   const { team, boxes } = teamRows(state);
   const size = team.length;
-  const slots = Array.from({ length: MAX_RUN_PARTY }, (_, index) => {
-    const entry = team[index];
-    return entry
-      ? teamSlot(entry, index === 0, size, index === 0)
-      : pixelEmptyPartySlot();
-  }).join('');
+  const stands = team.map((entry, index) => teamStand(entry, index, size, entry.id === state.partnerId)).join('');
   const tiles =
     boxes.length > 0
-      ? boxes.map((entry, index) => boxTile(entry, size, team.length === 0 && index === 0)).join('')
+      ? boxes.map((entry, index) => boxTile(entry, size, team.length === 0 && index === 0, entry.id === state.partnerId)).join('')
       : '<p class="px-empty px-wrap">Everybody you have is going.</p>';
-  const cards = [...team.map((entry, index) => teamCard(entry, true, index === 0, entry.id === state.partnerId)), ...boxes.map((entry) => teamCard(entry, false, false, entry.id === state.partnerId))].join('');
-  const nextRaid = pixelWindow(`<div class="px-party-slots">${slots}</div>`, {
-    heading: 'Next raid',
-    note: `${size} of ${MAX_RUN_PARTY}`,
-    className: 'team-window',
-  });
-  const inBoxes = pixelWindow(`${pickerFindField()}<div class="px-mon-tiles px-scroll">${tiles}</div>${cards}`, {
-    heading: 'In your boxes',
-    note: `${boxes.length}`,
-    className: 'team-window team-boxes',
-  });
-  return `<main class="px-body team-layout">${nextRaid}${inBoxes}</main>`;
+  const cards = [
+    ...team.map((entry, index) => teamCard(entry, true, index === 0, entry.id === state.partnerId, size)),
+    ...boxes.map((entry) => teamCard(entry, false, false, entry.id === state.partnerId, size)),
+  ].join('');
+  const stage = `<div class="team-stage"><div class="team-line" style="--stands:${Math.max(1, size)}">${stands}</div><div class="team-cards">${cards}</div></div>`;
+  const inBoxes = `<section class="px-window team-boxes"><header class="px-heading"><span>In the boxes</span><small>${boxes.length}</small></header>${pickerFindField()}<div class="px-mon-tiles px-scroll">${tiles}</div></section>`;
+  return `<main class="px-body team-layout">${stage}${inBoxes}</main>`;
 }
