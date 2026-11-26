@@ -297,10 +297,14 @@ const COMMAND_Y = BATTLE_PANEL.y;
 const EVOLUTION_MS = 3200;
 /** One leg of the evolving sprite's pulse. */
 const EVOLUTION_PULSE_MS = 260;
-/** Ink for a row that cannot be chosen: a fainted Pokemon, an empty stack, a refusal. */
-const PANEL_REFUSAL_INK = '#9b1c1c';
+/**
+ * Ink for a row that cannot be chosen: a fainted Pokemon, an empty stack, a
+ * refusal. Grey, as every button that cannot be used is in the menus' look:
+ * red there means something that can be lost.
+ */
+const PANEL_REFUSAL_INK = UI.inkSoft.css;
 /** Guidance under a list: quieter than the rows it describes. */
-const PANEL_GUIDANCE_INK = '#475569';
+const PANEL_GUIDANCE_INK = '#3b3436';
 /** Where a plate's status tag stands, from the plate's left edge, when the name leaves room. */
 const STATUS_TAG_HOME = 82;
 /** One name for the face, so nothing can drift from what BootScene waits on. */
@@ -346,7 +350,7 @@ const BANNER_TEXT_STYLE = {
   // The smallest size the face survives as hard-edged pixels: at 8px its stems
   // are under two thirds of a pixel and `WILD NORMAL` came out `WILC NCRMAL`.
   fontSize: CAPTION_FONT_SIZE,
-  // A tab of the frame's navy on the plate's top edge, as a panel's heading is
+  // A tab of the frame's ink on the plate's top edge, as a panel's heading is
   // a strip over its window: outlined white letters floating on the sky were a
   // style nothing else in the game used (critic sweep, 25 Nov 2026).
   color: UI.paper.css,
@@ -355,11 +359,11 @@ const BANNER_TEXT_STYLE = {
 } as const;
 const MATCHUP_COLORS: Readonly<Record<MatchupTone, string>> = {
   // Read on the panel's cream, so these are the dark end of each hue.
-  good: '#166534',
-  bad: PANEL_REFUSAL_INK,
+  good: '#1d6c2e',
+  bad: '#a32208',
   // A muted violet rather than a paler slate: #64748b read 3.9:1 on the cream
   // (playtest 40), and a darker slate would match the neutral line's ink.
-  none: '#5c4a72',
+  none: UI.inkSoft.css,
   neutral: PANEL_GUIDANCE_INK,
 };
 /**
@@ -1129,7 +1133,7 @@ export class BattleScene extends Phaser.Scene {
         : `Wild ${this.state.enemy.pokemon.name} Lv${this.state.enemy.pokemon.level}`,
     );
     this.noteWhoFacesWhom();
-    this.cameras.main.setBackgroundColor('#0b1220');
+    this.cameras.main.setBackgroundColor('#1c1819');
     this.centreComposition();
     this.cameras.main.fadeIn(180, 0, 0, 0);
     this.drawBackdrop();
@@ -1653,7 +1657,7 @@ export class BattleScene extends Phaser.Scene {
         {
           fontFamily: BATTLE_FONT,
           fontSize: CAPTION_FONT_SIZE,
-          color: '#9b1c1c',
+          color: '#a32208',
         },
       )
       .setDepth(6);
