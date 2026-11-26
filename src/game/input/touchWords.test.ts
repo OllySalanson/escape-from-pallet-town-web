@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { resetTouchPlay, setTouchPlay } from './touchPlay';
 import { shortcutsInHint } from './touchShortcuts';
 import { WINDOW_PAUSE_LINES } from '../world/windowPause';
+import { STOW_LABEL } from '../run/resultMoment';
+import { READ_IN_A_RAID } from '../items/teaching';
 import { helpLineKeys, installTouchWording, rewordTexts, sourceText, touchHelpLine, touchWording } from './touchWords';
 
 afterEach(() => resetTouchPlay());
@@ -110,5 +112,22 @@ describe('a menu\'s help line on the touch pad', () => {
     expect(touchHelpLine('ARROWS read · O or ESC back to the raid')).toBe('D-PAD read · BACK to the raid');
     expect(touchHelpLine('ARROWS move · LEFT/RIGHT a pocket · ENTER use a disc or stone · B close')).toBe('D-PAD move · LEFT/RIGHT a pocket · OK use a disc or stone');
     expect(touchHelpLine('Arrows choose · ENTER asks to buy one · ESC leaves')).toBe('D-PAD choose · OK asks to buy one · BACK leaves');
+  });
+});
+
+describe('a screen named by its key in a sentence, on the touch pad', () => {
+  it('drops the key aside, because the tray\'s button is the screen\'s own name', () => {
+    // A phone playtest (26 Nov 2026): the raid's result told a thumb to find
+    // its haul in "YOUR THINGS (B at base)", a letter there is no key for.
+    expect(touchWording('The things are in YOUR THINGS (B at base) and the Pokémon on YOUR TEAM (P at base), ready for your next raid.')).toBe(
+      'The things are in YOUR THINGS and the Pokémon on YOUR TEAM, ready for your next raid.',
+    );
+    expect(touchWording(STOW_LABEL)).toBe('IN YOUR THINGS');
+    expect(touchWording(READ_IN_A_RAID)).toBe('Read it from YOUR THINGS anywhere at base, or pack it and read it from your pack in a raid.');
+  });
+
+  it('leaves a letter in brackets that names no screen\'s key alone', () => {
+    expect(touchWording('Plan (A) at base')).toBe('Plan (A) at base');
+    expect(touchWording('[B] PACK')).toBe('[PACK]');
   });
 });
