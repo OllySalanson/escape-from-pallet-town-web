@@ -856,7 +856,11 @@ try {
   // found rather than packed - a material, a bundle of Pokedollars - is ever checked
   // from the pack it has to come home in.
   const grab = (option('grab') ?? '').split(',').filter(Boolean);
-  for (const piece of plan.loot.filter((l) => grab.includes(l.itemId))) {
+  const grabbed = plan.loot.filter((l) => grab.includes(l.itemId));
+  if (grab.length > 0 && grabbed.length === 0) {
+    note(`this raid laid no ${grab.join(' or ')}`);
+  }
+  for (const piece of grabbed) {
     if (option('shot') && !ended) {
       // A step or two short of it, so the picture is the thing still on the ground.
       const beside = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
@@ -869,7 +873,9 @@ try {
     }
     await walkTo(piece.position, `${piece.quantity}x ${piece.itemId}`);
   }
-  if (grab.length > 0 && option('shot') && !ended) {
+  // Only once something was picked up: with nothing laid the raid is still on
+  // its opening briefing, and B under a dialogue box opens no bag.
+  if (grabbed.length > 0 && option('shot') && !ended) {
     // The pack as the player sees it once they have picked the thing up.
     await press('KeyB');
     await until(`document.querySelectorAll('.menu-overlay').length > 0`, 'the bag');

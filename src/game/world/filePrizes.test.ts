@@ -17,10 +17,11 @@ describe("Greystone Vale's far places' finds", () => {
 
   it('lays each prize in its own place, on its own odds', () => {
     for (const prize of BUILT_IN_FILE_PRIZES['greystone-vale'] ?? []) {
-      const laid = map.loot.filter((piece) => piece.itemId === prize.itemId);
-      expect(laid, prize.itemId).toHaveLength(1);
+      // One of each in its own place: TM28 Dig is in two, the caves' diggings and Millbrook's allotments.
+      const laid = map.loot.filter((piece) => piece.itemId === prize.itemId && placeOf(piece.district) === prize.place);
+      expect(laid, `${prize.itemId} in ${prize.place}`).toHaveLength(1);
       expect(isPrize(laid[0])).toBe(true);
-      expect(placeOf(laid[0].district)).toBe(prize.place);
+      expect(laid[0].chance).toBe(prize.chance);
     }
     expect(map.loot.some((piece) => piece.itemId === 'charcoal')).toBe(true);
   });
