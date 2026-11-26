@@ -1878,6 +1878,18 @@ body.touch-play .feedback-tab {
   }
 }
 
+/* THE TRADER's two arrows slide a pixel each way (`.tr-arrows`). */
+@keyframes tr-slide {
+  50% {
+    translate: var(--u) 0;
+  }
+}
+@keyframes tr-slide-back {
+  50% {
+    translate: calc(var(--u) * -1) 0;
+  }
+}
+
 /* The menus' palette, on the page rather than on a screen, so the controls
    bar under the game (`ui/controlsBar.ts`) and every screen share it. */
 :root {
@@ -8433,10 +8445,10 @@ body.touch-play .feedback-tab {
 /* A tile that names its Pokémon under the icon - YOUR TEAM's boxes - is wide
    enough for a ten-letter name and tall enough for its level under it. The
    partner's rosette stands on its corner, clear of the name. */
-:where(.pixel-ui) .px-mon-tiles:has(> .team-box-tile) {
+:where(.pixel-ui) .px-mon-tiles:has(> .team-box-tile, > .dc-tile, > .is-named) {
   grid-template-columns: repeat(auto-fill, calc(var(--u) * 52));
 }
-.pixel-ui .px-mon-tile.team-box-tile {
+.pixel-ui .px-mon-tile:is(.team-box-tile, .dc-tile, .is-named) {
   position: relative;
   width: calc(var(--u) * 52);
   height: calc(var(--u) * 58);
@@ -8445,4 +8457,272 @@ body.touch-play .feedback-tab {
   position: absolute;
   top: calc(var(--u) * 2);
   left: calc(var(--u) * 2);
+}
+
+/* --- THE DAY-CARE in his own pen (`hub/dayCareView.ts`) ----------------- *
+   The yard's pen (`day-care-pen.png`, `scripts/draw-day-care-stage.mjs`) at
+   twice its size, its middle at the stage's middle; the one under the cursor
+   stands in it and the Day-Care Man at his gate. Every offset below is read
+   off the picture: the pen's inside is tiles 47 to 51 across and 8 to 10 down
+   of a picture 20 by 14 tiles cut from tile 39, 2, so its middle is 16 game
+   pixels right of and its floor 64 below the picture's middle. */
+:where(.pixel-ui) .dc-layout {
+  grid-template-rows: minmax(calc(var(--u) * 150), 1fr) auto;
+  padding: 0;
+  gap: 0;
+  min-height: 0;
+  height: 100%;
+}
+:where(.pixel-ui) .dc-stage {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--pen) center / calc(var(--u) * 640) calc(var(--u) * 448) no-repeat;
+  background-color: #70c8a0;
+  image-rendering: pixelated;
+}
+:where(.pixel-ui) .dc-keeper {
+  position: absolute;
+  left: calc(50% - var(--u) * 128);
+  top: calc(50% + var(--u) * 32);
+}
+.pixel-ui .dc-keeper .px-figure {
+  display: block;
+}
+:where(.pixel-ui) .dc-pane[hidden] {
+  display: none;
+}
+:where(.pixel-ui) .dc-in-pen {
+  position: absolute;
+  left: calc(50% - var(--u) * 16);
+  top: calc(50% - var(--u) * 8);
+}
+:where(.pixel-ui) .dc-in-pen.is-refused img {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+/* A stepped pixel shadow under the feet. */
+:where(.pixel-ui) .dc-in-pen::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--u) * 14);
+  bottom: calc(var(--u) * -3);
+  width: calc(var(--u) * 36);
+  height: calc(var(--u) * 6);
+  background: rgb(0 0 0 / 22%);
+  clip-path: polygon(17% 0, 83% 0, 83% 17%, 100% 17%, 100% 83%, 83% 83%, 83% 100%, 17% 100%, 17% 83%, 0 83%, 0 17%, 17% 17%);
+}
+.pixel-ui .dc-card {
+  position: absolute;
+  top: calc(var(--u) * 8);
+  right: calc(var(--u) * 6);
+  width: calc(var(--u) * 132);
+  display: grid;
+  gap: calc(var(--u) * 6);
+  justify-items: center;
+}
+:where(.pixel-ui) .dc-card > .px-heading {
+  justify-self: stretch;
+  margin-bottom: 0;
+}
+:where(.pixel-ui) .dc-levels {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 5);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .dc-to {
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 5);
+  background: var(--ink);
+  mask: var(--px-cursor) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
+}
+:where(.pixel-ui) .dc-next {
+  color: var(--safe-ink);
+}
+:where(.pixel-ui) .dc-sum {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .dc-raid {
+  display: grid;
+  justify-items: center;
+}
+:where(.pixel-ui) .dc-raid small {
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .dc-op {
+  color: var(--ink-soft);
+}
+.pixel-ui .dc-leave {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  padding-left: calc(var(--u) * 3);
+}
+.pixel-ui .dc-leave .px-keycap {
+  background: var(--paper);
+  color: var(--ink);
+}
+:where(.pixel-ui) .dc-refused {
+  padding: 0 calc(var(--u) * 4) calc(var(--u) * 2);
+  color: var(--ink-soft);
+  text-align: center;
+}
+:where(.pixel-ui) .dc-who {
+  margin: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .dc-who .px-mon-tiles {
+  max-height: calc(var(--u) * 62);
+}
+:where(.pixel-ui) :is(.dc-tile, .is-named) .px-mon-tile-line {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .dc-tile-level {
+  color: var(--ink-soft);
+}
+
+/* --- THE TRADER: a trade as two Pokémon facing each other (`hub/tradesView.ts`) -
+   The team's field and platforms (`.team-stage`, `.team-platform`,
+   `.team-plate`): yours on the left, what comes back on the right, the trader
+   between them under the two arrows of a swap. */
+:where(.pixel-ui) .tr-layout {
+  grid-template-rows: minmax(calc(var(--u) * 150), 1fr) auto;
+  padding: 0;
+  gap: 0;
+  min-height: 0;
+  height: 100%;
+}
+:where(.pixel-ui) .tr-stage {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  background: url('/assets/battle/field-bands.png') left bottom / 100% calc(var(--u) * 258) no-repeat;
+  background-color: #40e8f8;
+  image-rendering: pixelated;
+}
+:where(.pixel-ui) .tr-pane[hidden] {
+  display: none;
+}
+:where(.pixel-ui) .tr-field {
+  position: absolute;
+  left: calc(var(--u) * 4);
+  right: calc(var(--u) * 140);
+  bottom: calc(var(--u) * 6);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: calc(var(--u) * 8);
+}
+:where(.pixel-ui) .tr-stand {
+  position: relative;
+  width: calc(var(--u) * 132);
+  height: calc(var(--u) * 180);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+.pixel-ui .tr-stand .px-portrait {
+  position: relative;
+  z-index: 1;
+  width: calc(var(--u) * 128);
+  height: calc(var(--u) * 128);
+  margin-bottom: calc(var(--u) * 40);
+  overflow: visible;
+}
+.pixel-ui .tr-stand .px-portrait img {
+  transform: scale(calc(var(--zoom, 2) * 2));
+}
+/* What comes back faces the one going, as a foe faces you. */
+.pixel-ui .tr-stand + .tr-swap + .tr-stand .px-portrait img {
+  transform: scale(calc(var(--zoom, 2) * -2), calc(var(--zoom, 2) * 2));
+}
+:where(.pixel-ui) .tr-field.is-refused .px-portrait img {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+:where(.pixel-ui) .tr-swap {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--u) * 10);
+  margin-bottom: calc(var(--u) * 24);
+}
+.pixel-ui .tr-swap .px-figure {
+  display: block;
+}
+:where(.pixel-ui) .tr-arrows {
+  display: grid;
+  gap: calc(var(--u) * 4);
+}
+/* Two drawn arrows, one each way, sliding a pixel back and forth. */
+:where(.pixel-ui) .tr-arrows i {
+  display: block;
+  width: calc(var(--u) * 24);
+  height: calc(var(--u) * 7);
+  background: var(--paper);
+  box-shadow: 0 var(--u) 0 var(--ink);
+  clip-path: polygon(0 43%, 75% 43%, 75% 0, 100% 50%, 75% 100%, 75% 57%, 0 57%);
+  animation: tr-slide 1s steps(2) infinite;
+}
+:where(.pixel-ui) .tr-arrows i + i {
+  transform: scaleX(-1);
+  animation-name: tr-slide-back;
+}
+:where(.pixel-ui) .tr-new {
+  padding: 0 calc(var(--u) * 3);
+  background: var(--ink);
+  color: var(--paper);
+}
+.pixel-ui .tr-card {
+  position: absolute;
+  top: calc(var(--u) * 8);
+  right: calc(var(--u) * 6);
+  width: calc(var(--u) * 128);
+  display: grid;
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .tr-card > .px-heading {
+  margin-bottom: 0;
+  background: var(--gold);
+  color: var(--ink);
+}
+:where(.pixel-ui) .tr-name {
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .tr-kind {
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .tr-types {
+  display: flex;
+  flex-wrap: wrap;
+}
+.pixel-ui .tr-go {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  padding-left: calc(var(--u) * 3);
+}
+.pixel-ui .tr-go .px-keycap {
+  background: var(--paper);
+  color: var(--ink);
+}
+:where(.pixel-ui) .tr-refused {
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .tr-who {
+  margin: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .tr-who .px-mon-tiles {
+  max-height: calc(var(--u) * 62);
 }

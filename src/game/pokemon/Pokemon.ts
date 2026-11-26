@@ -12,7 +12,7 @@ import { tidyNickname } from './nickname';
 
 export type CombatStats = PokemonStats;
 
-const MAX_LEVEL = 100;
+export const MAX_LEVEL = 100;
 
 /**
  * The total experience a Pokemon of this growth rate has at a level: FireRed's

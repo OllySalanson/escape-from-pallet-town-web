@@ -18,6 +18,8 @@ const [width, height] = (option('window') ?? '1280x800').split('x').map(Number);
 const only = option('only')?.split(',');
 // --team-of-two: the next raid's team is Squirtle and Pikachu rather than Squirtle alone.
 const TEAM_OF_TWO = args.includes('--team-of-two');
+// --with=spearow:9,abra:12: more Pokémon in the first box (the trader wants some kinds and not others).
+const WITH = (option('with') ?? '').split(',').filter(Boolean).map((entry) => entry.split(':'));
 mkdirSync(out, { recursive: true });
 
 const BASE = `${GAME}.scene.getScene('base')`;
@@ -77,6 +79,7 @@ try {
     for (const stored of save.stash.pokemon) { stored.pokemon.level = 8; stored.pokemon.currentHp = 9999; }
     save.stash.pokemon.push({ id: 'audit-pikachu', pokemon: { speciesId: 'pikachu', level: 9, currentHp: 9999, xp: 0, moves: [], pendingMoves: [], primaryStatus: null, heldItemId: null } });
     if (Array.isArray(save.stash.boxes) && save.stash.boxes[0]) save.stash.boxes[0].pokemonIds.push('audit-pikachu');
+    for (const [speciesId, level] of ${JSON.stringify(WITH)}) { const id = 'audit-' + speciesId; save.stash.pokemon.push({ id, pokemon: { speciesId, level: Number(level), currentHp: 9999, xp: 0, moves: [], pendingMoves: [], primaryStatus: null, heldItemId: null } }); if (Array.isArray(save.stash.boxes) && save.stash.boxes[0]) save.stash.boxes[0].pokemonIds.push(id); }
     if (${TEAM_OF_TWO}) p.lastBench = [save.stash.pokemon[0].id, 'audit-pikachu'];
     Object.assign(save.stash.items, { 'poke-ball': 6, 'great-ball': 2, potion: 5, leftovers: 1, satchel: 1, 'radio-valve': 3, 'mooring-rope': 2, money: 640 });
     localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
