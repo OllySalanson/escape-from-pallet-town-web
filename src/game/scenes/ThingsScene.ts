@@ -70,6 +70,8 @@ export interface ThingsSceneData {
   readonly start?: 'locker';
   /** The harbour under the screen. YOUR THINGS covers it whole, so it is only told it is uncovered. */
   readonly view?: SidePanelView;
+  /** Opened at THE CHEST in THE BOLTHOLE rather than on B: the screen is headed with it. */
+  readonly chest?: boolean;
 }
 
 /** One of the player's Pokémon, as a disc or a stone is offered to it: where it is kept, and its id to write back by. */
@@ -126,6 +128,8 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   private hallFlow: DeploymentFlow | undefined;
   private view: SidePanelView | undefined;
   private startAt: ThingsSceneData['start'];
+  /** What the screen is headed: THE CHEST when opened at it, YOUR THINGS on B. */
+  private title = 'Your things';
   private toTeam: (() => void) | undefined;
   private game_: RestoredGame | undefined;
   private flow: DeploymentFlow | undefined;
@@ -169,6 +173,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     this.view = data.view;
     this.startAt = data.start;
     this.toTeam = data.openTeam;
+    this.title = data.chest ? 'The chest' : 'Your things';
     this.using = null;
     this.keepingRoom = false;
     this.status = undefined;
@@ -187,7 +192,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
 
   public create(): void {
     this.overlay = new MenuOverlay(this, 'things-menu pixel-ui', (event) => this.onKey(event));
-    this.overlay.root.setAttribute('aria-label', 'Your things');
+    this.overlay.root.setAttribute('aria-label', this.title);
     // The card under the stash answers for the thing the cursor is on: written
     // into its own card, never a redraw of the screen under the cursor.
     this.overlay.root.addEventListener('focusin', (event) => {
@@ -208,7 +213,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
 
   public feedbackContext(): readonly FeedbackDetail[] {
     return [
-      { label: 'Screen', value: 'Your things' },
+      { label: 'Screen', value: this.title },
       ...(this.using ? [{ label: 'Using', value: this.using.itemId }] : []),
     ];
   }
@@ -478,7 +483,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     }
     if (this.moment) {
       overlay.root.innerHTML = pixelScreen({
-        title: 'Your things',
+        title: this.title,
         body: evolveMomentBody(this.moment, 'Back to your things.'),
         hints: 'Any key · back to your things',
       });
@@ -492,7 +497,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     this.statusThing = undefined;
     const item = this.using ? getItemById(this.using.itemId) : undefined;
     const money = itemCountTag('money', game ? spareAtBase(game, 'money') : 0);
-    let title = 'Your things';
+    let title = this.title;
     let back: { label: string; attribute: string } | undefined;
     let body: string;
     let hints = `ARROWS move · ENTER pack · BKSP out · L lock · Q E tab${this.toTeam ? ' · P team' : ''} · ESC back`;

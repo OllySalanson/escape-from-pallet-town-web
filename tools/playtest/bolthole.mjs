@@ -265,7 +265,12 @@ try {
     console.log(`${name}: ${lines.join(' / ')}`);
   }
   if (!heard['PENNANTS'][0].startsWith('PENNANTS')) throw new Error(`the pennants say "${heard['PENNANTS'][0]}"`);
-  if (!heard['YOUR BED'][0].includes('NURSE JOY')) throw new Error('the bed did not send the player to Joy for healing');
+  // The bed rests and never heals: it names NURSE JOY only to a hurt team
+  // (`base/homeLines.ts`, the harbour critic tour of 26 Nov 2026), and this
+  // save's team is whole.
+  if (!/You feel rested/.test(heard['YOUR BED'][0]) || /restored|healed/i.test(heard['YOUR BED'][0])) {
+    throw new Error(`the bed says "${heard['YOUR BED'][0]}"`);
+  }
   await page.screenshot(`${out}/upstairs-read.png`);
 
   // Off the mat and back on is the way down.

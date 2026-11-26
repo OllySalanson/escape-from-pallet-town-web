@@ -103,6 +103,21 @@ describe('decorating THE BOLTHOLE', () => {
     expect(decorBox(last(results).state, context.owned).map((entry) => entry.definition.id)).toContain('pot-plant');
   });
 
+  it('moves THE CHEST like anything else, but never puts it in the box', () => {
+    const moved = play(start(), at(12, 5), press, at(10, 6), press);
+    expect(last(moved)).toMatchObject({ outcome: 'put-down', changed: true });
+    expect(last(moved).state.layout).toContainEqual({ id: 'chest', room: 'bolthole', x: 10, y: 6, facing: 0 });
+    // Under the cursor or in hand, X is refused, and the chest stays where it was.
+    const pointed = play(start(), at(12, 5), { kind: 'put-away' });
+    expect(last(pointed)).toMatchObject({ outcome: 'refused', changed: false, refusal: { kind: 'stays-out', what: 'THE CHEST' } });
+    expect(last(pointed).state.layout).toContainEqual({ id: 'chest', room: 'bolthole', x: 12, y: 5, facing: 0 });
+    const held = play(start(), at(12, 5), press, { kind: 'put-away' });
+    expect(last(held)).toMatchObject({ outcome: 'refused', changed: false });
+    expect(last(held).state.held?.id).toBe('chest');
+    expect(decorRefusalLine(last(held).refusal!)).toBe('THE CHEST STAYS OUT');
+    expect(decorBox(last(held).state, context.owned).map((entry) => entry.definition.id)).not.toContain('chest');
+  });
+
   it('turns what it is carrying, and turns a piece where it stands if it still fits', () => {
     const results = play(start(), at(0, 7), press, { kind: 'turn' });
     expect(last(results).state.held?.facing).toBe(1);

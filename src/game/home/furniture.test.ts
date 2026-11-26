@@ -10,7 +10,7 @@ import { RunManager } from '../run/RunManager';
 import { BULBASAUR, Pokemon } from '../pokemon';
 import { baseGame } from '../base/baseGames.testkit';
 import { ownedFurniture } from './arrangement';
-import { FOUND_FURNITURE, FURNITURE, dollId, furnitureNamed } from './furniture';
+import { FOUND_FURNITURE, FURNITURE, STORAGE_CHEST_SHEET, dollId, furnitureNamed } from './furniture';
 import { FURNITURE_PIECES } from './generated/furniturePieces';
 
 /**
@@ -35,6 +35,13 @@ describe('the furniture catalogue', () => {
         if (art.kind === 'sheet') {
           const at = FURNITURE_PIECES[art.piece];
           expect([definition.id, at.width, at.height]).toEqual([definition.id, definition.width, definition.height]);
+        } else if (art.kind === 'chest') {
+          // Its own picture: as wide as its tiles, and its lid half a tile over the row behind.
+          expect([definition.id, STORAGE_CHEST_SHEET.frameWidth, STORAGE_CHEST_SHEET.frameHeight]).toEqual([
+            definition.id,
+            definition.width * 16,
+            definition.height * 16 + 8,
+          ]);
         } else {
           expect([definition.id, definition.width, definition.height]).toEqual([definition.id, 1, 1]);
         }

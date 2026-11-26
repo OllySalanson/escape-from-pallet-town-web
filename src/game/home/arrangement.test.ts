@@ -12,6 +12,7 @@ import { PokemonParty } from '../pokemon';
 import {
   arrangeHouse,
   boxContents,
+  CHEST_HOME,
   DEFAULT_HOME_LAYOUT,
   homeLayoutOf,
   ownedFurniture,
@@ -47,16 +48,17 @@ const withLayout = (game: RestoredGame, homeLayout: readonly Placement[]): Resto
 const downstairs = roomNamed('bolthole')!;
 
 describe('the house before anybody has moved anything', () => {
-  it('stands the table and both pot plants where the house always had them', () => {
+  it('stands the table, both pot plants and THE CHEST where the house has them', () => {
     const built = buildRoom(downstairs, baseGame(), JUNE);
     expect(built.home?.placed.map((each) => [each.id, each.x, each.y])).toEqual([
       ['dining-table', 4, 3],
       ['pot-plant', 0, 6],
       ['pot-plant', 14, 6],
+      ['chest', 12, 5],
     ]);
     // The table is solid and the rug round it is not; the plants are solid
     // all the way up - exactly the collision the house was drawn with.
-    for (const [x, y] of [[6, 4], [7, 4], [6, 5], [7, 5], [0, 6], [0, 7], [14, 6], [14, 7]]) {
+    for (const [x, y] of [[6, 4], [7, 4], [6, 5], [7, 5], [0, 6], [0, 7], [14, 6], [14, 7], [12, 5], [13, 5]]) {
       expect([x, y, built.collision[y][x]]).toEqual([x, y, true]);
     }
     for (const [x, y] of [[4, 3], [5, 4], [9, 6], [8, 3]]) {
@@ -214,9 +216,13 @@ describe('a layout read back', () => {
       { id: 'small-desk', room: 'bolthole-upstairs', x: 10, y: 6, facing: 0 },
       { id: 'pika-cushion', room: 'bolthole', x: 11, y: 6, facing: 0 },
     ];
-    expect(house(game, twice).map((each) => [each.id, each.room])).toEqual([['small-desk', 'bolthole']]);
+    // THE CHEST stands whatever the layout says: it is never in the box.
+    expect(house(game, twice).map((each) => [each.id, each.room])).toEqual([
+      ['small-desk', 'bolthole'],
+      ['chest', 'bolthole'],
+    ]);
     game.stash.addItem('pika-cushion', 1);
-    expect(house(game, twice).map((each) => each.id)).toEqual(['small-desk', 'pika-cushion']);
+    expect(house(game, twice).map((each) => each.id)).toEqual(['small-desk', 'pika-cushion', 'chest']);
   });
 
   it('puts back in the box whatever no longer fits', () => {
@@ -226,7 +232,7 @@ describe('a layout read back', () => {
       { id: 'small-chair', room: 'bolthole', x: 7, y: 8, facing: 0 },
       { id: 'small-desk', room: 'bolthole', x: 10, y: 6, facing: 0 },
     ];
-    expect(house(game, layout).map((each) => each.id)).toEqual(['small-desk']);
+    expect(house(game, layout).map((each) => each.id)).toEqual(['small-desk', 'chest']);
   });
 
   it('checks a doll after the desk it stands on, whatever order it was written in', () => {
@@ -235,7 +241,7 @@ describe('a layout read back', () => {
       { id: 'doll-25', room: 'bolthole', x: 10, y: 6, facing: 0 },
       { id: 'small-desk', room: 'bolthole', x: 10, y: 6, facing: 0 },
     ];
-    expect(house(game, layout).map((each) => each.id).sort()).toEqual(['doll-25', 'small-desk']);
+    expect(house(game, layout).map((each) => each.id).sort()).toEqual(['chest', 'doll-25', 'small-desk']);
   });
 
   it('keeps only well-formed entries from a save', () => {
@@ -261,7 +267,7 @@ describe('the time of year gives way to the furniture', () => {
     const taken = withLayout(game, [{ id: 'small-chair', room: 'bolthole', x: PUMPKIN_SPOT.x, y: PUMPKIN_SPOT.y, facing: 0 }]);
     const built = buildRoom(downstairs, taken, OCTOBER);
     expect(built.things.map((thing) => thing.name)).not.toContain('A PUMPKIN');
-    expect(built.home?.placed.map((each) => each.id)).toEqual(['small-chair']);
+    expect(built.home?.placed.map((each) => each.id)).toEqual(['small-chair', 'chest']);
     expect(built.collision[PUMPKIN_SPOT.y][PUMPKIN_SPOT.x]).toBe(false);
   });
 
@@ -294,9 +300,69 @@ describe('the layout in the save', () => {
     const layout: Placement[] = [{ id: 'small-desk', room: 'bolthole-upstairs', x: 10, y: 6, facing: 0 }];
     expect(saves.arrangeHome(layout)?.raidProgress.homeLayout).toEqual(layout);
     expect(saves.load()?.raidProgress.homeLayout).toEqual(layout);
-    // An empty house is a decision, not a missing field.
+    // An empty house is a decision, not a missing field - all but THE CHEST,
+    // which nothing puts away.
     saves.arrangeHome([]);
     expect(saves.load()?.raidProgress.homeLayout).toEqual([]);
-    expect(buildRoom(downstairs, saves.load()!, JUNE).home?.placed).toEqual([]);
+    expect(buildRoom(downstairs, saves.load()!, JUNE).home?.placed.map((each) => [each.id, each.x, each.y])).toEqual([
+      ['chest', 12, 5],
+    ]);
+  });
+});
+
+describe('THE CHEST', () => {
+  const plan = plans().bolthole;
+
+  it('stands downstairs in front of the badge case, clear of the stairs, and answers by opening', () => {
+    expect(CHEST_HOME).toEqual({ id: 'chest', room: 'bolthole', x: 12, y: 5, facing: 0 });
+    const built = buildRoom(downstairs, baseGame(), JUNE);
+    const chest = built.things.find((thing) => thing.name === 'THE CHEST');
+    expect(chest).toMatchObject({ opens: 'chest', tiles: [{ x: 12, y: 5 }, { x: 13, y: 5 }] });
+    expect(chest?.quiet).toBeUndefined();
+    // Walked up to from the door.
+    const steps = stepsFrom(built.collision, downstairs.mat!);
+    expect(steps[6][12]).toBeLessThan(Infinity);
+  });
+
+  it('stands in a house decorated before it existed, at its own spot', () => {
+    const game = withLayout(baseGame(), [{ id: 'small-desk', room: 'bolthole', x: 10, y: 6, facing: 0 }]);
+    const built = buildRoom(downstairs, game, JUNE);
+    expect(built.home?.placed.map((each) => [each.id, each.x, each.y])).toEqual([
+      ['small-desk', 10, 6],
+      ['chest', 12, 5],
+    ]);
+  });
+
+  it('stands on the first tile that takes it when its own spot is taken', () => {
+    const game = withLayout(baseGame(), [{ id: 'small-desk', room: 'bolthole', x: 12, y: 5, facing: 0 }]);
+    const placed = house(game, homeLayoutOf(game.raidProgress));
+    const chest = placed.find((each) => each.id === 'chest');
+    expect(chest).toBeDefined();
+    expect([chest!.x, chest!.y]).not.toEqual([12, 5]);
+    expect(placementRefusal(plan, placed.filter((each) => each !== chest && each.room === 'bolthole'), chest!)).toBeNull();
+  });
+
+  it('stands where it was moved to', () => {
+    const game = withLayout(baseGame(), [{ id: 'chest', room: 'bolthole', x: 10, y: 6, facing: 0 }]);
+    expect(house(game, homeLayoutOf(game.raidProgress)).map((each) => [each.id, each.x, each.y])).toEqual([['chest', 10, 6]]);
+  });
+
+  it('is never in the box', () => {
+    const game = baseGame();
+    const placed = house(game, homeLayoutOf(game.raidProgress));
+    expect(boxContents(ownedFurniture(game), placed).map((entry) => entry.definition.id)).not.toContain('chest');
+  });
+
+  it('can never be walled in: something that would is refused, naming it', () => {
+    const chest = piece({ id: 'chest', x: 10, y: 6 });
+    const walls = [
+      piece({ id: 'small-desk', x: 9, y: 6 }),
+      piece({ id: 'small-desk', x: 12, y: 6 }),
+      piece({ id: 'small-desk', x: 10, y: 5 }),
+      piece({ id: 'small-desk', x: 11, y: 5 }),
+      piece({ id: 'small-desk', x: 10, y: 7 }),
+    ];
+    expect(refusal(plan, [chest, ...walls], piece({ id: 'small-desk', x: 11, y: 7 }))).toEqual({ kind: 'blocks', what: 'THE CHEST' });
+    expect(refusalLine({ kind: 'blocks', what: 'THE CHEST' })).toBe('IT WOULD BLOCK THE CHEST');
   });
 });

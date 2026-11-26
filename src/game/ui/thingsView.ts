@@ -341,7 +341,7 @@ function stashCard(view: ThingsScreen): string {
   const layout = stashLayout(view.stash, view.stashArrangement);
   const grid = pixelGrid(layout, (itemId) => itemIcon(itemId), {
     className: 'things-stash-grid',
-    label: 'Home',
+    label: 'Chest',
     arrange: { name: 'stash', ghost: view.ghosts?.stash },
     cargoBody: (piece) => {
       const count = view.stash[piece.cargoId] ?? 0;
@@ -360,8 +360,8 @@ function stashCard(view: ThingsScreen): string {
         `<button type="button" class="things-tab${tab === view.pocket ? ' is-here' : ''}" data-pocket-tab="${tab}" tabindex="-1">${POCKET_TAB_WORDS[tab]}</button>`,
     )
     .join('');
-  const empty = Object.keys(view.stash).length === 0 ? '<p class="px-empty things-empty">Nothing at home.</p>' : '';
-  return `<section class="px-window px-tone-secure things-stash"><header class="px-heading"><span class="things-side-name"><span class="things-house" aria-hidden="true"></span>Home</span><small>Safe</small></header><nav class="things-tab-strip"><span class="things-cap" aria-hidden="true">Q</span>${strip}<span class="things-cap" aria-hidden="true">E</span></nav><div class="px-scroll things-stash-scroll">${grid}${empty}</div></section>`;
+  const empty = Object.keys(view.stash).length === 0 ? '<p class="px-empty things-empty">The chest is empty.</p>' : '';
+  return `<section class="px-window px-tone-secure things-stash"><header class="px-heading"><span class="things-side-name"><span class="things-chest" aria-hidden="true"></span>Chest</span><small>Safe</small></header><nav class="things-tab-strip"><span class="things-cap" aria-hidden="true">Q</span>${strip}<span class="things-cap" aria-hidden="true">E</span></nav><div class="px-scroll things-stash-scroll">${grid}${empty}</div></section>`;
 }
 
 /** How many go on a raid at most: the strip always shows this many places. */

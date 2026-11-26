@@ -390,6 +390,16 @@ game.
   already drawn in) with the signal coming off both sides of it, instead of one
   dark red lamp and a broken pair of arcs.
 
+### `storage-chest.png` - THE CHEST in THE BOLTHOLE, shut and open
+
+Drawn for this repository by `scripts/draw-storage-chest.mjs`, pixel by pixel:
+two 16x16 frames side by side. The shut chest is the `sea-chest` icon's own
+art (same outline `#241f2e`, oak `#5a3820`, `#8c5a2e`, `#b98048`, iron bands
+`#4a4a58`, `#8a8aa0`, brass lock `#d9a520`, `#f6d860`); the open frame is drawn
+on the same colours with the lid's dark inside raised and the chest's mouth
+`#1a1418` catching the brass light. Original to this repository; nothing is cut
+from any Pokémon game.
+
 ### `great-library.png` - THE GREAT LIBRARY, its front and its room
 
 Drawn for this repository by `scripts/draw-great-library.mjs`, pixel by pixel

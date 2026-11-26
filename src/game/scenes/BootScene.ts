@@ -37,7 +37,8 @@ import {
   BERRY_TREE_PATH,
   BERRY_TREE_TEXTURE,
 } from '../world/berries';
-import { FURNITURE_PATH, FURNITURE_TEXTURE } from '../base/furnitureArt';
+import { FURNITURE_PATH, FURNITURE_TEXTURE, STORAGE_CHEST_PATH, STORAGE_CHEST_TEXTURE } from '../base/furnitureArt';
+import { STORAGE_CHEST_SHEET } from '../home/furniture';
 import { isTestLabRequested } from '../dev/testLabAccess';
 import { ICON_NAMES, iconTextureKey } from '../ui/icons';
 import { keepPicturesLoaded, menuPictureUrls } from '../ui/menuPictures';
@@ -130,6 +131,10 @@ export class BootScene extends Phaser.Scene {
     // The furniture a player arranges in their house: Emerald's Secret Base
     // decorations and the house's own plants and table (`home/furniture.ts`).
     this.load.image(FURNITURE_TEXTURE, publicAssetUrl(FURNITURE_PATH));
+    this.load.spritesheet(STORAGE_CHEST_TEXTURE, publicAssetUrl(STORAGE_CHEST_PATH), {
+      frameWidth: STORAGE_CHEST_SHEET.frameWidth,
+      frameHeight: STORAGE_CHEST_SHEET.frameHeight,
+    });
     // Every piece the boutique sells, cut from FireRed's people
     // (`look/generated/wearablePieces.ts`): a look is composed from it.
     this.load.image(WEARABLES_TEXTURE, publicAssetUrl(WEARABLES_ASSET_PATH));

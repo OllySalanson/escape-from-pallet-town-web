@@ -354,6 +354,7 @@ import { retryUnsavedEnding, settleAtBase } from '../run/unsavedEnding';
 import { takeUpRaid } from '../run/raidResume';
 import { ABANDONED_BOUT_LINE, newBoutId, type BoutUnderWay } from '../arena/boutUnderWay';
 import { isHomeRoom, ownedFurniture, type Placement } from '../home/arrangement';
+import { STORAGE_CHEST_SHEET } from '../home/furniture';
 import { DecorateMode, type DecorateHost } from '../base/decorateMode';
 import { loadPlayerName } from '../console/playerName';
 import { houseTitle } from '../home/houseName';
@@ -479,6 +480,8 @@ let boatDueHome = false;
 let harbourToBeNamed = false;
 /** How long the view looks round at the crowd on coming home, and how far towards them. */
 const CROWD_LOOK_MS = 1700;
+/** How long THE CHEST stands open before its screen comes up: long enough to see the lid go. */
+const CHEST_LID_MS = 260;
 const CROWD_LOOK_SHARE = 0.8;
 /** How far short of the bottom of the dark under the stands the look on coming home stops: the seats are in view by then. */
 const CROWD_LOOK_STOPS_SHORT = 28;
@@ -780,6 +783,10 @@ export class BaseScene extends Phaser.Scene {
   private tilemap: Phaser.Tilemaps.Tilemap | null = null;
   /** The player's furniture standing in this room (`home/furniture.ts`). */
   private furnitureImages: Phaser.GameObjects.Image[] = [];
+  /** Between the chest's lid opening and its screen: a second press is not a second chest. */
+  private chestOpening = false;
+  /** THE CHEST as it is drawn in this room, if it stands here: its lid opens when it is. */
+  private chestImage: Phaser.GameObjects.Image | null = null;
   /** Decorating THE BOLTHOLE, while it is being decorated (`base/decorateMode.ts`). */
   private decor: DecorateMode | null = null;
   /** YOUR NAME?, while it asks (`askTheNameOnceHome`): nobody walks about until it has an answer. */
@@ -3628,13 +3635,16 @@ export class BaseScene extends Phaser.Scene {
   private drawFurniture(): void {
     this.furnitureImages.forEach((image) => image.destroy());
     this.furnitureImages = [];
+    this.chestImage = null;
     const placed = this.place.room?.home?.placed ?? [];
     for (const piece of placed) {
-      this.furnitureImages.push(
-        furnitureImage(this, piece.definition.facings[piece.facing], piece.x, piece.y).setDepth(
-          furnitureDepth(piece, placed),
-        ),
+      const image = furnitureImage(this, piece.definition.facings[piece.facing], piece.x, piece.y).setDepth(
+        furnitureDepth(piece, placed),
       );
+      if (piece.definition.opens === 'chest') {
+        this.chestImage = image;
+      }
+      this.furnitureImages.push(image);
     }
   }
 
@@ -5629,7 +5639,11 @@ export class BaseScene extends Phaser.Scene {
       if (
         this.visit &&
         thing &&
-        (thing.does !== undefined || thing.opens === 'games' || thing.opens === 'wardrobe' || thing.opens === 'boxes')
+        (thing.does !== undefined ||
+          thing.opens === 'games' ||
+          thing.opens === 'wardrobe' ||
+          thing.opens === 'boxes' ||
+          thing.opens === 'chest')
       ) {
         this.say([notYoursLine(this.visit.ownerName)], [target]);
         return;
@@ -5647,6 +5661,10 @@ export class BaseScene extends Phaser.Scene {
       const cabinet = this.place.room?.cabinet;
       if (thing?.opens === 'wall-map') {
         this.openWallMap(room);
+        return;
+      }
+      if (thing?.opens === 'chest') {
+        this.openChest();
         return;
       }
       if (thing?.opens === 'boxes') {
@@ -6111,7 +6129,28 @@ export class BaseScene extends Phaser.Scene {
    * pack the rack has out. Coming back, the save is read again, because a disc
    * or a stone may have been used.
    */
-  private openThings(start?: ThingsSceneData['start']): void {
+  /**
+   * THE CHEST in THE BOLTHOLE: its lid thrown back for a moment, then the
+   * things it holds, on the screen B opens anywhere, headed with the chest.
+   * The lid shuts again as the screen closes.
+   */
+  private openChest(): void {
+    if (this.leaving || this.choosing || this.chestOpening) {
+      return;
+    }
+    this.chestOpening = true;
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    audioManager.play('cacheOpen');
+    this.chestImage?.setFrame(STORAGE_CHEST_SHEET.open);
+    this.time.delayedCall(CHEST_LID_MS, () => {
+      this.chestOpening = false;
+      this.openThings(undefined, true);
+    });
+  }
+
+  private openThings(start?: ThingsSceneData['start'], chest = false): void {
     if (this.leaving || this.choosing) {
       return;
     }
@@ -6121,6 +6160,7 @@ export class BaseScene extends Phaser.Scene {
     this.showHint('');
     audioManager.play('menuOpen');
     this.events.once(Phaser.Scenes.Events.RESUME, () => {
+      this.chestImage?.setFrame(STORAGE_CHEST_SHEET.shut);
       this.input.keyboard?.resetKeys();
       this.spentPresses.spendHeld(this.directionKeys());
       this.savedGame = this.saveManager.load() ?? this.savedGame;
@@ -6147,6 +6187,7 @@ export class BaseScene extends Phaser.Scene {
       },
       ...(this.kit ? { flow: this.kit.flow } : {}),
       ...(start ? { start } : {}),
+      ...(chest ? { chest } : {}),
       view: {
         covers: (gamePixels) => this.panelLean.setCover(pit ? 0 : gamePixels),
         frame: (deltaMs) => {

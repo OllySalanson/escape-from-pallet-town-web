@@ -137,7 +137,7 @@ describe('the screen', () => {
     expect(html).toContain('data-grid="stash"');
     expect(html).toContain('data-grid="pack"');
     expect(html).toContain('data-grid="locker"');
-    expect(html).toMatch(/things-stash.*Home<\/span><small>Safe/);
+    expect(html).toMatch(/things-stash.*things-chest.*Chest<\/span><small>Safe/);
     expect(html).toMatch(/things-team.*Next raid/);
     expect(html).toMatch(/px-tone-risk things-pack.*Raid pack.*Lost on a wipe/);
     expect(html).toMatch(/px-tone-secure things-locker.*Locker.*Kept on a wipe/);
