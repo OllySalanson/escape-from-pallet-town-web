@@ -692,7 +692,7 @@ export function prizeRefusal(prize: TicketPrize, record: GameCornerRecord, now: 
     return 'One a week. Back on Monday.';
   }
   if (record.tickets < prize.tickets) {
-    return `${prize.tickets - record.tickets} more tickets.`;
+    return `${number(prize.tickets - record.tickets)} more tickets.`;
   }
   return null;
 }

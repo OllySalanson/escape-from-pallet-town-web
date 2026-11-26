@@ -7,6 +7,7 @@ import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { GAME_FONT } from '../ui/gameFont';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { pickerBasics, pickerEntries, pickerOrder, wirePickerFind } from '../ui/boxPicker';
+import { HOUSE_PICKER, loanBasics } from '../minigames/houseLoans';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { drawPixelWindow, WINDOW_PAPER, WINDOW_INK } from '../ui/pixelWindow';
@@ -154,10 +155,14 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
     const stash = this.game_?.stash;
     if (!stash) return [];
     // Every box, the most heads first (`ui/boxPicker.ts`).
-    return pickerOrder(pickerEntries(stash), (entry) => headsOf(entry.pokemon.base.id) ?? 0).map((entry) => ({
-      ...pickerBasics(entry),
-      heads: headsOf(entry.pokemon.base.id),
-    }));
+    return [
+      ...pickerOrder(pickerEntries(stash), (entry) => headsOf(entry.pokemon.base.id) ?? 0).map((entry) => ({
+        ...pickerBasics(entry),
+        heads: headsOf(entry.pokemon.base.id),
+      })),
+      // The house's own DODUO, last: a bird of your own comes first (`minigames/houseLoans.ts`).
+      { ...loanBasics(HOUSE_PICKER), heads: headsOf(HOUSE_PICKER.species) },
+    ];
   }
 
   /** Who picks if nobody is chosen: the bird with the most heads. */
@@ -227,6 +232,7 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
   // --- the game -------------------------------------------------------------------
 
   private chosenBird(): { species: string; dexId: number } | undefined {
+    if (this.chosen === HOUSE_PICKER.id) return { species: HOUSE_PICKER.species, dexId: HOUSE_PICKER.dexId };
     const stored = this.game_?.stash.listPokemon().find((candidate) => candidate.id === this.chosen);
     return stored ? { species: stored.pokemon.base.id, dexId: stored.pokemon.base.dexId } : undefined;
   }

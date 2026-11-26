@@ -7,7 +7,9 @@ import { BATTLE_PIC_COORDS } from '../pokemon/generated/battlePicCoords';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { GAME_FONT } from '../ui/gameFont';
 import { MenuOverlay } from '../ui/MenuOverlay';
+import { takeDownPixelStatus } from '../ui/pixelUi';
 import { pickerBasics, pickerEntries, pickerOrder, wirePickerFind } from '../ui/boxPicker';
+import { HOUSE_JUMPER, loanBasics } from '../minigames/houseLoans';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { drawPixelWindow, WINDOW_PAPER, WINDOW_INK } from '../ui/pixelWindow';
@@ -164,10 +166,14 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     const stash = this.game_?.stash;
     if (!stash) return [];
     // Every box, the jumpers first (`ui/boxPicker.ts`).
-    return pickerOrder(pickerEntries(stash), (entry) => (jumpTypeOf(entry.pokemon.base.id) ? 1 : 0)).map((entry) => ({
-      ...pickerBasics(entry),
-      jumpType: jumpTypeOf(entry.pokemon.base.id),
-    }));
+    return [
+      ...pickerOrder(pickerEntries(stash), (entry) => (jumpTypeOf(entry.pokemon.base.id) ? 1 : 0)).map((entry) => ({
+        ...pickerBasics(entry),
+        jumpType: jumpTypeOf(entry.pokemon.base.id),
+      })),
+      // The house's own, last: a jumper of your own comes first (`minigames/houseLoans.ts`).
+      { ...loanBasics(HOUSE_JUMPER), jumpType: jumpTypeOf(HOUSE_JUMPER.species) },
+    ];
   }
 
   /** Who jumps if nobody is chosen: the first three who can, fastest kinds first. */
@@ -358,6 +364,13 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     }
     if (this.overlay?.moveCursor(event.key)) {
       event.preventDefault();
+      // What was said about the last prize goes as the cursor leaves it: it
+      // stood under every row after, so TM18 read "You have one already"
+      // (the harbour critic tour, 26 Nov 2026).
+      if (this.status !== undefined && !this.asking) {
+        this.status = undefined;
+        if (this.overlay) takeDownPixelStatus(this.overlay.root);
+      }
     }
   }
 
@@ -367,6 +380,7 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     const stash = this.game_?.stash;
     if (!stash || this.chosen.length === 0) return;
     const species = this.chosen.flatMap((id) => {
+      if (id === HOUSE_JUMPER.id) return [HOUSE_JUMPER.species];
       const stored = stash.listPokemon().find((candidate) => candidate.id === id);
       return stored ? [stored.pokemon.base.id] : [];
     });

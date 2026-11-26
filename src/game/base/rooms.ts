@@ -2228,7 +2228,8 @@ function drawPrizeWindow(room: BaseRoom): Drawn {
       name: 'THE CASES',
       note: 'What tickets buy',
       tiles: [0, 1, 7, 8].flatMap((x) => [5, 6, 7].map((y) => ({ x, y }))),
-      lines: ['Berries in jars, cushions, plants and mats for the house. Nothing in the cases goes on a raid but a berry.'],
+      // The shelf sells discs, a flute and Pokémon for raids too (the harbour critic tour).
+      lines: ['Berries in jars, cushions, plants and mats. The good stuff - discs, a flute, a gold MAGIKARP - is behind the counter.'],
     },
   ];
   return { sketch, catalogue: GAME_CORNER, things, sprites: [] };

@@ -126,7 +126,8 @@ export function arcadeRegularLine(regular: ArcadeRegular, progress: Pick<RaidPro
     return `${regular.bot.name}: Next go is mine. Watch the board.`;
   }
   if (at < 0) {
-    return `${regular.bot.name}: Not on the board yet today. Shh - this is the one.`;
+    // The game named: "the board" covers six, and they topped another row of it (the harbour critic tour).
+    return `${regular.bot.name}: Not on the ${game} board yet today. Shh - this is the one.`;
   }
   const score = boardResult(regular.game, regularResult(regular.bot, regular.game, now));
   return at === 0
