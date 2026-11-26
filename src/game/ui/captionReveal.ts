@@ -89,6 +89,12 @@ export interface CaptionAudience {
   /** True while the look key is held - see `isLooking`. */
   readonly looking: boolean;
   readonly raidRemainingMs: number;
+  /**
+   * Map tooltips turned off in SETTINGS (`settings/mapTooltips.ts`): a place's
+   * name speaks only while the player looks. Warnings, prizes and a way out
+   * the clock calls are never quietened.
+   */
+  readonly quiet?: boolean;
 }
 
 /**
@@ -144,6 +150,9 @@ export function captionSpeaks(speech: CaptionSpeech, audience: CaptionAudience):
   }
   if (speech.voice === 'exit' && speech.open === true && audience.raidRemainingMs <= EXIT_CALL_MS) {
     return true;
+  }
+  if (audience.quiet && speech.voice === 'name') {
+    return false;
   }
   return stepsToNearest(audience.player, speech.tiles) <= (speech.near ?? CAPTION_NEAR_STEPS);
 }

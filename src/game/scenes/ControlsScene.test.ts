@@ -28,11 +28,16 @@ describe('HELP', () => {
 
 describe('SETTINGS', () => {
   it('says what each setting is set to now', () => {
-    expect(settingsBody({ soundOn: true, fullScreen: false, fullScreenOffered: true })).toMatch(/Sound<\/span><span class="cs-switch is-on">ON/);
-    expect(settingsBody({ soundOn: false, fullScreen: false, fullScreenOffered: true })).toMatch(/cs-switch is-off">OFF/);
+    expect(settingsBody({ soundOn: true, fullScreen: false, fullScreenOffered: true, mapTooltips: true })).toMatch(/Sound<\/span><span class="cs-switch is-on">ON/);
+    expect(settingsBody({ soundOn: false, fullScreen: false, fullScreenOffered: true, mapTooltips: true })).toMatch(/cs-switch is-off">OFF/);
   });
 
   it('offers full screen only where the browser allows it', () => {
-    expect(settingsBody({ soundOn: true, fullScreen: false, fullScreenOffered: false })).not.toContain('data-full-screen');
+    expect(settingsBody({ soundOn: true, fullScreen: false, fullScreenOffered: false, mapTooltips: true })).not.toContain('data-full-screen');
+  });
+
+  it('says whether the map tooltips are on, and offers to turn them off', () => {
+    expect(settingsBody({ soundOn: true, fullScreen: false, fullScreenOffered: true, mapTooltips: true })).toMatch(/Map tooltips<\/span><span class="cs-switch is-on">ON/);
+    expect(settingsBody({ soundOn: true, fullScreen: false, fullScreenOffered: true, mapTooltips: false })).toMatch(/Map tooltips<\/span><span class="cs-switch is-off">OFF/);
   });
 });

@@ -140,6 +140,7 @@ import { BASE_DOORS, doorAt, doorNamed, isHouseDoor, type BaseDoor, type BaseScr
 import type { SceneDescription } from '../dev/testDescribe';
 import { describeBag, describeTeam, inView, tileOf, viewTiles } from '../dev/describeParts';
 import { doorStatusLine } from '../base/doorStatus';
+import { mapTooltipsOn } from '../settings/mapTooltips';
 import { GYM_GUIDE_REEL_QUESTION, gymGuideHasStakesNews, gymGuideHonourNews, gymGuideLines } from '../base/gymGuide';
 import { ARENA_INTRO_ENDS_ON, arenaIntroViewing } from '../cutscene/arenaIntro';
 import { BASE_SHEET_SOURCE } from '../base/baseSheet';
@@ -4761,6 +4762,7 @@ export class BaseScene extends Phaser.Scene {
       player: this.currentTile,
       looking: isLooking(this.lookMs, this.controls.look.isDown),
       raidRemainingMs: Number.POSITIVE_INFINITY,
+      quiet: !mapTooltipsOn(),
     };
     // Looking at one thing on Bill's shelves takes every other caption in the
     // room off the screen - and out of the seating, where a quiet caption is
