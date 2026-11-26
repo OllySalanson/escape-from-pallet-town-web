@@ -56,9 +56,9 @@ describe('the condition line a Pokemon carries', () => {
     // what the stash will hold. Two phrasings of that would be two answers.
     // The party is FireRed's slots (a bar, no words), and the line is said by
     // the pane under them - built for every member, so pointing at one shows it
-    // with no re-render - which is the same dossier Bill's PC draws.
+    // with no re-render - which is the same dossier the base's storage draws.
     expect(partySceneSource).toContain('pokemonDossier({');
-    expect(hubSceneSource).toContain('return conditionLine(stored.pokemon);');
+    expect(hubSceneSource).toContain('pokemonDossier({');
     // The pane under either list is one module, so the line under the health
     // bar is the same sentence in a raid as it is at base - less the level,
     // which the pane prints beside the name.

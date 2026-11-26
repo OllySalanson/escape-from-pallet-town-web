@@ -56,11 +56,22 @@ describe('what the site plan says each place holds', () => {
       ).toBe(1);
     for (const [bird, roost] of Object.entries(OMEN_ROOSTS))
       expect(infoOf(titleCase(roost.district)).omen, bird).toBe(bird);
-    for (const prize of BUILT_IN_FILE_PRIZES[MAP] ?? [])
-      expect(
-        named(itemNameFor(prize.itemId, prize.quantity), (i) => i.prizes.map((p) => p.item)),
-        prize.itemId,
-      ).toBe(1);
+    // A find may lie in more than one place - TM28 Dig is in the caves'
+    // diggings and Millbrook's allotments - so it is named once for each of
+    // its places, each time on that place's own odds.
+    const prizes = BUILT_IN_FILE_PRIZES[MAP] ?? [];
+    for (const prize of prizes) {
+      const item = itemNameFor(prize.itemId, prize.quantity);
+      const placed = Object.values(plan.info).flatMap((info) =>
+        info.prizes.filter((p) => p.item === item).map((p) => p.chance),
+      );
+      expect(placed.sort(), prize.itemId).toEqual(
+        prizes
+          .filter((other) => other.itemId === prize.itemId)
+          .map((other) => other.chance)
+          .sort(),
+      );
+    }
   });
 
   it('says every secret condition in words', () => {
