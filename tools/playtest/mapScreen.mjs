@@ -1,8 +1,8 @@
 // THE MAP on M (`src/game/ui/MapScreen.ts`), played as a player plays it: a
 // new save's first raid, a few steps walked, M pressed, the raid clock watched
 // running while the map is up, M again to close it - and then home to the
-// harbour, a walk round the yard, and M there: THE HARBOUR, in colour where
-// it was walked, and still so after a reload.
+// harbour, a walk round the yard, and M there: still the raid's map, never the
+// harbour's (the captain, 26 Nov 2026).
 //
 //   node tools/playtest/mapScreen.mjs <test-mode build url> <out dir> [--before] [--port=N]
 //
@@ -147,45 +147,27 @@ try {
   };
   // The harbour waits under the map, paused, so it is asked directly rather than through describe().
   const harbourMap = `${GAME}.scene.getScene('base').mapScreen`;
-  const openHarbourMap = async () => {
-    await press('KeyM');
-    await wait(800);
-    await until(`(${harbourMap}?.knownTiles ?? null) !== null`, 'the harbour map to be drawn');
-    return page.evaluate(`${harbourMap}.knownTiles`);
-  };
   await home();
-  const walkedTo = new Set();
-  for (const key of ['ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowDown', 'ArrowDown']) {
+  for (const key of ['ArrowDown', 'ArrowDown', 'ArrowDown']) {
     await press(key);
     await wait(400);
-    const at = await page.evaluate(`${GAME}.scene.getScene('base').currentTile`);
-    walkedTo.add(`${at.x},${at.y}`);
   }
   await shot('5-harbour');
-  if (before) {
-    await press('KeyM');
-    await wait(800);
-  } else {
-    const known = await openHarbourMap();
+  await press('KeyM');
+  await wait(800);
+  if (!before) {
+    await until(`(${harbourMap}?.knownTiles ?? null) !== null`, 'the map at home to be drawn');
+    // The raid above was left by editing the save, so its steps were never
+    // banked: what is in colour here is only what the save already held.
     const name = await page.evaluate(`document.querySelector('.chart-name')?.textContent ?? null`);
-    check(name === 'THE HARBOUR', `M at home is the map of where you are: ${name}`);
-    check(known >= walkedTo.size, `the yard walked is in colour (${known} tiles for ${walkedTo.size} stood on)`);
-    check(await page.evaluate(`Boolean(document.querySelector('.chart-here'))`), 'with the player on it');
+    check(name !== null && name !== 'THE HARBOUR', `M at home is the raid's map, never the harbour's: ${name}`);
+    check(await page.evaluate(`!document.querySelector('.chart-here')`), 'and nobody on it: the player is at home');
   }
   await shot('6-harbour-m');
   if (!before) {
-    // The yard fits whole at least as big as close up: there is no Z to press.
-    check(await page.evaluate(`document.querySelector('[data-chart-zoom]')?.hidden === true`), 'and no zoom to change on a place seen whole');
     await press('KeyM');
     await wait(300);
     check((await page.evaluate(harbourMap)) === null, 'M closes it at home too');
-    const kept = await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress.harbourWalked ?? null`);
-    check(kept !== null, 'the walk is in the save');
-    await home();
-    const again = await openHarbourMap();
-    check(again >= walkedTo.size, `and still lit after a reload (${again} tiles)`);
-    await press('KeyM');
-    await wait(300);
   }
   console.log(JSON.stringify((await describe()).scene.base?.hint ?? null));
 } finally {
