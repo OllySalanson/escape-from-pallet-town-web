@@ -3710,6 +3710,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     this.createLedgeLabels();
     this.idleFigures = createIdleFigures(this.currentMap.entities, Math.random);
+    // Read once for every local on the map, and only on a map that has one.
+    let heard: readonly string[] | undefined;
     for (const entity of this.currentMap.entities) {
       if (this.wasMet(entity) || this.racerAway(entity)) {
         continue;
@@ -3746,7 +3748,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       }
       this.createFigure(entity.id, entity.position, entity.facing, 'npc', entity.design);
       if (entity.local) {
-        this.markUnheardLocal(entity);
+        heard ??= this.placesHeard();
+        this.markUnheardLocal(entity, heard);
       }
     }
 
@@ -7754,21 +7757,19 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.dialogBox.showMessages(spokenLines(linesSpoken(entity!, this.defeatedBosses), this.hunterRival().name));
   }
 
-  /**
-   * A place's local tells their tale (`world/locals.ts`), and the first time it
-   * is heard to the end they ink the whole place in on the player's map. It is
-   * written down the moment that last box is up, held for a beat like any
-   * thing given, so a tale skipped with ESC puts nothing on the map, and one
-   * heard puts it there for good, whatever happens to the raid after.
-   */
+  /** The places of this map whose local this save has heard to the end. */
+  private placesHeard(): readonly string[] {
+    return new SaveManager().load()?.raidProgress.placesOnMap?.[this.currentMap.id] ?? [];
+  }
+
   /**
    * The harbour's "!" over a local whose tale this save has not heard to the
    * end, so the person everybody knows is the one a player walks up to. A
    * local keeps no beat (`locals.test.ts`), so it is placed once.
    */
-  private markUnheardLocal(entity: WorldEntity): void {
+  private markUnheardLocal(entity: WorldEntity, heard: readonly string[]): void {
     const place = placeOfLocal(this.currentMap.id, entity.position);
-    if (!place || (new SaveManager().load()?.raidProgress.placesOnMap?.[this.currentMap.id] ?? []).includes(place.name)) {
+    if (!place || heard.includes(place.name)) {
       return;
     }
     const sprite = this.npcSprites.get(entity.id);
@@ -7781,20 +7782,30 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.mapObjects.push(mark);
   }
 
+  /**
+   * A place's local tells their tale (`world/locals.ts`), and the first time it
+   * is heard to the end they fill the whole place in on the player's map. It is
+   * written down the moment that last box is up, held for a beat like any
+   * thing given, so a tale skipped with ESC puts nothing on the map, and one
+   * heard puts it there for good, whatever happens to the raid after. Another
+   * tab having heard it first is the place on the map all the same.
+   */
   private tellTale(entity: WorldEntity, name: string): void {
     const place = placeOfLocal(this.currentMap.id, entity.position);
-    const known = place === undefined || (new SaveManager().load()?.raidProgress.placesOnMap?.[this.currentMap.id] ?? []).includes(place.name);
+    const known = place === undefined || this.placesHeard().includes(place.name);
     const lines = taleLines(name, entity.dialogLines, place?.name ?? '', known);
     this.dialogBox.showMessages(lines, (index) => {
       if (known || !place || index !== lines.length - 1) {
         return;
       }
-      if (new SaveManager().putPlaceOnMap(this.currentMap.id, place.name)) {
-        this.localMarks.get(entity.id)?.destroy();
-        this.localMarks.delete(entity.id);
-        audioManager.play('landmarkWorked');
-        this.dialogBox.hold(PLACE_ON_MAP_HOLD_MS);
+      new SaveManager().putPlaceOnMap(this.currentMap.id, place.name);
+      if (!this.placesHeard().includes(place.name)) {
+        return;
       }
+      this.localMarks.get(entity.id)?.destroy();
+      this.localMarks.delete(entity.id);
+      audioManager.play('landmarkWorked');
+      this.dialogBox.hold(PLACE_ON_MAP_HOLD_MS);
     });
   }
 

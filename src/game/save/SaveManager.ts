@@ -2141,34 +2141,34 @@ export class SaveManager {
   }
 
   /**
+   * Puts a place on THE MAP, its local's tale heard to the end
+   * (`world/locals.ts`). It changes nothing a raid in flight holds, so it is
+   * written the moment it is heard, as a key learned is, and a raid lost
+   * afterwards has still heard it. Returns whether it was new.
+   */
+  public putPlaceOnMap(mapId: string, placeName: string): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    const held = game.raidProgress.placesOnMap ?? {};
+    if (held[mapId]?.includes(placeName)) {
+      return false;
+    }
+    const raidProgress: RaidProgress = {
+      ...game.raidProgress,
+      placesOnMap: { ...held, [mapId]: [...(held[mapId] ?? []), placeName] },
+    };
+    return this.save({ ...game, raidProgress });
+  }
+
+  /**
    * Registers kinds as seen in the Pokédex (`../hub/pokedex`), as a fight shows
    * them. Loads first and writes only what is new, so a kind met a hundred
    * times costs one write; returns the kinds newly registered. It changes
    * nothing a raid in flight holds, so it is written mid-raid like a key
    * learned, and a raid lost afterwards has still met them.
    */
-  /**
-   * Puts a place on THE MAP, its local's tale heard to the end
-   * (`world/locals.ts`). It changes nothing a raid in flight holds, so it is
-   * written the moment it is heard, as a key learned is, and a raid lost
-   * afterwards has still heard it. Returns whether it was new.
-   */
-  public putPlaceOnMap(mapId: string, placeId: string): boolean {
-    const game = this.load();
-    if (!game) {
-      return false;
-    }
-    const held = game.raidProgress.placesOnMap ?? {};
-    if (held[mapId]?.includes(placeId)) {
-      return false;
-    }
-    const raidProgress: RaidProgress = {
-      ...game.raidProgress,
-      placesOnMap: { ...held, [mapId]: [...(held[mapId] ?? []), placeId] },
-    };
-    return this.save({ ...game, raidProgress });
-  }
-
   public registerSeen(dexIds: readonly number[]): readonly number[] {
     const game = this.load();
     if (!game) {
@@ -3573,10 +3573,7 @@ function clampRaidRecord(value: unknown): Readonly<Record<string, MapRaidRecord>
   return record;
 }
 
-/**
- * A survey is only ever read back through `world/survey.ts`, which clips it to
- * the map as it is drawn today, so all that is checked here is its shape.
- */
+/** The places on THE MAP, by map: names only, each once, on a map the game still has. */
 function clampPlacesOnMap(value: unknown): Record<string, string[]> {
   if (!isRecord(value)) {
     return {};
@@ -3590,6 +3587,10 @@ function clampPlacesOnMap(value: unknown): Record<string, string[]> {
   return places;
 }
 
+/**
+ * A survey is only ever read back through `world/survey.ts`, which clips it to
+ * the map as it is drawn today, so all that is checked here is its shape.
+ */
 function clampSurvey(value: unknown): SurveyRecord {
   if (!isRecord(value)) {
     return {};

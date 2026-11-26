@@ -269,7 +269,7 @@ export function moorChapel(): MapcraftResult {
       ],
       people: [
         // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
-        { x: 42, y: 29, name: "WIDOW MOTH", look: "channeler", facing: "left", local: true, lines: ["WIDOW MOTH. I light the lantern at the Cross each night so the drovers find the chapel. Dead, mind. They still come.", "The Gastly do no harm. Mostly. They like a hymn. They don't know the words, and these days neither do I.", "The fog only lifts after dark, along the sheep track. Day folk never find us. Night folk never leave. You'll be fine.", "Something in the shadow of the crypt laughs at my jokes. Nobody else does."] },
+        { x: 42, y: 29, name: "WIDOW MOTH", look: "channeler", facing: "left", local: true, lines: ["WIDOW MOTH. I light the lantern at the Cross each night so the drovers find the chapel. Dead, mind. They still come.", "The ghosts like a hymn. They don't know the words, and these days neither do I. We hum.", "The fog only lifts after dark, along the sheep track. Day folk never find us. Night folk never leave. You'll be fine.", "Something in the shadow of the crypt laughs at my jokes. Nobody else does."] },
         {
           x: 22,
           y: 13,

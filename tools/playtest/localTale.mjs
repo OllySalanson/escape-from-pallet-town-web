@@ -113,14 +113,14 @@ try {
     await wait(200);
     const whole = await dialogue();
     if (whole && lines.at(-1) !== whole) lines.push(whole);
-    if (whole?.includes('inks in')) await shot('2-local-inks-in');
+    if (whole?.includes('filled in')) await shot('2-local-inks-in');
     await wait(900);
     await press('Space');
     await wait(300);
   }
   console.log(lines.map((line) => `     > ${line}`).join('\n'));
   check(lines.some((line) => line.startsWith(localName)), 'the tale opens on their name');
-  check(lines.at(-1)?.includes('takes your map and inks in all of'), `it ends with the inking: "${lines.at(-1)}"`);
+  check(lines.at(-1)?.includes('filled in'), `it ends with the inking: "${lines.at(-1)}"`);
   const places = await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress.placesOnMap`);
   check(Object.values(places ?? {}).flat().length === 1, `the place is saved at once (${JSON.stringify(places)})`);
   check(!(await page.evaluate(`${WORLD}.localMarks.has(${JSON.stringify(local.id)})`)), 'and the "!" is gone');
@@ -149,7 +149,7 @@ try {
     await press('Space');
     await wait(300);
   }
-  check(!again.some((line) => line?.includes('inks in')), 'heard again, the tale has no second inking');
+  check(!again.some((line) => line?.includes('filled in')), 'heard again, the tale has no second inking');
 } finally {
   await browser.close();
 }

@@ -38,15 +38,16 @@ export function placeOfLocal(mapId: WorldMapId, at: GridPosition): MapDistrict |
 }
 
 /**
- * The tale's last box, in the game's own voice: the local drawing the place in
- * on the player's map, the thing a local would do, rather than a line about a
- * map being unlocked.
+ * The tale's last box, in FireRed's own voice for a thing gained - past tense,
+ * MAP in capitals, and the jingle under it (`WorldScene.tellTale`) - with the
+ * local doing it, the thing a local would do, rather than a line about a map
+ * being unlocked.
  */
 export function placeOnMapLine(local: string, place: string): string {
-  return `${local} takes your map and inks in all of ${place}.`;
+  return `${local} filled in ${place} on your MAP!`;
 }
 
-/** How long the inked-in box holds before a key moves it on: FireRed's obtained-a-thing beat. */
+/** How long the filled-in box holds before a key moves it on: FireRed's obtained-a-thing beat. */
 export const PLACE_ON_MAP_HOLD_MS = 900;
 
 /** What a local says: their tale, and the last box only the first time it is heard to the end. */

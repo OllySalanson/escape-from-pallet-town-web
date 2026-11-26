@@ -6129,10 +6129,10 @@
    "facing": "left",
    "local": true,
    "lines": [
-    "AUNTIE MAB, love. Seventy years I've sat this square. The Mill turned before I was born. It'll see me out, I expect.",
-    "Old Row's the oldest bit. Gran was born in the third cottage. The pump on the green is older than the Mill. Crosser too.",
-    "Every road in the vale starts here: up to the moor, over the river, down to the mere. Everybody started from Millbrook.",
-    "Even you, love. So you ought to know where you are."
+    "AUNTIE MAB, love. Seventy years on this square. The whole vale has gone past me twice, and most of it waved.",
+    "Four roads meet here: up to the moor, over to The Crossing, down to the mere, and the Westward Road out. All start here.",
+    "Old Row's the oldest bit. Ott grows his beans there, and Mrs Marlow says they're hers. Forty years, that's been going.",
+    "Everybody who ever left Millbrook was back by teatime. Mind you are too, love."
    ]
   },
   {
@@ -6777,7 +6777,7 @@
    "facing": "left",
    "local": true,
    "lines": [
-    "UNCLE GORSE. I count the Little Stones every morning. Seven when I was a lad. Nine now. Nobody brought any. I'd know.",
+    "UNCLE GORSE, to everyone. I count the Little Stones each morning. Seven when I was a lad. Nine now. Nobody brought any.",
     "Touch the Grey Stones for luck as you go by. I've touched them sixty years and I've had sixty years, so there you are.",
     "Moor Spring tastes of egg, so you know it's good for you. The flock are Nidoran. Don't call them sheep. They mind.",
     "If you hear bells after dark up by the Lost Fold, you never heard them. Not from me."
@@ -7159,9 +7159,9 @@
    "facing": "left",
    "local": true,
    "lines": [
-    "OLD FLINT. Fifty years I cut stone in the Quarry, and never a stone that didn't want cutting. You ask them. Politely.",
+    "OLD FLINT, they call me. Fifty years I cut stone in the Quarry, and never a stone that didn't want it. Ask first.",
     "The river starts in the Tarn up top, small as a teacup. By The Crossing it carries carts. I knew it when it was little.",
-    "The Goat Track goats are Rhyhorn. The Onix by the Powder Store is Bertram. Don't let him hear you call him an Onix.",
+    "Rope's at Gantry's Stores. Buy two. The mountain eats the first one. The Onix by the Powder Store is Bertram. Say hello.",
     "The caves go under the lot. I went in once in '41 and came out in '42. Best not."
    ]
   },
@@ -7545,7 +7545,7 @@
    "facing": "down",
    "local": true,
    "lines": [
-    "MOTHER SAP. We don't sign trails in Pine Hollow. If you don't know the way, you've no business here. You found it, so.",
+    "MOTHER SAP. Seventy years I've tapped these pines. They know my hum, and I know theirs. Nobody else knows the way in.",
     "Three clearings, one trail. The Weeping Pine gives amber if you hum to it. Not loud. It's shy.",
     "The bees took the Bee Warden's hat in the spring. They take turns wearing it. We've let them keep it.",
     "Don't tell them in the Peaks how you got here. They'd only come and put a sign up."
@@ -8364,7 +8364,7 @@
    "lines": [
     "LOST LETTICE, they call me. I got lost in Tanglewood when I was six. That was seventy years ago. Never found my way out.",
     "Mislaid was founded by accident: a cart took a wrong turn and the family stayed. The pub's called The Way Out. It isn't.",
-    "The lanes go round and come back. The Old Oak's no relation of the Professor's. KOGA's gym is in here somewhere.",
+    "The lanes go round and come back. The Halfway Stone is halfway between here and here. KOGA's gym is in here somewhere.",
     "Never wanted to leave, mind. You'll be lost in a minute. Here, let me show you where."
    ]
   },
@@ -9890,7 +9890,7 @@
    "local": true,
    "lines": [
     "MOTHER GULL. I've fed these gulls every morning since I could lift a bucket. They've all got names. They don't use them.",
-    "Old Bertie lights the Old Light every night. No ship's come in for twenty years. He says it's for the ones that might.",
+    "Old Bertie still lights the Old Light every night. Nobody's told him to stop, and he wouldn't hear them if they did.",
     "Fisher Row, the Quay, the Rope Walk where they walk backwards. MISTY's gym sits up the hill, wet as you like.",
     "Everything the river brings down from the vale ends up on my sand sooner or later. Even you, it looks like."
    ]
@@ -10429,10 +10429,10 @@
    "facing": "down",
    "local": true,
    "lines": [
-    "OLD RUSSET. Eighty harvests I've picked these terraces. Every tree's named after an apple. That one's Grandmother.",
+    "OLD RUSSET, that's me. Eighty harvests on these terraces. Every tree's named for an apple. That one's Grandmother.",
     "The scarecrow in the cornfield moves. We don't talk about who moves it. It's not me. I'm usually having a sit down.",
     "The terraces step down to the sea, and the ledges are the quick way. My knees like the long way. They're eighty too.",
-    "Leave a coin in the Honesty Box if you take an apple. Honest Tom counts it, and Tom can count."
+    "Leave a coin in the Honesty Box for an apple. Nobody watches it. Well. Nobody but the scarecrow."
    ]
   },
   {
@@ -10883,10 +10883,10 @@
    "facing": "right",
    "local": true,
    "lines": [
-    "MOLLY BULB. Forty years I've waited at that stop for the 8:15, every morning. It's never come. I'm not giving up now.",
-    "The turbines stopped the year the Card Key went missing. The town never noticed. We still clock on. Pie on Thursdays.",
-    "The picket's in its ninth year. Management not found. The Turbine Hall hums, empty. Something yellow lives in there.",
-    "The Commodore of the sailing club is my nephew. He's never left the jetty. Lovely boy."
+    "MOLLY BULB. Born in the switchyard in a power cut and named after the first thing Dad found. Never left since.",
+    "The flood stopped the turbines and Management went home. The lads have picketed nine years. I bring the tea.",
+    "The gate wants the Card Key, and that's lost in the pines next door. Nobody's looked. It's ever so far. Next door.",
+    "The 8:15 to Millbrook has never once come. I wait every morning anyway. You meet ever such nice people in a queue."
    ]
   },
   {
@@ -11531,10 +11531,10 @@
    "facing": "left",
    "local": true,
    "lines": [
-    "MAJOR MARSH. Booked the safari tour in '61. Haven't left. Waiting to see the something long in the Great Pool. Any day.",
-    "Everything here bites, stings or poisons. Lovely spot. The Egg Bank isn't eggs. The Lost Uncle was handed in Wednesday.",
-    "KOGA keeps the gate to the reserve. Ninja chap. Very quiet. Took me thirty years to spot him. He'd been there all along.",
-    "Ranger Moss thinks he's a Pokemon. Between you and me, he's right."
+    "MAJOR MARSH. Born in a reed hut by the Great Pool. The rank is my own idea. Nobody out here has ever argued with it.",
+    "Something long lives in the Great Pool. I've watched for it eighty years, and it has watched back. We nod.",
+    "Everything out here bites, stings or poisons. Bring something for poison, and mind KOGA's bars on the roads in.",
+    "The Egg Bank eggs are not mine. I've been asked not to sit on them, and I'm a man of my word."
    ]
   },
   {
@@ -12029,7 +12029,7 @@
    "lines": [
     "LITTLE MAISIE. I was six when the liner ran aground. Everyone got off. I didn't fancy the walk. I'm eighty-one now.",
     "The first-class lot on the Lido are still waiting for their dinner. I've told them. They won't have it.",
-    "The salvage camp picks her over every summer. The two Stans tune the piano. The inn changed its name. Nobody else did.",
+    "The two Stans have been a week getting the ship's piano up the trail. The tuner's gone to meet it. It's flat.",
     "The Ice Run goes out to Frostreef from the pier when the tide says. I've never been. Too chilly. I prefer a wreck."
    ]
   },
@@ -13304,7 +13304,7 @@
    "local": true,
    "lines": [
     "WIDOW MOTH. I light the lantern at the Cross each night so the drovers find the chapel. Dead, mind. They still come.",
-    "The Gastly do no harm. Mostly. They like a hymn. They don't know the words, and these days neither do I.",
+    "The ghosts like a hymn. They don't know the words, and these days neither do I. We hum.",
     "The fog only lifts after dark, along the sheep track. Day folk never find us. Night folk never leave. You'll be fine.",
     "Something in the shadow of the crypt laughs at my jokes. Nobody else does."
    ]
@@ -13367,7 +13367,7 @@
    "facing": "down",
    "local": true,
    "lines": [
-    "GRANNY FLOE. I came out on the Ice Run sixty years ago for one afternoon. Missed the tide home. Liked it. Stayed.",
+    "GRANNY FLOE, born on the ice. Mother came out on the Ice Run for an afternoon, missed the tide, and had me. Never left.",
     "Out here the tide is read off your clock. The Ice Run sails back till it says 1:00. After that, you're mine.",
     "Berg Cave's floor is all ice: once you start sliding you go till something stops you. Like life. Like my late husband.",
     "A Lapras sings in the Frozen Lagoon. Something colder lives further in. I knit it scarves. It never says thank you."
@@ -13405,7 +13405,7 @@
    "facing": "down",
    "local": true,
    "lines": [
-    "OLD CINDERS. Born on this island, I'll go up with it. It's not gone off in a hundred years. It's saving up.",
+    "OLD CINDERS, they call me. Born on this island, I'll go up with it. Not gone off in a hundred years. Saving up.",
     "Every step on the crater's ash brings something up. Hot ground, rich ground. The richest and the worst in the vale.",
     "The hoard's up there with two smugglers on it. Not smugglers. Collectors. Of a lot of very hot things.",
     "The skiff runs till your clock reads 2:30, the Cinder Boat from 1:40. Miss both and you'll learn to like charcoal."

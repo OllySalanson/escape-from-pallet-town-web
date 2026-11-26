@@ -291,7 +291,7 @@ export function safariMarsh(): MapcraftResult {
       ],
       people: [
         // The place's local (`world/locals.ts`): their tale puts the whole of the place on THE MAP.
-        { x: 36, y: 32, name: "MAJOR MARSH", look: "gentleman", facing: "left", local: true, lines: ["MAJOR MARSH. Booked the safari tour in '61. Haven't left. Waiting to see the something long in the Great Pool. Any day.", "Everything here bites, stings or poisons. Lovely spot. The Egg Bank isn't eggs. The Lost Uncle was handed in Wednesday.", "KOGA keeps the gate to the reserve. Ninja chap. Very quiet. Took me thirty years to spot him. He'd been there all along.", "Ranger Moss thinks he's a Pokemon. Between you and me, he's right."] },
+        { x: 36, y: 32, name: "MAJOR MARSH", look: "gentleman", facing: "left", local: true, lines: ["MAJOR MARSH. Born in a reed hut by the Great Pool. The rank is my own idea. Nobody out here has ever argued with it.", "Something long lives in the Great Pool. I've watched for it eighty years, and it has watched back. We nod.", "Everything out here bites, stings or poisons. Bring something for poison, and mind KOGA's bars on the roads in.", "The Egg Bank eggs are not mine. I've been asked not to sit on them, and I'm a man of my word."] },
         {
           x: 10,
           y: 42,

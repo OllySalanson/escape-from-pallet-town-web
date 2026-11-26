@@ -65,11 +65,11 @@ describe("the vale's locals", () => {
 });
 
 describe('a tale heard to the end', () => {
-  it('ends with the local inking the place in, the first time only', () => {
+  it('ends with the local filling the place in on the MAP, the first time only', () => {
     expect(taleLines('AUNTIE MAB', ['One.', 'Two.'], 'MILLBROOK', false)).toEqual([
       'One.',
       'Two.',
-      'AUNTIE MAB takes your map and inks in all of MILLBROOK.',
+      'AUNTIE MAB filled in MILLBROOK on your MAP!',
     ]);
     expect(taleLines('AUNTIE MAB', ['One.', 'Two.'], 'MILLBROOK', true)).toEqual(['One.', 'Two.']);
     expect(placeOnMapLine('OLD FLINT', 'GREYSTONE PEAKS')).not.toMatch(/unlock|congratulations/i);
