@@ -20,6 +20,8 @@ figure looked.
 - `plate-pips.png`, `yard-pips.png` - a regular wearing MISTY's honour, with her badge's
   drop as a pip on the name plate. Before, a plate held only the name and any Battle Arena
   class ball.
+- `gym-guide-mark.png`, `gym-guide-notices.png` - home in a new honour, the Gym Guide wears
+  the harbour's "!" and notices it when spoken to. Before, he only ever said the day's work.
 - `result-card.png` - the card a gym's badge opens on: the player turning round in
   what they won.
 

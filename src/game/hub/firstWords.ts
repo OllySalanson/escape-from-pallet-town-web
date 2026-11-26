@@ -25,7 +25,7 @@ import { landingsHeldBack, quarterOfLanding } from '../world/valeQuarters';
  * so leaving without reading it does not buy a second hearing - and the save
  * keeps only the list of ids, as it keeps every other permanent fact.
  */
-export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'moved', 'coast', 'marsh', 'nearWork', 'benchCatch', 'enraged', 'stakes'] as const;
+export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'moved', 'coast', 'marsh', 'nearWork', 'benchCatch', 'enraged', 'stakes', 'cascadeWorn', 'soulWorn'] as const;
 export type FirstWordsId = (typeof FIRST_WORDS_IDS)[number];
 
 export interface FirstWords {
@@ -133,6 +133,26 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
     name: 'Professor Oak',
     lines: [
       'Oak on the radio: Koga holds the Marsh from his gym in Tanglewood now. Beat him, and the Rest House and the Salvage Camp are yours again.',
+    ],
+  },
+  // Said by the Gym Guide the first time he is spoken to wearing a gym's
+  // honour (`base/gymGuide.ts`, `look/gymHonours.ts`): the brag, noticed, and
+  // the one thing to know about it - everybody sees it.
+  cascadeWorn: {
+    speaker: 'gym-guide',
+    name: 'The Gym Guide',
+    lines: [
+      "Whoa! Is that MISTY's CASCADE NECKERCHIEF? You beat her!",
+      'Everybody in the harbour sees it on you, and her badge on your name plate too!',
+      'Rather keep it quiet? YOUR WARDROBE in THE BOLTHOLE takes it off.',
+    ],
+  },
+  soulWorn: {
+    speaker: 'gym-guide',
+    name: 'The Gym Guide',
+    lines: [
+      "No way... KOGA's SOUL BAND! You beat the ninja himself!",
+      "His badge is on your name plate now. Folk can't miss it!",
     ],
   },
   // Said by Oak once the near jobs are banked (`hub/nextStep.ts`): the end of

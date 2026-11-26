@@ -1,6 +1,7 @@
 import { buildContractBoard } from '../hub/contractBoard';
 import { errandPlace, errandThing, errandsInHand, type ErrandProgress } from '../hub/errands';
-import { FIRST_WORDS, hasHeard } from '../hub/firstWords';
+import { FIRST_WORDS, hasHeard, type FirstWordsId } from '../hub/firstWords';
+import { honoursWorn, type HonourId } from '../look/gymHonours';
 import type { StandingBoardProgress } from '../objectives/standingBoard';
 import { nextGym } from '../world/valeQuarters';
 
@@ -25,15 +26,18 @@ import { nextGym } from '../world/valeQuarters';
 export const GYM_GUIDE_REEL_QUESTION = 'WATCH THE REEL AGAIN?';
 
 export function gymGuideLines(
-  progress: StandingBoardProgress & ErrandProgress & { readonly gymsMet?: readonly string[]; readonly firstWordsHeard?: readonly string[] },
+  progress: StandingBoardProgress &
+    ErrandProgress & { readonly gymsMet?: readonly string[]; readonly firstWordsHeard?: readonly string[]; readonly honoursHidden?: readonly string[] },
 ): readonly string[] {
+  // A gym honour he has not seen yet comes first: he cannot help himself.
+  const noticed = gymGuideHonourNews(progress);
   // Told what a survey stake is, the board deals survey jobs from this line on
   // (`standingBoard.ts`), so the job he names next is the board as it now stands.
   const explains = gymGuideHasStakesNews(progress);
   const told = explains ? { ...progress, firstWordsHeard: [...(progress.firstWordsHeard ?? []), 'stakes'] } : progress;
   const board = buildContractBoard(told);
   const [job] = board.rows;
-  const greeting = explains ? '' : 'Yo, champ! ';
+  const greeting = explains || noticed ? '' : 'Yo, champ! ';
   const work = job
     ? [
         `${greeting}Today's job: ${job.name.toUpperCase()}.`,
@@ -46,7 +50,7 @@ export function gymGuideLines(
   const favours = errandsInHand(progress).map(
     (errand) => `${errand.name} is waiting on ${errandThing(errand).toUpperCase()}, from ${errandPlace(errand)}.`,
   );
-  return [...(explains ? FIRST_WORDS.stakes.lines : []), ...work, ...favours, ...gymAdvice(told), 'Kit up through that door!'];
+  return [...(noticed ? FIRST_WORDS[noticed].lines : []), ...(explains ? FIRST_WORDS.stakes.lines : []), ...work, ...favours, ...gymAdvice(told), 'Kit up through that door!'];
 }
 
 /**
@@ -60,6 +64,26 @@ export function gymGuideHasStakesNews(progress: {
   readonly raidRecord?: Readonly<Record<string, { readonly deployed: number }>>;
 }): boolean {
   return raidsGoneOn(progress) > 0 && !hasHeard(progress.firstWordsHeard, 'stakes');
+}
+
+/** The words the Gym Guide says on first seeing each gym honour (`look/gymHonours.ts`). */
+export const HONOUR_NOTICED: Readonly<Record<HonourId, FirstWordsId>> = { cascade: 'cascadeWorn', soul: 'soulWorn' };
+
+/**
+ * A gym honour the player wears that the Gym Guide has not yet seen on them,
+ * as the words he says about it: the first, in the order they are won. While
+ * there is one he wears the harbour's "!" (`BaseScene.markHarbourGivers`), so a
+ * player home in a new honour is drawn over to hear it noticed. One taken off
+ * is not seen, and is noticed the day it is put back on.
+ */
+export function gymGuideHonourNews(progress: {
+  readonly defeatedBosses: readonly string[];
+  readonly honoursHidden?: readonly string[];
+  readonly firstWordsHeard?: readonly string[];
+}): FirstWordsId | undefined {
+  return honoursWorn(progress)
+    .map((id) => HONOUR_NOTICED[id])
+    .find((id) => !hasHeard(progress.firstWordsHeard, id));
 }
 
 function raidsGoneOn(progress: { readonly raidRecord?: Readonly<Record<string, { readonly deployed: number }>> }): number {

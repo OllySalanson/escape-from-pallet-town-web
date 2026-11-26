@@ -4,7 +4,8 @@ import { FIRST_WORDS } from '../hub/firstWords';
 import { errandOf, harbourGiver, withErrandAsked } from '../hub/errands';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
-import { gymAdvice, gymGuideHasStakesNews, gymGuideLines } from './gymGuide';
+import { GYM_HONOURS } from '../look/gymHonours';
+import { gymAdvice, gymGuideHasStakesNews, gymGuideHonourNews, gymGuideLines, HONOUR_NOTICED } from './gymGuide';
 import { KOGA_BOSS_ID, MISTY_BOSS_ID, VALE_QUARTERS } from '../world/valeQuarters';
 
 /** A save with a raid behind it: the board has nothing for anybody yet to go on one. */
@@ -100,5 +101,33 @@ describe("the Gym Guide's word on the next gym", () => {
 
   it('has nothing more to say once every gym is beaten', () => {
     expect(gymAdvice({ ...BEEN_OUT, defeatedBosses: [MISTY_BOSS_ID, KOGA_BOSS_ID] })).toEqual([]);
+  });
+});
+
+describe('the Gym Guide noticing a gym honour', () => {
+  const both = { ...TOLD, defeatedBosses: [MISTY_BOSS_ID, KOGA_BOSS_ID] };
+
+  it('has words for every honour, his own', () => {
+    for (const honour of GYM_HONOURS) {
+      const words = FIRST_WORDS[HONOUR_NOTICED[honour.id]];
+      expect(words.speaker).toBe('gym-guide');
+      expect(words.lines.join(' ')).toContain(honour.name);
+    }
+  });
+
+  it('says it first, once for each honour, in the order they were won, and greets nobody over it', () => {
+    expect(gymGuideHonourNews(TOLD)).toBeUndefined();
+    expect(gymGuideHonourNews(both)).toBe('cascadeWorn');
+    const lines = gymGuideLines(both);
+    expect(lines.slice(0, FIRST_WORDS.cascadeWorn.lines.length)).toEqual(FIRST_WORDS.cascadeWorn.lines);
+    expect(lines.join(' ')).not.toContain('Yo, champ!');
+    const seen = { ...both, firstWordsHeard: [...both.firstWordsHeard, 'cascadeWorn'] };
+    expect(gymGuideHonourNews(seen)).toBe('soulWorn');
+    expect(gymGuideHonourNews({ ...seen, firstWordsHeard: [...seen.firstWordsHeard, 'soulWorn'] })).toBeUndefined();
+  });
+
+  it('does not see an honour taken off', () => {
+    expect(gymGuideHonourNews({ ...both, honoursHidden: ['cascade'] })).toBe('soulWorn');
+    expect(gymGuideHonourNews({ ...both, honoursHidden: ['cascade', 'soul'] })).toBeUndefined();
   });
 });
