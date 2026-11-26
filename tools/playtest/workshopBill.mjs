@@ -157,6 +157,18 @@ try {
   // and then his screen, opened on it. Nothing is built from the dialogue box
   // (the owner, 26 Nov 2026: YES in the box built the mast with no screen).
   const cursorOn = () => page.evaluate('document.activeElement?.dataset?.shows ?? null');
+  /** Along the row of cards to one, either way, as a player would. */
+  const cursorTo = async (id) => {
+    for (const key of ['ArrowLeft', 'ArrowRight']) {
+      for (let guard = 0; guard < 8; guard += 1) {
+        const was = await cursorOn();
+        if (was === id) return;
+        await press(key, 200);
+        if ((await cursorOn()) === was) break;
+      }
+    }
+    expect(`the cursor reaches ${id}`, (await cursorOn()) === id, await cursorOn());
+  };
   const inWorkshop = async (what) => {
     await until(sceneIs('hub'), what);
     await sleep(600);
@@ -195,13 +207,70 @@ try {
   await shot('05-asks-on-the-card');
   await press('ArrowRight', 200);
   expect('Right is the build', /build/i.test(await focused()), await focused());
+  // BUILD IT goes out into the yard to choose where it stands, and spends
+  // nothing until it is put down (the owner, 26 Nov 2026: "you get to place it").
   await press('Space', 900);
+  const placingOn = () => base('b.placing ? b.placing.index : null');
+  await until(`(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready && b.placing !== null; })()`, 'the yard, placing it');
+  await sleep(600);
+  expect('out in the yard on its first place', (await placingOn()) === 0);
+  expect('nothing is spent before it is put down', (await saved(`(save.stash.items['parts-crate'] ?? 0)`)) === 4);
+  expect('the hint says the keys', (await base('b.hintShown')) === '[ARROWS] PLACE   [ENTER] BUILD IT   [ESC] BACK', await base('b.hintShown'));
+  const caption = () => base(`b.inspectLabel?.label?.text ?? ''`);
+  expect('the caption says what and where', /^THE STRONGROOM\nIN HARBOUR SQUARE {2}1 OF \d$/.test(await caption()), await caption());
+  await shot('06-placing-its-first-place');
+  await press('ArrowRight', 700);
+  expect('Right shows the next place', (await placingOn()) === 1, await placingOn());
+  await shot('06b-placing-its-second-place');
+  await press('Space', 900);
+  await until(`(() => { const b = ${GAME}.scene.getScene('base'); return b.ready && !b.leaving && b.placing === null && b.dialogBox.visible; })()`, 'built where it was put');
   expect('the locker is built', (await saved('save.raidProgress.workshopUpgrades.join()')) === 'secure-locker-1');
+  expect('where it was put', (await saved('JSON.stringify(save.raidProgress.fixturePlaces)')) === '{"secure-locker-1":1}');
   expect('the materials are gone', (await saved(`(save.stash.items['parts-crate'] ?? 0)`)) === 0);
-  await shot('06-built-on-the-screen');
+  console.log(`  placed: ${await said()}`);
+  await shot('06c-built-where-it-was-put');
+  await readOn();
+
+  // MOVE IT on a build that stands: back out to the yard, and it costs nothing.
+  await intoRoom('brocks-workshop');
+  const tally = await thing(`(each) => each.opens === 'ladder'`);
+  const foot = tally.tiles.reduce((low, tile) => (tile.y >= low.y ? tile : low));
+  await standFacing({ x: foot.x, y: foot.y + 1 }, foot);
+  await press('Space', 700);
+  await inWorkshop('the workshop to move it');
+  // Along the row to it, as a player would: the card the cursor is on is the one shown.
+  await cursorTo('secure-locker-1');
+  expect('a built card says MOVE IT', /move it/i.test(await page.evaluate(`document.querySelector('.shop-card[data-shown-by="secure-locker-1"]:not([hidden])')?.textContent ?? ''`)));
+  await shot('07a-move-it');
+  await press('Space', 900);
+  await until(`(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready && b.placing !== null; })()`, 'the yard, moving it');
+  await sleep(600);
+  expect('a move starts where it stands', (await placingOn()) === 1, await placingOn());
+  await press('ArrowLeft', 700);
+  await press('Space', 900);
+  await until(`(() => { const b = ${GAME}.scene.getScene('base'); return b.ready && !b.leaving && b.placing === null && b.dialogBox.visible; })()`, 'moved');
+  expect('moved back to its first place', (await saved('save.raidProgress.fixturePlaces === undefined')) === true);
+  expect('for nothing', (await saved(`(save.stash.items['parts-crate'] ?? 0)`)) === 0 && (await saved('save.raidProgress.workshopUpgrades.length')) === 1);
+  console.log(`  moved: ${await said()}`);
+  await shot('07b-moved');
+  await readOn();
+
+  // ESC out of placing is back in the workshop, with nothing spent.
+  await editSave((save) => { save.stash.items['linen-roll'] = 4; }, 'brocks-workshop');
+  await standFacing({ x: foot.x, y: foot.y + 1 }, foot);
+  await press('Space', 700);
+  await inWorkshop('the workshop again');
+  await cursorTo('recovery-bay-1');
+  await press('Space', 400);
+  await press('ArrowRight', 200);
+  await press('Space', 900);
+  await until(`(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready && b.placing !== null; })()`, 'the yard, placing the machine');
+  await sleep(500);
+  await press('Escape', 900);
+  await inWorkshop('back in the workshop');
+  expect('ESC is back on its card', (await cursorOn()) === 'recovery-bay-1', await cursorOn());
+  expect('and spends nothing', (await saved(`(save.stash.items['linen-roll'] ?? 0)`)) === 4);
   await backToRoom();
-  expect('back in front of the bay, where it now stands', (await base('b.currentTile.x')) === front.x);
-  await shot('06b-built-in-the-room');
 
   // A build that is short opens the screen too, which says what is short.
   const short = await thing(`(each) => each.chalked === 'radio-mast'`);
@@ -221,8 +290,6 @@ try {
   await backToRoom();
 
   // The tally on the wall is the whole ladder on a screen, and ESC is back in front of it.
-  const tally = await thing(`(each) => each.opens === 'ladder'`);
-  const foot = tally.tiles.reduce((low, tile) => (tile.y >= low.y ? tile : low));
   await standFacing({ x: foot.x, y: foot.y + 1 }, foot);
   await shot('08-tally');
   await press('Space', 700);

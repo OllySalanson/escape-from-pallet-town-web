@@ -10,8 +10,9 @@ import { workshopOffers, type WorkshopOffer, type WorkshopVault } from './worksh
  * 2026: "he asked me if I wanted to build something, so I clicked yes and it
  * said the radio mast is now in ... that screen didn't come up"). Nothing is
  * built from a dialogue box now: every way in - the mat, a chalked bay, the
- * plans on his wall - opens the screen, and the screen is where a build is
- * chosen and paid for (`HubScene.workshopView`). He is blunt, and he builds; he
+ * plans on his wall - opens the screen, the screen is where a build is chosen
+ * (`HubScene.workshopView`), and the yard is where it is put and paid for
+ * (`base/fixturePlacing.ts`). He is blunt, and he builds; he
  * does not deal (`trader.ts`).
  */
 

@@ -1,6 +1,6 @@
 import type { GridPosition } from '../movement/gridMovement';
 import type { RestoredGame } from '../save/SaveManager';
-import { BASE_LANDING, BASE_SPAWN, getBaseMap } from './baseMap';
+import { BASE_LANDING, BASE_SPAWN, getBaseMapFor } from './baseMap';
 import { BASE_DOORS, isHouseDoor, type BaseDoor } from './doors';
 import { buildRoom, roomNamed, type BaseRoom } from './rooms';
 
@@ -106,7 +106,7 @@ export interface KeeperWalk {
  * is measured on its own (`walkHome`).
  */
 export function walksToKeepers(from: GridPosition, game: RestoredGame): readonly KeeperWalk[] {
-  const yard = getBaseMap(game.raidProgress.workshopUpgrades);
+  const yard = getBaseMapFor(game.raidProgress);
   const steps = stepsFrom(yard.collision, from);
   return BASE_DOORS.flatMap((door) => {
     const room = roomNamed(door.id);
@@ -129,7 +129,7 @@ export function walksToKeepers(from: GridPosition, game: RestoredGame): readonly
 
 /** Steps across the yard from a spot onto the doorway of the player's own house. */
 export function walkHome(from: GridPosition, game: RestoredGame): number {
-  const yard = getBaseMap(game.raidProgress.workshopUpgrades);
+  const yard = getBaseMapFor(game.raidProgress);
   const home = BASE_DOORS.find(isHouseDoor);
   if (!home) throw new Error('the base has no house of the player\'s own');
   return stepsTo(stepsFrom(yard.collision, from), home.tiles);

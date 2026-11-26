@@ -109,7 +109,7 @@ import {
 } from '../world/depths';
 import type { TileSource } from '../world/tileset/catalogue';
 import { brimRuns, type MapLayers } from '../world/tiles';
-import { BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, HOME_SIGN, MOORED_ROWING_BOATS, NOTICE_BOARD, getBaseMap } from '../base/baseMap';
+import { BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, HOME_SIGN, MOORED_ROWING_BOATS, NOTICE_BOARD, getBaseMapFor } from '../base/baseMap';
 import { noticeFor } from '../base/harbourNotices';
 import { dayNumber, rumourFrom, type RumourSource } from '../world/rumours';
 import { amberWeeps, fossilAwake, fossilMachineLines, fossilsForTheMachine } from '../hub/fossils';
@@ -159,7 +159,9 @@ import {
   type RoomSprite,
   type RoomThing,
 } from '../base/rooms';
-import { standingFixtures, type BaseFixture } from '../base/fixtures';
+import { fixtureTiles, standingFixtures, type BaseFixture } from '../base/fixtures';
+import { placedAt, placedLine, placingCaption, placingHint, standToSee, startPlacing, stepPlacing, type Placing, type PlacingAsk } from '../base/fixturePlacing';
+import { drawFixture, fixtureArt } from '../ui/fixturePicture';
 import { COURSE_GATE_FRONT, HARBOUR_LANDMARKS, landmarkFaced, landmarkHint, OUTDOOR_GAME_LANDMARKS, type OutdoorGameId } from '../base/landmarks';
 import { HarbourLifeFigures } from '../base/harbourLifeFigures';
 import { HomeGardenFigures } from '../base/homeGardenFigures';
@@ -607,6 +609,11 @@ export interface HouseVisit {
 }
 
 export interface BaseSceneData {
+  /**
+   * Out in the yard to choose where one of Brock's builds stands, sent by
+   * BROCK'S WORKSHOP's BUILD IT or MOVE IT (`base/fixturePlacing.ts`).
+   */
+  readonly placing?: PlacingAsk;
   /** In somebody else's house, as a visitor who was let in. */
   readonly visit?: HouseVisit;
   readonly savedGame?: RestoredGame;
@@ -756,6 +763,11 @@ export class BaseScene extends Phaser.Scene {
   /** True while the screen is dark for a sleep in the player's own bed. */
   private resting = false;
   private inspecting: Inspecting | null = null;
+  /** Where one of Brock's builds is being put, while it is (`base/fixturePlacing.ts`). */
+  private placing: Placing | null = null;
+  /** The build as it would stand in the place on show, and its gold ring. */
+  private placingGhost: Phaser.GameObjects.Image | null = null;
+  private placingRing: Phaser.GameObjects.Graphics | null = null;
   private inspectLabel: WorldLabel | null = null;
   private inspectMark: Phaser.GameObjects.Graphics | null = null;
   /**
@@ -1300,6 +1312,9 @@ export class BaseScene extends Phaser.Scene {
     this.figures.clear();
     this.worldLabels = [];
     this.inspecting = null;
+    this.placing = null;
+    this.placingGhost = null;
+    this.placingRing = null;
     this.inspectLabel = null;
     this.inspectMark = null;
     this.partner = null;
@@ -1393,7 +1408,7 @@ export class BaseScene extends Phaser.Scene {
       this.facing = fence ? facingTowards(standing, fence) : climbedTo ? 'down' : (data.facing ?? 'up');
       this.archReady = false;
     } else {
-      const map = getBaseMap(loaded.raidProgress.workshopUpgrades);
+      const map = getBaseMapFor(loaded.raidProgress);
       this.place = {
         width: map.width,
         height: map.height,
@@ -1402,7 +1417,7 @@ export class BaseScene extends Phaser.Scene {
         sources: BASE_TILESET.sources,
         room: null,
       };
-      this.fixtures = standingFixtures(loaded.raidProgress.workshopUpgrades);
+      this.fixtures = standingFixtures(loaded.raidProgress.workshopUpgrades, loaded.raidProgress.fixturePlaces);
       this.terrain = map.terrain;
       this.fishable = openWater(map);
       const returning = data.from === undefined ? undefined : doorNamed(data.from);
@@ -1415,8 +1430,9 @@ export class BaseScene extends Phaser.Scene {
         : returning
           ? { ...returning.returnTo }
           : { ...BASE_SPAWN };
+      // Put in front of a build just placed, facing it (`putItHere`).
       this.facing = standing
-        ? (directionBetween(standing, DAY_CARE_KEEPER.position) ?? 'up')
+        ? (data.facing ?? directionBetween(standing, DAY_CARE_KEEPER.position) ?? 'up')
         : returning
           ? 'down'
           : 'up';
@@ -1663,6 +1679,9 @@ export class BaseScene extends Phaser.Scene {
         this.say(visitWelcomeLines(this.visit.ownerName), []);
       }
     }
+    if (data.placing && !room && !this.visit) {
+      this.beginPlacing(data.placing);
+    }
     // Somebody waving at this player: a hand over them, and a "hi!" to say so.
     harbour()?.link.whenWavedAt(() => audioManager.play('harbourWave'));
     // Another player's browser saying it knocked here: look at the door now.
@@ -1764,6 +1783,10 @@ export class BaseScene extends Phaser.Scene {
   }
 
   private updateWalking(deltaMs: number): void {
+    if (this.placing) {
+      this.handlePlacingInput();
+      return;
+    }
     const stepCarryMs = this.stepCarryMs;
     this.stepCarryMs = null;
     const looked = this.keyPresses.justPressed(this.controls.look);
@@ -4016,6 +4039,138 @@ export class BaseScene extends Phaser.Scene {
       // Speaks for as long as it is up, wherever the player is standing.
       speech: { voice: 'name', tiles: [], near: Number.POSITIVE_INFINITY },
     });
+  }
+
+  /** Out in the yard with a build to put down: the camera on its first place, the player still. */
+  private beginPlacing(ask: PlacingAsk): void {
+    const placing = startPlacing(ask, this.savedGame.raidProgress.fixturePlaces);
+    if (!placing) {
+      return;
+    }
+    this.placing = placing;
+    this.player.stop();
+    this.cameras.main.stopFollow();
+    this.showPlacing(true);
+  }
+
+  /** The build drawn in the place on show, ringed in gold, the camera brought round to it. */
+  private showPlacing(atOnce = false): void {
+    const placing = this.placing;
+    if (!placing) {
+      return;
+    }
+    const fixture = placedAt(placing);
+    const art = fixtureArt(placing.upgradeId);
+    const key = `placing-${placing.upgradeId}`;
+    if (art && !this.textures.exists(key)) {
+      const canvas = document.createElement('canvas');
+      drawFixture(canvas, art, (sheet) => (this.textures.exists(sheet) ? (this.textures.get(sheet).getSourceImage() as CanvasImageSource) : undefined));
+      this.textures.addCanvas(key, canvas);
+    }
+    const tiles = fixtureTiles(fixture);
+    const left = Math.min(...tiles.map((tile) => tile.x));
+    const top = Math.min(...tiles.map((tile) => tile.y));
+    const right = Math.max(...tiles.map((tile) => tile.x)) + 1;
+    const bottom = Math.max(...tiles.map((tile) => tile.y)) + 1;
+    const foot = atRow(FIGURE_BAND, bottom - 1) + 0.0005;
+    if (art) {
+      const artTop = bottom * TILE_SIZE - art.height;
+      this.placingGhost ??= this.add.image(0, 0, key).setOrigin(0, 0).setAlpha(0.85);
+      this.placingGhost.setPosition(left * TILE_SIZE, artTop).setDepth(foot);
+    }
+    this.placingRing ??= this.add.graphics();
+    this.placingRing.clear().setDepth(foot + 0.0001);
+    // A gold ring round the ground it would take, as the workshop rings its bay.
+    this.placingRing.lineStyle(2, 0xf8c840, 1);
+    this.placingRing.strokeRect(left * TILE_SIZE - 1, top * TILE_SIZE - 1, (right - left) * TILE_SIZE + 2, (bottom - top) * TILE_SIZE + 2);
+    // Its name and the place's, as the only caption up: the one slot a thing
+    // looked at has (`inspectLabel`), so every other caption steps aside.
+    this.inspectLabel?.destroy();
+    this.inspectLabel = new WorldLabel(this, {
+      subject: { x: left * TILE_SIZE, y: (art ? bottom * TILE_SIZE - art.height : top * TILE_SIZE), width: (right - left) * TILE_SIZE, height: art ? art.height : (bottom - top) * TILE_SIZE },
+      text: placingCaption(placing),
+      tone: FIXTURE_TONE,
+      depth: atRow(CAPTION_BAND, this.place.height),
+      speech: { voice: 'name', tiles: [], near: Number.POSITIVE_INFINITY },
+    });
+    const x = ((left + right) / 2) * TILE_SIZE;
+    const y = ((top + bottom) / 2) * TILE_SIZE;
+    if (atOnce) {
+      this.cameras.main.centerOn(x, y);
+    } else {
+      this.cameras.main.pan(x, y, 220, 'Sine.easeInOut');
+    }
+    this.showHint(placingHint(placing));
+  }
+
+  /** The arrows step round the places, ENTER puts it there, ESC goes back to the workshop. */
+  private handlePlacingInput(): void {
+    const placing = this.placing;
+    if (!placing || this.leaving) {
+      return;
+    }
+    const pressed = (keys: Phaser.Input.Keyboard.Key[]) => keys.some((key) => this.keyPresses.justPressed(key));
+    if (this.keyPresses.justPressed(this.controls.back)) {
+      audioManager.play('cancel');
+      this.leavePlacing();
+      return;
+    }
+    if (this.isInteractionPressed()) {
+      this.putItHere(placing);
+      return;
+    }
+    const by = pressed([this.controls.left, this.controls.a, this.controls.up, this.controls.w])
+      ? -1
+      : pressed([this.controls.right, this.controls.d, this.controls.down, this.controls.s])
+        ? 1
+        : 0;
+    if (by !== 0 && placing.fixture.places.length > 1) {
+      audioManager.play('select');
+      this.placing = stepPlacing(placing, by);
+      this.showPlacing();
+    }
+  }
+
+  /**
+   * Builds it in the place on show, spending its parts now and not before, or
+   * moves it there for nothing; then puts the player in front of it to see.
+   */
+  private putItHere(placing: Placing): void {
+    if (placing.mode === 'build') {
+      const built = this.saveManager.buildWorkshopUpgrade(placing.upgradeId, placing.index);
+      if (!built.ok || !built.saved) {
+        audioManager.play('cancel');
+        this.placing = null;
+        this.say([built.ok ? 'It would not save, so nothing was spent.' : built.message], [], () => this.leavePlacing(placing.upgradeId));
+        return;
+      }
+      // Two knocks of Brock's hammer, as on his screen.
+      this.time.delayedCall(140, () => audioManager.play('bump'));
+    } else if (!this.saveManager.placeFixture(placing.upgradeId, placing.index)) {
+      audioManager.play('cancel');
+      this.placing = null;
+      this.say(['It would not save, so it has not moved.'], [], () => this.leavePlacing(placing.upgradeId));
+      return;
+    }
+    const game = this.saveManager.load() ?? this.savedGame;
+    const fixture = placedAt(placing);
+    const map = getBaseMapFor(game.raidProgress);
+    const stand = standToSee(fixture, (tile) => map.collision[tile.y]?.[tile.x] === false);
+    this.goTo(
+      {
+        savedGame: game,
+        ...(stand ? { at: stand, facing: facingTowards(stand, fixture.at) } : {}),
+        said: [placedLine(placing)],
+        saidBy: fixture.at,
+      },
+      'confirm',
+    );
+  }
+
+  /** Back into BROCK'S WORKSHOP, on the build that was being placed. */
+  private leavePlacing(upgradeId = this.placing?.upgradeId): void {
+    this.placing = null;
+    this.openHub({ savedGame: this.saveManager.load() ?? this.savedGame, view: 'workshop', from: 'brocks-workshop', ...(upgradeId ? { build: upgradeId } : {}) });
   }
 
   /**

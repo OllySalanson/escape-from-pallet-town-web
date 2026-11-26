@@ -1,9 +1,8 @@
 import type { HonourId } from '../look/gymHonours';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { createSeededRng, type SeededRng } from '../run/rng';
-import { WORKSHOP_UPGRADES } from '../hub/workshop';
-import { BASE_LANDING, BASE_SIGNS, BASE_SPAWN, getBaseMap } from './baseMap';
-import { BASE_FIXTURES } from './fixtures';
+import { BASE_LANDING, BASE_SIGNS, BASE_SPAWN, getBaseMap, getBaseMapWithEveryPlace } from './baseMap';
+import { everyPlaceFilled } from './fixtures';
 import { HARBOUR_LANDMARKS } from './landmarks';
 import { LOITER_SPOTS } from './generated/harbourBotSpots';
 import { DAY_CARE_KEEPER } from './dayCarePen';
@@ -340,7 +339,9 @@ export function botGround(): BotGround {
 
 function walkableGround() {
   const bare = getBaseMap([]);
-  const built = getBaseMap(WORKSHOP_UPGRADES.map((upgrade) => upgrade.id));
+  // Every build in every place it may be put (`everyPlaceFilled`): wherever a
+  // player has put theirs, no regular walks through it.
+  const built = getBaseMapWithEveryPlace();
   const kept = new Set<string>([
     ...['day', 'night'].flatMap((hour) =>
       harbourLifeAt(hour as 'day' | 'night')
@@ -411,7 +412,7 @@ export function searchLoiterSpots(stood: readonly GridPosition[] = []): GridPosi
   const faced = new Set<string>([
     ...kept,
     ...BASE_SIGNS.map(key),
-    ...BASE_FIXTURES.map((fixture) => key(fixture.at)),
+    ...everyPlaceFilled().map((fixture) => key(fixture.at)),
     ...HARBOUR_LANDMARKS.flatMap((landmark) => [landmark.at, ...(landmark.near ?? [])].map(key)),
   ]);
   const spots: GridPosition[] = [];

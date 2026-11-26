@@ -30,6 +30,7 @@ import { billFor, billLine, checkBill, ownedWearables, unownedIn } from '../look
 import { honoursEarned, honoursWorn, isHonourId, readHonours, type HonourId } from '../look/gymHonours';
 import { isWearableId } from '../look/wearables';
 import { getWorkshopUpgrade, takePayment, type PaymentCheck } from '../hub/workshop';
+import { BASE_FIXTURES, type FixturePlaces } from '../base/fixtures';
 import {
   applyRecovery,
   healDayOf,
@@ -314,6 +315,14 @@ export interface RaidProgress {
    * written before Brock simply have none built.
    */
   readonly workshopUpgrades: readonly string[];
+  /**
+   * Where each build stands in the yard, by rung id, as an index into its
+   * fixture's `places` (`base/fixtures.ts`): chosen when it is built and moved
+   * for free after. A build not named stands in its first place, which is
+   * where every build stood before it could be placed, so an older save needs
+   * nothing and no version moves.
+   */
+  readonly fixturePlaces?: FixturePlaces;
   /**
    * Set once the authored opening fight has explained the battle screen. The
    * fight itself repeats for as long as the first contract is open, because a
@@ -2946,7 +2955,7 @@ export class SaveManager {
    * An upgrade already built is refused rather than charged again, which makes
    * a repeated click a no-op instead of a second payment.
    */
-  public buildWorkshopUpgrade(upgradeId: string): PaymentCheck & { readonly saved: boolean } {
+  public buildWorkshopUpgrade(upgradeId: string, place = 0): PaymentCheck & { readonly saved: boolean } {
     const game = this.load();
     if (!game) {
       return {
@@ -2961,11 +2970,26 @@ export class SaveManager {
     if (!payment.ok) {
       return { ...payment, saved: false };
     }
-    const raidProgress: RaidProgress = {
-      ...game.raidProgress,
-      workshopUpgrades: [...game.raidProgress.workshopUpgrades, payment.upgrade.id],
-    };
+    const raidProgress: RaidProgress = withFixturePlace(
+      { ...game.raidProgress, workshopUpgrades: [...game.raidProgress.workshopUpgrades, payment.upgrade.id] },
+      payment.upgrade.id,
+      placeOf(payment.upgrade.id, place),
+    );
     return { ...payment, saved: this.save({ ...game, raidProgress }) };
+  }
+
+  /**
+   * Moves a build that stands to another of its places, for nothing: where a
+   * thing stands is the player's to change, and it was paid for once. Refused
+   * for a build that is not up, or a place it does not have.
+   */
+  public placeFixture(upgradeId: string, place: number): boolean {
+    const game = this.load();
+    const fixture = BASE_FIXTURES.find((each) => each.upgradeId === upgradeId);
+    if (!game || !fixture || !game.raidProgress.workshopUpgrades.includes(upgradeId) || !Number.isInteger(place) || place < 0 || place >= fixture.places.length) {
+      return false;
+    }
+    return this.save({ ...game, raidProgress: withFixturePlace(game.raidProgress, upgradeId, place) });
   }
 
   /**
@@ -3466,6 +3490,37 @@ function partnerOutOfTheContainer(progress: RaidProgress, partnerId: string | nu
   };
 }
 
+/** A place this build has, or its first. */
+function placeOf(upgradeId: string, place: number): number {
+  const fixture = BASE_FIXTURES.find((each) => each.upgradeId === upgradeId);
+  return fixture && Number.isInteger(place) && place >= 0 && place < fixture.places.length ? place : 0;
+}
+
+/** A save's places with one build's changed; its first place is written as nothing at all. */
+function withFixturePlace(progress: RaidProgress, upgradeId: string, place: number): RaidProgress {
+  const others = Object.fromEntries(Object.entries(progress.fixturePlaces ?? {}).filter(([id]) => id !== upgradeId));
+  const fixturePlaces: FixturePlaces = place > 0 ? { ...others, [upgradeId]: place } : others;
+  const rest: RaidProgress = { ...progress };
+  delete (rest as { fixturePlaces?: FixturePlaces }).fixturePlaces;
+  return Object.keys(fixturePlaces).length > 0 ? { ...rest, fixturePlaces } : rest;
+}
+
+/** The places a save has chosen, kept only for a build that has places and a place it has. */
+function readFixturePlaces(value: unknown): { readonly fixturePlaces: FixturePlaces } | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const kept = Object.fromEntries(
+    BASE_FIXTURES.flatMap((fixture) => {
+      const index = value[fixture.upgradeId];
+      return typeof index === 'number' && Number.isInteger(index) && index > 0 && index < fixture.places.length
+        ? [[fixture.upgradeId, index] as const]
+        : [];
+    }),
+  );
+  return Object.keys(kept).length > 0 ? { fixturePlaces: kept } : undefined;
+}
+
 function deserializeRaidProgress(value: unknown): RaidProgress {
   if (!isRecord(value)) {
     return DEFAULT_RAID_PROGRESS;
@@ -3520,6 +3575,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     workshopUpgrades,
     // Saves written before gifts existed have received none.
     giftsReceived: uniqueStrings(value.giftsReceived),
+    ...(readFixturePlaces(value.fixturePlaces) ?? {}),
     ...(Array.isArray(value.guardHoardsBanked) ? { guardHoardsBanked: uniqueStrings(value.guardHoardsBanked) } : {}),
     ...(value.battleLessonGiven === true ? { battleLessonGiven: true } : {}),
     ...(value.arenaIntroSeen === true ? { arenaIntroSeen: true } : {}),

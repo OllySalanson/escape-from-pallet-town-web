@@ -1,6 +1,8 @@
 // Walks to each of Brock's builds in the yard with every one built, faces it,
 // and photographs it, then opens BROCK'S WORKSHOP on his plans - the pictures a
-// change to a build's art is judged by (`docs/screens/brock-builds-art/`).
+// change to a build's art is judged by (`docs/screens/brock-builds-art/`) - and
+// moves THE MAST with MOVE IT, photographing each place it may stand
+// (`docs/screens/brock-build-places/`).
 //
 //   node tools/playtest/brockBuilds.mjs <url> <outDir> [--port=<cdp port>] [--window=WxH]
 //
@@ -78,6 +80,28 @@ try {
   await sleep(800);
   await page.screenshot(`${out}/workshop-cards.png`);
   console.log('ok - the workshop screen photographed');
+
+  // The owner's own case: THE MAST built, and not where he wants it. MOVE IT
+  // takes it out to the yard, the arrows show each place, ENTER puts it there.
+  for (let guard = 0; guard < 8 && (await page.evaluate('document.activeElement?.dataset?.shows ?? null')) !== 'radio-mast'; guard += 1) await press('ArrowLeft', 200);
+  await press('Space', 900);
+  await until(`(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready && b.placing !== null; })()`, 'the yard, moving the mast');
+  const count = await base('b.placing.fixture.places.length');
+  for (let index = 0; index < count; index += 1) {
+    await sleep(700);
+    await page.screenshot(`${out}/move-mast-${index + 1}.png`);
+    console.log(`ok - the mast shown in place ${index + 1}: ${await base('b.placing.fixture.places[b.placing.index].name')}`);
+    if (index + 1 < count) await press('ArrowRight', 200);
+  }
+  // Round to the Battle Arena's lawn, and put it there.
+  while ((await base('b.placing.index')) !== 1) await press('ArrowRight', 300);
+  await press('Space', 900);
+  await until(`(() => { const b = ${GAME}.scene.getScene('base'); return b.ready && !b.leaving && b.placing === null && b.dialogBox.visible; })()`, 'the mast moved');
+  const moved = await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress.fixturePlaces`);
+  if (moved?.['radio-mast'] !== 1) throw new Error(`the mast was not moved: ${JSON.stringify(moved)}`);
+  await sleep(500);
+  await page.screenshot(`${out}/move-mast-done.png`);
+  console.log('ok - the mast moved, and nothing spent');
   console.log('all good');
 } finally {
   await browser.close();
