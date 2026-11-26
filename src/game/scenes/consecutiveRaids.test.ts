@@ -350,6 +350,35 @@ describe('two raids in a row on one WorldScene instance', () => {
     expect(manager.phase).toBe(RunPhase.Escaped);
   });
 
+  it('holds the 0:15 fight for a line still up rather than ending the raid on the clock', () => {
+    // The night raid critic (26 Nov 2026) left Oak's "One minute left!" box
+    // open through 0:15: nobody came, and the raid ended on the timer screen.
+    const controls = makeControls();
+    const scene = new WorldScene();
+    attachSceneStubs(scene, controls);
+    const manager = new RunManager();
+    startRaid(scene, manager, 'floodplain-relay', 1);
+    const internals = scene as unknown as {
+      dialogBox: { visible: boolean };
+      pendingTrainerBattle: unknown;
+      advanceRunClock(deltaMs: number): void;
+    };
+    internals.dialogBox.visible = false;
+    internals.advanceRunClock(RAID_DURATION_MS);
+    internals.dialogBox.visible = true;
+    internals.advanceRunClock(ENRAGE_GRACE_MS);
+    internals.advanceRunClock(16);
+    expect(manager.phase).toBe(RunPhase.InRun);
+    expect(lastStand(scene)).toBeUndefined();
+
+    internals.dialogBox.visible = false;
+    internals.advanceRunClock(16);
+    expect(lastStand(scene)).toBe('fighting');
+    expect(internals.pendingTrainerBattle).not.toBeNull();
+    loseLastStand(scene);
+    expect(manager.phase).toBe(RunPhase.Wiped);
+  });
+
   /**
    * Every way a raid can end now routes through the result screen, which is a
    * new hand-off at the exact moment PR #70 found the freeze. Each ending is
