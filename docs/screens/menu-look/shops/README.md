@@ -55,7 +55,7 @@ build in hand.
 
 - `../before/bills-cottage-shop.png`, `../before/brocks-workshop.png` - `main` before
   the menu look.
-- `../after-foundation/` - the same layouts in the new colours (the foundation PR).
+- `../after/` - every screen with the whole menu rebuild merged.
 - `bill-open.png`, `bill-bought.png`, `bill-locked-barter.png` - Bill opened, a Poké Ball
   just bought, and the cursor on a barter held back for a trusted friend.
 - `brock-open.png`, `brock-locker.png`, `brock-asked.png`, `brock-built.png`,
