@@ -286,11 +286,30 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
 
   // --- OK, BACK and the screen's keys --------------------------------------
 
+  /**
+   * The button a finger came down on. The touch that turns touch play back on
+   * after a keyboard press lays the pad out again in the same moment, before
+   * the press reaches here, and the label it landed on is drawn afresh
+   * (`drawButton`): the element it hit is no longer in the pad, so the button
+   * is found again where the finger is. Asked of the hit element alone, the
+   * first OK after a keyboard press was swallowed (the navigation audit, 25 Nov
+   * 2026).
+   */
+  const buttonUnder = (event: PointerEvent): HTMLElement | null => {
+    const selector = '[data-key],[data-action]';
+    const hit = (event.target as Element | null)?.closest<HTMLElement>(selector);
+    if (hit && root.contains(hit)) {
+      return hit;
+    }
+    const here = document.elementFromPoint?.(event.clientX, event.clientY)?.closest<HTMLElement>(selector);
+    return here && root.contains(here) ? here : null;
+  };
+
   /** Which key each finger on a button is holding down. */
   const pressed = new Map<number, { readonly code: string; readonly element: HTMLElement }>();
   const press = (event: PointerEvent) => {
-    const element = (event.target as Element | null)?.closest<HTMLElement>('[data-key],[data-action]');
-    if (!element || !root.contains(element)) {
+    const element = buttonUnder(event);
+    if (!element) {
       return;
     }
     event.preventDefault();

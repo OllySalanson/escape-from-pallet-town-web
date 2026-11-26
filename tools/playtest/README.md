@@ -141,6 +141,11 @@ long stash and presses Tab: supplies, then the pack, then the header's X, then
 round to the supply row it left; Shift+Tab the other way; never out of the panel
 (`docs/screens/rack-tab/`).
 
+`touchAfterKeys.mjs <test-mode build url> [shot.png] [--port=N] [--no-keys]` taps
+the touch pad's OK on the title in a phone-sized window with touch emulated, after
+two real keyboard presses: NEW GAME must start, which the first OK after a keyboard
+press used not to (`--no-keys` is the control).
+
 `slowLoad.mjs <cdp port> <build url> <dir> [kbit/s] [latency ms]` opens the game
 on a throttled line with the cache off and photographs the first load until the
 title is up, for what a friend on poor wifi sees before the game can draw

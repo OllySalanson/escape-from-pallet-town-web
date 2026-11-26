@@ -46,6 +46,18 @@ export function primaryPointerIsCoarse(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches === true;
 }
 
+/**
+ * Whether the touch pad is drawn: while the game is played by touch, and on a
+ * device whose primary pointer is a finger whatever was pressed last. A keyboard
+ * press turns touch play off, which is right for the words - a hint names the
+ * key just used - but it used to take the pad away too, so the next tap where
+ * OK had been landed on nothing and only brought the pad back: the first OK
+ * after a keyboard press was swallowed (the navigation audit, 25 Nov 2026).
+ */
+export function padWanted(coarsePointer = primaryPointerIsCoarse()): boolean {
+  return playing || coarsePointer;
+}
+
 /** The key events that are a keyboard being used, rather than the pad, a phone's own keyboard or a field. */
 export function isPhysicalKeyPress(event: Pick<KeyboardEvent, 'key' | 'isTrusted' | 'target'>): boolean {
   if (event.isTrusted === false) {

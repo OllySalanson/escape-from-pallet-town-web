@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { isPhysicalKeyPress, onTouchPlayChange, resetTouchPlay, touchPlay, watchTouchPlay } from './touchPlay';
+import { isPhysicalKeyPress, onTouchPlayChange, padWanted, resetTouchPlay, touchPlay, watchTouchPlay } from './touchPlay';
 
 afterEach(() => resetTouchPlay());
 
@@ -25,6 +25,25 @@ describe('whether the game is played by touch', () => {
     host.dispatchEvent({ type: 'pointerdown', pointerType: 'touch' });
     expect(touchPlay()).toBe(true);
     expect(changes).toEqual([true, false, true]);
+    stop();
+  });
+
+  it('keeps the pad on a finger-first device after a keyboard press, so the next tap of OK is taken', () => {
+    // The navigation audit (25 Nov 2026): a keyboard press took the pad away,
+    // and the next tap where OK had been landed on nothing.
+    const listeners = new Map<string, (event: Event) => void>();
+    const host = {
+      addEventListener: (type: string, listener: (event: Event) => void) => listeners.set(type, listener),
+      removeEventListener: (type: string) => listeners.delete(type),
+    };
+    const stop = watchTouchPlay(host, true);
+    listeners.get('keydown')?.({ key: 'ArrowDown', isTrusted: true, target: null } as unknown as Event);
+    expect(touchPlay()).toBe(false);
+    expect(padWanted(true)).toBe(true);
+    // A mouse-first window has the pad only while it is played by touch.
+    expect(padWanted(false)).toBe(false);
+    listeners.get('pointerdown')?.({ pointerType: 'touch' } as unknown as Event);
+    expect(padWanted(false)).toBe(true);
     stop();
   });
 
