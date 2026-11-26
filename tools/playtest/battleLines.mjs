@@ -1,6 +1,6 @@
 // What a fight says, line by line, with a picture of each (`docs/screens/battle-lines/`).
 //
-//   node tools/playtest/battleLines.mjs <test-mode build url> <dir> [--port=N] [--hp=N] [--status=burn] [--move=NAME] [--items] [--party] [--moves]
+//   node tools/playtest/battleLines.mjs <test-mode build url> <dir> [--port=N] [--hp=N] [--status=burn] [--move=NAME] [--items] [--party] [--moves] [--full-pack]
 //
 // Deploys a new save into Greystone Vale with a Charmander on 7 HP leading a
 // Pikachu, Potions packed, and starts a wild Gastly fight. Reads every line
@@ -14,6 +14,8 @@
 // status) puts the Charmander in it, and `--party` opens POKéMON before the
 // move and photographs the list. `--moves` opens FIGHT, puts the cursor on
 // the move asked for and photographs the list and the lines under it.
+// `--full-pack` fills the raid's pack with materials and medicine first, then throws a ball
+// and photographs the refusal and the panel it opens.
 import { attachBrowser, launchBrowser, PIXEL_WINDOW, sleep, writeScreenshot } from './browser.mjs';
 import { GAME, deploy, sceneIs } from './deploy.mjs';
 
@@ -82,6 +84,9 @@ try {
   await page.waitFor(`document.readyState === 'complete'`);
   await deploy(page, url, { press, click, until, wait: sleep, starter: 'Charmander', team: ['pikachu:12'], level: 12, stash: PACK, pack: PACK });
   await until(sceneIs('world'), 'the world');
+  if (args.includes('--full-pack')) {
+    console.log(`pack filled: ${await page.evaluate(`(() => { const b = ${GAME}.scene.getScene('world').bag; let n = 0; for (const id of ['parts-crate', 'linen-roll', 'mooring-rope', 'lamp-oil', 'cable-coil', 'radio-valve', 'potion', 'antidote']) while (n < 400 && b.add(id, 1)) n += 1; return n; })()`)} things`);
+  }
   await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); w.party.pokemon[0].currentHp = ${hp}; w.party.pokemon[0].primaryStatus = ${JSON.stringify(option('status') ?? null)}; w.transitionToBattle({ wild: { speciesId: 'gastly', level: 12, shiny: false }, teachingBattle: false }); })()`);
   await until(sceneIs('battle'), 'the battle');
   await sleep(1200);
@@ -95,6 +100,23 @@ try {
     await writeScreenshot(`${dir}/${++shot}-items.png`, (await page.send('Page.captureScreenshot', { format: 'png' })).data);
     await press('Escape');
     await sleep(600);
+  }
+  if (args.includes('--full-pack')) {
+    await page.evaluate(`${BATTLE}.dispatchAction({ type: 'choose-ball' })`);
+    await sleep(800);
+    await page.evaluate(`${BATTLE}.dispatchAction({ type: 'throw-ball', ballIndex: 0 })`);
+    await until(`${BATTLE}.describeForTest().message?.complete === true`, 'the refusal read out');
+    await sleep(400);
+    console.log(`the ball says: ${await page.evaluate(`${BATTLE}.describeForTest().message?.text ?? ''`)}`);
+    await writeScreenshot(`${dir}/${++shot}-no-room.png`, (await page.send('Page.captureScreenshot', { format: 'png' })).data);
+    await press('Space');
+    await sleep(1000);
+    if ((await page.evaluate(`${BATTLE}.mode`)) === 'events') {
+      await press('Space');
+      await sleep(1000);
+    }
+    console.log(`then: ${await page.evaluate(`${BATTLE}.mode`)} - ${await page.evaluate(`${BATTLE}.describeForTest().commands.join(' | ')`)}`);
+    await writeScreenshot(`${dir}/${++shot}-make-room.png`, (await page.send('Page.captureScreenshot', { format: 'png' })).data);
   }
   if (args.includes('--moves')) {
     await page.evaluate(`${BATTLE}.dispatchAction({ type: 'choose-fight' })`);

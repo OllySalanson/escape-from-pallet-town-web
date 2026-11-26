@@ -137,7 +137,8 @@ so two builds' fights can be laid side by side (`docs/screens/battle-lines/`);
 photograph the ITEM list first (`docs/screens/firered-lines/`); `--status=burn`
 and `--party` put the Charmander in a status and photograph the POKéMON list
 (`docs/screens/firered-words/`). `--moves` opens FIGHT on the move asked for and photographs it
-(`docs/screens/firered-move-text/`).
+(`docs/screens/firered-move-text/`). `--full-pack` fills the pack and throws a ball, photographing the
+refusal and the panel it opens (`docs/screens/no-room-line/`).
 
 `battleKeys.mjs <test-mode build url> <dir> [--port=N]` reads a wild fight's
 opening lines with mouse clicks alone, rests the pointer on ITEM (lit, the cursor

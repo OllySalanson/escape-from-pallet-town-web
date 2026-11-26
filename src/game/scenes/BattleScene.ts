@@ -222,7 +222,7 @@ import {
   packRoomPrompt,
   KEEP_PACK_ROW,
   MAKE_ROOM_COLUMNS,
-  MAKE_ROOM_INVITE,
+  PACK_FULL_LINE,
   MAKE_ROOM_PAGE,
   makeRoomPageNote,
   ROW_LIST_PAGE,
@@ -3428,9 +3428,9 @@ export class BattleScene extends Phaser.Scene {
       this.pendingMakeRoom = choices.length > 0;
       this.makeRoomPage = 0;
       this.dialog.showMessage(
-        `${packFullForPokemonLine(this.state.enemy.pokemon, this.bag)} ${
-          choices.length > 0 ? MAKE_ROOM_INVITE : NOTHING_TO_DROP_MESSAGE
-        }`,
+        choices.length > 0
+          ? PACK_FULL_LINE
+          : `${packFullForPokemonLine(this.state.enemy.pokemon, this.bag)} ${NOTHING_TO_DROP_MESSAGE}`,
       );
       return;
     }
