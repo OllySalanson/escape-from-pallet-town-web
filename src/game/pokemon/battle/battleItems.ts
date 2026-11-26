@@ -43,7 +43,7 @@ const withHealedUnit = (state: BattleState, ref: SlotRef, healed: Pokemon): Batt
  *
  * - it costs a turn, charged by the caller resolving the enemy's turn straight
  *   after a successful use; and
- * - medicine cannot revive, exactly as at base (`../../hub/treatment`), which is
+ * - medicine cannot revive, as `useFieldItem` refuses everywhere, which is
  *   what keeps `RECOVERY_REVIVE_MS` in `../../hub/recovery` meaningful and keeps
  *   a faint the worst thing that can happen in a fight.
  *
