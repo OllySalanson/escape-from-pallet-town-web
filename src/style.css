@@ -1834,6 +1834,16 @@ body.touch-play .feedback-tab {
   border-color: #55d6be;
   color: #bfe6cf;
 }
+/* A key whose word runs past its edges on one line takes two, and one whose
+   two lines are taller than it a thinner stem (`chipFit`), never cut off. */
+.tp-chip.is-wrapped {
+  white-space: normal;
+  text-align: center;
+  line-height: 1;
+}
+.tp-chip.is-small {
+  font-size: var(--tp-text-small, 12.5px);
+}
 /* An empty place in a row of keys above the tray's first two (`trayOrder`). */
 .tp-chip.is-spare {
   visibility: hidden;

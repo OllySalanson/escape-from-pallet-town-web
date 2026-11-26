@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DPAD_DEAD_ZONE, chipHeightIn, dpadDirection, trayOrder, padPixel, padTextSize, rowsFor, shareKeys, shortcutsFrom } from './touchPad';
+import { DPAD_DEAD_ZONE, chipFit, chipHeightIn, chipWordParts, padSmallTextSize, dpadDirection, trayOrder, padPixel, padTextSize, rowsFor, shareKeys, shortcutsFrom } from './touchPad';
 
 describe('the touch pad', () => {
   it('reads a thumb on the d-pad by the axis it is further along, with a still middle', () => {
@@ -93,5 +93,26 @@ describe('a sentence of a menu\'s help on the touch pad', () => {
     // A tray that got no third row (a short phone) keeps its order, drawn smaller.
     expect(trayOrder(keys, 4, 2)).toEqual(keys);
     expect(trayOrder(keys.slice(0, 8), 4, 2)).toEqual(keys.slice(0, 8));
+  });
+
+  it('fits a long word into its key on two lines, and a stem thinner only if two do not fit', () => {
+    // A phone playtest (26 Nov 2026): FULL REPORT, TOSS A COIN, YOUR NAME and
+    // SHELVES/BAR ran past their keys' edges on a 375-wide phone, cut off.
+    const fits = (fitting: readonly string[]) => chipFit((tried) => !fitting.includes(tried));
+    expect(fits(['line', 'wrap', 'small'])).toBe('line');
+    expect(fits(['wrap', 'small'])).toBe('wrap');
+    expect(fits(['small'])).toBe('small');
+    // Two lines need somewhere to break: a slash is one.
+    expect(chipWordParts('SHELVES/BAR')).toEqual(['SHELVES/', 'BAR']);
+    expect(chipWordParts('FULL REPORT')).toEqual(['FULL REPORT']);
+  });
+
+  it('draws the thinner words on whole device pixels, one stem under the pad\'s own', () => {
+    for (const ratio of [1, 2, 2.625, 3]) {
+      const small = padSmallTextSize(ratio);
+      expect(small).toBeLessThan(padTextSize(ratio));
+      expect(Number.isInteger(Math.round(((small / 12.5) * ratio) * 1e6) / 1e6)).toBe(true);
+    }
+    expect(padSmallTextSize(2)).toBe(12.5);
   });
 });
