@@ -7,7 +7,7 @@ import {
   POKEMON_ICON_SOLES,
 } from '../pokemon/generated/pokemonIcons';
 import { decodePng } from '../testing/pngPixels';
-import { buildPlayerMap, readMapFile, SCENERY_POKEMON_LINE, type MapFile } from '../world/mapFile';
+import { buildPlayerMap, readMapFile, type MapFile } from '../world/mapFile';
 import { checkMapFile } from '../world/mapFileChecks';
 import { pokemonCry, pokemonIconFrames } from '../world/pokemonFigures';
 import { blankMap, extendMap, paint, placeSpot, rectangle, updateThing } from './draft';
@@ -89,11 +89,10 @@ describe('the Pokemon a map maker can stand in the world', () => {
     expect(entity).toMatchObject({
       pokemon: 'snorlax',
       position: { x: 8, y: 4 },
-      // One that will not fight says so, and where the ones that will are
-      // (AI playtest, 22 Nov 2026: a cry alone read as a bug).
-      dialogLines: ['SNORLAX: Snor snor!', SCENERY_POKEMON_LINE],
+      // Its cry and nothing more, as in FireRed (Olly, 26 Nov 2026: no lines that teach).
+      dialogLines: ['SNORLAX: Snor snor!'],
     });
-    // One given a level fights, so it is only its cry.
+    // One given a level fights, and says the same.
     const fighter = buildPlayerMap({ ...file, pokemon: [{ x: 8, y: 4, species: 'snorlax', level: 20 }] }).entities.find((candidate) => candidate.pokemon);
     expect(fighter?.dialogLines).toEqual(['SNORLAX: Snor snor!']);
     expect(readMapFile({ ...file, pokemon: [{ x: 8, y: 4, species: 'celebi' }] }).ok).toBe(false);

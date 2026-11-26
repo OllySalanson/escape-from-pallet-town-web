@@ -27,7 +27,6 @@ import { FRAME_DEPTH } from '../ui/uiPalette';
 import {
   BATTLE_SCREEN_WIDTH,
   statusPlateLayout,
-  lowHpItemHint,
   combatantSpot,
   seatedSpriteY,
   STATUS_TAG_GAP,
@@ -76,7 +75,6 @@ import {
   statusAfterLine,
   statusBeforeLines,
   DOUBLE_PLAYER_GROUND,
-  typeLesson,
 } from './battlePresentation';
 
 const battleSceneSource = await readFile(new URL('./BattleScene.ts', import.meta.url), 'utf8');
@@ -163,6 +161,13 @@ describe('battle presentation', () => {
     expect(formatPartyRow(butterfree, 1)).toBe('BUTTERFREE Lv 14 32/32');
     expect(formatPartyRow(butterfree, 2)).toBe('BUTTERFREE 32/32');
     expect(formatPartyRow(fainted, 2)).toBe('BUTTERFREE FNT');
+    // A status stands in the level's place in every form, as FireRed's party
+    // screen draws it (the churchyard critic, round 3: a burned Gastly on 3 HP
+    // was sent in unwarned and fainted to the burn).
+    const burned = { ...butterfree, currentHp: 3, primaryStatus: 'burn' as const };
+    expect(formatPartyRow(burned, 0)).toBe('BUTTERFREE BRN HP 3/32');
+    expect(formatPartyRow(burned, 2)).toBe('BUTTERFREE BRN 3/32');
+    expect(formatPartyRow({ ...fainted, primaryStatus: 'poison' as const }, 0)).toBe('BUTTERFREE Lv 14 FNT');
     const width = (row: string): number => row.length * 5.6;
     expect(partyRowForm([squirtle, squirtle], 11, width)).toBe(0);
     // In the right-hand column the full row is 140 pixels against 131.
@@ -182,7 +187,7 @@ describe('battle presentation', () => {
         { type: 'stat-stage-changed', user: 'enemy', name: 'Rattata', stat: 'attack', stages: -1 },
         wild,
       ),
-    ).toBe("Wild RATTATA's Attack fell!");
+    ).toBe("Wild RATTATA's ATTACK fell!");
     expect(eventToMessage({ type: 'fainted', user: 'enemy', name: 'Pidgey' }, trainer)).toBe(
       'Foe PIDGEY fainted!',
     );
@@ -258,15 +263,16 @@ describe('battle presentation', () => {
     expect(guidance.tone).toBe('neutral');
   });
 
-  it('describes what a status move does instead of a damage matchup', () => {
+  it("says nothing of what a status move does in the fight, as FireRed's fight does not", () => {
     const guidance = describeMoveGuidance({ base: SUPERSONIC, pp: 20 }, [PokemonType.Grass], {
       name: 'Pidgey',
       types: [PokemonType.Normal, PokemonType.Flying],
     });
 
     expect(guidance.summary).toBe('NORMAL · STATUS · PP 20/20');
-    expect(guidance.matchup).toBe(SUPERSONIC.description);
-    expect(SUPERSONIC.description).not.toBe('');
+    expect(guidance.matchup).toBe('');
+    // What it does is the summary's to say, in FireRed's own words.
+    expect(SUPERSONIC.description).toBe('The user generates odd sound waves. It may confuse the foe.');
   });
 
   it("says a move the foe's ability refuses has no effect, whatever the type chart says", () => {
@@ -302,7 +308,6 @@ describe('battle presentation', () => {
     expect(messages[0]).toBe('Wild PIDGEY appeared!');
     expect(messages.join(' ')).toContain('SQUIRTLE is stronger');
     expect(messages.some((message) => message.includes('POWER'))).toBe(true);
-    expect(messages.some((message) => message.includes('HP it cost you'))).toBe(true);
     // The battle dialogue frame fits two lines of about 34 characters.
     expect(Math.max(...messages.map((message) => message.length))).toBeLessThanOrEqual(68);
   });
@@ -321,7 +326,7 @@ describe('battle presentation', () => {
     expect(itemLessonMessage(hurt)!.length).toBeLessThanOrEqual(68);
   });
 
-  it('reports the HP a hit took, so a defeat can be read back from the log', () => {
+  it("says only FireRed's 'used MOVE!' for a hit, leaving the HP to the bar", () => {
     expect(
       eventToMessage({
         type: 'used-move',
@@ -332,7 +337,7 @@ describe('battle presentation', () => {
         damage: 18,
         isStab: true,
       }),
-    ).toBe('Foe BULBASAUR used VINE WHIP! -18 HP · SAME-TYPE x1.5');
+    ).toBe('Foe BULBASAUR used VINE WHIP!');
     expect(
       eventToMessage({
         type: 'used-move',
@@ -342,7 +347,7 @@ describe('battle presentation', () => {
         move: 'Tackle',
         damage: 4,
       }),
-    ).toBe('Your SQUIRTLE used TACKLE! -4 HP');
+    ).toBe('Your SQUIRTLE used TACKLE!');
     expect(eventToMessage({ type: 'effectiveness', multiplier: 2 })).toBe("It's super effective!");
   });
 
@@ -914,20 +919,12 @@ describe('a status tag moved line by line', () => {
 });
 
 describe('a status move caption', () => {
-  it('drops the opening sentence the summary line already says, and loses sentences from the end to fit', () => {
-    const guidance = describeMoveGuidance(
-      { base: MOVE_CATALOGUE['leech-seed'], pp: 10 },
-      [PokemonType.Grass],
-      { name: 'Pidgey', types: [PokemonType.Normal, PokemonType.Flying] },
-    );
-    expect(guidance.summary).toBe('GRASS · STATUS · PP 10/10');
-    expect(guidance.matchup).toBe(
-      'Seeds the target, sapping 1/8 of its HP each turn. Grass types are immune.',
-    );
-    expect(captionBySentence(guidance.matchup)).toEqual([
-      'Seeds the target, sapping 1/8 of its HP each turn. Grass types are immune.',
-      'Seeds the target, sapping 1/8 of its HP each turn.',
+  it('loses sentences from the end to fit, and an empty line is still one line', () => {
+    expect(captionBySentence('Restores 20 HP. Held, it is eaten at half HP.')).toEqual([
+      'Restores 20 HP. Held, it is eaten at half HP.',
+      'Restores 20 HP.',
     ]);
+    expect(captionBySentence('')).toEqual(['']);
     expect(captionBySentence('vs PIDGEY: NORMAL DAMAGE x1')).toEqual([
       'vs PIDGEY: NORMAL DAMAGE x1',
     ]);
@@ -1035,66 +1032,11 @@ describe('where a Pokemon stands on the field', () => {
   });
 });
 
-describe('the medicine hint', () => {
-  it('names the low Pokémon and the medicine to give it', () => {
-    expect(lowHpItemHint([{ name: 'Charmander', hp: 2, maxHp: 18 }], 'Potion')).toBe(
-      'CHARMANDER is low on HP! Choose ITEM to give it a POTION.',
-    );
-  });
-
-  it('finds the low one of two in a double battle', () => {
-    expect(
-      lowHpItemHint(
-        [
-          { name: 'Charmeleon', hp: 40, maxHp: 44 },
-          { name: 'Bulbasaur', hp: 9, maxHp: 39 },
-        ],
-        'Super Potion',
-      ),
-    ).toMatch(/^BULBASAUR is low on HP!/);
-  });
-
-  it('says nothing above a quarter, of a fainted Pokémon, or with nothing to give', () => {
-    expect(lowHpItemHint([{ name: 'Charmander', hp: 5, maxHp: 18 }], 'Potion')).toBeNull();
-    expect(lowHpItemHint([{ name: 'Charmander', hp: 0, maxHp: 18 }], 'Potion')).toBeNull();
-    expect(lowHpItemHint([{ name: 'Charmander', hp: 2, maxHp: 18 }], null)).toBeNull();
-  });
-});
-
-describe('the one line that teaches the type chart', () => {
-  const units = {
-    'player:0': { types: [PokemonType.Water], moves: [MOVE_CATALOGUE['water-gun'], MOVE_CATALOGUE.tackle] },
-    'enemy:0': { types: [PokemonType.Fire], moves: [MOVE_CATALOGUE.ember, MOVE_CATALOGUE.scratch] },
-  } as const;
-  const unit = (side: 'player' | 'enemy', slot: number) => units[`${side}:${slot}` as keyof typeof units] ?? null;
-  const used = (user: 'player' | 'enemy', move: string) =>
-    ({ type: 'used-move', user, target: user === 'player' ? 'enemy' : 'player', name: 'X', move, damage: 5 }) as const;
-
-  it('names the types after the first hit they changed, in the game\'s capitals', () => {
-    const events = [used('player', MOVE_CATALOGUE['water-gun'].name), { type: 'effectiveness', multiplier: 2 } as const];
-    expect(typeLesson(events, unit)).toEqual({ index: 1, line: 'WATER beats FIRE!' });
-    expect(typeLesson([used('enemy', MOVE_CATALOGUE.ember.name), { type: 'effectiveness', multiplier: 0.5 }], unit)).toEqual({
-      index: 1,
-      line: 'FIRE does little to WATER.',
-    });
-  });
-
-  it('says nothing about a hit types did not change, or a move it cannot name', () => {
-    expect(typeLesson([used('player', MOVE_CATALOGUE.tackle.name)], unit)).toBeUndefined();
-    expect(typeLesson([used('player', 'STRUGGLE'), { type: 'effectiveness', multiplier: 2 }], unit)).toBeUndefined();
-  });
-
-  it('is a few words, never a wall of text', () => {
-    const line = typeLesson([used('player', MOVE_CATALOGUE['water-gun'].name), { type: 'effectiveness', multiplier: 2 }], unit)!.line;
-    expect(line.split(' ').length).toBeLessThanOrEqual(5);
-  });
-});
-
 describe('a single-target hit in a double battle', () => {
-  it('says whose HP it took, and a single battle says nothing more', () => {
+  it("says FireRed's 'used MOVE!' alone, as a single battle does: the bar that moves says whose HP it took", () => {
     const hit = { type: 'used-move', user: 'enemy', target: 'player', name: 'Staryu', move: 'Tackle', damage: 6 } as const;
-    expect(eventToMessage({ ...hit, targetName: 'Bulbasaur' })).toBe('Foe STARYU used TACKLE! Your BULBASAUR -6 HP');
-    expect(eventToMessage(hit)).toBe('Foe STARYU used TACKLE! -6 HP');
+    expect(eventToMessage({ ...hit, targetName: 'Bulbasaur' })).toBe('Foe STARYU used TACKLE!');
+    expect(eventToMessage(hit)).toBe('Foe STARYU used TACKLE!');
   });
 });
 

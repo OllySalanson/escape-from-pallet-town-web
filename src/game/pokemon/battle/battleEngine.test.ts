@@ -196,7 +196,6 @@ describe('damage calculation', () => {
       isStab: true,
       isCritical: false,
       typeEffectiveness: 2,
-      abilityNotes: [],
     });
   });
 
@@ -249,7 +248,6 @@ describe('damage calculation', () => {
       isCritical: false,
       typeEffectiveness: 1,
       // No abilities were passed, so none were read: this is the formula on its own.
-      abilityNotes: [],
     });
   });
 
@@ -395,9 +393,8 @@ describe('battle turn resolution', () => {
     // rather than 5). The pinch ability is exactly this: the last of a
     // Pokemon's health is its most dangerous.
     expect(result.state.player.currentHp).toBe(charmander.maxHp - 6);
-    expect(
-      result.events.some((event) => event.type === 'ability' && event.effect === 'powered-up'),
-    ).toBe(true);
+    // FireRed says nothing when Overgrow powers a move.
+    expect(result.events.some((event) => event.type === 'ability')).toBe(false);
     expect(result.state.player.moves[2]?.pp).toBe(EMBER.pp - 1);
     expect(charmander.currentHp).toBe(charmander.maxHp);
     expect(charmander.moves[2]?.pp).toBe(EMBER.pp);

@@ -37,14 +37,13 @@ describe('move typing', () => {
     expect(TAIL_WHIP.description).not.toBe('');
   });
 
-  // The move chooser and the teaching screen print a move's description under
-  // it, and every Ice and Electric move opened on "A Ice special attack."
-  it('opens a description with "An" before a type that starts with a vowel', () => {
-    const misread = Object.values(GENERATED_MOVES)
-      .filter((move) => /^A [AEIOU]/.test(move.description))
-      .map((move) => `${move.name}: ${move.description}`);
-    expect(misread).toEqual([]);
-    expect(GENERATED_MOVES.blizzard.description)
-      .toMatch(/^An Ice special attack\./);
+  // The move chooser and the summary print a move's description under it, in
+  // FireRed's own words (the churchyard critic, round 3, 26 Nov 2026).
+  it("describes every move in FireRed's own words", () => {
+    const blank = Object.values(GENERATED_MOVES)
+      .filter((move) => move.description.trim() === '')
+      .map((move) => move.name);
+    expect(blank).toEqual([]);
+    expect(GENERATED_MOVES.blizzard.description).toBe('The foe is blasted with a blizzard. It may freeze the foe solid.');
   });
 });

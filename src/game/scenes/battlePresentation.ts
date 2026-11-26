@@ -7,7 +7,6 @@ import { BATTLE_PIC_COORDS } from '../pokemon/generated/battlePicCoords';
 import { STAB_MULTIPLIER } from '../pokemon/battle/damage';
 import { WeatherId, weatherLabel } from '../pokemon/battle/weather';
 import { battleCaps, withArticle } from '../pokemon/battle/battleItems';
-import { CATCH_LESSON_SHARE } from '../pokemon/battle/battleFlow';
 import { statusAbbreviation, type PrimaryStatus } from '../pokemon/battle/status';
 import { isCurrency, itemAmountFor, itemCountTag } from '../items';
 import { BASE_STAGE_WIDTH, MAX_STAGE_WIDTH } from '../display/stage';
@@ -149,10 +148,16 @@ export const formatPartyRow = (
     readonly currentHp: number;
     readonly maxHp: number;
     readonly isFainted: boolean;
+    readonly primaryStatus?: PrimaryStatus | null;
   },
   form = 0,
 ): string => {
-  const level = form >= 2 ? '' : ` ${levelLabel(pokemon.level)}`;
+  // A status stands where the level does, as FireRed's party screen draws its
+  // icon there - and in every form, because it decides who can be sent in: a
+  // newcomer sent a burned Gastly on 3 HP in and it fainted to the burn (the
+  // churchyard critic, round 3, 26 Nov 2026).
+  const status = pokemon.isFainted ? null : statusAbbreviation(pokemon.primaryStatus ?? null, 0);
+  const level = status ? ` ${status}` : form >= 2 ? '' : ` ${levelLabel(pokemon.level)}`;
   const health = pokemon.isFainted
     ? 'FNT'
     : `${form >= 1 ? '' : 'HP '}${pokemon.currentHp}/${pokemon.maxHp}`;
@@ -419,9 +424,12 @@ export const captionBySentence = (text: string): readonly string[] => {
   const sentences = text.match(/[^.!?]+[.!?]+(\s|$)/g)?.map((sentence) => sentence.trim()) ?? [
     text,
   ];
-  return sentences
+  const shorter = sentences
     .map((_, kept) => sentences.slice(0, sentences.length - kept).join(' '))
     .filter(Boolean);
+  // An empty line is still a line: a status move's second line is empty now,
+  // and `fitCaption` given nothing to choose from handed back undefined.
+  return shorter.length > 0 ? shorter : [''];
 };
 
 export const fitCaption = (
@@ -676,10 +684,12 @@ export const describeMoveGuidance = (
     return {
       summary: `${move.base.type.toUpperCase()} · STATUS · ${pp}`,
       compactSummary: `${move.base.type.toUpperCase()} · STATUS · ${pp}`,
-      // The line above already says the type and that it is a status move, so
-      // a generated description's opening sentence saying the same is dropped.
-      matchup:
-        move.base.description.replace(/^An? \w+ status move\.\s*/, '') || 'No direct damage.',
+      // FireRed's fight shows a move's type and PP and nothing of what it
+      // does: that is the summary screen's to say, in FireRed's own words
+      // (`generated/moveDescriptions.ts`). The rules line it said here ("Lowers
+      // the target's Attack by one stage.") was the churchyard critic's (round
+      // 3, 26 Nov 2026). An ability that refuses the move still says so.
+      matchup: '',
       tone: 'neutral',
       effectiveness: 1,
       ...refused,
@@ -764,45 +774,19 @@ export const itemTargetPrompt = (item: { readonly displayName: string }): string
   `Use ${battleCaps(item.displayName)} on whom?`;
 
 /**
- * What the highlighted medicine would do, on the same line the move submenu
- * puts a move's numbers - and it ends with the turn, because that is the price
- * and it has to be read before the item is spent, not after.
+ * What the highlighted medicine does, on the same line the move submenu puts a
+ * move's numbers: the item's own description, as FireRed's bag shows it, and
+ * nothing about the rules (Olly, 26 Nov 2026: a fight says only what FireRed's
+ * would - "Using it costs your turn." was a lesson on every item).
  */
-export const describeItemGuidance = (item: { readonly description: string }): readonly string[] => {
+export const describeItemGuidance = (item: { readonly description: string }): readonly string[] =>
   // Longest first, for `fitCaption`: a berry's description is two sentences,
-  // and whole it ran the line past the panel's edge. The description loses its
-  // last sentences before the price does, and the price is said shorter last.
-  const said = captionBySentence(item.description);
-  return [
-    ...said.map((description) => `${description} Using it costs your turn.`),
-    `${said[said.length - 1] ?? item.description} Costs your turn.`,
-  ];
-};
+  // and whole it ran the line past the panel's edge, so it loses its last
+  // sentences first.
+  captionBySentence(item.description);
 
 /** Said when the ITEM command is chosen with nothing in the medicine pocket. */
 export const NO_BATTLE_ITEMS_MESSAGE = 'No medicine in your pack!';
-
-/** At or below this share of its HP, a Pokémon is low enough for the medicine hint. */
-export const LOW_HP_HINT_SHARE = 1 / 4;
-
-/**
- * The one line that says medicine can be used in a fight, said before the
- * commands when a Pokémon of yours is low and the pack holds something to heal
- * it. Nothing taught it: a newcomer went down at 2/18 HP with three Potions in
- * the pack, and 16 of playtest 5's 19 friends never found out a Potion works
- * mid-fight (scenario loop, 22 Nov 2026). Null when nobody standing is low, or
- * there is nothing to give them.
- */
-export const lowHpItemHint = (
-  team: readonly { readonly name: string; readonly hp: number; readonly maxHp: number }[],
-  medicine: string | null,
-): string | null => {
-  const low = team.find((each) => each.hp > 0 && each.hp <= each.maxHp * LOW_HP_HINT_SHARE);
-  if (!low || medicine === null) {
-    return null;
-  }
-  return `${low.name.toUpperCase()} is low on HP! Choose ITEM to give it a ${medicine.toUpperCase()}.`;
-};
 
 /**
  * Making room for a catch, from inside the fight that refused it.
@@ -846,8 +830,13 @@ export const makeRoomPageNote = (page: number, rows: number): string => {
  */
 export const KEEP_PACK_ROW = 'KEEP THE PACK';
 
-/** What the refusal says before the panel opens: the price, and what it buys. */
-export const MAKE_ROOM_INVITE = 'Choose what to put down - what you drop stays here.';
+/**
+ * What a ball says when the pack is full and the panel to make room opens:
+ * FireRed's few words, and the panel says the rest. It said "BULBASAUR needs 4
+ * squares, and 1 is free. Choose what to put down - what you drop stays here."
+ * (the churchyard critic, round 3, 26 Nov 2026; Olly: the game's own way).
+ */
+export const PACK_FULL_LINE = 'No room in the pack!';
 
 /**
  * Said when the pack is full and none of it is yours to put down: everything in
@@ -1409,26 +1398,6 @@ export const changesShownStatus = (
  * four lines (pret/pokefirered `battle_message.c`, `sText_PkmnBrokeFree` to
  * `sText_ShootSoClose`), so a throw that nearly held reads as nearly holding.
  */
-/**
- * Above this share of its HP, a Pokémon that broke free is worth the catch tip.
- * It is the share the first raid's catch calls weak (`CATCH_LESSON_SHARE`): at
- * a half, the tutorial Pidgey at 8/13 was "weak! Throw a BALL now" and, the
- * ball broken, "still has plenty of fight in it" in the same fight (night raid
- * critic, 26 Nov 2026). One line, one rule.
- */
-export const CATCH_TIP_ABOVE_SHARE = CATCH_LESSON_SHARE;
-
-/**
- * Said once a fight, after a ball a healthy Pokémon broke out of: nothing else
- * says that a hurt one is easier to hold, so Balls went at full-HP Pokémon one
- * after another (scenario loop, 22 Nov 2026: three at a full-HP Lv 4 Squirtle;
- * playtest 5: 8 of 19 friends). FireRed leaves it to the manual; this game has none.
- */
-export const CATCH_TIP_LINE = 'It still has plenty of fight in it. Wear its HP down first and a ball holds better.';
-
-/** Whether a ball that broke free earns the catch tip: the foe was well above half its HP. */
-export const earnsCatchTip = (hp: number, maxHp: number): boolean => hp > maxHp * CATCH_TIP_ABOVE_SHARE;
-
 export const BROKE_FREE_LINES = [
   'Oh, no! The POKéMON broke free!',
   'Aww! It appeared to be caught!',
@@ -1438,23 +1407,12 @@ export const BROKE_FREE_LINES = [
 
 export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string => {
   switch (event.type) {
-    case 'used-move': {
-      // The HP figure is the whole point: a loss has to be explicable from the
-      // log alone, not inferred from a bar that has already finished animating.
-      // The same-type bonus is named because it is otherwise the largest
-      // invisible term in the damage calculation.
-      const opening = `${combatantName(event, foe)} used ${event.move.toUpperCase()}!`;
-      if (!event.damage) {
-        return opening;
-      }
-      const stab = event.isStab ? ` · SAME-TYPE ${formatMultiplier(STAB_MULTIPLIER)}` : '';
-      // In a double battle the hit says whose HP it took, as a spread move's lines do.
-      const struck =
-        event.targetName !== undefined && event.target !== undefined
-          ? `${combatantName({ user: event.target, name: event.targetName }, foe)} `
-          : '';
-      return `${opening} ${struck}-${event.damage} HP${stab}`;
-    }
+    case 'used-move':
+      // FireRed's sText_PkmnUsedMove, and nothing after it: the HP bar says
+      // what the hit took, as FireRed's does. It carried "-15 HP · SAME-TYPE
+      // x1.5", arithmetic on nearly every line of every fight (the churchyard
+      // critic, round 3, 26 Nov 2026; Olly: the game's own way).
+      return `${combatantName(event, foe)} used ${event.move.toUpperCase()}!`;
     case 'spread-damage': {
       // The move named itself on the line above; this says what it took off
       // this one. One number could only be a sum of the two hits, and a sum
@@ -1655,12 +1613,6 @@ const abilityLine = (
 ): string => {
   const who = `${combatantName(event, foe)}'s ${event.ability}`;
   switch (event.effect) {
-    case 'powered-up':
-      return `${who} is driving it harder!`;
-    case 'shrugged-off':
-      return `${who} is soaking that up!`;
-    case 'hardened':
-      return `${who} turned the critical hit aside!`;
     // FireRed's own lines for a move an ability took instead of being hit.
     case 'absorbed': {
       const move = (event.move ?? 'it').toUpperCase();
@@ -1891,75 +1843,19 @@ const statusLabel = (status: string): string =>
 const statChangeWords = (stages: number): string =>
   stages > 0 ? (stages >= 2 ? 'sharply rose' : 'rose') : stages <= -2 ? 'harshly fell' : 'fell';
 
+/**
+ * A stat as FireRed's battle names it (pret/pokefirered `gStatNamesTable`):
+ * the five numbers in capitals, accuracy and evasiveness - stages only, never
+ * a number on a Pokemon - in small letters, as FireRed writes them.
+ */
 const statLabel = (stat: string): string =>
   ({
-    attack: 'Attack',
-    defense: 'Defense',
-    spAttack: 'Sp. Attack',
-    spDefense: 'Sp. Defense',
-    speed: 'Speed',
-    // Neither of these is a number on a Pokemon - they exist only as stages -
-    // but they are named on the same line as the five that are.
+    attack: 'ATTACK',
+    defense: 'DEFENSE',
+    spAttack: 'SP. ATK',
+    spDefense: 'SP. DEF',
+    speed: 'SPEED',
     accuracy: 'accuracy',
-    evasion: 'evasion',
+    evasion: 'evasiveness',
   })[stat] ?? stat;
 
-/** What `typeLesson` needs to know of a Pokemon on the field before the turn: its types and the moves it knows. */
-export interface LessonUnit {
-  readonly types: readonly PokemonType[];
-  readonly moves: readonly Pick<MoveBase, 'name' | 'type' | 'typeless'>[];
-}
-
-/**
- * The one line that teaches the type chart, read straight after the fight's
- * first hit that types changed: "WATER beats FIRE!" after "It's super
- * effective!", "FIRE does little to WATER." after "It's not very
- * effective...", "NORMAL can't touch GHOST." after "It doesn't affect". The
- * 22 Nov 2026 AI playtest's newcomers never learned why a hit landed hard or
- * soft: the move list's SUPER EFFECTIVE tag was the only thing that taught
- * any of them, and only the friend who read it. Named by the types, in the
- * game's capitals, so the next fight can be chosen by them.
- *
- * `unit` answers who stood in a slot when the turn began. Undefined when no
- * hit in `events` was changed by type, or the move cannot be named (Struggle,
- * a typeless move) - and the scene says it once a fight.
- */
-export function typeLesson(
-  events: readonly BattleEvent[],
-  unit: (side: 'player' | 'enemy', slot: number) => LessonUnit | null,
-): { readonly index: number; readonly line: string } | undefined {
-  type Hit = { readonly user: 'player' | 'enemy'; readonly slot: number; readonly target: 'player' | 'enemy'; readonly targetSlot: number; readonly move: string };
-  let hit = null as Hit | null;
-  for (const [index, event] of events.entries()) {
-    if (event.type === 'used-move') {
-      hit = event.target
-        ? { user: event.user, slot: event.slot ?? 0, target: event.target, targetSlot: event.targetSlot ?? 0, move: event.move }
-        : null;
-    } else if (event.type === 'spread-damage' && hit) {
-      hit = { user: hit.user, slot: hit.slot, move: hit.move, target: event.target, targetSlot: event.targetSlot ?? 0 };
-    } else if (event.type === 'effectiveness' && hit && event.multiplier !== 1) {
-      const { user, slot, target, targetSlot, move: name } = hit;
-      const move = unit(user, slot)?.moves.find((each) => each.name === name);
-      const defender = unit(target, targetSlot);
-      if (!move || move.typeless || !defender) {
-        continue;
-      }
-      const against = defender.types.find((type) =>
-        event.multiplier > 1 ? getTypeEffectiveness(move.type, [type]) > 1 : getTypeEffectiveness(move.type, [type]) < 1,
-      );
-      if (!against) {
-        continue;
-      }
-      const attacking = move.type.toUpperCase();
-      const defending = against.toUpperCase();
-      const line =
-        event.multiplier > 1
-          ? `${attacking} beats ${defending}!`
-          : event.multiplier === 0
-            ? `${attacking} can't touch ${defending}.`
-            : `${attacking} does little to ${defending}.`;
-      return { index, line };
-    }
-  }
-  return undefined;
-}

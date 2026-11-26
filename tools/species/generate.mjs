@@ -94,11 +94,17 @@ const statName = (stat) => {
   if (!name) throw new Error(`unknown stat ${stat}`);
   return name;
 };
-/** `stat` here is already this game's own name, from `statName` above. */
-const readableStat = (stat) =>
-  ({ attack: 'Attack', defense: 'Defense', spAttack: 'Sp. Atk', spDefense: 'Sp. Def',
-     speed: 'Speed', accuracy: 'accuracy', evasion: 'evasion' })[stat];
-const STAGES = ['', 'one stage', 'two stages', 'three stages'];
+// A move is described in FireRed's own words, as its summary screen shows them
+// (`tools/moves/frlgMoveDescriptions.mjs` reads pret's `move_descriptions.c`).
+// It was written here from the row ("Lowers the target's Attack by one
+// stage."), which read as a rules sheet (the churchyard critic, round 3,
+// 26 Nov 2026; Olly: the game says things its own way).
+const DESCRIPTIONS = read('tools/moves/frlg-move-descriptions.json').descriptions;
+const describe = (move) => {
+  const text = DESCRIPTIONS[move.name];
+  if (!text) throw new Error(`no FireRed description for ${move.name}: run node tools/moves/frlgMoveDescriptions.mjs`);
+  return text;
+};
 
 // -- the move catalogue ------------------------------------------------------
 
@@ -143,74 +149,6 @@ const effectsOf = (move) => {
   return { guaranteed: null, secondaries };
 };
 
-const describe = (move, effects) => {
-  const type = TYPES[move.type];
-  const sentences = [];
-  // "An Ice", "An Electric": the article is read off the type's own name.
-  const article = /^[AEIOU]/.test(type) ? 'An' : 'A';
-  if (move.category === 'Status') {
-    sentences.push(`${article} ${type} status move.`);
-  } else {
-    sentences.push(`${article} ${type} ${move.category.toLowerCase()} attack.`);
-  }
-  // A move that lands on both foes says so wherever it names who it lands on.
-  // The player reads this line in the move list before choosing, and "the
-  // target" is the wrong noun for a move that has two of them.
-  const spread = move.target === 'all-opponents';
-  const them = spread ? 'both foes' : 'the target';
-  if (spread) sentences.push(move.category === 'Status' ? 'Lands on both foes.' : 'Hits both foes.');
-  const boostLine = (boosts, self, chance) => {
-    const whose = self ? "the user's" : spread ? "both foes'" : "the target's";
-    const grouped = boosts.map((boost) => readableStat(boost.stat)).join(', ');
-    const stages = STAGES[Math.abs(boosts[0].stages)] ?? `${Math.abs(boosts[0].stages)} stages`;
-    const up = boosts[0].stages > 0;
-    return chance !== null && chance < 100
-      ? `${chance}% chance to ${up ? 'raise' : 'lower'} ${whose} ${grouped} by ${stages}.`
-      : `${up ? 'Raises' : 'Lowers'} ${whose} ${grouped} by ${stages}.`;
-  };
-  const statusWord = {
-    poison: 'poisoned', burn: 'burned', paralysis: 'paralysed', sleep: 'asleep',
-    freeze: 'frozen', confusion: 'confused',
-  };
-  if (effects.guaranteed) {
-    const { boosts, status, weather, seed } = effects.guaranteed;
-    if (seed) {
-      sentences.push('Seeds the target, sapping 1/8 of its HP each turn. Grass types are immune.');
-    }
-    if (boosts.length > 0) sentences.push(boostLine(boosts, move.target === 'user', null));
-    if (status) sentences.push(`Leaves ${them} ${statusWord[move.ailment]}.`);
-    if (weather) {
-      sentences.push(
-        { 'rain-dance': 'Brings on rain.', 'sunny-day': 'Brings out harsh sunlight.',
-          sandstorm: 'Whips up a sandstorm.', hail: 'Brings on hail.' }[move.name],
-      );
-    }
-  }
-  for (const secondary of effects.secondaries) {
-    if (secondary.status) sentences.push(`${secondary.chance}% chance to leave ${them} ${statusWord[move.ailment]}.`);
-    if (secondary.flinch) sentences.push(`${secondary.chance}% chance to make ${them} flinch.`);
-    if (secondary.boosts) sentences.push(boostLine(secondary.boosts, secondary.self, secondary.chance));
-  }
-  if (move.min_hits) sentences.push(`Hits ${move.min_hits} to ${move.max_hits} times.`);
-  if (move.drain > 0) sentences.push(`Heals the user for ${move.drain}% of the damage dealt.`);
-  if (move.drain < 0) sentences.push(`The user takes ${-move.drain}% of the damage dealt.`);
-  if (move.healing > 0) sentences.push(`Restores ${move.healing}% of the user's health.`);
-  if (move.crit_rate > 0) sentences.push('Lands a critical hit more often.');
-  if (move.priority > 0) sentences.push('Always strikes first.');
-  if (move.priority < 0) sentences.push('Always strikes last.');
-  // A move a Pokemon uses on itself has nothing to miss, so saying so would be
-  // noise on half the status moves in the catalogue.
-  if (move.accuracy === null && !(move.category === 'Status' && move.target === 'user')) {
-    sentences.push('Never misses.');
-  }
-  if (CHARGE.has(move.name)) sentences.push('Spends the first turn winding up.');
-  if (RECHARGE.has(move.name)) sentences.push('The user must recharge the turn after.');
-  if (ONLY_ASLEEP.has(move.name)) sentences.push('Only works on a sleeping target.');
-  if (move.user_faints) sentences.push("The user faints. Halves the target's Defense for the hit.");
-  if (sentences.length === 1) sentences.push('No side effect.');
-  return sentences.join(' ');
-};
-
 const quote = (value) => `'${value.replace(/'/g, "\\'")}'`;
 /** A PokeAPI percentage as the share `MoveBase` wants, with no trailing zero. */
 const share = (percent) => String(Number((percent / 100).toFixed(4)));
@@ -221,7 +159,7 @@ const renderMove = (move) => {
   const effects = effectsOf(move);
   const lines = [
     `  name: ${quote(move.displayName)},`,
-    `  description: ${quote(describe(move, effects))},`,
+    `  description: ${quote(describe(move))},`,
     `  type: PokemonType.${TYPES[move.type]},`,
     `  power: ${move.power ?? 0},`,
     `  accuracy: ${move.accuracy ?? 100},`,
@@ -560,7 +498,22 @@ function header(script) {
 // \`speciesImport.test.ts\` fails if this file and the generator disagree.`;
 }
 
+const moveDescriptions = `${header('tools/species/generate.mjs')}
+
+/**
+ * FireRed's own description of every move the game knows, keyed by the
+ * identifier PokeAPI and the snapshots use, as its summary screen shows them:
+ * \`tools/moves/frlg-move-descriptions.json\`, read out of pret/pokefirered by
+ * \`tools/moves/frlgMoveDescriptions.mjs\`. The generated catalogue is written
+ * with them; \`../moves.ts\` reads its hand-authored moves' from here.
+ */
+export const FIRERED_MOVE_DESCRIPTIONS: Readonly<Record<string, string>> = {
+${Object.entries(DESCRIPTIONS).map(([name, text]) => `  ${quote(name)}: ${quote(text)},`).join('\n')}
+};
+`;
+
 const outputs = [
+  ['src/game/pokemon/generated/moveDescriptions.ts', moveDescriptions],
   ['src/game/pokemon/generated/moveCatalogue.ts', moveCatalogue],
   ['src/game/pokemon/generated/speciesCatalogue.ts', speciesCatalogue],
   ['src/game/pokemon/generated/evolutionRules.ts', evolutionRules],

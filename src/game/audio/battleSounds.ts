@@ -161,7 +161,6 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
         case 'blocked-status':
         case 'blocked-boost':
         case 'blocked-secondaries':
-        case 'hardened':
         case 'no-recoil':
           return withLine('denied');
         case 'shed':
@@ -172,8 +171,6 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
           return withLine('statusApplied');
         case 'sent-out':
           return withLine('statDown');
-        case 'powered-up':
-        case 'shrugged-off':
         case 'quickened':
           return withLine('statUp');
         case 'weathered-out':
@@ -231,7 +228,7 @@ const cries = (species: readonly number[]): CrySound[] => species.map((id) => ({
  * after the sting that opens the fight; a double names them, and both cry on
  * that line with the ball's pop. Every "Go! X!" is the pop and then the cry -
  * which is the opening send-out the playtest found silent (playtest 28, S2).
- * The teaching fight's opening is the wild opening with three lines after it,
+ * The teaching fight's opening is the wild opening with two lines after it,
  * and anything the scene reads after these lines (the weather, an ability)
  * sounds nothing here.
  */

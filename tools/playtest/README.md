@@ -132,6 +132,23 @@ open the list and throw nothing (`docs/screens/ball-choice/`).
 with the churchyard's Gastly, a paralysed lead and a CHERI BERRY packed: each swap
 must bring the menu back on FIGHT, not POKéMON (`docs/screens/graveyard-battle/`).
 
+`battleLines.mjs <test-mode build url> <dir> [--port=N]` prints and photographs
+every line of a wild Gastly fight against a Charmander on 7 HP, through one SCRATCH,
+so two builds' fights can be laid side by side (`docs/screens/battle-lines/`);
+`--hp=N`, `--move=NAME` and `--items` start it on other HP, use another move, and
+photograph the ITEM list first (`docs/screens/firered-lines/`); `--status=burn`
+and `--party` put the Charmander in a status and photograph the POKéMON list
+(`docs/screens/firered-words/`). `--moves` opens FIGHT on the move asked for and photographs it
+(`docs/screens/firered-move-text/`). `--full-pack` fills the pack and throws a ball, photographing the
+refusal and the panel it opens (`docs/screens/no-room-line/`).
+
+`graveyardRaid.mjs <test-mode build url> <storage.json> [--level=N] [--team=..] [--pack=..]`
+puts the page's clock at eleven at night, deploys at Moor Top, walks the sheep track
+through the fog to the Moor Chapel's churchyard and writes the page's whole storage
+out - the save and the raid written down beside it - so the AI playtester can be
+started there (`ai-player/act start --storage=<file>`, then CONTINUE): a critic
+playing one place's battles starts in that place.
+
 `battleKeys.mjs <test-mode build url> <dir> [--port=N]` reads a wild fight's
 opening lines with mouse clicks alone, rests the pointer on ITEM (lit, the cursor
 still on FIGHT), moves with D and runs Right past the end of the row, which must

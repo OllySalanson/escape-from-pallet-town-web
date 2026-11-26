@@ -153,8 +153,8 @@ describe('the abilities that change a number', () => {
     const desperate = resolveTurn(cornered, 0, at({})).state.enemy.currentHp;
 
     expect(enemy.maxHp - desperate).toBeGreaterThan(enemy.maxHp - healthy);
-    expect(didFire(resolveTurn(cornered, 0, at({})).events, 'powered-up')).toBe(true);
-    expect(didFire(resolveTurn(fresh, 0, at({})).events, 'powered-up')).toBe(false);
+    // FireRed says nothing when Blaze powers a move, and neither does this.
+    expect(resolveTurn(cornered, 0, at({})).events.some((event) => event.type === 'ability')).toBe(false);
   });
 
   it('gives Guts its boost for a status but never while it is asleep', () => {
@@ -226,7 +226,7 @@ describe('the abilities that change a number', () => {
     expect(took('thick-fat', 1)).toBe(took(null, 1));
   });
 
-  it('turns a critical hit aside with armour, and says so once', () => {
+  it('turns a critical hit aside with armour, saying nothing as FireRed does', () => {
     const attacker = armed(species({ abilityId: null }), 20, TACKLE);
     const hit = (abilityId: string | null) =>
       resolveTurn(createBattleState(attacker, armed(species({ abilityId }), 20)), 0, always);
@@ -234,16 +234,7 @@ describe('the abilities that change a number', () => {
     expect(types(hit(null).events)).toContain('critical-hit');
     const armoured = hit('shell-armor');
     expect(types(armoured.events)).not.toContain('critical-hit');
-    expect(didFire(armoured.events, 'hardened')).toBe(true);
-  });
-
-  it('says a continuous ability once a battle and no more', () => {
-    const attacker = armed(species({ abilityId: null }), 20, TACKLE, TACKLE);
-    const first = resolveTurn(createBattleState(attacker, armed(species({ abilityId: 'shell-armor' }), 20)), 0, always);
-    const second = resolveTurn(first.state, 1, always);
-
-    expect(didFire(first.events, 'hardened')).toBe(true);
-    expect(didFire(second.events, 'hardened')).toBe(false);
+    expect(armoured.events.some((event) => event.type === 'ability')).toBe(false);
   });
 });
 
@@ -320,7 +311,7 @@ describe('the abilities that refuse something', () => {
 
     expect(refusals('clear-body', tickle)).toEqual(["Wild TENTACOOL's CLEAR BODY prevents stat loss!"]);
     expect(refusals('keen-eye', SMOKESCREEN)).toEqual(["Wild TENTACOOL's KEEN EYE prevents accuracy loss!"]);
-    expect(refusals('hyper-cutter', tickle)).toEqual(["Wild TENTACOOL's HYPER CUTTER prevents Attack loss!"]);
+    expect(refusals('hyper-cutter', tickle)).toEqual(["Wild TENTACOOL's HYPER CUTTER prevents ATTACK loss!"]);
   });
 
   it('refuses a status from the other side, and a flinch is one of them', () => {
@@ -652,13 +643,13 @@ describe('the abilities that work off the clock, the bench and the exit', () => 
     const opening = createBattleState(armed(species({ name: 'Bulbasaur', abilityId: null }), 20, TACKLE), scary);
 
     expect(openingAbilityEvents(opening).map((event) => eventToMessage(event))).toEqual([
-      "Foe ARBOK's INTIMIDATE cuts your BULBASAUR's Attack!",
+      "Foe ARBOK's INTIMIDATE cuts your BULBASAUR's ATTACK!",
     ]);
 
     const plain = createBattleState(armed(species({ name: 'Bulbasaur', abilityId: null }), 20, TACKLE), armed(species({ name: 'Pidgey', abilityId: null }), 20));
     const switched = replacePlayerPokemon(plain, armed(species({ name: 'Ekans', abilityId: 'intimidate' }), 20, TACKLE));
     expect(switched.events.map((event) => eventToMessage(event, 'Wild'))).toEqual([
-      "Your EKANS's INTIMIDATE cuts Wild PIDGEY's Attack!",
+      "Your EKANS's INTIMIDATE cuts Wild PIDGEY's ATTACK!",
     ]);
   });
 

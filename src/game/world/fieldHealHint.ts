@@ -2,8 +2,8 @@
  * What Oak's radio says when a fight leaves somebody nearly out and the pack
  * could heal them before the next one.
  *
- * The in-fight hint (`battlePresentation.lowHpItemHint`) cannot help when the
- * next wild Pokémon moves first: a scripted newcomer came out of a fight with
+ * A fight itself says nothing about medicine (FireRed's battle does not), and
+ * the next wild Pokémon can move first: a scripted newcomer came out of a fight with
  * Bulbasaur on 4 HP, walked on through the grass, and a Pidgey's opening Tackle
  * took the raid before a command was asked for (scenario loop, 22 Nov 2026).
  * Nothing between fights said a Potion can be given from the pack. This says
