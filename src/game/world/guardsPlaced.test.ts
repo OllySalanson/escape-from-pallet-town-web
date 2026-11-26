@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { getWorldMap } from '../worldMap';
 import { isEvolutionStone } from '../items';
-import { frontDoorFor, generateRoomLoot, generateRunPlan } from '../run/runGeneration';
+import { frontDoorFor, generateRoomLoot, generateRunPlan, insertionsOn } from '../run/runGeneration';
 import { winRateAgainst } from './encounterMeasure';
-import { guardedTiles, guardReaches } from './guards';
+import { guardedTiles, guardReach, guardReaches } from './guards';
 import { gymLeadLevel } from './gymGuide';
 import { collisionBlocker } from './hunter';
 import { stepDistances } from './mapStructure';
@@ -21,6 +21,8 @@ import { MISTY_BOSS_ID } from './valeQuarters';
  */
 
 const STARTERS = ['bulbasaur', 'charmander', 'squirtle'] as const;
+/** The fewest steps a landing stands from any guard's reach. */
+const LANDING_CLEARANCE = 6;
 /** A save's starter as Oak hands it over. */
 const FRESH_LEVEL = 5;
 /** How often a fresh starter beats a gentle guard, at least. */
@@ -120,6 +122,21 @@ describe('the vale’s guards', () => {
       }
     }
     expect(laid).toEqual([]);
+  });
+
+  it('stand clear of every landing, so nobody lands into a fight', () => {
+    // THE QUARRY's landing was two steps from the Onix at the Powder Store, in
+    // the cut whose only way south runs past it: three forced fights in the
+    // first ten seconds of a raid, and running put the player back in its reach
+    // (gyms playtest, 26 Nov 2026).
+    const figures = new Set(vale.entities.map(({ position }) => `${position.x},${position.y}`));
+    const reach = guards.flatMap((guard) => guardReach(guard.position, isBlocked));
+    const tooClose = insertionsOn('greystone-vale').flatMap((landing) => {
+      const steps = stepDistances(vale.collision, landing.position, figures, playerLinks(vale));
+      const nearest = Math.min(...reach.map((tile) => steps[tile.y]?.[tile.x] ?? -1).filter((each) => each >= 0));
+      return nearest < LANDING_CLEARANCE ? [`${landing.id} is ${nearest} steps from a guard`] : [];
+    });
+    expect(tooClose).toEqual([]);
   });
 
   it('teach before they tempt: the nearest to a new save’s landing is gentle, and every stone lies past every gentle one', () => {
