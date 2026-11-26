@@ -307,7 +307,6 @@ describe('battle presentation', () => {
     expect(messages[0]).toBe('Wild PIDGEY appeared!');
     expect(messages.join(' ')).toContain('SQUIRTLE is stronger');
     expect(messages.some((message) => message.includes('POWER'))).toBe(true);
-    expect(messages.some((message) => message.includes('HP it cost you'))).toBe(true);
     // The battle dialogue frame fits two lines of about 34 characters.
     expect(Math.max(...messages.map((message) => message.length))).toBeLessThanOrEqual(68);
   });

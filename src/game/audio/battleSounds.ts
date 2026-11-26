@@ -228,7 +228,7 @@ const cries = (species: readonly number[]): CrySound[] => species.map((id) => ({
  * after the sting that opens the fight; a double names them, and both cry on
  * that line with the ball's pop. Every "Go! X!" is the pop and then the cry -
  * which is the opening send-out the playtest found silent (playtest 28, S2).
- * The teaching fight's opening is the wild opening with three lines after it,
+ * The teaching fight's opening is the wild opening with two lines after it,
  * and anything the scene reads after these lines (the weather, an ability)
  * sounds nothing here.
  */
