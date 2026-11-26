@@ -11424,8 +11424,16 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.extractThrough(exit);
       return true;
     }
-    if (session.lastStand === 'lost' || this.cutscene || this.dialogBox.visible || isPlaytestRun()) {
+    if (session.lastStand === 'lost' || isPlaytestRun()) {
       return false;
+    }
+    // A line still up, a beat playing or a fight on its way is finished first,
+    // and then the hunter comes: refused here, the clock ended the raid on its
+    // timer screen instead, and Oak's own "One minute left!" box, left open,
+    // was enough to stand through 0:15 with nobody sent (night raid critic,
+    // 26 Nov 2026). The clock has run out, so nothing is lost by waiting.
+    if (this.cutscene || this.dialogBox.visible || this.pendingTrainerBattle || this.pendingWildBattle || this.isWarping) {
+      return true;
     }
     const pack = this.hunterPackHere();
     if (!pack) {
