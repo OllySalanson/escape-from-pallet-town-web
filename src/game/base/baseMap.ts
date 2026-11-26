@@ -205,7 +205,7 @@ export const GARDENS_SIGN: BaseSign = {
   lines: ['THE GARDENS', 'The band plays Sundays. Mind the beds.'],
 };
 
-/** At the head of the pleasure pier, in the boardwalk's railing beside the way on. */
+/** At the pleasure pier's gate, in the rail along PIER SQUARE's foot beside the way on. */
 export const PLEASURE_PIER_SIGN: BaseSign = {
   x: 81,
   y: 16,
@@ -351,16 +351,16 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
     'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM...TTT',
     'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM.t.TTT',
     'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM...TTT',
-    'TtTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........____________________MMMMMMMMMMMMMM________________~~CCCCPPPPPPPCCCTTT',
-    'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........____________________MMMMMMMMMMMMMM________________~~CCCCPPPPPPPCCCTTT',
+    'TtTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMCCCCPPPPPPPCCCTTT',
+    'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........~~~~~~~~~~~~~~~~~~~~MMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~CCCCPPPPPPPCCCTTT',
     'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMddddddd~~~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~~~~~~~~~~~~~~CCWWCCCCWWCCCWWWW',
     'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~~~~~~~~~~~~~~WWWWWWWWWWWWWWWWW',
     'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~~~~~~~~~~~~WWWWWWWWWWWWWWWWWWW',
     'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~~~~~~~~~~WWWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWWWWMM~~~~~~~~~~~~~~~~~~~~~________~~~~~~~~~~WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWWWWMM~~~~~~~~~~~~~~~~~~~~~________WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWW~~~~~~~~~~~~~~~~WWWW___WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWW~~~~~~WWWWWWW___WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWWWWMM~~~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWWWWMM~~~~~~~~~~~~~~~~~~~~~~~___~~~WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWW~~~~~~~~~~~~~~~~WW________WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWW~~~~~~WWWWW________WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
     'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWWWWWWW___WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
     'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWWWWWWW___WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
     'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWWW___________WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
@@ -559,7 +559,7 @@ function plantQuay(map: MapSketch<BasePropName>): void {
  *   arcade door's own line, so the view out of the arcade runs down the pier
  *   to the FISHING DERBY's board, and the ice cream where the crowd is.
  * - **THE GARDENS**, the quiet middle: a bandstand on a lawn up a gravel path,
- *   benches round it, and the beach huts in one terrace below the boardwalk.
+ *   benches round it, and the beach huts on the sand against the walk's rail.
  * - **THE POINT**, the wild end: the walk climbs off the stone onto a grassy
  *   point with THE FIELD-MOVE COURSE's gate and its ground fenced off beside
  *   it, a lookout bench over the sea, and the rocks below, where the tide
@@ -567,7 +567,8 @@ function plantQuay(map: MapSketch<BasePropName>): void {
  *
  * The beach is a bay: widest under the sport end, narrowing past the pier to
  * the cove of rocks under the point. The walk is stone three wide the whole
- * way, the boardwalk below it, and nothing stands on either.
+ * way, railed along its sea edge with the sand below, and a pair walks its
+ * two landward rows with nothing on them.
  */
 /**
  * What stands along the walk's seaward edge (row 14), by x: never across
@@ -608,7 +609,7 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
   // Along the walk's seaward edge: a lamp now and then, benches turned to
   // the sea and planters, on its bottom row - a pair walks the two above,
   // straight on from KEEPERS' ROW's gravel, and the way up to every door
-  // and down to the boardwalk is left open.
+  // and down to the beach is left open.
   for (const [x, prop] of KERB) map.plant(x, 14, prop);
 
   // --- PIER SQUARE -----------------------------------------------------
@@ -629,13 +630,18 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
   map.plant(89, 15, 'iceCart');
   for (const x of [92, 93, 94]) map.plant(x, 16, 'railing');
 
-  // --- The boardwalk's rail ---------------------------------------------
-  // Railing along its seaward edge, broken where steps go down to the sand.
-  // The walk's lamps are on its own seaward row (`KERB`): the rail is
-  // unbroken but for the steps, so the front is lit by one row, not two.
+  // --- The walk's sea edge -----------------------------------------------
+  // A railing along the walk's seaward edge, the sand up against it below,
+  // broken only where steps go down to the beach: by THE DIG, beside the
+  // pier, between the huts and at the cove under THE POINT. It was a
+  // boardwalk once, a second walk beside the first that nothing stood on.
   const steps = new Set([68, 69, 78, 79, 105, 106, 111, 112]);
-  // The huts in a terrace of four and a pair, steps down to the sand between
-  // them, painted as their owners chose rather than in the rainbow's order.
+  for (const x of [...Array.from({ length: 20 }, (_, i) => 61 + i), ...Array.from({ length: 18 }, (_, i) => 95 + i)]) {
+    if (!steps.has(x)) map.plant(x, 15, 'railing');
+  }
+  // The huts on the sand against the rail, in a terrace of four and a pair,
+  // steps down to the sand between them, painted as their owners chose
+  // rather than in the rainbow's order.
   const HUTS: readonly (readonly [number, BasePropName])[] = [
     [97, 'hutBlue'],
     [99, 'hutRed'],
@@ -644,11 +650,6 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
     [107, 'hutGreen'],
     [109, 'hutPink'],
   ];
-  const huts = new Set(HUTS.flatMap(([x]) => [x, x + 1]));
-  for (const x of [...Array.from({ length: 19 }, (_, i) => 61 + i), ...Array.from({ length: 18 }, (_, i) => 95 + i)]) {
-    if (steps.has(x) || huts.has(x)) continue;
-    map.plant(x, 16, 'railing');
-  }
   for (const [x, hut] of HUTS) map.plant(x, 16, hut);
 
   // --- The beach --------------------------------------------------------
@@ -660,7 +661,9 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
   map.plant(73, 18, 'parasolBlue');
   map.plant(75, 19, 'deckchairBlue');
   map.plant(72, 20, 'sandcastle');
+  map.plant(67, 20, 'sandcastle');
   map.plant(88, 18, 'deckchairBlue');
+  map.plant(88, 20, 'parasolBlue');
   map.plant(72, 24, 'sandcastle');
   map.plant(74, 24, 'rowBoatGreen');
   map.plant(64, 23, 'wetRock');
@@ -679,15 +682,17 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
   map.plant(67, 24, 'wetRock');
   map.plant(77, 24, 'wetRock');
   map.plant(80, 23, 'wetRock');
+  map.plant(97, 22, 'wetRock');
   map.plant(110, 20, 'wetRock');
   map.plant(113, 18, 'wetRock');
 
   // --- The pleasure pier ------------------------------------------------
-  // Half way out, a stop: a bench and a lamp on its east side, turned to the
-  // sea, and its west side left open, where the beach steps up onto it; at its head the FISHING
+  // Half way out, a stop: a bench on its east side, turned to the sea, and a
+  // fisherman at its end (`harbourLife.ts`), and its west side left open,
+  // where the beach steps up onto it; at its head the FISHING
   // DERBY's board on the pier's own line, pennants, a lifebuoy and a lamp.
-  map.plant(87, 22, 'seaBench');
-  map.plant(89, 22, 'promenadeLamp');
+  map.plant(87, 24, 'seaBench');
+  map.plant(82, 23, 'lifebuoy');
   map.plant(80, 27, 'pennantRed');
   map.plant(90, 27, 'pennantBlue');
   map.plant(80, 29, 'promenadeLamp');

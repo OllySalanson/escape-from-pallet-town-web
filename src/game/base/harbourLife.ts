@@ -363,7 +363,7 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     kind: 'person',
     name: 'FISHERMAN',
     design: 'fisherman',
-    position: at(89, 21),
+    position: at(89, 24),
     facing: 'right',
     byDayOnly: true,
     idle: { glances: ['right', 'down'], beatMs: 7900 },

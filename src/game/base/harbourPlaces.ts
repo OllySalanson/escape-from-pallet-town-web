@@ -24,7 +24,7 @@ export const HARBOUR_PLACES: readonly HarbourPlace[] = [
     name: 'THE PLEASURE PIER',
     areas: [
       { x: 84, y: 17, width: 3, height: 10 },
-      { x: 82, y: 21, width: 8, height: 2 },
+      { x: 82, y: 23, width: 8, height: 2 },
       { x: 80, y: 27, width: 11, height: 5 },
     ],
   },

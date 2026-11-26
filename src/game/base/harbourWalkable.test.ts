@@ -197,15 +197,14 @@ describe.each([
       expect(harbour.map.terrain[13][112]).toBe('stone');
     });
 
-    it('keeps THE PROMENADE’s boardwalk walkable its whole length either side of PIER SQUARE, lamps and all, and the lawn it is stepped off onto', () => {
-      // From x 60: the tile of lawn at the boards' west end is the way on and
-      // off them, and a Pidgey that pecked there was walked into coming west.
-      // PIER SQUARE's apron is between its two halves, the ice cream on it.
-      const blocked: string[] = [];
-      for (const x of [...Array.from({ length: 21 }, (_, index) => 60 + index), ...Array.from({ length: 18 }, (_, index) => 95 + index)]) {
-        if (!harbour.free(x, 15)) blocked.push(`${x},15`);
+    it('rails THE PROMENADE’s sea edge from THE GREEN to THE POINT, open only at its steps', () => {
+      // A boardwalk ran here once, a second walk beside the first with
+      // nothing on it, and its railing broke off where nothing went down.
+      const gaps: number[] = [];
+      for (const x of [...Array.from({ length: 20 }, (_, index) => 61 + index), ...Array.from({ length: 18 }, (_, index) => 95 + index)]) {
+        if (harbour.free(x, 15)) gaps.push(x);
       }
-      expect(blocked).toEqual([]);
+      expect(gaps).toEqual([68, 69, 78, 79, 105, 106, 111, 112]);
     });
 
     it('keeps a way along the beach at the water’s edge two abreast, across the bay to the pleasure pier', () => {
@@ -224,9 +223,9 @@ describe.each([
     it('keeps the foot of every set of steps down to the sand clear to the water', () => {
       const blocked: string[] = [];
       for (let x = 61; x <= 112; x += 1) {
-        // A gap in the boardwalk's railing is a set of steps.
-        if (!harbour.free(x, 15) || !harbour.free(x, 16) || harbour.map.terrain[16][x] !== 'boards') continue;
-        for (let y = 17; harbour.map.terrain[y][x] === 'beach' || harbour.map.terrain[y][x] === 'sand'; y += 1) {
+        // A gap in the walk's railing is a set of steps down to the sand.
+        if (!harbour.free(x, 15) || harbour.map.terrain[15][x] !== 'stone' || harbour.map.terrain[16][x] !== 'beach') continue;
+        for (let y = 16; harbour.map.terrain[y][x] === 'beach' || harbour.map.terrain[y][x] === 'sand'; y += 1) {
           if (!harbour.free(x, y)) blocked.push(`${x},${y}`);
         }
       }
