@@ -57,7 +57,6 @@ interface HubInternals {
   takeGear(pokemonId: string): void;
   giveGear(pokemonId: string, itemId: string): void;
   recover(ids: readonly string[]): void;
-  treat(pokemonId: string, itemId: string): void;
   readonly flow: DeploymentFlow;
   readonly status: string | undefined;
 }
@@ -270,9 +269,16 @@ describe('a raid out in one tab, and the base open in another', () => {
     expect(new SaveManager(storage).raidHold(again)).toEqual({ kind: 'item', itemId: 'potion' });
     expect(new SaveManager(storage).save(again)).toBe(false);
 
-    const tabB = openBase(storage);
-    tabB.treat('bulbasaur-1', 'potion');
-    expect(tabB.status).toBe('That is packed for the raid in your other window. Finish it there first.');
+    // The base's one way to spend a thing out of storage on a Pokémon, YOUR
+    // THINGS' use at home, refuses the packed one before it is used at all.
+    let used = false;
+    const refused = new SaveManager(storage).useAtHome('potion', 'bulbasaur-1', () => {
+      used = true;
+      return { changed: true, spent: true };
+    });
+    expect(refused).toBeUndefined();
+    expect(used).toBe(false);
+    expect(stashOf(storage).itemCount('potion')).toBe(4);
   });
 
   it('everything is back to normal once the raid has ended', () => {
