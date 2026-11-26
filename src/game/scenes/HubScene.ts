@@ -168,7 +168,7 @@ import { conditionLine } from '../ui/condition';
 import { pokemonDossier } from '../ui/pokemonDossier';
 import { pixelItemTile, pixelMonTile } from '../ui/monIcon';
 import { drawFixtureScaled, fixtureArt, fixtureDivisor } from '../ui/fixturePicture';
-import { drawRoomPicture, fitRoomPictures, roomPictureMark, roomPictureMarkup } from '../ui/roomPicture';
+import { drawRoomPicture, fitRoomPictures, roomPictureMark, roomPictureMarkup, watchRoomPictures } from '../ui/roomPicture';
 import { workshopEffectPicture } from '../ui/workshopEffect';
 import { partTag, partTags, shopCardPane } from '../ui/shopCard';
 import { buildRoom, roomNamed, type BuiltRoom } from '../base/rooms';
@@ -1701,7 +1701,9 @@ export class HubScene extends Phaser.Scene {
     });
     // Once painted, so the floor it is framed in can be read off the room.
     if (typeof getComputedStyle === 'function' && root.querySelector('.room-pic')) {
-      fitRoomPictures(root, Number.parseFloat(getComputedStyle(root).getPropertyValue('--u')) || 0);
+      const unit = (): number => Number.parseFloat(getComputedStyle(root).getPropertyValue('--u')) || 0;
+      fitRoomPictures(root, unit());
+      watchRoomPictures(root, unit);
     }
     // Brock's rungs are pictures of what they build, drawn from the base's own
     // sheets, which the yard under this screen has already loaded.

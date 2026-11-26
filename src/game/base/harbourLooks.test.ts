@@ -186,10 +186,11 @@ describe.each([
     /** A building, or something as big as one: what a gap is measured between. */
     const BUILDINGS: readonly BasePropName[] = [
       ...BASE_DOORS.map((door) => door.building.prop),
-      'tower',
-      'hut',
+      'radioMast',
+      'treatmentTent',
+      'wardCabin',
       'marketStall',
-      'roundhouse',
+      'harbourLight',
       'warehouses',
       'derbyBoard',
       'courseGate',
@@ -268,7 +269,9 @@ describe.each([
     });
 
     it('stands the mast clear of THE BOLTHOLE and of the Day-Care’s fence', () => {
-      const mast = things.find((thing) => thing.name === 'tower');
+      const mast = things.find((thing) => thing.name === 'radioMast');
+      // Found whenever it is built: under its old name the test passed by finding nothing.
+      expect(Boolean(mast)).toBe(built.includes('radio-mast'));
       if (!mast) return;
       const house = things.find((thing) => thing.name === 'bolthole');
       expect(house && leaningOn(mast, [house])).toEqual([]);

@@ -19,11 +19,11 @@ describe("what Brock's rungs build, drawn for a menu", () => {
     }
   });
 
-  it('is the mast as tall as it stands, and the ward as the hut with its colours beside it', () => {
-    const tower = BASE_TILESET.props.tower;
-    expect(fixtureArt('radio-mast')).toMatchObject({ width: tower.width * 16 });
+  it('is the mast as tall as it stands, and the ward as its cabin with its colours beside it', () => {
+    const mast = BASE_TILESET.props.radioMast;
+    expect(fixtureArt('radio-mast')).toMatchObject({ width: mast.width * 16, height: mast.height * 16 });
     const ward = fixtureArt('quarantine-ward')!;
-    expect(ward.width).toBe((BASE_TILESET.props.hut.width + BASE_TILESET.props.bannerPair.width) * 16);
+    expect(ward.width).toBe((BASE_TILESET.props.wardCabin.width + BASE_TILESET.props.bannerPair.width) * 16);
   });
 
   it('finds every tile on one of the base sheets', () => {

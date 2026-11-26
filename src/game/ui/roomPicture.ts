@@ -334,3 +334,39 @@ function commonColour(canvas: HTMLCanvasElement, top: number, bottom: number): s
     return undefined;
   }
 }
+/** The room pictures already watched, so a redraw does not watch one twice. */
+const watched = new WeakSet<Element>();
+
+/**
+ * Fits a room picture again whenever its box changes size. A screen is laid out
+ * over a few frames - its fonts, the pictures on its cards, the help line - and
+ * a room fitted to its box partway through kept the scale of a box half the
+ * size: BROCK'S WORKSHOP opened from his plans drew his room at one game pixel
+ * a pixel in the middle of a stage that would take it at two.
+ */
+export function watchRoomPictures(root: ParentNode, unitOf: () => number): void {
+  if (typeof ResizeObserver === 'undefined') {
+    return;
+  }
+  root.querySelectorAll<HTMLElement>('.room-pic').forEach((picture) => {
+    if (watched.has(picture)) {
+      return;
+    }
+    watched.add(picture);
+    let last = '';
+    const observer = new ResizeObserver(([entry]) => {
+      // Gone from the page with its screen: nothing left to fit.
+      if (!picture.isConnected) {
+        observer.disconnect();
+        return;
+      }
+      const size = `${Math.round(entry.contentRect.width)}x${Math.round(entry.contentRect.height)}`;
+      if (size === last) {
+        return;
+      }
+      last = size;
+      fitRoomPictures(picture.parentElement ?? root, unitOf());
+    });
+    observer.observe(picture);
+  });
+}

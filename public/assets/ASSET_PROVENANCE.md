@@ -966,6 +966,16 @@ does, and for the promenade to be varied rather than samey.
   net on a drying rack, a fish stall under a blue-and-white awning, and a
   slatted bench. They sit in the sheet's free cells beside the dojo; no pixel
   of any earlier piece changed. Nothing was copied or traced from anywhere.
+- **Four of Brock's builds, added 2026-11-26.** Drawn from nothing, by the same
+  script (its "Brock's builds" section) in the same hand, because the owner
+  asked why the radio mast was "just a big tower" (it was the CC0
+  `Overworld.png` stone tower) and for Brock's builds to have art of their own:
+  THE MAST as a red and white lattice aerial with a dish and a light (2x3),
+  THE HARBOUR LIGHT as a striped lighthouse with its gallery and lamp room
+  (2x4), THE SECOND MACHINE as a white treatment tent with a red cross, and
+  THE WARD as a white cabin under a teal roof (2x3 each; both had been the CC0
+  hut). They sit in the sheet's free cells; no pixel of any earlier piece
+  changed. Nothing was copied or traced from anywhere.
 
 ### `frlg-dojo.png` - THE BATTLE ARENA's room: Saffron's Fighting Dojo
 

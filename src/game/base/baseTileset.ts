@@ -125,7 +125,11 @@ export type QuayPropName =
   | 'startLine'
   | 'bandstand'
   | 'pierArch'
-  | 'coinTelescope';
+  | 'coinTelescope'
+  | 'radioMast'
+  | 'harbourLight'
+  | 'treatmentTent'
+  | 'wardCabin';
 
 const PROMENADE_PROPS: Readonly<Record<PromenadePropName, PropDefinition>> = {
   // 7x6. THE GAME CORNER: Celadon's own, with GAME CORNER lit across its
@@ -195,6 +199,12 @@ const PROMENADE_PROPS: Readonly<Record<PromenadePropName, PropDefinition>> = {
   pierArch: promenadeArch('pierArch', 'pier arch'),
   // On its post alone, its brass tube drawn above it (`promenadePost`).
   coinTelescope: promenadePost('coinTelescope', 'telescope'),
+  // Brock's builds (`base/fixtures.ts`), solid: the harbour light 2x4, the
+  // radio mast, the treatment tent and the ward's cabin 2x3.
+  radioMast: promenadeProp('radioMast', 'radio mast'),
+  harbourLight: promenadeProp('harbourLight', 'harbour light'),
+  treatmentTent: promenadeProp('treatmentTent', 'treatment tent'),
+  wardCabin: promenadeProp('wardCabin', 'ward cabin'),
 };
 
 /**

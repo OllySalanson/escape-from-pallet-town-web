@@ -9,8 +9,9 @@ import { tileReader, withDoorway, type PropDefinition } from '../world/tileset/c
  * flower troughs and an ice-cream cart - THE FIELD-MOVE COURSE's gate (COURSE
  * over its posts, the four field moves painted under the word) and its TIMES
  * board, THE PROMENADE DERBY's start board, THE DIG's sign on the sand and
- * THE FISHING DERBY's board at the pier head, the POKéMON JUMP and BERRY PICKING cabinets inside, and THE BATTLE
- * ARENA (Saffron's Fighting Dojo with BATTLE ARENA on a board across its front).
+ * THE FISHING DERBY's board at the pier head, the POKéMON JUMP and BERRY PICKING cabinets inside, THE BATTLE
+ * ARENA (Saffron's Fighting Dojo with BATTLE ARENA on a board across its front), and four of Brock's builds:
+ * THE MAST's lattice aerial, THE HARBOUR LIGHT, THE SECOND MACHINE's tent and THE WARD's cabin.
  * Numbered from 20000, clear of every other sheet the loader fetches
  * (`catalogue.test.ts` holds the whole list apart).
  */
@@ -74,6 +75,11 @@ export const PROMENADE_PIECES = {
   bandstand: { column: 0, row: 17, width: 4, height: 4 },
   pierArch: { column: 4, row: 17, width: 5, height: 2 },
   coinTelescope: { column: 9, row: 17, width: 1, height: 2 },
+  // Brock's builds that no FireRed sheet has (`base/fixtures.ts`).
+  radioMast: { column: 10, row: 17, width: 2, height: 3 },
+  harbourLight: { column: 12, row: 17, width: 2, height: 4 },
+  treatmentTent: { column: 14, row: 17, width: 2, height: 3 },
+  wardCabin: { column: 11, row: 14, width: 2, height: 3 },
 } as const;
 
 export type PromenadePieceName = keyof typeof PROMENADE_PIECES;
