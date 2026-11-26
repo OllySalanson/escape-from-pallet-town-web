@@ -1,6 +1,8 @@
 // Plays Brock's chalk and Bill's shelves as a player meets them, on the keyboard
-// and then with the mouse: the quote in the box, YES and NOT NOW, what the room
-// shows afterwards, the mat, and the two list screens behind the wall and the PC.
+// and then with the mouse: Brock's word from the mat and every chalked bay opening
+// his workshop screen on its build (the screen is the only place a build is made),
+// Bill's quote in the box with YES and NOT NOW, what the rooms show afterwards,
+// and the two list screens behind the wall and the PC.
 //
 //   node tools/playtest/workshopBill.mjs <url> <outDir> [--port=<cdp port>] [--window=WxH]
 //
@@ -151,20 +153,31 @@ try {
   const crate = await thing(`(each) => each.chalked === 'secure-locker-1'`);
   expect('every empty bay is chalked', (await base(`b.place.room.things.filter((each) => each.chalked).length`)) === 7);
 
-  // From the mat: first words once, then the next rung this vault can pay for.
+  // From the mat: first words once, then the next build this vault can pay for,
+  // and then his screen, opened on it. Nothing is built from the dialogue box
+  // (the owner, 26 Nov 2026: YES in the box built the mast with no screen).
+  const cursorOn = () => page.evaluate('document.activeElement?.dataset?.shows ?? null');
+  const inWorkshop = async (what) => {
+    await until(sceneIs('hub'), what);
+    await sleep(600);
+  };
+  const backToRoom = async () => {
+    await press('Escape', 600);
+    await until(sceneIs('base'), 'back in the room');
+    await settled();
+  };
   await press('Space', 500);
-  expect('Brock talks from the mat; no screen', !(await page.evaluate(sceneIs('hub'))));
-  const mat = await pastAFavour(/Build it/);
+  expect('Brock talks from the mat first; no screen yet', !(await page.evaluate(sceneIs('hub'))));
+  const mat = await pastAFavour(/(?!)/);
   console.log(`  mat: ${mat.join(' | ')}`);
   expect('he says what the chalk is', mat.join(' ').includes('chalk'));
-  await shot('02-workshop-quote-from-mat');
-  expect('he asks about a rung this vault can pay for', await asked());
-  expect('the question opens on NOT NOW', (await answer()) === 1, await answer());
-  await press('ArrowRight', 200);
-  expect('Right stays on NOT NOW', (await answer()) === 1);
-  await press('Escape', 400);
-  await readOn();
-  expect('ESC spends nothing', (await saved('save.raidProgress.workshopUpgrades.length')) === 0);
+  expect('he names a build this vault can pay for', mat.join(' ').includes("you've got it"));
+  await inWorkshop('his workshop screen');
+  const named = String(await page.evaluate(`document.activeElement?.querySelector('.px-name')?.textContent ?? ''`)).replace(/\s+/g, ' ').trim();
+  await shot('02-workshop-from-mat');
+  expect('his screen opens on the build he named', named.length > 0 && mat.join(' ').toLowerCase().includes(`${named.toLowerCase()}.`), named);
+  expect('nothing was built by talking', (await saved('save.raidProgress.workshopUpgrades.length')) === 0);
+  await backToRoom();
 
   // Walking at a bay turns the player to face it, and the hint names it.
   const front = { x: crate.tiles[0].x + 2, y: crate.tiles[0].y };
@@ -173,42 +186,39 @@ try {
   expect('the hint names it', (await base('b.hintShown')) === `[SPACE] ${crate.name}`, await base('b.hintShown'));
   await shot('03-facing-a-bay');
   await press('Space', 500);
-  console.log(`  bay: ${await said()}`);
-  await shot('04-brock-quotes');
-  await readOn();
-  expect('YES is a key away and it starts on NOT NOW', (await asked()) && (await answer()) === 1);
-  await shot('05-brock-asks');
-  await press('ArrowLeft', 200);
-  expect('Left goes to YES', (await answer()) === 0);
-  await press('Space', 300);
-  await until(`(() => { const b = ${GAME}.scene.getScene('base'); return b.ready && !b.leaving && b.dialogBox.visible; })()`, 'the room drawn again');
+  await inWorkshop('the screen from the bay');
+  expect('the bay opens the screen on its own build', (await cursorOn()) === 'secure-locker-1', await cursorOn());
+  await shot('04-bay-opens-the-screen');
+  await press('Space', 400);
+  const focused = () => page.evaluate('document.activeElement?.textContent?.trim()');
+  expect('BUILD IT asks once more, on NOT NOW', /not now/i.test(await focused()), await focused());
+  await shot('05-asks-on-the-card');
+  await press('ArrowRight', 200);
+  expect('Right is the build', /build/i.test(await focused()), await focused());
+  await press('Space', 900);
   expect('the locker is built', (await saved('save.raidProgress.workshopUpgrades.join()')) === 'secure-locker-1');
   expect('the materials are gone', (await saved(`(save.stash.items['parts-crate'] ?? 0)`)) === 0);
-  expect('the player is where they asked, facing it', (await base('b.currentTile.x')) === front.x && (await base('b.facing')) === 'left');
-  console.log(`  built: ${await said()}`);
-  await shot('06-built');
-  await readOn();
+  await shot('06-built-on-the-screen');
+  await backToRoom();
+  expect('back in front of the bay, where it now stands', (await base('b.currentTile.x')) === front.x);
+  await shot('06b-built-in-the-room');
 
-  // A rung that is short, and one behind another.
+  // A build that is short opens the screen too, which says what is short.
   const short = await thing(`(each) => each.chalked === 'radio-mast'`);
   const under = { x: short.tiles.at(-1).x, y: short.tiles.at(-1).y + 1 };
   await standFacing(under, short.tiles.at(-1));
   await press('Space', 500);
-  const shortLines = await readOn();
-  console.log(`  short: ${shortLines.join(' | ')}`);
-  expect('a rung he cannot build asks nothing and says what is short', !(await asked()) && shortLines.join(' ').includes('short'));
+  await inWorkshop('the screen from a short bay');
+  expect('a short bay opens on its build', (await cursorOn()) === 'radio-mast', await cursorOn());
+  await backToRoom();
 
-  // With the mouse: a click on a bay walks up to it and asks.
+  // With the mouse: a click on a bay walks up to it and opens the screen on it.
   const machine = await thing(`(each) => each.chalked === 'recovery-bay-1'`);
   await clickTile(machine.tiles[3]);
-  await until(`${GAME}.scene.getScene('base').dialogBox.visible`, 'Brock on the clicked bay');
-  console.log(`  clicked: ${await said()}`);
+  await inWorkshop('the screen from a clicked bay');
+  expect('a clicked bay opens on its build', (await cursorOn()) === 'recovery-bay-1', await cursorOn());
   await shot('07-clicked-bay');
-  await clickOn(machine.tiles[3]);
-  await clickAnswer(0);
-  await until(`(() => { const b = ${GAME}.scene.getScene('base'); return b.ready && !b.leaving && b.dialogBox.visible; })()`, 'built by mouse');
-  expect('built by mouse', (await saved('save.raidProgress.workshopUpgrades.join()')).includes('recovery-bay-1'));
-  await readOn();
+  await backToRoom();
 
   // The tally on the wall is the whole ladder on a screen, and ESC is back in front of it.
   const tally = await thing(`(each) => each.opens === 'ladder'`);
@@ -236,7 +246,6 @@ try {
   const armed = await page.evaluate(`(() => { const row = document.querySelector('[data-cursor-start]'); row?.focus(); row?.click(); return row?.textContent ?? null; })()`);
   await sleep(300);
   await shot('10-ladder-asked');
-  const focused = () => page.evaluate('document.activeElement?.textContent?.trim()');
   expect('the confirm starts on NOT NOW', /not now/i.test(await focused()), `${armed} ${await focused()}`);
   await press('ArrowLeft', 200);
   expect('Left from NOT NOW stays on it: the fault is gone', /not now/i.test(await focused()), await focused());
@@ -258,7 +267,8 @@ try {
   await press('Space', 400);
   await readOn();
   expect('NOT NOW opens nothing', !(await page.evaluate(sceneIs('hub'))));
-  const sheeted = await thing(`(each) => each.good?.itemId === 'potion'`);
+  // Potions and Poké Balls he sells anybody (#617); a Super Potion waits on trust.
+  const sheeted = await thing(`(each) => each.good?.itemId === 'super-potion'`);
   await standFacing({ x: sheeted.tiles[0].x, y: sheeted.tiles[0].y + 1 }, sheeted.tiles[0]);
   expect('a sheet is named as one', (await base('b.hintShown')) === '[SPACE] UNDER A SHEET', await base('b.hintShown'));
   await press('Space', 500);

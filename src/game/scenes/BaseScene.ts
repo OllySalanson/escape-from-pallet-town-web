@@ -333,14 +333,7 @@ import { FIRST_WORDS, hasHeard, heldLandingNews, mapsMovedNews, spokenLines, typ
 import { FIRST_JUMP_ANSWERS, firstJumpQuestion, goesStraightOver, isFirstRaid } from '../hub/firstRaid';
 import { benchOffer, benchOfferQuestion } from '../hub/benchOffer';
 import { centerOffer, healedLine, nobodyCanRaid, NOT_HEALED_LINE, SWAP_AT_THE_PC_LINE } from '../hub/centerCounter';
-import {
-  BUILD_NOT_SAVED_LINE,
-  brockFromTheMat,
-  brockQuoteFor,
-  builtLine,
-  NOT_BUILT_LINE,
-  type BrockQuote,
-} from '../hub/workshopTalk';
+import { brockFromTheMat, type BrockQuote } from '../hub/workshopTalk';
 import {
   billFromTheMat,
   billQuote,
@@ -5669,8 +5662,11 @@ export class BaseScene extends Phaser.Scene {
         });
         return;
       }
+      // A chalked bay is the workshop screen with its build chosen: the card on
+      // the right says what it does and takes, and BUILD IT is there.
       if (thing?.chalked) {
-        this.brockQuotes(brockQuoteFor({ stash: this.freshGame().stash }, this.savedGame.raidProgress.workshopUpgrades, thing.chalked), [target]);
+        audioManager.play('select');
+        this.openWorkshop(thing.chalked);
         return;
       }
       if (thing?.good) {
@@ -7353,50 +7349,26 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /**
-   * Brock on a rung (`hub/workshopTalk.ts`): what it does and takes, and YES or
-   * NOT NOW if it can be paid for. Built on YES, the room is drawn again with the
-   * thing standing where the chalk was, and the player is left where they asked.
+   * Brock on a build (`hub/workshopTalk.ts`): what it does and takes, said in the
+   * room, and then his workshop screen opened on it. The screen is the one place
+   * a build is chosen and paid for; nothing is built from a dialogue box.
    */
   private brockQuotes(quote: BrockQuote, about: readonly GridPosition[]): void {
     this.player.stop();
     this.player.setFrame(getIdleFrame(this.facing));
-    const { question, upgradeId } = quote;
-    if (question === undefined || upgradeId === undefined) {
-      this.say(quote.lines, about);
-      return;
-    }
-    this.say(quote.lines, about, () =>
-      this.askInBox(
-        question,
-        (yes) => {
-          if (!yes) {
-            audioManager.play('cancel');
-            this.say([NOT_BUILT_LINE], about);
-            return;
-          }
-          const built = this.saveManager.buildWorkshopUpgrade(upgradeId);
-          if (!built.ok) {
-            this.say([built.message], about);
-            return;
-          }
-          if (!built.saved) {
-            this.say([BUILD_NOT_SAVED_LINE], about);
-            return;
-          }
-          this.goTo(
-            {
-              savedGame: this.saveManager.load() ?? this.savedGame,
-              room: this.place.room?.room.id,
-              at: { ...this.currentTile },
-              facing: this.facing,
-              said: [builtLine(built.upgrade.name)],
-            },
-            'confirm',
-          );
-        },
-        { spendsForGood: true },
-      ),
-    );
+    const { upgradeId } = quote;
+    this.say(quote.lines, about, upgradeId === undefined ? undefined : () => this.openWorkshop(upgradeId));
+  }
+
+  /** BROCK'S WORKSHOP, with the cursor on one build, from where the player stands in his room. */
+  private openWorkshop(upgradeId?: string): void {
+    this.openHub({
+      savedGame: this.savedGame,
+      view: 'workshop',
+      from: this.place.room?.room.id,
+      at: { ...this.currentTile },
+      ...(upgradeId === undefined ? {} : { build: upgradeId }),
+    });
   }
 
   /**

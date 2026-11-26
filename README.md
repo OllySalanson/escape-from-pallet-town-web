@@ -201,7 +201,8 @@ and say yes, you're let in to have a nose round for as long as you like (or unti
   they always were in Kanto. A faint is the one thing she charges for, in time off your next raid,
   never more than a minute and named before you say yes, and your first each day is on the house. Your boxes are on the PC beside her.
 - **Brock's Workshop** builds permanent upgrades, paid for in the materials you haul home. Each
-  empty bay has what goes there chalked on the floor: walk up, he quotes it, you say yes. And
+  empty bay has what goes there chalked on the floor: walk up and his workshop opens on it, every
+  build in a row along the bottom with what it does and what it takes. And
   every one of them turns up on the map: a radio mast, a beacon, cellar doors in the quay wall.
 - **Bill's cottage**, down on the quay, is where Pokédollars go: Potions and Poké Balls to anybody
   from day one, and gear, evolution stones, HMs, fishing rods, Repels and, once he really trusts

@@ -92,7 +92,7 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
     lines: [
       'I build things into this base, and they stay built.',
       'Every bay with chalk in it is something I can put there.',
-      'Walk up to the chalk and ask, or read my plans on the wall. I build from what raids bring home.',
+      'Walk up to the chalk, or talk to me, and pick what goes in. I build from what raids bring home.',
     ],
   },
   cottage: {

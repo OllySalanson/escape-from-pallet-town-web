@@ -1993,6 +1993,25 @@ describe('Brock', () => {
     expect(new SaveManager(storage).load()!.stash.itemCount('brocks-crate')).toBe(1);
   });
 
+  it('opens on the build Brock talked about, or the chalked bay walked up to, rather than the first it can afford', () => {
+    const { hub } = createWorkshopHub();
+    hub.init({ view: 'workshop', build: 'quarantine-ward' });
+    const cards = markupOf(hub).match(/<button class="px-window px-card workshop-card[^>]*>/g) ?? [];
+    expect(cards.filter((card) => card.includes('data-cursor-start'))).toEqual([expect.stringContaining('data-shows="quarantine-ward"')]);
+
+    hub.init({ view: 'workshop' });
+    const plain = markupOf(hub).match(/<button class="px-window px-card workshop-card[^>]*>/g) ?? [];
+    expect(plain.filter((card) => card.includes('data-cursor-start'))).toEqual([expect.stringContaining('data-shows="radio-mast"')]);
+  });
+
+  it('says ALL HERE only of a build still to pay for, never of one that stands', () => {
+    const { hub } = createWorkshopHub(['secure-locker-1']);
+    hub.init({ view: 'workshop', build: 'secure-locker-1' });
+    const pane = markupOf(hub).match(/<div class="px-detail shop-card" data-shown-by="secure-locker-1"[^]*?<p class="ws-tally">/)?.[0] ?? '';
+    expect(pane).toContain('Built with');
+    expect(pane).not.toContain('All here');
+  });
+
   it('is its own building, walked into rather than chosen off the lab screen', () => {
     const { hub } = createWorkshopHub();
 
@@ -2112,7 +2131,8 @@ describe('Brock', () => {
     // The row becomes the question, as Bill's barters do, with the cursor on
     // the answer that changes nothing and on no other row.
     expect(hub.workshopArmed).toBe('secure-locker-1');
-    expect(armed).toContain('Spend 4 Parts crates on it for good?');
+    expect(armed).toContain('Spend the parts for good?');
+    expect(armed).toContain('data-help="Spends 4 Parts crates for good."');
     expect(armed).toContain('data-outfit-confirm="secure-locker-1"');
     expect(armed).toMatch(/data-deal-cancel data-cursor-start[^>]*>Not now</);
     expect(armed.match(/data-cursor-start/g)).toHaveLength(1);
