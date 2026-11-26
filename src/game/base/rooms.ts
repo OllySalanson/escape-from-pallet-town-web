@@ -16,7 +16,6 @@ import { GAME_CORNER_SHEET_PIECES } from './gameCornerSheet';
 import { DOJO_SHEET_PIECES } from './dojoSheet';
 import { LECTERN_COLOURS, LIBRARY_SHEET_PIECES, lecternPiece, type LecternColour } from './librarySheet';
 import { GREAT_LIBRARY_NAME, LIBRARY_BOOKS } from '../library/books';
-import { resolveBookText } from '../library/bookText';
 import { SECRETS_BOOK_LOCKED_LINES, secretsBookOpens } from '../library/secretsBookLock';
 import {
   chartBoardNote,
@@ -895,6 +894,11 @@ export const GOLDEN_PLINTH: GridPosition = { x: 7, y: 6 };
 /** Where the librarian stands, behind her desk under the back window. */
 export const LIBRARIAN_TILE: GridPosition = { x: 7, y: 2 };
 const LIBRARY_DESK: GridPosition = { x: 6, y: 3 };
+/** Either side of the librarian, behind her desk: hers, not a way round it (the harbour re-critic). */
+const BEHIND_THE_DESK: readonly GridPosition[] = [
+  { x: LIBRARY_DESK.x, y: LIBRARY_DESK.y - 1 },
+  { x: LIBRARY_DESK.x + 2, y: LIBRARY_DESK.y - 1 },
+];
 /** The bookcases along the back wall, two tiles wide, by their left-hand column; the end one (`END_BOOKCASE`) is MARLOW's. */
 const LIBRARY_BACK_CASES: readonly number[] = [0, 2, 5, 8, 11];
 /** The globe and the fern either side of the desk, each a tile wide and two tall, by their top tile. */
@@ -909,14 +913,20 @@ const LIBRARY_FERN: GridPosition = { x: 10, y: 3 };
  */
 export function librarianLines(secretsOpen: boolean): readonly string[] {
   const golden = LIBRARY_BOOKS.find((book) => book.plinth === 'golden');
+  const lecterns = LIBRARY_BOOKS.filter((book) => book.plinth !== 'golden').map((book) => book.title);
   return [
-    `Welcome to the ${GREAT_LIBRARY_NAME}. The book on the lectern there is all about your house.`,
-    resolveBookText("Step up and have a read. {key:walk} turn the pages, or just click the one you want."),
+    // The lecterns named, first first: RAIDS teaches the vale, THE BOLTHOLE the house.
+    // Where the first book is, plainly: "on the first lectern; X and Y is
+    // beside it" was wrong twice over (the re-critic's third round).
+    // A player past MISTY is no newcomer: welcomed back, not told where to start (the re-critic).
+    secretsOpen
+      ? `Welcome back to the ${GREAT_LIBRARY_NAME}.`
+      : `Welcome to the ${GREAT_LIBRARY_NAME}! Start with ${lecterns[0]}, on the lectern just left of the runner.`,
     ...(golden
       ? [
           secretsOpen
-            ? `You've beaten MISTY, so ${golden.title} is unchained. Every hidden nook in the vale is in it.`
-            : `The golden one is ${golden.title}: every hidden nook in the vale. I unchain it for whoever beats MISTY.`,
+            ? `You've beaten MISTY, so ${golden.title} is unchained. Every nook you find gets written up in it.`
+            : `The golden one is ${golden.title}. I unchain it for whoever beats MISTY, the gym leader out on the coast.`,
         ]
       : []),
   ];
@@ -989,7 +999,7 @@ function drawLibrary(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
       lines: [
         // The golden book counted too, once it opens (the harbour re-critic).
         open && golden
-          ? 'Shelf after shelf of old books. The ones worth reading are open on the lectern and the golden plinth.'
+          ? 'Shelf after shelf of old books. The ones worth reading are open on the lecterns and the golden plinth.'
           : onLecterns.length === 1
             ? 'Shelf after shelf of old books. The one worth reading is open on its lectern.'
             : 'Shelf after shelf of old books. The ones worth reading are open on the lecterns.',
@@ -1036,12 +1046,20 @@ function drawLibrary(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
       tiles: [{ x: END_BOOKCASE.x + 1, y: END_BOOKCASE.y + 1 }],
       lines: [`The end bookcase stands open on its hinge. ${CHART_ROOM_NAME} is through the gap on its left.`],
     });
-    return { sketch, catalogue: LIBRARY, things, sprites: [], people, solid: [LIBRARIAN_TILE] };
+    return { sketch, catalogue: LIBRARY, things, sprites: [], people, solid: [LIBRARIAN_TILE, ...BEHIND_THE_DESK] };
   }
-  // Until then MARLOW stands by it, keeping it shut.
+  // Until then MARLOW stands by it, keeping it shut - and it is not quite like
+  // the others, for anybody who looks (it said nothing; the re-critic).
+  things.push({
+    name: 'THE END BOOKCASE',
+    note: 'Not quite flush with the wall',
+    tiles: [{ x: END_BOOKCASE.x, y: END_BOOKCASE.y + 1 }],
+    lines: ["This end case doesn't sit quite flush with the wall."],
+    quiet: true,
+  });
   people.push({ id: MARLOW.id, design: MARLOW.design, tile: MARLOW_LIBRARY_TILE, facing: 'left' });
   things.push({ name: MARLOW.name, note: MARLOW.note, tiles: [MARLOW_LIBRARY_TILE], does: 'chart-keeper' });
-  return { sketch, catalogue: LIBRARY, things, sprites: [], people, solid: [LIBRARIAN_TILE, MARLOW_LIBRARY_TILE] };
+  return { sketch, catalogue: LIBRARY, things, sprites: [], people, solid: [LIBRARIAN_TILE, ...BEHIND_THE_DESK, MARLOW_LIBRARY_TILE] };
 }
 
 /** The columns of the back wall its three tall windows stand in, between the bookcases. */

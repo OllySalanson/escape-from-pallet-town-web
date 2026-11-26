@@ -6,6 +6,8 @@ import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedba
 import { GAME_FONT } from '../ui/gameFont';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { bookNamed, type LibraryBook } from '../library/books';
+import { SECRETS_BOOK_ID, secretsBookFor } from '../library/secretsBook';
+import { activeSaveSlot } from '../dev/playtestMode';
 import { resolveBookText } from '../library/bookText';
 import { secretsBookOpens } from '../library/secretsBookLock';
 import { SaveManager } from '../save/SaveManager';
@@ -89,7 +91,12 @@ export class LibraryBookScene extends Phaser.Scene implements ProvidesFeedbackCo
   }
 
   public init(data: LibraryBookSceneData): void {
-    this.book = bookNamed(data.bookId);
+    // The golden book as this save has found the vale (`secretsBookFor`).
+    const progress = new SaveManager().load()?.raidProgress;
+    this.book =
+      data.bookId === SECRETS_BOOK_ID
+        ? secretsBookFor({ secretsFound: progress?.secretsFound ?? [], giftsReceived: progress?.giftsReceived ?? [] }, activeSaveSlot() === 'playtest')
+        : bookNamed(data.bookId);
     this.pausedBase = data.pausedBase;
     this.spread = Math.max(0, data.spread ?? 0);
     this.turn = null;

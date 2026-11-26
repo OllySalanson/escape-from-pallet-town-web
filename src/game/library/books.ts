@@ -21,8 +21,8 @@ import { SECRETS_BOOK } from './secretsBook';
  *
  * To add a book: write it here, give it a colour, and the room lays another
  * lectern for it (`LIBRARY_LECTERNS`) - and the librarian's welcome, which
- * talks of the one book on the lectern (`librarianLines` in `base/rooms.ts`),
- * changes with it. Two are written so far: THE BOLTHOLE on its lectern, and
+ * names the lecterns' books (`librarianLines` in `base/rooms.ts`), changes
+ * with it. Four are written so far: RAIDS, THE HARBOUR and THE BOLTHOLE on lecterns, and
  * VALE SECRETS on the golden plinth, its pages written from the secrets
  * themselves (`secretsBook.ts`), which opens once MISTY is beaten
  * (`secretsBookLock.ts`).
@@ -53,6 +53,88 @@ export interface LibraryBook {
 }
 
 export const LIBRARY_BOOKS: readonly LibraryBook[] = [
+  // The book the room promises, on the first lectern: a GREAT LIBRARY whose
+  // one book was a house manual taught none of the game (the harbour
+  // re-critic, 26 Nov 2026). Its numbers are held to the game by
+  // `books.test.ts` ('says the numbers the game has').
+  {
+    id: 'raids',
+    title: 'RAIDS',
+    blurb: 'Down into the vale and home again, with what you can carry',
+    colour: 'red',
+    pages: [
+      {
+        heading: 'The jump',
+        text: 'Every raid starts at THE RAID ARENA, on ARENA SQUARE at the west end of the harbour. Choose who comes at THE BENCH and what you carry at THE ARMOURY RACK, then step up to the rail and jump.',
+      },
+      {
+        heading: 'Five minutes',
+        text: 'A raid lasts five minutes. Walking and talking spend the clock; a fight stops it. At zero a hunter comes for you, and you have fifteen seconds to get out. Win that fight and you still do.',
+      },
+      {
+        heading: 'Getting out',
+        text: 'A way out is a ride home. Some are open from the start, and the rest say on their sign what opens them. Step onto an open one and you are home with everything you carry.',
+      },
+      {
+        heading: 'The hunters',
+        text: 'Every part of the vale has a hunter. Caught, you fight one of theirs for each of yours still standing. Running costs forty seconds, then twenty more each time, up to two minutes.',
+      },
+      {
+        heading: 'Your pack',
+        text: 'Everything you find goes in your pack, a square or more each. A Satchel holds 12 squares, a Raid pack 18, a Ranger pack 24 and a Hauler frame 30. {key:pack} opens it.',
+      },
+      {
+        heading: 'Catching',
+        text: 'Throw a POKé BALL in a wild fight. A Pokémon you catch rides home in your pack: four squares, six once it has evolved, nine twice. Leave room.',
+      },
+      {
+        heading: 'Losing',
+        text: 'Lose a raid and you lose your pack, everything in it and every Pokémon you took, all but your partner and whatever THE LOCKER holds.',
+      },
+      {
+        heading: 'Help on the way',
+        text: '{key:oak} calls PROFESSOR OAK on the radio for where to go next. {key:map} shows the ground you have walked, and {key:team} your team.',
+      },
+    ],
+  },
+  // Who does what about the harbour, for a player just home who has met
+  // nobody yet (the harbour re-critic's second round: two lecterns of ten).
+  {
+    id: 'harbour',
+    title: 'THE HARBOUR',
+    blurb: 'Who does what, and where to find them',
+    colour: 'blue',
+    pages: [
+      {
+        heading: "OAK'S LAB",
+        text: "PROFESSOR OAK pins jobs on the board by his wall, and pays for them once you get home. His PC is your POKéDEX, and he has a gift for every few kinds you own.",
+      },
+      {
+        heading: 'The POKéMON CENTER',
+        text: "NURSE JOY heals your team for nothing. Only a faint costs time off your next raid, and even that is free once a day. Your boxes are on BILL'S PC there.",
+      },
+      {
+        heading: "BROCK'S WORKSHOP",
+        text: 'BROCK builds things that stay built: a bigger LOCKER, healing machines for the Center, a ward, a radio mast and a beacon. He takes materials you bring home from raids.',
+      },
+      {
+        heading: "BILL'S COTTAGE",
+        text: 'BILL sells Potions and POKé BALLS to anybody, and swaps his tools for the parts you bring home. Bank jobs and beat bosses, and he trusts you with more.',
+      },
+      {
+        heading: 'Out on the front',
+        text: 'Past THE GREEN is THE PROMENADE. Its games pay TICKETS, which the PRIZE WINDOW at PIER SQUARE swaps for berries, discs, furniture and more.',
+      },
+      {
+        heading: 'Practice and play',
+        text: 'THE BATTLE ARENA holds bouts for sport, where nothing is lost. The DAY-CARE MAN, past your house, raises one Pokémon while you raid.',
+      },
+      {
+        heading: 'Anywhere in the harbour',
+        text: '{key:pack} opens YOUR THINGS, {key:team} YOUR TEAM and {key:map} THE MAP. {key:oak} lists the favours people have asked of you.',
+      },
+    ],
+  },
   {
     id: 'bolthole',
     title: 'THE BOLTHOLE',
@@ -64,12 +146,12 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
         text: 'THE BOLTHOLE is the house with window boxes at the east end of KEEPERS\' ROW, and it is yours from the first day. Nobody hunts you here. Walk onto its door to go in, and step off the mat to come out.',
       },
       {
-        heading: 'Your name on the door',
+        heading: 'Your name',
         text: 'Once you have a name, it goes over your door, and over your head for other players to see. You are asked for it when your first raid comes home, and at CONTINUE until you pick one.',
       },
       {
         heading: 'Downstairs',
-        text: 'The badge case has a slot for every badge there is to win, and each shines there once it is won. The telly says who hunts where you land next raid. The window keeps your own clock, from dawn to night.',
+        text: 'The badge case holds every badge you win. The telly says who hunts where you land next raid. The window keeps your own clock, from dawn to night.',
       },
       {
         heading: 'MY PC',
@@ -80,15 +162,11 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
         text: `YOUR WARDROBE changes what you wear. THE CONSOLE plays ${CONSOLE_GAMES.map((game) => game.name).join(' and ')}, with a Pallet Town leaderboard. Your bed gives you a dream, but only NURSE JOY heals.`,
       },
       {
-        heading: 'The pennants and the calendar',
-        text: 'A pennant hangs for every place you have come home from. The calendar crosses off a day for every raid, and ticks the ones you came home from.',
-      },
-      {
         heading: 'Make it yours',
         // Not "find a cushion on a raid": the vale's raids turn up a few rare
         // pieces only, and the cushions come from the PRIZE WINDOW (the
         // harbour re-critic, 26 Nov 2026).
-        text: 'Everything in the house can be moved: the table, the plants, and anything you bring home. Win a cushion at the PRIZE WINDOW and it is yours to put anywhere.',
+        text: 'The table, the plants and anything you bring home can all be moved. Win a cushion at the PRIZE WINDOW and it is yours to put wherever it fits.',
       },
       {
         heading: 'Decorating',
@@ -97,10 +175,6 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       {
         heading: 'Your furniture box',
         text: 'Pieces you have not put out wait in your furniture box. {key:boxBack} and {key:boxNext} take them out one by one, and {key:putAway} puts a piece back in.',
-      },
-      {
-        heading: 'With the mouse',
-        text: 'While decorating, the cursor follows the mouse. A click picks up or puts down, a right click turns the piece, and the wheel walks the box.',
       },
       {
         heading: 'Where things go',
@@ -116,7 +190,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'Visiting',
-        text: 'Once you have a name, read the sign by your door to knock on another player\'s. If they let you in, stay as long as you like, but nothing of theirs can be moved. Face a visitor in your own house to see them out.',
+        text: 'Once you have a name, read the sign by your door to knock on another player\'s. Let in, stay as long as you like, but move nothing. Face a visitor at home to see them out.',
       },
     ],
   },

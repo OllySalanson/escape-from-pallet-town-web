@@ -2,7 +2,7 @@ import { getItemById } from '../items/items';
 import { formatElapsedClock } from '../run/raidClock';
 import { FIELD_MOVES } from '../world/fieldMoves';
 import { gymOf } from '../world/valeQuarters';
-import { SECRETS, type Secret, type SecretCondition, type SecretNook, type SecretReward } from '../world/secrets';
+import { nextReward, SECRETS, type Secret, type SecretCondition, type SecretNook, type SecretReward, type SecretsKnown } from '../world/secrets';
 import type { BookPage, LibraryBook } from './books';
 
 /**
@@ -26,7 +26,8 @@ export const SECRETS_BOOK_ID = 'vale-secrets';
 export const NOTES: Readonly<Record<string, string>> = {
   'the-lost-fold': 'A STRENGTH boulder on HIGH MOOR shuts the fold.',
   'x-marks-the-spot': 'Behind MISTY\'s gate.',
-  'the-shadow-in-the-crypt': 'Under THE MOOR CHAPEL.',
+  // The chapel is shut but on a night raid (`moorChapel.ts`; the re-critic's fifth round).
+  'the-shadow-in-the-crypt': 'Under the CHAPEL, by night.',
 };
 
 /**
@@ -46,6 +47,7 @@ export const DISTRICT_OF: Readonly<Record<string, string>> = {
  * printed for both (the critic tour).
  */
 const SUMMONS_WORDS: Readonly<Record<string, string>> = {
+  'the-drowned-bell': 'Pull the rope.',
   'the-heron-that-is-not': 'Stand still, and something answers.',
   'the-lapras-doll': 'Come in dry, and something answers.',
 };
@@ -130,10 +132,12 @@ export function secretPage(secret: Secret): BookPage {
   const bring = secret.when.filter((condition) => !isTime(condition)).map(conditionWords);
   const lines = [
     `WHERE: ${secret.place.toUpperCase()}${DISTRICT_OF[secret.id] ? `, on ${DISTRICT_OF[secret.id]}` : ''}`,
-    `WHEN: ${when.length > 0 ? when.join(', ') : 'any raid'}`,
-    ...(bring.length > 0 ? [`BRING: ${bring.join('; ')}`] : []),
+    // A time only when it waits for one, and NEEDS, not BRING: a badge,
+    // standing still and dry boots are not carried (the re-critic's fifth round).
+    ...(when.length > 0 ? [`WHEN: ${when.join(', ')}`] : []),
+    ...(bring.length > 0 ? [`NEEDS: ${bring.join('; ')}`] : []),
     `HOLDS: ${secret.rewards.map(rewardWords).join(', then ')}`,
-    `${secret.shutLines ? 'It waits there, every raid.' : (SUMMONS_WORDS[secret.id] ?? NOOK_WORDS[secret.nook])}${NOTES[secret.id] ? ` ${NOTES[secret.id]}` : ''}`,
+    `${secret.shutLines ? 'It waits there.' : (SUMMONS_WORDS[secret.id] ?? NOOK_WORDS[secret.nook])}${NOTES[secret.id] ? ` ${NOTES[secret.id]}` : ''}`,
   ];
   return { heading: secret.name, text: lines.join('\n') };
 }
@@ -151,7 +155,8 @@ export const SECRETS_BOOK: LibraryBook = {
     },
     {
       heading: 'Clues and rumours',
-      text: 'A sign near every nook names the place and hints at the rest. In the harbour, the board, the ANGLER, the S.S. ANNE\'s captain, the SEAGALLOP\'s sailor, BILL and the PRIZE CLERK tell rumours; THE RUMOUR MILL sells them.',
+      // Shorter: its last line ran off the paper at 400x256 (the re-critic's fourth round).
+      text: 'A sign near every nook names the place and hints at the rest. Half the harbour trades rumours - the board, the ANGLER, BILL and more - and THE RUMOUR MILL sells them.',
     },
     {
       heading: 'Keeping what you find',
@@ -160,3 +165,54 @@ export const SECRETS_BOOK: LibraryBook = {
     ...SECRETS.map(secretPage),
   ],
 };
+
+/**
+ * A nook's page before it has been found: where it is, and no more. Printed
+ * whole for every nook, the book was the answer key to the vale's signs, its
+ * rumours and THE RUMOUR MILL the moment it opened (the harbour re-critic,
+ * 26 Nov 2026); it fills in a page at a time as the POKéDEX does.
+ */
+export function unfoundSecretPage(secret: Secret): BookPage {
+  // Where and when, and the rest left to the sign out there: a page of only
+  // "not found yet" twenty times over was a prize with nothing in it (the
+  // harbour re-critic's second round).
+  // Only a time it waits for is said: "WHEN: any raid" stood over nooks that
+  // wait for a chart, a lead or a flute (the re-critic's third round). The
+  // nook's own kind closes the page, so twenty pages are not one sentence;
+  // that a page fills in once found is said once, on the first page.
+  // Where, and when if it waits for a time; what it needs and holds kept
+  // for the sign out there and the rumours. Printed whole, the book was the
+  // rumours' answer key (the re-critic's sixth round); printed bare, twenty
+  // pages of one sentence (its fourth).
+  const when = secret.when.filter(isTime).map(conditionWords);
+  return {
+    heading: secret.name,
+    text: [
+      `WHERE: ${secret.place.toUpperCase()}${DISTRICT_OF[secret.id] ? `, on ${DISTRICT_OF[secret.id]}` : ''}`,
+      ...(when.length > 0 ? [`WHEN: ${when.join(', ')}`] : []),
+      'NEEDS and HOLDS: not found yet. The sign there, and the rumours, tell more.',
+    ].join('\n'),
+  };
+}
+
+/** Whether anything a secret holds has been found: its page is written out. */
+function secretFound(secret: Secret, known: SecretsKnown): boolean {
+  return nextReward(secret, known) !== secret.rewards[0];
+}
+
+/**
+ * VALE SECRETS as this save reads it: every nook found written out, every
+ * other one its place and a promise. The explorer run reads the whole book
+ * (`SECRETS_BOOK`), so every page can still be checked.
+ */
+export function secretsBookFor(known: SecretsKnown, explorerRun: boolean): LibraryBook {
+  if (explorerRun) return SECRETS_BOOK;
+  const rules = SECRETS_BOOK.pages.slice(0, SECRETS_BOOK.pages.length - SECRETS.length);
+  const found = SECRETS.filter((secret) => secretFound(secret, known)).length;
+  return {
+    ...SECRETS_BOOK,
+    // How far along, on the title page (the re-critic's fourth round).
+    blurb: `${SECRETS_BOOK.blurb}: ${found === 0 ? 'none found yet' : `${numberWord(found)} found`}`,
+    pages: [...rules, ...SECRETS.map((secret) => (secretFound(secret, known) ? secretPage(secret) : unfoundSecretPage(secret)))],
+  };
+}

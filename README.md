@@ -275,9 +275,10 @@ Not sure how something works? At the head of the Green, square behind its founta
 Library**: a librarian, a lot of shelves, three tall windows that show whatever sky you're actually
 playing under, and books lying open on lecterns. Face one and it fills
 the screen, open on its wooden plinth, and you turn its pages with the arrow keys or a click - each
-one curls over at the spine like a real page. The first teaches the Bolthole. And in the middle of
-the room, on a golden plinth of its own, there's a book on every secret in the vale... chained shut,
-until you've beaten Misty.
+one curls over at the spine like a real page. The first teaches you to raid, the next who's who in
+the harbour, then the Bolthole.
+And in the middle of the room, on a golden plinth of its own, there's a book on every secret in the
+vale... chained shut until you've beaten Misty, and then only the nooks you've found are written up.
 
 Keep an eye on the sand past the pleasure pier, too. Something washes up there in a bottle, and the
 old chart keeper at the Library's end bookcase gets *very* excited about it - excited enough to swing
