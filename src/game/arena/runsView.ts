@@ -105,9 +105,9 @@ export function cupBody(entries: readonly PickerEntry[], team: readonly string[]
   const yours =
     chosen.length > 0
       ? chosen.map((entry, index) => row(entry, true, index === 0)).join('')
-      : '<p class="px-empty px-wrap">Nobody yet. Bring up to three who keep the rule.</p>';
+      : '<p class="px-empty px-wrap">Nobody yet.</p>';
   const rest = others.map((entry, index) => row(entry, false, chosen.length === 0 && index === 0)).join('');
-  const rule = `<p class="px-wrap dojo-cup-rule">${escapeAttribute(`${cup.rule} ${cup.teaches}`)}</p>`;
+  const rule = `<p class="px-wrap dojo-cup-rule">${escapeAttribute(cup.rule)}</p>`;
   const next = `<p class="px-wrap">${escapeAttribute(`Bout ${bout} of ${CUP_RUN_BOUTS}: ${foe.name} brings ${teamWords(foe.team)}.`)}</p>`;
   const list = `${rule}${next}${pickerFindField()}<h3 class="px-subheading">Your side</h3>${yours}<h3 class="px-subheading">In your boxes</h3>${rest}`;
   const problem = cupSideProblem(side, cup);
@@ -193,7 +193,7 @@ export function rentalBody(
         ),
       )
       .join('');
-    list = `<p class="px-wrap">${escapeAttribute(`Today's pair: ${pair.why}`)}</p><h3 class="px-subheading">On loan today · Lv ${DOJO_LEVEL}</h3>${six}`;
+    list = `<h3 class="px-subheading">On loan today · Lv ${DOJO_LEVEL}</h3>${six}`;
   } else {
     const yours = team
       .map((species, index) =>

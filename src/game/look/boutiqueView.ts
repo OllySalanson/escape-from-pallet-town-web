@@ -185,7 +185,7 @@ function shopShelves(state: BoutiqueState): string {
     (kind) => `${shelfHeading(kind, SHELF_HEADINGS[kind])}${shelfPieces(kind, false).map((piece) => pieceCard(state, piece)).join('')}`,
   ).join('');
   const raid = WEARABLES.filter((piece) => piece.rarity === 'raid');
-  const found = `${shelfHeading('raid', 'Found on raids')}<p class="px-note px-wrap">Never on a shelf: legendary colours and shiny ones turn up on raids. Try them on all the same.</p>${raid.map((piece) => pieceCard(state, piece)).join('')}`;
+  const found = `${shelfHeading('raid', 'Found on raids')}${raid.map((piece) => pieceCard(state, piece)).join('')}`;
   return `${looks}${shelves}${found}${honourShelf(state)}`;
 }
 
@@ -198,8 +198,7 @@ function honourShelf(state: BoutiqueState): string {
   const shop = state.mode === 'shop';
   const shown = shop ? GYM_HONOURS : GYM_HONOURS.filter((honour) => state.honours.earned.includes(honour.id));
   if (shown.length === 0) return '';
-  const note = shop ? '<p class="px-note px-wrap">Never sold: each gym leader gives theirs to whoever beats them, and everybody sees you wear it.</p>' : '';
-  return `${shelfHeading('honours', 'Gym honours')}${note}${shown.map((honour) => honourCard(state, honour)).join('')}`;
+  return `${shelfHeading('honours', 'Gym honours')}${shown.map((honour) => honourCard(state, honour)).join('')}`;
 }
 
 /**
@@ -235,9 +234,7 @@ function wardrobeShelves(state: BoutiqueState): string {
     const pieces = WEARABLES.filter((piece) => piece.kind === kind && state.owned.has(piece.id));
     return pieces.length === 0 ? '' : `${shelfHeading(kind, SHELF_HEADINGS[kind])}${pieces.map((piece) => pieceCard(state, piece)).join('')}`;
   }).join('');
-  const more = WEARABLES.length - WEARABLES.filter((piece) => state.owned.has(piece.id)).length;
-  const tail = more > 0 ? `<p class="px-note px-wrap">${more} more on the shelves of ${BOUTIQUE_NAME}, on THE DOCKS, and a few that only turn up on raids.</p>` : '';
-  return `${head}${shelves}${tail}`;
+  return `${head}${shelves}`;
 }
 
 function classicCard(state: BoutiqueState): string {
@@ -294,7 +291,6 @@ export function commitBar(state: BoutiqueState): string {
   if (missing.length === 0) {
     return pixelCommitBar({
       title: changed ? 'This all fits' : 'What you have on',
-      lines: [`<small class="px-wrap">${changed ? 'Everything in the mirror is yours. Put it on and walk out in it.' : 'Try something on from the shelves: it shows in the mirror first.'}</small>`],
       actions: `<button class="px-window px-button is-primary" data-wear-it${changed ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(changed ? 'Wear this look from now on.' : 'You are already wearing this.')}">Wear this</button>${putBack}`,
     });
   }

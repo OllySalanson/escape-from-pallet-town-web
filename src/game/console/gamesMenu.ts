@@ -79,7 +79,7 @@ export function boardRows(game: ConsoleGame, board: Board | undefined): string {
       ? '<h3 class="px-subheading">Pallet Town · one score a player</h3>'
       : `<h3 class="px-subheading">This console only</h3><button class="px-row" aria-disabled="true" data-shows="${game.id}" data-help="Pallet Town did not answer, so these are the scores played on this console. Yours still count here."><span class="px-row-main"><span class="px-wrap px-warning">Pallet Town did not answer, so these are the scores played here.</span></span></button>`;
   if (board.entries.length === 0) {
-    return `${whose}<p class="px-empty px-wrap">No scores yet. Play a game and be the first name on it.</p>`;
+    return `${whose}<p class="px-empty px-wrap">No scores yet.</p>`;
   }
   const places = board.entries
     .map(
@@ -103,16 +103,13 @@ function nameBar(state: GamesMenuState): string {
     const okHelp = waiting ? `Play ${waiting.name} under this name.` : 'Keep this name for every board.';
     return pixelCommitBar({
       title: 'Your name',
-      lines: [`<small class="px-wrap">On every board, for everybody who plays. Up to ten: ${NAME_CHARACTERS_WORDS}</small>`],
+      lines: [`<small class="px-wrap">Up to ten: ${NAME_CHARACTERS_WORDS}</small>`],
       actions: `<form class="box-form console-name-form" data-name-form><input class="px-window px-field" name="name" value="${escapeAttribute(state.naming.value)}" maxlength="${PLAYER_NAME_MAX_LENGTH}" autocomplete="off" spellcheck="false" aria-label="Your name" placeholder="NAME" data-help="${escapeAttribute(namingHints(waiting))}" /><button type="submit" class="px-window px-button is-primary" data-help="${escapeAttribute(okHelp)}">OK</button><button type="button" class="px-window px-button" data-name-cancel data-help="Keep the name you had.">Cancel</button></form>`,
     });
   }
   const named = state.playerName !== null;
   return pixelCommitBar({
     title: named ? `Playing as ${state.playerName}` : 'Who is playing?',
-    lines: [
-      `<small class="px-wrap">${named ? 'Every game you finish goes on the Pallet Town board under this name.' : 'Type a name before you play: it goes on the boards beside your scores.'}</small>`,
-    ],
     actions: `<button class="px-window px-button" data-name data-help="Type the name your scores go under.">${named ? 'Change name' : 'Type a name'}</button>`,
   });
 }

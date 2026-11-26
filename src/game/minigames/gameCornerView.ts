@@ -98,11 +98,11 @@ export function jumpTeamMarkup(state: JumpTeamState): string {
   };
   const rows = [
     ...jumpers.map(row),
-    ...(grounded.length > 0 ? ['<h3 class="px-subheading">Can’t jump</h3>', `<p class="px-empty px-wrap">${JUMPERS_ARE}</p>`, ...grounded.map((candidate, index) => row(candidate, jumpers.length + index))] : []),
+    ...(grounded.length > 0 ? ['<h3 class="px-subheading">Can’t jump</h3>', ...grounded.map((candidate, index) => row(candidate, jumpers.length + index))] : []),
   ].join('');
   const empty =
     jumpers.length === 0
-      ? '<p class="px-empty px-wrap">Nobody here can jump. RATTATA, CHARMANDER, KRABBY and their like can: catch one on a raid.</p>'
+      ? '<p class="px-empty px-wrap">Nobody here can jump.</p>'
       : '';
   const last = state.last ? resultLines(state.last) : [];
   const chosen = state.chosen.length;
@@ -114,7 +114,7 @@ export function jumpTeamMarkup(state: JumpTeamState): string {
     title: state.last ? `Scored ${number(state.last.score)}` : 'POKéMON JUMP',
     lines: [
       ...last,
-      `<small class="px-wrap">${number(state.tickets)} tickets · best ${number(state.best)}. One key jumps everyone on the ground; a team of one kind lands together.</small>`,
+      `<small class="px-wrap">${number(state.tickets)} tickets · best ${number(state.best)}</small>`,
       `<small class="px-wrap">${cabinetRates('pokemon-jump')}</small>`,
     ],
     actions: play,
@@ -319,7 +319,7 @@ export function berryTeamMarkup(state: BerryTeamState): string {
   ].join('');
   const empty =
     birds.length === 0
-      ? '<p class="px-empty px-wrap">Nobody here can pick. A DODUO stands about the vale - catch one, and it is a DODRIO at 31.</p>'
+      ? '<p class="px-empty px-wrap">Nobody here can pick.</p>'
       : '';
   const ready = state.chosen !== null;
   const play = `<button class="px-window px-button is-primary" data-play${ready ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(ready ? 'LEFT, UP and RIGHT reach for the berry over that head. Ten on the ground ends it.' : 'Choose who picks first.')}">${state.last ? 'Again' : 'Play'}</button>`;
@@ -394,7 +394,9 @@ export function courseTeamMarkup(state: CourseTeamState): string {
     title: state.last ? `Round in ${state.last.time}` : 'FIELD-MOVE COURSE',
     lines: [
       ...(state.last ? resultLines({ score: 1, payout: state.last.payout, berries: [] }) : []),
-      `<small class="px-wrap">${ready ? `This team: ${moves}.${state.fastest ? ` Its fastest round is ${state.fastest}.` : ''}` : `Choose up to ${state.most} to go round with.`}${state.best ? ` Your best round is ${state.best}.` : ''}</small>`,
+      ...(ready || state.best
+        ? [`<small class="px-wrap">${ready ? `This team: ${moves}.${state.fastest ? ` Its fastest round is ${state.fastest}.` : ''}` : ''}${state.best ? `${ready ? ' ' : ''}Your best round is ${state.best}.` : ''}</small>`]
+        : []),
     ],
     actions: play,
   })}</main>`;

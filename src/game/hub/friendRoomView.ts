@@ -40,11 +40,10 @@ export interface FriendRoomScreen {
 /** What the screen says about everybody else in the room, as the room's channel has them. */
 export function friendStatusLine(
   friends: readonly { readonly name: string; readonly place: RaidPlace }[],
-  code: string,
   mapName: string,
 ): string {
   if (friends.length === 0) {
-    return `Nobody else is in yet. Your friends type ${code} under Raid with a friend.`;
+    return 'Nobody else is in yet.';
   }
   const each = friends
     .map((friend) => (friend.place === 'lab' ? `${friend.name} is getting ready.` : `${friend.name} is already on ${mapName}.`))
@@ -76,23 +75,19 @@ function choosingView(screen: FriendRoomScreen): string {
     { className: 'friend-make', heading: 'Make a room', note: 'on a map you know' },
   );
   const join = pixelWindow(
-    `<form class="box-bar box-form friend-join" data-room-form><input class="px-window px-field" name="code" value="${escapeAttribute(screen.typed)}" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Room code" placeholder="CODE" /><button type="submit" class="px-window px-chip"${disabled} data-help="Join the room with this code.">Join</button></form><p class="px-note px-wrap">Four letters, read out by whoever made the room.</p>`,
+    `<form class="box-bar box-form friend-join" data-room-form><input class="px-window px-field" name="code" value="${escapeAttribute(screen.typed)}" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Room code" placeholder="CODE" /><button type="submit" class="px-window px-chip"${disabled} data-help="Join the room with this code.">Join</button></form>`,
     { className: 'friend-join-window', heading: 'Join a friend' },
   );
-  return `<main class="px-body friend-layout">${make}${join}${pixelWindow(
-    `<p class="px-wrap">Up to four of you on one map, each with your own team, pack and clock. The loot goes to whoever steps on it first, one hunter chases you all, and a keeper one of you beats opens his doors for everyone. Leave by any exit alone.</p>`,
-    { className: 'friend-about', heading: 'Together, apart' },
-  )}</main>`;
+  return `<main class="px-body friend-layout">${make}${join}</main>`;
 }
 
 function heldView(screen: FriendRoomScreen, room: NonNullable<FriendRoomScreen['room']>): string {
   const whose = room.hostName ? `${room.hostName}’s room` : 'Your room';
   return `<main class="px-body friend-layout is-held">${pixelWindow(
-    `<p class="friend-code" data-room-code>${room.code}</p><p class="px-wrap">${room.hostName ? `You are in ${room.hostName}’s room.` : 'Read this code to up to three friends.'} The raid is on ${room.mapName}.</p><p class="px-wrap" data-room-friend aria-live="polite">${screen.friendLine}</p>`,
+    `<p class="friend-code" data-room-code>${room.code}</p>${room.hostName ? `<p class="px-wrap">You are in ${room.hostName}’s room.</p>` : ''}<p class="px-wrap" data-room-friend aria-live="polite">${screen.friendLine}</p>`,
     { className: 'friend-room', heading: whose, note: room.mapName },
   )}${pixelCommitBar({
     title: `Raid ${room.mapName} together`,
-    lines: ['<small class="px-wrap">Get ready at the RAID ARENA, west of the yard, as for any raid. You jump in when you are ready, not together.</small>'],
     actions: `<button class="px-window px-button" data-room-leave data-cursor-start data-help="Leave the room. Anybody else in it raids on without you.">Leave the room</button>`,
   })}</main>`;
 }

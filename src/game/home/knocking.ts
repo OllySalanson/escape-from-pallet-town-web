@@ -58,7 +58,7 @@ export function knockScreenMarkup(view: KnockView): string {
 
 function houseRows(houses: readonly HarbourHouse[]): string {
   if (houses.length === 0) {
-    return '<p class="px-empty px-wrap">Nobody else has a house yet. When somebody names theirs at their door, it is here.</p>';
+    return '<p class="px-empty px-wrap">Nobody else has a house yet.</p>';
   }
   const rows = houses
     .map(

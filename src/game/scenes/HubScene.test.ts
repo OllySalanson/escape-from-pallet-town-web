@@ -167,10 +167,11 @@ describe('the lobby as a screen of the game', () => {
     expect(stash).toContain('data-recover="charmander-1"');
   });
 
-  it('never tells the loadout to treat a fainted Pokemon a Potion cannot revive', () => {
+  it('counts the hurt and the fainted apart, and tells nobody what to do about them', () => {
     const { hub } = createWornHub();
     intoTheArena(hub);
-    expect(markupOf(hub)).toContain('1 hurt · treat them first');
+    expect(markupOf(hub)).toContain('1 hurt');
+    expect(markupOf(hub)).not.toContain('treat them first');
 
     const [partner] = hub.stash.listPokemon().filter((stored) => stored.id !== 'charmander-1');
     partner.pokemon.takeDamage(partner.pokemon.maxHp);
@@ -184,8 +185,8 @@ describe('the lobby as a screen of the game', () => {
     worn.pokemon.takeDamage(worn.pokemon.maxHp);
     hub.setView('bench');
     const wiped = markupOf(hub);
-    expect(wiped).toContain('2 fainted · see Nurse Joy');
-    expect(wiped).not.toContain('treat them first');
+    expect(wiped).toContain('2 fainted');
+    expect(wiped).not.toContain('see Nurse Joy');
     expect(wiped).not.toContain(`Add ${partner.pokemon.base.name}`);
     // The row says so too: no ADD on a Pokemon the party will not take.
     expect(wiped).toContain(`data-pokemon="${partner.id}" data-shows="${partner.id}" data-cursor-start aria-disabled="true"`);
@@ -489,9 +490,10 @@ describe('a panel over the hall', () => {
     expect(flowForGame(home).party.map(({ id }) => id)).toEqual(['charmander-1']);
   });
 
-  it('says of the partner, at the bench, that a wipe never takes it', () => {
+  it('lectures nobody about wipes on the bench, partner or not', () => {
     // A friend with only their starter took it off the bench and read "Lost on
-    // a wipe unless it is in the locker" over it (persona playtest, 23 Nov 2026).
+    // a wipe unless it is in the locker" over it (persona playtest, 23 Nov
+    // 2026); the captain then ruled the advice lines out altogether (25 Nov).
     const { hub } = createHub();
     const partnerId = hub.stash.partner()!.id;
     for (const stored of hub.stash.listPokemon()) {
@@ -500,8 +502,8 @@ describe('a panel over the hall', () => {
     hub.setView('bench');
     const markup = (hub as unknown as { content(): string }).content();
     const helpOf = (id: string): string => markup.match(new RegExp(`data-pokemon="${id}"[^>]*data-help="([^"]*)"`))?.[1] ?? '';
-    expect(helpOf(partnerId)).toContain('Your partner: a wipe never takes it.');
-    expect(helpOf('charmander-1')).toContain('Lost on a wipe unless it is in the locker.');
+    expect(helpOf(partnerId)).toMatch(/^Put .* on the bench\.$/);
+    expect(helpOf('charmander-1')).toMatch(/^Put .* on the bench\.$/);
   });
 
   it('will not jump with nobody on the bench, and says so', () => {
@@ -1969,7 +1971,8 @@ describe('what the base screen leads with', () => {
     const markup = markupOf(hub);
     const row = /<button class="px-row is-secured is-partner-place"[^]*?<\/button>/.exec(markup)?.[0] ?? '';
     expect(row).toContain('PARTNER');
-    expect(row).toContain('a wipe never takes your partner');
+    expect(row).toContain('is your partner.');
+    expect(row).not.toContain('wipe');
     expect(markup).not.toContain('A wipe will take');
     expect(markup).not.toContain('data-secure-pokemon="charizard-1"');
   });
@@ -2010,7 +2013,7 @@ describe('what the base screen leads with', () => {
     expect(internals.overlay.focus).toHaveBeenLastCalledWith('[data-pokemon="charmander-1"]');
   });
 
-  it('says on the bench who is coming, and on the rack what is packed', () => {
+  it('says on the bench who is coming, and lectures nothing under the rack', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');
     hub.flow.setItemQuantity('potion', 0);
@@ -2026,9 +2029,10 @@ describe('what the base screen leads with', () => {
     expect(slots).toMatch(/class="px-party-slot is-lead" data-pokemon="charmander-1"/);
     expect(slots.match(/px-party-slot is-empty/g)).toHaveLength(5);
 
+    // The pack's squares show what is packed; the rule about wipes is not
+    // lectured under them (the captain, 25 Nov 2026: no advice lines).
     hub.setView('rack');
-    expect(markupOf(hub)).toContain('1 supply packed.');
-    expect(markupOf(hub)).not.toContain('1 supplies');
+    expect(markupOf(hub)).not.toContain('Lost on a wipe');
   });
 
   it('says at the rim what a wipe would take and what comes home', () => {

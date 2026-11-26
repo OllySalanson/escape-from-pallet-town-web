@@ -312,7 +312,7 @@ export function thingsBody(view: ThingsView): string {
   const kinds = pockets.reduce((sum, { things }) => sum + things.length, 0);
   const stored = pixelWindow(
     `${strip}<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.supply)}>${
-      rows || '<p class="px-empty">Storage is empty. Whatever a raid brings home is kept here.</p>'
+      rows || '<p class="px-empty">Storage is empty.</p>'
     }</div>${details}`,
     { className: 'raid-pockets things-storage', heading: 'In storage', note: `${kinds} ${kinds === 1 ? 'kind' : 'kinds'}` },
   );

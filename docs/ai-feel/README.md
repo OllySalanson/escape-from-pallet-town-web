@@ -1,5 +1,8 @@
 # AI feel: who talks formally, and the lines to look at
 
+**The standing rule: no advice lines on a screen** - [no-advice-lines.md](no-advice-lines.md).
+What a screen may say, and where teaching goes instead.
+
 For the captain's call. Nothing here has been rewritten yet; the rewrite is the
 next piece of work, once the split below is agreed.
 
@@ -55,8 +58,8 @@ well as "It's a living. It's not a good one."
   (and `:295` "You came back"). Give each keeper their own way of saying it.
 - **"A drop, not a path."** `src/game/world/npcs.ts:198` and `:259` say the same
   shape twice ("is a drop, not a road"), on the retired maps.
-- **", never an upgrade or a heal."** `src/game/scenes/HubScene.ts:3926`: the
-  designer's voice in a screen's words.
+- **", never an upgrade or a heal."** on the partner swap: gone with the advice
+  lines (`no-advice-lines.md`, 25 Nov 2026).
 - `tools/mapcraft/worlds/greystoneVale/safariMarsh.ts:321` ("They do not say so,
   but you are still here") is a false alarm: an ordinary sentence. Every hit is a
   question for a person, never a fix to apply blind.

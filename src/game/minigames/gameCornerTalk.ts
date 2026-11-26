@@ -149,4 +149,4 @@ export function prizeClerkLines(progress: Pick<RaidProgress, 'gameCorner'>): rea
 }
 
 /** The window's own small print, under its list. */
-export const PRIZE_WINDOW_NOTE = `HELD BERRIES: ${BERRIES_A_DAY} a day. Each weather TM: one a week. A POKéMON goes to your boxes, furniture to THE BOLTHOLE (H there). At most ${DAILY_TICKET_CEILING} tickets a day.`;
+export const PRIZE_WINDOW_NOTE = `HELD BERRIES: ${BERRIES_A_DAY} a day. Each weather TM: one a week. At most ${DAILY_TICKET_CEILING} tickets a day.`;
