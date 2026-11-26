@@ -463,6 +463,7 @@ import {
   isStake,
   isStakeTrail,
   layDroppedPiece,
+  findName,
   lootRefusalLine,
   squaresFindNeeds,
   prizeWords,
@@ -6581,8 +6582,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   /**
    * What SPACE works on the tile faced, named as the harbour names a thing: a
    * way out with a lock or rubble in it, a night track, a field move's
-   * obstacle, a lever, a door with a card lock, or a cache or landmark that has
-   * something left in it. Asked of the same lookups `tryInteract` answers from,
+   * obstacle, a lever, a door with a card lock, a cache or landmark that has
+   * something left in it, or - facing nobody - a piece on the tile stood on
+   * (`lootUnderfoot`). Asked of the same lookups `tryInteract` answers from,
    * so the line is never offered where the press would say nothing. The one
    * line that is not a SPACE is a guard's (`world/guards.ts`): watching from a
    * few steps off, it names itself and what it guards before it comes.
@@ -6627,6 +6629,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       : undefined;
     if (lock && !this.switchThrown(lock)) {
       return spaceHint('LOCKED DOOR');
+    }
+    const underfoot = this.lootUnderfoot();
+    if (
+      underfoot &&
+      !this.currentMap.entities.some((entity) => this.entityHolds(entity, faced)) &&
+      !this.trainersForCurrentMap().some((trainer) => trainer.position.x === faced.x && trainer.position.y === faced.y)
+    ) {
+      return spaceHint(findName(underfoot.itemId, underfoot.quantity));
     }
     // A guard watching says so before it comes, which is how a first one is
     // read as a guard and not as a Pokemon that happened to be in the way.
@@ -7662,6 +7672,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return;
     }
     if (!entity && !trainer) {
+      // Facing nobody, SPACE takes what the player stands on (`lootUnderfoot`).
+      const underfoot = this.lootUnderfoot() ? this.tryCollectLootAt(this.currentTile) : null;
+      if (underfoot !== null) {
+        this.dialogBox.showMessage(underfoot);
+        return;
+      }
       this.tryFishAt(targetTile);
       return;
     }
@@ -10368,6 +10384,24 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return line === null ? [] : [line];
     });
     return said.length === 0 ? null : said.join(' ');
+  }
+
+  /**
+   * A piece still on the tile the player stands on: one the pack had no room
+   * for when it was walked onto, or one just put down. The refusal sends the
+   * player to the PACK to make room, and back from it SPACE takes the piece
+   * where they stand (`tryInteract`). It took a step off and back on: a friend
+   * made room, pressed SPACE on the medicine bag at their feet and nothing
+   * happened (first-hour playtest, 26 Nov 2026).
+   */
+  private lootUnderfoot(): WorldLoot | undefined {
+    if (!this.isLootAvailable()) {
+      return undefined;
+    }
+    const { x, y } = this.currentTile;
+    return this.lootForCurrentMap().find(
+      (loot) => loot.position.x === x && loot.position.y === y && !this.collectedLootIds.has(loot.id),
+    );
   }
 
   private tryCollectOnePiece(loot: WorldLoot): string | null {
