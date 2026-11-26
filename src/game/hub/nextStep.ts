@@ -174,7 +174,7 @@ export function nextStepLines(progress: NextStepProgress, vault: NextStepVault =
     // one just had (gyms playtest, 26 Nov 2026).
     const count = ['first', 'second', 'third', 'fourth'][banked] ?? 'next';
     return [
-      `${job ? `Next, your ${count} job: ${job.name.toUpperCase()}. Pick it at the RAID ARENA, before you jump.` : 'Another job will be on the rail.'}${mayAskAFavour(progress) ? ' And folk about the harbour may ask you a favour now.' : ''}`,
+      `${job ? `Next, your ${count} job: ${job.name.toUpperCase()}, on the rail.` : 'Another job will be on the rail.'}${mayAskAFavour(progress) ? ' And folk about the harbour may ask you a favour now.' : ''}`,
     ];
   }
   const gym = nextGym(progress.defeatedBosses);

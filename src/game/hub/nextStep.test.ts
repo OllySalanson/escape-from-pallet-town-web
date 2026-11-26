@@ -41,7 +41,7 @@ describe('the one next thing Oak says', () => {
   it('counts the job after a banked one, so the same name reads as counted', () => {
     // "Next, SEALED DISPATCH is on the rail" under JOB DONE AND BANKED read as
     // if the dispatch just banked had not counted (first-hour playtest, 26 Nov 2026).
-    expect(nextStepLines(raided(2, { standingContractsBanked: 1 }))[0]).toMatch(/^Next, your second job: [A-Z' ,.!-]+\. Pick it at the RAID ARENA, before you jump\./);
+    expect(nextStepLines(raided(2, { standingContractsBanked: 1 }))[0]).toMatch(/^Next, your second job: [A-Z' ,.!-]+, on the rail\./);
   });
 
   it('says the same after a raid that banked nothing, never that a new job is up', () => {
