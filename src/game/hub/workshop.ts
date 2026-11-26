@@ -209,16 +209,21 @@ export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
     id: 'quarantine-ward',
     icon: 'antidote',
     name: 'Quarantine ward',
-    effect: 'One revive per raid, free of clock.',
+    effect: 'Three revives per raid, free of clock.',
     detail:
-      'Once per raid, Nurse Joy brings one fainted Pokémon round free of clock.',
+      'Between raids, Nurse Joy brings up to three fainted Pokémon round free of clock: a whole raid party back from a wipe, for nothing.',
     cost: {
       supplies: [
         { itemId: 'linen-roll', quantity: 2 },
         { itemId: 'lamp-oil', quantity: 2 },
       ],
     },
-    wardTreatments: 1,
+    // Three beds: a raid party back from a wipe. One bed saved a single 0:35
+    // and, once Healing machine II made a revive 0:05, five seconds a raid for
+    // four materials - a rung with no job (the fresh critic, 25 Nov 2026). Its
+    // job now is the lost raid: the cheap early rung that makes coming back
+    // from one cost no clock, which the machines only shorten.
+    wardTreatments: 3,
   },
 ];
 

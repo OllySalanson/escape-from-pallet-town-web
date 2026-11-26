@@ -208,7 +208,7 @@ function wardLines(game: CounterGame, pending: number, ids: readonly string[], t
     return [];
   }
   if (terms.wardTreatments === 0) {
-    return ['THE WARD’s bed is used until your next raid.'];
+    return [`THE WARD’s ${wardTreatmentsPerRaid(game.raidProgress.workshopUpgrades) === 1 ? 'bed is' : 'beds are'} used until your next raid.`];
   }
   const bedded = wardBedIdsFor(game.stash, pending, ids, terms).flatMap((id) => {
     const stored = game.stash.listPokemon().find((each) => each.id === id);
