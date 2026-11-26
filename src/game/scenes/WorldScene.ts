@@ -447,8 +447,8 @@ import {
 } from '../world/guards';
 import { findWatchingTrainer, trainerSightTiles } from '../world/trainerSight';
 import {
+  spokenLineIndex,
   trainerChallengePrompt,
-  trainerDeclinedMessage,
   trainerWatchCaption,
 } from '../world/trainerEngagement';
 import { hasHunterIntel } from '../hub/workshop';
@@ -9292,11 +9292,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
    * and what is added is the sentence before it.
    */
   private askForTrainerChallenge(encounter: RunTrainerEncounter): void {
-    const prompt = trainerChallengePrompt(encounter.trainer.name, {
-      trainerParty: encounter.trainer.party,
-      trainerUnitCount: encounter.trainer.unitCount,
-      playerParty: this.party.pokemon,
-    });
+    const prompt = trainerChallengePrompt(encounter.trainer.name, encounter.introLines[spokenLineIndex(encounter.introLines)]);
     this.trainerPrompt = new ChoicePrompt(this, {
       x: Math.round((this.scale.width - DIALOG_WIDTH) / 2),
       y: this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
@@ -9384,10 +9380,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.trainerPrompt?.destroy();
     this.trainerPrompt = undefined;
     if (!accepted) {
+      // Backing away says nothing: the box closing is the answer, and the
+      // player walks on with the next key.
       audioManager.play('cancel');
-      // Raised as an interruption, so the player who just chose to walk away
-      // can walk away on the next key rather than having to read a box first.
-      this.interrupt([trainerDeclinedMessage(encounter.trainer.name)]);
       return;
     }
 
@@ -9398,7 +9393,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       introLines: encounter.introLines,
       isHunter: false,
     };
-    this.dialogBox.showMessages([...encounter.introLines]);
+    // The spoken line was the question; the rest is said before the fight.
+    const asked = spokenLineIndex(encounter.introLines);
+    const rest = encounter.introLines.filter((_, index) => index !== asked);
+    if (rest.length > 0) {
+      this.dialogBox.showMessages([...rest]);
+    } else {
+      this.handleRunResolutionComplete();
+    }
   }
 
   private handleTrainerPromptInput(): void {
