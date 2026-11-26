@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { letterShortcut } from '../input/touchShortcuts';
-import { controlsBarMarkup, keycapOf, keyPicture, splitRoundTeam, teamFrom, type BarTeamMember } from './controlsBar';
+import { controlsBarMarkup, keycapOf, menuOverTheGame, keyPicture, splitRoundTeam, teamFrom, type BarTeamMember } from './controlsBar';
 
 const yard = [
   letterShortcut('L', 'LOOK'),
@@ -71,5 +71,24 @@ describe('the controls bar', () => {
     expect(keycapOf('Digit1')).toBe('1');
     expect(keyPicture('PACK')).toBe('raid-pack');
     expect(keyPicture('LOOK')).toBeUndefined();
+  });
+});
+
+describe('the controls bar under a full-screen menu', () => {
+  const running = (extra: object = {}) => ({ sys: { isActive: () => true }, ...extra });
+  const paused = (extra: object = {}) => ({ sys: { isActive: () => false }, ...extra });
+  const harbour = { touchShortcuts: () => [letterShortcut('L', 'LOOK')] };
+
+  it('offers no keys of the harbour under a menu that has none of its own', () => {
+    expect(menuOverTheGame([paused(harbour), running()])).toBe(true);
+  });
+
+  it('offers the harbour its keys while the harbour is what is running', () => {
+    expect(menuOverTheGame([running(harbour)])).toBe(false);
+    expect(menuOverTheGame([running(harbour), paused()])).toBe(false);
+  });
+
+  it('leaves a fight to dim the raid keys rather than take them away', () => {
+    expect(menuOverTheGame([paused(harbour), running({ dimsTouchTray: true })])).toBe(false);
   });
 });

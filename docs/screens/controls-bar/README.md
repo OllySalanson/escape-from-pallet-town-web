@@ -13,3 +13,4 @@ gives us space to add the settings in as well"). `ui/controlsBar.ts`; where it s
 
 Made against a test-mode build with throwaway drivers built on `tools/playtest/browser.mjs`
 and `deploy.mjs` (open the harbour, take Squirtle, photograph; deploy and photograph the raid).
+- `under-a-menu-1280x800.png` - under a screen with no keys of its own (THE HARBOUR BOUTIQUE): no harbour keys, the team unpressed, SETTINGS and HELP (`menuOverTheGame`).

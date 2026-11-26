@@ -1,7 +1,7 @@
 import { BAR_MARGIN, barColumnLeft, type BarPlacement } from '../display/controlsBarLayout';
 import { FULL_SCREEN_KEYS } from '../display/fullScreen';
 import { sendKey } from '../input/syntheticKeys';
-import type { TouchShortcut } from '../input/touchShortcuts';
+import { dimsTouchTray, hasTouchShortcuts, type TouchShortcut } from '../input/touchShortcuts';
 import { iconMarkup } from './icons';
 import { monIconCell, monIconPace } from './monIcon';
 import { escapeAttribute } from './pixelUi';
@@ -54,6 +54,24 @@ export function teamFrom(scenes: readonly unknown[]): readonly BarTeamMember[] {
     }
   }
   return [];
+}
+
+/**
+ * Whether a screen with no keys of its own is up over the game - the
+ * Boutique, Bill's, Brock's, the Pokédex: the topmost running scene answers
+ * none. The keys of the harbour under it would be offered otherwise, and LOOK
+ * or MAP pressed there does nothing; so the bar offers none of them, and the
+ * team stands on it unpressed. A fight over a raid dims the raid's keys
+ * instead (`dimsTouchTray`), as the touch pad does.
+ */
+export function menuOverTheGame(scenes: readonly unknown[]): boolean {
+  for (const scene of [...scenes].reverse()) {
+    const running = (scene as { sys?: { isActive?: () => boolean } } | null)?.sys?.isActive?.() === true;
+    if (running) {
+      return !hasTouchShortcuts(scene) && !dimsTouchTray(scene);
+    }
+  }
+  return false;
 }
 
 /** The team's own key: the team tile presses it. */
@@ -208,7 +226,7 @@ export function installControlsBar(host: ControlsBarHost): ControlsBar {
       return;
     }
     const scenes = host.scenes();
-    before = shortcutsFrom(scenes, before);
+    before = menuOverTheGame(scenes) ? [] : shortcutsFrom(scenes, before);
     const markup = controlsBarMarkup(before, teamFrom(scenes), host.fullScreen());
     if (markup !== shown) {
       shown = markup;
