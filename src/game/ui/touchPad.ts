@@ -115,11 +115,37 @@ export function padTextSize(devicePixelRatio: number, stems = 1): number {
 }
 
 /**
- * The keys shared between the trays, each kept where it stands: the standing
- * keys in their own places - the first half over the left thumb on a phone on
- * its side, the rest over the right - and the keys a moment or a screen adds
- * after them, never between, so a key once learned by where it is stays there.
+ * The pad's words one stem thinner than `padTextSize`, still on whole device
+ * pixels: for a key whose word fits neither one line nor two (a key drawn
+ * short on a phone on its side), rather than cut off.
  */
+export function padSmallTextSize(devicePixelRatio: number): number {
+  const ratio = devicePixelRatio > 0 ? devicePixelRatio : 1;
+  const stem = Math.max(1, Math.round((padTextSize(ratio) * ratio) / 12.5) - 1);
+  return (12.5 * stem) / ratio;
+}
+
+/**
+ * A key's word as the parts it may break between onto a second line: at its
+ * spaces, and after a slash ("SHELVES/BAR"), where a word joined by one has
+ * no space to break at.
+ */
+export function chipWordParts(label: string): string[] {
+  return label.split(/(?<=\/)/);
+}
+
+/**
+ * How a key's word is fitted into its key: on one line as designed, on two
+ * where one line would run past the key's edges (FULL REPORT on a 375-wide
+ * phone), and a stem thinner where two lines are taller than the key.
+ */
+export function chipFit(overflows: (fit: 'line' | 'wrap' | 'small') => boolean): 'line' | 'wrap' | 'small' {
+  if (!overflows('line')) {
+    return 'line';
+  }
+  return overflows('wrap') ? 'small' : 'wrap';
+}
+
 /** The rows `count` keys take in a tray `columns` wide: never fewer than the tray is laid out for. */
 export function rowsFor(count: number, columns: number): number {
   return Math.max(TRAY_ROWS, Math.ceil(count / Math.max(1, columns)));
@@ -153,6 +179,12 @@ export function trayOrder<T>(keys: readonly T[], columns: number, rowsGiven: num
   return [...over, ...Array.from({ length: spare }, () => null), ...keys.slice(0, held)];
 }
 
+/**
+ * The keys shared between the trays, each kept where it stands: the standing
+ * keys in their own places - the first half over the left thumb on a phone on
+ * its side, the rest over the right - and the keys a moment or a screen adds
+ * after them, never between, so a key once learned by where it is stays there.
+ */
 export function shareKeys<T extends { readonly code: string; readonly extra?: boolean }>(keys: readonly T[], trays: number): T[][] {
   const standing = keys.filter((key) => !key.extra);
   const extra = keys.filter((key) => key.extra);
@@ -545,11 +577,28 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
             chip.dataset.key = shortcut.code;
           }
           chip.classList.toggle('is-open', screenUp && shortcut.code === openedBy);
-          chip.textContent = shortcut.label;
+          // A word joined by a slash breaks after it, which a <wbr> allows
+          // and the key's text (what a driver reads) does not show.
+          chip.replaceChildren(
+            ...chipWordParts(shortcut.label).flatMap((part, index) => (index === 0 ? [part] : [document.createElement('wbr'), part])),
+          );
           return chip;
         }),
       );
     });
+    fitChipWords();
+  };
+  /** Every key's word fitted to its key (`chipFit`): measured, because the font's widths are its own. */
+  const fitChipWords = () => {
+    for (const chip of trays.querySelectorAll<HTMLElement>('.tp-chip:not(.is-spare)')) {
+      const fit = chipFit((tried) => {
+        chip.classList.toggle('is-wrapped', tried !== 'line');
+        chip.classList.toggle('is-small', tried === 'small');
+        return chip.scrollWidth > chip.clientWidth || chip.scrollHeight > chip.clientHeight;
+      });
+      chip.classList.toggle('is-wrapped', fit !== 'line');
+      chip.classList.toggle('is-small', fit === 'small');
+    }
   };
   const watchShortcuts = setInterval(() => {
     if (layout) {
@@ -581,6 +630,7 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
       root.style.setProperty('--tp-unit', `${unit}px`);
       root.style.setProperty('--tp-text', `${padTextSize(ratio)}px`);
       root.style.setProperty('--tp-text-big', `${padTextSize(ratio, 1.5)}px`);
+      root.style.setProperty('--tp-text-small', `${padSmallTextSize(ratio)}px`);
       root.style.setProperty('--tp-chip-height', `${Math.round(48 * Math.min(1, next.padScale))}px`);
       place(dpad, next.dpad, ratio);
       place(buttons, next.buttons, ratio);
