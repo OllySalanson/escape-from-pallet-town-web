@@ -68,18 +68,21 @@ describe('the title menu', () => {
     expect(menu.question).toMatch(/ERASE/);
   });
 
-  it('moves the cursor over enabled choices only, in reading order, and stops at the ends', () => {
+  it('moves the cursor up and down by rows, over enabled choices only, and stops at the ends', () => {
     const fresh = titleMenu(NONE);
     expect(moveTitleChoice(fresh, 'new', -1)).toBe('new');
     expect(moveTitleChoice(fresh, 'new', 1)).toBe('maker');
-    expect(moveTitleChoice(fresh, 'maker', 1)).toBe('playtest');
+    // PLAYTEST stands beside MAKE A MAP, not under it: Down never goes sideways
+    // (the navigation audit, 25 Nov 2026); Right is the way there.
+    expect(moveTitleChoice(fresh, 'maker', 1)).toBe('maker');
     expect(moveTitleChoice(fresh, 'playtest', 1)).toBe('playtest');
 
     const played = titleMenu(GAME);
     expect(moveTitleChoice(played, 'continue', 1)).toBe('new');
     expect(moveTitleChoice(played, 'new', 1)).toBe('maker');
     expect(moveTitleChoice(played, 'new', -1)).toBe('continue');
-    expect(moveTitleChoice(played, 'playtest', -1)).toBe('maker');
+    expect(moveTitleChoice(played, 'playtest', -1)).toBe('new');
+    expect(moveTitleChoice(played, 'maker', -1)).toBe('new');
   });
 
   it('moves left and right only between the two choices that share a row', () => {
