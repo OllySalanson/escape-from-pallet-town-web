@@ -205,7 +205,7 @@ describe('Professor Oak, from the mat', () => {
       expect(oak.asked).toHaveLength(1);
       const favour = oak.said.findIndex((line) => line.includes('Before you go!'));
       expect(favour).toBeGreaterThan(oak.said.indexOf(FIRST_WORDS.lab.lines[1]));
-      expect(favour).toBeLessThan(oak.said.findIndex((line) => line.includes('is on the rail')));
+      expect(favour).toBeLessThan(oak.said.findIndex((line) => line.includes('Next, your second job')));
     } finally {
       retireMapsForTests([]);
     }
