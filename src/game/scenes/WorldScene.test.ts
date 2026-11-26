@@ -264,16 +264,18 @@ describe('hunter disengagement wiring', () => {
     );
   });
 
-  it('lets a player walk out of a dialogue they did not open', () => {
-    // A box that only answers to SPACE and ENTER never says so, so the reflex -
-    // press a direction - has to advance the ones the world raised on its own.
+  it('answers a direction key under a dialogue by naming the key that reads on, never by reading on', () => {
+    // A box that only answers to SPACE and ENTER never said so, so the reflex -
+    // press a direction - used to advance the ones the world raised on its own.
+    // Arrows only move (the navigation audit, 25 Nov 2026): the box names SPACE.
     const advance = sceneSource.slice(
       sceneSource.indexOf('private isDialogAdvancePressed('),
       sceneSource.indexOf('private handleDialogInput('),
     );
     expect(advance).toContain('this.isInteractionPressed()');
-    expect(advance).toContain('this.unsolicitedDialog');
     expect(advance).toContain('this.directionKeys.some(');
+    expect(advance).toContain('this.dialogBox.nudge();');
+    expect(advance).toContain('return false;');
     const directionKeys = sceneSource.slice(
       sceneSource.indexOf('private get directionKeys('),
       sceneSource.indexOf('private isInteractionPressed('),
@@ -301,7 +303,6 @@ describe('hunter disengagement wiring', () => {
       sceneSource.indexOf('private resetStateFromPreviousRaid('),
       sceneSource.indexOf('public create('),
     );
-    expect(reset).toContain('this.unsolicitedDialog = false;');
     expect(reset).toContain('this.spentPresses = new SpentPresses();');
   });
 

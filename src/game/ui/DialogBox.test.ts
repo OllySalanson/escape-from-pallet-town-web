@@ -169,4 +169,22 @@ describe('DialogBox', () => {
     // The next line is not held unless asked.
     expect(box.isCurrentMessageComplete).toBe(true);
   });
+  /**
+   * The navigation audit (25 Nov 2026): an arrow read a trainer's or the
+   * hunter's line on and nobody else's. Now an arrow never reads on, and the box
+   * answers it by naming the key that does.
+   */
+  it('names SPACE where the prompt stands when nudged by a key that does not read on, and only once the line is whole', () => {
+    const { box } = baseBox();
+    const prompt = () => (box as unknown as { indicatorObject: FakeText }).indicatorObject.text;
+    box.showMessages(['RAIDER MAYA wants to fight!', 'Here she comes.']);
+    box.nudge();
+    expect(prompt()).toBe('▼');
+
+    box.skip();
+    box.nudge();
+    expect(prompt()).toBe('SPACE ▼');
+    // Nothing was read on.
+    expect((box as unknown as { textObject: FakeText }).textObject.text).toBe('RAIDER MAYA wants to fight!');
+  });
 });
