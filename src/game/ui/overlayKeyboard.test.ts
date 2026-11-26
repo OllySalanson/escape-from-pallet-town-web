@@ -348,6 +348,18 @@ describe('an open overlay owns the keyboard', () => {
     overlay.destroy();
   });
 
+  it('hands it Tab out of a text field, so the highlight stays in the panel', () => {
+    // The navigation audit (25 Nov 2026): Tab from YOUR TEAM's FIND box walked
+    // the focus out of the panel into the page, and the highlight was gone.
+    const overlay = openOverlay();
+
+    fakeWindow.press({ key: 'Tab', target: { tagName: 'INPUT' } });
+    fakeWindow.press({ key: 'Tab', ctrlKey: true, target: { tagName: 'INPUT' } });
+
+    expect(overlay.keys).toEqual(['Tab']);
+    overlay.destroy();
+  });
+
   it('takes a held Enter or Space as one press: the repeats work nothing, on screen or in the browser', () => {
     // Playtest 26 #7: Enter held on `Review & deploy` ran through the final
     // check into the raid, and held on a Potion drank the pack. The browser

@@ -339,10 +339,13 @@ export class MenuOverlay {
         return remembered ?? indices.find((index) => controls[index].hasAttribute('data-cursor-start'));
       },
     );
-    if (target !== undefined) {
-      controls[target].focus();
-      this.scrollPastTopCut(controls[target]);
-    }
+    // A screen of one area - a field and its buttons - steps to the next control
+    // round the panel instead, Shift+Tab the one before, and still never out.
+    const current = controls.indexOf(document.activeElement as HTMLElement);
+    const step = this.shiftHeld ? controls.length - 1 : 1;
+    const next = target ?? (current < 0 ? 0 : (current + step) % controls.length);
+    controls[next].focus();
+    this.scrollPastTopCut(controls[next]);
     return true;
   }
 
