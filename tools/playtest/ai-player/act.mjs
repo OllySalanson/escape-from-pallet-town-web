@@ -3,7 +3,7 @@
 // screen looks like after it. See PLAYTEST.md beside this for how an AI plays
 // with it, and README.md for how a person starts and watches a run.
 //
-//   node tools/playtest/ai-player/act.mjs start --persona=veteran|newcomer [--resume=<run-id>] [--save=<file>] [--harbour=local] [--port=CDP]
+//   node tools/playtest/ai-player/act.mjs start --persona=veteran|newcomer [--resume=<run-id>] [--save=<file>] [--storage=<file>] [--harbour=local] [--port=CDP]
 //   node tools/playtest/ai-player/act.mjs look [--json]
 //   node tools/playtest/ai-player/act.mjs walk <x> <y> | walk <name on screen> | walk way | walk left [tiles]
 //   node tools/playtest/ai-player/act.mjs talk [up|down|left|right]
@@ -22,6 +22,7 @@
 // `--run=<id>`. The game sits paused between commands, so a run costs the
 // machine nothing while the AI is thinking.
 import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
@@ -52,7 +53,13 @@ const repo = resolve(here, '../../..');
 const BUILD_ROOT = resolve(process.env.EPTW_AI_BUILD ?? join(here, '.build'));
 const BUILD_DIR = join(BUILD_ROOT, 'escape-from-pallet-town-web');
 const FM_BROWSER = process.env.EPTW_AI_FM_BROWSER ?? '/home/ollys/firstmate/data/tools/fm-browser.sh';
-const BROWSER_NAME = process.env.EPTW_AI_BROWSER_NAME ?? 'eptw-ai-player';
+/**
+ * One browser per copy of the repository: several workers on this machine play
+ * at once, each from its own worktree, and under one shared name each one's
+ * `start` restarted the browser every other was playing in - a critic's tab
+ * died twice mid-raid (26 Nov 2026). `EPTW_AI_BROWSER_NAME` still names it.
+ */
+const BROWSER_NAME = process.env.EPTW_AI_BROWSER_NAME ?? `eptw-ai-player-${createHash('sha1').update(repo).digest('hex').slice(0, 8)}`;
 /** The browser helper stops a browser nobody has asked for in 30 minutes; ask well inside that. */
 const TOUCH_BROWSER_EVERY_MS = 10 * 60_000;
 /**
@@ -148,12 +155,25 @@ const alive = (pid) => {
 };
 
 /** Opens the game in a new tab of the browser on `cdpPort`, with a save seeded if given, and pauses it. */
-async function openGame(cdpPort, url, save) {
+async function openGame(cdpPort, url, save, storage = null) {
   const target = await (await fetch(`http://127.0.0.1:${cdpPort}/json/new?about:blank`, { method: 'PUT' })).json();
   const page = await reattachPage(cdpPort, target.id, { window: LOGIC_WINDOW });
   await page.send('Emulation.setDeviceMetricsOverride', { ...LOGIC_WINDOW, deviceScaleFactor: 1, mobile: false });
   await page.send('Network.enable');
   await page.send('Network.setBlockedURLs', { urls: ['*supabase.co*'] });
+  // A whole page's storage - a save and the raid written down beside it
+  // (`run/raidResume.ts`) - so CONTINUE takes a raid up where it stood
+  // (`graveyardRaid.mjs` writes one). Written once for this storage, over
+  // whatever the origin held, and never again on a reload, which would undo
+  // the run. The tab that wrote it is gone, so its pulse is left out: kept,
+  // the raid read as live in another tab and CONTINUE went home instead.
+  if (storage) {
+    const marker = `eptw-ai-player.seeded.${createHash('sha1').update(JSON.stringify(storage)).digest('hex').slice(0, 12)}`;
+    const keys = Object.fromEntries(Object.entries(storage).filter(([k]) => !k.endsWith('.raid-pulse')));
+    await page.send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `if (localStorage.getItem(${JSON.stringify(marker)}) === null) { for (const k of Object.keys(localStorage)) if (k.startsWith('escape-from-pallet-town')) localStorage.removeItem(k); for (const [k, v] of Object.entries(${JSON.stringify(keys)})) localStorage.setItem(k, v); localStorage.setItem(${JSON.stringify(marker)}, '1'); }`,
+    });
+  }
   if (save) {
     await page.send('Page.addScriptToEvaluateOnNewDocument', {
       source: `if (!localStorage.getItem(${JSON.stringify(SAVE_KEY)})) localStorage.setItem(${JSON.stringify(SAVE_KEY)}, ${JSON.stringify(save)});`,
@@ -205,15 +225,33 @@ async function start() {
   // `--save=<file>` starts from a save of the caller's own (a seeded state, or
   // one copied out of another run) rather than the run's.
   const save = flags.save ? readFileSync(resolve(flags.save), 'utf8') : existsSync(savePath) ? readFileSync(savePath, 'utf8') : null;
-  const { page, targetId } = await openGame(cdpPort, url, save);
+  // The run's whole storage, copied out beside its save, is what a resume
+  // takes up first: the save alone has a raid in flight and not the raid
+  // written down beside it, so a tab lost mid-raid came back to the harbour
+  // with the raid abandoned and its pack gone (critic round, 26 Nov 2026).
+  const storagePath = join(runDir(runId), 'storage.json');
+  const storage = flags.storage
+    ? JSON.parse(readFileSync(resolve(flags.storage), 'utf8'))
+    : resume && !flags.save && existsSync(storagePath)
+      ? JSON.parse(readFileSync(storagePath, 'utf8'))
+      : null;
+  const { page, targetId } = await openGame(cdpPort, url, storage ? null : save, storage);
   writeSession(runId, { cdpPort, targetId, serverPort, serverPid, url, browserName: flags.port ? null : BROWSER_NAME, touchedAt: Date.now() });
   setCurrentRun(runId);
   writeStatus({ ...status, doing: 'at the title screen', lastActionAt: Date.now() });
   const hands = createHands(page);
   const screen = await hands.settle(100);
-  console.log(`RUN ${runId} (${status.personaLabel})${save ? ' - resumed from its save' : ''}`);
+  console.log(`RUN ${runId} (${status.personaLabel})${storage ? ' - from the storage given' : save ? ' - resumed from its save' : ''}`);
   console.log(renderScreen(screen));
   await page.close();
+}
+
+/** Every key of the game's own storage, copied out to the run's `storage.json`. */
+async function copyStorageOut(page, runId) {
+  const storage = await page.evaluate(
+    `JSON.stringify(Object.fromEntries(Object.keys(localStorage).filter((k) => k.startsWith('escape-from-pallet-town')).map((k) => [k, localStorage.getItem(k)])))`,
+  );
+  if (storage && storage !== '{}') writeFileSync(join(runDir(runId), 'storage.json'), storage);
 }
 
 async function stopRun(runId, why) {
@@ -224,6 +262,7 @@ async function stopRun(runId, why) {
       const page = await reattachPage(session.cdpPort, session.targetId);
       const save = await page.evaluate(`localStorage.getItem(${JSON.stringify(SAVE_KEY)})`);
       if (save) writeFileSync(join(runDir(runId), 'save.json'), save);
+      await copyStorageOut(page, runId);
       await page.close();
       await fetch(`http://127.0.0.1:${session.cdpPort}/json/close/${session.targetId}`).catch(() => undefined);
     } catch {
@@ -348,6 +387,7 @@ async function act(runId) {
   // The save, copied out after every action, so a run can be picked up again in a new browser.
   const save = await page.evaluate(`localStorage.getItem(${JSON.stringify(SAVE_KEY)})`);
   if (save) writeFileSync(join(runDir(runId), 'save.json'), save);
+  await copyStorageOut(page, runId);
   // Memory, and a reload from the save when it has grown past what the watchdog allows.
   const memory = session.browserName ? browserMb(session.browserName) : null;
   let reloaded = false;

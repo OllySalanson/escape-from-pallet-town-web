@@ -142,6 +142,13 @@ and `--party` put the Charmander in a status and photograph the POKéMON list
 (`docs/screens/firered-move-text/`). `--full-pack` fills the pack and throws a ball, photographing the
 refusal and the panel it opens (`docs/screens/no-room-line/`).
 
+`graveyardRaid.mjs <test-mode build url> <storage.json> [--level=N] [--team=..] [--pack=..]`
+puts the page's clock at eleven at night, deploys at Moor Top, walks the sheep track
+through the fog to the Moor Chapel's churchyard and writes the page's whole storage
+out - the save and the raid written down beside it - so the AI playtester can be
+started there (`ai-player/act start --storage=<file>`, then CONTINUE): a critic
+playing one place's battles starts in that place.
+
 `battleKeys.mjs <test-mode build url> <dir> [--port=N]` reads a wild fight's
 opening lines with mouse clicks alone, rests the pointer on ITEM (lit, the cursor
 still on FIGHT), moves with D and runs Right past the end of the row, which must
