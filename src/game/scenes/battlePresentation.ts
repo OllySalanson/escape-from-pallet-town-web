@@ -343,7 +343,7 @@ export interface PlateLayout {
    */
   readonly hpLabelX: number;
   readonly barWidth: number;
-  /** A double battle's plate carries the typing; a single battle's banner does. */
+  /** The double battle's compact plate: small type, and its HP beside the bar. */
   readonly showsTyping: boolean;
 }
 
@@ -1241,29 +1241,6 @@ export const stoppedEvolvingLine = (name: string): string =>
  * cancel exists at all: a fully evolved partner can never be secured.
  */
 export const STOP_EVOLVING_HINT = 'ESC: STOP EVOLVING';
-
-/**
- * The HUD banner names the side and its typing, so incoming damage is readable.
- * The player's side is YOURS and no longer: the banner starts at the plate's left
- * edge, and YOUR POKeMON with two long types ran past the plate and, for the
- * longest pair, past the screen.
- */
-export type BannerRole = 'WILD' | 'FOE' | 'RIVAL' | 'YOURS';
-
-/**
- * Whose Pokemon the enemy plate belongs to. RIVAL is the hunter's word - it
- * was once "A RIVAL HUNTER is on your trail", and is Blue and the four gym
- * leaders who take turns at it now - and every trainer once fought under it, so
- * the toll keeper's Pidgey read as the hunter's. An authored trainer is a FOE,
- * short enough that two long types still end inside the plate.
- */
-export const enemyBannerRole = (battle: {
-  readonly trainer: boolean;
-  readonly hunter: boolean;
-}): BannerRole => (battle.hunter ? 'RIVAL' : battle.trainer ? 'FOE' : 'WILD');
-
-export const combatantBanner = (role: BannerRole, types: readonly PokemonType[]): string =>
-  `${role}  ${formatTypeList(types)}`;
 
 /**
  * One line of battle log per event. Damaging hits carry the HP they took, so a
