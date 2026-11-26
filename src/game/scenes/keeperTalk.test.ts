@@ -103,6 +103,7 @@ function room(manager: SaveManager, answers: readonly boolean[] = []) {
     joyOffers: scene.joyOffers,
     freshGame: scene.freshGame,
     brockQuotes: scene.brockQuotes,
+    openWorkshop: scene.openWorkshop,
     billReadsYou: scene.billReadsYou,
     billNames: scene.billNames,
     billStrikes: scene.billStrikes,
@@ -372,38 +373,36 @@ describe('Brock, from the mat', () => {
   const stocked = (progress: Partial<RaidProgress> = HEARD): SaveManager =>
     saved(progress, (stash) => stash.addItem('linen-roll', 4));
 
-  it('says what his chalk is once, then quotes what the vault can pay for: nothing opens', () => {
+  it('says what his chalk is once, then what the vault can pay for, and opens his screen on it', () => {
     const manager = stocked({});
-    const brock = room(manager, [false]);
+    const brock = room(manager);
     brock.speak('brocks-workshop', 'workshop');
     expect(brock.said.slice(0, FIRST_WORDS.workshop.lines.length)).toEqual(FIRST_WORDS.workshop.lines);
     expect(brock.said.join(' ')).toContain('Healing machine I.');
-    expect(brock.asked).toHaveLength(1);
-    expect(brock.opened).toEqual([]);
+    expect(brock.opened).toEqual([expect.objectContaining({ view: 'workshop', build: 'recovery-bay-1' })]);
 
-    const again = room(manager, [false]);
+    const again = room(manager);
     again.speak('brocks-workshop', 'workshop');
     expect(again.said).not.toContain(FIRST_WORDS.workshop.lines[0]);
   });
 
-  it('spends nothing on NOT NOW', () => {
+  it('never asks a question or builds from the dialogue box: the screen is the one way to build (the owner, 26 Nov 2026)', () => {
     const manager = stocked();
-    const brock = room(manager, [false]);
+    const brock = room(manager, [true, true, true]);
     brock.speak('brocks-workshop', 'workshop');
+    expect(brock.asked).toEqual([]);
     const after = manager.load()!;
     expect(after.raidProgress.workshopUpgrades).toEqual([]);
     expect(after.stash.itemCount('linen-roll')).toBe(4);
     expect(brock.went).toEqual([]);
   });
 
-  it('builds on YES, in one write, and draws the room again to say so where he stands', () => {
-    const manager = stocked();
-    const brock = room(manager, [true]);
+  it('with nothing he can afford, still says what is next and opens the screen on it', () => {
+    const manager = saved(HEARD);
+    const brock = room(manager);
     brock.speak('brocks-workshop', 'workshop');
-    const after = manager.load()!;
-    expect(after.raidProgress.workshopUpgrades).toEqual(['recovery-bay-1']);
-    expect(after.stash.itemCount('linen-roll')).toBe(0);
-    expect(brock.went[0].said?.[0]).toBe("Healing machine I is in, and it's staying.");
+    expect(brock.said.join(' ')).toContain('Radio mast.');
+    expect(brock.opened).toEqual([expect.objectContaining({ view: 'workshop', build: 'radio-mast' })]);
   });
 });
 

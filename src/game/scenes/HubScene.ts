@@ -252,6 +252,11 @@ export interface HubSceneData {
   /** Over the fence at once, with the card never drawn: there is nothing on it to decide (`hub/firstRaid.ts`). */
   readonly straightOver?: boolean;
   /**
+   * BROCK'S WORKSHOP's card the cursor starts on: the build Brock has just
+   * talked about, or the chalked bay the player walked up to.
+   */
+  readonly build?: string;
+  /**
    * The rim's card opened by a player just home from a raid, who has not taken
    * a step: the cursor starts on the card's first row, so SPACE pressed through the result
    * screen does not carry on over the fence (`BaseScene.homeOnTheRail`).
@@ -401,6 +406,8 @@ export class HubScene extends Phaser.Scene {
    * are (`armedDeal`).
    */
   private workshopArmed: string | undefined;
+  /** The build BROCK'S WORKSHOP opened on (`HubSceneData.build`). */
+  private workshopStartsOn: string | undefined;
   /**
    * The deal on the boat asked but not yet struck: a barter id, `BERTH_DEAL`,
    * or a shelf row's `stockDeal`.
@@ -499,6 +506,7 @@ export class HubScene extends Phaser.Scene {
     this.enteredFrom = data.from;
     this.enteredAt = data.at;
     this.straightOver = data.straightOver === true;
+    this.workshopStartsOn = data.build;
     this.justHome = data.justHome === true;
     this.waitedSky = undefined;
     this.jobPick = undefined;
@@ -3808,7 +3816,10 @@ export class HubScene extends Phaser.Scene {
    */
   private workshopView(): string {
     const ladder = this.workshopLadder;
-    const first = ladder.find((offer) => offer.affordable) ?? ladder.find((offer) => offer.state !== 'built');
+    const first =
+      ladder.find((offer) => offer.upgrade.id === this.workshopStartsOn) ??
+      ladder.find((offer) => offer.affordable) ??
+      ladder.find((offer) => offer.state !== 'built');
     const rows = ladder
       .map((offer) => {
         const { upgrade } = offer;
@@ -3830,7 +3841,11 @@ export class HubScene extends Phaser.Scene {
             icon: `<span class="workshop-stage">${picture}</span>`,
             // One line, as the card it stands in for: the row stays low.
             name: cardName(upgrade.name),
-            question: `Spend ${spent} on it for good?`,
+            // Short enough for one line of the card: three lines of it made the
+            // card taller than the row, and the room above halved its size the
+            // moment BUILD IT was pressed. The parts are named on the card on
+            // the right and in the help bar under BUILD IT.
+            question: 'Spend the parts for good?',
             confirm: `data-outfit-confirm="${upgrade.id}"`,
             confirmLabel: 'Build it',
             confirmHelp: `Spends ${escapeAttribute(spent)} for good.`,
@@ -3946,6 +3961,9 @@ export class HubScene extends Phaser.Scene {
               held: built ? quantity : spendableSupply(this.workshopVault, itemId),
             })),
             built ? 'Built with' : 'Builds with',
+            // ALL HERE is about a price still to pay: on a build that stands it
+            // read as if the parts were still at base.
+            built ? '' : undefined,
           );
     return shopCardPane({
       id: upgrade.id,
