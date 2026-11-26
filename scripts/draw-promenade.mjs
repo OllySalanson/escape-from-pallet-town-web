@@ -1368,14 +1368,14 @@ function bandstand() {
 }
 
 /**
- * THE PROMENADE DERBY's start and finish, painted across the walk: two columns
- * of black and white squares down the middle of a tile of stone, which shows
- * either side of them. Walked over, as THE RAID ARENA's runner is.
+ * THE PROMENADE DERBY's start and finish, painted across the walk: a band of
+ * black and white squares three wide down the middle of a tile of stone, which
+ * shows a little either side of it. Walked over, as THE RAID ARENA's runner is.
  */
 function startLine() {
   const image = canvas(TILE, TILE);
   for (let y = 0; y < TILE; y += 1) {
-    for (let x = 4; x < 12; x += 1) {
+    for (let x = 2; x < 14; x += 1) {
       const dark = (Math.floor(x / 4) + Math.floor(y / 4)) % 2 === 0;
       set(image, x, y, hex(dark ? INK.dark : INK.white));
     }

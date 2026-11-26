@@ -205,10 +205,10 @@ export const GARDENS_SIGN: BaseSign = {
   lines: ['THE GARDENS', 'The band plays Sundays. Mind the beds.'],
 };
 
-/** At the pleasure pier's gate, in the rail along PIER SQUARE's foot beside the way on. */
+/** At the pleasure pier's gate, on PIER SQUARE's foot against its rail, beside the way on. */
 export const PLEASURE_PIER_SIGN: BaseSign = {
   x: 81,
-  y: 16,
+  y: 15,
   lines: ['THE PLEASURE PIER', 'Out over the sea. Mind the gulls.'],
 };
 
@@ -352,8 +352,8 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
     'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM.t.TTT',
     'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM...TTT',
     'TtTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMCCCCPPPPPPPCCCTTT',
-    'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........~~~~~~~~~~~~~~~~~~~~MMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~CCCCPPPPPPPCCCTTT',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMddddddd~~~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~~~~~~~~~~~~~~CCWWCCCCWWCCCWWWW',
+    'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........~~~~~~~~~~~~~~~~~~~~MMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~CCCWPPPPPPPWCCTTT',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMddddddd~~~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~~~~~~~~~~~~~~CCWWWWWWWWWWWCWWW',
     'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~~~~~~~~~~~~~~WWWWWWWWWWWWWWWWW',
     'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~~~~~~~~~~~~WWWWWWWWWWWWWWWWWWW',
     'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~~~~~~~~~~WWWWWWWWWWWWWWWWWWWWW',
@@ -620,22 +620,20 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
   map.plant(93, 9, 'seaBench');
   map.plant(93, 11, 'troughBlue');
   // The pier's gate at the square's foot, under its arch on the arcade
-  // door's own line: a lamp either side, its sign, the
-  // rail along the square's edge over the sand, and the ice-cream cart. East
-  // of the gate a step goes down onto the sand beside the pier.
+  // door's own line (the arch's posts carry their own lamps), its sign, the
+  // ice-cream cart, and the rail round the square's edge over the sand,
+  // unbroken but for the gate.
   map.plant(PLEASURE_PIER_SIGN.x, PLEASURE_PIER_SIGN.y, 'homeSign');
-  map.plant(82, 16, 'promenadeLamp');
   map.plant(83, 16, 'pierArch');
-  map.plant(88, 16, 'promenadeLamp');
   map.plant(89, 15, 'iceCart');
-  for (const x of [92, 93, 94]) map.plant(x, 16, 'railing');
+  for (const x of [81, 82, 88, 91, 92, 93, 94]) map.plant(x, 16, 'railing');
 
   // --- The walk's sea edge -----------------------------------------------
   // A railing along the walk's seaward edge, the sand up against it below,
-  // broken only where steps go down to the beach: by THE DIG, beside the
-  // pier, between the huts and at the cove under THE POINT. It was a
-  // boardwalk once, a second walk beside the first that nothing stood on.
-  const steps = new Set([68, 69, 78, 79, 105, 106, 111, 112]);
+  // broken only where steps go down to the beach: by THE DIG, between the
+  // huts and at the cove under THE POINT, each opening onto something. It
+  // was a boardwalk once, a second walk beside the first that nothing stood on.
+  const steps = new Set([68, 69, 105, 106, 111, 112]);
   for (const x of [...Array.from({ length: 20 }, (_, i) => 61 + i), ...Array.from({ length: 18 }, (_, i) => 95 + i)]) {
     if (!steps.has(x)) map.plant(x, 15, 'railing');
   }

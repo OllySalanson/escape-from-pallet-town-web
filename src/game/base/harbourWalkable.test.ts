@@ -204,7 +204,7 @@ describe.each([
       for (const x of [...Array.from({ length: 20 }, (_, index) => 61 + index), ...Array.from({ length: 18 }, (_, index) => 95 + index)]) {
         if (harbour.free(x, 15)) gaps.push(x);
       }
-      expect(gaps).toEqual([68, 69, 78, 79, 105, 106, 111, 112]);
+      expect(gaps).toEqual([68, 69, 105, 106, 111, 112]);
     });
 
     it('keeps a way along the beach at the water’s edge two abreast, across the bay to the pleasure pier', () => {
