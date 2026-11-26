@@ -122,8 +122,8 @@ describe('the count and Oak’s milestones', () => {
 
   it('shows the next reward as the things themselves and how far off it is', () => {
     const goal = dexGoal(stateWith(37, [10, 25]));
-    expect(goal).toContain('At 50');
-    expect(goal).toContain('13 to go');
+    expect(goal).toContain("Oak's gift at 50");
+    expect(goal).toContain('13 more to go');
     // Every stone, each its own icon.
     expect([...goal.matchAll(/class="dex-reward"/g)]).toHaveLength(5);
   });

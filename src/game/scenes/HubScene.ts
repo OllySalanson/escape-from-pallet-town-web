@@ -1579,6 +1579,10 @@ export class HubScene extends Phaser.Scene {
 
   /** What the keys do, said once along the bottom of every screen, on a line of its own that never goes. */
   private get hints(): string {
+    // A map close up is mostly reading, and only PG DN reads past what fits:
+    // the line said ARROWS alone, and ArrowDown on a new save moved nothing
+    // (the harbour critic tour, 26 Nov 2026).
+    if (this.view === 'wallmap' && this.wallMapInspect) return 'ARROWS move · PG DN read on · ESC back';
     return 'ARROWS move · ENTER choose · ESC back';
   }
 
@@ -2984,12 +2988,12 @@ export class HubScene extends Phaser.Scene {
         const known = Math.round(entry.known * 100);
         const signs =
           entry.signs.length === 0
-            ? `<small class="wallmap-none">${entry.held === 0 ? 'No boss here' : `${entry.held} ${entry.held === 1 ? 'boss' : 'bosses'} still guarding the way on`}</small>`
+            ? `<small class="wallmap-none">${entry.held === 0 ? 'No boss here' : `${entry.held} ${entry.held === 1 ? 'boss' : 'bosses'} still to beat`}</small>`
             : entry.signs.map((sign) => this.wallSign(sign.keeper)).join('');
         const gym = entry.nextGym
           ? `<small class="wallmap-none wallmap-next-gym">Next gym: ${entry.nextGym.building}, ${entry.nextGym.standsIn}</small>`
           : '';
-        const help = `${entry.name}: ${known}% of it known, ${entry.districtsKnown} of ${entry.districts} places reached${entry.signs.length === 0 ? '' : `, ${entry.signs.length} keeper${entry.signs.length === 1 ? '' : 's'} beaten`}. ENTER reads it close up.`;
+        const help = `${entry.name}: ${known}% of it known, ${entry.districtsKnown} of ${entry.districts} places reached${entry.signs.length === 0 ? '' : `, ${entry.signs.length} boss${entry.signs.length === 1 ? '' : 'es'} beaten`}. ENTER reads it close up.`;
         return `<button class="px-window px-card wallmap-card" data-wall-map="${entry.mapId}" data-help="${escapeAttribute(help)}"><span class="wallmap-card-head"><strong>${entry.name}</strong><small>${entry.walked ? `${known}% known` : 'never walked'}</small></span>${mapPictureFrame({
           key: `wall:${entry.mapId}`,
           label: `${entry.name}, ${known}% known`,
@@ -3041,7 +3045,7 @@ export class HubScene extends Phaser.Scene {
       })
       .join('');
     const gym = entry.nextGym
-      ? `<p class="px-empty px-wrap">Next gym: ${entry.nextGym.building} on ${entry.nextGym.standsIn}, where ${entry.nextGym.leader} holds the doors.</p>`
+      ? `<p class="px-empty px-wrap">Next gym: ${entry.nextGym.building} in ${entry.nextGym.standsIn}, where ${entry.nextGym.leader} waits.</p>`
       : '';
     const signs = `<h3 class="px-subheading">Signs pinned here</h3>${gym}${
       entry.signs.length === 0
@@ -3077,8 +3081,8 @@ export class HubScene extends Phaser.Scene {
       : `<h3 class="px-subheading">Ways out</h3>${foundExits
           .map((exit) =>
             told(
-              `${this.pip(exit.worked ? 'K' : 'X')}<span class="px-row-main"><strong>${exit.label}</strong><small>${exit.worked ? 'open for good' : exit.opens === 'OPEN' ? 'open from the first second' : exit.opens.toLowerCase()}</small></span>`,
-              `${exit.label}: ${exit.opens === 'OPEN' ? 'open from the first second of a raid' : exit.opens.toLowerCase()}.`,
+              `${this.pip(exit.worked ? 'K' : 'X')}<span class="px-row-main"><strong>${exit.label}</strong><small>${exit.worked ? 'open for good' : exit.opens === 'OPEN' ? 'always open' : exit.opens.toLowerCase()}</small></span>`,
+              `${exit.label}: ${exit.opens === 'OPEN' ? 'open on every raid, from the moment you land' : exit.opens.toLowerCase()}.`,
               ' has-pip',
             ),
           )
@@ -3127,7 +3131,7 @@ export class HubScene extends Phaser.Scene {
       // A second entrance does not carry its map's name, so it says which map
       // it is on. A front door is the map.
       briefing.isDropIn ? `<div><dt>Map</dt><dd>${briefing.mapName}</dd></div>` : ''
-    }<div><dt>Wild</dt><dd>${grade.wild.max === 0 ? 'none' : `Lv ${grade.wild.min}-${grade.wild.max}`}</dd></div><div><dt>Fights</dt><dd>${grade.trainers === 0 ? 'none' : `${grade.trainers} · Lv ${grade.trainer}`}</dd></div><div><dt>Doors</dt><dd>${grade.bossesHeld === 0 ? (grade.bossesBeaten === 0 ? 'none' : 'all yours') : `${grade.bossesHeld} held`}</dd></div><div><dt>Raids</dt><dd>${record.deployed === 0 ? 'none yet' : `${record.deployed} · ${record.extracted} out`}</dd></div><div><dt>Known</dt><dd>${record.districts === 0 ? `${walked}%` : `${record.districtsKnown}/${record.districts} · ${walked}%`}</dd></div></dl>`;
+    }<div><dt>Wild</dt><dd>${grade.wild.max === 0 ? 'none' : `Lv ${grade.wild.min}-${grade.wild.max}`}</dd></div><div><dt>Fights</dt><dd>${grade.trainers === 0 ? 'none' : `${grade.trainers} · Lv ${grade.trainer}`}</dd></div><div><dt>Bosses</dt><dd>${grade.bossesHeld === 0 ? (grade.bossesBeaten === 0 ? 'none' : 'all beaten') : `${grade.bossesHeld} to beat`}</dd></div><div><dt>Raids</dt><dd>${record.deployed === 0 ? 'none yet' : `${record.deployed} · ${record.extracted} out`}</dd></div><div><dt>Known</dt><dd>${record.districts === 0 ? `${walked}%` : `${record.districtsKnown}/${record.districts} · ${walked}%`}</dd></div></dl>`;
   }
 
   /** The count under a list of ways out or doors of the ones not found yet. */
@@ -3185,13 +3189,13 @@ export class HubScene extends Phaser.Scene {
           .map((prize) =>
             told(
               `<span class="px-row-main"><strong>${prize.name}</strong><small class="px-wrap">${prize.place} · about one raid in ${Math.max(2, Math.round(1 / prize.chance))}</small></span>`,
-              `${prize.name}: lies in ${prize.place}, on about one raid in ${Math.max(2, Math.round(1 / prize.chance))}. You will see it from a distance, and it burns with the pack if you do not walk out.`,
+              `${prize.name}: lies in ${prize.place}, on about one raid in ${Math.max(2, Math.round(1 / prize.chance))}. You will see it from a distance, and you lose it if you don't make it out.`,
               ' px-tall',
             ),
           )
           .join('')}${
           foundPrizes.length === 0
-            ? '<p class="px-empty px-wrap">Rare things are found on this map, but not in any country you have walked.</p>'
+            ? '<p class="px-empty px-wrap">Rare things are found on this map, but not in any place you have walked.</p>'
             : hiddenPrizes === 0
               ? ''
               : `<p class="px-note px-wrap">${hiddenPrizes} more, in places nobody here has walked.</p>`
@@ -3211,15 +3215,17 @@ export class HubScene extends Phaser.Scene {
     const unseen = briefing.wildlife.length - seen.length;
     const wildlife = briefing.wildlife.length === 0
       ? ''
-      : `<h3 class="px-subheading">${briefing.night ? 'Wildlife by night' : 'Wildlife'}</h3>${seen
-          .map((place) => {
-            const living = place.species
-              .map((entry) => `${entry.name} ${entry.min}-${entry.max}`)
-              .join(' · ');
-            const shown = wildlifeKinds(place.species);
+      : `<h3 class="px-subheading">${briefing.night ? 'Wildlife by night' : 'Wildlife'}</h3>${wildlifeGroups(seen)
+          .map(({ places, species }) => {
+            const living = species.map((entry) => `${entry.name} ${entry.min}-${entry.max}`).join(' · ');
+            const shown = wildlifeKinds(species);
+            // Places with the same Pokémon at the same levels are one row: eleven
+            // rows of the same six in a 60-row list was the wall map's wall of
+            // text (the harbour critic tour, 26 Nov 2026).
+            const named = places.length === 1 ? places[0] : `${places[0]} and ${places.length - 1} more`;
             return told(
-              `<span class="px-row-main"><strong>${place.place}</strong><small class="px-wrap">${shown}</small></span>`,
-              `${place.place}: ${living}. Rolled for on every step through that place's tall grass${
+              `<span class="px-row-main"><strong>${named}</strong><small class="px-wrap">${shown}</small></span>`,
+              `${places.join(', ')}: ${living}. Found in the tall grass there${
                 briefing.night ? ', and it is night: some of it only comes out after dark' : ''
               }.`,
               ' px-tall',
@@ -4203,4 +4209,18 @@ export function roomKeptFor(item: { readonly itemId: string; readonly quantity: 
  */
 export function wildlifeKinds(species: readonly { readonly name: string; readonly min: number; readonly max: number }[]): string {
   return species.map((entry) => `<span class="wildlife-kind">${entry.name} ${entry.min}-${entry.max}</span>`).join(' · ');
+}
+
+/** Walked places grouped by what lives in them, in the order each kind of place is first met. */
+function wildlifeGroups<Entry extends { readonly name: string; readonly min: number; readonly max: number }>(
+  seen: readonly { readonly place: string; readonly species: readonly Entry[] }[],
+): readonly { readonly places: readonly string[]; readonly species: readonly Entry[] }[] {
+  const groups = new Map<string, { places: string[]; species: readonly Entry[] }>();
+  for (const place of seen) {
+    const key = place.species.map((entry) => `${entry.name} ${entry.min}-${entry.max}`).join('|');
+    const group = groups.get(key);
+    if (group) group.places.push(place.place);
+    else groups.set(key, { places: [place.place], species: place.species });
+  }
+  return [...groups.values()];
 }

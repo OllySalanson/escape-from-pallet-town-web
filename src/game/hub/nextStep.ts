@@ -151,14 +151,22 @@ export function jobsNamed(progress: NextStepProgress): number {
 }
 
 /**
- * What Oak says is next, or nothing on a save that has not been on a raid.
+ * Oak's next thing for a save with its partner and no raid yet: the handover's
+ * last word again. He used to have nothing at all for it, so a newcomer who
+ * walked back in to ask "what now?" got silence, or in the shared harbour only
+ * "Going to raid with a friend?" (the harbour critic tour, 26 Nov 2026).
+ */
+export const FIRST_RAID_NEXT_LINE = 'Off you go! The RAID ARENA is west across the yard. Grab what you can, and get out.';
+
+/**
+ * What Oak says is next: before the first raid, where it starts.
  * `vault` is what the player keeps (`vaultOf`): the treasure map's stage reads
  * what it holds (a bottled chart in hand is a different next step from one on
  * the sand), and a legend is told against the best level in it.
  */
 export function nextStepLines(progress: NextStepProgress, vault: NextStepVault = {}): readonly string[] {
   if (isFirstRaid(progress)) {
-    return [];
+    return [FIRST_RAID_NEXT_LINE];
   }
   const banked = jobsBanked(progress);
   const [job] = buildContractBoard(progress).rows;

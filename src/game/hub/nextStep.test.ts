@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { CHART_PIECES } from '../treasure/treasureMap';
 import { Stash } from '../stash';
 import { CHARMANDER, Pokemon } from '../pokemon';
-import { chaseLine, jobsBanked, landingToWalkTo, LEGEND_REACH_LEVELS, nextStepLines, VALE_LEGENDS, vaultOf } from './nextStep';
+import { chaseLine, FIRST_RAID_NEXT_LINE, jobsBanked, landingToWalkTo, LEGEND_REACH_LEVELS, nextStepLines, VALE_LEGENDS, vaultOf } from './nextStep';
 
 const raided = (raids: number, more: Partial<RaidProgress> = {}): RaidProgress => ({
   ...DEFAULT_RAID_PROGRESS,
@@ -22,8 +22,8 @@ describe('the one next thing Oak says', () => {
   beforeEach(() => retireMapsForTests(RETIRED_MAPS));
   afterEach(() => retireMapsForTests([]));
 
-  it('says nothing to a save that has not been on a raid: the lab has its own first words', () => {
-    expect(nextStepLines(DEFAULT_RAID_PROGRESS)).toEqual([]);
+  it('sends a save that has not been on a raid to the RAID ARENA, where it had nothing to say (the harbour critic tour)', () => {
+    expect(nextStepLines(DEFAULT_RAID_PROGRESS)).toEqual([FIRST_RAID_NEXT_LINE]);
   });
 
   it('after the first raid, names the job on the rail', () => {

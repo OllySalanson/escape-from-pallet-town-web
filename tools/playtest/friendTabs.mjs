@@ -76,11 +76,11 @@ export async function twoInARoom(browser, url, out) {
   };
   const readOn = (tab) => readOnRaid(tab, press);
   const prepareAndDropIn = async (tab) => {
-    // Out of the room's screen and the lab, and across the yard to the Raid
-    // Arena, whose door opens on the loadout.
+    // Out of the room's screen, back onto the hall's floor where the marshal
+    // asked, and on to the bench.
     await press(tab, 'Escape');
     await press(tab, 'Escape');
-    await tab.waitFor(sceneIs('base'), { what: 'the lab' });
+    await tab.waitFor(sceneIs('base'), { what: 'the hall' });
     await walkIntoBase(tab, 'raid-arena');
     // The first Pokemon the vault offers, then on through the steps.
     await bring(tab);
@@ -114,7 +114,7 @@ export async function twoInARoom(browser, url, out) {
 
   // Into Oak's Lab, and a room on the one map a new save can drop into.
   await bring(olly);
-  await walkIntoBase(olly, 'oaks-lab', { press: (code) => press(olly, code) });
+  await walkIntoBase(olly, 'raid-arena', { hallOnly: true, press: (code) => press(olly, code) });
   await openFriendRoom(olly, { press: (code) => press(olly, code) });
   await olly.screenshot(`${out}/1-olly-make-a-room.png`);
   await bring(olly);
@@ -134,7 +134,7 @@ export async function twoInARoom(browser, url, out) {
   // Two devices would have two saves; this is one browser's (see the header).
   await amy.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}')); delete save.raidInFlight; localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
   await bring(amy);
-  await walkIntoBase(amy, 'oaks-lab', { press: (code) => press(amy, code) });
+  await walkIntoBase(amy, 'raid-arena', { hallOnly: true, press: (code) => press(amy, code) });
   await openFriendRoom(amy, { press: (code) => press(amy, code) });
   await bring(amy);
   await amy.evaluate(`document.querySelector('[data-room-form] .px-field').focus()`);

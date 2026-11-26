@@ -74,7 +74,7 @@ describe('the wall map in Oak’s Lab', () => {
     const entries = wallMapEntries(game({ defeatedBosses: EVERY_KEEPER }));
     expect(entries.reduce((sum, entry) => sum + entry.signs.length, 0)).toBe(EVERY_KEEPER.length);
     expect(entries.every((entry) => entry.held === 0)).toBe(true);
-    expect(wallMapNote(game({ defeatedBosses: EVERY_KEEPER }))).toBe('11 of 11 keepers beaten');
+    expect(wallMapNote(game({ defeatedBosses: EVERY_KEEPER }))).toBe('11 of 11 bosses beaten');
     // A field-move door is opened, not beaten: it pins no sign.
     expect(wallMapEntries(game({ openedGates: ['route-1-thorn-gate'] })).some((entry) => entry.signs.length > 0)).toBe(false);
   });

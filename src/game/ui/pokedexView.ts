@@ -138,7 +138,9 @@ export function dexGoal(state: PokedexViewState): string {
     return `<div class="dex-goal is-complete"><span class="dex-goal-words">${pixelTag('Complete', 'secure', true)}<small>All ${KANTO_POKEDEX_SIZE} owned</small></span></div>`;
   }
   const short = next.kinds - owned;
-  return `<div class="dex-goal"><span class="dex-goal-words"><strong>At ${next.kinds}</strong><small>${short} to go</small></span><span class="dex-rewards">${rewardIcons(next)}</span></div>`;
+  // Who gives it, in words: "AT 10 / 9 TO GO" beside a ball said nothing of
+  // Oak handing it over (the harbour critic tour, 26 Nov 2026).
+  return `<div class="dex-goal"><span class="dex-goal-words"><strong>Oak's gift at ${next.kinds}</strong><small>${short} more to go</small></span><span class="dex-rewards">${rewardIcons(next)}</span></div>`;
 }
 
 /**

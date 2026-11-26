@@ -35,6 +35,13 @@ import { secretById, secretSpent } from '../world/secrets';
 export interface BoardNotice {
   readonly kind: 'contract' | 'errand' | 'rumour';
   readonly line: string;
+  /**
+   * A job's terms - the way out it must take, what to bring, the hunter, the
+   * reward - read in a box of their own after what the job is, so a box never
+   * breaks inside a name to fit both ("Only CHARCOAL" / "TRACK takes it
+   * home", the harbour critic tour of 26 Nov 2026).
+   */
+  readonly terms?: string;
 }
 
 /** What Oak says before the rumours, so a line about a tarn is not read as a job. */
@@ -44,14 +51,16 @@ export const RUMOURS_PINNED_LINE = 'Rumours you have heard, pinned up in the cor
 export const BARE_BOARD_LINE = 'Nothing pinned up.';
 
 function contractNotice(row: ContractBoardRow): BoardNotice {
-  const asks = row.asks ? ` ${row.asks}.` : '';
+  // Each thing a job asks is a sentence of its own, so a box breaks between them.
+  const asks = row.asks ? `${row.asks.split(' · ').join('. ')}. ` : '';
   // Where it is, unless its own sentence has said: choosing a contract is
   // choosing where to drop in, and the board may hold one for every map.
   const map = worldMapName(row.mapId);
   const where = row.description.includes(map) ? '' : ` On ${map}.`;
   return {
     kind: 'contract',
-    line: `${row.name.toUpperCase()}: ${row.description}.${where}${asks} Reward: ${row.reward}`,
+    line: `${row.name.toUpperCase()}: ${row.description}.${where}`,
+    terms: `${asks}Reward: ${row.reward}`,
   };
 }
 
@@ -101,7 +110,7 @@ export function boardNotices(game: Pick<RestoredGame, 'raidProgress' | 'stash'>)
  * it for their first not having counted (AI playtest, 20 Nov 2026).
  */
 export function bankedJobsLine(banked: number): string {
-  return `You've banked ${banked} ${banked === 1 ? 'job' : 'jobs'}. What's pinned up now is new, with new stops:`;
+  return `${banked} ${banked === 1 ? 'job' : 'jobs'} done so far. These are new ones, in new places:`;
 }
 
 /** What is read off the board, a line a notice, the rumours after a line saying they are rumours. */
@@ -113,7 +122,7 @@ export function boardLines(game: Pick<RestoredGame, 'raidProgress' | 'stash'>): 
   const jobs = notices.filter((notice) => notice.kind === 'contract').length;
   const banked = game.raidProgress.standingContractsBanked;
   const lead = jobs > 0 && banked > 0 && isStandingBoardOpen(game.raidProgress.completedContracts) ? [bankedJobsLine(banked)] : [];
-  const work = notices.filter((notice) => notice.kind !== 'rumour').map((notice) => notice.line);
+  const work = notices.filter((notice) => notice.kind !== 'rumour').flatMap((notice) => (notice.terms ? [notice.line, notice.terms] : [notice.line]));
   const rumours = notices.filter((notice) => notice.kind === 'rumour').map((notice) => notice.line);
   return [...lead, ...work, ...(rumours.length === 0 ? [] : [RUMOURS_PINNED_LINE, ...rumours])];
 }
