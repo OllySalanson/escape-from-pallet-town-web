@@ -100,7 +100,6 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
     lines: [
       'Ah, a visitor! Everything on these shelves came off my boat.',
       "Walk up to anything and ask, and I'll name my price.",
-      'Under a sheet is what I keep back until I know you better.',
     ],
   },
   // Said in the yard, once, to somebody back from before the old maps were put

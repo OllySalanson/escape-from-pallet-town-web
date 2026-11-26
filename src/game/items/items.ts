@@ -672,7 +672,7 @@ export const ITEMS = {
     displayName: 'Lockpick',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'Opens one locked crate: face it and press the interact key. It snaps in the lock doing it.',
+    description: 'Opens one locked crate: face it and press SPACE. It snaps in the lock doing it.',
     effect: { type: 'lockpick' },
   },
   // The keys, one a map. Each opens that map's one locked exit and nothing
@@ -739,7 +739,7 @@ export const ITEMS = {
     displayName: 'Old Rod',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 2 },
-    description: 'Fishes open water: face it and press the interact key. Only ever hooks a Magikarp. Never used up.',
+    description: 'Fishes open water: face it and press SPACE. Only ever hooks a Magikarp. Never used up.',
     effect: { type: 'rod' },
   },
   'good-rod': {

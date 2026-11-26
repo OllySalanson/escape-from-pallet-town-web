@@ -54,7 +54,7 @@ export interface BillQuote {
 
 /** Why a thing is under a sheet: his own word on what the player has not earned. */
 function keptBack(name: string, required: TraderStandingId): string {
-  return `Under the sheet? ${name}. I keep it back until you are ${standingWithArticle(required)}.`;
+  return `Under the sheet? ${name}. I'm keeping that back till you're ${standingWithArticle(required)}.`;
 }
 
 /**
@@ -67,7 +67,10 @@ const READS_YOU: Readonly<Record<TraderStandingId, string>> = {
   // No count here: the next line says how many jobs, and 'Bank a job and I
   // might' over 'Bank 3 jobs' read as two rules (AI playtest, 22 Nov 2026).
   stranger: "I don't know you yet.",
-  regular: "You keep coming home. I'll sell you one other thing a raid, and the first of the barters.",
+  // Not "You keep coming home": raids earn no standing. And not "the first of
+  // the barters": a regular opens eight of them (the harbour critic tour,
+  // 26 Nov 2026).
+  regular: "You've done some good jobs. One other thing a raid, and most of my tools, for parts.",
   trusted: 'I trust you. Two other things a raid, the good medicine, and most of the hold.',
   partner: 'Partner! Three other things a raid, and nothing on the boat is held back.',
 };
@@ -91,7 +94,11 @@ export function strangerWayIn(pointsShort: number, started = false): string {
   // In the list's own unit too: its header counts points ('0 POINTS · 6 MORE FOR
   // REGULAR'), and a friend could not tell whether 3 jobs was 6 points or a
   // second rule (AI playtest, 23 Nov 2026).
-  return `Bank ${jobs}${more} ${jobs === 1 ? 'job' : 'jobs'} off Oak's board - ${STANDING_PER_CONTRACT} points apiece on my list - or beat a boss, and I'll sell you more.`;
+  // "Or beat a boss" was untrue: a boss is three points and a stranger needs
+  // six (the harbour critic tour, 26 Nov 2026). So the bosses are counted the
+  // way the jobs are, and the points are left to the list's own header.
+  const bosses = Math.ceil(pointsShort / STANDING_PER_BOSS);
+  return `Bank ${jobs}${more} ${jobs === 1 ? 'job' : 'jobs'} off Oak's board, or beat ${bosses}${more} ${bosses === 1 ? 'boss' : 'bosses'}, and I'll sell you more.`;
 }
 
 /**
@@ -175,7 +182,7 @@ function barterQuote(counter: TraderCounter, barterId: string): BillQuote {
     default:
       return {
         lines: [what, `I want ${takes}. Money won't buy this one.`],
-        question: 'Hand them over, for good?',
+        question: barter.takes.reduce((total, stack) => total + stack.quantity, 0) === 1 ? 'Hand it over, for good?' : 'Hand them over, for good?',
         spendsForGood: true,
       };
   }
@@ -184,7 +191,7 @@ function barterQuote(counter: TraderCounter, barterId: string): BillQuote {
 function berthQuote(counter: TraderCounter): BillQuote {
   const offer = checkBerth(counter);
   const price = formatMoney(TRADER_BERTH_PRICE);
-  const what = 'A shelf of mine at the Arena: one more column of THE LOCKER, this raid only.';
+  const what = 'A shelf of mine at the Arena: two more squares in THE LOCKER, this raid only.';
   switch (offer.refusal) {
     case 'already-paid':
       return { lines: ["Your shelf's paid for. It's yours till the raid's over."] };
@@ -218,7 +225,9 @@ export function billFromTheMat(counter: TraderCounter): BillQuote {
         // twice and still not understood (AI playtest, 22 Nov 2026).
         `You have ${formatMoney(moneyHeld(counter.stash))}. ${
           left === 0
-            ? 'Potions and Poké Balls any time. The rest waits till you raid again.'
+            ? // Swaps are never rationed (`traderBarterLimit`): "the rest waits"
+              // sent a player away from eight open barters (the critic tour).
+              'Potions and Poké Balls any time, and swaps for parts. Nothing else till you raid again.'
             : `Potions and Poké Balls any time, and ${left} other ${left === 1 ? 'thing' : 'things'} till you raid again.`
         }`;
   return {
