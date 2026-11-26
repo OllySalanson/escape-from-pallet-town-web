@@ -396,6 +396,10 @@ down off the mat takes her to her own step - `docs/screens/knocking/`.
 the keys, a doll out of the box onto the table, a refusal on the door mat, a
 mat and a doll put down and turned with the pointer, then reads the doll and
 reloads to check every piece stayed where it was put - `docs/screens/home-decorate/`.
+`chest.mjs <url> <dir> [--port=N]` plays THE CHEST: it stands at its own spot,
+SPACE throws its lid back and opens the things screen headed THE CHEST, B opens
+the same screen as YOUR THINGS, and decorating moves it while X is refused -
+`docs/screens/vault-makeover/`.
 
 A raid ends back on the base's quay, not on a screen, so a driver that plays
 two raids walks into Oak's Lab between them - `raid.mjs` does.

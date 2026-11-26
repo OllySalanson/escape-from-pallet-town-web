@@ -9,7 +9,7 @@ import {
 } from '../world/pokemonFigures';
 import { TILE_SIZE } from '../worldMap';
 import { layerBelow, pieceTiles, type PlacedPiece } from '../home/arrangement';
-import type { FurnitureArt } from '../home/furniture';
+import { STORAGE_CHEST_SHEET, type FurnitureArt } from '../home/furniture';
 import { FURNITURE_PIECES, FURNITURE_SHEET } from '../home/generated/furniturePieces';
 
 /**
@@ -27,6 +27,10 @@ import { FURNITURE_PIECES, FURNITURE_SHEET } from '../home/generated/furniturePi
 /** The sheet the house's furniture is drawn from: loaded by `BootScene`. */
 export const FURNITURE_TEXTURE = FURNITURE_SHEET.textureKey;
 export const FURNITURE_PATH = FURNITURE_SHEET.imagePath;
+
+/** THE CHEST's own two frames, shut and open: loaded by `BootScene` as a sheet. */
+export const STORAGE_CHEST_TEXTURE = STORAGE_CHEST_SHEET.textureKey;
+export const STORAGE_CHEST_PATH = STORAGE_CHEST_SHEET.imagePath;
 
 /** Adds a frame for one piece to the furniture sheet, once. */
 function sheetFrame(scene: Phaser.Scene, piece: keyof typeof FURNITURE_PIECES): string {
@@ -59,6 +63,12 @@ export function furnitureImage(
       )
       .setOrigin(0.5, 1)
       .setFlipX(art.flip);
+  }
+  if (art.kind === 'chest') {
+    // Standing on its tiles' last row, its lid over the row behind.
+    return scene.add
+      .image(x * TILE_SIZE, (y + 1) * TILE_SIZE, STORAGE_CHEST_TEXTURE, STORAGE_CHEST_SHEET.shut)
+      .setOrigin(0, 1);
   }
   return scene.add
     .image(x * TILE_SIZE, y * TILE_SIZE, FURNITURE_TEXTURE, sheetFrame(scene, art.piece))
@@ -100,6 +110,14 @@ export function furnitureRect(piece: PlacedPiece): Rect {
       y: (piece.y + 1) * TILE_SIZE - POKEMON_ICON_SIZE,
       width: POKEMON_ICON_SIZE,
       height: POKEMON_ICON_SIZE,
+    };
+  }
+  if (art.kind === 'chest') {
+    return {
+      x: piece.x * TILE_SIZE,
+      y: (piece.y + 1) * TILE_SIZE - STORAGE_CHEST_SHEET.frameHeight,
+      width: STORAGE_CHEST_SHEET.frameWidth,
+      height: STORAGE_CHEST_SHEET.frameHeight,
     };
   }
   return {

@@ -7931,6 +7931,16 @@ body.touch-play .feedback-tab {
   height: calc(var(--u) * 9);
   background: var(--px-house) center / 100% 100% no-repeat;
 }
+/* THE CHEST, shut (`scripts/draw-storage-chest.mjs`): where storage is kept, at the head of its grid. */
+:where(.pixel-ui) .things-chest {
+  flex: none;
+  display: inline-block;
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 12);
+  margin: calc(var(--u) * -1) 0;
+  background: url('/assets/storage-chest.png') 0 0 / 200% 100% no-repeat;
+  image-rendering: pixelated;
+}
 .pixel-ui.things-menu .px-grid-block > .things-home-mark {
   position: absolute;
   left: var(--u);

@@ -67,7 +67,12 @@ export type DecorAction =
   | { readonly kind: 'cancel' };
 
 /** Why something could not be done, beyond where it was put: a thing on top of what was asked for. */
-export type DecorRefusal = Refusal | { readonly kind: 'carrying'; readonly what: string } | { readonly kind: 'empty-box' };
+export type DecorRefusal =
+  | Refusal
+  | { readonly kind: 'carrying'; readonly what: string }
+  | { readonly kind: 'empty-box' }
+  /** A piece that is never boxed (THE CHEST): it can be moved, not put away. */
+  | { readonly kind: 'stays-out'; readonly what: string };
 
 /** What the decorating panel says about something that could not be done. */
 export function decorRefusalLine(refusal: DecorRefusal): string {
@@ -76,6 +81,8 @@ export function decorRefusalLine(refusal: DecorRefusal): string {
       return `TAKE THE ${refusal.what} OFF IT FIRST`;
     case 'empty-box':
       return 'THE BOX IS EMPTY';
+    case 'stays-out':
+      return `${refusal.what} STAYS OUT`;
     default:
       return refusalLine(refusal);
   }
@@ -299,6 +306,10 @@ export function decorate(state: DecorState, action: DecorAction, context: DecorC
       return takeFromBox({ ...state, layout, held: null }, context, index);
     }
     case 'put-away': {
+      const asked = state.held ? placedPiece(heldPlacement(state, state.held)) : pieceUnderCursor(state);
+      if (asked?.definition.staysOut) {
+        return unchanged(state, 'refused', { kind: 'stays-out', what: asked.definition.name });
+      }
       if (state.held) {
         // A piece carried from a room is gone from the layout already; one out
         // of the box was never in it. Either way it is in the box now.

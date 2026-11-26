@@ -632,6 +632,7 @@ export interface RoomThing {
     | 'berry-picking'
     | 'book'
     | 'pokedex'
+    | 'chest'
     | ArenaStationId;
   /** The book lying open on it, in THE GREAT LIBRARY: faced and asked, it is read full screen (`library/books.ts`). */
   readonly book?: string;
@@ -2683,13 +2684,20 @@ function buildHome(room: BaseRoom, id: HomeRoomId, drawn: Drawn, game: RestoredG
   const furniture: RoomThing[] = [...placed]
     .sort((a, b) => order[a.definition.layer] - order[b.definition.layer])
     .filter((piece) => furnitureSolids(piece).length > 0)
-    .map((piece) => ({
-      name: piece.definition.name,
-      note: '',
-      tiles: furnitureSolids(piece),
-      lines: [piece.definition.line],
-      quiet: true,
-    }));
+    .map((piece): RoomThing =>
+      // THE CHEST is the player's storage and is named like the house's own
+      // things are, not quietly like an ornament: it is the one piece a player
+      // has to find.
+      piece.definition.opens === 'chest'
+        ? { name: piece.definition.name, note: piece.definition.line, tiles: furnitureSolids(piece), opens: 'chest' }
+        : {
+            name: piece.definition.name,
+            note: '',
+            tiles: furnitureSolids(piece),
+            lines: [piece.definition.line],
+            quiet: true,
+          },
+    );
   const shown = errandsOnShow(room, game);
   return {
     room,

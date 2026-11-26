@@ -47,7 +47,26 @@ export type FurnitureLayer = 'floor' | 'standing' | 'small';
 /** How one facing of a piece is drawn. */
 export type FurnitureArt =
   | { readonly kind: 'sheet'; readonly piece: FurniturePieceName; readonly flip: boolean }
-  | { readonly kind: 'icon'; readonly species: FigureSpeciesId; readonly flip: boolean };
+  | { readonly kind: 'icon'; readonly species: FigureSpeciesId; readonly flip: boolean }
+  /** A piece with a picture of its own, drawn shut in frame 0: THE CHEST, whose lid opens. */
+  | { readonly kind: 'chest'; readonly flip: false };
+
+/**
+ * THE CHEST's picture: shut, and open (`scripts/draw-storage-chest.mjs`).
+ * Loaded by `BootScene`.
+ */
+export const STORAGE_CHEST_SHEET = {
+  imagePath: 'assets/storage-chest.png',
+  textureKey: 'storageChest',
+  /** Two tiles across, and half a tile taller than the one it stands on: the lid rises over the row behind. */
+  frameWidth: 32,
+  frameHeight: 24,
+  shut: 0,
+  open: 1,
+} as const;
+
+/** The chest's id: where everything the player owns between raids is kept. */
+export const CHEST_ID = 'chest';
 
 export type FurnitureSource =
   | { readonly kind: 'house'; readonly count: number }
@@ -75,6 +94,13 @@ export interface FurnitureDefinition {
   readonly source: FurnitureSource;
   /** Super rare: a raid prize, not a find. Said on its panel line. */
   readonly rare?: boolean;
+  /** A screen it opens when faced and spoken to, in place of its line. */
+  readonly opens?: 'chest';
+  /**
+   * Moved like anything else, but never put away in the box: it is a door, and
+   * a house whose storage was in a box would have nowhere to keep anything.
+   */
+  readonly staysOut?: boolean;
 }
 
 /**
@@ -142,6 +168,22 @@ const found = (itemId: string): FurnitureSource => ({ kind: 'found', itemId });
  */
 const PIECES: readonly FurnitureDefinition[] = [
   // --- the house's own ------------------------------------------------------
+  // THE CHEST is where the player keeps everything between raids (the
+  // captain, 26 Nov 2026: "your vault should be your storage chest in your
+  // house"). It moves as any piece does and never goes in the box.
+  {
+    id: CHEST_ID,
+    name: 'THE CHEST',
+    line: 'Everything you own between raids.',
+    layer: 'standing',
+    width: 2,
+    height: 1,
+    cells: ['##'],
+    facings: [{ kind: 'chest', flip: false }],
+    source: house(1),
+    opens: 'chest',
+    staysOut: true,
+  },
   piece({
     id: 'pot-plant',
     name: 'POT PLANT',

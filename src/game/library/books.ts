@@ -154,8 +154,12 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
         text: 'The badge case holds every badge you win. The telly says who hunts where you land next raid. The window keeps your own clock, from dawn to night.',
       },
       {
+        heading: 'THE CHEST',
+        text: 'THE CHEST by the stairs keeps everything you own between raids. Face it and press {key:interact} to open it, or press {key:pack} anywhere in the harbour to look inside.',
+      },
+      {
         heading: 'MY PC',
-        text: 'Step on the stair mat to go up. MY PC holds your boxes of Pokémon and YOUR THINGS, and counts your POKéDEX. The PC at the POKéMON CENTER is the same storage.',
+        text: 'Step on the stair mat to go up. MY PC holds your boxes of Pokémon, and counts your POKéDEX. The PC at the POKéMON CENTER is the same storage.',
       },
       {
         heading: 'The rest of upstairs',
@@ -166,7 +170,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
         // Not "find a cushion on a raid": the vale's raids turn up a few rare
         // pieces only, and the cushions come from the PRIZE WINDOW (the
         // harbour re-critic, 26 Nov 2026).
-        text: 'The table, the plants and anything you bring home can all be moved. Win a cushion at the PRIZE WINDOW and it is yours to put wherever it fits.',
+        text: 'The table, the plants, THE CHEST and anything you bring home can all be moved. Win a cushion at the PRIZE WINDOW and it is yours to put wherever it fits.',
       },
       {
         heading: 'Decorating',

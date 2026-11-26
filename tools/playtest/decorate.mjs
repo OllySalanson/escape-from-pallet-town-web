@@ -155,7 +155,8 @@ try {
     return settle('inside THE BOLTHOLE', "s.room === 'bolthole'");
   };
   const inside = await enterHouse();
-  if (inside.placed?.length !== 3) fail(`a house nobody has decorated stands ${JSON.stringify(inside.placed)}`);
+  // The table, the two pot plants and THE CHEST.
+  if (inside.placed?.length !== 4) fail(`a house nobody has decorated stands ${JSON.stringify(inside.placed)}`);
   await page.screenshot(`${out}/1-as-it-was.png`);
 
   // Off the mat, the house offers to be decorated.
@@ -199,13 +200,14 @@ try {
   await takeOut('surf-mat');
   await click({ x: 11, y: 6 });
   await expectStanding(['surf-mat', 'bolthole', 10, 4, 0], 'the mat, by the pointer');
+  // West of THE CHEST, which stands on 12,5 and 13,5.
   await takeOut('doll-143');
-  await mouse('mouseMoved', { x: 11, y: 6 });
-  await click({ x: 11, y: 6 }, 'right');
+  await mouse('mouseMoved', { x: 10, y: 6 });
+  await click({ x: 10, y: 6 }, 'right');
   if ((await now()).held?.facing !== 1) fail(`a right click left the doll facing ${(await now()).held?.facing}`);
   await page.screenshot(`${out}/6-snorlax-turned.png`);
-  await click({ x: 11, y: 6 });
-  await expectStanding(['doll-143', 'bolthole', 11, 5, 1], 'the Snorlax doll, turned');
+  await click({ x: 10, y: 6 });
+  await expectStanding(['doll-143', 'bolthole', 10, 5, 1], 'the Snorlax doll, turned');
 
   await press('KeyH');
   const done = await settle('done decorating', '!s.decorating');
@@ -225,7 +227,7 @@ try {
 
   // And the house is as it was left after a reload.
   const again = await enterHouse();
-  for (const entry of [['doll-25', 'bolthole', 6, 4, 0], ['surf-mat', 'bolthole', 10, 4, 0], ['doll-143', 'bolthole', 11, 5, 1], ['pot-plant', 'bolthole', 2, 6, 0]]) {
+  for (const entry of [['doll-25', 'bolthole', 6, 4, 0], ['surf-mat', 'bolthole', 10, 4, 0], ['doll-143', 'bolthole', 10, 5, 1], ['pot-plant', 'bolthole', 2, 6, 0]]) {
     if (!again.placed.some((each) => each.join() === entry.join())) fail(`after a reload the house stands ${JSON.stringify(again.placed)}`);
   }
   await page.screenshot(`${out}/8-after-reload.png`);

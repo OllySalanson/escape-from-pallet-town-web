@@ -3,6 +3,7 @@ import { pokedexOwned } from '../hub/pokedex';
 import type { Stash } from '../stash/Stash';
 import {
   cellsFacing,
+  CHEST_ID,
   dollId,
   FURNITURE,
   furnitureNamed,
@@ -54,14 +55,22 @@ export interface Placement {
 }
 
 /**
- * The house as every save had it before anything could be moved: the two pot
- * plants in the front room's corners and the table on its rug. A save that has
- * never decorated stands these, and the first piece it moves writes the list.
+ * Where THE CHEST stands until it is moved: downstairs, on the floor in front
+ * of the badge case and clear of the stairs (the captain, 26 Nov 2026).
+ */
+export const CHEST_HOME: Placement = { id: CHEST_ID, room: 'bolthole', x: 12, y: 5, facing: 0 };
+
+/**
+ * The house as a save has it before anything is moved: the two pot plants in
+ * the front room's corners, the table on its rug and THE CHEST. A save that
+ * has never decorated stands these, and the first piece it moves writes the
+ * list.
  */
 export const DEFAULT_HOME_LAYOUT: readonly Placement[] = [
   { id: 'dining-table', room: 'bolthole', x: 4, y: 3, facing: 0 },
   { id: 'pot-plant', room: 'bolthole', x: 0, y: 6, facing: 0 },
   { id: 'pot-plant', room: 'bolthole', x: 14, y: 6, facing: 1 },
+  CHEST_HOME,
 ];
 
 /** How many pieces a layout may hold: far more than two rooms of floor, and a cap on a hostile save. */
@@ -253,6 +262,14 @@ function stacksOf(pieces: readonly PlacedPiece[]): Map<string, Stack> {
   return stacks;
 }
 
+/** The four tiles a tile can be faced from. */
+const besides = (tile: GridPosition): readonly GridPosition[] => [
+  { x: tile.x + 1, y: tile.y },
+  { x: tile.x - 1, y: tile.y },
+  { x: tile.x, y: tile.y + 1 },
+  { x: tile.x, y: tile.y - 1 },
+];
+
 /**
  * Whether the room can still be walked as the house promises with these
  * pieces down: from the way in to every other way in, to wherever anybody is
@@ -299,6 +316,13 @@ export function blockedBy(
   }
   for (const thing of plan.mustReach) {
     if (!thing.from.some(reached)) return thing.name;
+  }
+  // A piece that opens something (THE CHEST) answers as the house's own
+  // things do, so it must be walked up to as they must.
+  for (const piece of pieces) {
+    if (piece.definition.opens && !solidTiles(piece).some((tile) => besides(tile).some(reached))) {
+      return piece.definition.name;
+    }
   }
   if (!standing.every(reached)) return 'YOUR WAY OUT';
   return null;
@@ -374,7 +398,46 @@ export function arrangeHouse(
     used.set(piece.id, (used.get(piece.id) ?? 0) + 1);
     placed.push(piece);
   }
+  // A piece that stays out of the box (THE CHEST) stands even when the layout
+  // has no room for it where it was - a save from before it existed, or one
+  // whose spot a new fixture took: at its own spot if that is free, otherwise
+  // on the first tile of its room that takes it.
+  for (const definition of FURNITURE) {
+    if (!definition.staysOut || (used.get(definition.id) ?? 0) >= (owned.get(definition.id) ?? 0)) {
+      continue;
+    }
+    const piece = firstFit(plans, placed, definition.id);
+    if (piece) {
+      used.set(piece.id, (used.get(piece.id) ?? 0) + 1);
+      placed.push(piece);
+    }
+  }
   return placed;
+}
+
+/** Where a piece that must stand would go: its home spot, or the first tile of the front room that takes it. */
+function firstFit(
+  plans: Readonly<Record<HomeRoomId, FloorPlan>>,
+  placed: readonly PlacedPiece[],
+  id: string,
+): PlacedPiece | undefined {
+  const home = id === CHEST_ID ? CHEST_HOME : { id, room: 'bolthole' as const, x: 0, y: 0, facing: 0 };
+  const plan = plans[home.room];
+  const inRoom = placed.filter((each) => each.room === home.room);
+  const spots = [
+    { x: home.x, y: home.y },
+    ...Array.from({ length: plan.width * plan.height }, (_cell, index) => ({
+      x: index % plan.width,
+      y: Math.floor(index / plan.width),
+    })),
+  ];
+  for (const spot of spots) {
+    const piece = placedPiece({ ...home, ...spot });
+    if (piece && placementRefusal(plan, inRoom, piece) === null) {
+      return piece;
+    }
+  }
+  return undefined;
 }
 
 const LAYER_ORDER = { floor: 0, standing: 1, small: 2 } as const;
