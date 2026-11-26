@@ -161,7 +161,6 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
         case 'blocked-status':
         case 'blocked-boost':
         case 'blocked-secondaries':
-        case 'hardened':
         case 'no-recoil':
           return withLine('denied');
         case 'shed':
@@ -172,8 +171,6 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
           return withLine('statusApplied');
         case 'sent-out':
           return withLine('statDown');
-        case 'powered-up':
-        case 'shrugged-off':
         case 'quickened':
           return withLine('statUp');
         case 'weathered-out':

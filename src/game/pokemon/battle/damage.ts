@@ -1,4 +1,3 @@
-import type { AbilityEffectKind } from '../AbilityBase';
 import type { MoveBase } from '../MoveBase';
 import { MoveCategory } from '../MoveBase';
 import type { Pokemon } from '../Pokemon';
@@ -55,12 +54,6 @@ export interface DamageAbilities {
   readonly defender: AbilityCarrier;
 }
 
-/** An ability that changed this swing, so the log can say which and whose. */
-export interface AbilityNote {
-  readonly side: 'attacker' | 'defender';
-  readonly effect: AbilityEffectKind;
-}
-
 export interface DamageResult {
   readonly damage: number;
   readonly isStab: boolean;
@@ -73,12 +66,6 @@ export interface DamageResult {
    * may write it.
    */
   readonly recoil: number;
-  /**
-   * Which abilities changed this swing. Reported rather than announced for the
-   * same reason `recoil` is: this function computes, and the engine is the only
-   * thing that may write state or say anything.
-   */
-  readonly abilityNotes: readonly AbilityNote[];
 }
 
 const clampRandom = (random: RandomSource): number => Math.min(1, Math.max(0, random()));
@@ -148,10 +135,9 @@ export const calculateDamage = (
     (attacker.base.primaryType === move.type || attacker.base.secondaryType === move.type);
 
   if (move.category === MoveCategory.Status || move.power <= 0 || typeEffectiveness === 0) {
-    return { damage: 0, isStab, isCritical: false, typeEffectiveness, recoil: 0, abilityNotes: [] };
+    return { damage: 0, isStab, isCritical: false, typeEffectiveness, recoil: 0 };
   }
 
-  const abilityNotes: AbilityNote[] = [];
 
   const attackStat = move.category === MoveCategory.Physical ? 'attack' : 'spAttack';
   const defenseStat = move.category === MoveCategory.Physical ? 'defense' : 'spDefense';
@@ -160,9 +146,6 @@ export const calculateDamage = (
   const rolledCritical = clampRandom(random) * 100 <= criticalHitChancePercent(move.critStage);
   const criticalBlocked =
     rolledCritical && abilities !== undefined && blocksCriticalHits(abilities.defender);
-  if (criticalBlocked) {
-    abilityNotes.push({ side: 'defender', effect: 'hardened' });
-  }
   const criticalMultiplier = rolledCritical && !criticalBlocked ? CRITICAL_HIT_MULTIPLIER : 1;
   // A critical hit looks past every stage that would weaken it: the attacker's
   // own lowered Attack and the defender's raised Defense, as FireRed's
@@ -183,12 +166,9 @@ export const calculateDamage = (
   // Thick Fat on the other.
   const abilityAttack = abilities ? abilityAttackMultiplier(abilities.attacker, move) : 1;
   const abilityDefence = abilities ? damageTakenMultiplier(abilities.defender, move) : 1;
-  if (abilityAttack !== 1) {
-    abilityNotes.push({ side: 'attacker', effect: 'powered-up' });
-  }
-  if (abilityDefence !== 1) {
-    abilityNotes.push({ side: 'defender', effect: 'shrugged-off' });
-  }
+  // FireRed says nothing for any of them - Blaze, Thick Fat or the armour
+  // that turned a critical hit aside - so neither does this (Olly, 26 Nov
+  // 2026: a fight says only what FireRed's would).
   // FireRed's own integer pipeline, step for step: `CalculateBaseDamage`
   // (pret/pokefirered `src/pokemon.c`), then `Cmd_damagecalc`, `Cmd_typecalc`
   // and `Cmd_adjustnormaldamage` (`src/battle_script_commands.c`). Every step
@@ -245,6 +225,5 @@ export const calculateDamage = (
     isCritical: criticalMultiplier === CRITICAL_HIT_MULTIPLIER,
     typeEffectiveness,
     recoil: attackRecoil(attacker, damage),
-    abilityNotes,
   };
 };

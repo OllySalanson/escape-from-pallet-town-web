@@ -1,19 +1,26 @@
 // What a fight says, line by line, with a picture of each (`docs/screens/battle-lines/`).
 //
-//   node tools/playtest/battleLines.mjs <test-mode build url> <dir> [--port=N]
+//   node tools/playtest/battleLines.mjs <test-mode build url> <dir> [--port=N] [--hp=N] [--move=NAME] [--items]
 //
 // Deploys a new save into Greystone Vale with a Charmander on 7 HP leading a
 // Pikachu, Potions packed, and starts a wild Gastly fight. Reads every line
 // to the commands, then uses SCRATCH - a NORMAL move a GHOST is immune to -
 // and reads every line of that turn. Each line is photographed as
 // `<n>-line.png` and printed, so two builds' fights can be laid side by side.
+// `--hp=N` starts the Charmander on N HP instead, `--move=EMBER` uses that
+// move instead of SCRATCH (EMBER at a third of its HP or less is where BLAZE
+// powers it), and `--items` opens ITEM before the move and photographs the
+// list with the line under its first medicine.
 import { attachBrowser, launchBrowser, PIXEL_WINDOW, sleep, writeScreenshot } from './browser.mjs';
 import { GAME, deploy, sceneIs } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url, dir] = args.filter((arg) => !arg.startsWith('--'));
 if (!url || !dir) throw new Error('usage: battleLines.mjs <test-mode build url> <dir> [--port=N]');
-const port = args.find((arg) => arg.startsWith('--port='))?.slice('--port='.length);
+const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
+const port = option('port');
+const hp = Number(option('hp') ?? 7);
+const moveName = (option('move') ?? 'SCRATCH').toUpperCase();
 
 const browser = port ? attachBrowser(Number(port), { window: PIXEL_WINDOW }) : await launchBrowser({ window: PIXEL_WINDOW });
 const page = await browser.openPage('about:blank');
@@ -72,13 +79,23 @@ try {
   await page.waitFor(`document.readyState === 'complete'`);
   await deploy(page, url, { press, click, until, wait: sleep, starter: 'Charmander', team: ['pikachu:12'], level: 12, stash: PACK, pack: PACK });
   await until(sceneIs('world'), 'the world');
-  await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); w.party.pokemon[0].currentHp = 7; w.transitionToBattle({ wild: { speciesId: 'gastly', level: 12, shiny: false }, teachingBattle: false }); })()`);
+  await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); w.party.pokemon[0].currentHp = ${hp}; w.transitionToBattle({ wild: { speciesId: 'gastly', level: 12, shiny: false }, teachingBattle: false }); })()`);
   await until(sceneIs('battle'), 'the battle');
   await sleep(1200);
   await readLines();
   await writeScreenshot(`${dir}/${++shot}-commands.png`, (await page.send('Page.captureScreenshot', { format: 'png' })).data);
-  // SCRATCH, the first move, against a GHOST; Math.random is pinned so Gastly's own move does nothing that ends the fight.
-  await page.evaluate(`(() => { Math.random = () => 0.99; const b = ${BATTLE}; b.useMove(0); })()`);
+  if (args.includes('--items')) {
+    await page.evaluate(`${BATTLE}.dispatchAction({ type: 'choose-item' })`);
+    await sleep(800);
+    console.log(`ITEM: ${(await page.evaluate(`${BATTLE}.describeForTest().commands.join(' | ')`))}`);
+    console.log(`under it: ${await page.evaluate(`${BATTLE}.moveGuidanceTexts[0]?.text ?? ''`)}`);
+    await writeScreenshot(`${dir}/${++shot}-items.png`, (await page.send('Page.captureScreenshot', { format: 'png' })).data);
+    await press('Escape');
+    await sleep(600);
+  }
+  // The move asked for (SCRATCH, a NORMAL move a GHOST is immune to, unless
+  // --move says otherwise); Math.random is pinned so the rolls repeat.
+  await page.evaluate(`(() => { Math.random = () => 0.99; const b = ${BATTLE}; const i = b.state.player.moves.findIndex((m) => m.base.name.toUpperCase() === ${JSON.stringify(moveName)}); if (i < 0) throw new Error('no move ${moveName}'); b.useMove(i); })()`);
   await readLines();
 } finally {
   await browser.close();

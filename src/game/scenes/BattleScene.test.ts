@@ -1067,7 +1067,7 @@ describe('using an item in a battle', () => {
     expect(renderedTexts.some(({ text }) => text.includes('CHERI BERRY on whom?'))).toBe(true);
   });
 
-  it("keeps a berry's guidance inside the panel, saying what it does and that it costs the turn", () => {
+  it("keeps a berry's guidance inside the panel, saying what it does", () => {
     const hurt = new Pokemon(CHARMANDER, 12);
     hurt.takeDamage(15);
     const { scene, renderedTexts } = createBattleSceneHarness({
@@ -1079,8 +1079,8 @@ describe('using an item in a battle', () => {
       captionWidth(line: string): number;
     };
     // Measured as Orange Kid draws a caption, about 5.6 pixels a character:
-    // "Cures poison. Picked off a berry tree. Using it costs your turn." ran
-    // to about 360 pixels against 284 of line.
+    // "Cures poison. Held, it is eaten the moment its holder is poisoned."
+    // runs past the 284 pixels of line.
     const drawnWidth = (line: string): number => line.length * 5.6;
     harness.captionWidth = drawnWidth;
     const unmeasured = harness.add.text;
@@ -1093,7 +1093,7 @@ describe('using an item in a battle', () => {
     read(renderedTexts).filter(({ text }) => text.includes('ITEM x')).at(-1)!.handlers.pointerdown();
 
     const guidance = renderedTexts.filter((text) => text.text.includes('Cures poison')).at(-1)!;
-    expect(guidance.text).toContain('turn');
+    expect(guidance.text).not.toContain('turn');
     expect(guidance.x + drawnWidth(guidance.text)).toBeLessThanOrEqual(302);
   });
 
@@ -1741,6 +1741,42 @@ describe('a replacement sent in after a faint', () => {
     const { state } = scene as unknown as { state: BattleState };
     expect(state.player.pokemon).toBe(charmander);
     expect(state.player.currentHp).toBe(charmander.maxHp);
+  });
+});
+
+describe('the list a faint opens', () => {
+  // The churchyard critic, round 2, 26 Nov 2026: the presses that read
+  // "fainted!" sent the first Pokémon in the list, and nobody was chosen.
+  it('takes no OK until it has been up a moment, then sends the one chosen', () => {
+    const pidgey = new Pokemon(PIDGEY, 5);
+    pidgey.moves.splice(0, pidgey.moves.length, new Move(GROWL));
+    pidgey.currentHp = 1;
+    const charmander = new Pokemon(CHARMANDER, 30);
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({
+      authoredTrainer: true,
+      trainerParty: [new Pokemon(getSpeciesById('rattata')!, 15)],
+      party: new PokemonParty([pidgey, charmander]),
+    });
+    const clock = createFakeClock();
+    Object.assign(scene as object, { tweens: clock.tweens, time: clock.time });
+    const battle = scene as unknown as { onMessagesComplete(): void; confirm(): void; mode: string; state: BattleState };
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    battle.onMessagesComplete();
+    clock.advance(RELEASE_ARMING_MS);
+    renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
+    renderedTexts.filter(({ text }) => text.includes('GROWL')).at(-1)!.handlers.pointerdown();
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40 && battle.mode !== 'party'; step += 1) battle.onMessagesComplete();
+    expect(battle.mode).toBe('party');
+
+    battle.confirm();
+    expect(battle.mode).toBe('party');
+    expect(battle.state.player.pokemon).toBe(pidgey);
+
+    clock.advance(RELEASE_ARMING_MS);
+    battle.confirm();
+    expect(battle.mode).not.toBe('party');
+    expect(battle.state.player.pokemon).toBe(charmander);
   });
 });
 

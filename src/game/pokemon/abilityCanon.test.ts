@@ -107,9 +107,6 @@ describe('an ability is visible', () => {
    * works and cannot be learned.
    */
   const KINDS: readonly AbilityEffectKind[] = [
-    'powered-up',
-    'shrugged-off',
-    'hardened',
     'absorbed',
     'blocked-status',
     'blocked-boost',
