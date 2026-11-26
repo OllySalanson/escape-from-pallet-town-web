@@ -28,7 +28,7 @@ const SNAPSHOT_MAP_ID = 'floodplain-relay';
 export function houseSnapshot(game: RestoredGame): Record<string, unknown> | null {
   const stash = new Stash();
   for (const definition of FURNITURE) {
-    if (definition.source.kind === 'found') {
+    if (definition.source.kind === 'found' || definition.source.kind === 'dug') {
       const count = game.stash.itemCount(definition.source.itemId);
       if (count > 0) {
         stash.addItem(definition.source.itemId, count);

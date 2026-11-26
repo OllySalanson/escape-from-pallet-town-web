@@ -312,3 +312,16 @@ describe('a Game Corner record out of a save', () => {
     expect(readGameCorner({ tickets: 2.5, best: { 'pokemon-jump': -1 } })).toEqual({ tickets: 0, best: {}, day: null });
   });
 });
+
+/** "A tally of 60 pays 10 tickets" was said after a derby of 112 had paid them that day (the harbour critic tour, 26 Nov 2026). */
+describe('what a game that paid nothing says', () => {
+  it('names the first tier only to a day that has reached none', () => {
+    const at = new Date(2026, 10, 26, 12);
+    const fresh = payGame(NO_GAME_CORNER, 'fishing-derby', 19, at);
+    expect(payoutWords(fresh, [])).toContain('pays');
+    const paid = payGame(NO_GAME_CORNER, 'fishing-derby', 112, at).record;
+    const after = payGame(paid, 'fishing-derby', 19, at);
+    expect(after.firstTier).toBeNull();
+    expect(payoutWords(after, [])).not.toMatch(/A tally of \d+ pays/);
+  });
+});

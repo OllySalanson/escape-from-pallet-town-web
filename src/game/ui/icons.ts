@@ -149,6 +149,7 @@ export const ITEM_ICONS = {
   'gold-shield': 'gold-shield',
   'silver-shield': 'silver-shield',
   'glass-ornament': 'glass-ornament',
+  'sand-ornament': 'sand-ornament',
 } as const satisfies Record<string, string>;
 
 /** Icons the raid draws on the map, plus the objective icon the menus reuse. */

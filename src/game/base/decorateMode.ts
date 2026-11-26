@@ -366,6 +366,8 @@ function whereFrom(definition: FurnitureDefinition | undefined): string {
       return 'CAME WITH THE HOUSE';
     case 'found':
       return definition.rare ? 'SUPER RARE - FOUND ON A RAID' : 'FOUND ON A RAID';
+    case 'dug':
+      return 'DUG UP ON THE BEACH';
     case 'doll':
       return 'ONE FOR EVERY KIND YOU OWN';
     default:

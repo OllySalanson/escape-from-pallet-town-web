@@ -17,7 +17,9 @@ import {
   type DerbyEntrant,
   type DerbyStretch,
 } from './derby';
-import { DIG_HEIGHT, DIG_WIDTH, digAt, digShape, digsFor, isDug, startDig } from './dig';
+import { DIG_BERRIES, DIG_HEIGHT, DIG_ORNAMENT, DIG_WIDTH, digAt, digShape, digsFor, isDug, startDig } from './dig';
+import { getItemById } from '../items';
+import { furnitureNamed } from '../home/furniture';
 import { biteChance, catchScore, FISHING_DERBY_MS, landCatch, modelFishingDerby, startFishingDerby } from './fishingDerby';
 import { modelDerby, modelDig } from './outdoorModels';
 import { derbyTickets, digTickets, fishingDerbyTickets } from './tickets';
@@ -157,6 +159,14 @@ describe('THE PROMENADE DERBY', () => {
 });
 
 describe('THE DIG', () => {
+  /** It paid a "sand-ornament" no item or furniture had, and the vault held a thing nothing could name (the harbour critic tour, 26 Nov 2026). */
+  it('buries only things the game can name, and the ornament stands in the house', () => {
+    for (const itemId of [...DIG_BERRIES, DIG_ORNAMENT]) {
+      expect([itemId, getItemById(itemId)?.displayName !== undefined]).toEqual([itemId, true]);
+    }
+    expect(furnitureNamed(DIG_ORNAMENT)?.name).toBe('SAND ORNAMENT');
+  });
+
   it('buries six things, three of them berries, and never two in a square', () => {
     for (let seed = 1; seed <= 50; seed += 1) {
       const game = startDig(traits('charmander'), seed);

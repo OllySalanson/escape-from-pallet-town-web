@@ -65,9 +65,13 @@ describe('the furniture catalogue', () => {
       expect(existsSync(`public/assets/icons/${definition.id}.png`)).toBe(true);
     }
     // And the other way: no furniture item a piece does not stand for.
+    // THE DIG's SAND ORNAMENT is the one piece won at a game on THE BEACH rather than found on a raid.
     for (const item of ITEM_DEFINITIONS.filter((each) => each.effect.type === 'furniture')) {
-      expect(furnitureNamed(item.id)?.source).toEqual({ kind: 'found', itemId: item.id });
+      expect([{ kind: 'found', itemId: item.id }, { kind: 'dug', itemId: item.id }]).toContainEqual(furnitureNamed(item.id)?.source);
     }
+    const dug = furnitureNamed('sand-ornament');
+    expect(dug?.source).toEqual({ kind: 'dug', itemId: 'sand-ornament' });
+    expect(existsSync('public/assets/icons/sand-ornament.png')).toBe(true);
   });
 
   it('is never a supply anything that repeats could hand out', () => {

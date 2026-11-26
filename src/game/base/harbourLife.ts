@@ -353,7 +353,7 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     idle: { glances: ['up', 'right'], beatMs: 4300 },
     lines: [
       'My RATTATA jumps that vine like it\'s nothing! Small and quick, that\'s the trick.',
-      'I\'m saving my TICKETS for the CUTE TV. Ninety-eight more games to go.',
+      'I\'m saving my TICKETS for the CUTE TV. Ages to go yet.',
     ],
   },
   // A fisherman with his line over the pleasure pier's middle stop, seen
@@ -369,7 +369,8 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     idle: { glances: ['right', 'down'], beatMs: 7900 },
     lines: [
       'Tiddlers, this close in. The big ones are off the end of the pier.',
-      'The FISHING DERBY board\'s out there. Two minutes, and the biggest catch wins.',
+      // A tally, not the biggest fish (`fishingDerby.ts`, `catchScore`).
+      'The FISHING DERBY board\'s out there. Two minutes: every bite counts, and a new kind counts extra.',
     ],
   },
   // THE FIELD-MOVE COURSE's keeper, at its gate with his box of HMs: he lends

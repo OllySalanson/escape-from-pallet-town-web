@@ -110,7 +110,7 @@ export function ownedFurniture(game: {
     const { source } = definition;
     if (source.kind === 'house') {
       owned.set(definition.id, source.count);
-    } else if (source.kind === 'found') {
+    } else if (source.kind === 'found' || source.kind === 'dug') {
       const count = game.stash.itemCount(source.itemId);
       if (count > 0) {
         owned.set(definition.id, count);

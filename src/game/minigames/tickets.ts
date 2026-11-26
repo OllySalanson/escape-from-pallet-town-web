@@ -420,7 +420,10 @@ export function payGame(record: GameCornerRecord, source: TicketSource, result: 
     berries,
     newBest: rules.better(result, everBest),
     bestToday: result > 0 && best === result,
-    firstTier: rules.tickets(result) > 0 || rules.berries(result) > 0 ? null : rules.firstTier,
+    // The first tier is news only to a day that has reached none: after a
+    // derby of 112 had paid, a stopped game of 19 said "A tally of 60 pays 10
+    // tickets" (the harbour critic tour, 26 Nov 2026).
+    firstTier: rules.tickets(best) > 0 || rules.berries(best) > 0 ? null : rules.firstTier,
     course: rules.course ?? null,
     record: {
       tickets: record.tickets + tickets,
