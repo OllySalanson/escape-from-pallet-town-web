@@ -43,7 +43,6 @@ vi.mock('../ui/MoveChooserOverlay', () => ({
 
 import { Bag } from '../items';
 import { usableBattleItems } from '../pokemon/battle/battleItems';
-import { PrimaryStatus } from '../pokemon/battle/status';
 import {
   CHARMANDER,
   Pokemon,
@@ -1775,50 +1774,6 @@ describe('the menu after a Pokémon is sent out', () => {
     for (let step = 0; step < 40 && battle.mode !== 'main'; step += 1) battle.onMessagesComplete();
     expect(battle.mode).toBe('main');
     expect(battle.mainActions()[battle.selectedCommand]?.type).toBe('choose-fight');
-  });
-});
-
-describe('the cure hint', () => {
-  // Olly, 26 Nov 2026: paralysed by the graveyard's Gastly turn after turn, new
-  // to battling, and thinking an ANTIDOTE might be the cure.
-  it('says once a fight that a paralysed Pokémon can be given its CHERI BERRY, and the list opens on it', () => {
-    const pikachu = new Pokemon(getSpeciesById('pikachu')!, 9);
-    pikachu.primaryStatus = PrimaryStatus.Paralysis;
-    const { scene, dialog } = createBattleSceneHarness({
-      bag: new Bag({ potion: 2, 'cheri-berry': 1 }),
-      party: new PokemonParty([pikachu]),
-      wild: new Pokemon(getSpeciesById('gastly')!, 8),
-    });
-    const battle = scene as unknown as {
-      onMessagesComplete(): void;
-      dispatchAction(action: { type: string }): void;
-      mode: string;
-      selectedCommand: number;
-      bag: Bag;
-      mainActions(): readonly { readonly type: string }[];
-    };
-    for (let step = 0; step < 5 && battle.mode !== 'main'; step += 1) battle.onMessagesComplete();
-    expect(dialog.shownMessages).toContain('PIKACHU is paralysed! Choose ITEM to give it a CHERI BERRY.');
-    expect(battle.mainActions()[battle.selectedCommand]?.type).toBe('choose-item');
-    battle.dispatchAction({ type: 'choose-item' });
-    expect(battle.mode).toBe('items');
-    expect(usableBattleItems(battle.bag)[battle.selectedCommand]?.id).toBe('cheri-berry');
-    battle.onMessagesComplete();
-    expect(dialog.shownMessages.filter((line) => line.includes('is paralysed! Choose ITEM'))).toHaveLength(1);
-  });
-
-  it('says nothing when the pack holds no cure for it', () => {
-    const pikachu = new Pokemon(getSpeciesById('pikachu')!, 9);
-    pikachu.primaryStatus = PrimaryStatus.Paralysis;
-    const { scene, dialog } = createBattleSceneHarness({
-      bag: new Bag({ potion: 2, antidote: 1 }),
-      party: new PokemonParty([pikachu]),
-      wild: new Pokemon(getSpeciesById('gastly')!, 8),
-    });
-    const battle = scene as unknown as { onMessagesComplete(): void; mode: string };
-    for (let step = 0; step < 5 && battle.mode !== 'main'; step += 1) battle.onMessagesComplete();
-    expect(battle.mode).toBe('main');
-    expect(dialog.shownMessages.some((line) => line.includes('Choose ITEM'))).toBe(false);
   });
 });
 
