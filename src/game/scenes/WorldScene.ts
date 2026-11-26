@@ -551,7 +551,6 @@ import {
   HunterPack,
   createHunterPack,
   drawnAt,
-  inGround,
   isAbroad,
   rivalsForGrounds,
   type PackEvent,
@@ -7141,6 +7140,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           searchRemainingMs: this.hunterBlindMs() ?? undefined,
           distance: this.hunterStepsAway(),
           direction: this.hunterBearing(),
+          enraged: manager.isEnraged,
           offTheScent:
             this.playerIsHidden() && isHunterOffTheScent(this.hunterState, this.currentTile),
           // The radio mast reports on a hunter that is still coming or still
@@ -12369,9 +12369,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     ) {
       session.stagedChaseCome = this.sendHunterForPlayer();
     }
-    if (session.manager.isEnraged) {
-      pack.enrage(world);
-      this.bringKeeperBackForEnrage(pack, world);
+    if (session.manager.isEnraged && !pack.enrageAnswered) {
+      this.sendHunterForEnrage(pack, world);
     }
     if (clockMs <= 0) {
       return;
@@ -12447,27 +12446,20 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   }
 
   /**
-   * The enrage brings the keeper of the district the player is in back, once,
-   * if the player beat it: the one return a beaten hunter has, as the one
-   * hunter had (`hunterAtEnrage`), arriving the fair way.
+   * The enrage sends one hunter, once, from the same walk off wherever the
+   * player stands (`HunterPack.enrage`): the arrival sting, the red edges and
+   * the chip naming who - `IS BACK` for a keeper beaten earlier.
    */
-  private bringKeeperBackForEnrage(pack: HunterPack, world: PackWorld): void {
-    if (pack.enrageAnswered) {
+  private sendHunterForEnrage(pack: HunterPack, world: PackWorld): void {
+    const ways = this.extractionPointsForCurrentMap()
+      .filter((point) => this.isExtractionOpen(point))
+      .map((point) => point.position);
+    const sent = pack.enrage(world, ways);
+    if (!sent) {
       return;
     }
-    const keeper = pack.hunters.find((hunter) => inGround(hunter.ground, this.currentTile));
-    if (!keeper || keeper.mode !== 'beaten') {
-      pack.enrageAnswered = true;
-      return;
-    }
-    const tile = this.findHunterSpawnTile();
-    if (!tile) {
-      return;
-    }
-    pack.enrageAnswered = true;
-    pack.returnForEnrage(keeper, tile, world);
-    this.packShouter = keeper;
-    this.hunterArrived = { atMs: this.time.now, returning: true };
+    this.packShouter = sent.hunter;
+    this.hunterArrived = { atMs: this.time.now, returning: sent.back };
     audioManager.play('hunterArrival');
   }
 

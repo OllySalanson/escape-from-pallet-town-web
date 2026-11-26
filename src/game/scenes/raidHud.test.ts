@@ -34,6 +34,13 @@ describe('the hunter chip', () => {
     });
   });
 
+  it("counts the enrage's hunter down from wherever it is, so the last fifteen seconds read as a race", () => {
+    expect(hunterChipView({ ...FAR, who: 'LORELEI', distance: 74, direction: 'W', enraged: true })).toEqual({
+      label: 'LORELEI W 74',
+      tone: 'closing',
+    });
+  });
+
   it('names the rival hunting the raid', () => {
     expect(hunterChipView({ ...FAR, who: 'MISTY', distance: 5, direction: 'NW' })).toEqual({
       label: 'MISTY NW 5',

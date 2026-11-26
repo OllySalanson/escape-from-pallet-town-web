@@ -43,8 +43,8 @@ friend still shares that hunter (`raidRoom/groupHunter.ts`).
 | **Fights it is not in** | The world stops for a fight as ever. Coming out, every hunter that was after you heard it: it knows where you are and comes on 2 steps, but never into touching distance, so you always have a step to answer. |
 | **Caught** | A hunter after you that stands beside you while you are at rest (never under a box) catches you: the same catch beat, that rival's lines and team. Walking into any hunter is being caught by it. |
 | **Fleeing** | Unchanged: always works, costs raid clock, throws it back behind you (`findHunterBreakawayTile`, never across the only way out), blind and solid for 20 s - then it walks home and has to see you again. |
-| **Beaten** | Gone for the raid. The enrage brings the keeper of the district you are in back once. |
-| **The enrage** | The last 15 s: every hunter within 40 tiles knows where you are, gives up nowhere and runs at twice your pace. |
+| **Beaten** | Gone for the raid, unless the enrage sends it: the keeper of the district you are in comes back once. |
+| **The enrage** | The last 15 s: every hunter already after you, or else one sent from 80 steps off by walking (the keeper of your district), knows where you are, gives up nowhere and runs at twice your pace: about 6 s to reach you standing still, about 12 s running straight away. |
 
 ### Wild battles while fleeing
 

@@ -10,6 +10,8 @@ import {
   HUNTER_ARRIVAL_CLEARANCE,
   HUNTER_CHASE_STEP_MS,
   HUNTER_COME_FOR_MS,
+  ENRAGE_REACH_MS,
+  ENRAGE_SEND_STEPS,
   HUNTER_ENRAGED_STEP_MS,
   HUNTER_FIGHT_CATCH_UP_STEPS,
   HUNTER_GRASS_SIGHT_STEPS,
@@ -356,17 +358,72 @@ describe('fled from, beaten and the enrage', () => {
     expect(pack.advance(worldOf(OPEN, { x: 11, y: 2 }), 1_000)).toEqual([]);
   });
 
-  it('turns on you at the enrage at twice your pace, and nowhere is out of its patch', () => {
+  it('turns a hunter already after you at the enrage, at twice your pace, and nowhere is out of its patch', () => {
     const small = groundOf({ x: 0, y: 0, width: 5, height: 5 }, { x: 0, y: 2 });
-    const { pack, hunter } = hunterIn(small, { mode: 'patrol', position: { x: 2, y: 2 }, facing: 'left' });
+    const { pack, hunter } = hunterIn(small, { mode: 'chase', position: { x: 2, y: 2 }, facing: 'right' });
     const world = worldOf(OPEN, { x: 30, y: 2 }, { enraged: true });
-    pack.enrage(world);
-    expect(hunter.mode).toBe('chase');
+    expect(pack.enrage(world, [])).toBeNull();
+    expect(hunter.enraged).toBe(true);
     for (let frame = 0; frame < (10 * HUNTER_ENRAGED_STEP_MS) / 15; frame += 1) {
       pack.advance(world, 15);
     }
     expect(hunter.position.x).toBe(12);
     expect(HUNTER_ENRAGED_STEP_MS).toBe(HUNTER_CHASE_STEP_MS / 2);
+  });
+});
+
+describe('the enrage sends one hunter from the same walk off, wherever you stand', () => {
+  // The critic stood six tiles from an open gate through the enrage and
+  // nothing came; walking, one was on the next tile the same second (review,
+  // problem 14). Now one is sent, the same walk off, whatever the player did.
+  const road = grid(Array.from({ length: 5 }, () => '.'.repeat(240)));
+  const player = { x: 120, y: 2 };
+  const gate = { x: 126, y: 2 };
+
+  /** Frames of a still player until the enrage's hunter has them, in ms. */
+  const msToCatch = (pack: HunterPack, world: PackWorld): number => {
+    for (let ms = 0; ms <= 20_000; ms += 15) {
+      pack.advance(world, 15);
+      if (pack.catcher(world.player)) {
+        return ms;
+      }
+    }
+    return Number.POSITIVE_INFINITY;
+  };
+
+  it('sends the keeper of where you stand from far off, behind you from the way out, and it has a still player in about six seconds', () => {
+    const { pack, hunter } = hunterIn(groundOf({ x: 0, y: 0, width: 240, height: 5 }, { x: 2, y: 2 }), { mode: 'patrol', position: { x: 2, y: 2 } });
+    const world = worldOf(road, player, { enraged: true });
+    const sent = pack.enrage(world, [gate]);
+    expect(sent).toEqual({ hunter, back: false });
+    expect(Math.abs(hunter.position.x - player.x) + Math.abs(hunter.position.y - player.y)).toBe(ENRAGE_SEND_STEPS);
+    // The far side from the gate, so the run out is away from it.
+    expect(hunter.position.x).toBeLessThan(player.x);
+    const ms = msToCatch(pack, world);
+    expect(ms).toBeGreaterThan(ENRAGE_REACH_MS - 500);
+    expect(ms).toBeLessThan(ENRAGE_REACH_MS + 1_000);
+  });
+
+  it('comes for a hunter sixty tiles off just as for one beside you', () => {
+    const near = hunterIn(groundOf({ x: 0, y: 0, width: 240, height: 5 }, { x: 118, y: 2 }), { mode: 'patrol', position: { x: 116, y: 2 } });
+    const far = hunterIn(groundOf({ x: 0, y: 0, width: 240, height: 5 }, { x: 60, y: 2 }), { mode: 'patrol', position: { x: 60, y: 2 } });
+    const world = worldOf(road, player, { enraged: true });
+    near.pack.enrage(world, [gate]);
+    far.pack.enrage(world, [gate]);
+    expect(near.hunter.position).toEqual(far.hunter.position);
+  });
+
+  it('brings a beaten keeper back, once, and leaves one just fled from blind', () => {
+    const { pack, hunter } = hunterIn(groundOf({ x: 0, y: 0, width: 240, height: 5 }, { x: 2, y: 2 }), { mode: 'beaten' });
+    const world = worldOf(road, player, { enraged: true });
+    expect(pack.enrage(world, [gate])).toEqual({ hunter, back: true });
+    expect(hunter.mode).toBe('chase');
+    expect(pack.enrage(world, [gate])).toBeNull();
+
+    const fled = hunterIn(groundOf({ x: 0, y: 0, width: 240, height: 5 }, { x: 2, y: 2 }), { mode: 'chase', position: { x: 100, y: 2 } });
+    fled.pack.fledFrom(fled.hunter, { x: 100, y: 2 }, 20_000);
+    expect(fled.pack.enrage(world, [gate])).toBeNull();
+    expect(fled.hunter.mode).toBe('stunned');
   });
 });
 
