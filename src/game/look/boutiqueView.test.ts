@@ -84,12 +84,17 @@ describe("the boutique's screen", () => {
   });
 });
 
-describe("the shelves' jump chips", () => {
-  it('gives every shelf the screen shows a chip, in shelf order', () => {
-    expect(cards(boutiqueMarkup(state()), 'data-jump')).toEqual(['looks', 'hat', 'hair', 'top', 'legs', 'outfit', 'raid', 'honours']);
+describe("the shelves' pager", () => {
+  it('names every shelf the screen shows on its pager, in shelf order, the first on show', () => {
+    const markup = boutiqueMarkup(state());
+    expect(markup).toMatch(/data-pager-name="looks">Looks<small> 1 of 8<\/small>/);
+    expect(markup).toMatch(/data-pager-name="hat" hidden>/);
+    expect(markup).toContain('data-shelf-step="-1"');
+    expect(markup).toContain('data-shelf-step="1"');
+    expect(cards(boutiqueMarkup(state()), 'data-pager-name')).toEqual(['looks', 'hat', 'hair', 'top', 'legs', 'outfit', 'raid', 'honours']);
     // The wardrobe shows only the shelves something owned stands on, a gym honour won first.
-    expect(cards(boutiqueMarkup(state({ mode: 'wardrobe' })), 'data-jump')).toEqual(['looks', 'hair', 'top', 'legs']);
-    expect(cards(boutiqueMarkup(state({ mode: 'wardrobe', honours: { earned: ['cascade'], worn: [] } })), 'data-jump')).toEqual([
+    expect(cards(boutiqueMarkup(state({ mode: 'wardrobe' })), 'data-pager-name')).toEqual(['looks', 'hair', 'top', 'legs']);
+    expect(cards(boutiqueMarkup(state({ mode: 'wardrobe', honours: { earned: ['cascade'], worn: [] } })), 'data-pager-name')).toEqual([
       'honours',
       'looks',
       'hair',

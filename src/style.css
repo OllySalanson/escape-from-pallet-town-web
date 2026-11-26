@@ -6575,25 +6575,11 @@ body.touch-play .feedback-tab {
 }
 /* Two classes deep, as the rule for both panes is, or the mirror is the row that gives way. */
 :where(.pixel-ui) .boutique-panes > .boutique-mirror-window {
-  grid-template-rows: auto auto minmax(0, 1fr);
-  width: calc(var(--u) * 120);
-}
-/* Three game pixels a pixel in the mirror, two at the smallest stage:
-   the mirror is the narrow side of the screen and the shelves need the rest. */
-:where(.pixel-ui) .boutique-mirror .look-figure {
-  --figure-scale: 3;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: calc(var(--u) * 196);
 }
 :where(.pixel-ui[data-room='tight']) .boutique-panes > .boutique-mirror-window {
   width: calc(var(--u) * 88);
-}
-:where(.pixel-ui[data-room='tight']) .boutique-mirror .look-figure {
-  --figure-scale: 2;
-}
-/* At the smallest stage the four facings leave the list under the mirror less
-   room than one of its rows, so it could only ever show a row cut through:
-   it goes, and the bar along the foot still says what is new and its price. */
-:where(.pixel-ui[data-room='tight']) .boutique-panes > .boutique-mirror-window > .boutique-worn {
-  display: none;
 }
 /* A card's figure at two, and at the game's own size at the smallest stage,
    so a card is short enough to fold whole under a MORE strip rather than be
@@ -6608,37 +6594,8 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .boutique-panes > .boutique-shelves-window {
   grid-template-rows: auto auto minmax(0, 1fr);
 }
-:where(.pixel-ui) .boutique-jumps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--u) * 2);
-  padding-bottom: calc(var(--u) * 3);
-}
-/* At the smallest stage the chips would take two rows of a list that has few
-   to spare; the shelves' own headings still say where each one starts. */
-:where(.pixel-ui[data-room='tight']) .boutique-jumps {
-  display: none;
-}
 :where(.pixel-ui[data-room='tight']) .boutique-panes > .boutique-shelves-window {
   grid-template-rows: auto minmax(0, 1fr);
-}
-/* The four facings two by two: down and left, up and right. */
-:where(.pixel-ui) .boutique-mirror {
-  display: grid;
-  grid-template-columns: repeat(2, max-content);
-  justify-content: center;
-  gap: calc(var(--u) * 4) calc(var(--u) * 8);
-  padding: calc(var(--u) * 4) 0;
-  background: var(--paper-lit);
-}
-:where(.pixel-ui) .boutique-worn-row {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: calc(var(--u) * 2);
-}
-:where(.pixel-ui) .boutique-worn-row small {
-  color: var(--ink-soft);
 }
 /* A look's figure is the whole point of this screen, so unlike a keeper's it
    stays at the smallest stage too. */
@@ -6666,13 +6623,10 @@ body.touch-play .feedback-tab {
   row-gap: calc(var(--u) * 1);
 }
 .pixel-ui .boutique-card.is-selected {
-  --fill: var(--safe-wash);
+  --edge: var(--gold-ink);
 }
 .pixel-ui .boutique-card.is-selected:focus {
   --fill: var(--paper-lit);
-}
-.pixel-ui .boutique-card.is-raid {
-  --fill: var(--gold-wash);
 }
 /* A gym honour won and worn is gold, as a raid find is; taken off, it is
    plain and its figure stands back (`look/gymHonours.ts`). */
@@ -10003,4 +9957,242 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .tr-who .px-mon-tiles {
   max-height: calc(var(--u) * 62);
+}
+
+/* --- THE HARBOUR BOUTIQUE in the round-3 look (`look/boutiqueView.ts`) ---- *
+   The mirror: what the try-on has on its head, top and legs on cards down one
+   side and a full kit under them, the try-on big beside them, and along the
+   foot what you have on now beside the try-on turning round. The shelves:
+   one at a time behind a pager. The foot: what it takes, as tags. */
+:where(.pixel-ui) .bq-mirror {
+  display: grid;
+  grid-template-columns: calc(var(--u) * 68) minmax(0, 1fr);
+  gap: calc(var(--u) * 4);
+  min-height: 0;
+}
+:where(.pixel-ui) .bq-slots {
+  display: grid;
+  align-content: start;
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .bq-slot {
+  display: grid;
+  background: var(--paper);
+  box-shadow: inset 0 0 0 var(--u) var(--line);
+  padding-bottom: calc(var(--u) * 2);
+  text-transform: uppercase;
+  text-align: center;
+}
+:where(.pixel-ui) .bq-slot.is-empty {
+  background: var(--paper-sunk);
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .bq-slot-head {
+  background: var(--ink);
+  color: var(--paper);
+}
+:where(.pixel-ui) .bq-slot.is-kit .bq-slot-head {
+  background: var(--ink-2);
+}
+:where(.pixel-ui) .bq-slot-name {
+  padding: var(--u) calc(var(--u) * 2) 0;
+}
+:where(.pixel-ui) .bq-classic {
+  color: var(--ink-soft);
+}
+/* The glass: the try-on big, on a stepped pixel shadow. */
+:where(.pixel-ui) .bq-glass {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  background: var(--paper-lit);
+  box-shadow: inset 0 0 0 var(--u) var(--gold-ink);
+}
+:where(.pixel-ui) .bq-glass::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - var(--u) * 24);
+  bottom: calc(50% - var(--u) * 50);
+  width: calc(var(--u) * 48);
+  height: calc(var(--u) * 8);
+  background: rgb(0 0 0 / 14%);
+  clip-path: polygon(17% 0, 83% 0, 83% 25%, 100% 25%, 100% 75%, 83% 75%, 83% 100%, 17% 100%, 17% 75%, 0 75%, 0 25%, 17% 25%);
+}
+:where(.pixel-ui) .bq-glass .look-figure {
+  position: relative;
+  z-index: 1;
+}
+:where(.pixel-ui) .bq-turn {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  padding-top: calc(var(--u) * 4);
+  margin-top: calc(var(--u) * 3);
+  border-top: var(--u) solid var(--paper-sunk);
+}
+:where(.pixel-ui) .bq-to {
+  flex: none;
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 5);
+  background: var(--ink);
+  mask: var(--px-cursor) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
+}
+:where(.pixel-ui) .bq-turns {
+  display: flex;
+  gap: 0;
+  padding: var(--u) calc(var(--u) * 2);
+  box-shadow: inset 0 0 0 var(--u) var(--gold);
+}
+/* The pager over the shelves: one shelf at a time, between two arrows. */
+:where(.pixel-ui) .bq-pager {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+  padding-bottom: calc(var(--u) * 3);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .bq-pager-name {
+  flex: 1 1 auto;
+  text-align: center;
+}
+:where(.pixel-ui) .bq-pager-name[hidden],
+:where(.pixel-ui) .boutique-shelf[hidden] {
+  display: none;
+}
+:where(.pixel-ui) .bq-pager-name small {
+  color: var(--ink-soft);
+}
+/* A shelf is the list's own grid: its heading across the top, its cards in the list's columns. */
+:where(.pixel-ui) .boutique-shelf {
+  display: contents;
+}
+:where(.pixel-ui) .boutique-shelf > .px-subheading {
+  display: none;
+}
+/* A price: gold for money; a part, its picture and how many on white. */
+:where(.pixel-ui) .boutique-cost.is-money {
+  padding: 0 calc(var(--u) * 3);
+  background: var(--gold);
+  color: var(--ink);
+  box-shadow: 0 0 0 var(--u) var(--line);
+}
+:where(.pixel-ui) .boutique-cost:not(.is-money) {
+  padding-right: calc(var(--u) * 2);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 0 0 var(--u) var(--line);
+}
+:where(.pixel-ui) .boutique-costs {
+  gap: calc(var(--u) * 3);
+  margin-top: calc(var(--u) * 2);
+}
+/* What it takes: a gold strip, each cost a tag with what you have under it. */
+.pixel-ui .bq-takes.is-gold {
+  --heading: var(--gold);
+}
+:where(.pixel-ui) .bq-takes.is-gold .px-heading {
+  color: var(--ink);
+}
+:where(.pixel-ui) .bq-takes.is-gold .px-heading small {
+  color: var(--gold-ink);
+}
+:where(.pixel-ui) .bq-takes-body {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 4) calc(var(--u) * 8);
+}
+:where(.pixel-ui) .bq-takes-tags {
+  display: flex;
+  gap: calc(var(--u) * 6);
+}
+:where(.pixel-ui) .bq-take {
+  display: grid;
+  justify-items: center;
+}
+:where(.pixel-ui) .bq-have {
+  padding: 0 calc(var(--u) * 3);
+  margin-top: var(--u);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .bq-take.is-enough .bq-have {
+  background: var(--safe-wash);
+  color: var(--safe-ink);
+  box-shadow: 0 0 0 var(--u) var(--safe);
+}
+:where(.pixel-ui) .bq-take.is-short .bq-have {
+  background: var(--paper-sunk);
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .bq-takes-line {
+  flex: 1 1 calc(var(--u) * 120);
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .bq-actions {
+  display: flex;
+  gap: calc(var(--u) * 4);
+  margin-left: auto;
+}
+.pixel-ui .bq-key {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  padding-left: calc(var(--u) * 3);
+}
+.pixel-ui .bq-key.is-primary .px-keycap {
+  background: var(--paper);
+  color: var(--ink);
+}
+/* A button with its key inside says it is the one under the cursor with a gold
+   ring, not the drawn arrow, which would stand over its keycap. */
+.pixel-ui .px-button:has(> .px-keycap):focus::before {
+  display: none;
+}
+.pixel-ui .px-button:has(> .px-keycap):focus {
+  box-shadow: 0 0 0 var(--u) var(--gold), 0 calc(var(--u) * 2) 0 calc(var(--u) * -1) var(--ink);
+}
+/* A note on a shelf runs the shelf's whole width, under its cards. */
+:where(.pixel-ui) .boutique-shelf > .px-note {
+  grid-column: 1 / -1;
+  order: 1;
+}
+/* A card as short as its figure, name and one line of tags allow, so two rows
+   of a shelf stand whole above its MORE strip. */
+.pixel-ui .boutique-card {
+  padding-top: calc(var(--u) * 2);
+  padding-bottom: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .boutique-card .boutique-costs {
+  gap: calc(var(--u) * 2);
+  margin-top: 0;
+}
+/* The mirror's slot cards are one line each - the part's name, cut short, and
+   its NEW or YOURS tag - so the four of them, the glass and the turning row
+   stand whole however short the screen. */
+:where(.pixel-ui) .bq-slot {
+  grid-template-columns: minmax(0, 1fr);
+  padding-bottom: 0;
+}
+:where(.pixel-ui) .bq-slot.is-new .bq-slot-head {
+  background: var(--gold);
+  color: var(--ink);
+}
+:where(.pixel-ui) .bq-slot-head {
+  grid-column: 1 / -1;
+}
+:where(.pixel-ui) .bq-slot-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  padding: var(--u) calc(var(--u) * 2);
+}
+:where(.pixel-ui) .bq-glass {
+  overflow: hidden;
+}
+/* A shelf too low for two rows of cards draws their figures at the art's own
+   size (`BoutiqueScene.fitShelf`), so two rows stand whole. */
+:where(.pixel-ui) .boutique-shelves[data-low] .boutique-card .look-figure {
+  --figure-scale: 1;
 }

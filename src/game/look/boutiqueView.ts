@@ -13,8 +13,8 @@
  */
 import { formatMoney } from '../items/items';
 import { itemIcon } from '../ui/icons';
-import { COLUMN_MEASURES, escapeAttribute, pixelColumns, pixelCommitBar, pixelScreen, pixelTag, pixelWindow } from '../ui/pixelUi';
-import { lookKey, LOOK_SLOTS, sameLook, wearing, type LookSlot, type PlayerLook } from './look';
+import { COLUMN_MEASURES, escapeAttribute, pixelColumns, pixelScreen, pixelWindow } from '../ui/pixelUi';
+import { lookKey, sameLook, wearing, type LookSlot, type PlayerLook } from './look';
 import { billFor, billLine, checkBill, lookPriceLine, priceLine, SHELF_ORDER, shelfPieces, unownedIn, WHOLE_LOOKS, type WearableBill, type WholeLook } from './wardrobe';
 import { BOUTIQUE_NAME, wearableById, WEARABLES, type Wearable } from './wearables';
 import { GYM_HONOURS, type GymHonour, type HonourId } from './gymHonours';
@@ -56,8 +56,8 @@ const SLOT_WORDS: Readonly<Record<LookSlot, string>> = {
   body: 'Outfit',
 };
 
-export const BOUTIQUE_HINTS = 'ARROWS look along the shelves · ENTER try it on, then ENTER buys · TAB shelves or bar · ESC leave';
-export const WARDROBE_HINTS = 'ARROWS look through your clothes · ENTER try it on, then ENTER wears it · TAB clothes or bar · ESC close';
+export const BOUTIQUE_HINTS = 'ARROWS move · ENTER try it on, then ENTER buys · Q E shelf · TAB shelf or bar · ESC back';
+export const WARDROBE_HINTS = 'ARROWS move · ENTER try it on, then ENTER wears it · Q E shelf · TAB clothes or bar · ESC back';
 
 /** The rows of the figure's sheet the mirror shows, one facing each: down, left, up, right. */
 const MIRROR_ROWS = [0, 3, 2, 1] as const;
@@ -78,16 +78,14 @@ export function lookFigure(sheet: string, options: { readonly row?: number; read
 export function boutiqueMarkup(state: BoutiqueState): string {
   const shop = state.mode === 'shop';
   const shelves = shop ? shopShelves(state) : wardrobeShelves(state);
-  const jumps = shelfJumps(shelves);
   const count = shop ? WEARABLES.length : WEARABLES.filter((piece) => state.owned.has(piece.id)).length;
   const body = `<main class="px-body boutique-layout"><div class="boutique-panes">${mirror(state)}${pixelWindow(
-    `${jumps}<div class="px-list px-scroll boutique-shelves" data-shelves ${pixelColumns(COLUMN_MEASURES.wearable)}>${shelves}</div>`,
+    `${shelfPager(shelves)}<div class="px-list px-scroll boutique-shelves" data-shelves ${pixelColumns(COLUMN_MEASURES.wearable)}>${shelves}</div>`,
     {
       heading: shop ? 'The shelves' : 'Your clothes',
-      // The shelves' MORE strip counts every card on them, whole looks
-      // included, so the heading counts the looks too: "209 PIECES" over
-      // "240 MORE" read as two counts that could not both be right (veteran
-      // playtest, 20 Nov 2026). The classic look is a card of its own.
+      // The heading counts the looks too, as the MORE strip counts every card:
+      // "209 PIECES" over "240 MORE" read as two counts that could not both be
+      // right (veteran playtest, 20 Nov 2026).
       note: shop ? `${WHOLE_LOOKS.length + 1} looks · ${count} pieces` : `${count} piece${count === 1 ? '' : 's'} of ${WEARABLES.length}`,
       className: 'boutique-shelves-window',
     },
@@ -96,44 +94,65 @@ export function boutiqueMarkup(state: BoutiqueState): string {
     title: shop ? BOUTIQUE_NAME : 'Your wardrobe',
     place: shop ? 'The Docks' : 'The Bolthole',
     close: { attribute: 'data-close' },
-    aside: `${formatMoney(state.held('money'))} in YOUR THINGS`,
+    aside: `${formatMoney(state.held('money'))}`,
     body,
     hints: shop ? BOUTIQUE_HINTS : WARDROBE_HINTS,
     ...(state.status ? { status: state.status } : {}),
   });
 }
 
-/** The mirror: the try-on walking in all four facings, and what it is made of. */
+/**
+ * The mirror: the try-on big in the middle, what it has on its head, top and
+ * legs on three cards down one side and a full kit on the other, and along
+ * the foot what you have on now beside the try-on turning round.
+ */
 export function mirror(state: BoutiqueState): string {
-  return pixelWindow(`<div class="boutique-mirror" data-mirror>${mirrorFigures(state.sheet(state.trying))}</div><div class="px-list px-scroll boutique-worn" data-worn data-reads tabindex="-1">${wornRows(state)}</div>`, {
-    heading: 'The mirror',
-    note: sameLook(state.trying, state.wearing) ? 'what you have on' : 'trying on',
-    className: 'boutique-mirror-window',
-  });
+  const now = lookFigure(state.sheet(state.wearing), { label: 'What you have on now', scale: 2 });
+  return pixelWindow(
+    `<div class="bq-mirror"><div class="bq-slots" data-worn>${wornRows(state)}</div><div class="bq-glass" data-mirror>${mirrorFigures(state.sheet(state.trying))}</div></div>`
+      + `<div class="bq-turn"><span class="bq-now" title="What you have on now">${now}</span><span class="bq-to" aria-label="to"></span><span class="bq-turns" data-mirror-turns title="Trying on">${turningFigures(state.sheet(state.trying))}</span></div>`,
+    {
+      heading: 'The mirror',
+      note: sameLook(state.trying, state.wearing) ? 'what you have on' : 'trying on',
+      className: 'boutique-mirror-window',
+    },
+  );
 }
 
-/** The four walking figures in the mirror, redrawn alone as the cursor moves. */
+/** The try-on in the glass: big, facing out, walking on the spot. */
 export function mirrorFigures(sheet: string): string {
-  return MIRROR_ROWS.map((row) => lookFigure(sheet, { row, walking: true, label: 'You, in the mirror' })).join('');
+  return lookFigure(sheet, { row: 0, walking: true, label: 'You, in the mirror', scale: 4 });
 }
 
-/** What the mirror's look is made of, piece by piece, owned or priced. */
+/** The try-on turning round: its four facings, small. */
+export function turningFigures(sheet: string): string {
+  return MIRROR_ROWS.map((row) => lookFigure(sheet, { row, scale: 2, label: 'You, turning round' })).join('');
+}
+
+/** One part of a look on a card of its own: what is on, and its price when it is not yours. */
+function slotCard(slot: LookSlot, piece: Wearable | undefined, owned: ReadonlySet<string>): string {
+  // What it costs is the card along the foot's to say; a slot says what is on, and whether it is yours.
+  const mine = piece !== undefined && owned.has(piece.id);
+  // A part not yours yet has a gold head: gold is a price, and the card at the foot says it.
+  const fresh = piece !== undefined && !mine;
+  return `<div class="bq-slot${piece ? '' : ' is-empty'}${slot === 'body' ? ' is-kit' : ''}${fresh ? ' is-new' : ''}" title="${escapeAttribute(piece ? `${piece.name}${mine ? '' : `: ${priceLine(piece)}`}` : SLOT_WORDS[slot])}"><span class="bq-slot-head">${SLOT_WORDS[slot]}${fresh ? (piece.rarity === 'raid' ? ' · raid find' : ' · new') : ''}</span><span class="bq-slot-name">${piece ? piece.name : 'None'}</span></div>`;
+}
+
+/** What the mirror's look is made of, a card a part: head, top, legs and a full kit. */
 export function wornRows(state: Pick<BoutiqueState, 'trying' | 'owned'>): string {
   const look = state.trying;
+  const piece = (slot: LookSlot): Wearable | undefined => wearableById(look?.[slot] ?? '');
   if (!look) {
-    return `<p class="px-empty px-wrap">The classic look: the clothes you came to the harbour in.</p>`;
+    return (['head', 'top', 'legs', 'body'] as const).map((slot) => slotCard(slot, undefined, state.owned)).join('')
+      + '<p class="bq-classic">The classic look: the clothes you came to the harbour in.</p>';
   }
-  return LOOK_SLOTS.filter((slot) => slot !== 'body' || look.body)
-    .filter((slot) => !(look.body && (slot === 'top' || slot === 'legs')))
-    .map((slot) => {
-      const piece = wearableById(look[slot] ?? '');
-      if (!piece) return '';
-      // Owned is a tag; a price goes under the name, where a barter's goods have room to wrap.
-      const owned = state.owned.has(piece.id);
-      const price = owned ? '' : `<small class="px-wrap${piece.rarity === 'raid' ? ' px-warning' : ''}">${priceLine(piece)}</small>`;
-      return `<div class="px-row boutique-worn-row"><span class="px-row-main"><small>${SLOT_WORDS[slot]}</small><strong class="px-name">${piece.name}</strong>${price}</span>${owned ? pixelTag('Yours', 'secure', true) : ''}</div>`;
-    })
-    .join('');
+  const kit = piece('body');
+  return [
+    slotCard('head', piece('head'), state.owned),
+    slotCard('top', kit ? undefined : piece('top'), state.owned),
+    slotCard('legs', kit ? undefined : piece('legs'), state.owned),
+    slotCard('body', kit, state.owned),
+  ].join('');
 }
 
 /** The short word each shelf's jump chip says, by the shelf it goes to. */
@@ -158,34 +177,36 @@ export function shelfStep(current: number, atStart: boolean, count: number, dire
   return atStart ? Math.max(0, current - 1) : current;
 }
 
-/** A shelf's heading, marked so its jump chip can find it. */
+/** A shelf's heading, marked so the pager can find it. */
 function shelfHeading(key: string, words: string): string {
   return `<h3 class="px-subheading" data-shelf="${key}">${words}</h3>`;
 }
 
+/** A shelf: its heading and its cards, shown one shelf at a time (`BoutiqueScene.showShelf`). */
+function shelfGroup(key: string, words: string, inner: string): string {
+  return `<div class="boutique-shelf" data-shelf-group="${key}">${shelfHeading(key, words)}${inner}</div>`;
+}
+
 /**
- * A chip for every shelf the screen shows, over the shelves: ENTER on one takes
- * the cursor to that shelf's first card, so the last shelf of two hundred
- * pieces is one press away rather than a long walk down the list.
+ * The pager over the shelves: the shelf on show between two arrows that walk
+ * to the one before and after (Q and E, or Page Up and Page Down), and where
+ * it stands among them - one shelf at a time, as FireRed's PC walks its boxes,
+ * so the shelves never scroll to a sliver of a card. Every shelf's name is in
+ * it, and the scene shows the one the cursor is in.
  */
-function shelfJumps(shelves: string): string {
-  const keys = [...shelves.matchAll(/data-shelf="([a-z]+)"/g)].map((match) => match[1]);
-  const chips = keys
-    .map(
-      (key) =>
-        `<button class="px-window px-chip" data-jump="${key}" data-help="${escapeAttribute(`Go to ${SHELF_JUMPS[key]}. Page Down and Page Up go a shelf at a time.`)}">${SHELF_JUMPS[key]}</button>`,
-    )
-    .join('');
-  return `<div class="boutique-jumps">${chips}</div>`;
+export function shelfPager(shelves: string): string {
+  const keys = [...shelves.matchAll(/data-shelf-group="([a-z]+)"/g)].map((match) => match[1]);
+  const names = keys.map((key, index) => `<span class="bq-pager-name" data-pager-name="${key}"${index === 0 ? '' : ' hidden'}>${SHELF_JUMPS[key]}<small> ${index + 1} of ${keys.length}</small></span>`).join('');
+  return `<div class="bq-pager"><button class="px-window px-chip bq-step" data-shelf-step="-1" aria-label="The shelf before" data-help="The shelf before. Q or Page Up does the same.">Q</button>${names}<button class="px-window px-chip bq-step" data-shelf-step="1" aria-label="The next shelf" data-help="The next shelf. E or Page Down does the same.">E</button></div>`;
 }
 
 function shopShelves(state: BoutiqueState): string {
-  const looks = `${shelfHeading('looks', 'Whole looks')}${classicCard(state)}${WHOLE_LOOKS.map((entry) => wholeCard(state, entry)).join('')}`;
-  const shelves = SHELF_ORDER.map(
-    (kind) => `${shelfHeading(kind, SHELF_HEADINGS[kind])}${shelfPieces(kind, false).map((piece) => pieceCard(state, piece)).join('')}`,
+  const looks = shelfGroup('looks', 'Whole looks', `${classicCard(state)}${WHOLE_LOOKS.map((entry) => wholeCard(state, entry)).join('')}`);
+  const shelves = SHELF_ORDER.map((kind) =>
+    shelfGroup(kind, SHELF_HEADINGS[kind], shelfPieces(kind, false).map((piece) => pieceCard(state, piece)).join('')),
   ).join('');
   const raid = WEARABLES.filter((piece) => piece.rarity === 'raid');
-  const found = `${shelfHeading('raid', 'Found on raids')}${raid.map((piece) => pieceCard(state, piece)).join('')}`;
+  const found = shelfGroup('raid', 'Found on raids', raid.map((piece) => pieceCard(state, piece)).join(''));
   return `${looks}${shelves}${found}${honourShelf(state)}`;
 }
 
@@ -198,7 +219,7 @@ function honourShelf(state: BoutiqueState): string {
   const shop = state.mode === 'shop';
   const shown = shop ? GYM_HONOURS : GYM_HONOURS.filter((honour) => state.honours.earned.includes(honour.id));
   if (shown.length === 0) return '';
-  return `${shelfHeading('honours', 'Gym honours')}${shown.map((honour) => honourCard(state, honour)).join('')}`;
+  return shelfGroup('honours', 'Gym honours', shown.map((honour) => honourCard(state, honour)).join(''));
 }
 
 /**
@@ -229,10 +250,10 @@ function honourCard(state: BoutiqueState, honour: GymHonour): string {
 
 function wardrobeShelves(state: BoutiqueState): string {
   const looks = WHOLE_LOOKS.filter((entry) => unownedIn(entry.look, state.owned).length === 0);
-  const head = `${honourShelf(state)}${shelfHeading('looks', 'Whole looks')}${classicCard(state)}${looks.map((entry) => wholeCard(state, entry)).join('')}`;
+  const head = `${honourShelf(state)}${shelfGroup('looks', 'Whole looks', `${classicCard(state)}${looks.map((entry) => wholeCard(state, entry)).join('')}`)}`;
   const shelves = SHELF_ORDER.map((kind) => {
     const pieces = WEARABLES.filter((piece) => piece.kind === kind && state.owned.has(piece.id));
-    return pieces.length === 0 ? '' : `${shelfHeading(kind, SHELF_HEADINGS[kind])}${pieces.map((piece) => pieceCard(state, piece)).join('')}`;
+    return pieces.length === 0 ? '' : shelfGroup(kind, SHELF_HEADINGS[kind], pieces.map((piece) => pieceCard(state, piece)).join(''));
   }).join('');
   return `${head}${shelves}`;
 }
@@ -252,7 +273,7 @@ function classicCard(state: BoutiqueState): string {
  */
 function priceChips(bill: WearableBill): string {
   const parts = [
-    ...(bill.money > 0 ? [`<span class="boutique-cost">${formatMoney(bill.money)}</span>`] : []),
+    ...(bill.money > 0 ? [`<span class="boutique-cost is-money">${formatMoney(bill.money)}</span>`] : []),
     ...Object.entries(bill.goods).map(
       ([itemId, quantity]) => `<span class="boutique-cost">${itemIcon(itemId)}<small>×${quantity}</small></span>`,
     ),
@@ -283,37 +304,59 @@ function pieceCard(state: BoutiqueState, piece: Wearable): string {
   return `<button class="px-window px-card boutique-card${on ? ' is-selected' : ''}${piece.rarity === 'raid' ? ' is-raid' : ''}" data-wear="${piece.id}" data-help="${escapeAttribute(help)}">${lookFigure(state.sheet(look), { label: piece.name })}<strong>${piece.name}</strong>${sold ? priceChips(billFor([piece])) : `<small class="px-wrap${owned ? ' px-note' : ''}">${line}</small>`}</button>`;
 }
 
-/** The bar along the foot: what the try-on costs, and the one thing to do about it. */
+/** A button with its key inside it, as every button in the look says it. */
+function keyed(attributes: string, key: string, words: string, primary = false): string {
+  return `<button class="px-window px-button${primary ? ' is-primary' : ''} bq-key" ${attributes}><span class="px-keycap">${key}</span>${words}</button>`;
+}
+
+/**
+ * What the try-on costs, as the things themselves: the money, and each of the
+ * goods a barter asks for, each with how many you have under it - green when
+ * there is enough, grey when not.
+ */
+function takesTags(bill: WearableBill, held: (itemId: string) => number): string {
+  const tag = (picture: string, amount: string, have: number, enough: boolean): string =>
+    `<span class="bq-take${enough ? ' is-enough' : ' is-short'}">${picture}<span class="bq-take-amount">${amount}</span><span class="bq-have">Have ${have}</span></span>`;
+  const money = held('money');
+  return [
+    ...(bill.money > 0 ? [tag(itemIcon('money'), formatMoney(bill.money), money, money >= bill.money).replace(`Have ${money}`, `Have ${formatMoney(money)}`)] : []),
+    ...Object.entries(bill.goods).map(([itemId, quantity]) => tag(itemIcon(itemId), `×${quantity}`, held(itemId), held(itemId) >= quantity)),
+  ].join('');
+}
+
+/**
+ * The card along the foot: what the try-on is made of that is not yours yet,
+ * what it takes, and the one thing to do about it.
+ */
 export function commitBar(state: BoutiqueState): string {
   const changed = !sameLook(state.trying, state.wearing);
   const missing = unownedIn(state.trying, state.owned);
-  const putBack = `<button class="px-window px-button" data-put-back${changed ? '' : ' aria-disabled="true"'} data-help="Take it all off and put it back on the shelves.">Put it back</button>`;
+  const putBack = `<button class="px-window px-button bq-key" data-put-back${changed ? '' : ' aria-disabled="true"'} data-help="Take it all off and put it back on the shelves.">Put it back</button>`;
+  const card = (title: string, note: string, inner: string, tone = ''): string =>
+    `<section class="px-window confirm-bar bq-takes${tone}"><header class="px-heading"><span>${title}</span><small>${note}</small></header>${inner}</section>`;
   if (missing.length === 0) {
-    return pixelCommitBar({
-      title: changed ? 'This all fits' : 'What you have on',
-      actions: `<button class="px-window px-button is-primary" data-wear-it${changed ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(changed ? 'Wear this look from now on.' : 'You are already wearing this.')}">Wear this</button>${putBack}`,
-    });
+    return card(
+      changed ? 'This all fits' : 'What you have on',
+      changed ? 'All yours' : '',
+      `<div class="bq-takes-body"><div class="bq-actions">${keyed(`data-wear-it${changed ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(changed ? 'Wear this look from now on.' : 'You are already wearing this.')}"`, 'ENTER', 'Wear this', true)}${putBack}</div></div>`,
+    );
   }
-  const check = checkBill(billFor(missing), { itemCount: state.held });
   const names = missing.map((piece) => piece.name).join(', ');
   if (state.mode === 'wardrobe') {
-    return pixelCommitBar({
-      title: 'Not yours yet',
-      lines: [`<small class="px-wrap">${names}: from ${BOUTIQUE_NAME}, on THE DOCKS.</small>`],
-      actions: putBack,
-    });
+    return card('Not yours yet', '', `<div class="bq-takes-body"><p class="px-wrap bq-takes-line">${names}: from ${BOUTIQUE_NAME}, on THE DOCKS.</p><div class="bq-actions">${putBack}</div></div>`);
   }
+  const check = checkBill(billFor(missing), { itemCount: state.held });
   const buy = check.refusal
-    ? `<button class="px-window px-button is-primary" data-buy aria-disabled="true" data-help="${escapeAttribute(check.why ?? 'Not today.')}">Buy and wear</button>`
-    : `<button class="px-window px-button is-primary" data-buy data-help="${escapeAttribute(`Pay ${billLine(check.bill)} and wear it out of the shop.`)}">Buy and wear</button>`;
-  return pixelCommitBar({
-    title: `Trying on ${missing.length} new piece${missing.length === 1 ? '' : 's'}`,
-    lines: [
-      `<small class="px-wrap">${names}</small>`,
-      `<small class="px-wrap${check.refusal ? ' px-warning' : ''}">${check.refusal ? (check.why ?? '') : `Comes to ${billLine(check.bill)}.`}</small>`,
-    ],
-    actions: `${buy}${putBack}`,
-  });
+    ? keyed(`data-buy aria-disabled="true" data-help="${escapeAttribute(check.why ?? 'Not today.')}"`, 'ENTER', 'Buy', true)
+    : keyed(`data-buy data-help="${escapeAttribute(`Pay ${billLine(check.bill)} and wear it out of the shop.`)}"`, 'ENTER', 'Buy', true);
+  return card(
+    names,
+    'It takes',
+    `<div class="bq-takes-body"><div class="bq-takes-tags">${takesTags(check.bill, state.held)}</div>`
+      + `<p class="px-wrap bq-takes-line${check.refusal ? ' px-warning' : ''}">${check.refusal ? (check.why ?? '') : `Comes to ${billLine(check.bill)}.`}</p>`
+      + `<div class="bq-actions">${buy}${putBack}</div></div>`,
+    ' is-gold',
+  );
 }
 
 /** Whether the shelves show a piece, for whoever is shopping or dressing. */

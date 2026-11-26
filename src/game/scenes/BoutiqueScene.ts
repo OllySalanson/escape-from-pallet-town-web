@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
-import { boutiqueMarkup, honoursIfChosen, mirrorFigures, shelfStep, wornRows, type BoutiqueMode, type BoutiqueState } from '../look/boutiqueView';
+import { boutiqueMarkup, honoursIfChosen, mirrorFigures, shelfStep, turningFigures, wornRows, type BoutiqueMode, type BoutiqueState } from '../look/boutiqueView';
 import { honourArts, honourById, honoursEarned, honoursKey, honoursWorn, isHonourId, type HonourId } from '../look/gymHonours';
 import { dressIn, type WornPackBody } from '../look/wornPack';
 import { composeLook, PIECE_HEIGHT, PIECE_WIDTH } from '../look/composeLook';
@@ -36,6 +36,9 @@ export interface BoutiqueSceneData {
  */
 /** What the bar along the foot does. */
 const BAR_ACTIONS = '[data-buy], [data-wear-it], [data-put-back]';
+/** The gap between two rows of cards, and the MORE strip over a pane's foot, in game pixels. */
+const SHELF_ROW_GAP = 4;
+const SHELF_MORE_STRIP = 13;
 
 /** The selector that finds this card again after a redraw, or null if it is not a card. */
 function cardSelector(target: HTMLElement): string | null {
@@ -53,6 +56,8 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
   private status: string | undefined;
   /** The card the cursor last stood on, which is where it comes back to from the bar. */
   private lastCard: string | null = null;
+  /** The shelf on show (`data-shelf-group`): one at a time. */
+  private shelf: string | undefined;
   /** When the keyboard last tried something on and landed on the bar: see `buy`. */
   private triedOnAt = Number.NEGATIVE_INFINITY;
   private readonly saveManager = new SaveManager();
@@ -67,6 +72,7 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
     this.mode = data.mode;
     this.status = undefined;
     this.lastCard = null;
+    this.shelf = undefined;
     this.triedOnAt = Number.NEGATIVE_INFINITY;
     this.game_ = this.saveManager.load() ?? undefined;
     this.trying = this.wearingNow();
@@ -147,16 +153,57 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
     root.querySelectorAll<HTMLButtonElement>('[data-honour]').forEach((button) => {
       button.onclick = () => this.chooseHonour(button.dataset.honour ?? '');
     });
-    root.querySelectorAll<HTMLButtonElement>('[data-jump]').forEach((button) => {
-      button.onclick = () => this.jumpTo(button.dataset.jump ?? '');
+    root.querySelectorAll<HTMLButtonElement>('[data-shelf-step]').forEach((button) => {
+      button.onclick = () => this.stepShelf(button.dataset.shelfStep === '-1' ? -1 : 1);
     });
     this.wireAction(root, '[data-buy]', () => this.buy());
     this.wireAction(root, '[data-wear-it]', () => this.wearIt());
     this.wireAction(root, '[data-put-back]', () => this.tryOn(this.wearingNow(), undefined));
+    // One shelf at a time: the one the cursor is going back to, else the one
+    // it was on, else the one the screen starts on.
+    const going = (focusOn ? root.querySelector<HTMLElement>(focusOn) : null) ?? root.querySelector<HTMLElement>('[data-cursor-start]');
+    const shelfOf = (element: Element | null): string | undefined => element?.closest<HTMLElement>('[data-shelf-group]')?.dataset.shelfGroup;
+    const known = this.shelf !== undefined && root.querySelector(`[data-shelf-group="${this.shelf}"]`) !== null;
+    this.showShelf(shelfOf(focusOn ? going : null) ?? (known ? this.shelf : undefined) ?? shelfOf(going) ?? root.querySelector<HTMLElement>('[data-shelf-group]')?.dataset.shelfGroup);
     if (focusOn) {
-      overlay.refocus(focusOn, '[data-cursor-start]');
+      overlay.refocus(focusOn, '[data-cursor-start]', `[data-shelf-group="${this.shelf}"] .px-card`);
     } else {
-      overlay.refocus('[data-cursor-start]');
+      overlay.refocus('[data-cursor-start]', `[data-shelf-group="${this.shelf}"] .px-card`);
+    }
+  }
+
+  /** Shows one shelf, and names it on the pager. */
+  private showShelf(shelf: string | undefined): void {
+    const root = this.overlay?.root;
+    if (!root || shelf === undefined) return;
+    this.shelf = shelf;
+    root.querySelectorAll<HTMLElement>('[data-shelf-group]').forEach((group) => {
+      group.hidden = group.dataset.shelfGroup !== shelf;
+    });
+    root.querySelectorAll<HTMLElement>('[data-pager-name]').forEach((name) => {
+      name.hidden = name.dataset.pagerName !== shelf;
+    });
+    this.overlay?.remeasure();
+    this.fitShelf();
+  }
+
+  /**
+   * Two whole rows of a shelf, wherever there is room for them: on a screen
+   * too low for two rows of cards at their usual size (1280x800 under the
+   * controls bar), the cards draw their figures at the art's own size, so a
+   * shelf is never one row over a blank band.
+   */
+  private fitShelf(): void {
+    const list = this.overlay?.root.querySelector<HTMLElement>('[data-shelves]');
+    if (!list) return;
+    list.removeAttribute('data-low');
+    const card = [...list.querySelectorAll<HTMLElement>('.boutique-card')].find((each) => each.offsetParent !== null);
+    if (!card) return;
+    const unit = Number.parseFloat(getComputedStyle(list).getPropertyValue('--u')) || 1;
+    // Two rows, the gap between them and the MORE strip that sits on the second.
+    if (list.clientHeight / unit < (card.offsetHeight / unit) * 2 + SHELF_ROW_GAP + SHELF_MORE_STRIP) {
+      list.setAttribute('data-low', '');
+      this.overlay?.remeasure();
     }
   }
 
@@ -172,15 +219,16 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
     };
   }
 
-  /** A jump chip: the shelf's heading to the top of the list, and the cursor on its first card. */
+  /** A shelf on show, the list at its top and the cursor on its first card. */
   private jumpTo(shelf: string): void {
     const root = this.overlay?.root;
     const list = root?.querySelector<HTMLElement>('[data-shelves]');
     const heading = list?.querySelector<HTMLElement>(`[data-shelf="${shelf}"]`);
     if (!list || !heading) return;
+    this.showShelf(shelf);
     const card = this.firstCardOf(heading);
     audioManager.play('select');
-    list.scrollTop = heading.offsetTop - list.offsetTop;
+    list.scrollTop = 0;
     card?.focus({ preventScroll: true });
   }
 
@@ -210,6 +258,10 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
     const mirror = this.overlay?.root.querySelector<HTMLElement>('[data-mirror]');
     if (mirror) {
       mirror.innerHTML = mirrorFigures(this.sheet(shown, this.honoursWorn()));
+    }
+    const turns = this.overlay?.root.querySelector<HTMLElement>('[data-mirror-turns]');
+    if (turns) {
+      turns.innerHTML = turningFigures(this.sheet(shown, this.honoursWorn()));
     }
     // And what it is made of, so the list under the mirror is the figure in it.
     const worn = this.overlay?.root.querySelector<HTMLElement>('[data-worn]');
@@ -318,6 +370,11 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
       this.stepShelf(event.key === 'PageDown' ? 1 : -1);
       return;
     }
+    if (!event.repeat && (event.key === 'q' || event.key === 'Q' || event.key === 'e' || event.key === 'E')) {
+      event.preventDefault();
+      this.stepShelf(event.key.toLowerCase() === 'e' ? 1 : -1);
+      return;
+    }
     if (event.key === 'Tab' || event.key === 'ArrowUp') {
       if (this.crossToOrFromBar(event.key)) {
         event.preventDefault();
@@ -348,20 +405,17 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
     return true;
   }
 
-  /** Page Down and Page Up: a shelf at a time, from the one the cursor is in. */
+  /** Q and E, Page Up and Page Down, and the pager's arrows: a shelf at a time, held at both ends. */
   private stepShelf(direction: 1 | -1): void {
-    const headings = [...(this.overlay?.root.querySelectorAll<HTMLElement>('[data-shelves] [data-shelf]') ?? [])];
-    if (headings.length === 0) return;
-    const at = document.activeElement;
-    const inside = at instanceof HTMLElement && at.closest('[data-shelves]') !== null;
-    // The shelf the cursor is in is the last heading before it; off the list, it is before the first.
-    const current = inside
-      ? headings.reduce((found, heading, index) => (heading.compareDocumentPosition(at) & Node.DOCUMENT_POSITION_FOLLOWING ? index : found), 0)
-      : -1;
-    const first = current < 0 ? undefined : this.firstCardOf(headings[current]);
-    const next = current < 0 ? (direction === 1 ? 0 : -1) : shelfStep(current, at === first, headings.length, direction);
-    if (next < 0) return;
-    this.jumpTo(headings[next].dataset.shelf ?? '');
+    const keys = [...(this.overlay?.root.querySelectorAll<HTMLElement>('[data-shelf-group]') ?? [])].map((group) => group.dataset.shelfGroup ?? '');
+    if (keys.length === 0) return;
+    const current = Math.max(0, keys.indexOf(this.shelf ?? ''));
+    const next = shelfStep(current, true, keys.length, direction);
+    if (next === current) {
+      audioManager.play('denied');
+      return;
+    }
+    this.jumpTo(keys[next]);
   }
 
   private firstCardOf(heading: HTMLElement): HTMLButtonElement | undefined {
