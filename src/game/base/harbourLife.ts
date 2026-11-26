@@ -236,9 +236,9 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     kind: 'person',
     name: 'LITTLE GIRL',
     design: 'little-girl',
-    // On the sand by her sandcastle, between the huts and the way along the
-    // water: THE COVE she paddled in is half the beach it was.
-    position: at(72, 20),
+    // On the sand by her sandcastle, beside THE DIG on the widest of the
+    // bay: THE COVE she paddled in is half the beach it was.
+    position: at(73, 20),
     facing: 'down',
     byDayOnly: true,
     idle: { glances: ['left', 'right'], beatMs: 2900 },
@@ -330,7 +330,8 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     kind: 'person',
     name: 'ICE CREAM SELLER',
     design: 'woman',
-    position: at(85, 19),
+    // Beside her cart at the pier's gate, where the crowd off the pier is.
+    position: at(91, 15),
     facing: 'left',
     byDayOnly: true,
     idle: { glances: ['down', 'left'], beatMs: 6700 },
@@ -344,15 +345,31 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     kind: 'person',
     name: 'YOUNGSTER',
     design: 'youngster',
-    // Against THE GAME CORNER's west wall, beside its sign: off the walk and
-    // out of the way up to THE FIELD-MOVE COURSE's gate.
-    position: at(74, 11),
+    // Beside THE PRIZE WINDOW, counting what his tickets will buy: off the
+    // walk and off the arcade door's line down to the pier.
+    position: at(92, 8),
     facing: 'down',
     byDayOnly: true,
     idle: { glances: ['up', 'right'], beatMs: 4300 },
     lines: [
       'My RATTATA jumps that vine like it\'s nothing! Small and quick, that\'s the trick.',
       'I\'m saving my TICKETS for the CUTE TV. Ninety-eight more games to go.',
+    ],
+  },
+  // A fisherman with his line over the pleasure pier's middle stop, seen
+  // from the walk: what tells a newcomer there is fishing at the end of it.
+  {
+    id: 'pier-fisherman',
+    kind: 'person',
+    name: 'FISHERMAN',
+    design: 'fisherman',
+    position: at(89, 24),
+    facing: 'right',
+    byDayOnly: true,
+    idle: { glances: ['right', 'down'], beatMs: 7900 },
+    lines: [
+      'Tiddlers, this close in. The big ones are off the end of the pier.',
+      'The FISHING DERBY board\'s out there. Two minutes, and the biggest catch wins.',
     ],
   },
   // THE FIELD-MOVE COURSE's keeper, at its gate with his box of HMs: he lends
@@ -362,8 +379,9 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     kind: 'person',
     name: 'COURSE KEEPER',
     design: 'hiker',
-    position: at(86, 10),
-    facing: 'left',
+    // Beside the path up to his gate, at the foot of its fence.
+    position: at(119, 9),
+    facing: 'up',
     idle: { glances: ['down', 'left', 'up'], beatMs: 5300 },
     lines: ['Fancy a go round the FIELD-MOVE COURSE? I lend the HMs - bring POKéMON that could learn them.'],
   },
@@ -504,11 +522,11 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     kind: 'pokemon',
     species: 'krabby',
     name: 'KRABBY',
-    // Beside the yellow parasol, off the sand along the water and the foot of
+    // Past the blue parasol, off the sand along the water and the foot of
     // the steps.
-    position: at(78, 19),
+    position: at(76, 20),
     facing: 'down',
-    idle: { roam: [at(78, 20), at(77, 19)], glances: ['left', 'right'], beatMs: 2300 },
+    idle: { roam: [at(77, 20), at(76, 19)], glances: ['left', 'right'], beatMs: 2300 },
     lines: ['KRABBY is digging in the sand. It does not want to be watched.'],
   },
   {
@@ -516,7 +534,7 @@ export const HARBOUR_POKEMON: readonly HarbourPokemon[] = [
     kind: 'pokemon',
     species: 'psyduck',
     name: 'PSYDUCK',
-    position: at(82, 29),
+    position: at(82, 28),
     facing: 'down',
     idle: { glances: ['left', 'down'], beatMs: 9100 },
     lines: ['PSYDUCK is looking out to sea from the end of the pier, holding its head.'],

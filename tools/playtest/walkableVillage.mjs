@@ -98,7 +98,7 @@ const ORIGIN = HARBOUR
 // drove road up from it.
 const LANDING = TANGLEWOOD ? [1, 33] : PINE_HOLLOW ? [1, 23] : THE_CROSSING ? [1, 31] : HIGH_MOOR ? [30, 61] : [32, 33];
 // THE HARBOUR's two starts (`BASE_SPAWN`, `BASE_LANDING` in `base/baseMap.ts`).
-const SPAWN = [16, 13];
+const SPAWN = [17, 13];
 const JETTY = [12, 19];
 
 // Each route is the streets a player would take, as corners; between corners
@@ -134,16 +134,16 @@ const HARBOUR_ROUTES = [
   { from: SPAWN, name: 'to Brock’s Workshop door', corners: [[31, 13], [31, 12]] },
   { from: SPAWN, name: 'to the Bolthole step', corners: [[37, 13], [37, 11]] },
   { from: SPAWN, name: 'down the lawn to Bill’s door', corners: [[19, 13], [19, 19], [14, 19], [14, 18]] },
-  { from: SPAWN, name: 'east from the gravel to the end of the stone', corners: [[86, 13]] },
+  { from: SPAWN, name: 'east from the gravel to the foot of THE POINT', corners: [[112, 13]] },
   { from: SPAWN, name: 'down the lane past the warehouses to the Boutique door', corners: [[46, 13], [46, 19], [49, 19], [49, 18]] },
   { from: SPAWN, name: 'up THE GREEN to the Great Library door', corners: [[54, 13], [54, 7], [57, 7], [57, 6]] },
-  { from: SPAWN, name: 'along THE PROMENADE to the Battle Arena door', corners: [[68, 13]] },
-  { from: SPAWN, name: 'along THE PROMENADE to the Game Corner door', corners: [[76, 13], [76, 11]] },
-  { from: SPAWN, name: 'along THE PROMENADE to the Field-Move Course gate', corners: [[85, 13], [85, 10]] },
-  { from: SPAWN, name: 'along the boardwalk', corners: [[60, 13], [60, 15], [86, 15]] },
-  { from: SPAWN, name: 'down the steps and along the beach to THE COVE', corners: [[67, 13], [67, 22], [60, 22], [60, 19], [56, 19]] },
-  { from: SPAWN, name: 'down the steps and along the beach to the pleasure pier head', corners: [[67, 13], [67, 22], [80, 22], [80, 28]] },
-  { from: SPAWN, name: 'off the pleasure pier and along the sand to THE COVE', corners: [[80, 13], [80, 21], [61, 21], [60, 19], [56, 19]] },
+  { from: SPAWN, name: 'along THE PROMENADE to the Battle Arena door', corners: [[70, 13], [70, 10]] },
+  { from: SPAWN, name: 'along THE PROMENADE to the Game Corner door, across PIER SQUARE', corners: [[85, 13], [85, 9]] },
+  { from: SPAWN, name: 'along THE PROMENADE and up onto THE POINT to the Field-Move Course gate', corners: [[117, 13], [117, 8]] },
+  { from: SPAWN, name: 'up the gravel to THE GARDENS’ bandstand', corners: [[104, 13], [104, 9]] },
+  { from: SPAWN, name: 'down the steps and along the beach to THE COVE', corners: [[68, 13], [68, 22], [60, 22], [60, 19], [56, 19]] },
+  { from: SPAWN, name: 'down the steps and along the beach to the pleasure pier head', corners: [[68, 13], [68, 22], [85, 22], [85, 28]] },
+  { from: SPAWN, name: 'off the pleasure pier and along the sand to THE COVE', corners: [[85, 13], [85, 21], [61, 21], [60, 19], [56, 19]] },
   { from: SPAWN, name: 'down to the jetty in THE COVE', corners: [[54, 13], [54, 21]] },
   { from: JETTY, name: 'from the boat to Bill’s door', corners: [[14, 19], [14, 18]] },
   { from: JETTY, name: 'from the boat to the Raid Arena door', corners: [[12, 18], [8, 18], [8, 13]] },

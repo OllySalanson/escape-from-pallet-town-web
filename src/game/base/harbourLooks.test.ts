@@ -43,8 +43,11 @@ const STEPS = [
   [0, -1],
 ] as const;
 
-/** Ground somebody walks along rather than across: the gravel, the stone, the boards. */
-const WAY_MATERIALS = new Set(['earth', 'stone', 'boards']);
+/** Ground somebody walks along rather than across: the gravel, the stone, the boards, a square's paving. */
+const WAY_MATERIALS = new Set(['earth', 'gravel', 'stone', 'boards', 'paving']);
+
+/** Where the way east ends: the foot of the path up onto THE POINT. */
+const END_OF_THE_WALK = 112;
 
 interface Thing {
   readonly name: BasePropName;
@@ -128,25 +131,26 @@ describe.each([
   });
 
   describe('its paths', () => {
-    it('run under the walker the whole way east: gravel from the forecourt to the DERBY, then stone to the course', () => {
+    it('run under the walker the whole way east: gravel from the forecourt to the DERBY, then stone to THE POINT, across PIER SQUARE', () => {
       // The row everybody walks, from ARENA SQUARE's edge to the end of THE PROMENADE.
-      const row = Array.from({ length: 87 - 14 }, (_, index) => map.terrain[13][14 + index]);
+      const row = Array.from({ length: END_OF_THE_WALK + 1 - 14 }, (_, index) => map.terrain[13][14 + index]);
       const offPath = row.flatMap((material, index) => (material === 'earth' || material === 'stone' ? [] : [`${14 + index},13 is ${material}`]));
       expect(offPath).toEqual([]);
-      // Gravel once and then stone once: it never gives out into lawn and starts again.
-      const changes = row.filter((material, index) => index > 0 && material !== row[index - 1]).length;
-      expect(changes).toBe(1);
+      // Gravel once and then stone once, PIER SQUARE's stone the walk's own: it never gives out into lawn and starts again.
+      const runs = row.filter((material, index) => index === 0 || material !== row[index - 1]);
+      expect(runs).toEqual(['earth', 'stone']);
     });
 
     it('are two rows wide all the way, with nothing planted on them', () => {
       const faults: string[] = [];
-      for (let x = 14; x <= 86; x += 1) {
-        // The gravel is rows 12 and 13; from where the stone walk starts in earnest it is rows 13 and 14.
-        const rows = map.terrain[12][x] === 'earth' || (map.terrain[12][x] === 'stone' && map.terrain[14][x] !== 'stone') ? [12, 13] : [13, 14];
-        for (const y of rows) {
+      // THE PROMENADE DERBY's start line is painted on the stone and walked over.
+      const startLine = BASE_TILESET.props.startLine.cells[0].tile;
+      for (let x = 14; x <= END_OF_THE_WALK; x += 1) {
+        // The gravel's two rows, and the walk's two landward rows, on from them.
+        for (const y of [12, 13]) {
           if (!WAY_MATERIALS.has(map.terrain[y][x])) faults.push(`${x},${y} is ${map.terrain[y][x]}`);
           if (map.collision[y][x]) faults.push(`${x},${y} is shut`);
-          if (map.layers.detail.tiles[y][x] >= 0) faults.push(`${x},${y} has something on it`);
+          if (map.layers.detail.tiles[y][x] >= 0 && map.layers.detail.tiles[y][x] !== startLine) faults.push(`${x},${y} has something on it`);
         }
       }
       expect(faults).toEqual([]);
@@ -329,7 +333,8 @@ describe.each([
       expect(new Set(['pokemon-centre', 'oaks-lab', 'brocks-workshop'].map(foot)).size).toBe(1);
       expect(['bills-cottage', 'boutique'].map(where)).toEqual(['quay', 'docks']);
       expect(harbourPlaceAt({ x: warehouses.x, y: warehouses.y + 4 })?.id).toBe('docks');
-      expect(['battle-arena', 'game-corner', 'prize-window'].map(where)).toEqual(['promenade', 'promenade', 'promenade']);
+      // The games on the front: THE BATTLE ARENA at its sport end, the arcade and its prize window at the head of PIER SQUARE.
+      expect(['battle-arena', 'game-corner', 'prize-window'].map(where)).toEqual(['promenade', 'pier-square', 'pier-square']);
       expect(where('great-library')).toBe('green');
       // Home and the Day-Care are neighbours: the pen starts within ten tiles of the house's door.
       expect(DAY_CARE_PEN.x - door('bolthole').returnTo.x).toBeLessThanOrEqual(10);

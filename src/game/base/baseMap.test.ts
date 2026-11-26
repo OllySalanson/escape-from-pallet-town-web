@@ -99,9 +99,11 @@ describe('the base map', () => {
    */
   it('keeps THE GAME CORNER and THE BATTLE ARENA a walk along THE PROMENADE from both landings', () => {
     for (const door of ['game-corner', 'prize-window', 'battle-arena']) {
-      // 74: THE BATTLE ARENA stands on the garden the prize window's walk used to cut across.
-      expect([door, stepsTo(stepsFrom(BASE_SPAWN), approachesTo(door)) <= 74]).toEqual([door, true]);
-      expect([door, stepsTo(stepsFrom(BASE_LANDING), approachesTo(door)) <= 80]).toEqual([door, true]);
+      // 80 and 91: PIER SQUARE is a screen further east than the arcade stood
+      // when the front was one strip, because the owner asked for the front
+      // spread out (25 Nov 2026) - the walk there is the front itself.
+      expect([door, stepsTo(stepsFrom(BASE_SPAWN), approachesTo(door)) <= 80]).toEqual([door, true]);
+      expect([door, stepsTo(stepsFrom(BASE_LANDING), approachesTo(door)) <= 91]).toEqual([door, true]);
     }
   });
 

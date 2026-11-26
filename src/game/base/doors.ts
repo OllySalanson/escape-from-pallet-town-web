@@ -97,7 +97,7 @@ export interface BaseDoor {
  * CORNER's is. A tile clear of the DERBY's board on its west: the board's leg
  * stood against its wall, and the two read as one thing.
  */
-export const BATTLE_ARENA_LOT = { x: 65, y: 8, width: 6, height: 5, door: { x: 68, y: 12 } } as const;
+export const BATTLE_ARENA_LOT = { x: 67, y: 5, width: 6, height: 5, door: { x: 70, y: 9 } } as const;
 
 export const BASE_DOORS: readonly BaseDoor[] = [
   {
@@ -187,17 +187,17 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     id: 'game-corner',
     screen: 'game-corner',
     name: 'GAME CORNER',
-    building: { prop: 'gameCorner', x: 73, y: 6 },
-    tiles: [{ x: 76, y: 10 }],
-    returnTo: { x: 76, y: 11 },
+    building: { prop: 'gameCorner', x: 82, y: 4 },
+    tiles: [{ x: 85, y: 8 }],
+    returnTo: { x: 85, y: 9 },
   },
   {
     id: 'prize-window',
     screen: 'prizes',
     name: 'PRIZE WINDOW',
-    building: { prop: 'prizeWindow', x: 80, y: 6 },
-    tiles: [{ x: 81, y: 9 }],
-    returnTo: { x: 81, y: 10 },
+    building: { prop: 'prizeWindow', x: 89, y: 4 },
+    tiles: [{ x: 90, y: 7 }],
+    returnTo: { x: 90, y: 8 },
   },
   {
     // THE GREAT LIBRARY (`../library/`): a portico of its own at the head of

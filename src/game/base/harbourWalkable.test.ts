@@ -153,8 +153,10 @@ describe.each([
         ['the long pier', 28, 25],
         ['THE COVE', 54, 19],
         ['the breakwater', 59, 26],
-        ['the beach', 70, 21],
-        ['the pleasure pier’s head', 80, 28],
+        ['the beach', 72, 22],
+        ['the pleasure pier’s head', 85, 28],
+        ['THE GARDENS’ bandstand', 104, 10],
+        ['THE POINT’s lookout', 121, 12],
       ];
       const longer = [BASE_SPAWN, BASE_LANDING].flatMap((start) => {
         const { single, toStand } = harbour.from(start);
@@ -177,39 +179,41 @@ describe.each([
       expect(blocked).toEqual([]);
     });
 
-    it('walks straight east from the gravel to the end of the stone, two abreast, with nothing in the way', () => {
+    it('walks straight east from the gravel to the foot of THE POINT, two abreast, with nothing in the way', () => {
       // The captain's bench stood across this. KEEPERS' ROW's gravel runs on
-      // over THE GREEN, both rows of it, to the DERBY's apron, where THE
-      // PROMENADE's stone walk takes over a row lower: rows 12 and 13 as far
-      // as the gravel goes, rows 13 and 14 from where the stone starts.
+      // over THE GREEN, both rows of it, to the DERBY's start line, where THE
+      // PROMENADE's walk carries it on: rows 12 and 13 all the way to THE
+      // POINT, across PIER SQUARE too. The walk's third row, by the sea, has
+      // its lamps and benches turned to the water.
       const pathEnd = Math.max(...harbour.map.terrain[13].map((material, x) => (material === 'earth' ? x : -1)));
       const blocked: string[] = [];
-      for (let x = BASE_SPAWN.x; x <= 86; x += 1) {
-        if (!harbour.free(x, 13)) blocked.push(`${x},13`);
-        if (x <= pathEnd && !harbour.free(x, 12)) blocked.push(`${x},12`);
-        if (x >= pathEnd && !harbour.free(x, 14)) blocked.push(`${x},14`);
+      for (let x = BASE_SPAWN.x; x <= 112; x += 1) {
+        for (const y of [12, 13]) {
+          if (!harbour.free(x, y)) blocked.push(`${x},${y}`);
+        }
       }
       expect(blocked).toEqual([]);
       expect(pathEnd).toBe(60);
-      expect(harbour.map.terrain[13][86]).toBe('stone');
+      expect(harbour.map.terrain[13][112]).toBe('stone');
     });
 
-    it('keeps THE PROMENADE’s boardwalk walkable its whole length, lamps and all, and the lawn it is stepped off onto', () => {
-      // From x 60: the tile of lawn at the boards' west end is the way on and
-      // off them, and a Pidgey that pecked there was walked into coming west.
-      const blocked: string[] = [];
-      for (let x = 60; x <= 86; x += 1) {
-        if (!harbour.free(x, 15)) blocked.push(`${x},15`);
+    it('rails THE PROMENADE’s sea edge from THE GREEN to THE POINT, open only at its steps', () => {
+      // A boardwalk ran here once, a second walk beside the first with
+      // nothing on it, and its railing broke off where nothing went down.
+      const gaps: number[] = [];
+      for (const x of [...Array.from({ length: 20 }, (_, index) => 61 + index), ...Array.from({ length: 18 }, (_, index) => 95 + index)]) {
+        if (harbour.free(x, 15)) gaps.push(x);
       }
-      expect(blocked).toEqual([]);
+      expect(gaps).toEqual([68, 69, 78, 79, 105, 106, 111, 112]);
     });
 
-    it('keeps a way along the beach at the water’s edge two abreast, from THE COVE to the pleasure pier', () => {
+    it('keeps a way along the beach at the water’s edge two abreast, across the bay to the pleasure pier', () => {
       // The parasols, the deckchairs and THE DIG's sign stood on it, and a
       // Krabby at the foot of the steps: walked along, the sand was one tile.
+      // It is the DERBY's sands too.
       const blocked: string[] = [];
-      for (let x = 61; x <= 78; x += 1) {
-        for (const y of [21, 22]) {
+      for (let x = 66; x <= 79; x += 1) {
+        for (const y of [22, 23]) {
           if (!harbour.free(x, y)) blocked.push(`${x},${y}`);
         }
       }
@@ -218,10 +222,10 @@ describe.each([
 
     it('keeps the foot of every set of steps down to the sand clear to the water', () => {
       const blocked: string[] = [];
-      for (let x = 61; x <= 86; x += 1) {
-        // A gap in the boardwalk's railing is a set of steps.
-        if (!harbour.free(x, 15) || !harbour.free(x, 16) || harbour.map.terrain[16][x] !== 'boards') continue;
-        for (let y = 17; y <= 22; y += 1) {
+      for (let x = 61; x <= 112; x += 1) {
+        // A gap in the walk's railing is a set of steps down to the sand.
+        if (!harbour.free(x, 15) || harbour.map.terrain[15][x] !== 'stone' || harbour.map.terrain[16][x] !== 'beach') continue;
+        for (let y = 16; harbour.map.terrain[y][x] === 'beach' || harbour.map.terrain[y][x] === 'sand'; y += 1) {
           if (!harbour.free(x, y)) blocked.push(`${x},${y}`);
         }
       }

@@ -200,7 +200,7 @@ try {
     await wait(900);
   }
   await until(`${baseReady} && (${outside})`, 'the promenade');
-  await walkTo({ x: 85, y: 10 }, 'the course gate');
+  await walkTo({ x: 118, y: 8 }, 'the course gate');
   await press('ArrowUp');
   await wait(200);
   await shoot(`${teamKind}-07-course-gate`);
@@ -274,7 +274,7 @@ try {
   if (!afterCourse?.best?.['field-course']) fail('the course wrote no time');
   await press('Escape');
   await until(baseReady, 'the promenade again');
-  await walkTo({ x: 83, y: 9 }, 'the time board');
+  await walkTo({ x: 116, y: 7 }, 'the time board');
   await press('ArrowUp');
   await press('Space');
   await wait(1500);

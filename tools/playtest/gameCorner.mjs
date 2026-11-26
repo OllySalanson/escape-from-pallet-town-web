@@ -109,13 +109,13 @@ try {
   await walkTo({ x: 62, y: 14 }, 'the promenade');
   await wait(600);
   await shoot('02-promenade-arrives');
-  await walkTo({ x: 76, y: 14 }, 'the Game Corner forecourt');
+  await walkTo({ x: 85, y: 11 }, 'PIER SQUARE, before the Game Corner');
   await wait(400);
   await shoot('03-game-corner-front');
-  await walkTo({ x: 80, y: 21 }, 'the pleasure pier');
+  await walkTo({ x: 85, y: 21 }, 'the pleasure pier');
   await wait(400);
   await shoot('04-beach-and-pier');
-  await walkTo({ x: 80, y: 29 }, 'the pier head');
+  await walkTo({ x: 85, y: 28 }, 'the pier head');
   await wait(400);
   await shoot('05-pier-head');
 

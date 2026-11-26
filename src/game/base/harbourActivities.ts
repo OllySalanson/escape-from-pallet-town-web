@@ -104,6 +104,8 @@ export const SEA_VIEWS: readonly RoomSpot[] = [
   stand(45, 31, 'down'),
   stand(50, 31, 'down'),
   stand(55, 31, 'down'),
+  // THE PROMENADE: the pleasure pier's head.
+  stand(80, 30, 'left'),
 ];
 
 /** Something to look at for a while: a fountain, the bench above THE COVE, the Day-Care's pen, the arena's statues, the S.S. Anne. */
@@ -119,6 +121,11 @@ export const HANG_OUTS: readonly RoomSpot[] = [
   stand(6, 17, 'up'),
   stand(10, 17, 'up'),
   stand(29, 24, 'right'),
+  // THE GARDENS' bandstand, from in front of its benches, and the lookout
+  // on THE POINT, at its telescope.
+  stand(101, 11, 'up'),
+  stand(108, 11, 'up'),
+  stand(120, 15, 'down'),
 ];
 
 /**
@@ -130,8 +137,8 @@ export const GAME_WATCHES: readonly RoomSpot[] = [
   // Off every lane: by THE GREEN's flowers, on the sand beside THE DIG's
   // sign, and the dead end of the pier head.
   stand(59, 9, 'right'),
-  stand(67, 20, 'right'),
-  stand(78, 29, 'left'),
+  stand(72, 19, 'left'),
+  stand(87, 29, 'left'),
 ];
 
 /**
@@ -139,7 +146,7 @@ export const GAME_WATCHES: readonly RoomSpot[] = [
  * side of its step. Not THE HARBOUR BOUTIQUE's front: on the quay the only
  * tiles before its window are its step's way off and the way along the water.
  */
-export const SHOP_WINDOWS: readonly RoomSpot[] = [stand(37, 18, 'right'), stand(80, 10, 'up'), stand(82, 10, 'up')];
+export const SHOP_WINDOWS: readonly RoomSpot[] = [stand(37, 18, 'right'), stand(89, 8, 'up'), stand(91, 8, 'up')];
 
 /** In front of a sign. Never THE BOLTHOLE's, which is somebody's front garden. */
 export const NOTICE_BOARDS: readonly RoomSpot[] = [
@@ -426,6 +433,14 @@ const LONGEST_HOLD_MS = 12_000;
 
 /** How long somebody coming out of a door waits behind it for the doorstep to clear. */
 const DOOR_BUSY_MS = 1_200;
+
+/** The four ways off a tile. */
+const STEPS_ROUND: readonly (readonly [number, number])[] = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+];
 
 /** Room left in every plan for giving way on the way to the next thing. */
 const ROOM_TO_GIVE_WAY_MS = 4_000;
@@ -801,7 +816,11 @@ class VisitPlanner {
           }
           return true;
         }
-        const to = Math.max(from + 1_000, Math.min(out, opens + ROOM_WINDOW_MS - 2_000));
+        const latest = Math.max(from + 1_000, Math.min(out, opens + ROOM_WINDOW_MS - 2_000));
+        // Out at a moment the step outside is clear: somebody knocking stands
+        // on a door's one step, and a regular let out behind them had nowhere
+        // to go, was held in the doorway until their plan ran off, and jumped.
+        const to = this.clearWayOut(door, from + 1_000, latest);
         this.legs.push({ kind: 'inside', from, to, room: call.room, door, spot, activity: 'call-in' });
         this.now = to;
         this.at = door;
@@ -827,6 +846,20 @@ class VisitPlanner {
     const route = botPath(this.at, spot) ?? [this.at];
     this.commitWalk(route, route.slice(1).map((_, index) => this.now + walkMs(index)), 'wander');
     this.standAbout(this.roll.int(1_500, 3_000));
+  }
+
+  /**
+   * The latest moment from `earliest` to `latest` at which a tile off `door`
+   * is free to step out onto, a second at a time; `latest` when none is.
+   */
+  private clearWayOut(door: GridPosition, earliest: number, latest: number): number {
+    const { walks } = botGround();
+    const out = STEPS_ROUND.map(([dx, dy]) => ({ x: door.x + dx, y: door.y + dy })).filter((tile) => walks[tile.y]?.[tile.x] === true);
+    if (out.length === 0) return latest;
+    for (let moment = latest; moment >= earliest; moment -= 1_000) {
+      if (out.some((tile) => this.book.free(tileIndex(tile), moment, moment + DOOR_BUSY_MS + HELD_FOR_MS, this.visit))) return moment;
+    }
+    return latest;
   }
 
   /** Out of a doorway to the nearest open ground, for a moment, so nobody is left standing in it. */

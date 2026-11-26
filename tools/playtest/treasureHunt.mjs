@@ -342,7 +342,7 @@ try {
     await newGame();
 
     // 1. THE BEACH: the bottle at the tide line, past the pleasure pier.
-    await walkTo([{ x: 83, y: 22 }], 'beside the bottle');
+    await walkTo([{ x: 108, y: 19 }], 'beside the bottle');
     await face('right');
     await sleep(2600);
     await snap('bottle-on-the-beach');

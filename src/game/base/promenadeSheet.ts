@@ -17,7 +17,7 @@ import { tileReader, withDoorway, type PropDefinition } from '../world/tileset/c
 export const PROMENADE_SHEET = {
   imagePath: 'assets/promenade.png',
   columns: 16,
-  rows: 17,
+  rows: 21,
 } as const;
 
 export const PROMENADE_SHEET_SOURCE = tileReader({ textureKey: 'promenade', ...PROMENADE_SHEET }, 20000);
@@ -69,6 +69,11 @@ export const PROMENADE_PIECES = {
   fishStall: { column: 8, row: 13, width: 3, height: 2 },
   seaBench: { column: 11, row: 13, width: 2, height: 1 },
   rowBoatGreen: { column: 13, row: 13, width: 2, height: 1 },
+  // THE PROMENADE's own landmarks of the bay (`docs/screens/promenade-bay/`).
+  startLine: { column: 15, row: 13, width: 1, height: 1 },
+  bandstand: { column: 0, row: 17, width: 4, height: 4 },
+  pierArch: { column: 4, row: 17, width: 5, height: 2 },
+  coinTelescope: { column: 9, row: 17, width: 1, height: 2 },
 } as const;
 
 export type PromenadePieceName = keyof typeof PROMENADE_PIECES;
@@ -113,6 +118,28 @@ export function promenadePost(name: PromenadePieceName, label: string): PropDefi
     height: 1,
     cells: [{ tile: PROMENADE_SHEET_SOURCE.at(place.column, place.row + 1), solid: true }],
     brim: { tiles: [PROMENADE_SHEET_SOURCE.at(place.column, place.row)], depth: 16 },
+  };
+}
+
+/**
+ * An arch two tiles tall that stands on its two posts, the bottom row's ends:
+ * the pleasure pier's. The row between its posts is walked, under its crown,
+ * which is drawn in the row above as a brim over whoever walks through.
+ */
+export function promenadeArch(name: PromenadePieceName, label: string): PropDefinition {
+  const place = PROMENADE_PIECES[name];
+  if (place.height !== 2 || place.width < 3) {
+    throw new Error(`'${name}' is not an arch two tiles tall`);
+  }
+  return {
+    label,
+    width: place.width,
+    height: 1,
+    cells: Array.from({ length: place.width }, (_cell, x) => ({
+      tile: PROMENADE_SHEET_SOURCE.at(place.column + x, place.row + 1),
+      solid: x === 0 || x === place.width - 1,
+    })),
+    brim: { tiles: Array.from({ length: place.width }, (_cell, x) => PROMENADE_SHEET_SOURCE.at(place.column + x, place.row)), depth: 16 },
   };
 }
 

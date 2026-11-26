@@ -6,6 +6,7 @@ import { BASE_TILESET, type BasePropName } from './baseTileset';
 import { BASE_DOORS } from './doors';
 import { standingFixtures } from './fixtures';
 import { HARBOUR_LANDMARKS } from './landmarks';
+import { START_X as DERBY_START_X } from '../minigames/derbyLevels';
 
 /**
  * THE HARBOUR - the one map in the game nobody is hunting you on.
@@ -39,7 +40,7 @@ import { HARBOUR_LANDMARKS } from './landmarks';
  * that name would have the player dropping into Pallet Town from Pallet Town.
  */
 
-export const BASE_MAP_WIDTH = 90;
+export const BASE_MAP_WIDTH = 130;
 export const BASE_MAP_HEIGHT = 34;
 
 /** What the screens call this place, on the way out of every one of them. */
@@ -88,7 +89,7 @@ export const NOTICE_BOARD: BaseSign = {
     `${BASE_PLACE_NAME.toUpperCase()} - what the raids are run out of.`,
     'Every raid starts at the RAID ARENA, west of the yard: jump in from the rim, and ride home to it. OAK keeps the board of work. JOY patches the team up. BROCK builds onto the base, and BILL takes what you drag home.',
     'THE BOLTHOLE, at the end of the row, is yours. Past it, the DAY-CARE MAN raises one Pokémon while you raid.',
-    'Past THE GREEN, THE PROMENADE: the GAME CORNER pays TICKETS for POKéMON JUMP and BERRY PICKING, the FIELD-MOVE COURSE past it pays them for a quick time, and the PRIZE WINDOW takes them.',
+    'Past THE GREEN, THE PROMENADE: the GAME CORNER on PIER SQUARE pays TICKETS for POKéMON JUMP and BERRY PICKING, the FIELD-MOVE COURSE out on THE POINT pays them for a quick time, and the PRIZE WINDOW takes them.',
   ],
 };
 
@@ -155,7 +156,7 @@ export const SQUARE_MAP: BaseSign = {
     'HARBOUR SQUARE - a map of THE HARBOUR.',
     'The RAID ARENA is west, on ARENA SQUARE. The keepers are along KEEPERS\u2019 ROW. THE QUAY and the SEAGALLOP are south.',
     'South through the lamps: THE LONG PIER out to the S.S. ANNE. East along THE DOCKS: the fish stall, the warehouses, THE HARBOUR BOUTIQUE and THE COVE.',
-    'THE GREEN and THE GREAT LIBRARY are past THE BOLTHOLE. Past them THE PROMENADE runs along the beach to the GAME CORNER, the FIELD-MOVE COURSE and the PLEASURE PIER.',
+    'THE GREEN and THE GREAT LIBRARY are past THE BOLTHOLE. Past them THE PROMENADE runs round the bay: the BATTLE ARENA, PIER SQUARE with the GAME CORNER and the PLEASURE PIER, THE GARDENS, and the FIELD-MOVE COURSE out on THE POINT.',
   ],
 };
 
@@ -177,29 +178,36 @@ export const BREAKWATER_SIGN: BaseSign = {
  */
 export const PROMENADE_SIGN: BaseSign = {
   x: 64,
-  y: 12,
+  y: 11,
   lines: [
     'THE PROMENADE',
-    'The front: the GAME CORNER, the DERBY, the FIELD-MOVE COURSE, the DIG on the beach and the FISHING DERBY off the PLEASURE PIER. Walk it at dusk when the lamps come on.',
+    'The front, round the bay: the DERBY starts here, the GAME CORNER is on PIER SQUARE, the DIG is on the beach, the FISHING DERBY off the end of the PLEASURE PIER and the FIELD-MOVE COURSE out on THE POINT. Walk it at dusk when the lamps come on.',
   ],
 };
 
 /**
- * On the lawn in front of THE GAME CORNER, west of the way up to its door:
- * where it stood, between the hall and THE BATTLE ARENA, is a flower trough.
+ * At PIER SQUARE's west corner, read from the walk: the square's middle is
+ * the arcade door's line down to the pier, and nothing stands on it.
  */
 export const GAME_CORNER_SIGN: BaseSign = {
-  x: 74,
-  y: 12,
+  x: 80,
+  y: 11,
   lines: [
     'THE GAME CORNER',
     'POKéMON JUMP and BERRY PICKING inside - bring your best jumpers, and a DODRIO. TICKETS are kept at home and spent at the PRIZE WINDOW next door.',
   ],
 };
 
-/** At the head of the pleasure pier, in the boardwalk's railing beside the way on. */
+/** On THE GARDENS' lawn beside the gravel path up to the bandstand. */
+export const GARDENS_SIGN: BaseSign = {
+  x: 103,
+  y: 11,
+  lines: ['THE GARDENS', 'The band plays Sundays. Mind the beds.'],
+};
+
+/** At the pleasure pier's gate, in the rail along PIER SQUARE's foot beside the way on. */
 export const PLEASURE_PIER_SIGN: BaseSign = {
-  x: 83,
+  x: 81,
   y: 16,
   lines: ['THE PLEASURE PIER', 'Out over the sea. Mind the gulls.'],
 };
@@ -235,6 +243,7 @@ export const BASE_SIGNS: readonly BaseSign[] = [
   PROMENADE_SIGN,
   GAME_CORNER_SIGN,
   PLEASURE_PIER_SIGN,
+  GARDENS_SIGN,
   BREAKWATER_SIGN,
   NOTICE_BOARD,
   HOME_SIGN,
@@ -261,6 +270,8 @@ export const FLOWER_BEDS: readonly { readonly name: string; readonly tiles: read
   { name: 'THE GREEN’s border', tiles: [[53, 7], [53, 8]] },
   // Either side of THE GREAT LIBRARY's step, at the head of THE GREEN.
   { name: 'THE GREAT LIBRARY’s beds', tiles: [[55, 6], [56, 6], [58, 6], [59, 6]] },
+  // Either side of THE GARDENS' bandstand.
+  { name: 'THE GARDENS’ beds', tiles: [[101, 6], [102, 6], [101, 7], [107, 6], [108, 6], [108, 7]] },
 ];
 
 export interface BaseMapDefinition {
@@ -325,40 +336,40 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   });
 
   map.draw(0, 0, [
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtT............TtTTtTTtTTtTTtTTtTTTT.....TTTTTTTTtTTtTTtTTtTTtTTtTTtTTT',
-    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTTTTTTTTTTTTTTTT.....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTTTTTTTTTTTTTTTT.....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TtTTTTtTTTTtTTTTTtTTTT............TTTtTTTTTTTTTTTtTTTT.......TTtTTtTTTTtT..........TTTtTTT',
-    'TTT...........................................FFFFFFF........TTTTTTTTTTTT..............TTT',
-    'TTT...........................................F.....F........TTTT......TT..............TTT',
-    'TtTMMMMMMMMMMM................................F.....F...........T......TT..............TtT',
-    'TTTMMMMMMMMMMM................................F.....F...........T......TT.......MMM....TTT',
-    'TTTMMMMMMMMMMM................................FFFFFFF...........T...............MMM....TTT',
-    'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MMM...........MMM..MMM....TtT',
-    'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMMMMTTT',
-    'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........MMMMMMMMMMMMMMMMMMMMMMMMMMTTT',
-    'TtTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........__________________________TTT',
-    'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........__________________________TtT',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMddddddd~~~~~~~~~~~~~~~~~~___~~~~~TTT',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~TTT',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~TtT',
-    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~TTT',
-    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWWWWMM~~~~~~~~~~~~~~~~~~___~~~~~TTT',
-    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWWWWMM~~~~~~~~~~~~~~~~~~___~~~~~TTT',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWW___WWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWW___WWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWW___WWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWW___WWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWW___WWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWW_________WWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWW_________WWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWW_________WWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.....TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtT............TtTTtTTtTTtTTtTTtTTTT.....TTTtTTtTTTTTtTTtTTTTT................TtTTtTTTTTtTTtTTTTTtTTtTTTTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTTTTTTTTTTTTTTTT.....TTTTT............TTTT............TTT.TTTT........TTTTTT.........TTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTT............TTTTTTTTTTTTTTTTTTTTT.....TTTTT............TTTT................TTTT...........T.......FFFFFFTTTT',
+    'TtTTTTtTTTTtTTTTTtTTTT............TTTtTTTTTTTTTTTtTTTT.......TTTT............TtTT.............t..TT...........t.T.......F####FTTTT',
+    'TTT...........................................FFFFFFF........................TTTT................TT.............T.......F####FTTTT',
+    'TTT...........................................F.....F........................TTTT.......MMMM.....TT.............TTT..vvvF####FTTTT',
+    'TtTMMMMMMMMMMM................................F.....F..............MMMMMMM...TTTMMMMMMMMMMMMMMMM.TT.....vv...........vv.F####FTtTT',
+    'TTTMMMMMMMMMMM................................F.....F.............MMMMMMMMM..TTTMMMMMMMMMMMMMMMM........vv.......t...vv.F##WWFTTTT',
+    'TTTMMMMMMMMMMM................................FFFFFFF.............MMMMMMMMM..TTTMMMMMMMMMMMMMMMM........vv...........vv.FFFFFFTTTT',
+    'TtTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM...TTT',
+    'TTTMMMMMMMMMMM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM.t.TTT',
+    'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM...TTT',
+    'TtTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMCCCCPPPPPPPCCCTTT',
+    'TTTMMMMMMMMMMM,,,,,,,,MMMMMMMMMMMMMMMMMMMMMMMM,,MMMMM........~~~~~~~~~~~~~~~~~~~~MMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~CCCCPPPPPPPCCCTTT',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMddddddd~~~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~~~~~~~~~~~~~~CCWWCCCCWWCCCWWWW',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~~~~~~~~~~~~~~WWWWWWWWWWWWWWWWW',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~~~~~~~~~~~~WWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~~~~~~~~~~WWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWWWWMM~~~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWWWWWWMM~~~~~~~~~~~~~~~~~~~~~~~___~~~WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWW~~~~~~~~~~~~~~~~WW________WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWW~~~~~~WWWWW________WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWWWWWWW___WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWWWWWWW___WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWWW___________WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWWW___________WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMWWWWWWWWWWWWWWWWWWW___________WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWW___________WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWMMMMMMMMMMMMMMMMMMMMMWWWWWWWWWWWWWWWWWWW___________WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
   ]);
 
   // The four buildings, each with its own doorway cut into it by the base's
@@ -518,7 +529,8 @@ function plantQuay(map: MapSketch<BasePropName>): void {
   for (const boat of MOORED_ROWING_BOATS) {
     map.plant(boat.x, boat.y, boat.name);
   }
-  map.plant(83, 21, 'rowBoatBlue');
+  map.plant(61, 17, 'rowBoatBlue');
+  map.plant(62, 19, 'ropeCoil');
   // Gear at the water's edge: lobster pots on the corner of the quay, an
   // anchor on the wharf's, and a coil of rope where the Seagallop ties up.
   map.plant(21, 19, 'lobsterPots');
@@ -530,87 +542,190 @@ function plantQuay(map: MapSketch<BasePropName>): void {
   map.plant(15, 7, 'crateStack');
   map.plant(16, 9, 'sack');
   map.plant(16, 10, 'barrel');
-  // The front: a bench either side of the prize window's step, looking over
-  // the walk at the sea, and on the sand a castle somebody built.
-  map.plant(78, 12, 'seaBench');
-  map.plant(83, 12, 'seaBench');
-  map.plant(72, 19, 'sandcastle');
 }
 
 /**
- * THE PROMENADE, past THE GREEN: a seaside front read from the top down - the
- * BATTLE ARENA under its name board and THE GAME CORNER under its lit
- * marquee; the stone walk; the boardwalk with
- * its lamps and railings, broken where steps go down to the sand; the beach
- * with its row of painted huts, parasols and deckchairs; and the pleasure pier
- * out over the sea. Its things are drawn for it (`promenadeSheet.ts`), so a
- * front of the same stone for twenty-five tiles reads as a place with
- * somewhere to sit, something to buy and somewhere to go.
+ * THE PROMENADE, past THE GREEN: a seaside front round a bay, walked from the
+ * town end to the wild end in four places, each about a screen wide and each
+ * with one thing you would name it by (the owner, 25 Nov 2026: "more spread
+ * out and beautiful, and more like a human would make it. Make it make
+ * sense"; `docs/screens/promenade-bay/`).
+ *
+ * - **The sport end**, nearest the town: the DERBY's gantry over the race's
+ *   chequered start line, and THE BATTLE ARENA set back on a forecourt where
+ *   a crowd would wait, with its colours either side of the door.
+ * - **PIER SQUARE**, the heart: THE GAME CORNER and its prize window across
+ *   the head of the square, the pleasure pier leaving from its foot on the
+ *   arcade door's own line, so the view out of the arcade runs down the pier
+ *   to the FISHING DERBY's board, and the ice cream where the crowd is.
+ * - **THE GARDENS**, the quiet middle: a bandstand on a lawn up a gravel path,
+ *   benches round it, and the beach huts on the sand against the walk's rail.
+ * - **THE POINT**, the wild end: the walk climbs off the stone onto a grassy
+ *   point with THE FIELD-MOVE COURSE's gate and its ground fenced off beside
+ *   it, a lookout bench over the sea, and the rocks below, where the tide
+ *   leaves what it brings in.
+ *
+ * The beach is a bay: widest under the sport end, narrowing past the pier to
+ * the cove of rocks under the point. The walk is stone three wide the whole
+ * way, railed along its sea edge with the sand below, and a pair walks its
+ * two landward rows with nothing on them.
  */
+/**
+ * What stands along the walk's seaward edge (row 14), by x: never across
+ * the DERBY's way up from the sand (x 69), the pier's gate under its arch
+ * (84-87) or the end of the walk at THE POINT. On the walk's landward row
+ * they stood across a pair's way up to every door north of it.
+ */
+const KERB: readonly (readonly [number, BasePropName])[] = [
+  // The walk's one row of lamps, about every six tiles, with benches between.
+  [63, 'promenadeLamp'],
+  [65, 'seaBench'],
+  [71, 'promenadeLamp'],
+  [73, 'seaBench'],
+  [77, 'promenadeLamp'],
+  [81, 'troughRed'],
+  [88, 'troughYellow'],
+  [93, 'seaBench'],
+  [95, 'promenadeLamp'],
+  [99, 'seaBench'],
+  [103, 'promenadeLamp'],
+  [107, 'seaBench'],
+  [109, 'promenadeLamp'],
+  [115, 'promenadeLamp'],
+];
+
 function plantPromenade(map: MapSketch<BasePropName>): void {
-  // THE BATTLE ARENA stands on its lot (`doors.ts`), planted with the doors.
+  // --- The sport end ----------------------------------------------------
+  // The race's start, painted across the walk under the gantry.
+  for (const y of [12, 13, 14]) map.plant(DERBY_START_X, y, 'startLine');
   map.plant(PROMENADE_SIGN.x, PROMENADE_SIGN.y, 'homeSign');
+  // THE BATTLE ARENA's colours either side of its door, and benches across
+  // its forecourt facing it, where the crowd for the next bout waits.
+  map.plant(66, 8, 'pennantRed');
+  map.plant(73, 8, 'pennantBlue');
+  map.plant(65, 10, 'troughRed');
+  map.plant(74, 10, 'troughYellow');
+
+  // Along the walk's seaward edge: a lamp now and then, benches turned to
+  // the sea and planters, on its bottom row - a pair walks the two above,
+  // straight on from KEEPERS' ROW's gravel, and the way up to every door
+  // and down to the beach is left open.
+  for (const [x, prop] of KERB) map.plant(x, 14, prop);
+
+  // --- PIER SQUARE -----------------------------------------------------
   map.plant(GAME_CORNER_SIGN.x, GAME_CORNER_SIGN.y, 'homeSign');
+  // Lamps either side of the arcade door's line, the way down to the pier.
+  map.plant(83, 10, 'promenadeLamp');
+  map.plant(87, 10, 'promenadeLamp');
+  map.plant(93, 9, 'seaBench');
+  map.plant(93, 11, 'troughBlue');
+  // The pier's gate at the square's foot, under its arch on the arcade
+  // door's own line: a lamp either side, its sign, the
+  // rail along the square's edge over the sand, and the ice-cream cart. East
+  // of the gate a step goes down onto the sand beside the pier.
   map.plant(PLEASURE_PIER_SIGN.x, PLEASURE_PIER_SIGN.y, 'homeSign');
-  // Flower troughs either side of the arcade's plaza, against its walls; past
-  // it THE FIELD-MOVE COURSE's gate and its TIME BOARD stand with the landmarks
-  // (`landmarks.ts`), with the way up to the gate's front left open.
-  map.plant(71, 11, 'troughPink');
-  map.plant(78, 11, 'troughYellow');
-  map.plant(86, 11, 'pennantYellow');
-  // The boardwalk's seaward edge, read from the west: the railing, a lamp
-  // where it starts, the beach huts backed onto it two by two with steps
-  // down to the sand between them, a lamp by the second steps, the pleasure
-  // pier, and the railing again past it. A lamp stands in the railing on its
-  // post, its head over the boardwalk behind it (`promenadePost`), so the
-  // boardwalk and the stone walk above it are three tiles wide the whole way
-  // along with nothing on them.
+  map.plant(82, 16, 'promenadeLamp');
+  map.plant(83, 16, 'pierArch');
+  map.plant(88, 16, 'promenadeLamp');
+  map.plant(89, 15, 'iceCart');
+  for (const x of [92, 93, 94]) map.plant(x, 16, 'railing');
+
+  // --- The walk's sea edge -----------------------------------------------
+  // A railing along the walk's seaward edge, the sand up against it below,
+  // broken only where steps go down to the beach: by THE DIG, beside the
+  // pier, between the huts and at the cove under THE POINT. It was a
+  // boardwalk once, a second walk beside the first that nothing stood on.
+  const steps = new Set([68, 69, 78, 79, 105, 106, 111, 112]);
+  for (const x of [...Array.from({ length: 20 }, (_, i) => 61 + i), ...Array.from({ length: 18 }, (_, i) => 95 + i)]) {
+    if (!steps.has(x)) map.plant(x, 15, 'railing');
+  }
+  // The huts on the sand against the rail, in a terrace of four and a pair,
+  // steps down to the sand between them, painted as their owners chose
+  // rather than in the rainbow's order.
   const HUTS: readonly (readonly [number, BasePropName])[] = [
-    [62, 'hutRed'],
-    [64, 'hutYellow'],
-    [68, 'hutBlue'],
-    [70, 'hutGreen'],
-    [75, 'hutPink'],
-    [77, 'hutTeal'],
+    [97, 'hutBlue'],
+    [99, 'hutRed'],
+    [101, 'hutTeal'],
+    [103, 'hutYellow'],
+    [107, 'hutGreen'],
+    [109, 'hutPink'],
   ];
-  const lamps = [61, 72, 84, 86];
-  const open = new Set([
-    // The steps, and the pleasure pier's foot.
-    66, 67, 73, 74, 79, 80, 81, 82,
-    ...HUTS.flatMap(([x]) => [x, x + 1]),
-    PLEASURE_PIER_SIGN.x,
-  ]);
-  for (let x = 61; x <= 86; x += 1) {
-    if (lamps.includes(x)) {
-      map.plant(x, 16, 'promenadeLamp');
-    } else if (!open.has(x)) {
-      map.plant(x, 16, 'railing');
-    }
-  }
-  for (const [x, hut] of HUTS) {
-    map.plant(x, 16, hut);
-  }
-  // Out on the sand in front of the huts, and never in front of the steps:
-  // parasols with deckchairs in their shade, and THE DIG's sign
-  // (`landmarks.ts`). The two rows along the water are the beach's way along,
-  // from THE COVE to the pier, and are left clear; the ice-cream cart is past
-  // the pier.
-  map.plant(62, 19, 'parasolRed');
+  for (const [x, hut] of HUTS) map.plant(x, 16, hut);
+
+  // --- The beach --------------------------------------------------------
+  // A family's corner by the breakwater, THE DIG on the widest sand with a
+  // castle beside it, and a parasol or two past the pier.
+  map.plant(64, 18, 'parasolRed');
   map.plant(64, 20, 'deckchairRed');
   map.plant(65, 20, 'deckchairBlue');
-  map.plant(70, 19, 'parasolBlue');
-  map.plant(75, 19, 'parasolYellow');
-  map.plant(77, 20, 'deckchairYellow');
-  map.plant(83, 19, 'iceCart');
-  map.plant(85, 21, 'wetRock');
-  map.plant(70, 25, 'wetRock');
-  // THE PLEASURE PIER's head: pennants at its corners, a lifebuoy and a lamp.
-  map.plant(84, 28, 'pennantRed');
-  map.plant(84, 29, 'lifebuoy');
-  map.plant(83, 29, 'promenadeLamp');
-  for (const x of [76, 77, 78, 82, 83, 84]) {
-    map.plant(x, 30, 'railing');
-  }
+  map.plant(73, 18, 'parasolBlue');
+  map.plant(75, 19, 'deckchairBlue');
+  map.plant(72, 20, 'sandcastle');
+  map.plant(67, 20, 'sandcastle');
+  map.plant(88, 18, 'deckchairBlue');
+  map.plant(88, 20, 'parasolBlue');
+  map.plant(72, 24, 'sandcastle');
+  map.plant(74, 24, 'rowBoatGreen');
+  map.plant(64, 23, 'wetRock');
+  map.plant(81, 20, 'deckchairYellow');
+  map.plant(82, 18, 'deckchairRed');
+  map.plant(83, 18, 'deckchairYellow');
+  map.plant(90, 18, 'parasolYellow');
+  map.plant(92, 19, 'deckchairYellow');
+  map.plant(93, 20, 'rowBoatRed');
+  // A family's camp under the huts: a parasol and their chairs.
+  map.plant(99, 19, 'parasolRed');
+  map.plant(101, 19, 'deckchairRed');
+  map.plant(102, 19, 'deckchairBlue');
+  // Rocks at the water's edge, off the line any race swims.
+  map.plant(61, 24, 'wetRock');
+  map.plant(67, 24, 'wetRock');
+  map.plant(77, 24, 'wetRock');
+  map.plant(80, 23, 'wetRock');
+  map.plant(97, 22, 'wetRock');
+  map.plant(110, 20, 'wetRock');
+  map.plant(113, 18, 'wetRock');
+
+  // --- The pleasure pier ------------------------------------------------
+  // Half way out, a stop: a bench on its east side, turned to the sea, and a
+  // fisherman at its end (`harbourLife.ts`), and its west side left open,
+  // where the beach steps up onto it; at its head the FISHING
+  // DERBY's board on the pier's own line, pennants, a lifebuoy and a lamp.
+  map.plant(87, 24, 'seaBench');
+  map.plant(82, 23, 'lifebuoy');
+  map.plant(80, 27, 'pennantRed');
+  map.plant(90, 27, 'pennantBlue');
+  map.plant(80, 29, 'promenadeLamp');
+  map.plant(90, 29, 'promenadeLamp');
+  map.plant(83, 30, 'lifebuoy');
+  // Gear for the FISHING DERBY: a crate of the catch by its board, and pots.
+  map.plant(82, 29, 'fishCrate');
+  map.plant(88, 30, 'lobsterPots');
+  for (let x = 80; x <= 90; x += 1) map.plant(x, 31, 'railing');
+
+  // --- THE GARDENS ------------------------------------------------------
+  map.plant(103, 5, 'bandstand');
+  map.plant(100, 9, 'bench');
+  map.plant(107, 9, 'bench');
+  map.plant(GARDENS_SIGN.x, GARDENS_SIGN.y, 'homeSign');
+  map.plant(97, 10, 'troughPink');
+  map.plant(110, 11, 'troughRed');
+
+  // --- THE POINT --------------------------------------------------------
+  // The course's ground behind its fence, seen from its gate: scrub to CUT
+  // and rocks to SMASH. It is run on its own screen
+  // (`scenes/FieldCourseScene.ts`), so nobody walks in; it is all scrub
+  // under the rocks, and no patch of it is ground nobody can reach.
+  map.plant(122, 6, 'rock');
+  map.plant(124, 8, 'rock');
+  map.plant(121, 9, 'rock');
+  // The lookout where the walk ends: a railing round the paving over the
+  // rocks, a bench either side of a telescope, and the bay in front of them.
+  for (const x of [117, 118, 119, 121, 122, 123]) map.plant(x, 16, 'railing');
+  map.plant(115, 11, 'troughYellow');
+  map.plant(118, 15, 'seaBench');
+  map.plant(120, 16, 'coinTelescope');
+  map.plant(122, 15, 'seaBench');
 }
 
 const built = new Map<string, BaseMapDefinition>();

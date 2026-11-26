@@ -165,7 +165,7 @@ try {
   // --- THE PROMENADE DERBY --------------------------------------------------
   // Ridden as a person rides it: SPACE on the straights while the bar lasts,
   // off it into a corner, and the line the racer is built for at each fork.
-  if (option('only') === 'dig') { await walkTo({ x: 66, y: 19 }, 'dig first'); }
+  if (option('only') === 'dig') { await walkTo({ x: 69, y: 19 }, 'dig first'); }
   await openGame('derby', { x: 62, y: 12 }, 'ArrowUp', team.racer, 'DERBY');
   const derby = `${GAME}.scene.getScene('derby')`;
   let shotRace = false;
@@ -192,7 +192,7 @@ try {
   // --- THE DIG -----------------------------------------------------------------
   // Dug by the pings, as a person digs: a square as far from the last HOT,
   // WARM or COLD as it says, and Keen Eye's glint first.
-  await openGame('dig', { x: 66, y: 19 }, 'ArrowDown', team.digger, 'DIG');
+  await openGame('dig', { x: 69, y: 19 }, 'ArrowRight', team.digger, 'DIG');
   const dig = `${GAME}.scene.getScene('dig')`;
   let shotDig = false;
   for (let turn = 0; turn < 20; turn += 1) {
@@ -220,7 +220,7 @@ try {
 
   // --- THE FISHING DERBY -----------------------------------------------------
   // Fished as a person fishes: SPACE the moment the line is back out of the water.
-  await openGame('fishing-derby', { x: 78, y: 29 }, 'ArrowLeft', team.lead, 'FISHING DERBY');
+  await openGame('fishing-derby', { x: 86, y: 29 }, 'ArrowLeft', team.lead, 'FISHING DERBY');
   const fishing = `${GAME}.scene.getScene('fishing-derby')`;
   let shotFish = false;
   for (let frame = 0; frame < 60 * 140; frame += 6) {

@@ -160,7 +160,7 @@ export const TREASURE_GOAL = {
  * corner where the sand runs out against the rocks and nobody walks, at the
  * tide line. It is not solid, so nothing about the harbour's walks moves.
  */
-export const BEACH_BOTTLE: GridPosition = { x: 84, y: 22 };
+export const BEACH_BOTTLE: GridPosition = { x: 109, y: 19 };
 
 /** What is said as the bottle is picked up off the sand. */
 export const BOTTLE_FOUND_LINES: readonly string[] = [

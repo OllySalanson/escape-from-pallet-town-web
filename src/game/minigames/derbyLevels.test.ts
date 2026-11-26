@@ -23,7 +23,7 @@ import {
   routeOf,
   startDerby,
   stepDerby,
-  THE_FRONT,
+  SHIPPED_FRONT,
   toNextHurdle,
   type CourseLeg,
   type DerbyLevel,
@@ -50,7 +50,7 @@ function runOut(race: DerbyRace): DerbyRace {
 const DAYS = Array.from({ length: 20 }, (_, index) => `2026-${String((index % 12) + 1).padStart(2, '0')}-${String((index % 28) + 1).padStart(2, '0')}`);
 
 describe('THE PROMENADE DERBY levels', () => {
-  it('runs THE FRONT exactly as it shipped: every race the shipped engine ran, the same frame for frame', () => {
+  it('runs the race as it shipped exactly as it shipped: every race the shipped engine ran, the same frame for frame', () => {
     // Written by the race before it had levels; level 1 must never move from it.
     const fixture = FRONT_AS_SHIPPED as Readonly<Record<string, string>>;
     const seen: Record<string, string> = {};
@@ -62,13 +62,13 @@ describe('THE PROMENADE DERBY levels', () => {
     for (const kind of species) {
       for (const wet of [false, true]) {
         for (let seed = 1; seed <= 6; seed += 1) {
-          record(`model:${kind}:${wet}:${seed}`, modelDerby(traits(kind), derbyField(THE_FRONT, `2026-11-0${seed}`), wet, seed, seed % 2 ? 0.8 : 0.4));
+          record(`model:${kind}:${wet}:${seed}`, modelDerby(traits(kind), derbyField(SHIPPED_FRONT, `2026-11-0${seed}`), wet, seed, seed % 2 ? 0.8 : 0.4, SHIPPED_FRONT));
         }
       }
     }
     for (const kind of ['squirtle', 'pidgeotto', 'rattata', 'snorlax']) {
       for (const choice of [{}, { first: 'wide' }, { second: 'bay' }, { second: 'air' }, { first: 'wide', second: 'air' }] as readonly DerbyLines[]) {
-        let race = startDerby(THE_FRONT, { name: 'YOU', racer: traits(kind) }, DERBY_ENTRANTS.slice(3, 8), false, 77);
+        let race = startDerby(SHIPPED_FRONT, { name: 'YOU', racer: traits(kind) }, DERBY_ENTRANTS.slice(3, 8), false, 77);
         let clock = 0;
         while (!race.over) {
           const tap = clock >= COUNTDOWN_MS && Math.floor(clock / 230) !== Math.floor((clock + 50) / 230);
@@ -298,12 +298,19 @@ describe('THE PROMENADE DERBY levels', () => {
 
   it('soaks a runner the waves catch on the breakwater, and lets a Water type ride them', () => {
     const breakwater = DERBY_LEVELS[2];
+    // Over races ridden at several paces, so whether a wave is breaking as the
+    // runner reaches the stone is the waves' timing and not one race's luck.
     const soakings = (species: string) => {
-      let race = startDerby(breakwater, { name: 'YOU', racer: traits(species) }, [], false, 1);
       const kinds: string[] = [];
-      while (!race.over) {
-        race = stepDerby(race, { lines: { second: 'sands', third: 'mole' } });
-        kinds.push(...race.events.filter((event) => 'runner' in event && event.runner === 0).map((event) => event.kind));
+      for (const every of [0, 230, 400, 700, 1100, 1700]) {
+        let race = startDerby(breakwater, { name: 'YOU', racer: traits(species) }, [], false, 1);
+        let clock = 0;
+        while (!race.over) {
+          const tap = every > 0 && clock >= COUNTDOWN_MS && Math.floor(clock / every) !== Math.floor((clock + 50) / every);
+          race = advanceDerby(race, 50, { tap, lines: { second: 'sands', third: 'mole' } });
+          clock += 50;
+          kinds.push(...race.events.filter((event) => 'runner' in event && event.runner === 0).map((event) => event.kind));
+        }
       }
       return kinds;
     };

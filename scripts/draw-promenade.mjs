@@ -31,7 +31,7 @@ import { readPng, writePng } from '../tools/tileset/tileSheet.mjs';
 const ROOT = new URL('../', import.meta.url);
 const TILE = 16;
 const SHEET_COLUMNS = 16;
-const SHEET_ROWS = 17;
+const SHEET_ROWS = 21;
 
 const hex = (value) => [
   parseInt(value.slice(1, 3), 16),
@@ -184,6 +184,7 @@ const BIG = {
   M: ['#...#', '##.##', '#.#.#', '#.#.#', '#...#', '#...#', '#...#'],
   N: ['#...#', '##..#', '#.#.#', '#..##', '#...#', '#...#', '#...#'],
   O: ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
+  P: ['####.', '#...#', '#...#', '####.', '#....', '#....', '#....'],
   R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
   S: ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'],
   U: ['#...#', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
@@ -1308,6 +1309,156 @@ function seaBench() {
   return image;
 }
 
+/**
+ * THE GARDENS' bandstand, 4x4: a red and white striped roof on white posts over
+ * an eight-sided stage of boards on a stone plinth, with steps up at its front -
+ * the one thing every Victorian front has in its gardens, and the landmark the
+ * quiet end of THE PROMENADE is named by.
+ */
+function bandstand() {
+  const image = canvas(4 * TILE, 4 * TILE);
+  const W = 64;
+  const red = STRIPES.red;
+  // The plinth: an octagon of stone, its front face lit, steps in the middle.
+  const plinth = (y) => (y < 44 ? 0 : y < 48 ? (48 - y) * 2 : y > 58 ? (y - 58) * 2 : 0);
+  for (let y = 42; y < 63; y += 1) {
+    const inset = 3 + plinth(y);
+    for (let x = inset; x < W - inset; x += 1) {
+      const edge = x === inset || x === W - inset - 1 || y === 42 || y === 62;
+      const face = y >= 56;
+      set(image, x, y, hex(edge ? INK.outline : face ? (y === 56 ? INK.stoneLight : INK.stone) : (Math.floor(x / 4) + y) % 2 ? INK.woodLight : INK.wood));
+    }
+  }
+  // The steps up to the stage, at its front.
+  for (let step = 0; step < 3; step += 1) {
+    const y = 56 + step * 2;
+    fill(image, 24 - step, y, 16 + step * 2, 2, INK.outline);
+    fill(image, 25 - step, y, 14 + step * 2, 1, INK.stoneLight);
+  }
+  // A music stand and a chair on the stage, seen between the posts.
+  draw(image, 28, 40, ['.kkkk.', '.kwwk.', '..kk..', '..ks..', '..ks..', '.kkkk.'], IRON);
+  draw(image, 36, 44, ['kkk', 'kok', 'kkk', 'k.k'], { k: INK.woodDark, o: INK.woodLight });
+  // Four white posts holding the roof up.
+  for (const x of [8, 22, 40, 54]) {
+    fill(image, x, 28, 3, 18, INK.outline);
+    fill(image, x + 1, 28, 1, 17, INK.white);
+    fill(image, x + 1, 44, 1, 1, INK.shade);
+  }
+  // The roof: a striped cone under a finial, its valance scalloped.
+  for (let y = 3; y < 28; y += 1) {
+    const half = Math.round(6 + (y - 3) * 1.08);
+    for (let x = 32 - half; x < 32 + half; x += 1) {
+      const edge = x === 32 - half || x === 32 + half - 1 || y === 3;
+      // Stripes fan out from the finial.
+      const angle = (x - 32) / Math.max(1, y - 1);
+      const band = Math.floor((angle + 4) * 2.2) % 2 === 0;
+      const lit = x < 32 - half + 4 || y < 7;
+      set(image, x, y, hex(edge ? INK.outline : band ? (lit ? red.l : red.c) : lit ? INK.white : INK.cream));
+    }
+  }
+  for (let x = 4; x < 60; x += 1) {
+    const scallop = (x - 4) % 6 < 3 ? 0 : 1;
+    fill(image, x, 28, 1, 2 + scallop, red.d);
+    set(image, x, 30 + scallop, hex(INK.outline));
+  }
+  for (let x = 4; x < 60; x += 1) set(image, x, 28, hex(red.c));
+  // The finial and a pennant flying from it.
+  draw(image, 30, 0, ['.kk.', 'kwwk', '.kk.'], { k: INK.goldDark, w: INK.gold });
+  return image;
+}
+
+/**
+ * THE PROMENADE DERBY's start and finish, painted across the walk: two columns
+ * of black and white squares down the middle of a tile of stone, which shows
+ * either side of them. Walked over, as THE RAID ARENA's runner is.
+ */
+function startLine() {
+  const image = canvas(TILE, TILE);
+  for (let y = 0; y < TILE; y += 1) {
+    for (let x = 4; x < 12; x += 1) {
+      const dark = (Math.floor(x / 4) + Math.floor(y / 4)) % 2 === 0;
+      set(image, x, y, hex(dark ? INK.dark : INK.white));
+    }
+  }
+  return image;
+}
+
+/**
+ * THE PLEASURE PIER's arch, 5x2, over the gate at the foot of PIER SQUARE: two
+ * iron posts with a lamp globe on each, a wrought arch between them and PIER
+ * in white on a red board at its crown - what ends the view from THE GAME
+ * CORNER's door, and what every pier in a seaside town is entered under. The
+ * bottom row is only the posts: the three tiles between them are walked.
+ */
+function pierArch() {
+  const image = canvas(5 * TILE, 2 * TILE);
+  const W = 5 * TILE;
+  // The posts, fluted iron on a stone foot.
+  for (const px of [5, W - 11]) {
+    fill(image, px, 8, 6, 22, INK.outline);
+    fill(image, px + 1, 9, 4, 20, INK.iron);
+    fill(image, px + 2, 9, 1, 20, INK.ironLight);
+    fill(image, px - 1, 27, 8, 5, INK.outline);
+    fill(image, px, 28, 6, 3, INK.stone);
+    fill(image, px, 28, 6, 1, INK.stoneLight);
+    // A lamp globe on top.
+    draw(image, px, 1, ['.kkkk.', 'kLLLLk', 'kLHHLk', 'kLLLLk', '.kkkk.', '..kk..', '..kk..'], { k: INK.outline, L: INK.lamp, H: INK.lampHot });
+  }
+  // The arch: an iron band curving up from post to post, with a scroll under it.
+  for (let x = 10; x < W - 10; x += 1) {
+    const t = (x - W / 2) / (W / 2 - 10);
+    const y = Math.round(9 + 6 * t * t);
+    set(image, x, y - 1, hex(INK.outline));
+    set(image, x, y, hex(INK.ironShine));
+    set(image, x, y + 1, hex(INK.iron));
+    set(image, x, y + 2, hex(INK.outline));
+    if (x % 6 === 0) {
+      for (let dy = y + 3; dy < 15; dy += 1) set(image, x, dy, hex(INK.iron));
+    }
+  }
+  // The board at the crown.
+  const word = lettering('PIER', BIG);
+  const width = word[0].length + 8;
+  const left = Math.floor((W - width) / 2);
+  fill(image, left, 0, width, 13, INK.outline);
+  fill(image, left + 1, 1, width - 2, 11, STRIPES.red.c);
+  fill(image, left + 1, 1, width - 2, 1, STRIPES.red.l);
+  fill(image, left + 1, 11, width - 2, 1, STRIPES.red.d);
+  bigWord(image, left + 4, 3, 'PIER', INK.white, INK.white, STRIPES.red.d);
+  return image;
+}
+
+/**
+ * A coin telescope on its post, 1x2, at THE POINT's lookout: a brass tube on a
+ * swivel over an iron post - put a coin in and look at the bay.
+ */
+function coinTelescope() {
+  const image = canvas(TILE, 2 * TILE);
+  draw(
+    image,
+    0,
+    4,
+    [
+      '..........kkk...',
+      '.......kkkGGGk..',
+      '....kkkGGGGggk..',
+      '..kkGGGGGggkk...',
+      '.kGGGGggkkk.....',
+      '.kgGggkk........',
+      '..kkkkk.........',
+      '.....kk.........',
+      '....kssk........',
+      '....kssk........',
+      '....kwwk........',
+      '...kkkkkk.......',
+    ],
+    { k: INK.outline, G: INK.gold, g: INK.goldDark, s: INK.iron, w: INK.ironLight },
+  );
+  for (let y = 16; y < 30; y += 1) draw(image, 5, y, ['kssk'], { k: INK.outline, s: INK.iron });
+  draw(image, 3, 29, ['kkkkkkkk', 'kwwwwwwk', 'kkkkkkkk'], { k: INK.outline, w: INK.ironLight });
+  return image;
+}
+
 // --- The sheet -----------------------------------------------------------
 
 /**
@@ -1359,6 +1510,10 @@ const LAYOUT = [
   ['fishStall', 8, 13, fishStall],
   ['seaBench', 11, 13, seaBench],
   ['rowBoatGreen', 13, 13, () => rowBoat('green')],
+  ['startLine', 15, 13, startLine],
+  ['bandstand', 0, 17, bandstand],
+  ['pierArch', 4, 17, pierArch],
+  ['coinTelescope', 9, 17, coinTelescope],
 ];
 
 const towns = readPng(new URL('public/assets/frlg-towns.png', ROOT).pathname);
