@@ -15,7 +15,7 @@ import type { NameCheck, NameClaim } from './nameService';
 export const YOUR_NAME_TITLE = 'YOUR NAME?';
 
 /** Where the name is being asked. */
-export type NameScreenWhere = 'first-raid' | 'continue';
+export type NameScreenWhere = 'first-raid' | 'continue' | 'home';
 
 interface NameScreenWords {
   readonly place: string;
@@ -35,6 +35,15 @@ const WORDS: Readonly<Record<NameScreenWhere, NameScreenWords>> = {
     bar: 'One name each',
     hints: 'TYPE your name · ENTER OK · ESC later',
     away: { label: 'Later', help: 'Play on without a name; you are asked again next time.' },
+  },
+  // From the sign by THE BOLTHOLE's door, the one place in the yard a name is
+  // asked for (`BaseScene.readKnockSign`).
+  home: {
+    place: 'THE BOLTHOLE',
+    lead: `Your name goes ${EVERYWHERE}, and nobody else can have it.`,
+    bar: 'One name each',
+    hints: 'TYPE your name · ENTER OK · ESC later',
+    away: { label: 'Later', help: 'Play on without a name; the sign asks again.' },
   },
   continue: {
     place: 'PALLET TOWN',

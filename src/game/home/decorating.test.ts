@@ -64,7 +64,7 @@ describe('decorating THE BOLTHOLE', () => {
     const results = play(start(), at(0, 7), press, at(7, 8), press);
     expect(last(results)).toMatchObject({ outcome: 'refused', changed: false, refusal: { kind: 'on-a-mat' } });
     expect(last(results).state.held?.id).toBe('pot-plant');
-    expect(decorRefusalLine(last(results).refusal!)).toBe('KEEP THE MATS CLEAR');
+    expect(decorRefusalLine(last(results).refusal!)).toBe('KEEP THE DOOR MAT CLEAR');
   });
 
   it('puts a piece it was carrying back where it stood when decorating is called off', () => {

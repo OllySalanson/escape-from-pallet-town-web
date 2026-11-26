@@ -70,11 +70,13 @@ describe("what the things in THE BOLTHOLE say", () => {
     expect(calendarLines(baseGame())[0]).toContain('DAY 1');
     const game = raids({ 'route-1': { deployed: 3, extracted: 2, wiped: 1 } });
     expect(calendarDay(game)).toBe(4);
+    // One place raided: the margin would only say the total again (the harbour critic tour).
     expect(calendarLines(game)).toEqual([
       'DAY 4. Every raid is a day on this calendar, and 3 are crossed off.',
       '2 of them have a tick for coming home.',
-      'In the margin: ROUTE 1, 3 times.',
     ]);
+    const two = raids({ 'route-1': { deployed: 3, extracted: 2, wiped: 1 }, 'pallet-town': { deployed: 1, extracted: 1, wiped: 0 } });
+    expect(calendarLines(two).at(-1)).toBe('In the margin: ROUTE 1, 3 times.');
   });
 
   it('says the ticks as a sentence, whatever the count', () => {
@@ -92,11 +94,16 @@ describe("what the things in THE BOLTHOLE say", () => {
    * priced in raid time, and the bed has to say so rather than leave a player
    * thinking their team is fit.
    */
-  it('dreams of where the player keeps going, and sends them to Joy for healing', () => {
-    const lines = bedLines(raids({ 'viridian-forest': { deployed: 4, extracted: 3, wiped: 1 } }));
+  it('dreams of where the player keeps going, and sends them to Joy only when somebody is hurt', () => {
+    const game = raids({ 'viridian-forest': { deployed: 4, extracted: 3, wiped: 1 } });
+    const lines = bedLines(game);
     expect(lines.join(' ')).toContain('VIRIDIAN FOREST');
-    expect(lines.at(-1)).toContain('NURSE JOY');
     expect(bedLines(baseGame()).join(' ')).toContain('the jump');
+    // A fit team is not sent to Joy: the bed said so to a healed team (the harbour critic tour, 26 Nov 2026).
+    expect(lines.at(-1)).not.toContain('NURSE JOY');
+    const [first] = game.stash.listPokemon();
+    first.pokemon.currentHp = 1;
+    expect(bedLines(game).at(-1)).toContain('NURSE JOY');
   });
 
   it("colours the upstairs rug after the player's partner", () => {

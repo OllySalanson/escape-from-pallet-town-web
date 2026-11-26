@@ -25,7 +25,7 @@ export const KNOCK_HINTS = 'ARROWS move · ENTER knock · ESC back';
  * What THE BOLTHOLE's garden sign says, in the ordinary text box, before the
  * list of players comes up (`BaseScene`, `HOME_SIGN.knocks`).
  */
-export const KNOCK_SIGN_LINE = 'Select the player you want to knock on the door of.';
+export const KNOCK_SIGN_LINE = 'Whose door do you fancy knocking on?';
 
 export type KnockView =
   /** Asking the harbour who has a house. */

@@ -2,6 +2,7 @@ import { POKEMON_ICON_ORDER } from '../pokemon/generated/pokemonIcons';
 import { pokemonName, type FigureSpeciesId } from '../world/pokemonFigures';
 import { FURNITURE_PIECES, type FurniturePieceName } from './generated/furniturePieces';
 import { aOrAn } from '../ui/article';
+import { HOME_KEY_LETTERS } from '../input/keyBindings';
 
 /**
  * The things a player can pick up and put down in THE BOLTHOLE.
@@ -156,7 +157,10 @@ const PIECES: readonly FurnitureDefinition[] = [
   piece({
     id: 'dining-table',
     name: 'THE TABLE',
-    line: 'The table, on its green rug. There are four chairs and there has never been a meal for four.',
+    // Something it is for, in place of a fifth sad joke in one room (the
+    // harbour critic tour, 26 Nov 2026): the table is the first thing a
+    // newcomer can move.
+    line: `The table, on its green rug. It goes wherever you like: press [${HOME_KEY_LETTERS.decorate}] to move things about.`,
     layer: 'floor',
     piece: 'dining-table',
     cells: ['......', '..TT..', '..TT..', '......'],
@@ -415,8 +419,8 @@ function doll(dexId: number): FurnitureDefinition {
     id: dollId(dexId),
     name: `${name} DOLL`,
     line: big
-      ? `A huge ${name} doll. It is for the first ${name} you ever brought home.`
-      : `${aOrAn(name) === 'an' ? 'An' : 'A'} ${name} doll, for the first ${name} you ever brought home.`,
+      ? `A huge ${name} doll. It is for the first ${name} you ever had.`
+      : `${aOrAn(name) === 'an' ? 'An' : 'A'} ${name} doll, for the first ${name} you ever had.`,
     layer: big ? 'standing' : 'small',
     width: big ? FURNITURE_PIECES[emerald].width : 1,
     height: big ? FURNITURE_PIECES[emerald].height : 1,

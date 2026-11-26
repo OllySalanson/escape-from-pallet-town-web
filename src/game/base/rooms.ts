@@ -2404,7 +2404,8 @@ function drawUpstairs(room: BaseRoom, game: RestoredGame): Drawn {
     },
     {
       name: 'YOUR BED',
-      note: 'Nobody hunts you here',
+      // Not its first line again: the caption and the line were copies (the critic tour).
+      note: 'Sleep it off',
       tiles: [
         { x: 1, y: 5 },
         { x: 1, y: 6 },

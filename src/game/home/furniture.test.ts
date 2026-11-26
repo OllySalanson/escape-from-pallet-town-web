@@ -47,8 +47,8 @@ describe('the furniture catalogue', () => {
   });
 
   it('says "An EKANS doll" and "A PIDGEY doll", never "A EKANS"', () => {
-    expect(furnitureNamed(dollId(23))?.line).toBe('An EKANS doll, for the first EKANS you ever brought home.');
-    expect(furnitureNamed(dollId(16))?.line).toBe('A PIDGEY doll, for the first PIDGEY you ever brought home.');
+    expect(furnitureNamed(dollId(23))?.line).toBe('An EKANS doll, for the first EKANS you ever had.');
+    expect(furnitureNamed(dollId(16))?.line).toBe('A PIDGEY doll, for the first PIDGEY you ever had.');
   });
 
   it('has a doll for each of the 151, and every other piece once', () => {

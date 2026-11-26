@@ -187,7 +187,7 @@ try {
   await takeOut('small-chair');
   await cursorTo({ x: 7, y: 8 });
   const refused = await now();
-  if (refused.panel?.[1] !== 'KEEP THE MATS CLEAR') fail(`on the door mat the panel says ${JSON.stringify(refused.panel)}`);
+  if (refused.panel?.[1] !== 'KEEP THE DOOR MAT CLEAR') fail(`on the door mat the panel says ${JSON.stringify(refused.panel)}`);
   await page.screenshot(`${out}/5-refused.png`);
   await press('Space');
   if ((await now()).held?.id !== 'small-chair') fail('a refused piece left the player\'s hands');

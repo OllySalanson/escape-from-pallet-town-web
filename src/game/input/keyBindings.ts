@@ -215,7 +215,8 @@ export function decorateKeyHintLine(now: 'holding' | 'on-a-piece' | 'on-the-floo
     now === 'holding'
       ? ['[SPACE] PUT DOWN', ...turn, box, keyHint(HOME_KEY_LETTERS.putAway, 'PUT AWAY')]
       : now === 'on-a-piece'
-        ? ['[SPACE] PICK UP', ...turn, keyHint(HOME_KEY_LETTERS.putAway, 'PUT AWAY'), keyHint(HOME_KEY_LETTERS.decorate, 'DONE')]
+        ? // The box named here too: a newcomer saw only the table, and five more pieces waited in a box nothing mentioned (the critic tour).
+          ['[SPACE] PICK UP', ...turn, keyHint(HOME_KEY_LETTERS.putAway, 'PUT AWAY'), box, keyHint(HOME_KEY_LETTERS.decorate, 'DONE')]
         : ['[SPACE] TAKE OUT', box, keyHint(HOME_KEY_LETTERS.decorate, 'DONE')];
   return keys.join('  ');
 }

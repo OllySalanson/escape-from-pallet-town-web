@@ -97,7 +97,9 @@ export function pennantsNote(game: RestoredGame): string {
   if (earned === 0) {
     return STRUNG_PENNANTS.length === 1 ? 'A bare pin, waiting' : 'Bare pins, waiting';
   }
-  return `${placesOf(earned, STRUNG_PENNANTS.length)} come home from`;
+  // A string of one is not a count: "1 of 1 place come home from" read as a
+  // collection finished on the free first raid (the harbour critic tour).
+  return STRUNG_PENNANTS.length === 1 ? `Home from ${WORLD_MAP_NAMES[earnedPennants(game)[0].mapId]}` : `Home from ${placesOf(earned, STRUNG_PENNANTS.length)}`;
 }
 
 /** What the string says when it is faced: one line for every pennant on it. */
@@ -110,7 +112,7 @@ export function pennantLines(game: RestoredGame): readonly string[] {
     ];
   }
   return [
-    `PENNANTS. ${placesOf(earned.length, STRUNG_PENNANTS.length)} you have come home from.`,
+    ...(STRUNG_PENNANTS.length === 1 ? [] : [`PENNANTS. ${placesOf(earned.length, STRUNG_PENNANTS.length)} you have come home from.`]),
     ...earned.map((pennant) => {
       const times = homecomings(game, pennant.mapId);
       return `${WORLD_MAP_NAMES[pennant.mapId].toUpperCase()}: home ${times === 1 ? 'once' : times === 2 ? 'twice' : `${times} times`}.`;

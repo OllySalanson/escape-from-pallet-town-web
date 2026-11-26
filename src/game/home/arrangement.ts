@@ -170,10 +170,19 @@ export function solidTiles(piece: PlacedPiece): readonly GridPosition[] {
     .map(({ x, y }) => ({ x, y }));
 }
 
+/**
+ * What a way in is called: downstairs the first is the door mat and the rest
+ * the stairs; upstairs there is no door, and every way is the stairs.
+ */
+function wayName(plan: FloorPlan, index: number): 'THE DOOR' | 'THE STAIRS' {
+  return index === 0 && plan.room === 'bolthole' ? 'THE DOOR' : 'THE STAIRS';
+}
+
 /** Why a piece cannot go where it was put. */
 export type Refusal =
   | { readonly kind: 'off-floor' }
-  | { readonly kind: 'on-a-mat' }
+  /** On the door mat, or - `stairs` - the stair mat, which nobody upstairs would call a mat. */
+  | { readonly kind: 'on-a-mat'; readonly stairs?: true }
   | { readonly kind: 'not-bare' }
   | { readonly kind: 'in-the-way'; readonly by: string }
   | { readonly kind: 'under-you' }
@@ -185,11 +194,11 @@ export function refusalLine(refusal: Refusal): string {
     case 'off-floor':
       return 'IT HAS TO GO ON THE FLOOR';
     case 'on-a-mat':
-      return 'KEEP THE MATS CLEAR';
+      return refusal.stairs ? 'KEEP THE STAIRS CLEAR' : 'KEEP THE DOOR MAT CLEAR';
     case 'not-bare':
       return 'A MAT GOES ON BARE FLOOR';
     case 'in-the-way':
-      return `${refusal.by} IS IN THE WAY`;
+      return `${refusal.by.startsWith('THE ') ? refusal.by : `THE ${refusal.by}`} IS IN THE WAY`;
     case 'under-you':
       return 'YOU ARE STANDING THERE';
     case 'blocks':
@@ -281,8 +290,12 @@ export function blockedBy(
     }
   }
   const reached = (tile: GridPosition): boolean => seen[tile.y]?.[tile.x] === true;
-  for (const way of plan.ways) {
-    if (!reached(way)) return way === start ? 'THE DOOR' : 'THE STAIRS';
+  // Walled in where it stands, the way in itself is what is blocked: upstairs,
+  // where the stairs are the only way, the first thing that answers was blamed
+  // ("IT WOULD BLOCK PENNANTS", the harbour critic tour, 26 Nov 2026).
+  if (queue.length <= 1 && plan.width * plan.height > 1) return wayName(plan, 0);
+  for (const [index, way] of plan.ways.entries()) {
+    if (!reached(way)) return wayName(plan, index);
   }
   for (const thing of plan.mustReach) {
     if (!thing.from.some(reached)) return thing.name;
@@ -303,12 +316,19 @@ export function placementRefusal(
   standing: readonly GridPosition[] = [],
 ): Refusal | null {
   const tiles = pieceTiles(candidate);
+  // Every tile against the ways in before any against the floor: the table
+  // and its rug over the door mat said "A MAT GOES ON BARE FLOOR", because the
+  // rug's first tile was asked about first (the harbour critic tour, 26 Nov
+  // 2026).
+  for (const tile of tiles) {
+    const index = plan.ways.findIndex((way) => way.x === tile.x && way.y === tile.y);
+    if (index >= 0) {
+      return wayName(plan, index) === 'THE STAIRS' ? { kind: 'on-a-mat', stairs: true } : { kind: 'on-a-mat' };
+    }
+  }
   for (const tile of tiles) {
     if (tile.x < 0 || tile.y < 0 || tile.x >= plan.width || tile.y >= plan.height || plan.blocked[tile.y][tile.x]) {
       return { kind: 'off-floor' };
-    }
-    if (plan.ways.some((way) => way.x === tile.x && way.y === tile.y)) {
-      return { kind: 'on-a-mat' };
     }
     if (candidate.definition.layer === 'floor' && !plan.bare[tile.y][tile.x]) {
       return { kind: 'not-bare' };
