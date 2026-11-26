@@ -203,7 +203,9 @@ export function greystonePeaks(): MapcraftResult {
     // Store: landed in the cut beside it, the way south walked into its reach
     // two steps out, and running put the player back in it (gyms playtest,
     // 26 Nov 2026; `guardsPlaced.test.ts` holds every landing clear of a guard).
-    dropIns: [{ x: 48, y: 15, name: 'The Quarry', description: 'The quarry bench under the crag, beside the cliff the Greystone Caves open in.' }],
+    // On the quarry floor south of it rather than in the west cut, where a held
+    // Down walked ten tiles before it could be answered (`greystoneVale.test.ts`).
+    dropIns: [{ x: 52, y: 20, name: 'The Quarry', description: 'The quarry bench under the crag, beside the cliff the Greystone Caves open in.' }],
     itemSpots: [
       { x: 11, y: 13 },
       { x: 56, y: 19 },

@@ -35,7 +35,7 @@ const WAYS: readonly OverviewLight[] = [
   ['stepping-stones', 168, 184],
   ['mill-square', 96, 161],
   ['moor-top', 86, 101],
-  ['quarry', 176, 79],
+  ['quarry', 180, 84],
   ['dam', 286, 92],
   ['rest-house', 286, 160],
   ['salvage-camp', 299, 229],

@@ -297,7 +297,7 @@ export const RUN_INSERTIONS = {
     id: 'greystone-vale-the-quarry',
     label: 'The Quarry',
     mapId: 'greystone-vale',
-    position: { x: 176, y: 79 },
+    position: { x: 180, y: 84 },
     description: 'The quarry bench high in Greystone Peaks, beside the cliff the Greystone Caves open in.',
   },
   'greystone-vale-stepping-stones': {
