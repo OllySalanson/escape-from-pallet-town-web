@@ -42,11 +42,10 @@ const fainted = (events: readonly BattleEvent[]): string[] =>
   events.filter((event) => event.type === 'fainted').map((event) => event.user);
 
 describe('Self-Destruct and Explosion', () => {
-  it('say what they cost in the move list, rather than "No side effect."', () => {
+  it("say what they cost in FireRed's own words", () => {
     for (const move of [SELF_DESTRUCT, EXPLOSION]) {
       expect(move.userFaints).toBe(true);
-      expect(move.description).toContain('The user faints.');
-      expect(move.description).not.toContain('No side effect');
+      expect(move.description).toMatch(/faint/);
     }
   });
 

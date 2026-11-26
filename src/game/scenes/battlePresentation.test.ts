@@ -263,15 +263,16 @@ describe('battle presentation', () => {
     expect(guidance.tone).toBe('neutral');
   });
 
-  it('describes what a status move does instead of a damage matchup', () => {
+  it("says nothing of what a status move does in the fight, as FireRed's fight does not", () => {
     const guidance = describeMoveGuidance({ base: SUPERSONIC, pp: 20 }, [PokemonType.Grass], {
       name: 'Pidgey',
       types: [PokemonType.Normal, PokemonType.Flying],
     });
 
     expect(guidance.summary).toBe('NORMAL · STATUS · PP 20/20');
-    expect(guidance.matchup).toBe(SUPERSONIC.description);
-    expect(SUPERSONIC.description).not.toBe('');
+    expect(guidance.matchup).toBe('');
+    // What it does is the summary's to say, in FireRed's own words.
+    expect(SUPERSONIC.description).toBe('The user generates odd sound waves. It may confuse the foe.');
   });
 
   it("says a move the foe's ability refuses has no effect, whatever the type chart says", () => {
@@ -918,20 +919,12 @@ describe('a status tag moved line by line', () => {
 });
 
 describe('a status move caption', () => {
-  it('drops the opening sentence the summary line already says, and loses sentences from the end to fit', () => {
-    const guidance = describeMoveGuidance(
-      { base: MOVE_CATALOGUE['leech-seed'], pp: 10 },
-      [PokemonType.Grass],
-      { name: 'Pidgey', types: [PokemonType.Normal, PokemonType.Flying] },
-    );
-    expect(guidance.summary).toBe('GRASS · STATUS · PP 10/10');
-    expect(guidance.matchup).toBe(
-      'Seeds the target, sapping 1/8 of its HP each turn. Grass types are immune.',
-    );
-    expect(captionBySentence(guidance.matchup)).toEqual([
-      'Seeds the target, sapping 1/8 of its HP each turn. Grass types are immune.',
-      'Seeds the target, sapping 1/8 of its HP each turn.',
+  it('loses sentences from the end to fit, and an empty line is still one line', () => {
+    expect(captionBySentence('Restores 20 HP. Held, it is eaten at half HP.')).toEqual([
+      'Restores 20 HP. Held, it is eaten at half HP.',
+      'Restores 20 HP.',
     ]);
+    expect(captionBySentence('')).toEqual(['']);
     expect(captionBySentence('vs PIDGEY: NORMAL DAMAGE x1')).toEqual([
       'vs PIDGEY: NORMAL DAMAGE x1',
     ]);
