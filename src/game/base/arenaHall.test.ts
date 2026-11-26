@@ -41,6 +41,8 @@ import {
   arenaTelescopeAt,
   cameraEased,
   cameraLean,
+  railLean,
+  touchesRail,
   isArenaFence,
   namePlatePlace,
   parallaxShift,
@@ -485,6 +487,81 @@ describe('the pit', () => {
               expect(Math.hypot(next.x - lean.x, next.y - lean.y), `${tile.x},${tile.y}`).toBeLessThanOrEqual(ARENA_TILE * 0.35);
             }
           }
+        }
+      }
+    });
+
+    // The captain, 26 Nov 2026: up against the fence, the edge of the screen
+    // is at the player and as much of the view as can be is over the portal.
+    const RAIL = FLOOR.filter(touchesRail);
+
+    it('knows the rail from all round the pit, and only beside the fence', () => {
+      expect(RAIL.length).toBeGreaterThan(40);
+      const sides = new Set(RAIL.map((tile) => {
+        const { x, y } = middleOf(tile);
+        return Math.abs(x - ARENA_CENTRE.x) > Math.abs(y - ARENA_CENTRE.y) ? (x < ARENA_CENTRE.x ? 'west' : 'east') : y < ARENA_CENTRE.y ? 'north' : 'south';
+      }));
+      expect([...sides].sort()).toEqual(['east', 'north', 'south', 'west']);
+      expect(touchesRail(ARENA_MAT)).toBe(false);
+    });
+
+    it('at the rail, goes out over the pit until the player is at the edge of the screen, and no further', () => {
+      for (const view of VIEWS) {
+        for (const tile of RAIL) {
+          const player = middleOf(tile);
+          const lean = railLean(player, view);
+          const usual = cameraLean(player, view);
+          const where = `${tile.x},${tile.y} in ${view.width}x${view.height}`;
+          // At least as far out over the pit as off the rail (the north rail is already as far as it goes), and the same way.
+          expect(Math.hypot(lean.x, lean.y), where).toBeGreaterThanOrEqual(Math.hypot(usual.x, usual.y) - 1);
+          expect(lean.x * (ARENA_CENTRE.x - player.x), where).toBeGreaterThanOrEqual(0);
+          expect(lean.y * (ARENA_CENTRE.y - player.y), where).toBeGreaterThanOrEqual(0);
+          // The player stays on, their tile and the hint under it clear of the edge...
+          expect(Math.abs(lean.x), where).toBeLessThanOrEqual(view.width / 2 - 56 + 1);
+          expect(Math.abs(lean.y), where).toBeLessThanOrEqual(view.height / 2 - (lean.y < 0 ? 44 : 56) + 1);
+          // ...and right at it: one way or the other there is no more room to lean.
+          const atEdge =
+            Math.abs(lean.x) >= view.width / 2 - 56 - 1 || Math.abs(lean.y) >= view.height / 2 - (lean.y < 0 ? 44 : 56) - 1;
+          expect(atEdge, where).toBe(true);
+        }
+      }
+    });
+
+    it('moves by less than a step for every step along the rail, so walking round it never swings the view', () => {
+      const onRail = new Set(RAIL.map((tile) => `${tile.x},${tile.y}`));
+      for (const view of VIEWS) {
+        for (const tile of RAIL) {
+          const lean = railLean(middleOf(tile), view);
+          for (const [dx, dy] of [[1, 0], [0, 1]]) {
+            const next = { x: tile.x + dx, y: tile.y + dy };
+            if (onRail.has(`${next.x},${next.y}`)) {
+              const then = railLean(middleOf(next), view);
+              expect(Math.hypot(then.x - lean.x, then.y - lean.y), `${tile.x},${tile.y}`).toBeLessThan(ARENA_TILE);
+            }
+          }
+        }
+      }
+    });
+
+    it('stands a window bigger than the pit in its middle, never looking out the far side', () => {
+      const huge = { width: 4000, height: 4000 };
+      const player = middleOf(RAIL[0]);
+      const lean = railLean(player, huge);
+      expect(Math.abs(player.x + lean.x - ARENA_CENTRE.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(player.y + lean.y - ARENA_CENTRE.y)).toBeLessThanOrEqual(1);
+    });
+
+    it('keeps what is seen from the rail in what the stands paint', () => {
+      for (const view of VIEWS) {
+        for (const tile of RAIL) {
+          const player = middleOf(tile);
+          const lean = railLean(player, view);
+          const left = player.x + lean.x - view.width / 2;
+          const top = player.y + lean.y - view.height / 2;
+          expect(left, `${tile.x},${tile.y}`).toBeGreaterThanOrEqual(STANDS_ORIGIN.x - 1);
+          expect(left + view.width, `${tile.x},${tile.y}`).toBeLessThanOrEqual(STANDS_ORIGIN.x + STANDS_WIDTH + 1);
+          expect(top, `${tile.x},${tile.y}`).toBeGreaterThanOrEqual(STANDS_ORIGIN.y - 1);
+          expect(top + view.height, `${tile.x},${tile.y}`).toBeLessThanOrEqual(STANDS_ORIGIN.y + STANDS_HEIGHT + 1);
         }
       }
     });

@@ -766,6 +766,46 @@ export function cameraLean(
   return { x: Math.round(dx * scale), y: Math.round(dy * scale) };
 }
 
+/** Whether this tile is right up against the pit's fence: a step towards the pit would be into it. */
+export function touchesRail(tile: GridPosition): boolean {
+  return SIDES.some(([dx, dy]) => isArenaFence({ x: tile.x + dx, y: tile.y + dy }));
+}
+
+/** How far off an axis the pit lies before the view leans the whole way along it too: past this, a corner. */
+const RAIL_LEAN_FULL = 0.5;
+
+/**
+ * How far the camera stands from somebody up against the fence: as far out over
+ * the pit as it can go with them still on the screen, just inside its edge, the
+ * player's tile and the hint under it clear as `cameraLean` keeps them (the
+ * captain, 26 Nov 2026: "the edge of the screen is at the player and as much of
+ * the view as possible is over the portal"). Each way is leaned on its own, the
+ * whole of the room it has once the pit lies more than `RAIL_LEAN_FULL` along
+ * it, so on a curve of the fence the player stands in a corner of the screen
+ * and the rest is pit; under that it leans by a share, so walking along the
+ * rail past the middle of a side never swings the view. It never leans past the
+ * pit's middle, so a window bigger than the pit stands it there.
+ */
+export function railLean(
+  player: { readonly x: number; readonly y: number },
+  view: { readonly width: number; readonly height: number },
+): { readonly x: number; readonly y: number } {
+  const dx = ARENA_CENTRE.x - player.x;
+  const dy = ARENA_CENTRE.y - player.y;
+  const away = Math.hypot(dx, dy);
+  if (away < 1) {
+    return { x: 0, y: 0 };
+  }
+  const roomAcross = Math.max(0, view.width / 2 - CAMERA_LEAN_CLEAR);
+  const roomDown = Math.max(0, view.height / 2 - (dy < 0 ? CAMERA_LEAN_CLEAR_SOUTH : CAMERA_LEAN_CLEAR));
+  const share = (along: number): number => Math.max(-1, Math.min(1, along / away / RAIL_LEAN_FULL));
+  const lean = (along: number, room: number): number => {
+    const wanted = share(along) * room;
+    return Math.round(Math.abs(wanted) > Math.abs(along) ? along : wanted);
+  };
+  return { x: lean(dx, roomAcross), y: lean(dy, roomDown) };
+}
+
 /** How long the camera takes to come most of the way to where it is going, and the fastest it ever goes. */
 const CAMERA_EASE_MS = 240;
 const CAMERA_MOST_PER_MS = 0.24;
