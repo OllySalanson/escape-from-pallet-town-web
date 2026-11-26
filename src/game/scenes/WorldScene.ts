@@ -7860,7 +7860,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // The first raid's catch teaches itself (`world/firstCatch.ts`).
       ...(firstCatch ? { lesson: 'catch' as const } : {}),
       // A legend is a boss you can keep: no ball until it is beaten, then one.
-      ...(entity.legendary ? { legendary: true } : {}),
+      ...(entity.legendary ? { legendary: true, legendMisses: this.legendMissesOf(species) } : {}),
       ...(secret?.reward?.kind === 'meet' && secret.reward.shiny ? { shiny: true } : {}),
       ...(secret?.reward?.kind === 'meet' ? { secret: rewardKey(secretById(secret.id)!, secret.reward) } : {}),
     };
@@ -10026,6 +10026,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       return false;
     }
     return [...(new SaveManager().load()?.raidProgress.trainersPaid ?? []), ...(session.trainersPaid ?? [])].includes(trainer.id);
+  }
+
+  /** How many times this kind of legend has got away from the throw on this save (`legendWear`). */
+  private legendMissesOf(speciesId: string): number {
+    const dexId = getSpeciesById(speciesId)?.dexId;
+    return dexId === undefined ? 0 : (new SaveManager().load()?.raidProgress.legendMisses?.[String(dexId)] ?? 0);
   }
 
   /** The raid state that exists only on this scene - see `RaidCarriage`. */

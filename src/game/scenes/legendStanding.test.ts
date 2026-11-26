@@ -85,6 +85,8 @@ describe('a legend standing in the world', () => {
         speciesId: legend.speciesId,
         level: legend.level,
         legendary: true,
+        // Never got away before on this save, so its throw is the plain one (`legendWear`).
+        legendMisses: 0,
       });
       // Met once, it is gone for the rest of the raid, whatever the fight's ending.
       expect(internals.runSession.pokemonMet).toEqual([legendEntityId(legend)]);

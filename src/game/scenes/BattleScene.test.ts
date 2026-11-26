@@ -3963,9 +3963,42 @@ describe('a legend', () => {
 
     expect(bag.count('poke-ball')).toBe(2);
     expect(dialog.shownMessages).toContain('Oh, no! The POKéMON broke free!');
-    expect(dialog.shownMessages.at(-1)).toBe('Wild ARTICUNO fled!');
+    expect(dialog.shownMessages.slice(-2)).toEqual(['Wild ARTICUNO fled!', 'ARTICUNO will be slower to get away next time.']);
     expect(scene.state.outcome).toBe('victory');
     expect(returned).toHaveBeenCalledTimes(1);
+  });
+
+  it('a miss is written down against its kind, and a legend worn down enough cannot get away', () => {
+    const recorded = vi.spyOn(SaveManager.prototype, 'recordLegendMiss').mockReturnValue(true);
+    try {
+      const missed = meet(new Bag({ 'poke-ball': 1 }));
+      const before = missed.renderedTexts.length;
+      missed.beat();
+      const roll = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+      try {
+        missed.press('POKé BALL x', before);
+      } finally {
+        roll.mockRestore();
+      }
+      missed.readOn();
+      expect(recorded).toHaveBeenCalledWith(getSpeciesById('articuno')!.dexId);
+
+      // Four times away: the fifth beating's throw cannot miss, even on the worst roll.
+      const worn = meet(new Bag({ 'poke-ball': 1 }));
+      (worn.scene as unknown as { legendMisses: number }).legendMisses = 4;
+      const start = worn.renderedTexts.length;
+      worn.beat();
+      const worst = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+      try {
+        worn.press('POKé BALL x', start);
+      } finally {
+        worst.mockRestore();
+      }
+      worn.readOn();
+      expect(worn.scene.state.outcome).toBe('caught');
+    } finally {
+      recorded.mockRestore();
+    }
   });
 
   it('beaten and hit, is caught like any wild Pokemon and joins the party', () => {

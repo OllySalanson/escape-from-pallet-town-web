@@ -175,3 +175,24 @@ export const legendOneThrowLine = (name: string): string =>
 
 /** What a missed throw ends with - FireRed's own words for a Pokemon that left. */
 export const legendFledLine = (name: string): string => `Wild ${name.toUpperCase()} fled!`;
+
+/**
+ * How much likelier each missed throw makes the next, as a ball's modifier is.
+ *
+ * A beaten legend's one throw is catch rate 3 at no HP: about 1 in 80 in a
+ * Poké Ball, so a player who had grown a team into a Lv 50 bird could beat it
+ * raid after raid and never keep it - a wall with a signpost on it (the fresh
+ * critic, 25 Nov 2026). The one throw stays one throw, and FireRed's formula
+ * stays the formula; a legend that got away is simply slower to get away the
+ * next time. Fourfold a miss, in a Poké Ball: about 1 in 80, then 1 in 20,
+ * 1 in 5, four in five, and the fifth beating cannot miss.
+ */
+export const LEGEND_WEAR_PER_MISS = 4;
+
+/** The modifier on every ball thrown at a legend that has got away `misses` times before. */
+export function legendWear(misses: number): number {
+  return LEGEND_WEAR_PER_MISS ** Math.max(0, Math.floor(Number.isFinite(misses) ? misses : 0));
+}
+
+/** Said after a legend gets away from the throw: the next one will be likelier, and the player is told so. */
+export const legendWornLine = (name: string): string => `${name.toUpperCase()} will be slower to get away next time.`;

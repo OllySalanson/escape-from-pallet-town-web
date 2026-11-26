@@ -295,6 +295,13 @@ export interface RaidProgress {
    */
   readonly trainersPaid?: readonly string[];
   /**
+   * How many times each legend has got away from the one throw, by Pokédex
+   * number: each makes the next throw likelier (`world/legends.ts`,
+   * `legendWear`). Written the moment the throw misses. Absent on a save no
+   * legend has escaped.
+   */
+  readonly legendMisses?: Readonly<Record<string, number>>;
+  /**
    * Every insertion the player has stood on in any raid. Reaching a drop-in
    * point is what makes it selectable at base; `availableInsertionIds()` adds
    * these to the insertions contracts have unlocked.
@@ -2568,6 +2575,24 @@ export class SaveManager {
   }
 
   /**
+   * Counts one more time this legend got away from the throw (`legendWear`).
+   * Written the moment it misses, as the fight is written over, so a reload is
+   * not a throw at the old odds. Nothing but `raidProgress` is touched.
+   */
+  public recordLegendMiss(dexId: number): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    const misses = game.raidProgress.legendMisses ?? {};
+    const raidProgress: RaidProgress = {
+      ...game.raidProgress,
+      legendMisses: { ...misses, [String(dexId)]: (misses[String(dexId)] ?? 0) + 1 },
+    };
+    return this.save({ ...game, raidProgress });
+  }
+
+  /**
    * Counts one raid deployed to a map, at the moment the player commits to it.
    *
    * Deployments are counted where they are made rather than where they end,
@@ -3178,6 +3203,17 @@ function withoutBout(progress: RaidProgress): RaidProgress {
 }
 
 /** Every raid this save has gone on, on every map - what the hunters take turns by. */
+/** A save's legend misses, kept only where a count is a whole number above nought. */
+function readLegendMisses(value: unknown): { readonly legendMisses?: Readonly<Record<string, number>> } {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return {};
+  }
+  const kept = Object.entries(value as Record<string, unknown>).filter(
+    (entry): entry is [string, number] => /^\d+$/.test(entry[0]) && Number.isInteger(entry[1]) && (entry[1] as number) > 0,
+  );
+  return kept.length === 0 ? {} : { legendMisses: Object.fromEntries(kept) };
+}
+
 export function raidsDeployed(progress: RaidProgress): number {
   return Object.values(progress.raidRecord ?? {}).reduce((total, record) => total + record.deployed, 0);
 }
@@ -3505,6 +3541,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       ? { keysLearned: uniqueStrings(value.keysLearned).filter(isLearnableKey) }
       : {}),
     ...(Array.isArray(value.pokedexOwned) ? { pokedexOwned: tidyDexIds(value.pokedexOwned) } : {}),
+    ...readLegendMisses(value.legendMisses),
     ...(Array.isArray(value.pokedexSeen) ? { pokedexSeen: tidyDexIds(value.pokedexSeen) } : {}),
     ...(Array.isArray(value.pokedexShiny) ? { pokedexShiny: tidyDexIds(value.pokedexShiny) } : {}),
     ...(Array.isArray(value.harbourCatches) ? { harbourCatches: tidyDexIds(value.harbourCatches) } : {}),

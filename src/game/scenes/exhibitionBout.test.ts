@@ -66,7 +66,9 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('a bout for show', () => {
   it('reaches the save nowhere: the scene only names it where a kind is met and where a raid is lost, and a bout is turned away from both', () => {
-    expect([...methodsTouchingTheSave()].sort()).toEqual(['registerFoesSeen', 'resolveRunWipe', 'writeFight', 'writeFightOver']);
+    expect([...methodsTouchingTheSave()].sort()).toEqual(['registerFoesSeen', 'resolveRunWipe', 'throwAtBeatenLegend', 'writeFight', 'writeFightOver']);
+    // A legend's missed throw is counted (`legends.ts`), and a bout never fights a legend: the throw is offered only to a wild legend.
+    expect(SOURCE).toContain("this.legendThrow = data.wild?.legendary ? 'fighting' : null;");
     // A bout is never handed a prize (`world/prizeMoney.ts`), so nothing is paid or written down.
     expect(SOURCE).toContain('this.prizeMoney = data.exhibition ? 0 :');
     expect(SOURCE).toContain('this.prizePaidBefore = !data.exhibition &&');

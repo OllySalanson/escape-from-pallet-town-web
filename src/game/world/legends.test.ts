@@ -14,6 +14,8 @@ import {
   legendOneThrowLine,
   legendStandingAs,
   legendTooStrongLine,
+  legendWear,
+  legendWornLine,
 } from './legends';
 import { stepDistances } from './mapStructure';
 import { entitiesForMap } from './npcs';
@@ -133,6 +135,20 @@ describe('the one throw', () => {
     expect(poke).toBeGreaterThan(1 / 85);
     expect(poke).toBeLessThan(1 / 75);
     expect(getCatchChance(3, 0, mewtwo.maxHp, 'sleep', 1)).toBeGreaterThan(2 * poke);
+  });
+
+  it('gets likelier with each time it got away, and the fifth beating cannot miss', () => {
+    const mewtwo = new Pokemon(getSpeciesById('mewtwo')!, 70);
+    const odds = [0, 1, 2, 3, 4].map((misses) => getCatchChance(3, 0, mewtwo.maxHp, null, legendWear(misses)));
+    // About 1 in 80, 1 in 20, 1 in 5, four in five, then sure.
+    expect(odds[1]).toBeGreaterThan(1 / 25);
+    expect(odds[2]).toBeGreaterThan(1 / 6);
+    expect(odds[3]).toBeGreaterThan(0.7);
+    expect(odds[4]).toBe(1);
+    for (let at = 1; at < odds.length; at += 1) expect(odds[at]).toBeGreaterThan(odds[at - 1]);
+    expect(legendWear(-2)).toBe(1);
+    expect(legendWear(Number.NaN)).toBe(1);
+    expect(legendWornLine('Zapdos')).toBe('ZAPDOS will be slower to get away next time.');
   });
 
   it('speaks in the battle’s own words', () => {
