@@ -85,7 +85,10 @@ describe('the drawn window frame', () => {
 
     expect(dialogue).toContain('framedWindow: true');
     expect(dialogue).toContain('backgroundColor: UI.paper.value');
-    expect(battle).not.toContain('drawPixelWindow(');
+    // The one plain window in the fight is the chosen card in the bag's list (#949):
+    // a chip inside the panel, not a window of its own.
+    expect(battle.match(/drawPixelWindow\(/g) ?? []).toHaveLength(1);
+    expect(battle).toContain('drawPixelWindow(this.bagCard,');
     expect(dialogue).toContain('color: WINDOW_INK');
     // The 22px text inset only existed to clear the stretched texture's painted
     // edge, so it goes with the texture rather than living on as a magic number.
