@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { placedTrainerIds, type MapFileTrainer } from './mapFile';
+import { placedTrainerIds, TRAINER_LEVELS_PER_FLOOR_DOWN, trainerDepthLevels, type MapFileTrainer } from './mapFile';
+import { fileMap } from './playerMaps';
 
 /**
  * A save keeps trainer ids for good (`raidProgress.trainersPaid`), so an id is
@@ -41,5 +42,35 @@ describe('a placed trainer id', () => {
       'greystone-vale/trainer-bunker-b1f-grunt',
       'greystone-vale/trainer-bunker-b1f-grunt-2',
     ]);
+  });
+});
+
+/**
+ * The fresh critic, 25 Nov 2026: five floors down the caves was the same fight
+ * as the road. A trainer stands two levels higher a floor below ground.
+ */
+describe('a placed trainer below ground', () => {
+  it('stands two levels higher a floor down, and no higher on the surface', () => {
+    expect(trainerDepthLevels(undefined)).toBe(0);
+    expect(trainerDepthLevels('greystone-caves-1f')).toBe(0);
+    expect(trainerDepthLevels('falls-cave')).toBe(0);
+    expect(trainerDepthLevels('greystone-caves-b1f')).toBe(TRAINER_LEVELS_PER_FLOOR_DOWN);
+    expect(trainerDepthLevels('greystone-caves-b5f')).toBe(5 * TRAINER_LEVELS_PER_FLOOR_DOWN);
+    expect(trainerDepthLevels('bunker-b4f')).toBe(4 * TRAINER_LEVELS_PER_FLOOR_DOWN);
+  });
+
+  it('fields its measured team at that height, moves and kinds unchanged', () => {
+    const vale = fileMap('greystone-vale')!;
+    const trainers = vale.trainers?.() ?? [];
+    const rudd = trainers.find((each) => each.trainer.name === 'HIKER RUDD')!;
+    const pell = trainers.find((each) => each.trainer.name === 'HIKER PELL')!;
+    // Both field the breaker's team: Pell on the road, Rudd five floors down.
+    expect(rudd.trainer.party.map((pokemon) => pokemon.base.id)).toEqual(pell.trainer.party.map((pokemon) => pokemon.base.id));
+    expect(rudd.trainer.party.map((pokemon) => pokemon.level)).toEqual(
+      pell.trainer.party.map((pokemon) => pokemon.level + 5 * TRAINER_LEVELS_PER_FLOOR_DOWN),
+    );
+    expect(rudd.trainer.party.map((pokemon) => pokemon.moves.map((move) => move.base.name))).toEqual(
+      pell.trainer.party.map((pokemon) => pokemon.moves.map((move) => move.base.name)),
+    );
   });
 });

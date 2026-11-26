@@ -2911,6 +2911,23 @@ export function placedTrainerIds(mapId: string, trainers: readonly Pick<MapFileT
   });
 }
 
+/** How many levels a trainer stands higher for every floor below ground. */
+export const TRAINER_LEVELS_PER_FLOOR_DOWN = 2;
+
+/**
+ * How many levels higher a trainer stands for where they stand: two a floor
+ * below ground, read off the room's id (`greystone-caves-b5f` is five down,
+ * `bunker-b4f` four), and nothing on the surface. The vale's 36 trainers share
+ * eight measured teams at Lv 4-8, so Hiker Rudd five floors down the caves was
+ * the same fight, and the same prize, as Hiker Pell on the road (the fresh
+ * critic, 25 Nov 2026). Going down is now a ramp the team climbs, and pays as
+ * one, since the prize is counted from the last Pokémon's level.
+ */
+export function trainerDepthLevels(area: string | undefined): number {
+  const down = area === undefined ? undefined : /-b(\d+)f$/.exec(area)?.[1];
+  return down === undefined ? 0 : TRAINER_LEVELS_PER_FLOOR_DOWN * Number(down);
+}
+
 export function playerMapId(file: Pick<MapFile, 'id'>): PlayerMapId {
   return `${PLAYER_MAP_PREFIX}${file.id}`;
 }
@@ -3577,10 +3594,12 @@ export function buildFileMap(
       return (file.trainers ?? []).map((placed, index) => {
         const template = trainerTemplate(placed.team);
         const name = placed.name.toUpperCase();
-        // The measured team as measured: its own moves, not its level's.
+        const deeper = trainerDepthLevels(placed.area);
+        // The measured team as measured: its own moves, not its level's - a
+        // floor further down only stands it higher (`trainerDepthLevels`).
         const fresh = (party: readonly Pokemon[]): Pokemon[] =>
           party.map((pokemon) => {
-            const copy = new Pokemon(pokemon.base, pokemon.level);
+            const copy = new Pokemon(pokemon.base, pokemon.level + deeper);
             copy.moves = pokemon.moves.map((move) => new Move(move.base));
             return copy;
           });
