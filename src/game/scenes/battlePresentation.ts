@@ -763,20 +763,16 @@ export const itemTargetPrompt = (item: { readonly displayName: string }): string
   `Use ${battleCaps(item.displayName)} on whom?`;
 
 /**
- * What the highlighted medicine would do, on the same line the move submenu
- * puts a move's numbers - and it ends with the turn, because that is the price
- * and it has to be read before the item is spent, not after.
+ * What the highlighted medicine does, on the same line the move submenu puts a
+ * move's numbers: the item's own description, as FireRed's bag shows it, and
+ * nothing about the rules (Olly, 26 Nov 2026: a fight says only what FireRed's
+ * would - "Using it costs your turn." was a lesson on every item).
  */
-export const describeItemGuidance = (item: { readonly description: string }): readonly string[] => {
+export const describeItemGuidance = (item: { readonly description: string }): readonly string[] =>
   // Longest first, for `fitCaption`: a berry's description is two sentences,
-  // and whole it ran the line past the panel's edge. The description loses its
-  // last sentences before the price does, and the price is said shorter last.
-  const said = captionBySentence(item.description);
-  return [
-    ...said.map((description) => `${description} Using it costs your turn.`),
-    `${said[said.length - 1] ?? item.description} Costs your turn.`,
-  ];
-};
+  // and whole it ran the line past the panel's edge, so it loses its last
+  // sentences first.
+  captionBySentence(item.description);
 
 /** Said when the ITEM command is chosen with nothing in the medicine pocket. */
 export const NO_BATTLE_ITEMS_MESSAGE = 'No medicine in your pack!';
@@ -1612,12 +1608,6 @@ const abilityLine = (
 ): string => {
   const who = `${combatantName(event, foe)}'s ${event.ability}`;
   switch (event.effect) {
-    case 'powered-up':
-      return `${who} is driving it harder!`;
-    case 'shrugged-off':
-      return `${who} is soaking that up!`;
-    case 'hardened':
-      return `${who} turned the critical hit aside!`;
     // FireRed's own lines for a move an ability took instead of being hit.
     case 'absorbed': {
       const move = (event.move ?? 'it').toUpperCase();

@@ -764,12 +764,9 @@ const damageAbilities = (attacker: BattleCombatant, defender: BattleCombatant): 
  * without asking first.
  */
 const CONTINUOUS_ABILITY_EFFECTS: ReadonlySet<AbilityEffectKind> = new Set([
-  'powered-up',
-  'shrugged-off',
-  'hardened',
   // The weather abilities are a standing state, not an event: a Swift Swim in
   // the rain is racing it every turn, and saying so every turn was the most-read
-  // line in the first raid. Introduced once, like the four above.
+  // line in the first raid. Introduced once.
   'quickened',
   'weathered-out',
 ]);
@@ -1956,7 +1953,6 @@ const applyMove = (
     let defenderFainted = false;
     let endured = false;
     let immune = false;
-    const abilityNotes = new Set<string>();
 
     for (let hit = 0; hit < hitCount && !defenderFainted; hit += 1) {
       const defender = defenderNow();
@@ -1971,9 +1967,6 @@ const applyMove = (
         damageAbilities(attackerNow(), defender),
         spread,
       );
-      for (const note of result.abilityNotes) {
-        abilityNotes.add(`${note.side}:${note.effect}`);
-      }
       effectiveness = result.typeEffectiveness;
       critical = critical || result.isCritical;
       recoilHere += result.recoil;
@@ -2049,18 +2042,6 @@ const applyMove = (
         category: move.base.category,
         isStab,
       });
-    }
-    // Which ability changed the swing, said once each and after the line that
-    // names the move, so the log reads "used X" and then why it landed as it did.
-    for (const note of abilityNotes) {
-      const [side, effect] = note.split(':');
-      const said = announceAbility(
-        nextState,
-        side === 'attacker' ? ref : targetRef,
-        effect as AbilityEffectKind,
-      );
-      nextState = said.state;
-      events.push(...said.events);
     }
     if (critical) {
       events.push({ type: 'critical-hit' });

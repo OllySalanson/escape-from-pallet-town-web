@@ -196,17 +196,15 @@ export interface AbilityHooks {
  * A player is never shown an ability in a menu, so the only way to learn what
  * one does is to watch it happen - which is why every one of these exists and
  * why `battlePresentation.ts` has a line for each. The continuous ones
- * (`powered-up`, `shrugged-off`, `hardened`, and the weather's own `quickened`
- * and `weathered-out`) introduce themselves once per battle and then stay
- * quiet; the rest are each a separate thing happening and are said each time.
- * The two that only move an accuracy roll - Compound Eyes and Sand Veil - have
- * no kind, because FireRed says nothing for them and a line read as something
- * having happened when nothing had.
+ * (the weather's own `quickened` and `weathered-out`) introduce themselves
+ * once per battle and then stay quiet; the rest are each a separate thing
+ * happening and are said each time. The ones that only move a number - Compound
+ * Eyes and Sand Veil on an accuracy roll, Blaze and its three like it, Guts,
+ * Thick Fat, and the armour that turns a critical hit aside - have no kind,
+ * because FireRed says nothing for them (and Olly, 26 Nov 2026: a fight says
+ * only what FireRed's would).
  */
 export type AbilityEffectKind =
-  | 'powered-up'
-  | 'shrugged-off'
-  | 'hardened'
   | 'absorbed'
   | 'blocked-status'
   | 'blocked-boost'

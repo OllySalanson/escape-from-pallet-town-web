@@ -666,6 +666,14 @@ export class BattleScene extends Phaser.Scene {
    */
   private ballsOpenedAt = Number.NEGATIVE_INFINITY;
   /**
+   * When the list a faint opens last opened (scene time). Sending a Pokemon in
+   * is a choice, so the list takes no OK until `RELEASE_ARMING_MS` has passed:
+   * the press that read "fainted!" and the one behind it sent the first in the
+   * list unchosen, and a newcomer saw "Go! CHARMANDER!" with no choice offered
+   * (the churchyard critic, round 2, 26 Nov 2026).
+   */
+  private replacementOpenedAt = Number.NEGATIVE_INFINITY;
+  /**
    * The ball last thrown, or last left highlighted when the list was backed
    * out of. The list opens on it, so a press made without looking never spends
    * a better ball than the player last chose. Kept across fights on purpose:
@@ -1158,6 +1166,7 @@ export class BattleScene extends Phaser.Scene {
     this.lastMainCommand = 0;
     this.commandsBackAt = Number.NEGATIVE_INFINITY;
     this.ballsOpenedAt = Number.NEGATIVE_INFINITY;
+    this.replacementOpenedAt = Number.NEGATIVE_INFINITY;
     this.lastMoveOf.clear();
     this.drawCombatants();
     this.drawStatusBoxes();
@@ -1391,12 +1400,20 @@ export class BattleScene extends Phaser.Scene {
   /**
    * Whether the panel on screen is still too new to take an OK. The key that
    * read the turn's last line on is not an answer to the menu it brought back
-   * (`commandsBackAt`), and nothing opens the ball list and throws from it in
-   * one double press (`ballsOpenedAt`). Every OK - Space, Enter, a click, a
+   * (`commandsBackAt`), nothing opens the ball list and throws from it in
+   * one double press (`ballsOpenedAt`), and nobody is sent in after a faint
+   * by the presses that read it (`replacementOpenedAt`). Every OK - Space, Enter, a click, a
    * tap - comes through `confirm`, so this is asked there and nowhere else.
    */
   private stillArming(): boolean {
-    const since = this.mode === 'main' ? this.commandsBackAt : this.mode === 'balls' ? this.ballsOpenedAt : undefined;
+    const since =
+      this.mode === 'main'
+        ? this.commandsBackAt
+        : this.mode === 'balls'
+          ? this.ballsOpenedAt
+          : this.mode === 'party' && this.forcedReplacement
+            ? this.replacementOpenedAt
+            : undefined;
     return since !== undefined && this.time.now - since < RELEASE_ARMING_MS;
   }
 
@@ -3567,6 +3584,9 @@ export class BattleScene extends Phaser.Scene {
     // was already pressing through the faint lines was answered with a refusal
     // (playtest 45).
     this.selectedCommand = forcedReplacement ? Math.max(0, this.firstSendableIndex()) : 0;
+    if (forcedReplacement) {
+      this.replacementOpenedAt = this.time.now;
+    }
     this.showCommands();
   }
 
