@@ -26,7 +26,7 @@ import type {
  * older cream under a near-black line, a third frame beside the dialogue's and
  * the panels' (critic sweep, 25 Nov 2026).
  */
-const WINDOW_CREAM = UI.paper.value;
+const WINDOW_PAPER = UI.paper.value;
 const WINDOW_BORDER = UI.frameLine.value;
 
 /**
@@ -58,7 +58,7 @@ interface ChipStyle {
 }
 
 const CLOCK_STYLES: Readonly<Record<RaidClockTone, ChipStyle>> = {
-  calm: { fill: WINDOW_CREAM, ink: WINDOW_INK_VALUE },
+  calm: { fill: WINDOW_PAPER, ink: WINDOW_INK_VALUE },
   // The last minute is a yellower fill and a frame twice as heavy: the fill
   // alone is the calm clock to anybody who does not see the yellow.
   caution: { fill: 0xf0c454, ink: 0x2a1c00, heavy: true },
@@ -73,7 +73,7 @@ const HUNTER_STYLES: Readonly<Record<HunterChipTone, ChipStyle>> = {
   closing: { fill: 0xb0201c, ink: 0xffe8d8 },
   // The radio mast's standing report is furniture, not a warning, so it is the
   // same cream as the clock it sits under until the hunter is actually near.
-  intel: { fill: WINDOW_CREAM, ink: WINDOW_INK_VALUE },
+  intel: { fill: WINDOW_PAPER, ink: WINDOW_INK_VALUE },
 };
 
 /**
@@ -186,7 +186,7 @@ export class RaidHud {
     const objective = this.placeChip(
       this.objectiveText,
       state.objectiveLines,
-      { fill: WINDOW_CREAM, ink: WINDOW_INK_VALUE },
+      { fill: WINDOW_PAPER, ink: WINDOW_INK_VALUE },
       1,
       () => ({ x: EDGE_MARGIN, y: EDGE_MARGIN }),
       true,
@@ -248,7 +248,7 @@ export class RaidHud {
       column = this.placeChip(
         this.friendText,
         state.friend,
-        { fill: WINDOW_CREAM, ink: WINDOW_INK_VALUE },
+        { fill: WINDOW_PAPER, ink: WINDOW_INK_VALUE },
         1,
         () => ({ x: EDGE_MARGIN, y: column.y + column.height + CHIP_GAP }),
       );
@@ -259,7 +259,7 @@ export class RaidHud {
       this.placeChip(
         this.placeText,
         [state.place],
-        { fill: WINDOW_CREAM, ink: WINDOW_INK_VALUE },
+        { fill: WINDOW_PAPER, ink: WINDOW_INK_VALUE },
         1,
         () => ({ x: EDGE_MARGIN, y: column.y + column.height + CHIP_GAP }),
       );
@@ -403,7 +403,7 @@ export class RaidHud {
       return;
     }
     this.covered.push(rect);
-    drawPixelWindow(this.frames, rect, { fill: WINDOW_CREAM, border: WINDOW_BORDER });
+    drawPixelWindow(this.frames, rect, { fill: WINDOW_PAPER, border: WINDOW_BORDER });
     // The gold edge, inside the frame down the left.
     this.frames.fillStyle(PRIZE_EDGE, 1);
     this.frames.fillRect(rect.x + 1, rect.y + 1, PRIZE_EDGE_WIDTH, rect.height - 2);

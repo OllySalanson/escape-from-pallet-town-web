@@ -1812,27 +1812,27 @@ body.touch-play .feedback-tab {
   height: var(--tp-chip-height, 48px);
   min-width: 0;
   padding: 0 2px;
-  border: var(--tp-unit) solid #ebeac5;
-  background: #1b2638;
-  box-shadow: 0 calc(var(--tp-unit) * 2) 0 #050a10;
-  color: #ebeac5;
+  border: var(--tp-unit) solid #ffffff;
+  background: #221d1e;
+  box-shadow: 0 calc(var(--tp-unit) * 2) 0 #0c0a0b;
+  color: #ffffff;
   font-size: var(--tp-text);
   line-height: 1;
   white-space: nowrap;
   overflow: hidden;
 }
-/* Lit as the menus light the row they are on - cream paper, ink - so it reads
+/* Lit as the menus light the row they are on - gold's wash, ink - so it reads
    "you are here" and never as OK's "press this". */
 .tp-chip.is-open {
-  border-color: #171717;
-  background: #ebeac5;
-  color: #202020;
+  border-color: #221d1e;
+  background: #fff1b8;
+  color: #221d1e;
 }
 /* A key the moment or the screen up adds (DROP on the pack, DECORATE in the
-   house): framed teal, apart from the scene's own, and set after them. */
+   house): framed gold, apart from the scene's own, and set after them. */
 .tp-chip.is-extra {
-  border-color: #55d6be;
-  color: #bfe6cf;
+  border-color: #ffc823;
+  color: #fff1b8;
 }
 /* A key whose word runs past its edges on one line takes two, and one whose
    two lines are taller than it a thinner stem (`chipFit`), never cut off. */
@@ -1849,12 +1849,12 @@ body.touch-play .feedback-tab {
   visibility: hidden;
 }
 .tp-chip.is-inert {
-  border-color: #2b3e59;
-  color: #4c6280;
+  border-color: #3b3436;
+  color: #625a5d;
   box-shadow: none;
 }
 .tp-chip.is-pressed {
-  background: #2b3e59;
+  background: #3b3436;
   box-shadow: none;
   transform: translateY(calc(var(--tp-unit) * 2));
 }
@@ -1868,19 +1868,19 @@ body.touch-play .feedback-tab {
 .tp-icon {
   display: grid;
   place-items: center;
-  flex: 0 0 44px;
-  height: 44px;
-  border: var(--tp-unit) solid #2b3e59;
-  background: #0b1220;
+  flex: 0 0 var(--tp-system-size, 44px);
+  height: var(--tp-system-size, 44px);
+  border: var(--tp-unit) solid #625a5d;
+  background: #1c1819;
 }
 .tp-icon .tp-icon-ink {
-  fill: #9cafc7;
+  fill: #b9b1b4;
 }
 .tp-icon.is-off .tp-icon-ink {
-  fill: #ff917b;
+  fill: #f06a4a;
 }
 .tp-icon.is-pressed {
-  background: #18263c;
+  background: #3b3436;
 }
 
 /* ==========================================================================

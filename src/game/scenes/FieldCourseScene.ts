@@ -13,7 +13,7 @@ import { MenuOverlay } from '../ui/MenuOverlay';
 import { pickerBasics, pickerEntries, pickerOrder, wirePickerFind } from '../ui/boxPicker';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { CHIP_FONT_SIZE } from '../ui/screenType';
-import { drawPixelWindow, WINDOW_CREAM, WINDOW_INK } from '../ui/pixelWindow';
+import { drawPixelWindow, WINDOW_PAPER, WINDOW_INK } from '../ui/pixelWindow';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { MapLayers, TileLayer } from '../world/tiles';
 import { TOWN_PIECES } from '../world/generated/townPieces';
@@ -462,7 +462,7 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
     drawPixelWindow(
       panel,
       { x: Math.round(bounds.x - 6), y: Math.round(bounds.y - 3), width: Math.round(bounds.width + 12), height: Math.round(bounds.height + 6) },
-      { fill: WINDOW_CREAM },
+      { fill: WINDOW_PAPER },
     );
     this.saying = { text, panel, until: this.time.now + ms };
   }
@@ -513,7 +513,7 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
     this.lookAlongTheCourse();
     // The stopwatch and what the team can do, pinned to the screen.
     const panel = this.add.graphics().setScrollFactor(0).setDepth(30);
-    drawPixelWindow(panel, { x: 4, y: 4, width: 92, height: 32 }, { fill: WINDOW_CREAM });
+    drawPixelWindow(panel, { x: 4, y: 4, width: 92, height: 32 }, { fill: WINDOW_PAPER });
     this.clock = this.add
       .text(9, 6, '', { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: WINDOW_INK, lineSpacing: 0 })
       .setScrollFactor(0)

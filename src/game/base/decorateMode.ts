@@ -3,7 +3,7 @@ import type { GridPosition } from '../movement/gridMovement';
 import { audioManager } from '../audio/AudioManager';
 import { decorateKeyHintLine } from '../input/keyBindings';
 import { GAME_FONT } from '../ui/gameFont';
-import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
+import { WINDOW_PAPER, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { CHIP_FONT_SIZE } from '../ui/screenType';
 import { CANOPY_BAND, FLOOR_FURNITURE_DEPTH } from '../world/depths';
 import { TILE_SIZE } from '../worldMap';
@@ -350,7 +350,7 @@ export class DecorateMode {
     const x = Math.round((viewWidth - width) / 2);
     const y = PANEL_MARGIN;
     this.panel.clear();
-    drawPixelWindow(this.panel, { x, y, width, height }, { fill: WINDOW_CREAM });
+    drawPixelWindow(this.panel, { x, y, width, height }, { fill: WINDOW_PAPER });
     this.title.setPosition(x + PANEL_PADDING_X, y + PANEL_PADDING_Y);
     this.status.setPosition(x + PANEL_PADDING_X, y + PANEL_PADDING_Y + Math.ceil(this.title.height));
   }

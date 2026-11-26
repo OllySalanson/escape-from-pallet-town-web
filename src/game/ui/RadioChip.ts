@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WINDOW_CREAM, drawPixelWindow } from './pixelWindow';
+import { WINDOW_PAPER, drawPixelWindow } from './pixelWindow';
 import { GAME_FONT } from './gameFont';
 import { CHIP_FONT_SIZE } from './screenType';
 
@@ -31,7 +31,7 @@ export class RadioChip extends Phaser.GameObjects.Container {
     const above = box.y - height - GAP;
     super(scene, box.x + box.width - width, above >= 0 ? above : box.y + box.height + GAP);
     const frame = scene.add.graphics();
-    drawPixelWindow(frame, { x: 0, y: 0, width, height }, { fill: WINDOW_CREAM });
+    drawPixelWindow(frame, { x: 0, y: 0, width, height }, { fill: WINDOW_PAPER });
     this.add([frame, text]);
     this.setSize(width, height);
     // Its own scroll factor as well as the box's: a pointer is tested against it.

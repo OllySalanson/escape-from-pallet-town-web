@@ -1834,8 +1834,10 @@ export class HubScene extends Phaser.Scene {
     });
     // The way in the player is stood over is in view in its list, whichever it is.
     root.querySelector<HTMLElement>('[data-insertion].is-selected')?.scrollIntoView?.({ block: 'nearest' });
-    // The cursor starts on what the screen is for, never on the way out of it.
-    this.overlay.refocus('.px-field', '[data-cursor-start]', '.px-body button:not([disabled])', 'button');
+    // The cursor starts on what the screen is for, never on the way out of it:
+    // a screen with nothing to choose yet (raiding with a friend before a name
+    // is chosen) starts with no cursor at all, and ESC or the X still close it.
+    this.overlay.refocus('.px-field', '[data-cursor-start]', '.px-body button:not([disabled])', 'button:not(.px-close, [data-close])');
   }
 
   /**

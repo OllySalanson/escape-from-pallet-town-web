@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { WINDOW_CREAM, WINDOW_INK_VALUE, drawPixelWindow, toCssColor, type PixelWindowRect } from './pixelWindow';
+import { WINDOW_PAPER, WINDOW_INK_VALUE, drawPixelWindow, toCssColor, type PixelWindowRect } from './pixelWindow';
 import { GAME_FONT } from './gameFont';
 import { CHIP_FONT_SIZE } from './screenType';
 import { iconTextureKey, itemIconName } from './icons';
@@ -101,7 +101,7 @@ export class SearchPanel {
     };
     this.shown = rect;
     this.frame.clear().setVisible(true);
-    drawPixelWindow(this.frame, rect, { fill: WINDOW_CREAM });
+    drawPixelWindow(this.frame, rect, { fill: WINDOW_PAPER });
     // A rule under the title, so the cache's name reads as the heading it is.
     const titleBottom = rect.y + PADDING_Y + Math.ceil(this.title.height);
     this.frame.fillStyle(QUIET_INK, 1).fillRect(rect.x + PADDING_X, titleBottom + 1, rect.width - PADDING_X * 2, 1);

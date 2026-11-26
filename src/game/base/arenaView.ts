@@ -876,7 +876,7 @@ export class ArenaView {
     // Over the cloth, where nothing stands in front of it.
     const top = y - NAME_PLATE_HEIGHT - 1;
     const plate = this.scene.add.graphics({ x: left, y: top }).setDepth(FIGURE_BAND - 0.01);
-    drawPixelWindow(plate, { x: 0, y: 0, width, height: NAME_PLATE_HEIGHT }, { fill: 0x0b1220, border: 0xf0c454 });
+    drawPixelWindow(plate, { x: 0, y: 0, width, height: NAME_PLATE_HEIGHT }, { fill: 0x221d1e, border: 0xf0c454 });
     text.setPosition(left + 4, top + 1);
   }
 
@@ -912,7 +912,7 @@ export class ArenaView {
       if (best) {
         const width = Math.ceil(this.markText.width) + 8;
         this.markFrame.clear();
-        drawPixelWindow(this.markFrame, { x: 0, y: 0, width, height: NAME_PLATE_HEIGHT }, { fill: 0x0b1220, border: best.kind === 'fell' ? CROSS_INKS[0] : FLAG_INKS[0] });
+        drawPixelWindow(this.markFrame, { x: 0, y: 0, width, height: NAME_PLATE_HEIGHT }, { fill: 0x221d1e, border: best.kind === 'fell' ? CROSS_INKS[0] : FLAG_INKS[0] });
         this.markFrame.setData('width', width);
       }
     }
@@ -1411,7 +1411,7 @@ export class ArenaView {
     this.nameText.setText(name);
     const width = Math.ceil(this.nameText.width) + 8;
     this.nameFrame.clear();
-    drawPixelWindow(this.nameFrame, { x: 0, y: 0, width, height: NAME_PLATE_HEIGHT }, { fill: 0x0b1220, border: 0xf0c454 });
+    drawPixelWindow(this.nameFrame, { x: 0, y: 0, width, height: NAME_PLATE_HEIGHT }, { fill: 0x221d1e, border: 0xf0c454 });
     this.nameFrame.setData('width', width);
   }
 

@@ -35,6 +35,8 @@ export interface TouchPadHost {
   /** The scenes to ask for keys, top of the stack last, as Phaser lists them. */
   scenes(): readonly unknown[];
   openFeedback(): void;
+  /** SETTINGS, as the controls bar opens it (`scenes/ControlsScene.ts`). */
+  openSettings(): void;
   toggleSound(): boolean;
   soundMuted(): boolean;
   /** Unlocks audio on the page's first touch: a browser keeps it asleep until a press. */
@@ -250,11 +252,15 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
   const sound = document.createElement('div');
   sound.className = 'tp-icon';
   sound.dataset.action = 'sound';
+  const settings = document.createElement('div');
+  settings.className = 'tp-icon';
+  settings.dataset.action = 'settings';
+  settings.setAttribute('aria-label', 'Settings');
   const feedback = document.createElement('div');
   feedback.className = 'tp-icon';
   feedback.dataset.action = 'feedback';
   feedback.setAttribute('aria-label', 'Feedback');
-  system.append(sound, feedback);
+  system.append(sound, settings, feedback);
   root.append(system, trays, dpad, buttons);
   document.body.append(root);
 
@@ -396,7 +402,7 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
       pressed.set(event.pointerId, { code: '', element });
       return;
     }
-    if (action === 'feedback') {
+    if (action === 'feedback' || action === 'settings') {
       pressed.set(event.pointerId, { code: '', element });
       return;
     }
@@ -425,6 +431,9 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
     // before a panel appears where it was.
     if (press.element.dataset.action === 'feedback' && event.type === 'pointerup') {
       host.openFeedback();
+    }
+    if (press.element.dataset.action === 'settings' && event.type === 'pointerup') {
+      host.openSettings();
     }
   };
   for (const zone of [buttons, trays, system]) {
@@ -635,6 +644,7 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
       place(dpad, next.dpad, ratio);
       place(buttons, next.buttons, ratio);
       place(system, next.system, ratio);
+      root.style.setProperty('--tp-system-size', `${next.system.height}px`);
       place(trays, { x: 0, y: 0, width: 0, height: 0 }, ratio);
       trays.replaceChildren(
         ...next.trays.map((box) => {
@@ -648,6 +658,7 @@ export function installTouchPad(host: TouchPadHost): TouchPad {
       drawButton(ok, next.buttons.height * 0.5, 'OK');
       drawButton(back, next.buttons.height * 0.38, 'BACK');
       showSound();
+      drawIcon(settings, 'settings');
       drawIcon(feedback, 'feedback');
       shown = [];
       drawShortcuts();

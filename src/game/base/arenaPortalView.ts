@@ -256,7 +256,7 @@ export class ArenaPortalView {
       this.plateText.setText(name);
       const width = Math.ceil(this.plateText.width) + 8;
       this.plate.clear();
-      drawPixelWindow(this.plate, { x: 0, y: 0, width, height: PLATE_HEIGHT }, { fill: 0x0b1220, border: 0xf0c454 });
+      drawPixelWindow(this.plate, { x: 0, y: 0, width, height: PLATE_HEIGHT }, { fill: 0x221d1e, border: 0xf0c454 });
       this.plate.setData('width', width);
     }
   }

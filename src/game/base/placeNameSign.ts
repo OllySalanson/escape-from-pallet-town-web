@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import { GAME_FONT } from '../ui/gameFont';
 import type { Rect } from '../ui/labelPlacement';
-import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
+import { WINDOW_PAPER, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { DIALOG_FONT_SIZE } from '../ui/screenType';
 import { CANOPY_BAND } from '../world/depths';
 
@@ -91,7 +91,7 @@ export class PlaceNameSign {
     const height = Math.ceil(this.text.height) + SIGN_PADDING_Y * 2;
     const x = SIGN_MARGIN;
     const y = Math.round(SIGN_MARGIN - (height + SIGN_MARGIN) * (1 - drop));
-    drawPixelWindow(this.frame, { x, y, width, height }, { fill: WINDOW_CREAM, border: SIGN_WOOD });
+    drawPixelWindow(this.frame, { x, y, width, height }, { fill: WINDOW_PAPER, border: SIGN_WOOD });
     // The plank's inner rule, a pixel in from the wood all round.
     this.frame.lineStyle(1, SIGN_RULE, 1);
     this.frame.strokeRect(x + 2.5, y + 2.5, width - 5, height - 5);

@@ -363,7 +363,7 @@ import { SURVEY_RADIUS, tilesAround } from '../world/minimap';
 import { chartTileOf } from '../world/chart';
 import { knownOnChart } from '../world/chartKnown';
 import { PLACE_ON_MAP_HOLD_MS, placeOfLocal, taleLines } from '../world/locals';
-import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
+import { WINDOW_PAPER, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { UI } from '../ui/uiPalette';
 import { HINT_MARGIN, HINT_PADDING_X, HINT_PADDING_Y, spaceHint } from '../ui/hintLine';
 import {
@@ -766,11 +766,11 @@ const LABEL_TONES: Readonly<
     WorldLabelTone
   >
 > = {
-  station: { fill: 0x14243a, border: 0x7fb2e5, ink: '#dff0ff' },
+  station: { fill: 0x221d1e, border: 0x7fb2e5, ink: '#dff0ff' },
   // A landmark this save finished with for good. It is the station's own blue
   // gone quiet, the way an open gate is an iron one gone quiet: still a place,
   // no longer something to act on.
-  worked: { fill: 0x16222c, border: 0x6f97b4, ink: '#c6dced' },
+  worked: { fill: 0x221d1e, border: 0x6f97b4, ink: '#c6dced' },
   // Contract stops are the one thing on the map the raid was taken for, so they
   // are the only violet on it and cannot be mistaken for a cache or a gate.
   contract: { fill: 0x281a3d, border: 0xc4b5fd, ink: '#ede9fe' },
@@ -793,7 +793,7 @@ const LABEL_TONES: Readonly<
   dropIn: { fill: 0x0f3a3d, border: 0x5eead4, ink: '#ccfbf1' },
   // A mouth is a way into the hill: the ledge's stone gone darker, because what
   // is behind it is the one ground on the map with no sky over it.
-  interior: { fill: 0x141a24, border: 0xa9b6c6, ink: '#e8eef6' },
+  interior: { fill: 0x221d1e, border: 0xa9b6c6, ink: '#e8eef6' },
   // A rare find. The same gold as its chip and its gleam, and the brightest
   // frame on the map, because this is the one caption meant to be read from
   // the other side of a clearing rather than walked up to.
@@ -2102,7 +2102,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const ringHint = !ringNamesItsKey(held ? raidsDeployed(held) : 0, held?.landings?.best ?? 0)
       ? null
       : this.add
-          .text(ground.x, ground.y - 42, '[SPACE]', { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: '#f8f7dd', backgroundColor: '#0b1220', padding: { x: 3, y: 1 } })
+          .text(ground.x, ground.y - 42, '[SPACE]', { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: '#f8f7dd', backgroundColor: '#221d1e', padding: { x: 3, y: 1 } })
           .setOrigin(0.5, 1)
           .setDepth(ARRIVAL_CLOUD_DEPTH + 1)
           .setVisible(false);
@@ -2235,7 +2235,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const left = Math.round(this.player.x + TILE_SIZE / 2 - width / 2);
     const top = Math.round(this.player.y - 16);
     const plate = this.add.graphics({ x: left, y: top }).setDepth(CANOPY_BAND + 0.19);
-    drawPixelWindow(plate, { x: 0, y: 0, width, height: 13 }, { fill: 0x0b1220, border: 0xf0c454 });
+    drawPixelWindow(plate, { x: 0, y: 0, width, height: 13 }, { fill: 0x221d1e, border: 0xf0c454 });
     text.setPosition(left + 4, top + 1);
     this.time.delayedCall(LANDING_PLATE_MS, () => {
       plate.destroy();
@@ -6661,7 +6661,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
     const x = Math.round((this.scale.width - width) / 2);
     const y = this.scale.height - height - HINT_MARGIN;
-    drawPixelWindow(this.hintFrame, { x, y, width, height }, { fill: WINDOW_CREAM });
+    drawPixelWindow(this.hintFrame, { x, y, width, height }, { fill: WINDOW_PAPER });
     this.hintRect = { x, y, width, height };
     this.hintText.setPosition(x + HINT_PADDING_X, y + HINT_PADDING_Y);
   }

@@ -14,7 +14,8 @@ import { UI } from './uiPalette';
 
 /** Sampled from `assets/battle/hud-box.png`, so drawn frames match painted ones. */
 export const WINDOW_BORDER = 0x171717;
-export const WINDOW_CREAM = 0xebeac5;
+/** A chip's or a label's paper: the menus' white (the round-3 look: no cream). */
+export const WINDOW_PAPER = 0xffffff;
 export const WINDOW_INK_VALUE = 0x202020;
 export const WINDOW_INK = '#202020';
 

@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import { GAME_FONT } from '../ui/gameFont';
-import { WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
+import { WINDOW_BORDER, WINDOW_PAPER, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { CHIP_FONT_SIZE } from '../ui/screenType';
 import { CANOPY_BAND } from '../world/depths';
 
@@ -154,11 +154,11 @@ export class SpeechBubble {
       this.frame.fillStyle(colour, 1).fillRect(x, y, w, h);
     };
     this.frame.clear();
-    drawPixelWindow(this.frame, { x: 0, y: 0, width, height }, { fill: WINDOW_CREAM });
+    drawPixelWindow(this.frame, { x: 0, y: 0, width, height }, { fill: WINDOW_PAPER });
     // The emote bubble's tail (`drawEmoteBubble`), opened into the window.
-    box(WINDOW_CREAM, t, height - 1, 1, 1);
+    box(WINDOW_PAPER, t, height - 1, 1, 1);
     box(WINDOW_BORDER, t - 1, height, 1, 1);
-    box(WINDOW_CREAM, t, height, 1, 1);
+    box(WINDOW_PAPER, t, height, 1, 1);
     box(WINDOW_BORDER, t + 1, height, 1, 1);
     box(WINDOW_BORDER, t, height + 1, 1, 1);
   }

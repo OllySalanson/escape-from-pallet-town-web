@@ -94,7 +94,7 @@ import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
 import { captionBoundsOverRoom, placeCaptions, placeDialog, seatedOver, type Rect } from '../ui/labelPlacement';
 import { advanceLookMs, isLooking } from '../ui/captionReveal';
 import { GAME_FONT } from '../ui/gameFont';
-import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
+import { WINDOW_PAPER, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { UI } from '../ui/uiPalette';
 import { BASE_STAGE_WIDTH } from '../display/stage';
 import { HINT_MARGIN, HINT_PADDING_X, HINT_PADDING_Y } from '../ui/hintLine';
@@ -596,9 +596,9 @@ const WARDEN_ID = 'safari-warden';
  * caught anything has it for good (`hasHarbourRod`).
  */
 let harbourRodLent = false;
-const FIXTURE_TONE: WorldLabelTone = { fill: 0x16222c, border: 0x6f97b4, ink: '#c6dced' };
+const FIXTURE_TONE: WorldLabelTone = { fill: 0x221d1e, border: 0x8c8486, ink: '#e7e6ea' };
 /** The harbour's own landmarks (`base/landmarks.ts`): white on the sea's own deep blue. */
-const LANDMARK_TONE: WorldLabelTone = { fill: 0x0e2a44, border: 0xf4efe2, ink: '#f4efe2' };
+const LANDMARK_TONE: WorldLabelTone = { fill: 0x221d1e, border: 0xffc823, ink: '#ffffff' };
 /** The label on the one oddity being looked at: brass, like the case it is in. */
 const ODDITY_TONE: WorldLabelTone = { fill: 0x2b1d0e, border: 0xd8b070, ink: '#f4efe2' };
 /** The frame round the oddity being looked at. */
@@ -4687,7 +4687,7 @@ export class BaseScene extends Phaser.Scene {
     const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
     const placed = seat ? { x: seat.right - width, y: seat.y } : this.hintPlace(width, height);
     const { x, y } = placed;
-    drawPixelWindow(this.hintFrame, { x, y, width, height }, { fill: WINDOW_CREAM });
+    drawPixelWindow(this.hintFrame, { x, y, width, height }, { fill: WINDOW_PAPER });
     this.hintText.setPosition(x + HINT_PADDING_X, y + HINT_PADDING_Y);
   }
 

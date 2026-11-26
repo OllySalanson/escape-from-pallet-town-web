@@ -3,7 +3,7 @@ import { audioManager } from '../audio/AudioManager';
 import { pokemonTextureKey } from '../pokemon/pokemonSprites';
 import type { StashedPokemon } from '../stash';
 import { iconTextureKey, itemIconName } from '../ui/icons';
-import { drawPixelWindow, WINDOW_CREAM } from '../ui/pixelWindow';
+import { drawPixelWindow, WINDOW_PAPER } from '../ui/pixelWindow';
 import {
   DIG_HEIGHT,
   DIG_WIDTH,
@@ -136,7 +136,7 @@ export class DigScene extends OutdoorGameScene {
     );
     this.patch = this.keep(this.add.graphics().setDepth(4));
     const panel = this.keep(this.add.graphics().setDepth(10));
-    drawPixelWindow(panel, { x: 4, y: 14, width: 108, height: 32 }, { fill: WINDOW_CREAM });
+    drawPixelWindow(panel, { x: 4, y: 14, width: 108, height: 32 }, { fill: WINDOW_PAPER });
     this.hud = this.words_(9, 16, '', { colour: '#202030' }).setStroke('#202030', 0).setDepth(11);
     this.ping = this.words_(width / 2, top - 22, 'DIG!', { big: true, origin: [0.5, 0.5] });
     this.words_(width / 2, height - 3, 'ARROWS: move · SPACE: dig · ESC: stop', { origin: [0.5, 1] });

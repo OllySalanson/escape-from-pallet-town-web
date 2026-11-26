@@ -68,6 +68,7 @@ const touchPad = installTouchPad({
   document,
   scenes: () => game.scene.getScenes(false).filter((scene) => scene.sys.isActive() || scene.sys.isPaused()),
   openFeedback: () => feedbackDesk.open(),
+  openSettings: () => openControlsScreen(game, 'settings', () => feedbackDesk.open()),
   toggleSound: () => audioManager.toggleMute(),
   soundMuted: () => audioManager.isMuted,
   wakeSound: () => void audioManager.activate(),

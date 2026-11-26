@@ -4,7 +4,7 @@ import { getBaseMap } from '../base/baseMap';
 import { BASE_TILESET } from '../base/baseTileset';
 import type { TileLayer } from '../world/tiles';
 import type { StashedPokemon } from '../stash';
-import { drawPixelWindow, WINDOW_CREAM } from '../ui/pixelWindow';
+import { drawPixelWindow, WINDOW_PAPER } from '../ui/pixelWindow';
 import { feedbackTabOverGame } from '../feedback/feedbackTabCover';
 import { isFigureSpecies, pokemonIconFrames, POKEMON_ICON_FRAME_MS, POKEMON_ICON_TEXTURE } from '../world/pokemonFigures';
 import {
@@ -354,8 +354,8 @@ export class DerbyScene extends OutdoorGameScene {
     const boardTop = 4 + hudHeight + 4;
     // The standings' window is as tall as the field, and never past the foot of the track.
     const boardHeight = Math.min(track.height - boardTop - 4, 6 + this.race.runners.length * line);
-    drawPixelWindow(side, { x: track.width + 4, y: 4, width: SIDE - 8, height: hudHeight }, { fill: WINDOW_CREAM });
-    drawPixelWindow(side, { x: track.width + 4, y: boardTop, width: SIDE - 8, height: boardHeight }, { fill: WINDOW_CREAM });
+    drawPixelWindow(side, { x: track.width + 4, y: 4, width: SIDE - 8, height: hudHeight }, { fill: WINDOW_PAPER });
+    drawPixelWindow(side, { x: track.width + 4, y: boardTop, width: SIDE - 8, height: boardHeight }, { fill: WINDOW_PAPER });
     this.sprint = this.onHud(this.add.graphics().setDepth(2));
     this.board = this.onHud(this.words_(track.width + 9, boardTop + 2, '', { colour: INK }).setStroke(INK, 0).setDepth(2));
     this.callout = this.onHud(this.words_(track.width / 2, Math.round(track.height * 0.32), '', { big: true, origin: [0.5, 0.5] }));

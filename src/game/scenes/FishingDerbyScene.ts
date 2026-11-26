@@ -3,7 +3,7 @@ import { audioManager } from '../audio/AudioManager';
 import { harbourBite, type HarbourBite } from '../base/harbourFishing';
 import { pokemonTextureKey } from '../pokemon/pokemonSprites';
 import type { StashedPokemon } from '../stash';
-import { drawPixelWindow, WINDOW_CREAM } from '../ui/pixelWindow';
+import { drawPixelWindow, WINDOW_PAPER } from '../ui/pixelWindow';
 import { castDurationMs, dotsShown, NOT_EVEN_A_NIBBLE, ON_THE_HOOK, type CastPlan } from '../world/fishing';
 import {
   biteChance,
@@ -123,7 +123,7 @@ export class FishingDerbyScene extends OutdoorGameScene {
     );
     this.line = this.keep(this.add.graphics().setDepth(4));
     const panel = this.keep(this.add.graphics().setDepth(10));
-    drawPixelWindow(panel, { x: 4, y: 4, width: 112, height: 44 }, { fill: WINDOW_CREAM });
+    drawPixelWindow(panel, { x: 4, y: 4, width: 112, height: 44 }, { fill: WINDOW_PAPER });
     this.hud = this.words_(9, 6, '', { colour: '#202030' }).setStroke('#202030', 0).setDepth(11);
     this.callout = this.words_(width / 2, Math.round(height * 0.5), 'SPACE: cast!', { big: true, origin: [0.5, 0.5] });
     this.words_(width / 2, height - 3, 'SPACE: cast · ESC: stop', { origin: [0.5, 1] });

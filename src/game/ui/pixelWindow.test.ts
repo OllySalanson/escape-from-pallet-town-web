@@ -1,6 +1,6 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
-import { WINDOW_BORDER, WINDOW_CREAM, drawPixelWindow, toCssColor } from './pixelWindow';
+import { WINDOW_BORDER, WINDOW_PAPER, drawPixelWindow, toCssColor } from './pixelWindow';
 
 const SCENES = new URL('../scenes/', import.meta.url);
 
@@ -33,7 +33,7 @@ describe('the drawn window frame', () => {
   it('is one pixel of border on every side, at any size', () => {
     const { rects, graphics } = recorder();
 
-    drawPixelWindow(graphics, { x: 8, y: 174, width: 304, height: 64 }, { fill: WINDOW_CREAM });
+    drawPixelWindow(graphics, { x: 8, y: 174, width: 304, height: 64 }, { fill: WINDOW_PAPER });
 
     const border = rects.filter((rect) => rect.colour === WINDOW_BORDER);
     expect(border).toHaveLength(4);
@@ -43,13 +43,13 @@ describe('the drawn window frame', () => {
     expect(border.map((rect) => Math.min(rect.width, rect.height))).toEqual([1, 1, 1, 1]);
     expect(border.filter((rect) => rect.x === 8)).toHaveLength(1);
     expect(border.filter((rect) => rect.x === 8 + 304 - 1)).toHaveLength(1);
-    expect(rects.filter((rect) => rect.colour === WINDOW_CREAM)).toHaveLength(1);
+    expect(rects.filter((rect) => rect.colour === WINDOW_PAPER)).toHaveLength(1);
   });
 
   it('leaves the four corner pixels clear, so the window reads as chamfered', () => {
     const { rects, graphics } = recorder();
 
-    drawPixelWindow(graphics, { x: 0, y: 0, width: 20, height: 10 }, { fill: WINDOW_CREAM });
+    drawPixelWindow(graphics, { x: 0, y: 0, width: 20, height: 10 }, { fill: WINDOW_PAPER });
 
     const covers = (x: number, y: number): boolean =>
       rects.some(
@@ -95,8 +95,8 @@ describe('the drawn window frame', () => {
     expect(dialogue.slice(0, dialogue.indexOf('onComplete'))).not.toContain('paddingHorizontal');
   });
 
-  it('keeps the ink dark enough to read on cream', () => {
-    expect(toCssColor(WINDOW_CREAM)).toBe('#ebeac5');
+  it('keeps the ink dark enough to read on the paper', () => {
+    expect(toCssColor(WINDOW_PAPER)).toBe('#ffffff');
     expect(toCssColor(WINDOW_BORDER)).toBe('#171717');
   });
 });
