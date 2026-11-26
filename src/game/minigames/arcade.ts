@@ -4,7 +4,7 @@ import type { RaidProgress } from '../save/SaveManager';
 import type { PaintedPicture } from '../world/minimap';
 import { letteringWidth, paintLettering } from './boardLetters';
 import { BOARD_GAME_NAMES, BOARD_GAMES, boardResult, highScoresFor, regularResult } from './highScores';
-import { BERRY_TICKET_TIERS, JUMP_TICKET_TIERS, NO_GAME_CORNER, today, type TicketSource } from './tickets';
+import { BERRY_TICKET_TIERS, JUMP_TICKET_TIERS, NO_GAME_CORNER, ticketDayKey, today, type TicketSource } from './tickets';
 
 /**
  * THE GAME CORNER as an arcade (the overnight plan's N7): two rows of
@@ -117,22 +117,35 @@ export function arcadeRegularsAt(nowMs: number): readonly ArcadeRegular[] {
   return regulars;
 }
 
+/**
+ * One of a few ways to say a thing, the same for a regular all day and another
+ * tomorrow: eleven regulars had three sentences between them, word for word
+ * (the harbour re-critic).
+ */
+function said(regular: ArcadeRegular, now: Date, ways: readonly string[]): string {
+  const seed = `${regular.bot.id}|${ticketDayKey(now)}`;
+  let hash = 0;
+  for (const letter of seed) hash = (hash * 31 + letter.charCodeAt(0)) >>> 0;
+  return ways[hash % ways.length];
+}
+
 /** What a regular at the cabinets says when spoken to: their own score today, the board's word for it. */
 export function arcadeRegularLine(regular: ArcadeRegular, progress: Pick<RaidProgress, 'gameCorner'>, now: Date): string {
   const lines = highScoresFor(regular.game, progress, now);
   const at = lines.findIndex((line) => line.name === regular.bot.name);
   const game = BOARD_GAME_NAMES[regular.game];
+  const name = regular.bot.name;
   if (!regular.playing) {
-    return `${regular.bot.name}: Next go is mine. Watch the board.`;
+    return `${name}: ${said(regular, now, ['Next go is mine. Watch the board.', "I'm after this one. Don't push in.", `Queueing for ${game}. Worth the wait.`])}`;
   }
   if (at < 0) {
     // The game named: "the board" covers six, and they topped another row of it (the harbour critic tour).
-    return `${regular.bot.name}: Not on the ${game} board yet today. Shh - this is the one.`;
+    return `${name}: ${said(regular, now, [`Not on the ${game} board yet today. Shh - this is the one.`, `No ${game} score worth chalking yet. Give me a minute.`, 'Shh. Counting the vine.'])}`;
   }
   const score = boardResult(regular.game, regularResult(regular.bot, regular.game, now));
   return at === 0
-    ? `${regular.bot.name}: ${score} at ${game} - top of the board. Beat that.`
-    : `${regular.bot.name}: ${score} at ${game} so far. Not top yet.`;
+    ? `${name}: ${said(regular, now, [`${score} at ${game} - top of the board. Beat that.`, `Top of ${game} with ${score}. Your go.`])}`
+    : `${name}: ${said(regular, now, [`${score} at ${game} so far. Not top yet.`, `${score} at ${game}. One more go and I'm top.`])}`;
 }
 
 // --- what the cabinets and the board show ----------------------------------------

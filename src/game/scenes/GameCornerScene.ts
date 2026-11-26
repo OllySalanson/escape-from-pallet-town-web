@@ -405,7 +405,10 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
   private onGameKey(event: KeyboardEvent): void {
     if (this.phase.kind === 'menu') return;
     if (event.key === 'Escape') {
-      if (this.phase.kind === 'playing' || this.phase.kind === 'countdown') this.finish();
+      // ESC before the vine has turned is "I didn't mean to start": back to the
+      // cabinet with nothing written, not a 0 played (the harbour re-critic).
+      if (this.phase.kind === 'countdown') this.callOff();
+      else if (this.phase.kind === 'playing') this.finish();
       return;
     }
     if ([' ', 'Enter', 'ArrowUp', 'z', 'Z', 'x', 'X'].includes(event.key) && !event.repeat) {
@@ -461,6 +464,16 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
   }
 
   /** The game is over: its score written and paid, and the cabinet's screen back up. */
+  /** Back to the cabinet from the countdown, with nothing played, written or paid. */
+  private callOff(): void {
+    recordAction('POKéMON JUMP called off in the countdown');
+    this.tearDownStage();
+    this.jump = undefined;
+    this.phase = { kind: 'menu' };
+    this.openedAt = this.time.now;
+    this.showMenu('[data-play]');
+  }
+
   private finish(): void {
     const jump = this.jump;
     if (!jump) return;

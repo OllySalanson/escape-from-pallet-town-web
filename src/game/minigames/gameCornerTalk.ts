@@ -67,7 +67,7 @@ export function berryCabinetNote(progress: Pick<RaidProgress, 'gameCorner'>, now
 
 /** What BERRY PICKING says when it is read rather than played. */
 export function berryCabinetLines(): readonly string[] {
-  return ['BERRY PICKING! A DODRIO reaches left, up and right for the berries as they fall.'];
+  return ['BERRY PICKING! A DODUO turns to reach the berries as they fall, left, up and right.'];
 }
 
 /** A time round the course as a stopwatch shows it: `0:14.25`. */
@@ -121,13 +121,39 @@ export function timeBoardLines(progress: Pick<RaidProgress, 'gameCorner'>, now: 
 export function cabinetRates(game: 'pokemon-jump' | 'berry-picking'): string {
   const tiers = game === 'pokemon-jump' ? JUMP_TICKET_TIERS : BERRY_TICKET_TIERS;
   const berryFrom = game === 'pokemon-jump' ? POKEMON_JUMP_PRIZES[0].score : BERRY_PICKING_PRIZE_SCORE;
-  const card = tiers.map((tier) => `${number(tier.score)} pays ${tier.tickets}`).join(' · ');
+  // "in all" past the first: "2,500 pays 20" read as twenty more on top (the harbour re-critic).
+  const card = tiers.map((tier, index) => `${number(tier.score)} pays ${tier.tickets}${index > 0 ? ' in all' : ''}`).join(' · ');
   return `Tickets, once a day: ${card}. From ${number(berryFrom)}, a BERRY too.`;
 }
 
-/** What the attendant says from behind the counter: how the place works, as she would put it. */
-export function attendantLines(progress: Pick<RaidProgress, 'gameCorner'>): readonly string[] {
+/**
+ * Where a cabinet game stands today, as the attendant puts it: what it has paid
+ * and the score that pays more, or that it is done for the day.
+ */
+function todaysWord(game: 'pokemon-jump' | 'berry-picking', paid: number): string {
+  const name = game === 'pokemon-jump' ? 'JUMP' : 'BERRY PICKING';
+  const tiers = game === 'pokemon-jump' ? JUMP_TICKET_TIERS : BERRY_TICKET_TIERS;
+  const next = tiers.find((tier) => tier.tickets > paid);
+  if (!next) return `${name}'s paid you all it pays today`;
+  return paid === 0
+    ? `${number(next.score)} at ${name} pays ${next.tickets}`
+    : `${name}'s paid you ${paid} today, and ${number(next.score)} makes it ${next.tickets}`;
+}
+
+/**
+ * What the attendant says from behind the counter: how the place works, once,
+ * and to a player who has played before, where today stands. She greeted a
+ * regular like a stranger, word for word, every time (the harbour re-critic).
+ */
+export function attendantLines(progress: Pick<RaidProgress, 'gameCorner'>, now: Date = new Date()): readonly string[] {
   const record = progress.gameCorner ?? NO_GAME_CORNER;
+  if ((record.best['pokemon-jump'] ?? 0) > 0 || (record.best['berry-picking'] ?? 0) > 0) {
+    const paid = today(record, now).paid;
+    return [
+      `Back again! ${todaysWord('pokemon-jump', paid['pokemon-jump'] ?? 0)}; ${todaysWord('berry-picking', paid['berry-picking'] ?? 0)}.`,
+      ...(record.tickets > 0 ? [`You've got ${number(record.tickets)} tickets for the PRIZE WINDOW next door.`] : []),
+    ];
+  }
   // Two boxes, where six were read on every visit (the harbour critic tour,
   // 26 Nov 2026): what a cabinet pays is on its own screen, and its lamps.
   const lines = [

@@ -261,7 +261,9 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
   private onGameKey(event: KeyboardEvent): void {
     if (this.phase.kind === 'menu' || event.repeat) return;
     if (event.key === 'Escape') {
-      if (this.phase.kind === 'playing' || this.phase.kind === 'countdown') this.finish();
+      // ESC in the countdown is "I didn't mean to start": nothing played or written (the harbour re-critic).
+      if (this.phase.kind === 'countdown') this.callOff();
+      else if (this.phase.kind === 'playing') this.finish();
       return;
     }
     const column: Column | null = ['ArrowLeft', 'a', 'A'].includes(event.key)
@@ -326,6 +328,15 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
   }
 
   /** The game is over: its score written and paid, and the cabinet's screen back up. */
+  /** Back to the cabinet from the countdown, with nothing played, written or paid. */
+  private callOff(): void {
+    recordAction('BERRY PICKING called off in the countdown');
+    this.tearDownStage();
+    this.picking = undefined;
+    this.phase = { kind: 'menu' };
+    this.showMenu('[data-play]');
+  }
+
   private finish(): void {
     const picking = this.picking;
     if (!picking) return;
@@ -561,7 +572,7 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
     }
     this.scoreText?.setText([
       `SCORE ${berryScore(picking).toLocaleString('en-GB')}`,
-      `EATEN ${picking.eaten.blue + picking.eaten.green + picking.eaten.gold}`,
+      `CAUGHT ${picking.eaten.blue + picking.eaten.green + picking.eaten.gold}`,
     ]);
     this.callouts = this.callouts.filter((callout) => {
       if (this.time.now <= callout.until) {

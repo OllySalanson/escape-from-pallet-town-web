@@ -7189,7 +7189,7 @@ export class BaseScene extends Phaser.Scene {
     // THE GAME CORNER's attendant says how the place works; the prize clerk
     // says what is in hand and opens the window (`minigames/gameCornerTalk.ts`).
     if (screen === 'game-corner') {
-      this.say(attendantLines(this.freshGame().raidProgress), about);
+      this.say(attendantLines(this.freshGame().raidProgress, new Date()), about);
       return;
     }
     // The clerk sells the POKé FLUTE, and knows what one is for: their rumour

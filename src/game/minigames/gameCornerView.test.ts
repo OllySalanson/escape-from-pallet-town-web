@@ -24,7 +24,7 @@ describe("POKéMON JUMP's team", () => {
     expect(markup).not.toContain('FireRed’s list');
     expect(markup).not.toContain('has no PIDGEY on its list');
     expect(markup).toContain(JUMPERS_ARE);
-    expect(markup).toContain('Pidgey cannot play.');
+    expect(markup).toContain('PIDGEY cannot play.');
   });
 
   it('names only kinds that really can jump', () => {

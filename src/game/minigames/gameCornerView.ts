@@ -92,13 +92,15 @@ export function jumpTeamMarkup(state: JumpTeamState): string {
     const chosen = state.chosen.includes(candidate.id);
     const type = candidate.jumpType;
     const full = !chosen && state.chosen.length >= MAX_JUMPERS;
+    // Named as the list names it, in capitals (the harbour re-critic).
+    const name = candidate.name.toUpperCase();
     const help = type
       ? chosen
-        ? `${candidate.name} is jumping. Choose again to sit it out.`
+        ? `${name} is jumping. Choose again to sit it out.`
         : full
           ? `Three are jumping already. Take one out first.`
-          : `${candidate.name}: ${JUMP_WORDS[type].help}`
-      : `${candidate.name} cannot play. ${JUMPERS_ARE}`;
+          : `${name}: ${JUMP_WORDS[type].help}`
+      : `${name} cannot play. ${JUMPERS_ARE}`;
     const tag = type
       ? pixelTag(chosen ? 'Jumping' : JUMP_WORDS[type].label, chosen ? 'good' : 'plain', chosen)
       : pixelTag('Cannot jump', 'risk');
@@ -444,7 +446,7 @@ export function berryTeamMarkup(state: BerryTeamState): string {
     title: state.last ? `Scored ${number(state.last.score)}` : 'BERRY PICKING',
     lines: [
       ...(state.last ? resultLines(state.last) : []),
-      `<small class="px-wrap">${number(state.tickets)} tickets · best ${number(state.best)}. Blue 10, green 30, gold 50; every one that lands costs 50.</small>`,
+      `<small class="px-wrap">${number(state.tickets)} tickets · best ${number(state.best)}. Blue 10, green 30, gold 50. Each one you drop costs 50.</small>`,
       `<small class="px-wrap">${cabinetRates('berry-picking')}</small>`,
     ],
     actions: play,
