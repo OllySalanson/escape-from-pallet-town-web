@@ -5860,6 +5860,551 @@ body.touch-play .feedback-tab {
 .pixel-ui:where([data-room='tight']) .prize-won {
   display: none;
 }
+/* --- THE BATTLE ARENA in Champion Red (`arena/arenaBoldView.ts`) -------------
+   The cup of the week and the daily rentals in the boutique's Big and Bold
+   look (Olly's pick of 26 Nov 2026, `docs/screens/arena-bold/`): a red
+   sunburst, ink, white and gold, slanted cards and stickers. The whole screen
+   (`data-whole` on the counter's panel), under the menus' own title strip and
+   keys line. One face, Orange Kid, drawn big and leaning for the names. */
+.menu-overlay.pixel-ui .px-body.bold-arena {
+  --sun: var(--red);
+  --sun-dark: #b82a0a;
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0;
+  padding: 0;
+  background: var(--ink);
+  color: var(--ink);
+}
+.pixel-ui .bold-burst {
+  position: absolute;
+  left: calc(var(--u) * -130);
+  top: calc(var(--u) * -180);
+  width: calc(var(--u) * 560);
+  height: calc(var(--u) * 560);
+  clip-path: circle(50%);
+  background: repeating-conic-gradient(from 0deg at 50% 50%, var(--sun) 0 8deg, var(--sun-dark) 8deg 16deg);
+}
+.pixel-ui .bold-tabs {
+  position: absolute;
+  z-index: 3;
+  left: calc(var(--u) * 10);
+  top: calc(var(--u) * 6);
+  display: flex;
+  gap: calc(var(--u) * 5);
+}
+.pixel-ui .bold-tab {
+  padding: 0 calc(var(--u) * 8);
+  border: calc(var(--u) * 2) solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-style: italic;
+  text-transform: uppercase;
+  transform: skewX(-12deg);
+  box-shadow: calc(var(--u) * 2) calc(var(--u) * 2) 0 rgb(0 0 0 / 50%);
+}
+.pixel-ui .bold-tab.is-open {
+  background: var(--gold);
+  color: var(--ink);
+  box-shadow: calc(var(--u) * 3) calc(var(--u) * 3) 0 var(--ink);
+}
+.pixel-ui .bold-hero {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: calc(var(--u) * 6);
+  min-height: 0;
+  padding: calc(var(--u) * 22) calc(var(--u) * 8) calc(var(--u) * 4);
+}
+.pixel-ui .bold-arena.is-cup .bold-hero {
+  grid-template-columns: minmax(calc(var(--u) * 248), 1fr) calc(var(--u) * 164) calc(var(--u) * 136);
+}
+.pixel-ui .bold-arena.is-rental .bold-hero {
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 150);
+}
+/* The side on its white spot, a Pokémon at two game pixels a pixel, standing
+   shoulder to shoulder. */
+.pixel-ui .bold-stage {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  justify-self: center;
+  align-self: end;
+}
+.pixel-ui .bold-side {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  margin-bottom: calc(var(--u) * -22);
+}
+.pixel-ui .bold-side-mon {
+  display: block;
+  width: calc(var(--u) * 60);
+  height: calc(var(--u) * 128);
+  overflow: visible;
+}
+.pixel-ui .bold-side-mon > img {
+  margin-left: calc(var(--u) * -34);
+}
+.pixel-ui .bold-side-mon.is-empty::before {
+  content: '?';
+  display: block;
+  margin: calc(var(--u) * 56) 0 0 calc(var(--u) * 26);
+  color: rgb(255 255 255 / 55%);
+  font-size: calc(var(--u) * 50);
+  line-height: calc(var(--u) * 50);
+}
+.pixel-ui .bold-mon {
+  display: block;
+  image-rendering: pixelated;
+}
+.pixel-ui .bold-mon.is-x1 {
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 64);
+}
+.pixel-ui .bold-mon.is-x2 {
+  width: calc(var(--u) * 128);
+  height: calc(var(--u) * 128);
+}
+.pixel-ui .bold-spot {
+  width: calc(var(--u) * 240);
+  max-width: 100%;
+  height: calc(var(--u) * 36);
+  /* An oval of white with a line of ink round it, drawn rather than rounded. */
+  background: radial-gradient(closest-side, var(--paper) calc(100% - var(--u) * 2), var(--ink) calc(100% - var(--u) * 2) 100%, transparent 100%);
+}
+.pixel-ui .bold-stage.is-one .bold-spot {
+  width: calc(var(--u) * 150);
+}
+.pixel-ui .bold-your-three {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  top: calc(var(--u) * -2);
+}
+.pixel-ui .bold-rule-check {
+  position: relative;
+  z-index: 2;
+  margin-top: calc(var(--u) * 6);
+}
+/* The bill: the name, the rule, the level, and the big gold button. */
+.pixel-ui .bold-bill {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: start;
+  gap: calc(var(--u) * 6);
+}
+.pixel-ui .bold-title {
+  margin: 0;
+  color: var(--paper);
+  font: inherit;
+  font-size: calc(var(--u) * 50);
+  line-height: calc(var(--u) * 44);
+  font-style: italic;
+  text-transform: uppercase;
+  -webkit-text-stroke: calc(var(--u) * 4) var(--ink);
+  paint-order: stroke fill;
+  text-shadow: calc(var(--u) * 4) calc(var(--u) * 4) 0 var(--sun-dark);
+  max-width: calc(var(--u) * 164);
+}
+.pixel-ui .bold-sticker {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  padding: 0 calc(var(--u) * 6);
+  border: calc(var(--u) * 2) solid var(--ink);
+  background: var(--gold);
+  color: var(--ink);
+  font: inherit;
+  font-style: italic;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: calc(var(--u) * 3) calc(var(--u) * 3) 0 var(--ink);
+  transform: rotate(-2deg);
+}
+.pixel-ui .bold-sticker.is-white {
+  background: var(--paper);
+  transform: rotate(1deg);
+}
+.pixel-ui .bold-sticker.is-ink {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper);
+  box-shadow: calc(var(--u) * 3) calc(var(--u) * 3) 0 var(--sun-dark);
+  white-space: normal;
+  max-width: calc(var(--u) * 240);
+}
+.pixel-ui .bold-sticker.has-tick::after {
+  content: '';
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 5);
+  background: var(--go-lit);
+  mask: var(--px-tick) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
+}
+.pixel-ui button.bold-sticker:focus,
+.pixel-ui .bold-tab:focus {
+  outline: none;
+  box-shadow: 0 0 0 calc(var(--u) * 3) var(--gold), calc(var(--u) * 3) calc(var(--u) * 3) 0 var(--ink);
+}
+.pixel-ui .bold-go {
+  margin-top: calc(var(--u) * 4);
+  padding: calc(var(--u) * 4) calc(var(--u) * 12);
+  border: calc(var(--u) * 3) solid var(--ink);
+  background: var(--gold);
+  color: var(--ink);
+  font: inherit;
+  font-size: calc(var(--u) * 25);
+  line-height: calc(var(--u) * 24);
+  font-style: italic;
+  text-transform: uppercase;
+  transform: skewX(-10deg);
+  box-shadow: calc(var(--u) * 4) calc(var(--u) * 4) 0 var(--ink);
+}
+.pixel-ui .bold-go.is-label {
+  font-size: inherit;
+  line-height: inherit;
+  padding: calc(var(--u) * 2) calc(var(--u) * 10);
+}
+.pixel-ui .bold-go.is-small {
+  margin-top: calc(var(--u) * 4);
+  padding: 0 calc(var(--u) * 10);
+  font-size: inherit;
+  line-height: inherit;
+}
+.pixel-ui .bold-go[aria-disabled='true'],
+.pixel-ui .bold-go.is-off {
+  background: var(--mist-2);
+  color: var(--ink-soft);
+}
+.pixel-ui button.bold-go:focus {
+  outline: none;
+  box-shadow: 0 0 0 calc(var(--u) * 3) var(--paper), calc(var(--u) * 6) calc(var(--u) * 6) 0 var(--ink);
+}
+/* What the week's best run pays: three cards, gold for the tickets. */
+.pixel-ui .bold-pays-box {
+  position: relative;
+  z-index: 1;
+  align-self: start;
+  color: var(--paper);
+}
+.pixel-ui .bold-pays-box h3,
+.pixel-ui .bold-pays-box p {
+  margin: 0;
+  font: inherit;
+  font-style: italic;
+  text-transform: uppercase;
+}
+.pixel-ui .bold-pays {
+  display: flex;
+  gap: calc(var(--u) * 5);
+  margin: calc(var(--u) * 4) 0 calc(var(--u) * 6);
+}
+.pixel-ui .bold-pay {
+  width: calc(var(--u) * 42);
+  border: calc(var(--u) * 2) solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  text-align: center;
+  box-shadow: calc(var(--u) * 3) calc(var(--u) * 3) 0 #000;
+}
+.pixel-ui .bold-pay b {
+  display: block;
+  font-weight: normal;
+  font-style: italic;
+  font-size: calc(var(--u) * 25);
+  line-height: calc(var(--u) * 24);
+}
+.pixel-ui .bold-pay span {
+  display: block;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pixel-ui .bold-pay em {
+  display: block;
+  border-top: calc(var(--u) * 2) solid var(--ink);
+  background: var(--gold);
+}
+.pixel-ui .bold-pay.is-paid em {
+  background: var(--go-lit);
+}
+/* The strip along the foot: white with dots, cards leaning on it. */
+.pixel-ui .bold-strip {
+  position: relative;
+  z-index: 2;
+  padding: calc(var(--u) * 10) calc(var(--u) * 10) calc(var(--u) * 6);
+  background:
+    radial-gradient(circle, rgb(0 0 0 / 9%) var(--u), transparent var(--u)) 0 0 / calc(var(--u) * 7) calc(var(--u) * 7),
+    var(--paper);
+  box-shadow: 0 calc(var(--u) * -3) 0 var(--ink);
+}
+.pixel-ui .bold-bouts,
+.pixel-ui .bold-cards {
+  display: flex;
+  justify-content: center;
+  gap: calc(var(--u) * 6);
+}
+.pixel-ui .bold-bout,
+.pixel-ui .bold-card {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  width: calc(var(--u) * 72);
+  padding: calc(var(--u) * 4) 0 calc(var(--u) * 2);
+  border: calc(var(--u) * 2) solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  transform: skewX(-8deg);
+  box-shadow: calc(var(--u) * 3) calc(var(--u) * 3) 0 var(--ink);
+}
+.pixel-ui .bold-bout > *,
+.pixel-ui .bold-card > * {
+  transform: skewX(8deg);
+}
+.pixel-ui .bold-bout strong,
+.pixel-ui .bold-card strong {
+  font-weight: normal;
+  font-style: italic;
+  text-transform: uppercase;
+}
+.pixel-ui .bold-bout-n {
+  position: absolute;
+  left: calc(var(--u) * -6);
+  top: calc(var(--u) * -8);
+  padding: 0 calc(var(--u) * 4);
+  background: var(--ink);
+  color: var(--paper);
+  font-style: italic;
+}
+.pixel-ui .bold-bout-team,
+.pixel-ui .bold-foe-team {
+  display: flex;
+}
+/* Three party icons in a card's width: they stand a little in front of each other. */
+.pixel-ui .bold-bout-team > .px-mon-icon + .px-mon-icon,
+.pixel-ui .bold-foe-team > .px-mon-icon + .px-mon-icon {
+  margin-left: calc(var(--u) * -10);
+}
+.pixel-ui .bold-sticker .px-mon-icon {
+  margin: calc(var(--u) * -10) calc(var(--u) * -2) calc(var(--u) * -10) calc(var(--u) * 2);
+}
+.pixel-ui .bold-bout-team .px-mon-icon,
+.pixel-ui .bold-foe-team .px-mon-icon,
+.pixel-ui .bold-sticker .px-mon-icon {
+  flex: none;
+}
+.pixel-ui .bold-bout.is-won {
+  background: var(--ink);
+  color: var(--paper);
+}
+.pixel-ui .bold-bout.is-won .bold-bout-n {
+  background: var(--go-lit);
+  color: var(--ink);
+}
+.pixel-ui .bold-bout.is-next,
+.pixel-ui .bold-card:focus {
+  box-shadow: 0 0 0 calc(var(--u) * 3) var(--gold), calc(var(--u) * 5) calc(var(--u) * 5) 0 var(--ink);
+  translate: 0 calc(var(--u) * -6);
+  outline: none;
+}
+.pixel-ui .bold-flag {
+  position: absolute;
+  right: calc(var(--u) * -6);
+  top: calc(var(--u) * -9);
+  padding: 0 calc(var(--u) * 3);
+  border: calc(var(--u) * 2) solid var(--ink);
+  background: var(--red);
+  color: var(--paper);
+  text-transform: uppercase;
+  rotate: 8deg;
+}
+.pixel-ui .bold-flag.is-won {
+  top: calc(var(--u) * 2);
+  right: calc(var(--u) * -8);
+  background: var(--go-lit);
+  color: var(--ink);
+  border-color: var(--paper);
+}
+/* A regular's figure on their bout card, and in the rentals' bout box. */
+.pixel-ui .bold-bout .look-figure,
+.pixel-ui .bold-foe .look-figure {
+  --figure-scale: 1;
+}
+/* The rentals: the big picture swaps with the card under the cursor. */
+.pixel-ui .bold-hero-pane {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: calc(var(--u) * 12);
+  min-width: 0;
+}
+.pixel-ui .bold-hero-pane[hidden] {
+  display: none;
+}
+.pixel-ui .bold-moves {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: calc(var(--u) * 4) calc(var(--u) * 5);
+}
+.pixel-ui .bold-moves span {
+  padding: 0 calc(var(--u) * 6);
+  background: var(--ink);
+  color: var(--paper);
+  font-style: italic;
+  white-space: nowrap;
+  box-shadow: calc(var(--u) * 2) calc(var(--u) * 2) 0 rgb(0 0 0 / 40%);
+}
+.pixel-ui .bold-side-boxes {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: calc(var(--u) * 6);
+  align-self: start;
+  margin-top: calc(var(--u) * -16);
+}
+.pixel-ui .bold-box {
+  display: grid;
+  justify-items: start;
+  gap: calc(var(--u) * 3);
+  padding: calc(var(--u) * 4) calc(var(--u) * 6) calc(var(--u) * 6);
+  border: calc(var(--u) * 2) solid var(--ink);
+  background: var(--paper);
+  box-shadow: calc(var(--u) * 4) calc(var(--u) * 4) 0 var(--sun-dark);
+}
+.pixel-ui .bold-box.is-ink {
+  border-color: var(--paper);
+  background: var(--ink);
+  color: var(--paper);
+}
+.pixel-ui .bold-box h3 {
+  margin: 0;
+  font: inherit;
+  font-style: italic;
+  text-transform: uppercase;
+}
+.pixel-ui .bold-slots {
+  display: flex;
+  gap: calc(var(--u) * 5);
+}
+.pixel-ui .bold-slot {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  width: calc(var(--u) * 38);
+  height: calc(var(--u) * 46);
+  border: calc(var(--u) * 2) dashed var(--ink);
+}
+.pixel-ui .bold-slot.is-full {
+  border-style: solid;
+  background: var(--gold);
+}
+.pixel-ui .bold-slot small {
+  text-transform: uppercase;
+}
+.pixel-ui .bold-foe {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 5);
+}
+.pixel-ui .bold-foe strong {
+  font-weight: normal;
+  font-style: italic;
+}
+.pixel-ui .bold-foe-pay {
+  margin: 0;
+  padding: 0 calc(var(--u) * 4);
+  background: var(--gold);
+  color: var(--ink);
+  font-style: italic;
+  text-transform: uppercase;
+}
+.pixel-ui .bold-card {
+  /* Six across, and seven - three on loan, three to swap in, START AGAIN - by giving a little each. */
+  flex: 0 1 calc(var(--u) * 82);
+  min-width: calc(var(--u) * 70);
+  min-height: calc(var(--u) * 80);
+  width: auto;
+  cursor: pointer;
+}
+.pixel-ui .bold-card-in {
+  display: grid;
+  justify-items: center;
+}
+.pixel-ui .bold-card-tag {
+  position: absolute;
+  right: calc(var(--u) * -6);
+  top: calc(var(--u) * -8);
+  padding: 0 calc(var(--u) * 3);
+  border: calc(var(--u) * 2) solid var(--gold);
+  background: var(--ink);
+  color: var(--gold);
+  text-transform: uppercase;
+  rotate: 6deg;
+}
+.pixel-ui .bold-card-tag.is-theirs {
+  border-color: var(--ink);
+  background: var(--red);
+  color: var(--paper);
+}
+.pixel-ui .bold-card.is-taking {
+  background: var(--gold-wash);
+}
+.pixel-ui .bold-card.is-again {
+  align-content: center;
+  background: var(--ink);
+  color: var(--paper);
+}
+.pixel-ui .bold-card.is-again small {
+  text-transform: uppercase;
+}
+/* The smallest screens: the bill and the strip, the pictures given up. */
+.menu-overlay.pixel-ui:where([data-room='tight']) .px-body.bold-arena {
+  grid-template-rows: auto auto;
+  overflow-y: auto;
+}
+.pixel-ui:where([data-room='tight']) .bold-arena:is(.is-cup, .is-rental) .bold-hero {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: auto;
+  padding-top: calc(var(--u) * 24);
+}
+.pixel-ui:where([data-room='tight']) .bold-arena.is-cup .bold-stage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 8);
+  justify-self: start;
+}
+.pixel-ui:where([data-room='tight']) .bold-your-three {
+  position: static;
+}
+.pixel-ui:where([data-room='tight']) .bold-rule-check {
+  margin-top: 0;
+}
+.pixel-ui:where([data-room='tight']) .bold-side-boxes {
+  margin-top: 0;
+}
+.pixel-ui:where([data-room='tight']) .bold-pays-box {
+  display: none;
+}
+.pixel-ui:where([data-room='tight']) .bold-stage .bold-side,
+.pixel-ui:where([data-room='tight']) .bold-stage .bold-spot,
+.pixel-ui:where([data-room='tight']) .bold-hero-pane .bold-stage {
+  display: none;
+}
+.pixel-ui:where([data-room='tight']) .bold-bouts,
+.pixel-ui:where([data-room='tight']) .bold-cards {
+  flex-wrap: wrap;
+  row-gap: calc(var(--u) * 12);
+}
 /* --- The PLAYTEST BOARD (`dev/playtestBoardView.ts`) ------------------------
    One long list in a side panel: it scrolls inside the window, never past it. */
 :where(.pixel-ui) .playtest-board-body {

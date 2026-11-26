@@ -138,7 +138,11 @@ try {
   await step(1500);
   // A dojo nobody has fought in: no cup or rental run from an earlier session.
   await page.evaluate(`(() => { const k = ${JSON.stringify(PLAYTEST_SAVE_KEY)}; const s = JSON.parse(localStorage.getItem(k));
-    delete s.raidProgress.dojo; localStorage.setItem(k, JSON.stringify(s)); return true; })()`);
+    delete s.raidProgress.dojo;
+    // A Ground type, so a side can keep the GROUND CUP's rule in the week it is the cup.
+    const first = s.stash.pokemon[0];
+    s.stash.pokemon.push({ ...first, id: 'dugtrio-cup', pokemon: { ...first.pokemon, speciesId: 'dugtrio', nickname: null, moves: [], pendingMoves: [] } });
+    localStorage.setItem(k, JSON.stringify(s)); return true; })()`);
   const door = await base(`b.doors.find((each) => each.id === 'battle-arena')`);
   await walkTo(door.tiles, inRoom('battle-arena'));
   await until(inRoom('battle-arena'), 'the dojo');
@@ -162,14 +166,21 @@ try {
 
   // A cup bout, with a side that keeps the rule.
   await click('.dojo-counter [data-mode="cup"]');
+  await shot('02-the-cup-page');
+  // The cup's page is Champion Red; YOUR THREE opens the list of who goes.
+  await click('.dojo-counter [data-pick-team]');
   await page.evaluate(`(() => { for (const row of document.querySelectorAll('.dojo-counter [data-member].is-selected')) row.click(); })()`);
   await step(300);
+  await click('.dojo-counter [data-member="dugtrio-cup"]:not([aria-disabled])', 300);
   for (let guard = 0; guard < 12 && (await counter()).team.length < 3; guard += 1) {
     if (!(await click('.dojo-counter [data-member]:not(.is-selected):not([aria-disabled])', 300))) break;
   }
   const refused = await page.evaluate(`document.querySelectorAll('.dojo-counter [data-member][aria-disabled]').length`);
   console.log(`     ${(await counter()).team.length} on the side; ${refused} rows refused by the rule or the clauses`);
   await shot('02-the-cup-team');
+  // Back to the cup's page, which FIGHT and the tabs are on.
+  await press('Escape', 300);
+  await shot('02-the-cup-side-chosen');
   const ready = await page.evaluate(`!document.querySelector('.dojo-counter [data-fight]')?.hasAttribute('aria-disabled')`);
   if (ready) {
     const before = (await raw()).raidProgress.dojo?.cup;
@@ -234,15 +245,17 @@ try {
     localStorage.setItem(k, JSON.stringify(s)); return true; })()`);
   await talkAtCounter();
   await click('.dojo-counter [data-mode="rental"]');
-  const atFour = /Bout (\d) of 7: (\S+) brings/.exec(await page.evaluate(`document.querySelector('.dojo-counter').innerText`));
-  expect(`a run four wins in offers bout five (${atFour?.[0]})`, atFour?.[1] === '5');
+  // The rentals' page names the next bout on its bout box (`data-bout`, `data-foe`).
+  const nextBout = () => page.evaluate(`(() => { const box = document.querySelector('.dojo-counter [data-bout]'); return box ? [box.dataset.bout, box.dataset.foe] : null; })()`);
+  const atFour = await nextBout();
+  expect(`a run four wins in offers bout five (${atFour})`, atFour?.[0] === '5');
   expect('START AGAIN is offered', await click('.dojo-counter [data-new-run]', 300));
   for (const species of six.slice(0, 3)) await click(`.dojo-counter [data-rental="${species}"]`, 300);
-  const shows = /Bout (\d) of 7: (\S+) brings/.exec(await page.evaluate(`document.querySelector('.dojo-counter').innerText`));
+  const shows = await nextBout();
   await shot('06-start-again-same-three');
-  expect(`START AGAIN with the same three says bout one (${shows?.[0]})`, shows?.[1] === '1');
+  expect(`START AGAIN with the same three says bout one (${shows})`, shows?.[0] === '1');
   const again = await fightAndCome();
-  expect(`and fights bout one against ${shows?.[2]} (${again.trainer}, bout ${again.run?.bout})`, again.run?.bout === 1 && again.trainer === shows?.[2]);
+  expect(`and fights bout one against ${shows?.[1]} (${again.trainer}, bout ${again.run?.bout})`, again.run?.bout === 1 && again.trainer === shows?.[1]);
   const after = (await raw()).raidProgress.dojo?.rental?.run;
   const saidAfter = String(await base(`b.dialogBox?.visible ? b.dialogBox.textObject?.text : ''`)).replace(/\s+/g, ' ');
   console.log(`     ${saidAfter} ${JSON.stringify(after)}`);
