@@ -225,7 +225,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     let title = 'Your things';
     let back: { label: string; attribute: string } | undefined;
     let body: string;
-    let hints = 'ARROWS move · LEFT/RIGHT a pocket · ENTER use a disc or stone · B close';
+    let hints = 'ARROWS move · LEFT RIGHT a pocket · ENTER use a disc or stone · ESC back';
     const machine = item ? machineForItem(item) : undefined;
     if (item && this.using?.kind === 'teach' && machine) {
       title = 'Teach a move';

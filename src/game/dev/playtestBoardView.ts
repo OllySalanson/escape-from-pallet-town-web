@@ -33,6 +33,6 @@ export function playtestBoardMarkup(hour: PlaytestHour | null): string {
       `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.brief)}>${rows}</div>`,
       { heading: 'Go, set, play', note: `Hour: ${now}` },
     )}</main>`,
-    hints: 'ARROWS choose · ENTER do it · ESC back',
+    hints: 'ARROWS move · ENTER do it · ESC back',
   });
 }

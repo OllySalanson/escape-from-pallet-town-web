@@ -125,7 +125,7 @@ export function jumpTeamMarkup(state: JumpTeamState): string {
     close: { attribute: 'data-close' },
     aside: pixelTag(`${number(state.tickets)} tickets`, 'secure'),
     body,
-    hints: 'Arrows choose · ENTER takes one in or out · ESC leaves',
+    hints: 'ARROWS move · ENTER takes one in or out · ESC back',
     ...(state.status ? { status: state.status } : {}),
   });
 }
@@ -274,7 +274,7 @@ export function prizeWindowMarkup(state: PrizeWindowState): string {
     close: { attribute: 'data-close' },
     aside: pixelTag(`${number(state.record.tickets)} tickets`, 'secure'),
     body,
-    hints: 'Arrows choose · ENTER asks to buy one · ESC leaves',
+    hints: 'ARROWS move · ENTER asks to buy one · ESC back',
     ...(state.status ? { status: state.status } : {}),
   });
 }
@@ -341,7 +341,7 @@ export function berryTeamMarkup(state: BerryTeamState): string {
     close: { attribute: 'data-close' },
     aside: pixelTag(`${number(state.tickets)} tickets`, 'secure'),
     body,
-    hints: 'Arrows choose · ENTER picks this one · ESC leaves',
+    hints: 'ARROWS move · ENTER picks this one · ESC back',
     ...(state.status ? { status: state.status } : {}),
   });
 }
@@ -404,7 +404,7 @@ export function courseTeamMarkup(state: CourseTeamState): string {
     close: { attribute: 'data-close' },
     aside: pixelTag(`${number(state.tickets)} tickets`, 'secure'),
     body,
-    hints: 'Arrows choose · ENTER takes one in or out · ESC leaves',
+    hints: 'ARROWS move · ENTER takes one in or out · ESC back',
     ...(state.status ? { status: state.status } : {}),
   });
 }

@@ -172,6 +172,6 @@ export function favourListMarkup(entries: readonly FavourEntry[]): string {
     place: 'The harbour',
     close: { attribute: 'data-favours-close' },
     body: `<main class="px-body favour-list">${pixelWindow(pane, { heading: 'Favours', note: `${inHand} in hand · ${done} done` })}</main>`,
-    hints: 'ARROWS read · ESC or O back',
+    hints: 'ARROWS read · ESC back',
   });
 }

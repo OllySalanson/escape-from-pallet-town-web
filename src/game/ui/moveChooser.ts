@@ -151,7 +151,7 @@ export function moveChooserMarkup(view: MoveChooserView, chosen: number | null =
     hints: forgetting
       ? 'ENTER forget it · ESC pick again'
       : view.canDefer
-        ? 'ARROWS choose · ENTER mark it · ESC decide later'
-        : 'ARROWS choose · ENTER mark it · ESC do not learn it',
+        ? 'ARROWS move · ENTER mark it · ESC decide later'
+        : 'ARROWS move · ENTER mark it · ESC do not learn it',
   });
 }

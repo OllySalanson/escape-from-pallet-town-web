@@ -302,7 +302,7 @@ export function dexFamily(dex: Pokedex, kind: PokemonBase): string {
 }
 
 /** What the page's help bar says. */
-export const ENTRY_HINTS = 'LEFT and RIGHT turn the page · ENTER hears its cry · ESC back to the list';
+export const ENTRY_HINTS = 'LEFT RIGHT turn the page · ENTER hears its cry · ESC back';
 
 /** A kind's own page. Undefined for one never met: an empty ball has no page. */
 export function dexEntryBody(dex: Pokedex, dexId: number): string | undefined {
