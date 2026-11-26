@@ -566,12 +566,6 @@ export interface RaidProgress {
    * highest level not going on the next raid - so no version bump.
    */
   readonly garden?: readonly string[];
-  /**
-   * How many raids in a row have got out, and the run the last lost raid ended
-   * (`base/runSlate.ts`). Kept with the record of raids and asked of nothing else.
-   * Absent reads as no run yet, so no version bump.
-   */
-  readonly outRun?: OutRun;
   /** How many raids in a row that same team has gone down: the rail says less to a team it knows (`base/heldBreath.ts`). */
   readonly benchRaids?: number;
   /** Raids that ended with no time on the clock to speak of, or abandoned: the Day-Care does not count them (`hub/dayCare.ts`). */
@@ -649,12 +643,6 @@ export interface RaidProgress {
 export interface LandingRecord {
   readonly streak: number;
   readonly best: number;
-}
-
-/** How many raids in a row have got out, and what the last lost raid ended. */
-export interface OutRun {
-  readonly now: number;
-  readonly broke: number;
 }
 
 export interface MapRaidRecord {
@@ -2675,8 +2663,7 @@ export class SaveManager {
     const restocked = Object.entries(after)
       .map(([itemId, quantity]) => ({ itemId, quantity: quantity - (afterLoss[itemId] ?? 0) }))
       .filter(({ quantity }) => quantity > 0);
-    // Walking away from a raid is losing it, or a run could be saved by closing the tab.
-    const raidProgress = countShortRaid(extendRun(withLog, 'wiped'));
+    const raidProgress = countShortRaid(withLog);
     // And it has paid for nothing, as a raid out before the first hunter has:
     // what is owed - the heal booked against its clock, the ward's bed, Bill's
     // ration - is owed by the next raid that runs. Its length is not known
@@ -2715,7 +2702,7 @@ export class SaveManager {
     if (!game || !endsRaidInFlight(game, raidId)) {
       return false;
     }
-    let raidProgress = extendRun(bumpRaid(game.raidProgress, mapId, outcome), outcome);
+    let raidProgress = bumpRaid(game.raidProgress, mapId, outcome);
     if (clockMs !== undefined && clockMs < DAY_CARE_LEAST_RAID_MS) {
       raidProgress = countShortRaid(raidProgress);
     }
@@ -3231,12 +3218,6 @@ function bumpRaid(
   };
 }
 
-/** A raid out adds to the run, and anything else ends it. */
-function extendRun(progress: RaidProgress, outcome: 'extracted' | 'wiped'): RaidProgress {
-  const now = progress.outRun?.now ?? 0;
-  return { ...progress, outRun: outcome === 'extracted' ? { now: now + 1, broke: 0 } : { now: 0, broke: now } };
-}
-
 /** Settles the raid's own cost before anything it earned is added. */
 function applySettlement(stash: Stash, settlement: RaidSettlement | undefined): void {
   if (!settlement) {
@@ -3502,7 +3483,6 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     ...(value.arenaIntroSeen === true ? { arenaIntroSeen: true } : {}),
     ...(readLandings(value.landings) ?? {}),
     ...(readRaces(value.races) ?? {}),
-    ...(readOutRun(value.outRun) ?? {}),
     ...(readPit(value.pit) ?? {}),
     ...(value.bouts === undefined ? {} : { bouts: readBouts(value.bouts) }),
     ...(value.dojo === undefined ? {} : { dojo: readDojoRecord(value.dojo) }),
@@ -3599,15 +3579,6 @@ function readPit(value: unknown): { readonly pit: PitRecord } | null {
   return Number.isInteger(fed) && (fed as number) >= 0 && Number.isInteger(taken) && (taken as number) >= 0
     ? { pit: { fed: fed as number, taken: taken as number } }
     : null;
-}
-
-/** A landing record, or nothing if what is stored is not one. */
-function readOutRun(value: unknown): { readonly outRun: OutRun } | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-  const count = (entry: unknown): number => (Number.isInteger(entry) && (entry as number) > 0 ? (entry as number) : 0);
-  return { outRun: { now: count(value.now), broke: count(value.broke) } };
 }
 
 /** Only courses that still exist, with whole counts and a sane time. */

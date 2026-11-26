@@ -302,8 +302,6 @@ import { ArenaPortalView, PORTAL_SIGN_DEPTH } from '../base/arenaPortalView';
 import { portalShapeFor } from '../base/arenaPortal';
 import { RunnerWayMarks, YardWayMark } from '../base/wayMark';
 import { flashScreen } from '../ui/screenFlash';
-import { worthChalking } from '../base/runSlate';
-import { RunSlate } from '../base/runSlateView';
 import { BREATH_LISTENS_AFTER_MS, betOf, breathMs, railStamps, wordsUpAt, type AtRisk, type RailBet } from '../base/heldBreath';
 import { STANDS_HEIGHT, STANDS_ORIGIN, STANDS_WIDTH } from '../base/arenaStands';
 import { ARENA_RIM, fenceBeside, isAtRim, landingBelow, rimTileOver, type RimLanding } from '../base/arenaRim';
@@ -488,9 +486,6 @@ let boatDueHome = false;
 let harbourToBeNamed = false;
 /** How long the view looks round at the crowd on coming home, and how far towards them. */
 const CROWD_LOOK_MS = 1700;
-/** Where the run's slate hangs, on the rail at the head of the runner: beside whoever has just come up it, and in the view turned to the crowd. */
-const RUN_SLATE_ROW = 56;
-const RUN_SLATE_AT = { x: 34 * TILE_SIZE + 6, y: 54 * TILE_SIZE + 12 };
 const CROWD_LOOK_SHARE = 0.8;
 /** How far short of the bottom of the dark under the stands the look on coming home stops: the seats are in view by then. */
 const CROWD_LOOK_STOPS_SHORT = 28;
@@ -916,7 +911,6 @@ export class BaseScene extends Phaser.Scene {
   /** The board that says a lap's time. */
   private hallSign: PlaceNameSign | null = null;
   /** How many raids in a row have got out, on the rail by the runner. */
-  private runSlate: RunSlate | null = null;
   /** The rival on the far floor, and who it is. */
   private rivalFigure: Phaser.GameObjects.Sprite | null = null;
   private rivalHere: HunterRival | null = null;
@@ -1588,7 +1582,6 @@ export class BaseScene extends Phaser.Scene {
       this.fogLift = null;
       this.hallSign?.destroy();
       this.hallSign = null;
-      this.runSlate = null;
       this.closeHallPanel();
       if (typeof document !== 'undefined') {
         this.game.canvas.style.cursor = '';
@@ -1602,7 +1595,6 @@ export class BaseScene extends Phaser.Scene {
     }
     this.showTheWayToTheFirstRaid();
     this.layThePitGift();
-    this.chalkTheRun(data.raidMood === 'groan');
     this.standTheRival(data.bout ? hunterRival(data.bout.rival) : undefined);
     // The rival and the leaders stand after the partner arrived: one that came
     // in on a tile of theirs steps off it (the playtest board stands the player
@@ -2205,7 +2197,6 @@ export class BaseScene extends Phaser.Scene {
     this.tellTheLap(middle);
     this.watchThePitGift(deltaMs);
     this.hallSign?.update(deltaMs);
-    this.runSlate?.update(deltaMs);
     // Walking off, or anything else asked of the view, takes it back from the crowd.
     this.crowdLookMs = this.targetTile || this.arenaPanel || this.dialogBox.visible ? 0 : Math.max(0, this.crowdLookMs - deltaMs);
     this.railStandMs = this.targetTile || this.arenaPanel || this.dialogBox.visible || !isAtRim(this.currentTile) ? 0 : this.railStandMs + deltaMs;
@@ -3006,21 +2997,6 @@ export class BaseScene extends Phaser.Scene {
     this.arena.crowdReacts(practice.won ? 'cheer' : 'clap', this.figureMiddle());
     const at = this.leadersHere.find((leader) => leader.gym.bossId === gym.bossId)?.tile ?? this.rivalAt;
     this.say([practice.won ? gym.practice.won : gym.practice.lost], [at]);
-  }
-
-  /** The slate by the runner: the run so far, or the one a lost raid has just ended, struck through. */
-  private chalkTheRun(justLost: boolean): void {
-    this.runSlate?.destroy();
-    this.runSlate = null;
-    if (!this.arena || this.visit) {
-      return;
-    }
-    const run = this.savedGame.raidProgress.outRun;
-    const struck = justLost && worthChalking(run?.broke ?? 0);
-    const count = struck ? run?.broke ?? 0 : run?.now ?? 0;
-    if (struck || worthChalking(count)) {
-      this.runSlate = new RunSlate(this, RUN_SLATE_AT, atRow(FIGURE_BAND, RUN_SLATE_ROW), count, struck);
-    }
   }
 
   private hangTheBanner(): void {
