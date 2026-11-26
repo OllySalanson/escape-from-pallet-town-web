@@ -121,6 +121,16 @@ body {
   width: 100%;
   height: auto;
 }
+/* With room beside it, the rim's card stands down the right as the others do,
+   and the portal - the pit seen whole - has the rest (`HubScene.dockPanel`). */
+#screens .arena-panel.is-rim[data-rim-side] {
+  left: auto;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(var(--u) * var(--dock, 228));
+  height: 100%;
+}
 /* They come in from the edge they stand on, a game pixel a step, rather than appearing over the hall. */
 /* The moment a disc is read (`teachMomentBody`); its rules are in the Pixel UI block. */
 /* The shiny MAGIKARP's two gold stars on THE PRIZE WINDOW's shelf, taking turns. */
@@ -278,6 +288,9 @@ body {
 }
 #screens .arena-panel.is-rim {
   animation: arena-panel-from-foot 120ms steps(4);
+}
+#screens .arena-panel.is-rim[data-rim-side] {
+  animation: arena-panel-from-right 120ms steps(4);
 }
 /* The rim's is as tall as what it says, with the pit it is about above it. It has
    no title bar, and no help bar but while the game is saying no: a refusal of
@@ -6902,6 +6915,22 @@ body.touch-play .feedback-tab {
   grid-template-columns: calc(var(--u) * 150) minmax(0, 1fr);
   gap: calc(var(--u) * 4);
 }
+/* Down the side: what is chosen over what it means. Who comes and what a wipe
+   takes are short and stand abreast; who hunts and what the job pays have the
+   column's whole width, so neither is cut to its short form. */
+:where(.pixel-ui[data-rim-side]) .rim-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+:where(.pixel-ui[data-rim-side]) .rim-board {
+  grid-auto-flow: row dense;
+}
+:where(.pixel-ui[data-rim-side]) .rim-board [data-rim-tile='hunters'],
+:where(.pixel-ui[data-rim-side]) .rim-board [data-rim-tile='job'] {
+  grid-column: 1 / -1;
+}
+:where(.pixel-ui[data-rim-side]) .rim-team-notes .rim-wide {
+  display: none;
+}
 /* The words that only add to what a tile already shows go, and stay on the help line. */
 :where(.pixel-ui[data-rim-narrow]) .rim-wide {
   display: none;
@@ -7117,6 +7146,15 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .rim-help {
   white-space: normal;
+}
+/* Down the side the column is narrower, so the sentence is given three lines
+   and the card is one height whatever it says. */
+:where(.pixel-ui[data-rim-side]) .rim-foot {
+  min-height: calc(var(--u) * 38);
+}
+/* The column is too narrow to stand the keys beside the sentence: they ran into it. */
+:where(.pixel-ui[data-rim-side]) .rim-keys {
+  display: none;
 }
 
 /* In a side column a card is too narrow for two moves abreast, and wrapping

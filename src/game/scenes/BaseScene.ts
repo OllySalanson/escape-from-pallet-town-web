@@ -218,7 +218,6 @@ import {
   directionBetween,
   isPartnerSpecies,
   sameTile,
-  partnerFrame,
   partnerOf,
   partnerReaction,
   type PartnerEmote,
@@ -227,7 +226,6 @@ import {
 import {
   BUBBLE_HEIGHT,
   BUBBLE_WIDTH,
-  PARTNER_SPRITE_X_OFFSET,
   PartnerFigure,
   drawEmoteBubble,
   type PartnerHost,
@@ -293,17 +291,18 @@ import { ArenaView } from '../base/arenaView';
 import { roundTheYardStair, SLIDE_AFTER_MS, slideRound } from '../base/arenaWalk';
 import { ValeOverviewView } from '../base/valeOverviewView';
 import { wayInCards } from '../base/wayInCard';
-import { WAY_IN_CLICK_REACH } from '../base/valeOverview';
 import { isNightRaid } from '../world/nightRaids';
 import { ArenaFurniture } from '../base/arenaFurniture';
 import { MAX_RUN_PARTY } from '../hub/deploymentFlow';
 import { benchToKeep, flowForGame, heldRoomMapId, offeredInsertions, type ArenaKit } from '../base/arenaKit';
 import { ArenaDiveView } from '../base/arenaDiveView';
+import { ArenaPortalView, PORTAL_SIGN_DEPTH } from '../base/arenaPortalView';
+import { portalShapeFor } from '../base/arenaPortal';
 import { RunnerWayMarks, YardWayMark } from '../base/wayMark';
 import { flashScreen } from '../ui/screenFlash';
 import { worthChalking } from '../base/runSlate';
 import { RunSlate } from '../base/runSlateView';
-import { BREATH_LISTENS_AFTER_MS, betOf, breathMs, climbAt, railStamps, wordsUpAt, type AtRisk, type RailBet } from '../base/heldBreath';
+import { BREATH_LISTENS_AFTER_MS, betOf, breathMs, railStamps, wordsUpAt, type AtRisk, type RailBet } from '../base/heldBreath';
 import { STANDS_HEIGHT, STANDS_ORIGIN, STANDS_WIDTH } from '../base/arenaStands';
 import { ARENA_RIM, fenceBeside, isAtRim, landingBelow, rimTileOver, type RimLanding } from '../base/arenaRim';
 import {
@@ -319,8 +318,7 @@ import {
   HOP_MS,
   facingTowards,
   jumpPose,
-  partnerLeap,
-  overTheFence,
+  PARTNER_LAG_MS,
 } from '../base/arenaDive';
 import { marshalLines } from '../base/arenaMarshal';
 import { wallMapPicture } from '../base/wallMap';
@@ -333,7 +331,6 @@ import { surveyedTiles } from '../world/survey';
 import { FIRST_WORDS, hasHeard, heldLandingNews, mapsMovedNews, spokenLines, type FirstWordsId } from '../hub/firstWords';
 import { FIRST_JUMP_ANSWERS, firstJumpQuestion, goesStraightOver, isFirstRaid } from '../hub/firstRaid';
 import { benchOffer, benchOfferQuestion } from '../hub/benchOffer';
-import { rimOpensAwayFromJumpIn } from '../hub/railWarning';
 import { centerOffer, healedLine, nobodyCanRaid, NOT_HEALED_LINE, SWAP_AT_THE_PC_LINE } from '../hub/centerCounter';
 import {
   BUILD_NOT_SAVED_LINE,
@@ -853,6 +850,12 @@ export class BaseScene extends Phaser.Scene {
    */
   private rowingBoats: FloatingBoats | null = null;
   private arena: ArenaView | null = null;
+  /** The pit seen whole, while the player looks down into it (`base/arenaPortalView.ts`). */
+  private portal: ArenaPortalView | null = null;
+  /** Where the hall's camera stood as a jump began, less however far the portal had moved by then. */
+  private jumpScroll: { readonly x: number; readonly y: number } | null = null;
+  /** The first jump's question is being asked at the rail, over the portal. */
+  private firstJumpAsking = false;
   /** What the player is getting ready with in THE RAID ARENA's hall (`base/arenaKit.ts`). */
   private kit: ArenaKit | null = null;
   /** Who is on the bench and what is on the rack, where they can be seen. */
@@ -884,23 +887,16 @@ export class BaseScene extends Phaser.Scene {
   private jump: {
     elapsedMs: number;
     readonly world: WorldSceneData;
-    readonly from: { readonly x: number; readonly y: number };
-    readonly over: { readonly x: number; readonly y: number };
-    readonly focus: { readonly x: number; readonly y: number };
-    readonly viewFrom: { readonly x: number; readonly y: number };
-    readonly viewAtFence: { readonly x: number; readonly y: number };
     hopped: boolean;
     leaving: boolean;
     /** What falls and what goes past (`arenaDiveView.ts`). */
     readonly dive: ArenaDiveView | null;
-    /** The partner on its way over the fence after the player, drawn here until it too is falling. */
-    leaper: { readonly image: Phaser.GameObjects.Image; readonly from: { readonly x: number; readonly y: number } } | null;
+    /** The partner is going over after the player, and has not left the portal's edge yet. */
+    partnerComing: boolean;
     /** How far the arrow keys have drifted whoever is falling. */
     steer: { readonly x: number; readonly y: number };
     /** On the rail, before the hop, with the hall holding its breath (`base/heldBreath.ts`). */
     breath: { elapsedMs: number; readonly ms: number; readonly words: number; cut: boolean } | null;
-    /** Where the climb got them, which the hop goes on from. */
-    climb: { readonly x: number; readonly y: number };
     /** How big a bet the house takes this for. */
     bet: RailBet;
   } | null = null;
@@ -911,7 +907,6 @@ export class BaseScene extends Phaser.Scene {
     /** Since coming home at all. */
     heldMs: number;
     steps: number;
-    readonly tile: GridPosition;
     readonly sign: PlaceNameSign;
     readonly line: string;
   } | null = null;
@@ -1323,6 +1318,9 @@ export class BaseScene extends Phaser.Scene {
     this.arenaPanel = null;
     this.telescope = null;
     this.aimed = null;
+    this.portal = null;
+    this.jumpScroll = null;
+    this.firstJumpAsking = false;
     this.railTileRead = null;
     this.jump = null;
     this.fogLift = null;
@@ -1564,6 +1562,8 @@ export class BaseScene extends Phaser.Scene {
       this.runnerWayMarks?.destroy();
       this.runnerWayMarks = null;
       this.arena?.destroy();
+      this.portal?.destroy();
+      this.portal = null;
       this.jump?.dive?.destroy();
       this.fogLift?.sign.destroy();
       this.fogLift = null;
@@ -2093,6 +2093,7 @@ export class BaseScene extends Phaser.Scene {
     };
     const mapId = requireInsertion(flow.insertionId).mapId;
     const view = new ArenaView(this, game, this.still, mapId, this.landingsOn(mapId, game));
+    this.portal = new ArenaPortalView(this, this.still);
     // Anybody already through the doors - home from a raid on the rim, back from a
     // bout on the far floor - came through them open.
     if (!isTunnel(this.currentTile)) {
@@ -2191,6 +2192,58 @@ export class BaseScene extends Phaser.Scene {
     this.railStandMs = this.targetTile || this.arenaPanel || this.dialogBox.visible || !isAtRim(this.currentTile) ? 0 : this.railStandMs + deltaMs;
     this.settleAim();
     this.settleHallCamera(deltaMs, false);
+    this.keepThePortal(deltaMs);
+  }
+
+  /**
+   * The portal is up while the player looks down: the rim's card open, or the
+   * first jump's question asked at the rail. It stands in whatever room the card
+   * or the box leaves, and goes back to the rail when neither is up.
+   */
+  private keepThePortal(deltaMs: number): void {
+    const portal = this.portal;
+    const arena = this.arena;
+    if (!portal || !arena) {
+      return;
+    }
+    // Home from a raid, the cloud lifts off what it walked in the portal too, once the crowd has had its look.
+    const lifting = this.fogLift !== null && this.fogLift.elapsedMs >= 0;
+    // The card's room is only known once the browser has laid it out.
+    const cardLaidOut = this.arenaPanel !== 'rim' || Boolean(document.querySelector('#screens .arena-panel.is-rim')?.getBoundingClientRect().height);
+    const region = this.portalRegion();
+    const wanted = cardLaidOut && portalShapeFor(region) !== null && (lifting || ((this.arenaPanel === 'rim' || this.firstJumpAsking) && !this.fogLift));
+    if (wanted && !portal.open) {
+      portal.show(arena.portalSource(), {
+        region,
+        pitOnScreen: arena.holeOnScreen(),
+        player: this.figureMiddle(),
+        pitMiddle: arena.pitMiddle,
+        facing: this.facing,
+        playerTexture: this.playerTexture,
+        partnerTexture: this.partner?.figureTexture ?? null,
+      });
+    } else if (!wanted && portal.open) {
+      portal.hide();
+    }
+    portal.moveTo(region, true);
+    portal.trackPit(arena.holeOnScreen());
+    portal.aim(this.aimed?.id ?? null, this.aimed ? this.landingName(this.aimed) : '');
+    portal.update(deltaMs);
+    // Stood on the portal's edge, they are not also stood faintly at the rail under it.
+    const away = portal.covers;
+    this.player.setAlpha(away ? 0 : 1);
+    this.partner?.setOutOfSight(away);
+    this.playerHeadMark.setAlpha(away ? 0 : 1);
+  }
+
+  /** The room the card or the question leaves on the screen, for the portal. */
+  private portalRegion(): { readonly left: number; readonly top: number; readonly width: number; readonly height: number } {
+    const { width, height } = this.scale;
+    if (this.firstJumpAsking) {
+      return { left: 0, top: 0, width, height: Math.max(0, Math.floor(this.dialogBox.y)) };
+    }
+    const cover = this.arenaPanel === 'rim' ? this.panelCover() : { right: 0, bottom: 0 };
+    return { left: 0, top: 0, width: Math.floor(width - cover.right), height: Math.floor(height - cover.bottom) };
   }
 
   /** Which way in is under the player, and with the rim's panel up, whichever is under its cursor. */
@@ -2237,9 +2290,10 @@ export class BaseScene extends Phaser.Scene {
       return { right: 0, bottom: 0 };
     }
     const scale = canvas.width / this.scale.width;
-    return this.arenaPanel === 'rim'
-      ? { right: 0, bottom: Math.max(0, (canvas.bottom - panel.top) / scale) }
-      : { right: Math.max(0, (canvas.right - panel.left) / scale), bottom: 0 };
+    // The rim's card stands down the right of a wide window, as the other panels do, and along the foot of a tall one.
+    return panel.left > canvas.left + 1
+      ? { right: Math.max(0, (canvas.right - panel.left) / scale), bottom: 0 }
+      : { right: 0, bottom: Math.max(0, (canvas.bottom - panel.top) / scale) };
   }
 
   /**
@@ -2274,12 +2328,10 @@ export class BaseScene extends Phaser.Scene {
       x: middle.x + lean.x + cover.right / 2,
       y: middle.y + lean.y + cover.bottom / 2,
     };
-    const fogTile = this.fogLift && this.fogLift.elapsedMs >= 0 ? this.fogLift.tile : undefined;
-    const lookedAt = fogTile
-      ? { ...this.arena.pointOfLanding({ id: '', tile: fogTile }) }
-      : this.arenaPanel === 'rim' && this.aimed
-        ? this.arena.pointOfLanding(this.aimed)
-        : this.crowdLookMs > 0 || (this.rivalHere && !this.targetTile && nearTheRival(this.currentTile, this.rivalAt))
+    // A window too small for the portal beside its card (a phone) still looks round to the way in under the card.
+    const lookedAt = this.arenaPanel === 'rim' && this.aimed && !this.portal?.open
+      ? this.arena.pointOfLanding(this.aimed)
+      : this.crowdLookMs > 0 || (this.rivalHere && !this.targetTile && nearTheRival(this.currentTile, this.rivalAt))
           ? this.halfwayToTheStands(middle)
           : null;
     if (lookedAt) {
@@ -2555,45 +2607,48 @@ export class BaseScene extends Phaser.Scene {
       this.jump = {
         elapsedMs: 0,
         world,
-        from: this.player,
-        over: { x: 0, y: 0 },
-        focus: this.player,
-        viewFrom: this.player,
-        viewAtFence: this.player,
         hopped: true,
         leaving: true,
         dive: null,
-        leaper: null,
+        partnerComing: false,
         steer: { x: 0, y: 0 },
         breath: null,
-        climb: { x: 0, y: 0 },
         bet: 'nothing',
       };
       return;
     }
-    const camera = this.cameras.main;
-    const middle = { x: this.player.x + TILE_SIZE / 2, y: this.player.y - PLAYER_SPRITE_Y_OFFSET + TILE_SIZE / 2 };
-    const lean = cameraLean(middle, this.scale);
-    const focusLanding = this.aimed ?? arena.share.landings[0];
-    const focus = focusLanding ? arena.pointOfLanding(focusLanding) : this.player;
+    // Over the edge of the portal, the pit seen whole: it is up already when the
+    // card or the question was, and drawn back to now when a jump came any other way.
+    this.aimed ??= arena.share.landings.find((landing) => landing.id === this.kit?.flow.insertionId) ?? arena.share.landings[0] ?? null;
+    const portal = this.portal;
+    if (portal && !portal.open) {
+      portal.show(arena.portalSource(), {
+        region: { left: 0, top: 0, width: this.scale.width, height: this.scale.height },
+        pitOnScreen: arena.holeOnScreen(),
+        player: this.figureMiddle(),
+        pitMiddle: arena.pitMiddle,
+        facing: this.facing,
+        playerTexture: this.playerTexture,
+        partnerTexture: this.partner?.figureTexture ?? null,
+      });
+    }
+    portal?.aim(this.aimed?.id ?? null, this.aimed ? this.landingName(this.aimed) : '');
+    portal?.goingOver();
+    arena.hideTheMarks();
+    // The card has gone: the portal comes to the middle of the screen as they step up to its edge,
+    // and the hall comes with it, so the carpet still runs up to where they stand.
+    const moved = portal?.movedBy ?? { x: 0, y: 0 };
+    this.jumpScroll = { x: this.cameras.main.scrollX + moved.x, y: this.cameras.main.scrollY + moved.y };
+    portal?.moveTo({ left: 0, top: 0, width: this.scale.width, height: this.scale.height });
     this.jump = {
       elapsedMs: 0,
       world,
-      from: { x: this.player.x, y: this.player.y },
-      over: overTheFence(this.currentTile, fence),
-      focus: { x: focus.x, y: focus.y },
-      viewFrom: { x: camera.scrollX + camera.width / 2, y: camera.scrollY + camera.height / 2 },
-      viewAtFence: {
-        x: middle.x + lean.x,
-        y: middle.y + lean.y,
-      },
       hopped: false,
       leaving: false,
       dive: new ArenaDiveView(this, this.playerTexture),
-      leaper: null,
+      partnerComing: false,
       steer: { x: 0, y: 0 },
       breath: null,
-      climb: { x: 0, y: 0 },
       bet: 'nothing',
     };
     const hunter = world.runSession?.plan?.hunter;
@@ -2613,9 +2668,6 @@ export class BaseScene extends Phaser.Scene {
       }
     }
     this.playerHeadMark.setVisible(false);
-    this.player.setDepth(CANOPY_BAND + 1);
-    camera.stopFollow();
-    camera.removeBounds();
   }
 
   /** What is going over the fence and would not come back, and what would. */
@@ -2662,7 +2714,6 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     breath.elapsedMs += deltaMs;
-    jump.climb = climbAt(breath.elapsedMs, jump.over);
     const up = wordsUpAt(breath.elapsedMs, breath.words);
     jump.dive?.stakesUp(up.count, up.newestMs);
     const pressed = this.anyKeyPressed();
@@ -2694,10 +2745,7 @@ export class BaseScene extends Phaser.Scene {
       this.cameras.main.shake(LEAP_SHAKE_MS, LEAP_SHAKE_PX / this.scale.height);
       const partner = this.partner?.leaveForJump();
       if (partner) {
-        jump.leaper = {
-          image: this.add.image(partner.x, partner.y, partner.texture, partnerFrame(this.facing, 0)).setOrigin(0, 0).setDepth(CANOPY_BAND + 1),
-          from: partner,
-        };
+        jump.partnerComing = true;
         jump.dive?.partnerIs(partner.texture);
       }
       audioManager.play('ledgeHop');
@@ -2705,46 +2753,38 @@ export class BaseScene extends Phaser.Scene {
     if (before < TURN_BACK_MS + HOP_MS + FALL_MS && jump.elapsedMs >= TURN_BACK_MS + HOP_MS + FALL_MS) {
       audioManager.play('diveWind');
     }
-    const pose = jumpPose(jump.elapsedMs, jump.over);
-    if (!pose.figure.falling) {
-      // The hop goes on from the top of the rail, not from the floor beside it.
-      const still = 1 - Math.max(0, Math.min(1, (jump.elapsedMs - TURN_BACK_MS) / HOP_MS));
-      this.player.setPosition(
-        jump.from.x + pose.figure.x + Math.round(jump.climb.x * still),
-        jump.from.y + pose.figure.y + Math.round(jump.climb.y * still),
-      );
-      this.player.setDepth(CANOPY_BAND + 1);
-    } else if (this.player.visible) {
-      this.player.setVisible(false);
-      jump.dive?.playerFalls({ x: this.player.x - this.cameras.main.scrollX, y: this.player.y - this.cameras.main.scrollY });
-    }
-    if (jump.leaper) {
-      const overTheRail = jumpPose(TURN_BACK_MS + HOP_MS, jump.over).figure;
-      const leap = partnerLeap(jump.elapsedMs, jump.leaper.from, {
-        x: jump.from.x + overTheRail.x + PARTNER_SPRITE_X_OFFSET,
-        y: jump.from.y + overTheRail.y,
-      });
-      if (leap.falling) {
-        jump.dive?.partnerFalls({ x: leap.x - this.cameras.main.scrollX, y: leap.y - this.cameras.main.scrollY });
-        jump.leaper.image.destroy();
-        jump.leaper = null;
-      } else {
-        jump.leaper.image.setPosition(leap.x, leap.y);
+    const pose = jumpPose(jump.elapsedMs, { x: 0, y: 0 });
+    const portal = this.portal;
+    // Off the portal's edge and into it, the partner a beat behind; once each has
+    // dropped clear it is the fall's to draw (`arenaDiveView.ts`), as big as it is.
+    const hopShare = (lagMs: number): number => Math.max(0, Math.min(1, (jump.elapsedMs - TURN_BACK_MS - lagMs) / HOP_MS));
+    if (portal && jump.hopped) {
+      portal.hopOver(hopShare(0), jump.partnerComing ? hopShare(PARTNER_LAG_MS) : 0);
+      if (pose.figure.falling && this.player.visible) {
+        this.player.setVisible(false);
+        jump.dive?.playerFalls(portal.playerOnScreen());
+        portal.playerGone();
+      }
+      const partnerAt = portal.partnerOnScreen();
+      if (jump.partnerComing && hopShare(PARTNER_LAG_MS) >= 1 && partnerAt) {
+        jump.partnerComing = false;
+        jump.dive?.partnerFalls(partnerAt);
+        portal.partnerGone();
       }
     }
-    const camera = this.cameras.main;
-    const fromX = jump.viewFrom.x + (jump.viewAtFence.x - jump.viewFrom.x) * pose.back;
-    const fromY = jump.viewFrom.y + (jump.viewAtFence.y - jump.viewFrom.y) * pose.back;
-    const x = fromX + (jump.focus.x - fromX) * pose.swing;
-    const y = fromY + (jump.focus.y - fromY) * pose.swing;
-    camera.setZoom(CAMERA_ZOOM * pose.zoom);
-    camera.centerOn(x, y);
-    // By now the view has swung away from the far floor, and whoever stood there has gone.
+    // By now the view has gone over to the landing, and whoever stood on the far floor has gone.
     if (pose.swing >= 1 && jump.dive?.isPursued) {
       this.rivalFigure?.setVisible(false);
     }
     arena.burn(deltaMs);
-    arena.diveFrame(pose.zoom, jump.focus);
+    if (jump.hopped) {
+      portal?.diveTo(pose.zoom, pose.swing);
+    }
+    portal?.update(deltaMs);
+    if (portal && this.jumpScroll) {
+      const moved = portal.movedBy;
+      this.cameras.main.setScroll(this.jumpScroll.x - moved.x, this.jumpScroll.y - moved.y);
+    }
     const held = {
       x: Number(this.controls.right.isDown) - Number(this.controls.left.isDown),
       y: Number(this.controls.down.isDown) - Number(this.controls.up.isDown),
@@ -2776,13 +2816,12 @@ export class BaseScene extends Phaser.Scene {
       this.arena?.endFog();
       return;
     }
-    const sign = new PlaceNameSign(this);
+    const sign = new PlaceNameSign(this, PORTAL_SIGN_DEPTH);
     this.standStill();
     // After the look round at the crowd, if there is one to look at.
     this.fogLift = {
       elapsedMs: -this.crowdLookMs,
       steps: 0,
-      tile: lifted.tile,
       sign,
       heldMs: 0,
       line: `+${lifted.gained}% OF ${worldMapName(this.arena!.mapId).toUpperCase()}`,
@@ -3181,6 +3220,7 @@ export class BaseScene extends Phaser.Scene {
     while (lift.steps < due) {
       lift.steps += 1;
       this.arena?.thinTheFog(FOG_LIFT_STEPS);
+      this.portal?.refreshFloor();
     }
     // The key that left the result screen is still on its way up as this starts,
     // and is not a request to skip what it has just opened on.
@@ -3378,18 +3418,9 @@ export class BaseScene extends Phaser.Scene {
 
   /** With the rim's panel up the pit is still there above it, and a click on a light in it chooses that way in. */
   private pointAtLightFromTheRim(pointer: Phaser.Input.Pointer): void {
-    const arena = this.arena;
-    if (!arena) {
-      return;
-    }
-    const near = arena.share.landings
-      .map((landing) => {
-        const point = arena.pointOfLanding(landing);
-        return { landing, away: Math.hypot(point.x - pointer.worldX, point.y - pointer.worldY) };
-      })
-      .sort((a, b) => a.away - b.away)[0];
-    if (near && near.away <= WAY_IN_CLICK_REACH) {
-      (this.scene.get('hub') as HubScene).pointAtLanding(near.landing.id as RunInsertionId);
+    const id = this.portal?.lightAt(pointer.x, pointer.y);
+    if (id) {
+      (this.scene.get('hub') as HubScene).pointAtLanding(id as RunInsertionId);
       audioManager.play('select');
     }
   }
@@ -3509,6 +3540,7 @@ export class BaseScene extends Phaser.Scene {
       // The first jump asks, once, saying what the bench, rack and locker
       // packed (`firstJumpQuestion`): no card, but never one press into the vale.
       const flow = kit.flow;
+      this.firstJumpAsking = true;
       this.askInBox(
         firstJumpQuestion({
           team: flow.party.map(({ pokemon }) => pokemon.name),
@@ -3516,6 +3548,7 @@ export class BaseScene extends Phaser.Scene {
           locked: flow.securedItems,
         }),
         (yes) => {
+          this.firstJumpAsking = false;
           if (yes) {
             this.openHallPanel('rim', true);
           }
@@ -4538,11 +4571,9 @@ export class BaseScene extends Phaser.Scene {
     if (this.arena && isAtRim(this.currentTile)) {
       // Found by somebody stood looking over the rail, rather than advertised beside the way in.
       const coin = this.canTossACoin() && this.railStandMs >= COIN_HINT_AFTER_MS ? coinKeyHint(new Set(this.savedGame.raidProgress.keysLearned ?? [])) : '';
-      // SPACE jumps only from a card that opens on JUMP IN; one that opens on
-      // its first row (a hurt team, or a player just home) is looked down from first.
-      const flow = this.kit?.flow;
-      const stays = flow ? rimOpensAwayFromJumpIn(flow, this.homeOnTheRail) : this.homeOnTheRail;
-      const line = this.aimed && !stays ? `[SPACE] JUMP IN AT ${this.landingName(this.aimed)}` : '[SPACE] LOOK DOWN';
+      // SPACE draws back to the portal, the pit seen whole: that is what it does
+      // from every rail, so that is what it says (the jump is a press on from there).
+      const line = '[SPACE] LOOK DOWN';
       return coin ? `${line}   ${coin}` : line;
     }
     // The player's own house always says where its furniture is.

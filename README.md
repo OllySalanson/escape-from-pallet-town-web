@@ -75,10 +75,11 @@ parts are fighting for the same space. Whatever you can't bear to lose goes in t
 ### 2. Jump in, and the clock starts
 
 Then walk round the rim and look down. Every little gold light in the pit is a way in you know about, and the
-one you're standing over is the one you'll get. Press SPACE, read what you've got at stake, and go over the
-fence: down past the steps, through the cloud, and out of the sky into the raid. (You land on your feet.
-Walk out alive and you'll come back to that same spot on the rim, and watch the cloud lift off
-everywhere you've just been.) Your very first raid opens on Mill Square with a Pidgey pecking about the
+one you're standing over is the one you'll get. Press SPACE and the view draws back until the whole pit
+is one round portal, you on its edge and your choice of landing marked in it; flick to another light, read
+what you've got at stake, and go over the edge: down past the steps, through the cloud, and out of the sky
+into the raid. (You land on your feet. Walk out alive and you'll come back to that same spot on the rim,
+and watch the cloud lift, glinting, off everywhere you've just been.) Your very first raid opens on Mill Square with a Pidgey pecking about the
 cobbles and Oak in your ear. Catch it, and you've got something to lose - and somebody has heard you do it.
 
 Want the whole lot at once? There's a big brass telescope on the rail to the left and another to the right.
@@ -88,7 +89,7 @@ tells you about that one, and ENTER takes you round to the rail to jump there. Z
 and a drag moves you about.
 
 <p align="center">
-  <img src="docs/readme/the-rim.png" width="800" alt="Looking down from the rim: Greystone Vale through the pit with a gold light on the way in, its name over it, and a panel along the foot saying what the raid has at stake with a JUMP IN button.">
+  <img src="docs/readme/the-rim.png" width="800" alt="Looking down from the rim: the whole pit as one round portal, Greystone Vale at the bottom under its cloud, a gold light on the way in with its name over it, the player on the edge, and a card down the side saying what the raid has at stake with a JUMP IN button.">
 </p>
 
 One map, Greystone Vale, drawn tile by tile and far bigger than one raid can cover, so there is

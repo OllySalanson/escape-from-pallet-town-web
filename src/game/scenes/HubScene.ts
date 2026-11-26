@@ -332,6 +332,12 @@ export const RIM_REFUSED_TITLE = 'Nobody can jump yet';
 
 /** Below this many game pixels across, the rim card's tiles say each fact in its short form. */
 const RIM_NARROW_WIDTH = 560;
+/** How wide the rim's card is when it stands down the right of the window, in the panel's units. */
+const RIM_SIDE_WIDTH = 228;
+/** How much room it must leave the portal, against the window's height, to stand there. */
+const RIM_SIDE_ROOM = 0.65;
+/** The least height of window a card down the side is tall enough in. */
+const RIM_SIDE_LEAST_HEIGHT = 300;
 
 /**
  * Game pixels a card on the wall map takes beyond its picture: its window's
@@ -766,8 +772,16 @@ export class HubScene extends Phaser.Scene {
     const wide = Math.floor((layer?.clientWidth ?? 0) / unit);
     // The rim's is as tall as what it says (`.arena-panel.is-rim`), and in a
     // narrow window (a phone on its side) its tiles say the short form of each fact.
-    this.overlay.root.toggleAttribute('data-rim-narrow', this.view === 'rim' && wide < RIM_NARROW_WIDTH);
-    if (this.view !== 'rim') {
+    const tall = Math.floor((layer?.clientHeight ?? 0) / unit);
+    // A window with room beside the portal for it stands the card down its right, as
+    // the other panels stand, and leaves the pit seen whole on the left
+    // (`base/arenaPortal.ts`); a tall or small one keeps it along its foot.
+    const side = this.view === 'rim' && wide - RIM_SIDE_WIDTH >= tall * RIM_SIDE_ROOM && tall >= RIM_SIDE_LEAST_HEIGHT;
+    this.overlay.root.toggleAttribute('data-rim-side', side);
+    this.overlay.root.toggleAttribute('data-rim-narrow', this.view === 'rim' && !side && wide < RIM_NARROW_WIDTH);
+    if (side) {
+      this.overlay.root.style.setProperty('--dock', String(RIM_SIDE_WIDTH));
+    } else if (this.view !== 'rim') {
       this.overlay.root.style.setProperty('--dock', String(Math.min(wide, Math.max(PANEL_MIN_WIDTH, Math.floor(wide * PANEL_SHARE)))));
     }
   }

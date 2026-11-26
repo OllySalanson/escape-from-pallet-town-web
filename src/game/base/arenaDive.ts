@@ -62,10 +62,6 @@ export interface JumpPose {
 const ease = (t: number): number => t * t * (3 - 2 * t);
 const unit = (value: number): number => Math.max(0, Math.min(1, value));
 
-/** Which way across the fence: the offset of a step over it. */
-export function overTheFence(tile: GridPosition, fence: GridPosition): { readonly x: number; readonly y: number } {
-  return { x: fence.x - tile.x, y: fence.y - tile.y };
-}
 
 export function jumpPose(elapsedMs: number, over: { readonly x: number; readonly y: number }): JumpPose {
   const hop = unit((elapsedMs - TURN_BACK_MS) / HOP_MS);
@@ -91,19 +87,6 @@ export function jumpPose(elapsedMs: number, over: { readonly x: number; readonly
   };
 }
 
-/** The partner's own hop over the fence, from where it stood to where the player went over. */
-export function partnerLeap(
-  elapsedMs: number,
-  from: { readonly x: number; readonly y: number },
-  to: { readonly x: number; readonly y: number },
-): { readonly x: number; readonly y: number; readonly falling: boolean } {
-  const hop = unit((elapsedMs - TURN_BACK_MS - PARTNER_LAG_MS) / HOP_MS);
-  return {
-    x: Math.round(from.x + (to.x - from.x) * hop),
-    y: Math.round(from.y + (to.y - from.y) * hop - Math.sin(hop * Math.PI) * HOP_RISE),
-    falling: hop >= 1,
-  };
-}
 
 /** Which of its sides a figure falling for this long is showing. `offset` starts it on another, so two do not turn as one. */
 export function fallFacing(fallingMs: number, offset = 0): Direction {

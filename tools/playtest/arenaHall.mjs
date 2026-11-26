@@ -220,7 +220,7 @@ try {
   await step(300);
   await shot('6-rim');
   const hint = await base('b.hintShown');
-  expect(`the rim says where it is over (${hint})`, hint.startsWith('[SPACE] JUMP IN AT '));
+  expect(`the rim says where it is over (${hint})`, hint.startsWith('[SPACE] LOOK DOWN'));
 
   if (args.includes('--tour')) {
     for (const [name, x, y] of [['east', 59, 33], ['north', 35, 9], ['west', 11, 33]]) {

@@ -5,7 +5,6 @@ import {
   FALL_MS,
   HOP_MS,
   JUMP_MS,
-  PARTNER_LAG_MS,
   PUFF_RADII,
   PURSUER_FROM_MS,
   TURN_BACK_MS,
@@ -13,8 +12,6 @@ import {
   fallerAt,
   facingTowards,
   jumpPose,
-  overTheFence,
-  partnerLeap,
   puffsAt,
   pursuerAt,
   windAt,
@@ -83,7 +80,6 @@ describe('over the fence and down', () => {
     const halfway = jumpPose(TURN_BACK_MS + 170, over);
     expect(halfway.figure.y).toBeLessThan(0);
     expect(jumpPose(TURN_BACK_MS + 170, { x: 1, y: 0 }).figure.x).toBeGreaterThan(0);
-    expect(overTheFence({ x: 5, y: 5 }, { x: 5, y: 4 })).toEqual({ x: 0, y: -1 });
     expect(facingTowards({ x: 5, y: 5 }, { x: 5, y: 4 })).toBe('up');
     expect(facingTowards({ x: 5, y: 5 }, { x: 6, y: 5 })).toBe('right');
   });
@@ -121,14 +117,6 @@ describe('over the fence and down', () => {
 });
 
 describe('falling', () => {
-  it('sends the partner after the player, a beat behind, by way of the same place', () => {
-    const from = { x: 100, y: 200 };
-    const to = { x: 120, y: 160 };
-    expect(partnerLeap(TURN_BACK_MS + PARTNER_LAG_MS, from, to)).toEqual({ ...from, falling: false });
-    expect(partnerLeap(TURN_BACK_MS + PARTNER_LAG_MS + HOP_MS / 2, from, to).y).toBeLessThan(180);
-    expect(partnerLeap(TURN_BACK_MS + PARTNER_LAG_MS + HOP_MS, from, to)).toEqual({ ...to, falling: true });
-  });
-
   it('turns a falling figure through all four of its sides, and two of them out of step', () => {
     const sides = new Set(Array.from({ length: 8 }, (_each, step) => fallFacing(step * 95)));
     expect(sides).toEqual(new Set(['down', 'left', 'up', 'right']));
