@@ -7,6 +7,7 @@ import {
   TRADER_BERTH_STANDING,
   barterShortfall,
   checkBerth,
+  barterDetail,
   checkBarter,
   checkPurchase,
   standingWithArticle,
@@ -160,7 +161,7 @@ function barterQuote(counter: TraderCounter, barterId: string): BillQuote {
   }
   const { barter } = offer;
   const item = getItemById(barter.gives.itemId);
-  const what = `${barter.name}. ${item?.description ?? barter.detail}`;
+  const what = `${barter.name}. ${item?.description ?? barterDetail(barter)}`;
   const takes = itemAmountsFor(barter.takes);
   switch (offer.refusal) {
     case 'already-taken':

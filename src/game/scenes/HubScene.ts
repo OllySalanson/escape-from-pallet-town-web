@@ -55,6 +55,7 @@ import {
   POKEDOLLARS_PER_STANDING,
   wardBedIds,
   berthSquares,
+  barterDetail as barterDetailOnOffer,
   type Deployment,
   type TraderBarterOffer,
   type TraderCounter,
@@ -3947,7 +3948,7 @@ export class HubScene extends Phaser.Scene {
         const { barter } = offer;
         const taken = offer.refusal === 'already-taken';
         const limit = traderBarterLimit(counter, barter);
-        const what = getItemById(barter.gives.itemId)?.description ?? barter.detail;
+        const what = getItemById(barter.gives.itemId)?.description ?? barterDetailOnOffer(barter);
         const repeats = offer.refusal === undefined && !barter.once && limit > 1;
         const count = repeats ? clampCount(this.counterCounts.get(`barter:${barter.id}`) ?? 1, 1, limit) : 1;
         if (this.traderArmed === barter.id) {
@@ -4108,7 +4109,7 @@ export class HubScene extends Phaser.Scene {
       id: barter.id,
       shown,
       effect: getItemById(barter.gives.itemId)?.description ?? barter.name,
-      detail: barter.detail,
+      detail: barterDetailOnOffer(barter),
       priceLabel: taken ? 'What it took' : 'You hand over',
       price: barter.takes.map(({ itemId, quantity }) =>
         taken

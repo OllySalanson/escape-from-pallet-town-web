@@ -10,6 +10,9 @@ import {
   type SupplyItemId,
 } from '../items';
 import { MACHINES } from '../pokemon/machines';
+import { EXTRACTION_POINTS } from '../world/extractionPoints';
+import { WORLD_GATES } from '../world/gates';
+import { isMapOffered } from '../world/mapRoster';
 import { BICYCLE_ITEM_ID } from '../world/bicycle';
 import type { Stash } from '../stash';
 
@@ -259,6 +262,15 @@ export interface TraderBarter {
    * twice under two headings.
    */
   readonly detail: string;
+  /**
+   * The deal said against the maps a player can raid, for a deal that names
+   * where its thing is found or what it opens: those places come and go with
+   * `world/mapRoster.ts`, and a deal that sent a player to Route 1 while only
+   * the vale was offered told them about a place they could not go (the fresh
+   * critic, 25 Nov 2026). `barterDetail` asks it; `detail` is the deal with
+   * every map in play, which is what the suite runs with.
+   */
+  readonly detailOnOffer?: (offered: (mapId: string) => boolean) => string;
   /** One of the shared 16x16 icons in `../ui/icons`, by file name. */
   readonly icon: string;
   readonly gives: TraderStack;
@@ -270,6 +282,23 @@ export interface TraderBarter {
    * an HM, which comes back while the vault holds none (`barterTaken`).
    */
   readonly once: boolean;
+}
+
+const COUNT_WORDS = ['None', 'One', 'Two', 'Three', 'Four', 'Five'];
+
+/** A deal's sentence, then where its thing lies on the first offered map that has one, or that none does. */
+function foundOnOffer(
+  deal: string,
+  places: readonly { readonly mapId: string; readonly text: string }[],
+  nowhere: string,
+  offered: (mapId: string) => boolean,
+): string {
+  return `${deal} ${places.find((place) => offered(place.mapId))?.text ?? nowhere}`;
+}
+
+/** What Bill says about a deal, against the maps a player can raid (`TraderBarter.detailOnOffer`). */
+export function barterDetail(barter: TraderBarter, offered: (mapId: string) => boolean = isMapOffered): string {
+  return barter.detailOnOffer?.(offered) ?? barter.detail;
 }
 
 export const TRADER_BARTERS: readonly TraderBarter[] = [
@@ -353,6 +382,13 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     name: 'Fire Stone',
     detail:
       'Vulpix becomes Ninetales and Growlithe becomes Arcanine, on the spot and with no level asked for. Found in the charcoal burn at the bottom of Route 1, if you would rather walk.',
+    detailOnOffer: (offered) =>
+      foundOnOffer(
+        'Vulpix becomes Ninetales and Growlithe becomes Arcanine, on the spot and with no level asked for.',
+        [{ mapId: 'route-1', text: 'Found in the charcoal burn at the bottom of Route 1, if you would rather walk.' }],
+        'None lies about anywhere you can raid: he is the only way to one.',
+        offered,
+      ),
     icon: 'fire-stone',
     gives: { itemId: 'fire-stone', quantity: 1 },
     takes: [
@@ -368,6 +404,16 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     name: 'Water Stone',
     detail:
       'Shellder becomes Cloyster, and a Poliwhirl or a Staryu answers it too. Found out on the beacon headland at Pallet, behind the salter.',
+    detailOnOffer: (offered) =>
+      foundOnOffer(
+        'Shellder becomes Cloyster, and a Poliwhirl or a Staryu answers it too.',
+        [
+          { mapId: 'pallet-town', text: 'Found out on the beacon headland at Pallet, behind the salter.' },
+          { mapId: 'greystone-vale', text: 'There is one at THE SAILORS\u2019 REST on GULL STRAND, if you would rather fight the Gastly sat on it.' },
+        ],
+        'None lies about anywhere you can raid.',
+        offered,
+      ),
     icon: 'water-stone',
     gives: { itemId: 'water-stone', quantity: 1 },
     takes: [
@@ -383,6 +429,16 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     name: 'Leaf Stone',
     detail:
       'Gloom becomes Vileplume and Weepinbell becomes Victreebel - both a level past what you catch. Found in the withy beds at the far end of the Floodplain.',
+    detailOnOffer: (offered) =>
+      foundOnOffer(
+        'Gloom becomes Vileplume and Weepinbell becomes Victreebel - both a level past what you catch.',
+        [
+          { mapId: 'floodplain-relay', text: 'Found in the withy beds at the far end of the Floodplain.' },
+          { mapId: 'greystone-vale', text: 'There is one at the APPLE CART on ORCHARD TERRACES, if you would rather fight the Doduo sat on it.' },
+        ],
+        'None lies about anywhere you can raid.',
+        offered,
+      ),
     icon: 'leaf-stone',
     gives: { itemId: 'leaf-stone', quantity: 1 },
     takes: [
@@ -473,6 +529,14 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     name: 'Pickaxe',
     detail:
       'Four of the maps out there have an exit fallen in under rubble, and a map maker can bury more. Lose it and he will find you another.',
+    detailOnOffer: (offered) => {
+      const maps = new Set(
+        EXTRACTION_POINTS.filter((point) => point.requirement?.kind === 'dug' && offered(point.mapId)).map((point) => point.mapId),
+      ).size;
+      return maps === 0
+        ? 'None of the maps you can raid has an exit fallen in under rubble yet, but a map maker can bury one. Lose it and he will find you another.'
+        : `${COUNT_WORDS[maps] ?? String(maps)} of the maps out there ${maps === 1 ? 'has' : 'have'} an exit fallen in under rubble, and a map maker can bury more. Lose it and he will find you another.`;
+    },
     icon: 'pickaxe',
     gives: { itemId: 'pickaxe', quantity: 1 },
     takes: [
@@ -545,6 +609,10 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     name: 'HM03 Surf',
     detail:
       'It opens the shoal crossing on the Floodplain for good. Forty-two of the 151 read it - the Water starter line, and the Psyduck and Poliwag that live in the reeds.',
+    detailOnOffer: (offered) =>
+      WORLD_GATES.some((gate) => gate.fieldMove === 'surf' && offered(gate.mapId))
+        ? 'It opens the shoal crossing on the Floodplain for good. Forty-two of the 151 read it - the Water starter line, and the Psyduck and Poliwag that live in the reeds.'
+        : 'No crossing on any map you can raid asks for it yet, but an HM is never used up. Forty-two of the 151 read it - the Water starter line, and the Psyduck and Poliwag that live in the reeds.',
     icon: 'hm03-surf',
     gives: { itemId: 'hm03-surf', quantity: 1 },
     takes: [
