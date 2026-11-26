@@ -180,7 +180,6 @@ export class MapScreen {
       element.setAttribute('role', 'img');
       element.setAttribute('aria-label', `${mark.name} still pays`);
       element.title = `${mark.name} still pays`;
-      element.innerHTML = `<img src="${iconUrl('money')}" alt="">`;
       // Under the player's own mark, which is drawn last so it is never hidden.
       frameOf.insertBefore(element, frameOf.querySelector('[data-chart-here]'));
       return { mark, element };
