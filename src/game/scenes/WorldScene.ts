@@ -7163,6 +7163,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           distance: this.hunterStepsAway(),
           direction: this.hunterBearing(),
           enraged: manager.isEnraged,
+          heardLeftMs: isTallGrassInMap(this.currentMap, this.currentTile) ? (this.hunterPackHere()?.trampledLeftMs(this.currentTile) ?? null) : null,
           offTheScent:
             this.playerIsHidden() && isHunterOffTheScent(this.hunterState, this.currentTile),
           // The radio mast reports on a hunter that is still coming or still
@@ -8610,7 +8611,14 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
     // Clear of every caption on show: one is seated round the very thing it marks.
     const captions = way ? this.worldLabels.flatMap((label) => label.shown() ?? []) : [];
-    mark.frame(way, { x: this.player.x + TILE_SIZE / 2, y: this.player.y + TILE_SIZE / 2 }, this.wayMarkMs, captions);
+    const heel = this.partner?.standingTile();
+    mark.frame(
+      way,
+      { x: this.player.x + TILE_SIZE / 2, y: this.player.y + TILE_SIZE / 2 },
+      this.wayMarkMs,
+      captions,
+      heel ? { x: heel.x * TILE_SIZE + TILE_SIZE / 2, y: heel.y * TILE_SIZE + TILE_SIZE / 2 } : undefined,
+    );
   }
 
   /**

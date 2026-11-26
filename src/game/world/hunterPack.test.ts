@@ -476,6 +476,8 @@ describe('a fight is loud', () => {
     pack.heardFight(fightAt);
     expect(pack.grassHides({ x: fightAt.x + FIGHT_TRAMPLED_STEPS, y: fightAt.y })).toBe(false);
     expect(pack.grassHides({ x: fightAt.x + FIGHT_TRAMPLED_STEPS + 1, y: fightAt.y })).toBe(true);
+    expect(pack.trampledLeftMs(fightAt)).toBe(FIGHT_HEARD_MS);
+    expect(pack.trampledLeftMs({ x: fightAt.x + FIGHT_TRAMPLED_STEPS + 1, y: fightAt.y })).toBeNull();
     pack.advance(worldOf(field, { x: 69, y: 0 }), FIGHT_HEARD_MS);
     expect(pack.grassHides(fightAt)).toBe(true);
   });
