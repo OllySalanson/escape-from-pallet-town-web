@@ -553,6 +553,7 @@ import {
   HunterPack,
   createHunterPack,
   drawnAt,
+  inGround,
   isAbroad,
   rivalsForGrounds,
   type PackEvent,
@@ -11337,9 +11338,87 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.refreshExtractionMarkers();
     this.refreshBoats();
     this.refreshRunTimerHud(deltaMs);
-    if (snapshot.isEnraged && this.runSession.manager.isEnrageGraceExpired) {
+    if (snapshot.isEnraged && this.runSession.manager.isEnrageGraceExpired && !this.makeLastStand()) {
       this.resolveExpiredRun();
     }
+  }
+
+  /**
+   * The enrage's fifteen seconds are up: the raid ends in a fight with the
+   * hunter after the player - or the keeper of where they stand - brought to
+   * their side, not on a timer screen. "A fight I can win is drama. The clock
+   * ran out is admin" (critic's review, problem 14; firstmate's call, 26 Nov
+   * 2026). Won, the player fights their way out by the nearest open exit; lost
+   * or fled, the raid is lost as it always was. Answers whether it has the
+   * raid in hand, so the clock does not also end it.
+   */
+  private makeLastStand(): boolean {
+    const session = this.runSession;
+    if (!session || this.pendingHubTransition) {
+      return false;
+    }
+    if (session.lastStand === 'fighting') {
+      // The catch beat is playing, or the fight is on: it ends the raid.
+      return true;
+    }
+    if (session.lastStand === 'won') {
+      const exit = nearestOpenExit(
+        this.extractionPointsForCurrentMap(),
+        this.currentTile,
+        this.collisionData,
+        (point) => this.isExtractionOpen(point),
+        this.currentMap.links,
+      );
+      if (!exit) {
+        return false;
+      }
+      this.extractThrough(exit);
+      return true;
+    }
+    if (session.lastStand === 'lost' || this.cutscene || this.dialogBox.visible || isPlaytestRun()) {
+      return false;
+    }
+    const pack = this.hunterPackHere();
+    if (!pack) {
+      return false;
+    }
+    const near = (hunter: PackHunter): number =>
+      Math.abs(hunter.position.x - this.currentTile.x) + Math.abs(hunter.position.y - this.currentTile.y);
+    const hunter =
+      pack.hunters.filter((each) => each.enraged && isAbroad(each)).sort((one, other) => near(one) - near(other))[0] ??
+      pack.hunters.find((each) => isAbroad(each) && each.mode !== 'stunned' && inGround(each.ground, this.currentTile));
+    const beside = hunter && this.lastStandTile(hunter.position);
+    if (!hunter || !beside) {
+      return false;
+    }
+    hunter.position = beside;
+    hunter.next = null;
+    hunter.enraged = true;
+    session.lastStand = 'fighting';
+    this.catchByPack(pack, hunter);
+    return true;
+  }
+
+  /** Where the last stand's hunter stands: where it is if that is beside the player, else the first free tile beside them. */
+  private lastStandTile(at: GridPosition): GridPosition | null {
+    if (Math.abs(at.x - this.currentTile.x) + Math.abs(at.y - this.currentTile.y) === 1) {
+      return { ...at };
+    }
+    const blocked = this.hunterBlocker();
+    const pack = this.hunterPackHere();
+    return (
+      (['up', 'down', 'left', 'right'] as const)
+        .map((direction) => nextTileFromDirection(this.currentTile, direction))
+        .find(
+          (tile) =>
+            tile.x >= 0 &&
+            tile.y >= 0 &&
+            tile.y < this.collisionData.length &&
+            tile.x < (this.collisionData[0]?.length ?? 0) &&
+            !blocked(tile) &&
+            pack?.hunterAt(tile) === undefined,
+        ) ?? null
+    );
   }
 
   // -- boats -------------------------------------------------------------------
@@ -12643,6 +12722,9 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const outcome = this.hunterState;
     const engaged = pack.hunters.find((hunter) => hunter.id === pack.engagedId);
     pack.engagedId = null;
+    if (this.runSession?.lastStand === 'fighting' && fromBattle) {
+      this.runSession.lastStand = engaged && outcome.defeated ? 'won' : 'lost';
+    }
     if (engaged && outcome.defeated) {
       pack.beaten(engaged);
       this.dropBag(this.hunterBagOwner(engaged), this.currentMap.id, () => this.bagRestingTile(engaged.position));

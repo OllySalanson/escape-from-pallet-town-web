@@ -39,7 +39,7 @@ never played an extraction game? Lucky you, here is the whole genre in five word
 | **Raid** | One trip out into the world, on a five-minute clock. |
 | **Extraction** | Walking out through an exit before the clock hits zero. It is the only way to keep anything. |
 | **Stash** | Everything you own back home: your Pokémon, your supplies, your loot. |
-| **Wipe** | Losing a raid, because your last Pokémon fainted or the clock ran out. The pack goes, with everything in it. |
+| **Wipe** | Losing a raid, because your last Pokémon fainted, or the clock ran out and the hunter it sent for you won. The pack goes, with everything in it. |
 | **The Locker** | One small pocket a wipe can't touch. Choose wisely. |
 
 That's it. Go out, get greedy, come home. Or don't come home, and learn something about greed.
