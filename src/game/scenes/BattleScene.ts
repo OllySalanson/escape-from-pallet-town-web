@@ -147,7 +147,6 @@ import {
   BATTLE_PANEL,
   NO_BATTLE_ITEMS_MESSAGE,
   lowHpItemHint,
-  statusCureHint,
   typeLesson,
   CATCH_TIP_LINE,
   earnsCatchTip,
@@ -753,9 +752,6 @@ export class BattleScene extends Phaser.Scene {
   private prizePaidBefore = false;
   /** Whether this fight has said that medicine can be used in it (`lowHpItemHint`): once a fight. */
   private lowHpHintSaid = false;
-  private statusCureHintSaid = false;
-  /** The item a hint just named, which the ITEM list opens on once. */
-  private hintedItemId: string | undefined;
   /** Whether this fight has taught a line of the type chart (`typeLesson`): once a fight. */
   private typeLessonSaid = false;
   /** Whether this fight has said a hurt Pokémon is easier to catch (`CATCH_TIP_LINE`): once a fight. */
@@ -997,8 +993,6 @@ export class BattleScene extends Phaser.Scene {
     this.thrownBallId = undefined;
     this.victoryRewardsGranted = false;
     this.lowHpHintSaid = false;
-    this.statusCureHintSaid = false;
-    this.hintedItemId = undefined;
     this.typeLessonSaid = false;
     this.catchTipSaid = false;
     this.party = data.party ?? new PokemonParty([new Pokemon(CHARMANDER, 10)]);
@@ -3617,12 +3611,7 @@ export class BattleScene extends Phaser.Scene {
     }
     this.mode = 'items';
     this.pendingItem = undefined;
-    // Opened straight after a hint, on the item the hint named: on the first
-    // row, a player pressing OK through the line gave a POTION to a Pokémon
-    // that needed its CHERI BERRY.
-    const hinted = usableBattleItems(this.bag).findIndex((item) => item.id === this.hintedItemId);
-    this.hintedItemId = undefined;
-    this.selectedCommand = Math.max(0, hinted);
+    this.selectedCommand = 0;
     this.showCommands();
   }
 
@@ -4374,47 +4363,10 @@ export class BattleScene extends Phaser.Scene {
       return false;
     }
     this.lowHpHintSaid = true;
-    this.hintedItemId = healer?.id;
     // The menu comes back on ITEM, the command the line names. On FIGHT, the
     // SPACE that read the line on opened FIGHT and the next fired the first
     // move, and a Bulbasaur on 5/32 went down to Starmie with Potions packed
     // (AI playtest, 23 Nov 2026) - as KEEP THE PACK returns to BALL (#718).
-    const item = this.mainActions().findIndex((action) => action.type === 'choose-item');
-    if (item >= 0) {
-      this.lastMainCommand = item;
-    }
-    this.mode = 'events';
-    this.commandContainer.setVisible(false);
-    this.dialog.showMessages([line]);
-    return true;
-  }
-
-  /**
-   * Once a fight, before the commands: a Pokémon of yours has a status and the
-   * pack holds its cure (`statusCureHint`). The menu comes back on ITEM, the
-   * command it names, as the low-HP line's does.
-   */
-  private sayStatusCureHint(): boolean {
-    if (this.statusCureHintSaid || this.exhibition) {
-      return false;
-    }
-    const cures = usableBattleItems(this.bag).filter((item) => this.bag.count(item.id) > 0);
-    let named: string | undefined;
-    const line = statusCureHint(
-      [this.state.player, this.state.playerPartner]
-        .filter((unit): unit is BattleCombatant => unit !== null)
-        .map((unit) => ({ name: unit.pokemon.name, hp: unit.currentHp, status: unit.primaryStatus })),
-      (status) => {
-        const cure = cures.find((item) => item.effect.type === 'cure-status' && item.effect.status === status);
-        named = cure?.id;
-        return cure?.displayName ?? null;
-      },
-    );
-    if (line === null) {
-      return false;
-    }
-    this.statusCureHintSaid = true;
-    this.hintedItemId = named;
     const item = this.mainActions().findIndex((action) => action.type === 'choose-item');
     if (item >= 0) {
       this.lastMainCommand = item;
@@ -4512,7 +4464,7 @@ export class BattleScene extends Phaser.Scene {
         this.useMove(locked);
         return;
       }
-      if (this.sayLowHpHint() || this.sayStatusCureHint()) {
+      if (this.sayLowHpHint()) {
         return;
       }
       this.mode = 'main';

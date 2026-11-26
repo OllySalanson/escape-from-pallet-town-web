@@ -2,13 +2,12 @@
 //
 //   node tools/playtest/graveyardBattle.mjs <test-mode build url> <dir> [--port=N]
 //
-// Deploys a new save into Greystone Vale with a Pikachu leading a Charmander,
-// a CHERI BERRY and Potions packed, paralyses the Pikachu and starts a wild
-// Gastly fight the way the churchyard's grass does. It photographs the line
-// the fight opens on, the ITEM list that line leads to, then swaps to the
-// Charmander and back to the Pikachu and photographs the menu each swap
-// comes back on. Prints the cursor after each swap; exits non-zero if the menu
-// does not come back on FIGHT.
+// Deploys a new save into Greystone Vale with a Charmander and a Pikachu,
+// a CHERI BERRY and Potions packed, paralyses the lead and starts a wild
+// Gastly fight the way the churchyard's grass does. It photographs the
+// commands the fight opens on, then swaps to the other Pokémon and back and
+// photographs the menu each swap comes back on. Prints the cursor after each
+// swap; exits non-zero if the menu does not come back on FIGHT.
 import { attachBrowser, launchBrowser, PIXEL_WINDOW, sleep, writeScreenshot } from './browser.mjs';
 import { GAME, deploy, sceneIs } from './deploy.mjs';
 
@@ -46,20 +45,14 @@ const read = () =>
   page.evaluate(
     `(() => { const b = ${BATTLE}; return { mode: b.mode, command: b.mode === 'main' ? b.mainActions()[b.selectedCommand]?.type : null, cursor: b.selectedCommand, line: b.dialog?.currentMessage ?? null }; })()`,
   );
-/** Presses OK until the commands are up, photographing the first line that names ITEM. */
-const readOnToCommands = async (shot) => {
+/** Presses OK until the commands are up. */
+const readOnToCommands = async () => {
   for (let k = 0; k < 40 && (await read()).mode !== 'main'; k += 1) {
-    const said = await page.evaluate(`${GAME}.describe().scenes?.battle?.says ?? JSON.stringify(${GAME}.describe()).match(/[A-Z]+ is paralysed! Choose ITEM[^"]*/)?.[0] ?? ''`);
-    if (shot && String(said).includes('Choose ITEM')) {
-      await capture(shot);
-      shot = undefined;
-    }
     await press('Space');
     await sleep(500);
   }
   if ((await read()).mode !== 'main') throw new Error('never reached the commands');
   await sleep(600);
-  return shot === undefined;
 };
 const choose = (word) =>
   page.evaluate(`(() => { const t = ${BATTLE}.commandTexts.find((t) => t.text.replace('▶ ', '').startsWith(${JSON.stringify(word)})); t?.emit('pointerdown'); return Boolean(t); })()`);
@@ -76,16 +69,8 @@ try {
   await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); w.party.pokemon[0].primaryStatus = 'paralysis'; w.transitionToBattle({ wild: { speciesId: 'gastly', level: 12, shiny: false }, teachingBattle: false }); })()`);
   await until(sceneIs('battle'), 'the battle');
   await sleep(1200);
-  const hinted = await readOnToCommands('1-paralysed-line');
-  console.log(`the cure line was ${hinted ? '' : 'NOT '}said`);
-  await capture('2-commands-after-the-line');
+  await readOnToCommands();
   console.log(`commands open on: ${(await read()).command}`);
-  await choose('ITEM');
-  await sleep(800);
-  await capture('3-item-list');
-  console.log(`ITEM opens on row ${(await read()).cursor}`);
-  await press('Escape');
-  await sleep(600);
 
   for (const [n, partyIndex] of [
     [4, 1],
