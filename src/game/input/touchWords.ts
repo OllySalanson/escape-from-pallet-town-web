@@ -66,41 +66,59 @@ export function touchWording(text: string): string {
   return said.replace(/\s*\[[A-Z0-9]\]\s*$/, '');
 }
 
-/** One part of a menu's help line that is a key and what it does: "X drop", "TAB shelves or bar". */
-const HELP_KEY = /^(TAB|[A-Z])\s+(?!or\b)(\S.*)$/;
+/** One part of a menu's help line that is a key and what it does: "X drop", "TAB shelves or bar", "BKSP out". */
+const HELP_KEY = /^(TAB|BKSP|[A-Z])\s+(?!or\b)(\S.*)$/;
+
+/** Two keys walking one thing back and forward: "Q E tab" is "< TAB" and "TAB >". */
+const HELP_KEY_PAIR = /^([A-Z]) ([A-Z])\s+(\S.*)$/;
+
+/** The help line's key names that are not one letter, by the code each presses. */
+const HELP_KEY_CODES: Readonly<Record<string, string>> = { TAB: 'Tab', BKSP: 'Backspace' };
 
 /** A help-line key whose job BACK already does: the key that opened the screen, closing it again. */
 const BACKS_OUT = /^(?:close|back)\b/;
 
-function helpKey(part: string): { readonly code: string; readonly label: string } | 'back' | null {
+const helpLabel = (words: string): string =>
+  words
+    .replace(/^to the /, '')
+    .replace(/ or /g, '/')
+    .replace(/[.,;:]+$/, '')
+    .toUpperCase();
+
+/** The keys one part of a help line names: none, one, a pair walking back and forward, or BACK's own job. */
+function helpKeys(part: string): readonly TouchShortcut[] | 'back' {
+  const pair = HELP_KEY_PAIR.exec(part.trim());
+  if (pair) {
+    const label = helpLabel(pair[3].trim());
+    return [
+      { code: `Key${pair[1]}`, label: `< ${label}` },
+      { code: `Key${pair[2]}`, label: `${label} >` },
+    ];
+  }
   const match = HELP_KEY.exec(part.trim());
   if (!match) {
-    return null;
+    return [];
   }
   const words = match[2].trim();
   if (BACKS_OUT.test(words)) {
     return 'back';
   }
-  const label = words
-    .replace(/^to the /, '')
-    .replace(/ or /g, '/')
-    .replace(/[.,;:]+$/, '')
-    .toUpperCase();
-  return { code: match[1] === 'TAB' ? 'Tab' : `Key${match[1]}`, label };
+  return [{ code: HELP_KEY_CODES[match[1]] ?? `Key${match[1]}`, label: helpLabel(words) }];
 }
 
 /**
  * The letter keys a menu's help line names, as the pad's tray offers them:
- * "ARROWS move · ENTER use · X drop · ESC back" is a DROP key on X. The pad's
- * own buttons (the arrows, ENTER, ESC) are skipped, and so is a key that only
- * closes the screen, which BACK does.
+ * "ARROWS move · ENTER use · X drop · ESC back" is a DROP key on X, "BKSP out"
+ * an OUT key on Backspace, and "Q E tab" the pair "< TAB" and "TAB >". The
+ * pad's own buttons (the arrows, ENTER, ESC) are skipped, and so is a key
+ * that only closes the screen, which BACK does.
  */
 export function helpLineKeys(line: string): TouchShortcut[] {
   const keys: TouchShortcut[] = [];
   for (const part of line.split(' · ')) {
-    const key = helpKey(part);
-    if (key && key !== 'back') {
-      keys.push(key);
+    const found = helpKeys(part);
+    if (found !== 'back') {
+      keys.push(...found);
     }
   }
   return keys;
@@ -111,11 +129,14 @@ export function touchHelpLine(line: string): string {
   return line
     .split(' · ')
     .flatMap((part) => {
-      const key = helpKey(part);
-      if (key === 'back') {
+      const found = helpKeys(part);
+      if (found === 'back') {
         return [];
       }
-      return [key ? `[${key.label}]` : touchWording(part)];
+      if (found.length === 2) {
+        return [`[${found[0].label} >]`];
+      }
+      return [found.length === 1 ? `[${found[0].label}]` : touchWording(part)];
     })
     .join(' · ');
 }

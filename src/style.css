@@ -1834,6 +1834,10 @@ body.touch-play .feedback-tab {
   border-color: #55d6be;
   color: #bfe6cf;
 }
+/* An empty place in a row of keys above the tray's first two (`trayOrder`). */
+.tp-chip.is-spare {
+  visibility: hidden;
+}
 .tp-chip.is-inert {
   border-color: #2b3e59;
   color: #4c6280;

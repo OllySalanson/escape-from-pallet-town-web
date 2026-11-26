@@ -183,7 +183,10 @@ export function pixelScreen(options: PixelScreenOptions): string {
   // goes: before, the help took the keys line's place from the first frame,
   // and every hall panel hid its keys (the navigation audit, 25 Nov 2026).
   const helpDefault = options.helpDefault ?? '';
-  const keys = options.hints ? `<span class="px-keys" data-keys>${options.hints}</span>` : '';
+  // The line's own words ride on it as `data-keys`, as a help line's do on
+  // `data-help-default`: the touch pad reads a screen's letter keys off them
+  // (`screenKeyLines`), and the text itself is reworded for a thumb.
+  const keys = options.hints ? `<span class="px-keys" data-keys="${escapeAttribute(options.hints)}">${options.hints}</span>` : '';
   const help = `<p class="px-help${status ? ' has-status' : ''}${keys ? ' has-keys' : ''}"><span data-help-text data-help-default="${escapeAttribute(helpDefault)}">${helpDefault}</span>${status}${keys}</p>`;
   return `<div class="px-screen"><header class="px-title">${back}<h1>${place}${options.title}</h1>${aside}${close}</header>${options.body}${help}</div>`;
 }

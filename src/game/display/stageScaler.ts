@@ -95,6 +95,8 @@ export interface TouchFit {
   onChange(listener: () => void): () => void;
   /** Draws the pad into the layout, or takes it away. */
   place(layout: TouchLayout | null): void;
+  /** The rows of keys the tray across an upright phone wants (`computeTouchLayout`'s `trayRows`). */
+  trayRows?(): number;
 }
 
 /**
@@ -132,7 +134,7 @@ export function watchViewport(game: ScalableGame, touch?: TouchFit, parentId = '
   const update = () => {
     const ratio = window.devicePixelRatio || 1;
     const { width, height: fullHeight } = viewportSize();
-    const layout = touch?.playing() ? computeTouchLayout(width, fullHeight, ratio, readSafeInsets(document)) : null;
+    const layout = touch?.playing() ? computeTouchLayout(width, fullHeight, ratio, readSafeInsets(document), touch.trayRows?.()) : null;
     // The controls bar takes room below or beside the game only off the touch
     // pad, and only where it costs the game no zoom (`controlsBarLayout.ts`):
     // below, the game and the menus are laid out in the window less the bar.

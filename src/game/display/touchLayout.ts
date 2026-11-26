@@ -58,6 +58,12 @@ export interface TouchLayout {
   readonly trays: readonly Rect[];
   /** How many of the screen's keys a tray holds across one row, at most. */
   readonly trayColumns: number;
+  /**
+   * The rows the tray across an upright phone was given: two, or more where a
+   * screen names more keys than two rows hold (YOUR THINGS' OUT, LOCK and its
+   * pockets) and the phone has the room above them. On its side, two.
+   */
+  readonly trayRows: number;
   /** SOUND and FEEDBACK. */
   readonly system: Rect;
 }
@@ -78,6 +84,9 @@ export const PAD = {
   margin: 16,
   gap: 16,
 } as const;
+
+/** The rows of keys the tray across an upright phone is laid out for unless a screen asks for more. */
+export const TRAY_ROWS = 2;
 
 /** The least the pad is shrunk to make room for the smallest game screen beside it. */
 export const MIN_PAD_SCALE = 0.75;
@@ -115,15 +124,17 @@ export function computeTouchLayout(
   viewportHeight: number,
   devicePixelRatio = 1,
   insets: SafeInsets = NO_INSETS,
+  /** The rows of keys the screen up names, upright: more than `TRAY_ROWS` are given where the phone has the room. */
+  trayRows = TRAY_ROWS,
 ): TouchLayout {
   const width = Math.max(1, Math.floor(viewportWidth));
   const height = Math.max(1, Math.floor(viewportHeight));
   return width > height
     ? landscape(width, height, devicePixelRatio, insets)
-    : portrait(width, height, devicePixelRatio, insets);
+    : portrait(width, height, devicePixelRatio, insets, Math.max(TRAY_ROWS, Math.floor(trayRows)));
 }
 
-function portrait(width: number, height: number, ratio: number, insets: SafeInsets): TouchLayout {
+function portrait(width: number, height: number, ratio: number, insets: SafeInsets, wantedRows: number): TouchLayout {
   const left = insets.left + PAD.margin;
   const right = width - insets.right - PAD.margin;
   // The top bar: SOUND and FEEDBACK, and the game straight under it, as a
@@ -131,7 +142,7 @@ function portrait(width: number, height: number, ratio: number, insets: SafeInse
   const systemTop = insets.top + PAD.margin / 2;
   const system = rect(right - PAD.systemSize * 2 - PAD.chipGap, systemTop, PAD.systemSize * 2 + PAD.chipGap, PAD.systemSize);
   const roomTop = systemTop + PAD.systemSize + PAD.margin / 2;
-  const trayHeight = (scale: number) => Math.round(PAD.chipHeight * Math.min(1, scale)) * 2 + PAD.chipGap;
+  const trayHeight = (scale: number, rows = TRAY_ROWS) => Math.round(PAD.chipHeight * Math.min(1, scale)) * rows + PAD.chipGap * (rows - 1);
   const padHeight = (scale: number) =>
     Math.round(Math.max(PAD.dpad, PAD.buttonsHeight) * scale) + PAD.gap + trayHeight(scale) + PAD.gap;
   const bottom = height - Math.max(PAD.margin, insets.bottom + PAD.margin / 2);
@@ -150,7 +161,17 @@ function portrait(width: number, height: number, ratio: number, insets: SafeInse
   const controlsTop = bottom - Math.max(dpadSize, buttonsHeight);
   const dpad = rect(left, bottom - dpadSize, dpadSize, dpadSize);
   const buttons = rect(right - buttonsWidth, bottom - buttonsHeight, buttonsWidth, buttonsHeight);
-  const tray = rect(left, controlsTop - PAD.gap - trayHeight(padScale), right - left, trayHeight(padScale));
+  // The game and the pad are sized for two rows whatever the screen names, so
+  // neither moves when a screen with more keys opens; a row past two takes
+  // the room over the tray, from the menu, and only where it stays clear of
+  // the game - on a short phone the tray's keys are drawn smaller instead.
+  const trayBottom = controlsTop - PAD.gap;
+  const clearOfGame = canvas.box.y + canvas.box.height + PAD.gap / 2;
+  let trayRows = wantedRows;
+  while (trayRows > TRAY_ROWS && trayBottom - trayHeight(padScale, trayRows) < clearOfGame) {
+    trayRows -= 1;
+  }
+  const tray = rect(left, trayBottom - trayHeight(padScale, trayRows), right - left, trayHeight(padScale, trayRows));
   return {
     orientation: 'portrait',
     padScale,
@@ -163,6 +184,7 @@ function portrait(width: number, height: number, ratio: number, insets: SafeInse
     buttons,
     trays: [tray],
     trayColumns: 4,
+    trayRows,
     system,
   };
 }
@@ -214,6 +236,7 @@ function landscape(width: number, height: number, ratio: number, insets: SafeIns
       rect(rightInner.x, top, rightInner.width, buttons.y - PAD.gap - top),
     ],
     trayColumns: 2,
+    trayRows: TRAY_ROWS,
     system,
   };
 }

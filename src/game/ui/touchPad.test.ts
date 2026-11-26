@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DPAD_DEAD_ZONE, dpadDirection, padPixel, padTextSize, shareKeys, shortcutsFrom } from './touchPad';
+import { DPAD_DEAD_ZONE, chipHeightIn, dpadDirection, trayOrder, padPixel, padTextSize, rowsFor, shareKeys, shortcutsFrom } from './touchPad';
 
 describe('the touch pad', () => {
   it('reads a thumb on the d-pad by the axis it is further along, with a still middle', () => {
@@ -63,5 +63,35 @@ describe('a sentence of a menu\'s help on the touch pad', () => {
     expect(namingTrayKeys('Restores 20 HP. X drops one Potion.', keys)).toBe('Restores 20 HP. [DROP] drops one Potion.');
     expect(namingTrayKeys('A stronger hunter.', keys)).toBe('A stronger hunter.');
     expect(namingTrayKeys('I will go.', keys)).toBe('I will go.');
+  });
+
+  it('asks for a row for every four keys upright, and never fewer than two', () => {
+    expect(rowsFor(0, 4)).toBe(2);
+    expect(rowsFor(8, 4)).toBe(2);
+    // The harbour's seven and YOUR THINGS' OUT, LOCK, < TAB and TAB >.
+    expect(rowsFor(11, 4)).toBe(3);
+  });
+
+  it('draws keys smaller only when there is no room for their rows, never past the tray', () => {
+    // Two rows of 48 and a gap: as designed.
+    expect(chipHeightIn(104, 8, 4, 48)).toBe(48);
+    // Three rows in the same tray, on a phone with no room above it.
+    const squeezed = chipHeightIn(104, 11, 4, 48);
+    expect(squeezed * 3 + 8 * 2).toBeLessThanOrEqual(104);
+    expect(squeezed).toBeGreaterThanOrEqual(29);
+    // Never taller than designed, however few.
+    expect(chipHeightIn(400, 2, 2, 36)).toBe(36);
+  });
+
+  it('puts keys past two rows above them, so the first two rows never move', () => {
+    const keys = ['LOOK', 'FAVOURS', 'THINGS', 'TEAM', 'DEX', 'MAP', 'SAY', 'OUT', 'LOCK', '< TAB', 'TAB >'];
+    expect(trayOrder(keys, 4, 3)).toEqual([
+      'LOCK', '< TAB', 'TAB >', null,
+      'LOOK', 'FAVOURS', 'THINGS', 'TEAM',
+      'DEX', 'MAP', 'SAY', 'OUT',
+    ]);
+    // A tray that got no third row (a short phone) keeps its order, drawn smaller.
+    expect(trayOrder(keys, 4, 2)).toEqual(keys);
+    expect(trayOrder(keys.slice(0, 8), 4, 2)).toEqual(keys.slice(0, 8));
   });
 });

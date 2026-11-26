@@ -48,7 +48,7 @@ describe('pixelScreen', () => {
     // The navigation audit (25 Nov 2026): the help for the control under the
     // cursor took the keys line's place from the first frame, so every hall
     // panel hid its keys. The help now has the line above them.
-    expect(screen()).toContain('<span class="px-keys" data-keys>ARROWS move</span>');
+    expect(screen()).toContain('<span class="px-keys" data-keys="ARROWS move">ARROWS move</span>');
     expect(screen()).toContain('data-help-text data-help-default=""');
     expect(pixelScreen({ title: 'Raid', body: '', hints: 'ENTER on', helpDefault: 'Banked.' })).toContain(
       'data-help-text data-help-default="Banked.">Banked.</span>',
@@ -62,7 +62,7 @@ describe('pixelScreen', () => {
     // The help text stays underneath, hidden by `has-status`, so the message can
     // be taken down without rebuilding the screen under the pointer.
     expect(withStatus).toContain('class="px-help has-status has-keys"');
-    expect(withStatus).toContain('data-keys>ARROWS move');
+    expect(withStatus).toContain('data-keys="ARROWS move">ARROWS move');
     expect(withStatus).toContain('data-help-text');
   });
 

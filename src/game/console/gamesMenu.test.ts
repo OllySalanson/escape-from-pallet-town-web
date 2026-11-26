@@ -53,7 +53,7 @@ describe('the GAMES menu', () => {
     // box N is a letter and Escape puts the box down, so the menu's line lies.
     const html = gamesMenuMarkup(state({ naming: { value: 'AS' } }));
     // The keys line under the help, which never goes (`pixelScreen`).
-    const defaultHelp = /data-keys>([^<]*)</.exec(html)?.[1] ?? '';
+    const defaultHelp = /data-keys="[^"]*">([^<]*)</.exec(html)?.[1] ?? '';
     expect(defaultHelp).not.toContain('N your name');
     expect(defaultHelp).not.toContain('back to the house');
     expect(defaultHelp).toContain('ENTER keep this name');
@@ -68,7 +68,7 @@ describe('the GAMES menu', () => {
     expect(renaming).toMatch(/data-help="Keep this name for every board\."[^>]*>OK</);
     const beforePlaying = gamesMenuMarkup(state({ playerName: null, naming: { value: '', then: 'pallet-blocks' } }));
     expect(beforePlaying).toMatch(/data-help="Play PALLET BLOCKS under this name\."[^>]*>OK</);
-    expect(/data-keys>([^<]*)</.exec(beforePlaying)?.[1]).toContain('ENTER play under this name');
+    expect(/data-keys="[^"]*">([^<]*)</.exec(beforePlaying)?.[1]).toContain('ENTER play under this name');
   });
 
   it('puts a refusal where the help bar is', () => {
