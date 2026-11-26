@@ -1,6 +1,6 @@
 import { publicAssetUrl } from '../publicAssetUrl';
 import type { ChartSheet } from '../world/chart';
-import type { WorldMapDefinition } from '../worldMap';
+import type { TileSource } from '../world/tileset/catalogue';
 
 /**
  * The pixels of every sheet a map is drawn from, for THE MAP to shrink
@@ -39,10 +39,10 @@ function sheetPixels(path: string): Promise<ImageData> {
   return reading;
 }
 
-/** Every sheet `map` draws from, as THE MAP reads them. */
-export async function chartSheetsFor(map: Pick<WorldMapDefinition, 'tileset'>): Promise<ChartSheet[]> {
+/** Every sheet a place draws from, as THE MAP reads them. */
+export async function chartSheetsFor(sources: readonly TileSource[]): Promise<ChartSheet[]> {
   return Promise.all(
-    map.tileset.sources.map(async (source) => {
+    sources.map(async (source) => {
       const pixels = await sheetPixels(source.imagePath);
       return {
         firstIndex: source.firstIndex,

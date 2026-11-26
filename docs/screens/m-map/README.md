@@ -19,5 +19,5 @@ survey (`world/trodden.ts`).
 | Z | | `after-raid-map-whole.png`: the whole vale |
 | M at home | `before-harbour-m.png`: nothing | `after-harbour-map.png`: the walk in colour through the fog |
 
-    node tools/playtest/mapScreen.mjs "http://localhost:$PORT/escape-from-pallet-town-web/" out --survey=survey.json
+    node tools/playtest/mapScreen.mjs "http://localhost:$PORT/escape-from-pallet-town-web/" out
     node tools/playtest/mapScreen.mjs "http://localhost:$PORT/escape-from-pallet-town-web/" out --before   # on a build from before

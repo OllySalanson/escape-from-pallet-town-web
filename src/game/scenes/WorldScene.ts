@@ -294,7 +294,7 @@ import {
 } from '../run/raidSettlement';
 import { BASE_STAGE_WIDTH } from '../display/stage';
 import { RaidHud } from '../ui/RaidHud';
-import { MapScreen } from '../ui/MapScreen';
+import { MapScreen, chartOfMap } from '../ui/MapScreen';
 import { PanelLean, type SidePanelView } from '../ui/sidePanel';
 import { HunterEdgeGlow } from '../ui/HunterEdgeGlow';
 import { prefersReducedMotion } from '../ui/reducedMotion';
@@ -8319,7 +8319,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.mapScreen = new MapScreen(
       this,
       {
-        mapId: map.id,
+        subject: chartOfMap(map.id),
         isKnown: (tile) => {
           const index = tile.y * map.width + tile.x;
           return saved.has(index) || walking?.has(index) === true;
@@ -8381,7 +8381,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.revealScreen = new MapScreen(
       this,
       {
-        mapId: map.id,
+        subject: chartOfMap(map.id),
         isKnown: known(after),
         standing: chartTileOf(map, this.currentTile),
         reveal: { name: placeName, rect, wasKnown: known(before) },

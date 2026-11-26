@@ -17,6 +17,8 @@ import {
   type ChartZoom,
 } from '../world/chart';
 import { getWorldMap, worldMapName, type WorldMapId } from '../worldMap';
+import type { MapLayers } from '../world/tiles';
+import type { TileSource } from '../world/tileset/catalogue';
 import { chartSheetsFor } from './chartSheets';
 import { REVEAL_TOTAL_MS, revealFrame } from '../world/chartReveal';
 import { iconUrl } from './icons';
@@ -36,7 +38,8 @@ import { CHART_ZOOM_KEY, RAID_KEY_LETTERS, keyHint } from '../input/keyBindings'
  * (`WorldScene.updateRaid`). At home nothing is running, and the harbour waits.
  */
 export interface MapScreenView {
-  readonly mapId: WorldMapId;
+  /** What the map is of: a raid's map, or THE HARBOUR (`chartOfMap`, `BaseScene.openMap`). */
+  readonly subject: ChartSubject;
   /** Whether a tile of the map is known: stood on, in any raid. */
   readonly isKnown: (tile: GridPosition) => boolean;
   /** Where the player is on the chart, when they are on this map at all. */
@@ -62,27 +65,46 @@ interface PaintedChart {
   readonly fogged: ChartPicture;
 }
 
-const painted = new Map<WorldMapId, Promise<PaintedChart>>();
-
-/** The part of a map THE MAP shows: the outdoors of a map of several places, else all of it. */
-export function chartRectOf(mapId: WorldMapId): ChartRect {
-  const map = getWorldMap(mapId);
-  return map.areas?.[0]?.rect ?? { x: 0, y: 0, width: map.width, height: map.height };
+/**
+ * What THE MAP is of: a place's tile layers, the sheets they are drawn from, the
+ * part of it shown, and its name. Where the player is decides it - a raid's map
+ * in a raid, THE HARBOUR at home (firstmate for the captain, 26 Nov 2026: "M
+ * shows the map of where you are").
+ */
+export interface ChartSubject {
+  /** What its picture is kept under while the page is open: a place drawn differently is a different key. */
+  readonly key: string;
+  readonly name: string;
+  readonly layers: MapLayers;
+  readonly sources: readonly TileSource[];
+  readonly rect: ChartRect;
 }
 
-function paintedChart(mapId: WorldMapId): Promise<PaintedChart> {
-  const held = painted.get(mapId);
+/** A raid's map as THE MAP shows it: the outdoors of a map of several places, else all of it. */
+export function chartOfMap(mapId: WorldMapId): ChartSubject {
+  const map = getWorldMap(mapId);
+  return {
+    key: `map:${mapId}`,
+    name: worldMapName(mapId),
+    layers: map.layers,
+    sources: map.tileset.sources,
+    rect: map.areas?.[0]?.rect ?? { x: 0, y: 0, width: map.width, height: map.height },
+  };
+}
+
+const painted = new Map<string, Promise<PaintedChart>>();
+
+function paintedChart(subject: ChartSubject): Promise<PaintedChart> {
+  const held = painted.get(subject.key);
   if (held) {
     return held;
   }
-  const map = getWorldMap(mapId);
-  const rect = chartRectOf(mapId);
-  const painting = chartSheetsFor(map).then((sheets) => {
-    const colour = paintChart(map, rect, tileCells(sheets));
-    return { colour, fogged: foggedChart(colour, rect) };
+  const painting = chartSheetsFor(subject.sources).then((sheets) => {
+    const colour = paintChart(subject, subject.rect, tileCells(sheets));
+    return { colour, fogged: foggedChart(colour, subject.rect) };
   });
-  painting.catch(() => painted.delete(mapId));
-  painted.set(mapId, painting);
+  painting.catch(() => painted.delete(subject.key));
+  painted.set(subject.key, painting);
   return painting;
 }
 
@@ -117,7 +139,7 @@ export class MapScreen {
 
   public constructor(scene: Phaser.Scene, view: MapScreenView, onClose: () => void) {
     this.onClose = onClose;
-    this.rect = chartRectOf(view.mapId);
+    this.rect = view.subject.rect;
     this.standing = view.standing;
     this.reveal = view.reveal;
     // Somewhere on the map, it opens close round where they stand: a walk is a
@@ -126,10 +148,10 @@ export class MapScreen {
     this.zoom = view.standing && !view.reveal ? 'close' : 'whole';
     this.centre = view.standing ?? { x: this.rect.x + Math.floor(this.rect.width / 2), y: this.rect.y + Math.floor(this.rect.height / 2) };
     this.overlay = new MenuOverlay(scene, 'chart-screen', (event) => this.onKey(event));
-    this.overlay.root.setAttribute('aria-label', `Map of ${worldMapName(view.mapId)}`);
+    this.overlay.root.setAttribute('aria-label', `Map of ${view.subject.name}`);
     this.overlay.root.innerHTML = `
       <div class="chart-bar">
-        <h2 class="chart-name">${worldMapName(view.mapId).toUpperCase()}</h2>
+        <h2 class="chart-name">${view.subject.name.toUpperCase()}</h2>
         <button type="button" class="chart-zoom" data-chart-zoom${view.reveal ? ' hidden' : ''}></button>
         ${view.clockMs === undefined ? '' : `<p class="chart-clock"><img src="${iconUrl('raid-clock')}" alt=""><span data-chart-clock>${formatRaidClock(view.clockMs)}</span></p>`}
         <button type="button" class="chart-close" data-chart-close aria-label="Close the map"></button>
@@ -156,7 +178,7 @@ export class MapScreen {
     this.resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => this.draw());
     this.resize?.observe(this.frame);
     audioManager.play('menuOpen');
-    paintedChart(view.mapId).then(
+    paintedChart(view.subject).then(
       ({ colour, fogged }) => {
         if (this.closed) {
           return;
@@ -236,11 +258,14 @@ export class MapScreen {
     const key = event.key.toLowerCase();
     if (key === CHART_ZOOM_KEY.toLowerCase()) {
       event.preventDefault();
-      this.toggleZoom();
+      // Nothing to change on a place that is only ever seen whole.
+      if (!this.zoomTag.hidden) {
+        this.toggleZoom();
+      }
       return;
     }
     const step = PAN_KEYS[key];
-    if (step && this.zoom === 'close') {
+    if (step && this.zoom === 'close' && !this.zoomTag.hidden) {
       event.preventDefault();
       this.centre = {
         x: Math.min(this.rect.x + this.rect.width - 1, Math.max(this.rect.x, this.centre.x + step[0] * CHART_PAN_TILES)),
@@ -323,13 +348,28 @@ export class MapScreen {
     // A game pixel in device pixels: close up, a tile is four of them, whole.
     const unit = Number.parseFloat(getComputedStyle(this.overlay.root).getPropertyValue('--u')) || 2;
     const cellPixels = Math.max(1, Math.round((unit * ratio * CLOSE_TILE_GAME_PIXELS) / CHART_CELLS));
+    // A place small enough to fit whole at least as big as close up - THE
+    // HARBOUR - is only ever shown whole, and Z has nothing to change.
+    const whole = placeChart(this.rect, { width, height }, 'whole', this.centre, cellPixels);
+    const fitsWhole = whole.tilePixels >= cellPixels * CHART_CELLS;
+    this.zoomTag.hidden = Boolean(this.reveal) || fitsWhole;
     const place = this.reveal
       ? placeChart(this.rect, { width, height }, 'close', revealCentre(this.reveal.rect), revealCellPixels(this.reveal.rect, height))
-      : placeChart(this.rect, { width, height }, this.zoom, this.centre, cellPixels);
+      : fitsWhole
+        ? placeChart(
+            this.rect,
+            { width, height },
+            'close',
+            { x: this.rect.x + Math.floor(this.rect.width / 2), y: this.rect.y + Math.floor(this.rect.height / 2) },
+            Math.floor(whole.tilePixels / CHART_CELLS),
+          )
+        : placeChart(this.rect, { width, height }, this.zoom, this.centre, cellPixels);
     // Close up the cells are drawn whole and sharp; the whole place is shrunk
     // smoothly, because a quarter-tile is finer than the screen has pixels for
     // and a nearest pick would drop one-tile lanes.
-    context.imageSmoothingEnabled = this.zoom === 'whole' && !this.reveal;
+    // Only the whole of a place too big for the frame is shrunk, smoothly; every
+    // other view is a whole number of device pixels a cell, and drawn sharp.
+    context.imageSmoothingEnabled = !this.reveal && !fitsWhole && this.zoom === 'whole';
     context.imageSmoothingQuality = 'high';
     context.clearRect(0, 0, width, height);
     const drawn = { width: this.rect.width * place.tilePixels, height: this.rect.height * place.tilePixels };
