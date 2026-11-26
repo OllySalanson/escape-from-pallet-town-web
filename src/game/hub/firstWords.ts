@@ -79,9 +79,9 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
     speaker: 'nurse-joy',
     name: 'Nurse Joy',
     lines: [
-      'Welcome to the Pokémon Center! Your Pokémon rest here between raids.',
-      'Healing is free. Only a faint costs you: time off your next raid.',
-      "Poison, paralysis, a burn: they stay on till they're treated, so do come and see me.",
+      // Two boxes, where six stood before the first heal (the harbour critic
+      // tour, 26 Nov 2026): her price is said with the heal itself.
+      'Welcome to the Pokémon Center! Healing is free. Only a faint costs time off your next raid.',
       'Your boxes and everything you have banked are on BILL’S PC, over by the wall.',
     ],
   },
@@ -91,7 +91,7 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
     lines: [
       'I build things into this base, and they stay built.',
       'Every bay with chalk in it is something I can put there.',
-      'Walk up to the chalk and ask. I take materials from raids, nothing else.',
+      'Walk up to the chalk and ask, or read my plans on the wall. I build from what raids bring home.',
     ],
   },
   cottage: {

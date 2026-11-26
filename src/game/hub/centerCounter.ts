@@ -5,7 +5,6 @@ import {
   freeHealApplies,
   formatRecoveryClock,
   isFreeHealDay,
-  MAX_PENDING_RECOVERY_MS,
   pokemonNeedingRecovery,
   quoteRecovery,
   raidClockAfterRecovery,
@@ -53,7 +52,10 @@ export function recoveryTermsFor(
  * opening on "Healing is free." and closing on "the first each day is free" read
  * as her taking the price back (night raid critic, 26 Nov 2026).
  */
-export const HEAL_RULE_LINE = `A scratch mends free. Only a faint costs, at most ${formatRecoveryClock(MAX_PENDING_RECOVERY_MS)} of a raid, and today's free one is used: tomorrow's first is free.`;
+// In her words, not the rule's: "at most 1:00 of a raid" was the designer's
+// cap read aloud, and "today's free one is used" never said free what (the
+// harbour critic tour, 26 Nov 2026). The cap still holds (`recovery.ts`).
+export const HEAL_RULE_LINE = "Only a faint costs. Your free heal today's been used; you get another tomorrow.";
 
 type CounterGame = Pick<RestoredGame, 'stash' | 'pendingRecoveryMs' | 'wardTreatmentsUsed' | 'freeHealDay'> & {
   readonly raidProgress: Pick<RaidProgress, 'workshopUpgrades'>;

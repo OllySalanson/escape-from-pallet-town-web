@@ -351,11 +351,11 @@ describe('Nurse Joy, at her counter', () => {
     expect(after.freeHealDay).toBe(healDayOf(new Date()));
   });
 
-  it("says the rule with a price: at most 1:00, and tomorrow's first free", () => {
+  it("says the rule with a price: only a faint costs, and tomorrow's first is free", () => {
     const joy = room(fainted(), [false]);
     joy.speak('pokemon-centre', 'stash');
     expect(joy.said.join(' ')).toContain(
-      "A scratch mends free. Only a faint costs, at most 1:00 of a raid, and today's free one is used: tomorrow's first is free.",
+      "Only a faint costs. Your free heal today's been used; you get another tomorrow.",
     );
   });
 

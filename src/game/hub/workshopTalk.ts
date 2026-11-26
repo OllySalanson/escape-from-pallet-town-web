@@ -57,9 +57,15 @@ export function brockQuote(offer: WorkshopOffer): BrockQuote {
     return {
       lines: [
         what,
-        offer.suppliesShort.length > 0
-          ? `That takes ${price}. You are short ${itemAmountsFor(offer.suppliesShort)}.`
-          : `That takes ${price}, and you have none of it to spare.`,
+        // Short of all of it, the shortfall is the price read back: where the
+        // materials come from is the useful thing to say (the harbour critic
+        // tour, 26 Nov 2026). Caches and the ground lay them, and the
+        // standing board pays in them (`workshopMaterialKinds`).
+        offer.suppliesShort.length === 0
+          ? `That takes ${price}, and you have none of it to spare.`
+          : itemAmountsFor(offer.suppliesShort) === price
+            ? `That takes ${price}. Raids turn them up, and Oak's jobs pay in them.`
+            : `That takes ${price}. You are short ${itemAmountsFor(offer.suppliesShort)}.`,
       ],
     };
   }

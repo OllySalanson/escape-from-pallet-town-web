@@ -655,7 +655,7 @@ describe('deployment flow', () => {
       expect(flow.secureFit('charmeleon-1')).toBe('grow');
       const refusal = flow.toggleSecurePokemon('charmeleon-1');
       expect(refusal).toMatch(/CHARMELEON needs 6 squares - THE LOCKER is only 2x2/);
-      expect(refusal).toMatch(/build Secure locker I at Brock's Workshop, or rent a locker shelf from Bill/);
+      expect(refusal).toMatch(/build Locker I at Brock's Workshop, or rent a locker shelf from Bill/);
       // Emptying a 2x2 cannot seat a 3x2, so it is not offered.
       expect(refusal).not.toMatch(/Take something out/);
     });
@@ -681,13 +681,13 @@ describe('deployment flow', () => {
     it('lists only the routes still open: built rungs, a paid berth and retired contracts are gone', () => {
       expect(secureGrowthLeft(['cordon-ledger'], ['secure-locker-1', 'secure-locker-2'], true)).toEqual([]);
       expect(secureGrowthLeft([], ['secure-locker-1'], true)).toEqual([
-        { kind: 'workshop', name: 'Secure locker II' },
+        { kind: 'workshop', name: 'Locker II' },
         { kind: 'contract', name: 'Cordon ledger' },
       ]);
       retireMapsForTests(RETIRED_MAPS);
       try {
         // The cordon ledger stands on Pallet Town, which is put away.
-        expect(secureGrowthLeft([], ['secure-locker-1'], true)).toEqual([{ kind: 'workshop', name: 'Secure locker II' }]);
+        expect(secureGrowthLeft([], ['secure-locker-1'], true)).toEqual([{ kind: 'workshop', name: 'Locker II' }]);
       } finally {
         retireMapsForTests([]);
       }

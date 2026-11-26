@@ -53,7 +53,7 @@ export function grownSecureGrid(grid: GridSize, routes: readonly SecureGrowthRou
 }
 
 /**
- * How to grow it, as the end of a sentence: "build Secure locker I at Brock's
+ * How to grow it, as the end of a sentence: "build Locker I at Brock's
  * Workshop, or rent a locker shelf from Bill". Brock's next rung only, because
  * the second cannot be built before the first. Empty when nothing is left.
  */

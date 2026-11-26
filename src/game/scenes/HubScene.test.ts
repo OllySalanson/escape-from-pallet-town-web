@@ -558,6 +558,21 @@ describe('hub deployment route', () => {
     expect(hub.pendingRecoveryMs - pendingMs).toBe(quoted);
   });
 
+  /** BILL'S PC spent 0:35 on one ENTER, three tiles from Joy's guarded counter (the harbour critic tour, 26 Nov 2026). */
+  it('asks before a heal on the PC that costs raid time, and heals on the second press', () => {
+    const { hub, worn } = createWornHub((maxHp) => maxHp);
+    expect(recoveryCostMs(worn.pokemon)).toBeGreaterThan(0);
+    hub.setView('stash');
+    const ask = (hub as unknown as { recoverAsked(id: string): void }).recoverAsked.bind(hub);
+    ask('charmander-1');
+    expect(worn.pokemon.currentHp).not.toBe(worn.pokemon.maxHp);
+    expect(hub.pendingRecoveryMs).toBe(0);
+    expect(markupOf(hub)).toContain('ENTER again to heal');
+    ask('charmander-1');
+    expect(worn.pokemon.currentHp).toBe(worn.pokemon.maxHp);
+    expect(hub.pendingRecoveryMs).toBeGreaterThan(0);
+  });
+
   it('brings a fainted Pokemon round at base and takes the cost off the next raid clock', () => {
     const { hub, start, storage, worn } = createWornHub((maxHp) => maxHp);
     const costMs = recoveryCostMs(worn.pokemon);
@@ -1957,7 +1972,7 @@ describe('Brock', () => {
 
     expect(markupOf(hub)).not.toContain('data-view="workshop"');
     hub.setView('workshop');
-    expect(markupOf(hub)).toContain('Secure locker I');
+    expect(markupOf(hub)).toContain('Locker I');
   });
 
   it('lists every rung with its price in materials, and marks what this vault cannot pay yet', () => {
@@ -1965,7 +1980,7 @@ describe('Brock', () => {
 
     hub.setView('workshop');
     const ladder = markupOf(hub);
-    expect(ladder).toContain('Secure locker I');
+    expect(ladder).toContain('Locker I');
     // The price is on the rung's card, one part a salvage's icon and its count,
     // and it is materials and nothing else (playtest 42, option A).
     const lockerOne = ladder.slice(ladder.indexOf('data-outfit="secure-locker-1"'), ladder.indexOf('data-outfit="secure-locker-2"'));
@@ -1977,7 +1992,7 @@ describe('Brock', () => {
     // where its price would be: its price is in the card on the right.
     const lockerTwo = ladder.slice(ladder.indexOf('data-outfit="secure-locker-2"'));
     const lockerTwoCard = lockerTwo.slice(0, lockerTwo.indexOf('</button>'));
-    expect(lockerTwoCard).toContain('aria-label="After Secure locker I"');
+    expect(lockerTwoCard).toContain('aria-label="After Locker I"');
     expect(lockerTwoCard).toMatch(/padlock\.png[^]*?Locker I<\/span>/);
     // Short is a drawn cross on the tag as well as grey, never colour alone
     // (playtest 40 #4), so the row needs no legend strip over it.
@@ -2009,12 +2024,12 @@ describe('Brock', () => {
 
     // Unbought: the card says what it does, and the price is under it.
     const unbought = rowOf('quarantine-ward');
-    expect(unbought).toContain('Three revives per raid, free of clock.');
+    expect(unbought).toContain('Between raids, three fainted Pokémon brought round free.');
     expect(unbought).toContain('<span class="workshop-costs">');
     // Built: the same line, still there, gold and tagged BUILT, and what it
     // cost with nothing marked short.
     const built = rowOf('secure-locker-1');
-    expect(built).toContain('One more column of THE LOCKER.');
+    expect(built).toContain('Two more squares in THE LOCKER.');
     expect(built).toContain('workshop-card is-built');
     expect(built).toContain('>Built<');
     expect(built).not.toContain('is-short');
@@ -2040,7 +2055,7 @@ describe('Brock', () => {
     expect(lockerOne).toContain('In a raid');
     expect(lockerOne).toContain('ws-squares');
     // The second waits on the first, and says so by name with a lock.
-    expect(paneOf('secure-locker-2')).toContain('After Secure locker I');
+    expect(paneOf('secure-locker-2')).toContain('After Locker I');
     expect(paneOf('secure-locker-2')).not.toContain('Build it');
   });
 
@@ -2104,7 +2119,7 @@ describe('Brock', () => {
     hub.armUpgrade('secure-locker-1');
     hub.buildUpgrade('secure-locker-1');
 
-    expect(statusOf(hub)).toBe('Secure locker I built.');
+    expect(statusOf(hub)).toBe('Locker I built.');
     expect(hub.stash.listPokemon().map(({ id }) => id)).toEqual(['charmander-1', 'pidgey-1', 'pidgey-2', 'bulbasaur-9']);
     expect(hub.stash.itemCount('parts-crate')).toBe(1);
     expect(hub.stash.itemCount('poke-ball')).toBe(9);
@@ -2435,8 +2450,8 @@ describe('HubScene - Bill', () => {
     expect(boat).toMatch(/\+\d+ safe squares, this raid\./);
     // The comparison with the built locker is the help bar's, because on the
     // row it wrapped to three lines and ate the shelf above it.
-    expect(boat).toMatch(/data-help="[^"]*Brock builds one for good/);
-    expect(boat).not.toMatch(/<small[^>]*>[^<]*Brock builds one for good/);
+    expect(boat).toMatch(/data-help="[^"]*Brock builds them for good/);
+    expect(boat).not.toMatch(/<small[^>]*>[^<]*Brock builds them for good/);
   });
 
   /**

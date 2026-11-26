@@ -479,7 +479,7 @@ export const ITEMS = {
     // carries a square of them; one that hoards four raids' worth gives up a
     // fifth of its pack to do it.
     stackSize: 250,
-    description: 'League money, counted in ₽ and water-stained. Bill still takes it; out here nobody else does.',
+    description: 'League money, counted in ₽ and water-stained. Bill takes it, and so does THE HARBOUR BOUTIQUE.',
     effect: { type: 'currency' },
   },
   /* --- The stones ---------------------------------------------------------
