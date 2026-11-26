@@ -5,7 +5,7 @@
  * by default - register on the game's KeyboardManager rather than on the scene
  * that asked, and the manager keeps calling `preventDefault()` on every captured
  * key for the life of the game, including while that scene sits paused behind an
- * overlay. `WorldScene` captures O, P, B, K, SPACE and ENTER, so the instant it
+ * overlay. `WorldScene` captures O, P, B, SPACE and ENTER, so the instant it
  * paused itself to open the field guide it was still eating the very key the HUD
  * advertises for closing it again, and the overlay's own window listener - which
  * ran after Phaser's, in the bubble phase - dropped the event as already handled.

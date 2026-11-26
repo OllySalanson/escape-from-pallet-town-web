@@ -264,6 +264,14 @@ describe('hunter disengagement wiring', () => {
     );
   });
 
+  it('binds no key a raid does nothing with: K is not captured or watched', () => {
+    // The navigation audit (25 Nov 2026): K saved the free-roam game, and a raid
+    // saves itself, so it was captured and swallowed for nothing.
+    expect(sceneSource).not.toContain('KeyCodes.K,');
+    expect(sceneSource).not.toContain('KeyCodes.K)');
+    expect(sceneSource).not.toContain('this.controls.save');
+  });
+
   it('answers a direction key under a dialogue by naming the key that reads on, never by reading on', () => {
     // A box that only answers to SPACE and ENTER never said so, so the reflex -
     // press a direction - used to advance the ones the world raised on its own.

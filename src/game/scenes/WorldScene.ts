@@ -874,7 +874,6 @@ interface ControlKeys {
   d: Phaser.Input.Keyboard.Key;
   party: Phaser.Input.Keyboard.Key;
   bag: Phaser.Input.Keyboard.Key;
-  save: Phaser.Input.Keyboard.Key;
   objectives: Phaser.Input.Keyboard.Key;
   /** THE MAP (`ui/MapScreen.ts`). */
   map: Phaser.Input.Keyboard.Key;
@@ -2716,11 +2715,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         return;
       }
       this.mapDue = true;
-    }
-
-    if (this.keyPresses.justPressed(this.controls.save)) {
-      this.saveGame();
-      return;
     }
 
     if (currentTry() && this.keyPresses.justPressed(this.controls.back)) {
@@ -7317,8 +7311,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.party],
       Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.bag],
       Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.map],
-      Phaser.Input.Keyboard.KeyCodes.K,
     ]);
+    // No K: it saved the free-roam game, and a raid saves itself (`saveGame`
+    // returns at once while one is running), so it was a key captured and
+    // swallowed for nothing (the navigation audit, 25 Nov 2026).
     this.input.keyboard.on?.(`keydown-${MUTE_KEY}`, () => audioManager.toggleMute());
 
     this.controls = {
@@ -7334,7 +7330,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       // from (`input/keyBindings.ts`), so a hint can never teach the wrong key.
       party: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.party]),
       bag: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.bag]),
-      save: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K),
       objectives: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.objectives]),
       map: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.map]),
       // Never captured: an overlay above the world must keep its own Escape.
@@ -7358,7 +7353,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       ...this.controls.interact,
       this.controls.party,
       this.controls.bag,
-      this.controls.save,
       this.controls.objectives,
       this.controls.map,
       this.controls.back,
