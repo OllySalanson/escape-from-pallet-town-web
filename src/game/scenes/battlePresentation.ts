@@ -7,6 +7,7 @@ import { BATTLE_PIC_COORDS } from '../pokemon/generated/battlePicCoords';
 import { STAB_MULTIPLIER } from '../pokemon/battle/damage';
 import { WeatherId, weatherLabel } from '../pokemon/battle/weather';
 import { battleCaps, withArticle } from '../pokemon/battle/battleItems';
+import { CATCH_LESSON_SHARE } from '../pokemon/battle/battleFlow';
 import { statusAbbreviation, type PrimaryStatus } from '../pokemon/battle/status';
 import { isCurrency, itemAmountFor, itemCountTag } from '../items';
 import { BASE_STAGE_WIDTH, MAX_STAGE_WIDTH } from '../display/stage';
@@ -1408,8 +1409,14 @@ export const changesShownStatus = (
  * four lines (pret/pokefirered `battle_message.c`, `sText_PkmnBrokeFree` to
  * `sText_ShootSoClose`), so a throw that nearly held reads as nearly holding.
  */
-/** Above this share of its HP, a Pokémon that broke free is worth the catch tip. */
-export const CATCH_TIP_ABOVE_SHARE = 1 / 2;
+/**
+ * Above this share of its HP, a Pokémon that broke free is worth the catch tip.
+ * It is the share the first raid's catch calls weak (`CATCH_LESSON_SHARE`): at
+ * a half, the tutorial Pidgey at 8/13 was "weak! Throw a BALL now" and, the
+ * ball broken, "still has plenty of fight in it" in the same fight (night raid
+ * critic, 26 Nov 2026). One line, one rule.
+ */
+export const CATCH_TIP_ABOVE_SHARE = CATCH_LESSON_SHARE;
 
 /**
  * Said once a fight, after a ball a healthy Pokémon broke out of: nothing else

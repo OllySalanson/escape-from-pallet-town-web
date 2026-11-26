@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import { getWorldMap } from '../worldMap';
 import { catchLessonMessage, catchLessonOpening } from '../pokemon/battle/battleFlow';
+import { earnsCatchTip } from '../scenes/battlePresentation';
 import { FIRST_CATCH_LEVEL, firstCatchCaughtLines, firstCatchFigures, FIRST_CATCH_LANDING_LINES } from './firstCatch';
 import { TEACHING_ENCOUNTER } from './teachingEncounter';
 import { stepDistances } from './mapStructure';
@@ -67,5 +68,18 @@ describe("the catch lesson's words", () => {
     expect(catchLessonMessage({ enemyHp: 8, enemyMaxHp: 13, fightGoesOn: true })).toMatch(/^It's weak! Throw a BALL now/);
     expect(catchLessonMessage({ enemyHp: 0, enemyMaxHp: 13, fightGoesOn: false })).toBeNull();
     expect(catchLessonMessage({ enemyHp: 3, enemyMaxHp: 13, fightGoesOn: false })).toBeNull();
+  });
+
+  it('never says a Pokémon it called weak "still has plenty of fight in it" when a ball breaks', () => {
+    // The night raid critic's first catch: 8/13 was "weak!", the ball broke, and the tip said the opposite.
+    for (const maxHp of [11, 13, 17, 40]) {
+      for (let hp = 1; hp <= maxHp; hp += 1) {
+        const weak = catchLessonMessage({ enemyHp: hp, enemyMaxHp: maxHp, fightGoesOn: true }) !== null;
+        expect(weak && earnsCatchTip(hp, maxHp), `${hp}/${maxHp}`).toBe(false);
+      }
+    }
+    // A Pokémon still near full is still told to be worn down first.
+    expect(earnsCatchTip(13, 13)).toBe(true);
+    expect(earnsCatchTip(9, 13)).toBe(true);
   });
 });
