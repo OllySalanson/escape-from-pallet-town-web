@@ -299,6 +299,8 @@ describe('the defeat sequence a lost raid opens on', () => {
 
     expect(Object.keys(sequence).sort()).toEqual([
       'beats',
+      // What lost the raid, which is not a duration.
+      'cause',
       'figures',
       // How long a beat stands before it listens - a floor under the player's
       // press, never a timer that moves the beat on.
@@ -311,11 +313,29 @@ describe('the defeat sequence a lost raid opens on', () => {
     );
   });
 
-  it('is not offered for a raid lost to the clock, which has no line-up on the ground', () => {
-    const report = wipedReport([new Pokemon(CHARMANDER, 12)], [], { cause: 'timer' });
+  it('stands the party up for a raid lost to the clock, and shows what the raid kept', () => {
+    // A loss read off the ledger went unseen: a player came home from a raid
+    // the clock ran out on sure they still had the Pidgey it took (25 Nov 2026).
+    const pidgey = new Pokemon(PIDGEY, 6);
+    const report = wipedReport([new Pokemon(SQUIRTLE, 9), new Pokemon(CHARMANDER, 9), pidgey], [], {
+      cause: 'timer',
+      partnerIndex: 0,
+      secureIndex: 1,
+    });
 
-    expect(report.fallen).toBeUndefined();
-    expect(buildDefeatSequence(report)).toBeNull();
+    const sequence = buildDefeatSequence(report)!;
+
+    expect(sequence.cause).toBe('timer');
+    expect(sequence.beats.map((beat) => beat.id)).toEqual(['clock', 'taken', 'held']);
+    expect(sequence.beats[0].headline).toBe('THE CLOCK RAN OUT.');
+    expect(sequence.beats[1].headline).toBe('THE RAID KEPT THEM.');
+    expect(sequence.beats[1].detail).toContain('Pidgey');
+    // Nobody fell, so nobody stands front and centre.
+    expect(sequence.figures.filter((figure) => figure.kind === 'pokemon').map(({ label, fate, lastStand }) => [label, fate, lastStand])).toEqual([
+      ['Squirtle', 'held', false],
+      ['Charmander', 'held', false],
+      ['Pidgey', 'taken', false],
+    ]);
   });
 
   it('is not offered for a raid that was survived', () => {

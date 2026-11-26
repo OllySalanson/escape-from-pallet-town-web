@@ -1,3 +1,4 @@
+import { createRaidInFlight } from '../run/raidInFlight';
 import { describe, expect, it, vi } from 'vitest';
 
 /**
@@ -456,6 +457,11 @@ describe('two raids in a row on one WorldScene instance', () => {
         bag: new Bag(),
         stash,
       });
+      expect(
+        new SaveManager(storage).recordRaidInFlight(
+          createRaidInFlight('floodplain-relay', [], [], undefined, ['charmander-1', 'pidgey-1']),
+        ),
+      ).toBe(true);
       const game = new SaveManager(storage).load()!;
       const partner = game.stash.partner()!.pokemon;
       const pidgey = game.stash.listPokemon().find(({ id }) => id === 'pidgey-1')!.pokemon;
@@ -499,6 +505,13 @@ describe('two raids in a row on one WorldScene instance', () => {
       const report = payload!.report;
       expect(report.partner?.name).toBe('Charmeleon');
       expect(report.ledger.pokemon.map(({ name }) => name)).toEqual(['Pidgey']);
+      // The result opens on the line-up, the Pidgey the clock took among it.
+      expect(report.fallen?.map(({ name, secured }) => [name, secured])).toEqual([['Charmeleon', true], ['Pidgey', false]]);
+      // And the save says so, for anyone who looks later (`run/raidLog.ts`).
+      const logged = after.raidProgress.raidLog?.at(-1);
+      expect(logged?.ending).toBe('clock');
+      expect(logged?.lost.pokemon).toEqual([{ id: 'pidgey-1', species: 'pidgey', level: 5 }]);
+      expect(logged?.home.pokemon).toEqual([{ id: 'charmander-1', species: 'charmeleon', level: 16 }]);
     } finally {
       vi.unstubAllGlobals();
     }

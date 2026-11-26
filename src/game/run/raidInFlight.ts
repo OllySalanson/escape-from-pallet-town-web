@@ -41,6 +41,8 @@ export interface RaidInFlight {
   /** One raid, never two: what the live-elsewhere check and every ending match on. */
   readonly id: string;
   readonly mapId: string;
+  /** Where it went in, for the raid log (`run/raidLog.ts`). Absent on a marker written before it was kept. */
+  readonly insertionId?: string;
   /** The pack worn into the raid, which is lost with it. */
   readonly packItemId?: string;
   /** Everything packed at base, the secured part included. */
@@ -124,6 +126,7 @@ export function readRaidInFlight(
   return {
     id: record.id,
     mapId: record.mapId,
+    ...(typeof record.insertionId === 'string' ? { insertionId: record.insertionId } : {}),
     ...(typeof record.packItemId === 'string' ? { packItemId: record.packItemId } : {}),
     items: readContents(record.items),
     secured: readContents(record.secured),

@@ -5329,6 +5329,9 @@ export class BattleScene extends Phaser.Scene {
         // secure container cannot protect it either.
         session.packItemId,
         session.raidId,
+        // How it ended, and how much clock it had used, for the raid log (`run/raidLog.ts`).
+        'fainted',
+        snapshot.elapsedMs,
       );
     const { saved, restocked } = settle();
     // Storage refused it: tried again at base, so the raid is not settled there
