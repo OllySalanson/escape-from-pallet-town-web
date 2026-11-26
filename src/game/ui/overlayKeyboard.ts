@@ -83,6 +83,14 @@ function onKeyDown(event: KeyboardEvent): void {
     if (event.repeat === true && event.key === 'Enter') {
       event.preventDefault();
     }
+    // Tab out of a field is the screen's, as it is from anywhere else on it:
+    // left to the browser it walked the focus out of the panel into the page
+    // behind it - from YOUR TEAM's FIND box the highlight was simply gone (the
+    // navigation audit, 25 Nov 2026). A screen that does not take it leaves it
+    // to the browser as before.
+    if (event.key === 'Tab' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      owner.handler(event);
+    }
     return;
   }
   if (isHeldCommitKey(event)) {
