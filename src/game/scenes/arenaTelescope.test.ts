@@ -126,4 +126,18 @@ describe("THE RAID ARENA's telescope keys", () => {
       ['KeyZ', 'ZOOM'],
     ]);
   });
+
+  it('dims the yard\'s lists while something waits on an answer, and leaves LOOK live', () => {
+    // A phone playtest (26 Nov 2026): with "Take PIDGEY along?" up, THINGS
+    // on the pad stood lit and did nothing when tapped.
+    const keys = (scene: Record<string, unknown>) =>
+      (BaseScene.prototype as unknown as { touchShortcuts(this: unknown): readonly { label: string; inert?: boolean }[] }).touchShortcuts
+        .call({ hintText: null, ...scene })
+        .map(({ label, inert }) => (inert ? `(${label})` : label));
+    expect(keys({ dialogBox: { visible: false } })).toEqual(['LOOK', 'FAVOURS', 'THINGS', 'TEAM', 'DEX', 'MAP', 'SAY']);
+    const dimmed = ['LOOK', '(FAVOURS)', '(THINGS)', '(TEAM)', '(DEX)', '(MAP)', '(SAY)'];
+    expect(keys({ dialogBox: { visible: true } })).toEqual(dimmed);
+    expect(keys({ dialogBox: { visible: false }, boxQuestion: { prompt: {} } })).toEqual(dimmed);
+    expect(keys({ dialogBox: { visible: false }, fishing: {} })).toEqual(dimmed);
+  });
 });
