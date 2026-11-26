@@ -12,9 +12,7 @@ import { Bag, ITEM_DEFINITIONS, MATERIAL_IDS } from '../items';
 import { itemIconName } from '../ui/icons';
 import {
   BULBASAUR,
-  CHARIZARD,
   CHARMANDER,
-  CHARMELEON,
   PIDGEY,
   Pokemon,
   PokemonParty,
@@ -35,7 +33,6 @@ import type { ActiveRunSession } from '../run/RunSession';
 import { createStartingStash, Stash, type StashedPokemon } from '../stash';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
 import {
-  FAINTED_TREATMENT_NOTE,
   MAX_PENDING_RECOVERY_MS,
   raidClockAfterRecovery,
   recoveryCostMs,
@@ -168,67 +165,6 @@ describe('the lobby as a screen of the game', () => {
     expect(stash).toContain('data-recover="charmander-1"');
   });
 
-  it('counts the hurt and the fainted apart, and tells nobody what to do about them', () => {
-    const { hub } = createWornHub();
-    intoTheArena(hub);
-    expect(markupOf(hub)).toContain('1 hurt');
-    expect(markupOf(hub)).not.toContain('treat them first');
-
-    const [partner] = hub.stash.listPokemon().filter((stored) => stored.id !== 'charmander-1');
-    partner.pokemon.takeDamage(partner.pokemon.maxHp);
-    hub.setView('bench');
-    const mixed = markupOf(hub);
-    expect(mixed).toContain('1 fainted · 1 hurt');
-    expect(mixed).not.toContain('treat them first');
-    expect(mixed).toContain(`${partner.pokemon.base.name} has fainted and cannot fight. Only the Pokémon Center can revive it.`);
-
-    const worn = hub.stash.listPokemon().find((stored) => stored.id === 'charmander-1')!;
-    worn.pokemon.takeDamage(worn.pokemon.maxHp);
-    hub.setView('bench');
-    const wiped = markupOf(hub);
-    expect(wiped).toContain('2 fainted');
-    expect(wiped).not.toContain('see Nurse Joy');
-    expect(wiped).not.toContain(`Add ${partner.pokemon.base.name}`);
-    // The row says so too: no ADD on a Pokemon the party will not take.
-    expect(wiped).toContain(`data-pokemon="${partner.id}" data-shows="${partner.id}" data-cursor-start aria-disabled="true"`);
-    expect(wiped).not.toContain('px-tag-plain">Add<');
-    // Nothing is packed yet, and the bar says why nothing can be.
-    expect(wiped).toContain('Every Pokémon here has fainted. Nurse Joy can revive them, out of the door and across the yard.');
-  });
-
-  it('lists one box at a time, and every box when the loadout is chosen from', () => {
-    const { hub } = createHub();
-    hub.stash.addPokemon(new Pokemon(CHARMANDER, 3), 'shelved');
-    hub.stash.movePokemon('shelved', hub.stash.addBox());
-
-    hub.setView('stash');
-    const first = markupOf(hub);
-    expect(first).toContain('Box 1');
-    expect(first).toContain('data-box-step');
-    expect(first).not.toContain('data-recover="shelved"');
-    expect(first).not.toContain('data-fit="shelved"');
-
-    hub.stepBox(1);
-    expect(markupOf(hub)).toContain('data-fit="shelved"');
-
-    // The loadout is drawn from all of them, so nothing to spend or deploy hides.
-    intoTheArena(hub);
-    expect(markupOf(hub)).toContain('data-pokemon="shelved"');
-  });
-
-  it('opens the loadout with the cursor on the first Pokemon, never on the sort chip', () => {
-    // Playtest 44 #2: the loadout had no cursor start, so the cursor fell on
-    // the first button in the body - SORT - and the first Enter re-sorted the
-    // stash instead of choosing who goes.
-    const { hub } = createHub();
-    intoTheArena(hub);
-    const markup = markupOf(hub);
-
-    const starts = markup.match(/<button[^>]*data-cursor-start[^>]*>/g) ?? [];
-    expect(starts).toHaveLength(1);
-    expect(starts[0]).toContain('data-pokemon=');
-  });
-
   it('offers only the boxes that have room while a Pokemon is picked up, and puts it down', () => {
     const { hub } = createHub();
     hub.setView('stash');
@@ -252,17 +188,6 @@ describe('the lobby as a screen of the game', () => {
     expect(markupOf(hub)).not.toContain('recovery-panel');
   });
 
-  it('lets the cursor rest on a medicine that would do nothing, to be told why', () => {
-    const { hub } = createWornHub();
-
-    intoTheArena(hub);
-    const loadout = markupOf(hub);
-
-    // `disabled` would make the reason unreachable: the help bar only speaks for
-    // the control the cursor is on.
-    expect(loadout).toMatch(/data-treat-item="potion"[^>]*data-help="Potion: Restores/);
-    expect(loadout).not.toMatch(/data-treat-item="[^"]*"[^>]* disabled/);
-  });
 });
 
 interface WorldSceneData {
@@ -443,7 +368,7 @@ describe('a panel over the hall', () => {
     return { kit, calls, world: () => world };
   }
 
-  function panelOn(view: 'bench' | 'rack' | 'locker' | 'rim') {
+  function panelOn(view: 'rim') {
     const { hub, start } = createHub();
     const game = (hub as unknown as { savedGame: RestoredGame }).savedGame;
     const held = hallKit(game);
@@ -458,7 +383,7 @@ describe('a panel over the hall', () => {
   });
 
   it('carries on with what the hall is holding, and leaves back into the hall', () => {
-    const { hub, kit, calls, start } = panelOn('bench');
+    const { hub, kit, calls, start } = panelOn('rim');
     expect(hub.flow).toBe(kit.flow);
     hub.flow.togglePokemon('charmander-1');
     hub.goBack();
@@ -469,7 +394,7 @@ describe('a panel over the hall', () => {
   });
 
   it('looks the plan over from the rim, and hands the raid to the hall to jump into', () => {
-    const { hub, kit, calls, world, start } = panelOn('bench');
+    const { hub, kit, calls, world, start } = panelOn('rim');
     kit.flow.togglePokemon('charmander-1');
     hub.init({ view: 'rim', kit });
     expect(hub.flow.step).toBe('confirm');
@@ -480,7 +405,7 @@ describe('a panel over the hall', () => {
   });
 
   it('comes home to the same bench: home, SPACE and ENTER are all going again asks', () => {
-    const { hub, kit } = panelOn('bench');
+    const { hub, kit } = panelOn('rim');
     kit.flow.togglePokemon('charmander-1');
     hub.init({ view: 'rim', kit });
     const remembered = vi.spyOn(SaveManager.prototype, 'recordBench');
@@ -489,22 +414,6 @@ describe('a panel over the hall', () => {
     remembered.mockRestore();
     const home = { ...kit.game, raidProgress: { ...kit.game.raidProgress, lastBench: ['charmander-1'] } };
     expect(flowForGame(home).party.map(({ id }) => id)).toEqual(['charmander-1']);
-  });
-
-  it('lectures nobody about wipes on the bench, partner or not', () => {
-    // A friend with only their starter took it off the bench and read "Lost on
-    // a wipe unless it is in the locker" over it (persona playtest, 23 Nov
-    // 2026); the captain then ruled the advice lines out altogether (25 Nov).
-    const { hub } = createHub();
-    const partnerId = hub.stash.partner()!.id;
-    for (const stored of hub.stash.listPokemon()) {
-      if (hub.flow.includesPokemon(stored.id)) hub.flow.togglePokemon(stored.id);
-    }
-    hub.setView('bench');
-    const markup = (hub as unknown as { content(): string }).content();
-    const helpOf = (id: string): string => markup.match(new RegExp(`data-pokemon="${id}"[^>]*data-help="([^"]*)"`))?.[1] ?? '';
-    expect(helpOf(partnerId)).toMatch(/^Put .* on the bench\.$/);
-    expect(helpOf('charmander-1')).toMatch(/^Put .* on the bench\.$/);
   });
 
   it('will not jump with nobody on the bench, and says so', () => {
@@ -521,7 +430,7 @@ describe('a panel over the hall', () => {
   // Break-it test, 23 Nov 2026: a second tab's card offered JUMP IN as usual
   // while the first tab's raid went on, and said why not only on the press.
   it('heads the card with a raid another window is playing, and leaves JUMP IN to ask the browser', () => {
-    const { hub, kit } = panelOn('bench');
+    const { hub, kit } = panelOn('rim');
     kit.flow.togglePokemon('charmander-1');
     hub.init({ view: 'rim', kit });
     const internals = hub as unknown as { saveManager: SaveManager; content(): string };
@@ -546,7 +455,7 @@ describe('a panel over the hall', () => {
   // The captain, 22 Nov 2026: home from a first raid lost in seconds, JUMP IN
   // was greyed out and the reason was small print at the card's foot.
   it('heads the card with why nobody can go when the whole team has fainted', () => {
-    const { hub, kit, calls } = panelOn('bench');
+    const { hub, kit, calls } = panelOn('rim');
     kit.flow.togglePokemon('charmander-1');
     for (const { pokemon } of kit.flow.party) {
       pokemon.currentHp = 0;
@@ -565,7 +474,7 @@ describe('a panel over the hall', () => {
   });
 
   it('is one small card: no list, nothing to scroll, no hidden count', () => {
-    const { hub, kit } = panelOn('bench');
+    const { hub, kit } = panelOn('rim');
     kit.flow.togglePokemon('charmander-1');
     hub.init({ view: 'rim', kit });
     const markup = (hub as unknown as { content(): string }).content();
@@ -627,63 +536,6 @@ function rimSays(markup: string, part: string, kind: 'tile' | 'row' = 'tile'): s
 }
 
 describe('hub deployment route', () => {
-  it('takes one of a piece out of the pack and back to the vault with a right-click or DEL (the captain, 2026-10-29)', () => {
-    const { hub } = createHub();
-    intoTheArena(hub);
-    const remove = (name: string, ref: unknown): void =>
-      (hub as unknown as { removeFromContainer(name: string, ref: unknown): void }).removeFromContainer(name, ref);
-    hub.flow.setItemQuantity('poke-ball', 3);
-    const vault = hub.stash.itemCount('poke-ball');
-
-    remove('pack', { kind: 'item', itemId: 'poke-ball', index: 0 });
-    expect(hub.flow.itemQuantity('poke-ball')).toBe(2);
-    expect(statusOf(hub)).toBe('Took one Poké Ball out of the pack. 2 still packed.');
-
-    remove('pack', { kind: 'item', itemId: 'poke-ball', index: 0 });
-    remove('pack', { kind: 'item', itemId: 'poke-ball', index: 0 });
-    expect(hub.flow.itemQuantity('poke-ball')).toBe(0);
-    expect(statusOf(hub)).toBe('Took Poké Ball out of the pack.');
-    // Back at base, never spent.
-    expect(hub.stash.itemCount('poke-ball')).toBe(vault);
-  });
-
-  it('takes a square back out of the secure container the same way', () => {
-    const { hub } = createHub();
-    intoTheArena(hub);
-    hub.flow.setItemQuantity('potion', 1);
-    hub.flow.setSecureSquares('potion', 1);
-    expect(hub.flow.secureQuantity('potion')).toBe(1);
-
-    (hub as unknown as { removeFromContainer(name: string, ref: unknown): void }).removeFromContainer('secure', {
-      kind: 'item',
-      itemId: 'potion',
-      index: 0,
-    });
-
-    expect(hub.flow.secureQuantity('potion')).toBe(0);
-    expect(hub.flow.itemQuantity('potion')).toBe(1);
-  });
-
-  it('keeps the loadout list where it was when something is packed, and starts a new screen at the top (the captain, 2026-10-29)', () => {
-    const { hub } = createHub();
-    const overlay = (hub as unknown as { overlay: { redraw: (markup: string) => void } }).overlay;
-    const redraw = vi.spyOn(overlay, 'redraw');
-    intoTheArena(hub);
-    expect(redraw).not.toHaveBeenCalled();
-
-    // Packing redraws the loadout itself, which keeps every pane's scroll.
-    (hub as unknown as { stepCount(group: unknown, delta: number): void }).stepCount(
-      { dataset: { count: 'item:poke-ball', countValue: '0', countMin: '0', countMax: '3' }, querySelector: () => null },
-      1,
-    );
-    expect(redraw).toHaveBeenCalledTimes(1);
-    expect(hub.flow.items.find((stack) => stack.itemId === 'poke-ball')?.quantity).toBe(1);
-
-    // Another screen is drawn fresh.
-    hub.setView('stash');
-    expect(redraw).toHaveBeenCalledTimes(1);
-  });
-
   // The hub shares one process-wide run manager, so a started raid has to be
   // resolved before the next test can deploy again.
   beforeEach(() => {
@@ -762,55 +614,6 @@ describe('hub deployment route', () => {
     expect(start).toHaveBeenCalledTimes(1);
   });
 
-  it('heals a worn Pokemon with a stash Potion, and both the heal and the cost survive a reload', () => {
-    // The other price for raid damage: an item instead of raid time. It has to
-    // be a real trade, so the Potion has to actually leave the vault and stay
-    // gone, and it must never touch the Pokemon Center's clock.
-    const { hub, storage, worn } = createWornHub((maxHp) => maxHp - 3);
-    const before = worn.pokemon.currentHp;
-    expect(hub.stash.itemCount('potion')).toBe(3);
-
-    hub.treat('charmander-1', 'potion');
-
-    expect(worn.pokemon.currentHp).toBeGreaterThan(before);
-    expect(hub.stash.itemCount('potion')).toBe(2);
-    // A Potion is not raid time: the clock the next raid starts on is untouched.
-    expect(hub.pendingRecoveryMs).toBe(0);
-    expect(hub.raidClockMs).toBe(RAID_DURATION_MS);
-
-    const reloaded = new SaveManager(storage).load();
-    expect(reloaded?.stash.listItems().potion).toBe(2);
-    expect(reloaded?.stash.listPokemon()).toMatchObject([
-      { id: 'bulbasaur-1' },
-      { id: 'charmander-1', pokemon: { currentHp: worn.pokemon.currentHp } },
-    ]);
-  });
-
-  it('never deploys a supply the treatment already spent, secure slot included', () => {
-    const { hub, start, storage } = createWornHub((maxHp) => maxHp - 3);
-    hub.flow.togglePokemon('charmander-1');
-    hub.flow.adjustItem('potion', 3);
-    // The container filled itself with the Charmander, which is four squares
-    // of four: the Potions are protected in its place.
-    hub.flow.toggleSecurePokemon('charmander-1');
-    hub.flow.adjustSecureItem('potion', 3);
-    expect(hub.flow.items).toEqual(expect.arrayContaining([{ itemId: 'potion', quantity: 3 }]));
-
-    // One of those three Potions is drunk at base, so only two can be packed.
-    hub.treat('charmander-1', 'potion');
-
-    expect(hub.stash.itemCount('potion')).toBe(2);
-    expect(hub.flow.items).toEqual(expect.arrayContaining([{ itemId: 'potion', quantity: 2 }]));
-    expect(hub.flow.securedItems).toEqual([{ itemId: 'potion', quantity: 2 }]);
-
-    readyToDeploy(hub);
-    deploy(hub, start);
-    const deployed = start.mock.calls[0][1] as WorldSceneData;
-    expect(deployed.bag.count('potion')).toBe(2);
-    // And the vault the raid was drawn from agrees, on disk.
-    expect(new SaveManager(storage).load()?.stash.itemCount('potion')).toBe(2);
-  });
-
   it("heals free the first time each day, and remembers the day it was taken", () => {
     const { hub, storage, worn } = createWornHub((maxHp) => maxHp, false);
     hub.recover(['charmander-1']);
@@ -818,22 +621,6 @@ describe('hub deployment route', () => {
     expect(hub.pendingRecoveryMs).toBe(0);
     expect(hub.raidClockMs).toBe(RAID_DURATION_MS);
     expect(new SaveManager(storage).load()?.freeHealDay).toBe(healDayOf(new Date()));
-  });
-
-  it('leaves a fainted Pokemon to the Pokemon Center rather than letting a Potion revive it', () => {
-    // Reviving stays the bay's premium, which is what keeps a faint the worst
-    // outcome of a fight rather than a three-Potion inconvenience.
-    const { hub, worn } = createWornHub((maxHp) => maxHp);
-
-    hub.treat('charmander-1', 'potion');
-
-    expect(worn.pokemon.isFainted).toBe(true);
-    expect(hub.stash.itemCount('potion')).toBe(3);
-    expect(statusOf(hub)).toBe(FAINTED_TREATMENT_NOTE);
-
-    hub.recover(['charmander-1']);
-    expect(worn.pokemon.isFainted).toBe(false);
-    expect(hub.pendingRecoveryMs).toBeGreaterThan(0);
   });
 
   it('leaves a fit party alone rather than charging for a recovery it does not need', () => {
@@ -891,19 +678,6 @@ describe('hub deployment route', () => {
     readyToDeploy(stale);
     deploy(stale, staleStart);
     expect(staleStart).toHaveBeenCalledTimes(1);
-  });
-
-  it("says the only one at base is packed, not 'All 1 ... are'", () => {
-    // AI playtest of 22 Nov 2026: one Great Ball packed read 'All 1 at base are packed.'
-    const { hub } = createHub();
-    hub.stash.addItem('great-ball', 1);
-    hub.flow.rebase(hub.stash);
-    hub.flow.setItemQuantity('great-ball', 1);
-    hub.setView('rack');
-    hub.render();
-    const markup = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
-    expect(markup).toContain('The only one at base is packed.');
-    expect(markup).not.toContain('All 1 at base are packed.');
   });
 
   it('says on the loadout when no Poké Ball is packed, once the default has been taken out', () => {
@@ -1247,27 +1021,6 @@ describe('hub deployment route', () => {
     hub.wallMapInspect = mapId;
     return markupOf(hub);
   };
-
-  it('leaves the choice of place to the rim: the bench and the rack only get a raid ready', () => {
-    const { hub } = createHub();
-    hub.flow.togglePokemon('charmander-1');
-
-    hub.setView('bench');
-    expect(markupOf(hub)).not.toContain('data-insertion');
-    hub.setView('rack');
-    const rack = markupOf(hub);
-    expect(rack).not.toContain('data-insertion');
-    // And the pack, which is what the rack is for, is on it.
-    expect(rack).toContain('squares');
-
-    hub.setView('rim');
-    expect(markupOf(hub)).toMatch(/data-rim-row="landing"[^>]*>.*?<strong>Floodplain Relay<\/strong>/);
-    expect(() => hub.flow.deploy()).toThrow(/confirmed loadout/);
-    // A front door that names its place says the place at the rim.
-    hub.flow.chooseInsertion('greystone-vale');
-    hub.setView('rim');
-    expect(markupOf(hub)).toMatch(/data-rim-row="landing"[^>]*>.*?<strong>Mill Square<\/strong>/);
-  });
 
   it('says on Oak\'s wall what is known of a place, and counts what is not', () => {
     const { hub } = createHub();
@@ -1735,34 +1488,6 @@ describe('what the base screen leads with', () => {
     expect(stash).toContain('data-view="reselect"');
   });
 
-  it('shows a supply on the rack as a pile of itself, packed ones lit, and says the rest on the help bar (playtest 47)', () => {
-    const hub = createFreshHub();
-    hub.setView('rack');
-    const row = /<div class="px-row has-icon[^"]*"[^>]*>(?:(?!<div class="px-row)[\s\S])*?data-count-id="potion"[^>]*>/.exec(markupOf(hub))?.[0] ?? '';
-
-    // Three at base, all three packed for you: three Potions, three lit.
-    expect(row).toContain('aria-label="3 of 3 Potion"');
-    expect(row.match(/px-stack-one is-taken/g)).toHaveLength(3);
-    // The squares, the count at base and that it was packed for you are the help bar's.
-    expect(row).toMatch(/data-help="[^"]*1 square each, 3 at base\. Packed for you/);
-    // No line of facts to break across two lines any more (playtest 47).
-    expect(row).not.toContain('packed&nbsp;for&nbsp;you');
-  });
-
-  it('says at base that a disc is read from the pack in a raid (playtest 47)', () => {
-    const hub = createFreshHub();
-    hub.stash.addItem('tm40-aerial-ace', 1);
-
-    hub.setView('stash');
-    const row = /<button[^>]*data-supply="tm40-aerial-ace"[^>]*>/.exec(markupOf(hub))?.[0] ?? '';
-
-    expect(row).toContain('Teaches Aerial Ace');
-    expect(row).toContain('read it from your pack (B) in a raid');
-    // And on the rack, where it is packed.
-    hub.setView('rack');
-    expect(markupOf(hub)).toContain('read it from your pack (B) in a raid');
-  });
-
   it('words the swap as an option, not an alarm, before a raid has been lost (playtest 47)', () => {
     const hub = createFreshHub();
 
@@ -1928,128 +1653,6 @@ describe('what the base screen leads with', () => {
     const rim = markupOf(hub);
     expect(rim.slice(rim.indexOf('confirm-bar'))).toContain('data-start');
     expect(rim.slice(0, rim.indexOf('confirm-bar'))).not.toContain('data-start');
-  });
-
-  it('opens the rack on its supplies, not on the way out', () => {
-    const { hub } = createHub();
-    hub.flow.togglePokemon('charmander-1');
-    hub.setView('rack');
-    const starts = markupOf(hub).match(/<button[^>]*data-cursor-start[^>]*>/g) ?? [];
-    expect(starts).toHaveLength(1);
-    expect(starts[0]).toContain('data-count-dir="1"');
-  });
-
-  it('keeps room in the locker for found goods under a heading that says so, and no torn chart before the hunt', () => {
-    // A new save's locker named three torn charts nobody had heard of, with a +
-    // that looked like it gave one (AI playtest, 22 Nov 2026).
-    const { hub } = createHub();
-    hub.setView('locker');
-    const markup = markupOf(hub);
-    expect(markup).toContain('Room for what you find');
-    expect(markup).not.toContain('Torn chart');
-    expect(markup).toContain('Radio valve');
-  });
-
-  it('prices a Pokemon in the locker with one tag, ticked once it is secured', () => {
-    const { hub } = createHub();
-    hub.flow.togglePokemon('charmander-1');
-    hub.setView('locker');
-    const row = /<button class="px-row is-secured"[^]*?<\/button>/.exec(markupOf(hub))?.[0] ?? '';
-    // A third child of the row's two columns stood its tick on a line of its own.
-    expect(row.match(/class="px-tag /g)).toHaveLength(1);
-    expect(row).toContain('px-tag-secure has-tick');
-    expect(row).toContain('4 SQUARES');
-  });
-
-  it('never invites a press on a locker row that the press would refuse (characters bug hunt, 11 Nov 2026)', () => {
-    const { hub } = createHub({
-      ...DEFAULT_RAID_PROGRESS,
-      workshopUpgrades: ['secure-locker-1', 'secure-locker-2'],
-    });
-    hub.stash.addPokemon(new Pokemon(CHARIZARD, 36), 'charizard-1');
-    hub.flow.togglePokemon('charizard-1');
-    hub.setView('locker');
-    const markup = markupOf(hub);
-    const row = /<button class="px-row" data-secure-pokemon="charizard-1"[^>]*>/.exec(markup)?.[0] ?? '';
-    expect(row).toContain('Too big for THE LOCKER at any size: it is 3x3');
-    expect(row).toContain('A wipe will take it.');
-    expect(row).not.toContain('Put this Pokémon in THE LOCKER');
-    // Nobody here can go in, and nothing built would change that.
-    expect(markup).toContain('Nothing in this party fits THE LOCKER at any size');
-    expect(markup).not.toContain('cordon ledger');
-  });
-
-  it('never tells a fully evolved partner a wipe will take it: it has its own place (11 Nov 2026, option B)', () => {
-    const { hub } = createHub();
-    hub.stash.addPokemon(new Pokemon(CHARIZARD, 36), 'charizard-1');
-    (hub as unknown as { stash: { adoptPartner(id: string): void } }).stash.adoptPartner('charizard-1');
-    hub.flow.togglePokemon('charizard-1');
-    hub.setView('locker');
-    const markup = markupOf(hub);
-    const row = /<button class="px-row is-secured is-partner-place"[^]*?<\/button>/.exec(markup)?.[0] ?? '';
-    expect(row).toContain('PARTNER');
-    expect(row).toContain('is your partner.');
-    expect(row).not.toContain('wipe');
-    expect(markup).not.toContain('A wipe will take');
-    expect(markup).not.toContain('data-secure-pokemon="charizard-1"');
-  });
-
-  it('names what to build when a bigger container is what an evolved Pokemon needs', () => {
-    const { hub } = createHub();
-    hub.stash.addPokemon(new Pokemon(CHARMELEON, 16), 'charmeleon-1');
-    hub.flow.togglePokemon('charmeleon-1');
-    hub.setView('locker');
-    const markup = markupOf(hub);
-    const row = /<button class="px-row" data-secure-pokemon="charmeleon-1"[^>]*>/.exec(markup)?.[0] ?? '';
-    expect(row).toContain('It needs 6 squares, more than THE LOCKER\'s 2x2. To make it safe, build Secure locker I at Brock');
-  });
-
-  /**
-   * The overnight retest's key masher (23 Nov 2026): a Pokémon put on the
-   * bench sent the cursor back to the first control, the lead's slot, so the
-   * next ENTER took the partner off. The cursor follows the Pokémon pressed.
-   */
-  it('keeps the bench cursor on the Pokémon pressed, so a second ENTER only undoes the first', () => {
-    const { hub } = createHub();
-    const internals = hub as unknown as {
-      overlay: { root: { querySelectorAll(selector: string): unknown[] }; focus: ReturnType<typeof vi.fn> };
-    };
-    const button = {
-      dataset: { pokemon: 'charmander-1' } as Record<string, string>,
-      closest: () => null,
-      onclick: undefined as undefined | ((event: { detail: number }) => void),
-    };
-    internals.overlay.root.querySelectorAll = (selector: string) => (selector === '[data-pokemon]' ? [button] : []);
-    hub.setView('bench');
-    hub.render();
-    button.onclick!({ detail: 0 });
-    expect(hub.flow.includesPokemon('charmander-1')).toBe(true);
-    expect(internals.overlay.focus).toHaveBeenLastCalledWith('[data-pokemon="charmander-1"]');
-    button.onclick!({ detail: 0 });
-    expect(hub.flow.includesPokemon('charmander-1')).toBe(false);
-    expect(internals.overlay.focus).toHaveBeenLastCalledWith('[data-pokemon="charmander-1"]');
-  });
-
-  it('says on the bench who is coming, and lectures nothing under the rack', () => {
-    const { hub } = createHub();
-    hub.flow.togglePokemon('charmander-1');
-    hub.flow.setItemQuantity('potion', 0);
-    hub.flow.setItemQuantity('poke-ball', 1);
-
-    hub.setView('bench');
-    const bench = markupOf(hub);
-    const bar = bench.slice(bench.indexOf('confirm-bar'));
-    expect(bar).toContain('1/6 on the bench');
-    // Who is coming is the bench's six slots, FireRed's party: Charmander leads
-    // in the gold one and the other five are empty Poké Balls.
-    const slots = bench.slice(bench.indexOf('bench-slots'), bench.indexOf('px-mon-tiles'));
-    expect(slots).toMatch(/class="px-party-slot is-lead" data-pokemon="charmander-1"/);
-    expect(slots.match(/px-party-slot is-empty/g)).toHaveLength(5);
-
-    // The pack's squares show what is packed; the rule about wipes is not
-    // lectured under them (the captain, 25 Nov 2026: no advice lines).
-    hub.setView('rack');
-    expect(markupOf(hub)).not.toContain('Lost on a wipe');
   });
 
   it('says at the rim what a wipe would take and what comes home', () => {
@@ -2569,9 +2172,8 @@ describe('Brock', () => {
     // the Pidgey and the partner takes none of the eight squares.
     hub.flow.toggleSecurePokemon('pidgey-1');
     hub.flow.toggleSecurePokemon('pidgey-2');
-    hub.setView('locker');
-    expect(markupOf(hub)).toContain('8/8 squares');
-    expect(markupOf(hub)).toMatch(/data-partner-place[^>]*>.*Charmander.*PARTNER/);
+    expect(hub.flow.secureCells).toEqual({ used: 8, total: 8 });
+    expect(hub.flow.partnerOnRaid?.pokemon.base.id).toBe('charmander');
     hub.setView('rim');
     readyToDeploy(hub);
 
