@@ -6126,13 +6126,20 @@ export class BaseScene extends Phaser.Scene {
         this.sayStationNotes();
       }
       this.showHint(this.hintHere());
+      // P on YOUR THINGS, or a click on its team, goes on to YOUR TEAM.
+      if (thenTeam) {
+        this.time.delayedCall(0, () => this.openTeam());
+      }
     });
+    let thenTeam = false;
     const pit = Boolean(this.place.room?.pit);
     this.scene.pause();
     this.scene.launch('things', {
       pausedBase: true,
+      openTeam: () => {
+        thenTeam = true;
+      },
       ...(this.kit ? { flow: this.kit.flow } : {}),
-      ...(start ? { start } : {}),
       ...(start ? { start } : {}),
       view: {
         covers: (gamePixels) => this.panelLean.setCover(pit ? 0 : gamePixels),

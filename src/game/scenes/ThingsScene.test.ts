@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 vi.stubGlobal('requestAnimationFrame', () => 0);
+// onKey asks what the focus is on; with no page, it is on nothing.
+vi.stubGlobal('HTMLElement', class {});
 
 vi.mock('phaser', () => ({
   default: {
@@ -292,6 +294,29 @@ describe('locking from YOUR THINGS', () => {
     expect(locking(scene).lock('potion', true)).toBe(false);
     expect(locking(scene).flow.secureQuantity('potion')).toBe(4);
     expect(scene.overlay.root.innerHTML).toMatch(/locker|room/i);
+  });
+});
+
+describe('from YOUR THINGS to YOUR TEAM', () => {
+  it('P closes the screen and asks the harbour for YOUR TEAM', () => {
+    const scene = thingsHolding({ potion: 1 }, 10);
+    const openTeam = vi.fn();
+    const stop = vi.fn();
+    Object.assign(scene as unknown as Record<string, unknown>, {
+      toTeam: openTeam,
+      scene: { stop, isPaused: () => false, resume: vi.fn() },
+    });
+    scene.onKey(key('p'));
+    expect(openTeam).toHaveBeenCalledTimes(1);
+    expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('P does nothing where nobody asked for YOUR TEAM', () => {
+    const scene = thingsHolding({ potion: 1 }, 10);
+    const stop = vi.fn();
+    Object.assign(scene as unknown as Record<string, unknown>, { scene: { stop, isPaused: () => false, resume: vi.fn() } });
+    scene.onKey(key('p'));
+    expect(stop).not.toHaveBeenCalled();
   });
 });
 

@@ -42,6 +42,7 @@ import {
   handCard,
   homeUseOf,
   memberCard,
+  teamDoorCard,
   pocketTabs,
   stashLayout,
   staysHome,
@@ -58,6 +59,8 @@ export interface ThingsSceneData {
   readonly pausedBase: boolean;
   /** The hall's own choices, while the player is in THE RAID ARENA: the pack shown is the one on the rack. */
   readonly flow?: DeploymentFlow;
+  /** Asked as the screen closes for YOUR TEAM: P, or a click on the team. */
+  readonly openTeam?: () => void;
   /** Where the cursor starts: THE RAID ARENA's locker opens this screen on the locker. */
   readonly start?: 'locker';
   /** The harbour under the screen. YOUR THINGS covers it whole, so it is only told it is uncovered. */
@@ -118,6 +121,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   private hallFlow: DeploymentFlow | undefined;
   private view: SidePanelView | undefined;
   private startAt: ThingsSceneData['start'];
+  private toTeam: (() => void) | undefined;
   private game_: RestoredGame | undefined;
   private flow: DeploymentFlow | undefined;
   private using: Using | null = null;
@@ -157,6 +161,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     this.hallFlow = data.flow;
     this.view = data.view;
     this.startAt = data.start;
+    this.toTeam = data.openTeam;
     this.using = null;
     this.status = undefined;
     this.moment = undefined;
@@ -179,7 +184,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     // into its own card, never a redraw of the screen under the cursor.
     this.overlay.root.addEventListener('focusin', (event) => {
       const piece =
-        event.target instanceof Element ? event.target.closest<HTMLElement>('[data-grid-piece], [data-team-member]') : null;
+        event.target instanceof Element ? event.target.closest<HTMLElement>('[data-grid-piece], [data-team-member], [data-team-open]') : null;
       if (!piece) {
         return;
       }
@@ -404,6 +409,9 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   }
 
   private handFor(piece: HTMLElement | null): string {
+    if (piece?.hasAttribute('data-team-open')) {
+      return teamDoorCard();
+    }
     const memberId = piece?.dataset.teamMember;
     const member = memberId ? this.flow?.party.find((one) => one.id === memberId) : undefined;
     if (member && this.flow) {
@@ -475,7 +483,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     let title = 'Your things';
     let back: { label: string; attribute: string } | undefined;
     let body: string;
-    let hints = 'ARROWS move · ENTER pack · BKSP out · L lock · Q E tab · ESC back';
+    let hints = `ARROWS move · ENTER pack · BKSP out · L lock · Q E tab${this.toTeam ? ' · P team' : ''} · ESC back`;
     const machine = item ? machineForItem(item) : undefined;
     if (item && this.using?.kind === 'teach' && machine) {
       title = 'Teach a move';
@@ -520,6 +528,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       this.unchoosePupil();
     });
     on('[data-pocket-tab]', (button) => this.showPocket(button.dataset.pocketTab as PocketTab));
+    on('[data-team-open]', () => this.goToTeam());
     // The card's buttons act on the thing the cursor is on, and never take the
     // cursor off it: a pressed button would otherwise be what ENTER pressed next.
     const card = overlay.root.querySelector<HTMLElement>('[data-hand-card]');
@@ -543,7 +552,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       '[data-close]',
     );
     const focused = typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null);
-    this.showHand(focused?.closest<HTMLElement>('[data-grid-piece], [data-team-member]') ?? null);
+    this.showHand(focused?.closest<HTMLElement>('[data-grid-piece], [data-team-member], [data-team-open]') ?? null);
   }
 
   /** A pocket tab: its things lit and the rest stood back, the cursor on its first. */
@@ -570,7 +579,9 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const piece = focused?.closest<HTMLElement>('[data-grid-piece], [data-team-member]') ?? null;
     const key: Partial<Record<string, string>> = { drop: 'Enter', take: 'Enter', turn: 'r', cancel: 'Escape', out: 'Backspace' };
-    if (deed === 'lock' && piece) {
+    if (deed === 'team') {
+      this.goToTeam();
+    } else if (deed === 'lock' && piece) {
       this.toggleLock(piece);
     } else if (deed === 'pack' && piece) {
       this.packOne(this.thingOf(piece));
@@ -854,6 +865,12 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
         event.preventDefault();
         return;
       }
+      const door = focused instanceof HTMLElement && focused.hasAttribute('data-team-open');
+      if (!this.arranging.held && this.toTeam && (event.key.toLowerCase() === 'p' || (door && (event.key === 'Enter' || event.key === ' ')))) {
+        event.preventDefault();
+        this.goToTeam();
+        return;
+      }
       if (!this.arranging.held && (event.key.toLowerCase() === 'q' || event.key.toLowerCase() === 'e')) {
         event.preventDefault();
         this.stepPocket(event.key.toLowerCase() === 'q' ? -1 : 1);
@@ -1085,6 +1102,16 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     this.using = null;
     this.status = message;
     this.render([stashPieceSelector(item.id)]);
+  }
+
+  /** On to YOUR TEAM, where who goes is chosen: this screen closes and the harbour opens that one. */
+  private goToTeam(): void {
+    const toTeam = this.toTeam;
+    if (!toTeam) {
+      return;
+    }
+    toTeam();
+    this.close();
   }
 
   private close(): void {

@@ -381,7 +381,8 @@ function teamCard(view: ThingsScreen): string {
         }</small></span>`,
     )
     .join('');
-  const free = '<span class="things-place" aria-hidden="true"><span class="things-member is-free"></span><small class="things-tag"></small></span>'.repeat(
+  // An empty place is YOUR TEAM's door: clicked, it opens the screen where who goes is chosen.
+  const free = '<span class="things-place"><button type="button" class="things-member is-free" data-team-open tabindex="-1" aria-label="Your team"></button><small class="things-tag"></small></span>'.repeat(
     Math.max(0, TEAM_PLACES - view.team.length),
   );
   const worn = view.pack.itemId
@@ -542,6 +543,16 @@ export function memberCard(
   return `<div class="things-hand-thing">${pixelMonIcon(pokemon)}<div class="things-hand-words"><span>${escapeAttribute(
     pokemon.name,
   )} <small>Lv${pokemon.level}</small></span><small>${escapeAttribute(said)}</small></div></div><div class="things-hand-keys">${button}</div>`;
+}
+
+/** What the card says on an empty place of the team: P is YOUR TEAM, where who goes is chosen. */
+export function teamDoorCard(): string {
+  return `<div class="things-hand-thing"><div class="things-hand-words"><span>A free place</span></div></div><div class="things-hand-keys">${keyButton(
+    'P',
+    'Your team',
+    'data-hand="team"',
+    'is-primary',
+  )}</div>`;
 }
 
 /** The whole screen: home on the left; the next raid's team, pack and locker on the right; what the cursor is on underneath. */
