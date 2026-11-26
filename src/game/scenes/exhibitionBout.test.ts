@@ -69,8 +69,9 @@ describe('a bout for show', () => {
     expect([...methodsTouchingTheSave()].sort()).toEqual(['registerFoesSeen', 'resolveRunWipe', 'writeFight', 'writeFightOver']);
     // A bout is never handed a prize (`world/prizeMoney.ts`), so nothing is paid or written down.
     expect(SOURCE).toContain('this.prizeMoney = data.exhibition ? 0 :');
+    expect(SOURCE).toContain('this.prizePaidBefore = !data.exhibition &&');
     const paid = SOURCE.slice(SOURCE.indexOf('private payPrizeMoney(): { message: string }[] {')).split('\n');
-    expect(paid.slice(1, 5).map((line) => line.trim())).toEqual(['const prize = this.prizeMoney;', 'this.prizeMoney = 0;', 'if (prize <= 0) {', 'return [];']);
+    expect(paid.slice(1, 5).map((line) => line.trim())).toEqual(['const prize = this.prizeMoney;', 'this.prizeMoney = 0;', 'if (prize <= 0) {', 'return this.paidBeforeLines();']);
     // A raid's fight is written down as it is fought (`run/raidResume.ts`), and a bout never is.
     const written = SOURCE.slice(SOURCE.indexOf('private writeFight(): void {'));
     expect(written.split('\n')[1]).toContain('this.exhibition');

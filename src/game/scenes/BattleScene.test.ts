@@ -4283,6 +4283,17 @@ describe('prize money for a win', () => {
     expect(runSession.manager.snapshot().droppedItems).toEqual([{ itemId: 'money', quantity: 750 }]);
   });
 
+  it('says why a trainer who paid before pays nothing, once', () => {
+    const { scene } = createBattleSceneHarness({ authoredTrainer: true, bag: new Bag({}) });
+    const payer = scene as unknown as Payer & { prizePaidBefore: boolean; trainer: { name: string } };
+    payer.prizeMoney = 0;
+    payer.prizePaidBefore = true;
+    expect(payer.payPrizeMoney().map(({ message }) => message)).toEqual([
+      `${payer.trainer.name} paid you last time. Trainers you haven't beaten still pay!`,
+    ]);
+    expect(payer.payPrizeMoney()).toEqual([]);
+  });
+
   it('pays only the first hunter a raid beats', () => {
     const runSession = startedRunSession();
     const { scene } = createBattleSceneHarness({ hunterBattle: true, runSession });

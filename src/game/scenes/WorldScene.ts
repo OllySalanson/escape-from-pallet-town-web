@@ -911,7 +911,7 @@ export function raidTakenUpLine(remainingMs: number): string {
 /** The fight itself - the only part of a battle payload a call site writes. */
 type BattleEncounter =
   | Required<Pick<BattleSceneData, 'wild' | 'teachingBattle'>>
-  | (Required<Pick<BattleSceneData, 'trainer' | 'hunterBattle'>> & Pick<BattleSceneData, 'prizeMoney'>);
+  | (Required<Pick<BattleSceneData, 'trainer' | 'hunterBattle'>> & Pick<BattleSceneData, 'prizeMoney' | 'prizePaidBefore'>);
 
 /** The cloud a raid opens under, after a jump. */
 const ARRIVAL_CLOUD_TEXTURE = 'raid-arrival-cloud';
@@ -9873,6 +9873,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     );
   }
 
+  /** Whether this trainer has paid this save or this raid their prize already, so the win can say why it pays nothing. */
+  private prizePaidBefore(trainer: RunTrainerEncounter['trainer'], isHunter: boolean): boolean {
+    const session = this.runSession;
+    if (!session || isHunter || session.manager.phase !== RunPhase.InRun) {
+      return false;
+    }
+    if (this.trainerEncounters.find((each) => each.trainer.id === trainer.id)?.bossId !== undefined) {
+      return false;
+    }
+    return [...(new SaveManager().load()?.raidProgress.trainersPaid ?? []), ...(session.trainersPaid ?? [])].includes(trainer.id);
+  }
+
   /** The raid state that exists only on this scene - see `RaidCarriage`. */
   private raidCarriage(): RaidCarriage {
     return {
@@ -11733,6 +11745,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         trainer: battle.trainer,
         hunterBattle: battle.isHunter,
         prizeMoney: this.prizeMoneyFor(battle.trainer, battle.isHunter),
+        prizePaidBefore: this.prizePaidBefore(battle.trainer, battle.isHunter),
       });
       return;
     }
