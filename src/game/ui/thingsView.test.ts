@@ -7,6 +7,7 @@ import {
   handCard,
   homeUseOf,
   memberCard,
+  teamDoorCard,
   pocketOf,
   pocketTabs,
   stashCargo,
@@ -175,6 +176,8 @@ describe('the screen', () => {
       '',
     );
     expect(html).toContain('Team 3 of 6');
+    // The three free places are YOUR TEAM's door.
+    expect(html.match(/is-free" data-team-open/g)).toHaveLength(3);
     expect(html).toMatch(/things-tag">Partner<.*things-tag">Safe<.*things-tag">At risk</);
     expect(html).toMatch(/is-partner" data-team-member="squirtle-1" tabindex="-1" aria-label="Squirtle: always comes home".*things-rosette/);
     expect(html).toMatch(/is-locked" data-team-member="pidgey-1" tabindex="-1" aria-label="Pidgey: kept by the locker".*padlock/);
@@ -201,6 +204,12 @@ describe('the screen', () => {
     expect(pack.match(/is-locked/g)).toHaveLength(2);
     // The locker draws the same two, lined as the pack lines them.
     expect(locker.match(/px-grid-block is-locked[^>]*data-grid-piece="item:\d+:potion"/g)).toHaveLength(2);
+  });
+});
+
+describe('the card of a free place on the team', () => {
+  it('offers YOUR TEAM on P', () => {
+    expect(teamDoorCard()).toMatch(/data-hand="team"[^>]*><span class="things-cap">P<\/span>Your team/);
   });
 });
 

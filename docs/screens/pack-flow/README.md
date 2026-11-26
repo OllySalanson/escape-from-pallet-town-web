@@ -39,3 +39,14 @@ crates, a Bicycle and a Ranger pack or a Hauler frame, then focuses things and p
 
 `after-hall-rack.png` is `tools/playtest/arenaHall.mjs` (`4-rack.png`); the rest are the scratch driver above, pressing
 L on the team tile and on the crate.
+
+## P is YOUR TEAM, from YOUR THINGS
+
+The round-5 critic: the team strip shows who goes, and nothing on the screen says how to add one.
+
+- `after-free-place.png` - the cursor on a free place of the team: the card offers P YOUR TEAM, and the keys line names
+  it. A click on a free place does the same.
+- `after-p-your-team.png` - P pressed: YOUR THINGS closes and YOUR TEAM opens over the harbour; ESC there is back in
+  the harbour.
+
+The same scratch driver, focusing a free place and pressing P.
