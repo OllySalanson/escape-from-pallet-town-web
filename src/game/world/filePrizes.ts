@@ -65,6 +65,19 @@ export const BUILT_IN_FILE_PRIZES: Readonly<Partial<Record<WorldMapId, readonly 
     // orchard that lives on sun, and Rain Dance in Reedmere's long drain.
     { itemId: 'tm11-sunny-day', quantity: 1, chance: 0.25, place: 'THE NORTH ORCHARD' },
     { itemId: 'tm18-rain-dance', quantity: 1, chance: 0.25, place: 'THE LONG DRAIN' },
+    // The first district's two, somewhere in Millbrook - its first spot is
+    // the dug allotments, where the Digger chases off the Oddish - a
+    // starter's first attack beyond Scratch, Tackle and Growl. Early fights were "slow fights with nothing in them" - a
+    // Charmander scratching at a Jigglypuff for twenty turns, an Oddish with
+    // Absorb alone until 15 - and teaching the wild side to fight back made
+    // the first raids deadlier, so the answer is the player's to read (critic's
+    // review, problem 19; firstmate's call, 26 Nov 2026). Dig for Charmander
+    // and Squirtle, Bullet Seed for Bulbasaur and the allotment's own Oddish.
+    // As common as a prize may be (`loot.test.ts`), rather than a quarter:
+    // these answer the first hour's fights, and at three raids in ten a
+    // starter's own disc is found in five raids by five players in six.
+    { itemId: 'tm28-dig', quantity: 1, chance: 0.3, place: 'MILLBROOK' },
+    { itemId: 'tm09-bullet-seed', quantity: 1, chance: 0.3, place: 'MILLBROOK' },
   ],
 };
 
