@@ -1,4 +1,4 @@
-import { controlsBarPlacement, type BarPlacement } from './controlsBarLayout';
+import { BAR_COLUMN_WIDTH, BAR_HEIGHT, BAR_MARGIN, barColumnLeft, controlsBarPlacement, type BarPlacement } from './controlsBarLayout';
 import { applyMenuStage, menuLayer } from './menuStage';
 import { computeStage, onDevicePixel, type StageSize } from './stage';
 import { computeTouchLayout, type Rect, type SafeInsets, type TouchLayout } from './touchLayout';
@@ -66,6 +66,26 @@ export interface BarFit {
   place(placement: BarPlacement | null, canvas: { readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null): void;
 }
 
+/** What the viewport watcher tells the frame round the game (`stageFrame.ts`). */
+export interface FrameFit {
+  place(fit: {
+    readonly viewportWidth: number;
+    readonly viewportHeight: number;
+    /** The game's canvas on the page, in CSS pixels. */
+    readonly canvas: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+    /** The controls bar, when it stands under the game. */
+    readonly bar: { readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null;
+    /** The controls bar stood up in the left margin, when it stands there. */
+    readonly column: { readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null;
+    /** Where the controls bar stands, if anywhere: the FULL SCREEN tile is on it there. */
+    readonly barSide: BarPlacement['side'] | null;
+    /** Whether the game is laid out round the touch pad. */
+    readonly touch: boolean;
+    /** One game pixel in CSS pixels. */
+    readonly unit: number;
+  }): void;
+}
+
 /** What the viewport watcher needs to lay the window out round the touch pad. */
 export interface TouchFit {
   /** Whether the game is being played by touch now (`input/touchPlay.ts`). */
@@ -106,7 +126,7 @@ export function readSafeInsets(document: Document): SafeInsets {
  * Returns a teardown so a hot reload cannot leave a second listener resizing a
  * destroyed game.
  */
-export function watchViewport(game: ScalableGame, touch?: TouchFit, parentId = 'app', bar?: BarFit): () => void {
+export function watchViewport(game: ScalableGame, touch?: TouchFit, parentId = 'app', bar?: BarFit, frame?: FrameFit): () => void {
   const parent = () => document.getElementById(parentId);
   const update = () => {
     const ratio = window.devicePixelRatio || 1;
@@ -122,10 +142,29 @@ export function watchViewport(game: ScalableGame, touch?: TouchFit, parentId = '
     applyMenuStage(menuLayer(), width, height, ratio, layout?.menus);
     touch?.place(layout);
     const box = parent()?.getBoundingClientRect();
-    bar?.place(
-      placement,
-      placement && box ? { x: box.left, y: box.top, width: stage.width * stage.zoom, height: stage.height * stage.zoom } : null,
-    );
+    const canvas = box ? { x: box.left, y: box.top, width: stage.width * stage.zoom, height: stage.height * stage.zoom } : null;
+    bar?.place(placement, placement ? canvas : null);
+    if (frame && canvas) {
+      frame.place({
+        viewportWidth: width,
+        viewportHeight: fullHeight,
+        canvas,
+        bar: placement?.side === 'below'
+          ? { x: canvas.x, y: canvas.y + canvas.height + BAR_MARGIN, width: canvas.width, height: BAR_HEIGHT * placement.unit }
+          : null,
+        column: placement?.side === 'left'
+          ? {
+            x: barColumnLeft(canvas.x, placement.unit),
+            y: canvas.y,
+            width: BAR_COLUMN_WIDTH * placement.unit,
+            height: canvas.height,
+          }
+          : null,
+        barSide: placement?.side ?? null,
+        touch: layout !== null,
+        unit: stage.zoom,
+      });
+    }
   };
   update();
   window.addEventListener('resize', update);

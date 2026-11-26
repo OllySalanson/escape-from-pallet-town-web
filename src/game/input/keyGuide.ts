@@ -1,4 +1,5 @@
 import { LIBRARY_CONTROLS } from '../library/controls';
+import { FULL_SCREEN_KEYS } from '../display/fullScreen';
 import { POKEDEX_KEY } from './keyBindings';
 
 /**
@@ -35,6 +36,7 @@ export const KEY_GUIDE: readonly KeyGuideGroup[] = [
       key(LIBRARY_CONTROLS.back, 'Close, go back'),
       key(LIBRARY_CONTROLS.mute, 'Sound on and off'),
       key(LIBRARY_CONTROLS.feedback, 'Tell the lab what happened'),
+      key(FULL_SCREEN_KEYS, 'Full screen, and back'),
     ],
   },
   {

@@ -47,6 +47,19 @@ describe('the controls bar', () => {
     expect(markup).toContain('data-open="help"');
   });
 
+  it('offers FULL SCREEN beside SETTINGS where the browser can, and says which way it goes', () => {
+    expect(controlsBarMarkup([], [])).not.toContain('data-open="full-screen"');
+    const off = controlsBarMarkup([], [], 'off');
+    expect(off).toContain('data-open="full-screen"');
+    expect(off).toContain('cb-expand');
+    expect(off).toContain('aria-pressed="false"');
+    expect(off.indexOf('full-screen')).toBeLessThan(off.indexOf('data-open="settings"'));
+    const on = controlsBarMarkup([], [], 'on');
+    expect(on).toContain('cb-shrink');
+    expect(on).toContain('aria-pressed="true"');
+    expect(on).toContain('Leave full screen (ALT ENTER)');
+  });
+
   it('reads the team off the topmost scene that has one', () => {
     const base = { barTeam: () => [squirtle] };
     expect(teamFrom([base, {}])).toEqual([squirtle]);

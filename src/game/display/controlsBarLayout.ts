@@ -31,6 +31,11 @@ export const BAR_COLUMN_MIN_HEIGHT = 330;
 /** Room kept between the bar and the window's edge or the game, in CSS pixels. */
 export const BAR_MARGIN = 8;
 
+/** Where the bar stood up on the left starts, for a game whose left edge is at `canvasX`: clear of the game by `BAR_MARGIN`. */
+export function barColumnLeft(canvasX: number, unit: number): number {
+  return Math.max(BAR_MARGIN, canvasX - BAR_MARGIN - BAR_COLUMN_WIDTH * unit);
+}
+
 export interface BarPlacement {
   readonly side: 'below' | 'left';
   /** One of the bar's pixels, in CSS pixels. */
