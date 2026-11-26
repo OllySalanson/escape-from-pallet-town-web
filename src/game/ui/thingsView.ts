@@ -99,12 +99,13 @@ export function homeUseOf(item: ItemDefinition): HomeUse {
 }
 
 /**
- * Where a medicine is given at base: THE BENCH's care chips are the one place
- * (`HubScene.careChips`). This screen said 'nothing to use it on here' with a
- * Pokémon on 2 HP, and players paid Nurse Joy raid time for what a Potion they
- * owned would have done (AI playtest, 22 Nov 2026).
+ * Where a hurt Pokémon is mended at base: the POKÉMON CENTER, for nothing -
+ * HP and status are free between raids, and only a faint costs raid time
+ * (`hub/recovery.ts`), which no medicine undoes. So a medicine at home is for
+ * packing. This used to send a player to THE BENCH's care chips, which went
+ * with the bench when it became YOUR TEAM (#919).
  */
-export const MEDICINE_AT_BASE = 'THE BENCH in THE RAID ARENA';
+export const MEDICINE_AT_BASE = 'the POKÉMON CENTER';
 
 /**
  * Where a thing is used, in one sentence, for every thing that is not used here.
@@ -114,7 +115,7 @@ export const MEDICINE_AT_BASE = 'THE BENCH in THE RAID ARENA';
  */
 export function whereItIsUsed(item: ItemDefinition): string {
   if (item.category === ItemCategory.Medicine) {
-    return `Give it to a hurt Pokémon at ${MEDICINE_AT_BASE}, or pack it for a raid.`;
+    return `Pack it to use in a raid. At home, ${MEDICINE_AT_BASE} heals for nothing.`;
   }
   switch (item.effect.type) {
     case 'machine':

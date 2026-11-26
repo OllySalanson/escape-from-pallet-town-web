@@ -56,9 +56,9 @@ describe('YOUR THINGS sorts storage into pockets', () => {
 });
 
 describe('medicine at base', () => {
-  it('sends a player to THE BENCH, never says there is nothing to use it on', () => {
+  it('says it is packed for a raid, and that the POKÉMON CENTER heals at home for nothing', () => {
     // A Pokémon on 2 HP, three Potions, and this screen said 'nothing to use
-    // it on here', so players paid Nurse Joy raid time (AI playtest, 22 Nov).
+    // it on here' (AI playtest, 22 Nov); healing at the Center is free since 25 Nov.
     for (const id of ['potion', 'super-potion', 'antidote']) {
       expect(whereItIsUsed(item(id))).toContain(MEDICINE_AT_BASE);
     }
