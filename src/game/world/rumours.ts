@@ -124,7 +124,8 @@ export const RUMOURS: readonly Rumour[] = [
     gives: ['where', 'bring'],
     names: 'THE BEE WOOD',
     ringsOver: 'PINE HOLLOW',
-    line: "PRIZE CLERK: That POKé FLUTE? A woodsman swapped for one last year. Something huge sleeps in THE BEE WOOD in PINE HOLLOW, he said.",
+    // After her welcome, not before it, and with no name tag no other line of hers wears (the harbour critic tour).
+    line: "See that POKé FLUTE on the shelf? A woodsman swapped for one last year. Something huge sleeps in THE BEE WOOD in PINE HOLLOW, he said.",
   },
   {
     id: 'sailor-drowned-bell',

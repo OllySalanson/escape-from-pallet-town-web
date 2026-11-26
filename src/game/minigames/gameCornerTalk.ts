@@ -1,5 +1,6 @@
 import type { RaidProgress } from '../save/SaveManager';
 import {
+  DAILY_TICKET_CEILING,
   BERRY_TICKET_TIERS,
   COURSE_TICKET_TIERS,
   JUMP_TICKET_TIERS,
@@ -126,11 +127,11 @@ export function cabinetRates(game: 'pokemon-jump' | 'berry-picking'): string {
 /** What the attendant says from behind the counter: how the place works, as she would put it. */
 export function attendantLines(progress: Pick<RaidProgress, 'gameCorner'>): readonly string[] {
   const record = progress.gameCorner ?? NO_GAME_CORNER;
+  // Two boxes, where six were read on every visit (the harbour critic tour,
+  // 26 Nov 2026): what a cabinet pays is on its own screen, and its lamps.
   const lines = [
-    'Welcome to the GAME CORNER! No coins here - the cabinets pay out in TICKETS.',
-    "POKéMON JUMP's down the left and BERRY PICKING's down the right. You'll want a DODUO or a DODRIO for that one.",
-    "A better score pays more, once a day, and each cabinet's screen says what. The lamps on the front show what it's paid you today.",
-    "Spend your tickets at the PRIZE WINDOW next door, and keep an eye on the HIGH SCORES board. The regulars are on it too.",
+    'Welcome to the GAME CORNER! Good scores win TICKETS, once a day a cabinet, to spend at the PRIZE WINDOW next door.',
+    "POKéMON JUMP's down the left, BERRY PICKING's down the right. Nobody to jump or pick? I'll lend you one of ours.",
   ];
   if (record.tickets > 0) {
     lines.push(`You've got ${number(record.tickets)} tickets. They're kept at home, so a raid can't lose them.`);
@@ -141,8 +142,13 @@ export function attendantLines(progress: Pick<RaidProgress, 'gameCorner'>): read
 /** What the prize clerk says before the window opens. */
 export function prizeClerkLines(progress: Pick<RaidProgress, 'gameCorner'>): readonly string[] {
   const tickets = (progress.gameCorner ?? NO_GAME_CORNER).tickets;
+  // Every way to tickets named, and the day's cap: she named two of eleven
+  // (the harbour critic tour, 26 Nov 2026).
   return tickets === 0
-    ? ['Welcome to the PRIZE WINDOW! You have no tickets yet.', 'Play the cabinets next door or run the COURSE, then come back and choose.']
+    ? [
+        'Welcome to the PRIZE WINDOW! No tickets yet? Have a look anyway.',
+        `The cabinets next door pay them. So does every game out on the front, up to ${number(DAILY_TICKET_CEILING)} a day.`,
+      ]
     : [`Welcome to the PRIZE WINDOW! You have ${number(tickets)} tickets. What will it be?`];
 }
 

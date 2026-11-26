@@ -82,7 +82,7 @@ const JUMP_WORDS: Readonly<Record<JumpType, { readonly label: string; readonly h
  * one shape - Pidgey and Diglett are off it, Oddish and Psyduck on - so the
  * line names kinds on it that the vale's grass holds rather than a rule.
  */
-export const JUMPERS_ARE = 'Only some kinds can jump: RATTATA, ODDISH, PSYDUCK, PIKACHU and the like.';
+export const JUMPERS_ARE = 'Only some kinds can jump: RATTATA, ODDISH, PSYDUCK, PIKACHU and the like. The house lends a PIKACHU.';
 
 /** The cabinet's own screen: pick up to three jumpers, then play. */
 export function jumpTeamMarkup(state: JumpTeamState): string {
@@ -200,17 +200,25 @@ function plateWords(shelf: PrizeShelf, state: PrizeWindowState): string {
 /** What a prize is, said on its help line after its price. */
 function prizeAbout(prize: TicketPrize): string {
   switch (prize.gives.kind) {
-    case 'item':
-      // A berry's own description already says what it does held.
-      return getItemById(prize.gives.itemId)?.description ?? '';
+    case 'item': {
+      // A berry's own description already says what it does held. Furniture's
+      // was written for a raid find ("bring it home"): from the window it is
+      // home already (the harbour critic tour, 26 Nov 2026).
+      const item = getItemById(prize.gives.itemId);
+      if (item?.effect.type === 'furniture') return `Furniture for THE BOLTHOLE: it goes straight home. Put it down with [H].`;
+      const disc = item?.effect.type === 'machine' ? ' Read it from your pack on a raid.' : '';
+      return `${item?.description ?? ''}${disc}`;
+    }
     case 'pokemon':
       if (prize.gives.shiny) {
-        return `Gold all over, at Lv ${prize.gives.level}: the one shiny anybody sells. Walk it in front, and whatever in the vale waits for a shiny will see it. One to a trainer: it goes to your boxes.${prizeMovesNote(
+        return `A gold one, Lv ${prize.gives.level}. Lead your team with it and the vale's shy things will notice. One a trainer.${prizeMovesNote(
           prize.gives.speciesId,
           prize.gives.level,
         )}`;
       }
-      return `FireRed's own prize, at Lv ${prize.gives.level}. One to a trainer: it goes to your boxes.${prizeMovesNote(
+      // Not "FireRed's own prize, at Lv 15": only ABRA's level is FireRed's,
+      // and a clerk in Kanto has not heard of FireRed (the critic tour).
+      return `Lv ${prize.gives.level}, for your boxes. One a trainer.${prizeMovesNote(
         prize.gives.speciesId,
         prize.gives.level,
       )}`;
@@ -332,7 +340,10 @@ function shelfThing(prize: TicketPrize, state: PrizeWindowState, start: boolean)
   const name = prizeName(prize);
   const standing = thingState(prize, state);
   const refusal = prizeRefusal(prize, state.record, state.now, state.situation);
-  const help = refusal ? `${name}: ${refusal}` : `${name} for ${number(prize.tickets)} tickets. ${prizeAbout(prize)}`;
+  // What it is, always: with no tickets the line said only "600 more
+  // tickets", so a window full of prizes gave no reason to earn one (the
+  // harbour critic tour, 26 Nov 2026).
+  const help = refusal ? `${name}: ${refusal} ${prizeAbout(prize)}` : `${name} for ${number(prize.tickets)} tickets. ${prizeAbout(prize)}`;
   const foot =
     standing.kind === 'yours'
       ? '<span class="prize-stamp">Yours</span>'
@@ -412,7 +423,7 @@ export function berryTeamMarkup(state: BerryTeamState): string {
         : heads === 3
           ? `${candidate.name}: three heads, one for each column.`
           : `${candidate.name}: two heads. It reaches the middle and one side, and turns to reach the other.`
-      : `${candidate.name} cannot play: BERRY PICKING wants a DODRIO, or a DODUO at a push.`;
+      : `${candidate.name} cannot play: BERRY PICKING wants a DODRIO, or a DODUO at a push. The house lends a DODUO.`;
     const tag = heads ? pixelTag(chosen ? 'Picking' : `${heads} heads`, chosen ? 'good' : 'plain', chosen) : pixelTag('Cannot pick', 'risk');
     return `<button class="px-row${chosen ? ' is-selected' : ''}" ${heads ? `data-picker="${candidate.id}"` : 'aria-disabled="true"'} ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level}${heads ? ` · ${heads === 3 ? 'one head a column' : 'two heads, turns to reach'}` : ' · no beak for it'} · ${escapeAttribute(candidate.box)}</small></span>${tag}</button>`;
   };

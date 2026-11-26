@@ -6993,10 +6993,11 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     // The clerk sells the POKé FLUTE, and knows what one is for: their rumour
-    // is said once, before the welcome (`world/rumours.ts`).
+    // is said once, after the welcome (`world/rumours.ts`). Before it, she
+    // pointed at a flute the shelf had not shown yet (the harbour critic tour).
     if (screen === 'prizes') {
       const rumour = this.hearRumour('clerk', { once: true });
-      this.say([...(rumour ? [rumour] : []), ...prizeClerkLines(this.freshGame().raidProgress)], about, () => this.openGameCorner('prizes'));
+      this.say([...prizeClerkLines(this.freshGame().raidProgress), ...(rumour ? [rumour] : [])], about, () => this.openGameCorner('prizes'));
     }
     // THE BATTLE ARENA's receptionist says how a bout works, then the counter opens (`arena/dojoCounter.ts`).
     if (screen === 'battle-arena') {
