@@ -1080,7 +1080,19 @@ export class BaseScene extends Phaser.Scene {
     if (this.choosing || this.decor || this.phrasePicker) {
       return asExtra(moment);
     }
-    const standing = YARD_KEY_WORDS.filter(([id]) => id !== 'walk').map(([, key, word]) => letterShortcut(key, word));
+    // While a line waits to be read, or a YES/NO box, a knock, a line in the
+    // water or a thing looked at waits on an answer, the yard's lists are not
+    // opened (`updateWalking` returns before it reads them): the pad showed
+    // them lit and a finger pressed them for nothing. They stay in their
+    // places, dimmed, as the raid's do. LOOK is read before all of that and
+    // still answers.
+    const held = Boolean(
+      this.dialogBox?.visible || this.boxQuestion || this.knockPrompt || this.fishing || this.inspecting?.by === 'keys' || this.fogLift,
+    );
+    const standing = YARD_KEY_WORDS.filter(([id]) => id !== 'walk').map(([id, key, word]) => ({
+      ...letterShortcut(key, word),
+      ...(held && id !== 'look' ? { inert: true } : {}),
+    }));
     return withMoment(standing, moment);
   }
 
