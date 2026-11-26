@@ -249,9 +249,10 @@ export function marlowLibraryLines(stage: HuntStage): readonly string[] {
     ];
   }
   return [
-    'MARLOW: Charts, young one. Fifty years I have kept the library\'s charts, and every one of them has been somewhere.',
-    'The sea sends old ones back, now and then. A bottle washes up on THE BEACH past the pier, and nobody looks at it.',
-    'Somebody ought to.',
+    // Two boxes, not five, and no "fifty years" beside the chart room's
+    // "sixty" (the harbour re-critic, 26 Nov 2026).
+    "MARLOW: Charts, young one. I've kept this library's charts all my life.",
+    "The sea sends old ones back. There's a bottle on THE BEACH past the pier, and nobody's bothered to open it.",
   ];
 }
 

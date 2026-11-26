@@ -4593,6 +4593,12 @@ export class BaseScene extends Phaser.Scene {
     if (faced?.opens || faced?.reads || faced?.chalked || faced?.good) {
       return `[SPACE] ${faced.name}`;
     }
+    // Somebody standing in a room says so, as everybody out in the harbour
+    // does: the librarian and MARLOW showed nothing (the harbour re-critic,
+    // 26 Nov 2026).
+    if (faced && (this.place.room?.people ?? []).some((person) => faced.tiles.some((tile) => sameTile(tile, person.tile)))) {
+      return `[SPACE] ${faced.name}`;
+    }
     // The cabinet is looked into rather than read off, so it says it can be.
     const unit = faced?.cabinetUnit;
     if (unit !== undefined && this.oddityToStartAt(facing, unit) !== undefined) {

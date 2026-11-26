@@ -909,14 +909,16 @@ const LIBRARY_FERN: GridPosition = { x: 10, y: 3 };
  */
 export function librarianLines(secretsOpen: boolean): readonly string[] {
   const golden = LIBRARY_BOOKS.find((book) => book.plinth === 'golden');
+  const lecterns = LIBRARY_BOOKS.filter((book) => book.plinth !== 'golden').map((book) => book.title);
   return [
-    `Welcome to the ${GREAT_LIBRARY_NAME}. The book on the lectern there is all about your house.`,
-    resolveBookText("Step up and have a read. {key:walk} turn the pages, or just click the one you want."),
+    // The lecterns named, first first: RAIDS teaches the vale, THE BOLTHOLE the house.
+    `Welcome to the ${GREAT_LIBRARY_NAME}! Start with ${lecterns[0]}, on the first lectern${lecterns.length > 1 ? `; ${lecterns.slice(1).join(' and ')} is beside it` : ''}.`,
+    resolveBookText("{key:walk} turn the pages, or click the page you want to turn."),
     ...(golden
       ? [
           secretsOpen
-            ? `You've beaten MISTY, so ${golden.title} is unchained. Every hidden nook in the vale is in it.`
-            : `The golden one is ${golden.title}: every hidden nook in the vale. I unchain it for whoever beats MISTY.`,
+            ? `You've beaten MISTY, so ${golden.title} is unchained. Every nook you find gets written up in it.`
+            : `The golden one is ${golden.title}. I unchain it for whoever beats MISTY, the gym leader out on the coast.`,
         ]
       : []),
   ];
@@ -1038,7 +1040,15 @@ function drawLibrary(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
     });
     return { sketch, catalogue: LIBRARY, things, sprites: [], people, solid: [LIBRARIAN_TILE] };
   }
-  // Until then MARLOW stands by it, keeping it shut.
+  // Until then MARLOW stands by it, keeping it shut - and it is not quite like
+  // the others, for anybody who looks (it said nothing; the re-critic).
+  things.push({
+    name: 'THE END BOOKCASE',
+    note: 'Not quite flush with the wall',
+    tiles: [{ x: END_BOOKCASE.x, y: END_BOOKCASE.y + 1 }],
+    lines: ["This end case doesn't sit quite flush with the wall."],
+    quiet: true,
+  });
   people.push({ id: MARLOW.id, design: MARLOW.design, tile: MARLOW_LIBRARY_TILE, facing: 'left' });
   things.push({ name: MARLOW.name, note: MARLOW.note, tiles: [MARLOW_LIBRARY_TILE], does: 'chart-keeper' });
   return { sketch, catalogue: LIBRARY, things, sprites: [], people, solid: [LIBRARIAN_TILE, MARLOW_LIBRARY_TILE] };

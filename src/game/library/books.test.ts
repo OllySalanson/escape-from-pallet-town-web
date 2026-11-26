@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { LECTERN_COLOURS } from '../base/librarySheet';
 import { librarianLines, LIBRARY_LECTERNS } from '../base/rooms';
 import { bookNamed, LIBRARY_BOOKS } from './books';
-import { conditionWords, DISTRICT_OF, NOTES, SECRETS_BOOK, SECRETS_BOOK_ID, secretPage } from './secretsBook';
+import { conditionWords, DISTRICT_OF, NOTES, SECRETS_BOOK, SECRETS_BOOK_ID, secretPage, secretsBookFor, unfoundSecretPage } from './secretsBook';
 import { secretsBookOpens, unlockedInPlay } from './secretsBookLock';
-import { SECRETS } from '../world/secrets';
+import { rewardKey, SECRETS } from '../world/secrets';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../world/valeQuarters';
 import { bookLeaves, bookLayout, lineWidth, linesOnAPage, SMALLEST_SCREEN, wordsWidth, wrapWords } from './bookLayout';
@@ -15,7 +15,11 @@ import { ENRAGE_GRACE_MS } from '../run/RunManager';
 import { HUNTER_FLEE_BASE_PENALTY_MS } from '../run/fleePenalty';
 import { packSquares } from '../items/packs';
 
-const everyPage = LIBRARY_BOOKS.flatMap((book) => book.pages.map((page) => ({ book: book.id, ...page })));
+const everyPage = [
+  ...LIBRARY_BOOKS.flatMap((book) => book.pages.map((page) => ({ book: book.id, ...page }))),
+  // A nook's page before it is found has to fit too (`secretsBookFor`).
+  ...SECRETS.map((secret) => ({ book: 'vale-secrets (unfound)', ...unfoundSecretPage(secret) })),
+];
 const everyWord = [
   ...everyPage.flatMap((page) => [page.heading, page.text]),
   ...LIBRARY_BOOKS.flatMap((book) => [book.title, book.blurb]),
@@ -212,3 +216,22 @@ describe('VALE SECRETS, the golden book', () => {
     expect(librarianLines(true).join(' ')).toContain('unchained');
   });
 });
+
+/** Printed whole, the golden book was the answer key to every sign and rumour (the harbour re-critic, 26 Nov 2026). */
+describe('VALE SECRETS as a save has found the vale', () => {
+  it('writes out only the nooks found, and keeps the rest to where they are', () => {
+    const [first, second] = SECRETS;
+    const known = { secretsFound: [], giftsReceived: [] };
+    const fresh = secretsBookFor(known, false);
+    expect(fresh.pages).toHaveLength(SECRETS_BOOK.pages.length);
+    const page = (book: typeof fresh, name: string) => book.pages.find((each) => each.heading === name)!.text;
+    expect(page(fresh, first.name)).not.toContain('HOLDS:');
+    expect(page(fresh, first.name)).toContain('Not found yet');
+    expect(secretsBookFor(known, true)).toBe(SECRETS_BOOK);
+    const item = SECRETS.find((secret) => secret.rewards[0].kind === 'item')!;
+    const found = secretsBookFor({ secretsFound: [rewardKey(item, item.rewards[0])], giftsReceived: [] }, false);
+    expect(page(found, item.name)).toContain('HOLDS:');
+    void second;
+  });
+});
+

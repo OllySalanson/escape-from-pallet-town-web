@@ -21,8 +21,8 @@ import { SECRETS_BOOK } from './secretsBook';
  *
  * To add a book: write it here, give it a colour, and the room lays another
  * lectern for it (`LIBRARY_LECTERNS`) - and the librarian's welcome, which
- * talks of the one book on the lectern (`librarianLines` in `base/rooms.ts`),
- * changes with it. Two are written so far: THE BOLTHOLE on its lectern, and
+ * names the lecterns' books (`librarianLines` in `base/rooms.ts`), changes
+ * with it. Three are written so far: RAIDS and THE BOLTHOLE on lecterns, and
  * VALE SECRETS on the golden plinth, its pages written from the secrets
  * themselves (`secretsBook.ts`), which opens once MISTY is beaten
  * (`secretsBookLock.ts`).
@@ -53,6 +53,50 @@ export interface LibraryBook {
 }
 
 export const LIBRARY_BOOKS: readonly LibraryBook[] = [
+  // The book the room promises, on the first lectern: a GREAT LIBRARY whose
+  // one book was a house manual taught none of the game (the harbour
+  // re-critic, 26 Nov 2026). Its numbers are held to the game by
+  // `books.test.ts` ('says the numbers the game has').
+  {
+    id: 'raids',
+    title: 'RAIDS',
+    blurb: 'Down into the vale and home again, with what you can carry',
+    colour: 'red',
+    pages: [
+      {
+        heading: 'The jump',
+        text: 'Every raid starts at THE RAID ARENA, west across the yard. Choose who comes at THE BENCH and what you carry at THE RACK, then step up to the rail and jump.',
+      },
+      {
+        heading: 'Five minutes',
+        text: 'A raid lasts five minutes. Walking and talking spend the clock; a fight stops it. When it reaches zero you have fifteen seconds to get out, and then the raid is lost.',
+      },
+      {
+        heading: 'Getting out',
+        text: 'A way out is a ride home. Some are open from the start, and the rest say on their sign what opens them. Step onto an open one and you are home with everything you carry.',
+      },
+      {
+        heading: 'The hunters',
+        text: 'Every part of the vale has a hunter. Caught, you fight one of theirs for each of yours that can still fight. Running from them costs forty seconds of your clock.',
+      },
+      {
+        heading: 'Your pack',
+        text: 'Everything you find goes in your pack, a square or more each. A Satchel holds 12 squares, a Raid pack 18, a Ranger pack 24 and a Hauler frame 30. {key:pack} opens it.',
+      },
+      {
+        heading: 'Catching',
+        text: 'Throw a POKé BALL in a wild fight. A Pokémon you catch rides home in your pack and takes four squares of it, so leave room.',
+      },
+      {
+        heading: 'Losing',
+        text: 'Lose a raid and you lose your pack, everything in it and every Pokémon you took, all but your partner and whatever you put in THE LOCKER.',
+      },
+      {
+        heading: 'Help on the way',
+        text: '{key:oak} calls PROFESSOR OAK on the radio for where to go next. {key:map} shows the ground you have walked, and {key:team} your team.',
+      },
+    ],
+  },
   {
     id: 'bolthole',
     title: 'THE BOLTHOLE',

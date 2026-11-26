@@ -2,7 +2,7 @@ import { getItemById } from '../items/items';
 import { formatElapsedClock } from '../run/raidClock';
 import { FIELD_MOVES } from '../world/fieldMoves';
 import { gymOf } from '../world/valeQuarters';
-import { SECRETS, type Secret, type SecretCondition, type SecretNook, type SecretReward } from '../world/secrets';
+import { nextReward, SECRETS, type Secret, type SecretCondition, type SecretNook, type SecretReward, type SecretsKnown } from '../world/secrets';
 import type { BookPage, LibraryBook } from './books';
 
 /**
@@ -160,3 +160,38 @@ export const SECRETS_BOOK: LibraryBook = {
     ...SECRETS.map(secretPage),
   ],
 };
+
+/**
+ * A nook's page before it has been found: where it is, and no more. Printed
+ * whole for every nook, the book was the answer key to the vale's signs, its
+ * rumours and THE RUMOUR MILL the moment it opened (the harbour re-critic,
+ * 26 Nov 2026); it fills in a page at a time as the POKéDEX does.
+ */
+export function unfoundSecretPage(secret: Secret): BookPage {
+  return {
+    heading: secret.name,
+    text: [
+      `WHERE: ${secret.place.toUpperCase()}${DISTRICT_OF[secret.id] ? `, on ${DISTRICT_OF[secret.id]}` : ''}`,
+      'Not found yet. A sign there hints at the rest, and this page fills in once you have found it.',
+    ].join('\n'),
+  };
+}
+
+/** Whether anything a secret holds has been found: its page is written out. */
+function secretFound(secret: Secret, known: SecretsKnown): boolean {
+  return nextReward(secret, known) !== secret.rewards[0];
+}
+
+/**
+ * VALE SECRETS as this save reads it: every nook found written out, every
+ * other one its place and a promise. The explorer run reads the whole book
+ * (`SECRETS_BOOK`), so every page can still be checked.
+ */
+export function secretsBookFor(known: SecretsKnown, explorerRun: boolean): LibraryBook {
+  if (explorerRun) return SECRETS_BOOK;
+  const rules = SECRETS_BOOK.pages.slice(0, SECRETS_BOOK.pages.length - SECRETS.length);
+  return {
+    ...SECRETS_BOOK,
+    pages: [...rules, ...SECRETS.map((secret) => (secretFound(secret, known) ? secretPage(secret) : unfoundSecretPage(secret)))],
+  };
+}
