@@ -289,7 +289,7 @@ export interface RaidProgress {
   /**
    * The trainers who have paid this save their prize money
    * (`world/prizeMoney.ts`), by trainer id. A trainer pays once a save, as
-   * FireRed's do, and is written the moment the prize is paid. Absent on every
+   * FireRed's do, and is written when the raid that won it is banked. Absent on every
    * save written before prize money, which reads as nobody having paid yet.
    */
   readonly trainersPaid?: readonly string[];
@@ -2456,9 +2456,10 @@ export class SaveManager {
 
   /**
    * Records trainers who have just paid their prize money, so they never pay
-   * this save again (`world/prizeMoney.ts`). Written at the win, as a boss's is:
-   * the prize is in the pack from that moment and is the pack's to lose. Nothing
-   * but `raidProgress` is touched.
+   * this save again (`world/prizeMoney.ts`). Written when the raid that won
+   * them is banked, never at the win: a wipe loses the prize with the pack, and
+   * a trainer marked paid then would have burned it for good. Nothing but
+   * `raidProgress` is touched.
    */
   public recordPaidTrainers(trainerIds: readonly string[]): readonly string[] {
     const game = this.load();

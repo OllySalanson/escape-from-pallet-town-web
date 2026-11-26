@@ -220,6 +220,14 @@ export interface ActiveRunSession {
    */
   hunterPrizePaid?: boolean;
   /**
+   * The trainers who have paid this raid their prize money, by trainer id.
+   * Written into the save's `raidProgress.trainersPaid` only when the raid is
+   * banked: a lost raid loses the prize with the pack, so the trainer who paid
+   * it pays again, and a newcomer who wipes beside the first trainers has not
+   * burned their purse for good (the fresh critic, 25 Nov 2026).
+   */
+  trainersPaid?: string[];
+  /**
    * Where this raid has pushed each Strength boulder it moved, by entity id.
    * A boulder stands where the map put it at the start of every raid, so this
    * is raid state and nothing else.

@@ -4449,8 +4449,8 @@ export class BattleScene extends Phaser.Scene {
     }
     if (this.hunterBattle && this.runSession) {
       this.runSession.hunterPrizePaid = true;
-    } else if (this.trainer) {
-      new SaveManager().recordPaidTrainers([this.trainer.id]);
+    } else if (this.trainer && this.runSession) {
+      (this.runSession.trainersPaid ??= []).push(this.trainer.id);
     }
     let taken = prize;
     if (!this.bag.wouldTakeFind(CURRENCY_ITEM_ID, taken)) {

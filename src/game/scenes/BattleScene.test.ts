@@ -4296,13 +4296,16 @@ describe('prize money for a win', () => {
     recorded.mockRestore();
   });
 
-  it('writes down a trainer who has paid, so they never pay this save again', () => {
-    const { scene } = createBattleSceneHarness({ authoredTrainer: true, bag: new Bag({}) });
+  it('writes down a trainer who has paid on the raid, for the save to take only if the raid is banked', () => {
+    const runSession = startedRunSession();
+    const { scene } = createBattleSceneHarness({ authoredTrainer: true, bag: new Bag({}), runSession });
     const payer = scene as unknown as Payer & { trainer: { id: string } };
     const recorded = vi.spyOn(SaveManager.prototype, 'recordPaidTrainers').mockReturnValue([]);
     payer.prizeMoney = 72;
     payer.payPrizeMoney();
-    expect(recorded).toHaveBeenCalledWith([payer.trainer.id]);
+    expect(runSession.trainersPaid).toEqual([payer.trainer.id]);
+    // Not the save: a wipe loses the prize with the pack, and the trainer pays again.
+    expect(recorded).not.toHaveBeenCalled();
     recorded.mockRestore();
   });
 });

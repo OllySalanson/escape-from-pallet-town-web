@@ -9869,7 +9869,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     return prizeDue(
       trainer.id,
       { levels, design: encounter?.design, boss: encounter?.bossId !== undefined },
-      new SaveManager().load()?.raidProgress.trainersPaid,
+      [...(new SaveManager().load()?.raidProgress.trainersPaid ?? []), ...(session.trainersPaid ?? [])],
     );
   }
 
@@ -11010,10 +11010,18 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     const raidId = this.runSession.raidId;
     const settledElsewhere = !new SaveManager().ownsRaid(raidId);
     this.recordRaid('extracted', point.label, closeCall);
-    const bank = () =>
-      banksContract
+    const trainersPaid = this.runSession.trainersPaid ?? [];
+    const bank = () => {
+      const banked = banksContract
         ? new SaveManager().bankContract(contract, runResult, settlement, snapshot.elapsedMs, raidId)
         : { saved: new SaveManager().bankRun(runResult, settlement, snapshot.elapsedMs, raidId), granted: false };
+      // The prizes came home, so the trainers who paid them have paid this
+      // save (`world/prizeMoney.ts`); a raid that never got here owes nothing.
+      if (banked.saved) {
+        new SaveManager().recordPaidTrainers(trainersPaid);
+      }
+      return banked;
+    };
     const contractResult = bank();
     if (contractResult.saved && !settledElsewhere) {
       this.bankRace();
