@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
+import { fullScreenOffered, isFullScreen, toggleFullScreen } from '../display/fullScreen';
 import { KEY_GUIDE, type KeyGuideGroup } from '../input/keyGuide';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { escapeAttribute, pixelScreen, pixelWindow } from '../ui/pixelUi';
@@ -90,8 +91,8 @@ export class ControlsScene extends Phaser.Scene {
   private settings(): SettingsState {
     return {
       soundOn: !audioManager.isMuted,
-      fullScreen: document.fullscreenElement !== null && document.fullscreenElement !== undefined,
-      fullScreenOffered: typeof document.documentElement.requestFullscreen === 'function' && document.fullscreenEnabled !== false,
+      fullScreen: isFullScreen(document),
+      fullScreenOffered: fullScreenOffered(document),
     };
   }
 
@@ -138,10 +139,7 @@ export class ControlsScene extends Phaser.Scene {
       audioManager.toggleMute();
       this.render('[data-sound]');
     } else if (target.hasAttribute('data-full-screen')) {
-      const done = document.fullscreenElement
-        ? document.exitFullscreen()
-        : document.documentElement.requestFullscreen();
-      void done.catch(() => undefined).then(() => this.render('[data-full-screen]'));
+      void toggleFullScreen(document).then(() => this.render('[data-full-screen]'));
     } else if (target.hasAttribute('data-feedback')) {
       const open = this.data_.openFeedback;
       this.close();

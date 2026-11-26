@@ -565,6 +565,15 @@ the Pages subpath it is built for ('Idle costs the machine' below) - `vite previ
 serves it at the root, where the page finds no script and the driver times out
 waiting for a title that never comes.
 
+`frameShots.mjs <test-mode build url> <dir> [--sizes=WxH[@dpr],...] [--raid]`
+photographs the title and the harbour yard at the window sizes players bring
+(2560x1440, 1920x1080, 1366x768, 1280x800, and a phone each way by default),
+resizing one browser with the device metrics, and plays FULL SCREEN by its tile
+and by ALT ENTER, in and out, at the first two sizes
+(`display/stageFrame.ts`, `display/fullScreen.ts`, `docs/screens/fullscreen-frame/`).
+Shrinking a 3440-wide window straight to a phone left the headless page laid
+out for the wide one; take a phone picture in its own run.
+
 `teamShots.mjs <test-mode build url> <dir> [--window=WxH] [--before]` photographs
 YOUR TEAM on a save of two dozen Pokémon, walks every slot and tile by arrow key,
 takes and leaves one by ENTER, and prints the glance measure the menu overhaul's

@@ -1,4 +1,5 @@
-import { BAR_COLUMN_WIDTH, BAR_MARGIN, type BarPlacement } from '../display/controlsBarLayout';
+import { BAR_MARGIN, barColumnLeft, type BarPlacement } from '../display/controlsBarLayout';
+import { FULL_SCREEN_KEYS } from '../display/fullScreen';
 import { sendKey } from '../input/syntheticKeys';
 import type { TouchShortcut } from '../input/touchShortcuts';
 import { iconMarkup } from './icons';
@@ -19,7 +20,8 @@ const escapeHtml = escapeAttribute;
  *   where there is one and the word for what it does - read off the scenes
  *   exactly as the touch pad reads them (`shortcutsFrom`), so the bar offers a
  *   key exactly when the screen says it can be pressed.
- * - **SETTINGS and HELP** at the end: HELP shows every key the game answers.
+ * - **FULL SCREEN, SETTINGS and HELP** at the end: HELP shows every key the
+ *   game answers, and FULL SCREEN is there only where the browser can do it.
  *
  * A tile presses its key the way a keyboard does (`input/syntheticKeys.ts`), so
  * no scene has a path of its own for it, and it never takes focus: the cursor
@@ -106,8 +108,26 @@ function teamIcon(member: BarTeamMember): string {
   return `<span class="cb-mon ${tone}" title="${escapeAttribute(member.name)}">${icon}<span class="cb-hp"><i style="width:${Math.round(health * 100)}%"></i></span></span>`;
 }
 
+/**
+ * The FULL SCREEN tile: four corner marks that point out to fill the screen,
+ * and in to come back, lit gold while it is full screen. None where the browser
+ * cannot (`display/fullScreen.ts`).
+ */
+export function fullScreenTile(state: FullScreenState): string {
+  if (state === 'unavailable') {
+    return '';
+  }
+  const on = state === 'on';
+  const label = on ? `Leave full screen (${FULL_SCREEN_KEYS})` : `Full screen (${FULL_SCREEN_KEYS})`;
+  return `<button type="button" class="cb-tile cb-full${on ? ' is-on' : ''}" data-open="full-screen" tabindex="-1" aria-pressed="${on}" aria-label="${escapeAttribute(label)}" title="${escapeAttribute(label)}">`
+    + `<span class="cb-glyph ${on ? 'cb-shrink' : 'cb-expand'}"></span></button>`;
+}
+
+/** Whether the page is full screen, or cannot be. */
+export type FullScreenState = 'off' | 'on' | 'unavailable';
+
 /** The bar's markup, for the keys and the team the screen has now. */
-export function controlsBarMarkup(keys: readonly TouchShortcut[], team: readonly BarTeamMember[]): string {
+export function controlsBarMarkup(keys: readonly TouchShortcut[], team: readonly BarTeamMember[], fullScreen: FullScreenState = 'unavailable'): string {
   const { before, after, team: teamKey } = splitRoundTeam(keys);
   const teamPress = teamKey && !teamKey.inert ? ` data-key="${TEAM_KEY_CODE}"` : '';
   const teamWord = teamKey?.label ?? 'TEAM';
@@ -120,6 +140,7 @@ export function controlsBarMarkup(keys: readonly TouchShortcut[], team: readonly
     + teamTile
     + `<div class="cb-keys">${after.map(keyTile).join('')}</div>`
     + `<div class="cb-system">`
+    + fullScreenTile(fullScreen)
     + `<button type="button" class="cb-tile cb-settings" data-open="settings" tabindex="-1" aria-label="Settings"><span class="cb-glyph cb-gear"></span><span class="cb-word">SETTINGS</span></button>`
     + `<button type="button" class="cb-tile cb-help" data-open="help" tabindex="-1" aria-label="Help: every key"><span class="cb-cap">?</span><span class="cb-word">HELP</span></button>`
     + `</div>`;
@@ -131,6 +152,10 @@ export interface ControlsBarHost {
   scenes(): readonly unknown[];
   /** Opens SETTINGS or HELP over the game. */
   openScreen(view: 'settings' | 'help'): void;
+  /** Whether the page is full screen now, or cannot be (`display/fullScreen.ts`). */
+  fullScreen(): FullScreenState;
+  /** Goes full screen, or comes back. */
+  toggleFullScreen(): void;
 }
 
 export interface ControlsBar {
@@ -155,16 +180,40 @@ export function installControlsBar(host: ControlsBarHost): ControlsBar {
 
   let shown = '';
   let before: readonly TouchShortcut[] = [];
+  // Under the game the bar is exactly as wide as the game, inside the frame's
+  // ring (`display/stageFrame.ts`). Where its tiles would run past that, they
+  // drop their pictures - as the column beside the game does - and then their
+  // words, keeping the keycaps; the team and SETTINGS and HELP keep theirs.
+  const fit = (): void => {
+    root.classList.remove('is-tight', 'is-tighter');
+    if (root.dataset.side !== 'below') {
+      return;
+    }
+    const overflows = (): boolean => {
+      const box = root.getBoundingClientRect();
+      const tiles = root.querySelectorAll(':scope > * > button, :scope > button');
+      const first = tiles[0]?.getBoundingClientRect();
+      const last = tiles[tiles.length - 1]?.getBoundingClientRect();
+      return first !== undefined && last !== undefined && (first.left < box.left - 0.5 || last.right > box.right + 0.5);
+    };
+    for (const step of ['is-tight', 'is-tighter']) {
+      if (!overflows()) {
+        return;
+      }
+      root.classList.add(step);
+    }
+  };
   const draw = (): void => {
     if (root.hidden) {
       return;
     }
     const scenes = host.scenes();
     before = shortcutsFrom(scenes, before);
-    const markup = controlsBarMarkup(before, teamFrom(scenes));
+    const markup = controlsBarMarkup(before, teamFrom(scenes), host.fullScreen());
     if (markup !== shown) {
       shown = markup;
       root.innerHTML = markup;
+      fit();
     }
   };
 
@@ -179,6 +228,10 @@ export function installControlsBar(host: ControlsBarHost): ControlsBar {
     const open = button.dataset.open;
     if (open === 'settings' || open === 'help') {
       host.openScreen(open);
+      return;
+    }
+    if (open === 'full-screen') {
+      host.toggleFullScreen();
       return;
     }
     const code = button.dataset.key;
@@ -212,9 +265,10 @@ export function installControlsBar(host: ControlsBarHost): ControlsBar {
         root.style.top = `${canvas.y}px`;
         root.style.height = `${canvas.height}px`;
         root.style.width = '';
-        root.style.left = `${Math.max(BAR_MARGIN, canvas.x - BAR_MARGIN - BAR_COLUMN_WIDTH * placement.unit)}px`;
+        root.style.left = `${barColumnLeft(canvas.x, placement.unit)}px`;
       }
       draw();
+      fit();
     },
     destroy() {
       clearInterval(timer);

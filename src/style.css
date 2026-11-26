@@ -392,6 +392,97 @@ body.touch-play #screens:has(> .menu-overlay.pixel-ui:not([data-layout='side']):
   max-height: 100%;
 }
 
+/* --- The frame round the game (`display/stageFrame.ts`) ------------------ *
+   What the whole-pixel stage leaves of the window: an ink field with a faint
+   dot every four game pixels, counted from the game's corner; a ring of ink,
+   red and ink round the game and the bar under it; gold studs on its corners
+   where there is room all round; and, on a wide margin, the Poke Ball's belt
+   at the game's middle with its button. `--fu` is one game pixel, set with
+   the layout; nothing here moves. */
+:root {
+  --px-expand: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath fill='%23000' d='M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM6 0h1v1h-1zM7 0h1v1h-1zM8 0h1v1h-1zM0 1h1v1h-1zM8 1h1v1h-1zM0 2h1v1h-1zM8 2h1v1h-1zM0 6h1v1h-1zM8 6h1v1h-1zM0 7h1v1h-1zM8 7h1v1h-1zM0 8h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1z'/%3E%3C/svg%3E");
+  --px-shrink: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath fill='%23000' d='M2 0h1v1h-1zM6 0h1v1h-1zM2 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM2 7h1v1h-1zM6 7h1v1h-1zM2 8h1v1h-1zM6 8h1v1h-1z'/%3E%3C/svg%3E");
+  --px-knob: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14' shape-rendering='crispEdges'%3E%3Cpath fill='%230c0a0a' d='M4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM7 0h1v1h-1zM8 0h1v1h-1zM9 0h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM10 1h1v1h-1zM11 1h1v1h-1zM1 2h1v1h-1zM12 2h1v1h-1zM1 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM8 3h1v1h-1zM12 3h1v1h-1zM0 4h1v1h-1zM4 4h1v1h-1zM9 4h1v1h-1zM13 4h1v1h-1zM0 5h1v1h-1zM3 5h1v1h-1zM10 5h1v1h-1zM13 5h1v1h-1zM0 6h1v1h-1zM3 6h1v1h-1zM10 6h1v1h-1zM13 6h1v1h-1zM0 7h1v1h-1zM3 7h1v1h-1zM10 7h1v1h-1zM13 7h1v1h-1zM0 8h1v1h-1zM3 8h1v1h-1zM10 8h1v1h-1zM13 8h1v1h-1zM0 9h1v1h-1zM4 9h1v1h-1zM9 9h1v1h-1zM13 9h1v1h-1zM1 10h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM8 10h1v1h-1zM12 10h1v1h-1zM1 11h1v1h-1zM12 11h1v1h-1zM2 12h1v1h-1zM3 12h1v1h-1zM10 12h1v1h-1zM11 12h1v1h-1zM4 13h1v1h-1zM5 13h1v1h-1zM6 13h1v1h-1zM7 13h1v1h-1zM8 13h1v1h-1zM9 13h1v1h-1z'/%3E%3Cpath fill='%232a2425' d='M4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM9 1h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM9 2h1v1h-1zM10 2h1v1h-1zM11 2h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM9 3h1v1h-1zM10 3h1v1h-1zM11 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM10 4h1v1h-1zM11 4h1v1h-1zM12 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM11 5h1v1h-1zM12 5h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM11 6h1v1h-1zM12 6h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM11 7h1v1h-1zM12 7h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM11 8h1v1h-1zM12 8h1v1h-1zM1 9h1v1h-1zM2 9h1v1h-1zM3 9h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM12 9h1v1h-1zM2 10h1v1h-1zM3 10h1v1h-1zM4 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM11 10h1v1h-1zM2 11h1v1h-1zM3 11h1v1h-1zM4 11h1v1h-1zM5 11h1v1h-1zM6 11h1v1h-1zM7 11h1v1h-1zM8 11h1v1h-1zM9 11h1v1h-1zM10 11h1v1h-1zM11 11h1v1h-1zM4 12h1v1h-1zM5 12h1v1h-1zM6 12h1v1h-1zM7 12h1v1h-1zM8 12h1v1h-1zM9 12h1v1h-1z'/%3E%3Cpath fill='%233b3436' d='M5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM4 5h1v1h-1zM7 5h1v1h-1zM8 5h1v1h-1zM9 5h1v1h-1zM4 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1zM8 6h1v1h-1zM9 6h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM5 9h1v1h-1zM6 9h1v1h-1zM7 9h1v1h-1z'/%3E%3Cpath fill='%23625a5d' d='M5 5h1v1h-1zM6 5h1v1h-1zM5 6h1v1h-1z'/%3E%3Cpath fill='%23221d1e' d='M9 8h1v1h-1zM8 9h1v1h-1z'/%3E%3C/svg%3E");
+  --px-dot: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 4' shape-rendering='crispEdges'%3E%3Cpath fill='%23221d1e' d='M0 0h1v1h-1z'/%3E%3C/svg%3E");
+}
+.stage-frame {
+  --fu: 2px;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--px-dot) var(--fx, 0) var(--fy, 0) / calc(var(--fu) * 4) calc(var(--fu) * 4) repeat, #161213;
+  image-rendering: pixelated;
+}
+.stage-frame[hidden] {
+  display: none;
+}
+.stage-frame > * {
+  position: absolute;
+  display: block;
+}
+.stage-frame-ring {
+  box-shadow:
+    0 0 0 var(--fu) #221d1e,
+    0 0 0 calc(var(--fu) * 2) #e3350d,
+    0 0 0 calc(var(--fu) * 3) #221d1e;
+}
+/* A gold stud: an ink outline, lit on its top-left and shaded on its bottom-right. */
+.stage-frame-stud {
+  background: #ffc823;
+  box-shadow:
+    inset 0 0 0 var(--fu) #221d1e,
+    inset calc(var(--fu) * 2) calc(var(--fu) * 2) 0 calc(var(--fu) * -1) #fff1b8,
+    inset calc(var(--fu) * -2) calc(var(--fu) * -2) 0 calc(var(--fu) * -1) #b98a00;
+}
+/* The belt: a groove in the field, two game pixels deep. */
+.stage-frame-belt {
+  background: #0c0a0a;
+  box-shadow: 0 var(--fu) 0 #221d1e;
+}
+.stage-frame-knob {
+  background: var(--px-knob) 0 0 / 100% 100% no-repeat;
+}
+
+/* The FULL SCREEN button the frame holds where the controls bar has no room:
+   an ink tile with four white corner marks, pointing out to fill the screen
+   and in to come back. */
+.stage-frame-full {
+  position: fixed;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #221d1e;
+  box-shadow: inset 0 0 0 2px #3b3436;
+  color: #ffffff;
+  cursor: pointer;
+}
+.stage-frame-full[hidden] {
+  display: none;
+}
+.stage-frame-full:hover {
+  box-shadow: inset 0 0 0 2px #ffc823;
+}
+.stage-frame-full .cb-glyph {
+  width: 56%;
+  height: 56%;
+  background: currentColor;
+  mask: var(--px-expand) center / contain no-repeat;
+  -webkit-mask: var(--px-expand) center / contain no-repeat;
+  image-rendering: pixelated;
+}
+.stage-frame-full.is-on {
+  color: #ffc823;
+}
+.stage-frame-full .cb-glyph.cb-shrink {
+  mask-image: var(--px-shrink);
+  -webkit-mask-image: var(--px-shrink);
+}
+
 .menu-overlay {
   position: absolute;
   inset: 0;
@@ -8105,6 +8196,31 @@ body.touch-play .feedback-tab {
   background: var(--ink);
   mask: var(--px-gear) center / calc(var(--u) * 7) calc(var(--u) * 7) no-repeat;
   -webkit-mask: var(--px-gear) center / calc(var(--u) * 7) calc(var(--u) * 7) no-repeat;
+}
+
+.pixel-ui.controls-bar.is-tight .cb-tile .item-icon,
+.pixel-ui.controls-bar.is-tighter .cb-keys .cb-tile .cb-word {
+  display: none;
+}
+.pixel-ui.controls-bar .cb-full {
+  padding: 0 calc(var(--u) * 5);
+}
+.pixel-ui.controls-bar .cb-full.is-on {
+  box-shadow: inset 0 0 0 var(--u) var(--line), inset 0 calc(var(--u) * -2) 0 var(--gold);
+}
+.pixel-ui.controls-bar .cb-expand,
+.pixel-ui.controls-bar .cb-shrink {
+  flex: none;
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 9);
+  background: var(--ink);
+  mask: var(--px-expand) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-expand) center / 100% 100% no-repeat;
+}
+
+.pixel-ui.controls-bar .cb-shrink {
+  mask-image: var(--px-shrink);
+  -webkit-mask-image: var(--px-shrink);
 }
 
 /* --- HELP and SETTINGS (`scenes/ControlsScene.ts`) ------------------------ */
