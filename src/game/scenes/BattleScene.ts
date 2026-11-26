@@ -133,7 +133,7 @@ import {
   carriedBalls,
   usableBattleItems,
 } from '../pokemon/battle/battleItems';
-import { prizeLeftLine, prizeLine } from '../world/prizeMoney';
+import { prizeLeftLine, prizeLine, prizePaidBeforeLine } from '../world/prizeMoney';
 import { Bag, CURRENCY_ITEM_ID, formatMoney, heldItemName, type ItemDefinition, type ItemId } from '../items';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, MAX_STAGE_HEIGHT, MAX_STAGE_WIDTH, baseCompositionOffset } from '../display/stage';
 import { WINDOW_INK, drawFramedWindow } from '../ui/pixelWindow';
@@ -379,6 +379,8 @@ export interface BattleSceneData extends Partial<RaidCarriage> {
    * Absent for a wild fight and for any fight for sport.
    */
   prizeMoney?: number;
+  /** Whether this trainer has paid this save their prize before, so a win says why it pays nothing. */
+  prizePaidBefore?: boolean;
   /** A development route can return to its launcher after a complete battle. */
   returnScene?: string;
   /**
@@ -728,6 +730,8 @@ export class BattleScene extends Phaser.Scene {
   private victoryRewardsGranted = false;
   /** What this win pays into the pack (`world/prizeMoney.ts`); nothing for a wild fight or a bout. */
   private prizeMoney = 0;
+  /** Whether this trainer paid this save before (`BattleSceneData.prizePaidBefore`). */
+  private prizePaidBefore = false;
   /** Whether this fight has said that medicine can be used in it (`lowHpItemHint`): once a fight. */
   private lowHpHintSaid = false;
   /** Whether this fight has taught a line of the type chart (`typeLesson`): once a fight. */
@@ -991,6 +995,7 @@ export class BattleScene extends Phaser.Scene {
     this.trainer = data.trainer;
     this.hunterBattle = data.hunterBattle ?? false;
     this.prizeMoney = data.exhibition ? 0 : Math.max(0, Math.floor(data.prizeMoney ?? 0));
+    this.prizePaidBefore = !data.exhibition && data.prizePaidBefore === true;
     this.teachingBattle = data.teachingBattle ?? false;
     this.catchLesson = data.wild?.lesson === 'catch' ? 'owed' : null;
     this.itemLessonGiven = false;
@@ -4441,11 +4446,18 @@ export class BattleScene extends Phaser.Scene {
    * raid's own pack: as much as it has room for, and the rest put down where
    * the fight began. Paid once, as the win is announced.
    */
+  /** Once, after a win over a trainer who paid this save before: why nothing came. */
+  private paidBeforeLines(): { message: string }[] {
+    const said = this.prizePaidBefore && this.trainer ? [{ message: prizePaidBeforeLine(this.trainer.name) }] : [];
+    this.prizePaidBefore = false;
+    return said;
+  }
+
   private payPrizeMoney(): { message: string }[] {
     const prize = this.prizeMoney;
     this.prizeMoney = 0;
     if (prize <= 0) {
-      return [];
+      return this.paidBeforeLines();
     }
     if (this.hunterBattle && this.runSession) {
       this.runSession.hunterPrizePaid = true;

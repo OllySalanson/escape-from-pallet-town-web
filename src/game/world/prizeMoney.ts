@@ -142,6 +142,15 @@ export function prizeLine(amount: string): string {
 }
 
 /**
+ * Said after beating a trainer who has paid this save before, because a win
+ * that silently paid nothing left a player chasing money unable to tell which
+ * fights still pay (the fresh critic, 26 Nov 2026).
+ */
+export function prizePaidBeforeLine(trainerName: string): string {
+  return `${trainerName} paid you last time. Trainers you haven't beaten still pay!`;
+}
+
+/**
  * Said when the pack could not take all of it: what it took, and that the rest
  * lies on the ground where the fight began, to be picked up once there is room.
  */
