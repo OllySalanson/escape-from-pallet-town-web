@@ -3,6 +3,7 @@ import { workshopMaterialKinds } from '../hub/workshop';
 import { ITEMS, type SupplyItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 import { STEP_DURATION_MS } from '../movement/stepClock';
+import { RAID_DURATION_MS } from '../run/raidClock';
 import { evolutionFamily, Pokemon } from '../pokemon';
 import type { WildEncounterEntry } from '../pokemon/encounters';
 import { getSpeciesById } from '../pokemon/species';
@@ -719,6 +720,17 @@ function takenTiles(map: WorldMapDefinition, defeatedBosses: readonly string[]):
  * banked its stops are on open ground a short walk from the landing, in the same
  * stretch of the map the raid's stake is; after that they are as far as they like.
  */
+/**
+ * The longest walk a dispatch may ask, from the map's front door to the case
+ * and out by its one exit: a quarter of the raid clock walked straight, so the
+ * rim's allowance for fights, turns and finds (two and a half times the walk,
+ * `HubScene`'s `JOB_WALK_ALLOWANCE`) still leaves a third of the clock over.
+ * Uncapped, a returning save was dealt a case 442 steps from the only exit that
+ * took it - 'allow 4:45' of 5:00 - and the clock ran out on it into the 0:00
+ * hunter (first-hour playtest, 26 Nov 2026).
+ */
+export const DISPATCH_MOST_WALK = Math.floor(RAID_DURATION_MS / 4 / STEP_DURATION_MS);
+
 export const NEAR_JOBS = 2;
 export const NEAR_JOB_LEAST_WALK = 40;
 export const NEAR_JOB_MOST_WALK = 130;
@@ -961,7 +973,13 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
       (a, b) => fromCase[a.position.y][a.position.x] - fromCase[b.position.y][b.position.x],
     );
     const [nearest, ...others] = byWalk;
-    const nameable = others.filter(jobMayNameExit);
+    const toCase = ground.steps[position.y][position.x];
+    const nameable = others.filter(
+      (exit) => {
+        const out = fromCase[exit.position.y][exit.position.x];
+        return jobMayNameExit(exit) && out >= 0 && toCase + out <= DISPATCH_MOST_WALK;
+      },
+    );
     if (nameable.length === 0) {
       return undefined;
     }

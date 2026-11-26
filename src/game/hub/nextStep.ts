@@ -169,7 +169,7 @@ export function nextStepLines(progress: NextStepProgress, vault: NextStepVault =
   }
   if (banked < NEAR_JOBS) {
     return [
-      `${job ? `Next, ${job.name.toUpperCase()} is on the rail.` : 'Another job will be on the rail.'}${mayAskAFavour(progress) ? ' And folk about the harbour may ask you a favour now.' : ''}`,
+      `${job ? `Next, a new ${job.name.toUpperCase()} is on the rail.` : 'Another job will be on the rail.'}${mayAskAFavour(progress) ? ' And folk about the harbour may ask you a favour now.' : ''}`,
     ];
   }
   const gym = nextGym(progress.defeatedBosses);

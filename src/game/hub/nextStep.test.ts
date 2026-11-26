@@ -38,6 +38,12 @@ describe('the one next thing Oak says', () => {
     expect(lines[0]).toMatch(/^Next, .* And folk about the harbour may ask you a favour now\.$/);
   });
 
+  it('calls the job after a banked one a new one, so the same name reads as counted', () => {
+    // "Next, SEALED DISPATCH is on the rail" under JOB DONE AND BANKED read as
+    // if the dispatch just banked had not counted (first-hour playtest, 26 Nov 2026).
+    expect(nextStepLines(raided(2, { standingContractsBanked: 1 }))[0]).toMatch(/^Next, a new [A-Z' ]+ is on the rail\./);
+  });
+
   it('once the near jobs are banked, a landing to walk to and the next gym', () => {
     const progress = raided(4, { standingContractsBanked: 2 });
     const landing = landingToWalkTo(progress);

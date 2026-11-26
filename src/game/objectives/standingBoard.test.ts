@@ -29,6 +29,7 @@ import {
   standingBoardSeed,
   standingJobWalk,
   standingOffers,
+  DISPATCH_MOST_WALK,
   NEAR_JOBS,
   NEAR_JOB_LEAST_WALK,
   NEAR_JOB_MOST_WALK,
@@ -643,6 +644,19 @@ describe('how far a standing job is walked', () => {
       const out = stepDistances(collision, stop, undefined, map.links)[exit.position.y][exit.position.x];
       expect(standingJobWalk(contract, landing, progressWith()), contract.id).toBe(toCase + out);
     }
+  });
+
+  it('is never more for a dispatch than a quarter of the raid clock walked straight', () => {
+    // A returning save was dealt a case 442 steps from the one exit that took
+    // it - 'allow 4:45' of 5:00 - and ran out of clock (first-hour playtest, 26 Nov 2026).
+    const dispatches = [NEAR_JOBS, NEAR_JOBS + 7, NEAR_JOBS + 20]
+      .flatMap((banked) => SEEDS.slice(0, 30).flatMap((seed) => standingOffers(seed, progressWith({ standingContractsBanked: banked }))))
+      .filter((contract) => contract.standingTemplate === 'dispatch' && contract.sealedBehind === undefined);
+    expect(dispatches.length).toBeGreaterThan(10);
+    const tooFar = dispatches
+      .map((contract) => ({ id: contract.id, walk: standingJobWalk(contract, frontDoorFor(contract.mapId)!.position, progressWith()) }))
+      .filter(({ walk }) => walk === undefined || walk > DISPATCH_MOST_WALK);
+    expect(tooFar).toEqual([]);
   });
 
   it('is never shorter than the farthest stop, and is there for every standing job', () => {
