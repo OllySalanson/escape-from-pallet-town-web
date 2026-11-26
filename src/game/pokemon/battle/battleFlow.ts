@@ -55,7 +55,6 @@ export function teachingBattleMessages(playerName: string, enemyName: string): s
     `Wild ${enemyName.toUpperCase()} appeared!`,
     `${playerName.toUpperCase()} is stronger. This fight is yours to win.`,
     "FIGHT shows each move's POWER and type matchup.",
-    'Every hit reports the HP it cost you.',
   ];
 }
 
