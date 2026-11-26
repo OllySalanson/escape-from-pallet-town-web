@@ -1,16 +1,15 @@
 // THE RAID ARENA's jump-in card, on a save that has raided a while: two
 // Pokémon, five ways in, a job on the board and supplies in the pack. It
-// photographs the card and then plays its keys, and fails when an arrow does
-// two different jobs - which it did until 25 Nov 2026: an arrow moved the map's
-// pointer while a landing lay that way and the button highlight when none did,
-// so five Lefts in a row went landing, landing, button, button, button.
+// photographs the card and then plays its keys, and fails when a key does two
+// different jobs - which the arrows did until 25 Nov 2026 (the map's pointer
+// one press, the buttons the next) - or when the arrows do anything but move
+// between the drop-ins, or Enter does not jump in (the captain, 26 Nov 2026).
 //
-//   node tools/playtest/rimCard.mjs <url> <out dir> [--window=1280x800] [--device=landscape|portrait] [--name=prefix]
+//   node tools/playtest/rimCard.mjs <url> <out dir> [--window=1280x800] [--device=landscape|portrait] [--name=prefix] [--keys]
 //
-// The rule it holds the card to (`hub/rimKeys.ts`): Up and Down move the
-// highlight between the card's rows, Left and Right change the value a row
-// holds (the landing, the job, the sky) or step along the buttons on the
-// bottom row, and nothing else moves the landing but a click on a light.
+// The rule it holds the card to (`hub/rimCard.ts`): the arrows move between
+// the drop-ins by where their lights lie and never the highlight, Tab moves the
+// highlight and never the landing, and Enter jumps in.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, sleep } from './browser.mjs';
 import { GAME, SAVE_KEY, openHallPanel, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
@@ -82,29 +81,33 @@ try {
   // The keys. Each press is recorded as which of the two things it changed.
   const log = [];
   let before = await read();
-  for (const key of ['ArrowLeft', 'ArrowLeft', 'ArrowLeft', 'ArrowUp', 'ArrowUp', 'ArrowUp', 'ArrowRight', 'ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'ArrowDown', 'ArrowDown', 'ArrowRight', 'ArrowLeft']) {
+  const keys = ['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowRight', 'ArrowDown', 'ArrowLeft', 'KeyD', 'KeyW', 'Tab', 'Tab', 'ArrowRight', 'Tab', 'Tab', 'ArrowLeft'];
+  for (const [index, key] of keys.entries()) {
     await press(key);
     const after = await read();
     log.push({ key, landing: after.landing !== before.landing, focus: after.focus !== before.focus, at: after.focus, way: after.landing.replace('greystone-vale-', '') });
-    if (key === 'ArrowUp' && after.focus === 'landing' && !keysOnly) await page.screenshot(`${out}/${prefix}-on-land.png`);
+    if (index === 2 && !keysOnly) await page.screenshot(`${out}/${prefix}-arrowed.png`);
     before = after;
   }
   for (const entry of log) console.log(JSON.stringify(entry));
-  // An arrow never moves both, and only Left and Right on the landing's own row move the landing.
-  const wrong = log.filter(
-    (entry) => entry.landing && (entry.focus || entry.at !== 'landing' || !/^(ArrowLeft|ArrowRight)$/.test(entry.key)),
-  );
+  const arrow = (entry) => /^(Arrow|Key[WASD])/.test(entry.key);
+  // An arrow never moves the highlight, and Tab never moves the landing.
+  const wrong = log.filter((entry) => (arrow(entry) && entry.focus) || (entry.key === 'Tab' && entry.landing));
   if (!keysOnly) {
     await page.screenshot(`${out}/${prefix}-after-keys.png`);
   }
-  // And on the landing's own row, Left and Right do move it: three presses, three landings.
-  const moved = log.filter((entry) => entry.landing).length;
-  if (moved !== 3) {
-    throw new Error(`Left and Right on the LAND row moved the landing ${moved} times of 3`);
+  // And the arrows do move it: most presses land somewhere new.
+  const moved = log.filter((entry) => arrow(entry) && entry.landing).length;
+  if (moved < 5) {
+    throw new Error(`the arrows moved the landing only ${moved} times`);
   }
   if (wrong.length > 0) {
-    throw new Error(`an arrow moved the landing where it should not have: ${JSON.stringify(wrong)}`);
+    throw new Error(`a key did another key's job: ${JSON.stringify(wrong)}`);
   }
+  // Enter jumps in, from wherever the highlight is.
+  await press('Enter');
+  await until(`${sceneIs('world')} || !document.querySelector('.arena-panel.is-rim')`, 'Enter to jump in');
+  console.log('Enter jumped in');
 } finally {
   await browser.close();
 }
