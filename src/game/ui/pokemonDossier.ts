@@ -21,7 +21,9 @@ import {
   escapeAttribute,
   pixelHpBar,
   pixelPortrait,
+  pixelStatBar,
   pixelTypeBadge,
+  STAT_BAR_TOP,
   pixelXpBar,
   pixelPokemonName,
 } from './pixelUi';
@@ -68,11 +70,13 @@ export function pokemonDossier(view: DossierView): string {
     ['Sp. Def', pokemon.stats.spDefense],
     ['Speed', pokemon.stats.speed],
   ];
+  // Every bar against the same top, so a pane says which stat is strongest at a glance.
+  const top = Math.max(STAT_BAR_TOP, ...stats.map(([, value]) => value));
   const figure = `<div class="px-dossier-figure">${pixelPortrait(pokemon.base.dexId, pokemon.name, pokemon.shiny)}<div class="summary-types">${pixelTypeBadge(pokemon.base.primaryType)}${pokemon.base.secondaryType ? pixelTypeBadge(pokemon.base.secondaryType) : ''}</div></div>`;
   const vitals = `<div class="px-dossier-vitals"><span class="px-row-line">${pixelPokemonName(pokemon)}<small>Lv ${pokemon.level}${pokemon.nickname === null ? '' : ` · ${pokemon.base.name}`}</small></span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}<small class="px-wrap">${healthLine(pokemon)}</small><small class="px-wrap">${view.holding}</small></div>`;
-  const growth = `<div class="px-dossier-growth"><small class="px-label">Experience</small>${pixelXpBar(experienceBarFill(progress), `Experience ${formatExperience(progress.intoLevel)} of ${formatExperience(progress.levelSpan)}`)}<small class="px-wrap">${experienceLine(progress)}</small><small class="px-label">Stats</small><dl class="summary-stats">${stats
-    .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
-    .join('')}</dl></div>`;
+  const growth = `<div class="px-dossier-growth"><small class="px-label">Experience</small>${pixelXpBar(experienceBarFill(progress), `Experience ${formatExperience(progress.intoLevel)} of ${formatExperience(progress.levelSpan)}`)}<small class="px-wrap">${experienceLine(progress)}</small><small class="px-label">Stats</small><div class="px-stats">${stats
+    .map(([label, value]) => pixelStatBar(label.toUpperCase(), value, top))
+    .join('')}</div></div>`;
   // A move is a row the cursor rests on to be told what it does, and nothing
   // else: it explains itself in the help bar, where every row on these screens
   // does, rather than in a second detail pane inside a detail pane.

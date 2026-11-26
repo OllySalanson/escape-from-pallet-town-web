@@ -27,7 +27,7 @@ import { publicAssetUrl } from '../publicAssetUrl';
 import { ABLE_TO_FIGHT, pickerFindField, pickerOrder, pickerRowAttributes, type PickerEntry } from './boxPicker';
 import { itemIcon } from './icons';
 import { pixelMonIcon, pixelMonTile } from './monIcon';
-import { escapeAttribute, pixelHpBar, pixelPokemonName, pixelPortrait, pixelTypeBadge } from './pixelUi';
+import { STAT_BAR_TOP, escapeAttribute, pixelHpBar, pixelPokemonName, pixelPortrait, pixelStatBar, pixelTypeBadge } from './pixelUi';
 import { experienceProgress, formatExperience } from './pokemonSummary';
 
 export interface TeamViewState {
@@ -96,15 +96,6 @@ export function partnerRosette(): string {
   return '<span class="px-rosette" role="img" aria-label="Partner" title="Partner"></span>';
 }
 
-/** The highest any of FireRed's stats reaches at the levels a raid is played at, so a bar reads at a glance. */
-const STAT_BAR_TOP = 60;
-
-/** One stat as a bar and its number. */
-function statLine(name: string, value: number, top: number, tone = ''): string {
-  const fill = Math.max(0, Math.min(1, value / Math.max(1, top)));
-  return `<span class="team-stat"><span>${name}</span><span class="team-stat-bar ${tone}"><i style="width:${Math.round(fill * 100)}%"></i></span><span class="team-stat-n">${value}</span></span>`;
-}
-
 /** What ENTER does to the one under the cursor, with the key inside, as every button in the look says it. */
 function keyLine(key: string, words: string, tone: 'go' | 'plain' = 'plain'): string {
   return `<span class="team-key ${tone === 'go' ? 'is-go' : ''}"><span class="px-keycap">${key}</span>${words}</span>`;
@@ -123,10 +114,10 @@ function teamCard(entry: PickerEntry, going: boolean, lead: boolean, partner: bo
   const top = Math.max(STAT_BAR_TOP, stats.attack, stats.defense, stats.spAttack, stats.spDefense, stats.speed);
   const progress = experienceProgress(pokemon);
   const next = progress.atTopOfCurve
-    ? '<span class="team-stat"><span>NEXT LV</span><span class="team-stat-n">TOP</span></span>'
-    : statLine('NEXT LV', progress.intoLevel, progress.levelSpan, 'is-xp').replace(
-        `<span class="team-stat-n">${progress.intoLevel}</span>`,
-        `<span class="team-stat-n">${formatExperience(progress.intoLevel)}/${formatExperience(progress.levelSpan)}</span>`,
+    ? '<span class="px-stat"><span>NEXT LV</span><span class="px-stat-n">TOP</span></span>'
+    : pixelStatBar('NEXT LV', progress.intoLevel, progress.levelSpan, 'is-xp').replace(
+        `<span class="px-stat-n">${progress.intoLevel}</span>`,
+        `<span class="px-stat-n">${formatExperience(progress.intoLevel)}/${formatExperience(progress.levelSpan)}</span>`,
       );
   const moves = pokemon.moves
     .map((move) => `<span class="px-type px-type-${move.base.type.toLowerCase()} team-move">${escapeAttribute(move.base.name)}</span>`)
@@ -144,15 +135,15 @@ function teamCard(entry: PickerEntry, going: boolean, lead: boolean, partner: bo
   const where = [entry.box, ...(held ? [`${itemIcon(held.id, held.displayName)}${escapeAttribute(held.displayName)}`] : [])].join(' · ');
   return `<section class="px-window team-card" data-shown-by="${escapeAttribute(entry.id)}" hidden>`
     + `<header class="px-heading"><span>${partner ? partnerRosette() : ''}${pixelPokemonName(pokemon)}<span class="team-card-level">LV${pokemon.level}</span></span><small>${types.map((type) => pixelTypeBadge(type)).join('')}</small></header>`
-    + statLine('HP', pokemon.currentHp, pokemon.maxHp, pokemon.currentHp / Math.max(1, pokemon.maxHp) > 0.5 ? 'is-hp' : pokemon.currentHp / Math.max(1, pokemon.maxHp) > 0.2 ? 'is-hp-low' : 'is-hp-red').replace(
-      `<span class="team-stat-n">${pokemon.currentHp}</span>`,
-      `<span class="team-stat-n">${pokemon.currentHp}/${pokemon.maxHp}</span>`,
+    + pixelStatBar('HP', pokemon.currentHp, pokemon.maxHp, pokemon.currentHp / Math.max(1, pokemon.maxHp) > 0.5 ? 'is-hp' : pokemon.currentHp / Math.max(1, pokemon.maxHp) > 0.2 ? 'is-hp-low' : 'is-hp-red').replace(
+      `<span class="px-stat-n">${pokemon.currentHp}</span>`,
+      `<span class="px-stat-n">${pokemon.currentHp}/${pokemon.maxHp}</span>`,
     )
-    + statLine('ATTACK', stats.attack, top)
-    + statLine('DEFENCE', stats.defense, top)
-    + statLine('SP. ATK', stats.spAttack, top)
-    + statLine('SP. DEF', stats.spDefense, top)
-    + statLine('SPEED', stats.speed, top)
+    + pixelStatBar('ATTACK', stats.attack, top)
+    + pixelStatBar('DEFENCE', stats.defense, top)
+    + pixelStatBar('SP. ATK', stats.spAttack, top)
+    + pixelStatBar('SP. DEF', stats.spDefense, top)
+    + pixelStatBar('SPEED', stats.speed, top)
     + next
     + `<div class="team-moves">${moves}</div>`
     + `<footer class="team-card-foot"><small class="team-card-where">${where}</small><span class="team-keys">${deeds.join('')}</span></footer>`

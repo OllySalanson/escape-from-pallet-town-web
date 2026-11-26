@@ -293,6 +293,15 @@ export function pixelPokemonName(pokemon: { readonly name: string; readonly shin
   return `<strong class="px-name">${pokemon.name}</strong>${pokemon.shiny ? pixelShinyStar() : ''}`;
 }
 
+/** The highest any stat is drawn against, at the levels a raid is played at, so a bar reads at a glance. */
+export const STAT_BAR_TOP = 60;
+
+/** One stat as its name, a bar of how much against `top`, and its number. */
+export function pixelStatBar(name: string, value: number, top: number, tone = ''): string {
+  const fill = Math.max(0, Math.min(1, value / Math.max(1, top)));
+  return `<span class="px-stat"><span>${name}</span><span class="px-stat-bar ${tone}"><i style="width:${Math.round(fill * 100)}%"></i></span><span class="px-stat-n">${value}</span></span>`;
+}
+
 export function pixelTypeBadge(type: string): string {
   return `<span class="px-type px-type-${type.toLowerCase()}">${type}</span>`;
 }
