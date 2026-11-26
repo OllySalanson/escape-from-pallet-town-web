@@ -1,48 +1,46 @@
 import { describe, expect, it } from 'vitest';
-import { cycleChoice, isRimArrow, rimChoiceRow, rimKeyMove, rimLandingOrder, type RimRowId } from './rimCard';
+import { cycleChoice, rimArrowDirection, rimChoiceRow, rimLandingOrder, rimLandingToward, rimTabStep } from './rimCard';
 
-const ROWS: readonly { readonly id: RimRowId; readonly choices: number }[] = [
-  { id: 'landing', choices: 5 },
-  { id: 'job', choices: 3 },
-  { id: 'sky', choices: 1 },
-];
+const way = (id: string, x: number, y: number, mapId = 'vale') => ({ id, mapId, position: { x, y } });
+// Five lights as the vale's lie in the pit: two up top, one left, the middle, one down right.
+const WAYS = [way('moor', 40, 10), way('quarry', 80, 12), way('mill', 20, 40), way('square', 50, 45), way('dam', 85, 80)];
 
-describe('the jump-in card keys: one key, one job (the captain, 25 Nov 2026)', () => {
-  it('moves between the rows with Up and Down, and into the buttons below the last', () => {
-    expect(rimKeyMove('ArrowDown', ROWS, { row: 'landing' }, 2, 1)).toEqual({ kind: 'row', row: 'job' });
-    expect(rimKeyMove('ArrowDown', ROWS, { row: 'sky' }, 2, 1)).toEqual({ kind: 'button', index: 1 });
-    expect(rimKeyMove('ArrowUp', ROWS, { button: 0 }, 2, 1)).toEqual({ kind: 'row', row: 'sky' });
-    expect(rimKeyMove('ArrowUp', ROWS, { row: 'landing' }, 2, 1)).toEqual({ kind: 'bump' });
-    expect(rimKeyMove('ArrowDown', ROWS, { button: 1 }, 2, 1)).toEqual({ kind: 'bump' });
+describe('the jump-in card keys: the arrows move between the drop-ins, and only that (the captain, 26 Nov 2026)', () => {
+  it('goes to the nearest light that lies the way the arrow points', () => {
+    expect(rimLandingToward(WAYS, 'square', 'up')).toBe('moor');
+    expect(rimLandingToward(WAYS, 'square', 'left')).toBe('mill');
+    expect(rimLandingToward(WAYS, 'square', 'down')).toBe('dam');
+    expect(rimLandingToward(WAYS, 'moor', 'right')).toBe('quarry');
+    expect(rimLandingToward(WAYS, 'mill', 'right')).toBe('square');
   });
 
-  it('changes the highlighted row with Left and Right, and never moves the highlight doing it', () => {
-    expect(rimKeyMove('ArrowLeft', ROWS, { row: 'landing' }, 2, 1)).toEqual({ kind: 'step', row: 'landing', by: -1 });
-    expect(rimKeyMove('ArrowRight', ROWS, { row: 'job' }, 2, 1)).toEqual({ kind: 'step', row: 'job', by: 1 });
-    // A row with one value has nothing to change: a bump, never a move somewhere else.
-    expect(rimKeyMove('ArrowRight', ROWS, { row: 'sky' }, 2, 1)).toEqual({ kind: 'bump' });
+  it('counts a step to the side as twice a step straight on, so Right goes to the light beside, not one a little nearer but further off the line', () => {
+    const ways = [way('here', 0, 0), way('beside', 10, 4), way('up-a-bit', 8, -7)];
+    expect(rimLandingToward(ways, 'here', 'right')).toBe('beside');
   });
 
-  it('steps between the buttons on the buttons row, and never touches the landing there', () => {
-    expect(rimKeyMove('ArrowLeft', ROWS, { button: 1 }, 2, 1)).toEqual({ kind: 'button', index: 0 });
-    expect(rimKeyMove('ArrowRight', ROWS, { button: 0 }, 2, 1)).toEqual({ kind: 'button', index: 1 });
-    expect(rimKeyMove('ArrowLeft', ROWS, { button: 0 }, 2, 1)).toEqual({ kind: 'bump' });
-    for (const key of ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']) {
-      for (const cursor of [{ button: 0 }, { button: 1 }, { row: 'job' as const }, { row: 'sky' as const }]) {
-        const move = rimKeyMove(key, ROWS, cursor, 2, 1);
-        expect(move.kind === 'step' && move.row === 'landing').toBe(false);
-      }
-    }
+  it('is a bump when nothing lies that way, and never leaves the map the light is on', () => {
+    expect(rimLandingToward(WAYS, 'moor', 'up')).toBeNull();
+    expect(rimLandingToward(WAYS, 'dam', 'right')).toBeNull();
+    // MILL SQUARE's case on the vale: the moor is a little left of it but far above, so it is Up's, not Left's.
+    expect(rimLandingToward([way('mill', 20, 40), way('moor', 18, 10)], 'mill', 'left')).toBeNull();
+    expect(rimLandingToward([way('mill', 20, 40), way('moor', 18, 10)], 'mill', 'up')).toBe('moor');
+    expect(rimLandingToward([...WAYS, way('elsewhere', 99, 45, 'other')], 'dam', 'right')).toBeNull();
   });
 
-  it('takes W, A, S and D as the arrows', () => {
-    expect(['w', 'a', 's', 'd', 'ArrowUp'].every(isRimArrow)).toBe(true);
-    expect(isRimArrow('Enter')).toBe(false);
-    expect(rimKeyMove('d', ROWS, { row: 'landing' }, 2, 1)).toEqual({ kind: 'step', row: 'landing', by: 1 });
+  it('takes W, A, S and D as the arrows, and nothing else as one', () => {
+    expect(['w', 'a', 's', 'd'].map(rimArrowDirection)).toEqual(['up', 'left', 'down', 'right']);
+    expect(rimArrowDirection('ArrowRight')).toBe('right');
+    expect(rimArrowDirection('Enter')).toBeNull();
+    expect(rimArrowDirection('Tab')).toBeNull();
   });
 
-  it('puts a lost highlight on the button the card opens on', () => {
-    expect(rimKeyMove('ArrowUp', ROWS, null, 2, 0)).toEqual({ kind: 'button', index: 0 });
+  it('takes Tab round the rows and JUMP IN, and Shift+Tab back, round from either end', () => {
+    expect(rimTabStep(4, -1, false)).toBe(0);
+    expect(rimTabStep(4, -1, true)).toBe(3);
+    expect(rimTabStep(4, 3, false)).toBe(0);
+    expect(rimTabStep(4, 0, true)).toBe(3);
+    expect(rimTabStep(0, 0, false)).toBe(-1);
   });
 });
 
@@ -54,8 +52,7 @@ describe('the card values', () => {
   });
 
   it('orders the landings map by map and west to east, as the pit lies', () => {
-    const way = (id: string, mapId: string, x: number, y = 0) => ({ id, mapId, position: { x, y } });
-    const order = rimLandingOrder([way('mill', 'vale', 96), way('moor', 'vale', 86), way('dam', 'vale', 286), way('quay', 'other', 1)]);
+    const order = rimLandingOrder([way('mill', 96, 0), way('moor', 86, 0), way('dam', 286, 0), way('quay', 1, 0, 'other')]);
     expect(order.map((each) => each.id)).toEqual(['moor', 'mill', 'dam', 'quay']);
   });
 

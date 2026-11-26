@@ -13,10 +13,13 @@
  * highlighted, so nothing is lost; it is only no longer the first thing seen.
  *
  * And one key does one thing (the same day: "sometimes they move the map
- * pointer, other times the highlighted button"). Up and Down move between the
- * rows; Left and Right change the value of the row the highlight is on, or step
- * between the buttons on the bottom row. A click on a light in the pit still
- * chooses that landing.
+ * pointer, other times the highlighted button"). The arrows only ever move
+ * between the drop-ins, by the way they lie on the map - Right goes to the
+ * nearest light to the right - and Enter jumps in (the captain, 26 Nov 2026:
+ * "you need to be able to navigate around the drop-ins with the arrow keys and
+ * enter the raid with Enter"). Tab takes the highlight down the card's rows to
+ * JUMP IN, and SPACE changes the JOB or SKY it is on. A click on a light in the
+ * pit, or on a row's arrows, still does what it did.
  *
  * Phaser-free and a pure string, so the card's rules are tested without a browser.
  */
@@ -25,70 +28,71 @@ import { pixelMonIcon } from '../ui/monIcon';
 import { escapeAttribute, pixelFigure, pixelHpBar } from '../ui/pixelUi';
 import type { CharacterDesignId } from '../world/characterDesigns';
 
-/** A row of the card that holds a value: Left and Right change it. */
+/** A row of the card that holds a value: a click on its arrows changes it, and SPACE on JOB or SKY. */
 export type RimRowId = 'landing' | 'job' | 'sky';
 
-/** Where the card's highlight is. */
-export type RimCursor = { readonly row: RimRowId } | { readonly button: number } | null;
-
-/** What an arrow key does on the card. */
-export type RimKeyMove =
-  | { readonly kind: 'row'; readonly row: RimRowId }
-  | { readonly kind: 'button'; readonly index: number }
-  | { readonly kind: 'step'; readonly row: RimRowId; readonly by: -1 | 1 }
-  | { readonly kind: 'bump' };
+/** A way the arrows point. */
+export type RimDirection = 'up' | 'down' | 'left' | 'right';
 
 const UP = new Set(['ArrowUp', 'w', 'W']);
 const DOWN = new Set(['ArrowDown', 's', 'S']);
 const LEFT = new Set(['ArrowLeft', 'a', 'A']);
 const RIGHT = new Set(['ArrowRight', 'd', 'D']);
 
-/** Whether a key is one of the card's four directions (the arrows, or W, A, S, D). */
-export function isRimArrow(key: string): boolean {
-  return UP.has(key) || DOWN.has(key) || LEFT.has(key) || RIGHT.has(key);
+/** Which way a key points on the card (the arrows, or W, A, S, D), or null for any other key. */
+export function rimArrowDirection(key: string): RimDirection | null {
+  return UP.has(key) ? 'up' : DOWN.has(key) ? 'down' : LEFT.has(key) ? 'left' : RIGHT.has(key) ? 'right' : null;
 }
 
 /**
- * The card's one rule for the arrows. `rows` are the value rows on show, top to
- * bottom; the buttons are the row under them, `buttons` long, entered at
- * `startButton`. A row with one value has nothing to change, so Left or Right
- * on it is a bump, never a move somewhere else.
+ * The drop-in an arrow goes to from `currentId`: the nearest light that lies
+ * that way on the same map - more that way than off to the side, so each other
+ * light is under one arrow - counting a step off to the side as twice a step
+ * straight on, so Right from a light goes to the one beside it rather than one
+ * far up the map that is a tile further right. Null when nothing lies that way,
+ * which is a bump: the arrow never moves anything else.
  */
-export function rimKeyMove(
-  key: string,
-  rows: readonly { readonly id: RimRowId; readonly choices: number }[],
-  cursor: RimCursor,
-  buttons: number,
-  startButton: number,
-): RimKeyMove {
-  const rowIndex = cursor && 'row' in cursor ? rows.findIndex((row) => row.id === cursor.row) : -1;
-  const onButtons = cursor !== null && 'button' in cursor;
-  if (cursor === null || (rowIndex < 0 && !onButtons)) {
-    // Nothing highlighted, or a row that is gone: any arrow puts it on the buttons.
-    return { kind: 'button', index: startButton };
+export function rimLandingToward<T extends { readonly id: string; readonly mapId: string; readonly position: { readonly x: number; readonly y: number } }>(
+  ways: readonly T[],
+  currentId: string,
+  direction: RimDirection,
+): string | null {
+  const current = ways.find((way) => way.id === currentId);
+  if (!current) {
+    return ways[0]?.id ?? null;
   }
-  if (UP.has(key)) {
-    if (onButtons) {
-      return rows.length > 0 ? { kind: 'row', row: rows[rows.length - 1].id } : { kind: 'bump' };
+  const [ax, ay] = direction === 'up' ? [0, -1] : direction === 'down' ? [0, 1] : direction === 'left' ? [-1, 0] : [1, 0];
+  let best: { readonly id: string; readonly score: number } | null = null;
+  for (const way of ways) {
+    if (way.id === current.id || way.mapId !== current.mapId) {
+      continue;
     }
-    return rowIndex > 0 ? { kind: 'row', row: rows[rowIndex - 1].id } : { kind: 'bump' };
-  }
-  if (DOWN.has(key)) {
-    if (onButtons) {
-      return { kind: 'bump' };
+    const dx = way.position.x - current.position.x;
+    const dy = way.position.y - current.position.y;
+    const along = dx * ax + dy * ay;
+    const across = Math.abs(dx * ay - dy * ax);
+    // Only what lies more that way than off to the side: Left from a light
+    // never goes to one that is mostly above it.
+    if (along <= 0 || across > along) {
+      continue;
     }
-    return rowIndex < rows.length - 1 ? { kind: 'row', row: rows[rowIndex + 1].id } : { kind: 'button', index: startButton };
+    const score = along + 2 * across;
+    if (!best || score < best.score) {
+      best = { id: way.id, score };
+    }
   }
-  const by = LEFT.has(key) ? -1 : RIGHT.has(key) ? 1 : 0;
-  if (by === 0) {
-    return { kind: 'bump' };
+  return best?.id ?? null;
+}
+
+/** Where Tab takes the highlight among the card's stops (its rows, then JUMP IN): on, or back with Shift, round from the end. */
+export function rimTabStep(stops: number, current: number, back: boolean): number {
+  if (stops <= 0) {
+    return -1;
   }
-  if (onButtons) {
-    const next = ('button' in cursor ? cursor.button : 0) + by;
-    return next >= 0 && next < buttons ? { kind: 'button', index: next } : { kind: 'bump' };
+  if (current < 0) {
+    return back ? stops - 1 : 0;
   }
-  const row = rows[rowIndex];
-  return row.choices > 1 ? { kind: 'step', row: row.id, by } : { kind: 'bump' };
+  return (current + (back ? -1 : 1) + stops) % stops;
 }
 
 /** The next of `choices` from `current`, `by` along, round from the end to the start. */
@@ -101,7 +105,7 @@ export function cycleChoice<T>(choices: readonly T[], current: T, by: -1 | 1): T
 }
 
 /**
- * The ways in, in the order Left and Right go through them: map by map as they
+ * The ways in, in the order the LAND row's arrows go through them: map by map as they
  * are offered, and on each map west to east, so Right on the card goes the way
  * the pit's lights lie.
  */
@@ -132,9 +136,9 @@ export interface RimChoiceRowOptions {
 
 /**
  * A row that holds a value, as `LAND < MILL SQUARE >`: one control, so the
- * highlight lands on the row and Left and Right are what change it. Its arrows
- * are parts of it a pointer or a finger can press - the left one back, the
- * right one on - and a press on the value goes on, as Enter does.
+ * highlight lands on the row. Its arrows are parts of it a pointer or a
+ * finger can press - the left one back, the right one on - and a press on the
+ * value goes on, as SPACE does on JOB and SKY.
  */
 export function rimChoiceRow(options: RimChoiceRowOptions): string {
   const one = options.choices <= 1;

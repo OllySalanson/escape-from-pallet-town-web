@@ -907,7 +907,7 @@ describe('hub deployment route', () => {
         expect(html).toContain('night: you wait on the rim for it. It costs 1:00 of the raid clock');
         expect(html).toContain('night raid clock 4:00 (5:00 base − 1:00 waiting)');
         // The SKY row says the wait, and the clock under it what it cost.
-        expect(rimSays(html, 'sky', 'row')).toContain('LEFT or RIGHT to go now instead.');
+        expect(rimSays(html, 'sky', 'row')).toContain('SPACE to go now instead.');
         expect(html).toMatch(/<strong>Dark<\/strong><small class="rim-note rim-wide">WAIT 1:00/);
         expect(html).toContain('−1:00 WAIT');
 
@@ -1770,11 +1770,16 @@ describe('what the base screen leads with', () => {
 
   /**
    * Presses `key` on the rim with the highlight on `on` - JUMP IN (`start`) or
-   * one of the card's rows - and answers where the highlight is
-   * afterwards (`HubScene.rimArrow`).
+   * one of the card's rows - and answers where the highlight is afterwards,
+   * and whether JUMP IN was pressed (`HubScene.rimKey`).
    */
-  function pressOnTheRim(hub: HubInternals, on: string, key: string): string {
+  function pressOnTheRim(hub: HubInternals, on: string, key: string, shiftKey = false): string {
+    return pressOnTheRimFully(hub, on, key, shiftKey).at;
+  }
+
+  function pressOnTheRimFully(hub: HubInternals, on: string, key: string, shiftKey = false): { at: string; jumped: boolean } {
     const document = { activeElement: null as unknown };
+    let jumped = false;
     const make = (name: string) => {
       const control = {
         name,
@@ -1785,6 +1790,9 @@ describe('what the base screen leads with', () => {
         focus: () => {
           document.activeElement = control;
         },
+        click: () => {
+          jumped = true;
+        },
       };
       return control;
     };
@@ -1792,24 +1800,26 @@ describe('what the base screen leads with', () => {
     const rows = new Map(['landing', 'job', 'sky'].map((name) => [name, make(name)]));
     const root = (hub as unknown as { overlay: { root: { querySelectorAll: (selector: string) => unknown[]; querySelector: (selector: string) => unknown } } }).overlay.root;
     const saved = { all: root.querySelectorAll, one: root.querySelector };
-    root.querySelectorAll = (selector) => (selector === '.rim-actions button' ? [start] : saved.all(selector));
-    root.querySelector = (selector) => rows.get(/data-rim-row="(\w+)"/.exec(selector)?.[1] ?? '') ?? null;
+    root.querySelectorAll = (selector) =>
+      selector === '[data-rim-row], .rim-actions button' ? [...rows.values(), start] : selector === '.rim-actions button' ? [start] : saved.all(selector);
+    root.querySelector = (selector) =>
+      selector === '.rim-actions [data-start]' ? start : (rows.get(/data-rim-row="(\w+)"/.exec(selector)?.[1] ?? '') ?? null);
     document.activeElement = on === 'start' ? start : rows.get(on);
     vi.stubGlobal('document', document);
     try {
-      (hub as unknown as { handleKey(event: KeyboardEvent): void }).handleKey({ key, preventDefault: () => undefined } as KeyboardEvent);
+      (hub as unknown as { handleKey(event: KeyboardEvent): void }).handleKey({ key, shiftKey, preventDefault: () => undefined } as KeyboardEvent);
     } finally {
       vi.unstubAllGlobals();
       root.querySelectorAll = saved.all;
       root.querySelector = saved.one;
     }
-    return (document.activeElement as { name: string } | undefined)?.name ?? 'nothing';
+    return { at: (document.activeElement as { name: string } | undefined)?.name ?? 'nothing', jumped };
   }
 
   // The second characters hunt of 11 Nov 2026, finding 1: a hurt team's card
-  // opened away from JUMP IN, every arrow went to the map and bumped, and only
-  // TAB - said nowhere - reached JUMP IN. Nothing stops the player, keyboard or not.
-  it('lets a hurt team walk down the card to JUMP IN, and choose nothing on the map by it', () => {
+  // opened away from JUMP IN and nothing said how to reach it. Tab walks down
+  // the card to it, and the arrows never move the highlight.
+  it('lets a hurt team Tab down the card to JUMP IN, and the arrows never move the highlight', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');
     const { pokemon } = hub.flow.party[0];
@@ -1817,27 +1827,41 @@ describe('what the base screen leads with', () => {
     hub.setView('rim');
     readyToDeploy(hub);
     const landing = hub.flow.insertionId;
-    const last = pressOnTheRim(hub, 'start', 'ArrowUp');
-    expect(last).not.toBe('start');
-    expect(pressOnTheRim(hub, last, 'ArrowDown')).toBe('start');
+    expect(pressOnTheRim(hub, 'landing', 'Tab')).toBe('job');
+    expect(pressOnTheRim(hub, 'sky', 'Tab')).toBe('start');
+    expect(pressOnTheRim(hub, 'start', 'Tab')).toBe('landing');
+    expect(pressOnTheRim(hub, 'landing', 'Tab', true)).toBe('start');
+    for (const key of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) {
+      expect(pressOnTheRim(hub, 'landing', key)).toBe('landing');
+    }
     expect(hub.flow.insertionId).toBe(landing);
   });
 
-  // The critic's pass on the X, 25 Nov 2026: with NOT YET gone, a click on a
-  // tile left nothing focused and the next arrow fell back on JUMP IN.
-  it('puts a lost highlight on a hurt team’s card back on its first row, never on JUMP IN', () => {
+  // A hurt team, nobody able to go or a player just home: a press meant for
+  // the screen before never spends the raid, so the first Enter only puts the
+  // highlight on JUMP IN, from a row or from nothing at all.
+  it('takes two Enters to jump with a card that opened away from JUMP IN, and one with the highlight on it', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');
     const { pokemon } = hub.flow.party[0];
     pokemon.takeDamage(pokemon.currentHp - 1);
     hub.setView('rim');
     readyToDeploy(hub);
-    for (const key of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) {
-      expect(pressOnTheRim(hub, 'nothing', key)).toBe('landing');
-    }
+    expect(pressOnTheRimFully(hub, 'landing', 'Enter')).toEqual({ at: 'start', jumped: false });
+    expect(pressOnTheRimFully(hub, 'nothing', 'Enter')).toEqual({ at: 'start', jumped: false });
+    expect(pressOnTheRimFully(hub, 'start', 'Enter')).toEqual({ at: 'start', jumped: true });
   });
 
-  it('has nothing beside JUMP IN for Left and Right to reach: the way back is the X', () => {
+  it('jumps in on Enter from anywhere on a fit team’s card', () => {
+    const { hub } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('rim');
+    readyToDeploy(hub);
+    expect(pressOnTheRimFully(hub, 'job', 'Enter')).toEqual({ at: 'start', jumped: true });
+    expect(pressOnTheRimFully(hub, 'start', 'Enter')).toEqual({ at: 'start', jumped: true });
+  });
+
+  it('has nothing beside JUMP IN for the highlight to reach: the way back is the X', () => {
     const { hub } = createHub();
     hub.flow.togglePokemon('charmander-1');
     hub.setView('rim');
@@ -1848,9 +1872,11 @@ describe('what the base screen leads with', () => {
     expect(markupOf(hub)).toContain('class="px-close" data-close');
   });
 
-  // The captain, 25 Nov 2026: the same arrow moved the map's pointer on one
-  // press and the buttons' highlight on the next, by where the lights lay.
-  it('moves the landing only from the LAND row, whatever lies on the map', () => {
+  // The captain, 25 and 26 Nov 2026: one arrow moved the map's pointer on one
+  // press and the buttons' highlight on the next; then reaching a landing was
+  // three presses up. Now the arrows go between the drop-ins wherever the
+  // highlight is, and move nothing else.
+  it('moves the landing with the arrows wherever the highlight is, the way the lights lie, and never the highlight', () => {
     const { hub } = createHub({
       ...DEFAULT_RAID_PROGRESS,
       firstContractExtracted: true,
@@ -1863,16 +1889,16 @@ describe('what the base screen leads with', () => {
     hub.setView('rim');
     hub.flow.togglePokemon('charmander-1');
     hub.flow.chooseInsertion('route-1');
-    const toward = RUN_INSERTIONS['route-1-overlook'].position.x > RUN_INSERTIONS['route-1'].position.x ? 'ArrowRight' : 'ArrowLeft';
-    const away = toward === 'ArrowRight' ? 'ArrowLeft' : 'ArrowRight';
-    // On JUMP IN the arrows move nothing, with a landing that way or not.
-    expect(pressOnTheRim(hub, 'start', away)).toBe('start');
+    const from = RUN_INSERTIONS['route-1'].position;
+    const to = RUN_INSERTIONS['route-1-overlook'].position;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const toward = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'ArrowRight' : 'ArrowLeft') : dy > 0 ? 'ArrowDown' : 'ArrowUp';
+    const opposite = { ArrowRight: 'ArrowLeft', ArrowLeft: 'ArrowRight', ArrowUp: 'ArrowDown', ArrowDown: 'ArrowUp' }[toward];
     expect(pressOnTheRim(hub, 'start', toward)).toBe('start');
-    expect(hub.flow.insertionId).toBe('route-1');
-    // Up goes to the rows above; on the LAND row the same key moves the landing and keeps the highlight.
-    expect(pressOnTheRim(hub, 'start', 'ArrowUp')).not.toBe('start');
-    expect(pressOnTheRim(hub, 'landing', toward)).toBe('landing');
     expect(hub.flow.insertionId).toBe('route-1-overlook');
+    expect(pressOnTheRim(hub, 'job', opposite)).toBe('job');
+    expect(hub.flow.insertionId).toBe('route-1');
   });
 
   it('keeps the cursor on JUMP IN for a team that is fit', () => {

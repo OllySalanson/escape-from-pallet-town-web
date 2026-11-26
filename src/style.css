@@ -7165,9 +7165,13 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui[data-rim-side]) .rim-foot {
   min-height: calc(var(--u) * 38);
 }
-/* The column is too narrow to stand the keys beside the sentence: they ran into it. */
+/* The column is too narrow to stand the keys beside the sentence (they ran
+   into it), so they stand on a line of their own above it: the arrows, Enter
+   and Tab are the card's whole keyboard, and a player not told them clicked. */
 :where(.pixel-ui[data-rim-side]) .rim-keys {
-  display: none;
+  display: block;
+  float: none;
+  margin: 0 0 var(--u);
 }
 
 /* In a side column a card is too narrow for two moves abreast, and wrapping

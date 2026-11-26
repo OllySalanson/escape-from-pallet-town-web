@@ -115,12 +115,13 @@ import { deferPendingMoves, nextPendingMoveOffer } from '../hub/pendingMoves';
 import { benchRailWarning, rimOpensAwayFromJumpIn, type RailWarning } from '../hub/railWarning';
 import {
   cycleChoice,
-  isRimArrow,
   rimChoiceRow,
   rimClock,
   rimHunterTile,
   rimJobTile,
-  rimKeyMove,
+  rimArrowDirection,
+  rimLandingToward,
+  rimTabStep,
   rimLandingOrder,
   rimPackTile,
   rimSkyValue,
@@ -1488,14 +1489,13 @@ export class HubScene extends Phaser.Scene {
         return;
       }
     }
-    // On the rim an arrow does one thing (`hub/rimCard.ts`): Up and Down go
-    // between the card's rows and on down to JUMP IN, Left and Right change
-    // the row's value. It used to point at the map first and fall
-    // back to the buttons where no landing lay that way, so the same key did
-    // two jobs by where the lights happened to sit (the captain, 25 Nov 2026).
-    if (this.view === 'rim' && isRimArrow(event.key)) {
+    // On the rim each key does one thing (`hub/rimCard.ts`): the arrows move
+    // between the drop-ins and nothing else, Enter jumps in, and Tab takes
+    // the highlight down the card's rows. The arrows used to walk the rows and
+    // change them, so reaching a landing was three presses up and then a walk
+    // west to east (the captain, 26 Nov 2026).
+    if (this.view === 'rim' && this.rimKey(event)) {
       event.preventDefault();
-      this.rimArrow(event.key);
       return;
     }
     // A deal being asked again is a YES/NO box, and the arrows stay in it.
@@ -1719,10 +1719,11 @@ export class HubScene extends Phaser.Scene {
     on('[data-close]', () => this.leaveToBase());
     // A value row on the rim's card: its left arrow goes back, anywhere else on it goes on.
     on('[data-rim-row]', (button, event) => {
-      // A key on a row is a bump: Left and Right change it, and SPACE mashed
-      // through the result screen must never move the landing. Only a click
-      // (a pointer's click has a count; a key's has none) steps it.
-      if (event.detail === 0) {
+      // A key on the LAND row is a bump: the arrows move the landing, and SPACE
+      // mashed through the result screen must never move it. SPACE on JOB or
+      // SKY, reached by Tab, steps it on. A click (a pointer's click has a
+      // count; a key's has none) steps any row.
+      if (event.detail === 0 && button.dataset.rimRow === 'landing') {
         audioManager.play('bump');
         return;
       }
@@ -2608,7 +2609,7 @@ export class HubScene extends Phaser.Scene {
     // IN, so SPACE does not spend the raid. The X and ESC are the way back.
     const actions = `<div class="px-bar-actions rim-actions"><button class="px-window px-button is-primary" data-start${stay ? '' : ' data-cursor-start'}${refusal ? ` aria-disabled="true" data-help="${escapeAttribute(refusal)}"` : ` data-help="${escapeAttribute(this.rimJumpHelp(chosen))}"`}>Jump in</button></div>`;
     const landing = requireInsertion(chosen);
-    const keys = keyHint('ARROWS', 'CHOOSE');
+    const keys = [keyHint('ARROWS', 'LAND'), keyHint('ENTER', 'JUMP IN'), keyHint('TAB', 'JOB, SKY')].join(' ');
     const card = pixelWindow(
       // The card has no title bar, so its X stands in its own top corner, on
       // the line with whatever heads the card.
@@ -2648,7 +2649,7 @@ export class HubScene extends Phaser.Scene {
       choices: landings.length,
       at: landings.findIndex((way) => way.id === insertionId) + 1,
       // A landing on another map says whose map it is (`worldMapMaker`), as the button that went there did.
-      help: `${landing.description}${landings.length > 1 ? ' Or click a light on the map.' : ''}${
+      help: `${landing.description}${landings.length > 1 ? ' The arrows go between the lights on the map, or click one.' : ''}${
         new Set(landings.map((way) => way.mapId)).size > 1
           ? ` On ${worldMapName(landing.mapId)}${worldMapMaker(landing.mapId) ? `, a map by ${worldMapMaker(landing.mapId)}` : ''}.`
           : ''
@@ -2699,12 +2700,12 @@ export class HubScene extends Phaser.Scene {
   private rimSkyHelp(): string {
     const now = new Date();
     if (this.waitingForSky) {
-      return `${waitedSkyNote(this.raidLight)}. LEFT or RIGHT to go now instead.`;
+      return `${waitedSkyNote(this.raidLight)}. SPACE to go now instead.`;
     }
     const waits = waitableSkies(now);
     return waits.length === 0
       ? skyNote(now)
-      : `${skyNote(now)}. LEFT or RIGHT to wait on the rim for ${waits.map((sky) => (sky === 'night' ? 'full dark' : 'dusk')).join(' or ')}: some things in the vale only happen then, and it costs ${formatRecoveryClock(WAIT_FOR_DARK_MS)} of the raid clock.`;
+      : `${skyNote(now)}. SPACE to wait on the rim for ${waits.map((sky) => (sky === 'night' ? 'full dark' : 'dusk')).join(' or ')}: some things in the vale only happen then, and it costs ${formatRecoveryClock(WAIT_FOR_DARK_MS)} of the raid clock.`;
   }
 
   /** A value row changed by Left or Right, or by a press on its arrows: it commits nothing. */
@@ -2728,32 +2729,54 @@ export class HubScene extends Phaser.Scene {
     this.overlay.root.querySelector<HTMLElement>(`[data-rim-row="${row}"]`)?.focus();
   }
 
-  /** An arrow key on the card (`rimKeyMove`): one key, one job. */
-  private rimArrow(key: string): void {
-    const rows = this.rimRows(this.flow.insertionId);
-    const buttons = [...this.overlay.root.querySelectorAll<HTMLElement>('.rim-actions button')];
-    const active = document.activeElement as HTMLElement | null;
-    const row = active?.dataset.rimRow as RimRowId | undefined;
-    const button = active ? buttons.indexOf(active) : -1;
-    // A card that opened off JUMP IN (a hurt team, a player just home) puts a
-    // lost highlight back on its first row, never on the jump: a click on a
-    // tile or the X leaves nothing on the card focused, and the next arrow then
-    // SPACE must not spend the raid.
-    if (!row && button < 0 && rimOpensAwayFromJumpIn(this.flow, this.justHome) && rows.length > 0) {
-      this.overlay.root.querySelector<HTMLElement>(`[data-rim-row="${rows[0].id}"]`)?.focus();
+  /**
+   * A key on the card, answered when it is one of the card's: an arrow to the
+   * drop-in that lies that way, Enter to jump in, Tab round the rows.
+   */
+  private rimKey(event: KeyboardEvent): boolean {
+    const direction = rimArrowDirection(event.key);
+    if (direction) {
+      const next = rimLandingToward(this.rimLandings(), this.flow.insertionId, direction);
+      if (next && next !== this.flow.insertionId) {
+        audioManager.play('select');
+        this.pointAtLanding(next as RunInsertionId);
+      } else {
+        audioManager.play('bump');
+      }
+      return true;
+    }
+    if (event.key === 'Enter') {
+      this.rimEnter();
+      return true;
+    }
+    if (event.key === 'Tab') {
+      const stops = [...this.overlay.root.querySelectorAll<HTMLElement>('[data-rim-row], .rim-actions button')];
+      const at = stops.indexOf(document.activeElement as HTMLElement);
+      stops[rimTabStep(stops.length, at, event.shiftKey)]?.focus();
+      audioManager.play('select');
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Enter jumps in. A card that opened off JUMP IN (a hurt team, nobody able
+   * to go, a player just home and still pressing through the result) takes a
+   * first Enter to put the highlight on JUMP IN, so a press meant for the
+   * screen before never spends the raid; the next one goes.
+   */
+  private rimEnter(): void {
+    const jump = this.overlay.root.querySelector<HTMLElement>('.rim-actions [data-start]');
+    if (!jump) {
       return;
     }
-    const start = Math.max(0, buttons.findIndex((each) => each.hasAttribute('data-cursor-start')));
-    const move = rimKeyMove(key, rows, row ? { row } : button >= 0 ? { button } : null, buttons.length, start);
-    if (move.kind === 'step') {
-      this.stepRimRow(move.row, move.by);
-    } else if (move.kind === 'row') {
-      this.overlay.root.querySelector<HTMLElement>(`[data-rim-row="${move.row}"]`)?.focus();
-    } else if (move.kind === 'button') {
-      buttons[move.index]?.focus();
-    } else {
-      audioManager.play('bump');
+    if (document.activeElement !== jump && rimOpensAwayFromJumpIn(this.flow, this.justHome)) {
+      jump.focus();
+      audioManager.play('select');
+      return;
     }
+    jump.focus();
+    jump.click();
   }
 
   /** The raid clock, large, under the rows that set it. */
