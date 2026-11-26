@@ -9,7 +9,7 @@ Square, her tale read to the end, then M and Z).
 | | before | after |
 |---|---|---|
 | Mill Square | `before-mill-square.png`: no local | `after-mill-square.png`: AUNTIE MAB on the square, the harbour's "!" over her |
-| the tale's last box | | `after-inks-in.png`: "AUNTIE MAB takes your map and inks in all of MILLBROOK." |
+| the tale's last box | | `after-filled-in.png`: "AUNTIE MAB filled in MILLBROOK on your MAP!" |
 | M, close up | | `after-map-close.png`: Millbrook in colour round Sam, walked or not |
 | M, the whole vale | `before-map.png`: fog but for the tiles walked | `after-map.png`: the whole square of MILLBROOK lit |
 
