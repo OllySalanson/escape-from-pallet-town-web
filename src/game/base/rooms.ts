@@ -1976,7 +1976,9 @@ function drawCottage(room: BaseRoom, game: RestoredGame): Drawn {
   sketch.plant(1, 13, 'billPlant');
   sketch.plant(13, 13, 'billPlant');
   sketch.plant(6, 14, 'billMat');
-  things.push({ name: "BILL'S PC", note: 'His whole list, and how many of each', tiles: [BILL_PC], opens: 'list' });
+  // Not BILL'S PC: that is the Center's storage, and a player sent to it walked
+  // in here to a shop; and it shows no counts (the harbour critic tour).
+  things.push({ name: "BILL'S LIST", note: 'Everything he deals, and the price', tiles: [BILL_PC], opens: 'list' });
   const counter = traderCounterFor(game);
   const icons: RoomIcon[] = [];
   for (const { good, tile } of GOODS_ON_SHELVES) {

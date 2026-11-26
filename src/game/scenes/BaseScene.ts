@@ -6947,10 +6947,17 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     if (screen === 'trader') {
-      // Bill cannot keep quiet about anything old, once (`world/rumours.ts`).
-      const rumour = this.hearRumour('bill', { once: true });
+      // Bill cannot keep quiet about anything old, once (`world/rumours.ts`) -
+      // but as the player turns to go, never in the middle of his welcome,
+      // where it sat between the shop and its prices (the harbour critic
+      // tour, 26 Nov 2026).
       this.sayFirstWords('cottage', about, () =>
-        favourThen(() => (rumour ? this.say([rumour], about, () => this.billReadsYou(room, about)) : this.billReadsYou(room, about))),
+        favourThen(() =>
+          this.billReadsYou(room, about, () => {
+            const rumour = this.hearRumour('bill', { once: true });
+            if (rumour) this.say([rumour], about);
+          }),
+        ),
       );
       return;
     }
@@ -7439,7 +7446,7 @@ export class BaseScene extends Phaser.Scene {
    * Bill on the mat: how he reads the player, and whether they want his whole
    * list. Everything on it is on his shelves too, a walk away.
    */
-  private billReadsYou(room: BaseRoom, about: readonly GridPosition[]): void {
+  private billReadsYou(room: BaseRoom, about: readonly GridPosition[], afterNotNow?: () => void): void {
     this.player.stop();
     this.player.setFrame(getIdleFrame(this.facing));
     const { lines, question } = billFromTheMat(traderCounterFor(this.freshGame()));
@@ -7448,6 +7455,8 @@ export class BaseScene extends Phaser.Scene {
       this.askInBox(question ?? '', (yes) => {
         if (yes) {
           this.openHub({ savedGame: this.savedGame, view: 'trader', from: room.id, at });
+        } else {
+          afterNotNow?.();
         }
       }),
     );

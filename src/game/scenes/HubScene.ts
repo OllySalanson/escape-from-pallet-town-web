@@ -31,6 +31,7 @@ import {
   stillToFind,
   type DropInBriefing,
   TRADER_BERTH_PRICE,
+  TRADER_BERTH_STANDING,
   traderBarterLimit,
   traderBarterOffers,
   traderStockLimit,
@@ -67,6 +68,7 @@ import {
   getItemById,
   isCurrency,
   isFoundOnly,
+  itemAmountFor,
   itemAmountsFor,
   READ_IN_A_RAID,
   USE_A_STONE,
@@ -410,6 +412,8 @@ export class HubScene extends Phaser.Scene {
   private traderArmed: string | undefined;
   /** The Pokémon THE TRADER's list is asking about (`hub/trades.ts`), by stash id. */
   private tradeArmed: string | undefined;
+  /** Bill's card just dealt, which the cursor goes back to while it is still open. */
+  private traderLastDeal: string | undefined;
   /** The PC row whose heal has been asked about (`recoverAsked`), until it is answered or anything else is said. */
   private recoverArmed: string | null = null;
   /**
@@ -478,6 +482,8 @@ export class HubScene extends Phaser.Scene {
   }
 
   public init(data: HubSceneData = {}): void {
+    // Each visit to a screen starts its cursor afresh (`traderView`).
+    this.traderLastDeal = undefined;
     const loaded = this.saveManager.load() ?? data.kit?.game ?? data.savedGame;
     if (!loaded) {
       throw new Error('HubScene requires a saved game.');
@@ -1799,6 +1805,7 @@ export class HubScene extends Phaser.Scene {
       const count = this.counterCounts.get(`buy:${itemId}`) ?? 1;
       this.counterCounts.delete(`buy:${itemId}`);
       this.traderArmed = undefined;
+      this.traderLastDeal = itemId;
       this.dealAtCounter(() => this.saveManager.buyTraderStock(itemId, count));
     });
     // Found goods are gone for good, so the row asks before it takes them: the
@@ -1812,6 +1819,7 @@ export class HubScene extends Phaser.Scene {
       const count = this.counterCounts.get(`barter:${barterId}`) ?? 1;
       this.counterCounts.delete(`barter:${barterId}`);
       this.traderArmed = undefined;
+      this.traderLastDeal = barterId;
       this.dealAtCounter(() => this.saveManager.takeTraderBarter(barterId, count));
     });
     on('[data-count-dir]', (button, event) =>
@@ -3321,10 +3329,20 @@ export class HubScene extends Phaser.Scene {
     // asking: `refocus` takes the *first* `data-cursor-start` in the document,
     // so a card still carrying one took the cursor off the armed question and
     // the second press of the key that armed the deal bought a Poke Ball.
+    // After a deal, back on the card just dealt while it is still open: the
+    // cursor jumped to the first open card, once onto a barter for Lamp oil,
+    // where a second ENTER for another Poké Ball would have armed the swap
+    // (the harbour critic tour, 26 Nov 2026).
+    const dealtAgain =
+      this.traderLastDeal === undefined
+        ? undefined
+        : (stock.find((offer) => offer.refusal === undefined && offer.item.itemId === this.traderLastDeal) ??
+          barters.find((offer) => offer.refusal === undefined && offer.barter.id === this.traderLastDeal));
     const first =
       this.traderArmed !== undefined
         ? undefined
-        : (stock.find((offer) => offer.refusal === undefined) ??
+        : (dealtAgain ??
+          stock.find((offer) => offer.refusal === undefined) ??
           barters.find((offer) => offer.refusal === undefined));
     const firstId = first === undefined ? undefined : 'item' in first ? first.item.itemId : first.barter.id;
     // The one card on the right answers for whichever card the cursor is on
@@ -3424,12 +3442,12 @@ export class HubScene extends Phaser.Scene {
     if (open) {
       const ceiling = offer.item.rationed
         ? limit === 1
-          ? 'That is all till you raid'
+          ? "That's all till you raid"
           : `Up to ${limit} till you raid`
         : limit === 1
-          ? 'That is all your money covers'
+          ? "That's all your money covers"
           : `Your money covers ${limit}`;
-      const help = `Buy ${count} ${name} for ${total}. ${ceiling}. He asks again.`;
+      const help = `Buy ${itemAmountFor(id, count)} for ${total}. ${ceiling}.`;
       // The card buys; how many is the < 1 > in the card on the right, a
       // control of its own that Tab crosses to.
       return `<div class="trader-slot"><button class="px-window px-card trader-card" data-buy="${id}" data-shows="${id}" data-help="${escapeAttribute(help)}"${start ? ' data-cursor-start' : ''}>${art}${label}${why}${price}</button></div>`;
@@ -3473,7 +3491,13 @@ export class HubScene extends Phaser.Scene {
     const price = paid
       ? pixelTag('Paid', 'secure', true)
       : `<span class="price-tag${offer.refusal === undefined ? '' : ' is-off'}">${formatMoney(TRADER_BERTH_PRICE)}</span>`;
-    return `<div class="trader-slot"><button class="px-window px-card trader-card ${state}" ${wiring} data-shows="${BERTH_DEAL}"><span class="trader-art">${iconMarkup('supply-crate', 'Locker shelf')}</span><strong class="px-name">Locker shelf</strong><span class="trader-limit">This raid</span>${price}</button></div>`;
+    return `<div class="trader-slot"><button class="px-window px-card trader-card ${state}" ${wiring} data-shows="${BERTH_DEAL}"><span class="trader-art">${iconMarkup('supply-crate', 'Locker shelf')}</span><strong class="px-name">Locker shelf</strong>${
+      // Locked as every other card is locked, with its padlock and its tier:
+      // greyed with "This raid" it read as merely too dear (the harbour critic tour).
+      offer.refusal === 'standing-short'
+        ? `<span class="trader-lock">${iconMarkup('padlock', 'Locked')}${this.standingName(TRADER_BERTH_STANDING)}</span>`
+        : '<span class="trader-limit">This raid</span>'
+    }${price}</button></div>`;
   }
 
   /** A card on his barter table: the thing, big, its name, and the parts it takes as tags. */
@@ -3519,7 +3543,7 @@ export class HubScene extends Phaser.Scene {
     const { barter } = offer;
     const takes = barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count }));
     return offer.refusal === undefined
-      ? `Hand over ${itemAmountsFor(takes)} for ${count === 1 ? withArticle(barter.name) : `${count} ${barter.name}s`}. He asks again.`
+      ? `Hand over ${itemAmountsFor(takes)} for ${count === 1 ? withArticle(barter.name) : `${count} ${barter.name}s`}.`
       : offer.message ?? '';
   }
 
@@ -3541,7 +3565,7 @@ export class HubScene extends Phaser.Scene {
     const count = open ? clampCount(this.counterCounts.get(`buy:${item.itemId}`) ?? 1, 1, limit) : 1;
     const cost = item.price * count;
     const name = this.itemName(item.itemId);
-    const help = `Buy ${count} ${name} for ${formatMoney(cost)}. He asks again.`;
+    const help = `Buy ${itemAmountFor(item.itemId, count)} for ${formatMoney(cost)}.`;
     // The count is a control in the card, so it carries the card's own
     // `data-shows` and the cursor moving into it keeps this card up.
     const pick = open

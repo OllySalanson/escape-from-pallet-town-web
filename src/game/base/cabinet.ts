@@ -346,7 +346,7 @@ export function unitNote(layout: CabinetLayout, unit: number): string {
 
 /** What a unit says when it is faced and asked about with nothing on it. */
 export const EMPTY_CABINET_LINE =
-  'Empty shelves. BILL keeps them for whatever you trade him across the table.';
+  'Empty shelves. Whatever you swap Bill for parts ends up here.';
 
 /** The crates, named once for all of them. */
 export function cratesNote(layout: CabinetLayout): string {

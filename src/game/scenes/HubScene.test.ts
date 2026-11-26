@@ -2523,7 +2523,9 @@ describe('HubScene - Bill', () => {
     const offered = markupOf(hub);
     expect(offered).toContain('data-barter="barter-quick-claw"');
     expect(offered).not.toContain('data-barter-confirm');
-    expect(offered).toMatch(/data-barter="barter-quick-claw"[^>]*data-help="[^"]*He asks again/);
+    // The help says the deal; it no longer ends on a designer's "He asks again" (the harbour critic tour).
+    expect(offered).toMatch(/data-barter="barter-quick-claw"[^>]*data-help="Hand over [^"]*\."/);
+    expect(offered).not.toContain('He asks again');
 
     armed.traderArmed = 'barter-quick-claw';
     const asking = markupOf(hub);
