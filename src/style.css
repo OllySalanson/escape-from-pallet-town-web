@@ -7500,6 +7500,23 @@ body.touch-play .feedback-tab {
 .pixel-ui.wood-floor .px-body .px-row.maker-fault:focus {
   color: var(--red);
 }
+/* The rim's card: LAND, JOB and SKY are each a lit window beside their label,
+   white under the cursor - what stands in one is on a plate. */
+.pixel-ui.wood-floor .px-body .rim-choice > :not(.rim-choice-label) {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
+/* And a warning on the card's own boards - a hunter coming sooner, a walk the
+   clock will not allow, a jump refused - is the light red of a title strip's
+   warning: the page's red is dark on dark there. One in a lit window keeps it. */
+.pixel-ui.wood-floor .px-body .rim-card .px-warning,
+.pixel-ui.wood-floor .px-body .rim-card .rim-walk.is-warn .rim-walk-time {
+  color: #ffa090;
+}
+.pixel-ui.wood-floor .px-body .rim-card .rim-choice .px-warning {
+  color: var(--red);
+}
 /* A part there is enough of is a tag washed green, and so a plate too. */
 .pixel-ui.wood-floor .px-body :is(.part-tag, .workshop-cost):not(.is-short) {
   color: var(--raised-ink);

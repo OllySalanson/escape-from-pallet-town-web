@@ -5,13 +5,15 @@
 // one press, the buttons the next) - or when the arrows do anything but move
 // between the drop-ins, or Enter does not jump in (the captain, 26 Nov 2026).
 //
-//   node tools/playtest/rimCard.mjs <url> <out dir> [--window=1280x800] [--device=landscape|portrait] [--name=prefix] [--keys]
+//   node tools/playtest/rimCard.mjs <url> <out dir> [--window=1280x800] [--device=landscape|portrait] [--name=prefix] [--keys] [--port=N]
+//
+// `--port` drives a browser already running on that CDP port (`attachBrowser`).
 //
 // The rule it holds the card to (`hub/rimCard.ts`): the arrows move between
 // the drop-ins by where their lights lie and never the highlight, Tab moves the
 // highlight and never the landing, and Enter jumps in.
 import { mkdirSync } from 'node:fs';
-import { launchBrowser, sleep } from './browser.mjs';
+import { attachBrowser, launchBrowser, sleep } from './browser.mjs';
 import { GAME, SAVE_KEY, openHallPanel, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
 import { DEVICES, emulateDevice } from './phone.mjs';
 
@@ -33,7 +35,8 @@ const LANDINGS = [
   'greystone-vale-the-dam',
 ];
 
-const browser = await launchBrowser({ window: device ? { width: device.width, height: device.height } : { width, height } });
+const size = { window: device ? { width: device.width, height: device.height } : { width, height } };
+const browser = option('port') ? attachBrowser(Number(option('port')), size) : await launchBrowser(size);
 try {
   const page = await browser.openPage('about:blank');
   if (device) await emulateDevice(page, device);
@@ -41,6 +44,10 @@ try {
   const press = async (code) => { await page.tap(code); await sleep(250); };
   const until = (expression, what) => page.waitFor(expression, { what, timeoutMs: 60_000 });
 
+  await until(sceneIs('title'), 'the title');
+  // An attached browser keeps the last driver's save: start from none.
+  await page.evaluate('localStorage.clear()');
+  await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
   await until(sceneIs('title'), 'the title');
   await press('Space');
   await until(sceneIs('base'), 'the harbour');

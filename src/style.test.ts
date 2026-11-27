@@ -972,7 +972,7 @@ describe('the last white screens on the wood floor', () => {
     // The swap of a last Pokémon and the stats page: the hub and the stats scene have nothing under them.
     const wall = body('.pixel-ui.wood-floor .px-body:is(.starter-shell, .stats-layout, .stats-message-layout)');
     expect(wall).toContain('background: repeating-linear-gradient(180deg, var(--paper-sunk) 0 calc(var(--u) * 15), var(--line) calc(var(--u) * 15) calc(var(--u) * 16));');
-    expect(await readFile(new URL('./game/scenes/HubScene.ts', import.meta.url), 'utf8')).toContain("const WOOD_FLOOR_VIEWS: readonly HubView[] = ['workshop', 'trader', 'daycare', 'trades', 'reselect'];");
+    expect(await readFile(new URL('./game/scenes/HubScene.ts', import.meta.url), 'utf8')).toContain("const WOOD_FLOOR_VIEWS: readonly HubView[] = ['workshop', 'trader', 'daycare', 'trades', 'reselect', 'rim'];");
     // And the starter under the cursor or the pointer is lit: lettered in the plate's ink.
     expect(body('.pixel-ui.wood-floor .px-body .starter-card:is(.is-selected, :hover)')).toContain('--ink: var(--raised-ink);');
   });
@@ -985,6 +985,16 @@ describe('the last white screens on the wood floor', () => {
     expect(body(':where(.pixel-ui) .px-heading .px-tag-risk')).toContain('color: #ffa090;');
     // The tool in hand is a chip washed green: lettered in the plate's ink.
     expect(body('.pixel-ui.wood-floor .px-body .px-chip:is(.maker-tool, .maker-area).is-selected')).toContain('--ink: var(--raised-ink);');
+  });
+
+  it("letters the rim card's lit windows in ink, and its warnings on the boards in a red that reads", () => {
+    // The card every raid starts from: LAND, JOB and SKY are lit windows beside their labels.
+    expect(body('.pixel-ui.wood-floor .px-body .rim-choice > :not(.rim-choice-label)')).toContain('--ink: var(--raised-ink);');
+    const warnings = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.includes('.pixel-ui.wood-floor .px-body .rim-card .px-warning,'));
+    expect(warnings?.[1]).toContain('.rim-walk.is-warn .rim-walk-time');
+    expect(warnings?.[2]).toContain('color: #ffa090;');
+    // One inside a lit window is on a plate, and keeps the page's red.
+    expect(body('.pixel-ui.wood-floor .px-body .rim-card .rim-choice .px-warning')).toContain('color: var(--red);');
   });
 
   it('makes the move chooser on it wherever it opens, beside a raid or over the chest', async () => {
