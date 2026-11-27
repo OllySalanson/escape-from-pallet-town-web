@@ -7480,6 +7480,26 @@ body.touch-play .feedback-tab {
   --ink-soft: var(--raised-ink-soft);
   color: var(--ink);
 }
+/* The map maker: the tool and the place in hand are chips washed green, so
+   lettered in the plate's ink; and what a check found wrong is said on the
+   boards themselves, in the light red a title strip's warning is (the page's
+   red is dark on dark there, and the floor's own red ink too pale to read as
+   one). A fault's tile is a raised chip, and keeps the page's. */
+.pixel-ui.wood-floor .px-body .px-chip:is(.maker-tool, .maker-area).is-selected {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
+.pixel-ui.wood-floor .px-body :is(.maker-check small, .px-row.maker-fault, .maker-fault-text) {
+  color: #ffa090;
+}
+.pixel-ui.wood-floor .px-body .maker-check.is-failed .maker-check-mark {
+  background: #ffa090;
+}
+/* Under the cursor a fault is a plate of paper again, and said in the page's red. */
+.pixel-ui.wood-floor .px-body .px-row.maker-fault:focus {
+  color: var(--red);
+}
 /* A part there is enough of is a tag washed green, and so a plate too. */
 .pixel-ui.wood-floor .px-body :is(.part-tag, .workshop-cost):not(.is-short) {
   color: var(--raised-ink);

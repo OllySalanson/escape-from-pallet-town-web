@@ -977,6 +977,16 @@ describe('the last white screens on the wood floor', () => {
     expect(body('.pixel-ui.wood-floor .px-body .starter-card:is(.is-selected, :hover)')).toContain('--ink: var(--raised-ink);');
   });
 
+  it('makes the map maker and the PLAYTEST BOARD on it, and says what is wrong in a red that reads on boards', async () => {
+    expect(await readFile(new URL('./game/scenes/MapMakerScene.ts', import.meta.url), 'utf8')).toContain("'map-maker pixel-ui wood-floor'");
+    expect(await readFile(new URL('./game/dev/PlaytestBoardOverlay.ts', import.meta.url), 'utf8')).toContain("'playtest-board favour-menu side-panel pixel-ui wood-floor'");
+    // The page's red is dark on dark there: a fault is the light red of a title strip's warning.
+    expect(body('.pixel-ui.wood-floor .px-body :is(.maker-check small, .px-row.maker-fault, .maker-fault-text)')).toContain('color: #ffa090;');
+    expect(body(':where(.pixel-ui) .px-heading .px-tag-risk')).toContain('color: #ffa090;');
+    // The tool in hand is a chip washed green: lettered in the plate's ink.
+    expect(body('.pixel-ui.wood-floor .px-body .px-chip:is(.maker-tool, .maker-area).is-selected')).toContain('--ink: var(--raised-ink);');
+  });
+
   it('makes the move chooser on it wherever it opens, beside a raid or over the chest', async () => {
     const chooser = await readFile(new URL('./game/ui/MoveChooserOverlay.ts', import.meta.url), 'utf8');
     expect(chooser).toContain("`move-chooser-menu${view.beside ? ' side-panel' : ''} pixel-ui wood-floor`");

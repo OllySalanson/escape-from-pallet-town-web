@@ -470,7 +470,7 @@ export class MapMakerScene extends Phaser.Scene {
     this.stopEdgeScroll();
     this.panel = 'map';
     this.painter = new MapPainter();
-    this.overlay = new MenuOverlay(this, 'map-maker pixel-ui', (event) => this.handleKey(event));
+    this.overlay = new MenuOverlay(this, 'map-maker pixel-ui wood-floor', (event) => this.handleKey(event));
     // Backspace takes the chosen thing off the map here, as Delete does; it is
     // BACK on every other screen (`asOverlayEvent`).
     this.overlay.ownKeys = new Set(['Backspace']);
