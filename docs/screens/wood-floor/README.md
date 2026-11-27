@@ -249,6 +249,26 @@ white cards on black: they stand against a wall of darker boards now.
 The stats page signed in, with its numbers and its chart of a month, was not seen: it
 needs the owner's sign-in. Its rules name only the floor's own tokens.
 
+## The map maker and the PLAYTEST BOARD
+
+The whitest screen left: three sheets and a bar, 41% of the picture plain white.
+
+| | Before | After | Colour | White |
+|---|---|---|---|---|
+| The map maker, the sample map open | ![](before/map-maker.png) | ![](after/map-maker.png) | 19 to 49 | 42% to 2% |
+| The map maker, a new map, with what is still wrong | ![](before/map-maker-new.png) | ![](after/map-maker-new.png) | 18 to 49 | 41% to 2% |
+| The explorer run's PLAYTEST BOARD | ![](before/playtest-board.png) | ![](after/playtest-board.png) | 20 to 39 | 27% to 1% |
+
+What a check found wrong was said in the page's red, which is dark on dark on wood:
+it is the light red a title strip's warning is. The tool in hand is a chip washed
+green, lettered in ink.
+
+Not fixed, and older than this: in an 800x600 window the maker's zoom chips wrap
+down their column and the map is left a sliver. And `makerFixes50.mjs` fails one of
+its fourteen checks on main and here alike ("outdoors again, no overview over a map
+a row too tall"): the overview is shown there, as its own rule says it should be for
+a map a quarter hidden.
+
 `tools/playtest/starterBalls.mjs` plays the swap. Its check there still asked for the
 pointer to move the cursor, from before the pointer only previewed; it asks for what
 the game does now, and passes.

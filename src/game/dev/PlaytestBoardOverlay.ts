@@ -34,7 +34,7 @@ export function openPlaytestBoard(
       onAction(action);
     }
   };
-  const overlay: MenuOverlay = new MenuOverlay(scene, 'playtest-board favour-menu side-panel pixel-ui', (event) => {
+  const overlay: MenuOverlay = new MenuOverlay(scene, 'playtest-board favour-menu side-panel pixel-ui wood-floor', (event) => {
     if (isOverlayDismissKey(event)) {
       event.preventDefault();
       close();
