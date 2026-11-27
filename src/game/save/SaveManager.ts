@@ -3885,7 +3885,6 @@ function serializeStash(stash: Stash): SavedStash {
   return {
     pokemon: stash.listPokemon().map(({ id, pokemon }) => ({ id, pokemon: serializePokemon(pokemon) })),
     items: stash.listItems(),
-    boxes: stash.listBoxes().map(({ name, pokemonIds }) => ({ name, pokemonIds: [...pokemonIds] })),
     partnerId: stash.partnerId(),
     dayCare: serializeDayCare(stash.dayCare()),
   };

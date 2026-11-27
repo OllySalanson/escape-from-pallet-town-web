@@ -102,7 +102,7 @@ export function jumpTeamMarkup(state: JumpTeamState): string {
     const tag = type
       ? pixelTag(chosen ? 'Jumping' : JUMP_WORDS[type].label, chosen ? 'good' : 'plain', chosen)
       : pixelTag('Cannot jump', 'risk');
-    return `<button class="px-row${chosen ? ' is-selected' : ''}" ${type ? `data-jumper="${candidate.id}"` : 'aria-disabled="true"'} ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"${full ? ' aria-disabled="true"' : ''}><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level}${type ? ` · ${JUMP_WORDS[type].label} jumper` : ''} · ${escapeAttribute(candidate.box)}</small></span>${tag}</button>`;
+    return `<button class="px-row${chosen ? ' is-selected' : ''}" ${type ? `data-jumper="${candidate.id}"` : 'aria-disabled="true"'} ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"${full ? ' aria-disabled="true"' : ''}><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level}${type ? ` · ${JUMP_WORDS[type].label} jumper` : ''}</small></span>${tag}</button>`;
   };
   const rows = [
     ...jumpers.map(row),
@@ -425,7 +425,7 @@ export function berryTeamMarkup(state: BerryTeamState): string {
           : `${candidate.name}: two heads. It reaches the middle and one side, and turns to reach the other.`
       : `${candidate.name} cannot play: BERRY PICKING wants a DODRIO, or a DODUO at a push. The house lends a DODUO.`;
     const tag = heads ? pixelTag(chosen ? 'Picking' : `${heads} heads`, chosen ? 'good' : 'plain', chosen) : pixelTag('Cannot pick', 'risk');
-    return `<button class="px-row${chosen ? ' is-selected' : ''}" ${heads ? `data-picker="${candidate.id}"` : 'aria-disabled="true"'} ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level}${heads ? ` · ${heads === 3 ? 'one head a column' : 'two heads, turns to reach'}` : ' · no beak for it'} · ${escapeAttribute(candidate.box)}</small></span>${tag}</button>`;
+    return `<button class="px-row${chosen ? ' is-selected' : ''}" ${heads ? `data-picker="${candidate.id}"` : 'aria-disabled="true"'} ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level}${heads ? ` · ${heads === 3 ? 'one head a column' : 'two heads, turns to reach'}` : ' · no beak for it'}</small></span>${tag}</button>`;
   };
   const rows = [
     ...birds.map(row),
@@ -493,7 +493,7 @@ export function courseTeamMarkup(state: CourseTeamState): string {
       : full
         ? `${state.most} are going round already. Take one out first.`
         : `${candidate.name} could do: ${can}.`;
-    return `<button class="px-row${chosen ? ' is-selected' : ''}" data-runner="${candidate.id}" ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"${full ? ' aria-disabled="true"' : ''}><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level} · ${can} · ${escapeAttribute(candidate.box)}</small></span>${pixelTag(chosen ? 'Going' : `${candidate.moves.length} of 4`, chosen ? 'good' : candidate.moves.length > 0 ? 'plain' : 'risk', chosen)}</button>`;
+    return `<button class="px-row${chosen ? ' is-selected' : ''}" data-runner="${candidate.id}" ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"${full ? ' aria-disabled="true"' : ''}><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level} · ${can}</small></span>${pixelTag(chosen ? 'Going' : `${candidate.moves.length} of 4`, chosen ? 'good' : candidate.moves.length > 0 ? 'plain' : 'risk', chosen)}</button>`;
   };
   // Best fits first is the scene's order already (`ui/boxPicker.ts`).
   const sorted = state.candidates;

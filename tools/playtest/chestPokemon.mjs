@@ -2,7 +2,8 @@
 // given fourteen Pokémon in two boxes and a held item, then at THE CHEST:
 //
 //   - P on the chest's THINGS goes to its POKéMON tab: every Pokémon in one
-//     grid in the order kept, no boxes, the card following the cursor;
+//     grid in the order an old save's boxes kept them, no boxes named, the
+//     card following the cursor;
 //   - ENTER takes the one under the cursor on the next raid, G puts one out in
 //     the garden, L puts one in front;
 //   - a Pokémon dragged from the grid onto THE NEXT RAID joins the team (and
@@ -72,9 +73,11 @@ try {
     page.send('Input.dispatchMouseEvent', { type, x: at.x, y: at.y, button: 'left', buttons: type === 'mousePressed' || type === 'mouseMoved' ? 1 : 0, clickCount: type === 'mouseMoved' ? 0 : 1 });
   /** Presses on one thing, carries it in steps to another, and lets go. */
   const drag = async (fromSelector, toSelector) => {
-    // Scrolled into view first, as a player would before picking it up.
-    await page.evaluate(`document.querySelector(${JSON.stringify(fromSelector)})?.scrollIntoView({ block: 'nearest' })`);
-    await step(2);
+    // In view first, as a player would have it before picking it up: the
+    // cursor put on it, because the screen keeps the cursor's tile in view and
+    // a scroll alone was put back to wherever the cursor last was.
+    await page.evaluate(`(() => { const node = document.querySelector(${JSON.stringify(fromSelector)}); node?.focus(); node?.scrollIntoView({ block: 'nearest' }); })()`);
+    await step(4);
     const from = await centre(fromSelector);
     const to = await centre(toSelector);
     if (!from || !to) fail(`nothing to drag from ${fromSelector} to ${toSelector}`);
@@ -93,19 +96,23 @@ try {
   await until(`${base}?.takeStarterForDriver?.("charmander") === true`);
   await wait(300);
   await until(baseReady, 'the harbour');
-  // Fourteen more Pokémon, in two boxes, one of them holding an Oran Berry.
+  // Fourteen more Pokémon, one of them holding an Oran Berry - written as a save
+  // from before THE CHEST wrote them: in two boxes, and stored in another order
+  // than the boxes keep them, so the grid's order is the boxes', read once.
   await page.evaluate(`(() => {
     const save = JSON.parse(localStorage.getItem('${SAVE_KEY}'));
-    const partner = save.stash.pokemon[0].pokemon;
+    const partner = save.stash.pokemon[0];
     const kinds = [['pikachu', 14], ['machop', 15], ['growlithe', 16], ['psyduck', 13], ['gastly', 13], ['eevee', 12], ['abra', 12],
       ['pidgey', 11], ['geodude', 10], ['oddish', 9], ['bulbasaur', 8], ['squirtle', 8], ['rattata', 6], ['magikarp', 5]];
+    const first = [partner.id];
     const second = [];
-    kinds.forEach(([speciesId, level], index) => {
+    const stored = kinds.map(([speciesId, level], index) => {
       const id = speciesId + '-' + (90 + index);
-      save.stash.pokemon.push({ id, pokemon: { ...partner, speciesId, level, currentHp: 999, xp: level * level * level, moves: ['Tackle'], nickname: null, heldItemId: speciesId === 'pikachu' ? 'oran-berry' : null, primaryStatus: null } });
-      if (index < 8) save.stash.boxes[0].pokemonIds.push(id); else second.push(id);
+      if (index < 8) first.push(id); else second.push(id);
+      return { id, pokemon: { ...partner.pokemon, speciesId, level, currentHp: 999, xp: level * level * level, moves: ['Tackle'], nickname: null, heldItemId: speciesId === 'pikachu' ? 'oran-berry' : null, primaryStatus: null } };
     });
-    save.stash.boxes.push({ name: 'Box 2', pokemonIds: second });
+    save.stash.pokemon = [...stored.reverse(), partner];
+    save.stash.boxes = [{ name: 'Box 1', pokemonIds: first }, { name: 'Box 2', pokemonIds: second }];
     save.stash.items = { ...(save.stash.items ?? {}), 'oran-berry': 2, 'sitrus-berry': 1, 'thunder-stone': 1, 'tm40-aerial-ace': 1 };
     localStorage.setItem('${SAVE_KEY}', JSON.stringify(save));
   })()`);
@@ -127,7 +134,7 @@ try {
   const grid = await page.evaluate(`[...document.querySelectorAll('#screens .chest-mons [data-mon]')].map((tile) => tile.dataset.mon)`);
   console.log(`the grid: ${grid.join(' ')}`);
   if (grid.length !== 15) fail(`${grid.length} Pokémon in the grid, not 15`);
-  if (grid[0] !== (await saved()).stash.pokemon[0].id || grid[14] !== 'magikarp-103') fail('the grid is not in the order kept');
+  if (grid[0] !== 'charmander-1' || grid[1] !== 'pikachu-90' || grid[14] !== 'magikarp-103') fail('the grid is not in the order the boxes kept');
   if (await page.evaluate(`Boolean(document.querySelector('#screens .chest-mons').textContent.match(/Box/))`)) fail('the grid names a box');
   const holding = await page.evaluate(`Boolean(document.querySelector('#screens .chest-mons [data-mon="pikachu-90"] .chest-mark.is-held'))`);
   if (!holding) fail('Pikachu does not show the berry it holds');

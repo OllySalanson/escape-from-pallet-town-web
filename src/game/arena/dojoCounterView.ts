@@ -97,7 +97,7 @@ export function memberHelp(entry: PickerEntry, inTeam: boolean, refusal: string 
       ? `${entry.pokemon.name} fights at Lv ${DOJO_LEVEL} and knows ${learned.join(', ')} there too. ENTER leaves it out.`
       : `${entry.pokemon.name} fights at Lv ${DOJO_LEVEL} with its own moves. ENTER leaves it out.`;
   }
-  return refusal ?? `${entry.pokemon.name} (from ${entry.box}) would fight at Lv ${DOJO_LEVEL}. ENTER brings it.`;
+  return refusal ?? `${entry.pokemon.name} would fight at Lv ${DOJO_LEVEL}. ENTER brings it.`;
 }
 
 /**

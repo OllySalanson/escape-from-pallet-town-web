@@ -311,10 +311,6 @@ describe('the box strip that leads a list of Pokemon', () => {
     ),
   ];
 
-  it('is read off the markup, so a new kind of line is asked about too', () => {
-    expect(lineClasses).toContain('box-manage');
-  });
-
   it('pads no line of its own, so every chip in the strip stands on one line', () => {
     const padded = ['box-line', ...lineClasses].flatMap((name) =>
       [...pixelUiRules.matchAll(new RegExp(`([^{}]*\\.${name}(?![\\w-])[^{}]*)\\{([^}]*)\\}`, 'g'))]

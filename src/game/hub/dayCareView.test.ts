@@ -4,7 +4,6 @@ import { RAIDS_TO_A_LEVEL, dayCareBody, leaveHelp, type DayCareRow } from './day
 const row = (id: string, level: number, extra: Partial<DayCareRow> = {}): DayCareRow => ({
   id,
   pokemon: { name: id.toUpperCase(), level, currentHp: 20, maxHp: 20, isFainted: false, shiny: false, heldItemId: null, base: { id: 'oddish', dexId: 43 } },
-  box: 'Box 1',
   away: false,
   partner: false,
   ...extra,

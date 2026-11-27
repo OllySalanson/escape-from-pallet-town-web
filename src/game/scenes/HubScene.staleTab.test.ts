@@ -51,27 +51,17 @@ class MemoryStorage implements StorageLike {
 
 interface CenterInternals {
   init(): void;
-  setView(view: 'stash'): void;
+  setView(view: 'workshop'): void;
   render(): void;
-  recover(ids: readonly string[]): void;
-  giveGear(pokemonId: string, itemId: string): void;
-  takeGear(pokemonId: string): void;
-  pickUp(pokemonId: string): void;
-  putDown(destination: string): void;
-  addBoxAndShow(): void;
   leaveAtDayCare(pokemonId: string): void;
-  deleteBox(): void;
-  submitBoxForm(text: string): void;
   offerPendingMoves(): void;
-  boxScope: number | 'all';
-  boxEditing: string | undefined;
   readonly view: string;
   readonly status: string;
   readonly stash: Stash;
   readonly savedGame: RestoredGame;
 }
 
-/** A save with a hurt Charmander holding Leftovers, a Quick Claw and a spare box. */
+/** A save with a hurt Charmander holding Leftovers, and a Quick Claw. */
 function seedSave(storage: MemoryStorage): void {
   const stash = createStartingStash();
   const charmander = new Pokemon(CHARMANDER, 7);
@@ -80,7 +70,6 @@ function seedSave(storage: MemoryStorage): void {
   stash.addItem('leftovers', 1);
   stash.addItem('quick-claw', 1);
   stash.giveHeldItem('charmander-1', 'leftovers');
-  stash.addBox();
   new SaveManager(storage).save({
     party: new PokemonParty(),
     mapId: 'pallet-town',
@@ -90,7 +79,7 @@ function seedSave(storage: MemoryStorage): void {
   });
 }
 
-/** Tab B: the Pokemon Center, opened on the save as it stood. */
+/** Tab B: a base screen (Brock's, which is open while a move waits to be chosen), opened on the save as it stood. */
 function openCenter(storage: MemoryStorage): CenterInternals {
   const hub = Object.create(HubScene.prototype) as CenterInternals;
   Object.assign(hub as unknown as Record<string, unknown>, {
@@ -109,7 +98,7 @@ function openCenter(storage: MemoryStorage): CenterInternals {
     },
   });
   hub.init();
-  hub.setView('stash');
+  hub.setView('workshop');
   // Drawn as the scene draws it on arrival, which is also when Nurse Joy's
   // first words are heard - so nothing the tests below do is the first look.
   hub.render();
@@ -140,15 +129,12 @@ const contractsInStorage = (storage: MemoryStorage) =>
 const charmanderInStorage = (storage: MemoryStorage) =>
   new SaveManager(storage).load()!.stash.listPokemon().some((stored) => stored.id === 'charmander-1');
 
-/** Every write the Center makes, as the button that makes it does. */
+/**
+ * Every write a base screen makes of the whole game, as the button that makes
+ * it does. The PC's own writes went with BILL'S PC (THE CHEST writes through
+ * `SaveManager` methods that read the save first).
+ */
 const CENTER_WRITES: readonly [string, (hub: CenterInternals) => void][] = [
-  ['recovery', (hub) => hub.recover(['charmander-1'])],
-  ['giving gear', (hub) => hub.giveGear('bulbasaur-1', 'quick-claw')],
-  ['taking gear', (hub) => hub.takeGear('charmander-1')],
-  ['NEW BOX', (hub) => hub.addBoxAndShow()],
-  ['moving a Pokemon to a box', (hub) => { hub.pickUp('bulbasaur-1'); hub.putDown('1'); }],
-  ['taking a box away', (hub) => { hub.boxScope = 1; hub.deleteBox(); }],
-  ['renaming a box', (hub) => { hub.boxScope = 0; hub.boxEditing = 'rename'; hub.submitBoxForm('Keepers'); }],
   ['answering the move chooser', (hub) => {
     hub.stash.listPokemon()[0].pokemon.pendingMoves.push(WATER_GUN);
     hub.offerPendingMoves();
@@ -172,7 +158,7 @@ describe('a Pokemon Center left open in another tab', () => {
     expect(center.status).toBe(STALE_SAVE_REFUSAL);
     // It caught up and stayed where it was, so the next press is made against
     // the game as it now stands - and goes through without losing the contract.
-    expect(center.view).toBe('stash');
+    expect(center.view).toBe('workshop');
     expect(center.savedGame.raidProgress.completedContracts).toEqual([FIRST_CONTRACT_ID]);
     write(center);
     expect(center.status).not.toBe(STALE_SAVE_REFUSAL);
@@ -194,20 +180,6 @@ describe('a Pokemon Center left open in another tab', () => {
     expect(center.stash.listPokemon().some((stored) => stored.id === 'charmander-1')).toBe(false);
   });
 
-  it('writes as it always did while nobody else has touched the save', () => {
-    const storage = new MemoryStorage();
-    seedSave(storage);
-    const center = openCenter(storage);
-
-    center.addBoxAndShow();
-    center.recover(['charmander-1']);
-
-    expect(center.status).not.toBe(STALE_SAVE_REFUSAL);
-    const saved = new SaveManager(storage).load()!;
-    expect(saved.stash.listBoxes()).toHaveLength(3);
-    const charmander = saved.stash.listPokemon().find((stored) => stored.id === 'charmander-1')!;
-    expect(charmander.pokemon.currentHp).toBe(charmander.pokemon.maxHp);
-  });
 });
 
 /** Tab A does something to the Day-Care through the save, as its own Day-Care screen does. */

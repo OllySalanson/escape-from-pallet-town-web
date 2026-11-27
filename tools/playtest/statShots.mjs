@@ -1,5 +1,5 @@
-// Photographs a species' stats where a player reads them: the Pokemon Center's
-// detail pane, with the cursor on that Pokemon.
+// Photographs a species' stats where a player reads them: its card on THE
+// CHEST's POKéMON tab (B then P anywhere in the harbour), with the cursor on it.
 //
 //   node tools/playtest/statShots.mjs <url> <out dir> [--level=50] [--window=1920x1080] [pikachu dugtrio ...]
 //
@@ -13,7 +13,7 @@
 // 1200x768 pixel window they are a scroll below the pane's fold.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, sleep } from './browser.mjs';
-import { SAVE_KEY, sceneIs, walkIntoBase } from './deploy.mjs';
+import { SAVE_KEY, sceneIs } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots', ...rest] = args.filter((arg) => !arg.startsWith('--'));
@@ -40,7 +40,6 @@ try {
     const seed = save.stash.pokemon[0];
     const extra = ${JSON.stringify(species)}.map((speciesId, i) => ({ id: 'stat-' + i, pokemon: { ...seed.pokemon, speciesId, moves: ['Tackle'], level: ${level}, xp: ${level ** 3}, currentHp: 999 } }));
     save.stash.pokemon = [...extra, seed];
-    save.stash.boxes = [{ name: 'Box 1', pokemonIds: [...extra.map((p) => p.id), seed.id] }];
     // Heard already, so Nurse Joy's first words do not stand over the stats.
     save.raidProgress.firstWordsHeard = ['lab', 'loadout', 'check', 'center'];
     localStorage.setItem('${SAVE_KEY}', JSON.stringify(save));
@@ -50,7 +49,10 @@ try {
   await press('Space');
   await page.waitFor(sceneIs('base'));
   await sleep(500);
-  await walkIntoBase(page, 'pokemon-centre');
+  await press('KeyB');
+  await page.waitFor(sceneIs('things'));
+  await press('KeyP');
+  await page.waitFor(`${sceneIs('chest-pokemon')} && Boolean(document.querySelector('.chest-mon-grid'))`);
   await sleep(600);
   for (const [index, id] of species.entries()) {
     // Point at the tile by its place in the collection rather than by pressing
@@ -58,7 +60,7 @@ try {
     // names the detail it shows (`data-shows`); the list of rows this once read
     // is gone, and pointing at nothing left every picture on the first Pokemon.
     await page.evaluate(`(() => {
-      const rows = [...document.querySelectorAll('.stash-roster [data-shows]')];
+      const rows = [...document.querySelectorAll('.chest-mons [data-shows]')];
       rows[${index}]?.focus();
       rows[${index}]?.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }));
     })()`);

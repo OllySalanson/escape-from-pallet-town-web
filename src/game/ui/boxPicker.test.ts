@@ -5,7 +5,7 @@ import { answersFind, applyPickerFind, findWords, kindIfNicknamed, pickerEntries
 
 const pokemon = (species: string, level: number): Pokemon => new Pokemon(getSpeciesById(species)!, level);
 
-/** A vault of two boxes: a Rattata and a fainted Pidgey in the first, a Mankey in the second. */
+/** A vault of three, kept in this order: a Rattata, a fainted Pidgey and a Mankey. */
 function twoBoxes(): Stash {
   const stash = new Stash();
   stash.addPokemon(pokemon('rattata', 8), 'rattata-1');
@@ -13,18 +13,16 @@ function twoBoxes(): Stash {
   pidgey.currentHp = 0;
   stash.addPokemon(pidgey, 'pidgey-1');
   stash.addPokemon(pokemon('mankey', 12), 'mankey-1');
-  const second = stash.addBox();
-  stash.movePokemon('mankey-1', second);
   return stash;
 }
 
-describe('the one picker from your boxes', () => {
-  it('lists every box, each Pokémon under the name of the box it is kept in', () => {
+describe('the one picker from THE CHEST', () => {
+  it('lists every Pokémon kept, in the order kept', () => {
     const entries = pickerEntries(twoBoxes());
-    expect(entries.map((entry) => [entry.id, entry.box])).toEqual([
-      ['rattata-1', 'Box 1'],
-      ['pidgey-1', 'Box 1'],
-      ['mankey-1', 'Box 2'],
+    expect(entries.map((entry) => [entry.id, entry.kept])).toEqual([
+      ['rattata-1', 0],
+      ['pidgey-1', 1],
+      ['mankey-1', 2],
     ]);
   });
 
@@ -38,12 +36,11 @@ describe('the one picker from your boxes', () => {
     expect(pickerOrder(entries, () => 1).map((entry) => entry.id)).toEqual(same);
   });
 
-  it('finds by name, kind, gear or box, every word beginning a word of the row', () => {
+  it('finds by name, kind or gear, every word beginning a word of the row', () => {
     const [rattata, , mankey] = pickerEntries(twoBoxes());
     expect(answersFind(findWords(rattata), 'rat')).toBe(true);
-    expect(answersFind(findWords(rattata), 'box 1')).toBe(true);
-    expect(answersFind(findWords(mankey), 'box 1')).toBe(false);
-    expect(answersFind(findWords(mankey), 'box 2')).toBe(true);
+    expect(answersFind(findWords(mankey), 'rat')).toBe(false);
+    expect(answersFind(findWords(mankey), 'mank')).toBe(true);
     expect(answersFind(findWords(mankey), '')).toBe(true);
     expect(answersFind(findWords(mankey), 'ank')).toBe(false);
   });

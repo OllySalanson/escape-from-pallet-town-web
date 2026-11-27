@@ -109,7 +109,7 @@ export function outdoorPickMarkup(state: OutdoorPickState): string {
     const notes = candidate.notes.join(', ');
     const help = chosen ? `${candidate.name} is ${state.doing.toLowerCase()}.` : `${candidate.name}: ${notes}.`;
     const tag = pixelTag(chosen ? state.doing : candidate.suits ? 'Suits it' : 'Plain', chosen || candidate.suits ? 'good' : 'plain', chosen);
-    return `<button class="px-row${chosen ? ' is-selected' : ''}" data-player-pick="${candidate.id}" ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level} · ${escapeAttribute(notes)} · ${escapeAttribute(candidate.box)}</small></span>${tag}</button>`;
+    return `<button class="px-row${chosen ? ' is-selected' : ''}" data-player-pick="${candidate.id}" ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level} · ${escapeAttribute(notes)}</small></span>${tag}</button>`;
   };
   const list =
     state.candidates.length > 0

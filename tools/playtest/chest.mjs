@@ -6,6 +6,8 @@
 //   - SPACE at it throws the lid back, and the things screen opens headed
 //     THE CHEST, its storage grid headed CHEST; closing it shuts the lid;
 //   - B anywhere opens the same screen headed YOUR THINGS;
+//   - the one Pokémon of a new game is offered the partner swap on its card in
+//     the POKéMON tab, and C opens it;
 //   - decorating (H) picks the chest up and puts it down two tiles west, which
 //     the save keeps; X on it is refused and it stays standing.
 //
@@ -123,6 +125,24 @@ try {
   await shoot('05-b-your-things');
   await press('Escape');
   await until(baseReady, 'back from YOUR THINGS');
+  await wait(300);
+
+  // The partner swap BILL'S PC used to offer: a new game has one Pokémon, so
+  // its card in THE CHEST offers it, and C opens the swap.
+  await press('KeyB');
+  await until(`${sceneIs('things')}`, 'YOUR THINGS for the swap');
+  await wait(200);
+  await press('KeyP');
+  await until(`${sceneIs('chest-pokemon')} && Boolean(document.querySelector('#screens .chest-mon-grid'))`, 'the POKéMON tab');
+  await wait(300);
+  if (!(await page.evaluate(`Boolean(document.querySelector('#screens [data-key="swap"]'))`))) fail('the only Pokémon is not offered the swap');
+  await shoot('05b-swap-offered');
+  await press('KeyC');
+  await until(`${sceneIs('hub')} && /swap your partner/i.test(document.querySelector('#screens .px-title h1')?.textContent ?? '')`, 'the partner swap');
+  await wait(300);
+  await shoot('05c-swap-screen');
+  await press('Escape');
+  await until(baseReady, 'back from the swap');
   await wait(300);
 
   // Decorating: H, pick it up, two tiles west, put it down; X is refused.

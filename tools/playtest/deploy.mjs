@@ -70,7 +70,7 @@ export const takePokemon = (name = null) =>
  * no keeper's screen: everything is on its floor, so a walk into it goes on to
  * the bench and opens that (`openHallPanel`). Nor have the others, whose keepers
  * talk rather than open anything (`BaseScene.speakToKeeper`): in `pokemon-centre`
- * this walks on to BILL'S PC, which is the boxes, in `brocks-workshop` to the tally
+ * it stops on the mat (BILL'S PC opens nothing since THE CHEST), in `brocks-workshop` to the tally
  * on his wall, which is the whole ladder, in `bills-cottage` to his PC, which is the
  * whole list, and in `oaks-lab` it stops on the mat with nothing said, for the
  * driver to speak to Oak or walk up to the board.
@@ -131,8 +131,8 @@ export async function walkIntoBase(page, door, options = {}) {
           if (room.id !== ${JSON.stringify(door)}) {
             const on = room.mat && b.currentTile.x === room.mat.x && b.currentTile.y === room.mat.y;
             if (on) return { key: 'ArrowDown' };
-          } else if (room.id === 'pokemon-centre' || room.id === 'brocks-workshop' || room.id === 'bills-cottage' || room.id === 'game-corner') {
-            const opens = { 'pokemon-centre': 'boxes', 'brocks-workshop': 'ladder', 'bills-cottage': 'list', 'game-corner': 'pokemon-jump' }[room.id];
+          } else if (room.id === 'brocks-workshop' || room.id === 'bills-cottage' || room.id === 'game-corner') {
+            const opens = { 'brocks-workshop': 'ladder', 'bills-cottage': 'list', 'game-corner': 'pokemon-jump' }[room.id];
             // THE GAME CORNER has three of each cabinet, and a regular may be playing one: any free front will do.
             var goals = b.place.room.things
               .filter((thing) => thing.opens === opens)
@@ -142,7 +142,7 @@ export async function walkIntoBase(page, door, options = {}) {
             if (goals.some((goal) => b.currentTile.x === goal.x && b.currentTile.y === goal.y)) return { key: b.facing === 'up' ? 'Space' : 'ArrowUp' };
           } else {
             const on = b.currentTile.x === room.mat.x && b.currentTile.y === room.mat.y;
-            if (on && room.id === 'oaks-lab') return { arrived: true };
+            if (on && (room.id === 'oaks-lab' || room.id === 'pokemon-centre')) return { arrived: true };
             if (on) return { key: 'Space' };
           }
         } else {

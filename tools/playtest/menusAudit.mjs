@@ -37,7 +37,6 @@ const SCREENS = {
   'harbour-yard': async () => undefined,
   'oaks-lab-room': async (page) => walkIntoBase(page, 'oaks-lab'),
   'oaks-wall-map': hub('wallmap'),
-  'pokemon-centre-stash': hub('stash'),
   'brocks-workshop': hub('workshop'),
   'bills-cottage-shop': hub('trader'),
   'day-care': hub('daycare'),

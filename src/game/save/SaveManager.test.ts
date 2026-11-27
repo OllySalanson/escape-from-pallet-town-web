@@ -327,7 +327,6 @@ describe('SaveManager', () => {
     expect(saves.load()?.stash.toJSON()).toEqual({
       pokemon: [],
       items: { [STARTING_PACK_ID]: 1 },
-      boxes: [{ name: 'Box 1', pokemonIds: [] }],
     });
   });
 
@@ -2830,7 +2829,7 @@ describe('SaveManager', () => {
     });
   });
 
-  describe('storage boxes', () => {
+  describe('boxes, read once into THE CHEST', () => {
     const oldSave = (version: number): string =>
       JSON.stringify({
         version,
@@ -2848,55 +2847,33 @@ describe('SaveManager', () => {
         },
       });
 
-    it.each([2, 3, 4, 5, 6])('puts a version %i stash, which has no boxes, in box one', (version) => {
+    it.each([2, 3, 4, 5, 6])('keeps a version %i stash, which has no boxes, in the order stored', (version) => {
       const storage = new MemoryStorage();
       storage.setItem(SAVE_KEY, oldSave(version));
 
       const restored = new SaveManager(storage).load();
 
-      expect(restored?.stash.listBoxes()).toEqual([
-        { name: 'Box 1', pokemonIds: ['charmander-1', 'pidgey-1'] },
-      ]);
       expect(restored?.stash.listPokemon().map(({ id }) => id)).toEqual(['charmander-1', 'pidgey-1']);
     });
 
-    it('keeps boxes, their names and who is in them across a reload', () => {
-      const storage = new MemoryStorage();
-      const saves = new SaveManager(storage);
-      const stash = new Stash();
-      stash.addPokemon(new Pokemon(CHARMANDER, 5), 'partner');
-      stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
-      const second = stash.addBox();
-      expect(stash.renameBox(second, 'Birds')).toBe(true);
-      expect(stash.movePokemon('pidgey-1', second)).toBe(true);
-      saves.save({
-        party: new PokemonParty([]),
-        mapId: 'pallet-town',
-        position: { x: 1, y: 1 },
-        bag: new Bag(),
-        stash,
-        starterSpeciesId: 'charmander',
-      });
-
-      const reloaded = new SaveManager(storage).load();
-
-      expect(reloaded?.stash.listBoxes()).toEqual([
-        { name: 'Box 1', pokemonIds: ['partner'] },
-        { name: 'Birds', pokemonIds: ['pidgey-1'] },
-      ]);
-    });
-
-    it('repairs boxes a save contradicts: unknown ids dropped, the unboxed put away', () => {
+    it("stands a boxed save's Pokémon in box order, keeps every one, and writes no boxes back", () => {
       const storage = new MemoryStorage();
       const save = JSON.parse(oldSave(6)) as { stash: { boxes?: unknown } };
-      save.stash.boxes = [{ name: 'Mine', pokemonIds: ['pidgey-1', 'ghost', 'pidgey-1'] }, 'nonsense'];
+      save.stash.boxes = [
+        { name: 'Box 1', pokemonIds: [] },
+        { name: 'Birds', pokemonIds: ['pidgey-1', 'ghost', 'pidgey-1'] },
+        'nonsense',
+      ];
       storage.setItem(SAVE_KEY, JSON.stringify(save));
+      const saves = new SaveManager(storage);
 
-      const restored = new SaveManager(storage).load();
-
-      expect(restored?.stash.listBoxes()).toEqual([
-        { name: 'Mine', pokemonIds: ['pidgey-1', 'charmander-1'] },
-      ]);
+      const restored = saves.load()!;
+      expect(restored.stash.listPokemon().map(({ id }) => id)).toEqual(['pidgey-1', 'charmander-1']);
+      expect(saves.save(restored)).toBe(true);
+      const written = JSON.parse(storage.getItem(SAVE_KEY)!) as { stash: { boxes?: unknown; pokemon: { id: string }[] } };
+      expect(written.stash.boxes).toBeUndefined();
+      expect(written.stash.pokemon.map(({ id }) => id)).toEqual(['pidgey-1', 'charmander-1']);
+      expect(saves.load()!.stash.listPokemon().map(({ id }) => id)).toEqual(['pidgey-1', 'charmander-1']);
     });
 
     it('keeps a stored Pokemon of a kind it cannot read, rather than writing over it (characters bug hunt, 11 Nov 2026)', () => {
@@ -2940,7 +2917,7 @@ describe('SaveManager', () => {
       expect(written.stash.pokemon.some(({ id }) => id === 'pichu-1')).toBe(false);
     });
 
-    it('banks a raid into a new box once every box is full', () => {
+    it('banks a raid however many are kept: there is no box to fill', () => {
       const storage = new MemoryStorage();
       const saves = new SaveManager(storage);
       const stash = new Stash();
@@ -2958,9 +2935,9 @@ describe('SaveManager', () => {
 
       saves.bankFirstContractRun({ pokemon: [new Pokemon(PIDGEY, 3)], items: [] });
 
-      const boxes = saves.load()!.stash.listBoxes();
-      expect(boxes.map((box) => box.pokemonIds.length)).toEqual([30, 1]);
+      expect(saves.load()!.stash.listPokemon()).toHaveLength(31);
     });
+
   });
 });
 

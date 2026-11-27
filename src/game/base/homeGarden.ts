@@ -180,12 +180,12 @@ export function gardenStarts(count: number, free: (tile: GridPosition) => boolea
   return [...apart, ...rest].slice(0, count);
 }
 
-/** What facing one says before it is asked about: who it is and where it is kept. */
-export function gardenLines(stored: StashedPokemon, boxName: string): readonly string[] {
+/** What facing one says before it is asked about: who it is. */
+export function gardenLines(stored: StashedPokemon): readonly string[] {
   const name = stored.pokemon.name;
   const species = stored.pokemon.base.name;
   const who = name === species ? `${name}, Lv ${stored.pokemon.level}.` : `${name} the ${species}, Lv ${stored.pokemon.level}.`;
-  return [`${who} It is kept in ${boxName}, and potters about out here between raids.`];
+  return [`${who} It potters about out here between raids.`];
 }
 
 /** The question facing one ends on. */

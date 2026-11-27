@@ -56,6 +56,11 @@ export interface ChestPokemonState {
   readonly partnerId?: string;
   /** Out on a raid in another window, so this one cannot touch them (`awayOnRaid`). */
   readonly away: ReadonlySet<string>;
+  /**
+   * The one Pokémon at base, when it is the only one (`Stash.canSwapStarter`):
+   * its card offers to swap it for another starter, as BILL'S PC did.
+   */
+  readonly swappable?: string;
   /** What in the chest can be given to a Pokémon, and how many (`chestGifts`). */
   readonly gifts?: readonly Gift[];
 }
@@ -225,7 +230,8 @@ function card(state: ChestPokemonState, entry: PickerEntry): string {
     : key('data-key="team"', 'ENTER', 'Next raid', going)
       + key('data-key="garden"', 'G', 'Garden', out)
       + (going && state.team[0] !== entry.id ? key('data-key="lead"', 'L', 'Lead', false) : '')
-      + (held ? key('data-key="take"', 'T', `Take ${escapeAttribute(held.displayName)}`, false) : '');
+      + (held ? key('data-key="take"', 'T', `Take ${escapeAttribute(held.displayName)}`, false) : '')
+      + (state.swappable === entry.id ? key('data-key="swap"', 'C', 'Change partner', false) : '');
   return `<section class="px-window team-card chest-card" data-shown-by="${escapeAttribute(entry.id)}" hidden>`
     + `<header class="px-heading"><span>${entry.id === state.partnerId ? partnerRosette() : ''}${pixelPokemonName(pokemon)}<span class="team-card-level">LV${pokemon.level}</span></span><small>${pokemonTypeBadges(pokemon)}</small></header>`
     + '<div class="chest-card-body">'

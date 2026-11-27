@@ -11,31 +11,27 @@ const stashOf = (...members: readonly (readonly [string, number])[]): Stash => {
 };
 
 describe('YOUR TEAM', () => {
-  it('lists the team in the order it goes, then every box best fits first', () => {
+  it('lists the team in the order it goes, then everybody else best fits first', () => {
     const stash = stashOf(['rattata', 5], ['pidgey', 9], ['mankey', 7]);
-    const second = stash.addBox();
-    stash.movePokemon('mankey-2', second);
     const rows = teamRows({ entries: pickerEntries(stash), team: ['pidgey-1'] });
     expect(rows.team.map((entry) => entry.id)).toEqual(['pidgey-1']);
-    expect(rows.boxes.map((entry) => [entry.id, entry.box])).toEqual([
-      ['mankey-2', 'Box 2'],
-      ['rattata-0', 'Box 1'],
-    ]);
+    expect(rows.boxes.map((entry) => entry.id)).toEqual(['mankey-2', 'rattata-0']);
   });
 
-  it('names the box on every stand and tile, the lead, the partner and who cannot go', () => {
+  it('names the lead, the partner, who cannot go, and where each is - never a box', () => {
     const stash = stashOf(['rattata', 5], ['pidgey', 9], ['oddish', 7]);
     stash.listPokemon()[1].pokemon.currentHp = 0;
     const html = teamBody({ entries: pickerEntries(stash), team: ['rattata-0', 'oddish-2'], partnerId: 'rattata-0' });
-    expect(html).toContain('In the boxes');
+    expect(html).toContain('In the chest');
+    expect(html).not.toMatch(/Box [0-9]/);
     expect(html).toContain('team-plate-lead">Lead');
     expect(html).toContain('aria-label="Partner"');
     expect(html).toContain('Fainted');
     expect(html).toContain('data-picker-find');
     expect(html).toContain('data-member="pidgey-1"');
-    // The box is on every stand and tile for a reader and the find, and in the card for the eye.
-    expect(html.match(/data-member="[^"]+"[^>]*data-box-name="Box 1"/g)).toHaveLength(3);
-    expect(html).toMatch(/team-card-where">Box 1/);
+    // Where each is, in its card: going on the next raid, or in the chest.
+    expect(html).toMatch(/team-card-where">Next raid/);
+    expect(html).toMatch(/team-card-where">In the chest/);
     // A fainted Pokémon's icon stands still.
     expect(html).toMatch(/data-member="pidgey-1"[^>]*>.*?px-mon-icon is-still/);
   });

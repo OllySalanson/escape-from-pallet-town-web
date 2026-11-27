@@ -109,7 +109,6 @@ describe('leaving a Pokémon with him', () => {
     const { stash, partner, pidgey } = vault();
     expect(stash.leaveAtDayCare(pidgey, 3)).toBe(true);
     expect(stash.listPokemon().map((stored) => stored.id)).not.toContain(pidgey);
-    expect(stash.listBoxes().flatMap((box) => box.pokemonIds)).not.toContain(pidgey);
     // A wipe of everything that was at base still leaves it with him. Only the
     // partner, which no wipe takes, is left at base.
     stash.applyWipeLoss(

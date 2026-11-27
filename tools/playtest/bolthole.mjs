@@ -224,8 +224,8 @@ try {
   console.log(`upstairs: arrived on the stair mat ${upstairs.tile.x},${upstairs.tile.y} facing down`);
 
   const heard = {};
-  // MY PC opens home storage over the house, which `homeStorage.mjs` plays.
-  for (const name of ['PENNANTS', 'YOUR BED', 'THE CONSOLE', 'THE CALENDAR']) {
+  // MY PC only says that everything is in THE CHEST downstairs (`chest.mjs` plays the chest).
+  for (const name of ['PENNANTS', 'YOUR BED', 'THE CONSOLE', 'THE CALENDAR', 'MY PC']) {
     const tiles = await page.evaluate(`${BASE}.place.room.things.find((t) => t.name === ${JSON.stringify(name)}).tiles`);
     const stands = [];
     for (const tile of tiles) {
@@ -265,6 +265,7 @@ try {
     console.log(`${name}: ${lines.join(' / ')}`);
   }
   if (!heard['PENNANTS'][0].startsWith('PENNANTS')) throw new Error(`the pennants say "${heard['PENNANTS'][0]}"`);
+  if (!heard['MY PC'][0].includes('THE CHEST')) throw new Error(`MY PC says "${heard['MY PC'][0]}"`);
   // The bed rests and never heals: it names NURSE JOY only to a hurt team
   // (`base/homeLines.ts`, the harbour critic tour of 26 Nov 2026), and this
   // save's team is whole.

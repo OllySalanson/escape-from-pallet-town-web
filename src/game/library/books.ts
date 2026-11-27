@@ -111,7 +111,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'The POKéMON CENTER',
-        text: "NURSE JOY heals your team for nothing. Only a faint costs time off your next raid, and even that is free once a day. Your boxes are on BILL'S PC there.",
+        text: "NURSE JOY heals your team for nothing. Only a faint costs time off your next raid, and even that is free once a day.",
       },
       {
         heading: "BROCK'S WORKSHOP",
@@ -166,8 +166,8 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
         text: 'Drag a berry, a stone or a disc from TO GIVE onto a Pokémon, or click it and then the Pokémon. You are asked once before anything is given.',
       },
       {
-        heading: 'MY PC',
-        text: 'Step on the stair mat to go up. MY PC holds your boxes of Pokémon, and counts your POKéDEX. The PC at the POKéMON CENTER is the same storage.',
+        heading: 'Upstairs',
+        text: 'Step on the stair mat to go up. MY PC is there, but everything you keep is in THE CHEST now.',
       },
       {
         heading: 'The rest of upstairs',
@@ -198,7 +198,7 @@ export const LIBRARY_BOOKS: readonly LibraryBook[] = [
       },
       {
         heading: 'The garden',
-        text: 'Up to six Pokémon from your boxes walk the lawn east of the house: the ones you pick on a PC, or else your six highest level. Talk to one to put it on your next team.',
+        text: 'Up to six Pokémon from THE CHEST walk the lawn east of the house: the ones you put in its GARDEN, or else your six highest level. Talk to one to put it on your next team.',
       },
       {
         heading: 'Visiting',

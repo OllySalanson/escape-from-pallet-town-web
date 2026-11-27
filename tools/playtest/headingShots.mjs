@@ -70,9 +70,6 @@ try {
   await walkIntoBase(page, 'bills-cottage');
   await shoot('bill');
   await leave();
-  await walkIntoBase(page, 'pokemon-centre');
-  await shoot('stash');
-  await leave();
   await walkIntoBase(page, 'brocks-workshop');
   await shoot('workshop');
   await leave();

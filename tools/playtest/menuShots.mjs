@@ -258,9 +258,6 @@ try {
     }
   };
   await shoot('base');
-  await walkIntoBase(page, 'pokemon-centre');
-  await shoot('stash');
-  await leave();
   await walkIntoBase(page, 'brocks-workshop');
   await shoot('workshop');
   await leave();
@@ -317,13 +314,13 @@ try {
     // breadth-first search over the four arrow keys, and every row of every
     // list has to turn up in it. A screenshot cannot show this, and columns are
     // exactly the change that can quietly break it.
-    // Back out to the yard, then walk into the Center again.
+    // Back out to the yard, then walk into Bill's cottage, a screen of lists.
     for (let back = 0; back < 6; back += 1) {
       if (await page.evaluate(sceneIs('base'))) break;
       await press('Escape');
       await sleep(250);
     }
-    await walkIntoBase(page, 'pokemon-centre');
+    await walkIntoBase(page, 'bills-cottage');
     await sleep(400);
     // A control is named by its wiring, which is what survives a re-render.
     const NAME = `(node) => node ? [...Object.entries(node.dataset)].filter(([k]) => k !== 'help').map(([k, v]) => k + '=' + v).sort().join('|') || node.textContent.trim().slice(0, 20) : ''`;
@@ -397,7 +394,7 @@ try {
       await press('Escape');
       await sleep(250);
     }
-    await walkIntoBase(page, 'pokemon-centre');
+    await walkIntoBase(page, 'bills-cottage');
     for (const [width, height] of RESIZES) {
       await page.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
       await sleep(500);

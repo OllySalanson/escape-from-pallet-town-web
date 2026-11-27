@@ -199,7 +199,7 @@ and say yes, you're let in to have a nose round for as long as you like (or unti
   go and find one. Shinies get a star. Oak's next reward sits at the end of the rail, waiting.
 - **Nurse Joy's Pokémon Center** looks after the team. Scrapes and burns are mended free, as
   they always were in Kanto. A faint is the one thing she charges for, in time off your next raid,
-  never more than a minute and named before you say yes, and your first each day is on the house. Your boxes are on the PC beside her.
+  never more than a minute and named before you say yes, and your first each day is on the house.
 - **Brock's Workshop** builds permanent upgrades, paid for in the materials you haul home. Each
   empty bay has what goes there chalked on the floor: walk up and his workshop opens on it, every
   build in a row along the bottom with what it does and what it takes. And
@@ -381,7 +381,7 @@ sightseeing.
 | <kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd> or <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> | Walk | Walk |
 | <kbd>Space</kbd> / <kbd>Enter</kbd> | Talk, read, work a landmark, choose | On a door mat: speak to that keeper |
 | <kbd>B</kbd> | Open the pack | Your things: everything in storage, the next raid's pack, and a disc or stone to use |
-| <kbd>P</kbd> | Open the party | Your team: pick who goes on the next raid from every box |
+| <kbd>P</kbd> | Open the party | Your team: pick who goes on the next raid from everyone in your chest |
 | <kbd>X</kbd> | Nothing: the Pokédex stays at home | The Pokédex: all 151, and a page for every one you've met |
 | <kbd>O</kbd> | Professor Oak on the radio; again for the whole field guide | Every favour you have been asked, on one screen |
 | <kbd>L</kbd> (hold) | Look: every caption on screen speaks | Look |

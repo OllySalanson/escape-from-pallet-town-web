@@ -10,19 +10,14 @@ import { audioManager } from '../audio/AudioManager';
 import type {
   DeploymentFlow} from '../hub';
 import {
-  applyRecovery,
-  healDayOf,
   beaconUnlockAtMs,
   checkBerth,
   formatRecoveryClock,
   getWorkshopUpgrade,
   hasBeacon,
-  needsRecovery,
   WORKSHOP_UPGRADES,
   workshopOffers,
-  pokemonNeedingRecovery,
   raidClockAfterRecovery,
-  quoteRecovery,
   spendableSupply,
   buildDropInBriefing,
   doorHolder,
@@ -45,7 +40,6 @@ import {
   STANDING_PER_BOSS,
   STANDING_PER_CONTRACT,
   POKEDOLLARS_PER_STANDING,
-  wardBedIds,
   berthSquares,
   barterDetail as barterDetailOnOffer,
   type Deployment,
@@ -55,23 +49,18 @@ import {
   type WorkshopOffer,
   type WorkshopUpgrade,
   type WorkshopVault,
-  type RecoveryTerms,
 } from '../hub';
 import {
   Bag,
   CURRENCY_ITEM_ID,
   formatMoney,
   itemCountTag,
-  HOLDABLE_ITEM_DEFINITIONS,
   ITEM_DEFINITIONS,
-  getHeldItem,
   getItemById,
   isCurrency,
   isFoundOnly,
   itemAmountFor,
   itemAmountsFor,
-  READ_IN_A_RAID,
-  USE_A_STONE,
   type ItemDefinition,
   type ItemId,
   MATERIAL_IDS,
@@ -131,7 +120,7 @@ import {
 } from '../hub/rimCard';
 import { nextGym } from '../world/valeQuarters';
 import { jobAsks } from '../hub/rimJob';
-import { raidsDeployed, raidsLost, SaveManager, spareAtBase, traderProgressOf, type RestoredGame } from '../save/SaveManager';
+import { raidsDeployed, SaveManager, spareAtBase, traderProgressOf, type RestoredGame } from '../save/SaveManager';
 import {
   searchPokemon,
   sortPokemon,
@@ -141,8 +130,6 @@ import {
   type StashSort,
 } from '../hub/stashBrowser';
 import {
-  BOX_CAPACITY,
-  MAX_BOX_NAME_LENGTH,
   getStarterSpecies,
   starterInConditionOf,
   type StarterSpeciesId,
@@ -165,8 +152,6 @@ import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { conditionLine } from '../ui/condition';
-import { pokemonDossier } from '../ui/pokemonDossier';
-import { pixelItemTile, pixelMonTile } from '../ui/monIcon';
 import { drawFixtureScaled, fixtureArt, fixtureDivisor } from '../ui/fixturePicture';
 import { canBeMoved } from '../base/fixtures';
 import { drawRoomPicture, fitRoomPictures, roomPictureMark, roomPictureMarkup, watchRoomPictures } from '../ui/roomPicture';
@@ -206,12 +191,12 @@ import {
 } from '../hub/errands';
 import { pokedexOwned } from '../hub/pokedex';
 import { caughtLegends } from '../world/legends';
-import { awayOnRaid, createRaidInFlight, outOnRaidLine, PACKED_FOR_RAID_LINE, raidHeartbeat } from '../run/raidInFlight';
+import { awayOnRaid, createRaidInFlight, outOnRaidLine, raidHeartbeat } from '../run/raidInFlight';
 import { isFirstRaid } from '../hub/firstRaid';
 import { hasRaidStake } from '../world/raidStake';
 import { JOB_WALK_ALLOWANCE, quickerLandingFor, rewardLine, standingJobWalk } from '../objectives/standingBoard';
 import { STEP_DURATION_MS } from '../movement/stepClock';
-import { joyRailLine, recoveryTermsFor } from '../hub/centerCounter';
+import { joyRailLine } from '../hub/centerCounter';
 import { DAY_CARE_LEAST_RAID_MS, dayCareRefusal, leftLines, raidsCompleted } from '../hub/dayCare';
 import { dayCareBody } from '../hub/dayCareView';
 import { tradesBody } from '../hub/tradesView';
@@ -222,9 +207,6 @@ import { friendRoom, friendRoomsOffered, raidName } from '../raidRoom/friendRoom
 import { typedRoomCode } from '../raidRoom/roomCode';
 import { friendRoomView, friendStatusLine, type RoomMapChoice } from '../hub/friendRoomView';
 import { keyHint } from '../input/keyBindings';
-import { storedPockets } from '../ui/thingsView';
-import { awayFromGarden, awayLine, gardenPokemon, toggleGarden, withGarden } from '../base/homeGarden';
-import { pokedexNote } from '../base/homeLines';
 import { withArticle } from '../ui/article';
 
 
@@ -280,7 +262,7 @@ type HubPanel = Extract<ArenaPanel, 'rim'>;
 const ARENA_PANELS: readonly string[] = ['rim'] satisfies readonly HubPanel[];
 
 /** Every base screen, and the hall's panels. */
-type HubView = 'stash' | HubPanel | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare' | 'trades' | 'friend';
+type HubView = HubPanel | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare' | 'trades' | 'friend';
 
 /**
  * How much of the menu layer a panel over the hall may take, in game pixels: as
@@ -349,17 +331,9 @@ const ROOM_TICK_MS = 250;
  */
 export { RELEASE_ARMING_MS };
 
-/** What the pane about a Pokémon out on a raid in another window says in place of what it would offer. */
-const OUT_ON_A_RAID_NOTE = 'Out on a raid in your other window.';
-
 /** What a screen left open says when the game moved on in another tab. */
 export const STALE_SAVE_REFUSAL =
   'The game moved on in another tab, so this screen has caught up. Nothing was changed: try again.';
-
-/** A tag's words without its markup, for a tile that says them only to a reader. */
-function tagWords(tag: string): string {
-  return tag.replace(/<[^>]*>/g, '').trim().toLowerCase();
-}
 
 /**
  * How much longer than a straight walk a job really takes: the stops, getting
@@ -386,7 +360,7 @@ export class HubScene extends Phaser.Scene {
   /** What the hall handed over, when this is one of its panels. */
   private kit: ArenaKit | undefined;
   private overlay!: MenuOverlay;
-  private view: HubView = 'stash';
+  private view: HubView = 'workshop';
   /** Which screen `render` last drew, so a redraw of it keeps its scroll. */
   private drawnScreen: string | undefined;
   /** The base door this screen was walked in through, if any - see `leaveToBase`. */
@@ -422,8 +396,6 @@ export class HubScene extends Phaser.Scene {
   private tradeArmed: string | undefined;
   /** Bill's card just dealt, which the cursor goes back to while it is still open. */
   private traderLastDeal: string | undefined;
-  /** The PC row whose heal has been asked about (`recoverAsked`), until it is answered or anything else is said. */
-  private recoverArmed: string | null = null;
   /**
    * When the last irreversible deal was armed (`armRelease`), so a pointer
    * click that lands on its confirm button straight away can be told for the
@@ -457,10 +429,9 @@ export class HubScene extends Phaser.Scene {
   /** What is typed in the room code field. */
   private roomTyped = '';
   /**
-   * How the player is looking at their Pokemon: which box, in what order, and
-   * for whom. It is not saved - it is where the cursor is, not what is owned.
+   * How the player is looking at their Pokemon: in what order, and for whom.
+   * It is not saved - it is where the cursor is, not what is owned.
    */
-  private boxScope: number | 'all' = 0;
   private stashSort: StashSort = 'kept';
   private stashSearch = '';
   /** How many Bill's counter is being asked for, by `buy:` or `barter:` and id. Never saved. */
@@ -503,7 +474,7 @@ export class HubScene extends Phaser.Scene {
     // The save wins over the payload for the *game*; the payload wins for which
     // room this is, because that is the door the player just walked through and
     // storage knows nothing about it.
-    this.view = data.view ?? 'stash';
+    this.view = data.view ?? 'workshop';
     this.enteredFrom = data.from;
     this.enteredAt = data.at;
     this.straightOver = data.straightOver === true;
@@ -541,7 +512,6 @@ export class HubScene extends Phaser.Scene {
     } else {
       this.flow = flowForGame(loaded);
     }
-    this.view = 'stash';
     this.reselectStarterId = this.startingStarterId();
     this.swapArmed = false;
     this.workshopArmed = undefined;
@@ -550,7 +520,6 @@ export class HubScene extends Phaser.Scene {
     this.wallMapInspect = undefined;
     this.deploying = false;
     // A fresh look at a freshly loaded vault: nothing narrowed, nothing picked up.
-    this.boxScope = 0;
     this.stashSort = 'kept';
     this.stashSearch = '';
     this.boxEditing = undefined;
@@ -663,18 +632,6 @@ export class HubScene extends Phaser.Scene {
     return sortPokemon(searchPokemon(this.stash.listPokemon(), this.stashSearch), this.stashSort);
   }
 
-  /** The Pokemon the stash window lists: this box, or all of them while looking for one. */
-  private get shownPokemon(): readonly StashedPokemon[] {
-    const scope = this.boxScope === 'all' || this.stashSearch.trim() !== '' ? undefined : this.boxScope;
-    const list = scope === undefined ? this.stash.listPokemon() : this.stash.listBoxPokemon(scope);
-    return sortPokemon(searchPokemon(list, this.stashSearch), this.stashSort);
-  }
-
-  /** Where the stash window is looking, always a box that exists. */
-  private get scopeBox(): number | 'all' {
-    return this.boxScope === 'all' ? 'all' : Math.min(this.boxScope, this.stash.listBoxes().length - 1);
-  }
-
   /**
    * The supplies at base: what a raid out in another window packed is that
    * raid's until it ends (`spareAtBase`), so it is not counted here.
@@ -762,11 +719,6 @@ export class HubScene extends Phaser.Scene {
     }
   }
 
-  /** Everyone at base who a recovery would actually change. */
-  private get injuredPokemon(): readonly StashedPokemon[] {
-    return pokemonNeedingRecovery(this.stash);
-  }
-
   private get pendingRecoveryMs(): number {
     return this.savedGame.pendingRecoveryMs;
   }
@@ -797,193 +749,6 @@ export class HubScene extends Phaser.Scene {
   /** Every workshop upgrade standing at base, by id. */
   private get builtUpgradeIds(): readonly string[] {
     return this.savedGame.raidProgress.workshopUpgrades;
-  }
-
-  /**
-   * What this base charges for recovery: the bay's discount, and however many of
-   * the ward's beds are still unused before the coming raid. Both are derived
-   * from the upgrade list on every read, so the lobby cannot quote a price the
-   * treatment does not charge.
-   */
-  private get recoveryTerms(): RecoveryTerms {
-    return recoveryTermsFor(this.builtUpgradeIds, this.savedGame.wardTreatmentsUsed, this.savedGame.freeHealDay, new Date());
-  }
-
-  /** Whether the ward's free bed would go to this Pokemon if it were treated now. */
-  private inWardBed(stored: StashedPokemon): boolean {
-    return wardBedIds(this.injuredPokemon, this.recoveryTerms).has(stored.id);
-  }
-
-  /**
-   * What treating this one Pokemon at the bay costs right now: what
-   * `applyRecovery` would charge, today's free heal and the cap on the debt
-   * both counted. Quoted before the cap, a row said CENTER -1:40 and the heal
-   * then took 0:50 (AI playtest, 22 Nov 2026).
-   */
-  private recoveryPriceMs(stored: StashedPokemon): number {
-    return quoteRecovery(this.stash, this.pendingRecoveryMs, [stored.id], this.recoveryTerms);
-  }
-
-  /**
-   * The price alone, for a stash row: beside a ten-letter name and its health
-   * bar there is room for `−0:45` and not for the word in front of it.
-   */
-  private recoveryPriceTag(stored: StashedPokemon): string {
-    const priceMs = this.recoveryPriceMs(stored);
-    return priceMs === 0 ? 'Free' : `−${formatRecoveryClock(priceMs)}`;
-  }
-
-  /** The same price in a sentence, for the help bar of the control that pays it. */
-  private recoveryHelp(stored: StashedPokemon): string {
-    const priceMs = this.recoveryPriceMs(stored);
-    const place = this.inWardBed(stored) ? 'Ward bed' : 'Pokémon Center';
-    return priceMs === 0
-      ? `${place}: full restore, and it costs your next raid nothing.`
-      : `${place}: full restore for −${formatRecoveryClock(priceMs)} of raid time.`;
-  }
-
-  /**
-   * A heal pressed on a row of the Center's PC. One that costs raid time asks
-   * first and heals on the second press of the same row, as Joy's own
-   * question opens on NOT NOW: it spent 0:35 on one ENTER three tiles from
-   * her guarded counter (the harbour critic tour, 26 Nov 2026). A free one
-   * heals at once, as hers does.
-   */
-  private recoverAsked(id: string): void {
-    const stored = this.stash.listPokemon().find((each) => each.id === id);
-    const priceMs = stored ? this.recoveryPriceMs(stored) : 0;
-    if (priceMs > 0 && this.recoverArmed !== id) {
-      this.recoverArmed = id;
-      this.setStatus(`Spend ${formatRecoveryClock(priceMs)} of your next raid bringing ${stored!.pokemon.name} round? ENTER again to heal.`);
-      // The question stays up until it is answered, not for a status line's two seconds.
-      this.statusTimer?.remove();
-      this.statusTimer = undefined;
-      return;
-    }
-    this.recoverArmed = null;
-    this.recover([id]);
-  }
-
-  /**
-   * Restores Pokemon at base and books the time to the next raid clock. The
-   * scene's own stash is the one treated, so a half-built loadout keeps pointing
-   * at the same Pokemon it did before, now healed.
-   */
-  private recover(ids: readonly string[]): void {
-    if (this.movedOnElsewhere() || ids.some((id) => this.outOnRaid(id))) {
-      return;
-    }
-    const now = new Date();
-    const outcome = applyRecovery(this.stash, this.pendingRecoveryMs, ids, this.recoveryTerms);
-    if (outcome.recoveredIds.length === 0) {
-      this.refuse(
-        outcome.heldBackIds.length > 0
-          ? `The next raid is already down to ${formatRecoveryClock(this.raidClockMs)}, as short as recovery goes. Raid first.`
-          : 'Everyone there is already fit.',
-      );
-      return;
-    }
-
-    audioManager.play('heal');
-    this.flow?.packRevivedLonePokemon();
-    this.savedGame = { ...this.savedGame, pendingRecoveryMs: outcome.pendingRecoveryMs };
-    this.savedGame = {
-      ...this.savedGame,
-      pendingRecoveryMs: outcome.pendingRecoveryMs,
-      wardTreatmentsUsed: this.savedGame.wardTreatmentsUsed + outcome.wardTreatmentsUsed,
-      ...(outcome.usedFreeHeal ? { freeHealDay: healDayOf(now) } : {}),
-    };
-    const treated =
-      outcome.recoveredIds.length === 1
-        ? (this.stash.listPokemon().find((stored) => stored.id === outcome.recoveredIds[0])?.pokemon
-            .name ?? 'Your Pokémon')
-        : `${outcome.recoveredIds.length} Pokémon`;
-    const cost =
-      outcome.chargedMs === 0
-        ? 'no extra raid time'
-        : `${formatRecoveryClock(outcome.chargedMs)} of raid time`;
-    this.setStatus(
-      this.writeGame()
-        ? `${treated} recovered for ${cost}. Next raid clock: ${formatRecoveryClock(this.raidClockMs)}.`
-        : `${treated} recovered, but the recovery could not be saved.`,
-    );
-  }
-
-  /**
-   * Gives one piece of gear out of the stash to a stashed Pokemon.
-   *
-   * The stash owns the move in both directions (`Stash.giveHeldItem`), so the
-   * piece is either in the supplies or on a Pokemon and never in both, and the
-   * loadout's own supply counts shrink with it exactly as a treatment's do.
-   */
-  private giveGear(pokemonId: string, itemId: string): void {
-    if (this.movedOnElsewhere() || this.outOnRaid(pokemonId) || this.packedForRaid(itemId)) {
-      return;
-    }
-    if (!this.stash.giveHeldItem(pokemonId, itemId)) {
-      this.refuse('That gear is not at base any more.');
-      return;
-    }
-    audioManager.play('select');
-    const name = this.stashPokemon.find((stored) => stored.id === pokemonId)?.pokemon.name;
-    const gear = this.itemName(itemId);
-    this.setStatus(
-      this.writeGame()
-        ? `${name ?? 'Your Pokémon'} is holding the ${gear}. It rides into the raid, and a wipe takes it unless ${name ?? 'it'} is secured.`
-        : `${name ?? 'Your Pokémon'} is holding the ${gear}, but it could not be saved.`,
-    );
-  }
-
-  /** Takes a stashed Pokemon's gear back into the stash's supplies. */
-  private takeGear(pokemonId: string): void {
-    if (this.movedOnElsewhere() || this.outOnRaid(pokemonId)) {
-      return;
-    }
-    const name = this.stashPokemon.find((stored) => stored.id === pokemonId)?.pokemon.name;
-    if (!this.stash.takeHeldItem(pokemonId)) {
-      this.refuse('There is nothing to take.');
-      return;
-    }
-    audioManager.play('cancel');
-    this.setStatus(
-      this.writeGame()
-        ? `Took the gear back off ${name ?? 'your Pokémon'}. It stays at base.`
-        : `Took the gear back off ${name ?? 'your Pokémon'}, but it could not be saved.`,
-    );
-  }
-
-  /**
-   * What this Pokemon carries, and what the stash could give it instead.
-   *
-   * The chips live in the pane about the Pokemon they act on rather than under
-   * every row in the list: gear is a fact about one Pokemon, and repeated on
-   * twenty rows it was most of what the stash had on screen. Nothing is
-   * `disabled` - the cursor is how this screen explains itself.
-   */
-  private gearChips(stored: StashedPokemon, shows: string): string {
-    if (awayOnRaid(this.savedGame).has(stored.id)) {
-      return `<span class="px-note">${OUT_ON_A_RAID_NOTE}</span>`;
-    }
-    const held = getHeldItem(stored.pokemon.heldItemId);
-    const offers = HOLDABLE_ITEM_DEFINITIONS.filter(
-      (item) => this.stash.itemCount(item.id) > 0 && item.id !== stored.pokemon.heldItemId,
-    );
-    const take = held
-      // The chip says the action, because the row above it already says what is
-      // held: two lines for one fact is one of them going stale. No glyph on it
-      // either - the game's typeface has no cross, and a character it lacks is
-      // drawn in whatever face the browser falls back to.
-      ? `<button class="px-window px-chip" data-gear-take="${stored.id}" ${shows} data-help="${escapeAttribute(`${held.displayName}: ${held.description} Press to take it back into storage.`)}">Take ${held.displayName}</button>`
-      : '';
-    const give = offers
-      .map(
-        (item) =>
-          // The verb, for the same reason the take chip carries one: a chip that
-          // is only a name reads as a label rather than something to press.
-          `<button class="px-window px-chip" data-gear-give="${item.id}" data-gear-pokemon="${stored.id}" ${shows} data-help="${escapeAttribute(`${item.displayName}: ${item.description} Lost with ${stored.pokemon.name} on a wipe.`)}">Give ${item.displayName} ×${this.stash.itemCount(item.id)}</button>`,
-      )
-      .join('');
-    return `${take}${give}${take || give ? '' : '<span class="px-note">No gear at base to give.</span>'}`;
   }
 
   /** The lone Pokemon a swap would trade away, or undefined while a team remains. */
@@ -1020,17 +785,17 @@ export class HubScene extends Phaser.Scene {
 
   private confirmSwap(): void {
     if (!this.sparePartner) {
-      this.setView('stash');
+      this.swapArmed = false;
       this.refuse('Swapping is only offered while one Pokémon remains at base.');
       return;
     }
     if (awayOnRaid(this.savedGame).has(this.sparePartner.id)) {
-      this.setView('stash');
+      this.swapArmed = false;
       this.outOnRaid(this.sparePartner.id);
       return;
     }
     if (!this.saveManager.reselectStarter(this.reselectStarterId)) {
-      this.setView('stash');
+      this.swapArmed = false;
       this.refuse('That swap could not be saved.');
       return;
     }
@@ -1041,7 +806,9 @@ export class HubScene extends Phaser.Scene {
       // never linger in a half-built loadout.
       this.applyLoadedGame(reloaded);
     }
-    this.setView('stash');
+    // Still on the swap, now holding the new partner: the X takes the player back.
+    this.swapArmed = false;
+    this.reselectStarterId = this.startingStarterId();
     audioManager.play('confirm');
     this.setStatus(`${getStarterSpecies(this.reselectStarterId).name} is your new partner.`);
   }
@@ -1446,13 +1213,6 @@ export class HubScene extends Phaser.Scene {
   }
 
   private goBack(): void {
-    // The swap is reached from the stash, so backing out of it returns there
-    // rather than dropping the player two screens out to the base.
-    if (this.view === 'reselect') {
-      this.setView('stash');
-      this.render();
-      return;
-    }
     // Reading one map close up backs out to all four, not out of the lab.
     if (this.view === 'wallmap' && this.wallMapInspect !== undefined) {
       this.wallMapInspect = undefined;
@@ -1596,17 +1356,8 @@ export class HubScene extends Phaser.Scene {
    * places. What each keeper *trades in* - the Outfitter's ladder, the
    * Ferryman's counters - is unchanged everywhere it is said inside.
    */
-  /**
-   * Whether this is MY PC, upstairs in THE BOLTHOLE, rather than BILL'S PC at
-   * the Center: the same storage (`base/rooms.ts`), headed as the player's own
-   * and without the Center's healing, which is NURSE JOY's and is not at home.
-   */
-  private get atHome(): boolean {
-    return this.view === 'stash' && this.enteredFrom === 'bolthole-upstairs';
-  }
 
   private get heading(): string {
-    if (this.view === 'stash') return this.atHome ? 'My PC' : 'Bill’s PC';
     if (this.view === 'reselect') return 'Swap your partner';
     if (this.view === 'workshop') return 'Brock’s Workshop';
     if (this.view === 'trader') return 'Bill’s Cottage';
@@ -1624,7 +1375,6 @@ export class HubScene extends Phaser.Scene {
    */
   private get stepBack(): { readonly label: string; readonly attribute: string } | undefined {
     // Named for the PC it was opened from: `atHome` is the PC's own view, so asked here it was never true.
-    if (this.view === 'reselect') return { label: this.enteredFrom === 'bolthole-upstairs' ? 'My PC' : 'Bill’s PC', attribute: 'data-back' };
     if (this.view === 'wallmap' && this.wallMapInspect) return { label: 'Wall map', attribute: 'data-back' };
     return undefined;
   }
@@ -1669,19 +1419,10 @@ export class HubScene extends Phaser.Scene {
           ? this.panelAside()
           : this.view === 'reselect'
             ? undefined
-            : // On the stash the counts are the two lists on screen, so the
-              // aside carries the one fact the screen turns on instead - the
-              // clock the Pokemon Center is spending. It was said by the Pokémon
-              // window's own note and again by the bay's line under it.
-              this.view === 'stash'
-              ? this.atHome
-                ? // At home the clock is Joy's business; what the PC counts is the Pokédex.
-                  pokedexNote(this.savedGame)
-                : `Next raid clock ${formatRecoveryClock(this.raidClockMs)}`
-              // On the boat the one fact every deal turns on is the money, so
+            : // On the boat the one fact every deal turns on is the money, so
               // it is the title bar's aside rather than a line inside a pane
               // that scrolls away from the row being priced.
-              : this.view === 'trader'
+              this.view === 'trader'
                 ? `${itemIcon(CURRENCY_ITEM_ID, '')}<span data-money-roll>${formatMoney(moneyHeld(this.stash))}</span>`
                 : this.view === 'workshop'
                   ? this.workshopPartsAside()
@@ -1782,27 +1523,10 @@ export class HubScene extends Phaser.Scene {
         this.swapArmed = false;
       }),
     );
-    on('[data-box-step]', (button) => this.stepBox(Number(button.dataset.boxStep)));
     on('[data-box-sort]', () => rerender(() => { this.stashSort = nextStashSort(this.stashSort); }));
     on('[data-box-find]', () => rerender(() => { this.boxEditing = 'find'; }));
     on('[data-box-clear]', () => rerender(() => { this.stashSearch = ''; }));
-    on('[data-box-rename]', () => {
-      rerender(() => { this.boxEditing = 'rename'; });
-      // Renaming is replacing: the old name is selected, so what is typed or
-      // pasted takes its place. Left unselected with the caret at its start, a
-      // pasted name was put in front of it - 'MY TEAMBox 1' (break-it test,
-      // 23 Nov 2026).
-      this.overlay.root.querySelector<HTMLInputElement>('[data-box-form="rename"] .px-field')?.select();
-    });
-    on('[data-box-new]', () => this.addBoxAndShow());
-    on('[data-box-delete]', () => this.deleteBox());
-    on('[data-box-move]', (button) =>
-      this.boxMoving === button.dataset.boxMove
-        ? rerender(() => { this.boxMoving = undefined; })
-        : this.pickUp(button.dataset.boxMove!),
-    );
-    on('[data-box-drop]', (button) => this.putDown(button.dataset.boxDrop!));
-    on('[data-box-cancel]', () => rerender(() => { this.boxEditing = undefined; this.boxMoving = undefined; }));
+    on('[data-box-cancel]', () => rerender(() => { this.boxEditing = undefined; }));
     this.wireBoxForm(root);
     on('[data-swap-arm]', () => rerender(() => { this.swapArmed = true; this.armRelease(); }));
     // The swap's button names the starter under the cursor: it named the one
@@ -1893,15 +1617,6 @@ export class HubScene extends Phaser.Scene {
       this.dealAtCounter(() => this.saveManager.buyTraderBerth());
     });
     on('[data-refused]', (button) => this.setStatus(button.dataset.refused));
-    on('[data-recover]', (button) => this.recoverAsked(button.dataset.recover!));
-    on('[data-garden]', (button) => this.toggleGarden(button.dataset.garden!));
-    on('[data-supply]', (button) => this.setStatus(button.dataset.help));
-    on('[data-fit]', (button) => {
-      const name = this.stashPokemon.find((stored) => stored.id === button.dataset.fit)?.pokemon.name;
-      this.setStatus(`${name ?? 'That Pokémon'} is fit. There is nothing to recover.`);
-    });
-    on('[data-gear-give]', (button) => this.giveGear(button.dataset.gearPokemon!, button.dataset.gearGive!));
-    on('[data-gear-take]', (button) => this.takeGear(button.dataset.gearTake!));
     // Another map to look down on.
     on('[data-insertion]', (button) => {
       this.pointAtLanding(button.dataset.insertion as RunInsertionId);
@@ -1981,7 +1696,6 @@ export class HubScene extends Phaser.Scene {
   }
 
   private content(): string {
-    if (this.view === 'stash') return this.stashView();
     if (this.view === 'reselect') return this.reselectView();
     if (this.view === 'workshop') return this.workshopView();
     if (this.view === 'trader') return this.traderView();
@@ -2206,49 +1920,19 @@ export class HubScene extends Phaser.Scene {
     return true;
   }
 
-  private saveStash(said: string, failed: string): void {
-    this.setStatus(this.writeGame() ? said : failed);
-  }
-
   private chip(attributes: string, help: string, label: string, disabled = false): string {
     return `<button class="px-window px-chip" ${attributes} data-help="${escapeAttribute(help)}"${disabled ? ' aria-disabled="true"' : ''}>${label}</button>`;
   }
 
   /**
-   * The strip that leads every list of Pokemon at base: where you are looking
-   * (the stash only), the order, and a search. It is sticky at the top of its
-   * own scroll pane, so however long the list is the way to narrow it is on
-   * screen. A field replaces it while one is being typed into, and picking a
-   * Pokemon up replaces it with the boxes it could go to.
+   * The strip that leads every list of Pokemon at base: the order, and a
+   * search. It is sticky at the top of its own scroll pane, so however long the
+   * list is the way to narrow it is on screen. A field replaces it while one is
+   * being typed into.
    */
-  private browseBar(inStash: boolean, manage = ''): string {
-    const boxes = this.stash.listBoxes();
+  private browseBar(): string {
     if (this.boxEditing) {
-      const renaming = this.boxEditing === 'rename';
-      const scope = this.scopeBox;
-      const value = renaming && scope !== 'all' ? boxes[scope].name : this.stashSearch;
-      return `<form class="box-bar box-form" data-box-form="${this.boxEditing}"><input class="px-window px-field" name="text" value="${escapeAttribute(value)}" maxlength="${renaming ? MAX_BOX_NAME_LENGTH : 16}" autocomplete="off" spellcheck="false" aria-label="${renaming ? 'Box name' : 'Find a Pokémon'}" placeholder="${renaming ? 'Box name' : 'A name, e.g. pika'}" /><button type="submit" class="px-window px-chip" data-help="${renaming ? 'Keep this name.' : 'Show only Pokémon whose name begins with this. Empty shows everyone.'}">${renaming ? 'Save' : 'Find'}</button><button type="button" class="px-window px-chip" data-box-cancel data-help="Leave it as it was.">Cancel</button></form>`;
-    }
-    const moving = this.boxMoving ? this.stash.listPokemon().find((entry) => entry.id === this.boxMoving) : undefined;
-    if (inStash && moving) {
-      const from = this.stash.boxIndexOf(moving.id);
-      const destinations = boxes
-        .map((box, index) => {
-          const here = index === from;
-          const full = !this.stash.boxHasRoom(index);
-          return this.chip(
-            `data-box-drop="${index}"`,
-            here
-              ? `${moving.pokemon.name} is already in ${box.name}.`
-              : full
-                ? `${box.name} is full (${BOX_CAPACITY}).`
-                : `Put ${moving.pokemon.name} in ${box.name}, which holds ${box.pokemonIds.length} of ${BOX_CAPACITY}.`,
-            box.name,
-            here || full,
-          );
-        })
-        .join('');
-      return `<div class="box-bar"><div class="box-line"><span class="box-title">Put ${moving.pokemon.name} in</span>${this.chip('data-box-cancel', 'Leave it where it is.', 'Cancel')}</div><div class="box-line">${destinations}${this.chip('data-box-drop="new"', `A new empty box, and ${moving.pokemon.name} goes in it.`, 'New box')}</div></div>`;
+      return `<form class="box-bar box-form" data-box-form="find"><input class="px-window px-field" name="text" value="${escapeAttribute(this.stashSearch)}" maxlength="16" autocomplete="off" spellcheck="false" aria-label="Find a Pokémon" placeholder="A name, e.g. pika" /><button type="submit" class="px-window px-chip" data-help="Show only Pokémon whose name begins with this. Empty shows everyone.">Find</button><button type="button" class="px-window px-chip" data-box-cancel data-help="Leave it as it was.">Cancel</button></form>`;
     }
     const sort = this.chip(
       'data-box-sort',
@@ -2258,139 +1942,18 @@ export class HubScene extends Phaser.Scene {
     const searching = this.stashSearch.trim() !== '';
     const find = this.chip(
       'data-box-find',
-      searching ? 'Change what you are looking for.' : 'Find a Pokémon by name, in every box.',
+      searching ? 'Change what you are looking for.' : 'Find a Pokémon by name.',
       searching ? `Find: ${escapeAttribute(this.stashSearch.trim())}` : 'Find',
     );
     const clear = searching ? this.chip('data-box-clear', 'Show everyone again.', 'Clear') : '';
-    if (!inStash) {
-      return `<div class="box-bar"><div class="box-line">${sort}${find}${clear}</div></div>`;
-    }
-    const scope = this.scopeBox;
-    const box = scope === 'all' ? undefined : boxes[scope];
-    const label = searching
-      ? `Found \u00b7 ${this.shownPokemon.length}`
-      : box
-        ? `${box.name} \u00b7 ${box.pokemonIds.length}/${BOX_CAPACITY}`
-        : `All boxes \u00b7 ${this.stashPokemon.length}`;
-    if (searching) {
-      // Looking for one across every box: the boxes themselves are not the
-      // question, so their controls give way to the ones that narrow it.
-      return `<div class="box-bar"><div class="box-line"><span class="box-title">${escapeAttribute(label)}</span></div><div class="box-line">${sort}${find}${clear}</div></div>`;
-    }
-    // Naming and adding boxes is the third line of the one strip rather than a
-    // row of the list under it: outside the strip it scrolled, and a strip that
-    // sticks to the top of the pane then clipped it through the middle.
-    return `<div class="box-bar"><div class="box-line">${this.chip('data-box-step="-1"', 'The box before this one.', 'Prev')}<span class="box-title">${escapeAttribute(label)}</span>${this.chip('data-box-step="1"', 'The next box. After the last is every box at once.', 'Next')}</div><div class="box-line">${sort}${find}</div>${manage}</div>`;
-  }
-
-  /**
-   * Naming, adding and taking away boxes: the last line of the strip that leads
-   * the list, beside where you are looking and how it is ordered.
-   */
-  private boxManage(): string {
-    const scope = this.scopeBox;
-    if (this.boxMoving || this.boxEditing || this.stashSearch.trim() !== '') {
-      return '';
-    }
-    const boxes = this.stash.listBoxes();
-    const box = scope === 'all' ? undefined : boxes[scope];
-    const rename = box ? this.chip('data-box-rename', `Give ${box.name} another name.`, 'Rename') : '';
-    const remove =
-      box && box.pokemonIds.length === 0 && boxes.length > 1
-        ? this.chip('data-box-delete', `${box.name} is empty. Take it away.`, 'Delete')
-        : '';
-    return `<div class="box-line box-manage">${rename}${this.chip('data-box-new', 'Add an empty box on the end.', 'New box')}${remove}</div>`;
-  }
-
-  /** Prev and Next walk the boxes and then a last stop that is all of them. */
-  private stepBox(direction: number): void {
-    const stops = this.stash.listBoxes().length + 1;
-    const at = this.scopeBox === 'all' ? stops - 1 : this.scopeBox;
-    const next = (at + direction + stops) % stops;
-    this.boxScope = next === stops - 1 ? 'all' : next;
-    this.render();
-  }
-
-  private pickUp(pokemonId: string): void {
-    this.boxMoving = pokemonId;
-    this.boxEditing = undefined;
-    audioManager.play('select');
-    this.render();
-  }
-
-  private putDown(destination: string): void {
-    const id = this.boxMoving;
-    const stored = this.stash.listPokemon().find((entry) => entry.id === id);
-    if (!id || !stored || this.movedOnElsewhere()) {
-      return;
-    }
-    const index = destination === 'new' ? this.stash.addBox() : Number(destination);
-    if (!this.stash.movePokemon(id, index)) {
-      this.refuse(`${this.stash.listBoxes()[index]?.name ?? 'That box'} cannot take ${stored.pokemon.name}.`);
-      return;
-    }
-    this.boxMoving = undefined;
-    audioManager.play('confirm');
-    const name = this.stash.listBoxes()[index].name;
-    this.saveStash(
-      `${stored.pokemon.name} is in ${name}.`,
-      `${stored.pokemon.name} is in ${name}, but it could not be saved.`,
-    );
-  }
-
-  private addBoxAndShow(): void {
-    if (this.movedOnElsewhere()) {
-      return;
-    }
-    this.boxScope = this.stash.addBox();
-    audioManager.play('confirm');
-    this.saveStash(
-      `${this.stash.listBoxes()[this.boxScope].name} added.`,
-      'A box was added, but it could not be saved.',
-    );
-  }
-
-  private deleteBox(): void {
-    const scope = this.scopeBox;
-    if (scope === 'all' || this.movedOnElsewhere()) {
-      return;
-    }
-    const name = this.stash.listBoxes()[scope]?.name ?? 'That box';
-    if (!this.stash.removeBox(scope)) {
-      this.refuse(`${name} is not empty, or is the last box.`);
-      return;
-    }
-    this.boxScope = Math.max(0, scope - 1);
-    audioManager.play('cancel');
-    this.saveStash(`${name} taken away.`, `${name} was taken away, but it could not be saved.`);
+    return `<div class="box-bar"><div class="box-line">${sort}${find}${clear}</div></div>`;
   }
 
   private submitBoxForm(text: string): void {
-    const editing = this.boxEditing;
     this.boxEditing = undefined;
-    if (editing === 'find') {
-      this.stashSearch = text.trim();
-      audioManager.play('select');
-      this.render();
-      return;
-    }
-    const scope = this.scopeBox;
-    if (scope === 'all') {
-      this.render();
-      return;
-    }
-    if (this.movedOnElsewhere()) {
-      return;
-    }
-    if (!this.stash.renameBox(scope, text)) {
-      this.refuse('That name is empty or another box already has it.');
-      return;
-    }
-    audioManager.play('confirm');
-    this.saveStash(
-      `Renamed to ${this.stash.listBoxes()[scope].name}.`,
-      'Renamed, but it could not be saved.',
-    );
+    this.stashSearch = text.trim();
+    audioManager.play('select');
+    this.render();
   }
 
   /** Puts a text field's own keys back where the keyboard owner left them. */
@@ -2417,193 +1980,9 @@ export class HubScene extends Phaser.Scene {
     };
   }
 
-  /**
-   * The stash: every Pokemon at base as a grid you read at a glance, and
-   * everything about the one under the cursor in a single pane beneath it.
-   *
-   * This was five things behind one another. The list was one column however
-   * wide the window was, every row carried three to five chips of its own -
-   * MOVE, SUMMARY, TAKE, GIVE - and the one that mattered opened a whole second
-   * screen, so twenty Pokemon were a scroll wheel of clutter with the answer
-   * hidden a layer down. It is the PC box instead: the collection fills the
-   * width it has (`ui/columnLayout.ts`), a row is the two lines that tell one
-   * Pokemon from another, and what you came for - its condition, its
-   * experience, its stats, its moves and everything you can do to it - is the
-   * detail pane the cursor fills as it walks, the same pane the contract board
-   * and Brock's ladder already use.
-   */
-  private stashView(): string {
-    const pokemon = this.stashPokemon;
-    const shown = this.shownPokemon;
-    const inBoxes = this.scopeBox === 'all' || this.stashSearch.trim() !== '';
-    const boxNames = this.stash.listBoxes().map((box) => box.name);
-    const garden = new Set(gardenPokemon(this.savedGameNow).map((stored) => stored.id));
-    const away = awayOnRaid(this.savedGame);
-    const rows = shown
-      .map((stored, index) => {
-        const hurt = needsRecovery(stored.pokemon);
-        // Out on a raid in another window, it is that raid's until it ends.
-        const out = away.has(stored.id);
-        const wiring = out
-          ? `data-refused="${escapeAttribute(outOnRaidLine(stored.pokemon.name))}" data-help="${escapeAttribute(outOnRaidLine(stored.pokemon.name))}"`
-          : hurt
-          ? this.atHome
-            ? `data-refused="${escapeAttribute(`NURSE JOY patches ${stored.pokemon.name} up, at the Pokémon Center.`)}" data-help="${escapeAttribute(`${stored.pokemon.name} needs NURSE JOY, at the Pokémon Center.`)}"`
-            : `data-recover="${stored.id}" data-help="${this.recoveryHelp(stored)}"`
-          : `data-fit="${stored.id}" data-help="${escapeAttribute(stored.pokemon.name)} is fit to raid."`;
-        const tag = out
-          ? pixelTag('On a raid')
-          : hurt
-          ? pixelTag(this.atHome ? 'Needs Joy' : this.recoveryPriceTag(stored), this.atHome || this.recoveryPriceMs(stored) > 0 ? 'risk' : 'good')
-          : this.atHome
-            ? this.homeTag(stored, garden)
-            : pixelTag('Fit', 'good', true);
-        const boxed = boxNames[this.stash.boxIndexOf(stored.id)];
-        const moving = this.boxMoving === stored.id;
-        // FireRed's PC box: the icon at its health's pace over its level and a
-        // short bar. What the old row said in words - FIT, ON A RAID, GARDEN -
-        // is said by the dossier the cursor fills and the help bar; only the
-        // price of a treatment stays on the tile.
-        const spoken = [stored.pokemon.name, `level ${stored.pokemon.level}`, tagWords(tag), ...(inBoxes && boxed ? [boxed] : [])].filter(Boolean).join(', ');
-        return pixelMonTile(stored.pokemon, {
-          classes: [...(moving ? ['is-selected'] : []), ...(out ? ['is-away'] : [])],
-          // A hurt one at the Center says what ENTER would cost, in red, where
-          // its level would be: the treatment is a price and is seen first. A
-          // free one is good news, so it is green: in red, FREE read as a fault.
-          ...(hurt && !out && !this.atHome
-            ? { line: pixelTag(this.recoveryPriceTag(stored), this.recoveryPriceMs(stored) > 0 ? 'risk' : 'good') }
-            : {}),
-          attributes: `${wiring} data-shows="${stored.id}" data-box-name="${escapeAttribute(boxed ?? '')}" aria-label="${escapeAttribute(spoken)}"${index === 0 ? ' data-cursor-start' : ''}`,
-        });
-      })
-      .join('');
-    const details = shown
-      .map((stored, index) =>
-        this.pokemonDetail(stored, index === 0, {
-          label: 'Keeping',
-          chips: (shows) => `${this.boxChip(stored, shows)}${this.gardenChip(stored, shows)}${this.gearChips(stored, shows)}`,
-        }),
-      )
-      .join('');
-    const supplyTile = (item: ItemDefinition): string =>
-      // A supply is its icon at twice its size with how many are spare on its
-      // corner, as the raid's pack draws one; what it is and does is said by the
-      // help bar when it is pointed at, which is why the tile is a control.
-      pixelItemTile(item, itemCountTag(item.id, this.spare(item.id)), `data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}${usedInARaid(item)}`)}"`);
-    // In YOUR THINGS's pocket order (`ui/thingsView.ts`), so the two screens
-    // that show storage sort it the same way - pocket after pocket with no
-    // bands, because a band took a row of the grid for two tiles.
-    const supplies = storedPockets(
-      Object.fromEntries(this.stashItems.map((item) => [item.id, this.spare(item.id)])),
-    )
-      .flatMap(({ things }) => things.map(({ item }) => supplyTile(item)))
-      .join('');
-    return `<main class="px-body stash-layout">${pixelWindow(
-      `<div class="px-mon-tiles px-scroll">${this.browseBar(true, this.boxManage())}${rows || `<p class="px-empty">${this.stashSearch.trim() ? 'No Pokémon answers that.' : pokemon.length === 0 ? 'No Pokémon in storage.' : 'This box is empty.'}</p>`}${this.swapPanel()}</div>${details}`,
-      { className: 'stash-roster', heading: 'Pokémon', note: `${pokemon.length} stored` },
-    )}<div class="stash-side">${pixelWindow(
-      supplies ? `<div class="px-item-tiles px-scroll">${supplies}</div>` : '<p class="px-empty">No supplies in storage.</p>',
-      { heading: 'Supplies', note: `${this.stashItems.length} ${this.stashItems.length === 1 ? 'kind' : 'kinds'}` },
-    )}</div></main>`;
-  }
-
-  /**
-   * Everything about one Pokemon, in the pane under the list.
-   *
-   * It holds what the summary screen used to be a whole screen for, and the
-   * deeds that used to be chips on every row: which box it is in, and the one
-   * piece of gear it can carry. The pane itself is `ui/pokemonDossier.ts`,
-   * shared with the raid's own party screen, so the two cannot drift.
-   */
-  private pokemonDetail(
-    stored: StashedPokemon,
-    first: boolean,
-    deeds: { readonly label: string; readonly chips: (shows: string) => string },
-  ): string {
-    const held = getHeldItem(stored.pokemon.heldItemId);
-    return pokemonDossier({
-      pokemon: stored.pokemon,
-      id: stored.id,
-      first,
-      holding: held ? `Holding ${held.displayName}` : 'Holding nothing',
-      deeds,
-    });
-  }
-
-  /** Where this Pokemon is kept, and the press that moves it somewhere else. */
-  private boxChip(stored: StashedPokemon, shows: string): string {
-    const boxed = this.stash.listBoxes()[this.stash.boxIndexOf(stored.id)]?.name;
-    const moving = this.boxMoving === stored.id;
-    const name = escapeAttribute(stored.pokemon.name);
-    return this.chip(
-      `data-box-move="${stored.id}" ${shows}`,
-      // "Putting down" a pet is putting it to sleep for good, and a second
-      // CANCEL beside the bar's own was one too many (the harbour re-critic).
-      moving ? `Pick ${name}'s new box in the bar above, or press this again to leave it in ${escapeAttribute(boxed ?? 'its box')}.` : `Move ${name} to another box. It is in ${escapeAttribute(boxed ?? 'no box')}.`,
-      // The verb first, then where it is now: a chip that is only a name reads
-      // as a label rather than as something to press.
-      moving ? 'Moving' : `Move · ${escapeAttribute(boxed ?? 'no box')}`,
-    );
-  }
-
-  /**
-   * Whether this Pokémon walks about THE BOLTHOLE's garden, and the press that
-   * puts it out or brings it in (`base/homeGarden.ts`). One that is somewhere
-   * else - going on the next raid, at the player's heel, waiting on JOY - says
-   * so instead.
-   */
-  private gardenChip(stored: StashedPokemon, shows: string): string {
-    const name = escapeAttribute(stored.pokemon.name);
-    const out = gardenPokemon(this.savedGameNow).some((one) => one.id === stored.id);
-    if (out) {
-      return this.chip(`data-garden="${stored.id}" ${shows}`, `${name} walks about the garden at home. Bring it in.`, 'In the garden');
-    }
-    const away = awayFromGarden(stored, this.savedGameNow);
-    if (away !== null && away !== 'no-figure') {
-      return this.chip(`data-refused="${escapeAttribute(awayLine(stored.pokemon.name, away))}" ${shows}`, awayLine(stored.pokemon.name, away), 'Garden', true);
-    }
-    return this.chip(`data-garden="${stored.id}" ${shows}`, `Put ${name} out to walk about the garden at home, beside THE BOLTHOLE.`, 'Out to garden');
-  }
-
-  /**
-   * Where a fit Pokémon is, said on its row at home, because MY PC is where
-   * the player chooses who walks about the garden: out there, going on the
-   * next raid, at their heel, or in its box.
-   */
-  private homeTag(stored: StashedPokemon, garden: ReadonlySet<string>): string {
-    if (garden.has(stored.id)) return pixelTag('Garden', 'good');
-    const away = awayFromGarden(stored, this.savedGameNow);
-    if (away === 'partner') return pixelTag('Partner', 'good');
-    if (away === 'team') return pixelTag('Team', 'good');
-    return pixelTag('Fit', 'good', true);
-  }
-
   /** The save as this screen holds it: the vault it is changing, and the progress it read. */
   private get savedGameNow(): RestoredGame {
     return { ...this.savedGame, stash: this.stash };
-  }
-
-  /** The garden chip pressed: written at once, as the stash's other changes are. */
-  private toggleGarden(pokemonId: string): void {
-    if (this.movedOnElsewhere()) {
-      return;
-    }
-    const answer = toggleGarden(this.savedGameNow, pokemonId);
-    if ('refused' in answer) {
-      this.refuse(answer.refused);
-      return;
-    }
-    const before = this.savedGame;
-    this.savedGame = { ...before, raidProgress: withGarden(before.raidProgress, answer.garden) };
-    if (!this.writeGame()) {
-      this.savedGame = before;
-      this.refuse('The garden could not be saved.');
-      return;
-    }
-    const name = this.stashPokemon.find((stored) => stored.id === pokemonId)?.pokemon.name ?? 'That Pokémon';
-    audioManager.play(answer.out ? 'select' : 'cancel');
-    this.setStatus(answer.out ? `${name} is out in the garden at home.` : `${name} is back in its box.`);
-    this.overlay.refocus(`[data-garden="${pokemonId}"]`);
   }
 
   /** What the pack and the party cannot do, which every panel on the way to the rim says the same way. */
@@ -4042,20 +3421,6 @@ export class HubScene extends Phaser.Scene {
     });
   }
 
-  private swapPanel(): string {
-    const spare = this.sparePartner;
-    if (!spare) return '';
-    // Said as an option to a player who has lost nothing yet, whose one Pokemon
-    // is the partner they chose a moment ago, and as the news it is to one a
-    // wipe has left with one (playtest 47).
-    const afterALoss = raidsLost(this.savedGame.raidProgress) > 0;
-    const heading = afterALoss ? 'Down to one Pokémon' : 'Swap your partner';
-    const lead = afterALoss
-      ? `${spare.pokemon.name} is all you have left. You can trade it`
-      : `While ${spare.pokemon.name} is your only Pokémon, you can trade it`;
-    return `<section class="swap-panel"><h3 class="px-subheading">${heading}</h3><p class="px-note px-wrap">${lead} for a level 5 starter, which arrives in the condition ${spare.pokemon.name} is in now.</p><button class="px-window px-button" data-view="reselect" data-help="Only offered while one Pokémon is left at base.">Choose a new partner</button></section>`;
-  }
-
   private reselectView(): string {
     const spare = this.sparePartner;
     if (!spare) return '<main class="px-body"><p class="px-window px-empty">You have more than one Pokémon, so there is nothing to swap.</p></main>';
@@ -4110,12 +3475,11 @@ export class HubScene extends Phaser.Scene {
    * take it and, when not, why.
    */
   private dayCareView(): string {
-    // Every box, those he would take first, each row naming its box (`ui/boxPicker.ts`'s promises).
+    // Everybody at base, those he would take first (`ui/boxPicker.ts`'s promises).
     const away = awayOnRaid(this.savedGame);
     const takes = (stored: StashedPokemon): boolean => dayCareRefusal(this.stash, stored.id, away) === undefined;
     const found = this.findablePokemon;
     const shown = [...found.filter(takes), ...found.filter((stored) => !takes(stored))];
-    const boxNames = this.stash.listBoxes().map((box) => box.name);
     const partner = this.stash.partner()?.id;
     return dayCareBody(
       shown.map((stored) => {
@@ -4124,12 +3488,11 @@ export class HubScene extends Phaser.Scene {
           id: stored.id,
           pokemon: stored.pokemon,
           ...(refusal === undefined ? {} : { refusal }),
-          box: boxNames[this.stash.boxIndexOf(stored.id)] ?? '',
           away: away.has(stored.id),
           partner: stored.id === partner,
         };
       }),
-      { browse: this.browseBar(false), note: this.atBaseNote(away) },
+      { browse: this.browseBar(), note: this.atBaseNote(away) },
     );
   }
 
@@ -4146,7 +3509,6 @@ export class HubScene extends Phaser.Scene {
       refusal(stored) === undefined ? tradeDealFor(stored.pokemon.base.id, made) : undefined;
     const found = this.findablePokemon;
     const shown = [...found.filter((stored) => refusal(stored) === undefined), ...found.filter((stored) => refusal(stored) !== undefined)];
-    const boxNames = this.stash.listBoxes().map((box) => box.name);
     const armed = shown.find((stored) => stored.id === this.tradeArmed);
     const armedDeal = armed ? dealOf(armed) : undefined;
     // A trade of his is for good, so it is asked, in the bar the partner swap
@@ -4170,13 +3532,12 @@ export class HubScene extends Phaser.Scene {
           pokemon: stored.pokemon,
           ...(deal ? { deal } : {}),
           ...(why === undefined ? {} : { refusal: why }),
-          box: boxNames[this.stash.boxIndexOf(stored.id)] ?? '',
           away: away.has(stored.id),
           partner: stored.id === partner,
         };
       }),
       {
-        browse: this.browseBar(false),
+        browse: this.browseBar(),
         note: this.atBaseNote(away),
         owned: new Set(this.savedGame.raidProgress.pokedexOwned ?? []),
         ...(this.tradeArmed === undefined ? {} : { armed: this.tradeArmed }),
@@ -4286,15 +3647,6 @@ export class HubScene extends Phaser.Scene {
     return true;
   }
 
-  /** Whether the last of an item at base is packed for the raid in flight in another window, saying so. */
-  private packedForRaid(itemId: string): boolean {
-    if (spareAtBase(this.savedGameNow, itemId) > 0 || this.stash.itemCount(itemId) <= 0) {
-      return false;
-    }
-    this.refuse(PACKED_FOR_RAID_LINE);
-    return true;
-  }
-
   /** How many Pokemon are at base, not counting those out on a raid in another window. */
   private atBaseNote(away: ReadonlySet<string>): string {
     const out = this.stashPokemon.filter((stored) => away.has(stored.id)).length;
@@ -4321,8 +3673,6 @@ export class HubScene extends Phaser.Scene {
    * one, and all it removes is the line it was started for.
    */
   private setStatus(message: string | undefined): void {
-    // A heal asked about is asked about only while its question is up.
-    if (message === undefined || !message.startsWith('Spend ')) this.recoverArmed = null;
     this.statusTimer?.remove();
     this.statusTimer = undefined;
     this.status = message ?? '';
@@ -4336,23 +3686,6 @@ export class HubScene extends Phaser.Scene {
     this.statusTimer = undefined;
     this.status = '';
     takeDownPixelStatus(this.overlay.root);
-  }
-}
-
-/**
- * What a supply row owes a player about where it is used, when that is not
- * here. A disc and a stone are read from YOUR THINGS or the raid pack (the
- * treatment bench takes medicine only), and the Center listed TM40 with what
- * it teaches and nothing about how (playtest 47).
- */
-function usedInARaid(item: ItemDefinition): string {
-  switch (item.effect.type) {
-    case 'machine':
-      return ` ${READ_IN_A_RAID}`;
-    case 'evolution-stone':
-      return ` ${USE_A_STONE}`;
-    default:
-      return '';
   }
 }
 

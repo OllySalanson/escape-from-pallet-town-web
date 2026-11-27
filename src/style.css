@@ -3477,8 +3477,6 @@ body.touch-play .feedback-tab {
    Two `fr` columns split an odd width into half game pixels, and a window
    standing on half a pixel is a soft edge at every odd zoom. */
 :where(.pixel-ui) .objectives-panel,
-:where(.pixel-ui) .stash-layout > .px-window,
-:where(.pixel-ui) .stash-side > .px-window,
 :where(.pixel-ui) .kit-layout > .px-window,
 :where(.pixel-ui) .loadout-layout > .px-window,
 :where(.pixel-ui) .loadout-side > .px-window,
@@ -3505,8 +3503,6 @@ body.touch-play .feedback-tab {
    It is a maximum as well as a hug: a window with more in it than the screen
    holds still stops at the screen and scrolls inside its own frame. */
 :where(.pixel-ui) .objectives-panel,
-:where(.pixel-ui) .stash-layout > .px-window,
-:where(.pixel-ui) .stash-side > .px-window,
 :where(.pixel-ui) .kit-layout > .px-window,
 :where(.pixel-ui) .kit-layout > .loadout-side > .px-window,
 :where(.pixel-ui) .loadout-layout > .px-window,
@@ -3521,7 +3517,6 @@ body.touch-play .feedback-tab {
   max-height: 100%;
 }
 .pixel-ui .objectives-panel:has(.px-detail),
-.pixel-ui .stash-layout > .px-window:has(.px-detail),
 .pixel-ui .loadout-layout > .px-window:has(.px-detail),
 .pixel-ui .daycare-layout > .px-window:has(.px-detail),
 .pixel-ui .raid-bag-layout > .px-window:has(.px-detail),
@@ -3535,7 +3530,6 @@ body.touch-play .feedback-tab {
    its floor up, sharing what is left between them. Held to a fixed band the
    dossier was one or two lines and a MORE strip over half a screen of empty
    backdrop, with the raid party's TAKE below the fold (playtests 38 and 44). */
-.pixel-ui .stash-layout > .px-window:has(.px-dossier),
 .pixel-ui .loadout-layout > .px-window:has(.px-dossier),
 .pixel-ui .daycare-layout > .px-window:has(.px-dossier),
 .pixel-ui .raid-party-layout > .px-window:has(.px-dossier) {
@@ -3762,14 +3756,6 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .px-ready {
   color: var(--safe-ink);
 }
-/* The roster takes the room and the supplies keep a lane of their own: what the
-   screen is for is finding one Pokemon among many, and the supplies are a list
-   of eight things that never needed half a screen. */
-:where(.pixel-ui) .stash-layout {
-  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 140);
-  grid-template-rows: minmax(0, 1fr);
-  height: 100%;
-}
 /* Building a loadout, and Brock's payment screen: what to choose from
    on the left, the container on the right, cut to the pack's own width - six
    squares of sixteen pixels and its own frame. */
@@ -3780,30 +3766,12 @@ body.touch-play .feedback-tab {
   grid-template-rows: minmax(0, 1fr) auto;
   height: 100%;
 }
-:where(.pixel-ui) .stash-side {
-  min-height: 0;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr);
-  gap: calc(var(--u) * 4);
-}
-:where(.pixel-ui) .swap-panel {
-  display: grid;
-  justify-items: start;
-  gap: calc(var(--u) * 2);
-  padding: 0 calc(var(--u) * 3) calc(var(--u) * 2);
-}
-:where(.pixel-ui) .swap-panel .px-subheading {
-  justify-self: stretch;
-  margin-left: calc(var(--u) * -3);
-  margin-right: calc(var(--u) * -3);
-}
 .pixel-ui .run-loadout {
   display: block;
 }
 :where(.pixel-ui) .run-loadout > .px-note {
   padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
 }
-:where(.pixel-ui) .stash-layout .confirm-bar,
 :where(.pixel-ui) .loadout-layout .confirm-bar,
 :where(.pixel-ui) .secure-layout .confirm-bar {
   grid-column: 1 / -1;
@@ -4448,10 +4416,6 @@ body.touch-play .feedback-tab {
   align-items: center;
   gap: calc(var(--u) * 2);
   min-width: 0;
-}
-:where(.pixel-ui) .box-title {
-  text-transform: uppercase;
-  white-space: nowrap;
 }
 :where(.pixel-ui) .box-form {
   display: flex;
@@ -7479,8 +7443,8 @@ body.touch-play .feedback-tab {
   position: relative;
   /* Its own box and nothing past it: the line under the icon is a pixel or two
      taller than what is left of 41, and spilling out of the last row it made
-     the pane three pixels taller than its rows, which put the second row of
-     Bill's PC behind a MORE strip in a window with room to spare. */
+     the pane three pixels taller than its rows, which put a second row of
+     tiles behind a MORE strip in a window with room to spare. */
   overflow: hidden;
   display: grid;
   justify-items: center;
@@ -7513,11 +7477,10 @@ body.touch-play .feedback-tab {
   margin-top: calc(var(--u) * 4);
 }
 
-/* Bill's PC as FireRed's PC box: the box's bar and the partner swap stand
-   across the whole grid, a Pokémon being moved is lit as a row being moved is,
-   and one out on a raid in another window is dim until that raid ends. */
+/* A grid of Pokémon tiles (YOUR TEAM, the Day-Care, the Trader): the find
+   bar stands across the whole grid, and one out on a raid in another window is
+   dim until that raid ends. */
 :where(.pixel-ui) .px-mon-tiles > .box-bar,
-:where(.pixel-ui) .px-mon-tiles > .swap-panel,
 :where(.pixel-ui) .px-mon-tiles > .px-empty {
   grid-column: 1 / -1;
   /* A place the pane may rest, or it snapped to the first tile on opening -
@@ -7605,7 +7568,7 @@ body.touch-play .feedback-tab {
    then the numbers. Stacked as everywhere else in a tight room, the portrait
    went last and below the fold, and the panel opened on a page of words.
    Placed by grid, so the shared dossier's markup is untouched
-   (`ui/pokemonDossier.ts`, which Bill's PC draws too), and the figure stays one
+   (`ui/pokemonDossier.ts`), and the figure stays one
    box: the fold that keeps a MORE strip off a line's waist reads it as a row. */
 :where(.pixel-ui[data-layout='side']) .raid-party-layout .px-dossier-body,
 :where(.pixel-ui[data-room='tight']) .raid-party-layout .px-dossier-body,

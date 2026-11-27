@@ -8,7 +8,7 @@ vi.mock('phaser', () => ({
   },
 }));
 
-import { Bag, ITEM_DEFINITIONS, MATERIAL_IDS } from '../items';
+import { Bag, MATERIAL_IDS } from '../items';
 import { itemIconName } from '../ui/icons';
 import {
   BULBASAUR,
@@ -17,7 +17,6 @@ import {
   Pokemon,
   PokemonParty,
   SQUIRTLE,
-  experienceForLevel,
 } from '../pokemon';
 import { FIRST_CONTRACT_ID, RAID_CONTRACTS, standingBoard, type RaidContract } from '../objectives';
 import { activeRunManager, RunPhase } from '../run';
@@ -35,8 +34,6 @@ import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
 import {
   MAX_PENDING_RECOVERY_MS,
   raidClockAfterRecovery,
-  recoveryCostMs,
-  recoveryPrices,
   type DeploymentFlow,
 } from '../hub';
 import {
@@ -68,8 +65,6 @@ describe('the lobby as a screen of the game', () => {
   function everyScreen(): readonly string[] {
     const { hub } = createWornHub();
     const screens = [markupOf(hub)];
-    hub.setView('stash');
-    screens.push(markupOf(hub));
     hub.setView('reselect');
     screens.push(markupOf(hub));
     intoTheArena(hub);
@@ -126,68 +121,6 @@ describe('the lobby as a screen of the game', () => {
     expect(hub.flow.party).toEqual([]);
   });
 
-  it('counts one kind of supply in the stash as one kind, not "1 kinds"', () => {
-    const { hub } = createHub();
-    const kinds = Object.entries(hub.stash.listItems()).filter(([, count]) => count > 0);
-    for (const [itemId, count] of kinds.slice(1)) {
-      hub.stash.removeItem(itemId, count);
-    }
-
-    hub.setView('stash');
-    const stash = markupOf(hub);
-    expect(stash).toContain('<small>1 kind</small>');
-    expect(stash).not.toContain('1 kinds');
-  });
-
-  it('says at base that a TM or a stone is used from the pack in a raid (playtest 47)', () => {
-    const { hub } = createHub();
-    hub.stash.addItem('tm40-aerial-ace', 1);
-    hub.stash.addItem('fire-stone', 1);
-
-    hub.setView('stash');
-    const stash = markupOf(hub);
-    const helpOf = (markup: string, attribute: string, id: string): string =>
-      new RegExp(`${attribute}="${id}"[^>]*data-help="([^"]*)"`).exec(markup)?.[1] ?? '';
-    expect(helpOf(stash, 'data-supply', 'tm40-aerial-ace')).toContain('read it from your pack (B) in a raid');
-    expect(helpOf(stash, 'data-supply', 'fire-stone')).toContain('use it from your pack (B) in a raid');
-    // A Potion is used at base too, so it carries no such line.
-    expect(helpOf(stash, 'data-supply', 'potion')).not.toContain('in a raid');
-  });
-
-  it('prices each hurt Pokémon on its own row of the boxes, with no bill along the foot of them', () => {
-    const { hub } = createWornHub();
-
-    hub.setView('stash');
-    const stash = markupOf(hub);
-    // Everyone at once is Nurse Joy's, at her counter (`hub/centerCounter.ts`).
-    expect(stash).not.toContain('recovery-panel');
-    expect(stash).not.toContain('data-recover-all');
-    expect(stash).toContain('data-recover="charmander-1"');
-  });
-
-  it('offers only the boxes that have room while a Pokemon is picked up, and puts it down', () => {
-    const { hub } = createHub();
-    hub.setView('stash');
-    hub.stash.addBox();
-
-    hub.pickUp('charmander-1');
-    const moving = markupOf(hub);
-    expect(moving).toContain('Put Charmander in');
-    expect(moving).toContain('data-box-drop="1"');
-
-    hub.putDown('1');
-    expect(hub.stash.boxIndexOf('charmander-1')).toBe(1);
-    expect(markupOf(hub)).not.toContain('Put Charmander in');
-  });
-
-  it('keeps a fit save free of the Pokemon Center entirely', () => {
-    const { hub } = createHub();
-
-    hub.setView('stash');
-
-    expect(markupOf(hub)).not.toContain('recovery-panel');
-  });
-
 });
 
 interface WorldSceneData {
@@ -198,15 +131,12 @@ interface WorldSceneData {
 
 interface HubInternals {
   init(data?: HubSceneData): void;
-  setView(view: 'stash' | 'summary' | 'bench' | 'rack' | 'locker' | 'rim' | 'reselect' | 'workshop' | 'trader' | 'wallmap'): void;
+  setView(view: 'summary' | 'bench' | 'rack' | 'locker' | 'rim' | 'reselect' | 'workshop' | 'trader' | 'wallmap'): void;
   goBack(): void;
   wallMapInspect: string | undefined;
   startRun(): void;
   render(): void;
-  recover(ids: readonly string[]): void;
   treat(pokemonId: string, itemId: string): void;
-  pickUp(pokemonId: string): void;
-  putDown(destination: string): void;
   stepBox(direction: number): void;
   readonly flow: DeploymentFlow;
   readonly stash: Stash;
@@ -544,108 +474,12 @@ describe('hub deployment route', () => {
     }
   });
 
-  // AI playtest, 22 Nov 2026: a row said CENTER -1:40 and the heal took 0:50,
-  // because the debt was near its cap and only the shortfall is charged.
-  it("prices a bench row at what the heal then charges, the debt's cap counted", () => {
-    const { hub, worn } = createWornHub((maxHp) => maxHp);
-    const fullMs = recoveryCostMs(worn.pokemon);
-    const pendingMs = MAX_PENDING_RECOVERY_MS - 5_000;
-    expect(fullMs).toBeGreaterThan(5_000);
-    (hub as unknown as { savedGame: { pendingRecoveryMs: number } }).savedGame.pendingRecoveryMs = pendingMs;
-    const quoted = (hub as unknown as { recoveryPriceMs(stored: StashedPokemon): number }).recoveryPriceMs(worn);
-    expect(quoted).toBe(5_000);
-    hub.recover(['charmander-1']);
-    expect(hub.pendingRecoveryMs - pendingMs).toBe(quoted);
-  });
-
-  /** BILL'S PC spent 0:35 on one ENTER, three tiles from Joy's guarded counter (the harbour critic tour, 26 Nov 2026). */
-  it('asks before a heal on the PC that costs raid time, and heals on the second press', () => {
-    const { hub, worn } = createWornHub((maxHp) => maxHp);
-    expect(recoveryCostMs(worn.pokemon)).toBeGreaterThan(0);
-    hub.setView('stash');
-    const ask = (hub as unknown as { recoverAsked(id: string): void }).recoverAsked.bind(hub);
-    ask('charmander-1');
-    expect(worn.pokemon.currentHp).not.toBe(worn.pokemon.maxHp);
-    expect(hub.pendingRecoveryMs).toBe(0);
-    expect(markupOf(hub)).toContain('ENTER again to heal');
-    ask('charmander-1');
-    expect(worn.pokemon.currentHp).toBe(worn.pokemon.maxHp);
-    expect(hub.pendingRecoveryMs).toBeGreaterThan(0);
-  });
-
-  it('brings a fainted Pokemon round at base and takes the cost off the next raid clock', () => {
-    const { hub, start, storage, worn } = createWornHub((maxHp) => maxHp);
-    const costMs = recoveryCostMs(worn.pokemon);
-    expect(costMs).toBeGreaterThan(0);
-    expect(hub.raidClockMs).toBe(RAID_DURATION_MS);
-
-    hub.recover(['charmander-1']);
-    // Back on its feet, it can go on the raid.
-    hub.flow.togglePokemon('charmander-1');
-
-    expect(worn.pokemon.currentHp).toBe(worn.pokemon.maxHp);
-    expect(hub.pendingRecoveryMs).toBe(costMs);
-    expect(hub.raidClockMs).toBe(RAID_DURATION_MS - costMs);
-    // The recovery and its bill survive a reload, so neither can be scummed away.
-    const reloaded = new SaveManager(storage).load();
-    expect(reloaded?.pendingRecoveryMs).toBe(costMs);
-    expect(reloaded?.stash.listPokemon()).toMatchObject([
-      { id: 'bulbasaur-1' },
-      { id: 'charmander-1', pokemon: { currentHp: worn.pokemon.maxHp } },
-    ]);
-
-    readyToDeploy(hub);
-    deploy(hub, start);
-    expect(hub.flow.party.map((stored) => stored.id)).toEqual(['charmander-1']);
-    expect(activeRunManager.snapshot().remainingMs).toBe(
-      raidClockAfterRecovery(RAID_DURATION_MS, costMs),
-    );
-  });
-
   it('never books recovery it cannot fit inside half a raid clock', () => {
     // Recovering a whole worn-out party has to stay affordable, or the player
     // goes back to hoarding a heal they never dare spend.
     expect(MAX_PENDING_RECOVERY_MS * 2).toBeLessThanOrEqual(RAID_DURATION_MS);
     // And the raid a fully-indebted player deploys into is still a raid.
     expect(raidClockAfterRecovery(RAID_DURATION_MS, MAX_PENDING_RECOVERY_MS)).toBeGreaterThan(0);
-  });
-
-  it('revives a sole Pokemon that came home fainted and lets it deploy again', () => {
-    const { hub, start, worn } = createWornHub((maxHp) => maxHp);
-    // A fainted Pokemon is never packed, so the row refuses it and says why.
-    expect(hub.flow.togglePokemon('charmander-1')).toMatch(/fainted/);
-
-    expect(worn.pokemon.isFainted).toBe(true);
-    expect(hub.flow.isDeployable).toBe(false);
-    expect(hub.flow.advance()).toMatch(/Choose at least one/);
-
-    hub.recover(['charmander-1']);
-
-    expect(worn.pokemon.isFainted).toBe(false);
-    expect(hub.flow.togglePokemon('charmander-1')).toBeUndefined();
-    expect(hub.flow.advance()).toBeUndefined();
-    readyToDeploy(hub);
-    deploy(hub, start);
-    expect(start).toHaveBeenCalledTimes(1);
-  });
-
-  it("heals free the first time each day, and remembers the day it was taken", () => {
-    const { hub, storage, worn } = createWornHub((maxHp) => maxHp, false);
-    hub.recover(['charmander-1']);
-    expect(worn.pokemon.isFainted).toBe(false);
-    expect(hub.pendingRecoveryMs).toBe(0);
-    expect(hub.raidClockMs).toBe(RAID_DURATION_MS);
-    expect(new SaveManager(storage).load()?.freeHealDay).toBe(healDayOf(new Date()));
-  });
-
-  it('leaves a fit party alone rather than charging for a recovery it does not need', () => {
-    const { hub } = createHub();
-
-    hub.recover(['bulbasaur-1', 'charmander-1']);
-
-    expect(statusOf(hub)).toBe('Everyone there is already fit.');
-    expect(hub.pendingRecoveryMs).toBe(0);
-    expect(hub.raidClockMs).toBe(RAID_DURATION_MS);
   });
 
   it('opens the base screen with an empty loadout instead of a partner the player never picked', () => {
@@ -1456,22 +1290,6 @@ describe('what the base screen leads with', () => {
     return hub;
   }
 
-  it('counts the stash in the title bar the way the boxes count it: kinds, not items', () => {
-    const hub = createFreshHub();
-    const kinds = ITEM_DEFINITIONS.filter((item) => hub.stash.itemCount(item.id) > 0).length;
-    const units = ITEM_DEFINITIONS.reduce((sum, item) => sum + hub.stash.itemCount(item.id), 0);
-    // The case that misled: a stack of several is one kind, not one item.
-    expect(units).toBeGreaterThan(kinds);
-    const aside = (markup: string) => /class="px-title-aside">([^<]*)</.exec(markup)?.[1];
-
-    // A screen with no number of its own to lead with: the friend room.
-    (hub as unknown as { setView(view: string): void }).setView('friend');
-    expect(aside(markupOf(hub))).toBe(`1 Pokémon · ${kinds} kinds of item`);
-    // The boxes' own pane says the same number in the same word.
-    hub.setView('stash');
-    expect(markupOf(hub)).toContain(`${kinds} kinds`);
-  });
-
   it("says in Brock's title bar what his parts come to at base, each by its picture", () => {
     const hub = createFreshHub();
     hub.setView('workshop');
@@ -1485,34 +1303,6 @@ describe('what the base screen leads with', () => {
         expect(aside).toContain(`${itemIconName(itemId)}.png`);
       }
     }
-  });
-
-  it('keeps the swap offer, in the stash beside the Pokémon it would trade away', () => {
-    const hub = createFreshHub();
-    const saved = (hub as unknown as { savedGame: { raidProgress: RaidProgress } }).savedGame;
-    saved.raidProgress = {
-      ...saved.raidProgress,
-      raidRecord: { 'floodplain-relay': { deployed: 1, extracted: 0, wiped: 1 } },
-    };
-
-    hub.setView('stash');
-    const stash = markupOf(hub);
-
-    expect(stash).toContain('swap-panel');
-    expect(stash).toContain('Down to one Pokémon');
-    expect(stash).toContain('data-view="reselect"');
-  });
-
-  it('words the swap as an option, not an alarm, before a raid has been lost (playtest 47)', () => {
-    const hub = createFreshHub();
-
-    hub.setView('stash');
-    const stash = markupOf(hub);
-
-    expect(stash).toContain('data-view="reselect"');
-    expect(stash).toContain('Swap your partner');
-    expect(stash).not.toContain('Down to one Pokémon');
-    expect(stash).not.toContain('is all you have left');
   });
 
   /**
@@ -1549,12 +1339,6 @@ describe('what the base screen leads with', () => {
 
   it('does not let the swap stand in for the Pokemon Center or the restock', () => {
     const { hub, storage } = createSpentHub();
-    hub.setView('stash');
-    // The price is the tag on the hurt Pokémon's own row.
-    const priceOn = (id: string): string | undefined =>
-      new RegExp(`data-recover="${id}"[^>]*>.*?px-tag-(?:risk|good)">([^<]+)<`).exec(markupOf(hub))?.[1];
-    const price = priceOn('squirtle-1');
-    expect(price).toBeDefined();
 
     swapTo(hub, 'charmander');
 
@@ -1564,9 +1348,9 @@ describe('what the base screen leads with', () => {
     ]);
     expect(saved.stash.listItems()).toEqual({ 'poke-ball': 4, 'raid-pack': 1 });
     expect(saved.pendingRecoveryMs).toBe(0);
-    // The screen shows the same vault, and the bay still wants its price.
     expect(hub.stash.listPokemon()[0].pokemon.currentHp).toBe(1);
-    expect(priceOn('charmander-1')).toBe(price);
+    // The swap screen stays up, now holding the new partner, and says so.
+    expect((hub as unknown as { view: string }).view).toBe('reselect');
 
     // Swapping back for the species you had is no way round it either.
     swapTo(hub, 'squirtle');
@@ -1646,13 +1430,6 @@ describe('what the base screen leads with', () => {
     // A key's click carries no detail: reaching RELEASE from KEEP is already deliberate.
     buttons.get('[data-swap-confirm]')!.onclick!({ detail: 0 });
     expect(hub.stash.listPokemon()[0].pokemon.base.id).toBe('charmander');
-  });
-
-  it('drops the offer everywhere the moment a second Pokémon is banked', () => {
-    const { hub } = createHub();
-
-    hub.setView('stash');
-    expect(markupOf(hub)).not.toContain('swap-panel');
   });
 
   it('lets each panel of the hall be left by the X on its title bar, with no Done button beside it', () => {
@@ -2263,29 +2040,6 @@ describe('Brock', () => {
     expect(runSession.plan?.extractionPoints.some((point) => point.label === 'BEACON')).toBe(false);
   });
 
-  it('quotes the bay at this base\'s prices and spends the ward\'s three beds once', () => {
-    const { hub } = createWorkshopHub(['recovery-bay-1', 'quarantine-ward']);
-    const everyone = hub.stash.listPokemon();
-    for (const stored of everyone) stored.pokemon.takeDamage(stored.pokemon.maxHp);
-    const [first, second, third, fourth] = everyone;
-    const terms = { priceShare: 0.5, wardTreatments: 0 };
-
-    // The bill is in the stash, beside the Pokémon it is for.
-    hub.setView('stash');
-    expect(markupOf(hub)).toContain('Ward bed: ');
-
-    // The beds bring three round for nothing: a raid party back from a wipe.
-    hub.recover([first.id]);
-    hub.recover([second.id, third.id]);
-    expect(hub.pendingRecoveryMs).toBe(0);
-
-    // No bed left, so the fourth revive is charged, at the bay's discount.
-    const revivePriceMs = recoveryCostMs(fourth.pokemon, terms);
-    expect(revivePriceMs).toBe(recoveryPrices(0.5).reviveMs);
-    hub.recover([fourth.id]);
-    expect(hub.pendingRecoveryMs).toBe(revivePriceMs);
-    expect(markupOf(hub)).not.toContain('Ward bed: ');
-  });
 });
 
 /**
@@ -2334,13 +2088,11 @@ describe('taking a status line down', () => {
     expect(statusOf(hub)).toBe('');
   });
 
-  // Playtest 4: "Charmander recovered for 0:50 of raid time" was still in the
-  // help bar on Brock, a screen that had said nothing.
   it('leaves a status line on the screen that raised it', () => {
     const { hub, internals, timers } = hubWithRenderCount();
     const views = hub as unknown as { setView(view: string): void };
-    views.setView('stash');
-    internals.setStatus('Charmander recovered for 0:50 of raid time. Next raid clock: 4:10.');
+    views.setView('trader');
+    internals.setStatus('Bought a Potion.');
 
     views.setView('workshop');
 
@@ -2692,7 +2444,7 @@ describe('HubScene - Bill', () => {
     hub.setView('trader');
     armed.traderArmed = 'barter-quick-claw';
 
-    hub.setView('stash');
+    hub.setView('workshop');
     hub.setView('trader');
 
     expect(armed.traderArmed).toBeUndefined();
@@ -2752,133 +2504,6 @@ describe('HubScene - Bill', () => {
     const boat = markupOf(hub);
 
     expect(boat).not.toMatch(/[▶▲▼◀→←↑↓✓✔]/u);
-  });
-});
-
-/**
- * Two questions a player could not ask anywhere in the game: how close is this
- * Pokemon to its next level, and what does this move actually do. They used to
- * be a screen of their own, opened by a chip on every stash row; they are the
- * stash's own detail pane now, so the collection and the answer about the thing
- * in it are one screen.
- */
-describe('what the stash says about the Pokémon under the cursor', () => {
-  function markupOf(hub: HubInternals): string {
-    hub.render();
-    return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
-  }
-
-  function stashMarkup(hub: HubInternals): string {
-    hub.setView('stash');
-    return markupOf(hub);
-  }
-
-  it('holds a pane for every Pokémon in the list, not a chip that opens a screen', () => {
-    const { hub } = createHub();
-
-    const stash = stashMarkup(hub);
-
-    const rows = hub.stash.listPokemon();
-    expect(rows.length).toBeGreaterThan(0);
-    for (const stored of rows) {
-      // The row points at its own pane, and the pane is on the same screen.
-      expect(stash).toContain(`data-shows="${stored.id}"`);
-      expect(stash).toContain(`data-shown-by="${stored.id}"`);
-    }
-    // Nothing on a row opens a second screen about the thing the row is.
-    expect(stash).not.toContain('data-summary=');
-  });
-
-  // Break-it test, 23 Nov 2026: RENAME opened with the old name unselected and
-  // the caret at its start, so a pasted name went in front of it.
-  it('selects the old name when RENAME opens, so what is typed or pasted replaces it', () => {
-    const { hub } = createHub(DEFAULT_RAID_PROGRESS, new MemoryStorage());
-    const internals = hub as unknown as {
-      boxScope: number;
-      boxEditing: string | undefined;
-      overlay: { root: { querySelectorAll(selector: string): unknown[]; querySelector(selector: string): unknown } };
-    };
-    hub.setView('stash');
-    internals.boxScope = 0;
-    const rename = { dataset: {} as Record<string, string>, onclick: undefined as undefined | ((event: { detail: number }) => void) };
-    const field = { select: vi.fn() };
-    internals.overlay.root.querySelectorAll = (selector: string) => (selector === '[data-box-rename]' ? [rename] : []);
-    internals.overlay.root.querySelector = (selector: string) =>
-      selector === '[data-box-form="rename"] .px-field' && internals.boxEditing === 'rename' ? field : null;
-    hub.render();
-    rename.onclick!({ detail: 0 });
-
-    expect(internals.boxEditing).toBe('rename');
-    expect(field.select).toHaveBeenCalledOnce();
-  });
-
-  it.each(['<!--', '<i>Keep</i>'])('prints a box named %s as words, never as markup', (typed) => {
-    // A box named `<!--` once commented out the rest of the Pokemon Center.
-    const { hub } = createHub(DEFAULT_RAID_PROGRESS, new MemoryStorage());
-    const editing = hub as unknown as { boxScope: number; boxEditing: string; submitBoxForm(text: string): void };
-    hub.setView('stash');
-    editing.boxScope = 0;
-    editing.boxEditing = 'rename';
-    editing.submitBoxForm(typed);
-
-    // Read with the "Renamed to" line still up, which prints the name too.
-    const stash = markupOf(hub);
-    expect(stash).toContain('Renamed to');
-
-    expect(stash).not.toContain('<!--');
-    expect(stash).not.toContain('<i>');
-    const named = hub.stash.listBoxes()[0].name;
-    expect(named).toBe(typed.replace(/[<>]/g, ''));
-    expect(stash).toContain(named);
-    // The screen is still all there after the name: the list is drawn.
-    expect(stash.slice(stash.indexOf(named))).toContain('data-shows="charmander-1"');
-  });
-
-  it('says how far the next level is, and what each move does', () => {
-    const { hub } = createHub();
-    const stored = hub.stash.listPokemon().find(({ id }) => id === 'charmander-1')!;
-    const { pokemon } = stored;
-    const curve = pokemon.base.growthRate;
-    const span = experienceForLevel(pokemon.level + 1, curve) - experienceForLevel(pokemon.level, curve);
-    pokemon.experience = experienceForLevel(pokemon.level, curve) + Math.floor(span / 2);
-
-    const stash = stashMarkup(hub);
-
-    expect(stash).toContain('px-xp-fill');
-    expect(stash).toContain(`${Math.ceil(span / 2).toLocaleString('en-GB')} XP to Lv ${pokemon.level + 1}`);
-    // Every move carries its numbers and the sentence that says what it is for,
-    // in the help bar the cursor fills when it rests on the move.
-    for (const move of pokemon.moves) {
-      expect(stash).toContain(move.base.name);
-      expect(stash).toContain(`ACC ${move.base.accuracy}`);
-      expect(stash).toContain(move.base.description);
-    }
-    expect(stash).toContain(`${pokemon.moves.length} of 4 known`);
-  });
-
-  it('shows one pane at a time: the first, until the cursor says otherwise', () => {
-    const { hub } = createHub();
-
-    const stash = stashMarkup(hub);
-
-    const panes = [...stash.matchAll(/data-shown-by="([^"]+)"([^>]*)>/g)];
-    expect(panes.length).toBe(hub.stash.listPokemon().length);
-    expect(panes.filter(([, , rest]) => !rest.includes('hidden')).length).toBe(1);
-  });
-
-  it('keeps the pane on its own Pokémon while the cursor is inside it', () => {
-    const { hub } = createHub();
-
-    const stash = stashMarkup(hub);
-    const id = hub.stash.listPokemon()[0].id;
-    const pane = stash.slice(stash.indexOf(`data-shown-by="${id}"`));
-
-    // `MenuOverlay.showDetailFor` reads the focused control's nearest
-    // `data-shows`, so a control in the pane that carried none would leave the
-    // pane it lives in showing somebody else after a re-render.
-    for (const control of pane.slice(0, pane.indexOf('data-shown-by=', 1)).matchAll(/<button[^>]*>/g)) {
-      expect(control[0]).toContain(`data-shows="${id}"`);
-    }
   });
 });
 
@@ -2978,6 +2603,13 @@ describe('the wall map in Oak’s Lab', () => {
  */
 describe('the lab with only Greystone Vale in play', () => {
   beforeEach(() => retireMapsForTests(RETIRED_MAPS));
+  // The hub shares one process-wide run manager: a raid an earlier test
+  // started is resolved, so this one can deploy whatever ran before it.
+  beforeEach(() => {
+    if (activeRunManager.phase === RunPhase.InRun) {
+      activeRunManager.resolveEscape();
+    }
+  });
   afterEach(() => retireMapsForTests([]));
 
   it('sends a save with a raid behind it into Greystone Vale on a contract that lives there', () => {
