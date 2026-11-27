@@ -57,8 +57,6 @@ import { createRunTrainerEncounters } from '../world/trainers';
 import {
   BACK_AWAY_OPTION,
   CHALLENGE_OPTION,
-  TRAINER_COMMITMENT_LINE,
-  trainerDeclinedMessage,
 } from '../world/trainerEngagement';
 import { WorldScene } from './WorldScene';
 
@@ -184,7 +182,7 @@ describe('speaking to an authored trainer', () => {
     harness = facingMaya();
   });
 
-  it('asks before it commits, and says what the commitment is', () => {
+  it('asks before it commits, in the trainer\'s own words', () => {
     harness.internals.tryInteract();
 
     expect(harness.internals.trainerPrompt).toBeDefined();
@@ -192,12 +190,9 @@ describe('speaking to an authored trainer', () => {
     // only run once the player has said yes.
     expect(harness.internals.pendingTrainerBattle).toBeUndefined();
     expect(harness.dialogBox.showMessages).not.toHaveBeenCalled();
-    expect(promptText(harness.renderedTexts)).toContain('RAIDER MAYA');
-    // And what is in the fight, against the player's own lead.
-    expect(promptText(harness.renderedTexts)).toMatch(
-      /RAIDER MAYA: \d Pokémon, lead Lv \d+ to your Lv 5\./,
-    );
-    expect(promptText(harness.renderedTexts)).toContain(TRAINER_COMMITMENT_LINE);
+    expect(promptText(harness.renderedTexts)).toContain('RAIDER MAYA: The reeds go around. The road goes through me.');
+    // No stat card and no rule: FireRed's trainer reads out neither.
+    expect(promptText(harness.renderedTexts)).not.toMatch(/Lv \d|cannot be fled/);
     expect(promptText(harness.renderedTexts)).toContain(CHALLENGE_OPTION);
     expect(promptText(harness.renderedTexts)).toContain(BACK_AWAY_OPTION);
   });
@@ -212,7 +207,8 @@ describe('speaking to an authored trainer', () => {
 
     expect(harness.internals.pendingTrainerBattle).toBeUndefined();
     expect(harness.internals.trainerPrompt).toBeUndefined();
-    expect(harness.dialogBox.shownMessages).toEqual([trainerDeclinedMessage('RAIDER MAYA')]);
+    // Backing away says nothing: the box closing is the answer.
+    expect(harness.dialogBox.shownMessages).toEqual([]);
   });
 
   it('starts the fight only after the player moves to CHALLENGE and confirms', () => {
@@ -226,11 +222,8 @@ describe('speaking to an authored trainer', () => {
 
     expect(harness.internals.trainerPrompt).toBeUndefined();
     expect(harness.internals.pendingTrainerBattle?.trainer.name).toBe('RAIDER MAYA');
-    // Only now do her lines play, and the battle follows them.
-    expect(harness.dialogBox.showMessages).toHaveBeenCalledWith([
-      'MAYA HAS THE ROAD IN SIGHT.',
-      'The reeds go around. The road goes through me.',
-    ]);
+    // Only now does the rest of what is said play, and the battle follows it.
+    expect(harness.dialogBox.showMessages).toHaveBeenCalledWith(['MAYA HAS THE ROAD IN SIGHT.']);
   });
 
   it('can be declined and asked again, so backing off is not a lost encounter', () => {

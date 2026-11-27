@@ -93,7 +93,7 @@ export interface NextGymHere {
   readonly inside: GridPosition;
   /**
    * The level the leader's team leads at, and the highest of the player's
-   * standing team, in the challenge box's own words ('lead Lv 12 to your Lv
+   * standing team, in the rim's words for a hunter ('lead Lv 12 to your Lv
    * 6'). Absent, the line says neither.
    */
   readonly levels?: { readonly leads: number; readonly yours?: number };
@@ -197,7 +197,7 @@ function nextGymHint(context: ObjectiveGuideContext): string | undefined {
     return undefined;
   }
   const where = `${directionTo(context.currentPosition, context.towards?.(gym.inside) ?? gym.inside)}${stepsAway(context.stepsTo?.(gym.inside))}`;
-  // The leader's level, as the challenge box gives it at the door: a newcomer
+  // The leader's level, said before the door: a newcomer
   // was sent at MISTY on a first raid at Lv 6, against a team leading at Lv 12,
   // with nothing said until the CHALLENGE (persona playtest and an AI veteran,
   // 23 Nov 2026).
