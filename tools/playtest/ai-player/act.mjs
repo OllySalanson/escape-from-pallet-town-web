@@ -154,11 +154,22 @@ const alive = (pid) => {
   }
 };
 
+/**
+ * The window the game is played in: 400x256 by default, which is the
+ * smallest a logic check needs, and `EPTW_WINDOW=1200x768` for the window a
+ * player on a laptop has - a harbour judged only at 400x256 broke at a normal
+ * window (the harbour loop audit, 27 Nov 2026).
+ */
+const WINDOW = (() => {
+  const [width, height] = (process.env.EPTW_WINDOW ?? '').split('x').map(Number);
+  return width > 0 && height > 0 ? { width, height } : LOGIC_WINDOW;
+})();
+
 /** Opens the game in a new tab of the browser on `cdpPort`, with a save seeded if given, and pauses it. */
 async function openGame(cdpPort, url, save, storage = null) {
   const target = await (await fetch(`http://127.0.0.1:${cdpPort}/json/new?about:blank`, { method: 'PUT' })).json();
-  const page = await reattachPage(cdpPort, target.id, { window: LOGIC_WINDOW });
-  await page.send('Emulation.setDeviceMetricsOverride', { ...LOGIC_WINDOW, deviceScaleFactor: 1, mobile: false });
+  const page = await reattachPage(cdpPort, target.id, { window: WINDOW });
+  await page.send('Emulation.setDeviceMetricsOverride', { ...WINDOW, deviceScaleFactor: 1, mobile: false });
   await page.send('Network.enable');
   await page.send('Network.setBlockedURLs', { urls: ['*supabase.co*'] });
   // A whole page's storage - a save and the raid written down beside it
@@ -288,6 +299,9 @@ async function act(runId) {
   let page;
   try {
     page = await reattachPage(session.cdpPort, session.targetId);
+    // A window of the caller's own is held on every action: an override lives
+    // only as long as the connection that set it.
+    if (WINDOW !== LOGIC_WINDOW) await page.send('Emulation.setDeviceMetricsOverride', { ...WINDOW, deviceScaleFactor: 1, mobile: false });
   } catch (error) {
     fail(`the game tab is gone (${error.message}). Start the run again with: act.mjs start --resume=${runId}`);
   }

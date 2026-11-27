@@ -99,6 +99,8 @@ Enter works a focused DOM control, so a driver can play the lobby's screens the
 way a player does rather than calling `.click()`: `keyDescription` gives Enter a
 `text`, which is what makes Chromium run a key's default action.
 
+`keeperClip.mjs <cdp port> <test-mode build url> <save.json> <room id> <out dir> [--twice]` records a keeper spoken to from their room's mat to the menu or question they open, read at a fixed pace, as `clip.webm`, `clip.gif` and `talk.json` (every box, the presses, the game time to act); `--twice` speaks again after backing out, for the visit a player has every session (`docs/screens/keepers-one-box/`).
+
 `firstRaid.mjs <test-mode build url> <dir> [--shots]` plays a brand new save from
 the title until the first raid is the player's, as somebody who does not read, and
 prints every barrier in order with its presses and seconds.
