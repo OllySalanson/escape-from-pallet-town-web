@@ -266,15 +266,13 @@ export async function jumpIn(page, { insertion, press, until, wait } = {}) {
 }
 
 /**
- * From THE RAID ARENA's hall, on to the friend's room: the marshal says what she
- * has to say about the raid being got ready, and the last thing she asks is
- * whether there is a friend coming (`BaseScene.speakToMarshal`). Oak used to
- * ask it after every word he and his board said; it moved to where raids start
- * (the harbour critic tour, 26 Nov 2026). A newcomer hears her first words
- * without the question, so she is asked again. ESC is past what she has to
- * say. The cursor starts on NOT NOW unless a room is already held
- * (`startOnNotNow`), so it is moved to YES, by where the box says it is, before
- * SPACE.
+ * From THE RAID ARENA's hall, on to the friend's room: the player walks up to
+ * the WITH A FRIEND board by the rack and faces it, and it asks whether there
+ * is a friend coming (`BaseScene.askAtTheFriendBoard`). The marshal asked it
+ * after everything she said until the keepers took to one greeting each (the
+ * harbour audit, 27 Nov 2026), and Oak before her. The board is stood in front
+ * of from the row below, facing up, and the cursor is moved to YES, by where
+ * the box says it is, before SPACE.
  */
 export async function openFriendRoom(page, { press, settle = sleep, settleMs = 180 }) {
   const base = `${GAME}.scene.getScene('base')`;
@@ -284,17 +282,14 @@ export async function openFriendRoom(page, { press, settle = sleep, settleMs = 1
         const question = b.boxQuestion?.prompt.selected ?? null;
         if (question !== null) return { question };
         if (b.dialogBox?.visible) return { talking: true };
-        const keeper = b.room?.keeper?.position; if (!keeper) throw new Error('openFriendRoom: not in a room with a keeper');
-        const s = b.currentTile;
-        const sides = [[0, 1, 'ArrowUp'], [0, -1, 'ArrowDown'], [1, 0, 'ArrowLeft'], [-1, 0, 'ArrowRight']];
-        const here = sides.find(([dx, dy]) => s.x === keeper.x + dx && s.y === keeper.y + dy);
-        if (here) return { key: b.facing === { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }[here[2]] ? 'Space' : here[2] };
-        const goals = sides.map(([dx, dy]) => ({ x: keeper.x + dx, y: keeper.y + dy })).filter((g) => !b.isBlocked(g));
+        const board = b.place?.room?.things.find((thing) => thing.opens === 'friend')?.tiles[0];
+        if (!board) throw new Error('openFriendRoom: not in the hall with the friend board');
+        const s = b.currentTile, goal = { x: board.x, y: board.y + 1 };
+        if (s.x === goal.x && s.y === goal.y) return { key: b.facing === 'up' ? 'Space' : 'ArrowUp' };
         const c = b.collision, H = c.length, W = c[0].length, id = (x, y) => y * W + x;
-        const at = (x, y) => goals.some((g) => g.x === x && g.y === y);
         const prev = new Map([[id(s.x, s.y), null]]); const queue = [[s.x, s.y]]; let found = null;
         while (queue.length) { const [x, y] = queue.shift();
-          if (at(x, y)) { found = [x, y]; break; }
+          if (x === goal.x && y === goal.y) { found = [x, y]; break; }
           for (const [dx, dy, k] of [[0,-1,'ArrowUp'],[0,1,'ArrowDown'],[-1,0,'ArrowLeft'],[1,0,'ArrowRight']]) { const nx = x + dx, ny = y + dy;
             if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(id(nx, ny))) continue;
             if (b.isBlocked({ x: nx, y: ny })) continue;
@@ -304,7 +299,7 @@ export async function openFriendRoom(page, { press, settle = sleep, settleMs = 1
         for (;;) { const p = prev.get(id(cur[0], cur[1])); if (!p) break; key = p[2]; cur = [p[0], p[1]]; }
         return { key }; })()`,
     );
-    if (state.unreachable) throw new Error('openFriendRoom: nothing walks to the marshal');
+    if (state.unreachable) throw new Error('openFriendRoom: nothing walks to the friend board');
     if (state.question !== undefined) await press(state.question === 0 ? 'Space' : 'ArrowUp');
     else if (state.talking) await press('Escape');
     else if (state.key) await press(state.key);

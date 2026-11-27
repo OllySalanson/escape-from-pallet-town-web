@@ -4,28 +4,29 @@ import { isMapRetired } from '../world/mapRoster';
 import { landingsHeldBack, quarterOfLanding } from '../world/valeQuarters';
 
 /**
- * What Professor Oak, Nurse Joy and the Raid Arena's marshal say the first time
- * they are spoken to, and never again.
+ * What somebody says once, the first time it is true, and never again: Oak as
+ * he hands the partner over, the news in the yard of a map put away or a
+ * landing held back, the radio's word at a minute left, the Gym Guide's on the
+ * stakes and on a gym's honour worn, and the rail's on a catch at base.
  *
- * Playtest 43 played the first hour as somebody who had never met either a
- * Pokemon game or an extraction game, and lost them at about fifty-four
- * minutes: nothing had ever said what a raid is, what a wipe takes, that a catch
- * takes room in the pack, or that healing is paid for out of the next raid's
- * clock. Every one of those facts was on a screen somewhere; none of them was
- * said by anybody. So the people a newcomer meets first speak a few lines, once,
- * the way the games this is dressed as do.
- *
- * They say it in their own room's dialogue box, before anything opens
- * (`BaseScene.speakToKeeper`). It used to be a bar along the foot of a screen,
- * and the captain's word for that (30 Oct 2026) was disengaged: the rooms are
- * the game, and a notification over a menu is what the harbour was built to end.
+ * Playtest 43 lost a newcomer at about fifty-four minutes because nothing had
+ * ever said what a raid is, so the people a newcomer met first spoke a few
+ * lines, once. The keepers no longer do: a keeper at a counter says one fixed
+ * greeting and opens what they keep, as a FireRed clerk or nurse does
+ * (`hub/keeperGreetings.ts`), because their first speeches were four to six
+ * boxes of rules in front of the thing the player came in for (the harbour
+ * audit, 27 Nov 2026). What those speeches explained is shown where it is true:
+ * a price in the question that spends it, a greyed card, a padlock.
  *
  * Once means once per save. A set of words is recorded as heard at the moment
  * it is shown (`SaveManager.hearFirstWords`), as the opening fight's lesson is,
  * so leaving without reading it does not buy a second hearing - and the save
- * keeps only the list of ids, as it keeps every other permanent fact.
+ * keeps only the list of ids, as it keeps every other permanent fact. An id no
+ * longer said ('loadout', 'center', 'workshop', 'cottage', 'nearWork', which
+ * the keepers had) is dropped from an old save as it loads (`isFirstWordsId`),
+ * and nothing else about that save changes.
  */
-export const FIRST_WORDS_IDS = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'moved', 'coast', 'marsh', 'nearWork', 'benchCatch', 'enraged', 'stakes', 'cascadeWorn', 'soulWorn'] as const;
+export const FIRST_WORDS_IDS = ['lab', 'moved', 'coast', 'marsh', 'benchCatch', 'enraged', 'stakes', 'cascadeWorn', 'soulWorn'] as const;
 export type FirstWordsId = (typeof FIRST_WORDS_IDS)[number];
 
 export interface FirstWords {
@@ -58,49 +59,6 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
       // first catch says what a faint costs (`world/firstCatch.ts`), and the
       // first raid to reach 1:00 left says what 0:00 does (`FIRST_WORDS.enraged`).
       'Every raid starts at the RAID ARENA, west across the yard.',
-    ],
-  },
-  // Said in the great hall by its own keeper, when spoken to, in the room's
-  // dialogue box. She has it to say from the first raid's coming home: nothing
-  // here is needed to go over the fence the first time, and all of it means
-  // something once somebody has been.
-  loadout: {
-    speaker: ARENA_KEEPER_DESIGN,
-    name: ARENA_KEEPER_NAME,
-    lines: [
-      // Three boxes, and the catch rule beside the pack it is about: after the
-      // LOCKER it read as "leave room in the locker" (the harbour critic tour,
-      // 26 Nov 2026).
-      "That's GREYSTONE VALE down the pit. The cloud is ground you haven't walked yet.",
-      'BENCH: who comes. RACK: what you carry. LOCKER: what comes home whatever happens.',
-      'Leave room in your pack: a caught Pokémon takes four squares. And mind the hunter!',
-    ],
-  },
-  center: {
-    speaker: 'nurse-joy',
-    name: 'Nurse Joy',
-    lines: [
-      // Two boxes, where six stood before the first heal (the harbour critic
-      // tour, 26 Nov 2026): her price is said with the heal itself.
-      'Welcome to the Pokémon Center! Healing is free. Only a faint costs time off your next raid.',
-      'Your boxes and everything you have banked are on BILL’S PC, over by the wall.',
-    ],
-  },
-  workshop: {
-    speaker: 'brock',
-    name: 'Brock',
-    lines: [
-      'I build things into this base, and they stay built.',
-      'Every bay with chalk in it is something I can put there.',
-      'Walk up to the chalk, or talk to me, and pick what goes in. I build from what raids bring home.',
-    ],
-  },
-  cottage: {
-    speaker: 'bill',
-    name: 'Bill',
-    lines: [
-      'Ah, a visitor! Everything on these shelves came off my boat.',
-      "Walk up to anything and ask, and I'll name my price.",
     ],
   },
   // Said in the yard, once, to somebody back from before the old maps were put
@@ -155,8 +113,6 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
       "His badge is on your name plate now. Folk can't miss it!",
     ],
   },
-  // Said by Oak once the near jobs are banked (`hub/nextStep.ts`): the end of
-  // the easy work, which the critic banked by raid six with nothing to mark it.
   // Said at the rail, once, before a lone Pokemon goes over with a catch at
   // base (`hub/benchOffer.ts`): the reason to take it, before the question.
   benchCatch: {
@@ -187,11 +143,6 @@ export const FIRST_WORDS: Readonly<Record<FirstWordsId, FirstWords>> = {
       "Read every one, then get out: that's a LINE SURVEY done.",
       "Now you know, he'll put survey jobs on the board for you.",
     ],
-  },
-  nearWork: {
-    speaker: 'prof-oak',
-    name: 'Professor Oak',
-    lines: ["That's the near work done! From now on, jobs come from all over the vale."],
   },
 };
 

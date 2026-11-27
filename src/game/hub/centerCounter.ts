@@ -9,14 +9,12 @@ import {
   quoteRecovery,
   raidClockAfterRecovery,
   recoveryHeldBackIds,
-  teamCondition,
-  wardBedIdsFor,
   type RecoveryTerms,
 } from './recovery';
 import { recoveryPriceShare, wardTreatmentsPerRaid } from './workshop';
 
 /**
- * Nurse Joy at her counter: what she says the heal would cost, in the room's
+ * Nurse Joy at her counter: what she asks, with the heal's price in the question, in the room's
  * own dialogue box, and YES or NOT NOW.
  *
  * Healing everybody used to be twelve Downs through a dark blue screen to a
@@ -43,20 +41,6 @@ export function recoveryTermsFor(
   };
 }
 
-/**
- * Her plain word on what healing costs, said with a price (AI playtest 5, 22 Nov
- * 2026). Never with today's free heal: its own line already says it is free, and
- * the rule said beside it, and again after, was the same thing three times in
- * one visit (the first-time-friend retest, 22 Nov 2026). So it is only ever said
- * once today's free heal is used, and right after "Healing would take 0:35":
- * opening on "Healing is free." and closing on "the first each day is free" read
- * as her taking the price back (night raid critic, 26 Nov 2026).
- */
-// In her words, not the rule's: "at most 1:00 of a raid" was the designer's
-// cap read aloud, and "today's free one is used" never said free what (the
-// harbour critic tour, 26 Nov 2026). The cap still holds (`recovery.ts`).
-export const HEAL_RULE_LINE = "Only a faint costs. Your free heal today's been used; you get another tomorrow.";
-
 type CounterGame = Pick<RestoredGame, 'stash' | 'pendingRecoveryMs' | 'wardTreatmentsUsed' | 'freeHealDay'> & {
   readonly raidProgress: Pick<RaidProgress, 'workshopUpgrades'>;
   /** A raid out in another window, whose Pokemon are not hers to heal (`SaveManager.healAtCenter`). */
@@ -64,17 +48,30 @@ type CounterGame = Pick<RestoredGame, 'stash' | 'pendingRecoveryMs' | 'wardTreat
 };
 
 export interface CenterOffer {
-  /** What she says first. */
+  /**
+   * What she asks, with YES and NOT NOW under it, straight after her greeting
+   * (`hub/keeperGreetings.ts`): who she would heal and what it costs, in the
+   * question that spends it. FireRed's nurse asks everybody, fit or not, and so
+   * does she.
+   */
+  readonly question: string;
+  /** Whether YES heals anybody. When it does not, YES is answered with `lines`. */
+  readonly heals: boolean;
+  /**
+   * What she says to YES: why nobody can be treated now, or, after a heal, what
+   * is still true of somebody she did not treat.
+   */
   readonly lines: readonly string[];
-  /** What she asks, with YES and NOT NOW under it. Absent when there is nobody to heal. */
-  readonly question?: string;
   /**
    * Whether YES takes clock off the next raid, up to 1:00 of it. A free heal opens
    * on YES as FireRed's does; one with a price opens on NOT NOW, because the key
-   * mashed through her lines is still under the player's finger.
+   * that read her greeting away is still under the player's finger.
    */
   readonly spendsForGood?: boolean;
 }
+
+/** What she asks when nobody she could treat is hurt: YES is answered with why. */
+export const PLAIN_HEAL_QUESTION = 'Shall I heal your Pokémon?';
 
 /** How she says the clock the next raid would start on. */
 function clockAfter(pendingMs: number): string {
@@ -132,8 +129,15 @@ export function joyRailLine(game: CounterGame, free = false, now: Date = new Dat
 }
 
 /**
- * What she says to whoever walks up. `free` is the explorer run, whose clock
- * nothing can shorten (`dev/playtestMode.ts`).
+ * What she asks whoever walks up, and what she says to YES. `free` is the
+ * explorer run, whose clock nothing can shorten (`dev/playtestMode.ts`).
+ *
+ * Her price used to be a rule said before the question - "Healing is free.
+ * Only a faint costs time off your next raid", the ward's bed, the day's free
+ * heal - two to four boxes in front of it (the harbour audit, 27 Nov 2026).
+ * The price is in the question now, and it is the whole of the rule: a scratch
+ * says it costs nothing, a faint says what it takes, and the ward and today's
+ * free heal are already in the number (`recovery.ts`).
  */
 export function centerOffer(game: CounterGame, free = false, now: Date = new Date()): CenterOffer {
   const away = awayOnRaid(game);
@@ -149,6 +153,8 @@ export function centerOffer(game: CounterGame, free = false, now: Date = new Dat
   const pending = game.pendingRecoveryMs;
   if (hurt.length === 0) {
     return {
+      question: PLAIN_HEAL_QUESTION,
+      heals: false,
       lines: [
         ...(out.length === 0 ? ['Your Pokémon are all fit to raid.'] : outLine),
         ...(pending > 0 && !free
@@ -163,13 +169,10 @@ export function centerOffer(game: CounterGame, free = false, now: Date = new Dat
   // (`recovery.ts`): the next raid is as short as she will make it.
   const heldBack = free ? [] : recoveryHeldBackIds(game.stash, pending, ids, terms);
   const capped = `Your next raid is already down to ${clockAfter(pending)}, as short as I will make it.`;
-  const raidFirst = 'Raid first, then come and see me.';
   if (heldBack.length === hurt.length) {
-    return { lines: [...outLine, `${teamCondition(game.stash, away) ?? 'Somebody needs me'}. ${capped}`, raidFirst] };
+    return { question: PLAIN_HEAL_QUESTION, heals: false, lines: [...outLine, capped, 'Raid first, then come and see me.'] };
   }
   const quoteMs = free ? 0 : quoteRecovery(game.stash, pending, ids, terms);
-  // Spent only on a faint: mending a scratch is free on any day.
-  const freeToday = freeHealApplies(game.stash, ids, terms);
   const treated = hurt.filter((stored) => !heldBack.includes(stored.id));
   const them =
     treated.length === 1
@@ -177,54 +180,18 @@ export function centerOffer(game: CounterGame, free = false, now: Date = new Dat
       : treated.length === hurt.length
         ? treated.length === 2 ? 'both of them' : `all ${treated.length} of them`
         : `${treated.length} of them`;
-  const price =
-    freeToday && !free
-      ? "Your first heal today is free: it won't cost your next raid a second."
-      : quoteMs === 0
-      ? "Healing won't cost your next raid a second."
-      : // The heal's price, not a charge already made: 'It takes 0:45 off your
-        // next raid' before the question read as lost whatever the answer
-        // (AI playtest, 22 Nov 2026).
-        `Healing would take ${formatRecoveryClock(quoteMs)} off your next raid.`;
+  // The heal's price, not a charge already made: 'It takes 0:45 off your next
+  // raid' said before the question read as lost whatever the answer (AI
+  // playtest, 22 Nov 2026). In the question, it is what YES costs.
+  const price = quoteMs === 0 ? "It won't cost your next raid a second." : `It takes ${formatRecoveryClock(quoteMs)} off your next raid.`;
   return {
-    lines: [
-      ...outLine,
-      `${teamCondition(game.stash, away) ?? 'Somebody needs me'}. ${price}`,
-      ...(heldBack.length > 0 ? [`${capped} The rest must wait for a raid.`] : []),
-      ...(free || freeToday ? [] : wardLines(game, pending, ids, terms)),
-      ...(free || freeToday || quoteMs === 0 ? [] : [HEAL_RULE_LINE]),
-    ],
-    question: `Shall I heal ${them}?`,
+    question: `Shall I heal ${them}? ${price}`,
+    heals: true,
+    lines: [...(heldBack.length > 0 ? [`${capped} The rest must wait for a raid.`] : []), ...outLine],
     // With nobody able to raid, the only useful answer is yes: a question opening
     // on NOT NOW sent a newcomer pressing SPACE round her counter for ever.
     spendsForGood: quoteMs > 0 && !nobodyCanRaid(game),
   };
-}
-
-/**
- * What she says about THE WARD, once it is built: who its bed takes, and what a
- * bed never waives, or that the bed is used until the next raid. It was counted
- * in her price and never said, so a player who had built it could not tell
- * whether it had been used, and read a fainted team's charge as the ward doing
- * nothing (AI playtest, 20 Nov 2026).
- */
-function wardLines(game: CounterGame, pending: number, ids: readonly string[], terms: RecoveryTerms): readonly string[] {
-  if (wardTreatmentsPerRaid(game.raidProgress.workshopUpgrades) === 0) {
-    return [];
-  }
-  if (terms.wardTreatments === 0) {
-    return [`THE WARD’s ${wardTreatmentsPerRaid(game.raidProgress.workshopUpgrades) === 1 ? 'bed is' : 'beds are'} used until your next raid.`];
-  }
-  const bedded = wardBedIdsFor(game.stash, pending, ids, terms).flatMap((id) => {
-    const stored = game.stash.listPokemon().find((each) => each.id === id);
-    return stored ? [stored.pokemon] : [];
-  });
-  if (bedded.length === 0) {
-    return [];
-  }
-  return [
-    `THE WARD takes ${inWords(bedded.map((pokemon) => pokemon.name))}, so bringing ${bedded.length === 1 ? 'it' : 'them'} round is free.`,
-  ];
 }
 
 /** Whether everyone at base has fainted, so that she comes first of anything said in her room. */
@@ -242,9 +209,6 @@ export function healedLine(chargedMs: number, pendingMs: number, free = false): 
 
 /** What she says to NOT NOW. */
 export const NOT_HEALED_LINE = 'Of course. I’ll be right here.';
-
-/** What she adds for a player a lost raid has left with one Pokémon: the swap is on the PC (`Stash.canSwapStarter`). */
-export const SWAP_AT_THE_PC_LINE = 'If you would rather start again with another partner, BILL’S PC can swap your last one.';
 
 function inWords(names: readonly string[]): string {
   return names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;

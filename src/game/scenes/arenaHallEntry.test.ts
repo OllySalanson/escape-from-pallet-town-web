@@ -19,7 +19,7 @@ import { baseGame } from '../base/baseGames.testkit';
 import { ARENA_MAT } from '../base/arenaHall';
 import { roomNamed } from '../base/rooms';
 import { flowForGame } from '../base/arenaKit';
-import { FIRST_WORDS } from '../hub/firstWords';
+import { KEEPER_GREETINGS } from '../hub/keeperGreetings';
 import type { RestoredGame } from '../save/SaveManager';
 
 const hall = roomNamed('raid-arena')!;
@@ -42,13 +42,11 @@ function speak(game: RestoredGame) {
 }
 
 describe("THE RAID ARENA's marshal", () => {
-  it('tells a newcomer what the room is for, once, and opens no screen: the room is the screen', () => {
+  it('greets, the same on every visit, and opens no screen and asks nothing: the room is the screen', () => {
     const first = speak(baseGame());
-    expect(first.said).toEqual([FIRST_WORDS.loadout.lines]);
-    expect(first.heard).toEqual(['loadout']);
-    const second = speak(first.game);
-    expect(second.heard).toEqual([]);
-    expect(second.said[0]).not.toEqual(FIRST_WORDS.loadout.lines);
+    expect(first.said).toEqual([[KEEPER_GREETINGS.arena]]);
+    expect(first.heard).toEqual([]);
+    expect(speak(first.game).said).toEqual(first.said);
   });
 
   it('puts the player on the mat, with the door behind them', () => {

@@ -42,7 +42,7 @@ vi.mock('../ui/ChoicePrompt', () => ({
 vi.mock('../harbour/harbour', () => ({ harbour: () => null, harbourHouses: () => null }));
 
 import { BaseScene } from './BaseScene';
-import { FIRST_WORDS } from '../hub/firstWords';
+import { KEEPER_GREETINGS } from '../hub/keeperGreetings';
 import { Bag } from '../items';
 import { CHARMANDER, PokemonParty } from '../pokemon';
 import { createStartingStash } from '../stash';
@@ -73,8 +73,7 @@ class MemoryStorage implements StorageLike {
 }
 
 const BROCK = errandOf('workshop')!;
-/** What he says next with nothing in the vault: the first rung on his ladder, and what it wants. */
-const NEXT_RUNG = 'Radio mast. You hear the hunter’s team on the radio, before it reaches you.';
+const GREETING = [KEEPER_GREETINGS.workshop];
 
 /**
  * Brock's workshop with the player on its mat: a save that has opened his
@@ -106,7 +105,6 @@ function workshop(
       completedContracts: [FIRST_CONTRACT_ID],
       unlockedInsertions: ['floodplain-relay', ...CONTRACT_REWARD_INSERTIONS, 'greystone-vale'],
       errands: [...errands],
-      firstWordsHeard: ['workshop'],
       ...raidProgress,
     },
   });
@@ -114,6 +112,7 @@ function workshop(
   const captain = HARBOUR_PEOPLE.find((person) => person.id === 'ss-anne-captain')!;
   const faced: string[] = [];
   const said: string[][] = [];
+  const opened: string[] = [];
   let afterSaid: (() => void) | null = null;
   let lineShown: ((index: number) => void) | undefined;
   const scene = Object.create(BaseScene.prototype) as Record<string, unknown>;
@@ -141,6 +140,9 @@ function workshop(
     spentPresses: { spendHeld: () => undefined },
     directionKeys: () => [],
     keeperMark: null,
+    leaving: false,
+    visit: null,
+    openHub: (payload: { view: string }) => opened.push(payload.view),
     say: (lines: readonly string[], _about: unknown, then?: () => void, onLine?: (index: number) => void) => {
       said.push([...lines]);
       afterSaid = then ?? null;
@@ -159,23 +161,32 @@ function workshop(
     question.onChoose(question.options.indexOf(choice));
   };
   const stored = () => new SaveManager(storage).load()!;
-  return { scene, said, faced, talk, read, answer, stored, lineShown: () => lineShown };
+  /** His screen closed, back into his room: the base starts there again (`BaseScene.favourOwedIn`). */
+  const back = (): void => (scene.favourOwedIn as (room: unknown) => (() => void) | undefined).call(scene, room)?.();
+  return { scene, said, faced, opened, talk, read, back, answer, stored, lineShown: () => lineShown };
 }
 
 /**
  * A favour is asked the way anybody in the harbour speaks: in the dialogue box
  * over the room, a few short lines, then a question with YES and NOT NOW under
- * it - and only after that what the key was for, which for Brock is the next
- * thing he would build. It used to be laid over a screen and taken before it was read.
+ * it. It is asked after what the key was for, never in front of it: Brock
+ * greets and his screen opens, and he asks as it closes back into his room.
+ * Said first, it stacked three boxes and a question before the screen the
+ * player came in for (the harbour audit, 27 Nov 2026).
  */
 describe("a keeper's favour, asked in the room", () => {
   beforeEach(() => forgetDeclinedErrands());
 
-  it('sets the scene, says what to fetch, and asks - YES first, as FireRed asks', () => {
+  it('waits for his screen to close, then sets the scene, says what to fetch, and asks - YES first, as FireRed asks', () => {
     const brock = workshop();
     brock.talk();
-    expect(brock.said).toEqual([BROCK.asks]);
-    // Nothing is taken on, and nothing opened, until it is answered.
+    expect(brock.said).toEqual([GREETING]);
+    brock.read();
+    expect(brock.opened).toEqual(['workshop']);
+    expect(questions).toHaveLength(0);
+    brock.back();
+    expect(brock.said.at(-1)).toEqual(BROCK.asks);
+    // Nothing is taken on until it is answered.
     expect(questions).toHaveLength(0);
     brock.read();
     expect(questions).toHaveLength(1);
@@ -191,12 +202,14 @@ describe("a keeper's favour, asked in the room", () => {
     Object.assign(brock.scene, { partnerAt: () => true, talkToPartner: () => partnerTalks.push(1) });
     brock.talk();
     expect(partnerTalks).toEqual([]);
-    expect(brock.said).toEqual([BROCK.asks]);
+    expect(brock.said).toEqual([GREETING]);
   });
 
-  it('takes the favour on a YES, says so, and then says what he would build next', () => {
+  it('takes the favour on a YES and says so', () => {
     const brock = workshop();
     brock.talk();
+    brock.read();
+    brock.back();
     brock.read();
     brock.answer('YES');
     expect(questions[0].destroyed).toBe(true);
@@ -204,70 +217,77 @@ describe("a keeper's favour, asked in the room", () => {
     expect(brock.stored().raidProgress.errands).toEqual([
       { id: BROCK.id, status: 'started', found: 0, lossesHeard: 0 },
     ]);
-    brock.read();
-    expect(brock.said.at(-1)?.[0]).toBe(NEXT_RUNG);
   });
 
-  it('leaves a NOT NOW untaken, goes on to his quote, and asks again only after the next raid', () => {
+  it('leaves a NOT NOW untaken, and asks again only after the next raid', () => {
     const brock = workshop();
     brock.talk();
+    brock.read();
+    brock.back();
     brock.read();
     brock.answer('NOT NOW');
     expect(brock.said.at(-1)).toEqual([BROCK.declined]);
     expect(brock.stored().raidProgress.errands).toEqual([]);
-    brock.read();
-    expect(brock.said.at(-1)?.[0]).toBe(NEXT_RUNG);
 
-    // Back at his counter before going anywhere: straight to his quote.
+    // Back at his counter before going anywhere: his greeting and his screen, and no favour.
     brock.talk();
-    expect(brock.said.at(-1)?.[0]).toBe(NEXT_RUNG);
+    expect(brock.said.at(-1)).toEqual(GREETING);
+    brock.read();
+    brock.back();
+    expect(brock.said.at(-1)).toEqual(GREETING);
     expect(brock.said.filter((lines) => lines[0] === BROCK.asks[0])).toHaveLength(1);
 
     // A raid later, the same save is asked again.
     const later = workshop([], {}, { raidRecord: { 'floodplain-relay': { deployed: 1, extracted: 1, wiped: 0 } } });
     later.talk();
-    expect(later.said).toEqual([BROCK.asks]);
+    later.read();
+    later.back();
+    expect(later.said).toEqual([GREETING, BROCK.asks]);
   });
 
-  it('asks nothing of a favour already taken, and goes straight to his quote', () => {
+  it('asks nothing of a favour already taken', () => {
     const brock = workshop([{ id: BROCK.id, status: 'started', found: 0, lossesHeard: 0 }]);
     brock.talk();
-    expect(brock.said).toHaveLength(1);
-    expect(brock.said[0][0]).toBe(NEXT_RUNG);
+    brock.read();
+    brock.back();
+    expect(brock.said).toEqual([GREETING]);
   });
 
-  it('says his first words once, ahead of the favour', () => {
+  it('greets the same on every visit, whatever the save has heard', () => {
     const brock = workshop([], {}, { firstWordsHeard: [] });
     brock.talk();
-    expect(brock.said[0]).toEqual(FIRST_WORDS.workshop.lines);
+    expect(brock.said[0]).toEqual(GREETING);
     brock.read();
+    brock.back();
     expect(brock.said[1]).toEqual(BROCK.asks);
   });
 
-  it('takes the crate and pays as it is said, then goes on to his quote', () => {
+  it('takes the crate and pays as his screen closes, paid as it is said', () => {
     const brock = workshop([{ id: BROCK.id, status: 'started', found: 1, lossesHeard: 0 }], { [BROCK.itemId]: 1 });
     brock.talk();
-    expect(brock.said).toEqual([
-      ["You handed over Brock's crate.", ...BROCK.thanks, 'You received TM39 from Brock.'],
-    ]);
+    brock.read();
+    // His screen is open on his ladder, and the crate is still the player's.
+    expect(brock.stored().stash.itemCount(BROCK.itemId)).toBe(1);
+    brock.back();
+    expect(brock.said.at(-1)).toEqual(["You handed over Brock's crate.", ...BROCK.thanks, 'You received TM39 from Brock.']);
     // Paid before a word is read, so it is paid once however the room is left.
     const after = brock.stored();
     expect(after.stash.itemCount(BROCK.itemId)).toBe(0);
     expect(after.stash.itemCount('tm39-rock-tomb')).toBe(1);
     expect(after.raidProgress.errands?.[0].status).toBe('completed');
     expect(brock.lineShown()).toBeTypeOf('function');
-    brock.read();
-    expect(brock.said.at(-1)?.[0]).toBe(NEXT_RUNG);
   });
 
   it('asks after a crate that was found and lost, once', () => {
     const brock = workshop([{ id: BROCK.id, status: 'started', found: 1, lossesHeard: 0 }]);
     brock.talk();
-    expect(brock.said).toEqual([BROCK.lost]);
-    expect(brock.stored().raidProgress.errands?.[0].lossesHeard).toBe(1);
     brock.read();
-    expect(brock.said.at(-1)?.[0]).toBe(NEXT_RUNG);
+    brock.back();
+    expect(brock.said.at(-1)).toEqual(BROCK.lost);
+    expect(brock.stored().raidProgress.errands?.[0].lossesHeard).toBe(1);
     brock.talk();
+    brock.read();
+    brock.back();
     expect(brock.said.filter((lines) => lines[0] === BROCK.lost[0])).toHaveLength(1);
   });
 });

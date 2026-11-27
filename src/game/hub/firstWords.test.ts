@@ -27,14 +27,13 @@ describe("Oak's first words", () => {
   });
 
   it('leave words with no greeting as they are written', () => {
-    expect(spokenLines(FIRST_WORDS.center, 'ROWAN')).toEqual(FIRST_WORDS.center.lines);
+    expect(spokenLines(FIRST_WORDS.stakes, 'ROWAN')).toEqual(FIRST_WORDS.stakes.lines);
   });
 
-  it('says what a raid is on the way out of the lab in two boxes, and the hall in few enough to be read', () => {
+  it('says what a raid is on the way out of the lab in two boxes', () => {
     expect(FIRST_WORDS.lab.lines).toHaveLength(2);
     expect(FIRST_WORDS.lab.lines.join(' ')).toMatch(/exit/);
     expect(FIRST_WORDS.lab.lines.join(' ')).toMatch(/RAID ARENA/);
-    expect(FIRST_WORDS.loadout.lines.length).toBeLessThanOrEqual(5);
   });
 });
 

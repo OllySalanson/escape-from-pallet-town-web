@@ -24,6 +24,7 @@ import {
   ARENA_ANTEROOM,
   ARENA_CORRIDOR,
   ARENA_DOOR,
+  ARENA_FRIEND_BOARD,
   DOOR_OPENING,
   inDoorOpening,
   ARENA_HALL_HEIGHT,
@@ -1067,6 +1068,81 @@ function paintStationPlates(): void {
   }
 }
 
+// --- the friend board -------------------------------------------------------------
+
+const CORK: Rgb = [184, 136, 80];
+const CORK_FLECK: Rgb = [160, 120, 64];
+const CORK_SHADE: Rgb = [144, 104, 56];
+const SLIP: Rgb = [240, 232, 208];
+const SLIP_BLUE: Rgb = [208, 224, 232];
+const SLIP_WRITING: Rgb = [104, 104, 88];
+const PIN_RED: Rgb = [216, 48, 40];
+const PIN_BLUE: Rgb = [40, 96, 184];
+
+/**
+ * The sign-up board for raiding with a friend (`ARENA_FRIEND_BOARD`): a cork
+ * board in a wooden frame on two posts, the size of a person's chest, with two
+ * slips pinned to it, as Oak's board has its notices. It stands on its own tile
+ * across the doors from the marshal, its face to the room; what it says is its
+ * caption and its question.
+ */
+function paintFriendBoard(): void {
+  const tileLeft = ARENA_FRIEND_BOARD.x * ARENA_TILE;
+  const rowTop = ARENA_FRIEND_BOARD.y * ARENA_TILE;
+  const foot = rowTop + ARENA_TILE - 2;
+  const put = (x: number, y: number, ink: Rgb): void => (y >= rowTop ? ground : over).set(x, y, torchlit(ink, x, y));
+  const left = tileLeft + 1;
+  const right = tileLeft + 14;
+  const top = foot - 24;
+  const bottom = foot - 12;
+  // Its shadow on the flags, under and to the right of its feet.
+  for (let x = left + 1; x <= right + 1; x += 1) {
+    if (dithered(0.75, x, foot + 1)) {
+      ground.set(x, foot + 1, STONE_RAMP[2]);
+    }
+  }
+  // Two posts, lit on the left, down to the floor.
+  for (const post of [left + 2, right - 3]) {
+    for (let y = bottom + 1; y <= foot; y += 1) {
+      put(post - 1, y, OUTLINE);
+      put(post, y, y === foot ? OUTLINE : WOOD_LIGHT);
+      put(post + 1, y, y === foot ? OUTLINE : WOOD);
+      put(post + 2, y, OUTLINE);
+    }
+  }
+  // The frame, lit along the top and the left, and the cork inside it.
+  for (let y = top; y <= bottom; y += 1) {
+    for (let x = left; x <= right; x += 1) {
+      const corner = (y === top || y === bottom) && (x === left || x === right);
+      if (corner) {
+        continue;
+      }
+      if (y === top || y === bottom || x === left || x === right) {
+        put(x, y, OUTLINE);
+      } else if (y === top + 1 || x === left + 1) {
+        put(x, y, WOOD_LIGHT);
+      } else if (y === bottom - 1 || x === right - 1) {
+        put(x, y, WOOD);
+      } else {
+        put(x, y, y === top + 2 ? CORK_SHADE : (x * 7 + y * 3) % 11 === 0 ? CORK_FLECK : CORK);
+      }
+    }
+  }
+  // Two slips pinned up: a white one on the left, a blue one lower on the right.
+  const slip = (x0: number, y0: number, width: number, height: number, paper: Rgb, pin: Rgb): void => {
+    for (let y = y0; y < y0 + height; y += 1) {
+      for (let x = x0; x < x0 + width; x += 1) {
+        const writing = y > y0 && y < y0 + height - 1 && (y - y0) % 2 === 0 && x > x0 && x < x0 + width - 1;
+        put(x, y, writing ? SLIP_WRITING : paper);
+      }
+      put(x0 + width, y, CORK_SHADE);
+    }
+    put(x0 + Math.floor(width / 2), y0, pin);
+  };
+  slip(left + 3, top + 3, 4, 6, SLIP, PIN_RED);
+  slip(left + 8, top + 4, 3, 5, SLIP_BLUE, PIN_BLUE);
+}
+
 const BRASS_LIGHT: Rgb = [248, 232, 136];
 const BRASS_DARK: Rgb = [136, 88, 32];
 const BRASS_SHADE: Rgb = [88, 56, 24];
@@ -1188,6 +1264,7 @@ paintBench();
 paintRack();
 paintLocker();
 paintStationPlates();
+paintFriendBoard();
 for (const telescope of ARENA_TELESCOPES) {
   paintTelescope(telescope);
 }

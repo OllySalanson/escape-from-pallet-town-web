@@ -38,7 +38,7 @@ import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
 import { audioManager } from '../audio/AudioManager';
 import { nextBump } from '../audio/worldSounds';
 import { SpentPresses } from '../world/spentPresses';
-import { SaveManager, raidsDeployed, raidsLost, traderCounterFor, traderProgressOf, type RestoredGame } from '../save/SaveManager';
+import { SaveManager, raidsDeployed, traderCounterFor, type RestoredGame } from '../save/SaveManager';
 import { startNewGame } from '../save/newGame';
 import { getStarterSpecies, STARTER_SPECIES, type StarterSpeciesId, type StashedPokemon } from '../stash';
 import {
@@ -71,11 +71,11 @@ import type { GameCornerSceneData } from './GameCornerScene';
 import type { DojoChoice, DojoCounterSceneData } from './DojoCounterScene';
 import { dojoBag, dojoParty } from '../arena/boutRules';
 import { DOJO_RECEPTIONIST } from '../arena/dojoCounter';
-import { dojoFoe, foeTrainer, receptionLines, settlementLine } from '../arena/classes';
+import { dojoFoe, foeTrainer, settlementLine } from '../arena/classes';
 import { classOf, shownClass } from '../arena/dojoRecord';
 import { readDojoRun, runBout, stampRun, type DojoRun, type DojoRunMode } from '../arena/arenaRuns';
 import { dojoYieldStake, hallYieldStake } from '../arena/yieldStake';
-import { attendantLines, courseKeeperLines, prizeClerkLines, timeBoardLines } from '../minigames/gameCornerTalk';
+import { courseKeeperLines, timeBoardLines } from '../minigames/gameCornerTalk';
 import {
   HOME_KEY_LETTERS,
   RAID_KEY_LETTERS,
@@ -322,7 +322,6 @@ import {
   jumpPose,
   PARTNER_LAG_MS,
 } from '../base/arenaDive';
-import { marshalLines } from '../base/arenaMarshal';
 import { wallMapPicture } from '../base/wallMap';
 import { landingPlace, requireInsertion, runInsertion, type RunInsertionId } from '../run/runGeneration';
 import type { ArenaPanel } from './HubScene';
@@ -334,22 +333,21 @@ import { pursesOn } from '../world/purses';
 import { FIRST_WORDS, hasHeard, heldLandingNews, mapsMovedNews, spokenLines, type FirstWordsId } from '../hub/firstWords';
 import { FIRST_JUMP_ANSWERS, firstJumpQuestion, goesStraightOver, isFirstRaid } from '../hub/firstRaid';
 import { benchOffer, benchOfferQuestion } from '../hub/benchOffer';
-import { centerOffer, healedLine, nobodyCanRaid, NOT_HEALED_LINE, SWAP_AT_THE_PC_LINE } from '../hub/centerCounter';
-import { brockFromTheMat, type BrockQuote } from '../hub/workshopTalk';
+import { centerOffer, healedLine, NOT_HEALED_LINE } from '../hub/centerCounter';
+import { brockFromTheMat } from '../hub/workshopTalk';
+import { FRIEND_BOARD_QUESTION, heldRoomQuestion, keeperGreeting, OAK_POKEDEX_QUESTION } from '../hub/keeperGreetings';
 import {
-  billFromTheMat,
   billQuote,
   DEAL_NOT_SAVED_LINE,
   dealtLine,
   NOT_DEALT_LINE,
+  SEE_THE_LIST_QUESTION,
   type BillGood,
 } from '../hub/billTalk';
 import { roomPosterPicture } from '../base/roomPosters';
 import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
-import { dueMilestone, milestoneWords, pokedexOwned } from '../hub/pokedex';
-import { boardLines, boardPointer, oakNews } from '../base/labBoard';
-import { jobsBanked, jobsNamed, nextStepLines, vaultOf } from '../hub/nextStep';
-import { NEAR_JOBS } from '../objectives/standingBoard';
+import { dueMilestone, milestoneWords, pokedexLookLines, pokedexOwned } from '../hub/pokedex';
+import { boardLines } from '../base/labBoard';
 import { friendRoom, friendRoomsOffered } from '../raidRoom/friendRoom';
 import { abandonedRaidLines, boutHeartbeat, raidHeartbeat } from '../run/raidInFlight';
 import { retryUnsavedEnding, settleAtBase } from '../run/unsavedEnding';
@@ -468,6 +466,12 @@ const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
 
 /** The rim tile this page last jumped from: where a raid's ending puts the player back. */
 let lastJumpedFrom: GridPosition | null = null;
+/**
+ * The room whose keeper has a favour to say as the player comes back into it
+ * from their screen (`BaseScene.oweFavour`): taken, and so forgotten, by the
+ * next room the base starts in, whichever it is.
+ */
+let favourOwed: string | null = null;
 /**
  * Whether THE RAID ARENA's great doors stand open: from the push until the player
  * walks out of the hall by its mat. A raid, a bout or a panel coming back to the
@@ -1644,6 +1648,9 @@ export class BaseScene extends Phaser.Scene {
       this.placeSign?.show(BASE_PLACE_NAME.toUpperCase());
       harbourToBeNamed = false;
     }
+    // Back from a keeper's screen, they turn to you with their favour, after
+    // whatever the screen handed back to say (`oweFavour`).
+    const turnsToYou = this.favourOwedIn(room);
     if (this.choosing) {
       this.say(oakOpeningLines(houseName()), room?.keeper ? [room.keeper.position] : []);
     } else if (data.chose) {
@@ -1665,7 +1672,9 @@ export class BaseScene extends Phaser.Scene {
       );
     } else if (data.said?.length) {
       const speaker = room ? room.keeper?.position : (data.saidBy ?? DAY_CARE_KEEPER.position);
-      this.say(data.said, speaker ? [speaker] : []);
+      this.say(data.said, speaker ? [speaker] : [], turnsToYou);
+    } else if (turnsToYou) {
+      turnsToYou();
     } else if (!room && !this.visit && mapsMovedNews(this.savedGame.raidProgress)) {
       this.hearFirstWords('moved');
       this.say(FIRST_WORDS.moved.lines, []);
@@ -2606,32 +2615,22 @@ export class BaseScene extends Phaser.Scene {
     }
   }
 
-  /** Marks THE MARSHAL with a "!" until a newcomer has heard what the room is for. */
+  /**
+   * THE MARSHAL, spoken to: her greeting, and nothing opens after it, because
+   * everything the hall is for stands on its floor. She used to say what the
+   * BENCH, the RACK and the LOCKER are for, then the one thing wrong with the
+   * raid being got ready, then ask about raiding with a friend (the harbour
+   * audit, 27 Nov 2026): the stations say what they hold on their captions,
+   * the rim's card says what is wrong, and the friend board asks its own
+   * question (`askAtTheFriendBoard`).
+   */
   private speakToMarshal(room: BaseRoom): void {
     const keeper = room.keeper;
-    const kit = this.kit;
-    if (!keeper || !kit) {
+    if (!keeper) {
       return;
     }
-    const lines = marshalLines(
-      this.savedGame.raidProgress.firstWordsHeard,
-      kit.flow,
-      {
-        bill: traderProgressOf(this.savedGame.raidProgress),
-        cleanLandings: this.savedGame.raidProgress.landings?.streak ?? 0,
-        boutRival: this.savedGame.raidProgress.bouts ? undefined : this.rivalHere?.name,
-      },
-    );
-    if (!hasHeard(this.savedGame.raidProgress.firstWordsHeard, 'loadout')) {
-      this.hearFirstWords('loadout');
-      this.clearKeeperMark();
-    }
     this.standStill();
-    // A newcomer's first words are the room's; after them she asks whether
-    // the raid is going with a friend. A room is made before the team is
-    // picked, so she asks whatever she has just said about the bench.
-    const asks = lines !== FIRST_WORDS.loadout.lines;
-    this.say(lines, [keeper.position], asks ? () => this.offerFriendRoom(room) : undefined);
+    this.say([keeperGreeting('arena')], [keeper.position]);
   }
 
   // -- over the fence ----------------------------------------------------------
@@ -4576,7 +4575,7 @@ export class BaseScene extends Phaser.Scene {
     this.stationLabels.clear();
     for (const thing of built.things.filter((each) => !each.quiet)) {
       const station = thing.opens && thing.opens in ARENA_STATION_NAMES ? (thing.opens as ArenaStationId) : null;
-      const standsUp = station !== null || thing.opens === 'telescope';
+      const standsUp = station !== null || thing.opens === 'telescope' || thing.opens === 'friend';
       const label = new WorldLabel(this, {
         subject: standsUp ? risenRect(thing.tiles, station ? STATION_PLATE_RISE : STATION_RISE) : tilesRect(thing.tiles),
         text: `${thing.name}\n${station ? this.stationNote(station) : thing.note}`,
@@ -5813,6 +5812,12 @@ export class BaseScene extends Phaser.Scene {
       }
       if (thing?.opens === 'bench' || thing?.opens === 'rack' || thing?.opens === 'locker') {
         this.openHallPanel(thing.opens);
+        return;
+      }
+      // Off in the explorer run and a map maker's TRY IT, where there is no
+      // room service to ask: the board is read as any thing is.
+      if (thing?.opens === 'friend' && friendRoomsOffered() && !this.visit) {
+        this.askAtTheFriendBoard(room);
         return;
       }
       // Anywhere on the rim, whichever way along it the player happens to be
@@ -7125,89 +7130,102 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /**
-   * Speaking to a keeper, which is what the key on the door mat does: the talk
-   * starts there, in the dialogue box over the room, the way anybody in the yard
-   * is spoken to. Whatever they tell a newcomer first, then their favour - a
-   * favour asked ends on its question with YES and NOT NOW under it - and then
-   * what the key was pressed for: the board read out, the price of a heal, or
-   * the screen of somebody who deals over a counter of numbers. ESC is past the
-   * lot (`skipTalk`). Nothing is ever said over a screen.
+   * Speaking to a keeper, which is what the key on the door mat does: one box,
+   * their greeting, the same every visit and in every save
+   * (`hub/keeperGreetings.ts`), and then what they keep opens - Oak's question
+   * about the Pokédex, Joy's heal with its price in it, Bill's list, Brock's
+   * screen, a counter or a window - as a FireRed clerk or nurse greets and
+   * serves. A favour they have to ask, a thing to take or a loss to hear about
+   * comes after that, never in front of it (`sayFavourIfAny`, `favourOwed`).
+   * ESC is past the greeting to what it opens (`skipTalk`). Nothing is ever said
+   * over a screen.
    */
   private speakToKeeper(room: BaseRoom, screen: BaseScreen): void {
     const about = room.keeper ? [room.keeper.position] : [];
-    const beat = this.favourHere(screen);
-    const favourThen = (then: () => void): void => {
-      if (beat) {
-        this.sayFavour(beat, about, then, () => this.clearKeeperMark());
-      } else {
-        then();
-      }
-    };
-    if (screen === 'lab') {
-      this.sayFirstWords('lab', about, () =>
-        favourThen(() =>
-          this.oakGives(about, () => this.oakSaysWhatIsNext(about)),
-        ),
-      );
-      return;
-    }
-    if (screen === 'stash') {
-      // Somebody with nobody left to raid with came for one thing, and her first
-      // words and a favour asked before it read as five boxes of being ignored.
-      // Both keep until the next time she is spoken to.
-      if (nobodyCanRaid(this.saveManager.load() ?? this.savedGame)) {
-        this.joyOffers(about);
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    const greet = (then?: () => void): void => this.say([keeperGreeting(screen)], about, then);
+    switch (screen) {
+      case 'lab':
+        greet(() => this.oakAsksAfterThePokedex(about));
         return;
-      }
-      this.sayFirstWords('center', about, () => favourThen(() => this.joyOffers(about)));
-      return;
-    }
-    if (screen === 'workshop') {
-      this.sayFirstWords('workshop', about, () =>
-        favourThen(() => {
+      case 'stash':
+        greet(() => this.joyOffers(about));
+        return;
+      case 'workshop':
+        // His screen opens on the next thing he would build (`hub/workshopTalk.ts`).
+        greet(() => {
           const { stash, raidProgress } = this.freshGame();
-          this.brockQuotes(brockFromTheMat({ stash }, raidProgress.workshopUpgrades), about);
-        }),
-      );
-      return;
-    }
-    if (screen === 'trader') {
-      // Bill cannot keep quiet about anything old, once (`world/rumours.ts`) -
-      // but as the player turns to go, never in the middle of his welcome,
-      // where it sat between the shop and its prices (the harbour critic
-      // tour, 26 Nov 2026).
-      this.sayFirstWords('cottage', about, () =>
-        favourThen(() =>
-          this.billReadsYou(room, about, () => {
-            const rumour = this.hearRumour('bill', { once: true });
+          this.oweFavour(room, screen);
+          this.openWorkshop(brockFromTheMat({ stash }, raidProgress.workshopUpgrades).upgradeId);
+        });
+        return;
+      case 'trader':
+        greet(() => this.billOffersHisList(room, about));
+        return;
+      case 'boutique':
+        greet(() => this.openBoutique('shop'));
+        return;
+      // THE GAME CORNER's attendant has nothing to open: her greeting is the
+      // place, and the cabinets are walked up to.
+      case 'game-corner':
+        greet();
+        return;
+      // The clerk sells the POKé FLUTE, and knows what one is for: her rumour
+      // is said once, as the window closes (`world/rumours.ts`). Before it,
+      // she pointed at a flute the shelf had not shown yet (the harbour
+      // critic tour, 26 Nov 2026).
+      case 'prizes':
+        greet(() =>
+          this.openGameCorner('prizes', () => {
+            const rumour = this.hearRumour('clerk', { once: true });
             if (rumour) this.say([rumour], about);
           }),
-        ),
-      );
+        );
+        return;
+      case 'battle-arena':
+        greet(() => this.openDojoCounter());
+        return;
+      // The hall's marshal is `speakToMarshal`: everything in it is on the floor.
+      case 'arena':
+        return;
+    }
+  }
+
+  /**
+   * What a keeper has to say about their favour, said once what they keep is
+   * done with - after the question is answered, or as their screen closes back
+   * into the room - and then `then`. Said in front of it, a favour asked
+   * stacked three boxes and a second question before the heal, the list or
+   * the build the player came in for (the harbour audit, 27 Nov 2026).
+   */
+  private sayFavourIfAny(screen: BaseScreen, about: readonly GridPosition[], then: () => void = () => undefined): void {
+    const beat = this.favourHere(screen);
+    if (!beat) {
+      then();
       return;
     }
-    // The hall's marshal is `speakToMarshal`: everything in it is on the floor.
-    if (screen === 'boutique') {
-      favourThen(() => this.openBoutique('shop'));
-      return;
-    }
-    // THE GAME CORNER's attendant says how the place works; the prize clerk
-    // says what is in hand and opens the window (`minigames/gameCornerTalk.ts`).
-    if (screen === 'game-corner') {
-      this.say(attendantLines(this.freshGame().raidProgress), about);
-      return;
-    }
-    // The clerk sells the POKé FLUTE, and knows what one is for: their rumour
-    // is said once, after the welcome (`world/rumours.ts`). Before it, she
-    // pointed at a flute the shelf had not shown yet (the harbour critic tour).
-    if (screen === 'prizes') {
-      const rumour = this.hearRumour('clerk', { once: true });
-      this.say([...prizeClerkLines(this.freshGame().raidProgress), ...(rumour ? [rumour] : [])], about, () => this.openGameCorner('prizes'));
-    }
-    // THE BATTLE ARENA's receptionist says how a bout works, then the counter opens (`arena/dojoCounter.ts`).
-    if (screen === 'battle-arena') {
-      this.say(receptionLines(this.freshGame().raidProgress.dojo), about, () => this.openDojoCounter());
-    }
+    this.sayFavour(beat, about, then, () => this.clearKeeperMark());
+  }
+
+  /**
+   * Remembers, as a keeper's screen opens, that they have a favour to say when
+   * the player is back in their room (`create`). The room is started afresh
+   * when a screen closes, so it is kept beside the scene, as `lastJumpedFrom` is.
+   */
+  private oweFavour(room: BaseRoom, screen: BaseScreen): void {
+    favourOwed = this.favourHere(screen) ? room.id : null;
+  }
+
+  /**
+   * The favour a keeper's screen left owed to this room, as the way to say it,
+   * if the base has just started in that room; taken either way, so it is said
+   * once and never in another room.
+   */
+  private favourOwedIn(room: BaseRoom | undefined): (() => void) | undefined {
+    const screen = room && favourOwed === room.id && !this.visit ? room.screen : null;
+    favourOwed = null;
+    return room && screen ? () => this.sayFavourIfAny(screen, room.keeper ? [room.keeper.position] : []) : undefined;
   }
 
   /** A key pressed in Oak's lab while there is a partner to choose (`base/starterTable.ts`). */
@@ -7619,18 +7637,6 @@ export class BaseScene extends Phaser.Scene {
     return this.savedGame;
   }
 
-  /**
-   * Brock on a build (`hub/workshopTalk.ts`): what it does and takes, said in the
-   * room, and then his workshop screen opened on it. The screen is the one place
-   * a build is chosen and paid for; nothing is built from a dialogue box.
-   */
-  private brockQuotes(quote: BrockQuote, about: readonly GridPosition[]): void {
-    this.player.stop();
-    this.player.setFrame(getIdleFrame(this.facing));
-    const { upgradeId } = quote;
-    this.say(quote.lines, about, upgradeId === undefined ? undefined : () => this.openWorkshop(upgradeId));
-  }
-
   /** BROCK'S WORKSHOP, with the cursor on one build, from where the player stands in his room. */
   private openWorkshop(upgradeId?: string): void {
     this.openHub({
@@ -7643,23 +7649,28 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /**
-   * Bill on the mat: how he reads the player, and whether they want his whole
-   * list. Everything on it is on his shelves too, a walk away.
+   * Bill on the mat, after his greeting: whether they want his whole list.
+   * Everything on it is on his shelves too, a walk away. He cannot keep quiet
+   * about anything old, once (`world/rumours.ts`) - but as the player turns to
+   * go, never in the middle of his welcome, where it sat between the shop and
+   * its prices (the harbour critic tour, 26 Nov 2026).
    */
-  private billReadsYou(room: BaseRoom, about: readonly GridPosition[], afterNotNow?: () => void): void {
-    this.player.stop();
-    this.player.setFrame(getIdleFrame(this.facing));
-    const { lines, question } = billFromTheMat(traderCounterFor(this.freshGame()));
+  private billOffersHisList(room: BaseRoom, about: readonly GridPosition[]): void {
     const at = { ...this.currentTile };
-    this.say(lines, about, () =>
-      this.askInBox(question ?? '', (yes) => {
-        if (yes) {
-          this.openHub({ savedGame: this.savedGame, view: 'trader', from: room.id, at });
-        } else {
-          afterNotNow?.();
-        }
-      }),
-    );
+    this.askInBox(SEE_THE_LIST_QUESTION, (yes) => {
+      if (yes) {
+        this.oweFavour(room, 'trader');
+        this.openHub({ savedGame: this.savedGame, view: 'trader', from: room.id, at });
+        return;
+      }
+      const rumour = this.hearRumour('bill', { once: true });
+      const favour = (): void => this.sayFavourIfAny('trader', about);
+      if (rumour) {
+        this.say([rumour], about, favour);
+      } else {
+        favour();
+      }
+    });
   }
 
   /**
@@ -7732,10 +7743,33 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /**
-   * Professor Oak looks at the Pokédex and hands over the next milestone's
-   * reward, if one is due (`hub/pokedex.ts`). Written into the vault and recorded
-   * in one save before he says a word, so it is given once however the room is
-   * left; two crossed at once are said one after the other.
+   * Oak after his greeting, as FireRed's Oak in his lab: shall he look at the
+   * Pokédex? YES hands over the next milestone's reward if one is due
+   * (`hub/pokedex.ts`), and otherwise is his count and the next milestone. His
+   * favour, if he has one, comes after either answer.
+   */
+  private oakAsksAfterThePokedex(about: readonly GridPosition[]): void {
+    this.askInBox(OAK_POKEDEX_QUESTION, (yes) => {
+      const favour = (): void => this.sayFavourIfAny('lab', about);
+      if (!yes) {
+        favour();
+        return;
+      }
+      const progress = this.freshGame().raidProgress;
+      const owned = pokedexOwned(progress.pokedexOwned, this.savedGame.stash).length;
+      if (dueMilestone(owned, progress.pokedexRewards)) {
+        this.oakGives(about, favour);
+        return;
+      }
+      this.say(pokedexLookLines(owned), about, favour);
+    });
+  }
+
+  /**
+   * Professor Oak hands over the next milestone's reward, if one is due.
+   * Written into the vault and recorded in one save before he says a word, so
+   * it is given once however the room is left; two crossed at once are said one
+   * after the other.
    */
   private oakGives(about: readonly GridPosition[], then: () => void, continuing = false): void {
     const progress = this.savedGame.raidProgress;
@@ -7768,94 +7802,67 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /**
-   * Oak from the mat: who is hurt, the one next thing (`hub/nextStep.ts`) and
-   * where the rest is pinned - never the board read out. He read every notice
-   * and rumour after every word, thirteen boxes on the critic's save, every
-   * time (problem 8, 25 Nov 2026); the board is read off the wall beside him.
-   * The end of the near jobs is said once, before the rest. Raiding with a
-   * friend is the RAID ARENA's marshal's to offer, where raids start: asked
-   * after every word Oak and his board said, it was the one thing a player
-   * remembered of the lab (the owner, 25 Nov 2026: "it's all stuck in there").
+   * THE RAID ARENA's sign-up board, faced (`base/rooms.ts`, `opens: 'friend'`):
+   * raiding with a friend. It was the marshal's question, asked after every
+   * word she said, and Oak's before that; a board asks only whoever walks up
+   * to it. YES first, as FireRed's box is: the key that faced the board is all
+   * that came before it, and YES only opens a screen.
    */
-  private oakSaysWhatIsNext(about: readonly GridPosition[]): void {
-    const game = this.savedGame;
-    const speak = (): void => {
-      const lines = [...oakNews(game, isPlaytestRun()), ...nextStepLines(game.raidProgress, vaultOf(game.stash)), ...boardPointer(game, jobsNamed(game.raidProgress))];
-      if (lines.length === 0) {
-        return;
-      }
-      this.player.stop();
-      this.player.setFrame(getIdleFrame(this.facing));
-      this.say(lines, about);
-    };
-    if (jobsBanked(game.raidProgress) >= NEAR_JOBS) {
-      this.sayFirstWords('nearWork', about, speak);
-      return;
-    }
-    speak();
-  }
-
-  /** Raiding with a friend: the last thing the RAID ARENA's marshal asks, once she has said what the raid wants. */
-  private offerFriendRoom(room: BaseRoom): void {
-    if (!friendRoomsOffered()) {
-      return;
-    }
+  private askAtTheFriendBoard(room: BaseRoom): void {
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
     const held = friendRoom()?.room;
-    const at = { ...this.currentTile };
-    // On NOT NOW unless a room is waiting: this ends everything Oak has to say,
-    // so the key that was reading his lines is usually still being pressed.
-    this.askInBox(
-      held ? `Your room ${held.code} is pinned up. Go and see to it?` : 'Going to raid with a friend?',
-      (yes) => {
-        if (yes) {
-          this.openHub({ savedGame: this.savedGame, view: 'friend', from: room.id, at });
-        }
-      },
-      { startOnNotNow: !held },
-    );
+    const standing = { ...this.currentTile };
+    this.askInBox(held ? heldRoomQuestion(held.code) : FRIEND_BOARD_QUESTION, (yes) => {
+      if (yes) {
+        this.openHub({ savedGame: this.savedGame, view: 'friend', from: room.id, at: standing });
+      }
+    });
   }
 
   /**
-   * Nurse Joy at her counter (`hub/centerCounter.ts`): the price, and YES or NOT
-   * NOW. Boxes are the PC's, over by the wall.
+   * Nurse Joy at her counter, after her greeting (`hub/centerCounter.ts`): she
+   * asks, with who she would heal and what it costs in the question, and YES
+   * or NOT NOW. Her favour, if she has one, comes after the answer.
    */
   private joyOffers(about: readonly GridPosition[]): void {
-    this.player.stop();
-    this.player.setFrame(getIdleFrame(this.facing));
     this.savedGame = this.saveManager.load() ?? this.savedGame;
     const free = isPlaytestRun();
     const offer = centerOffer(this.savedGame, free);
-    const { question, spendsForGood } = offer;
-    if (question === undefined) {
-      const swap = this.savedGame.stash.canSwapStarter() && raidsLost(this.savedGame.raidProgress) > 0;
-      this.say([...offer.lines, ...(swap ? [SWAP_AT_THE_PC_LINE] : [])], about);
-      return;
-    }
-    this.say(offer.lines, about, () =>
-      this.askInBox(question, (yes) => {
+    const favour = (): void => this.sayFavourIfAny('stash', about);
+    this.askInBox(
+      offer.question,
+      (yes) => {
         if (!yes) {
           audioManager.play('cancel');
-          this.say([NOT_HEALED_LINE], about);
+          this.say([NOT_HEALED_LINE], about, favour);
+          return;
+        }
+        if (!offer.heals) {
+          this.say(offer.lines, about, favour);
           return;
         }
         const outcome = this.saveManager.healAtCenter();
-        const room = this.place.room?.room.id;
+        const room = this.place.room?.room;
         if (!outcome || !room) {
-          this.say(['I’m so sorry. Your game could not be saved, so nobody has been treated.'], about);
+          this.say(['I’m so sorry. Your game could not be saved, so nobody has been treated.'], about, favour);
           return;
         }
-        // The room is drawn again, without the Poké Balls waiting on her counter.
+        // The room is drawn again, without the Poké Balls waiting on her
+        // counter, and she turns back with her favour once she has said so.
+        this.oweFavour(room, 'stash');
         this.goTo(
           {
             savedGame: this.saveManager.load() ?? this.savedGame,
-            room,
+            room: room.id,
             at: { ...this.currentTile },
             facing: this.facing,
-            said: [healedLine(outcome.chargedMs, outcome.pendingRecoveryMs, free)],
+            said: [healedLine(outcome.chargedMs, outcome.pendingRecoveryMs, free), ...offer.lines],
           },
           'heal',
         );
-      }, spendsForGood ? { spendsForGood } : {}),
+      },
+      offer.spendsForGood ? { spendsForGood: true } : {},
     );
   }
 
@@ -8061,11 +8068,8 @@ export class BaseScene extends Phaser.Scene {
     if (this.choosing) {
       return;
     }
-    // THE RAID ARENA's marshal has no favour to ask, only what the room is for.
-    const wantsAWord =
-      room.screen === 'arena'
-        ? !hasHeard(this.savedGame.raidProgress.firstWordsHeard, 'loadout') && !isFirstRaid(this.savedGame.raidProgress)
-        : room.screen !== null && this.favourHere(room.screen) !== undefined;
+    // Only a favour wants a word: a greeting is said to anybody, so it marks nobody.
+    const wantsAWord = room.screen !== null && this.favourHere(room.screen) !== undefined;
     if (!keeper || !wantsAWord) {
       return;
     }
@@ -8170,7 +8174,7 @@ export class BaseScene extends Phaser.Scene {
    * the paused harbour (`scenes/GameCornerScene.ts`). Coming back, the room is
    * drawn again, so the cabinet's caption says the new best.
    */
-  private openGameCorner(mode: GameCornerSceneData['mode']): void {
+  private openGameCorner(mode: GameCornerSceneData['mode'], after?: () => void): void {
     if (this.leaving) {
       return;
     }
@@ -8183,6 +8187,7 @@ export class BaseScene extends Phaser.Scene {
       this.savedGame = this.saveManager.load() ?? this.savedGame;
       this.redrawRoom(this.savedGame);
       this.showHint(this.hintHere());
+      after?.();
     });
     this.scene.pause();
     this.scene.launch('game-corner', { mode, pausedBase: true } satisfies GameCornerSceneData);
