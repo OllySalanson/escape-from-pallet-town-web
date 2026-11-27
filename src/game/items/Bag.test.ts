@@ -65,6 +65,15 @@ describe('Bag', () => {
 
     expect(result.used).toBe(true);
     expect(pokemon.currentHp).toBe(pokemon.maxHp);
+    // In FireRed's capitals, as the fight names it (the Millbrook critic, 26 Nov 2026).
+    expect(result.message).toBe("CHARMANDER's HP was restored by 5 points.");
+  });
+
+  it('says only FireRed\'s "It won\'t have any effect." for medicine on a fainted Pokémon', () => {
+    const pokemon = new Pokemon(CHARMANDER, 5);
+    pokemon.takeDamage(pokemon.maxHp);
+
+    expect(useFieldItem(ITEMS.potion, pokemon)).toEqual({ used: false, message: "It won't have any effect." });
   });
 
   it('cures poison with an antidote', () => {

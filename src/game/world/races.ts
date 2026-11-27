@@ -389,7 +389,8 @@ export function raceOfferLines(
   if (!record || record.runs === 0) {
     return [
       `${racer}: I'll race you! First to ${course.finish.name}, ${course.finish.where} - the line's by its door.`,
-      `${pay} Lose: ${formatMoney(TAKING_PART_MONEY)} for the legs.`,
+      pay,
+      `Lose, and you still get ${formatMoney(TAKING_PART_MONEY)} for the legs.`,
     ];
   }
   const mark = record.perfect ? ' PERFECT' : record.medal ? ` ${MEDAL_WORDS[record.medal]}` : '';
@@ -404,13 +405,17 @@ export function raceOfferLines(
  * still something in it.
  */
 function payLine(course: RaceCourse, purseTakenToday: boolean): string {
+  // Said as a child says it, tier by tier, rather than read off a card (the
+  // Millbrook critic, 26 Nov 2026: "BRONZE beats me: ... SILVER, under ..."
+  // was a prize table, broken by the box mid-tier). The marks are named on
+  // the result, where they are won.
   const purse = purseTakenToday
-    ? ' - the purse is gone till tomorrow.'
-    : " - and the day's first GOLD takes the purse, any evolution stone you like.";
+    ? ' My purse is gone till tomorrow, mind.'
+    : ' First one that fast today gets my purse - any evolution stone you like!';
   return (
-    `BRONZE beats me: ${formatMoney(MEDAL_MONEY.bronze)}. ` +
-    `SILVER, under ${formatRaceTime(course.silverMs)}: ${formatMoney(MEDAL_MONEY.silver)}. ` +
-    `GOLD, under ${formatRaceTime(course.goldMs)}: ${formatMoney(MEDAL_MONEY.gold)}${purse}`
+    `Beat me, ${formatMoney(MEDAL_MONEY.bronze)}. ` +
+    `Under ${formatRaceTime(course.silverMs)}, ${formatMoney(MEDAL_MONEY.silver)}. ` +
+    `Under ${formatRaceTime(course.goldMs)}, ${formatMoney(MEDAL_MONEY.gold)}.${purse}`
   );
 }
 

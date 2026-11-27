@@ -157,7 +157,7 @@ export const HUNTER_RIVALS: readonly HunterRival[] = [
     // and his Pidgey from Route 22, then the other birds and the Normal types a
     // rival with no type of his own fields.
     escorts: ['rattata', 'pidgey', 'spearow', 'doduo', 'meowth'],
-    caught: ['BLUE: "Whatever you found, loser, it\'s mine!"', 'BLUE: "Hand it over. Smell ya later!"'],
+    caught: ['BLUE: "Whatever you found, loser, it\'s mine!"', 'BLUE: "Hand it over, or I take it the hard way!"'],
     lateCaught: ['BLUE: "Time\'s up, loser! Now you get my best team."', 'BLUE: "Should\'ve left when you had the chance!"'],
     getaway: 'BLUE: "Run, then! I\'ll catch you before the clock does!"',
     defeat: 'What?! I was just warming up... Smell ya later!',
