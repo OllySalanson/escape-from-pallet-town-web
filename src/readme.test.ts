@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { RAID_KEY_LETTERS, YARD_KEY_WORDS } from './game/input/keyBindings';
 import { MACHINE_DEFINITIONS } from './game/pokemon/machines';
+import { RAID_DURATION_MS } from './game/run/raidClock';
 
 /**
  * The front page is held to the game by the rule that a change making one of
@@ -24,6 +25,11 @@ describe('README', () => {
   it('counts the discs the game ships', () => {
     const claim = /^- (\w+) TMs and HMs to /m.exec(README)?.[1];
     expect(claim?.toLowerCase()).toBe(NUMBER_WORDS[MACHINE_DEFINITIONS.length]);
+  });
+
+  it('puts the raid clock on the front page at the length the game has', () => {
+    const claim = /with (\w+) minutes on the clock/.exec(README)?.[1];
+    expect(claim && NUMBER_WORDS.indexOf(claim) * 60 * 1000).toBe(RAID_DURATION_MS);
   });
 
   it('names every raid key in the controls table', () => {

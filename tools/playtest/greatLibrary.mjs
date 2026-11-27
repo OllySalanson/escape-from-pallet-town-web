@@ -1,7 +1,7 @@
 // Plays THE GREAT LIBRARY end to end (`src/game/library/`) in a browser something
 // else started - this machine's own headless one - by its CDP port: the door,
-// the room, the golden plinth (locked, or open in the explorer run), a book
-// opened, a page caught going over, clicks both ways and ESC back out.
+// the room, the golden plinth (locked, or open in the explorer run), and with
+// it open a page caught going over, clicks both ways and ESC back out.
 //   node tools/playtest/greatLibrary.mjs <cdp port> <url> <out dir> [--explorer]
 import { attachBrowser, PIXEL_WINDOW, sleep } from './browser.mjs';
 import { GAME, sceneIs } from './deploy.mjs';
@@ -79,70 +79,50 @@ try {
   const goldenOpened = await page.evaluate(sceneIs('library-book'));
   log('golden plinth opened a book:', goldenOpened);
   await page.screenshot(`${out}/03-golden-${goldenOpened ? 'open' : 'locked'}.png`);
-  if (goldenOpened) {
-    const book = `${GAME}.scene.getScene('library-book')`;
-    await sleep(800);
-    log('reading', JSON.stringify(await page.evaluate(`${book}.reading`)));
-    await press('ArrowRight');
-    await sleep(700);
-    await press('ArrowRight');
-    await sleep(700);
-    await press('ArrowRight');
-    await sleep(700);
-    await page.screenshot(`${out}/04-golden-spread.png`);
-    await press('Escape');
-    await until(`!${sceneIs('library-book')} && ${base}.sys.isActive()`, 'back in the library');
-  } else {
+  if (!goldenOpened) {
     // Read to the end of what it says, then ESC past the rest, as a player can.
+    // The golden book is the only one in the room, so a locked one ends the play.
     await sleep(1500);
     await page.screenshot(`${out}/03b-golden-locked-read.png`);
     await press('Escape');
     await sleep(400);
+    log('the golden book is chained: run with --explorer to turn its pages');
+  } else {
+    await until(sceneIs('library-book'), 'the book open');
+    const book = `${GAME}.scene.getScene('library-book')`;
+    await sleep(1200);
+    log('reading', JSON.stringify(await page.evaluate(`${book}.reading`)));
+    await page.screenshot(`${out}/05-book-open.png`);
+    // A page caught going over: the loop held, the key let in, and a few frames run.
+    await page.evaluate(`${GAME}.pauseLoop()`);
+    await page.tap('ArrowRight', 0);
+    await page.evaluate(`${GAME}.stepFrames(1, 16)`);
+    await page.evaluate(`${GAME}.stepFrames(8, 16)`);
+    await page.screenshot(`${out}/06-turning-early.png`);
+    await page.evaluate(`${GAME}.stepFrames(9, 16)`);
+    await page.screenshot(`${out}/07-turning-late.png`);
+    await page.evaluate(`${GAME}.stepFrames(20, 16)`);
+    await page.screenshot(`${out}/08-turned.png`);
+    log('after one turn', JSON.stringify(await page.evaluate(`${book}.reading`)));
+    await page.evaluate(`${GAME}.resumeLoop ? ${GAME}.resumeLoop() : ${GAME}.unpauseLoop?.()`);
+    await sleep(300);
+    // Back with a click on the left page, on with clicks on the right.
+    const click = async (x, y) => {
+      await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: 1 });
+      await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 });
+      await sleep(800);
+    };
+    await click(300, 380);
+    log('after a click on the left page', JSON.stringify(await page.evaluate(`${book}.reading`)));
+    for (let i = 0; i < 8; i += 1) await click(900, 380);
+    log('after clicks on the right page', JSON.stringify(await page.evaluate(`${book}.reading`)));
+    await page.screenshot(`${out}/09-last-spread.png`);
+    await press('Escape');
+    await until(`!${sceneIs('library-book')} && ${base}.sys.isActive()`, 'back in the library');
+    await sleep(500);
+    log('back in', await page.evaluate(`${base}.room?.id`), JSON.stringify(await page.evaluate(`${base}.currentTile`)));
+    await page.screenshot(`${out}/10-closed.png`);
   }
-
-  // THE BOLTHOLE on its lectern.
-  await walkTo([{ x: 5, y: 8 }], 'the Bolthole lectern');
-  // The harbour comes back from the last book a frame or two after the key
-  // that closed it, so a press made in between is asked again.
-  for (let tries = 0; tries < 4 && !(await page.evaluate(sceneIs('library-book'))); tries += 1) {
-    await press('ArrowUp');
-    await press('Space');
-    await sleep(1500);
-  }
-  await until(sceneIs('library-book'), 'the book open');
-  const book = `${GAME}.scene.getScene('library-book')`;
-  await sleep(1200);
-  log('reading', JSON.stringify(await page.evaluate(`${book}.reading`)));
-  await page.screenshot(`${out}/05-book-open.png`);
-  // A page caught going over: the loop held, the key let in, and a few frames run.
-  await page.evaluate(`${GAME}.pauseLoop()`);
-  await page.tap('ArrowRight', 0);
-  await page.evaluate(`${GAME}.stepFrames(1, 16)`);
-  await page.evaluate(`${GAME}.stepFrames(8, 16)`);
-  await page.screenshot(`${out}/06-turning-early.png`);
-  await page.evaluate(`${GAME}.stepFrames(9, 16)`);
-  await page.screenshot(`${out}/07-turning-late.png`);
-  await page.evaluate(`${GAME}.stepFrames(20, 16)`);
-  await page.screenshot(`${out}/08-turned.png`);
-  log('after one turn', JSON.stringify(await page.evaluate(`${book}.reading`)));
-  await page.evaluate(`${GAME}.resumeLoop ? ${GAME}.resumeLoop() : ${GAME}.unpauseLoop?.()`);
-  await sleep(300);
-  // Back with a click on the left page, on with clicks on the right.
-  const click = async (x, y) => {
-    await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: 1 });
-    await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 });
-    await sleep(800);
-  };
-  await click(300, 380);
-  log('after a click on the left page', JSON.stringify(await page.evaluate(`${book}.reading`)));
-  for (let i = 0; i < 8; i += 1) await click(900, 380);
-  log('after clicks on the right page', JSON.stringify(await page.evaluate(`${book}.reading`)));
-  await page.screenshot(`${out}/09-last-spread.png`);
-  await press('Escape');
-  await until(`!${sceneIs('library-book')} && ${base}.sys.isActive()`, 'back in the library');
-  await sleep(500);
-  log('back in', await page.evaluate(`${base}.room?.id`), JSON.stringify(await page.evaluate(`${base}.currentTile`)));
-  await page.screenshot(`${out}/10-closed.png`);
 } catch (error) {
   await page.screenshot(`${out}/failed.png`).catch(() => undefined);
   throw error;

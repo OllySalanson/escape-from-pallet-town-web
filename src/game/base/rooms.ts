@@ -906,22 +906,15 @@ const LIBRARY_GLOBE: GridPosition = { x: 4, y: 3 };
 const LIBRARY_FERN: GridPosition = { x: 10, y: 3 };
 
 /**
- * What the librarian says when spoken to across her desk: the books on the
- * lecterns, how to read one, and the golden one - what it is, and what earns
- * it (`library/secretsBookLock.ts`), so the plinth never sends a player to
+ * What the librarian says when spoken to across her desk: a welcome, and the
+ * golden book - what it is, and what earns it (`library/secretsBookLock.ts`), so the plinth never sends a player to
  * somebody with nothing to say about it.
  */
 export function librarianLines(secretsOpen: boolean): readonly string[] {
   const golden = LIBRARY_BOOKS.find((book) => book.plinth === 'golden');
-  const lecterns = LIBRARY_BOOKS.filter((book) => book.plinth !== 'golden').map((book) => book.title);
   return [
-    // The lecterns named, first first: RAIDS teaches the vale, THE BOLTHOLE the house.
-    // Where the first book is, plainly: "on the first lectern; X and Y is
-    // beside it" was wrong twice over (the re-critic's third round).
-    // A player past MISTY is no newcomer: welcomed back, not told where to start (the re-critic).
-    secretsOpen
-      ? `Welcome back to the ${GREAT_LIBRARY_NAME}.`
-      : `Welcome to the ${GREAT_LIBRARY_NAME}! Start with ${lecterns[0]}, on the lectern just left of the runner.`,
+    // A player past MISTY is no newcomer: welcomed back (the re-critic).
+    secretsOpen ? `Welcome back to the ${GREAT_LIBRARY_NAME}.` : `Welcome to the ${GREAT_LIBRARY_NAME}!`,
     ...(golden
       ? [
           secretsOpen
@@ -996,14 +989,7 @@ function drawLibrary(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
       name: 'THE STACKS',
       note: 'Old books on old things',
       tiles: [4, 10].flatMap((y) => [0, 1, 2, 12, 13, 14].map((x) => ({ x, y }))),
-      lines: [
-        // The golden book counted too, once it opens (the harbour re-critic).
-        open && golden
-          ? 'Shelf after shelf of old books. The ones worth reading are open on the lecterns and the golden plinth.'
-          : onLecterns.length === 1
-            ? 'Shelf after shelf of old books. The one worth reading is open on its lectern.'
-            : 'Shelf after shelf of old books. The ones worth reading are open on the lecterns.',
-      ],
+      lines: ['Shelf after shelf of old books.'],
     },
     // Quiet, as the window is: the furniture is the picture, and a caption
     // over each would be a room of labels. Each still answers when faced,

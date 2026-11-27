@@ -11,7 +11,6 @@ import {
 } from '../save/SaveManager';
 import { FIRST_CONTRACT_ID } from '../objectives';
 import { BASE_DOORS, isHouseDoor } from './doors';
-import { LIBRARY_BOOKS } from '../library/books';
 import { doorStatusLine } from './doorStatus';
 import { baseGame as newGame } from './baseGames.testkit';
 import { BADGES } from './badgeCase';
@@ -160,13 +159,13 @@ describe("what each of the base's doors says", () => {
     }
   });
 
-  it('answers for every door there is', () => {
+  it('answers for every door there is but THE GREAT LIBRARY, which has its name', () => {
     const stash = createStartingStash(CHARMANDER);
     stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
     const game = restore(stash);
     for (const door of BASE_DOORS) {
       const line = doorStatusLine(door, game);
-      expect([door.id, line.length > 0]).toEqual([door.id, true]);
+      expect([door.id, line.length > 0]).toEqual([door.id, door.id !== 'great-library']);
       // One short line, because it is the third row of a caption seated over a
       // building on a 320-pixel stage.
       expect([door.id, line.length]).toEqual([door.id, line.length]);
@@ -195,21 +194,15 @@ describe("what each of the base's doors says", () => {
     const library = doorNamed('great-library');
     expect(isHouseDoor(library)).toBe(false);
     expect(isHouseDoor(doorNamed('bolthole'))).toBe(true);
-    expect(doorStatusLine(library, baseGame())).toMatch(/^\d+ books? to read$/);
+    expect(doorStatusLine(library, baseGame())).not.toMatch(/Your things/);
     expect(BASE_DOORS.filter(isHouseDoor).map((door) => door.id)).toEqual(['bolthole']);
   });
 
-  /**
-   * The golden book is chained shut until MISTY is beaten, and the door said
-   * "2 books to read" over a room with one that opened (the harbour critic
-   * tour, 26 Nov 2026): it counts the books a player can open.
-   */
-  it("counts on THE GREAT LIBRARY's door only the books that open", () => {
+  /** "3 books to read" was a to-do list on a door (the harbour loop audit, 27 Nov 2026): the name over it is enough. */
+  it("gives THE GREAT LIBRARY's door its name and nothing under it", () => {
     const library = doorNamed('great-library');
-    const lecterns = LIBRARY_BOOKS.filter((book) => book.plinth !== 'golden').length;
-    const said = (count: number) => `${count} ${count === 1 ? 'book' : 'books'} to read`;
-    expect(doorStatusLine(library, baseGame())).toBe(said(lecterns));
-    expect(doorStatusLine(library, baseGame({ progress: { defeatedBosses: [MISTY_BOSS_ID] } }))).toBe(said(lecterns + 1));
+    expect(doorStatusLine(library, baseGame())).toBe('');
+    expect(doorStatusLine(library, baseGame({ progress: { defeatedBosses: [MISTY_BOSS_ID] } }))).toBe('');
   });
 
   /** The name is over the door (`home/houseName.ts`), so the line under it never says it again. */

@@ -12,8 +12,6 @@ import {
 } from '../hub/trader';
 import { formatMoney } from '../items';
 import { isHouseDoor, type BaseDoor, type BaseScreen } from './doors';
-import { LIBRARY_BOOKS } from '../library/books';
-import { secretsBookOpens } from '../library/secretsBookLock';
 import { errandBeat, errandThing } from '../hub/errands';
 import { isFirstRaid } from '../hub/firstRaid';
 import { caseBadges, wonBadges } from './badgeCase';
@@ -51,10 +49,10 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
   switch (door.screen) {
     case null: {
       // A door with no keeper's screen and no house behind it is THE GREAT
-      // LIBRARY, which says what is inside. It said the house's line once,
-      // "Your things · your Pokémon" (the overnight playtest of 20 Nov 2026).
+      // LIBRARY, which has its name over it and nothing more: "3 books to
+      // read" was a to-do list on a door (the harbour loop audit, 27 Nov 2026).
       if (!isHouseDoor(door)) {
-        return door.id === 'great-library' ? booksToRead(game) : '';
+        return '';
       }
       // The player's own house, which says from the yard what is kept in it -
       // their things and their Pokémon, on MY PC - under their name, which is
@@ -188,14 +186,4 @@ function errandLine(giver: BaseScreen, game: RestoredGame): string | undefined {
   }
   const called = errand.called ?? errand.name;
   return beat.kind === 'ask' ? `${called} wants a favour` : `${called} wants a word`;
-}
-
-/**
- * THE GREAT LIBRARY's door: the books inside a player can open, so a golden
- * book still chained to its plinth (`library/secretsBookLock.ts`) is not
- * counted as one to read.
- */
-export function booksToRead(game: RestoredGame): string {
-  const open = LIBRARY_BOOKS.filter((book) => book.plinth !== 'golden' || secretsBookOpens(game.raidProgress)).length;
-  return `${open} ${open === 1 ? 'book' : 'books'} to read`;
 }
