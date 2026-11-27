@@ -49,8 +49,8 @@ describe("everything Bill deals in stands on his shelves", () => {
     expect(new Set(GOODS_ON_SHELVES.map(({ tile }) => `${tile.x},${tile.y}`)).size).toBe(named.length);
   });
 
-  it('keeps under a sheet what the player has not earned, and leaves a gap for what he only had one of', () => {
-    expect(shelfState(counter(), antidote)).toBe('sheeted');
+  it('puts out only what he sells the player today, and leaves a gap for what he only had one of', () => {
+    expect(shelfState(counter(), antidote)).toBe('not-yet');
     expect(shelfState(counter({}, REGULAR), antidote)).toBe('out');
     // Potions and Poké Balls are out for anybody (AI playtest 3, 22 Nov 2026).
     expect(shelfState(counter(), potion)).toBe('out');
@@ -89,9 +89,9 @@ describe('Bill on a thing on his shelves', () => {
     expect(spent.lines[1]).toContain('your lot till you raid again');
   });
 
-  it('says what is under a sheet and what would take it off', () => {
+  it('has nothing to say about a thing he is not selling the player yet', () => {
     const quote = billQuote(counter(), antidote);
-    expect(quote.lines[0]).toBe("Under the sheet? Antidote. I'm keeping that back till you're a regular.");
+    expect(quote.lines).toEqual([]);
     expect(quote.question).toBeUndefined();
   });
 

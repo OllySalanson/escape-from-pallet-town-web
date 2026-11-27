@@ -324,7 +324,7 @@ try {
 
   // --- Bill ----------------------------------------------------------------
   await editSave((save) => { save.raidProgress.traderMoneySpent = 0; save.stash.items.money = 3000; }, 'bills-cottage');
-  await shot('11-stranger-sheets');
+  await shot('11-stranger-shelves');
   await press('Space', 500);
   const bill = await pastAFavour(/whole list/);
   console.log(`  bill: ${bill.join(' | ')}`);
@@ -334,14 +334,12 @@ try {
   await press('Space', 400);
   await readOn();
   expect('NOT NOW opens nothing', !(await page.evaluate(sceneIs('hub'))));
-  // Potions and Poké Balls he sells anybody (#617); a Super Potion waits on trust.
-  const sheeted = await thing(`(each) => each.good?.itemId === 'super-potion'`);
-  await standFacing({ x: sheeted.tiles[0].x, y: sheeted.tiles[0].y + 1 }, sheeted.tiles[0]);
-  expect('a sheet is named as one', (await base('b.hintShown')) === '[SPACE] UNDER A SHEET', await base('b.hintShown'));
-  await press('Space', 500);
-  const under2 = await readOn();
-  console.log(`  sheet: ${under2.join(' | ')}`);
-  expect('he says what is under it, and asks nothing', under2.join(' ').includes('Potion') && !(await asked()));
+  // Potions and Poké Balls he sells anybody (#617); a Super Potion waits on
+  // trust, and as in a Poké Mart it is simply not out: bare shelf, nothing to face.
+  const kept = await thing(`(each) => each.good?.itemId === 'super-potion'`);
+  expect('a thing he is not selling yet is not on the shelf', kept === undefined || kept === null, JSON.stringify(kept));
+  const out = await thing(`(each) => each.good?.itemId === 'potion'`);
+  expect('a Potion is out for anybody', Boolean(out), JSON.stringify(out));
 
   await editSave((save) => {
     save.raidProgress.traderMoneySpent = 5200;

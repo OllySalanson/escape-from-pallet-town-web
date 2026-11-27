@@ -1,9 +1,8 @@
 import type { RestoredGame } from '../save/SaveManager';
-import { traderCounterFor } from '../save/SaveManager';
 import { WORKSHOP_UPGRADES } from '../hub/workshop';
 import type { PaintedPicture } from '../world/minimap';
 import { badgeCasePoster } from './badgeCase';
-import { sheetedColumns, shelfPoster } from './billGoods';
+import { shelfPoster } from './billGoods';
 import { chalkBayPoster, ladderTallyPoster } from './chalk';
 import { boardPoster } from './labBoard';
 import { pennantsPoster } from './pennants';
@@ -43,7 +42,7 @@ export function roomPosterPicture(game: RestoredGame, poster: RoomPoster, now: D
     case 'cabinet-lamps':
       return cabinetLampsPicture(tiersPaidToday(poster.game, game.raidProgress, now));
     case 'goods-shelf':
-      return shelfPoster(poster.area, sheetedColumns(poster.area, traderCounterFor(game)));
+      return shelfPoster(poster.area);
     case 'chart-wall':
       return chartWallPicture(game.raidProgress.treasureHunt, poster.area);
     case 'chart-table':

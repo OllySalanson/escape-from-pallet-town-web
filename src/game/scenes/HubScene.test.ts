@@ -2193,18 +2193,16 @@ describe('HubScene - Bill', () => {
     expect(boat).not.toContain('data-buy="leftovers"');
   });
 
-  it('says what standing is and what the next tier costs, so it is never a mystery', () => {
+  it('shows Bill in his room and never his standing, as a Poké Mart clerk has none', () => {
     const { hub } = createTraderHub();
     hub.setView('trader');
     const boat = markupOf(hub);
 
-    // His standing, by name, and how far it is to the next as a bar and a count.
-    expect(boat).toMatch(/<span class="trader-rank">(Stranger|Regular|Trusted|Partner)<\/span>/);
-    expect(boat).toContain('class="trader-trust-bar"');
-    expect(boat).toMatch(/\d+ \/ \d+<span class="trader-trust-to"><\/span>(Regular|Trusted|Partner)/);
-    // What raises it, as the three prices rather than a paragraph about them -
-    // and only while there is a tier left to raise it to.
-    expect(boat).toContain('Bank a job +2, beat a boss +3, spend ₽200 +1.');
+    expect(boat).toContain('class="px-window trader-standing"');
+    expect(boat).not.toContain('trader-rank');
+    expect(boat).not.toContain('trader-trust');
+    const side = boat.slice(boat.indexOf('class="trader-side"'));
+    expect(side).not.toMatch(/Stranger|Regular|Trusted|Partner/);
   });
 
   it('offers a stranger Potions and Poké Balls only, and keeps every shut row reachable by the cursor', () => {
@@ -2227,10 +2225,13 @@ describe('HubScene - Bill', () => {
     // ₽5000 buys Potions and Poké Balls and nothing else: standing is the
     // first gate to the rest, and money can never open it.
     expect([...boat.matchAll(/data-buy="([^"]+)"/g)].map((match) => match[1]).sort()).toEqual(['poke-ball', 'potion']);
-    expect(boat).toContain('Potions and Balls for now');
-    // Not `disabled`: a cursor has to reach a shut row to be told why.
+    // What he is not selling yet is not on the list at all: no card, no padlock,
+    // no berth, and no barter table while it would stand empty.
+    expect([...boat.matchAll(/data-shows="([^"]+)"/g)].map((match) => match[1]).sort()).toEqual(['poke-ball', 'potion']);
+    expect(boat).not.toContain('padlock');
+    expect(boat).not.toContain('For parts');
+    expect(boat).not.toContain('till you raid</small>');
     expect(boat).not.toMatch(/<button[^>]* disabled/);
-    expect(boat).toMatch(/aria-disabled="true"/);
   });
 
   it("rents a berth in the shelf, and names it against Brock's locker", () => {
@@ -2292,18 +2293,16 @@ describe('HubScene - Bill', () => {
     expect(table).toContain('All here');
   });
 
-  it('names the standing a shut deal is waiting on rather than only shutting it', () => {
+  it('leaves off the list a deal he is not selling the player yet', () => {
     const { hub } = createTraderHub();
     hub.setView('trader');
     const boat = markupOf(hub);
-    const from = boat.slice(boat.indexOf('data-shown-by="barter-life-orb"'));
-    const pane = from.slice(0, from.indexOf('shop-card" data-shown-by=', 1));
 
-    // The padlock and the standing it waits for, where ALL HERE would stand -
-    // never both - and the help bar has his words for it.
-    expect(pane).toMatch(/<span class="trader-lock"><span class="item-icon"><img src="[^"]*padlock\.png"[^]*?Partner<\/span>/);
-    expect(pane).not.toContain('All here');
-    expect(boat).toContain('data-help="He keeps that back until you are a partner."');
+    // Trusted, not a partner: the Life Orb and the Great Ball are not there at all.
+    expect(boat).not.toContain('data-shows="barter-life-orb"');
+    expect(boat).not.toContain('data-shows="great-ball"');
+    expect(boat).not.toContain('padlock');
+    expect(boat).toContain('data-barter="barter-quick-claw"');
   });
 
   /**

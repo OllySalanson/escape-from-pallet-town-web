@@ -1,17 +1,14 @@
 import { formatMoney, getItemById, itemAmountsFor } from '../items';
 import {
   TRADER_BERTH_PRICE,
-  TRADER_BERTH_STANDING,
   barterShortfall,
   checkBerth,
   barterDetail,
   checkBarter,
   checkPurchase,
-  standingWithArticle,
   moneyHeld,
   rationLeft,
   type TraderCounter,
-  type TraderStandingId,
 } from './trader';
 
 /**
@@ -45,11 +42,6 @@ export interface BillQuote {
   readonly spendsForGood?: boolean;
 }
 
-/** Why a thing is under a sheet: his own word on what the player has not earned. */
-function keptBack(name: string, required: TraderStandingId): string {
-  return `Under the sheet? ${name}. I'm keeping that back till you're ${standingWithArticle(required)}.`;
-}
-
 /** What he says to NOT NOW. */
 export const NOT_DEALT_LINE = "It'll be here. Most things are.";
 
@@ -60,8 +52,9 @@ export const DEAL_NOT_SAVED_LINE = "It wouldn't save, so the deal's off and you'
  * The question on the mat, straight after his greeting (`hub/keeperGreetings.ts`):
  * his whole list is the PC's. How he reads the player and what they would need
  * to do for more used to come first, three boxes of tiers and points (the
- * harbour audit, 27 Nov 2026); the list's own header counts the points, and a
- * thing he keeps back is under a sheet on his shelf.
+ * harbour audit, 27 Nov 2026). Like a Poké Mart's, his list and shelves hold
+ * only what he sells the player today; a thing he is not selling them yet is
+ * not shown, and has no line.
  */
 export const SEE_THE_LIST_QUESTION = 'See my whole list?';
 
@@ -84,7 +77,7 @@ function stockQuote(counter: TraderCounter, itemId: string): BillQuote {
   const price = formatMoney(offer.item.price);
   switch (offer.refusal) {
     case 'standing-short':
-      return { lines: [keptBack(name, offer.item.standing)] };
+      return { lines: [] };
     case 'ration-spent':
       return {
         lines: [what, `${price}, but that's your lot till you raid again.`],
@@ -118,7 +111,7 @@ function barterQuote(counter: TraderCounter, barterId: string): BillQuote {
     case 'already-taken':
       return { lines: [`I only had the one ${barter.name}, and you have it. That gap is yours.`] };
     case 'standing-short':
-      return { lines: [keptBack(barter.name, barter.standing)] };
+      return { lines: [] };
     case 'goods-short':
       return {
         lines: [what, `I want ${takes}. You are short ${itemAmountsFor(barterShortfall(counter.stash, barter))}.`],
@@ -140,7 +133,7 @@ function berthQuote(counter: TraderCounter): BillQuote {
     case 'already-paid':
       return { lines: ["Your shelf's paid for. It's yours till the raid's over."] };
     case 'standing-short':
-      return { lines: [keptBack('A locker shelf', TRADER_BERTH_STANDING)] };
+      return { lines: [] };
     case 'money-short':
       return { lines: [what, `${price}, and you have ${formatMoney(moneyHeld(counter.stash))}.`] };
     default:

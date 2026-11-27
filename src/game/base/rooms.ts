@@ -2019,7 +2019,10 @@ function drawCottage(room: BaseRoom, game: RestoredGame): Drawn {
   const icons: RoomIcon[] = [];
   for (const { good, tile } of GOODS_ON_SHELVES) {
     const state = shelfState(counter, good);
-    things.push({ name: state === 'sheeted' ? 'UNDER A SHEET' : goodName(good).toUpperCase(), note: '', tiles: [tile], good, quiet: true });
+    if (state === 'not-yet') {
+      continue;
+    }
+    things.push({ name: goodName(good).toUpperCase(), note: '', tiles: [tile], good, quiet: true });
     if (state === 'out') {
       icons.push({
         itemId: good.kind === 'stock' ? good.itemId : '',

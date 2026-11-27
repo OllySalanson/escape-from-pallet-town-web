@@ -20,10 +20,10 @@ import type { Rect } from '../ui/labelPlacement';
  * the player has traded him (`cabinet.ts`) - what he will give, under what he has
  * been given.
  *
- * A thing the player has not earned stands **under a dust sheet**, and a deal he
- * only had one of leaves **a gap**. So a player walking in reads how far along
- * they are with him off the shelves, and the sheets come off as they get on: the
- * rooms' rule, that progress is a thing in the room.
+ * As a Poké Mart's shelves, they hold only what he sells this player today: a
+ * thing he is not selling them yet is not out at all, and that tile is bare
+ * shelf. A deal he only had one of leaves **a gap** the same way. When he
+ * warms to them, new goods are simply there the next time they walk in.
  *
  * Which run a thing is on is the only thing authored here. The deal is in
  * `../hub/trader.ts`, what he says about it in `../hub/billTalk.ts`.
@@ -139,16 +139,16 @@ export function goodIcon(good: BillGood): string {
   return TRADER_BARTERS.find((each) => each.id === good.barterId)?.icon ?? itemIconName('supply-crate');
 }
 
-export type ShelfState = 'out' | 'sheeted' | 'gone';
+export type ShelfState = 'out' | 'not-yet' | 'gone';
 
-/** How one thing stands today: out, under a sheet, or gone. */
+/** How one thing stands today: out, not sold to this player yet, or gone. */
 export function shelfState(counter: Pick<TraderCounter, 'stash' | 'progress'>, good: BillGood): ShelfState {
   if (good.kind === 'stock') {
     const item = TRADER_STOCK.find((each) => each.itemId === good.itemId);
-    return item && meetsStanding(counter.progress, item.standing) ? 'out' : 'sheeted';
+    return item && meetsStanding(counter.progress, item.standing) ? 'out' : 'not-yet';
   }
   if (good.kind === 'berth') {
-    return meetsStanding(counter.progress, TRADER_BERTH_STANDING) ? 'out' : 'sheeted';
+    return meetsStanding(counter.progress, TRADER_BERTH_STANDING) ? 'out' : 'not-yet';
   }
   const deal = TRADER_BARTERS.find((each) => each.id === good.barterId);
   if (!deal) {
@@ -157,7 +157,7 @@ export function shelfState(counter: Pick<TraderCounter, 'stash' | 'progress'>, g
   if (barterTaken(counter, deal)) {
     return 'gone';
   }
-  return meetsStanding(counter.progress, deal.standing) ? 'out' : 'sheeted';
+  return meetsStanding(counter.progress, deal.standing) ? 'out' : 'not-yet';
 }
 
 // --- the shelves themselves ---------------------------------------------------
@@ -173,9 +173,6 @@ const SHELF = {
   plank: '#c5bdd5',
   back: '#52526a',
   edge: '#7b7b7b',
-  sheet: '#efe9d8',
-  sheetFold: '#cfc7b0',
-  sheetShade: '#a79f8c',
 } as const;
 
 /** How many pixels of a tile the top of a shelf starts down. */
@@ -184,20 +181,8 @@ const SHELF_TOP_ROW = 7;
 /** How far above its tile a thing on a shelf stands, in pixels, feet on the top of the shelf. */
 export const GOOD_LIFT = 7;
 
-/** A dust sheet over a thing's shape: taller than it is wide at the shoulder, and folded. */
-const SHEET_ART: readonly string[] = [
-  '....ssss....',
-  '...ssssss...',
-  '..ssssffss..',
-  '..sssssfss..',
-  '.sssfsssss..',
-  '.sssfssssss.',
-  'ssssfsssssfs',
-  'dsdsdsdsdsdd',
-];
-
-/** The picture for one run of shelf, with a sheet painted over every thing still kept back. */
-export function shelfPoster(area: Rect, sheeted: readonly number[]): PaintedPicture {
+/** The picture for one run of shelf: the same bare shelving whatever stands on it. */
+export function shelfPoster(area: Rect): PaintedPicture {
   const width = area.width * 16;
   const height = area.height * 16;
   const data = new Uint8ClampedArray(width * height * 4);
@@ -219,25 +204,8 @@ export function shelfPoster(area: Rect, sheeted: readonly number[]): PaintedPict
     const x = Math.min(width - 1, column * 16 - (column === area.width ? 1 : 0));
     fill(x, SHELF_TOP_ROW + 3, 1, 4, SHELF.plank);
   }
-  for (const column of sheeted) {
-    const inks: Readonly<Record<string, string>> = { s: SHELF.sheet, f: SHELF.sheetFold, d: SHELF.sheetShade };
-    SHEET_ART.forEach((row, y) => {
-      [...row].forEach((cell, x) => {
-        if (cell !== '.') {
-          fill(column * 16 + 2 + x, SHELF_TOP_ROW + 2 - SHEET_ART.length + y, 1, 1, inks[cell]);
-        }
-      });
-    });
-  }
   return { width, height, data };
 }
 
 /** The runs of shelf, west to east and back to front, as the rectangles they are painted into. */
 export const SHELF_RUNS: readonly Rect[] = SHELVES.map(({ y, xs }) => ({ x: xs[0], y, width: xs.length, height: 1 }));
-
-/** Which tiles along one run are under a sheet today, by column of the run. */
-export function sheetedColumns(run: Rect, counter: Pick<TraderCounter, 'stash' | 'progress'>): readonly number[] {
-  return GOODS_ON_SHELVES.filter(
-    (seat) => seat.tile.y === run.y && seat.tile.x >= run.x && seat.tile.x < run.x + run.width && shelfState(counter, seat.good) === 'sheeted',
-  ).map((seat) => seat.tile.x - run.x);
-}
