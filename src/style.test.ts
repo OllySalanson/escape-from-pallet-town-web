@@ -959,6 +959,24 @@ describe('the last white screens on the wood floor', () => {
     expect(body('.pixel-ui:is(.wood-floor, .dex-floor) .px-body .px-window:is(button, .px-plate, .px-field)')).toContain('--grain: initial;');
   });
 
+  it.each([
+    ['ui/PlayerNameOverlay', 'naming-menu player-name-menu pixel-ui wood-floor'],
+    ['ui/NamingScreenOverlay', 'naming-menu pixel-ui wood-floor'],
+    ['scenes/StatsScene', 'stats-menu pixel-ui wood-floor'],
+    ['scenes/StarterScene', 'starter-menu pixel-ui wood-floor'],
+  ])('%s, found by photographing what the audit never opens, is made on it', async (file, classes) => {
+    expect(await readFile(new URL(`./game/${file}.ts`, import.meta.url), 'utf8')).toContain(`'${classes}'`);
+  });
+
+  it('stands a screen with no place behind it against a wall of darker boards, not on black', async () => {
+    // The swap of a last Pokémon and the stats page: the hub and the stats scene have nothing under them.
+    const wall = body('.pixel-ui.wood-floor .px-body:is(.starter-shell, .stats-layout, .stats-message-layout)');
+    expect(wall).toContain('background: repeating-linear-gradient(180deg, var(--paper-sunk) 0 calc(var(--u) * 15), var(--line) calc(var(--u) * 15) calc(var(--u) * 16));');
+    expect(await readFile(new URL('./game/scenes/HubScene.ts', import.meta.url), 'utf8')).toContain("const WOOD_FLOOR_VIEWS: readonly HubView[] = ['workshop', 'trader', 'daycare', 'trades', 'reselect'];");
+    // And the starter under the cursor or the pointer is lit: lettered in the plate's ink.
+    expect(body('.pixel-ui.wood-floor .px-body .starter-card:is(.is-selected, :hover)')).toContain('--ink: var(--raised-ink);');
+  });
+
   it('makes the move chooser on it wherever it opens, beside a raid or over the chest', async () => {
     const chooser = await readFile(new URL('./game/ui/MoveChooserOverlay.ts', import.meta.url), 'utf8');
     expect(chooser).toContain("`move-chooser-menu${view.beside ? ' side-panel' : ''} pixel-ui wood-floor`");

@@ -7467,6 +7467,19 @@ body.touch-play .feedback-tab {
 .pixel-ui.wood-floor .px-body .px-party-slot.is-empty {
   --edge: var(--line);
 }
+/* A screen with no place behind it - the swap of a last Pokémon, the page of
+   play stats, a game that cannot be saved - stood its boards on black. It
+   stands them against a wall of darker boards: the sunk wood, ruled in the
+   floor's line at a plank's height. */
+.pixel-ui.wood-floor .px-body:is(.starter-shell, .stats-layout, .stats-message-layout) {
+  background: repeating-linear-gradient(180deg, var(--paper-sunk) 0 calc(var(--u) * 15), var(--line) calc(var(--u) * 15) calc(var(--u) * 16));
+}
+/* The starter under the cursor is lit, and the one that is yours washed green: plates. */
+.pixel-ui.wood-floor .px-body .starter-card:is(.is-selected, :hover) {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
 /* A part there is enough of is a tag washed green, and so a plate too. */
 .pixel-ui.wood-floor .px-body :is(.part-tag, .workshop-cost):not(.is-short) {
   color: var(--raised-ink);

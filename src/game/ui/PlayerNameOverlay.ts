@@ -112,7 +112,7 @@ export function openNameScreen(
     );
   };
 
-  const overlay: MenuOverlay = new MenuOverlay(scene, 'naming-menu player-name-menu pixel-ui', (event) => {
+  const overlay: MenuOverlay = new MenuOverlay(scene, 'naming-menu player-name-menu pixel-ui wood-floor', (event) => {
     if (event.key === 'Escape') {
       event.preventDefault();
       settle('later');
