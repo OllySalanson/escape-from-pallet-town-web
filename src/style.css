@@ -7268,12 +7268,12 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui[data-room='tight']) .boutique-card .look-figure {
   --figure-scale: 1;
 }
-/* The shelves' own window: its heading, a row of jump chips, then the list. */
+/* The shelves' own window: its heading, the pager, then the list - in a
+   tight room too. It was given two rows there, from when the row between was
+   hidden at that size, so the pager took the list's row and the cards were
+   drawn over it (800x600, 27 Nov 2026). */
 :where(.pixel-ui) .boutique-panes > .boutique-shelves-window {
   grid-template-rows: auto auto minmax(0, 1fr);
-}
-:where(.pixel-ui[data-room='tight']) .boutique-panes > .boutique-shelves-window {
-  grid-template-rows: auto minmax(0, 1fr);
 }
 /* A look's figure is the whole point of this screen, so unlike a keeper's it
    stays at the smallest stage too. */
@@ -7316,6 +7316,27 @@ body.touch-play .feedback-tab {
 }
 .pixel-ui .boutique-card > strong {
   text-transform: none;
+}
+/* On the wood floor (`BoutiqueScene`) a shelf is boards and a card on it a
+   board of its own; the card under the cursor that is on in the mirror, and a
+   gym honour worn, are lit - light plates, lettered in the plate's ink. The
+   glass is a plate of the lighter wood in its gold frame: lit, it was a slab
+   of gold a third of the screen wide. */
+.pixel-ui.wood-floor .px-body .boutique-card:is(:focus, .is-honour) {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
+/* What it takes: the gold strip's small word and a HAVE tag are written on
+   gold and on a green wash, so in the plate's ink, not the floor's pale ones. */
+.pixel-ui.wood-floor .px-body .bq-takes.is-gold .px-heading small {
+  color: var(--raised-ink-soft);
+}
+.pixel-ui.wood-floor .px-body .bq-take.is-enough .bq-have {
+  color: var(--raised-ink);
+}
+.pixel-ui.wood-floor .px-body .bq-glass {
+  background: var(--paper-raised);
 }
 
 /* The bench is one list, the whole width of its panel. */
@@ -10282,8 +10303,9 @@ body.touch-play .feedback-tab {
   min-width: calc(var(--u) * 12);
   height: calc(var(--u) * 12);
   padding: 0 calc(var(--u) * 2);
-  background: var(--ink);
-  color: var(--paper);
+  /* A key's cap is ink lettered in white on any floor (`--plate-ink`, `--plate`). */
+  background: var(--plate-ink);
+  color: var(--plate);
   text-transform: uppercase;
 }
 :where(.pixel-ui) .px-rosette {
@@ -10857,9 +10879,11 @@ body.touch-play .feedback-tab {
   background: var(--paper-sunk);
   color: var(--ink-soft);
 }
+/* A slot's head is a strip, the same on any floor (`--bar`): what it is drawn
+   in is never the floor's own ink. */
 :where(.pixel-ui) .bq-slot-head {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bar);
+  color: var(--bar-text);
 }
 :where(.pixel-ui) .bq-slot.is-kit .bq-slot-head {
   background: var(--ink-2);
@@ -10963,7 +10987,7 @@ body.touch-play .feedback-tab {
   --heading: var(--gold);
 }
 :where(.pixel-ui) .bq-takes.is-gold .px-heading {
-  color: var(--ink);
+  color: var(--plate-ink);
 }
 :where(.pixel-ui) .bq-takes.is-gold .px-heading small {
   color: var(--gold-ink);
@@ -11012,8 +11036,8 @@ body.touch-play .feedback-tab {
   padding-left: calc(var(--u) * 3);
 }
 .pixel-ui .bq-key.is-primary .px-keycap {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--plate);
+  color: var(--plate-ink);
 }
 /* A button with its key inside says it is the one under the cursor with a gold
    ring, not the drawn arrow, which would stand over its keycap. */
@@ -11047,7 +11071,7 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .bq-slot.is-new .bq-slot-head {
   background: var(--gold);
-  color: var(--ink);
+  color: var(--plate-ink);
 }
 :where(.pixel-ui) .bq-slot-head {
   grid-column: 1 / -1;

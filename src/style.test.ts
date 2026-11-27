@@ -729,3 +729,39 @@ describe('a refused button', () => {
     }
   });
 });
+
+/**
+ * THE HARBOUR BOUTIQUE and the wardrobe went onto the wood floor on 27 Nov
+ * 2026 (`docs/screens/wood-floor/`), and three things that were only right on
+ * paper went with them.
+ */
+describe('the boutique on the wood floor', () => {
+  const plain = stylesheet.replace(/\/\*[\s\S]*?\*\//g, '');
+  const body = (selector: string): string => {
+    const found = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.trim() === selector);
+    if (!found) throw new Error(`no rule for ${selector}`);
+    return found[2];
+  };
+
+  it('is made on it', async () => {
+    const scene = await readFile(new URL('./game/scenes/BoutiqueScene.ts', import.meta.url), 'utf8');
+    expect(scene).toContain("'boutique-screen pixel-ui wood-floor'");
+  });
+
+  it("draws a key's cap and a slot's head in what no floor remaps", () => {
+    // `--ink` and `--paper` are white and wood on that floor: a cap lettered in them was brown on brown.
+    expect(body(':where(.pixel-ui) .px-keycap')).toMatch(/background: var\(--plate-ink\);\s*color: var\(--plate\);/);
+    expect(body(':where(.pixel-ui) .bq-slot-head')).toMatch(/background: var\(--bar\);\s*color: var\(--bar-text\);/);
+  });
+
+  it('letters a lit card, a worn honour and a HAVE tag in the ink of the plate they are', () => {
+    expect(body('.pixel-ui.wood-floor .px-body .boutique-card:is(:focus, .is-honour)')).toContain('--ink: var(--raised-ink);');
+    expect(body('.pixel-ui.wood-floor .px-body .bq-take.is-enough .bq-have')).toContain('color: var(--raised-ink);');
+  });
+
+  it('gives the shelves their pager a row of its own in every room', () => {
+    // A tight room gave the window two rows for three things, and the cards were drawn over the pager.
+    expect(body(':where(.pixel-ui) .boutique-panes > .boutique-shelves-window')).toContain('grid-template-rows: auto auto minmax(0, 1fr);');
+    expect(plain).not.toMatch(/data-room='tight'\]\) \.boutique-panes > \.boutique-shelves-window/);
+  });
+});

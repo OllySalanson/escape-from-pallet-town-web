@@ -158,11 +158,20 @@ and the commit of each change: `node tools/playtest/menusAudit.mjs <test-mode bu
 | THE CHEST: its Pokémon | ![](before/chest-pokemon.png) | ![](after/chest-pokemon.png) | 8 to 57 | 37% to 1% |
 | THE RAID ARENA's rack | ![](before/hall-rack.png) | ![](after/hall-rack.png) | 12 to 49 | 37% to 11% |
 | THE RAID ARENA's locker | ![](before/hall-locker.png) | ![](after/hall-locker.png) | 12 to 49 | 38% to 12% |
+| THE HARBOUR BOUTIQUE | ![](before/boutique-shop.png) | ![](after/boutique-shop.png) | 10 to 53 | 57% to 1% |
+| THE HARBOUR BOUTIQUE: trying a look on | ![](before/boutique-trying-on.png) | ![](after/boutique-trying-on.png) | 14 to 56 | 58% to 1% |
+| YOUR WARDROBE | ![](before/boutique-wardrobe.png) | ![](after/boutique-wardrobe.png) | 8 to 54 | 64% to 0% |
 | THE POKéDEX (X): the list | ![](before/pokedex-list.png) | ![](after/pokedex-list.png) | 3 to 51 | 82% to 0% |
 | THE POKéDEX: a page | ![](before/pokedex-page.png) | ![](after/pokedex-page.png) | 7 to 48 | 47% to 2% |
 | THE POKéDEX: a page of one only met | ![](before/pokedex-page-met.png) | ![](after/pokedex-page-met.png) | 7 to 31 | 15% to 1% |
 
 The Pokédex's pictures are `tools/playtest/pokedexShots.mjs`'s, which plays every key on it.
+
+The boutique's are `tools/playtest/boutique.mjs`'s, which tries a look on, buys it, walks out in it and changes back at the wardrobe. It also showed a fault older than the wood: in an 800x600 window the shelves' pager was drawn under the cards, because a small room gave that window two rows for three things.
+
+| 800x600, trying a look on | Before | After |
+|---|---|---|
+| The pager (Q, LOOKS 1 OF 8, E) | ![](before/boutique-trying-on-800x600.png) | ![](after/boutique-trying-on-800x600.png) |
 
 The states a still cannot show were played with `tools/playtest/yourThings.mjs`,
 `chest.mjs` and `chestPokemon.mjs`, every check passing on the wood floor:
