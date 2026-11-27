@@ -2196,14 +2196,14 @@ describe('HubScene - Bill', () => {
     expect(boat).toContain('₽1000');
   });
 
-  it('keeps the shelf and the barter table apart, and says money buys none of the second', () => {
+  it('keeps the shelf and the barter table apart, the second only once parts are home', () => {
     const { hub } = createTraderHub();
     hub.setView('trader');
     const boat = markupOf(hub);
 
     expect(boat).toContain('For money');
     expect(boat).toContain('For parts');
-    expect(boat).toContain('No money buys these');
+    expect(boat).not.toContain('No money buys these');
     // The shelf prices in money, on a gold tag; the table prices in found
     // goods, each part a tag with its picture and how many.
     expect(boat).toContain('data-buy="potion"');
@@ -2216,18 +2216,18 @@ describe('HubScene - Bill', () => {
     expect(boat).not.toContain('data-buy="leftovers"');
   });
 
-  it('says what standing is and what the next tier costs, so it is never a mystery', () => {
+  it('is a small counter: a handful of things, and no rank, bar or lock anywhere', () => {
     const { hub } = createTraderHub();
     hub.setView('trader');
     const boat = markupOf(hub);
 
-    // His standing, by name, and how far it is to the next as a bar and a count.
-    expect(boat).toMatch(/<span class="trader-rank">(Stranger|Regular|Trusted|Partner)<\/span>/);
-    expect(boat).toContain('class="trader-trust-bar"');
-    expect(boat).toMatch(/\d+ \/ \d+<span class="trader-trust-to"><\/span>(Regular|Trusted|Partner)/);
-    // What raises it, as the three prices rather than a paragraph about them -
-    // and only while there is a tier left to raise it to.
-    expect(boat).toContain('Bank a job +2, beat a boss +3, spend ₽200 +1.');
+    expect(boat).not.toContain('trader-rank');
+    expect(boat).not.toContain('trader-trust');
+    expect(boat).not.toContain('trader-lock');
+    expect(boat).not.toContain('padlock');
+    const cards = boat.match(/class="px-window px-card trader-card/g) ?? [];
+    expect(cards.length).toBeGreaterThan(0);
+    expect(cards.length).toBeLessThanOrEqual(8);
   });
 
   it('offers a stranger Potions and Poké Balls only, and keeps every shut row reachable by the cursor', () => {
@@ -2250,10 +2250,11 @@ describe('HubScene - Bill', () => {
     // ₽5000 buys Potions and Poké Balls and nothing else: standing is the
     // first gate to the rest, and money can never open it.
     expect([...boat.matchAll(/data-buy="([^"]+)"/g)].map((match) => match[1]).sort()).toEqual(['poke-ball', 'potion']);
-    expect(boat).toContain('Potions and Balls for now');
-    // Not `disabled`: a cursor has to reach a shut row to be told why.
+    // Nothing he keeps back is on the counter at all, and with no parts
+    // brought home there is no barter table either.
+    expect(boat).not.toMatch(/data-shows="(antidote|super-potion|great-ball|berth)"/);
+    expect(boat).not.toContain('trader-table');
     expect(boat).not.toMatch(/<button[^>]* disabled/);
-    expect(boat).toMatch(/aria-disabled="true"/);
   });
 
   it("rents a berth in the shelf, and names it against Brock's locker", () => {
@@ -2292,7 +2293,7 @@ describe('HubScene - Bill', () => {
     expect(potion.slice(0, potion.indexOf('data-shown-by=', 1))).toContain('Restores 20 HP.');
     // The table: what the gear does, from the item's own catalogue line.
     expect(boat).toContain('Sometimes the holder strikes first, whatever the Speed says.');
-    expect(boat).toContain("The holder's hits land a third harder and cost it a tenth of its own HP.");
+    expect(boat).toContain('Once a battle, the holder survives a knockout blow on 1 HP.');
   });
 
   it('prices both counters against what the vault is actually holding', () => {
@@ -2309,24 +2310,20 @@ describe('HubScene - Bill', () => {
     // A Potion at ₽120 leaves ₽80, written as the number the purse will roll down to.
     expect(paneOf('potion')).toMatch(/<span>₽200<\/span><span class="shop-arrow"><\/span><strong class="">₽80<\/strong>/);
 
-    // Two mooring ropes asked, two held: a green tag and ALL HERE.
-    const table = paneOf('barter-hm03');
-    expect(table).toMatch(/<span class="part-tag"><span class="item-icon"><img src="[^"]*mooring-rope\.png"[^]*?<small>×2<\/small>/);
+    // Two parts crates asked, four held: a green tag and ALL HERE.
+    const table = paneOf('barter-quick-claw');
+    expect(table).toMatch(/<span class="part-tag"><span class="item-icon"><img src="[^"]*parts-crate\.png"[^]*?<small>×2<\/small>/);
     expect(table).toContain('All here');
   });
 
-  it('names the standing a shut deal is waiting on rather than only shutting it', () => {
+  it('shows nothing he keeps back for standing, not even a shut card', () => {
     const { hub } = createTraderHub();
     hub.setView('trader');
     const boat = markupOf(hub);
-    const from = boat.slice(boat.indexOf('data-shown-by="barter-life-orb"'));
-    const pane = from.slice(0, from.indexOf('shop-card" data-shown-by=', 1));
 
-    // The padlock and the standing it waits for, where ALL HERE would stand -
-    // never both - and the help bar has his words for it.
-    expect(pane).toMatch(/<span class="trader-lock"><span class="item-icon"><img src="[^"]*padlock\.png"[^]*?Partner<\/span>/);
-    expect(pane).not.toContain('All here');
-    expect(boat).toContain('data-help="He keeps that back until you are a partner."');
+    // The Life Orb is a partner's; this save is not one.
+    expect(boat).not.toContain('barter-life-orb');
+    expect(boat).not.toContain('He keeps that back');
   });
 
   /**
@@ -2503,7 +2500,7 @@ describe('HubScene - Bill', () => {
     expect(boat).toContain('data-barter="barter-quick-claw"');
   });
 
-  it('says a struck deal is traded on its card, once, in place of its parts', () => {
+  it('takes a deal he only had one of off the counter once it is struck', () => {
     const { storage } = createTraderHub();
     const save = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: { traderBarters?: string[] } };
     save.raidProgress.traderBarters = ['barter-quick-claw'];
@@ -2512,13 +2509,9 @@ describe('HubScene - Bill', () => {
 
     hub.setView('trader');
     const boat = markupOf(hub);
-    const row = /<button[^>]*>(?:(?!<\/button>)[\s\S])*<\/button>/g.exec(
-      boat.slice(boat.indexOf('data-shows="barter-quick-claw"') - 400),
-    )![0];
 
-    expect(row).toContain('is-secured');
-    expect(row).not.toContain('part-tag');
-    expect(row.match(/Traded/gi)).toHaveLength(1);
+    expect(boat).not.toContain('barter-quick-claw');
+    expect(boat).not.toContain('Traded');
   });
 
   it('types no arrow and no tick, exactly as every other pixel screen', () => {

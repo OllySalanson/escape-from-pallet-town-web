@@ -33,7 +33,7 @@ import { stepsFrom, stepsTo, servingTiles, walksToKeepers, BASE_STARTS } from '.
 import { baseGame } from './baseGames.testkit';
 import { ERRANDS } from '../hub/errands';
 import { CABINET_UNITS, CABINET_UNITS_AT_START, CABINET_UNIT_SIZE, unitTiles } from './cabinet';
-import { GOODS_ON_SHELVES } from './billGoods';
+import { SHELF_TILES } from './billGoods';
 
 const EVERY_RUNG = WORKSHOP_UPGRADES.map((upgrade) => upgrade.id);
 const room = (id: string): BaseRoom => roomNamed(id)!;
@@ -394,7 +394,7 @@ describe('the hooks the rooms leave for what comes next', () => {
     // Every shelf seat and every crate taken: nothing in the room gets in the way of the goods.
     const full = buildRoom(cottage, baseGame({ traded: 500 }));
     const walks = stepsFrom(full.collision, matOf(cottage));
-    for (const { tile } of GOODS_ON_SHELVES) {
+    for (const tile of SHELF_TILES) {
       expect([key(tile), full.collision[tile.y][tile.x]]).toEqual([key(tile), true]);
       const fronts = [
         { x: tile.x, y: tile.y - 1 },

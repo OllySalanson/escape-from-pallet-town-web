@@ -12,8 +12,8 @@ import type { BaseScreen } from '../base/doors';
  * a rule. The owner's word (PR #980): "We don't want these AI reminder things
  * everywhere that explain how to do things." So a keeper greets you, in their
  * own voice, and everything they used to explain is shown where it is true: the
- * price of a heal in the question that spends it, a deal Bill keeps back under a
- * sheet on his shelf, a build Brock cannot start greyed on his screen.
+ * price of a heal in the question that spends it, a deal Bill keeps back left off
+ * his shelves altogether, a build Brock cannot start greyed on his screen.
  *
  * Nothing here reads the save, and that is the rule: a greeting that changed
  * with the save would be a situation line again. A favour a keeper has to ask,
