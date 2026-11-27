@@ -58,6 +58,22 @@ Five causes, in the order they are being fixed:
 
 How it is built is in `docs/agents/ui-and-screens.md` ("White is a plate, never the floor").
 
+## How a screen arrives and leaves
+
+Cause 5: one frame was the harbour and the next was the whole menu. A screen now takes
+about a fifth of a second to arrive and a tenth to leave, in steps, as the game's own
+moves are (`src/game/ui/menuMotion.ts`).
+
+| | |
+|---|---|
+| Before: a cut | ![](motion/before-cut.png) |
+| After: the place dims, the title drops in, the cards step up, the help rises | ![](motion/after-open.png) |
+| After: leaving, it sinks and clears over the place | ![](motion/after-close.png) |
+
+The pictures are animated, played about three times slower than the game so the steps
+can be seen, at half size. A tab or a question over a screen only steps its cards up, and
+with reduced motion asked for nothing moves.
+
 ## Every screen, as it is moved
 
 `before/` and `after/` are the same save photographed the same way on the commit before

@@ -4,6 +4,7 @@ import { menuClickSound } from '../audio/menuSounds';
 import { menuLayer } from '../display/menuStage';
 import { columnTracks, isLowRoom, isShortRoom, planColumns, roomFor } from './columnLayout';
 import { areaHopIndex, CURSOR_CONTROLS, firstMatching, READING_PANES } from './menuFocus';
+import { followsAnother, movesAsScreen, playArrival, playLeaving } from './menuMotion';
 import { claimOverlayKeyboard } from './overlayKeyboard';
 import { PointerPreview } from './pointerPreview';
 import {
@@ -32,6 +33,12 @@ export class MenuOverlay {
   private shiftHeld = false;
   /** The frame the cursor is waiting on, while it is waiting on one. */
   private cursorFrame: number | undefined;
+  /** Watches for the screen's first markup, to play its arrival on it (`menuMotion.ts`); gone once it has. */
+  private arrival: MutationObserver | undefined;
+  /** Whether the screen has been taken down: a scene shuts down and is destroyed, and says so twice. */
+  private gone = false;
+  /** Whether this screen arrives and leaves with the shared move (`menuMotion.ts`). */
+  private readonly moves: boolean;
   /** Scrolls the panes of the last `redraw` back, once the screen is laid out. */
   private restoreScroll: (() => void) | undefined;
   /**
@@ -65,10 +72,27 @@ export class MenuOverlay {
     this.root = document.createElement('section');
     this.root.className = `menu-overlay ${className}`;
     this.root.setAttribute('aria-label', 'Game menu');
+    // A screen in the game's own look arrives and leaves with a short move, and
+    // one that comes straight after another - one still leaving, or one still
+    // up under it - only steps its cards in (`menuMotion.ts`).
+    this.moves = movesAsScreen(className);
+    const following = this.moves && followsAnother(menuLayer());
     // The menu layer, not the canvas box: a screen is laid out against the
     // browser window so that room on a big display becomes rows a player can
     // see rather than the same list magnified. See `display/menuStage.ts`.
     menuLayer().append(this.root);
+    // Its arrival is played once, on what its first markup holds: a screen is
+    // redrawn by replacing its markup, and must not arrive again each time.
+    if (this.moves && typeof MutationObserver !== 'undefined') {
+      this.arrival = new MutationObserver(() => {
+        if (this.root.querySelector('.px-screen')) {
+          this.arrival?.disconnect();
+          this.arrival = undefined;
+          playArrival(this.root, following);
+        }
+      });
+      this.arrival.observe(this.root, { childList: true });
+    }
     // An overlay owns the keyboard for as long as it is on screen; see
     // `overlayKeyboard.ts` for why that ownership cannot live in the scenes.
     this.releaseKeyboard = claimOverlayKeyboard((event) => {
@@ -156,6 +180,11 @@ export class MenuOverlay {
   }
 
   public destroy(): void {
+    if (this.gone) {
+      return;
+    }
+    this.gone = true;
+    this.arrival?.disconnect();
     if (this.cursorFrame !== undefined) {
       cancelAnimationFrame(this.cursorFrame);
     }
@@ -167,7 +196,12 @@ export class MenuOverlay {
     this.root.removeEventListener('mouseleave', this.leaveHandler);
     window.removeEventListener('resize', this.resizeHandler);
     document.fonts?.removeEventListener?.('loadingdone', this.resizeHandler);
-    this.root.remove();
+    // Out of the menu layer at once, and a tenth of a second leaving (`menuMotion.ts`).
+    if (this.moves) {
+      playLeaving(this.root, menuLayer());
+    } else {
+      this.root.remove();
+    }
   }
 
   /**

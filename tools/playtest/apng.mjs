@@ -73,8 +73,13 @@ function chunk(type, data) {
   return out;
 }
 
-/** Every frame laid end to end as one looping APNG at 30 frames a second. */
-export function animatedPng(images) {
+/**
+ * Every frame laid end to end as one looping APNG: at 30 frames a second, or
+ * each held for `frameMs` milliseconds - one number for all, or one a frame, so
+ * a picture can rest on its last frame or flip between two.
+ */
+export function animatedPng(images, frameMs) {
+  const heldFor = (index) => (Array.isArray(frameMs) ? frameMs[index] : frameMs);
   const { width, height } = images[0];
   const scanlines = (image) => {
     const raw = Buffer.alloc((width * 4 + 1) * height);
@@ -99,8 +104,9 @@ export function animatedPng(images) {
     frame.writeUInt32BE(height, 8);
     frame.writeUInt32BE(0, 12);
     frame.writeUInt32BE(0, 16);
-    frame.writeUInt16BE(1, 20);
-    frame.writeUInt16BE(30, 22);
+    const held = heldFor(index);
+    frame.writeUInt16BE(held === undefined ? 1 : Math.round(held), 20);
+    frame.writeUInt16BE(held === undefined ? 30 : 1000, 22);
     frame[24] = 0;
     frame[25] = 0;
     parts.push(chunk('fcTL', frame));

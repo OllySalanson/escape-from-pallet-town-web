@@ -171,6 +171,8 @@ the touch pad's OK on the title in a phone-sized window with touch emulated, aft
 two real keyboard presses: NEW GAME must start, which the first OK after a keyboard
 press used not to (`--no-keys` is the control).
 
+`menuMotion.mjs <test-mode build url> <out dir> [--port=CDP port]` plays how a screen arrives and leaves (`src/game/ui/menuMotion.ts`): YOUR THINGS, THE POKéDEX, FAVOURS and THE CHEST's tabs, failing unless every move is stepped and over in 260ms, a closed screen is out of the menu layer at once with nothing left behind, and reduced motion moves nothing; it records the move as animated pictures, slowed (`docs/screens/wood-floor/motion/`). `apng.mjs`'s `animatedPng(frames, frameMs)` holds each frame for a time of its own.
+
 `colourScore.mjs <picture.png | folder>... [--box=x0,y0,x1,y1]` reads pictures a driver already took and prints how colourful each is (mean saturation, 0 to 100), how much of it is plain white and how bright it is, inside the game's stage: the world scores 27 to 35, a menu that reads as part of the game 16 or more, and the white sheets were 13 or less (`docs/screens/wood-floor/`). `menusAudit.mjs <test-mode build url> <out dir> [--only=name,..] [--port=CDP port]` is what takes a menu's picture the same way before and after.
 
 `resultMoment.mjs <test-mode build dir> <out dir> [--window=WxH] [--clip]` photographs the stage a raid that got out opens on for a haul, a catch, a job and an empty raid, on a save one raid in so Oak's next job is on its card, and fails any part drawn off the stage; `--clip` records the haul playing in (`docs/screens/result-stage/`).
