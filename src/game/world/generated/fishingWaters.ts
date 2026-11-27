@@ -12,8 +12,8 @@ export const FISHING_WATER_SOURCES = {
 
 /**
  * What each rod reads, slot for slot: the species and levels of the slot, and
- * its FireRed rate out of 100 as the weight. The Super Rod's five slots are in
- * `tools/encounters/frlg-water.json` and nowhere here.
+ * its FireRed rate out of 100 as the weight. The Super Rod's five slots and
+ * surfing's are `DEEP_WATER_SLOTS`, below.
  */
 export const FISHING_WATER_SLOTS: Readonly<
   Record<keyof typeof FISHING_WATER_SOURCES, Readonly<Record<'oldRod' | 'goodRod', readonly WildEncounterEntry[]>>>
@@ -38,6 +38,48 @@ export const FISHING_WATER_SLOTS: Readonly<
       { speciesId: 'poliwag', minLevel: 5, maxLevel: 15, weight: 60 },
       { speciesId: 'magikarp', minLevel: 5, maxLevel: 15, weight: 20 },
       { speciesId: 'goldeen', minLevel: 5, maxLevel: 15, weight: 20 },
+    ],
+  },
+};
+
+/**
+ * The rest of each water, slot for slot: the Super Rod's five, which no rod in
+ * this game reaches, and the five surfing rolls. Nothing is met from these;
+ * they are what is out there, at their FireRed rates.
+ */
+export const DEEP_WATER_SLOTS: Readonly<
+  Record<keyof typeof FISHING_WATER_SOURCES, Readonly<Record<'superRod' | 'surfing', readonly WildEncounterEntry[]>>>
+> = {
+  sea: {
+    superRod: [
+      { speciesId: 'horsea', minLevel: 15, maxLevel: 25, weight: 40 },
+      { speciesId: 'shellder', minLevel: 15, maxLevel: 25, weight: 40 },
+      { speciesId: 'gyarados', minLevel: 15, maxLevel: 25, weight: 15 },
+      { speciesId: 'seadra', minLevel: 25, maxLevel: 35, weight: 4 },
+      { speciesId: 'psyduck', minLevel: 25, maxLevel: 35, weight: 1 },
+    ],
+    surfing: [
+      { speciesId: 'tentacool', minLevel: 5, maxLevel: 10, weight: 60 },
+      { speciesId: 'tentacool', minLevel: 10, maxLevel: 20, weight: 30 },
+      { speciesId: 'tentacool', minLevel: 20, maxLevel: 30, weight: 5 },
+      { speciesId: 'tentacool', minLevel: 30, maxLevel: 35, weight: 4 },
+      { speciesId: 'tentacool', minLevel: 35, maxLevel: 40, weight: 1 },
+    ],
+  },
+  fresh: {
+    superRod: [
+      { speciesId: 'poliwag', minLevel: 15, maxLevel: 25, weight: 40 },
+      { speciesId: 'poliwhirl', minLevel: 20, maxLevel: 30, weight: 40 },
+      { speciesId: 'gyarados', minLevel: 15, maxLevel: 25, weight: 15 },
+      { speciesId: 'psyduck', minLevel: 15, maxLevel: 25, weight: 4 },
+      { speciesId: 'psyduck', minLevel: 25, maxLevel: 35, weight: 1 },
+    ],
+    surfing: [
+      { speciesId: 'psyduck', minLevel: 20, maxLevel: 25, weight: 60 },
+      { speciesId: 'psyduck', minLevel: 20, maxLevel: 25, weight: 30 },
+      { speciesId: 'psyduck', minLevel: 25, maxLevel: 30, weight: 5 },
+      { speciesId: 'psyduck', minLevel: 30, maxLevel: 35, weight: 4 },
+      { speciesId: 'psyduck', minLevel: 35, maxLevel: 40, weight: 1 },
     ],
   },
 };

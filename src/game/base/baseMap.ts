@@ -208,16 +208,19 @@ export const GARDENS_SIGN: BaseSign = {
 };
 
 /**
- * THE POINT's coin telescope, read as a sign: faced, it answered with the
- * partner's small talk, a prop with nothing behind it (the harbour critic
- * tour, 26 Nov 2026). Its post is drawn by `map.plant(..., 'coinTelescope')`,
- * on the lookout's paving between the benches with the rail running unbroken
- * in front of it, and it is looked through from the walk behind it.
+ * THE POINT's coin telescope. It stood as a sign that answered "nothing on it"
+ * (the harbour critic tour, 26 Nov 2026); faced now, it is looked through, out
+ * over the sea and what lives in it (`seaTelescope.ts`, `BaseScene.lookOutToSea`),
+ * so its lines are never said. It stays a sign so the yard keeps the walk behind
+ * it clear as it does for every other. Its post is drawn by
+ * `map.plant(..., 'coinTelescope')`, on the lookout's paving between the benches
+ * with the rail running unbroken in front of it, and it is looked through from
+ * the walk behind it.
  */
 export const COIN_TELESCOPE: BaseSign = {
   x: 120,
   y: 15,
-  lines: ['THE COIN TELESCOPE', 'It wants a coin you have not got. Through the dusty glass: the open sea, and nothing on it.'],
+  lines: ['THE COIN TELESCOPE'],
 };
 
 /** At the pleasure pier's gate, on PIER SQUARE's foot against its rail, beside the way on. */
