@@ -116,7 +116,7 @@ export class DojoCounterScene extends Phaser.Scene implements ProvidesFeedbackCo
   }
 
   public create(): void {
-    this.overlay = new MenuOverlay(this, 'dojo-counter side-panel pixel-ui', (event) => this.onKey(event));
+    this.overlay = new MenuOverlay(this, 'dojo-counter side-panel pixel-ui wood-floor', (event) => this.onKey(event));
     this.overlay.root.setAttribute('aria-label', 'Battle Arena counter');
     dockSidePanel(this, this.overlay, this.view);
     this.render();

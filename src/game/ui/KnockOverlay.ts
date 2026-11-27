@@ -145,7 +145,7 @@ export function openKnockScreen(
   // A side panel beside the yard, as the favours are: a full screen held a
   // list of a few doors - or one sentence, when nobody else has a house yet -
   // over a whole screen of empty checker (critic sweep, 25 Nov 2026).
-  const overlay: MenuOverlay = new MenuOverlay(scene, 'knock-menu side-panel pixel-ui', (event) => {
+  const overlay: MenuOverlay = new MenuOverlay(scene, 'knock-menu side-panel pixel-ui wood-floor', (event) => {
     if (isOverlayDismissKey(event)) {
       event.preventDefault();
       if (knockingOn) {

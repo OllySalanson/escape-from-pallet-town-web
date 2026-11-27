@@ -131,7 +131,7 @@ interface WorldSceneData {
 
 interface HubInternals {
   init(data?: HubSceneData): void;
-  setView(view: 'summary' | 'bench' | 'rack' | 'locker' | 'rim' | 'reselect' | 'workshop' | 'trader' | 'wallmap'): void;
+  setView(view: 'summary' | 'bench' | 'rack' | 'locker' | 'rim' | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare' | 'trades'): void;
   goBack(): void;
   wallMapInspect: string | undefined;
   startRun(): void;
@@ -1783,7 +1783,7 @@ describe('Brock', () => {
     expect(plain.filter((card) => card.includes('data-cursor-start'))).toEqual([expect.stringContaining('data-shows="radio-mast"')]);
   });
 
-  it("stands Brock's Workshop and Bill's Cottage on the wood floor, and no other keeper's screen", () => {
+  it("stands Brock's Workshop, Bill's Cottage, the Day-Care and the Trader on the wood floor, and not Oak's own screens", () => {
     // 27 Nov 2026: the two shops were sheets of white paper (`docs/screens/wood-floor/`).
     const { hub } = createWorkshopHub();
     const floor = (hub as unknown as { overlay: { root: { classList: { toggle: ReturnType<typeof vi.fn> } } } }).overlay.root.classList.toggle;
@@ -1793,6 +1793,11 @@ describe('Brock', () => {
     hub.setView('trader');
     markupOf(hub);
     expect(floor).toHaveBeenLastCalledWith('wood-floor', true);
+    for (const view of ['daycare', 'trades'] as const) {
+      hub.setView(view);
+      markupOf(hub);
+      expect(floor).toHaveBeenLastCalledWith('wood-floor', true);
+    }
     hub.setView('summary');
     markupOf(hub);
     expect(floor).toHaveBeenLastCalledWith('wood-floor', false);
