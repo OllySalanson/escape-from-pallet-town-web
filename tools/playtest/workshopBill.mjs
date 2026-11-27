@@ -324,7 +324,7 @@ try {
 
   // --- Bill ----------------------------------------------------------------
   await editSave((save) => { save.raidProgress.traderMoneySpent = 0; save.stash.items.money = 3000; }, 'bills-cottage');
-  await shot('11-stranger-sheets');
+  await shot('11-stranger-counter');
   await press('Space', 500);
   const bill = await pastAFavour(/whole list/);
   console.log(`  bill: ${bill.join(' | ')}`);
@@ -334,23 +334,21 @@ try {
   await press('Space', 400);
   await readOn();
   expect('NOT NOW opens nothing', !(await page.evaluate(sceneIs('hub'))));
-  // Potions and Poké Balls he sells anybody (#617); a Super Potion waits on trust.
-  const sheeted = await thing(`(each) => each.good?.itemId === 'super-potion'`);
-  await standFacing({ x: sheeted.tiles[0].x, y: sheeted.tiles[0].y + 1 }, sheeted.tiles[0]);
-  expect('a sheet is named as one', (await base('b.hintShown')) === '[SPACE] UNDER A SHEET', await base('b.hintShown'));
-  await press('Space', 500);
-  const under2 = await readOn();
-  console.log(`  sheet: ${under2.join(' | ')}`);
-  expect('he says what is under it, and asks nothing', under2.join(' ').includes('Potion') && !(await asked()));
+  // Potions and Poké Balls he sells anybody (#617); a Super Potion waits on
+  // trust, and a thing he keeps back is not on his shelves at all.
+  const goods = await base(`b.place.room.things.filter((each) => each.good).map((each) => each.good.itemId ?? each.good.barterId ?? each.good.kind)`);
+  expect('a stranger sees a Poké Ball and a Potion only', JSON.stringify(goods) === JSON.stringify(['poke-ball', 'potion']), JSON.stringify(goods));
 
   await editSave((save) => {
     save.raidProgress.traderMoneySpent = 5200;
     save.stash.items.money = 1000;
+    // Parts for exactly the Quick Claw and the Fire Stone, the two trades
+    // first on his small counter.
     save.stash.items['parts-crate'] = 4;
-    save.stash.items['cable-coil'] = 3;
-    save.stash.items['radio-valve'] = 2;
-    save.stash.items['mooring-rope'] = 2;
-    save.stash.items['linen-roll'] = 2;
+    save.stash.items['cable-coil'] = 1;
+    save.stash.items['radio-valve'] = 1;
+    save.stash.items['mooring-rope'] = 0;
+    save.stash.items['linen-roll'] = 0;
     save.stash.items['lamp-oil'] = 2;
   }, 'bills-cottage');
   await shot('12-partner-goods');
@@ -389,7 +387,7 @@ try {
   await readOn();
   await shot('15-after-a-barter');
 
-  // A once-only piece of gear, by mouse, leaves a gap on the shelf.
+  // A once-only piece of gear, by mouse, leaves the counter once struck.
   const claw = await thing(`(each) => each.good?.barterId === 'barter-quick-claw'`);
   await clickTile(claw.tiles[0]);
   await until(`${GAME}.scene.getScene('base').dialogBox.visible`, 'Bill on the clicked good');
@@ -399,12 +397,8 @@ try {
   await until(`(() => { const b = ${GAME}.scene.getScene('base'); return b.ready && !b.leaving && b.dialogBox.visible; })()`, 'the claw struck');
   await readOn();
   expect('bought by mouse', (await saved(`save.stash.items['quick-claw']`)) >= 1);
-  expect('no icon stands in the gap', !(await base(`b.place.room.icons.some((icon) => icon.icon === 'quick-claw')`)));
-  await shot('16-gap-on-the-shelf');
-  await press('Space', 500);
-  const gone = await readOn();
-  console.log(`  gap: ${gone.join(' | ')}`);
-  expect('and he says so', gone.join(' ').includes('only had the one'));
+  expect('it is off his shelves', !(await base(`b.place.room.things.some((each) => each.good?.barterId === 'barter-quick-claw')`)));
+  await shot('16-off-the-counter');
 
   // The berth starts on NOT NOW too.
   const berth = await thing(`(each) => each.good?.kind === 'berth'`);

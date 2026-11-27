@@ -74,7 +74,7 @@ import type { TileSource } from '../world/tileset/catalogue';
 import type { BasePieceName } from './generated/basePieces';
 import type { BaseKeeper, BaseScreen } from './doors';
 import { bayArea } from './chalk';
-import { GOOD_LIFT, GOODS_ON_SHELVES, goodIcon, goodName, SHELF_RUNS, SHELF_TILES, shelfState } from './billGoods';
+import { GOOD_LIFT, goodIcon, goodName, goodsOnShelves, SHELF_RUNS, SHELF_TILES } from './billGoods';
 import type { BillGood } from '../hub/billTalk';
 import { FOSSIL_MACHINE, fossilAwake } from '../hub/fossils';
 import { traderCounterFor } from '../save/SaveManager';
@@ -1975,9 +1975,9 @@ function drawWorkshop(room: BaseRoom, game: RestoredGame): Drawn {
  * tube between them - and his cabinet of oddities, which is everything the
  * player has ever bartered to him (`cabinet.ts`). Two units of empty shelving
  * stand either side of his desk from the start; the rows below them are left
- * bare for the second pair, which is carried in when the first is full. Below
- * those, either side of the aisle up from the door, is what he has to deal
- * (`billGoods.ts`): a thing a tile, faced and asked.
+ * bare for the second pair, which is carried in when the first is full. By the
+ * door, either side of the aisle, is his small counter (`billGoods.ts`): the
+ * few things he will deal this player, a thing a tile, faced and asked.
  */
 function drawCottage(room: BaseRoom, game: RestoredGame): Drawn {
   const sketch = shell(room);
@@ -2017,18 +2017,15 @@ function drawCottage(room: BaseRoom, game: RestoredGame): Drawn {
   things.push({ name: "BILL'S LIST", note: 'Everything he deals, and the price', tiles: [BILL_PC], opens: 'list' });
   const counter = traderCounterFor(game);
   const icons: RoomIcon[] = [];
-  for (const { good, tile } of GOODS_ON_SHELVES) {
-    const state = shelfState(counter, good);
-    things.push({ name: state === 'sheeted' ? 'UNDER A SHEET' : goodName(good).toUpperCase(), note: '', tiles: [tile], good, quiet: true });
-    if (state === 'out') {
-      icons.push({
-        itemId: good.kind === 'stock' ? good.itemId : '',
-        icon: goodIcon(good),
-        x: tile.x * TILE_SIZE,
-        y: tile.y * TILE_SIZE - GOOD_LIFT,
-        standsOnRow: tile.y,
-      });
-    }
+  for (const { good, tile } of goodsOnShelves(counter)) {
+    things.push({ name: goodName(good).toUpperCase(), note: '', tiles: [tile], good, quiet: true });
+    icons.push({
+      itemId: good.kind === 'stock' ? good.itemId : '',
+      icon: goodIcon(good),
+      x: tile.x * TILE_SIZE,
+      y: tile.y * TILE_SIZE - GOOD_LIFT,
+      standsOnRow: tile.y,
+    });
   }
   return {
     sketch,
