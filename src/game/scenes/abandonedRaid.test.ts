@@ -89,7 +89,8 @@ function openLab(storage: MemoryStorage): { hub: HubInternals; start: ReturnType
     counterCounts: new Map<string, number>(),
     time: { delayedCall: vi.fn() },
     overlay: {
-      root: { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] },
+      // The hub says which floor a view stands on with a class on its root (`WOOD_FLOOR_VIEWS`).
+      root: { innerHTML: '', classList: { toggle: () => false, add: () => undefined, remove: () => undefined, contains: () => false }, querySelector: () => null, querySelectorAll: () => [] },
       focus: vi.fn(),
       refocus: vi.fn(),
       redraw(markup: string) {
