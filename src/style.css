@@ -2797,8 +2797,15 @@ body.touch-play .feedback-tab {
 .pixel-ui.wood-floor .px-body .px-window {
   --grain: repeating-linear-gradient(180deg, var(--fill) 0 calc(var(--u) * 15), var(--seam) calc(var(--u) * 15) calc(var(--u) * 16));
 }
-.pixel-ui:is(.wood-floor, .dex-floor) .px-body .px-window:is(button, .px-plate) {
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body .px-window:is(button, .px-plate, .px-field) {
   --grain: initial;
+}
+/* A field that is being typed in is lit, and so lettered in the plate's ink:
+   the feedback panel's was white words on gold with a seam through them. */
+.pixel-ui.wood-floor .px-body .px-field:focus {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
 }
 /* The bar a screen's way on stands on is one plank: it is two lines of words
    tall, and a seam every sixteen pixels ran through the feet of its title. */
@@ -7436,6 +7443,14 @@ body.touch-play .feedback-tab {
 .pixel-ui.wood-floor .px-body .px-arming .px-warning {
   color: var(--wash-red-ink);
 }
+/* A Pokémon's tile under the cursor is lit, one chosen is washed green, and
+   the plate a Pokémon on a stage stands over is lit under the cursor: plates. */
+.pixel-ui.wood-floor .px-body .px-mon-tile:is(:focus, .is-selected),
+.pixel-ui.wood-floor .px-body .team-stand:focus .team-plate {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
 /* A part there is enough of is a tag washed green, and so a plate too. */
 .pixel-ui.wood-floor .px-body :is(.part-tag, .workshop-cost):not(.is-short) {
   color: var(--raised-ink);
@@ -10789,8 +10804,8 @@ body.touch-play .feedback-tab {
   color: var(--paper);
 }
 :where(.pixel-ui) .team-key.is-go .px-keycap {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--plate);
+  color: var(--plate-ink);
 }
 :where(.pixel-ui) .team-key.is-off {
   background: var(--paper-sunk);
@@ -10941,8 +10956,8 @@ body.touch-play .feedback-tab {
   padding-left: calc(var(--u) * 3);
 }
 .pixel-ui .dc-leave .px-keycap {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--plate);
+  color: var(--plate-ink);
 }
 :where(.pixel-ui) .dc-refused {
   padding: 0 calc(var(--u) * 4) calc(var(--u) * 2);
@@ -11071,7 +11086,7 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .tr-card > .px-heading {
   margin-bottom: 0;
   background: var(--gold);
-  color: var(--ink);
+  color: var(--plate-ink);
 }
 :where(.pixel-ui) .tr-name {
   text-transform: uppercase;
@@ -11092,8 +11107,8 @@ body.touch-play .feedback-tab {
   padding-left: calc(var(--u) * 3);
 }
 .pixel-ui .tr-go .px-keycap {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--plate);
+  color: var(--plate-ink);
 }
 :where(.pixel-ui) .tr-refused {
   color: var(--ink-soft);

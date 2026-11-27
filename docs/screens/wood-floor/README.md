@@ -163,6 +163,13 @@ and the commit of each change: `node tools/playtest/menusAudit.mjs <test-mode bu
 | THE FIELD-MOVE COURSE | ![](before/game-field-course.png) | ![](after/game-field-course.png) | 2 to 59 | 88% to 0% |
 | THE PROMENADE DERBY | ![](before/game-promenade-derby.png) | ![](after/game-promenade-derby.png) | 3 to 54 | 76% to 0% |
 | THE DIG | ![](before/game-the-dig.png) | ![](after/game-the-dig.png) | 2 to 58 | 87% to 0% |
+| YOUR TEAM (P), and the bench in the Raid Arena | ![](before/your-team.png) | ![](after/your-team.png) | 25 to 51 | 37% to 1% |
+| THE DAY-CARE | ![](before/day-care.png) | ![](after/day-care.png) | 30 to 47 | 25% to 0% |
+| THE TRADER | ![](before/trades.png) | ![](after/trades.png) | 32 to 48 | 23% to 0% |
+| FAVOURS (O) | ![](before/favours.png) | ![](after/favours.png) | 21 to 32 | 17% to 2% |
+| The feedback panel (F) | ![](before/feedback.png) | ![](after/feedback.png) | 20 to 37 | 26% to 3% |
+| THE BATTLE ARENA's counter | ![](before/dojo-counter.png) | ![](after/dojo-counter.png) | 21 to 28 | 15% to 5% |
+| THE CONSOLE's games | ![](before/console-games.png) | ![](after/console-games.png) | 16 to 29 | 17% to 0% |
 | BILL'S COTTAGE | ![](before/bills-cottage-shop.png) | ![](after/bills-cottage-shop.png) | 11 to 52 | 31% to 1% |
 | BILL'S COTTAGE: asked once more | ![](before/bills-cottage-asked.png) | ![](after/bills-cottage-asked.png) | | |
 | BROCK'S WORKSHOP | ![](before/brocks-workshop.png) | ![](after/brocks-workshop.png) | 16 to 40 | 27% to 2% |

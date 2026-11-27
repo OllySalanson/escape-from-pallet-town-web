@@ -880,3 +880,47 @@ describe('a small window', () => {
     expect(body(':where(.pixel-ui) .cs-help-layout')).toContain('grid-template-rows: minmax(0, 1fr);');
   });
 });
+
+/**
+ * The last of the white screens went onto the wood floor on 27 Nov 2026:
+ * YOUR TEAM, the favours and the knock at a door, the Battle Arena's counter,
+ * the feedback panel and the console's games.
+ */
+describe('the last white screens on the wood floor', () => {
+  const plain = stylesheet.replace(/\/\*[\s\S]*?\*\//g, '');
+  const body = (selector: string): string => {
+    const found = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.trim() === selector);
+    if (!found) throw new Error(`no rule for ${selector}`);
+    return found[2];
+  };
+
+  it.each([
+    ['scenes/TeamScene', 'team-menu pixel-ui wood-floor'],
+    ['scenes/DojoCounterScene', 'dojo-counter side-panel pixel-ui wood-floor'],
+    ['scenes/FeedbackScene', 'feedback-panel side-panel pixel-ui wood-floor'],
+    ['scenes/ConsoleScene', 'console-menu pixel-ui wood-floor'],
+    ['ui/FavourListOverlay', 'favour-menu side-panel pixel-ui wood-floor'],
+    ['ui/KnockOverlay', 'knock-menu side-panel pixel-ui wood-floor'],
+  ])('%s is made on it', async (file, classes) => {
+    expect(await readFile(new URL(`./game/${file}.ts`, import.meta.url), 'utf8')).toContain(`'${classes}'`);
+  });
+
+  it("draws the key on a green button as white lettered in ink, at the Day-Care, the Trader and YOUR TEAM", () => {
+    for (const selector of ['.pixel-ui .dc-leave .px-keycap', '.pixel-ui .tr-go .px-keycap', ':where(.pixel-ui) .team-key.is-go .px-keycap']) {
+      expect(body(selector)).toMatch(/background: var\(--plate\);\s*color: var\(--plate-ink\);/);
+    }
+  });
+
+  it('letters a lit tile, a chosen one, a lit name plate and a field being typed in with the ink of the plate they are', () => {
+    const tiles = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.includes('.pixel-ui.wood-floor .px-body .px-mon-tile:is(:focus, .is-selected)'));
+    expect(tiles?.[1]).toContain('.team-stand:focus .team-plate');
+    expect(tiles?.[2]).toContain('--ink: var(--raised-ink);');
+    expect(body('.pixel-ui.wood-floor .px-body .px-field:focus')).toContain('--ink: var(--raised-ink);');
+    // And a field is one plank: a seam ran through what was typed.
+    expect(body('.pixel-ui:is(.wood-floor, .dex-floor) .px-body .px-window:is(button, .px-plate, .px-field)')).toContain('--grain: initial;');
+  });
+
+  it("letters the Trader's gold heading in ink", () => {
+    expect(body(':where(.pixel-ui) .tr-card > .px-heading')).toContain('color: var(--plate-ink);');
+  });
+});

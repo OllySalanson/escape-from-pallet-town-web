@@ -267,10 +267,11 @@ type HubView = HubPanel | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'dayc
 /**
  * The keepers' screens that stand on the wood floor (`wood-floor` in
  * `style.css`, `docs/screens/wood-floor/`): a shop of shelves and a workshop
- * of benches, which were sheets of white paper. The others are drawn as places
- * of their own already - the Trader's and the Day-Care's fields, Oak's map.
+ * of benches, which were sheets of white paper, and the Day-Care's and the
+ * Trader's, whose field is a place already and whose list under it was the
+ * sheet. Oak's screens and his map are not: they are drawn as his own.
  */
-const WOOD_FLOOR_VIEWS: readonly HubView[] = ['workshop', 'trader'];
+const WOOD_FLOOR_VIEWS: readonly HubView[] = ['workshop', 'trader', 'daycare', 'trades'];
 
 /**
  * How much of the menu layer a panel over the hall may take, in game pixels: as

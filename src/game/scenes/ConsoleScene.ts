@@ -158,7 +158,7 @@ export class ConsoleScene extends Phaser.Scene implements ProvidesFeedbackContex
   }
 
   private showMenu(): void {
-    this.overlay ??= new MenuOverlay(this, 'console-menu pixel-ui', (event) => this.onKey(event));
+    this.overlay ??= new MenuOverlay(this, 'console-menu pixel-ui wood-floor', (event) => this.onKey(event));
     this.overlay.root.setAttribute('aria-label', 'Games');
     this.render();
   }
