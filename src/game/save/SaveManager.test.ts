@@ -79,6 +79,25 @@ const withPack = (items: Readonly<Record<string, number>>): Record<string, numbe
 });
 
 describe('SaveManager', () => {
+  /**
+   * The keepers' first speeches went when every keeper took to one fixed
+   * greeting (the harbour audit, 27 Nov 2026), and saves out there list them as
+   * heard. Such a save loads with them gone, the rest of the list as it was.
+   */
+  it('loads a save that heard first words nobody says any more, and keeps the rest of what it heard', () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+    const before = saves.load()!;
+    const stored = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: Record<string, unknown> };
+    stored.raidProgress.firstWordsHeard = ['lab', 'loadout', 'center', 'workshop', 'cottage', 'nearWork', 'stakes'];
+    storage.setItem(SAVE_KEY, JSON.stringify(stored));
+    const loaded = saves.load()!;
+    expect(loaded.raidProgress.firstWordsHeard).toEqual(['lab', 'stakes']);
+    expect({ ...loaded.raidProgress, firstWordsHeard: undefined }).toEqual({ ...before.raidProgress, firstWordsHeard: undefined });
+    saves.hearFirstWords('enraged');
+    expect(saves.load()!.raidProgress.firstWordsHeard).toEqual(['lab', 'stakes', 'enraged']);
+  });
+
   it('writes a bout in THE BATTLE ARENA as its record and its tickets and nothing else, and reads it back', () => {
     const storage = new MemoryStorage();
     const saves = freshSave(storage);

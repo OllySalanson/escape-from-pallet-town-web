@@ -99,6 +99,8 @@ Enter works a focused DOM control, so a driver can play the lobby's screens the
 way a player does rather than calling `.click()`: `keyDescription` gives Enter a
 `text`, which is what makes Chromium run a key's default action.
 
+`keeperClip.mjs <cdp port> <test-mode build url> <save.json> <room id> <out dir> [--twice]` records a keeper spoken to from their room's mat to the menu or question they open, read at a fixed pace, as `clip.webm`, `clip.gif` and `talk.json` (every box, the presses, the game time to act); `--twice` speaks again after backing out, for the visit a player has every session (`docs/screens/keepers-one-box/`).
+
 `firstRaid.mjs <test-mode build url> <dir> [--shots]` plays a brand new save from
 the title until the first raid is the player's, as somebody who does not read, and
 prints every barrier in order with its presses and seconds.
@@ -362,7 +364,7 @@ tiles copied in here would not. Most keepers have no screen behind the mat: for
 to the tally on his wall, which is the whole ladder, for `bills-cottage` to his PC,
 which is the whole list, and for `oaks-lab` it stops on the mat with nothing said.
 `raid-arena` with `{ hallOnly: true }` stops on the hall's floor, and
-`openFriendRoom` walks to the marshal and answers her friend question. `inRoomTalk.mjs` plays all of that
+`openFriendRoom` walks to the WITH A FRIEND board by the rack and answers its question. `inRoomTalk.mjs` plays all of that
 talk, and the radio, as a player meets it; `workshopBill.mjs` plays Brock's chalk
 and Bill's shelves, by keys and by mouse; `billShelf.mjs <url> <dir> [--port=N]
 [--before]` presses twice, three frames apart, at both of Bill's shelves - his

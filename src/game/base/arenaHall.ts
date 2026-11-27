@@ -273,6 +273,15 @@ export const ARENA_PILLARS: readonly GridPosition[] = (() => {
 /** Where the hall's keeper stands: by the bench at the corridor's head, where everybody coming up it sees her, off the row the stations are walked along and off every way down into the corridor. */
 export const ARENA_KEEPER_TILE: GridPosition = { x: MIDDLE_X - 6, y: ARENA_ANTEROOM.bottom };
 
+/**
+ * Where the sign-up board for raiding with a friend stands: the keeper's tile
+ * mirrored across the doors, by the rack, so the two things a player is met by
+ * at the corridor's head stand either side of it. It is solid, as a station is,
+ * and asks its own question when faced (`BaseScene.askAtTheFriendBoard`); the
+ * marshal used to ask it after everything she said.
+ */
+export const ARENA_FRIEND_BOARD: GridPosition = { x: MIDDLE_X + 6, y: ARENA_ANTEROOM.bottom };
+
 const sameTile = (a: GridPosition, b: GridPosition): boolean => a.x === b.x && a.y === b.y;
 
 /** Where a player gets ready for a raid: who comes, what they carry, what comes home whatever happens. */
@@ -413,6 +422,7 @@ const standsOn = (tile: GridPosition): boolean =>
   ARENA_PILLARS.some((pillar) => pillar.x === tile.x && pillar.y >= tile.y && pillar.y - tile.y <= PILLAR_HIDES_TILES) ||
   arenaStationAt(tile) !== undefined ||
   arenaTelescopeAt(tile) !== undefined ||
+  sameTile(tile, ARENA_FRIEND_BOARD) ||
   ARENA_STATIONS.some((station) => [...station.past, ...station.rises].some((each) => sameTile(each, tile)));
 
 const SIDES = [

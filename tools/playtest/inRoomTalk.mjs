@@ -34,7 +34,8 @@ const said = async () => {
  */
 const NOTICE = /^[A-Z][A-Z0-9'. -]+: /;
 /** Oak's one next thing: a job, a landing, a gym (`hub/nextStep.ts`). */
-const NEXT_THING = /^Next\b/;
+/** The question in the box, as its prompt was handed it. */
+const asking = () => base(`(b.boxQuestion?.prompt.questionLines ?? []).join(' ')`);
 const expect = (what, ok, detail = '') => {
   if (!ok) throw new Error(`${what} ${detail}`);
   console.log(`ok - ${what}`);
@@ -104,30 +105,22 @@ try {
     save.raidProgress.raidRecord = { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } };
   });
 
-  // Oak, on the mat: he talks, nothing opens.
+  // Oak, on the mat: one box, his greeting, then his question; nothing opens.
   await walkIntoBase(page, 'oaks-lab', { press: (code) => press(code, 200) });
   await sleep(500);
   await shot('01-lab-room');
   await press('Space', 700);
-  expect('Oak greets a newcomer in the room', (await said()).includes('there you are!'), await said());
+  expect('Oak greets in the room', (await said()).includes('there you are! How is your Pokédex'), await said());
   expect('no screen opened', !(await page.evaluate(sceneIs('hub'))));
-  await shot('02-oak-first-words');
-  await press('Escape', 500);
-  const onward = (await base('Boolean(b.boxQuestion)')) ? 'a question' : await said();
-  console.log(`after ESC: ${onward}`);
-  await shot('03-oak-after-skip');
-  // Past his favour, if he asked, to the one next thing (`hub/nextStep.ts`):
-  // he never reads the board out any more, it is read off the wall below.
-  for (let guard = 0; guard < 12 && !NEXT_THING.test(await said()); guard += 1) {
-    await press((await base('Boolean(b.boxQuestion)')) ? 'ArrowRight' : 'Escape', 300);
-    if (await base('Boolean(b.boxQuestion)')) await press('Space', 300);
-    if (!(await base('b.dialogBox.visible || Boolean(b.boxQuestion)'))) { await press('Space', 500); }
-  }
-  console.log(`oak says: ${await said()}`);
-  await shot('04-oak-next-thing');
-  expect('Oak says the one next thing', NEXT_THING.test(await said()), await said());
-  await press('Escape', 400);
-  for (let guard = 0; guard < 4 && (await base('Boolean(b.boxQuestion) || b.dialogBox.visible')); guard += 1) await press('Escape', 300);
+  await shot('02-oak-greets');
+  await press('Space', 500);
+  expect('and asks after the Pokédex straight after', /take a look/.test(await asking()), await asking());
+  await shot('03-oak-asks');
+  // NOT NOW, and past his favour if he has one to ask: he never reads the board
+  // out, it is read off the wall below.
+  await press('ArrowRight', 200);
+  await press('Space', 400);
+  for (let guard = 0; guard < 8 && (await base('Boolean(b.boxQuestion) || b.dialogBox.visible')); guard += 1) await press('Escape', 300);
   expect('still in the lab, on the mat', (await base('b.room?.id')) === 'oaks-lab' && !(await page.evaluate(sceneIs('hub'))));
 
   // The board on the wall, read like the wall map.
@@ -153,26 +146,19 @@ try {
   await intoRoom('pokemon-centre');
   await shot('10-center-room');
   await press('Space', 700);
-  expect('Joy welcomes a newcomer in the room', (await said()).includes('Welcome to the Pokémon Center'), await said());
-  await shot('11-joy-first-words');
+  expect('Joy greets in the room', (await said()).includes('Welcome to the Pokémon Center'), await said());
+  await shot('11-joy-greets');
   expect('no screen opened', !(await page.evaluate(sceneIs('hub'))));
-  await press('Escape', 500);
-  // Her favour, if she has one to ask, then the price.
-  for (let guard = 0; guard < 8 && !/off your next raid/.test(await said()); guard += 1) {
-    if (await base('Boolean(b.boxQuestion)')) { await press('ArrowRight', 200); await press('Space', 400); }
-    else await press('Escape', 400);
-  }
-  console.log(`joy: ${await said()}`);
-  expect('she says the price', /off your next raid/.test(await said()));
-  await sleep(600);
-  await shot('12-joy-price');
   await press('Space', 500);
+  console.log(`joy asks: ${await asking()}`);
+  expect('she asks straight after, with the price in the question', /off your next raid/.test(await asking()), await asking());
+  await sleep(600);
+  await shot('12-joy-asks');
   expect('a heal with a price asks on NOT NOW', (await base('b.boxQuestion?.prompt.selected')) === 1);
-  await shot('13-joy-asks');
   const clockBefore = await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).pendingRecoveryMs ?? 0`);
   await press('Space', 500);
   expect('NOT NOW spends nothing', (await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).pendingRecoveryMs ?? 0`)) === clockBefore);
-  await press('Escape', 400);
+  for (let guard = 0; guard < 8 && (await base('Boolean(b.boxQuestion) || b.dialogBox.visible')); guard += 1) await press('Escape', 300);
   // One key to the same place again, and YES this time.
   await press('Space', 700);
   await press('Escape', 300);

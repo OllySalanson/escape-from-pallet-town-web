@@ -2,9 +2,6 @@ import { buildContractBoard, type ContractBoardRow } from '../hub/contractBoard'
 import { isStandingBoardOpen } from '../objectives/standingBoard';
 import { errandPlace, errandRewardFor, errandSquares, errandThing, errandsInHand, type Errand } from '../hub/errands';
 import type { ItemId } from '../items';
-import { carriedRecoveryLine, formatRecoveryClock, raidClockAfterRecovery, teamCondition } from '../hub/recovery';
-import { DAY_CARE_LEAST_RAID_MS } from '../hub/dayCare';
-import { RAID_DURATION_MS } from '../run/raidClock';
 import type { RestoredGame } from '../save/SaveManager';
 import type { Rect } from '../ui/labelPlacement';
 import type { PaintedPicture } from '../world/minimap';
@@ -127,26 +124,6 @@ export function boardLines(game: Pick<RestoredGame, 'raidProgress' | 'stash'>): 
   return [...lead, ...work, ...(rumours.length === 0 ? [] : [RUMOURS_PINNED_LINE, ...rumours])];
 }
 
-/**
- * What Oak says about his board instead of reading it out (`BaseScene.oakSaysWhatIsNext`):
- * that there is more on it than he has just said, and where. `named` is how
- * many of its jobs he has already named; nothing when the board holds no more.
- */
-export function boardPointer(game: Pick<RestoredGame, 'raidProgress' | 'stash'>, named = 0): readonly string[] {
-  const notices = boardNotices(game);
-  const work = notices.filter((notice) => notice.kind !== 'rumour').length - named;
-  const rumours = notices.filter((notice) => notice.kind === 'rumour').length;
-  if (work <= 0 && rumours === 0) {
-    return [];
-  }
-  const parts = [
-    ...(work > 0 ? [work === 1 ? 'a notice' : `${work} notices`] : []),
-    ...(rumours > 0 ? [rumours === 1 ? 'a rumour' : `${rumours} rumours`] : []),
-  ];
-  const what = parts.join(' and ');
-  return [named > 0 ? `There's more on my board, by the wall: ${what}. Have a read!` : `My board by the wall has ${what} on it. Have a read!`];
-}
-
 /** The line under the board's caption: how much is on it. */
 export function boardNote(game: Pick<RestoredGame, 'raidProgress' | 'stash'>): string {
   const notices = boardNotices(game);
@@ -155,26 +132,6 @@ export function boardNote(game: Pick<RestoredGame, 'raidProgress' | 'stash'>): s
   const work = count === 0 ? (rumours === 0 ? 'Nothing pinned up' : '') : `${count} ${count === 1 ? 'notice' : 'notices'} pinned up`;
   const heard = rumours === 0 ? '' : `${rumours} ${rumours === 1 ? 'rumour' : 'rumours'}`;
   return [work, heard].filter((part) => part !== '').join(', ');
-}
-
-/**
- * What Oak has to say before he reads the board: who is hurt, and what the
- * Center has already taken off the next raid. The screen's two cards used to say
- * so; it is the one fact that decides whether to set off at all.
- */
-export function oakNews(game: Pick<RestoredGame, 'stash' | 'pendingRecoveryMs' | 'recoveryCarried'>, free = false): readonly string[] {
-  const condition = teamCondition(game.stash);
-  const pending = game.pendingRecoveryMs;
-  return [
-    ...(condition ? [`${condition}. NURSE JOY is across the yard.`] : []),
-    ...(pending > 0 && !free
-      ? [
-          game.recoveryCarried
-            ? carriedRecoveryLine(pending, DAY_CARE_LEAST_RAID_MS)
-            : `Your next raid runs ${formatRecoveryClock(raidClockAfterRecovery(RAID_DURATION_MS, pending))}: ${formatRecoveryClock(pending)} went on recovery.`,
-        ]
-      : []),
-  ];
 }
 
 const CORK = {

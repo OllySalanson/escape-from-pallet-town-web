@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { FIRST_WORDS } from '../hub/firstWords';
 import { buildMinimap } from '../world/minimap';
 import type { Material } from '../world/tileset/materials';
 import { TILE_SOURCES } from '../world/tileset/sheets';
 import {
   ARENA_CENTRE,
   ARENA_FENCE,
+  ARENA_FRIEND_BOARD,
   ARENA_HALL_HEIGHT,
   ARENA_HALL_WIDTH,
   ARENA_KEEPER_TILE,
@@ -283,7 +283,10 @@ describe("THE RAID ARENA's great hall", () => {
     for (const box of [ARENA_ANTEROOM, ARENA_CORRIDOR]) {
       for (let y = box.top; y <= box.bottom; y += 1) {
         for (let x = box.left; x <= box.right; x += 1) {
-          const standing = arenaStationAt({ x, y }) !== undefined || ARENA_STAND_TORCHES.some((torch) => torch.x === x && torch.y === y);
+          const standing =
+            arenaStationAt({ x, y }) !== undefined ||
+            ARENA_STAND_TORCHES.some((torch) => torch.x === x && torch.y === y) ||
+            (ARENA_FRIEND_BOARD.x === x && ARENA_FRIEND_BOARD.y === y);
           expect(solid[y][x], `${x},${y}`).toBe(standing);
         }
       }
@@ -668,15 +671,12 @@ describe('the pit', () => {
   });
 });
 
-/** Two rows of the box at most, so a line of hers never pages. */
-const LONGEST_MARSHAL_LINE = 100;
-
-describe('what is said on the way to a raid', () => {
-  it('says it in the hall and nowhere past it: the marshal, not Oak', () => {
-    expect(FIRST_WORDS.loadout.speaker).not.toBe('prof-oak');
-    for (const line of FIRST_WORDS.loadout.lines) {
-      expect(line.length).toBeLessThanOrEqual(LONGEST_MARSHAL_LINE);
-    }
+describe('the sign-up board for raiding with a friend', () => {
+  it('stands solid on the floor across the doors from the marshal, faced from the row the stations are walked along', () => {
+    expect(ARENA_FRIEND_BOARD.y).toBe(ARENA_KEEPER_TILE.y);
+    expect(ARENA_FRIEND_BOARD.x - ARENA_MAT.x).toBe(ARENA_MAT.x - ARENA_KEEPER_TILE.x);
+    expect(solid[ARENA_FRIEND_BOARD.y][ARENA_FRIEND_BOARD.x]).toBe(true);
+    expect(solid[ARENA_FRIEND_BOARD.y - 1][ARENA_FRIEND_BOARD.x]).toBe(false);
   });
 });
 

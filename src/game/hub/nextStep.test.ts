@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { CHART_PIECES } from '../treasure/treasureMap';
 import { Stash } from '../stash';
 import { CHARMANDER, Pokemon } from '../pokemon';
-import { chaseLine, FIRST_RAID_NEXT_LINE, jobsBanked, landingToWalkTo, LEGEND_REACH_LEVELS, nextStepCard, nextStepLines, VALE_LEGENDS, vaultOf } from './nextStep';
+import { chaseLine, jobsBanked, landingToWalkTo, LEGEND_REACH_LEVELS, nextStepCard, VALE_LEGENDS, vaultOf } from './nextStep';
 
 const raided = (raids: number, more: Partial<RaidProgress> = {}): RaidProgress => ({
   ...DEFAULT_RAID_PROGRESS,
@@ -18,49 +18,21 @@ const raided = (raids: number, more: Partial<RaidProgress> = {}): RaidProgress =
  * One thing at a time, in the order a newcomer meets the game: the critic came
  * home from a first raid to six goal systems at once (problem 9).
  */
-describe('the one next thing Oak says', () => {
+describe('the one next thing', () => {
   beforeEach(() => retireMapsForTests(RETIRED_MAPS));
   afterEach(() => retireMapsForTests([]));
 
-  it('sends a save that has not been on a raid to the RAID ARENA, where it had nothing to say (the harbour critic tour)', () => {
-    expect(nextStepLines(DEFAULT_RAID_PROGRESS)).toEqual([FIRST_RAID_NEXT_LINE]);
-  });
-
-  it('after the first raid, names the job on the rail', () => {
-    const [line, ...rest] = nextStepLines(raided(1));
-    expect(rest).toEqual([]);
-    expect(line).toMatch(/^Next, a job: [A-Z ]+\. Pick it at the RAID ARENA, before you jump\.$/);
-  });
-
-  it('after the first job, the next, and favours', () => {
-    const lines = nextStepLines(raided(2, { standingContractsBanked: 1 }));
-    expect(lines).toHaveLength(1);
-    expect(lines[0]).toMatch(/^Next, .* And folk about the harbour may ask you a favour now\.$/);
-  });
-
-  it('counts the job after a banked one, so the same name reads as counted', () => {
-    // "Next, SEALED DISPATCH is on the rail" under JOB DONE AND BANKED read as
-    // if the dispatch just banked had not counted (first-hour playtest, 26 Nov 2026).
-    expect(nextStepLines(raided(2, { standingContractsBanked: 1 }))[0]).toMatch(/^Next, your second job: [A-Z' ,.!-]+, on the rail\./);
+  it('sends a save that has not been on a raid to the RAID ARENA', () => {
+    expect(nextStepCard(DEFAULT_RAID_PROGRESS)).toEqual({ heading: 'NEXT', name: 'YOUR FIRST RAID', where: 'At the RAID ARENA, west across the yard' });
   });
 
   it('says the same after a raid that banked nothing, never that a new job is up', () => {
     // The gyms playtest of 26 Nov 2026 heard "Next, a new LINE SURVEY is on
     // the rail." after raids that banked no job at all.
-    const once = nextStepLines(raided(2, { standingContractsBanked: 1 }));
-    const later = nextStepLines(raided(5, { standingContractsBanked: 1 }));
+    const once = nextStepCard(raided(2, { standingContractsBanked: 1 }));
+    const later = nextStepCard(raided(5, { standingContractsBanked: 1 }));
     expect(later).toEqual(once);
-    expect(later[0]).not.toMatch(/\bnew\b/);
-  });
-
-  it('once the near jobs are banked, a landing to walk to and the next gym', () => {
-    const progress = raided(4, { standingContractsBanked: 2 });
-    const landing = landingToWalkTo(progress);
-    expect(landing?.mapId).toBe('greystone-vale');
-    expect(nextStepLines(progress)).toEqual([
-      `Walk to ${landing!.label.toUpperCase()} on a raid, and you can land there next time.`,
-      expect.stringContaining('MISTY'),
-    ]);
+    expect(later?.heading).not.toMatch(/\bNEW\b/);
   });
 
   it('names a landing not yet walked to, and never one behind a gym still shut', () => {
@@ -74,11 +46,17 @@ describe('the one next thing Oak says', () => {
     }
   });
 
-  it('names the next gym in order, and nothing once both are beaten and every landing walked', () => {
-    const misty = nextStepLines(raided(9, { standingContractsBanked: 5, defeatedBosses: [MISTY_BOSS_ID] }));
-    expect(misty.at(-1)).toContain('KOGA');
-    const all = raided(20, { standingContractsBanked: 9, defeatedBosses: [MISTY_BOSS_ID, KOGA_BOSS_ID] });
-    expect(nextStepLines(all).join(' ')).not.toMatch(/MISTY|KOGA/);
+  it('names the next gym in order, and no gym once both are beaten', () => {
+    const walkedAll = (progress: RaidProgress): RaidProgress => {
+      let walked = progress;
+      for (let landing = landingToWalkTo(walked); landing; landing = landingToWalkTo(walked)) {
+        walked = { ...walked, reachedInsertions: [...walked.reachedInsertions, landing.id] };
+      }
+      return walked;
+    };
+    expect(nextStepCard(walkedAll(raided(9, { standingContractsBanked: 5, defeatedBosses: [MISTY_BOSS_ID] })))).toMatchObject({ heading: 'NEXT GYM', name: 'KOGA' });
+    const all = walkedAll(raided(20, { standingContractsBanked: 9, defeatedBosses: [MISTY_BOSS_ID, KOGA_BOSS_ID] }));
+    expect(nextStepCard(all)?.heading).not.toBe('NEXT GYM');
   });
 
   it('counts both kinds of banked job', () => {
@@ -93,7 +71,7 @@ describe('the one next thing Oak says', () => {
     const done = raided(20, { standingContractsBanked: 9, defeatedBosses: [MISTY_BOSS_ID, KOGA_BOSS_ID] });
 
     it('names the treasure map first, stage by stage', () => {
-      expect(nextStepLines(done).at(-1)).toContain('a bottle has washed up on THE BEACH');
+      expect(chaseLine(done)).toContain('a bottle has washed up on THE BEACH');
       expect(chaseLine(done, { held: (itemId) => (itemId === 'bottled-chart' ? 1 : 0) })).toContain('take that bottled chart to MARLOW');
       expect(chaseLine({ ...done, treasureHunt: { roomOpen: true, pinned: ['shore'], chestOpened: false } })).toContain(
         `still wants ${CHART_PIECES.length - 1} more pieces`,
@@ -151,9 +129,8 @@ describe("Oak's next thing as a card", () => {
 
   it('names the job on the rail after the first raid, and where to pick it', () => {
     const card = nextStepCard(raided(1));
-    const [line] = nextStepLines(raided(1));
     expect(card?.heading).toBe('NEXT JOB');
-    expect(line).toContain(card!.name);
+    expect(card?.name).toMatch(/^[A-Z' ,.!-]+$/);
     expect(card?.where).toBe('Pick it at the RAID ARENA before you jump');
   });
 

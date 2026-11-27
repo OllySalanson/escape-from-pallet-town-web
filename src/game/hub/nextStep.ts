@@ -1,5 +1,5 @@
 import { buildContractBoard } from './contractBoard';
-import { mayAskAFavour, type ErrandProgress } from './errands';
+import type { ErrandProgress } from './errands';
 import { isFirstRaid } from './firstRaid';
 import { NEAR_JOBS, type StandingBoardProgress } from '../objectives/standingBoard';
 import { availableInsertionIds, frontDoorFor, RUN_INSERTIONS, type RunInsertion } from '../run/runGeneration';
@@ -8,7 +8,7 @@ import { isLandingOpen, nextGym } from '../world/valeQuarters';
 import { CHART_PIECES, huntStage, MARLOW, NO_TREASURE_HUNT, TREASURE_GOAL, TREASURE_PLACE, type TreasureHunt } from '../treasure/treasureMap';
 
 /**
- * The one next thing, as Professor Oak says it.
+ * The one next thing, as the screen a raid that got out opens on names it.
  *
  * The overnight critic came home from a first raid to four keepers each asking
  * a favour, a job on the rim, a cash stake, a gym arrow, two rumours and a
@@ -16,8 +16,9 @@ import { CHART_PIECES, huntStage, MARLOW, NO_TREASURE_HUNT, TREASURE_GOAL, TREAS
  * every word (problems 8 and 9, 25 Nov 2026). Nothing said which of it came
  * first. This does: one thing at a time, in the order a newcomer meets the
  * game - a job, then a second, then the wider vale and a landing to walk to,
- * then the next gym - and Oak says it instead of reading the board, which is
- * still read in full off the wall beside him.
+ * then the next gym. Oak used to say it from his mat as well; he greets and
+ * asks after the Pokédex now, as FireRed's Oak does (`hub/keeperGreetings.ts`),
+ * and the board beside him is read off the wall.
  *
  * Read off the save, so nothing is stored; Phaser-free, so `nextStep.test.ts`
  * holds the order.
@@ -70,7 +71,7 @@ export interface NextStepVault {
   readonly bestLevel?: number;
 }
 
-/** The vault as `nextStepLines` reads it, from a stash. */
+/** The vault as `nextStepCard` reads it, from a stash. */
 export function vaultOf(stash: {
   itemCount(itemId: string): number;
   listPokemon(): readonly { readonly pokemon: { readonly level: number } }[];
@@ -145,58 +146,6 @@ export function landingToWalkTo(progress: NextStepProgress): RunInsertion | unde
   );
 }
 
-/** How many of the board's jobs the next step names: the job, while the near jobs are being done. */
-export function jobsNamed(progress: NextStepProgress): number {
-  return !isFirstRaid(progress) && jobsBanked(progress) < NEAR_JOBS && buildContractBoard(progress).rows.length > 0 ? 1 : 0;
-}
-
-/**
- * Oak's next thing for a save with its partner and no raid yet: the handover's
- * last word again. He used to have nothing at all for it, so a newcomer who
- * walked back in to ask "what now?" got silence, or in the shared harbour only
- * "Going to raid with a friend?" (the harbour critic tour, 26 Nov 2026).
- */
-export const FIRST_RAID_NEXT_LINE = 'Off you go! The RAID ARENA is west across the yard. Grab what you can, and get out.';
-
-/**
- * What Oak says is next: before the first raid, where it starts.
- * `vault` is what the player keeps (`vaultOf`): the treasure map's stage reads
- * what it holds (a bottled chart in hand is a different next step from one on
- * the sand), and a legend is told against the best level in it.
- */
-export function nextStepLines(progress: NextStepProgress, vault: NextStepVault = {}): readonly string[] {
-  if (isFirstRaid(progress)) {
-    return [FIRST_RAID_NEXT_LINE];
-  }
-  const banked = jobsBanked(progress);
-  const [job] = buildContractBoard(progress).rows;
-  if (banked === 0) {
-    return job
-      ? [`Next, a job: ${job.name.toUpperCase()}. Pick it at the RAID ARENA, before you jump.`]
-      : ['Next, a raid for whatever the vale holds. Every raid starts at the RAID ARENA.'];
-  }
-  if (banked < NEAR_JOBS) {
-    // Counted, so a job of the same name as the one banked reads as the next
-    // one (first-hour playtest, 26 Nov 2026), and true on every raid until it
-    // is done: "a new" was said again after raids that banked nothing, as if
-    // one just had (gyms playtest, 26 Nov 2026).
-    const count = ['first', 'second', 'third', 'fourth'][banked] ?? 'next';
-    return [
-      `${job ? `Next, your ${count} job: ${job.name.toUpperCase()}, on the rail.` : 'Another job will be on the rail.'}${mayAskAFavour(progress) ? ' And folk about the harbour may ask you a favour now.' : ''}`,
-    ];
-  }
-  const gym = nextGym(progress.defeatedBosses);
-  const landing = landingToWalkTo(progress);
-  return [
-    ...(landing
-      ? [`Walk to ${landing.label.toUpperCase()} on a raid, and you can land there next time.`]
-      : []),
-    ...(gym
-      ? [`And when you're ready, the next gym: ${gym.leader.toUpperCase()}, at ${gym.building.toUpperCase()} in ${gym.standsIn.toUpperCase()}.`]
-      : [chaseLine(progress, vault)].filter((line): line is string => line !== undefined)),
-  ];
-}
-
 /**
  * Oak's next thing as a card, for the screen a raid that got out opens on: a
  * heading saying what kind of thing it is, its name, and where it is. The
@@ -213,7 +162,7 @@ export interface NextStepCard {
   readonly where: string;
 }
 
-/** The first of `nextStepLines` as a card, or undefined when Oak has nothing next. */
+/** The one next thing as a card, or undefined when there is nothing next to name. */
 export function nextStepCard(progress: NextStepProgress, vault: NextStepVault = {}): NextStepCard | undefined {
   if (isFirstRaid(progress)) {
     return { heading: 'NEXT', name: 'YOUR FIRST RAID', where: 'At the RAID ARENA, west across the yard' };

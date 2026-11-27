@@ -435,27 +435,6 @@ function boutLine(foe: DojoFoe | undefined, won: boolean, settled: DojoSettlemen
 
 // --- the receptionist ---------------------------------------------------------------
 
-/** What the receptionist says before the list opens: how a bout works the first time, then the class and the run. */
-export function receptionLines(record: DojoRecord | undefined): readonly string[] {
-  const held = record ?? { wins: 0, losses: 0, beaten: [] };
-  const cls = dojoClass(classOf(held));
-  if (held.wins + held.losses === 0) {
-    // Two boxes: the door, the statues and the menu say the rest again (the harbour critic tour).
-    return [
-      `Welcome! Bouts here are for fun: everyone at Lv ${DOJO_LEVEL}, and nobody gets hurt or loses a thing.`,
-      `Beat ${STREAK_TO_CHALLENGE} regulars in a row and BLACK BELT ${cls.head.name} will fight you for the next class.`,
-    ];
-  }
-  const run = streakOf(held).length;
-  const where =
-    classOf(held) === 'master-ball' && held.topped
-      ? `${cls.name} class, top of the ladder.`
-      : headWillFight(held)
-        ? `${cls.name} class, and ${cls.head.name} is waiting for you.`
-        : `${cls.name} class, ${run} of ${STREAK_TO_CHALLENGE} in a row.`;
-  return [`${held.wins} won, ${held.losses} lost. ${where}`];
-}
-
 /**
  * What a fighter says when faced: their own voice first, then what they bring.
  * Six regulars read out one template, a dojo of price tags, and the Black Belt

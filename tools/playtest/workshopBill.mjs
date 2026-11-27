@@ -182,12 +182,12 @@ try {
   expect('Brock talks from the mat first; no screen yet', !(await page.evaluate(sceneIs('hub'))));
   const mat = await pastAFavour(/(?!)/);
   console.log(`  mat: ${mat.join(' | ')}`);
-  expect('he says what the chalk is', mat.join(' ').includes('chalk'));
-  expect('he names a build this vault can pay for', mat.join(' ').includes("you've got it"));
+  // One box, his greeting, and then the screen (`hub/keeperGreetings.ts`).
+  expect('he greets in one box', mat.length === 1 && mat[0].startsWith("Brock's the name."), mat.join(' | '));
   await inWorkshop('his workshop screen');
   const named = String(await page.evaluate(`document.activeElement?.querySelector('.px-name')?.textContent ?? ''`)).replace(/\s+/g, ' ').trim();
   await shot('02-workshop-from-mat');
-  expect('his screen opens on the build he named', named.length > 0 && mat.join(' ').toLowerCase().includes(`${named.toLowerCase()}.`), named);
+  expect('his screen opens on a build', named.length > 0, named);
   expect('nothing was built by talking', (await saved('save.raidProgress.workshopUpgrades.length')) === 0);
   await backToRoom();
 
@@ -328,7 +328,7 @@ try {
   await press('Space', 500);
   const bill = await pastAFavour(/whole list/);
   console.log(`  bill: ${bill.join(' | ')}`);
-  expect('Bill reads a stranger from the mat', bill.join(' ').includes("I don't know you"));
+  expect('Bill greets in one box', bill.length === 1 && bill[0].includes('came off my boat'), bill.join(' | '));
   expect('and offers his list', await asked());
   await press('ArrowRight', 200);
   await press('Space', 400);
