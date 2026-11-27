@@ -293,7 +293,8 @@ describe('the pixel-ui stylesheet', () => {
     // Pairs side by side read `Defense7 Sp. Atk 8` when their gaps were too
     // tight; a row each, with the bar between name and number, cannot.
     const stat = /:where\(\.pixel-ui\) \.px-stat \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '';
-    expect(stat).toMatch(/grid-template-columns:\s*calc\(var\(--u\) \* \d+\) minmax\(0, 1fr\) calc\(var\(--u\) \* \d+\);/);
+    // The number has what it needs and no less than its column: a way to the next level in the thousands ran out of the card.
+    expect(stat).toMatch(/grid-template-columns:\s*calc\(var\(--u\) \* \d+\) minmax\(0, 1fr\) minmax\(calc\(var\(--u\) \* \d+\), auto\);/);
     expect(pixelUiRules).toMatch(/:where\(\.pixel-ui\) \.px-stats \{/);
   });
 });
@@ -904,6 +905,34 @@ describe('a small window', () => {
     const areas = body(`${small} .chest-mons-layout`).replace(/\s+/g, ' ');
     expect(areas).toContain("grid-template-areas: 'team card' 'mons card' 'garden give';");
     expect(body(`${small} .chest-mon-grid`)).toContain('grid-template-columns: repeat(3, calc(var(--u) * 65));');
+  });
+
+  // The third pass: YOUR TEAM and the hall's bench.
+  it('stands YOUR TEAM beside its list, not over it: the team down the left, the card over the chest on the right', () => {
+    const areas = body(`${small} .team-layout`).replace(/\s+/g, ' ');
+    expect(areas).toContain("grid-template-areas: 'line cards' 'line boxes';");
+    expect(body(`${small} .team-layout > .team-stage`)).toContain('display: contents;');
+    expect(body(`${small} .team-layout .team-line`)).toContain('grid-template-columns: repeat(3, minmax(0, 1fr));');
+    // At the art's own size, a name under each; one alone as big as in a fight.
+    expect(body(`${small} .team-layout .team-line .team-stand .px-portrait img`)).toContain('transform: scale(var(--zoom, 2));');
+    expect(body(`${small} .team-layout .team-line .team-stand:only-child .px-portrait img`)).toContain('transform: scale(calc(var(--zoom, 2) * 2));');
+  });
+
+  it('makes the two rows of a big team on the mound, in any window, and keeps six inside the stage', () => {
+    // Lifted thirty, the back row's heads went out of the top of the stage.
+    expect(body(':where(.pixel-ui) .team-stand.is-back')).not.toContain('translateY');
+    expect(body('.pixel-ui .team-stand.is-back .px-portrait')).toContain('margin-bottom: calc(var(--u) * 48);');
+    expect(body(':where(.pixel-ui) .team-line:has(> .team-stand:nth-child(4))')).toContain('padding: 0 calc(var(--u) * 32);');
+    // A plate at the back shows under the cursor only.
+    expect(body(':where(.pixel-ui) .team-stand.is-back .team-plate')).toContain('visibility: hidden;');
+  });
+
+  it("gives YOUR TEAM's card two long moves side by side, and a number the room it needs", () => {
+    expect(body(':where(.pixel-ui) .team-cards .team-moves')).toContain('grid-template-columns: repeat(2, max-content);');
+    // Over the mounds: the last one's ran in over the card's first letters.
+    expect(body(':where(.pixel-ui) .team-cards')).toContain('z-index: 3;');
+    expect(body(':where(.pixel-ui) .team-card-foot')).toContain('flex-wrap: wrap;');
+    expect(body(':where(.pixel-ui) .px-stat')).toContain('minmax(calc(var(--u) * 34), auto);');
   });
 
   it("keeps on that card what choosing needs: no picture, no keys, numbers two abreast, what it holds beside its speed", () => {

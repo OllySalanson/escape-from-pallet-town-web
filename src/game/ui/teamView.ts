@@ -98,11 +98,6 @@ export function partnerRosette(): string {
   return '<span class="px-rosette" role="img" aria-label="Partner" title="Partner"></span>';
 }
 
-/** What ENTER does to the one under the cursor, with the key inside, as every button in the look says it. */
-function keyLine(key: string, words: string, tone: 'go' | 'plain' = 'plain'): string {
-  return `<span class="team-key ${tone === 'go' ? 'is-go' : ''}"><span class="px-keycap">${key}</span>${words}</span>`;
-}
-
 /**
  * The card for the one under the cursor: its name and types on the strip, its
  * health, its five stats and how far to its next level as bars, its moves as
@@ -148,20 +143,16 @@ export function pokemonTypeBadges(pokemon: PickerEntry['pokemon']): string {
     .join('');
 }
 
-function teamCard(entry: PickerEntry, going: boolean, lead: boolean, partner: boolean, size: number): string {
+function teamCard(entry: PickerEntry, going: boolean, partner: boolean, size: number): string {
   const { pokemon } = entry;
   const held = getHeldItem(pokemon.heldItemId);
-  const deeds = going
-    ? [
-        size > 1 ? keyLine('ENTER', 'Leave at home') : '',
-        lead ? '' : keyLine('L', 'Put in front'),
-      ]
-    : pokemon.isFainted
-      ? ['<span class="team-key is-off">Fainted</span>']
-      : size >= MAX_RUN_PARTY
-        ? ['<span class="team-key is-off">Team full</span>']
-        : [keyLine('ENTER', 'Take on the raid', 'go')];
-  const where = [going ? 'Next raid' : 'In the chest', ...(held ? [`${itemIcon(held.id, held.displayName)}${escapeAttribute(held.displayName)}`] : [])].join(' · ');
+  // Why it cannot go, when it cannot. What ENTER and L do to it is on the help
+  // line under the screen (`teamRowHelp`), and was said here as well, in keys
+  // too wide for the card: two of them made it wider than its frame and
+  // taller than the stage.
+  const deeds = going ? [] : pokemon.isFainted ? ['<span class="team-key is-off">Fainted</span>'] : size >= MAX_RUN_PARTY ? ['<span class="team-key is-off">Team full</span>'] : [];
+  // Where it is and what it holds, apart: a small window shows only what it holds, beside its speed.
+  const where = `<span class="team-card-place">${going ? 'Next raid' : 'In the chest'}</span>${held ? `<span class="team-card-held">${itemIcon(held.id, held.displayName)}${escapeAttribute(held.displayName)}</span>` : ''}`;
   return `<section class="px-window team-card" data-shown-by="${escapeAttribute(entry.id)}" hidden>`
     + `<header class="px-heading"><span>${partner ? partnerRosette() : ''}${pixelPokemonName(pokemon)}<span class="team-card-level">LV${pokemon.level}</span></span><small>${pokemonTypeBadges(pokemon)}</small></header>`
     + pokemonCardFigures(pokemon)
@@ -211,8 +202,8 @@ export function teamBody(state: TeamViewState): string {
       ? boxes.map((entry, index) => boxTile(entry, size, team.length === 0 && index === 0, entry.id === state.partnerId)).join('')
       : '<p class="px-empty px-wrap">Everybody you have is going.</p>';
   const cards = [
-    ...team.map((entry, index) => teamCard(entry, true, index === 0, entry.id === state.partnerId, size)),
-    ...boxes.map((entry) => teamCard(entry, false, false, entry.id === state.partnerId, size)),
+    ...team.map((entry) => teamCard(entry, true, entry.id === state.partnerId, size)),
+    ...boxes.map((entry) => teamCard(entry, false, entry.id === state.partnerId, size)),
   ].join('');
   const stage = `<div class="team-stage"><div class="team-line" style="--stands:${Math.max(1, size)}">${stands}</div><div class="team-cards">${cards}</div></div>`;
   const inBoxes = `<section class="px-window team-boxes"><header class="px-heading"><span>In the chest</span><small>${boxes.length}</small></header>${pickerFindField()}<div class="px-mon-tiles px-scroll">${tiles}</div></section>`;
