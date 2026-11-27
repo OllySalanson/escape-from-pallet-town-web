@@ -795,3 +795,43 @@ describe("the games' screens on the wood floor", () => {
     expect(scene).toContain("this.overlay.root.classList.toggle('wood-floor', this.mode === 'jump');");
   });
 });
+
+/**
+ * Bill's Cottage, Brock's Workshop and HELP went onto the wood floor on 27 Nov
+ * 2026. Their blocks of ink lettered in white were drawn in `--ink` and
+ * `--paper`, which that floor remaps, and came out white lettered in brown.
+ */
+describe('the shops and HELP on the wood floor', () => {
+  const plain = stylesheet.replace(/\/\*[\s\S]*?\*\//g, '');
+  const body = (selector: string): string => {
+    const found = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.trim() === selector);
+    if (!found) throw new Error(`no rule for ${selector}`);
+    return found[2];
+  };
+
+  it.each(['.shop-pick .px-count > b', '.shop-head', '.shop-count', '.ws-picture', '.trader-rank'])('draws %s as a strip no floor remaps', (selector) => {
+    expect(body(`:where(.pixel-ui) ${selector}`)).toMatch(/background: var\(--bar\);\s*color: var\(--bar-text\);/);
+  });
+
+  it("draws a key's cap as ink lettered in white, and the key on a green button as white lettered in ink", () => {
+    expect(body(':where(.pixel-ui) .cs-cap')).toMatch(/background: var\(--plate-ink\);\s*color: var\(--plate\);/);
+    expect(body(':where(.pixel-ui) .shop-key')).toMatch(/background: var\(--plate\);\s*color: var\(--plate-ink\);/);
+  });
+
+  it('letters gold in ink: a price and a gold head strip', () => {
+    expect(body(':where(.pixel-ui) .price-tag')).toContain('color: var(--plate-ink);');
+    expect(body(':where(.pixel-ui) .shop-head.is-gold')).toContain('color: var(--plate-ink);');
+  });
+
+  it('letters whatever is lit or washed on that floor in the ink of the plate it is', () => {
+    expect(body('.pixel-ui.wood-floor .px-body :is(.trader-card, .workshop-card):is(:focus, .is-secured)')).toContain('--ink: var(--raised-ink);');
+    expect(body('.pixel-ui.wood-floor .px-body :is(.part-tag, .workshop-cost):not(.is-short)')).toContain('color: var(--raised-ink);');
+    expect(body('.pixel-ui.wood-floor .px-body .px-arming')).toContain('--ink: var(--raised-ink);');
+    expect(body('.pixel-ui.wood-floor .px-body .px-arming .px-warning')).toContain('color: var(--wash-red-ink);');
+  });
+
+  it('HELP is on it and SETTINGS is not', async () => {
+    const scene = await readFile(new URL('./game/scenes/ControlsScene.ts', import.meta.url), 'utf8');
+    expect(scene).toContain("overlay.root.classList.toggle('wood-floor', help);");
+  });
+});

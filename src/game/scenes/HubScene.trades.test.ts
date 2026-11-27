@@ -57,7 +57,7 @@ function speakToHim(storage: MemoryStorage): TradesHub {
     counterCounts: new Map<string, number>(),
     time: { delayedCall: vi.fn(), now: 0 },
     overlay: {
-      root: { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] },
+      root: { innerHTML: '', querySelector: () => null, querySelectorAll: () => [], classList: { toggle: () => false } },
       focus: vi.fn(),
       refocus: vi.fn(),
       redraw(markup: string) {

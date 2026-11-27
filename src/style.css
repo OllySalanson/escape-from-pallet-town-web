@@ -2757,6 +2757,8 @@ body.touch-play .feedback-tab {
   --safe-ink: #d2f9d7;
   --risk-wash: #f2b3a2;
   --red-ink: #ffe4dc;
+  /* A warning written on the red wash itself, where the page's red is too close to it. */
+  --wash-red-ink: #8a1c06;
   --shade: rgb(0 0 0 / 70%);
   --lip: rgb(255 255 255 / 18%);
   --foot: rgb(0 0 0 / 28%);
@@ -7423,6 +7425,28 @@ body.touch-play .feedback-tab {
   --ink-soft: var(--raised-ink-soft);
   color: var(--ink);
 }
+/* A question asked before something is spent for good (`.px-arming`) is washed
+   red, which makes it a plate: its name is the plate's ink, and its warning a
+   red dark enough to read on the wash. */
+.pixel-ui.wood-floor .px-body .px-arming {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
+.pixel-ui.wood-floor .px-body .px-arming .px-warning {
+  color: var(--wash-red-ink);
+}
+/* A part there is enough of is a tag washed green, and so a plate too. */
+.pixel-ui.wood-floor .px-body :is(.part-tag, .workshop-cost):not(.is-short) {
+  color: var(--raised-ink);
+}
+/* The same for a card on Bill's shelf and in Brock's row of builds: under the
+   cursor it is lit, and one kept safe is washed green. */
+.pixel-ui.wood-floor .px-body :is(.trader-card, .workshop-card):is(:focus, .is-secured) {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
 /* What it takes: the gold strip's small word and a HAVE tag are written on
    gold and on a green wash, so in the plate's ink, not the floor's pale ones. */
 .pixel-ui.wood-floor .px-body .bq-takes.is-gold .px-heading small {
@@ -9645,7 +9669,7 @@ body.touch-play .feedback-tab {
   margin-top: auto;
   padding: 0 calc(var(--u) * 3);
   background: var(--gold);
-  color: var(--ink);
+  color: var(--plate-ink);
   box-shadow: 0 0 0 var(--u) var(--line);
 }
 :where(.pixel-ui) .price-tag.is-off {
@@ -9761,11 +9785,15 @@ body.touch-play .feedback-tab {
 .pixel-ui .shop-pick .px-step:focus::after {
   background: var(--cursor);
 }
+/* The shop card's blocks of ink lettered in white - a count, its head strip,
+   a key's cap - are drawn in what no floor remaps (`--bar`, `--bar-text`,
+   `--plate`, `--plate-ink`): on the wood floor `--ink` is white and `--paper`
+   is wood, and each of them came out a white block lettered in brown. */
 :where(.pixel-ui) .shop-pick .px-count > b {
   min-width: calc(var(--u) * 12);
   padding: 0 calc(var(--u) * 2);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bar);
+  color: var(--bar-text);
 }
 :where(.pixel-ui) .shop-head {
   display: flex;
@@ -9775,19 +9803,19 @@ body.touch-play .feedback-tab {
   height: calc(var(--u) * 14);
   margin: calc(var(--u) * -3) calc(var(--u) * -3) 0;
   padding: 0 calc(var(--u) * 3);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bar);
+  color: var(--bar-text);
   text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
 }
 :where(.pixel-ui) .shop-head.is-gold {
   background: var(--gold);
-  color: var(--ink);
+  color: var(--plate-ink);
 }
 :where(.pixel-ui) .shop-head.is-green {
   background: var(--go);
-  color: var(--paper);
+  color: var(--bar-text);
 }
 :where(.pixel-ui) .shop-show {
   display: flex;
@@ -9806,8 +9834,8 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .shop-count {
   padding: 0 calc(var(--u) * 3);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bar);
+  color: var(--bar-text);
 }
 :where(.pixel-ui) .shop-roll {
   display: flex;
@@ -9839,7 +9867,7 @@ body.touch-play .feedback-tab {
   height: calc(var(--u) * 14);
   padding: 0 calc(var(--u) * 5) 0 calc(var(--u) * 2);
   background: var(--go);
-  color: var(--paper);
+  color: var(--bar-text);
   text-transform: uppercase;
   box-shadow:
     0 0 0 var(--u) var(--line),
@@ -9847,8 +9875,8 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .shop-key {
   padding: 0 calc(var(--u) * 2);
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--plate);
+  color: var(--plate-ink);
 }
 
 /* Bill in his room, and his trust: one bar, a stretch a standing. */
@@ -9871,8 +9899,8 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .trader-rank {
   padding: 0 calc(var(--u) * 3);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bar);
+  color: var(--bar-text);
   text-transform: uppercase;
 }
 :where(.pixel-ui) .trader-trust-bar {
@@ -9999,8 +10027,8 @@ body.touch-play .feedback-tab {
   justify-content: center;
   min-height: calc(var(--u) * 40);
   padding: calc(var(--u) * 3);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bar);
+  color: var(--bar-text);
 }
 :where(.pixel-ui) .ws-chip,
 :where(.pixel-ui) .ws-becomes {
@@ -10359,8 +10387,8 @@ body.touch-play .feedback-tab {
   min-width: calc(var(--u) * 12);
   height: calc(var(--u) * 12);
   padding: 0 calc(var(--u) * 2);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--plate-ink);
+  color: var(--plate);
   text-transform: uppercase;
 }
 :where(.pixel-ui) .cs-does {
