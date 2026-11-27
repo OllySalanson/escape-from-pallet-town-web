@@ -87,6 +87,16 @@ body {
      A screen takes them back for itself. */
   pointer-events: none;
 }
+/* A screen on its way out stands here for a tenth of a second, in the menu
+   layer's own box (given inline, as the layer's is) and under it, where nothing
+   on it can be pressed and nothing that asks whether a screen is up finds it
+   (`ui/menuMotion.ts`). */
+.screens-leaving {
+  position: fixed;
+  z-index: 2;
+  container-type: inline-size;
+  pointer-events: none;
+}
 /* The same frame the canvas carries, drawn outside the layout box so it costs
    the screen no pixels - `MENU_INSET` is the room kept for it - and only while
    a screen is in the layer, or an empty one drew a rectangle round the raid. */

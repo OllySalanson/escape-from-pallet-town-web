@@ -255,7 +255,8 @@ const isDisabled = (element: ElementLike): boolean =>
 
 /** The menu layers on screen, topmost last. */
 function shownMenus(document: DocumentLike): ElementLike[] {
-  return Array.from(document.querySelectorAll('.menu-overlay')).filter(shown);
+  // Not one on its way out: it is drawn for a tenth of a second more and can be pressed by nobody (`ui/menuMotion.ts`).
+  return Array.from(document.querySelectorAll('.menu-overlay')).filter((menu) => shown(menu) && menu.getAttribute('data-leaving') === null);
 }
 
 /** Every pressable control in a menu, visible ones only. */
