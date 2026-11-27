@@ -35,7 +35,10 @@ export function helpBody(guide: readonly KeyGuideGroup[] = KEY_GUIDE): string {
       { heading: group.title, className: 'cs-group' },
     ),
   );
-  return `<main class="px-body cs-help">${cards.join('')}</main>`;
+  // One pane that is read on with the arrows where it is taller than the
+  // window (`data-reads`, `MenuOverlay`): in an 800x600 window the four cards
+  // were cut through their rows, and the last keys of each could not be reached.
+  return `<main class="px-body cs-help-layout"><div class="px-scroll cs-help" data-reads>${cards.join('')}</div></main>`;
 }
 
 export interface SettingsState {
@@ -124,12 +127,16 @@ export class ControlsScene extends Phaser.Scene {
       aside: help ? 'Every key' : '',
       close: { attribute: 'data-close' },
       body: help ? helpBody() : settingsBody(this.settings()),
-      hints: help ? 'ESC back' : 'ARROWS move · ENTER change it · ESC back',
+      hints: help ? 'ARROWS read · ESC back' : 'ARROWS move · ENTER change it · ESC back',
     });
     // HELP has nothing to choose, and a screen never starts its cursor on the
     // way out, so it starts with none: ESC and the X still close it.
     if (!help) {
       overlay.focus(...(prefer ? [prefer] : []), '.cs-setting');
+    } else {
+      // Measured now, with no cursor to wait for: a pane taller than the window
+      // gets its MORE strip and becomes the stop the arrows read on from.
+      overlay.layout();
     }
   }
 

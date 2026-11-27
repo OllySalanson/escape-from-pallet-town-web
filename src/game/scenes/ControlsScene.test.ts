@@ -8,6 +8,13 @@ const { KEY_GUIDE } = await import('../input/keyGuide');
 const { RAID_KEY_LETTERS, POKEDEX_KEY, MUTE_KEY, FEEDBACK_KEY } = await import('../input/keyBindings');
 
 describe('HELP', () => {
+  it('is one pane that is read on with the arrows where a window is too short for every card', () => {
+    // 800x600: four cards cut through their rows, the last keys of each out of reach.
+    const body = helpBody();
+    expect(body).toMatch(/^<main class="px-body cs-help-layout"><div class="px-scroll cs-help" data-reads>/);
+    expect(body.match(/class="px-window cs-group"/g)?.length).toBeGreaterThanOrEqual(4);
+  });
+
   it('shows every key the game answers, a card for each place it works', () => {
     const body = helpBody();
     for (const group of KEY_GUIDE) {

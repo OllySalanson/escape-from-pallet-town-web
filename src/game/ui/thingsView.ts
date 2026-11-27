@@ -427,9 +427,9 @@ function lockerCard(view: ThingsScreen): string {
   return `<section class="px-window px-tone-secure things-locker"><header class="px-heading"><span class="things-lock-name">${iconMarkup(
     'padlock',
     '',
-  )}Locker</span></header><div class="things-locker-body">${grid}<p class="things-kept"><b class="things-count" aria-label="${view.locker.used} of ${
+  )}Locker</span><small class="things-kept-note">Kept</small></header><div class="things-locker-body">${grid}<p class="things-kept"><b class="things-count" aria-label="${view.locker.used} of ${
     view.locker.total
-  } squares">${view.locker.used}/${view.locker.total}</b> Kept on a wipe</p>${
+  } squares">${view.locker.used}/${view.locker.total}</b> <span class="things-kept-words">Kept on a wipe</span></p>${
     view.findRoom ? '<button type="button" class="px-window px-button things-find-open" data-find-open tabindex="-1">Room for a find</button>' : ''
   }</div></section>`;
 }

@@ -141,6 +141,9 @@ describe('the screen', () => {
     expect(html).toMatch(/things-team.*Next raid/);
     expect(html).toMatch(/px-tone-risk things-pack.*Raid pack.*Lost on a wipe/);
     expect(html).toMatch(/px-tone-secure things-locker.*Locker.*Kept on a wipe/);
+    // A small window's locker says KEPT in its heading and leaves the words under its squares out (`style.css`).
+    expect(html).toContain('Locker</span><small class="things-kept-note">Kept</small></header>');
+    expect(html).toContain('<span class="things-kept-words">Kept on a wipe</span>');
     expect(html).toContain('>2/18</b>');
     expect(html).not.toMatch(/data-drop|Drop one/);
   });

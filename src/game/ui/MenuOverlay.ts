@@ -659,7 +659,7 @@ export class MenuOverlay {
       // cursor stood on nothing anybody could see (the harbour re-critic). The
       // pane scrolls it clear, and the scroll asks all this again.
       const focused = document.activeElement;
-      if (focused instanceof HTMLElement && pane.contains(focused)) {
+      if (focused instanceof HTMLElement && standsOnARowOf(pane, focused)) {
         const under = focused.getBoundingClientRect().bottom - (box.bottom - cover);
         if (under > 0.5 && pane.scrollTop + pane.clientHeight < pane.scrollHeight - 0.5) {
           pane.scrollTop += Math.ceil(under);
@@ -1273,6 +1273,19 @@ function markReadingPane(pane: HTMLElement, overflows: boolean): void {
   } else {
     pane.removeAttribute('tabindex');
   }
+}
+
+/**
+ * Whether the cursor stands on a row inside a pane, which the pane then keeps
+ * clear of its MORE strip - and not on the pane itself. A pane of words that
+ * is read on through (`data-reads`) holds the focus itself, `contains` counts
+ * a node as inside itself, and its own foot is always "under" its own strip:
+ * so every scroll that left more below pushed it on by the strip's height
+ * again, and a pane read down to its foot could never be read back up (HELP
+ * and the raid's ledger, 27 Nov 2026).
+ */
+export function standsOnARowOf<T extends { contains(other: T): boolean }>(pane: T, focused: T): boolean {
+  return focused !== pane && pane.contains(focused);
 }
 
 /** How far one press of Up or Down reads on through a pane: one row's height. */
