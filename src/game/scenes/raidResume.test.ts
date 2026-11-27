@@ -80,7 +80,7 @@ function deploy(storage: MemoryStorage): RaidCarriage {
     counterCounts: new Map<string, number>(),
     time: { delayedCall: vi.fn() },
     overlay: {
-      root: { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] },
+      root: { innerHTML: '', classList: { toggle: () => false, add: () => undefined, remove: () => undefined, contains: () => false }, querySelector: () => null, querySelectorAll: () => [] },
       focus: vi.fn(),
       refocus: vi.fn(),
       redraw(markup: string) {

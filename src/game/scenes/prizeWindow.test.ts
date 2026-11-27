@@ -68,7 +68,8 @@ function prizeWindow() {
     time: { get now() { return clock.now; } },
     close,
     overlay: {
-      root: { innerHTML: '', setAttribute: () => undefined, querySelector: () => null, querySelectorAll: () => [] },
+      // THE GAME CORNER says which floor a screen stands on with a class on its root (the jump list's, not this one's).
+      root: { innerHTML: '', classList: { toggle: () => false, add: () => undefined, remove: () => undefined, contains: () => false }, setAttribute: () => undefined, querySelector: () => null, querySelectorAll: () => [] },
       redraw(markup: string) {
         this.root.innerHTML = markup;
       },
