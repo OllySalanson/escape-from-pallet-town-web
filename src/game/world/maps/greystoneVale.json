@@ -6654,7 +6654,7 @@
    "look": "picnicker",
    "facing": "up",
    "lines": [
-    "Pick a bush clean and it’s full again next time. Don’t ask me how. I just pick."
+    "I just pick. Don’t ask me anything else. I just pick."
    ],
    "beat": {
     "everyMs": 2600,
@@ -6741,7 +6741,7 @@
    "facing": "right",
    "lines": [
     "Nobody’s been behind that counter all day. Gone out on a raid, I heard.",
-    "If yours are hurt, there’s medicine by the pump on the green. Nobody counts it."
+    "I’ve been sat here since lunch. I’m not giving up my seat now."
    ],
    "area": "millbrook-millbrook-center"
   },

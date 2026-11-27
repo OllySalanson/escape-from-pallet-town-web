@@ -365,7 +365,7 @@ export function millbrook(): MapcraftResult {
         { x: 37, y: 5 + 2, name: 'Drover', look: 'camper', facing: 'left', lines: ['That Tauros has walked off this moor and back four times this year.', 'Up the road, mind the ledges. They only go down.'], beat: { everyMs: 3400, roam: [[0, -1]], glances: ['down'] }, calls: ['Come back here, you lump!', 'Whoa! Whoa there!'] },
         { x: 58, y: 32, name: 'Gatekeeper', look: 'gentleman', facing: 'down', lines: ['I keep the gate. There\u2019s no gate. It\u2019s a very quiet job.', 'East: The Crossing, and the only bridge for miles.'], beat: { everyMs: 3600, glances: ['left', 'right'] }, calls: ['Mind the gate. There\u2019s none.'] },
         { x: 6, y: 28, name: 'Wayfarer', look: 'picnicker', facing: 'right', lines: ['I came in by the Westward Road for one night. That was in the spring.', 'Everyone who leaves in a hurry goes out that way. I keep meaning to.'], beat: { everyMs: 3800, glances: ['down'] }, calls: ['Long road out.'] },
-        { x: 47, y: 58, name: 'Picker', look: 'picnicker', facing: 'up', lines: ['Pick a bush clean and it\u2019s full again next time. Don\u2019t ask me how. I just pick.'], beat: { everyMs: 2600, roam: [[1, 0], [2, 0]], glances: ['left'] }, calls: ['Berries! Help yourself!', 'They grow back, you know.'] },
+        { x: 47, y: 58, name: 'Picker', look: 'picnicker', facing: 'up', lines: ['I just pick. Don\u2019t ask me anything else. I just pick.'], beat: { everyMs: 2600, roam: [[1, 0], [2, 0]], glances: ['left'] }, calls: ['Berries! Help yourself!', 'They grow back, you know.'] },
         { x: 28, y: 58, name: 'Woodcutter', look: 'black-belt', facing: 'left', lines: ['A proper axe would clear that little tree by the garden in one go.', 'The ride at the back of my glade ran straight down to the reeds, once. Quickest way to the mere there was.', 'I have a blunt one and a bad back. You want a Pokémon that knows Cut.'], beat: { everyMs: 3200, roam: [[1, 0]], glances: ['up'] }, calls: ['Timber!', 'Mind your feet.', 'LINNET never comes this way.'] },
         { x: 12, y: 45, name: 'Tom', look: 'youngster', facing: 'right', lines: ['The pool is full of Magikarp!', 'Nobody believes me. There\u2019s something on the island too. Mind the gaps.'], calls: ['Magikarp! Loads of them!', 'There IS something out there!'] },
       ],
@@ -451,7 +451,7 @@ function withInsides(file: MapFile): MapFile {
     },
   );
   inside('pokemon-center', 38, 25, 'Millbrook Center', [
-    { x: 4, y: 6, name: 'Waiting Trainer', look: 'beauty', facing: 'right', lines: ['Nobody\u2019s been behind that counter all day. Gone out on a raid, I heard.', 'If yours are hurt, there\u2019s medicine by the pump on the green. Nobody counts it.'] },
+    { x: 4, y: 6, name: 'Waiting Trainer', look: 'beauty', facing: 'right', lines: ['Nobody\u2019s been behind that counter all day. Gone out on a raid, I heard.', 'I\u2019ve been sat here since lunch. I\u2019m not giving up my seat now.'] },
   ]);
   inside('poke-mart', 44, 36, 'Millbrook Mart', [
     { x: 2, y: 2, name: 'Clerk', look: 'boy', facing: 'down', lines: ['Sorry, nothing on the shelves till the boat comes in.', 'Professor Oak\u2019s parcel? We sent it out by the lane. It\u2019ll be lying about somewhere.'] },
