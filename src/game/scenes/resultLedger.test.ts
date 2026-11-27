@@ -28,8 +28,7 @@ import {
   scrollEntries,
   scrollPastTopCutBy,
   scrollTopCoverHeight,
-  settledScrollTop,
-} from '../ui/MenuOverlay';
+  settledScrollTop, standsOnARowOf } from '../ui/MenuOverlay';
 import { pokemonDossier } from '../ui/pokemonDossier';
 import { KOGA_BOSS_ID } from '../world/valeQuarters';
 import { ExtractionScene } from './ExtractionScene';
@@ -664,5 +663,32 @@ describe("the full report's last line", () => {
     for (const ledger of [{ pokemon: [], items: [rope] }, { pokemon: [pidgey], items: [rope] }]) {
       expect(note(ledger)).not.toMatch(/\(|at base/);
     }
+  });
+});
+
+/**
+ * A pane of words is read on through with the arrows, and holds the focus
+ * itself while it is. It could be read down and never back up: every scroll
+ * that left more below pushed it on again, because the pane was taken for a
+ * row standing under its own MORE strip (HELP at 800x600, 27 Nov 2026).
+ */
+describe('a pane that is read on through', () => {
+  const node = (inside: readonly object[] = []) => {
+    const self = { contains: (other: object): boolean => other === self || inside.includes(other) };
+    return self;
+  };
+
+  it('is not a row of itself, so it is never pushed on to clear its own strip', () => {
+    const pane = node();
+    // `Node.contains` counts a node as inside itself.
+    expect(pane.contains(pane)).toBe(true);
+    expect(standsOnARowOf(pane, pane)).toBe(false);
+  });
+
+  it('still keeps the row under the cursor clear of the strip', () => {
+    const row = node();
+    const pane = node([row]);
+    expect(standsOnARowOf(pane, row)).toBe(true);
+    expect(standsOnARowOf(pane, node())).toBe(false);
   });
 });

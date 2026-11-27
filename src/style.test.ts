@@ -835,3 +835,48 @@ describe('the shops and HELP on the wood floor', () => {
     expect(scene).toContain("overlay.root.classList.toggle('wood-floor', help);");
   });
 });
+
+/**
+ * The small-window pass of 27 Nov 2026 (`docs/screens/small-window/`): four
+ * screens were broken in an 800x600 window, whose body is about 400x210 game
+ * pixels. What each gets there is held here, because nothing else in the suite
+ * opens a screen at a size.
+ */
+describe('a small window', () => {
+  const plain = stylesheet.replace(/\/\*[\s\S]*?\*\//g, '');
+  const body = (selector: string): string => {
+    const found = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.trim() === selector);
+    if (!found) throw new Error(`no rule for ${selector}`);
+    return found[2];
+  };
+  const small = ".pixel-ui:is([data-room='tight'], [data-short])";
+
+  it("gives Bill's two shelves half the height each, so the second is never pushed off the screen", () => {
+    expect(body(`${small} .trader-goods`)).toContain('grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);');
+    expect(body(`${small} .trader-standing > .room-pic`)).toContain('display: none;');
+  });
+
+  it("stands Brock's builds in one row, without their pictures", () => {
+    expect(body(`${small} .workshop-skyline`)).toContain('grid-auto-flow: column;');
+    expect(body(`${small} .workshop-skyline .workshop-stage`)).toContain('display: none;');
+  });
+
+  it("gives the chest its eight squares across: the locker stands beside the team, over the pack", () => {
+    // The chest does not scroll sideways, so what was past its third square could not be seen at all.
+    const areas = body(".pixel-ui.things-menu[data-room='tight'] .things-layout").replace(/\s+/g, ' ');
+    expect(areas).toContain("grid-template-areas: 'team team locker' 'stash pack pack' 'hand hand hand';");
+  });
+
+  it("stands ROOM FOR A FIND beside the locker's squares, and says KEPT in its heading", () => {
+    const tight = ".pixel-ui.things-menu[data-room='tight']";
+    expect(body(`${tight} .things-locker-body`)).toContain('grid-template-columns: auto minmax(0, 1fr);');
+    expect(body(`${tight} .things-kept-note`)).toContain('display: flex;');
+    expect(body(`${tight} .things-kept-words`)).toContain('display: none;');
+    expect(body(':where(.pixel-ui) .things-kept-note')).toContain('display: none;');
+  });
+
+  it('keeps every card of HELP whole inside its pane, which scrolls', () => {
+    expect(body(':where(.pixel-ui) .cs-help')).toContain('grid-auto-rows: max-content;');
+    expect(body(':where(.pixel-ui) .cs-help-layout')).toContain('grid-template-rows: minmax(0, 1fr);');
+  });
+});

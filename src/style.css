@@ -8556,6 +8556,20 @@ body.touch-play .feedback-tab {
   column-gap: calc(var(--u) * 3);
   row-gap: calc(var(--u) * 6);
 }
+/* A small window: beside the team, the pack and the locker the chest had room
+   for three and a half of its eight squares across, and it does not scroll
+   sideways - whatever was kept in the rest could not be seen at all (800x600;
+   `yourThings.mjs` calls it "the stash is cut off at the side"). There the
+   locker stands beside the team, over the pack, and the chest has the width
+   that leaves beside the pack: all eight across, fewer down, and down is what
+   scrolls. */
+.pixel-ui.things-menu[data-room='tight'] .things-layout {
+  grid-template-areas:
+    'team team locker'
+    'stash pack pack'
+    'hand hand hand';
+  row-gap: calc(var(--u) * 3);
+}
 .pixel-ui .things-layout > .things-stash {
   grid-area: stash;
   min-height: 0;
@@ -8958,9 +8972,45 @@ body.touch-play .feedback-tab {
   text-transform: uppercase;
   color: var(--safe-ink);
 }
-/* A small window's locker is two of the raid's squares wide, and the words keep to them. */
+/* The locker's heading says KEPT only where its body has no room to (below). */
+:where(.pixel-ui) .things-kept-note {
+  display: none;
+}
+/* A small window's locker card is as short as the pack's beside it, three
+   squares deep, and its squares, its count, KEPT ON A WIPE and ROOM FOR A FIND
+   stacked were twice that: the button stood out of the card's foot, over the
+   bar under it (800x600). There the heading says KEPT, as the chest's says
+   SAFE and the pack's LOST ON A WIPE; the count is under the squares; and the
+   button stands beside them. */
+.pixel-ui.things-menu[data-room='tight'] .things-kept-note {
+  display: flex;
+}
+.pixel-ui.things-menu[data-room='tight'] .things-locker-body {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  column-gap: calc(var(--u) * 3);
+  row-gap: calc(var(--u) * 2);
+}
 .pixel-ui.things-menu[data-room='tight'] .things-kept {
+  grid-column: 1;
+  width: auto;
+}
+/* The count alone: the words are the heading's. */
+.pixel-ui.things-menu[data-room='tight'] .things-kept-words {
+  display: none;
+}
+.pixel-ui.things-menu[data-room='tight'] .things-kept > .things-count {
+  margin: 0 auto;
+}
+.pixel-ui.things-menu[data-room='tight'] .px-button.things-find-open {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  /* As narrow as its words allow, on two or three lines: the team beside the
+     locker needs the width for its six places and the pack worn. */
+  justify-self: start;
   width: min-content;
+  min-width: calc(var(--u) * 52);
+  padding: var(--u) calc(var(--u) * 2);
 }
 .pixel-ui.things-menu .things-locker-grid .px-grid-block {
   background: var(--safe-wash);
@@ -9625,6 +9675,35 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .trader-cards > .px-arming {
   grid-column: 1 / -1;
 }
+/* A small window: the shelf for money took the height it wanted and pushed
+   the shelf for parts off the screen, and Bill's room under the card was cut
+   through his name (800x600). There each shelf has half the height and
+   scrolls under its own MORE; a card is as tall as what is on it; and Bill's
+   standing is his name, his rank and his bar, without the picture of his room. */
+.pixel-ui:is([data-room='tight'], [data-short]) .trader-goods {
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .trader-side {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .px-card.trader-card {
+  min-height: 0;
+  padding-top: calc(var(--u) * 2);
+  padding-bottom: calc(var(--u) * 2);
+  row-gap: var(--u);
+}
+/* ...and its thing at the icon's own size, so a card for money is whole in half the height. */
+.pixel-ui:is([data-room='tight'], [data-short]) .trader-art .item-icon,
+.pixel-ui:is([data-room='tight'], [data-short]) .trader-art .item-icon img {
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .trader-standing {
+  grid-template-rows: auto;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .trader-standing > .room-pic {
+  display: none;
+}
 :where(.pixel-ui) .trader-slot {
   display: grid;
   gap: calc(var(--u) * 2);
@@ -10008,6 +10087,42 @@ body.touch-play .feedback-tab {
 .pixel-ui .workshop-card > .px-name {
   min-height: calc(var(--u) * 12);
 }
+/* A small window: seventy-six a card, the builds wrapped to two rows and took
+   the screen, leaving Brock's room and what a build does as slivers over them
+   (800x600). There they stand in one row, as narrow as it takes: a card is
+   its name and what it is built with, without its picture, which is wider
+   than the card and is chalked in the room above anyway; and the card beside
+   the room gives up its tally of how many are built. */
+.pixel-ui:is([data-room='tight'], [data-short]) .workshop-skyline {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .ws-tally {
+  display: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .workshop-skyline .workshop-stage {
+  display: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .workshop-skyline .workshop-card > .px-name {
+  white-space: normal;
+  text-align: center;
+}
+/* What a build waits on is two words under a padlock there, not a line beside it. */
+.pixel-ui:is([data-room='tight'], [data-short]) .workshop-skyline .workshop-after {
+  flex-direction: column;
+  gap: 0;
+  padding: var(--u) calc(var(--u) * 2);
+  white-space: normal;
+  text-align: center;
+}
+/* And the card beside the room closes up, so the key that builds is whole. */
+.pixel-ui:is([data-room='tight'], [data-short]) :is(.trader-detail-card, .workshop-info) {
+  padding: calc(var(--u) * 3);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .shop-card {
+  gap: calc(var(--u) * 2);
+}
 .pixel-ui .workshop-card.is-built {
   --fill: var(--paper);
 }
@@ -10367,9 +10482,24 @@ body.touch-play .feedback-tab {
 }
 
 /* --- HELP and SETTINGS (`scenes/ControlsScene.ts`) ------------------------ */
+/* HELP is one pane of cards, read on with the arrows where a window is too
+   short for all of them. */
+:where(.pixel-ui) .cs-help-layout {
+  height: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-content: stretch;
+}
 :where(.pixel-ui) .cs-help {
+  display: grid;
   grid-template-columns: repeat(auto-fit, minmax(calc(var(--u) * 150), 1fr));
   align-items: start;
+  align-content: start;
+  /* As tall as its keys, whatever the pane: an `auto` row gave a card that
+     clips its own overflow no height it had to keep, and squeezed it. */
+  grid-auto-rows: max-content;
+  gap: calc(var(--u) * 4);
+  min-height: 0;
 }
 :where(.pixel-ui) .cs-keys {
   display: grid;
