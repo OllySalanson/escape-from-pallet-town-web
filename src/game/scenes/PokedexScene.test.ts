@@ -21,7 +21,7 @@ interface DexInternals {
   pausedBase: boolean;
   readonly page: number | null;
   overlay: {
-    root: { innerHTML: string; querySelector: ReturnType<typeof vi.fn>; querySelectorAll: () => never[] };
+    root: { innerHTML: string; classList: { toggle: ReturnType<typeof vi.fn> }; querySelector: ReturnType<typeof vi.fn>; querySelectorAll: () => never[] };
     focus: ReturnType<typeof vi.fn>;
     moveCursor: ReturnType<typeof vi.fn>;
     remeasure: ReturnType<typeof vi.fn>;
@@ -44,7 +44,7 @@ function pokedex(): DexInternals {
     openPage: null,
     pausedBase: true,
     overlay: {
-      root: { innerHTML: '', querySelector: vi.fn(() => null), querySelectorAll: () => [] },
+      root: { innerHTML: '', classList: { toggle: vi.fn() }, querySelector: vi.fn(() => null), querySelectorAll: () => [] },
       focus: vi.fn(),
       moveCursor: vi.fn(() => true),
       remeasure: vi.fn(),
@@ -118,6 +118,13 @@ describe('THE POKéDEX by keyboard', () => {
     expect(dex.overlay.focus).toHaveBeenLastCalledWith('[data-cursor-start]', '[data-dex-list]');
     // Its cry is asked for ahead, so CRY sounds the sample.
     expect(criesAsked).toHaveBeenCalledWith([25]);
+  });
+
+  it('draws a page in the world\'s pixel and the list in the finer one', () => {
+    const dex = pokedex();
+    expect(dex.overlay.root.classList.toggle).toHaveBeenLastCalledWith('px-world', false);
+    dex.openEntry(25);
+    expect(dex.overlay.root.classList.toggle).toHaveBeenLastCalledWith('px-world', true);
   });
 
   it('opens nothing for an empty ball, and says no', () => {

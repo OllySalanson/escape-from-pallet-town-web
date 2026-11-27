@@ -74,6 +74,24 @@ The pictures are animated, played about three times slower than the game so the 
 can be seen, at half size. A tab or a question over a screen only steps its cards up, and
 with reduced motion asked for nothing moves.
 
+## The world's pixel
+
+Cause 3: the world is drawn at 3x in a 1280x800 window and the menus at 2x (4x and 2x
+at 1920x1080), so a menu's lines and letters were two thirds the size of the world's, or
+half. A screen, or one window of a screen, can now be drawn in the world's own pixel
+(`px-world`). It then holds as little as a FireRed screen does, so it is for a screen with
+few things on it; a list keeps the finer pixel, which is what buys its rows.
+
+| | Before | After |
+|---|---|---|
+| SETTINGS | ![](world-pixel/settings-before.png) | ![](world-pixel/settings-after.png) |
+| A question | ![](world-pixel/question-before.png) | ![](world-pixel/question-after.png) |
+| One Pokémon's page: its picture the size a Pokémon stands in a fight | ![](world-pixel/page-before.png) | ![](world-pixel/page-after.png) |
+
+Still in the finer pixel, because they are lists or grids and would lose their rows: YOUR
+THINGS and THE CHEST, the Pokédex's list, the shops, HELP, and the panels that stand
+beside the map on a raid, where a wider column would cover the map.
+
 ## Every screen, as it is moved
 
 `before/` and `after/` are the same save photographed the same way on the commit before

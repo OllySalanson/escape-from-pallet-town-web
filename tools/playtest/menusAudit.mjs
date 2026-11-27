@@ -52,6 +52,9 @@ const SCREENS = {
   favours: open('openFavours()'),
   phrases: open('openPhrases()'),
   feedback: key('KeyF'),
+  // The controls bar's two: SETTINGS and HELP.
+  settings: async (page) => { await page.evaluate(`document.querySelector('.cb-settings').click()`); },
+  help: async (page) => { await page.evaluate(`document.querySelector('.cb-help').click()`); },
   'console-games': open('openGames()'),
   'dojo-counter': open('openDojoCounter()'),
   'game-corner': open("openGameCorner('jump')"),

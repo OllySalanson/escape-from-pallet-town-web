@@ -151,6 +151,9 @@ export class PokedexScene extends Phaser.Scene implements ProvidesFeedbackContex
     }
     const { dex } = this.state;
     const page = this.openPage === null ? undefined : dexEntryBody(dex, this.openPage);
+    // One Pokémon's page is drawn in the world's pixel, its picture the size a
+    // Pokémon stands in a fight; the list is 151 tiles and keeps the finer one.
+    overlay.root.classList.toggle('px-world', page !== undefined);
     if (page !== undefined) {
       overlay.root.innerHTML = pixelScreen({
         title: 'Pokédex',

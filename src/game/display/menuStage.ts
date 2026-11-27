@@ -254,6 +254,28 @@ export function computeMenuStage(
 }
 
 /**
+ * The world's own pixel, in CSS pixels, for a screen that is drawn in it
+ * (`px-world` in the stylesheet): the canvas's zoom, so a screen's lines,
+ * letters and pictures are the size the world's are and not two thirds of it.
+ *
+ * The world is drawn bigger than the menus wherever the window allows it -
+ * 3x against 2x at 1280x800, 4x against 2x at 1920x1080 - because the menus
+ * were given the finer pixel to buy rows. A screen that has few things on it
+ * gives the rows back. It is the menu's own pixel instead wherever the layer
+ * could not hold the smallest screen at the world's (a phone, a window the
+ * touch pad has taken its share of), or the zoom is not a whole number, and it
+ * is never smaller than the menu's.
+ */
+export function worldUnitFor(stage: MenuStage, worldZoom: number | undefined): number {
+  if (worldZoom === undefined || !Number.isInteger(worldZoom) || worldZoom <= stage.scale) {
+    return stage.scale;
+  }
+  const across = (stage.width * stage.scale) / worldZoom;
+  const down = (stage.height * stage.scale) / worldZoom;
+  return across >= MENU_MIN_WIDTH && down >= MENU_MIN_HEIGHT ? worldZoom : stage.scale;
+}
+
+/**
  * Sizes and places the layer the DOM screens live in, on whole pixels.
  *
  * Nothing here touches the canvas or the element it sits in: the two boxes are
@@ -267,6 +289,7 @@ export function applyMenuStage(
   viewportHeight: number,
   devicePixelRatio = 1,
   given?: MenuRoom,
+  worldZoom?: number,
 ): MenuStage {
   const stage = computeMenuStage(viewportWidth, viewportHeight, devicePixelRatio, given);
   if (layer) {
@@ -288,6 +311,10 @@ export function applyMenuStage(
     // The same number without its unit, for the one thing a length cannot do:
     // scale a sprite of unknown size by exactly the scale, with no resampling.
     layer.style.setProperty('--zoom', `${stage.scale}`);
+    // The world's pixel, for a screen drawn in it (`worldUnitFor`).
+    const world = worldUnitFor(stage, worldZoom);
+    layer.style.setProperty('--world-px', `${world}px`);
+    layer.style.setProperty('--world-zoom', `${world}`);
   }
   return stage;
 }
