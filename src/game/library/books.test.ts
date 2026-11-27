@@ -10,10 +10,6 @@ import { KOGA_BOSS_ID, MISTY_BOSS_ID } from '../world/valeQuarters';
 import { bookLeaves, bookLayout, lineWidth, linesOnAPage, SMALLEST_SCREEN, wordsWidth, wrapWords } from './bookLayout';
 import { bookTokens, looseMarks, resolveBookText, tokenResolves } from './bookText';
 import { LIBRARY_CONTROLS } from './controls';
-import { RAID_DURATION_MS } from '../run/raidClock';
-import { ENRAGE_GRACE_MS } from '../run/RunManager';
-import { HUNTER_FLEE_BASE_PENALTY_MS } from '../run/fleePenalty';
-import { packSquares } from '../items/packs';
 
 const everyPage = [
   ...LIBRARY_BOOKS.flatMap((book) => book.pages.map((page) => ({ book: book.id, ...page }))),
@@ -136,17 +132,6 @@ describe('THE GREAT LIBRARY’s books', () => {
       expect(looseMarks(line.replace(/\[[A-Z ]+\]/g, ''))).toEqual([]);
       expect(line).not.toMatch(/\{key:/);
     }
-  });
-
-  /**
-   * The numbers the books say in words, held to the game: a change to any of
-   * them has to change the page that says it (RAIDS, HUNTERS, YOUR PACK).
-   */
-  it('says the numbers the game has', () => {
-    expect(RAID_DURATION_MS).toBe(5 * 60 * 1000);
-    expect(ENRAGE_GRACE_MS).toBe(15_000);
-    expect(HUNTER_FLEE_BASE_PENALTY_MS).toBe(40_000);
-    expect(['satchel', 'raid-pack', 'ranger-pack', 'hauler-frame'].map((id) => packSquares(id))).toEqual([12, 18, 24, 30]);
   });
 });
 

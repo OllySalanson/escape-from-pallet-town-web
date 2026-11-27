@@ -274,14 +274,12 @@ them about, turn them round and put them down, a tile at a time. Shove the table
 move the pot plants, then fill the place with a doll of every kind of Pokémon you've ever brought
 back alive. Dolls go on the table. Nothing goes on the door mat.
 
-Not sure how something works? At the head of the Green, square behind its fountain, is the **Great
-Library**: a librarian, a lot of shelves, three tall windows that show whatever sky you're actually
-playing under, and books lying open on lecterns. Face one and it fills
-the screen, open on its wooden plinth, and you turn its pages with the arrow keys or a click - each
-one curls over at the spine like a real page. The first teaches you to raid, the next who's who in
-the harbour, then the Bolthole.
-And in the middle of the room, on a golden plinth of its own, there's a book on every secret in the
-vale... chained shut until you've beaten Misty, and then only the nooks you've found are written up.
+At the head of the Green, square behind its fountain, is the **Great Library**: a librarian, a lot
+of shelves, and three tall windows that show whatever sky you're actually playing under. In the
+middle of the room, on a golden plinth of its own, there's a book on every secret in the vale...
+chained shut until you've beaten Misty, and then only the nooks you've found are written up. Open it
+and it fills the screen, and you turn its pages with the arrow keys or a click - each one curls over
+at the spine like a real page.
 
 Keep an eye on the sand past the pleasure pier, too. Something washes up there in a bottle, and the
 old chart keeper at the Library's end bookcase gets *very* excited about it - excited enough to swing

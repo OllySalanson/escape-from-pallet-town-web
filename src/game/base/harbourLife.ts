@@ -272,7 +272,7 @@ export const HARBOUR_PEOPLE: readonly HarbourPerson[] = [
     idle: { glances: ['down', 'left'], beatMs: 6400 },
     lines: [
       'A flower wants a bed. Leave it to itself and it comes up in the middle of the path.',
-      'The books in THE GREAT LIBRARY are free to read. Mind my beds on the way in.',
+      'Mind my beds on the way in to THE GREAT LIBRARY.',
     ],
   },
   {
