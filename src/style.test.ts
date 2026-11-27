@@ -656,12 +656,14 @@ describe('a type tag', () => {
 
   it('is an ink chip lettered in white, its colour a square beside the word', () => {
     expect(chip).toMatch(/background:\s*var\(--ink-2\);/);
-    expect(chip).toMatch(/color:\s*var\(--paper\);/);
+    // White itself, not the paper: on the wood floor the paper is a board, and
+    // a chip's letters are white whatever it stands on.
+    expect(chip).toMatch(/color:\s*#ffffff;/);
     expect(fills.length).toBeGreaterThanOrEqual(8);
   });
 
   it('can be read by everybody: white on the chip holds WCAG AA, 4.5 to 1 (playtest 40)', () => {
-    expect(contrast(token('paper'), token('ink-2'))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast('#ffffff', token('ink-2'))).toBeGreaterThanOrEqual(4.5);
   });
 
   it('tells every one of the seventeen types apart by its own fill', async () => {

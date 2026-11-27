@@ -14,7 +14,9 @@ keep any of the old menu style." This folder is the before and after of building
   Poke Ball before the name, the one number that matters in a white pill, and a small X
   (Esc or Backspace does the same).
 - **Cards**: white, one line of ink with clear corners, a hard pixel shadow. A heading
-  strip's colour says what kind of card it is, never a tint over the paper.
+  strip's colour says what kind of card it is, never a tint over the paper. (Since
+  27 Nov 2026 white is a plate and never the floor: a screen is moved onto the wood
+  floor one at a time, `../wood-floor/`, and its cards are boards of brown wood.)
 - **Chosen**: gold. The row under the cursor is gold's wash; a focused card, tile or prize
   is ringed in gold. The arrow stays red.
 - **Types**: an ink chip with a small square of FireRed's own colour.
