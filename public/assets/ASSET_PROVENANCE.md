@@ -950,7 +950,8 @@ does, and for the promenade to be varied rather than samey.
   with a leaping fish. Drawn here on 2026-11-25, the same way, when THE
   PROMENADE was laid out round its bay: THE GARDENS' bandstand, the PIER arch
   over the pleasure pier's gate, a coin telescope, and the DERBY's chequered
-  start line painted across the walk.
+  start line painted across the walk. The coin telescope was redrawn here on
+  2026-11-27 as a two-eyed seaside viewer on a coin box and a stout post.
 - **Terms.** As its source: the building sits on the owner's ruling for
   `frlg-towns.png`, and the rest is the owner's own.
 - **THE BATTLE ARENA, added 2026-11-07.** `frlg-towns.png`'s Saffron Fighting
