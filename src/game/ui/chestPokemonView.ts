@@ -146,8 +146,12 @@ export function chestAsk(item: ItemDefinition, pokemon: Pokemon, question: strin
 
 /** How many Pokémon a row of the grid holds: four, each two of the bag's squares across. */
 export const CHEST_COLUMNS = 4;
-/** The fewest places the grid draws, filled or not: the three rows it has room for, so a MORE never points at nothing. */
-const CHEST_MIN_PLACES = CHEST_COLUMNS * 3;
+/**
+ * The places the grid draws, filled or not, come in twelves: three rows of the
+ * four, so it reads as room and a MORE never points at nothing - and four rows
+ * of the three a small window draws them in, so its last row is whole there too.
+ */
+const CHEST_PLACES_STEP = CHEST_COLUMNS * 3;
 
 /** The keys the tab answers, on its keys line. */
 export const CHEST_POKEMON_KEYS = 'ARROWS move · ENTER team · G garden · L lead · T take back · B things · ESC close';
@@ -262,9 +266,9 @@ export function chestPokemonBody(state: ChestPokemonState): string {
   const byId = new Map(state.entries.map((entry) => [entry.id, entry]));
   const team = state.team.flatMap((id) => byId.get(id) ?? []);
   const garden = state.garden.flatMap((id) => byId.get(id) ?? []);
-  // Empty places drawn as the bag draws an empty square, four to a place: the
-  // grid's last row filled out, and at least three rows, so it reads as room.
-  const places = Math.max(CHEST_MIN_PLACES, Math.ceil(state.entries.length / CHEST_COLUMNS) * CHEST_COLUMNS);
+  // Empty places drawn as the bag draws an empty square, four to a place, up
+  // to the next twelve: the grid's last row filled out, however many it is across.
+  const places = Math.max(1, Math.ceil(state.entries.length / CHEST_PLACES_STEP)) * CHEST_PLACES_STEP;
   const gaps = '<span class="chest-mon-gap" aria-hidden="true"><i></i><i></i><i></i><i></i></span>'.repeat(places - state.entries.length);
   const tiles = state.entries.map((entry, index) => monTile(state, entry, index === 0)).join('') + gaps;
   const grid = state.entries.length > 0

@@ -50,12 +50,53 @@ It does not see everything. It named neither Brock's Workshop, whose cards were 
 inside the screen and merely squeezed to slivers, nor the Day-Care, below; both were
 found by looking.
 
-## Still broken at 800x600
+## The second pass: the Day-Care, the Trader, THE CHEST's Pokémon
+
+The same day. A save with fifteen Pokémon, six of them on the team, each with four
+moves with long names, and seven kinds of thing to give: the first pass looked at a
+new save's two Pokémon, and a screen that is whole for two is not whole for fifteen.
+
+| 800x600 | Before | After |
+|---|---|---|
+| THE DAY-CARE: the tiles under WHO STAYS? stood out of their pane, over the help line | ![](day-care-before.png) | ![](day-care-after.png) |
+| THE TRADER: the same, and KANGASKHAN lost its N | ![](trader-before.png) | ![](trader-after.png) |
+| THE CHEST's POKéMON: the card too narrow for its own numbers, its keys under the screen's foot, the garden's six places squeezed to slivers | ![](chest-pokemon-before.png) | ![](chest-pokemon-after.png) |
+
+What a small window gets:
+
+- **The Day-Care and the Trader**: the list has the height it asks for and the stage
+  the rest. The paddock is drawn twenty higher, so the Day-Care Man's feet are on it.
+  Who the Trader shows stands at the art's own size, not twice it, and NEW IN THE
+  POKéDEX stands on top of its plate rather than making it too wide to stand beside
+  the other.
+- **THE CHEST's Pokémon**: the grid is three across, the garden goes under it, and the
+  card has the height of the next raid and the grid together. The card keeps what
+  choosing needs: HP and its bar, the five numbers two abreast, what it holds, its
+  moves. Its picture is the square the cursor is on. Its keys are on the keys line and
+  where it is on the line above. The way to the next level is not shown. What there is
+  to give is one row, and the rest is scrolled to.
+
+And in any window:
+
+- **A list of Pokémon tiles is as tall as its bar and one row.** The bar is SORT and
+  FIND. At the old height a list of one row scrolled, for nothing, and rested with a
+  sliver of its bar showing; in a longer one the MORE strip took the foot of the row
+  under the cursor, which was pushed up out of the top of the pane to clear it,
+  cutting the partner's rosette. Before and after at 1280x800:
+  ![](list-before-1280.png) ![](list-after-1280.png)
+- **A tile is wide enough for KANGASKHAN.** It was called wide enough for ten letters
+  and was not, for the widest ten.
+- **THE CHEST's empty places come in twelves**, so the last row is whole at four
+  across and at three.
+
+After it the check names two things at 800x600, both YOUR TEAM's, and none at
+1280x800. It was run on a new save, as before: the fifteen were looked at.
+
+## Still broken
 
 Not fixed in this change, and next:
 
 | | |
 |---|---|
-| YOUR TEAM, and the bench in the Raid Arena: the stat card is cut through its moves, the platform stands over its labels, and the chest's list has no row | ![](still-your-team.png) |
-| THE DAY-CARE: the tiles under WHO STAYS? stand out of their pane, over the help line | ![](still-day-care.png) |
-| THE CHEST's POKéMON: its keys and the card of where one is are past the foot of the screen (named by the check; picture as it is) | ![](still-chest-pokemon.png) |
+| YOUR TEAM, and the bench in the Raid Arena, at 800x600: the stat card is cut through its moves, the platform stands over its labels, and the chest's list has no row | ![](still-your-team.png) |
+| YOUR TEAM with six, in any window: the six stand over one another, the first one's plate is cut by the edge of the stage, the last stands under the card, and the card of anyone but the leader is wider than its frame | ![](still-your-team-six.png) |
