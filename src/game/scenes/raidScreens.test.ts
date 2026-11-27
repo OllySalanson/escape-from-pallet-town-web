@@ -21,7 +21,8 @@ describe('the screens a raid opens over the world', () => {
   it('are all pixel-ui, like every other screen the game has', async () => {
     for (const scene of RAID_SCREENS) {
       const source = await read(`./${scene}.ts`);
-      expect(source).toMatch(/new MenuOverlay\(this, '[a-z- ]+ pixel-ui'/);
+      // And on the wood floor, as the harbour's are (`docs/screens/wood-floor/`).
+      expect(source).toMatch(/new MenuOverlay\(this, '[a-z- ]+ pixel-ui wood-floor'/);
       // Built from the shared parts rather than from markup of their own.
       expect(source).toContain('pixelScreen(');
       expect(source).toContain("from '../ui/pixelUi'");

@@ -64,6 +64,18 @@ const layout = (selector) =>
     const chips = w.raidHud.occupied.map((c) => ({ left: canvas.left + c.x * scale, right: canvas.left + (c.x + c.width) * scale }));
     return { panelLeft: panel.left, panelRight: panel.right, panelWidth: panel.width, canvasLeft: canvas.left, canvasRight: canvas.right, playerX, chipsRight: Math.max(...chips.map((c) => c.right)), layout: document.querySelector('${selector}').dataset.layout }; })()`);
 
+/**
+ * The hunters brought out are quick enough to catch the player the moment the
+ * raid runs again, and a catch is a fight: called while a panel holds
+ * everything still, this stops them where they stand for a minute
+ * (`HunterPack.fledFrom`'s 'stunned'), so the checks after it ask about a panel
+ * and not about BLUE. The last check sets one on the player again itself.
+ */
+const holdTheHunters = () =>
+  page.evaluate(`(() => { for (const h of ${world}.hunterPackHere()?.hunters ?? []) {
+    if (h.mode !== 'waiting' && h.mode !== 'beaten') Object.assign(h, { mode: 'stunned', next: null, stepMs: 0, timerMs: 60000, lastSeen: null, enraged: false });
+  } })()`);
+
 /** What every panel over a raid promises while it is up. */
 async function holdsTheRaid(selector, name) {
   const at = await layout(selector);
@@ -120,6 +132,15 @@ try {
   // Every control in it answers the arrow keys, walked down and then back up.
   const stop = `(() => { const a = document.activeElement; return a.dataset.item ? 'item:' + a.dataset.item : a.dataset.drop ? 'drop' : a.dataset.tidy !== undefined ? 'tidy' : a.classList.contains('px-grid-block') ? 'block' : a.dataset.close !== undefined ? 'close' : a.tagName; })()`;
   const walked = new Set();
+  // What is carried is a row of tiles, a kind each (it was a list, walked down): along it and back.
+  for (let step = 0; step < 6; step += 1) {
+    walked.add(await page.evaluate(stop));
+    await press('ArrowRight', 120);
+  }
+  for (let step = 0; step < 6; step += 1) {
+    walked.add(await page.evaluate(stop));
+    await press('ArrowLeft', 120);
+  }
   for (let step = 0; step < 14; step += 1) {
     walked.add(await page.evaluate(stop));
     await press('ArrowDown', 120);
@@ -201,7 +222,11 @@ try {
   expect(!(await panelUp('.move-chooser-menu')), 'ESC in the chooser declines');
   expect(await page.evaluate(`document.querySelector('[data-item="tm40-aerial-ace"]') !== null`), 'and the disc is still in the pack');
 
-  // The way out by key: the clock runs again as soon as it shuts.
+  // The way out by key: the clock runs again as soon as it shuts. The hunters
+  // are held first: at 800x600 BLUE stood two steps off as the pack shut, and
+  // the second the clock is watched for was the second he needed (the party
+  // never opened, on main too).
+  await holdTheHunters();
   await press('Escape', 500);
   expect(!(await panelUp('.bag-menu')), 'ESC shuts the pack');
   const after = await moment();
@@ -214,8 +239,11 @@ try {
   expect(await panelUp('.party-menu.side-panel'), 'P opens the party');
   await holdsTheRaid('.party-menu', 'the party');
   await shot('7-party');
-  await press('ArrowDown', 300);
-  await shot('8-party-down');
+  // Along the slots, not down them: the second member is to the right in any
+  // window, and under the first only where the slots stand two abreast (in an
+  // 800x600 sheet DOWN went into the dossier and ENTER gave away the Quick Claw).
+  await press('ArrowRight', 300);
+  await shot('8-party-next');
   await press('Enter', 300);
   await shot('9-party-holding');
   await press('Escape', 300);
@@ -223,14 +251,7 @@ try {
   await shot('10-party-gear');
   const gear = await page.evaluate(`[...document.querySelectorAll('[data-gear-give]')].filter((b) => b.offsetParent !== null).length`);
   expect(gear > 0, 'gear can be given from the panel');
-  // The hunters brought out above are quick enough now to catch the player
-  // the moment the raid runs again, and a catch is a fight: while the panel
-  // holds everything still they are stopped where they stand for a minute
-  // (`HunterPack.fledFrom`'s 'stunned'), so the next checks ask about a panel
-  // and not about BLUE. The last check sets one on the player again itself.
-  await page.evaluate(`(() => { for (const h of ${world}.hunterPackHere()?.hunters ?? []) {
-    if (h.mode !== 'waiting' && h.mode !== 'beaten') Object.assign(h, { mode: 'stunned', next: null, stepMs: 0, timerMs: 60000, lastSeen: null, enraged: false });
-  } })()`);
+  await holdTheHunters();
   expect(await page.evaluate(`(() => { const b = document.querySelector('[data-close]'); b.click(); return true; })()`), 'the back button is there for a mouse');
   await sleep(500);
   expect(!(await panelUp('.party-menu')), 'and it shuts the party');
