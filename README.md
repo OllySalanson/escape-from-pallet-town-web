@@ -69,7 +69,7 @@ might lose instead. The pack is a grid of squares, not a list, so a Super Potion
 parts are fighting for the same space. Whatever you can't bear to lose goes in the locker, if it fits.
 
 <p align="center">
-  <img src="docs/readme/the-bench.png" width="800" alt="The player standing at the red bench in the torchlit room at the end of the Raid Arena's tunnel, the great doors behind a panel listing who can come on the raid.">
+  <img src="docs/readme/the-bench.png" width="800" alt="YOUR TEAM, the screen the red bench opens: three Pokémon standing on the grass with their names under them, the leader's numbers and moves beside them, and under those the chest's list of who else could come.">
 </p>
 
 ### 2. Jump in, and the clock starts

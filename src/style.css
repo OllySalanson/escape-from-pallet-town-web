@@ -10822,6 +10822,10 @@ body.touch-play .feedback-tab {
      QUICK ATTACK): at 156 four moves were three rows, and the card ran out of
      the foot of the stage. */
   width: calc(var(--u) * 176);
+  /* Over whoever stands nearest: a mound is wider than its place, and the last
+     one's ran in under the card's edge and over its words (the first letters
+     of NEXT LV and of a move were grass). */
+  z-index: 3;
 }
 :where(.pixel-ui) .team-cards .team-moves {
   display: grid;
@@ -11057,8 +11061,25 @@ body.touch-play .feedback-tab {
   gap: var(--u);
   padding: 0 calc(var(--u) * 2);
 }
-.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand:first-child .team-plate {
+/* A plate is wider than a place when the name is long or the rosette is on
+   it: the first of a row starts at its place's edge and the last ends at
+   its, so none goes out of the side of the field. */
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand:nth-child(3n + 1) .team-plate {
+  left: 0;
+  transform: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand:nth-child(3n + 2) .team-plate {
   left: 50%;
+  transform: translateX(-50%);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand:nth-child(3n) .team-plate {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand:only-child .team-plate {
+  left: 50%;
+  right: auto;
   transform: translateX(-50%);
 }
 .pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-plate > :is(.team-plate-level, .team-plate-lead, .px-hp) {

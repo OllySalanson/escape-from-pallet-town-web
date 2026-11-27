@@ -120,6 +120,9 @@ In any window, with four or more:
 - **A plate at the back shows under the cursor.** Six plates do not fit under six
   places; the front row's show, and one at the back shows its own, in front, when the
   cursor is on it.
+- **The card stands over the mounds.** A mound is wider than its place, and the last
+  one's ran in over the card's edge: the first letters of NEXT LV and of a move were
+  grass.
 
 And the card, in any window:
 

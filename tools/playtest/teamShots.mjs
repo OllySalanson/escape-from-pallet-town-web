@@ -10,7 +10,9 @@
 //     it at home again, so the keyboard path is the whole screen;
 //   - the card at the foot follows the cursor.
 //
-//   node tools/playtest/teamShots.mjs <test-mode build url> <out dir> [--window=WxH] [--before]
+//   node tools/playtest/teamShots.mjs <test-mode build url> <out dir> [--window=WxH] [--before] [--port=N]
+//
+// `--port` drives a browser already running on that CDP port (`attachBrowser`).
 //
 // `--before` drives a build from before the overhaul, which has no card, so the
 // same walk and the same glance measure can be asked of both.
@@ -18,7 +20,7 @@
 // It steps a paused loop, so it wants a test-mode build (`?testmode=pixels`
 // for pictures worth judging; `tools/playtest/README.md`, "Memory").
 import { mkdirSync } from 'node:fs';
-import { launchBrowser, PIXEL_WINDOW } from './browser.mjs';
+import { attachBrowser, launchBrowser, PIXEL_WINDOW } from './browser.mjs';
 import { GAME, SAVE_KEY, sceneIs } from './deploy.mjs';
 
 const args = process.argv.slice(2);
@@ -33,7 +35,7 @@ const fail = (why) => {
   throw new Error(`teamShots: ${why}`);
 };
 
-const browser = await launchBrowser({ window: WINDOW });
+const browser = option('port') ? attachBrowser(Number(option('port')), { window: WINDOW }) : await launchBrowser({ window: WINDOW });
 try {
   const page = await browser.openPage('about:blank');
   await page.send('Page.navigate', { url });

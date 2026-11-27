@@ -929,6 +929,8 @@ describe('a small window', () => {
 
   it("gives YOUR TEAM's card two long moves side by side, and a number the room it needs", () => {
     expect(body(':where(.pixel-ui) .team-cards .team-moves')).toContain('grid-template-columns: repeat(2, max-content);');
+    // Over the mounds: the last one's ran in over the card's first letters.
+    expect(body(':where(.pixel-ui) .team-cards')).toContain('z-index: 3;');
     expect(body(':where(.pixel-ui) .team-card-foot')).toContain('flex-wrap: wrap;');
     expect(body(':where(.pixel-ui) .px-stat')).toContain('minmax(calc(var(--u) * 34), auto);');
   });
