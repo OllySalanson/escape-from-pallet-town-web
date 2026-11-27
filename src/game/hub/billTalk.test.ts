@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { CHARMANDER } from '../pokemon';
 import { createStartingStash } from '../stash';
-import { GOODS_ON_SHELVES, goodName, shelfState } from '../base/billGoods';
+import { coveredGood, GOODS_ON_SHELVES, goodName, pendingSheetLift, shelfState } from '../base/billGoods';
 import { TRADER_BARTERS, TRADER_STOCK, type TraderCounter } from './trader';
-import { billQuote, type BillGood } from './billTalk';
+import { billQuote, UNDER_THE_SHEET_LINE, type BillGood } from './billTalk';
 
 const counter = (
   items: Readonly<Record<string, number>> = {},
@@ -61,6 +61,19 @@ describe("everything Bill deals in stands on his shelves", () => {
     expect(shelfState(counter({ 'hm01-cut': 1 }, { ...REGULAR, traderBarters: ['barter-hm01'] }), hm)).toBe('gone');
   });
 
+  it('covers one thing only: the first, in shelf order, of what the next standing brings out', () => {
+    expect(coveredGood(counter())?.good).toEqual(antidote);
+    expect(coveredGood(counter({}, REGULAR))?.good).toEqual({ kind: 'stock', itemId: 'super-potion' });
+    expect(coveredGood(counter({}, PARTNER))).toBeUndefined();
+  });
+
+  it('lifts the sheet once, the first time the shelves are seen after his trust rises', () => {
+    expect(pendingSheetLift(counter(), undefined)).toBeUndefined();
+    expect(pendingSheetLift(counter({}, REGULAR), undefined)?.good).toEqual(antidote);
+    expect(pendingSheetLift(counter({}, REGULAR), 'stranger')?.good).toEqual(antidote);
+    expect(pendingSheetLift(counter({}, REGULAR), 'regular')).toBeUndefined();
+  });
+
   it('names every one', () => {
     for (const { good } of GOODS_ON_SHELVES) {
       expect(goodName(good).length).toBeGreaterThan(0);
@@ -89,9 +102,9 @@ describe('Bill on a thing on his shelves', () => {
     expect(spent.lines[1]).toContain('your lot till you raid again');
   });
 
-  it('says what is under a sheet and what would take it off', () => {
+  it('says nothing of what is under the sheet, nor what would take it off', () => {
     const quote = billQuote(counter(), antidote);
-    expect(quote.lines[0]).toBe("Under the sheet? Antidote. I'm keeping that back till you're a regular.");
+    expect(quote.lines).toEqual([UNDER_THE_SHEET_LINE]);
     expect(quote.question).toBeUndefined();
   });
 

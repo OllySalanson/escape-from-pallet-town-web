@@ -26,20 +26,14 @@ import {
   stillToFind,
   type DropInBriefing,
   TRADER_BERTH_PRICE,
-  TRADER_BERTH_STANDING,
   traderBarterLimit,
   traderBarterOffers,
   traderStockLimit,
   traderStockLimitReason,
   traderStanding,
-  traderStandingPoints,
   traderStockOffers,
-  nextTraderStanding,
   rationLeft,
   moneyHeld,
-  STANDING_PER_BOSS,
-  STANDING_PER_CONTRACT,
-  POKEDOLLARS_PER_STANDING,
   berthSquares,
   barterDetail as barterDetailOnOffer,
   type Deployment,
@@ -159,7 +153,8 @@ import { workshopEffectPicture } from '../ui/workshopEffect';
 import { partTag, partTags, shopCardPane } from '../ui/shopCard';
 import { buildRoom, roomNamed, type BuiltRoom } from '../base/rooms';
 import { roomPosterPicture } from '../base/roomPosters';
-import { TRADER_STANDINGS } from '../hub/trader';
+import { coveredGood } from '../base/billGoods';
+import { UNDER_THE_SHEET_LINE } from '../hub/billTalk';
 import {
   COLUMN_MEASURES,
   escapeAttribute,
@@ -310,6 +305,8 @@ const WALL_CARD_GAP = 4;
 
 /** What `traderArmed` holds for the berth, which is the one deal with no id. */
 const BERTH_DEAL = 'berth';
+/** The card for the one thing Bill still has under a sheet, which has no id of its own to show. */
+const COVERED_DEAL = 'covered';
 
 /**
  * What `traderArmed` holds for a shelf row: the item under a prefix of its
@@ -2796,8 +2793,12 @@ export class HubScene extends Phaser.Scene {
    */
   private traderView(): string {
     const counter = this.traderCounter;
-    const stock = traderStockOffers(counter);
-    const barters = traderBarterOffers(counter);
+    // Only what he sells today; the one thing still to come is a covered card at
+    // the end of its own half, as it is a sheet on his shelf.
+    const covered = coveredGood(counter)?.good;
+    const stock = traderStockOffers(counter).filter((offer) => offer.refusal !== 'standing-short');
+    const barters = traderBarterOffers(counter).filter((offer) => offer.refusal !== 'standing-short');
+    const berthOut = checkBerth(counter).refusal !== 'standing-short';
     // Where the cursor lands on this screen - and nowhere, while a deal is
     // asking: `refocus` takes the *first* `data-cursor-start` in the document,
     // so a card still carrying one took the cursor off the armed question and
@@ -2825,7 +2826,8 @@ export class HubScene extends Phaser.Scene {
 
     const shelf = [
       ...stock.map((offer) => this.stockCard(counter, offer, offer === first)),
-      this.berthCard(counter),
+      ...(berthOut ? [this.berthCard(counter)] : []),
+      ...(covered !== undefined && covered.kind !== 'barter' ? [this.coveredCard()] : []),
     ].join('');
     const left = rationLeft(counter);
     const standing = traderStanding(counter.progress);
@@ -2837,46 +2839,52 @@ export class HubScene extends Phaser.Scene {
       // test, 23 Nov 2026). Bill's own words: "and 2 other things till you raid".
       note: standing.ration === 0 ? 'Potions and Balls for now' : `${left} other${left === 1 ? '' : 's'} till you raid`,
     });
-    const table = barters.map((offer) => this.barterCard(counter, offer, offer === first)).join('');
-    const tablePane = pixelWindow(`<div class="trader-cards is-parts px-scroll">${table}</div>`, {
-      className: 'objectives-panel trader-table',
-      heading: 'For parts',
-      note: 'No money buys these',
-    });
+    const table = [
+      ...barters.map((offer) => this.barterCard(counter, offer, offer === first)),
+      ...(covered?.kind === 'barter' ? [this.coveredCard()] : []),
+    ].join('');
+    // A stranger has nothing on his barter table yet, and an empty half is not shown.
+    const tablePane =
+      table === ''
+        ? ''
+        : pixelWindow(`<div class="trader-cards is-parts px-scroll">${table}</div>`, {
+            className: 'objectives-panel trader-table',
+            heading: 'For parts',
+            note: 'No money buys these',
+          });
     const details = [
       ...stock.map((offer) => this.stockDetail(counter, offer, offer.item.itemId === shownId)),
-      this.berthDetail(counter, shownId === BERTH_DEAL),
+      ...(berthOut ? [this.berthDetail(counter, shownId === BERTH_DEAL)] : []),
       ...barters.map((offer) => this.barterDetail(offer, offer.barter.id === shownId)),
+      ...(covered === undefined ? [] : [this.coveredDetail()]),
     ].join('');
     const detailCard = `<section class="px-window trader-detail-card">${details}</section>`;
-    return `<main class="px-body trader-layout"><div class="trader-goods">${shelfPane}${tablePane}</div><div class="trader-side">${detailCard}${this.billCard(counter)}</div></main>`;
+    return `<main class="px-body trader-layout"><div class="trader-goods">${shelfPane}${tablePane}</div><div class="trader-side">${detailCard}${this.billCard()}</div></main>`;
+  }
+
+  /** Bill himself, in his room: the cottage as the yard draws it. */
+  private billCard(): string {
+    return `<section class="px-window trader-standing">${this.roomPicture('bills-cottage', 'Bill in his cottage')}</section>`;
   }
 
   /**
-   * Bill himself, in his room: the cottage as the yard draws it, and how far
-   * along his trust the player is - one bar, a stretch a standing, and the next
-   * standing named at its end.
+   * The one thing he has under a sheet: no name, no price and nothing said of
+   * what it waits for, only that there is something.
    */
-  private billCard(counter: TraderCounter): string {
-    const standing = traderStanding(counter.progress);
-    const next = nextTraderStanding(counter.progress);
-    const points = traderStandingPoints(counter.progress);
-    const tiers = TRADER_STANDINGS;
-    const segments = tiers
-      .slice(1)
-      .map((tier, index) => {
-        const from = tiers[index].points;
-        const fill = Math.max(0, Math.min(1, (points - from) / (tier.points - from)));
-        return `<i style="--fill:${Math.round(fill * 100)}%"></i>`;
-      })
-      .join('');
-    const room = this.roomPicture('bills-cottage', 'Bill in his cottage');
-    const raise = next
-      ? `Bank a job +${STANDING_PER_CONTRACT}, beat a boss +${STANDING_PER_BOSS}, spend ${formatMoney(POKEDOLLARS_PER_STANDING)} +1.`
-      : standing.note;
-    return `<section class="px-window trader-standing">${room}<div class="trader-trust" data-help="${escapeAttribute(raise)}"><p class="trader-trust-head"><strong>Bill</strong><span class="trader-rank">${standing.name}</span></p><span class="trader-trust-bar" role="img" aria-label="${escapeAttribute(`${points} points`)}">${segments}</span><small>${
-      next ? `${points} / ${next.tier.points}<span class="trader-trust-to"></span>${next.tier.name}` : `${points} · nothing held back`
-    }</small></div></section>`;
+  private coveredCard(): string {
+    const wiring = `data-refused="${escapeAttribute(UNDER_THE_SHEET_LINE)}" aria-disabled="true" data-help="${escapeAttribute(UNDER_THE_SHEET_LINE)}"`;
+    return `<div class="trader-slot"><button class="px-window px-card trader-card is-locked" ${wiring} data-shows="${COVERED_DEAL}"><span class="trader-art">${iconMarkup('supply-crate', 'Covered')}</span><strong class="px-name">?</strong></button></div>`;
+  }
+
+  /** The card on the right for the covered thing: as little as the card itself. */
+  private coveredDetail(): string {
+    return shopCardPane({
+      id: COVERED_DEAL,
+      shown: false,
+      head: { title: '?', tone: 'gold' },
+      art: iconMarkup('supply-crate', 'Covered'),
+      line: UNDER_THE_SHEET_LINE,
+    });
   }
 
   /** A card on his shelf: the thing, big, its name, and its price on a gold tag. */
@@ -2903,13 +2911,11 @@ export class HubScene extends Phaser.Scene {
     const short = offer.refusal === 'money-short' || moneyHeld(this.stash) < offer.item.price * count;
     const price = `<span class="price-tag${open ? '' : ' is-off'}${short ? ' is-short' : ''}">${total}</span>`;
     const why =
-      offer.refusal === 'standing-short'
-        ? `<span class="trader-lock">${iconMarkup('padlock', 'Locked')}${this.standingName(offer.item.standing)}</span>`
-        : offer.refusal === 'ration-spent'
-          ? '<span class="trader-lock">Next raid</span>'
-          : offer.item.rationed
-            ? '<span class="trader-limit">Rationed</span>'
-            : '';
+      offer.refusal === 'ration-spent'
+        ? '<span class="trader-lock">Next raid</span>'
+        : offer.item.rationed
+          ? '<span class="trader-limit">Rationed</span>'
+          : '';
     const art = `<span class="trader-art">${itemIcon(id, name)}</span>`;
     const label = `<strong class="px-name">${name}${count > 1 ? ` ×${count}` : ''}</strong>`;
     if (open) {
@@ -2929,11 +2935,6 @@ export class HubScene extends Phaser.Scene {
     const wiring = `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`;
     const state = offer.refusal === 'money-short' ? 'is-short' : 'is-locked';
     return `<div class="trader-slot"><button class="px-window px-card trader-card ${state}" ${wiring} data-shows="${id}">${art}${label}${why}${price}</button></div>`;
-  }
-
-  /** The standing a locked deal waits for, in the one word the card has room for. */
-  private standingName(id: string): string {
-    return TRADER_STANDINGS.find((tier) => tier.id === id)?.name ?? id;
   }
 
   /**
@@ -2964,13 +2965,7 @@ export class HubScene extends Phaser.Scene {
     const price = paid
       ? pixelTag('Paid', 'secure', true)
       : `<span class="price-tag${offer.refusal === undefined ? '' : ' is-off'}">${formatMoney(TRADER_BERTH_PRICE)}</span>`;
-    return `<div class="trader-slot"><button class="px-window px-card trader-card ${state}" ${wiring} data-shows="${BERTH_DEAL}"><span class="trader-art">${iconMarkup('supply-crate', 'Locker shelf')}</span><strong class="px-name">Locker shelf</strong>${
-      // Locked as every other card is locked, with its padlock and its tier:
-      // greyed with "This raid" it read as merely too dear (the harbour critic tour).
-      offer.refusal === 'standing-short'
-        ? `<span class="trader-lock">${iconMarkup('padlock', 'Locked')}${this.standingName(TRADER_BERTH_STANDING)}</span>`
-        : '<span class="trader-limit">This raid</span>'
-    }${price}</button></div>`;
+    return `<div class="trader-slot"><button class="px-window px-card trader-card ${state}" ${wiring} data-shows="${BERTH_DEAL}"><span class="trader-art">${iconMarkup('supply-crate', 'Locker shelf')}</span><strong class="px-name">Locker shelf</strong><span class="trader-limit">This raid</span>${price}</button></div>`;
   }
 
   /** A card on his barter table: the thing, big, its name, and the parts it takes as tags. */
@@ -2997,17 +2992,13 @@ export class HubScene extends Phaser.Scene {
       : `<span class="part-tags">${takes
           .map(({ itemId, quantity }) => this.partTag(itemId, quantity, this.stash.itemCount(itemId)))
           .join('')}</span>`;
-    const why =
-      offer.refusal === 'standing-short'
-        ? `<span class="trader-lock">${iconMarkup('padlock', 'Locked')}${this.standingName(barter.standing)}</span>`
-        : '';
     const help = this.barterHelp(offer, count);
     const wiring =
       offer.refusal === undefined
         ? `data-barter="${barter.id}" data-help="${escapeAttribute(help)}"`
         : `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(help)}"`;
     const state = taken ? ' is-secured' : offer.refusal === undefined ? '' : offer.refusal === 'goods-short' ? ' is-short' : ' is-locked';
-    const card = `<button class="px-window px-card trader-card${state}" ${wiring} data-shows="${barter.id}"${start ? ' data-cursor-start' : ''}><span class="trader-art">${iconMarkup(barter.icon, barter.name)}</span><strong class="px-name">${barter.name}${count > 1 ? ` ×${count}` : ''}</strong>${why}${parts}</button>`;
+    const card = `<button class="px-window px-card trader-card${state}" ${wiring} data-shows="${barter.id}"${start ? ' data-cursor-start' : ''}><span class="trader-art">${iconMarkup(barter.icon, barter.name)}</span><strong class="px-name">${barter.name}${count > 1 ? ` ×${count}` : ''}</strong>${parts}</button>`;
     return `<div class="trader-slot">${card}</div>`;
   }
 
@@ -3089,9 +3080,6 @@ export class HubScene extends Phaser.Scene {
     const pick = repeats
       ? `<span class="shop-pick" data-shows="${barter.id}">${countSelector({ kind: 'barter', id: barter.id, label: barter.name, value: count, min: 1, max: limit, help: this.barterHelp(offer, count), limit: `Your ${goods} cover ${limit} at most.` })}</span>`
       : '';
-    // Held back for his trust, the lock and the standing it waits for stand
-    // where ALL HERE would: the parts being in hand is not the question.
-    const held = offer.refusal === 'standing-short';
     const parts = taken
       ? ''
       : partTags(
@@ -3101,7 +3089,6 @@ export class HubScene extends Phaser.Scene {
             held: this.stash.itemCount(itemId),
           })),
           'You hand over',
-          held ? `<span class="trader-lock">${iconMarkup('padlock', 'Locked')}${this.standingName(barter.standing)}</span>` : undefined,
         );
     return shopCardPane({
       id: barter.id,
@@ -3111,7 +3098,7 @@ export class HubScene extends Phaser.Scene {
       ...(pick ? { show: `<div class="shop-money">${pick}</div>` } : {}),
       line: getItemById(barter.gives.itemId)?.description ?? barterDetailOnOffer(barter),
       parts,
-      ...(taken || held || offer.refusal === undefined ? {} : { blocked: offer.message ?? '' }),
+      ...(taken || offer.refusal === undefined ? {} : { blocked: offer.message ?? '' }),
       ...(offer.refusal === undefined ? { go: { key: 'ENTER', label: 'Trade' } } : {}),
     });
   }

@@ -60,14 +60,17 @@ import {
 } from '../items';
 import {
   TRADER_BERTH_PRICE,
+  TRADER_STANDING_IDS,
   berthSquares,
   checkBarter,
   checkBerth,
   checkPurchase,
   clampTraderBarters,
   clampTraderCount,
+  traderStanding,
   type TraderCounter,
   type TraderProgress,
+  type TraderStandingId,
 } from '../hub/trader';
 import { cabinetEntryFor, clampCabinet, type CabinetEntry } from '../hub/traderCabinet';
 import {
@@ -381,6 +384,13 @@ export interface RaidProgress {
    * Absent on every save written before them, which reads as nothing heard yet.
    */
   readonly firstWordsHeard?: readonly string[];
+  /**
+   * How far Bill trusted the player the last time they saw his shelves
+   * (`../base/billGoods`, `pendingSheetLift`): the sheet he took off is shown
+   * coming off once, the first visit after his trust rises. Absent reads as a
+   * stranger's.
+   */
+  readonly billShelvesSeen?: TraderStandingId;
   /**
    * The keys this save has used at least once (`../input/keyBindings`). The yard
    * and the raid chip name a key until it has been pressed, then stop. Absent
@@ -1743,6 +1753,22 @@ export class SaveManager {
     }
     this.save({ ...game, raidProgress: { ...game.raidProgress, firstWordsHeard: [...heard, id] } });
     return true;
+  }
+
+  /**
+   * That the player has now seen Bill's shelves at the trust he has in them
+   * today, so a sheet he has taken off is shown coming off only once.
+   */
+  public seeBillsShelves(): void {
+    const game = this.load();
+    if (!game) {
+      return;
+    }
+    const standing = traderStanding(traderProgressOf(game.raidProgress)).id;
+    if (game.raidProgress.billShelvesSeen === standing) {
+      return;
+    }
+    this.save({ ...game, raidProgress: { ...game.raidProgress, billShelvesSeen: standing } });
   }
 
   /**
@@ -3590,6 +3616,9 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     ...(readRaidLog(value.raidLog) === undefined ? {} : { raidLog: readRaidLog(value.raidLog) }),
     ...(Array.isArray(value.firstWordsHeard)
       ? { firstWordsHeard: uniqueStrings(value.firstWordsHeard).filter(isFirstWordsId) }
+      : {}),
+    ...((TRADER_STANDING_IDS as readonly unknown[]).includes(value.billShelvesSeen)
+      ? { billShelvesSeen: value.billShelvesSeen as TraderStandingId }
       : {}),
     ...(Array.isArray(value.keysLearned)
       ? { keysLearned: uniqueStrings(value.keysLearned).filter(isLearnableKey) }

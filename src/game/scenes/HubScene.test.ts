@@ -2193,18 +2193,15 @@ describe('HubScene - Bill', () => {
     expect(boat).not.toContain('data-buy="leftovers"');
   });
 
-  it('says what standing is and what the next tier costs, so it is never a mystery', () => {
+  it('shows Bill in his room, and no rank, bar or points', () => {
     const { hub } = createTraderHub();
     hub.setView('trader');
     const boat = markupOf(hub);
 
-    // His standing, by name, and how far it is to the next as a bar and a count.
-    expect(boat).toMatch(/<span class="trader-rank">(Stranger|Regular|Trusted|Partner)<\/span>/);
-    expect(boat).toContain('class="trader-trust-bar"');
-    expect(boat).toMatch(/\d+ \/ \d+<span class="trader-trust-to"><\/span>(Regular|Trusted|Partner)/);
-    // What raises it, as the three prices rather than a paragraph about them -
-    // and only while there is a tier left to raise it to.
-    expect(boat).toContain('Bank a job +2, beat a boss +3, spend ₽200 +1.');
+    expect(boat).toContain('class="px-window trader-standing"');
+    expect(boat).not.toContain('trader-rank');
+    expect(boat).not.toContain('trader-trust');
+    expect(boat).not.toContain('Bank a job');
   });
 
   it('offers a stranger Potions and Poké Balls only, and keeps every shut row reachable by the cursor', () => {
@@ -2228,6 +2225,8 @@ describe('HubScene - Bill', () => {
     // first gate to the rest, and money can never open it.
     expect([...boat.matchAll(/data-buy="([^"]+)"/g)].map((match) => match[1]).sort()).toEqual(['poke-ball', 'potion']);
     expect(boat).toContain('Potions and Balls for now');
+    // Nothing on his barter table yet, so the half is not there.
+    expect(boat).not.toContain('For parts');
     // Not `disabled`: a cursor has to reach a shut row to be told why.
     expect(boat).not.toMatch(/<button[^>]* disabled/);
     expect(boat).toMatch(/aria-disabled="true"/);
@@ -2269,7 +2268,8 @@ describe('HubScene - Bill', () => {
     expect(potion.slice(0, potion.indexOf('data-shown-by=', 1))).toContain('Restores 20 HP.');
     // The table: what the gear does, from the item's own catalogue line.
     expect(boat).toContain('Sometimes the holder strikes first, whatever the Speed says.');
-    expect(boat).toContain("The holder's hits land a third harder and cost it a tenth of its own HP.");
+    // Only what he sells today: a partner's Life Orb is not on a trusted player's list.
+    expect(boat).not.toContain("The holder's hits land a third harder and cost it a tenth of its own HP.");
   });
 
   it('prices both counters against what the vault is actually holding', () => {
@@ -2292,18 +2292,18 @@ describe('HubScene - Bill', () => {
     expect(table).toContain('All here');
   });
 
-  it('names the standing a shut deal is waiting on rather than only shutting it', () => {
+  it('shows only what he sells, and one covered card for the next thing he brings out', () => {
     const { hub } = createTraderHub();
     hub.setView('trader');
     const boat = markupOf(hub);
-    const from = boat.slice(boat.indexOf('data-shown-by="barter-life-orb"'));
-    const pane = from.slice(0, from.indexOf('shop-card" data-shown-by=', 1));
 
-    // The padlock and the standing it waits for, where ALL HERE would stand -
-    // never both - and the help bar has his words for it.
-    expect(pane).toMatch(/<span class="trader-lock"><span class="item-icon"><img src="[^"]*padlock\.png"[^]*?Partner<\/span>/);
-    expect(pane).not.toContain('All here');
-    expect(boat).toContain('data-help="He keeps that back until you are a partner."');
+    // Trusted: what a partner gets is not on the list, and no padlock is.
+    expect(boat).not.toContain('data-shown-by="barter-life-orb"');
+    expect(boat).not.toContain('data-shows="great-ball"');
+    expect(boat).not.toContain('padlock.png');
+    // The first of it, in shelf order, is the one covered card: no name, no tier.
+    expect([...boat.matchAll(/data-shows="covered"/g)]).toHaveLength(1);
+    expect(boat).toContain('data-help="Ah, not that one. Not yet!"');
   });
 
   /**

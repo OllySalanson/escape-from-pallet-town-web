@@ -43,7 +43,7 @@ export function roomPosterPicture(game: RestoredGame, poster: RoomPoster, now: D
     case 'cabinet-lamps':
       return cabinetLampsPicture(tiersPaidToday(poster.game, game.raidProgress, now));
     case 'goods-shelf':
-      return shelfPoster(poster.area, sheetedColumns(poster.area, traderCounterFor(game)));
+      return shelfPoster(poster.area, sheetedColumns(poster.area, traderCounterFor(game), game.raidProgress.billShelvesSeen));
     case 'chart-wall':
       return chartWallPicture(game.raidProgress.treasureHunt, poster.area);
     case 'chart-table':

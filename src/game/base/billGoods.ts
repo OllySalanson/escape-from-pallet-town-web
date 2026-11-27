@@ -5,10 +5,13 @@ import type { BillGood } from '../hub/billTalk';
 import {
   TRADER_BARTERS,
   TRADER_BERTH_STANDING,
+  TRADER_STANDING_IDS,
   TRADER_STOCK,
   barterTaken,
   meetsStanding,
+  traderStanding,
   type TraderCounter,
+  type TraderStandingId,
 } from '../hub/trader';
 import type { PaintedPicture } from '../world/minimap';
 import type { Rect } from '../ui/labelPlacement';
@@ -20,10 +23,12 @@ import type { Rect } from '../ui/labelPlacement';
  * the player has traded him (`cabinet.ts`) - what he will give, under what he has
  * been given.
  *
- * A thing the player has not earned stands **under a dust sheet**, and a deal he
- * only had one of leaves **a gap**. So a player walking in reads how far along
- * they are with him off the shelves, and the sheets come off as they get on: the
- * rooms' rule, that progress is a thing in the room.
+ * Only what he sells today is out. A thing the player has not earned is not on
+ * the shelves at all, save one: **the next thing he will bring out** stands
+ * under a dust sheet (`coveredGood`), and the day his trust rises the sheet comes
+ * off in front of the player and a new one goes over the next (`pendingSheetLift`,
+ * played by `BaseScene`). A deal he only had one of leaves **a gap**. Progress is
+ * a thing in the room, and there is only ever one thing to look forward to.
  *
  * Which run a thing is on is the only thing authored here. The deal is in
  * `../hub/trader.ts`, what he says about it in `../hub/billTalk.ts`.
@@ -160,6 +165,61 @@ export function shelfState(counter: Pick<TraderCounter, 'stash' | 'progress'>, g
   return meetsStanding(counter.progress, deal.standing) ? 'out' : 'sheeted';
 }
 
+/** The standing a thing on his shelves waits for. */
+function goodStanding(good: BillGood): TraderStandingId | undefined {
+  if (good.kind === 'stock') {
+    return TRADER_STOCK.find((each) => each.itemId === good.itemId)?.standing;
+  }
+  if (good.kind === 'berth') {
+    return TRADER_BERTH_STANDING;
+  }
+  return TRADER_BARTERS.find((each) => each.id === good.barterId)?.standing;
+}
+
+/**
+ * The one thing under a sheet, for a player who stands `at` with him: the first,
+ * in shelf reading order, of what he brings out at the next standing up. Nothing
+ * at the top of his trust, where everything is out.
+ */
+export function coveredGood(
+  counter: Pick<TraderCounter, 'stash' | 'progress'>,
+  at: TraderStandingId = traderStanding(counter.progress).id,
+): ShelfSeat | undefined {
+  for (const next of TRADER_STANDING_IDS.slice(TRADER_STANDING_IDS.indexOf(at) + 1)) {
+    const seat = GOODS_ON_SHELVES.find((each) => goodStanding(each.good) === next && shelfState(counter, each.good) !== 'gone');
+    if (seat) {
+      return seat;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The sheet still to come off: the thing that was under it the last time the
+ * player saw his shelves (`seen`, from the save; absent is a stranger's), when
+ * his trust has risen since and it is out now.
+ */
+export function pendingSheetLift(
+  counter: Pick<TraderCounter, 'stash' | 'progress'>,
+  seen: TraderStandingId | undefined,
+): ShelfSeat | undefined {
+  const now = traderStanding(counter.progress).id;
+  const before = seen ?? 'stranger';
+  if (TRADER_STANDING_IDS.indexOf(now) <= TRADER_STANDING_IDS.indexOf(before)) {
+    return undefined;
+  }
+  const lifted = coveredGood(counter, before);
+  return lifted && shelfState(counter, lifted.good) === 'out' ? lifted : undefined;
+}
+
+/** Where the sheet is as the room is walked into: on the thing about to be shown, if a lift is due. */
+export function sheetOnEntry(
+  counter: Pick<TraderCounter, 'stash' | 'progress'>,
+  seen: TraderStandingId | undefined,
+): ShelfSeat | undefined {
+  return pendingSheetLift(counter, seen) ?? coveredGood(counter);
+}
+
 // --- the shelves themselves ---------------------------------------------------
 
 /**
@@ -196,7 +256,28 @@ const SHEET_ART: readonly string[] = [
   'dsdsdsdsdsdd',
 ];
 
-/** The picture for one run of shelf, with a sheet painted over every thing still kept back. */
+/** Where a sheet sits on its tile, in pixels from the tile's corner. */
+export const SHEET_OFFSET = { x: 2, y: SHELF_TOP_ROW + 2 - SHEET_ART.length } as const;
+
+/** The sheet on its own, for the scene to lift off a shelf. */
+export function sheetPicture(): PaintedPicture {
+  const width = SHEET_ART[0].length;
+  const height = SHEET_ART.length;
+  const data = new Uint8ClampedArray(width * height * 4);
+  const inks: Readonly<Record<string, string>> = { s: SHELF.sheet, f: SHELF.sheetFold, d: SHELF.sheetShade };
+  SHEET_ART.forEach((row, y) => {
+    [...row].forEach((cell, x) => {
+      if (cell !== '.') {
+        const ink = inks[cell];
+        const rgb = [1, 3, 5].map((at) => Number.parseInt(ink.slice(at, at + 2), 16));
+        data.set([rgb[0], rgb[1], rgb[2], 255], (y * width + x) * 4);
+      }
+    });
+  });
+  return { width, height, data };
+}
+
+/** The picture for one run of shelf, with a sheet painted over the one thing still covered. */
 export function shelfPoster(area: Rect, sheeted: readonly number[]): PaintedPicture {
   const width = area.width * 16;
   const height = area.height * 16;
@@ -224,7 +305,7 @@ export function shelfPoster(area: Rect, sheeted: readonly number[]): PaintedPict
     SHEET_ART.forEach((row, y) => {
       [...row].forEach((cell, x) => {
         if (cell !== '.') {
-          fill(column * 16 + 2 + x, SHELF_TOP_ROW + 2 - SHEET_ART.length + y, 1, 1, inks[cell]);
+          fill(column * 16 + SHEET_OFFSET.x + x, SHEET_OFFSET.y + y, 1, 1, inks[cell]);
         }
       });
     });
@@ -235,9 +316,12 @@ export function shelfPoster(area: Rect, sheeted: readonly number[]): PaintedPict
 /** The runs of shelf, west to east and back to front, as the rectangles they are painted into. */
 export const SHELF_RUNS: readonly Rect[] = SHELVES.map(({ y, xs }) => ({ x: xs[0], y, width: xs.length, height: 1 }));
 
-/** Which tiles along one run are under a sheet today, by column of the run. */
-export function sheetedColumns(run: Rect, counter: Pick<TraderCounter, 'stash' | 'progress'>): readonly number[] {
-  return GOODS_ON_SHELVES.filter(
-    (seat) => seat.tile.y === run.y && seat.tile.x >= run.x && seat.tile.x < run.x + run.width && shelfState(counter, seat.good) === 'sheeted',
-  ).map((seat) => seat.tile.x - run.x);
+/** Which tile along one run is under the sheet as the room is walked into, by column of the run. */
+export function sheetedColumns(
+  run: Rect,
+  counter: Pick<TraderCounter, 'stash' | 'progress'>,
+  seen: TraderStandingId | undefined,
+): readonly number[] {
+  const sheet = sheetOnEntry(counter, seen);
+  return sheet && sheet.tile.y === run.y && sheet.tile.x >= run.x && sheet.tile.x < run.x + run.width ? [sheet.tile.x - run.x] : [];
 }

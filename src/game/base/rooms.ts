@@ -74,7 +74,7 @@ import type { TileSource } from '../world/tileset/catalogue';
 import type { BasePieceName } from './generated/basePieces';
 import type { BaseKeeper, BaseScreen } from './doors';
 import { bayArea } from './chalk';
-import { GOOD_LIFT, GOODS_ON_SHELVES, goodIcon, goodName, SHELF_RUNS, SHELF_TILES, shelfState } from './billGoods';
+import { coveredGood, GOOD_LIFT, GOODS_ON_SHELVES, goodIcon, goodName, pendingSheetLift, SHELF_RUNS, SHELF_TILES, shelfState } from './billGoods';
 import type { BillGood } from '../hub/billTalk';
 import { FOSSIL_MACHINE, fossilAwake } from '../hub/fossils';
 import { traderCounterFor } from '../save/SaveManager';
@@ -2017,10 +2017,18 @@ function drawCottage(room: BaseRoom, game: RestoredGame): Drawn {
   things.push({ name: "BILL'S LIST", note: 'Everything he deals, and the price', tiles: [BILL_PC], opens: 'list' });
   const counter = traderCounterFor(game);
   const icons: RoomIcon[] = [];
+  // Only what he sells today, and the one thing under a sheet; a thing still to
+  // come stands nowhere. A sheet due off is drawn on still, and the scene lifts
+  // it (`BaseScene.liftBillsSheet`), so the thing under it is not stood out here.
+  const covered = coveredGood(counter)?.good;
+  const lifting = pendingSheetLift(counter, game.raidProgress.billShelvesSeen)?.good;
   for (const { good, tile } of GOODS_ON_SHELVES) {
     const state = shelfState(counter, good);
+    if (state === 'sheeted' && good !== covered) {
+      continue;
+    }
     things.push({ name: state === 'sheeted' ? 'UNDER A SHEET' : goodName(good).toUpperCase(), note: '', tiles: [tile], good, quiet: true });
-    if (state === 'out') {
+    if (state === 'out' && good !== lifting) {
       icons.push({
         itemId: good.kind === 'stock' ? good.itemId : '',
         icon: goodIcon(good),

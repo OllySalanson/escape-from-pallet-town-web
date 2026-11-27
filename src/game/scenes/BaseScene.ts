@@ -345,6 +345,16 @@ import {
   type BillGood,
 } from '../hub/billTalk';
 import { roomPosterPicture } from '../base/roomPosters';
+import {
+  coveredGood,
+  GOOD_LIFT,
+  goodIcon,
+  pendingSheetLift,
+  SHEET_OFFSET,
+  sheetPicture,
+  shelfPoster,
+  type ShelfSeat,
+} from '../base/billGoods';
 import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
 import { dueMilestone, milestoneWords, pokedexLookLines, pokedexOwned } from '../hub/pokedex';
 import { boardLines } from '../base/labBoard';
@@ -1502,6 +1512,7 @@ export class BaseScene extends Phaser.Scene {
     this.drawFurniture();
     this.drawOddities();
     this.drawWallMap();
+    this.liftBillsSheet();
     this.hallDoors = null;
     this.arena = this.place.room?.pit ? this.openTheHall(loaded) : null;
     if (this.place.room && ROOMS_ANSWERING_A_POINTER.has(this.place.room.room.id)) {
@@ -4231,6 +4242,115 @@ export class BaseScene extends Phaser.Scene {
     // visit for the same reason the wall map is.
     (this.place.room?.posters ?? []).forEach((poster, index) => {
       this.hangPicture(`base-poster-${index}-${poster.kind}`, roomPosterPicture(game, poster), poster.area);
+    });
+  }
+
+  /**
+   * The first visit after Bill's trust has risen: the dust sheet comes off the
+   * thing he now sells, and a new one settles over the next (`base/billGoods.ts`).
+   * That the shelves were seen is written at once, so the lift is shown once
+   * even if the player turns round in the doorway.
+   */
+  private liftBillsSheet(): void {
+    if (this.place.room?.room.id !== 'bills-cottage') {
+      return;
+    }
+    const counter = traderCounterFor(this.savedGame);
+    const lifted = pendingSheetLift(counter, this.savedGame.raidProgress.billShelvesSeen);
+    this.saveManager.seeBillsShelves();
+    if (!lifted) {
+      return;
+    }
+    const next = coveredGood(counter);
+    const settle = (): void => this.repaintBillsShelves(next);
+    const thing = this.add
+      .image(lifted.tile.x * TILE_SIZE, lifted.tile.y * TILE_SIZE - GOOD_LIFT, iconTextureKey(goodIcon(lifted.good)))
+      .setOrigin(0, 0)
+      .setDepth(atRow(MARKER_BAND, lifted.tile.y + 0.5));
+    if (this.still) {
+      settle();
+      return;
+    }
+    // The shelves are painted bare under two loose sheets: the one coming off,
+    // and the one that will settle over the next thing.
+    this.repaintBillsShelves(undefined);
+    thing.setAlpha(0);
+    const sheetKey = 'bill-dust-sheet';
+    if (!this.textures.exists(sheetKey)) {
+      const picture = sheetPicture();
+      const texture = this.textures.createCanvas(sheetKey, picture.width, picture.height);
+      texture?.context.putImageData(new ImageData(picture.data, picture.width, picture.height), 0, 0);
+      texture?.refresh();
+    }
+    const sheetOver = (seat: ShelfSeat): Phaser.GameObjects.Image =>
+      this.add
+        .image(seat.tile.x * TILE_SIZE + SHEET_OFFSET.x, seat.tile.y * TILE_SIZE + SHEET_OFFSET.y, sheetKey)
+        .setOrigin(0, 0)
+        .setDepth(atRow(MARKER_BAND, seat.tile.y + 0.6));
+    const old = sheetOver(lifted);
+    const restY = old.y;
+    // A tug, then up and away; the thing comes out from under it as it goes.
+    this.tweens.add({
+      targets: old,
+      y: restY - 2,
+      delay: 600,
+      duration: 160,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        audioManager.play('select');
+        this.tweens.add({ targets: thing, alpha: 1, duration: 420, ease: 'Sine.easeOut' });
+        this.tweens.add({
+          targets: old,
+          y: restY - 14,
+          alpha: 0,
+          duration: 520,
+          ease: 'Quad.easeIn',
+          onComplete: () => {
+            old.destroy();
+            if (!next) {
+              settle();
+              return;
+            }
+            const fresh = sheetOver(next);
+            const nextY = fresh.y;
+            fresh.setAlpha(0).setY(nextY - 10);
+            this.tweens.add({
+              targets: fresh,
+              y: nextY,
+              alpha: 1,
+              delay: 300,
+              duration: 460,
+              ease: 'Quad.easeOut',
+              onComplete: () => {
+                settle();
+                fresh.destroy();
+              },
+            });
+          },
+        });
+      },
+    });
+  }
+
+  /** Bill's runs of shelf painted again in place, with the sheet over `covered` or over nothing. */
+  private repaintBillsShelves(covered: ShelfSeat | undefined): void {
+    (this.place.room?.posters ?? []).forEach((poster, index) => {
+      if (poster.kind !== 'goods-shelf') {
+        return;
+      }
+      const texture = this.textures.get(`base-poster-${index}-${poster.kind}`);
+      if (!(texture instanceof Phaser.Textures.CanvasTexture)) {
+        return;
+      }
+      const { area } = poster;
+      const onRun =
+        covered !== undefined &&
+        covered.tile.y === area.y &&
+        covered.tile.x >= area.x &&
+        covered.tile.x < area.x + area.width;
+      const picture = shelfPoster(area, onRun ? [covered.tile.x - area.x] : []);
+      texture.context.putImageData(new ImageData(picture.data, picture.width, picture.height), 0, 0);
+      texture.refresh();
     });
   }
 
