@@ -1,9 +1,9 @@
 /**
  * The one "from THE CHEST" list: every picker of the player's Pokémon outside
  * a raid - YOUR TEAM on P (`scenes/TeamScene.ts`), the chest's own POKéMON tab,
- * the Game Corner's cabinets, the Day-Care Man - lists from it, so no picker
- * ever asks the player to walk to where a Pokémon is kept (the overnight plan:
- * "picked anywhere").
+ * the Day-Care Man - lists from it, and the harbour's minigames order who may
+ * play by it (`minigames/whoPlays.ts`), so no picker ever asks the player to
+ * walk to where a Pokémon is kept (the overnight plan: "picked anywhere").
  *
  * Two promises, the same on every screen that uses it:
  *  - **every Pokémon**: the whole vault, in the order kept (there are no boxes
@@ -152,31 +152,4 @@ export function applyPickerFind(root: ParentNode, find: string): void {
     }
     heading.hidden = find.trim() !== '' && !any;
   });
-}
-
-/** What every cabinet's list carries of a Pokémon: who, and what its row is found by. */
-export interface PickerBasics {
-  readonly id: string;
-  readonly name: string;
-  readonly dexId: number;
-  readonly shiny: boolean;
-  readonly level: number;
-  /** What the find field matches the row against (`findWords`). */
-  readonly find: string;
-}
-
-export function pickerBasics(entry: PickerEntry): PickerBasics {
-  return {
-    id: entry.id,
-    name: entry.pokemon.name,
-    dexId: entry.pokemon.base.dexId,
-    shiny: entry.pokemon.shiny,
-    level: entry.pokemon.level,
-    find: findWords(entry),
-  };
-}
-
-/** The find attribute for a row built from `pickerBasics`. */
-export function basicsRowAttributes(basics: Pick<PickerBasics, 'find'>): string {
-  return `${PICKER_FIND_ATTRIBUTE}="${escapeAttribute(basics.find)}"`;
 }

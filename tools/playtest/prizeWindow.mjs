@@ -88,7 +88,8 @@ try {
   await walkIntoBase(page, 'game-corner', { press, until, wait, settleMs: 150 });
   await until(sceneIs('game-corner'), 'the POKéMON JUMP cabinet');
   await wait(300);
-  await page.evaluate(`document.querySelector('[data-play]').click()`);
+  await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'ready'`, 'the jumpers ready');
+  await press('Space');
   await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'playing'`, 'the vine');
   for (let frame = 0; frame < 60 * 120; frame += 1) {
     const state = await page.evaluate(`(() => { const j = ${GAME}.scene.getScene('game-corner').jumpGame; return j ? { over: j.over, state: j.vineState, timer: j.vineTimer, speed: j.vineSpeed, score: j.score, grounded: j.jumpers.every((p) => p.jumpStart === null) } : null; })()`);
@@ -104,9 +105,9 @@ try {
   }
   for (let rest = 0; rest < 600; rest += 1) {
     await step(1);
-    if (await page.evaluate(`${GAME}.scene.getScene('game-corner').phaseKind === 'menu'`)) break;
+    if (await page.evaluate(`${GAME}.scene.getScene('game-corner').phaseKind === 'result'`)) break;
   }
-  await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'menu'`, 'the result');
+  await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'result'`, 'the result');
   await wait(300);
   await shoot('01-jump-paid');
   const earned = (await save()).raidProgress.gameCorner.tickets;

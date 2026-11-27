@@ -133,9 +133,7 @@ try {
   await page.evaluate(`void ${BASE}.openMinigame('berry-picking')`);
   await until(sceneIs('berry-picking'), 'the berry screen');
   await wait(400);
-  await page.evaluate(`document.querySelector('[data-picker^="dodrio"]')?.click()`);
-  await wait(200);
-  await page.evaluate(`document.querySelector('[data-play]').click()`);
+  await page.evaluate(`(() => { const s = ${GAME}.scene.getScene('berry-picking'); const id = s.lineupIds.flat().find((each) => each.startsWith('dodrio')); return id ? s.playWith(id) : false; })()`);
   await until(`${GAME}.scene.getScene('berry-picking').phaseKind === 'playing'`, 'berries falling');
   await wait(4000);
   await shoot('03-berry-meter');
@@ -150,9 +148,7 @@ try {
   await page.evaluate(`void ${BASE}.openGameCorner('jump')`);
   await until(sceneIs('game-corner'), 'the jump screen');
   await wait(400);
-  await page.evaluate(`document.querySelector('[data-jumper]:not([aria-disabled])')?.click()`);
-  await wait(200);
-  await page.evaluate(`document.querySelector('[data-play]').click()`);
+  await press('Space');
   await until(`${GAME}.scene.getScene('game-corner').jumpGame`, 'the vine');
   await wait(600);
   await shoot('04-jumper-on-the-dirt');

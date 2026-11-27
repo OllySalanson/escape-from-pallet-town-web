@@ -98,22 +98,14 @@ try {
   await press('Escape');
   await wait(300);
 
-  // THE GAME CORNER: its mat opens POKéMON JUMP, which lists every box.
+  // THE GAME CORNER: its mat opens POKéMON JUMP on the game itself, a RATTATA from anywhere in the vault among who may jump.
   await walkIntoBase(page, 'game-corner', { press, until, wait, settleMs: 150 });
-  await until(`${sceneIs('game-corner')} && Boolean(document.querySelector('#screens .game-corner-screen [data-find]'))`, 'POKéMON JUMP');
+  await until(`${sceneIs('game-corner')} && ${GAME}.scene.getScene('game-corner').phaseKind === 'ready'`, 'POKéMON JUMP');
   await wait(300);
-  const jumpRows = await rows('.game-corner-screen');
-  console.log(`jump: ${jumpRows.join(', ')}`);
-  if (!jumpRows.some((row) => row.endsWith('| Box 2'))) fail('the jump list names no box 2');
-  if (!(await page.evaluate(`document.querySelector('#screens .game-corner-screen')?.textContent.includes('Box 2')`))) {
-    fail('box names are not printed on the jump rows');
-  }
-  await shoot('01-jump-boxes');
-  await find('.game-corner-screen', 'rat');
-  const ratRows = await rows('.game-corner-screen');
-  if (ratRows.length !== 1 || !/RATTATA/i.test(ratRows[0])) fail(`FIND "rat" left ${ratRows.join(', ')}`);
-  await shoot('02-jump-find');
-  await page.evaluate(`document.querySelector('#screens .game-corner-screen [data-picker-find]')?.blur()`);
+  const jumpers = await page.evaluate(`${GAME}.scene.getScene('game-corner').lineupIds.flat()`);
+  console.log(`jump: ${jumpers.join(', ')}`);
+  if (!jumpers.some((id) => id.startsWith('rattata'))) fail(`no RATTATA among who may jump (${jumpers.join(', ')})`);
+  await shoot('01-jump-ready');
   await press('Escape');
   await until(`${baseReady} && !${sceneIs('game-corner')}`, 'the arcade');
   await wait(300);

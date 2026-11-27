@@ -123,10 +123,9 @@ try {
   await walkIntoBase(page, 'game-corner', { press, until, wait, settleMs: 150 });
   await until(sceneIs('game-corner'), 'the POKéMON JUMP cabinet');
   await wait(300);
-  await shoot('06-who-jumps');
-  // The three FAST jumpers are chosen for a first go; play.
-  await page.evaluate(`document.querySelector('[data-play]').click()`);
-  await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'countdown'`, 'the countdown');
+  // The cabinet opens on the game itself, its jumpers standing ready under the vine.
+  await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'ready'`, 'the ready beat');
+  await shoot('06-ready');
   await wait(400);
   await shoot('07-countdown');
   await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'playing'`, 'the vine');
@@ -162,7 +161,7 @@ try {
     await step(1);
   }
   await shoot('09-ouch');
-  await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'menu'`, 'the result');
+  await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'result'`, 'the result');
   await wait(300);
   await shoot('10-result');
   const corner = await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress.gameCorner`);

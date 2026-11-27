@@ -136,7 +136,7 @@ try {
   };
   const tickets = async () => (await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}'))`)).raidProgress.gameCorner;
 
-  /** Faces a board and opens its game, then picks who plays and presses PLAY. */
+  /** Faces a board and opens its game, then puts who plays in, as LEFT and RIGHT would in its ready beat. */
   const openGame = async (scene, tile, facing, pick, label) => {
     await walkTo(tile, label);
     await press(facing);
@@ -145,10 +145,9 @@ try {
     await press('Space');
     await until(sceneIs(scene), `the ${label} screen`);
     await wait(300);
-    await shoot(`${scene}-02-who-plays`);
-    await page.evaluate(`document.querySelector('[data-player-pick^="${pick}"]').click()`);
-    await wait(200);
-    await page.evaluate(`document.querySelector('[data-play]').click()`);
+    await shoot(`${scene}-02-ready`);
+    const id = await page.evaluate(`${GAME}.scene.getScene('${scene}').lineupIds.find((each) => each.startsWith('${pick}')) ?? null`);
+    if (!id || !(await page.evaluate(`${GAME}.scene.getScene('${scene}').playWith('${id}')`))) fail(`${pick} is not offered at the ${label}`);
     await until(`${GAME}.scene.getScene('${scene}').isPlaying`, `the ${label} under way`);
   };
   const closeGame = async (scene, label) => {

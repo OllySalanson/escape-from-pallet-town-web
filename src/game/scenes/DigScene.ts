@@ -18,7 +18,7 @@ import {
   type DigGame,
   type Ping,
 } from '../minigames/dig';
-import { DIG_TICKET_TIERS } from '../minigames/tickets';
+import type { LadderGame } from '../minigames/payLadder';
 import { hasAbility, knows, type PokemonTraits } from '../minigames/traits';
 import { OutdoorGameScene, type OutdoorFit } from './OutdoorGameScene';
 
@@ -26,6 +26,8 @@ import { OutdoorGameScene, type OutdoorFit } from './OutdoorGameScene';
 const SQUARE = 24;
 /** How long the last dig is shown before the screen comes back. */
 const END_PAUSE_MS = 1400;
+/** How long the ghost spade takes to dig once, until the first dig. */
+const GHOST_DIG_MS = 900;
 /** What a dig into a square already turned over says, in the ping's place. */
 export const DUG_ALREADY = 'DUG ALREADY!';
 
@@ -41,17 +43,19 @@ const PING_WORDS: Readonly<Record<Ping, { readonly words: string; readonly colou
  * squares by five, ten digs, and after each a ping - HOT, WARM or COLD, as
  * FireRed's Itemfinder pings. Arrows move the spade, SPACE digs. Loose sand
  * is drawn darker; a Ground type turns over a plus; Keen Eye glints.
+ *
+ * Its rules are shown on the sand, never told (the harbour audit, 27 Nov
+ * 2026, fault 3): until the first dig a ghost spade digs the square the
+ * spade starts on; the squares a dig turns over are outlined under it (a
+ * Ground type's plus); DIGS LEFT counts what DIG the move adds; and after
+ * every ping the squares it speaks of light up round the dig - the ring a
+ * square away for HOT, two away for WARM, and, for COLD, everything that
+ * near washed out.
  */
 export class DigScene extends OutdoorGameScene {
   protected readonly source = 'dig' as const;
-  protected readonly words = {
-    title: 'THE DIG',
-    place: 'Beach · ',
-    heading: 'Who digs?',
-    doing: 'Digging',
-    rules: 'Ten digs, a ping after each. A GROUND type digs five squares; DIG the move is two more digs; darker sand caves in.',
-    playHelp: 'ARROWS move the spade, SPACE digs. HOT is a square away, WARM two.',
-  };
+  protected readonly title = 'THE DIG';
+  protected readonly spaceActsInReady = true;
 
   private dig_: DigGame | undefined;
   private cursor = { x: 3, y: 2 };
@@ -88,13 +92,13 @@ export class DigScene extends OutdoorGameScene {
     return { fit, notes: diggerNotes(traits) };
   }
 
-  protected bestWords(best: number): string {
-    return `${best} points`;
+  protected ladderGame(): LadderGame {
+    return { kind: 'dig' };
   }
 
-  protected todayLine(): string {
-    const [first, second, third] = DIG_TICKET_TIERS;
-    return `Tickets at ${first.score}, ${second.score} and ${third.score} points; berries and a SAND ORNAMENT go home.`;
+  /** Over the patch, under the rail: the patch is where the first dig is shown. */
+  protected plateTop(): number {
+    return 4;
   }
 
   protected beginGame(chosen: StashedPokemon, traits: PokemonTraits): void {
@@ -138,7 +142,7 @@ export class DigScene extends OutdoorGameScene {
     const panel = this.keep(this.add.graphics().setDepth(10));
     drawPixelWindow(panel, { x: 4, y: 14, width: 108, height: 32 }, { fill: WINDOW_PAPER });
     this.hud = this.words_(9, 16, '', { colour: '#202030' }).setStroke('#202030', 0).setDepth(11);
-    this.ping = this.words_(width / 2, top - 22, 'DIG!', { big: true, origin: [0.5, 0.5] });
+    this.ping = this.words_(width / 2, top - 22, '', { big: true, origin: [0.5, 0.5] });
     this.words_(width / 2, height - 3, 'ARROWS: move · SPACE: dig · ESC: stop', { origin: [0.5, 1] });
     this.drawPatch();
   }
@@ -224,7 +228,10 @@ export class DigScene extends OutdoorGameScene {
   }
 
   public update(_time: number, delta: number): void {
-    if (!this.playing || this.endingFor === null) return;
+    const ready = this.readyFrame(delta);
+    // Until the first dig the ghost spade is digging, so the patch is drawn every frame.
+    if ((ready || this.playing) && this.dig_ && this.dig_.dug.length === 0) this.drawPatch();
+    if (ready || !this.playing || this.endingFor === null) return;
     this.endingFor -= delta;
     if (this.endingFor <= 0) this.finishDig();
   }
@@ -270,6 +277,8 @@ export class DigScene extends OutdoorGameScene {
     const cy = top + this.cursor.y * SQUARE;
     patch.lineStyle(2, 0x202030, 1).strokeRect(cx - 1, cy - 1, SQUARE + 1, SQUARE + 1);
     patch.lineStyle(1, 0xf8f8f8, 1).strokeRect(cx, cy, SQUARE - 1, SQUARE - 1);
+    if (game.dug.length === 0) this.drawGhostSpade(patch, left + this.cursor.x * SQUARE, top + this.cursor.y * SQUARE);
+    if (game.ping) this.drawPingReach(patch, game, game.ping);
     // The last ping, marked on its square; Keen Eye's glint.
     if (game.ping) {
       const colour = Phaser.Display.Color.HexStringToColor(PING_WORDS[game.ping.ping].colour).color;
@@ -281,6 +290,55 @@ export class DigScene extends OutdoorGameScene {
       patch.fillStyle(0xfff8c8, 1).fillRect(gx - 1, gy - 6, 2, 12).fillRect(gx - 6, gy - 1, 12, 2);
     }
     this.hud?.setText([`DIGS LEFT ${game.digsLeft}`, `POINTS ${game.score}`]);
+  }
+
+  /**
+   * The first dig, shown: a spade, faint, rising over the square and driven
+   * into it again and again, until the player digs somewhere themselves.
+   */
+  private drawGhostSpade(patch: Phaser.GameObjects.Graphics, px: number, py: number): void {
+    const beat = (this.time.now % GHOST_DIG_MS) / GHOST_DIG_MS;
+    const lift = Math.round(Math.abs(Math.cos(beat * Math.PI)) * 10);
+    const x = px + SQUARE / 2;
+    const y = py + 4 - lift;
+    const alpha = 0.75;
+    // The blade, the shaft and the grip.
+    patch.fillStyle(0x202030, alpha).fillRect(x - 5, y - 1, 11, 9);
+    patch.fillStyle(0xc8c8d0, alpha).fillRect(x - 4, y, 9, 7);
+    patch.fillStyle(0xf8f8f8, alpha).fillRect(x - 3, y + 1, 2, 4);
+    patch.fillStyle(0x704020, alpha).fillRect(x - 1, y - 14, 3, 13);
+    patch.fillStyle(0x704020, alpha).fillRect(x - 4, y - 16, 9, 3);
+    if (lift < 3) {
+      // The sand it throws up as it goes in.
+      patch.fillStyle(0xf0e0a0, 0.9).fillRect(px + 3, py + SQUARE - 7, 3, 2).fillRect(px + SQUARE - 7, py + SQUARE - 8, 3, 2);
+    }
+  }
+
+  /**
+   * What a ping says, drawn on the sand round the dig it was made from: HOT
+   * lights the ring of squares one away, WARM the ring two away, and COLD
+   * washes out everything within two - nothing is buried there.
+   */
+  private drawPingReach(patch: Phaser.GameObjects.Graphics, game: DigGame, ping: NonNullable<DigGame['ping']>): void {
+    if (ping.ping === 'found') return;
+    const left = this.patchLeft();
+    const top = this.patchTop();
+    const colour = Phaser.Display.Color.HexStringToColor(PING_WORDS[ping.ping].colour).color;
+    for (let y = 0; y < DIG_HEIGHT; y += 1) {
+      for (let x = 0; x < DIG_WIDTH; x += 1) {
+        if (isDug(game, x, y)) continue;
+        const far = Math.abs(x - ping.x) + Math.abs(y - ping.y);
+        const lit = ping.ping === 'hot' ? far === 1 : ping.ping === 'warm' ? far === 2 : far > 0 && far <= 2;
+        if (!lit) continue;
+        const px = left + x * SQUARE;
+        const py = top + y * SQUARE;
+        if (ping.ping === 'cold') {
+          patch.fillStyle(colour, 0.22).fillRect(px, py, SQUARE - 1, SQUARE - 1);
+        } else {
+          patch.lineStyle(2, colour, 0.85).strokeRect(px + 2, py + 2, SQUARE - 5, SQUARE - 5);
+        }
+      }
+    }
   }
 
   private drawThing(graphics: Phaser.GameObjects.Graphics, kind: 'berry' | 'shell' | 'ornament', x: number, y: number): void {
