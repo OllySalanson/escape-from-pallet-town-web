@@ -145,10 +145,10 @@ try {
     await press('Space');
     await until(sceneIs(scene), `the ${label} screen`);
     await wait(300);
-    await shoot(`${scene}-02-who-plays`);
-    await page.evaluate(`document.querySelector('[data-player-pick^="${pick}"]').click()`);
-    await wait(200);
-    await page.evaluate(`document.querySelector('[data-play]').click()`);
+    await shoot(`${scene}-02-start-line`);
+    // Each game opens on its start line; put this kind on it, as LEFT and RIGHT would.
+    const game = `${GAME}.scene.getScene('${scene}')`;
+    await page.evaluate(`${game}.playWith(${game}.lineupIds.find((id) => id.startsWith('${pick}')) ?? '')`);
     await until(`${GAME}.scene.getScene('${scene}').isPlaying`, `the ${label} under way`);
   };
   const closeGame = async (scene, label) => {

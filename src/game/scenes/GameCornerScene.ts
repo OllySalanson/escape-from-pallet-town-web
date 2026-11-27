@@ -9,22 +9,17 @@ import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { GAME_FONT } from '../ui/gameFont';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { takeDownPixelStatus } from '../ui/pixelUi';
-import { pickerBasics, pickerEntries, pickerOrder, wirePickerFind } from '../ui/boxPicker';
-import { HOUSE_JUMPER, loanBasics } from '../minigames/houseLoans';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { drawPixelWindow, WINDOW_PAPER, WINDOW_INK } from '../ui/pixelWindow';
 import { RELEASE_ARMING_MS, RESULT_HOLD_MS } from '../ui/spatialFocus';
-import { jumpTeamMarkup, prizeWindowMarkup, type JumpCandidate, type JumpTeamState } from '../minigames/gameCornerView';
-import {
-  advancePokemonJump,
-  jumpTypeOf,
-  MAX_JUMPERS,
-  startPokemonJump,
-  vineTurn,
-  type PokemonJumpGame,
-} from '../minigames/pokemonJump';
+import { prizeWindowMarkup } from '../minigames/gameCornerView';
+import { advancePokemonJump, startPokemonJump, vineTurn, type PokemonJumpGame } from '../minigames/pokemonJump';
 import { NO_GAME_CORNER, prizeById, prizeName, prizeRefusal, RUMOUR_BOUGHT_LINE, type GameCornerRecord, type PrizeSituation } from '../minigames/tickets';
+import { ticketLadder } from '../minigames/ticketLadder';
+import { jumpLineup, jumpTeam, stepAlong, type Contender } from '../minigames/whoPlays';
+import { isFigureSpecies, pokemonIconFrames, POKEMON_ICON_TEXTURE } from '../world/pokemonFigures';
+import { capOf, KeyStrip, ReadySetGo, ResultCard } from './readySetGo';
 
 export interface GameCornerSceneData {
   readonly mode: 'jump' | 'prizes';
@@ -56,39 +51,46 @@ function backPictureEmptyRows(dexId: number): number {
 
 type Phase =
   | { readonly kind: 'menu' }
-  | { readonly kind: 'countdown'; readonly elapsed: number }
+  | { readonly kind: 'ready' }
   | { readonly kind: 'playing' }
-  | { readonly kind: 'hit'; readonly elapsed: number };
+  | { readonly kind: 'hit'; readonly elapsed: number }
+  | { readonly kind: 'result' };
 
 /**
  * THE GAME CORNER's two screens over the paused harbour, as the boutique is
- * (`BoutiqueScene`): the POKéMON JUMP cabinet - who jumps, the game itself and
- * what it paid - and the PRIZE WINDOW.
+ * (`BoutiqueScene`): the POKéMON JUMP cabinet - its start line, the game
+ * itself and what it paid - and the PRIZE WINDOW.
  *
  * The rules are `minigames/pokemonJump.ts` and nothing here decides anything:
  * the scene hands the game each frame's milliseconds and whether the key was
  * pressed, and draws what comes back. The game is drawn on the canvas, on the
  * scene clock - a Venusaur at the top swinging its vine, the jumpers from
- * behind, their own back sprites - and the choosing and the prize window are
- * pixel-ui screens (`minigames/gameCornerView.ts`). What a game pays and what
- * a prize costs are written by `SaveManager.playJump` and `buyTicketPrize`,
- * one write each.
+ * behind, their own back sprites. The cabinet opens straight onto its start
+ * line (`readySetGo.ts`): the partner leading the jump if it can, else the
+ * house's PIKACHU, LEFT and RIGHT through the count for the next who can
+ * (`minigames/whoPlays.ts`); the result is drawn over the clearing with the
+ * pay table, once. The prize window is a pixel-ui screen
+ * (`minigames/gameCornerView.ts`). What a game pays and what a prize costs are
+ * written by `SaveManager.playJump` and `buyTicketPrize`, one write each.
  */
 export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackContext {
-  /** When the last game ended: AGAIN takes no press for `RESULT_HOLD_MS` after. */
+  /** When the last game ended: SPACE takes no press for `RESULT_HOLD_MS` after. */
   private finishedAt = Number.NEGATIVE_INFINITY;
   private overlay: MenuOverlay | undefined;
   private pausedBase = false;
   private mode: GameCornerSceneData['mode'] = 'jump';
   private game_: RestoredGame | undefined;
-  private chosen: string[] = [];
+  /** Who could lead the jump, the first in line leading (`whoPlays.ts`). */
+  private contenders: Contender[] = [];
+  private lead = 0;
+  private team: Contender[] = [];
   private status: string | undefined;
   /** THE RUMOUR MILL's slip just bought, said in the bar. */
   private rumour: string | undefined;
-  /** What the list's find field held (`ui/boxPicker.ts`). */
-  private find = '';
-  private last: JumpTeamState['last'];
   private phase: Phase = { kind: 'menu' };
+  private ready: ReadySetGo | undefined;
+  private strip: KeyStrip | undefined;
+  private card: ResultCard | undefined;
   private jump: PokemonJumpGame | undefined;
   private pressed = false;
   private openedAt = 0;
@@ -105,7 +107,6 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
   private jumperLip: Phaser.GameObjects.Graphics | undefined;
   private scoreText: Phaser.GameObjects.Text | undefined;
   private callout: { text: Phaser.GameObjects.Text; until: number } | undefined;
-  private bigText: Phaser.GameObjects.Text | undefined;
   private readonly saveManager = new SaveManager();
 
   public constructor() {
@@ -120,12 +121,16 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     this.rumour = undefined;
     this.asking = undefined;
     this.askedAt = Number.NEGATIVE_INFINITY;
-    this.last = undefined;
     this.phase = { kind: 'menu' };
     this.jump = undefined;
     this.pressed = false;
+    this.ready = undefined;
+    this.strip = undefined;
+    this.card = undefined;
     this.game_ = this.saveManager.load() ?? undefined;
-    this.chosen = this.defaultTeam();
+    this.contenders = this.game_ ? jumpLineup(this.game_.stash) : [];
+    this.lead = 0;
+    this.team = [];
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.overlay?.destroy();
       this.overlay = undefined;
@@ -138,9 +143,11 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     this.openedAt = this.time.now;
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => this.onGameKey(event));
     this.input.on('pointerdown', () => {
-      if (this.phase.kind === 'playing' || this.phase.kind === 'countdown') this.pressed = true;
+      if (this.phase.kind === 'playing' || this.phase.kind === 'ready') this.pressed = true;
     });
-    this.showMenu();
+    // The cabinet is the game: it opens on its start line, never on a form.
+    if (this.mode === 'jump') this.startGame();
+    else this.showMenu();
   }
 
   public feedbackContext(): readonly FeedbackDetail[] {
@@ -156,37 +163,32 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     return this.jump;
   }
 
-  /** For a playtest driver: where the screen is. */
+  /** For a playtest driver: where the screen is - the start line, the vine, the hit or the result. */
   public get phaseKind(): Phase['kind'] {
     return this.phase.kind;
   }
 
+  /** For a playtest driver and the tests: who could lead, in the order LEFT and RIGHT offer them. */
+  public get lineupIds(): readonly string[] {
+    return this.contenders.map((contender) => contender.id);
+  }
+
+  /** For a playtest driver and the tests: who is jumping, the lead first. */
+  public get teamIds(): readonly string[] {
+    return this.team.map((contender) => contender.id);
+  }
+
+  /** For a playtest driver: put somebody at the head of the jump, by id, as LEFT and RIGHT would. */
+  public playWith(id: string): boolean {
+    const index = this.contenders.findIndex((contender) => contender.id === id);
+    if (index < 0 || this.mode !== 'jump') return false;
+    this.lead = index;
+    this.startGame();
+    return true;
+  }
+
   private record(): GameCornerRecord {
     return this.game_?.raidProgress.gameCorner ?? NO_GAME_CORNER;
-  }
-
-  private candidates(): JumpCandidate[] {
-    const stash = this.game_?.stash;
-    if (!stash) return [];
-    // Every box, the jumpers first (`ui/boxPicker.ts`).
-    return [
-      ...pickerOrder(pickerEntries(stash), (entry) => (jumpTypeOf(entry.pokemon.base.id) ? 1 : 0)).map((entry) => ({
-        ...pickerBasics(entry),
-        jumpType: jumpTypeOf(entry.pokemon.base.id),
-      })),
-      // The house's own, last: a jumper of your own comes first (`minigames/houseLoans.ts`).
-      { ...loanBasics(HOUSE_JUMPER), jumpType: jumpTypeOf(HOUSE_JUMPER.species) },
-    ];
-  }
-
-  /** Who jumps if nobody is chosen: the first three who can, fastest kinds first. */
-  private defaultTeam(): string[] {
-    const order = { fast: 0, normal: 1, slow: 2 } as const;
-    return this.candidates()
-      .filter((candidate) => candidate.jumpType !== undefined)
-      .sort((a, b) => order[a.jumpType!] - order[b.jumpType!])
-      .slice(0, MAX_JUMPERS)
-      .map((candidate) => candidate.id);
   }
 
   // --- the screens ---------------------------------------------------------------
@@ -195,48 +197,20 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     if (!this.overlay) {
       this.overlay = new MenuOverlay(this, 'game-corner-screen pixel-ui', (event) => this.onMenuKey(event));
     }
-    const record = this.record();
-    const markup =
-      this.mode === 'jump'
-        ? jumpTeamMarkup({
-            candidates: this.candidates(),
-            chosen: this.chosen,
-            tickets: record.tickets,
-            best: record.best['pokemon-jump'] ?? 0,
-            ...(this.status ? { status: this.status } : {}),
-            ...(this.last ? { last: this.last } : {}),
-          })
-        : prizeWindowMarkup({
-            record,
-            now: new Date(),
-            situation: this.situation(),
-            ...(this.rumour ? { rumour: this.rumour } : {}),
-            ...(this.status ? { status: this.status } : {}),
-            ...(this.asking ? { asking: this.asking } : {}),
-          });
+    const markup = prizeWindowMarkup({
+      record: this.record(),
+      now: new Date(),
+      situation: this.situation(),
+      ...(this.rumour ? { rumour: this.rumour } : {}),
+      ...(this.status ? { status: this.status } : {}),
+      ...(this.asking ? { asking: this.asking } : {}),
+    });
     this.overlay.redraw(markup);
     const root = this.overlay.root;
-    root.setAttribute('aria-label', this.mode === 'jump' ? 'POKéMON JUMP' : 'PRIZE WINDOW');
+    root.setAttribute('aria-label', 'PRIZE WINDOW');
     root.querySelectorAll<HTMLButtonElement>('[data-close]').forEach((button) => {
       button.onclick = () => this.close();
     });
-    root.querySelectorAll<HTMLButtonElement>('[data-jumper]').forEach((button) => {
-      button.onclick = () => this.toggle(button.dataset.jumper ?? '', button);
-    });
-    const play = root.querySelector<HTMLButtonElement>('[data-play]');
-    if (play) {
-      play.onclick = () => {
-        if (play.getAttribute('aria-disabled') === 'true') {
-          audioManager.play('denied');
-          return;
-        }
-        // The score is seen before AGAIN takes a press: SPACE jumps, and the
-        // press still going at the end started the next game over the result
-        // (the harbour re-critic, 26 Nov 2026).
-        if (this.time.now - this.finishedAt < RESULT_HOLD_MS) return;
-        this.startGame();
-      };
-    }
     root.querySelectorAll<HTMLButtonElement>('[data-prize]').forEach((button) => {
       button.onclick = () => this.ask(button.dataset.prize ?? '');
     });
@@ -246,31 +220,11 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     root.querySelectorAll<HTMLButtonElement>('[data-prize-confirm]').forEach((button) => {
       button.onclick = () => this.buy(button.dataset.prizeConfirm ?? '');
     });
-    // The find over the list narrows it in place, and is kept over a redraw.
-    wirePickerFind(root, (key) => this.overlay?.moveCursor(key), this.find);
-    root.querySelector<HTMLInputElement>('[data-picker-find]')?.addEventListener('input', (event) => {
-      this.find = (event.target as HTMLInputElement).value;
-    });
     if (focusOn) {
       this.overlay.refocus(focusOn, '[data-cursor-start]');
     } else {
-      this.overlay.refocus(this.mode === 'jump' && this.chosen.length > 0 ? '[data-play]' : '[data-cursor-start]', '[data-close]');
+      this.overlay.refocus('[data-cursor-start]', '[data-close]');
     }
-  }
-
-  private toggle(id: string, button: HTMLButtonElement): void {
-    if (this.chosen.includes(id)) {
-      this.chosen = this.chosen.filter((other) => other !== id);
-      audioManager.play('cancel');
-    } else if (this.chosen.length < MAX_JUMPERS && button.getAttribute('aria-disabled') !== 'true') {
-      this.chosen = [...this.chosen, id];
-      audioManager.play('confirm');
-    } else {
-      audioManager.play('denied');
-      return;
-    }
-    this.status = undefined;
-    this.showMenu(`[data-jumper="${id}"]`);
   }
 
   /** What the window asks of the save: what it holds, and whether the mill has news. */
@@ -383,51 +337,96 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
 
   // --- the game -------------------------------------------------------------------
 
+  /** The vine set up fresh with whoever leads, and the start line counting in over it. */
   private startGame(): void {
-    const stash = this.game_?.stash;
-    if (!stash || this.chosen.length === 0) return;
-    const species = this.chosen.flatMap((id) => {
-      if (id === HOUSE_JUMPER.id) return [HOUSE_JUMPER.species];
-      const stored = stash.listPokemon().find((candidate) => candidate.id === id);
-      return stored ? [stored.pokemon.base.id] : [];
-    });
-    this.overlay?.destroy();
-    this.overlay = undefined;
+    const lead = this.contenders[this.lead];
+    this.tearDownStage();
     this.status = undefined;
-    audioManager.play('confirm');
+    if (!lead) {
+      this.close();
+      return;
+    }
+    this.team = jumpTeam(lead, this.contenders);
+    const species = this.team.map((jumper) => jumper.species);
     recordAction(`Played POKéMON JUMP with ${species.join(', ')}`);
     this.jump = startPokemonJump(species, (Math.random() * 2 ** 32) >>> 0);
     this.pressed = false;
-    this.phase = { kind: 'countdown', elapsed: 0 };
+    this.phase = { kind: 'ready' };
     this.buildStage();
+    this.ready = new ReadySetGo(
+      this,
+      {
+        demo: 'jump',
+        countMs: COUNTDOWN_MS,
+        ...(isFigureSpecies(lead.species) ? { figure: { texture: POKEMON_ICON_TEXTURE, frames: pokemonIconFrames(lead.species) } } : {}),
+      },
+      { dexId: lead.dexId, shiny: lead.shiny, name: lead.name, mates: this.team.slice(1).map((mate) => mate.species) },
+      this.contenders.length > 1,
+    );
   }
 
   private onGameKey(event: KeyboardEvent): void {
     if (this.phase.kind === 'menu') return;
+    const cap = capOf(event.key);
+    if (this.phase.kind === 'result') {
+      this.card?.press(event.key);
+      if (cap === 'esc') {
+        event.preventDefault();
+        this.close();
+      } else if (cap === 'space' && !event.repeat && this.time.now - this.finishedAt >= RESULT_HOLD_MS) {
+        // The score is seen before SPACE takes a press: SPACE jumps, and the
+        // press still going at the end started the next game over the result
+        // (the harbour re-critic, 26 Nov 2026).
+        event.preventDefault();
+        audioManager.play('confirm');
+        this.startGame();
+      }
+      return;
+    }
+    if (this.phase.kind === 'ready') {
+      if (cap === 'esc') {
+        // Nothing played yet: back to the harbour, nothing written.
+        event.preventDefault();
+        this.close();
+        return;
+      }
+      if (cap === 'left' || cap === 'right') {
+        event.preventDefault();
+        if (event.repeat || this.contenders.length < 2) return;
+        audioManager.play('select');
+        this.lead = stepAlong(this.contenders.length, this.lead, cap === 'left' ? -1 : 1);
+        this.startGame();
+        return;
+      }
+    }
     if (event.key === 'Escape') {
-      if (this.phase.kind === 'playing' || this.phase.kind === 'countdown') this.finish();
+      if (this.phase.kind === 'playing') this.finish();
       return;
     }
     if ([' ', 'Enter', 'ArrowUp', 'z', 'Z', 'x', 'X'].includes(event.key) && !event.repeat) {
       event.preventDefault();
+      this.strip?.press(event.key);
       this.pressed = true;
     }
   }
 
   public update(_time: number, delta: number): void {
     const phase = this.phase;
+    if (phase.kind === 'result') {
+      this.card?.tick(delta);
+      return;
+    }
     if (phase.kind === 'menu' || !this.jump) return;
-    if (phase.kind === 'countdown') {
-      const elapsed = phase.elapsed + delta;
-      this.phase = { kind: 'countdown', elapsed };
-      const left = Math.ceil((COUNTDOWN_MS - elapsed) / (COUNTDOWN_MS / 3));
-      this.bigText?.setText(left > 0 ? String(left) : 'JUMP!');
-      if (elapsed >= COUNTDOWN_MS) {
-        this.phase = { kind: 'playing' };
-        this.bigText?.setText('');
+    const split = this.ready?.tick(delta);
+    if (phase.kind === 'ready') {
+      if (!this.ready?.done) {
+        // A key pressed in the count is a jump on the first frame, never lost.
+        this.drawStage();
+        return;
       }
-      // A key pressed in the count is a jump on the first frame, never lost.
-      this.drawStage();
+      this.phase = { kind: 'playing' };
+      this.strip = new KeyStrip(this, ['space']);
+      this.play(split?.play ?? 0);
       return;
     }
     if (phase.kind === 'hit') {
@@ -437,6 +436,13 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
       if (elapsed >= HIT_PAUSE_MS) this.finish();
       return;
     }
+    this.strip?.tick(delta);
+    this.play(delta);
+  }
+
+  /** The vine moved on by `delta` ms of play, with the key if it went down. */
+  private play(delta: number): void {
+    if (!this.jump) return;
     const press = this.pressed;
     this.pressed = false;
     this.jump = advancePokemonJump(this.jump, delta, press);
@@ -460,7 +466,7 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     this.drawStage();
   }
 
-  /** The game is over: its score written and paid, and the cabinet's screen back up. */
+  /** The game is over: its score written and paid, and what it came to drawn over the clearing. */
   private finish(): void {
     const jump = this.jump;
     if (!jump) return;
@@ -468,19 +474,25 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     const written = this.saveManager.playJump(score);
     if (written) {
       this.game_ = written.game;
-      this.last = { score, payout: written.payout, berries: written.berries };
       if (written.payout.tickets > 0 || written.berries.length > 0) audioManager.play('itemObtained');
-    } else {
-      this.last = undefined;
-      this.status = 'The cabinet could not write that down. Nothing was paid.';
     }
     recordAction(`POKéMON JUMP scored ${score}`);
-    this.tearDownStage();
-    this.jump = undefined;
-    this.phase = { kind: 'menu' };
-    this.openedAt = this.time.now;
+    this.strip?.destroy();
+    this.strip = undefined;
+    this.ready?.destroy();
+    this.ready = undefined;
+    this.phase = { kind: 'result' };
     this.finishedAt = this.time.now;
-    this.showMenu('[data-play]');
+    const lead = this.team[0];
+    this.card = new ResultCard(this, {
+      ...(lead ? { face: { dexId: lead.dexId, shiny: lead.shiny } } : {}),
+      headline: `SCORE ${score.toLocaleString('en-GB')}`,
+      ...(written ? {} : { note: 'Nothing could be written down.' }),
+      newBest: written?.payout.newBest ?? false,
+      earned: written?.payout.tickets ?? 0,
+      finds: written?.berries ?? [],
+      ladder: written ? ticketLadder('pokemon-jump', score, written.game.raidProgress.gameCorner ?? NO_GAME_CORNER, new Date()) : null,
+    });
   }
 
   private shout(words: string, colour: string): void {
@@ -567,31 +579,17 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     this.scoreText = this.add
       .text(9, 6, '', { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: WINDOW_INK, lineSpacing: 0 })
       .setDepth(11);
-    this.bigText = this.add
-      .text(Math.round(width / 2), Math.round(height * 0.55), '', {
-        fontFamily: GAME_FONT,
-        fontSize: DIALOG_FONT_SIZE,
-        color: '#f8f8f8',
-        stroke: '#202030',
-        strokeThickness: 4,
-      })
-      .setOrigin(0.5, 0.5)
-      .setDepth(20);
-    const hint = this.add
-      .text(Math.round(width / 2), height - 2, 'SPACE: jump · ESC: stop', {
-        fontFamily: GAME_FONT,
-        fontSize: CHIP_FONT_SIZE,
-        color: '#f8f8f8',
-        stroke: '#202030',
-        strokeThickness: 3,
-      })
-      .setOrigin(0.5, 1)
-      .setDepth(11);
-    this.stage = this.add.container(0, 0, [back, venusaur, panel, hint]).setDepth(0);
+    this.stage = this.add.container(0, 0, [back, venusaur, panel]).setDepth(0);
     this.drawStage();
   }
 
   private tearDownStage(): void {
+    this.ready?.destroy();
+    this.ready = undefined;
+    this.strip?.destroy();
+    this.strip = undefined;
+    this.card?.destroy();
+    this.card = undefined;
     this.stage?.destroy(true);
     this.stage = undefined;
     for (const sprite of this.jumperSprites) sprite.destroy();
@@ -605,8 +603,6 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     this.vineFront = undefined;
     this.scoreText?.destroy();
     this.scoreText = undefined;
-    this.bigText?.destroy();
-    this.bigText = undefined;
     this.callout?.text.destroy();
     this.callout = undefined;
     this.cameras?.main?.resetFX();

@@ -158,7 +158,7 @@ try {
   await press('Space');
   await until(sceneIs('game-corner'), 'the POKéMON JUMP cabinet');
   await wait(300);
-  await page.evaluate(`document.querySelector('[data-play]').click()`);
+  // The cabinet opens on its start line and counts itself into play.
   await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'playing'`, 'the vine');
   for (let frame = 0; frame < 60 * 150; frame += 1) {
     const state = await page.evaluate(`(() => { const j = ${GAME}.scene.getScene('game-corner').jumpGame; return j ? { over: j.over, state: j.vineState, timer: j.vineTimer, speed: j.vineSpeed, score: j.score, grounded: j.jumpers.every((p) => p.jumpStart === null) } : null; })()`);
@@ -179,7 +179,7 @@ try {
     }
     await step(1);
   }
-  await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'menu'`, 'the result');
+  await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'result'`, 'the result');
   const corner = await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress.gameCorner`);
   console.log(`game corner: ${JSON.stringify(corner)}`);
   if (!corner || (corner.day?.paid?.['pokemon-jump'] ?? 0) <= 0) fail('the game paid nothing');

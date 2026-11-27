@@ -121,17 +121,13 @@ try {
   const save = async () => JSON.parse(await page.evaluate(`localStorage.getItem('${SAVE_KEY}')`));
   for (const [index, racer] of RACERS.entries()) {
     const number = index + 1;
-    // The level has to be open, by the podium before it: the screen's own button.
-    const open = await page.evaluate(`document.querySelector('[data-course-level="${number}"]')?.getAttribute('aria-disabled') !== 'true'`);
-    if (!open) fail(`level ${number} is not open`);
-    await page.evaluate(`document.querySelector('[data-course-level="${number}"]').click()`);
-    await wait(200);
-    await page.evaluate(`document.querySelector('[data-player-pick^="${racer}"]').click()`);
+    // The level has to be open, by the podium before it: UP and DOWN on the start line offer only those.
+    if (!(await page.evaluate(`${derby}.raceOn(${number})`))) fail(`level ${number} is not open`);
+    await page.evaluate(`${derby}.playWith(${derby}.lineupIds.find((id) => id.startsWith('${racer}')) ?? '')`);
     await wait(200);
     if (number === 2) await shoot('01-choose-level-2');
     const chosen = await page.evaluate(`${derby}.derbyLevel`);
     if (chosen !== number) fail(`chose level ${number}, the screen has ${chosen}`);
-    await page.evaluate(`document.querySelector('[data-play]').click()`);
     await until(`${derby}.isPlaying`, `level ${number} under way`);
     let shot = 0;
     let gridShot = false;

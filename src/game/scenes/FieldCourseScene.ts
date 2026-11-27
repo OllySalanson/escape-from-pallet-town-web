@@ -4,14 +4,12 @@ import { audioManager } from '../audio/AudioManager';
 import { recordAction } from '../feedback/actionLog';
 import { compassBearing } from '../world/bearing';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
-import { CHARACTER_FEET_PIXEL_Y, getIdleFrame } from '../playerFrames';
+import { CHARACTER_FEET_PIXEL_Y, getIdleFrame, getWalkFrames } from '../playerFrames';
 import { lookTexture, lookWalkKey } from '../look/lookTexture';
 import { readLook } from '../look/look';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { GAME_FONT } from '../ui/gameFont';
-import { MenuOverlay } from '../ui/MenuOverlay';
-import { pickerBasics, pickerEntries, pickerOrder, wirePickerFind } from '../ui/boxPicker';
-import { isOverlayDismissKey } from '../ui/overlayKeyboard';
+import { RESULT_HOLD_MS } from '../ui/spatialFocus';
 import { CHIP_FONT_SIZE } from '../ui/screenType';
 import { drawPixelWindow, WINDOW_PAPER, WINDOW_INK } from '../ui/pixelWindow';
 import type { Direction, GridPosition } from '../movement/gridMovement';
@@ -19,13 +17,10 @@ import type { MapLayers, TileLayer } from '../world/tiles';
 import { TOWN_PIECES } from '../world/generated/townPieces';
 import { TOWN_SHEET_SOURCE } from '../world/tileset/townSheet';
 import { FIELD_MOVES, type FieldMoveId } from '../world/fieldMoves';
-import { courseTeamMarkup, type CourseCandidate, type CourseTeamState } from '../minigames/gameCornerView';
 import { courseTime } from '../minigames/gameCornerTalk';
 import { COURSE_SOURCES, courseLayers } from '../minigames/courseMap';
 import {
   advanceCourse,
-  COURSE_TEAM_SIZE,
-  courseMovesOf,
   doerOf,
   facedObstacle,
   fastestRun,
@@ -36,8 +31,11 @@ import {
   type CourseRun,
   type CourseRunner,
 } from '../minigames/fieldCourse';
-import { NO_GAME_CORNER, type GameCornerRecord } from '../minigames/tickets';
+import { NO_GAME_CORNER } from '../minigames/tickets';
+import { ticketLadder } from '../minigames/ticketLadder';
+import { courseLineup, courseTeam, stepAlong, type Contender } from '../minigames/whoPlays';
 import { hideHarbourUnder } from './coverHarbour';
+import { capOf, KeyStrip, ReadySetGo, ResultCard } from './readySetGo';
 
 export interface FieldCourseSceneData {
   /** Only resume the harbour when this screen paused it. */
@@ -63,13 +61,23 @@ const BOULDER_FRAME = 'strength-boulder';
 /** A field move as the keeper says it, in the order the course meets them. */
 const MOVE_WORDS: Readonly<Record<FieldMoveId, string>> = { cut: 'CUT', 'rock-smash': 'ROCK SMASH', strength: 'STRENGTH', surf: 'SURF' };
 const MOVE_ORDER: readonly FieldMoveId[] = ['cut', 'rock-smash', 'strength', 'surf'];
+/** Each field move as the start line shows what a team brings: the HM the keeper lends for it. */
+const MOVE_ICONS: Readonly<Record<FieldMoveId, string>> = { cut: 'hm01-cut', 'rock-smash': 'hm06-rock-smash', strength: 'hm04-strength', surf: 'hm03-surf' };
+/** The count in, while the view runs back along the course from the finish. */
+const COURSE_COUNT_MS = 1800;
 
-type Phase = { readonly kind: 'menu' } | { readonly kind: 'running' } | { readonly kind: 'finished'; readonly elapsed: number };
+type Phase =
+  | { readonly kind: 'ready' }
+  | { readonly kind: 'running' }
+  | { readonly kind: 'finished'; readonly elapsed: number }
+  | { readonly kind: 'result' };
 
 /**
- * THE FIELD-MOVE COURSE over the paused harbour: the keeper's screen (who
- * goes round, what they can do between them and the fastest that team could
- * possibly go), then the run itself.
+ * THE FIELD-MOVE COURSE over the paused harbour: its start line - the partner
+ * leading the team, whoever adds the most field moves going round with it, the
+ * HMs they bring lit, LEFT and RIGHT through the count for another lead
+ * (`minigames/whoPlays.ts`, `readySetGo.ts`) - then the run itself, and the
+ * time it came to with the pay table once.
  *
  * The rules are `minigames/fieldCourse.ts` and nothing here decides anything:
  * the scene hands the run each frame's milliseconds, the direction held and
@@ -81,15 +89,17 @@ type Phase = { readonly kind: 'menu' } | { readonly kind: 'running' } | { readon
  * written by `SaveManager.playGame`, one write.
  */
 export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackContext {
-  private overlay: MenuOverlay | undefined;
   private pausedBase = false;
   private game_: RestoredGame | undefined;
-  private chosen: string[] = [];
-  private status: string | undefined;
-  /** What the list's find field held (`ui/boxPicker.ts`). */
-  private find = '';
-  private last: CourseTeamState['last'];
-  private phase: Phase = { kind: 'menu' };
+  /** Who could lead a run, the first in line leading (`whoPlays.ts`). */
+  private contenders: Contender[] = [];
+  private lead = 0;
+  private phase: Phase = { kind: 'ready' };
+  private ready: ReadySetGo | undefined;
+  private strip: KeyStrip | undefined;
+  private card: ResultCard | undefined;
+  private sceneMs = 0;
+  private finishedAt = Number.NEGATIVE_INFINITY;
   private run: CourseRun | undefined;
   private team: CourseRunner[] = [];
   private pressed = false;
@@ -111,30 +121,30 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
   }
 
   public init(data: FieldCourseSceneData): void {
-    this.overlay = undefined;
     this.pausedBase = data.pausedBase;
-    this.status = undefined;
-    this.last = undefined;
-    this.phase = { kind: 'menu' };
+    this.phase = { kind: 'ready' };
     this.run = undefined;
     this.pressed = false;
     this.held = [];
+    this.ready = undefined;
+    this.strip = undefined;
+    this.card = undefined;
+    this.sceneMs = 0;
+    this.finishedAt = Number.NEGATIVE_INFINITY;
     this.game_ = this.saveManager.load() ?? undefined;
-    this.chosen = this.defaultTeam();
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.overlay?.destroy();
-      this.overlay = undefined;
-      this.tearDownStage();
-    });
+    this.contenders = this.game_ ? courseLineup(this.game_.stash) : [];
+    this.lead = 0;
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.tearDownStage());
     recordAction('Opened THE FIELD-MOVE COURSE');
   }
 
   public create(): void {
-    // The course and its screen cover the whole of the harbour paused under them (`coverHarbour.ts`).
+    // The course covers the whole of the harbour paused under it (`coverHarbour.ts`).
     if (this.pausedBase) hideHarbourUnder(this);
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => this.onGameKey(event, true));
     this.input.keyboard?.on('keyup', (event: KeyboardEvent) => this.onGameKey(event, false));
-    this.showMenu();
+    // The gate is the course: it opens on its start line, never on a form.
+    this.startRun();
   }
 
   public feedbackContext(): readonly FeedbackDetail[] {
@@ -155,150 +165,66 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
     return this.run ? (fastestRun(PROMENADE_COURSE, this.run.moves)?.line ?? []) : [];
   }
 
-  /** For a playtest driver: where the screen is. */
+  /** For a playtest driver: where the screen is - the start line, the run, the finish or the result. */
   public get phaseKind(): Phase['kind'] {
     return this.phase.kind;
   }
 
-  private record(): GameCornerRecord {
-    return this.game_?.raidProgress.gameCorner ?? NO_GAME_CORNER;
+  /** For a playtest driver and the tests: who could lead, in the order LEFT and RIGHT offer them. */
+  public get lineupIds(): readonly string[] {
+    return this.contenders.map((contender) => contender.id);
   }
 
-  private candidates(): CourseCandidate[] {
-    const stash = this.game_?.stash;
-    if (!stash) return [];
-    // Every box, the most field moves first (`ui/boxPicker.ts`).
-    return pickerOrder(pickerEntries(stash), (entry) => courseMovesOf(entry.pokemon.base.id).length).map((entry) => ({
-      ...pickerBasics(entry),
-      moves: MOVE_ORDER.filter((move) => courseMovesOf(entry.pokemon.base.id).includes(move)).map((move) => MOVE_WORDS[move]),
-    }));
+  /** For a playtest driver and the tests: who is going round, the lead first. */
+  public get teamIds(): readonly string[] {
+    const lead = this.contenders[this.lead];
+    return lead ? courseTeam(lead, this.contenders).map((contender) => contender.id) : [];
   }
 
-  /** The team the keeper would pick: whoever adds the most field moves, until three are chosen or nothing more is added. */
-  private defaultTeam(): string[] {
-    const stash = this.game_?.stash;
-    if (!stash) return [];
-    const pool = stash.listPokemon();
-    const team: string[] = [];
-    const covered = new Set<FieldMoveId>();
-    while (team.length < COURSE_TEAM_SIZE) {
-      let pick: { id: string; adds: number } | null = null;
-      for (const stored of pool) {
-        if (team.includes(stored.id)) continue;
-        const adds = courseMovesOf(stored.pokemon.base.id).filter((move) => !covered.has(move)).length;
-        if (adds > 0 && (!pick || adds > pick.adds)) pick = { id: stored.id, adds };
-      }
-      if (!pick) break;
-      team.push(pick.id);
-      for (const move of courseMovesOf(pool.find((stored) => stored.id === pick.id)!.pokemon.base.id)) covered.add(move);
-    }
-    return team.length > 0 ? team : pool.slice(0, 1).map((stored) => stored.id);
-  }
-
-  private teamOf(ids: readonly string[]): CourseRunner[] {
-    const stash = this.game_?.stash;
-    if (!stash) return [];
-    return ids.flatMap((id) => {
-      const stored = stash.listPokemon().find((candidate) => candidate.id === id);
-      return stored ? [{ species: stored.pokemon.base.id, name: stored.pokemon.name.toUpperCase() }] : [];
-    });
+  /** For a playtest driver: put somebody at the head of the run, by stash id, as LEFT and RIGHT would. */
+  public playWith(id: string): boolean {
+    const index = this.contenders.findIndex((contender) => contender.id === id);
+    if (index < 0) return false;
+    this.lead = index;
+    this.startRun();
+    return true;
   }
 
   private teamMoves(team: readonly CourseRunner[]): FieldMoveId[] {
     return MOVE_ORDER.filter((move) => doerOf(team, move) !== undefined);
   }
 
-  // --- the screen ------------------------------------------------------------------
+  // --- the run --------------------------------------------------------------------
 
-  private showMenu(focusOn?: string): void {
-    if (!this.overlay) {
-      this.overlay = new MenuOverlay(this, 'game-corner-screen pixel-ui', (event) => this.onMenuKey(event));
-    }
-    const record = this.record();
-    const team = this.teamOf(this.chosen);
-    const moves = this.teamMoves(team);
-    const fastest = team.length > 0 ? fastestRun(PROMENADE_COURSE, moves) : null;
-    const best = record.best['field-course'] ?? 0;
-    this.overlay.redraw(
-      courseTeamMarkup({
-        candidates: this.candidates(),
-        chosen: this.chosen,
-        most: COURSE_TEAM_SIZE,
-        teamMoves: moves.map((move) => MOVE_WORDS[move]),
-        fastest: fastest ? courseTime(fastest.ms) : null,
-        tickets: record.tickets,
-        best: best > 0 ? courseTime(best) : null,
-        ...(this.status ? { status: this.status } : {}),
-        ...(this.last ? { last: this.last } : {}),
-      }),
-    );
-    const root = this.overlay.root;
-    root.setAttribute('aria-label', 'FIELD-MOVE COURSE');
-    root.querySelectorAll<HTMLButtonElement>('[data-close]').forEach((button) => {
-      button.onclick = () => this.close();
-    });
-    root.querySelectorAll<HTMLButtonElement>('[data-runner]').forEach((button) => {
-      button.onclick = () => this.toggle(button.dataset.runner ?? '', button);
-    });
-    const play = root.querySelector<HTMLButtonElement>('[data-play]');
-    if (play) {
-      play.onclick = () => {
-        if (play.getAttribute('aria-disabled') === 'true') {
-          audioManager.play('denied');
-          return;
-        }
-        this.startRun();
-      };
-    }
-    // The find over the list narrows it in place, and is kept over a redraw.
-    wirePickerFind(root, (key) => this.overlay?.moveCursor(key), this.find);
-    root.querySelector<HTMLInputElement>('[data-picker-find]')?.addEventListener('input', (event) => {
-      this.find = (event.target as HTMLInputElement).value;
-    });
-    this.overlay.refocus(focusOn ?? (this.chosen.length > 0 ? '[data-play]' : '[data-cursor-start]'), '[data-close]');
-  }
-
-  private toggle(id: string, button: HTMLButtonElement): void {
-    if (this.chosen.includes(id)) {
-      this.chosen = this.chosen.filter((other) => other !== id);
-      audioManager.play('cancel');
-    } else if (this.chosen.length < COURSE_TEAM_SIZE && button.getAttribute('aria-disabled') !== 'true') {
-      this.chosen = [...this.chosen, id];
-      audioManager.play('confirm');
-    } else {
-      audioManager.play('denied');
-      return;
-    }
-    this.status = undefined;
-    this.showMenu(`[data-runner="${id}"]`);
-  }
-
-  private onMenuKey(event: KeyboardEvent): void {
-    if (isOverlayDismissKey(event)) {
-      event.preventDefault();
+  /** The course laid fresh for whoever leads and the team they make, and the start line counting in over it. */
+  private startRun(): void {
+    const lead = this.contenders[this.lead];
+    this.tearDownStage();
+    if (!lead) {
       this.close();
       return;
     }
-    if (this.overlay?.moveCursor(event.key)) {
-      event.preventDefault();
-    }
-  }
-
-  // --- the run --------------------------------------------------------------------
-
-  private startRun(): void {
-    this.team = this.teamOf(this.chosen);
-    if (this.team.length === 0) return;
-    this.overlay?.destroy();
-    this.overlay = undefined;
-    this.status = undefined;
-    audioManager.play('confirm');
+    const team = courseTeam(lead, this.contenders);
+    this.team = team.map((runner) => ({ species: runner.species, name: runner.name }));
     recordAction(`Ran THE FIELD-MOVE COURSE with ${this.team.map((runner) => runner.species).join(', ')}`);
-    this.run = startCourse(PROMENADE_COURSE, this.teamMoves(this.team));
+    const moves = this.teamMoves(this.team);
+    this.run = startCourse(PROMENADE_COURSE, moves);
     this.pressed = false;
     this.held = [];
-    this.phase = { kind: 'running' };
+    this.phase = { kind: 'ready' };
     this.buildStage();
+    this.ready = new ReadySetGo(
+      this,
+      { demo: 'course', countMs: COURSE_COUNT_MS, figure: { texture: this.runnerTexture, frames: [getIdleFrame('right'), ...getWalkFrames('right')] } },
+      {
+        dexId: lead.dexId,
+        shiny: lead.shiny,
+        name: lead.name,
+        mates: team.slice(1).map((mate) => mate.species),
+        marks: MOVE_ORDER.map((move) => ({ icon: MOVE_ICONS[move], on: moves.includes(move) })),
+      },
+      this.contenders.length > 1,
+    );
   }
 
   /** For a playtest driver: hold a direction, as the arrow keys do, or let go of them all. */
@@ -312,7 +238,37 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
   }
 
   private onGameKey(event: KeyboardEvent, down: boolean): void {
+    const cap = capOf(event.key);
+    if (this.phase.kind === 'result') {
+      if (!down) return;
+      this.card?.press(event.key);
+      if (cap === 'esc') {
+        event.preventDefault();
+        this.close();
+      } else if (cap === 'space' && !event.repeat && this.sceneMs - this.finishedAt >= RESULT_HOLD_MS) {
+        event.preventDefault();
+        audioManager.play('confirm');
+        this.startRun();
+      }
+      return;
+    }
+    if (this.phase.kind === 'ready') {
+      if (!down) return;
+      if (cap === 'esc') {
+        // Nothing run yet: back to the harbour, nothing written.
+        event.preventDefault();
+        this.close();
+      } else if (cap === 'left' || cap === 'right') {
+        event.preventDefault();
+        if (event.repeat || this.contenders.length < 2) return;
+        audioManager.play('select');
+        this.lead = stepAlong(this.contenders.length, this.lead, cap === 'left' ? -1 : 1);
+        this.startRun();
+      }
+      return;
+    }
     if (this.phase.kind !== 'running') return;
+    if (down) this.strip?.press(event.key);
     if (down && event.key === 'Escape') {
       this.finish(false);
       return;
@@ -339,18 +295,42 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
   }
 
   public update(_time: number, delta: number): void {
+    this.sceneMs += delta;
     const phase = this.phase;
-    if (phase.kind === 'menu' || !this.run) return;
+    if (phase.kind === 'result') {
+      this.card?.tick(delta);
+      return;
+    }
+    if (!this.run) return;
     if (phase.kind === 'finished') {
       this.phase = { kind: 'finished', elapsed: phase.elapsed + delta };
       this.drawStage();
       if (phase.elapsed + delta >= FINISH_PAUSE_MS) this.finish(true);
       return;
     }
+    const split = this.ready?.tick(delta);
+    // The opening look along the course runs through the count, finish to runner.
     if (this.intro !== undefined) {
-      this.intro = this.held.length > 0 || this.pressed ? COURSE_INTRO_MS : this.intro + delta;
+      this.intro += phase.kind === 'ready' ? delta : COURSE_INTRO_MS;
       this.lookAlongTheCourse();
     }
+    if (phase.kind === 'ready') {
+      if (!this.ready?.done) {
+        this.drawStage();
+        return;
+      }
+      this.phase = { kind: 'running' };
+      this.strip = new KeyStrip(this, ['left', 'up', 'right', 'down', 'space']);
+      this.runFor(split?.play ?? 0);
+      return;
+    }
+    this.strip?.tick(delta);
+    this.runFor(delta);
+  }
+
+  /** The run moved on by `delta` ms, with the direction held and the key if it went down. */
+  private runFor(delta: number): void {
+    if (!this.run) return;
     const press = this.pressed;
     this.pressed = false;
     this.run = advanceCourse(this.run, delta, this.held[this.held.length - 1] ?? null, press);
@@ -406,28 +386,35 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
     }
   }
 
-  /** The run is over: its time written and paid if it was finished, and the keeper's screen back up. */
+  /** The run is over: its time written and paid if it was finished, and what it came to drawn over the course. */
   private finish(completed: boolean): void {
     const run = this.run;
-    if (!run) return;
-    if (completed && run.finished && run.elapsedMs !== null) {
-      const written = this.saveManager.playGame('field-course', Math.max(1, Math.round(run.elapsedMs)));
-      if (written) {
-        this.game_ = written.game;
-        this.last = { time: courseTime(run.elapsedMs), payout: written.payout };
-        if (written.payout.tickets > 0) audioManager.play('itemObtained');
-      } else {
-        this.last = undefined;
-        this.status = 'The keeper could not chalk that up. Nothing was paid.';
-      }
-      recordAction(`THE FIELD-MOVE COURSE in ${courseTime(run.elapsedMs)}`);
-    } else {
-      this.status = 'Stopped before the finish: no time chalked up.';
+    if (!run || this.phase.kind === 'result') return;
+    const ms = completed && run.finished && run.elapsedMs !== null ? Math.max(1, Math.round(run.elapsedMs)) : 0;
+    const written = ms > 0 ? this.saveManager.playGame('field-course', ms) : null;
+    if (written) {
+      this.game_ = written.game;
+      if (written.payout.tickets > 0) audioManager.play('itemObtained');
     }
-    this.tearDownStage();
-    this.run = undefined;
-    this.phase = { kind: 'menu' };
-    this.showMenu('[data-play]');
+    if (ms > 0) recordAction(`THE FIELD-MOVE COURSE in ${courseTime(ms)}`);
+    this.strip?.destroy();
+    this.strip = undefined;
+    this.ready?.destroy();
+    this.ready = undefined;
+    this.held = [];
+    this.phase = { kind: 'result' };
+    this.finishedAt = this.sceneMs;
+    const lead = this.contenders[this.lead];
+    const record = (written?.game ?? this.game_)?.raidProgress.gameCorner ?? NO_GAME_CORNER;
+    this.card = new ResultCard(this, {
+      ...(lead ? { face: { dexId: lead.dexId, shiny: lead.shiny } } : {}),
+      headline: ms > 0 ? `TIME ${courseTime(ms)}` : 'DID NOT FINISH',
+      ...(ms > 0 && !written ? { note: 'Nothing could be written down.' } : {}),
+      newBest: written?.payout.newBest ?? false,
+      earned: written?.payout.tickets ?? 0,
+      finds: [],
+      ladder: ticketLadder('field-course', ms, record, new Date()),
+    });
   }
 
   /**
@@ -531,7 +518,6 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
       .setScrollFactor(0)
       .setDepth(31);
     this.world.push(panel, team);
-    this.say('ARROWS walk · SPACE field move · clock starts on your first step', 2600);
     this.drawStage();
   }
 
@@ -568,6 +554,12 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
   }
 
   private tearDownStage(): void {
+    this.ready?.destroy();
+    this.ready = undefined;
+    this.strip?.destroy();
+    this.strip = undefined;
+    this.card?.destroy();
+    this.card = undefined;
     for (const layer of this.layers) layer.destroy();
     this.layers = [];
     for (const object of this.world) object.destroy();

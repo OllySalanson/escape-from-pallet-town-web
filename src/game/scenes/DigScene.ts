@@ -8,7 +8,6 @@ import {
   DIG_HEIGHT,
   DIG_WIDTH,
   digAt,
-  diggerNotes,
   digItems,
   digsAPlus,
   digShape,
@@ -18,9 +17,9 @@ import {
   type DigGame,
   type Ping,
 } from '../minigames/dig';
-import { DIG_TICKET_TIERS } from '../minigames/tickets';
 import { hasAbility, knows, type PokemonTraits } from '../minigames/traits';
-import { OutdoorGameScene, type OutdoorFit } from './OutdoorGameScene';
+import { OutdoorGameScene } from './OutdoorGameScene';
+import type { Cap, ReadyDemo } from './readySetGo';
 
 /** A square of the patch, in game pixels. */
 const SQUARE = 24;
@@ -40,18 +39,14 @@ const PING_WORDS: Readonly<Record<Ping, { readonly words: string; readonly colou
  * THE DIG, on the beach (`minigames/dig.ts`): a roped patch of sand eight
  * squares by five, ten digs, and after each a ping - HOT, WARM or COLD, as
  * FireRed's Itemfinder pings. Arrows move the spade, SPACE digs. Loose sand
- * is drawn darker; a Ground type turns over a plus; Keen Eye glints.
+ * is drawn darker; a Ground type turns over a plus; Keen Eye glints. The
+ * start line shows the spade stepping and digging; none of it is said.
  */
 export class DigScene extends OutdoorGameScene {
   protected readonly source = 'dig' as const;
-  protected readonly words = {
-    title: 'THE DIG',
-    place: 'Beach · ',
-    heading: 'Who digs?',
-    doing: 'Digging',
-    rules: 'Ten digs, a ping after each. A GROUND type digs five squares; DIG the move is two more digs; darker sand caves in.',
-    playHelp: 'ARROWS move the spade, SPACE digs. HOT is a square away, WARM two.',
-  };
+  protected readonly title = 'THE DIG';
+  protected readonly demo: ReadyDemo = 'dig';
+  protected readonly keys: readonly Cap[] = ['left', 'up', 'right', 'down', 'space'];
 
   private dig_: DigGame | undefined;
   private cursor = { x: 3, y: 2 };
@@ -77,24 +72,15 @@ export class DigScene extends OutdoorGameScene {
     this.dig();
   }
 
-  protected fitOf(traits: PokemonTraits): OutdoorFit {
-    const fit =
+  protected fitOf(traits: PokemonTraits): number {
+    return (
       1 +
       (digsAPlus(traits) ? 2 : 0) +
       (knows(traits, 'dig') ? 1 : 0) +
       (hasAbility(traits, 'pickup') ? 1 : 0) +
       (hasAbility(traits, 'keen-eye') ? 0.5 : 0) +
-      (hasAbility(traits, 'sand-veil') ? 0.5 : 0);
-    return { fit, notes: diggerNotes(traits) };
-  }
-
-  protected bestWords(best: number): string {
-    return `${best} points`;
-  }
-
-  protected todayLine(): string {
-    const [first, second, third] = DIG_TICKET_TIERS;
-    return `Tickets at ${first.score}, ${second.score} and ${third.score} points; berries and a SAND ORNAMENT go home.`;
+      (hasAbility(traits, 'sand-veil') ? 0.5 : 0)
+    );
   }
 
   protected beginGame(chosen: StashedPokemon, traits: PokemonTraits): void {
@@ -138,8 +124,7 @@ export class DigScene extends OutdoorGameScene {
     const panel = this.keep(this.add.graphics().setDepth(10));
     drawPixelWindow(panel, { x: 4, y: 14, width: 108, height: 32 }, { fill: WINDOW_PAPER });
     this.hud = this.words_(9, 16, '', { colour: '#202030' }).setStroke('#202030', 0).setDepth(11);
-    this.ping = this.words_(width / 2, top - 22, 'DIG!', { big: true, origin: [0.5, 0.5] });
-    this.words_(width / 2, height - 3, 'ARROWS: move · SPACE: dig · ESC: stop', { origin: [0.5, 1] });
+    this.ping = this.words_(width / 2, top - 22, '', { big: true, origin: [0.5, 0.5] });
     this.drawPatch();
   }
 
@@ -223,7 +208,7 @@ export class DigScene extends OutdoorGameScene {
     this.finds.push(this.keep(this.add.image(x, 30, iconTextureKey(itemIconName(itemId))).setDepth(11)));
   }
 
-  public update(_time: number, delta: number): void {
+  protected step(delta: number): void {
     if (!this.playing || this.endingFor === null) return;
     this.endingFor -= delta;
     if (this.endingFor <= 0) this.finishDig();
@@ -234,8 +219,7 @@ export class DigScene extends OutdoorGameScene {
     if (!game || !this.playing) return;
     this.dig_ = undefined;
     this.endingFor = null;
-    const found = game.found.length;
-    this.endGame(game.score, `Dug up ${found} ${found === 1 ? 'thing' : 'things'}: ${game.score} points`, digItems(game));
+    this.endGame(game.score, `POINTS ${game.score}`, digItems(game));
   }
 
   private drawPatch(): void {

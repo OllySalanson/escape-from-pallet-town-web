@@ -30,9 +30,7 @@ import {
   plainLapMs,
   playerPlace,
   pointOnLeg,
-  PODIUM,
   progressOf,
-  racerNotes,
   raceTime,
   staminaMs,
   startDerby,
@@ -47,11 +45,11 @@ import {
   type DerbyLines,
   type DerbyRace,
 } from '../minigames/derby';
-import type { OutdoorCourse } from '../minigames/outdoorView';
-import { derbySource, derbyTiers, type GamePayout } from '../minigames/tickets';
+import { derbySource, type GamePayout } from '../minigames/tickets';
 import { traits, type PokemonTraits } from '../minigames/traits';
 import type { RestoredGame } from '../save/SaveManager';
-import { OutdoorGameScene, type OutdoorFit, type OutdoorGameSceneData, type OutdoorSource } from './OutdoorGameScene';
+import { OutdoorGameScene, type OutdoorGameSceneData, type OutdoorSource } from './OutdoorGameScene';
+import type { Cap, ReadyDemo, ReadyLevel } from './readySetGo';
 
 /** How long the finish is shown before the screen comes back. */
 const END_PAUSE_MS = 1800;
@@ -115,21 +113,18 @@ export function arrowOf(key: string): 'up' | 'down' | 'left' | 'right' | null {
  * runners go the level's course - along the stone, down the pier and home, and
  * on the later levels along the sand and out round the breakwater. SPACE taps
  * a sprint while the bar lasts (never into a tight corner, always into a
- * crate), and the arrows choose the line at each fork.
+ * crate), and the arrows choose the line at each fork. On its start line the
+ * race's own count is the 3, 2, 1, and UP and DOWN choose the level among
+ * those open, the newest first.
  */
 export class DerbyScene extends OutdoorGameScene {
   /** Each level pays from its own source, on its own tiers, once a day (`derbySource`). */
   protected get source(): OutdoorSource {
     return derbySource(this.level.number);
   }
-  protected readonly words = {
-    title: 'PROMENADE DERBY',
-    place: 'Promenade · ',
-    heading: 'Who races?',
-    doing: 'Racing',
-    rules: 'Speed is pace, HP is the sprint, and a big one loses time at every tight corner. A WATER type may swim the bay home; a FLYING type may fly it.',
-    playHelp: 'SPACE taps a sprint (never into a tight corner, always into a crate). The arrows choose the line at each fork.',
-  };
+  protected readonly title = 'PROMENADE DERBY';
+  protected readonly demo: ReadyDemo = 'race';
+  protected readonly keys: readonly Cap[] = ['space', 'up', 'down', 'left', 'right'];
 
   private race: DerbyRace | undefined;
   /** The level chosen on the screen, and raced. */
@@ -140,8 +135,6 @@ export class DerbyScene extends OutdoorGameScene {
   private endingFor: number | null = null;
   /** Where the last race finished, for the write. */
   private lastPlace: number | null = null;
-  /** The level the last race was run on: a podium moves the chosen level on past it. */
-  private racedOn: DerbyLevel | null = null;
   private tilemap: Phaser.Tilemaps.Tilemap | undefined;
   private hudCamera: Phaser.Cameras.Scene2D.Camera | undefined;
   /** What is drawn on the course, which the side and foot leave alone. */
@@ -170,9 +163,9 @@ export class DerbyScene extends OutdoorGameScene {
     // The newest level this save has open: the one there is still to finish.
     const cleared = this.cleared();
     this.level = [...DERBY_LEVELS].reverse().find((level) => derbyLevelOpen(level, cleared)) ?? THE_FRONT;
+    this.wet = derbyGoing(localDay(new Date())) === 'wet';
     this.choice = {};
     this.lastPlace = null;
-    this.racedOn = null;
   }
 
   /** For a playtest driver: the race in progress. */
@@ -216,10 +209,10 @@ export class DerbyScene extends OutdoorGameScene {
     return waves.some((wave) => wave.inMs <= WAVE_WARN_MS) ? 'warning' : null;
   }
 
-  /** For a playtest driver: choose a level, as the screen's buttons do. */
+  /** For a playtest driver: choose a level, as UP and DOWN on the start line do. */
   public raceOn(level: number): boolean {
     if (this.playing || !this.chooseLevel(level)) return false;
-    this.showMenu();
+    this.restartLine();
     return true;
   }
 
@@ -233,66 +226,51 @@ export class DerbyScene extends OutdoorGameScene {
     return this.savedGame?.raidProgress.derbyCleared ?? 0;
   }
 
-  protected fitOf(traits: PokemonTraits): OutdoorFit {
+  protected fitOf(traits: PokemonTraits): number {
     // A lap on this course, as long as it would be on THE FRONT for an ordinary racer, so THE FRONT reads as it always did.
     const yardstick = plainLapMs(this.level, YARDSTICK, this.wet) / plainLapMs(THE_FRONT, YARDSTICK, this.wet);
     const ms = plainLapMs(this.level, traits, this.wet) / yardstick;
-    return { fit: Math.max(0.1, (17_000 - ms) / 1000), notes: racerNotes(traits, this.wet, this.level) };
+    return Math.max(0.1, (17_000 - ms) / 1000);
   }
 
-  /** Today's best on the chosen course, named by it: a best on another course is no yardstick. */
-  protected bestWords(best: number): string {
-    return `on ${this.level.name} ${PLACE_WORDS[Math.max(0, 6 - best)] ?? `${best}`}`;
-  }
-
-  /** AGAIN only when it is: a podium that opened the next course races that one, and says so. */
-  protected playLabel(): string | undefined {
-    return this.racedOn && this.racedOn !== this.level ? `Race ${this.level.name}` : undefined;
-  }
-
-  protected todayLine(): string {
-    const day = localDay(new Date());
-    this.wet = derbyGoing(day) === 'wet';
-    const field = derbyField(this.level, day)
-      .map((entrant) => entrant.handle)
-      .join(', ');
-    const [third, second, first] = derbyTiers(this.level.number);
-    return `Today the going is ${this.wet ? 'WET (SWIFT SWIM swims twice as fast)' : 'DRY'}; running ${this.level.name}: ${field}. Here 3rd pays ${third.tickets} tickets, 2nd ${second.tickets}, 1st ${first.tickets}.`;
-  }
-
-  protected course(): OutdoorCourse {
+  /** The levels open to this save, in order. */
+  private openLevels(): readonly DerbyLevel[] {
     const cleared = this.cleared();
-    const next = DERBY_LEVELS[this.level.number];
-    const newsLine = this.level.news.length > 0 ? ` ${this.level.number === 1 ? 'The knack' : 'New here'}: ${this.level.news.join('; ')}.` : '';
-    const nextLine = !next
-      ? ' The last level.'
-      : derbyLevelOpen(next, cleared)
-        ? ` Next: ${next.name}, open.`
-        : ` Next: ${next.name} - finish in the top ${PODIUM} here to open it.`;
-    return {
-      note: `Level ${this.level.number} of ${DERBY_LEVELS.length}`,
-      levels: DERBY_LEVELS.map((level) => {
-        const open = derbyLevelOpen(level, cleared);
-        const before = DERBY_LEVELS[level.number - 2];
-        return {
-          number: level.number,
-          name: level.name,
-          open,
-          chosen: level === this.level,
-          help: open
-            ? `${level.name}: ${level.blurb}`
-            : `Locked: finish ${before?.name ?? 'the level before'} in the top ${PODIUM} to open ${level.name}.`,
-        };
-      }),
-      line: `${this.level.name}: ${this.level.blurb}${newsLine}${nextLine}`,
-    };
+    return DERBY_LEVELS.filter((level) => derbyLevelOpen(level, cleared));
   }
 
-  protected chooseLevel(number: number): boolean {
+  protected readyLevel(): ReadyLevel {
+    return { number: this.level.number, name: this.level.name, choices: this.openLevels().length };
+  }
+
+  /** UP goes on to the next level open, DOWN back to the one before, round the ends. */
+  protected readyArrow(arrow: 'up' | 'down'): boolean {
+    const open = this.openLevels();
+    if (open.length < 2) return false;
+    const at = open.indexOf(this.level);
+    const next = open[(at + (arrow === 'up' ? 1 : -1) + open.length) % open.length];
+    return next ? this.chooseLevel(next.number) : false;
+  }
+
+  /** The race counts itself in: its own clock runs through the start line's 3, 2, 1, the field stalled on the grid. */
+  protected countMs(): number {
+    return COUNTDOWN_MS;
+  }
+
+  protected readonly countsItself = true;
+
+  /** The start line's loop is the racer itself, down the lane and up the fork. */
+  protected readonly loopShowsPlayer = true;
+
+  /** The start line, the strip and the result are the side camera's, never drawn on the track. */
+  protected pinToScreen(container: Phaser.GameObjects.Container): void {
+    this.cameras.main.ignore(container);
+  }
+
+  private chooseLevel(number: number): boolean {
     const level = DERBY_LEVELS[number - 1];
     if (!level || !derbyLevelOpen(level, this.cleared())) return false;
     this.level = level;
-    this.last = undefined;
     return true;
   }
 
@@ -314,7 +292,6 @@ export class DerbyScene extends OutdoorGameScene {
     this.tap = false;
     this.endingFor = null;
     this.lastPlace = null;
-    this.racedOn = level;
     this.warnedFor = -1;
     const { width, height } = this.scale;
     // The FEEDBACK tab stands over the right of the screen on a window the game
@@ -360,7 +337,6 @@ export class DerbyScene extends OutdoorGameScene {
     this.board = this.onHud(this.words_(track.width + 9, boardTop + 2, '', { colour: INK }).setStroke(INK, 0).setDepth(2));
     this.callout = this.onHud(this.words_(track.width / 2, Math.round(track.height * 0.32), '', { big: true, origin: [0.5, 0.5] }));
     this.fork = this.onHud(this.words_(track.width / 2, height - 15, '', { origin: [0.5, 1], colour: '#f8e070' }));
-    this.onHud(this.words_(track.width / 2, height - 2, 'SPACE: sprint · ARROWS: line · ESC: stop', { origin: [0.5, 1] }));
     camera.ignore(this.hudParts);
     this.hudCamera.ignore(this.trackParts);
     this.drawRace();
@@ -497,19 +473,17 @@ export class DerbyScene extends OutdoorGameScene {
     }
   }
 
-  public update(_time: number, delta: number): void {
+  protected step(delta: number): void {
     const race = this.race;
-    if (!this.playing || !race) return;
+    if (!race) return;
     if (this.endingFor !== null) {
       this.endingFor -= delta;
       if (this.endingFor <= 0) this.finishRace();
       return;
     }
-    const before = race.clock;
     this.race = advanceDerby(race, delta, { tap: this.tap, lines: this.choice });
     this.tap = false;
     for (const event of this.race.events) {
-      if (event.kind === 'go') audioManager.play('confirm');
       if (event.kind === 'go' || event.kind === 'wave' || event.runner !== 0) continue;
       if (event.kind === 'stumble') this.shout('STUMBLE!', '#f85838');
       if (event.kind === 'bump') {
@@ -539,16 +513,6 @@ export class DerbyScene extends OutdoorGameScene {
     } else if (this.warnedFor >= 0 && this.race.clock - this.warnedFor > 2000) {
       this.warnedFor = -1;
     }
-    // The count before the gun, with the course's name over it.
-    if (this.race.clock < COUNTDOWN_MS) {
-      const left = Math.ceil((COUNTDOWN_MS - this.race.clock) / (COUNTDOWN_MS / 3));
-      this.callout?.setText([this.level.name, String(left)]).setColor('#f8f8f8');
-    } else if (before < COUNTDOWN_MS) {
-      this.callout?.setText('GO!').setColor('#f8e070');
-      this.time.delayedCall(600, () => {
-        if (this.callout?.text === 'GO!') this.callout.setText('');
-      });
-    }
     if (this.race.over || this.race.runners[0].finishedMs !== null) {
       if (this.race.runners[0].finishedMs !== null && !this.race.over) {
         // The player is home: the rest are run out quickly to set the places.
@@ -575,10 +539,9 @@ export class DerbyScene extends OutdoorGameScene {
     this.lastPlace = place;
     const me = race.runners[0];
     const opened = derbyLevelOpened(race.level, place, this.cleared());
-    const result = place === null ? 'Did not finish' : `${PLACE_WORDS[place - 1]} of ${race.runners.length} in ${raceTime(me.finishedMs ?? 0)}`;
-    const headline = `${race.level.name}: ${result}${opened ? ` · ${opened.name} is open!` : ''}`;
-    this.runners = [];
-    this.endGame(derbyScore(place), headline);
+    const headline = place === null ? 'DID NOT FINISH' : `${PLACE_WORDS[place - 1]} OF ${race.runners.length}  ${raceTime(me.finishedMs ?? 0)}`;
+    const note = `${race.level.name}${opened ? ` · ${opened.name} OPEN!` : ''}`;
+    this.endGame(derbyScore(place), headline, [], note);
   }
 
   /** The waves over the breakwater: a warning line along the stone, then the foam. */

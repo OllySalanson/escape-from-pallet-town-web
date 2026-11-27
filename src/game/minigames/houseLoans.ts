@@ -7,7 +7,9 @@
  * never met a DODUO. The Battle Arena already rents Pokémon for its bouts;
  * the attendant does the same for the cabinets. A loan plays and pays exactly
  * as a Pokémon of your own does, and is never yours: it is not in a box, and
- * nothing it does is written anywhere but the score.
+ * nothing it does is written anywhere but the score. It plays at once when
+ * nobody of your own can, and stands last in line when somebody can
+ * (`whoPlays.ts`).
  */
 
 export interface HouseLoan {
@@ -19,32 +21,8 @@ export interface HouseLoan {
   readonly level: number;
 }
 
-/** What a loan's row says in place of the box it is kept in. */
-export const HOUSE_LOAN_BOX = 'Lent by the house';
-
 /** FireRed's own jumper, a normal one (`generated/pokemonJump.ts`). */
 export const HOUSE_JUMPER: HouseLoan = { id: 'house:pikachu', species: 'pikachu', dexId: 25, name: 'Pikachu', level: 10 };
 
 /** Two heads, so it picks at a push (`berryPicking.ts`, `BERRY_PICKERS`). */
 export const HOUSE_PICKER: HouseLoan = { id: 'house:doduo', species: 'doduo', dexId: 84, name: 'Doduo', level: 10 };
-
-/** A loan's row on a cabinet's list, in `PickerBasics`'s shape. */
-export function loanBasics(loan: HouseLoan): {
-  readonly id: string;
-  readonly name: string;
-  readonly dexId: number;
-  readonly shiny: boolean;
-  readonly level: number;
-  readonly box: string;
-  readonly find: string;
-} {
-  return {
-    id: loan.id,
-    name: loan.name,
-    dexId: loan.dexId,
-    shiny: false,
-    level: loan.level,
-    box: HOUSE_LOAN_BOX,
-    find: `${loan.name} ${loan.species} house lent loan`.toLowerCase(),
-  };
-}

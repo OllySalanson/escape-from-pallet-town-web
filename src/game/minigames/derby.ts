@@ -842,24 +842,6 @@ export function derbyScore(place: number | null): number {
   return place === null ? 0 : Math.max(0, 7 - place);
 }
 
-/** What a racer is like on a level, in a few words, for the choosing screen. */
-export function racerNotes(racer: PokemonTraits, wet: boolean, level: DerbyLevel = DERBY_LEVELS[0]): readonly string[] {
-  const notes: string[] = [];
-  const pace = landPace(racer);
-  const legs = level.stretches.flatMap((stretch) => stretch.lines.flatMap((line) => line.legs));
-  notes.push(pace >= 4.75 ? 'Fast' : pace >= 4.1 ? 'Quick' : pace >= 3.6 ? 'Steady' : 'Slow');
-  if (hasType(racer, PokemonType.Water)) notes.push(wet && hasAbility(racer, 'swift-swim') ? 'Swims the bay x2' : 'Swims the bay');
-  if (hasType(racer, PokemonType.Flying)) notes.push('Flies home');
-  if (legs.some((leg) => leg.surface === 'sand') && hasType(racer, PokemonType.Ground)) notes.push('At home on sand');
-  if (legs.some((leg) => leg.hurdles) && hasAbility(racer, 'levitate') && !hasType(racer, PokemonType.Flying)) notes.push('Floats over crates');
-  if (legs.some((leg) => leg.waves) && hasType(racer, PokemonType.Water)) notes.push('Rides the waves');
-  if (racer.squares === 9) notes.push('Big: slow round corners');
-  else if (racer.squares === 6) notes.push('Bulky at corners');
-  if (hasAbility(racer, 'run-away')) notes.push('Never bumped');
-  if (hasAbility(racer, 'static') || hasAbility(racer, 'poison-point')) notes.push('Stings a bumper');
-  return notes;
-}
-
 /** A race time, as the board says it: `14.36s`. */
 export function raceTime(ms: number): string {
   return `${(ms / 1000).toFixed(2)}s`;

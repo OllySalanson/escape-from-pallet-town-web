@@ -241,18 +241,6 @@ export function digAt(game: DigGame, x: number, y: number): { readonly game: Dig
   };
 }
 
-/** What a digger is like, in a few words, for the choosing screen. */
-export function diggerNotes(digger: PokemonTraits): readonly string[] {
-  const notes: string[] = [];
-  if (digsAPlus(digger)) notes.push('Digs five squares');
-  if (knows(digger, 'dig')) notes.push(`Knows DIG: ${DIGS + DIG_MOVE_BONUS} digs`);
-  if (hasAbility(digger, 'pickup')) notes.push('Picks things up');
-  if (hasAbility(digger, 'keen-eye')) notes.push('Keen eye');
-  if (hasAbility(digger, 'sand-veil')) notes.push('Sand never caves in');
-  if (notes.length === 0) notes.push('One square a dig');
-  return notes;
-}
-
 /** What the game found that goes home: the berries and the ornament, by item id. */
 export function digItems(game: DigGame): readonly string[] {
   return game.found.flatMap((thing) => (thing.itemId ? [thing.itemId] : []));

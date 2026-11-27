@@ -9,15 +9,14 @@ import {
   biteChance,
   derbyTimeUp,
   landCatch,
-  leadNotes,
   planDerbyCast,
   secondsLeft,
   startFishingDerby,
   type FishingDerbyState,
 } from '../minigames/fishingDerby';
-import { FISHING_DERBY_TICKET_TIERS } from '../minigames/tickets';
 import type { PokemonTraits } from '../minigames/traits';
-import { OutdoorGameScene, type OutdoorFit } from './OutdoorGameScene';
+import { OutdoorGameScene } from './OutdoorGameScene';
+import type { Cap, ReadyDemo } from './readySetGo';
 
 /** Where the line goes in: off the pier head, in the deep water (`harbourFishing.ts`). */
 const DEEP_END = { x: 80, y: 31 } as const;
@@ -44,14 +43,9 @@ type Cast =
  */
 export class FishingDerbyScene extends OutdoorGameScene {
   protected readonly source = 'fishing-derby' as const;
-  protected readonly words = {
-    title: 'FISHING DERBY',
-    place: 'Pleasure Pier · ',
-    heading: 'Who sits with you?',
-    doing: 'Leading',
-    rules: 'Two minutes off the deep end with a borrowed GOOD ROD: a catch scores its level, a kind new this derby ten more. ILLUMINATE draws twice the bites; STENCH drives them off.',
-    playHelp: 'SPACE casts. The clock runs from the first cast; keep a line in the water.',
-  };
+  protected readonly title = 'FISHING DERBY';
+  protected readonly demo: ReadyDemo = 'cast';
+  protected readonly keys: readonly Cap[] = ['space'];
 
   private state: FishingDerbyState | undefined;
   private cast: Cast = { kind: 'idle' };
@@ -75,18 +69,9 @@ export class FishingDerbyScene extends OutdoorGameScene {
     if (this.playing) this.castNow();
   }
 
-  protected fitOf(traits: PokemonTraits): OutdoorFit {
+  protected fitOf(traits: PokemonTraits): number {
     const chance = biteChance(traits);
-    return { fit: chance >= 1 ? 3 : chance >= 0.5 ? 1.5 : 0.5, notes: leadNotes(traits) };
-  }
-
-  protected bestWords(best: number): string {
-    return `${best} points`;
-  }
-
-  protected todayLine(): string {
-    const [first, second, third] = FISHING_DERBY_TICKET_TIERS;
-    return `Tickets at ${first.score}, ${second.score} and ${third.score} points.`;
+    return chance >= 1 ? 3 : chance >= 0.5 ? 1.5 : 0.5;
   }
 
   protected beginGame(chosen: StashedPokemon, traits: PokemonTraits): void {
@@ -125,8 +110,7 @@ export class FishingDerbyScene extends OutdoorGameScene {
     const panel = this.keep(this.add.graphics().setDepth(10));
     drawPixelWindow(panel, { x: 4, y: 4, width: 112, height: 44 }, { fill: WINDOW_PAPER });
     this.hud = this.words_(9, 6, '', { colour: '#202030' }).setStroke('#202030', 0).setDepth(11);
-    this.callout = this.words_(width / 2, Math.round(height * 0.5), 'SPACE: cast!', { big: true, origin: [0.5, 0.5] });
-    this.words_(width / 2, height - 3, 'SPACE: cast · ESC: stop', { origin: [0.5, 1] });
+    this.callout = this.words_(width / 2, Math.round(height * 0.5), '', { big: true, origin: [0.5, 0.5] });
     this.drawDerby();
   }
 
@@ -155,7 +139,7 @@ export class FishingDerbyScene extends OutdoorGameScene {
     audioManager.play('select');
   }
 
-  public update(_time: number, delta: number): void {
+  protected step(delta: number): void {
     if (!this.playing || !this.state) return;
     if (this.started && this.cast.kind !== 'over') {
       this.state = { ...this.state, elapsed: this.state.elapsed + delta };
@@ -185,7 +169,7 @@ export class FishingDerbyScene extends OutdoorGameScene {
     } else if (cast.kind === 'landed' || cast.kind === 'missed') {
       const left = cast.left - delta;
       this.cast = left > 0 ? { ...cast, left } : { kind: 'idle' };
-      if (left <= 0) this.callout?.setText(derbyTimeUp(this.state) ? '' : 'SPACE: cast!').setColor('#f8f8f8');
+      if (left <= 0) this.callout?.setText('').setColor('#f8f8f8');
     } else if (cast.kind === 'over') {
       const left = cast.left - delta;
       this.cast = { kind: 'over', left };
@@ -205,7 +189,7 @@ export class FishingDerbyScene extends OutdoorGameScene {
     if (!state || !this.playing) return;
     this.state = undefined;
     this.catchSprite = undefined;
-    this.endGame(state.score, `Landed ${state.catches} in ${state.casts} casts: ${state.score} points`);
+    this.endGame(state.score, `POINTS ${state.score}`, [], `CAUGHT ${state.catches} · KINDS ${state.kinds.length}`);
   }
 
   private drawDerby(): void {
