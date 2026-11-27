@@ -90,9 +90,10 @@ export interface CaptionAudience {
   readonly looking: boolean;
   readonly raidRemainingMs: number;
   /**
-   * Map tooltips turned off in SETTINGS (`settings/mapTooltips.ts`): a place's
-   * name speaks only while the player looks. Warnings, prizes and a way out
-   * the clock calls are never quietened.
+   * Map tooltips off in SETTINGS (`settings/mapTooltips.ts`), which is how a
+   * browser starts: the screen is FireRed's, and nothing on the map writes
+   * itself - not a name, a find, a trainer's watch or a way out - until the
+   * player looks. The look key still shows every one of them.
    */
   readonly quiet?: boolean;
 }
@@ -145,14 +146,17 @@ export function stepsToNearest(from: GridPosition, tiles: readonly GridPosition[
  * while its trainer can be seen.
  */
 export function captionSpeaks(speech: CaptionSpeech, audience: CaptionAudience): boolean {
-  if (speech.voice === 'warning' || speech.voice === 'prize' || audience.looking) {
+  if (audience.looking) {
+    return true;
+  }
+  if (audience.quiet) {
+    return false;
+  }
+  if (speech.voice === 'warning' || speech.voice === 'prize') {
     return true;
   }
   if (speech.voice === 'exit' && speech.open === true && audience.raidRemainingMs <= EXIT_CALL_MS) {
     return true;
-  }
-  if (audience.quiet && speech.voice === 'name') {
-    return false;
   }
   return stepsToNearest(audience.player, speech.tiles) <= (speech.near ?? CAPTION_NEAR_STEPS);
 }

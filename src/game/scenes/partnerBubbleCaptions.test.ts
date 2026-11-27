@@ -13,6 +13,9 @@ vi.mock('phaser', () => ({
   },
 }));
 
+// Map tooltips on: these are the captions that say themselves as the player walks up (`settings/mapTooltips.ts`).
+vi.mock('../settings/mapTooltips', () => ({ mapTooltipsOn: () => true }));
+
 import type Phaser from 'phaser';
 import { BaseScene } from './BaseScene';
 import { PartnerFigure } from '../base/partnerFigure';

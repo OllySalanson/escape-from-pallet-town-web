@@ -153,6 +153,14 @@ interface Drawn {
 export class HarbourFigures {
   private readonly scene: Phaser.Scene;
   private readonly drawn = new Map<string, Drawn>();
+  /**
+   * Whether the names over everybody's heads are drawn. THE HARBOUR draws
+   * them only while the look key is held, or with map tooltips on in
+   * SETTINGS (`settings/mapTooltips.ts`): a FireRed town names nobody over
+   * their head. Somebody saying a quick phrase is always named, because the
+   * name is part of what was said.
+   */
+  public namesShown = true;
   private readonly plateDepth: (row: number) => number;
   private readonly canStand: ((tile: GridPosition) => boolean) | null;
   private readonly placeWidth: (() => number) | null;
@@ -291,7 +299,7 @@ export class HarbourFigures {
         self !== null &&
         ((Math.abs(x - self.x) < TILE_SIZE / 2 && Math.abs(y - self.y) < TILE_SIZE / 2) ||
           plateCrossesSelf({ x: plateX, y: plateY, width: plateWidth, height: plateHeight }, self));
-      const named = figure.speaking === true || (!underSelf && figure.saying === undefined);
+      const named = figure.speaking === true || (this.namesShown && !underSelf && figure.saying === undefined);
       drawn.plate.setVisible(named);
       drawn.name.setVisible(named);
       const over = named ? plateY : y + headOf(drawn) - 1;

@@ -98,7 +98,7 @@ bites on a rod, if you can spare the clock to stand there. Landmarks hide caches
 to rummage through a piece at a time while the clock (and whoever is chasing you) keeps going, and
 the good ones are padlocked: bring a Lockpick, and expect it to snap. A few have a wild Pokémon
 sat on them, most of them minding an evolution stone, and it goes for you the moment you step beside it: the red
-hatching round it is how near is too near, and the caption says who it is and what it's sitting on.
+hatching round it is how near is too near, and holding <kbd>L</kbd> says who it is and what it's sitting on.
 Beat it and the lot is yours. Bring a Tackle-only team to the graveyard Gastly and you'll learn
 something about ghosts. There is a gate only its own key
 opens, and somewhere on the map is the key. Find it, get it home, and from then on you can bring

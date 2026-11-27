@@ -147,7 +147,7 @@ describe('the explorer run', () => {
       pulses: false,
     });
     // And the ordinary raid's clock is the clock it always was.
-    expect(raidClockView(1_000, false, 0).label).toMatch(/RAID/);
+    expect(raidClockView(1_000, false, 0).label).toBe('0:01');
   });
 
   it('still says a raid is at night, because the clock chip is the only place that does', () => {

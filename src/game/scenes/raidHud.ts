@@ -2,14 +2,7 @@ import type { WindowLight } from '../base/homeClock';
 import { formatRaidClock } from '../run/raidClock';
 import { PLAYTEST_CLOCK_LABEL } from '../dev/playtestMode';
 import { weatherLabel, type WeatherId } from '../pokemon/battle/weather';
-import {
-  keyHint,
-  RAID_KEY_LETTERS,
-  RAID_KEY_WORDS,
-  raidKeyHintLine,
-  raidKeysToName,
-  READING_KEYS,
-} from '../input/keyBindings';
+import { keyHint } from '../input/keyBindings';
 import type { GridPosition } from '../movement/gridMovement';
 import { placedAreaAt, type PlacedArea } from '../world/mapAreas';
 import type { RoomStanding } from '../raidRoom/friendRoom';
@@ -83,7 +76,9 @@ export function raidClockView(
     };
   }
 
-  const label = `${hour ? `${hour} RAID` : 'RAID'} ${formatRaidClock(remainingMs)}`;
+  // Small and quiet: the time, and the hour when it is not day. The word RAID
+  // said nothing the screen did not.
+  const label = hour ? `${hour} ${formatRaidClock(remainingMs)}` : formatRaidClock(remainingMs);
   if (remainingMs <= RAID_CLOCK_URGENT_MS) {
     return { label, tone: 'urgent', pulses: true };
   }
@@ -99,59 +94,23 @@ export function raidClockAlertTier(remainingMs: number): 'normal' | 'urgent' {
 }
 
 /**
- * How long a changed objective stays expanded before collapsing back to its
- * one-line cue. Long enough to read two short lines, short enough that the
- * panel is not what you are looking at while you walk.
- */
-export const OBJECTIVE_DETAIL_MS = 4_500;
-
-export const FIELD_GUIDE_HINT = keyHint(RAID_KEY_LETTERS.objectives, 'OAK');
-/**
- * The look: every name on the screen while it is held. The map does not caption
- * itself any more (`ui/captionReveal.ts`), so this is the key that answers
- * "what is all of this called" - and the chip is where it is taught, because a
- * key nothing on the screen names is a key nobody presses.
- */
-export const LOOK_HINT = keyHint(RAID_KEY_LETTERS.look, 'LOOK');
-
-/**
- * The two keys the raid screen is read with, on one line: it is what the
- * detail row is for, and two short hints fit where `[O] FIELD GUIDE` sat.
- */
-export const RAID_KEY_HINTS = raidKeyHintLine(READING_KEYS);
-
-/**
- * The explorer run's third key. It is taught here for the same reason the look
- * is: a key nothing on the screen names is a key nobody presses.
- */
-export const RUN_HINT = '[SHIFT] RUN';
-
-/**
- * The objective chip is one line by default and only opens up when the thing it
- * says has just changed - which is the only moment the extra line is news.
+ * The job, on the top-left chip - and only while the look key is held. The
+ * raid is FireRed's screen: nothing is pinned over the map but the clock, and
+ * where the job is and which way is out are what O (Oak on the radio) and M
+ * (THE MAP) answer. The look shows the chip as it shows every name on the
+ * map, so a glance at the job is still one key away.
  *
- * The exception is a key the save has never pressed (`input/keyBindings.ts`):
- * it stays named on the second line until it has been used once, because a
- * newcomer who missed the row while the briefing was up had no way to find the
- * bag again (playtest 43). Once every key is learned the chip is what it was.
+ * It names no key. The keys were taught on a second line here until each had
+ * been pressed once (playtest 43); the controls bar beside the game names them
+ * now, always (`ui/controlsBar.ts`).
  *
  * The leading marker is not a character: it is drawn as the game's menu cursor,
  * because every arrow glyph a browser might substitute for `►` at eight pixels
  * came out as a dash.
  */
-export function objectiveChipLines(
-  cue: string,
-  showDetail: boolean,
-  playtest = false,
-  learned: ReadonlySet<string> = EVERY_KEY_LEARNED,
-): readonly string[] {
-  const keys = raidKeyHintLine(raidKeysToName(showDetail, learned));
-  const hints = playtest && showDetail ? `${keys}  ${RUN_HINT}` : keys;
-  return hints ? [cue, hints] : [cue];
+export function objectiveChipLines(cue: string, looking: boolean): readonly string[] {
+  return looking ? [cue] : [];
 }
-
-/** A save that has pressed every raid key: the chip as it was before keys were taught. */
-const EVERY_KEY_LEARNED: ReadonlySet<string> = new Set(RAID_KEY_WORDS.map(([id]) => id));
 
 /**
  * How long a place's name stays up after the player walks into it. The games

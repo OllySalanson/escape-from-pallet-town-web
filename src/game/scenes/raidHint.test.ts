@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 /**
- * The raid's hint line, driven through the real WorldScene: facing a thing the
+ * The raid's hint line - offered on the controls bar beside the game, never
+ * drawn on the map - driven through the real WorldScene: facing a thing the
  * interact key works on says its key and its name, as the harbour does - a way
  * out with a lock in it, a field move's obstacle, a cache - and facing it from
  * the tile beside, or with a box up, says nothing (the 20 Nov AI playtest,
@@ -203,7 +204,7 @@ interface Driven {
   currentMap: WorldMapDefinition;
   runSession: ActiveRunSession;
   dialogBox: { visible: boolean };
-  hintShown: string;
+  momentLine: string;
   isBlocked(tile: GridPosition): boolean;
   refreshHint(): void;
 }
@@ -242,7 +243,7 @@ function faceFromBeside(driven: Driven, target: GridPosition): string {
       driven.currentTile = stand;
       driven.facing = facing;
       driven.refreshHint();
-      return driven.hintShown;
+      return driven.momentLine;
     }
   }
   throw new Error(`Nowhere to stand beside ${target.x},${target.y}.`);
@@ -253,7 +254,7 @@ function turnAway(driven: Driven): string {
   const back: Record<Direction, Direction> = { up: 'down', down: 'up', left: 'right', right: 'left' };
   driven.facing = back[driven.facing];
   driven.refreshHint();
-  return driven.hintShown;
+  return driven.momentLine;
 }
 
 describe("the raid's hint line", () => {
@@ -286,10 +287,10 @@ describe("the raid's hint line", () => {
 
     driven.dialogBox.visible = true;
     driven.refreshHint();
-    expect(driven.hintShown).toBe('');
+    expect(driven.momentLine).toBe('');
 
     driven.dialogBox.visible = false;
     driven.refreshHint();
-    expect(driven.hintShown).toBe(`[SPACE] ${cache.label}`);
+    expect(driven.momentLine).toBe(`[SPACE] ${cache.label}`);
   });
 });

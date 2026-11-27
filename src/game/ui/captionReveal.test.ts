@@ -30,11 +30,12 @@ const exit = (tiles: CaptionSpeech['tiles'], open: boolean): CaptionSpeech => ({
 });
 
 describe('whether a map caption speaks at all', () => {
-  it('with map tooltips off, names a place only while the player looks, and never quietens a warning or a prize', () => {
-    expect(captionSpeaks(name([AT]), audience({ quiet: true }))).toBe(false);
-    expect(captionSpeaks(name([AT]), audience({ quiet: true, looking: true }))).toBe(true);
-    expect(captionSpeaks({ voice: 'warning', tiles: [AT] }, audience({ quiet: true }))).toBe(true);
-    expect(captionSpeaks({ voice: 'prize', tiles: [AT] }, audience({ quiet: true }))).toBe(true);
+  it('with map tooltips off, says nothing at all until the player looks', () => {
+    const calling = audience({ quiet: true, raidRemainingMs: EXIT_CALL_MS });
+    for (const speech of [name([AT]), exit([AT], true), { voice: 'warning', tiles: [AT] }, { voice: 'prize', tiles: [AT] }] as const) {
+      expect(captionSpeaks(speech, calling)).toBe(false);
+      expect(captionSpeaks(speech, { ...calling, looking: true })).toBe(true);
+    }
   });
 
   it('names a thing the player has walked up to, and nothing further off', () => {
