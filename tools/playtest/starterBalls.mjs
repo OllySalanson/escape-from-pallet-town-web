@@ -256,17 +256,20 @@ try {
     await page.screenshot(join(out, `${window.name}-12-the-harbour.png`));
 
     // The swap in the Pokémon Center is the same three cards on another screen:
-    // there the pointer moves the cursor, and only a click chooses.
+    // there, as on every screen, the pointer only previews (`ui/MenuOverlay.ts`):
+    // the cursor stays where the keys left it, and only a click chooses. (This
+    // asked for the pointer to move the cursor, from before that rule.)
     await page.evaluate(`(() => { const hub = ${GAME}.scene.getScene('base'); hub.scene.start('hub', { view: 'reselect', savedGame: new (hub.saveManager.constructor)().load() }); })()`);
     await page.waitFor(`document.querySelectorAll('[data-starter]').length === 3`, { timeoutMs: 30_000, what: 'the swap screen' });
     await sleep(400);
     const swapRest = await page.evaluate(`[...document.querySelectorAll('[data-starter]')].map((card) => { const box = card.getBoundingClientRect(); return [Math.round(box.width), Math.round(box.height)]; })`);
     await page.evaluate(SAMPLE);
+    const swapOpened = await cardState(page);
     for (const id of ['bulbasaur', 'squirtle', 'bulbasaur', 'squirtle']) {
       await moveTo(page, await cardCentre(page, id));
       await sleep(120);
       const held = await cardState(page);
-      expectThat(held.cursor === id, `${window.name}, swap: pointing at ${id} moves the cursor and chooses nothing (${JSON.stringify(held)})`);
+      expectThat(held.cursor === swapOpened.cursor && held.chosen === swapOpened.chosen, `${window.name}, swap: pointing at ${id} leaves the cursor where it was and chooses nothing (${JSON.stringify(held)})`);
     }
     await page.screenshot(join(out, `${window.name}-13-swap-hover.png`));
     await click(page);

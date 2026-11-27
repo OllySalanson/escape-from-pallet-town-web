@@ -234,6 +234,25 @@ before the chooser comes up.
 
 Oak on the radio (O, once) is the world's own white dialogue box, and is left.
 
+## The naming screens, the swap and the stats page
+
+Found by the same photographs. Two of them had no place behind them, and stood their
+white cards on black: they stand against a wall of darker boards now.
+
+| | Before | After | Colour | White |
+|---|---|---|---|---|
+| SWAP YOUR PARTNER (the Pokémon Center, with one Pokémon left) | ![](before/swap-partner.png) | ![](after/swap-partner.png) | 9 to 63 | 26% to 1% |
+| YOUR NAME? (over the title) | ![](before/your-name.png) | ![](after/your-name.png) | 21 to 32 | 16% to 1% |
+| A Pokémon's NICKNAME? (over the raid) | ![](before/nickname.png) | ![](after/nickname.png) | 19 to 30 | 15% to 0% |
+| PLAY STATS, the owner's page, before signing in | ![](before/stats.png) | ![](after/stats.png) | 8 to 65 | 9% to 0% |
+
+The stats page signed in, with its numbers and its chart of a month, was not seen: it
+needs the owner's sign-in. Its rules name only the floor's own tokens.
+
+`tools/playtest/starterBalls.mjs` plays the swap. Its check there still asked for the
+pointer to move the cursor, from before the pointer only previewed; it asks for what
+the game does now, and passes.
+
 `tools/playtest/sidePanels.mjs` plays all of them in a real raid. It had gone stale
 (it walked a list down where the pack is a row of tiles now), and on main it did not
 pass at 800x600 either, where BLUE caught the player between two checks and the
