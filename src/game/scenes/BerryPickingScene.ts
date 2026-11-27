@@ -177,7 +177,7 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
 
   private showMenu(focusOn?: string): void {
     if (!this.overlay) {
-      this.overlay = new MenuOverlay(this, 'game-corner-screen pixel-ui', (event) => this.onMenuKey(event));
+      this.overlay = new MenuOverlay(this, 'game-corner-screen pixel-ui wood-floor', (event) => this.onMenuKey(event));
     }
     const record = this.record();
     this.overlay.redraw(
