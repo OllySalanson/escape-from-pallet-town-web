@@ -125,12 +125,16 @@ try {
   await editSave(`(save) => { save.raidProgress.keysLearned = ['walk', 'look']; }`);
   const alone = await speakToHim();
   if (!alone.includes('I run the DAY-CARE service')) throw new Error(`alone, he opens with ${JSON.stringify(alone)}`);
-  // A line too long for one box is cut where a reader would pause, so read on to it.
+  // A line too long for one box is cut where a reader would pause, and the cut
+  // can fall inside the sentence looked for ("...Oh?" ends one box and "You only
+  // have one Pokémon." begins the next), so everything he says is read together.
   let refusal = alone;
   for (let guard = 0; guard < 4 && !refusal.includes('only have one'); guard += 1) {
     await press('Space');
-    refusal = await boxText();
+    const box = await boxText();
+    if (!refusal.endsWith(box)) refusal = `${refusal} ${box}`;
   }
+  refusal = refusal.replace(/\s+/g, ' ');
   if (!refusal.includes('Oh? You only have one Pokémon.')) throw new Error(`alone, he goes on ${JSON.stringify(refusal)}`);
   await page.screenshot(`${out}/alone.png`);
   console.log(`alone: ${refusal}`);
@@ -155,17 +159,18 @@ try {
   await page.waitFor(sceneIs('hub'), { what: 'his list' });
   await sleep(1500);
   await page.screenshot(`${out}/choose.png`);
-  const heading = await text('.px-heading h2');
-  if (!heading.includes('Which Pokémon should I raise?')) throw new Error(`his screen is headed ${JSON.stringify(heading)}`);
+  // His screen is his paddock over a row of tiles, headed WHO STAYS? (`hub/dayCareView.ts`).
+  const heading = await text('.dc-who .px-heading span');
+  if (!heading.includes('Who stays?')) throw new Error(`his screen is headed ${JSON.stringify(heading)}`);
   // A fainted one is sent to the Pokémon Center: he heals nothing, so it would be raised fainted.
   const fainted = await page.evaluate(
-    `(() => { const b = document.querySelector('button[data-shows="rattata-1"].px-row'); return b && { leave: b.hasAttribute('data-day-care-leave'), help: b.dataset.help }; })()`,
+    `(() => { const b = document.querySelector('.dc-tile[data-shows="rattata-1"]'); return b && { leave: b.hasAttribute('data-day-care-leave'), help: b.dataset.help }; })()`,
   );
   if (!fainted || fainted.leave || !fainted.help.includes('Take it to the Pokémon Center first')) {
     throw new Error(`the fainted Rattata's row is ${JSON.stringify(fainted)}`);
   }
   console.log(`fainted: ${fainted.help}`);
-  await click('button[data-day-care-leave="pidgey-1"]', 'the Pidgey');
+  await click('.dc-tile[data-day-care-leave="pidgey-1"]', 'the Pidgey');
   await page.waitFor(sceneIs('base'));
   await page.waitFor(`${state()}.live && ${BASE}.dialogBox.visible`, { what: 'his answer, back in the yard' });
   const left = await boxText();
