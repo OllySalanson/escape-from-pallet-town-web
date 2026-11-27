@@ -1,14 +1,14 @@
 // Photographs every menu, pop-up and card the harbour opens, one per page load,
 // on a save some raids in - for the menus audit and the menu look's before and after (`docs/screens/menu-look/`).
 //
-//   node tools/playtest/menusAudit.mjs <test-mode build url> <out dir> [--only=name,..] [--window=1280x800]
+//   node tools/playtest/menusAudit.mjs <test-mode build url> <out dir> [--only=name,..] [--window=1280x800] [--port=CDP port]
 //
 // Each screen is opened the way the harbour opens it (the base scene's own
 // opener, or a walk to its door), photographed, and the page reloaded, so one
 // screen that will not open spoils no other. A screen that fails is reported
 // and the run goes on.
 import { mkdirSync } from 'node:fs';
-import { launchBrowser, sleep } from './browser.mjs';
+import { attachBrowser, launchBrowser, sleep } from './browser.mjs';
 import { GAME, SAVE_KEY, openHallPanel, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
@@ -43,6 +43,9 @@ const SCREENS = {
   trades: hub('trades'),
   'friend-room': hub('friend'),
   'your-things': open('openThings()'),
+  // THE CHEST in THE BOLTHOLE: its things, and its POKéMON tab.
+  chest: open('openThings(undefined, true)'),
+  'chest-pokemon': open('openChestPokemon(true)'),
   'your-team': open('openTeam()'),
   pokedex: open('openPokedex()'),
   'the-map': open('openMap()'),
@@ -61,10 +64,14 @@ const SCREENS = {
   'hall-locker': async (page) => { await walkIntoBase(page, 'raid-arena'); await page.waitFor(takePokemon('Squirtle')); await openHallPanel(page, 'locker'); },
 };
 
-const browser = await launchBrowser({ window: { width, height } });
+// --port=N drives a browser already running on that CDP port (the machine's watched one) instead of launching its own.
+const browser = option('port') ? attachBrowser(Number(option('port')), { window: { width, height } }) : await launchBrowser({ window: { width, height } });
 let failed = 0;
 try {
   const page = await browser.openPage(`${url}?testmode=pixels`);
+  // An attached browser keeps the last driver's save: start from none, as a launched one does.
+  await page.evaluate('localStorage.clear()');
+  await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
   const until = (expression, what) => page.waitFor(expression, { what, timeoutMs: 60_000 });
   await until(sceneIs('title'), 'the title');
   await page.screenshot(`${out}/title.png`);

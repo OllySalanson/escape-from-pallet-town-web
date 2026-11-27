@@ -56,3 +56,51 @@ describe('the menus and the pop-ups', () => {
     expect(token(name)).toBe(colour.css);
   });
 });
+
+describe('the wood floor', () => {
+  // A screen on the wood floor remaps what its body is drawn in (`.wood-floor`
+  // in the stylesheet). Wood is a middle tone: only the palest inks read on a
+  // board and only dark ones on a raised plate, so each is held to WCAG AA on
+  // what it is written on, as the paper's inks are.
+  const stylesheet = readFileSync(new URL('../../style.css', import.meta.url), 'utf8');
+  const block = /\.pixel-ui\.wood-floor \.px-body \{([^}]*)\}/.exec(stylesheet)?.[1] ?? '';
+  const colour = (name: string): number => {
+    const found = new RegExp(`--${name}:\\s*#([0-9a-f]{6});`, 'i').exec(block);
+    if (!found) {
+      throw new Error(`the wood floor does not set --${name}`);
+    }
+    return Number.parseInt(found[1], 16);
+  };
+  const channel = (value: number, shift: number): number => (value >> shift) & 0xff;
+
+  it.each(['ink', 'ink-soft', 'safe-ink', 'red-ink', 'gold-ink'])('writes --%s where it can be read on a board and in an empty square', (ink) => {
+    for (const board of ['paper', 'paper-sunk']) {
+      expect(contrast(colour(ink), colour(board)), `--${ink} on --${board}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it.each(['raised-ink', 'raised-ink-soft'])('writes --%s where it can be read on every raised plate', (ink) => {
+    for (const plate of ['paper-raised', 'paper-lit', 'gold-wash', 'safe-wash', 'risk-wash']) {
+      expect(contrast(colour(ink), colour(plate)), `--${ink} on --${plate}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('is warm brown wood: never white, never black, never grey', () => {
+    for (const board of ['paper', 'paper-raised', 'paper-sunk']) {
+      const value = colour(board);
+      expect(luminance(value), `--${board}`).toBeGreaterThan(0.05);
+      expect(luminance(value), `--${board}`).toBeLessThan(0.45);
+      expect(channel(value, 16), `--${board} red over green`).toBeGreaterThan(channel(value, 8) + 20);
+      expect(channel(value, 8), `--${board} green over blue`).toBeGreaterThan(channel(value, 0) + 20);
+    }
+  });
+
+  it('stands a thing up off its board and sinks an empty square into it', () => {
+    expect(luminance(colour('paper-raised'))).toBeGreaterThan(luminance(colour('paper')));
+    expect(luminance(colour('paper-sunk'))).toBeLessThan(luminance(colour('paper')));
+  });
+
+  it('leaves a plate of paper its own palette: the page names it beside :root', () => {
+    expect(stylesheet).toMatch(/\.pixel-ui \.px-plate,[^{]*:root \{/);
+  });
+});

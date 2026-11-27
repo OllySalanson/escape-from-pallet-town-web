@@ -191,7 +191,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   }
 
   public create(): void {
-    this.overlay = new MenuOverlay(this, 'things-menu pixel-ui', (event) => this.onKey(event));
+    this.overlay = new MenuOverlay(this, 'things-menu pixel-ui wood-floor', (event) => this.onKey(event));
     this.overlay.root.setAttribute('aria-label', this.title);
     // The card under the stash answers for the thing the cursor is on: written
     // into its own card, never a redraw of the screen under the cursor.

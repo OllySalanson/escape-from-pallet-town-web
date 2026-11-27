@@ -2090,7 +2090,11 @@ body.touch-play .feedback-tab {
 }
 
 /* The menus' palette, on the page rather than on a screen, so the controls
-   bar under the game (`ui/controlsBar.ts`) and every screen share it. */
+   bar under the game (`ui/controlsBar.ts`) and every screen share it. A plate
+   of paper standing on the wood floor (`.px-plate` and the row under the
+   cursor, below) is this palette again, whatever the floor round it remapped. */
+.pixel-ui .px-plate,
+.pixel-ui.wood-floor .px-body :is(button.px-row:focus, .px-row.is-secured, .px-row.teach-pupil.is-selected, .px-chip:focus, .px-step:focus, .px-scroll[data-reads]:focus),
 :root {
   /* The menus' palette (`src/game/ui/uiPalette.ts`): a Poke Ball, opened. Five
      colours, one job each (the captain, 25 Nov 2026: "It must be the new way of
@@ -2133,6 +2137,24 @@ body.touch-play .feedback-tab {
   --red-ink: #a32208;
   --risk-wash: #fde3dc;
   --shade: rgb(0 0 0 / 42%);
+  /* A plate of words and its ink, on whatever floor it stands: the white pill
+     on a strip, a key's cap, a count on a heading. Never remapped. */
+  --plate: #ffffff;
+  --plate-ink: #221d1e;
+  /* A thing standing on the paper - a filled square, a button: on paper it is
+     paper too, in the paper's inks; on the wood floor it is a raised plate of
+     lighter wood, written on in a dark ink of its own. */
+  --paper-raised: #ffffff;
+  --raised-ink: #221d1e;
+  --raised-ink-soft: #625a5d;
+  /* The filled part of a stat's bar: the second ink on paper. */
+  --stat-fill: #3b3436;
+  /* A window's lit top edge and dark foot, laid over its fill, and the light
+     an empty square or a filled one is drawn in: none on paper. */
+  --lip: transparent;
+  --foot: transparent;
+  --sunk: 0 0 0 0 transparent;
+  --raised: 0 0 0 0 transparent;
   --px-cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h1v1h1v1h-1v1h-1v1h-1z'/%3E%3C/svg%3E");
   --px-more: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 3' shape-rendering='crispEdges'%3E%3Cpath fill='%235d5c47' d='M0 0h5v1h-1v1h-1v1h-1v-1h-1v-1h-1z'/%3E%3C/svg%3E");
   --px-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 5' shape-rendering='crispEdges'%3E%3Cpath d='M6 0h1v1h-1zM5 1h1v1h-1zM4 2h1v1h-1zM0 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM2 4h1v1h-1z'/%3E%3C/svg%3E");
@@ -2534,11 +2556,108 @@ body.touch-play .feedback-tab {
     linear-gradient(var(--edge), var(--edge)) var(--u) 100% / calc(100% - var(--u) * 2) var(--u) no-repeat,
     linear-gradient(var(--edge), var(--edge)) 0 var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat,
     linear-gradient(var(--edge), var(--edge)) 100% var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat,
-    linear-gradient(var(--fill), var(--fill)) var(--u) var(--u) / calc(100% - var(--u) * 2)
+    /* Its light: a lit pixel along the top and a dark one along the foot, over
+       whatever it is filled with. Clear on paper; the wood floor draws them. */
+    linear-gradient(var(--lip), var(--lip)) var(--u) var(--u) / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--foot), var(--foot)) var(--u) calc(100% - var(--u) * 2) / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    /* What it is filled with: one colour, or the grain a floor gives its cards. */
+    var(--grain, linear-gradient(var(--fill), var(--fill))) var(--u) var(--u) / calc(100% - var(--u) * 2)
       calc(100% - var(--u) * 2) no-repeat;
   /* A card stands on the place behind it: a hard pixel shadow under it, one
      pixel in from each side so it follows the clear corners. */
   box-shadow: 0 calc(var(--u) * 3) 0 calc(var(--u) * -1) var(--shade);
+}
+/* --- The wood floor ------------------------------------------------------
+   White is a plate, never the floor (the captain, 26 Nov 2026, of the screens
+   "that just have that bright white background": "something's just not quite
+   right"; and the next night, of the two mock-ups, "I actually prefer the kind
+   of brown ... the woody colour, over the black"; `docs/screens/wood-floor/`).
+   The world has no white ground, so a screen that was a sheet of it was the
+   brightest, greyest thing in the game. A screen on the wood floor
+   (`wood-floor` beside `pixel-ui`, named where the screen is made) keeps its
+   title strip and help strip and remaps what its body is drawn in: a card is
+   boards of warm brown wood, an empty square is sunk into them, a thing or a
+   button stands on a raised plate of lighter wood, and words that are more
+   than a label are on a plate of paper. Every rule below it goes on reading
+   `--paper` and `--ink` and is right on either floor; what must stay white or
+   ink whatever the floor says `--plate`, `--plate-ink` or the strips' `--bar`.
+
+   Wood is a middle tone, so only white and the palest inks read on a board,
+   and only dark ones on a raised plate: a board's words are white, a plate's
+   are its own dark ink (the second rule here), and a sentence, a question or
+   the row under the cursor is paper (`.px-plate`).
+
+   Three rules of light go with it, because a flat board is a flat sheet in
+   another colour: a card has a lit lip and a dark foot, an empty square is
+   dark at its top left and lit at its bottom right, and a shadow is drawn at
+   full strength. */
+.pixel-ui.wood-floor .px-body {
+  --paper: #8a5a34;
+  --paper-raised: #c99a62;
+  --paper-sunk: #6b4424;
+  --paper-lit: #ffd766;
+  --mist-2: #6b4424;
+  --ink: #ffffff;
+  --ink-soft: #f6ead8;
+  --raised-ink: #2c1a0c;
+  --raised-ink-soft: #4a2c14;
+  --stat-fill: #f6ead8;
+  --line: #3a2210;
+  --gold-wash: #ffd766;
+  --gold-ink: #ffeba6;
+  --safe-wash: #a9d99a;
+  --safe-ink: #d2f9d7;
+  --risk-wash: #f2b3a2;
+  --red-ink: #ffe4dc;
+  --shade: rgb(0 0 0 / 70%);
+  --lip: rgb(255 255 255 / 18%);
+  --foot: rgb(0 0 0 / 28%);
+  --seam: #5a3618;
+  --sunk: inset var(--u) var(--u) 0 #4a2c14, inset calc(var(--u) * -1) calc(var(--u) * -1) 0 #8f6238;
+  --raised: inset 0 var(--u) 0 rgb(255 255 255 / 30%), inset 0 calc(var(--u) * -1) 0 rgb(0 0 0 / 22%);
+  --px-more: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 3' shape-rendering='crispEdges'%3E%3Cpath fill='%23f6ead8' d='M0 0h5v1h-1v1h-1v1h-1v-1h-1v-1h-1z'/%3E%3C/svg%3E");
+  color: var(--ink);
+}
+/* What stands on a raised plate is written in the plate's ink: a button's
+   words, a square's level, a count. */
+.pixel-ui.wood-floor .px-body :is(.px-button, .px-grid-block, .chest-mon, .chest-slot, .chest-key, .chest-gift, .things-member, .things-worn) {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+}
+/* Said again where it is a button that is the plate: a button's own colour is
+   its parent's unless a rule this heavy says otherwise. */
+.pixel-ui.wood-floor .px-body :is(.chest-mon, .chest-slot, .chest-key) {
+  color: var(--ink);
+}
+.pixel-ui.wood-floor .px-body .chest-gift {
+  color: var(--ink-soft);
+}
+/* A card is boards: a seam every sixteen pixels down it. A control is one
+   plate, and a plate of paper is paper. */
+.pixel-ui.wood-floor .px-body .px-window {
+  --grain: repeating-linear-gradient(180deg, var(--fill) 0 calc(var(--u) * 15), var(--seam) calc(var(--u) * 15) calc(var(--u) * 16));
+}
+.pixel-ui.wood-floor .px-body .px-window:is(button, .px-plate) {
+  --grain: initial;
+}
+/* A raised thing that cannot be pressed is sunk again, in the board's soft ink. */
+.pixel-ui.wood-floor .px-body .px-button:is(:disabled, [aria-disabled='true']) {
+  --ink-soft: #f6ead8;
+}
+/* A card washed green or red - a thing held over a Pokémon it would or would
+   not go to - is a plate for as long as it is. */
+.pixel-ui.wood-floor .px-body .chest-card:is(.is-gift-yes, .is-gift-no) {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  --stat-fill: var(--raised-ink);
+  color: var(--ink);
+}
+/* A plate of paper on the wood floor: a sentence, a question, and whatever is
+   lit or washed with words on it - the row under the cursor, a row chosen.
+   Its palette is the page's own again: the rule that names `:root` names it. */
+.pixel-ui .px-plate,
+.pixel-ui.wood-floor .px-body :is(button.px-row:focus, .px-row.is-secured, .px-row.teach-pupil.is-selected, .px-chip:focus, .px-step:focus, .px-scroll[data-reads]:focus) {
+  color: var(--ink);
 }
 /* What kind of card it is, said by its heading strip's colour, never by a tint
    over its paper: green is safe (healing, the locker), red can be lost (the
@@ -2924,10 +3043,11 @@ body.touch-play .feedback-tab {
   white-space: nowrap;
 }
 .pixel-ui .px-button {
-  --fill: var(--paper);
+  --fill: var(--paper-raised);
   /* A button stands up off the card it is on: a pixel of ink under it, one in
      from each side, so it reads as something to press. */
-  box-shadow: 0 calc(var(--u) * 2) 0 calc(var(--u) * -1) var(--ink);
+  box-shadow: 0 calc(var(--u) * 2) 0 calc(var(--u) * -1) var(--line);
+  color: var(--ink);
 }
 /* A chip, a field and a stepper's ends are part of the card they are on. */
 .pixel-ui .px-chip,
@@ -2941,7 +3061,7 @@ body.touch-play .feedback-tab {
 }
 .pixel-ui .px-button.is-danger {
   --fill: var(--red);
-  color: var(--paper);
+  color: #ffffff;
 }
 .pixel-ui .px-button:focus {
   --fill: var(--paper-lit);
@@ -3167,7 +3287,7 @@ body.touch-play .feedback-tab {
   gap: calc(var(--u) * 3);
   padding: 0 calc(var(--u) * 4) 0 calc(var(--u) * 3);
   background: var(--ink-2);
-  color: var(--paper);
+  color: #ffffff;
   text-transform: uppercase;
   margin: var(--u) calc(var(--u) * 3) var(--u) var(--u);
 }
@@ -4237,6 +4357,7 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .px-grid-cells > i {
   background: var(--paper-sunk);
+  box-shadow: var(--sunk);
 }
 :where(.pixel-ui) .px-grid-block {
   position: relative;
@@ -7964,15 +8085,16 @@ body.touch-play .feedback-tab {
   background: var(--paper-sunk);
 }
 .pixel-ui.things-menu .px-grid-block {
-  background: var(--paper);
+  background: var(--paper-raised);
+  box-shadow: var(--raised);
 }
-/* How many, on the block's own corner: white on ink. */
+/* How many, on the block's own corner: white on the frame's line. */
 .pixel-ui.things-menu .px-grid-block > b {
   right: var(--u);
   bottom: var(--u);
   padding: 0 calc(var(--u) * 2);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bar);
+  color: var(--bar-text);
   line-height: calc(var(--u) * 11);
 }
 /* A pocket tab not lit: its things stand back. */
@@ -7981,7 +8103,8 @@ body.touch-play .feedback-tab {
   opacity: 0.3;
 }
 .pixel-ui.things-menu .px-grid-block.is-dim > b {
-  background: var(--ink-soft);
+  background: var(--mist-2);
+  color: var(--ink-soft);
 }
 /* The thing the cursor is on: gold all round, and the red arrow bobbing over it. */
 .pixel-ui.things-menu .px-grid button.px-grid-block:focus {
@@ -8014,7 +8137,7 @@ body.touch-play .feedback-tab {
   align-items: center;
   min-width: 0;
   overflow: hidden;
-  background: var(--ink);
+  background: var(--bar);
 }
 .pixel-ui .things-tab-strip > .things-cap {
   flex: none;
@@ -8022,7 +8145,7 @@ body.touch-play .feedback-tab {
   height: calc(var(--u) * 10);
   margin: 0 calc(var(--u) * 2);
   background: var(--bar-muted);
-  color: var(--ink);
+  color: var(--plate-ink);
 }
 .pixel-ui .things-tab-strip > .things-cap:last-child {
   margin-left: auto;
@@ -8067,10 +8190,10 @@ body.touch-play .feedback-tab {
 }
 .pixel-ui .things-tab.is-here {
   background: var(--gold);
-  color: var(--ink);
+  color: var(--plate-ink);
 }
 .pixel-ui .things-tab:not(.is-here):hover {
-  color: var(--paper);
+  color: var(--bar-text);
 }
 :where(.pixel-ui) .things-stash-scroll {
   min-height: 0;
@@ -8096,8 +8219,8 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .things-count {
   margin-left: calc(var(--u) * 3);
   padding: 0 calc(var(--u) * 2);
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--plate);
+  color: var(--plate-ink);
   font-weight: 400;
 }
 :where(.pixel-ui) .things-pack-body {
@@ -8117,7 +8240,7 @@ body.touch-play .feedback-tab {
   position: relative;
   display: block;
   padding: calc(var(--u) * 1);
-  background: var(--paper);
+  background: var(--paper-raised);
   box-shadow: inset 0 0 0 var(--u) var(--line);
 }
 :where(.pixel-ui) .things-member:is(.is-partner, .is-locked) {
@@ -8156,7 +8279,7 @@ body.touch-play .feedback-tab {
   width: calc(var(--u) * 34);
   height: calc(var(--u) * 34);
   background: var(--paper-sunk);
-  box-shadow: none;
+  box-shadow: var(--sunk);
 }
 :where(.pixel-ui) .things-member-mark {
   position: absolute;
@@ -8192,7 +8315,7 @@ body.touch-play .feedback-tab {
   flex: none;
   width: calc(var(--u) * 34);
   height: calc(var(--u) * 34);
-  background: var(--paper);
+  background: var(--paper-raised);
   box-shadow: inset 0 0 0 var(--u) var(--red);
 }
 .pixel-ui .things-worn-place {
@@ -8214,7 +8337,7 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .things-member.is-risk + .things-tag,
 :where(.pixel-ui) .things-worn + .things-tag {
-  color: var(--red);
+  color: var(--red-ink);
 }
 .pixel-ui .things-worn > .item-icon {
   transform: scale(2);
@@ -8292,14 +8415,20 @@ body.touch-play .feedback-tab {
   width: max-content;
   margin: 0 auto calc(var(--u) * 2);
   background: var(--safe);
-  color: var(--paper);
+  color: #ffffff;
 }
 :where(.pixel-ui) .things-kept {
   margin: 0;
-  width: min-content;
+  /* Two lines under the squares, never a word a line: at 1280x800 three lines
+     stood ROOM FOR A FIND over the card's own foot. */
+  width: calc(var(--u) * 60);
   text-align: center;
   text-transform: uppercase;
   color: var(--safe-ink);
+}
+/* A small window's locker is two of the raid's squares wide, and the words keep to them. */
+.pixel-ui.things-menu[data-room='tight'] .things-kept {
+  width: min-content;
 }
 .pixel-ui.things-menu .things-locker-grid .px-grid-block {
   background: var(--safe-wash);
@@ -8362,12 +8491,12 @@ body.touch-play .feedback-tab {
   min-width: calc(var(--u) * 12);
   height: calc(var(--u) * 12);
   padding: 0 calc(var(--u) * 2);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bar);
+  color: var(--bar-text);
 }
 .pixel-ui .px-button.things-key:is(.is-primary, .is-danger) .things-cap {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--plate);
+  color: var(--plate-ink);
 }
 
 /* A row of a pocket the tabs are not showing (`ThingsScene.showPocket`): a row
@@ -9822,7 +9951,7 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .px-stat-bar i {
   display: block;
   height: 100%;
-  background: var(--ink-2);
+  background: var(--stat-fill);
 }
 :where(.pixel-ui) .px-stat-bar.is-hp i {
   background: var(--go);
@@ -10564,7 +10693,8 @@ body.touch-play .feedback-tab {
   display: grid;
   place-items: center;
   overflow: hidden;
-  background: var(--paper);
+  background: var(--paper-raised);
+  box-shadow: var(--raised);
   cursor: grab;
 }
 :where(.pixel-ui) .chest-mon * {
@@ -10637,6 +10767,7 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .chest-mon-gap > i {
   background: var(--paper-sunk);
+  box-shadow: var(--sunk);
 }
 /* THE NEXT RAID's six and the GARDEN's six: a bag square each, the party icon in it. */
 :where(.pixel-ui) .chest-slots {
@@ -10664,7 +10795,7 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .chest-slot.is-free {
   background: var(--paper-sunk);
-  box-shadow: none;
+  box-shadow: var(--sunk);
 }
 :where(.pixel-ui) .chest-slot .px-mon-icon {
   margin: 0;
@@ -10728,7 +10859,7 @@ body.touch-play .feedback-tab {
   width: calc(var(--u) * 20);
   height: calc(var(--u) * 20);
   background: var(--paper-sunk);
-  box-shadow: inset 0 0 0 var(--u) var(--line);
+  box-shadow: inset 0 0 0 var(--u) var(--line), var(--sunk);
 }
 :where(.pixel-ui) .chest-card-figures {
   display: grid;
@@ -10761,7 +10892,8 @@ body.touch-play .feedback-tab {
   gap: calc(var(--u) * 2);
   height: calc(var(--u) * 13);
   padding: 0 calc(var(--u) * 3) 0 0;
-  background: var(--paper-sunk);
+  background: var(--paper-raised);
+  box-shadow: var(--raised);
   color: var(--ink);
   cursor: pointer;
 }

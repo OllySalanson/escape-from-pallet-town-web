@@ -617,7 +617,7 @@ const emptyScreen: ThingsScreen = {
 
 /** The whole screen: home on the left; the next raid's team, pack and locker on the right; what the cursor is on underneath. */
 export function thingsScreen(view: ThingsScreen, hand: string): string {
-  return `<main class="px-body things-layout">${stashCard(view)}${teamCard(view)}${packCard(view)}${lockerCard(view)}<section class="px-window things-hand" data-hand-card>${hand}</section></main>`;
+  return `<main class="px-body things-layout">${stashCard(view)}${teamCard(view)}${packCard(view)}${lockerCard(view)}<section class="px-window px-plate things-hand" data-hand-card>${hand}</section></main>`;
 }
 
 /** Who a stone would go to: every Pokémon the player has, with whether it would work, best first. */

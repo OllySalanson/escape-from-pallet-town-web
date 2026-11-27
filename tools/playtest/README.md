@@ -171,6 +171,8 @@ the touch pad's OK on the title in a phone-sized window with touch emulated, aft
 two real keyboard presses: NEW GAME must start, which the first OK after a keyboard
 press used not to (`--no-keys` is the control).
 
+`colourScore.mjs <picture.png | folder>... [--box=x0,y0,x1,y1]` reads pictures a driver already took and prints how colourful each is (mean saturation, 0 to 100), how much of it is plain white and how bright it is, inside the game's stage: the world scores 27 to 35, a menu that reads as part of the game 16 or more, and the white sheets were 13 or less (`docs/screens/wood-floor/`). `menusAudit.mjs <test-mode build url> <out dir> [--only=name,..] [--port=CDP port]` is what takes a menu's picture the same way before and after.
+
 `resultMoment.mjs <test-mode build dir> <out dir> [--window=WxH] [--clip]` photographs the stage a raid that got out opens on for a haul, a catch, a job and an empty raid, on a save one raid in so Oak's next job is on its card, and fails any part drawn off the stage; `--clip` records the haul playing in (`docs/screens/result-stage/`).
 
 `menuSprites.mjs <test-mode build dir> [--latency=80] [--cpu=4] [--stale] [--shot=dir]` serves a build as Pages does and times every picture of Bill's shelf (first and second open) and the raid's result from being put on screen to being drawn; `--stale` serves every file as past Pages' ten minutes (`docs/screens/menu-sprites/`).

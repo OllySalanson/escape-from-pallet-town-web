@@ -126,7 +126,7 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
   }
 
   public create(): void {
-    this.overlay = new MenuOverlay(this, 'things-menu chest-pokemon-menu pixel-ui', (event) => this.onKey(event));
+    this.overlay = new MenuOverlay(this, 'things-menu chest-pokemon-menu pixel-ui wood-floor', (event) => this.onKey(event));
     this.overlay.root.setAttribute('aria-label', `${this.title}: Pokémon`);
     this.overlay.root.addEventListener('pointerdown', (event) => this.pointerDown(event));
     this.overlay.root.addEventListener('pointermove', (event) => this.pointerMove(event));
