@@ -120,8 +120,10 @@ export class ControlsScene extends Phaser.Scene {
     overlay.root.setAttribute('aria-label', help ? 'Help' : 'Settings');
     // SETTINGS is five lines: drawn in the world's pixel. HELP is every key there is, and keeps the finer one.
     overlay.root.classList.toggle('px-world', !help);
-    // HELP is a list of keys on boards; SETTINGS has its own few things in the world's pixel.
-    overlay.root.classList.toggle('wood-floor', help);
+    // Both stand on the wood floor: HELP a pane of cards, SETTINGS one board of
+    // five lines - which, drawn in the world's pixel, was a bigger sheet of white
+    // than it had been in the finer one (7% of the screen to 16%).
+    overlay.root.classList.add('wood-floor');
     overlay.root.innerHTML = pixelScreen({
       title: help ? 'Help' : 'Settings',
       aside: help ? 'Every key' : '',

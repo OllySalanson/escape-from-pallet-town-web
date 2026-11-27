@@ -830,9 +830,11 @@ describe('the shops and HELP on the wood floor', () => {
     expect(body('.pixel-ui.wood-floor .px-body .px-arming .px-warning')).toContain('color: var(--wash-red-ink);');
   });
 
-  it('HELP is on it and SETTINGS is not', async () => {
+  it('HELP and SETTINGS are both on it, and a switch that is on is lettered in white', async () => {
+    // SETTINGS was left on paper at first; drawn in the world's pixel, its one sheet was 16% of the screen.
     const scene = await readFile(new URL('./game/scenes/ControlsScene.ts', import.meta.url), 'utf8');
-    expect(scene).toContain("overlay.root.classList.toggle('wood-floor', help);");
+    expect(scene).toContain("overlay.root.classList.add('wood-floor');");
+    expect(body(':where(.pixel-ui) .cs-switch.is-on')).toContain('color: var(--bar-text);');
   });
 });
 

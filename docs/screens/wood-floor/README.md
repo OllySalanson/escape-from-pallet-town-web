@@ -174,6 +174,7 @@ and the commit of each change: `node tools/playtest/menusAudit.mjs <test-mode bu
 | BILL'S COTTAGE: asked once more | ![](before/bills-cottage-asked.png) | ![](after/bills-cottage-asked.png) | | |
 | BROCK'S WORKSHOP | ![](before/brocks-workshop.png) | ![](after/brocks-workshop.png) | 16 to 40 | 27% to 2% |
 | HELP | ![](before/help.png) | ![](after/help.png) | 9 to 38 | 44% to 2% |
+| SETTINGS | ![](before/settings.png) | ![](after/settings.png) | 18 to 28 | 16% to 1% |
 | THE HARBOUR BOUTIQUE | ![](before/boutique-shop.png) | ![](after/boutique-shop.png) | 10 to 53 | 57% to 1% |
 | THE HARBOUR BOUTIQUE: trying a look on | ![](before/boutique-trying-on.png) | ![](after/boutique-trying-on.png) | 14 to 56 | 58% to 1% |
 | YOUR WARDROBE | ![](before/boutique-wardrobe.png) | ![](after/boutique-wardrobe.png) | 8 to 54 | 64% to 0% |

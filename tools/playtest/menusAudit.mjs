@@ -118,10 +118,21 @@ const SCREENS = {
   'game-corner-prizes': open("openGameCorner('prizes')"),
   'boutique-shop': open("openBoutique('shop')"),
   'boutique-wardrobe': open("openBoutique('wardrobe')"),
-  'library-book': open("openBook('bolthole')"),
   'hall-bench': async (page) => { await walkIntoBase(page, 'raid-arena'); await openHallPanel(page, 'bench'); },
   'hall-rack': async (page) => { await walkIntoBase(page, 'raid-arena'); await page.waitFor(takePokemon('Squirtle')); await openHallPanel(page, 'rack'); },
   'hall-locker': async (page) => { await walkIntoBase(page, 'raid-arena'); await page.waitFor(takePokemon('Squirtle')); await openHallPanel(page, 'locker'); },
+  // The one book left in THE GREAT LIBRARY (`library/books.ts`). The audit asked
+  // for THE BOLTHOLE's after it was taken out, and photographed the yard. VALE
+  // SECRETS opens only for a save that has beaten MISTY (`secretsBookLock.ts`),
+  // which is written into the stored save here - so this screen is the last:
+  // every screen after it would be photographed in her neckerchief.
+  'library-book': async (page) => {
+    await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}'));
+      save.raidProgress.defeatedBosses = [...new Set([...(save.raidProgress.defeatedBosses ?? []), 'vale-gym-misty'])];
+      localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
+    await page.evaluate(`${BASE}.openBook('vale-secrets')`);
+    await page.waitFor(sceneIs('library-book'), { what: 'the book', timeoutMs: 15_000 });
+  },
 };
 
 // --port=N drives a browser already running on that CDP port (the machine's watched one) instead of launching its own.
