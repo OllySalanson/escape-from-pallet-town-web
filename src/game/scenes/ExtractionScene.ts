@@ -11,7 +11,6 @@ import { friendRoom } from '../raidRoom/friendRoom';
 import { audioManager } from '../audio/AudioManager';
 import { isPlaytestRun } from '../dev/playtestMode';
 import { nextStepCard, vaultOf, type NextStepCard } from '../hub/nextStep';
-import { RAID_KEY_LETTERS } from '../input/keyBindings';
 import { resultMoment, type HaulStow, type ResultMoment } from '../run/resultMoment';
 import { SaveManager } from '../save/SaveManager';
 import { formatElapsedClock } from '../run/raidClock';
@@ -357,14 +356,14 @@ export class ExtractionScene extends Phaser.Scene {
   }
 
   /**
-   * The moment is a scene in the world's own pixel on the wood floor's colours
-   * (`px-world`, `wood-floor`); the full report and every other account this
-   * screen gives are lists, and keep the finer pixel.
+   * Every account this screen gives stands on the wood floor (`wood-floor`):
+   * the moment, the full report, a lost raid's, a raid settled elsewhere. The
+   * moment alone is a scene in the world's own pixel (`px-world`); the others
+   * are lists, and keep the finer one.
    */
   private dressForWhatIsShown(): void {
-    const moment = this.momentToShow() !== null;
-    this.overlay.root.classList.toggle('px-world', moment);
-    this.overlay.root.classList.toggle('wood-floor', moment);
+    this.overlay.root.classList.toggle('px-world', this.momentToShow() !== null);
+    this.overlay.root.classList.add('wood-floor');
   }
 
   /** The moment this screen is showing, or null while it shows an account: the full report, a map maker's try, a raid settled elsewhere. */
@@ -826,7 +825,8 @@ export class ExtractionScene extends Phaser.Scene {
       hints: this.resultKeys(false),
       body: `<main class="px-body extraction-layout ${escaped ? 'extraction-won' : 'extraction-lost'}">${pixelWindow(
         `<strong class="px-name">${escapeHtml(report.headline)}</strong>${report.closeCall ? `<strong class="px-name">${escapeHtml(report.closeCall)}</strong>` : ''}${(report.badgesWon ?? []).map((line) => `<strong class="px-name px-wrap" data-badge-won>${escapeHtml(line)}</strong>`).join('')}<span class="px-wrap">${escapeHtml(this.verdictSummary())}</span>${report.beatenBy ? `<span class="px-wrap what-beat-you">What beat you? ${escapeHtml(report.beatenBy)}</span>` : ''}`,
-        { className: `extraction-verdict ${escaped ? 'px-tone-primary' : 'px-tone-risk'}`, tag: 'div' },
+        // What happened is a sentence, so it is on a plate of paper (`px-plate`), as every sentence on the wood floor is.
+        { className: `extraction-verdict px-plate ${escaped ? 'px-tone-primary' : 'px-tone-risk'}`, tag: 'div' },
       )}${this.ledgerPanel()}${this.gamblePanel()}${pixelCommitBar({
         title: escapeHtml(this.footerTitle()),
         lines: [`<small class="px-wrap">${this.costFacts().map(escapeHtml).join(' · ')}</small>`],
@@ -847,7 +847,7 @@ export class ExtractionScene extends Phaser.Scene {
       hints: this.resultKeys(false),
       body: `<main class="px-body extraction-layout extraction-lost">${pixelWindow(
         `<strong class="px-name">${escapeHtml(words.headline)}</strong><span class="px-wrap">${escapeHtml(words.summary)}</span>`,
-        { className: 'extraction-verdict px-tone-risk', tag: 'div' },
+        { className: 'extraction-verdict px-plate px-tone-risk', tag: 'div' },
       )}${pixelWindow(`<div class="px-list px-scroll" data-reads><p class="px-empty px-wrap">${escapeHtml(words.ledger)}</p></div>`, {
         className: 'extraction-ledger',
         heading: 'Not banked',
@@ -1133,9 +1133,10 @@ export class ExtractionScene extends Phaser.Scene {
    */
   private whereTheHaulIs(): string {
     const { items, pokemon } = this.report.ledger;
-    // The keys as words, not `[B]`: this screen answers to neither.
-    const things = `YOUR THINGS (${RAID_KEY_LETTERS.bag} at base)`;
-    const team = `YOUR TEAM (${RAID_KEY_LETTERS.party} at base)`;
+    // The places by their names and no key: this screen answers to neither B
+    // nor P, and the captain read "in your things, B at base" as noise (26 Nov 2026).
+    const things = 'YOUR THINGS';
+    const team = 'YOUR TEAM';
     if (pokemon.length === 0) {
       return `Everything above is in ${things}, ready for your next raid.`;
     }

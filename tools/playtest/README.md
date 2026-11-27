@@ -652,10 +652,12 @@ used on the hurt one, a stone's ABLE and NOT ABLE, and X to drop one.
 (BILL'S PC's own walk, `stashShots.mjs`, went with its screen: everything it
 held is THE CHEST's, which `chest.mjs` and `chestPokemon.mjs` play.)
 
-`resultShots.mjs <test-mode build url> <dir> [--window=WxH] [--before]` opens
+`resultShots.mjs <test-mode build url> <dir> [--window=WxH] [--before] [--port=CDP port]` opens
 the raid's result screen straight from the title on a report it makes (walked out
-with a haul, and lost), photographs both and prints the glance measure: a raid
-played to its end only to photograph its last screen is minutes of a loaded box.
+with a haul, lost, and settled in another window), photographs each and prints the
+glance measure: a raid played to its end only to photograph its last screen is minutes
+of a loaded box. A raid that got out opens on its stage, so its full report is opened
+from there with L, as a player opens it.
 
 `menuShots.mjs <url> <dir> [--window=1920x950] [--raid] [--resize] [--scrollbars]`
 photographs every DOM screen at a real window size and prints, per scrolling

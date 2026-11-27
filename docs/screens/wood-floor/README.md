@@ -131,8 +131,18 @@ find that did not reach the chest or a lid left open. It passes at 1280x800, 192
 800x600 and 800x512. With no picture of the place (a stopped render loop never hands one
 over) the stage is a floor of dark wood; with reduced motion it is drawn as it ends.
 
-Not in this change: the full report behind L and the screen a lost raid ends on are
-still paper.
+The full report behind L, a lost raid's account and a raid another window settled are
+lists, so they keep the finer pixel, and they stand on the wood floor: what happened is
+on a plate of paper, a tile washed by what became of its thing is a plate lettered in
+dark ink, and the last line names where the haul is and no key ("in YOUR THINGS", never
+"(B at base)"). `node tools/playtest/resultShots.mjs <test-mode build url> <dir>` takes
+them, at 1280x800, 1920x1080, 1600x1024, 800x600 and 800x512.
+
+| The account | Before | After | Colour | White |
+|---|---|---|---|---|
+| The full report (L) | ![](before/result-full-report.png) | ![](after/result-full-report.png) | 5 to 45 | 61% to 13% |
+| A lost raid | ![](before/result-lost.png) | ![](after/result-lost.png) | 3 to 48 | 68% to 10% |
+| A raid settled in another window | ![](before/result-settled.png) | ![](after/result-settled.png) | 2 to 50 | 84% to 9% |
 
 ## Every screen, as it is moved
 

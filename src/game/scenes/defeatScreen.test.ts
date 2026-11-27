@@ -295,6 +295,16 @@ function open(report: ExtractionReport, full = false): Harness {
 }
 
 describe('the result screen on a defeat', () => {
+  it('accounts for a lost raid on the wood floor, never on a sheet of white', () => {
+    const { root, advance } = open(defeatReport());
+    readThrough(advance);
+
+    expect(root.html).toContain('extraction-lost');
+    expect(root.classes.has('wood-floor')).toBe(true);
+    expect(root.classes.has('px-world')).toBe(false);
+    expect(root.html).toContain('class="px-window extraction-verdict px-plate px-tone-risk"');
+  });
+
   it('opens on the fallen party rather than straight on the ledger', () => {
     const { root } = open(defeatReport());
 
@@ -664,10 +674,12 @@ describe('the defeat sequence across raids', () => {
     expect(root.html).toContain('class="moment-actions"');
     expect([...root.classes]).toEqual(expect.arrayContaining(['pixel-ui', 'px-world', 'wood-floor']));
 
-    // The full report is a list, and keeps the finer pixel.
+    // The full report is a list: it keeps the finer pixel, and stands on the wood floor too,
+    // with what happened said on a plate of paper, as every sentence on that floor is.
     const full = open(report, true).root;
     expect(full.classes.has('px-world')).toBe(false);
-    expect(full.classes.has('wood-floor')).toBe(false);
+    expect(full.classes.has('wood-floor')).toBe(true);
+    expect(full.html).toContain('class="px-window extraction-verdict px-plate px-tone-primary"');
   });
 
   it('closes a long team up by whole game pixels, and never stands one wholly behind another', () => {

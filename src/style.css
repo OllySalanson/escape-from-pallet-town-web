@@ -2771,9 +2771,16 @@ body.touch-play .feedback-tab {
 
    What stands on a raised plate is written in the plate's ink: a button's
    words, a square's level, a count. */
-.pixel-ui:is(.wood-floor, .dex-floor) .px-body :is(.px-button, .px-grid-block, .chest-mon, .chest-slot, .chest-key, .chest-gift, .things-member, .things-worn) {
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body :is(.px-button, .px-grid-block, .chest-mon, .chest-slot, .chest-key, .chest-gift, .things-member, .things-worn, .result-tile) {
   --ink: var(--raised-ink);
   --ink-soft: var(--raised-ink-soft);
+}
+/* A tile of the raid's result is washed by what became of its thing, which
+   makes it a plate: its count is the plate's ink (above), and so is its tick -
+   the floor's own green and gold are pale, for writing on a board. A lost
+   thing's cross stays the page's red. */
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body .result-tile:not(.is-lost)::after {
+  background: var(--raised-ink);
 }
 /* Said again where it is a button that is the plate: a button's own colour is
    its parent's unless a rule this heavy says otherwise. */
@@ -2789,6 +2796,11 @@ body.touch-play .feedback-tab {
   --grain: repeating-linear-gradient(180deg, var(--fill) 0 calc(var(--u) * 15), var(--seam) calc(var(--u) * 15) calc(var(--u) * 16));
 }
 .pixel-ui:is(.wood-floor, .dex-floor) .px-body .px-window:is(button, .px-plate) {
+  --grain: initial;
+}
+/* The bar a screen's way on stands on is one plank: it is two lines of words
+   tall, and a seam every sixteen pixels ran through the feet of its title. */
+.pixel-ui.wood-floor .px-body .px-window.confirm-bar {
   --grain: initial;
 }
 /* A raised thing that cannot be pressed is sunk again, in the floor's soft ink. */

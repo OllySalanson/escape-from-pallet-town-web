@@ -161,7 +161,7 @@ no wipe can touch it. The result screen is very polite about it either way.
 
 <p align="center">
   <img src="docs/readme/extracted.png" width="400" alt="Extracted at Millbrook: JOB DONE!, out with a hunter on your tail. Bulbasaur, Pikachu and Pidgey stand in the place they got out of, beside the raid pack and the chest at home; 260 Pokedollars and six finds are in, with 0:59 left.">
-  <img src="docs/readme/raid-lost.png" width="400" alt="Raid lost: &quot;You went down.&quot; Three Potions, two Mooring ropes, a Super Potion, 45 Pokedollars, a Parts crate and the Raid pack gone for good; the secure slot held Bulbasaur.">
+  <img src="docs/readme/raid-lost.png" width="400" alt="Raid lost: &quot;The clock ran out.&quot; A Pidgey heads the list of what is gone for good; Bulbasaur, the partner, is safe; Oak keeps a starter kit waiting at base.">
 </p>
 
 <p align="center"><sub>You'll never be left with nothing, mind. Lose everything and the base quietly tops you back up to a kit you can raid with.</sub></p>
