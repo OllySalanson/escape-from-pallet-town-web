@@ -1,16 +1,20 @@
 // Photographs the raid's result screen (`scenes/ExtractionScene.ts`) without
 // playing a raid: it opens the screen straight from the title on a report made
 // here - a raid walked out of with a haul, a contract's reward, a caught
-// Pokémon, gear and field experience; and the same raid lost. A raid played
+// Pokémon, gear and field experience; the same raid lost; and a raid another
+// window settled. A raid played
 // to its end costs minutes of a loaded machine; the screen is only the report.
 //
 // It prints the glance measure of the menu overhaul's scorecards (words in
 // view, things in view, how much of the screen is picture), and checks the one
 // control, the way back, is on screen.
 //
-//   node tools/playtest/resultShots.mjs <test-mode build url> <dir> [--window=WxH] [--before]
+// A raid that got out opens on its stage (`resultMoment.mjs` photographs that),
+// so its account is opened from there with L, as a player opens it.
+//
+//   node tools/playtest/resultShots.mjs <test-mode build url> <dir> [--window=WxH] [--before] [--port=CDP port]
 import { mkdirSync } from 'node:fs';
-import { launchBrowser, sleep } from './browser.mjs';
+import { attachBrowser, launchBrowser, sleep } from './browser.mjs';
 import { GAME, sceneIs } from './deploy.mjs';
 
 const args = process.argv.slice(2);
@@ -73,6 +77,8 @@ const REPORTS = {
     eyebrow: 'Raid lost · Mere Path',
     headline: 'THE CLOCK RAN OUT.',
     summary: 'Everything carried unprotected is gone, and the Raid pack with it.',
+    // What a lost raid's last line is on a real one (`wipedBaseNote`): never where a haul went.
+    baseNote: 'What you lost stays lost, but Oak keeps a starter kit for this: a Raid pack, 5 Poké Balls and 3 Potions are waiting at base.',
     contract: undefined,
     progress: [],
     gear: [{ itemId: 'quick-claw', label: 'Quick Claw', holder: 'held by Pidgey', fate: 'lost' }],
@@ -87,6 +93,8 @@ const REPORTS = {
     gambleVerdict: 'The secure slot held. Bulbasaur came home as your partner.',
     fallen: [],
   },
+  // A raid another window settled while this one was away: nothing here counts, and the screen says only that.
+  settled: { ...common, outcome: 'WIPED', eyebrow: 'Raid lost · Mere Path', headline: '', summary: '', baseNote: null, settledElsewhere: true, contract: undefined, progress: [], ledger: group([], []), ledgerFound: group([], []), ledgerPaid: group([], []), secured: group([], []), risked: group([], []), fallen: [] },
 };
 
 const METRICS = `(() => {
@@ -114,13 +122,19 @@ const METRICS = `(() => {
   return JSON.stringify({ words, things, pictureShare: Math.round((100 * pictures) / (box.width * box.height)) });
 })()`;
 
-const browser = await launchBrowser({ window: { width, height } });
+const browser = option('port') ? attachBrowser(Number(option('port')), { window: { width, height } }) : await launchBrowser({ window: { width, height } });
 try {
   const page = await browser.openPage(url.href);
   await page.waitFor(sceneIs('title'), { timeoutMs: 60000 });
   for (const [name, report] of Object.entries(REPORTS)) {
     await page.evaluate(`void ${GAME}.scene.getScenes(true)[0].scene.start('extraction', { report: ${JSON.stringify(report)} })`);
-    await page.waitFor(`Boolean(document.querySelector('#screens .menu-overlay [data-continue]'))`, { what: `the ${name} result` });
+    await page.waitFor(`Boolean(document.querySelector('#screens .menu-overlay [data-continue]')) && ${GAME}.scene.getScene('extraction').report.outcome === ${JSON.stringify(report.outcome)} && Boolean(${GAME}.scene.getScene('extraction').report.settledElsewhere) === ${Boolean(report.settledElsewhere)}`, { what: `the ${name} result`, timeoutMs: 60000 });
+    if (await page.evaluate(`Boolean(document.querySelector('#screens [data-full-report]'))`)) {
+      // Its way on is locked for most of a second after it opens, and L with it.
+      await page.waitFor(`document.querySelector('#screens [data-continue]').disabled === false`, { what: `the ${name} stage answering`, timeoutMs: 60000 });
+      await page.tap('KeyL');
+      await page.waitFor(`document.querySelector('#screens [data-full-report]') === null && Boolean(document.querySelector('#screens .extraction-layout'))`, { what: `the ${name} full report` });
+    }
     // Every tile popped in, a twelfth of a second apart.
     await sleep(2500);
     await page.screenshot(`${out}/${name}.png`);
