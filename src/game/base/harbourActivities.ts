@@ -122,10 +122,10 @@ export const HANG_OUTS: readonly RoomSpot[] = [
   stand(10, 17, 'up'),
   stand(29, 24, 'right'),
   // THE GARDENS' bandstand, from in front of its benches, and the lookout
-  // on THE POINT, at its telescope.
+  // on THE POINT, behind its telescope.
   stand(101, 11, 'up'),
   stand(108, 11, 'up'),
-  stand(120, 15, 'down'),
+  stand(120, 14, 'down'),
 ];
 
 /**

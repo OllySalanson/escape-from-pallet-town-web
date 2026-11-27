@@ -210,11 +210,13 @@ export const GARDENS_SIGN: BaseSign = {
 /**
  * THE POINT's coin telescope, read as a sign: faced, it answered with the
  * partner's small talk, a prop with nothing behind it (the harbour critic
- * tour, 26 Nov 2026). Its post is drawn by `map.plant(..., 'coinTelescope')`.
+ * tour, 26 Nov 2026). Its post is drawn by `map.plant(..., 'coinTelescope')`,
+ * on the lookout's paving between the benches with the rail running unbroken
+ * in front of it, and it is looked through from the walk behind it.
  */
 export const COIN_TELESCOPE: BaseSign = {
   x: 120,
-  y: 16,
+  y: 15,
   lines: ['THE COIN TELESCOPE', 'It wants a coin you have not got. Through the dusty glass: the open sea, and nothing on it.'],
 };
 
@@ -734,7 +736,7 @@ function plantPromenade(map: MapSketch<BasePropName>): void {
   map.plant(121, 9, 'rock');
   // The lookout where the walk ends: a railing round the paving over the
   // rocks, a bench either side of a telescope, and the bay in front of them.
-  for (const x of [117, 118, 119, 121, 122, 123]) map.plant(x, 16, 'railing');
+  for (let x = 117; x <= 123; x += 1) map.plant(x, 16, 'railing');
   map.plant(115, 11, 'troughYellow');
   map.plant(118, 15, 'seaBench');
   map.plant(COIN_TELESCOPE.x, COIN_TELESCOPE.y, 'coinTelescope');
