@@ -1,5 +1,6 @@
 import { itemIcon } from '../ui/icons';
 import { basicsRowAttributes, pickerFindField, type PickerBasics } from '../ui/boxPicker';
+import { lineUpWindowClass, pickerLineUp, pickerRowIcon } from '../ui/pickerLineUp';
 import {
   COLUMN_MEASURES,
   escapeAttribute,
@@ -102,7 +103,7 @@ export function jumpTeamMarkup(state: JumpTeamState): string {
     const tag = type
       ? pixelTag(chosen ? 'Jumping' : JUMP_WORDS[type].label, chosen ? 'good' : 'plain', chosen)
       : pixelTag('Cannot jump', 'risk');
-    return `<button class="px-row${chosen ? ' is-selected' : ''}" ${type ? `data-jumper="${candidate.id}"` : 'aria-disabled="true"'} ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"${full ? ' aria-disabled="true"' : ''}><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level}${type ? ` · ${JUMP_WORDS[type].label} jumper` : ''}</small></span>${tag}</button>`;
+    return `<button class="px-row has-icon${chosen ? ' is-selected' : ''}" ${type ? `data-jumper="${candidate.id}"` : 'aria-disabled="true"'} ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"${full ? ' aria-disabled="true"' : ''}>${pickerRowIcon(candidate)}<span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level}${type ? ` · ${JUMP_WORDS[type].label} jumper` : ''}</small></span>${tag}</button>`;
   };
   const rows = [
     ...jumpers.map(row),
@@ -115,9 +116,10 @@ export function jumpTeamMarkup(state: JumpTeamState): string {
   const last = state.last ? resultLines(state.last) : [];
   const chosen = state.chosen.length;
   const play = `<button class="px-window px-button is-primary" data-play${chosen === 0 ? ' aria-disabled="true"' : ''} data-help="${escapeAttribute(chosen === 0 ? 'Choose who jumps first.' : 'SPACE jumps everyone on the ground. A vine under somebody ends the game.')}">${state.last ? 'Again' : 'Play'}</button>`;
+  const jumping = state.chosen.flatMap((id) => state.candidates.filter((candidate) => candidate.id === id));
   const body = `<main class="px-body game-corner-layout">${pixelWindow(
-    `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${pickerFindField()}${empty}${rows}</div>`,
-    { heading: 'Who jumps?', note: `${chosen} of ${MAX_JUMPERS}` },
+    `${pickerLineUp(jumping, { places: MAX_JUMPERS, doing: 'jumping' })}<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${pickerFindField()}${empty}${rows}</div>`,
+    { heading: 'Who jumps?', note: `${chosen} of ${MAX_JUMPERS}`, className: lineUpWindowClass(MAX_JUMPERS) },
   )}${pixelCommitBar({
     title: state.last ? `Scored ${number(state.last.score)}` : 'POKéMON JUMP',
     lines: [
@@ -425,7 +427,7 @@ export function berryTeamMarkup(state: BerryTeamState): string {
           : `${candidate.name}: two heads. It reaches the middle and one side, and turns to reach the other.`
       : `${candidate.name} cannot play: BERRY PICKING wants a DODRIO, or a DODUO at a push. The house lends a DODUO.`;
     const tag = heads ? pixelTag(chosen ? 'Picking' : `${heads} heads`, chosen ? 'good' : 'plain', chosen) : pixelTag('Cannot pick', 'risk');
-    return `<button class="px-row${chosen ? ' is-selected' : ''}" ${heads ? `data-picker="${candidate.id}"` : 'aria-disabled="true"'} ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level}${heads ? ` · ${heads === 3 ? 'one head a column' : 'two heads, turns to reach'}` : ' · no beak for it'}</small></span>${tag}</button>`;
+    return `<button class="px-row has-icon${chosen ? ' is-selected' : ''}" ${heads ? `data-picker="${candidate.id}"` : 'aria-disabled="true"'} ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}">${pickerRowIcon(candidate)}<span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level}${heads ? ` · ${heads === 3 ? 'one head a column' : 'two heads, turns to reach'}` : ' · no beak for it'}</small></span>${tag}</button>`;
   };
   const rows = [
     ...birds.map(row),
@@ -437,9 +439,10 @@ export function berryTeamMarkup(state: BerryTeamState): string {
       : '';
   const ready = state.chosen !== null;
   const play = `<button class="px-window px-button is-primary" data-play${ready ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(ready ? 'LEFT, UP and RIGHT reach for the berry over that head. Ten on the ground ends it.' : 'Choose who picks first.')}">${state.last ? 'Again' : 'Play'}</button>`;
+  const picking = state.candidates.filter((candidate) => candidate.id === state.chosen);
   const body = `<main class="px-body game-corner-layout">${pixelWindow(
-    `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${pickerFindField()}${empty}${rows}</div>`,
-    { heading: 'Who picks?', note: ready ? '1 of 1' : '0 of 1' },
+    `${pickerLineUp(picking, { places: 1, doing: 'picking' })}<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${pickerFindField()}${empty}${rows}</div>`,
+    { heading: 'Who picks?', note: ready ? '1 of 1' : '0 of 1', className: lineUpWindowClass(1) },
   )}${pixelCommitBar({
     title: state.last ? `Scored ${number(state.last.score)}` : 'BERRY PICKING',
     lines: [
@@ -493,7 +496,7 @@ export function courseTeamMarkup(state: CourseTeamState): string {
       : full
         ? `${state.most} are going round already. Take one out first.`
         : `${candidate.name} could do: ${can}.`;
-    return `<button class="px-row${chosen ? ' is-selected' : ''}" data-runner="${candidate.id}" ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"${full ? ' aria-disabled="true"' : ''}><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level} · ${can}</small></span>${pixelTag(chosen ? 'Going' : `${candidate.moves.length} of 4`, chosen ? 'good' : candidate.moves.length > 0 ? 'plain' : 'risk', chosen)}</button>`;
+    return `<button class="px-row has-icon${chosen ? ' is-selected' : ''}" data-runner="${candidate.id}" ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"${full ? ' aria-disabled="true"' : ''}>${pickerRowIcon(candidate)}<span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level} · ${can}</small></span>${pixelTag(chosen ? 'Going' : `${candidate.moves.length} of 4`, chosen ? 'good' : candidate.moves.length > 0 ? 'plain' : 'risk', chosen)}</button>`;
   };
   // Best fits first is the scene's order already (`ui/boxPicker.ts`).
   const sorted = state.candidates;
@@ -501,9 +504,10 @@ export function courseTeamMarkup(state: CourseTeamState): string {
   const ready = state.chosen.length > 0;
   const play = `<button class="px-window px-button is-primary" data-play${ready ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(ready ? 'ARROWS walk, SPACE uses a field move on what you face. The clock starts on your first step.' : 'Choose who goes round first.')}">${state.last ? 'Again' : 'Run'}</button>`;
   const moves = state.teamMoves.length > 0 ? state.teamMoves.join(' · ') : 'no field moves - it is the long way round everywhere';
+  const going = state.chosen.flatMap((id) => state.candidates.filter((candidate) => candidate.id === id));
   const body = `<main class="px-body game-corner-layout">${pixelWindow(
-    `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${pickerFindField()}${list}</div>`,
-    { heading: 'Who goes round?', note: `${state.chosen.length} of ${state.most}` },
+    `${pickerLineUp(going, { places: state.most, doing: 'going round' })}<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${pickerFindField()}${list}</div>`,
+    { heading: 'Who goes round?', note: `${state.chosen.length} of ${state.most}`, className: lineUpWindowClass(state.most) },
   )}${pixelCommitBar({
     title: state.last ? `Round in ${state.last.time}` : 'FIELD-MOVE COURSE',
     lines: [

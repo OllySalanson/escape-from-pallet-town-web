@@ -765,3 +765,33 @@ describe('the boutique on the wood floor', () => {
     expect(plain).not.toMatch(/data-room='tight'\]\) \.boutique-panes > \.boutique-shelves-window/);
   });
 });
+
+/**
+ * The cabinets' and the promenade games' screens went onto the wood floor with
+ * their line-ups on 27 Nov 2026 (`ui/pickerLineUp.ts`).
+ */
+describe("the games' screens on the wood floor", () => {
+  it.each(['BerryPickingScene', 'FieldCourseScene', 'OutdoorGameScene'])('%s is made on it', async (scene) => {
+    expect(await readFile(new URL(`./game/scenes/${scene}.ts`, import.meta.url), 'utf8')).toContain("'game-corner-screen pixel-ui wood-floor'");
+  });
+
+  it('has no line-up in a small room, where the window is the list it was', () => {
+    // 800x600: a line-up left the list no row at all.
+    const plain = stylesheet.replace(/\/\*[\s\S]*?\*\//g, '');
+    const body = (selector: string): string => {
+      const found = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.trim() === selector);
+      if (!found) throw new Error(`no rule for ${selector}`);
+      return found[2];
+    };
+    const small = ".pixel-ui:is([data-room='tight'], [data-short])";
+    expect(body(`${small} .game-corner-layout .lineup-places`)).toContain('display: none;');
+    expect(body(`${small} .game-corner-layout > .px-window.has-lineup`)).toContain('grid-template-rows: auto minmax(0, 1fr);');
+    // And everywhere, a row keeps its two lines under its icon.
+    expect(body(':where(.pixel-ui) .game-corner-layout .px-row.has-icon > .px-mon-icon')).toMatch(/margin: calc\(var\(--u\) \* -4\) 0;/);
+  });
+
+  it('THE GAME CORNER is on it at its cabinet and not at its prize window, which is drawn as shelves of its own', async () => {
+    const scene = await readFile(new URL('./game/scenes/GameCornerScene.ts', import.meta.url), 'utf8');
+    expect(scene).toContain("this.overlay.root.classList.toggle('wood-floor', this.mode === 'jump');");
+  });
+});

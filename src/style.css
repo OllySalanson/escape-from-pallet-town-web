@@ -6157,6 +6157,102 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .game-corner-layout.has-course {
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
+/* A cabinet's window with its line-up in it (`ui/pickerLineUp.ts`): its
+   heading, who is going in, then the list they are chosen from. */
+:where(.pixel-ui) .game-corner-layout > .px-window.has-lineup {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+/* A game one Pokémon plays stands it beside the list, not over it: a line of
+   one is a narrow thing, and stacked it cost the list half its rows - under
+   THE PROMENADE DERBY's row of courses, all but one. */
+:where(.pixel-ui) .game-corner-layout > .px-window.has-lineup.is-one {
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  column-gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .game-corner-layout > .px-window.has-lineup.is-one > .px-heading {
+  grid-column: 1 / -1;
+}
+/* The line-up: everyone chosen standing as big as in a fight, each moved down
+   by its own empty rows (`--drop`, FireRed's own number) so all their feet are
+   on one line, on a shadow drawn in rows; and a sunk square for each place
+   still free. They stand on a strip sunk into the window, which is what parts
+   them from the list under it. */
+:where(.pixel-ui) .lineup-places {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: calc(var(--u) * 12);
+  padding: 0 calc(var(--u) * 4) calc(var(--u) * 1);
+  margin-bottom: calc(var(--u) * 3);
+  background: var(--paper-sunk);
+  box-shadow: var(--sunk);
+}
+:where(.pixel-ui) .is-one > .lineup-places {
+  align-self: start;
+  width: calc(var(--u) * 88);
+  margin-bottom: 0;
+}
+:where(.pixel-ui) .lineup-place {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  width: calc(var(--u) * 64);
+}
+:where(.pixel-ui) .lineup-place img {
+  position: relative;
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 64);
+  image-rendering: pixelated;
+  translate: 0 calc(var(--u) * var(--drop, 0));
+}
+:where(.pixel-ui) .lineup-place:not(.is-free)::before {
+  --ground: rgb(0 0 0 / 40%);
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: calc(var(--u) * 61);
+  width: calc(var(--u) * 44);
+  height: calc(var(--u) * 6);
+  translate: -50% 0;
+  background:
+    linear-gradient(var(--ground), var(--ground)) 50% 0 / calc(100% - var(--u) * 8) var(--u) no-repeat,
+    linear-gradient(var(--ground), var(--ground)) 50% var(--u) / calc(100% - var(--u) * 4) var(--u) no-repeat,
+    linear-gradient(var(--ground), var(--ground)) 50% calc(var(--u) * 2) / 100% calc(var(--u) * 2) no-repeat,
+    linear-gradient(var(--ground), var(--ground)) 50% calc(var(--u) * 4) / calc(100% - var(--u) * 4) var(--u) no-repeat,
+    linear-gradient(var(--ground), var(--ground)) 50% calc(var(--u) * 5) / calc(100% - var(--u) * 8) var(--u) no-repeat;
+}
+:where(.pixel-ui) .lineup-name {
+  margin-top: calc(var(--u) * 4);
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+/* A place still free: an empty square let into the strip, standing where a
+   Pokémon's feet would. */
+:where(.pixel-ui) .lineup-place.is-free::after {
+  content: '';
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+  margin-top: calc(var(--u) * 32);
+  margin-bottom: calc(var(--u) * 16);
+  box-shadow: inset 0 0 0 var(--u) var(--line);
+}
+/* A row of the list is headed by its Pokémon's icon, which overhangs it as
+   FireRed's party icons overhang their boxes: the row stays the two lines it
+   was, so the list shows as many as it did. */
+:where(.pixel-ui) .game-corner-layout .px-row.has-icon > .px-mon-icon {
+  margin: calc(var(--u) * -4) 0;
+}
+/* A small room has no room to stand anyone: it has no line-up, and is the
+   list it was, under the heading that says how many are in. At 800x600 a
+   line-up left the list no row at all. */
+.pixel-ui:is([data-room='tight'], [data-short]) .game-corner-layout .lineup-places {
+  display: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .game-corner-layout > .px-window.has-lineup {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
 /* THE PROMENADE DERBY's courses: a row of levels over the list of who races. */
 :where(.pixel-ui) .outdoor-course-levels {
   display: flex;
