@@ -227,8 +227,9 @@ body {
   80% { background-position: 100% 0; }
 }
 /* The stage a raid that got out opens on (`.moment-stage`): the headline
-   lands, the clock and money come up, each thing drops into HOME and bounces
-   once, and the next thing rises in under it. */
+   lands, the pack and the team come on, the chest drops and its lid opens,
+   each thing flies from the pack into it, and as the last is in the lid shuts,
+   the bars fill and the next thing rises in. */
 @keyframes moment-land {
   0% {
     opacity: 0;
@@ -253,29 +254,151 @@ body {
     transform: none;
   }
 }
-@keyframes moment-drop {
+/* The chest comes down from above and sits. */
+@keyframes moment-chest-drop {
   0% {
-    opacity: 0;
-    transform: translateY(calc(var(--u) * -40));
-  }
-  15% {
     opacity: 1;
-  }
-  65% {
-    opacity: 1;
-    transform: none;
+    transform: translateY(calc(var(--u) * -90));
   }
   80% {
     opacity: 1;
-    transform: translateY(calc(var(--u) * -6));
+    transform: scale(1.08, 0.86);
   }
   100% {
     opacity: 1;
     transform: none;
   }
 }
-/* The moment a stone evolves a Pokemon (`evolveMomentBody`): the two pictures
-   trade places faster and faster, then the new one stays, as FireRed's does. */
+@keyframes moment-lid-open {
+  to {
+    background-position: 100% 0;
+  }
+}
+@keyframes moment-chest-shut {
+  0% {
+    transform: scale(1.1, 0.84);
+  }
+  100% {
+    transform: none;
+  }
+}
+/* One of the team hopping on from above. It starts clear and is in sight a
+   moment later, so filled backwards it is out of sight until its turn, and
+   once it has landed nothing of the move is left on it: a move still filled
+   is a layer of its own, and a level called over its head (`.moment-grew`)
+   was drawn under the next one in the line. */
+@keyframes moment-hop {
+  0% {
+    opacity: 0;
+    transform: translateY(calc(var(--u) * -20));
+  }
+  1% {
+    opacity: 1;
+    transform: translateY(calc(var(--u) * -20));
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(calc(var(--u) * 2));
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* A thing going from the pack to the chest: across at one speed, and up and
+   down on its own picture, a frame at a time, so the two make an arc. It
+   shrinks as it drops into the chest and is gone as it lands. */
+@keyframes moment-across {
+  0% {
+    opacity: 1;
+    transform: none;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(var(--flight));
+  }
+}
+@keyframes moment-arc {
+  0% {
+    transform: translateY(calc(var(--u) * 0)) scale(1);
+  }
+  10% {
+    transform: translateY(calc(var(--u) * -14)) scale(1);
+  }
+  20% {
+    transform: translateY(calc(var(--u) * -25)) scale(1);
+  }
+  30% {
+    transform: translateY(calc(var(--u) * -34)) scale(1);
+  }
+  40% {
+    transform: translateY(calc(var(--u) * -39)) scale(1);
+  }
+  50% {
+    transform: translateY(calc(var(--u) * -42)) scale(1);
+  }
+  60% {
+    transform: translateY(calc(var(--u) * -42)) scale(1);
+  }
+  70% {
+    transform: translateY(calc(var(--u) * -39)) scale(0.9);
+  }
+  80% {
+    transform: translateY(calc(var(--u) * -33)) scale(0.75);
+  }
+  90% {
+    transform: translateY(calc(var(--u) * -24)) scale(0.6);
+  }
+  100% {
+    transform: translateY(calc(var(--u) * -12)) scale(0.5);
+  }
+}
+/* How many went in, lifting off the lid. */
+@keyframes moment-plus {
+  0% {
+    opacity: 1;
+    transform: none;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(calc(var(--u) * -14));
+  }
+}
+@keyframes moment-ring {
+  0% {
+    opacity: 1;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}
+/* A thing arriving in its square as it lands in the chest. */
+@keyframes moment-in {
+  0% {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes moment-bar {
+  from {
+    width: var(--from);
+  }
+  to {
+    width: var(--to);
+  }
+}
 @keyframes evolve-moment-out {
   0%, 18%, 36%, 52%, 66%, 78%, 88% {
     opacity: 1;
@@ -4052,16 +4175,24 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .extraction-verdict {
   display: grid;
 }
-/* The moment a raid that got out opens on (`run/resultMoment.ts`): a dark
-   stage under the menus' own title strip, so leaving the raid feels like a win
-   rather than a white page (the captain, 26 Nov 2026: "It's so white after
-   you come out of the game ... it's just ugly and not in theme"). The deed in
-   big gold words, the money counting up and the clock it beat, each thing
-   dropping into HOME, and the next thing as a card. The ledger is one key away. */
+/* The moment a raid that got out opens on (`run/resultMoment.ts`) is a scene,
+   not a card: the place the raid got out of is still there behind it, gone dim
+   (`ExtractionScene.standInThePlace`), and on it stand the team that walked
+   out, the raid pack and the chest at home. The deed is in big gold words; the
+   finds fly from the pack into the chest one by one and fill the squares under
+   it; the money counts up; each of the team's bars fills with what it earned;
+   and the next thing comes in as a card beside the way on. It is drawn in the
+   world's own pixel (`px-world`) on the wood floor's colours, so a Pokémon on
+   it is the size one stands in a fight and nothing on it is white but a plate
+   of words. The captain, 26 Nov 2026, of the white card and then of the dark
+   stage that replaced it: "It's so white after you come out of the game", and
+   "I do like that animation ... We still need to improve on the overall
+   screen". The ledger is one key away. */
 :where(.pixel-ui) .extraction-moment-layout {
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
   height: 100%;
+  padding: 0;
 }
 :where(.pixel-ui) .moment-stage {
   position: relative;
@@ -4070,116 +4201,265 @@ body.touch-play .feedback-tab {
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: calc(var(--u) * 8);
+  gap: calc(var(--u) * 6);
   min-height: 0;
-  padding: calc(var(--u) * 8);
-  border: calc(var(--u) * 2) solid var(--ink);
-  background: var(--ink);
-  color: var(--paper);
+  padding: calc(var(--u) * 4) calc(var(--u) * 6);
+  /* With no picture of the place to stand in, the stage is a floor of dark wood, never black. */
+  background: var(--paper-sunk);
+  color: var(--ink);
   text-align: center;
 }
-/* A burst of the ink's own two shades behind the deed, as THE BATTLE ARENA's
-   red one stands behind its hero. */
-:where(.pixel-ui) .moment-stage::before {
+/* Standing in the place, the stage dims it a little further than a screen's
+   own backdrop does, so what stands on it is the brightest thing there. */
+:where(.pixel-ui) .moment-stage.is-in-place {
+  background: rgb(18 16 17 / 40%);
+}
+/* Its help strip is as tall as what it says: the keys, and a note over them
+   only when there is one. The two lines every other screen keeps empty for the
+   thing under the cursor are a fifth of this one, and nothing here is asked. */
+.menu-overlay.pixel-ui.extraction-menu.px-world .px-help.has-keys {
+  height: auto;
+  padding-bottom: var(--u);
+}
+/* The ground under whatever stands on the stage: a flat shadow, drawn in rows. */
+:where(.pixel-ui) :is(.moment-pack, .moment-chest, .moment-mate)::before {
+  --ground: rgb(0 0 0 / 45%);
   content: '';
   position: absolute;
   z-index: -1;
   left: 50%;
-  top: calc(var(--u) * -170);
-  width: calc(var(--u) * 480);
-  height: calc(var(--u) * 480);
+  bottom: calc(var(--u) * -2);
+  width: calc(var(--u) * 36);
+  height: calc(var(--u) * 6);
   translate: -50% 0;
-  clip-path: circle(50%);
-  background: repeating-conic-gradient(from 0deg at 50% 50%, var(--ink-2) 0 8deg, var(--ink) 8deg 16deg);
+  background:
+    linear-gradient(var(--ground), var(--ground)) 50% 0 / calc(100% - var(--u) * 8) var(--u) no-repeat,
+    linear-gradient(var(--ground), var(--ground)) 50% var(--u) / calc(100% - var(--u) * 4) var(--u) no-repeat,
+    linear-gradient(var(--ground), var(--ground)) 50% calc(var(--u) * 2) / 100% calc(var(--u) * 2) no-repeat,
+    linear-gradient(var(--ground), var(--ground)) 50% calc(var(--u) * 4) / calc(100% - var(--u) * 4) var(--u) no-repeat,
+    linear-gradient(var(--ground), var(--ground)) 50% calc(var(--u) * 5) / calc(100% - var(--u) * 8) var(--u) no-repeat;
 }
-/* A picture - the catch, the player in a won honour - stands beside the deed
-   rather than over it, so the stage fits an 800x600 window. */
-:where(.pixel-ui) .moment-hero {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: calc(var(--u) * 8);
+:where(.pixel-ui) .moment-chest::before {
+  width: calc(var(--u) * 68);
+}
+:where(.pixel-ui) .moment-mate::before {
+  top: calc(var(--u) * 61);
+  bottom: auto;
+  width: calc(var(--u) * 44);
 }
 :where(.pixel-ui) .moment-deed {
   display: grid;
   justify-items: center;
-  gap: calc(var(--u) * 4);
+  gap: calc(var(--u) * 3);
 }
-:where(.pixel-ui) .moment-picture {
-  image-rendering: pixelated;
-}
-:where(.pixel-ui) .moment-picture.is-pokemon {
-  width: calc(var(--u) * 64);
-  height: calc(var(--u) * 64);
-}
-/* Under 300 game pixels down, the picture is drawn at its own size, so the
-   rest of the stage fits under it. */
-:where(.pixel-ui[data-short]) .moment-picture.is-pokemon {
-  width: calc(var(--u) * 48);
-  height: calc(var(--u) * 48);
-}
-:where(.pixel-ui) .moment-picture.is-item {
-  width: calc(var(--u) * 48);
-  height: calc(var(--u) * 48);
-}
-:where(.pixel-ui) .moment-picture.is-honour {
-  /* The player's own figure, 16x32, turning round once in what they just won:
-     facing you, a side, the back - held there longest - and the other side. */
-  display: block;
-  width: calc(var(--u) * 48);
-  height: calc(var(--u) * 96);
-  background-image: var(--honour-strip);
-  background-size: 400% 100%;
-  background-repeat: no-repeat;
-  image-rendering: pixelated;
-  animation: honour-turn 3.6s steps(1, end) infinite;
-}
-:where(.pixel-ui[data-short]) .moment-picture.is-honour {
-  width: calc(var(--u) * 32);
-  height: calc(var(--u) * 64);
-}
-/* The deed: the one size twice over, leaning, gold on the ink with a hard
-   red shadow - THE BATTLE ARENA's Big and Bold look (`.bold-title`). */
+/* The deed: the one size twice over, leaning, gold with a dark edge and a
+   hard red shadow - THE BATTLE ARENA's Big and Bold look (`.bold-title`). */
 :where(.pixel-ui) .bold-moment-headline {
   font-size: calc(var(--u) * 25);
   line-height: calc(var(--u) * 24);
   font-style: italic;
   color: var(--gold);
   text-transform: uppercase;
-  -webkit-text-stroke: calc(var(--u) * 2) var(--ink);
+  -webkit-text-stroke: calc(var(--u) * 2) var(--bar);
   paint-order: stroke fill;
-  text-shadow: calc(var(--u) * 2) calc(var(--u) * 2) 0 var(--red-ink);
-  max-width: calc(var(--u) * 300);
+  text-shadow: calc(var(--u) * 2) calc(var(--u) * 2) 0 var(--red);
+  max-width: calc(var(--u) * 360);
 }
 :where(.pixel-ui) .moment-line {
-  color: var(--bar-muted);
-  max-width: calc(var(--u) * 280);
+  max-width: calc(var(--u) * 300);
+  color: var(--ink-soft);
+  -webkit-text-stroke: calc(var(--u) * 2) var(--bar);
+  paint-order: stroke fill;
 }
 :where(.pixel-ui) .moment-sticker {
   padding: 0 calc(var(--u) * 6);
   background: var(--red);
-  color: var(--paper);
+  color: var(--plate);
   transform: skewX(-12deg);
-  box-shadow: calc(var(--u) * 2) calc(var(--u) * 2) 0 var(--paper);
+  box-shadow: calc(var(--u) * 2) calc(var(--u) * 2) 0 var(--plate);
 }
-/* The money, HOME and the clock in one row: the two numbers on chips of the
-   ink's lighter shade either side of what came home. */
+/* The pack and the chest on the left, the team on the right, all standing on
+   one line. */
+:where(.pixel-ui) .moment-scene {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: calc(var(--u) * 16);
+  width: 100%;
+  min-width: 0;
+}
+/* The pack, a gap for a thing to cross, and the chest: both twice the world's
+   size, as a thing in hand is drawn. */
+:where(.pixel-ui) .moment-haul {
+  --flight: calc(var(--u) * 88);
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  gap: calc(var(--u) * 40);
+}
+:where(.pixel-ui) .moment-pack,
+:where(.pixel-ui) .moment-chest,
+:where(.pixel-ui) .moment-mate {
+  position: relative;
+  opacity: 0;
+}
+:where(.pixel-ui) .moment-pack img,
+:where(.pixel-ui) .moment-held {
+  display: block;
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+  image-rendering: pixelated;
+}
+/* THE CHEST's own picture (`home/furniture.ts`): shut, and open beside it. */
+:where(.pixel-ui) .moment-chest {
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 48);
+  background: url('/assets/storage-chest.png') 0 0 / 200% 100% no-repeat;
+  image-rendering: pixelated;
+  transform-origin: 50% 100%;
+}
+:where(.pixel-ui) .moment-flight {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+  opacity: 0;
+}
+:where(.pixel-ui) .moment-flight i {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-style: normal;
+  color: var(--gold);
+  -webkit-text-stroke: calc(var(--u) * 2) var(--bar);
+  paint-order: stroke fill;
+}
+:where(.pixel-ui) .moment-flight img {
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+  image-rendering: pixelated;
+}
+:where(.pixel-ui) .moment-plus {
+  position: absolute;
+  right: 0;
+  bottom: calc(var(--u) * 44);
+  width: calc(var(--u) * 64);
+  color: var(--gold);
+  -webkit-text-stroke: calc(var(--u) * 2) var(--bar);
+  paint-order: stroke fill;
+  opacity: 0;
+}
+:where(.pixel-ui) .moment-ring {
+  position: absolute;
+  right: calc(var(--u) * -4);
+  bottom: calc(var(--u) * -4);
+  width: calc(var(--u) * 72);
+  height: calc(var(--u) * 56);
+  border: calc(var(--u) * 2) solid var(--gold);
+  opacity: 0;
+}
+/* The team: each as big as it stands in a fight. A line too long for the room
+   closes up, one standing a little in front of the next: every frame keeps its
+   whole width, and each after the first is pulled back over the one before by
+   `--close` game pixels, a whole number the stage's fit works out from the
+   room there is (`matesOverlap`, `fitMomentStage`). */
+:where(.pixel-ui) .moment-team {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+:where(.pixel-ui) .moment-mate {
+  position: relative;
+  flex: none;
+  width: calc(var(--u) * 64);
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--u) * 5);
+}
+:where(.pixel-ui) .moment-mate + .moment-mate {
+  margin-left: calc(var(--u) * var(--close, 0) * -1);
+}
+/* Its picture is moved down by its own empty rows (`--drop`, FireRed's own
+   number), so every one of them has its feet on the one line at the foot of
+   the frame, where its shadow is. */
+:where(.pixel-ui) .moment-mate img {
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 64);
+  max-width: none;
+  image-rendering: pixelated;
+  translate: 0 calc(var(--u) * var(--drop, 0));
+}
+/* What it earned: its bar, from where it stood as it went in to where it stands now. */
+:where(.pixel-ui) .moment-xp {
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 4);
+  padding: var(--u);
+  background: var(--bar);
+}
+:where(.pixel-ui) .moment-xp i {
+  display: block;
+  width: var(--from);
+  height: 100%;
+  background: #4a86c8;
+}
+:where(.pixel-ui) .moment-mate.is-new::after {
+  content: '';
+  height: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .moment-grew {
+  position: absolute;
+  /* Just over its head: the frame's empty rows over it, less a line of letters.
+     Over the next one in a line that has closed up, too. */
+  z-index: 1;
+  top: calc(var(--u) * (var(--head, 12) - 12));
+  left: 50%;
+  translate: -50% 0;
+  white-space: nowrap;
+  color: var(--gold);
+  text-transform: uppercase;
+  -webkit-text-stroke: calc(var(--u) * 2) var(--bar);
+  paint-order: stroke fill;
+  opacity: 0;
+}
+/* The player in a gym honour just won, at the head of the line: their own
+   figure, 16x32, turning round once - facing you, a side, the back, held
+   there longest, and the other side. */
+:where(.pixel-ui) .moment-picture.is-honour {
+  flex: none;
+  display: block;
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 64);
+  margin-bottom: calc(var(--u) * 8);
+  background-image: var(--honour-strip);
+  background-size: 400% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  animation: honour-turn 3.6s steps(1, end) infinite;
+}
+/* The money, what is in the chest now and the clock, in one row. */
 :where(.pixel-ui) .moment-stats {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  gap: calc(var(--u) * 8);
+  gap: calc(var(--u) * 6);
+  opacity: 0;
 }
+/* A number is on a plate of the lighter wood, in its dark ink. */
 :where(.pixel-ui) .moment-stat {
   display: inline-flex;
   align-items: center;
-  gap: calc(var(--u) * 4);
-  min-height: calc(var(--u) * 28);
-  padding: 0 calc(var(--u) * 8) 0 calc(var(--u) * 4);
-  border: calc(var(--u) * 2) solid var(--paper);
-  background: var(--ink-2);
-  color: var(--paper);
+  gap: calc(var(--u) * 3);
+  min-height: calc(var(--u) * 20);
+  padding: 0 calc(var(--u) * 5) 0 calc(var(--u) * 3);
+  border: var(--u) solid var(--line);
+  background: var(--paper-raised);
+  box-shadow: var(--raised);
+  color: var(--raised-ink);
   text-transform: uppercase;
 }
 :where(.pixel-ui) .moment-stat img {
@@ -4187,50 +4467,32 @@ body.touch-play .feedback-tab {
   height: calc(var(--u) * 16);
   image-rendering: pixelated;
 }
+/* The money is sunk into dark wood, so its gold reads as gold. */
 :where(.pixel-ui) .moment-stat.is-money {
-  border-color: var(--gold);
+  background: var(--paper-sunk);
+  box-shadow: var(--sunk);
 }
 :where(.pixel-ui) .bold-moment-money {
   font-size: calc(var(--u) * 25);
   line-height: calc(var(--u) * 24);
-  color: var(--gold);
-  /* The digits never shove the chip about as they count. */
+  color: var(--paper-lit);
+  /* The digits never shove the plate about as they count. */
   font-variant-numeric: tabular-nums;
 }
 :where(.pixel-ui) .moment-stat.is-clock.is-close {
-  border-color: var(--red);
-  background: var(--red-ink);
+  background: var(--red);
+  box-shadow: none;
+  color: var(--plate);
 }
-/* HOME, the pane YOUR THINGS keeps what is safe in: its green strip and house,
-   and a cell a thing, drawn at twice its size as YOUR THINGS draws it. */
+/* What is in the chest now: a board with a sunk square a thing, each drawn
+   at twice its size as YOUR THINGS draws it. */
 :where(.pixel-ui) .moment-home {
   --cell: calc(var(--u) * 34);
-  display: grid;
-  border: calc(var(--u) * 2) solid var(--paper);
-  background: var(--paper);
-  box-shadow: calc(var(--u) * 3) calc(var(--u) * 3) 0 var(--shade);
-}
-:where(.pixel-ui) .moment-home-head {
   display: flex;
-  align-items: center;
-  gap: calc(var(--u) * 3);
-  padding: 0 calc(var(--u) * 4);
-  background: var(--go);
-  color: var(--paper);
-  text-align: left;
-  text-transform: uppercase;
-}
-:where(.pixel-ui) .moment-home-head::before {
-  content: '';
-  width: calc(var(--u) * 9);
-  height: calc(var(--u) * 9);
-  background: var(--px-house) center / 100% 100% no-repeat;
-  image-rendering: pixelated;
-}
-:where(.pixel-ui) .moment-home-cells {
-  display: flex;
-  gap: calc(var(--u) * 2);
+  gap: var(--u);
   padding: calc(var(--u) * 2);
+  border: var(--u) solid var(--line);
+  background: var(--paper);
 }
 :where(.pixel-ui) .moment-home-cell {
   position: relative;
@@ -4239,6 +4501,7 @@ body.touch-play .feedback-tab {
   width: var(--cell);
   height: var(--cell);
   background: var(--paper-sunk);
+  box-shadow: var(--sunk);
 }
 :where(.pixel-ui) .moment-home-thing {
   display: grid;
@@ -4257,95 +4520,183 @@ body.touch-play .feedback-tab {
   right: 0;
   bottom: 0;
   padding: 0 calc(var(--u) * 1);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bar);
+  color: var(--bar-text);
+  line-height: calc(var(--u) * 10);
   opacity: 0;
 }
-:where(.pixel-ui) .moment-home-cell.is-in .moment-home-count {
-  opacity: 1;
+/* Oak's next thing and the way on, on one line: the card to the left, the
+   buttons to the right. */
+:where(.pixel-ui) .moment-way {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: calc(var(--u) * 6);
+  width: 100%;
+  min-width: 0;
 }
-/* Oak's next thing, as a card: a gold strip says what kind, then its name. */
+/* The next thing, as a card: a plate of paper, a gold strip that says what
+   kind, then its name. */
 :where(.pixel-ui) .moment-next {
+  flex: 0 1 auto;
   display: grid;
   justify-items: start;
-  min-width: calc(var(--u) * 180);
-  max-width: calc(var(--u) * 300);
-  border: calc(var(--u) * 2) solid var(--paper);
-  background: var(--paper);
-  color: var(--ink);
+  min-width: 0;
+  max-width: calc(var(--u) * 220);
+  border: var(--u) solid var(--plate-ink);
+  background: var(--plate);
+  color: var(--plate-ink);
   text-align: left;
-  box-shadow: calc(var(--u) * 3) calc(var(--u) * 3) 0 var(--gold);
+  box-shadow: calc(var(--u) * 2) calc(var(--u) * 2) 0 var(--gold);
   opacity: 0;
 }
 :where(.pixel-ui) .moment-next-head {
   justify-self: stretch;
   padding: 0 calc(var(--u) * 4);
   background: var(--gold);
-  color: var(--ink);
+  color: var(--plate-ink);
   text-transform: uppercase;
 }
 :where(.pixel-ui) .bold-moment-next-name {
-  padding: calc(var(--u) * 3) calc(var(--u) * 4) 0;
+  padding: calc(var(--u) * 2) calc(var(--u) * 4) 0;
   font-size: calc(var(--u) * 25);
   line-height: calc(var(--u) * 24);
   font-style: italic;
-  color: var(--ink);
+  color: var(--plate-ink);
 }
 :where(.pixel-ui) .moment-next-where {
-  padding: 0 calc(var(--u) * 4) calc(var(--u) * 2);
-  color: var(--ink-soft);
+  padding: 0 calc(var(--u) * 4) calc(var(--u) * 1);
+  color: var(--ink-2);
 }
-:where(.pixel-ui) .moment-stage.is-tight,
-:where(.pixel-ui) .moment-stage.is-tight .moment-stats {
+:where(.pixel-ui) .moment-actions {
+  flex: none;
+  display: grid;
+  justify-items: end;
+  gap: calc(var(--u) * 3);
+  margin-left: auto;
+}
+:where(.pixel-ui) .moment-buttons {
+  display: flex;
+  align-items: center;
   gap: calc(var(--u) * 4);
 }
+/* What went wrong with the save, over the buttons: a red plate, as wide as its words. */
+:where(.pixel-ui) .moment-warning {
+  padding: 0 calc(var(--u) * 4);
+  background: var(--red);
+  color: var(--plate);
+}
+/* A stage too short for all of it gives way in three steps, the loot last:
+   first it closes up and writes the next thing's name in one size of letter;
+   then it draws what is in the chest at the world's own size; then it says
+   less (`fitMomentStage`). */
+:where(.pixel-ui) .moment-stage.is-tight,
+:where(.pixel-ui) .moment-stage.is-tight .moment-stats {
+  gap: calc(var(--u) * 2);
+}
 :where(.pixel-ui) .moment-stage.is-tight {
-  padding: calc(var(--u) * 4);
+  padding: calc(var(--u) * 2) calc(var(--u) * 4);
+}
+:where(.pixel-ui) .moment-stage.is-tight .moment-deed {
+  gap: var(--u);
 }
 :where(.pixel-ui) .moment-stage.is-tight .moment-home {
-  --cell: calc(var(--u) * 26);
+  padding: var(--u);
 }
-:where(.pixel-ui) .moment-stage.is-tight .moment-home-thing img {
+:where(.pixel-ui) .moment-stage.is-tight .bold-moment-next-name {
+  padding-top: 0;
+  font-size: inherit;
+  line-height: inherit;
+  font-style: normal;
+}
+:where(.pixel-ui) .moment-stage.is-tighter .moment-home {
+  --cell: calc(var(--u) * 20);
+}
+:where(.pixel-ui) .moment-stage.is-tighter .moment-home-thing img {
   width: calc(var(--u) * 16);
   height: calc(var(--u) * 16);
 }
-:where(.pixel-ui) .moment-stage.is-tight .moment-picture.is-pokemon {
-  width: calc(var(--u) * 48);
-  height: calc(var(--u) * 48);
+:where(.pixel-ui) .moment-stage.is-tighter .moment-home-count {
+  right: calc(var(--u) * -2);
+  bottom: calc(var(--u) * -2);
 }
-:where(.pixel-ui) .moment-stage.is-tight .bold-moment-next-name {
-  font-size: inherit;
-  line-height: inherit;
-}
-:where(.pixel-ui) .moment-stage.is-tighter .moment-line,
-:where(.pixel-ui) .moment-stage.is-tighter .moment-next-where {
+:where(.pixel-ui) .moment-stage.is-tightest .moment-line,
+:where(.pixel-ui) .moment-stage.is-tightest .moment-next-where {
   display: none;
 }
 /* Before its pictures are drawn the stage holds still, then plays in order:
-   the deed, the money and clock, a drop a fifth of a second apart, the card. */
-:where(.pixel-ui) .moment-hero,
-:where(.pixel-ui) .moment-stats {
+   the deed; the pack, the team and the numbers; the chest and its lid; a
+   flight every three tenths of a second. A part whose move starts in sight -
+   a hop, a drop, a flight - keeps only where the move ends (`forwards`), never
+   where it starts: filled backwards it stood there, in sight, until its turn. */
+:where(.pixel-ui) .moment-deed {
   opacity: 0;
 }
-:where(.pixel-ui) .moment-stage.is-playing .moment-hero {
+:where(.pixel-ui) .moment-stage.is-playing .moment-deed {
   animation: moment-land 0.3s steps(6, end) both;
 }
+:where(.pixel-ui) .moment-stage.is-playing .moment-pack,
 :where(.pixel-ui) .moment-stage.is-playing .moment-stats {
   animation: moment-rise 0.2s steps(4, end) 0.3s both;
 }
-:where(.pixel-ui) .moment-stage.is-playing .moment-home-thing {
-  animation: moment-drop 0.45s steps(12, end) calc(0.7s + var(--at) * 0.2s) both;
+:where(.pixel-ui) .moment-stage.is-playing .moment-mate {
+  opacity: 1;
+  animation: moment-hop 0.25s steps(5, end) calc(0.3s + var(--at) * 0.08s) backwards;
 }
-:where(.pixel-ui) .moment-stage.is-playing .moment-next {
-  animation: moment-rise 0.25s steps(5, end) calc(0.9s + var(--drops) * 0.2s) both;
+:where(.pixel-ui) .moment-stage.is-playing .moment-mate.is-new .moment-grew {
+  animation: moment-in 0.2s steps(3, end) calc(0.6s + var(--at) * 0.08s) forwards;
 }
-:where(.pixel-ui) .moment-stage.is-still .moment-hero,
-:where(.pixel-ui) .moment-stage.is-still .moment-stats,
-:where(.pixel-ui) .moment-stage.is-still .moment-home-thing,
-:where(.pixel-ui) .moment-stage.is-still .moment-home-count,
-:where(.pixel-ui) .moment-stage.is-still .moment-next {
+:where(.pixel-ui) .moment-stage.is-playing .moment-chest {
+  animation:
+    moment-chest-drop 0.3s steps(6, end) 0.35s forwards,
+    moment-lid-open 0.01s linear 0.7s forwards;
+}
+:where(.pixel-ui) .moment-stage.is-playing .moment-flight {
+  animation: moment-across 0.45s steps(10, end) calc(0.9s + var(--at) * 0.3s) forwards;
+}
+:where(.pixel-ui) .moment-stage.is-playing .moment-flight i {
+  animation: moment-arc 0.45s steps(1, end) calc(0.9s + var(--at) * 0.3s) forwards;
+}
+:where(.pixel-ui) .moment-stage.is-playing .moment-plus {
+  animation: moment-plus 0.4s steps(5, end) calc(1.35s + var(--at) * 0.3s) forwards;
+}
+:where(.pixel-ui) .moment-home-cell.is-in .moment-home-thing {
+  animation: moment-in 0.15s steps(3, end) both;
+}
+:where(.pixel-ui) .moment-home-cell.is-in .moment-home-count {
+  opacity: 1;
+}
+/* The last thing is in: the lid shuts with a ring of gold, each bar fills
+   with what its Pokémon earned, a new level is called, and the next thing
+   comes in. */
+:where(.pixel-ui) .moment-stage.is-playing.is-stowed .moment-chest {
+  opacity: 1;
+  animation: moment-chest-shut 0.15s steps(3, end) both;
+}
+:where(.pixel-ui) .moment-stage.is-playing.is-stowed .moment-ring {
+  animation: moment-ring 0.4s steps(5, end) both;
+}
+:where(.pixel-ui) .moment-stage.is-playing.is-stowed .moment-xp i {
+  animation: moment-bar 0.6s steps(12, end) 0.15s both;
+}
+:where(.pixel-ui) .moment-stage.is-playing.is-stowed .moment-mate.is-grown .moment-grew {
+  animation: moment-in 0.2s steps(3, end) 0.75s forwards;
+}
+:where(.pixel-ui) .moment-stage.is-playing.is-stowed .moment-next {
+  animation: moment-rise 0.25s steps(5, end) 0.4s both;
+}
+/* Reduced motion: all of it already there, as it ends, and nothing plays
+   (`is-still` alone: every move above hangs off `is-playing`). */
+:where(.pixel-ui) .moment-stage.is-still :is(.moment-deed, .moment-pack, .moment-chest, .moment-mate, .moment-grew, .moment-stats, .moment-home-thing, .moment-home-count, .moment-next) {
   animation: none;
   opacity: 1;
+}
+:where(.pixel-ui) .moment-stage.is-still :is(.moment-flight, .moment-flight i, .moment-plus, .moment-ring) {
+  animation: none;
+}
+:where(.pixel-ui) .moment-stage.is-still .moment-xp i {
+  animation: none;
+  width: var(--to);
 }
 @media (prefers-reduced-motion: reduce) {
   :where(.pixel-ui) .moment-picture.is-honour {

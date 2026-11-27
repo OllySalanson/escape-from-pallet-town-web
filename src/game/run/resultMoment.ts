@@ -1,6 +1,7 @@
 import { honourById, type HonourId } from '../look/gymHonours';
 import { formatMoney, isCurrency, itemAmountFor } from '../items';
-import type { ExtractionReport, ReportItem, ReportPokemon } from './extractionReport';
+import { STARTING_PACK_ID } from '../items/packs';
+import type { ExtractionReport, ReportItem, ReportPokemon, ReportTeamMate } from './extractionReport';
 
 /**
  * What a raid that got out opens on: one moment, before the ledger.
@@ -10,10 +11,14 @@ import type { ExtractionReport, ReportItem, ReportPokemon } from './extractionRe
  * ... I always just skip past it" (25 Nov), and "It's so white after you come
  * out of the game ... I have no idea what the image means, and then the
  * sentence 'in your things, B at base'" (26 Nov). So a raid that got out
- * opens on a dark stage that says its deed in a few big words and shows the
- * rest: the money counting up, the clock it beat, each thing it brought home
- * dropping into HOME, and the next job as a card (`ExtractionScene`). The
- * full report is one key away. A lost raid keeps its own sequence
+ * opens on a stage that says its deed in a few big words and shows the rest.
+ * Then, of the dark stage that first did it: "I do like that animation. Maybe
+ * we could improve on it though. We still need to improve on the overall
+ * screen" (26 Nov). So the stage is a scene: the place the raid got out of is
+ * still there behind it, gone dim; the team that walked out stands on it, each
+ * one's bar filling with what it earned; the finds fly out of the raid pack
+ * into the chest at home one by one, the money counts up, and the next job
+ * comes in as a card (`ExtractionScene`). The full report is one key away. A lost raid keeps its own sequence
  * (`defeatSequence.ts`), which is already a moment.
  *
  * Pure, like `extractionReport.ts`, so the words are held by tests.
@@ -32,8 +37,16 @@ export interface ResultMoment {
   readonly line: string;
   /** The money banked, counted up on the stage; 0 when none was. */
   readonly money: number;
-  /** The things seen dropping into HOME, or null when none are. */
+  /** The things seen going from the pack into the chest, or null when none are. */
   readonly stow: HaulStow | null;
+  /** The team that walked out, standing on the stage with what each earned; empty where the report names none. */
+  readonly team: readonly ReportTeamMate[];
+  /**
+   * The pack the finds come out of, by item id. Every raid is carried in one
+   * (`items/packs.ts`: nobody is ever stranded without); a report written down
+   * before it named its pack is drawn with the pack a save starts with.
+   */
+  readonly packItemId: string;
 }
 
 /** The things a raid put in YOUR THINGS, as the stage drops them into HOME. */
@@ -106,13 +119,15 @@ export function resultMoment(report: ExtractionReport): ResultMoment | null {
   const stow = stowOf(report);
   const banked = moneyOf(report);
   const levelled = report.progress.filter((entry) => entry.toLevel > entry.fromLevel);
-  const grew = levelled.length > 0 ? `${upper(levelled[0].name)} grew to Lv ${levelled[0].toLevel}!` : '';
+  // With the team on the stage a new level is called over the Pokémon that
+  // reached it; it is said in words only on a report that names no team.
+  const grew = report.team === undefined && levelled.length > 0 ? `${upper(levelled[0].name)} grew to Lv ${levelled[0].toLevel}!` : '';
   const said = (...parts: readonly string[]): string => parts.filter((part) => part !== '').join(' ');
   // Shown on the stage, the haul is never said again in words; it is said only
   // when the raid could not be saved, and so has nothing to show going in.
   const unshown = report.saved ? [] : amounts(money, things);
   const alsoHome = (parts: readonly string[]): string => (parts.length > 0 ? `${listed(parts)} came home too.` : '');
-  const base = { money: banked, stow };
+  const base = { money: banked, stow, team: report.team ?? [], packItemId: report.pack?.itemId ?? STARTING_PACK_ID };
 
   const badge = report.badgesWon?.[0];
   if (badge) {

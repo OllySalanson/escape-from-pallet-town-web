@@ -13,6 +13,7 @@ import {
   type BagContents,
 } from '../items';
 import { experienceForLevel, type Pokemon } from '../pokemon';
+import { MAX_LEVEL } from '../pokemon/Pokemon';
 import type { RunSnapshot } from './RunManager';
 import { hunterFleePenaltyMs } from './fleePenalty';
 import { survivingSecureItems } from './raidSettlement';
@@ -101,6 +102,19 @@ export interface ReportProgress {
   readonly experienceToNextLevel: number;
   /** Set only for a shiny, which its row marks as the party's row does. */
   readonly shiny?: true;
+}
+
+/**
+ * One of the team a raid walked out with, as the stage it opens on stands it
+ * (`resultMoment.ts`): who it is, and how far its experience bar moved.
+ */
+export interface ReportTeamMate extends ReportPokemon {
+  /** The level it deployed at; lower than `level` when it grew. */
+  readonly fromLevel: number;
+  /** How far through its level it stood as it deployed, 0 to 1 - 0 when it has grown, as the bar starts again. */
+  readonly barFrom: number;
+  /** How far through its level it stands now, 0 to 1; 1 at the last level there is. */
+  readonly barTo: number;
 }
 
 /**
@@ -212,6 +226,12 @@ export interface ExtractionReport {
   readonly progress: readonly ReportProgress[];
   /** One sentence naming what the party earned, or null when it earned nothing. */
   readonly progressSummary: string | null;
+  /**
+   * The team that walked out, in the order it went in - every one of them,
+   * whether or not it earned anything. Only on a raid that got out, and absent
+   * on a report written down before the stage stood them.
+   */
+  readonly team?: readonly ReportTeamMate[];
   /**
    * Every piece of gear the raid ended holding, on the Pokemon holding it.
    * Empty when nobody carried any, which is when the screen says nothing about
@@ -532,6 +552,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     dropped: toReportItems(snapshot.droppedItems),
     progress,
     progressSummary: progressSummary(progress),
+    ...(escaped ? { team: teamThatWalkedOut(snapshot) } : {}),
     gear,
     gearSummary: gearSummary(gear, escaped),
     pack,
@@ -1037,6 +1058,30 @@ function partyProgress(snapshot: RunSnapshot, escaped: boolean): ReportProgress[
     }))
     .sort((a, b) => b.toLevel - b.fromLevel - (a.toLevel - a.fromLevel)
       || b.experienceGained - a.experienceGained);
+}
+
+/** How far through `level` a total of experience stands, 0 to 1; 1 at the last level there is. */
+function throughLevel(experience: number, level: number, growthRate: Pokemon['base']['growthRate']): number {
+  if (level >= MAX_LEVEL) {
+    return 1;
+  }
+  const floor = experienceForLevel(level, growthRate);
+  const span = experienceForLevel(level + 1, growthRate) - floor;
+  return span <= 0 ? 1 : Math.max(0, Math.min(1, (experience - floor) / span));
+}
+
+/** The team a raid that got out walked out with, and how far each one's bar moved. */
+function teamThatWalkedOut(snapshot: RunSnapshot): ReportTeamMate[] {
+  return (snapshot.loadout?.party ?? []).map((member, index) => {
+    const before = snapshot.deployedExperience[index] ?? member.experience;
+    const fromLevel = levelForExperience(before, member.level, member.base.growthRate);
+    return {
+      ...toReportPokemon(member),
+      fromLevel,
+      barFrom: fromLevel < member.level ? 0 : throughLevel(before, member.level, member.base.growthRate),
+      barTo: throughLevel(member.experience, member.level, member.base.growthRate),
+    };
+  });
 }
 
 /**

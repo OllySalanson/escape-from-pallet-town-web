@@ -1133,6 +1133,19 @@ try {
     totalWallSeconds: Number(((Date.now() - started) / 1000).toFixed(1)),
   }));
   if (option('shot')) {
+    // A raid that got out opens on a stage that plays for three seconds, on the
+    // wall clock whatever the loop is doing (`ExtractionScene.hookMoment`).
+    // The loop's own clock counts its money, so a stepped loop is stepped through it too.
+    // Six finds take longer than that, so the stage is then waited on until its
+    // chest is shut (`is-stowed`; `is-still` with reduced motion), and a second more.
+    if (ended) {
+      const playing = Date.now();
+      await wait(3500);
+      await sleep(Math.max(0, 3500 - (Date.now() - playing)));
+      const played = `(() => { const stage = document.querySelector('[data-moment-stage]'); return !stage || stage.classList.contains('is-stowed') || stage.classList.contains('is-still'); })()`;
+      for (let guard = 0; guard < 30 && !(await page.evaluate(played)); guard += 1) await wait(200);
+      await sleep(1300);
+    }
     await page.screenshot(option('shot'));
   }
   if (ended) {

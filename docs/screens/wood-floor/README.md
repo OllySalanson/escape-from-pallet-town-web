@@ -92,6 +92,48 @@ Still in the finer pixel, because they are lists or grids and would lose their r
 THINGS and THE CHEST, the Pokédex's list, the shops, HELP, and the panels that stand
 beside the map on a raid, where a wider column would cover the map.
 
+## After a raid
+
+The screen a raid that got out opens on was the last cause of the study by another
+name: a card about the raid, in a black room, with a white bar under it. It is a scene now,
+as the study's animated mock drew it (the captain, 26 Nov 2026: "I do like that
+animation ... We still need to improve on the overall screen"):
+
+- **the place is still there.** The world's last frame is handed to the result and stands
+  behind it, dimmed, so nothing cuts to black and a night raid's result is as dark as its
+  night;
+- **the team that walked out stands on it**, each as big as it stands in a fight, its
+  bar filling with what it earned and its new level called over its head; a catch comes
+  on last, marked NEW!;
+- **the finds fly out of the raid pack into the chest at home**, one by one, and fill
+  the squares under it; then the lid shuts;
+- no white bar: the two buttons stand on the stage, and the help strip is one line.
+
+It is drawn in the world's pixel, on the wood floor's colours.
+
+| A raid | Before | After | Colour (world 27-35) | White |
+|---|---|---|---|---|
+| A haul, out with 0:22 left | ![](after-raid/haul-before.png) | ![](after-raid/haul-after.png) | 15 to 34 | 11% to 4% |
+| A catch | ![](after-raid/catch-before.png) | ![](after-raid/catch-after.png) | 15 to 33 | 11% to 4% |
+| A job done, six finds | ![](after-raid/job-before.png) | ![](after-raid/job-after.png) | 16 to 36 | 12% to 4% |
+| Nothing found | ![](after-raid/empty-before.png) | ![](after-raid/empty-after.png) | 14 to 32 | 11% to 4% |
+
+| | |
+|---|---|
+| The haul playing, at the game's own speed | ![](after-raid/haul-playing.png) |
+| A team of six closes up to stand in the room there is | ![](after-raid/six-after.png) |
+| A raid the browser could not save: nothing went into the chest, so none is drawn | ![](after-raid/unsaved-after.png) |
+
+Made with `node tools/playtest/resultMoment.mjs <test-mode build dir> <dir> --clip`, which
+deploys into the vale, ends the raid there on a report of its own through the world's
+own hand-over, and fails a part drawn off the stage, a stage with no place behind it, a
+find that did not reach the chest or a lid left open. It passes at 1280x800, 1920x1080,
+800x600 and 800x512. With no picture of the place (a stopped render loop never hands one
+over) the stage is a floor of dark wood; with reduced motion it is drawn as it ends.
+
+Not in this change: the full report behind L and the screen a lost raid ends on are
+still paper.
+
 ## Every screen, as it is moved
 
 `before/` and `after/` are the same save photographed the same way on the commit before

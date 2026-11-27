@@ -23,7 +23,8 @@ number of screen pixels to the game pixel and stays sharp on a high-density disp
 | `the-rim.png` | Looking down from the rim: the portal, the pit seen whole, with the card down the side (1600x1024, shown at half: an 800x512 window has no room for the portal beside the card) | `portal.mjs --window=1600x1024 --tz=Asia/Tokyo --eval=1`, its `5-looking-down-03.png` |
 | `pack.png` | The pack opened mid-raid with a few finds put in the raid's own bag first: a crate, a roll of linen, a valve, a Super Potion, a Thunder Stone and ₽40 (800x512) | `readmeShots.mjs` |
 | `map-maker.png` | The map maker with the sample map open at 1X (1600x1000) | `readmeShots.mjs --part=maker --window=1600x1000` |
-| `extracted.png`, `raid-lost.png` | The two ways a raid ends (800x512) | `tools/playtest/raid.mjs --pixels --stepped --window=800x512 --shot=...` (both `--insertion=greystone-vale --seed=3 --level=12`: `--grab=mooring-rope,super-potion` walked out, `--grab=money,parts-crate,linen-roll,super-potion,mooring-rope` went down) |
+| `extracted.png` | A raid that got out: the stage it opens on (800x512) | `resultMoment.mjs <build dir> <out> --window=800x512`, its `job-800x512.png`: a raid on the vale ended there on the driver's own report of a job done |
+| `raid-lost.png` | A raid that was lost (800x512). **Out of date**: it shows the screen as it was several looks ago. Its recipe, not re-run since: `tools/playtest/raid.mjs --pixels --stepped --window=800x512 --shot=... --insertion=greystone-vale --seed=3 --level=12 --grab=money,parts-crate,linen-roll,super-potion,mooring-rope`. The same recipe's walked-out half (`--grab=mooring-rope,super-potion`) no longer played on 27 Nov 2026 - that seed's rope could not be walked to and a fight on the way was never cleared - so expect to choose a new seed. To be retaken when the lost raid's screen is next changed |
 
 ## Making them again
 
