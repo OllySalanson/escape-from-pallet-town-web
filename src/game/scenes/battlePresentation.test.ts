@@ -39,8 +39,6 @@ import {
   makeRoomPromptLayout,
   makeRoomRowLayout,
   packRoomPrompt,
-  combatantBanner,
-  enemyBannerRole,
   captionBySentence,
   combatPresentationSteps,
   describeMoveGuidance,
@@ -289,17 +287,6 @@ describe('battle presentation', () => {
     expect(guidance.matchup).toBe('vs KOFFING: NO EFFECT (LEVITATE)');
     expect(guidance.tone).toBe('none');
     expect(abilityRefusing(koffing.enemy, MOVE_CATALOGUE['tackle'])).toBeUndefined();
-  });
-
-  it('names the typing of both sides in the HUD banners', () => {
-    expect(combatantBanner('WILD', [PokemonType.Grass, PokemonType.Poison])).toBe(
-      'WILD  GRASS/POISON',
-    );
-    expect(combatantBanner('YOURS', [PokemonType.Fire])).toBe('YOURS  FIRE');
-    // RIVAL is the hunter's word; a toll keeper's Pidgey fought under it.
-    expect(enemyBannerRole({ trainer: true, hunter: true })).toBe('RIVAL');
-    expect(enemyBannerRole({ trainer: true, hunter: false })).toBe('FOE');
-    expect(enemyBannerRole({ trainer: false, hunter: false })).toBe('WILD');
   });
 
   it('opens the teaching fight by explaining the guidance surfaces', () => {

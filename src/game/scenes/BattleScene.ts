@@ -178,7 +178,6 @@ import {
   aboutToUseLine,
   aboutToUseOptionLayout,
   aboutToUsePromptLayout,
-  combatantBanner,
   combatPresentationSteps,
   describeItemGuidance,
   describeMoveGuidance,
@@ -188,8 +187,6 @@ import {
   eventToMessage,
   foeWordFor,
   type FoeWord,
-  enemyBannerRole,
-  type BannerRole,
   formatHunterFleeCommand,
   formatHealCommand,
   formatItemCommand,
@@ -218,7 +215,6 @@ import {
   targetRowLayout,
   targetPromptLayout,
   TARGET_PROMPT,
-  formatTypeList,
   packRoomPrompt,
   KEEP_PACK_ROW,
   MAKE_ROOM_COLUMNS,
@@ -348,18 +344,6 @@ const BATTLE_RAIN_DEPTH = 4;
 const WIDE_BACKDROP_KEY = 'battle-background-grass-wide';
 /** The double battle's, made from its own field (`doubleBattleBackdrop`). */
 const WIDE_DOUBLE_BACKDROP_KEY = 'battle-background-grass-double-wide';
-const BANNER_TEXT_STYLE = {
-  fontFamily: BATTLE_FONT,
-  // The smallest size the face survives as hard-edged pixels: at 8px its stems
-  // are under two thirds of a pixel and `WILD NORMAL` came out `WILC NCRMAL`.
-  fontSize: CAPTION_FONT_SIZE,
-  // A tab of the frame's ink on the plate's top edge, as a panel's heading is
-  // a strip over its window: outlined white letters floating on the sky were a
-  // style nothing else in the game used (critic sweep, 25 Nov 2026).
-  color: UI.paper.css,
-  backgroundColor: UI.frameLine.css,
-  padding: { left: 3, right: 3, top: 1, bottom: 1 },
-} as const;
 const MATCHUP_COLORS: Readonly<Record<MatchupTone, string>> = {
   // Read on the panel's cream, so these are the dark end of each hue.
   good: '#1d6c2e',
@@ -597,8 +581,6 @@ interface CombatantPlate {
   };
   readonly statusText: Phaser.GameObjects.Text;
   readonly levelText: Phaser.GameObjects.Text;
-  readonly typeText?: Phaser.GameObjects.Text;
-  readonly banner?: Phaser.GameObjects.Text;
 }
 
 /** How a slot is keyed on screen, which is the only thing the map needs. */
@@ -1480,7 +1462,7 @@ export class BattleScene extends Phaser.Scene {
     this.ballSprite?.destroy();
     const spot = combatantSpot('enemy', 0, this.state.unitCount);
     const from = { x: 60, y: 150 };
-    // At the foe's feet, and clear of the banner over the player's plate below them.
+    // At the foe's feet.
     const to = { x: spot.x, y: spot.ground - 8 };
     const ball = this.add
       .image(from.x, from.y, iconTextureKey(itemIconName(this.thrownBallId ?? 'poke-ball')))
@@ -1627,7 +1609,7 @@ export class BattleScene extends Phaser.Scene {
   /**
    * One plate, drawn for one slot.
    *
-   * Depth 6, between the combatants at 2 and the type banner at 7. The
+   * Depth 6, over the combatants at 2. The
    * container's own depth is what decides this - a child's `setDepth` only
    * orders it against its siblings inside the container - so without it the
    * plate sat at depth 0, under both sprites: a Pokemon fainting slides its
@@ -1736,37 +1718,9 @@ export class BattleScene extends Phaser.Scene {
       container.add(gearText);
     }
 
-    // A double battle has no room for a floating banner over four plates, so
-    // the typing that banner carried is on the plate itself; a single battle
-    // keeps the banner it was authored with.
-    let typeText: Phaser.GameObjects.Text | undefined;
-    let banner: Phaser.GameObjects.Text | undefined;
-    if (layout.showsTyping) {
-      typeText = this.add
-        .text(x + 9, y + layout.detailY, formatTypeList(getCombatantTypes(combatant)), {
-          fontFamily: BATTLE_FONT,
-          fontSize: CAPTION_FONT_SIZE,
-          color: PANEL_GUIDANCE_INK,
-        })
-        .setDepth(6);
-      container.add(typeText);
-    } else {
-      // Typing sits in the banner so incoming damage is readable before it
-      // lands. It floats over the battlefield art, so it carries a dark outline
-      // rather than relying on whatever happens to be behind it.
-      banner = this.add
-        .text(
-          x + 2,
-          y - 14,
-          combatantBanner(
-            showNumbers ? 'YOURS' : this.enemyRole(),
-            getCombatantTypes(combatant),
-          ),
-          BANNER_TEXT_STYLE,
-        )
-        .setDepth(7);
-    }
-
+    // FireRed's healthbox carries a name, a level, the HP and a status and no
+    // typing: a fight labels nobody's types (the Millbrook critic, 26 Nov 2026,
+    // read "FOE NORMAL/FLYING" over a plate as a lesson the game never gave).
     const plate: CombatantPlate = {
       container,
       hpBar,
@@ -1785,8 +1739,6 @@ export class BattleScene extends Phaser.Scene {
       },
       statusText,
       levelText,
-      typeText,
-      banner,
     };
     this.seatStatusTag(plate);
     this.plates.set(plateKey(ref.side, ref.slot), plate);
@@ -2970,14 +2922,6 @@ export class BattleScene extends Phaser.Scene {
     this.selectedCommand = returningToItems ? 0 : this.lastMainCommand;
     this.showCommands();
     audioManager.play('cancel');
-  }
-
-  private enemyRole(): BannerRole {
-    // A dojo regular is a trainer met for sport, and a gym leader sparring in
-    // the hall a trainer too: never the rival hunting a raid, whose word RIVAL is.
-    const dojo = this.exhibition !== undefined && 'dojo' in this.exhibition;
-    const practice = this.exhibition !== undefined && 'practice' in this.exhibition && this.exhibition.practice !== undefined;
-    return enemyBannerRole({ trainer: this.trainer !== undefined, hunter: this.hunterBattle && !dojo && !practice });
   }
 
   private hunterFleeLabel(): string {
@@ -4176,7 +4120,6 @@ export class BattleScene extends Phaser.Scene {
     // sparkles.
     const landed = this.displayed.get(plateKey(ref.side, ref.slot)) !== combatant.pokemon;
     plate?.container.destroy();
-    plate?.banner?.destroy();
     this.createStatusBox(ref, combatant);
     this.standOnSpot(ref)?.setTexture(this.spriteTexture(ref.side, combatant.pokemon));
     this.refreshStatusLabels();
