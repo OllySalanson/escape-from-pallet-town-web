@@ -881,6 +881,39 @@ describe('a small window', () => {
     expect(body(':where(.pixel-ui) .cs-help')).toContain('grid-auto-rows: max-content;');
     expect(body(':where(.pixel-ui) .cs-help-layout')).toContain('grid-template-rows: minmax(0, 1fr);');
   });
+
+  // The second pass, the same day: the Day-Care, the Trader and THE CHEST's POKéMON.
+  it("gives the Day-Care's and the Trader's list the height it asks for, and the stage the rest", () => {
+    // A stage that kept 150 left the tiles standing out of their pane, over the help line.
+    expect(body(`${small} :is(.dc-layout, .tr-layout)`)).toContain('grid-template-rows: minmax(0, 1fr) auto;');
+    expect(body(':where(.pixel-ui) .dc-layout')).toContain('grid-template-rows: minmax(calc(var(--u) * 150), 1fr) auto;');
+  });
+
+  it('gives that list room for its bar and one row of tiles, in any window', () => {
+    // 18 and 58: at 62 a list of one row scrolled for nothing, and the MORE strip pushed the row under the cursor out of the top.
+    for (const who of ['dc', 'tr']) expect(body(`:where(.pixel-ui) .${who}-who .px-mon-tiles`)).toContain('max-height: calc(var(--u) * 76);');
+    expect(body('.pixel-ui .px-mon-tile:is(.team-box-tile, .dc-tile, .is-named)')).toMatch(/width: calc\(var\(--u\) \* 58\);\s*height: calc\(var\(--u\) \* 58\);/);
+  });
+
+  it("stands who the Trader shows at the art's own size, and NEW IN THE POKéDEX on top of its plate", () => {
+    expect(body(`${small} .tr-stand .px-portrait img`)).toContain('transform: scale(var(--zoom, 2));');
+    expect(body(`${small} .tr-stand .tr-new`)).toContain('bottom: calc(100% + var(--u));');
+  });
+
+  it("draws THE CHEST's Pokémon three across, the garden under them, and the card as tall as the next raid and the grid", () => {
+    const areas = body(`${small} .chest-mons-layout`).replace(/\s+/g, ' ');
+    expect(areas).toContain("grid-template-areas: 'team card' 'mons card' 'garden give';");
+    expect(body(`${small} .chest-mon-grid`)).toContain('grid-template-columns: repeat(3, calc(var(--u) * 65));');
+  });
+
+  it("keeps on that card what choosing needs: no picture, no keys, numbers two abreast, what it holds beside its speed", () => {
+    const gone = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.includes(`${small} .chest-card-foot`));
+    expect(gone?.[1]).toContain(`${small} .chest-card-side > .px-portrait`);
+    expect(gone?.[1]).toContain(`${small} .chest-card-figures > .px-stat:last-of-type`);
+    expect(gone?.[2]).toContain('display: none;');
+    expect(body(`${small} .chest-card-figures`)).toContain('display: contents;');
+    expect(body(`${small} .chest-card-side`)).toContain('order: 2;');
+  });
 });
 
 /**

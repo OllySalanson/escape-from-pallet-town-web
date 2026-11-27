@@ -55,12 +55,14 @@ describe("THE CHEST's POKéMON tab", () => {
     expect(html).toMatch(/class="chest-mon is-garden" data-mon="oddish-2"[^>]*>.*?chest-mark is-garden/);
   });
 
-  it('fills the grid out with empty places, a row at a time and three rows at least', () => {
+  it('fills the grid out with empty places in twelves: whole rows at four across, and at the three of a small window', () => {
     const few = chestPokemonBody(stateOf(stashOf(['rattata', 5])));
     expect(few.match(/chest-mon-gap/g)).toHaveLength(CHEST_COLUMNS * 3 - 1);
     const members = Array.from({ length: 18 }, (_one, index) => ['rattata', index + 2] as const);
     const many = chestPokemonBody(stateOf(stashOf(...members)));
-    expect((many.match(/chest-mon-gap/g) ?? []).length).toBe(2);
+    expect((many.match(/chest-mon-gap/g) ?? []).length).toBe(6);
+    const full = chestPokemonBody(stateOf(stashOf(...members.slice(0, 12))));
+    expect(full.match(/chest-mon-gap/g)).toBeNull();
   });
 
   it('stands the next raid and the garden as six places each, a gap where nobody is', () => {

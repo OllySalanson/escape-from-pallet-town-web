@@ -10837,13 +10837,14 @@ body.touch-play .feedback-tab {
 }
 /* A tile that names its Pokémon under the icon - YOUR TEAM's boxes - is wide
    enough for a ten-letter name and tall enough for its level under it. The
-   partner's rosette stands on its corner, clear of the name. */
+   partner's rosette stands on its corner, clear of the name. (Fifty-two was
+   not enough for the widest ten: KANGASKHAN lost its N.) */
 :where(.pixel-ui) .px-mon-tiles:has(> .team-box-tile, > .dc-tile, > .is-named) {
-  grid-template-columns: repeat(auto-fill, calc(var(--u) * 52));
+  grid-template-columns: repeat(auto-fill, calc(var(--u) * 58));
 }
 .pixel-ui .px-mon-tile:is(.team-box-tile, .dc-tile, .is-named) {
   position: relative;
-  width: calc(var(--u) * 52);
+  width: calc(var(--u) * 58);
   height: calc(var(--u) * 58);
 }
 .pixel-ui .px-mon-tile .px-rosette {
@@ -10967,8 +10968,13 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .dc-who {
   margin: calc(var(--u) * 4);
 }
+/* The bar that sorts and finds, and one row of tiles under it: 18 and 58. At
+   62 a list of one row scrolled, for nothing, and rested with a sliver of its
+   bar showing; and in a longer one the MORE strip took the foot of the row
+   under the cursor, which was pushed up out of the pane's top to clear it,
+   cutting the partner's rosette. */
 :where(.pixel-ui) .dc-who .px-mon-tiles {
-  max-height: calc(var(--u) * 62);
+  max-height: calc(var(--u) * 76);
 }
 :where(.pixel-ui) :is(.dc-tile, .is-named) .px-mon-tile-line {
   display: flex;
@@ -11117,7 +11123,62 @@ body.touch-play .feedback-tab {
   margin: calc(var(--u) * 4);
 }
 :where(.pixel-ui) .tr-who .px-mon-tiles {
-  max-height: calc(var(--u) * 62);
+  max-height: calc(var(--u) * 76);
+}
+/* A small window (800x600, a body about 206 game pixels tall): a stage that
+   kept 150 of them for itself left the list under it too little for one row of
+   tiles, which stood out of their pane over the help line. There the list has
+   the height it asks for and the stage has the rest. */
+.pixel-ui:is([data-room='tight'], [data-short]) :is(.dc-layout, .tr-layout) {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) :is(.dc-who, .tr-who) {
+  margin: 0 calc(var(--u) * 2);
+}
+/* And who the Trader is shown stands at the art's own size there, not twice
+   it, on a mound half as wide: at twice, a stage of a hundred and twenty game
+   pixels cut their heads off. */
+.pixel-ui:is([data-room='tight'], [data-short]) .tr-stand {
+  width: calc(var(--u) * 68);
+  height: calc(var(--u) * 100);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .tr-stand .px-portrait {
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 64);
+  margin-bottom: calc(var(--u) * 30);
+}
+/* Two plates side by side have 116 between their middles there, and NEW IN
+   THE POKéDEX made his 150 wide: it stands on top of his plate instead. */
+.pixel-ui:is([data-room='tight'], [data-short]) .tr-stand .tr-new {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + var(--u));
+  transform: translateX(-50%);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .tr-stand .px-portrait img {
+  transform: scale(var(--zoom, 2));
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .tr-stand + .tr-swap + .tr-stand .px-portrait img {
+  transform: scale(calc(var(--zoom, 2) * -1), var(--zoom, 2));
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .tr-stand .team-platform {
+  bottom: calc(var(--u) * 4);
+  width: calc(var(--u) * 131);
+  height: calc(var(--u) * 42);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .tr-field {
+  bottom: calc(var(--u) * 4);
+}
+/* The Day-Care's paddock is drawn about its middle, and the man stands under
+   it: on a shorter stage the whole scene is twenty higher, so his feet are on it. */
+.pixel-ui:is([data-room='tight'], [data-short]) .dc-stage {
+  background-position: center calc(50% - var(--u) * 20);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .dc-keeper {
+  top: calc(50% + var(--u) * 12);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .dc-in-pen {
+  top: calc(50% - var(--u) * 28);
 }
 
 /* --- THE HARBOUR BOUTIQUE in the round-3 look (`look/boutiqueView.ts`) ---- *
@@ -11468,6 +11529,74 @@ body.touch-play .feedback-tab {
 }
 .pixel-ui .chest-mons-layout > .chest-give {
   grid-area: give;
+}
+/* A small window (800x600) has about 368 game pixels across and 206 down, and
+   the grid's four took 270 of them: the card beside it was too narrow for its
+   own numbers, and its keys stood under the screen's foot. There the grid is
+   three across, the garden goes under it, and the card has the height of the
+   next raid and the grid together. */
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-mons-layout {
+  grid-template-areas:
+    'team card'
+    'mons card'
+    'garden give';
+  row-gap: calc(var(--u) * 2);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-mon-grid {
+  grid-template-columns: repeat(3, calc(var(--u) * 65));
+}
+/* A row of the grid is 67 tall and the MORE strip 12 over its foot: the two
+   rows of six give up their own padding so the pane has the 79, and the row
+   under the cursor is whole above the strip. */
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-mons-layout > .px-window > .px-heading {
+  margin-bottom: calc(var(--u) * 2);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-slots {
+  padding: 0 var(--u);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-mons-layout > :is(.chest-team, .chest-garden) > .px-heading {
+  margin-bottom: var(--u);
+}
+/* The card there is what choosing needs and no more. Its picture is the square
+   the cursor is on, two columns to the left. Its numbers stand two abreast
+   under the HP and its bar, with what it holds where the way to the next
+   level was. Its keys are on the keys line, and where it is on the line above
+   that: four moves with long names take four rows, and all of it is inside. */
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-body {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--u) calc(var(--u) * 6);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-figures {
+  display: contents;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-figures > .px-stat:first-of-type,
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-figures > .team-moves {
+  grid-column: 1 / -1;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-figures > .px-stat:not(:first-of-type) {
+  order: 1;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-figures > .px-stat:not(:first-of-type) > .px-stat-bar,
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-figures > .px-stat:last-of-type,
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-side > .px-portrait,
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-foot {
+  display: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-side {
+  order: 2;
+  justify-items: start;
+  align-content: center;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-figures > .team-moves {
+  order: 3;
+  margin-top: 0;
+}
+/* What there is to give is one row of squares there, and the rest is scrolled to. */
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-gifts {
+  max-height: calc(var(--u) * 34);
+  overflow-y: auto;
+  scrollbar-width: none;
 }
 :where(.pixel-ui) .chest-mon-scroll {
   min-height: 0;
