@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getSpeciesById } from '../pokemon/species';
 import { headsOf } from './berryPicking';
-import { HOUSE_JUMPER, HOUSE_PICKER, loanBasics } from './houseLoans';
+import { HOUSE_JUMPER, HOUSE_PICKER } from './houseLoans';
 import { jumpTypeOf } from './pokemonJump';
 
 /**
@@ -18,7 +18,7 @@ describe("THE GAME CORNER's lent Pokémon", () => {
   it('names each as the species it is, by its own dex number', () => {
     for (const loan of [HOUSE_JUMPER, HOUSE_PICKER]) {
       expect(getSpeciesById(loan.species)?.dexId).toBe(loan.dexId);
-      expect(loanBasics(loan).id).toMatch(/^house:/);
+      expect(loan.id).toMatch(/^house:/);
     }
   });
 });

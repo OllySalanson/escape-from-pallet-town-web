@@ -2,17 +2,27 @@ import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
-import type { StashedPokemon } from '../stash';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { GAME_FONT } from '../ui/gameFont';
-import { MenuOverlay } from '../ui/MenuOverlay';
-import { pickerBasics, pickerEntries, pickerOrder, wirePickerFind, type PickerEntry } from '../ui/boxPicker';
-import { isOverlayDismissKey } from '../ui/overlayKeyboard';
-import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
+import { RELEASE_ARMING_MS, RESULT_HOLD_MS } from '../ui/spatialFocus';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
-import { outdoorPickMarkup, type OutdoorCandidate, type OutdoorCourse, type OutdoorPickState } from '../minigames/outdoorView';
+import {
+  attractCommand,
+  openingLineup,
+  outdoorRoster,
+  payTable,
+  playersFor,
+  playerTraits,
+  pressOnAttract,
+  wonLines,
+  type AttractCommand,
+  type AttractPlayer,
+  type Lineup,
+  type ResultCard,
+} from '../minigames/attract';
 import { NO_GAME_CORNER, type DerbySource, type GameCornerRecord, type GamePayout, type TicketSource } from '../minigames/tickets';
-import { traitsOf, type PokemonTraits } from '../minigames/traits';
+import { traits, type PokemonTraits } from '../minigames/traits';
+import { AttractScreen, type AttractLayout } from './attractScreen';
 import { hideHarbourUnder } from './coverHarbour';
 
 export interface OutdoorGameSceneData {
@@ -20,84 +30,82 @@ export interface OutdoorGameSceneData {
   readonly pausedBase: boolean;
 }
 
-/** How a game sees a candidate: its traits, whether it suits, and what to say about it. */
-export interface OutdoorFit {
-  readonly fit: number;
-  readonly notes: readonly string[];
-}
-
 /** The sources the promenade's three outdoor games pay from: the race's, a level each, the dig's and the fishing derby's. */
 export type OutdoorSource = Extract<TicketSource, DerbySource | 'dig' | 'fishing-derby'>;
 
+/** Who the demo plays with on a save with nobody at home to play: an ordinary kind, so the game is still seen. */
+const NOBODY_HOME = traits('pikachu');
+
 /**
  * What the promenade's three outdoor games share, over the paused harbour as
- * THE GAME CORNER's cabinets are: the screen that chooses who plays (one
- * Pokémon, from every box, best fits first - `ui/boxPicker.ts`), the game's
- * own canvas, and what a game paid, written by `SaveManager.playOutdoorGame`
- * in one write. A game is a pure rules module (`minigames/derby.ts`, `dig.ts`,
- * `fishingDerby.ts`); a subclass hands it time and keys and draws it.
+ * THE GAME CORNER's cabinets are: the attract screen a board opens onto (the
+ * game played by the house with the Pokémon SPACE would play with, LEFT and
+ * RIGHT for another, `minigames/attract.ts`), the game's own canvas, and what
+ * a game paid, written by `SaveManager.playOutdoorGame` in one write and shown
+ * on the result card with the game's pay table. A game is a pure rules module
+ * (`minigames/derby.ts`, `dig.ts`, `fishingDerby.ts`); a subclass hands it
+ * time and keys and draws it, and plays its own demo (`demoPlay.ts`).
  *
  * Nothing a game does touches the Pokémon that played it: no experience, no
  * injury, nothing lost (the harbour arenas plan, section 3.1, rule 5).
  */
 export abstract class OutdoorGameScene extends Phaser.Scene implements ProvidesFeedbackContext {
-  protected overlay: MenuOverlay | undefined;
   protected pausedBase = false;
   protected savedGame: RestoredGame | undefined;
-  protected chosen: string | null = null;
-  protected status: string | undefined;
-  protected last: OutdoorPickState['last'];
-  /** Whether a game is being played (the canvas) rather than chosen (the screen). */
+  /** Whether a game is being played, rather than the house's demo on the attract screen. */
   protected playing = false;
-  /** When the last game ended, so AGAIN takes no press for a moment after (`endGame`). */
-  private endedAt: number | undefined;
+  protected roster: readonly AttractPlayer[] = [];
+  protected lineup: Lineup = { lead: 0, size: 1 };
+  private result: ResultCard | null = null;
+  private attract: AttractScreen | undefined;
+  private openedAt = 0;
+  /** When the last game ended, so SPACE plays nothing for a moment after (`endGame`). */
+  private endedAt = Number.NEGATIVE_INFINITY;
   protected readonly saveManager = new SaveManager();
-  private find = '';
   private stageParts: Phaser.GameObjects.GameObject[] = [];
 
-  /** The screen's words. */
-  protected abstract readonly words: {
-    readonly title: string;
-    readonly place: string;
-    readonly heading: string;
-    readonly doing: string;
-    readonly rules: string;
-    readonly playHelp: string;
-  };
+  /** The game's name, as its board and its attract screen say it. */
+  protected abstract readonly title: string;
 
   protected abstract readonly source: OutdoorSource;
 
-  /** How well a Pokémon fits the game, and what it would do. */
-  protected abstract fitOf(traits: PokemonTraits): OutdoorFit;
+  /** Which game it is, for its pay table (`attract.ts`). */
+  protected abstract readonly attractGame: 'derby' | 'dig' | 'fishing-derby';
 
-  /** Starts a game with the chosen Pokémon: build the canvas. */
-  protected abstract beginGame(chosen: StashedPokemon, traits: PokemonTraits): void;
+  /** How well a Pokémon fits the game: who is offered first after the partner. */
+  protected abstract fitOf(traits: PokemonTraits): number;
 
-  /** The day's best, as the game words it. */
-  protected abstract bestWords(best: number): string;
+  /** Starts a game, or the house's demo of it, with this Pokémon: build the canvas. */
+  protected abstract beginGame(player: AttractPlayer | undefined, traits: PokemonTraits, demo: boolean): void;
 
-  /** A line about the day, if the game has one. */
-  protected todayLine(): string | undefined {
+  /** Where the attract screen's parts stand on this game's canvas. */
+  protected abstract attractLayout(): AttractLayout;
+
+  /** The keys line under the attract screen. */
+  protected attractKeys(): string {
+    return 'SPACE: play · LEFT/RIGHT: who · ESC: back';
+  }
+
+  /** A word more on the plate under who plays (THE DERBY's course), if the game has one. */
+  protected attractNote(): string | undefined {
     return undefined;
   }
 
-  /**
-   * What PLAY says after a game, when it is not simply the same game again -
-   * THE PROMENADE DERBY's podium moves the chosen course on, and AGAIN raced
-   * the next one (playtest 51, finding 7).
-   */
-  protected playLabel(): string | undefined {
-    return undefined;
+  /** Whether UP and DOWN do something on the attract screen (THE DERBY's courses). */
+  protected attractSizes(): boolean {
+    return false;
   }
 
-  /** The game's levels, if it has them (THE PROMENADE DERBY's courses). */
-  protected course(): OutdoorCourse | undefined {
-    return undefined;
+  /** A key on the attract screen the game has a use of its own for (THE DERBY's courses). Whether it was used. */
+  protected attractExtra(command: AttractCommand): boolean {
+    // No game but THE DERBY has a use for UP and DOWN, or for any key besides.
+    void command;
+    return false;
   }
 
-  /** A level chosen on the screen. Whether it could be: a level not yet open cannot. */
-  protected chooseLevel(level: number): boolean {
-    return level === 1;
+  /** The level a result is paid on, for a game that has levels. */
+  protected payLevel(): number {
+    return 1;
   }
 
   /** What a game played is written as: its score, paid, and what it turned up sent home. */
@@ -109,37 +117,43 @@ export abstract class OutdoorGameScene extends Phaser.Scene implements ProvidesF
   }
 
   public init(data: OutdoorGameSceneData): void {
-    this.overlay = undefined;
+    this.attract = undefined;
     this.pausedBase = data.pausedBase;
-    this.status = undefined;
-    this.last = undefined;
+    this.result = null;
     this.playing = false;
+    this.endedAt = Number.NEGATIVE_INFINITY;
     this.stageParts = [];
     this.savedGame = this.saveManager.load() ?? undefined;
-    this.chosen = this.candidates().find((candidate) => candidate.suits)?.id ?? this.candidates()[0]?.id ?? null;
+    this.roster = this.savedGame ? outdoorRoster(this.savedGame.stash, (traits) => this.fitOf(traits)) : [];
+    this.lineup = openingLineup(this.attractGame, this.roster);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.overlay?.destroy();
-      this.overlay = undefined;
       this.tearDownStage();
+      this.attract?.destroy();
+      this.attract = undefined;
     });
-    recordAction(`Opened ${this.words.title}`);
+    recordAction(`Opened ${this.title}`);
   }
 
   public create(): void {
-    // The game, and the screen that chooses who plays it, cover the whole of
-    // the harbour paused under them; drawn on regardless, it halved the race's
-    // frame rate (playtest 51, finding 3).
+    this.openedAt = this.time.now;
+    // The game covers the whole of the harbour paused under it; drawn on
+    // regardless, it halved the race's frame rate (playtest 51, finding 3).
     if (this.pausedBase) hideHarbourUnder(this);
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
       if (this.playing) this.onGameKey(event);
+      else this.onAttractKey(event);
     });
-    this.showMenu();
+    this.input.on('pointerdown', () => {
+      if (!this.playing) this.play();
+    });
+    this.showAttract();
   }
 
   public feedbackContext(): readonly FeedbackDetail[] {
     return [
-      { label: 'Screen', value: this.words.title },
-      { label: 'Phase', value: this.playing ? 'playing' : 'choosing' },
+      { label: 'Screen', value: this.title },
+      { label: 'Phase', value: this.playing ? 'playing' : 'attract' },
+      { label: 'Player', value: this.chosen()?.species ?? 'none' },
     ];
   }
 
@@ -148,11 +162,29 @@ export abstract class OutdoorGameScene extends Phaser.Scene implements ProvidesF
     return this.playing;
   }
 
-  /** For a playtest driver: choose who plays, by stash id, and play. */
+  /** For a playtest driver: who SPACE would play with. */
+  public chosen(): AttractPlayer | undefined {
+    return playersFor(this.attractGame, this.roster, this.lineup)[0];
+  }
+
+  /** For a playtest driver: bring on one of the roster by stash id or the front of one, as LEFT and RIGHT do, and play. */
   public playWith(id: string): boolean {
-    if (this.playing || !this.candidates().some((candidate) => candidate.id === id)) return false;
-    this.chosen = id;
-    this.startGame();
+    const lead = this.roster.findIndex((player) => player.id === id || player.id.startsWith(id));
+    if (this.playing || lead < 0) return false;
+    this.lineup = { lead, size: 1 };
+    const player = this.chosen();
+    if (player) this.startGame(player);
+    return this.playing;
+  }
+
+  /** For a playtest driver: what the last game came to, as its card says it. */
+  public get lastResult(): ResultCard | null {
+    return this.result;
+  }
+
+  /** For a playtest driver: SPACE on the attract screen. Whether a game started. */
+  public pressPlay(): boolean {
+    this.play();
     return this.playing;
   }
 
@@ -162,148 +194,112 @@ export abstract class OutdoorGameScene extends Phaser.Scene implements ProvidesF
     return this.savedGame?.raidProgress.gameCorner ?? NO_GAME_CORNER;
   }
 
-  protected traitsFor(entry: { readonly pokemon: StashedPokemon['pokemon'] }): PokemonTraits | undefined {
-    return traitsOf(
-      entry.pokemon.base.id,
-      entry.pokemon.moves.map((move) => move.base.name),
-    );
+  // --- the attract screen ------------------------------------------------------------
+
+  /** The house's demo with the Pokémon on show, the game's name over it - or the last game's card. */
+  protected showAttract(): void {
+    this.playing = false;
+    if (!this.attract) this.attract = new AttractScreen(this, this.title, this.attractKeys(), this.attractLayout());
+    this.restartDemo();
+    this.attract.setShown(true);
+    this.attract.setResult(this.result);
+    const note = this.attractNote();
+    this.attract.setPlate({ lead: this.chosen(), others: 0, swaps: this.roster.length > 1, sizes: this.attractSizes(), ...(note ? { note } : {}) });
   }
 
-  protected candidates(): (OutdoorCandidate & { readonly fit: number })[] {
-    const stash = this.savedGame?.stash;
-    if (!stash) return [];
-    const fits = new Map<string, OutdoorFit>();
-    const fitOf = (entry: PickerEntry): OutdoorFit => {
-      const known = fits.get(entry.id);
-      if (known) return known;
-      const traits = this.traitsFor(entry);
-      const fit = traits ? this.fitOf(traits) : { fit: 0, notes: ['Cannot play'] };
-      fits.set(entry.id, fit);
-      return fit;
-    };
-    return pickerOrder(pickerEntries(stash), (entry) => fitOf(entry).fit).map((entry) => {
-      const fit = fitOf(entry);
-      return { ...pickerBasics(entry), notes: fit.notes, suits: fit.fit >= 2, fit: fit.fit };
-    });
+  /** Who is offered, read again by the game's fit (THE DERBY's changes with the course), the one on show kept on show. */
+  protected refreshRoster(): void {
+    const shown = this.chosen()?.id;
+    this.roster = this.savedGame ? outdoorRoster(this.savedGame.stash, (traits) => this.fitOf(traits)) : [];
+    const lead = this.roster.findIndex((player) => player.id === shown);
+    this.lineup = lead >= 0 ? { lead, size: 1 } : openingLineup(this.attractGame, this.roster);
   }
 
-  // --- the screen ------------------------------------------------------------------
-
-  protected showMenu(focusOn?: string): void {
-    if (!this.overlay) {
-      this.overlay = new MenuOverlay(this, 'game-corner-screen pixel-ui', (event) => this.onMenuKey(event));
-    }
-    const record = this.record();
-    const best = record.day?.best[this.source];
-    const today = this.todayLine();
-    const course = this.course();
-    const again = this.last ? this.playLabel() : undefined;
-    this.overlay.redraw(
-      outdoorPickMarkup({
-        ...this.words,
-        candidates: this.candidates(),
-        chosen: this.chosen,
-        tickets: record.tickets,
-        best: best ? this.bestWords(best) : null,
-        ...(today ? { today } : {}),
-        ...(this.status ? { status: this.status } : {}),
-        ...(this.last ? { last: this.last } : {}),
-        ...(course ? { course } : {}),
-        ...(again ? { again } : {}),
-      }),
-    );
-    const root = this.overlay.root;
-    root.setAttribute('aria-label', this.words.title);
-    root.querySelectorAll<HTMLButtonElement>('[data-close]').forEach((button) => {
-      button.onclick = () => this.close();
-    });
-    root.querySelectorAll<HTMLButtonElement>('[data-player-pick]').forEach((button) => {
-      button.onclick = () => {
-        this.chosen = button.dataset.playerPick ?? null;
-        this.status = undefined;
-        audioManager.play('confirm');
-        this.showMenu('[data-play]');
-      };
-    });
-    root.querySelectorAll<HTMLButtonElement>('[data-course-level]').forEach((button) => {
-      button.onclick = () => {
-        const level = Number(button.dataset.courseLevel);
-        if (!this.chooseLevel(level)) {
-          audioManager.play('denied');
-          return;
-        }
-        audioManager.play('confirm');
-        this.status = undefined;
-        this.showMenu(`[data-course-level="${level}"]`);
-      };
-    });
-    const play = root.querySelector<HTMLButtonElement>('[data-play]');
-    if (play) {
-      play.onclick = () => {
-        if (play.getAttribute('aria-disabled') === 'true') {
-          audioManager.play('denied');
-          return;
-        }
-        if (this.endedAt !== undefined && this.time.now - this.endedAt < RELEASE_ARMING_MS) {
-          return;
-        }
-        this.startGame();
-      };
-    }
-    wirePickerFind(root, (key) => this.overlay?.moveCursor(key), this.find);
-    root.querySelector<HTMLInputElement>('[data-picker-find]')?.addEventListener('input', (event) => {
-      this.find = (event.target as HTMLInputElement).value;
-    });
-    this.overlay.refocus(focusOn ?? (this.chosen ? '[data-play]' : '[data-cursor-start]'), '[data-close]');
+  /** The demo from its start again: round and round it goes until SPACE. */
+  protected restartDemo(): void {
+    this.tearDownStage();
+    const player = this.chosen();
+    this.beginGame(player, (player && playerTraits(player)) ?? NOBODY_HOME, true);
   }
 
-  private onMenuKey(event: KeyboardEvent): void {
-    if (isOverlayDismissKey(event)) {
-      event.preventDefault();
-      this.close();
+  /** What the attract screen draws, for a game whose other camera must leave it out. */
+  protected attractObjects(): Phaser.GameObjects.GameObject[] {
+    return this.attract?.objects() ?? [];
+  }
+
+  /** Keeps PRESS SPACE blinking: a subclass's `update` calls it while it plays the demo. */
+  protected tickAttract(now: number): void {
+    this.attract?.update(now);
+  }
+
+  private play(): void {
+    if (this.playing) return;
+    // The press that opened the game, and the one still going as the last game ended, play nothing.
+    if (this.time.now - this.openedAt < RELEASE_ARMING_MS || this.time.now - this.endedAt < RESULT_HOLD_MS) return;
+    const outcome = pressOnAttract(this.attractGame, this.roster, this.lineup, 'play');
+    const player = outcome.kind === 'play' ? outcome.players[0] : undefined;
+    if (player) this.startGame(player);
+    else audioManager.play('denied');
+  }
+
+  private onAttractKey(event: KeyboardEvent): void {
+    const command = attractCommand(event);
+    if (command === null || event.repeat) return;
+    event.preventDefault();
+    if (command === 'play') {
+      this.play();
       return;
     }
-    if (this.overlay?.moveCursor(event.key)) {
-      event.preventDefault();
+    if (this.attractExtra(command)) {
+      audioManager.play('select');
+      this.showAttract();
+      return;
+    }
+    const outcome = pressOnAttract(this.attractGame, this.roster, this.lineup, command);
+    if (outcome.kind === 'leave') {
+      this.close();
+    } else if (outcome.kind === 'lineup') {
+      audioManager.play('select');
+      this.lineup = outcome.lineup;
+      this.showAttract();
+    } else {
+      audioManager.play('denied');
     }
   }
 
-  private startGame(): void {
-    const chosen = this.savedGame?.stash.listPokemon().find((stored) => stored.id === this.chosen);
-    const traits = chosen ? this.traitsFor(chosen) : undefined;
-    if (!chosen || !traits) return;
-    this.overlay?.destroy();
-    this.overlay = undefined;
-    this.status = undefined;
+  private startGame(player: AttractPlayer): void {
+    const traits = playerTraits(player);
+    if (!traits) return;
+    this.tearDownStage();
     audioManager.play('confirm');
-    recordAction(`Played ${this.words.title} with ${chosen.pokemon.base.id}`);
+    recordAction(`Played ${this.title} with ${player.species}`);
+    this.attract?.setShown(false);
     this.playing = true;
-    this.beginGame(chosen, traits);
+    this.beginGame(player, traits, false);
   }
 
   /**
    * The game is over: its score written and paid in one write, and the
-   * choosing screen back up with what it came to.
+   * attract screen back up with the result card - what it came to, what it
+   * won (and `also`, news of the game's own: a course opened) and the pay
+   * table - over the demo.
    */
-  protected endGame(score: number, headline: string, finds: readonly string[] = []): void {
+  protected endGame(score: number, headline: string, finds: readonly string[] = [], also: readonly string[] = []): void {
     const written = this.writeResult(score, finds);
     if (written) {
       this.savedGame = written.game;
-      this.last = { headline, payout: written.payout, kept: written.kept };
+      this.result = { headline, won: [...wonLines(written.payout, written.kept), ...also], newBest: written.payout.newBest, table: payTable(this.attractGame, score, this.payLevel()) };
       if (written.payout.tickets > 0 || written.kept.length > 0) audioManager.play('itemObtained');
     } else {
-      this.last = undefined;
-      this.status = 'Nobody could write that down. Nothing was paid.';
+      this.result = { headline, won: ['NOT WRITTEN DOWN: NOTHING PAID'], newBest: false, table: [] };
     }
-    recordAction(`${this.words.title} scored ${score}`);
-    this.tearDownStage();
-    this.playing = false;
-    // The cursor comes back to who played, never to AGAIN: SPACE casts in
-    // THE FISHING DERBY, and the press still going at the buzzer started a
-    // new two-minute derby over the result before it was read (the harbour
-    // critic tour, 26 Nov 2026). AGAIN also takes nothing for a moment.
+    recordAction(`${this.title} scored ${score}`);
+    // SPACE casts in THE FISHING DERBY, and the press still going at the
+    // buzzer started a new two-minute derby over the result before it was
+    // read (the harbour critic tour, 26 Nov 2026): SPACE plays nothing for a
+    // moment after.
     this.endedAt = this.time.now;
-    this.showMenu('[data-player-pick].is-selected');
+    this.showAttract();
   }
 
   // --- drawing helpers -------------------------------------------------------------

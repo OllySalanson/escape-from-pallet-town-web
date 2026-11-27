@@ -2,22 +2,21 @@ import type Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { harbourBite, type HarbourBite } from '../base/harbourFishing';
 import { pokemonTextureKey } from '../pokemon/pokemonSprites';
-import type { StashedPokemon } from '../stash';
 import { drawPixelWindow, WINDOW_PAPER } from '../ui/pixelWindow';
 import { castDurationMs, dotsShown, NOT_EVEN_A_NIBBLE, ON_THE_HOOK, type CastPlan } from '../world/fishing';
+import type { AttractPlayer } from '../minigames/attract';
 import {
   biteChance,
   derbyTimeUp,
   landCatch,
-  leadNotes,
   planDerbyCast,
   secondsLeft,
   startFishingDerby,
   type FishingDerbyState,
 } from '../minigames/fishingDerby';
-import { FISHING_DERBY_TICKET_TIERS } from '../minigames/tickets';
 import type { PokemonTraits } from '../minigames/traits';
-import { OutdoorGameScene, type OutdoorFit } from './OutdoorGameScene';
+import type { AttractLayout } from './attractScreen';
+import { OutdoorGameScene } from './OutdoorGameScene';
 
 /** Where the line goes in: off the pier head, in the deep water (`harbourFishing.ts`). */
 const DEEP_END = { x: 80, y: 31 } as const;
@@ -26,6 +25,17 @@ const SHOW_CATCH_MS = 1100;
 const SHOW_MISS_MS = 700;
 /** How long the last of the derby is shown before the screen comes back. */
 const END_PAUSE_MS = 1300;
+/**
+ * The house's casts on the attract screen, in order: a bite on the hook, then
+ * a cast nothing takes, and the demo starts again - so the coin is seen both
+ * ways. Each is a cast of FireRed's own dots.
+ */
+const DEMO_CASTS: readonly CastPlan[] = [
+  { dots: 2, bites: true },
+  { dots: 1, bites: false },
+];
+/** What bites in the demo: the deep end's table, rolled the same way every time. */
+const DEMO_BITE_ROLL = (): number => 0.42;
 
 type Cast =
   | { readonly kind: 'idle' }
@@ -40,22 +50,20 @@ type Cast =
  * fishing - the cast, its dots and the coin - with a tally. SPACE casts; a
  * bite is reeled in, scored and let go, as the harbour's fishing does. The
  * lead sits on the pier beside the player, and its ability decides how often
- * anything bites: Illuminate twice as often, Stench half.
+ * anything bites: Illuminate twice as often, Stench half. Its attract screen
+ * is the house casting with the lead on show: a catch, its score, a cast that
+ * comes to nothing.
  */
 export class FishingDerbyScene extends OutdoorGameScene {
   protected readonly source = 'fishing-derby' as const;
-  protected readonly words = {
-    title: 'FISHING DERBY',
-    place: 'Pleasure Pier · ',
-    heading: 'Who sits with you?',
-    doing: 'Leading',
-    rules: 'Two minutes off the deep end with a borrowed GOOD ROD: a catch scores its level, a kind new this derby ten more. ILLUMINATE draws twice the bites; STENCH drives them off.',
-    playHelp: 'SPACE casts. The clock runs from the first cast; keep a line in the water.',
-  };
+  protected readonly attractGame = 'fishing-derby' as const;
+  protected readonly title = 'FISHING DERBY';
 
   private state: FishingDerbyState | undefined;
   private cast: Cast = { kind: 'idle' };
   private started = false;
+  /** The house's next cast on the attract screen, or null in a derby played. */
+  private demoCast: number | null = null;
   private hud: Phaser.GameObjects.Text | undefined;
   private callout: Phaser.GameObjects.Text | undefined;
   private line: Phaser.GameObjects.Graphics | undefined;
@@ -65,7 +73,7 @@ export class FishingDerbyScene extends OutdoorGameScene {
     super('fishing-derby');
   }
 
-  /** For a playtest driver: the derby so far. */
+  /** For a playtest driver: the derby so far (the house's, on the attract screen). */
   public get derbyState(): FishingDerbyState | undefined {
     return this.state;
   }
@@ -75,24 +83,22 @@ export class FishingDerbyScene extends OutdoorGameScene {
     if (this.playing) this.castNow();
   }
 
-  protected fitOf(traits: PokemonTraits): OutdoorFit {
+  protected fitOf(traits: PokemonTraits): number {
     const chance = biteChance(traits);
-    return { fit: chance >= 1 ? 3 : chance >= 0.5 ? 1.5 : 0.5, notes: leadNotes(traits) };
+    return chance >= 1 ? 3 : chance >= 0.5 ? 1.5 : 0.5;
   }
 
-  protected bestWords(best: number): string {
-    return `${best} points`;
+  protected attractLayout(): AttractLayout {
+    const { width, height } = this.scale;
+    return { area: { x: 0, y: 0, width, height }, plate: { x: width - 4, y: 4, from: 'right' }, titleAt: 0.3 };
   }
 
-  protected todayLine(): string {
-    const [first, second, third] = FISHING_DERBY_TICKET_TIERS;
-    return `Tickets at ${first.score}, ${second.score} and ${third.score} points.`;
-  }
-
-  protected beginGame(chosen: StashedPokemon, traits: PokemonTraits): void {
-    this.state = startFishingDerby(traits, chosen.pokemon.name);
+  protected beginGame(player: AttractPlayer | undefined, traits: PokemonTraits, demo: boolean): void {
+    this.state = startFishingDerby(traits, player?.name ?? traits.kind);
     this.cast = { kind: 'idle' };
     this.started = false;
+    this.demoCast = demo ? 0 : null;
+    this.catchSprite = undefined;
     const { width, height } = this.scale;
     const back = this.keep(this.add.graphics().setDepth(0));
     // The view off the pier head: sky, the far breakwater, open sea, and the
@@ -117,7 +123,7 @@ export class FishingDerbyScene extends OutdoorGameScene {
     for (let x = 8; x < width; x += 24) back.fillStyle(0x303848, 1).fillRect(x, deck - 10, 2, 10);
     this.keep(
       this.add
-        .image(Math.round(width * 0.14), height - 6, pokemonTextureKey('back', chosen.pokemon.base.dexId, chosen.pokemon.shiny))
+        .image(Math.round(width * 0.14), height - 6, pokemonTextureKey('back', player?.dexId ?? traits.dexId, player?.shiny ?? false))
         .setOrigin(0.5, 1)
         .setDepth(3),
     );
@@ -125,8 +131,8 @@ export class FishingDerbyScene extends OutdoorGameScene {
     const panel = this.keep(this.add.graphics().setDepth(10));
     drawPixelWindow(panel, { x: 4, y: 4, width: 112, height: 44 }, { fill: WINDOW_PAPER });
     this.hud = this.words_(9, 6, '', { colour: '#202030' }).setStroke('#202030', 0).setDepth(11);
-    this.callout = this.words_(width / 2, Math.round(height * 0.5), 'SPACE: cast!', { big: true, origin: [0.5, 0.5] });
-    this.words_(width / 2, height - 3, 'SPACE: cast · ESC: stop', { origin: [0.5, 1] });
+    this.callout = this.words_(width / 2, Math.round(height * 0.5), demo ? '' : 'SPACE: cast!', { big: true, origin: [0.5, 0.5] });
+    if (!demo) this.words_(width / 2, height - 3, 'SPACE: cast · ESC: stop', { origin: [0.5, 1] });
     this.drawDerby();
   }
 
@@ -143,28 +149,41 @@ export class FishingDerbyScene extends OutdoorGameScene {
     }
   }
 
-  private castNow(): void {
+  private castNow(plan: CastPlan = planDerbyCast(this.state?.lead ?? null)): void {
     if (!this.state || this.cast.kind !== 'idle' || derbyTimeUp(this.state)) return;
     this.started = true;
-    const plan = planDerbyCast(this.state.lead);
     this.state = { ...this.state, casts: this.state.casts + 1 };
     this.cast = { kind: 'casting', plan, elapsed: 0 };
     this.catchSprite?.destroy();
     this.catchSprite = undefined;
     this.callout?.setText('');
-    audioManager.play('select');
+    if (this.playing) audioManager.play('select');
   }
 
-  public update(_time: number, delta: number): void {
-    if (!this.playing || !this.state) return;
-    if (this.started && this.cast.kind !== 'over') {
+  public update(time: number, delta: number): void {
+    if (!this.state) return;
+    const aloud = this.playing;
+    if (!this.playing) {
+      this.tickAttract(time);
+      // The house casts again as soon as the line is out of the water, until its casts are done.
+      if (this.cast.kind === 'idle' && this.demoCast !== null) {
+        const plan = DEMO_CASTS[this.demoCast];
+        if (!plan) {
+          this.restartDemo();
+          return;
+        }
+        this.demoCast += 1;
+        this.castNow(plan);
+      }
+    }
+    if (this.started && this.cast.kind !== 'over' && this.playing) {
       this.state = { ...this.state, elapsed: this.state.elapsed + delta };
     }
     const cast = this.cast;
     if (cast.kind === 'casting') {
       const elapsed = cast.elapsed + delta;
       if (elapsed >= castDurationMs(cast.plan)) {
-        const bite = cast.plan.bites ? harbourBite(DEEP_END) : null;
+        const bite = cast.plan.bites ? harbourBite(DEEP_END, aloud ? Math.random : DEMO_BITE_ROLL) : null;
         if (bite) {
           const landed = landCatch(this.state, bite.speciesId, bite.level);
           this.state = landed.state;
@@ -173,11 +192,11 @@ export class FishingDerbyScene extends OutdoorGameScene {
           this.catchSprite = this.keep(
             this.add.image(Math.round(this.scale.width * 0.7), Math.round(this.scale.height * 0.62), pokemonTextureKey('front', bite.dexId)).setDepth(5),
           );
-          audioManager.play('lootPickup');
+          if (aloud) audioManager.play('lootPickup');
         } else {
           this.cast = { kind: 'missed', left: SHOW_MISS_MS };
           this.callout?.setText(NOT_EVEN_A_NIBBLE).setColor('#f8f8f8');
-          audioManager.play('denied');
+          if (aloud) audioManager.play('denied');
         }
       } else {
         this.cast = { ...cast, elapsed };
@@ -185,7 +204,7 @@ export class FishingDerbyScene extends OutdoorGameScene {
     } else if (cast.kind === 'landed' || cast.kind === 'missed') {
       const left = cast.left - delta;
       this.cast = left > 0 ? { ...cast, left } : { kind: 'idle' };
-      if (left <= 0) this.callout?.setText(derbyTimeUp(this.state) ? '' : 'SPACE: cast!').setColor('#f8f8f8');
+      if (left <= 0) this.callout?.setText(derbyTimeUp(this.state) || !aloud ? '' : 'SPACE: cast!').setColor('#f8f8f8');
     } else if (cast.kind === 'over') {
       const left = cast.left - delta;
       this.cast = { kind: 'over', left };
@@ -205,7 +224,7 @@ export class FishingDerbyScene extends OutdoorGameScene {
     if (!state || !this.playing) return;
     this.state = undefined;
     this.catchSprite = undefined;
-    this.endGame(state.score, `Landed ${state.catches} in ${state.casts} casts: ${state.score} points`);
+    this.endGame(state.score, `${state.score} POINTS · ${state.catches} IN ${state.casts} CASTS`);
   }
 
   private drawDerby(): void {
@@ -229,7 +248,7 @@ export class FishingDerbyScene extends OutdoorGameScene {
       }
     }
     this.hud?.setText([
-      `TIME ${this.started ? secondsLeft(state) : 120}s`,
+      `TIME ${this.started && this.playing ? secondsLeft(state) : 120}s`,
       `POINTS ${state.score}`,
       `CAUGHT ${state.catches} · KINDS ${state.kinds.length}`,
     ]);

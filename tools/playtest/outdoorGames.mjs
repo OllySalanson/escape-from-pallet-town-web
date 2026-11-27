@@ -146,9 +146,7 @@ try {
     await until(sceneIs(scene), `the ${label} screen`);
     await wait(300);
     await shoot(`${scene}-02-who-plays`);
-    await page.evaluate(`document.querySelector('[data-player-pick^="${pick}"]').click()`);
-    await wait(200);
-    await page.evaluate(`document.querySelector('[data-play]').click()`);
+    if (!(await page.evaluate(`${GAME}.scene.getScene('${scene}').playWith('${pick}')`))) fail(`no ${pick} to play ${label} with`);
     await until(`${GAME}.scene.getScene('${scene}').isPlaying`, `the ${label} under way`);
   };
   const closeGame = async (scene, label) => {

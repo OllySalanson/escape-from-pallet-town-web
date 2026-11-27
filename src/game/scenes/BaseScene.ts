@@ -75,7 +75,7 @@ import { dojoFoe, foeTrainer, receptionLines, settlementLine } from '../arena/cl
 import { classOf, shownClass } from '../arena/dojoRecord';
 import { readDojoRun, runBout, stampRun, type DojoRun, type DojoRunMode } from '../arena/arenaRuns';
 import { dojoYieldStake, hallYieldStake } from '../arena/yieldStake';
-import { attendantLines, courseKeeperLines, prizeClerkLines, timeBoardLines } from '../minigames/gameCornerTalk';
+import { attendantLines, prizeClerkLines, timeBoardLines } from '../minigames/gameCornerTalk';
 import {
   HOME_KEY_LETTERS,
   RAID_KEY_LETTERS,
@@ -5994,8 +5994,9 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     if (local?.id === COURSE_KEEPER_ID) {
+      // The keeper opens the gate at once: the course shows what it is itself (`minigames/attract.ts`).
       this.harbourLife?.face(local.id, directionBetween(target, this.currentTile) ?? 'down');
-      this.say(courseKeeperLines(this.freshGame().raidProgress), [target], () => this.openMinigame('field-course'));
+      this.openMinigame('field-course');
       return;
     }
     if (local?.id === ANGLER_ID) {
@@ -6034,7 +6035,7 @@ export class BaseScene extends Phaser.Scene {
     }
     // THE FIELD-MOVE COURSE's gate runs the course, and its TIME BOARD is read.
     if (COURSE_GATE_FRONT.some((tile) => sameTile(tile, target))) {
-      this.say(courseKeeperLines(this.freshGame().raidProgress), [target], () => this.openMinigame('field-course'));
+      this.openMinigame('field-course');
       return;
     }
     const landmark = HARBOUR_LANDMARKS.find((each) => landmarkFaced(each, target));

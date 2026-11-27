@@ -1,14 +1,5 @@
 import type { RaidProgress } from '../save/SaveManager';
-import {
-  DAILY_TICKET_CEILING,
-  BERRY_TICKET_TIERS,
-  COURSE_TICKET_TIERS,
-  JUMP_TICKET_TIERS,
-  today,
-  NO_GAME_CORNER,
-} from './tickets';
-import { POKEMON_JUMP_PRIZES } from './generated/pokemonJump';
-import { BERRY_PICKING_PRIZE_SCORE } from './generated/berryPicking';
+import { DAILY_TICKET_CEILING, BERRY_TICKET_TIERS, JUMP_TICKET_TIERS, today, NO_GAME_CORNER } from './tickets';
 
 /**
  * What THE GAME CORNER says: its attendant, its prize clerk and the POKéMON
@@ -78,20 +69,11 @@ export function courseTime(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}.${String(hundredths % 100).padStart(2, '0')}`;
 }
 
-/** What the course keeper says at his gate, before the course opens. */
-export function courseKeeperLines(progress: Pick<RaidProgress, 'gameCorner'>): readonly string[] {
-  const best = (progress.gameCorner ?? NO_GAME_CORNER).best['field-course'] ?? 0;
-  const [first, second, third] = COURSE_TICKET_TIERS;
-  return best === 0
-    ? [
-        'The FIELD-MOVE COURSE! Start to finish past a tree, a rock, a boulder and a pond.',
-        'I lend the HMs. A POKéMON that could learn CUT cuts; one that could learn SURF swims.',
-        `Under ${courseTime(first.ms)} pays ${first.tickets} tickets, ${courseTime(second.ms)} ${second.tickets}, ${courseTime(third.ms)} ${third.tickets}. Once a day.`,
-      ]
-    : [`Back for another go? Your best round is ${courseTime(best)}. The HMs are in the box.`];
-}
-
-/** What the TIME BOARD says: today's best and the best ever, and what each ticket line asks. */
+/**
+ * What the TIME BOARD says: today's best and the best ever. What a time pays
+ * is said once, on the run's own result (`attract.ts`, `payTable`), never on
+ * a board read before it.
+ */
 export function timeBoardLines(progress: Pick<RaidProgress, 'gameCorner'>, now: Date): readonly string[] {
   const record = progress.gameCorner ?? NO_GAME_CORNER;
   const best = record.best['field-course'] ?? 0;
@@ -105,36 +87,19 @@ export function timeBoardLines(progress: Pick<RaidProgress, 'gameCorner'>, now: 
       : todays === best
         ? [`Your best: ${courseTime(best)}, run today.`]
         : [`Your best: ${courseTime(best)}.`, ...(todays > 0 ? [`Today's best: ${courseTime(todays)}.`] : [])];
-  return [
-    `TIME BOARD - FIELD-MOVE COURSE. ${chalked[0]}`,
-    ...chalked.slice(1),
-    `TICKETS: ${COURSE_TICKET_TIERS.map((tier) => `${courseTime(tier.ms)} ${tier.tickets}`).join(' · ')}. KRABBY is chalked in the corner.`,
-  ];
-}
-
-/**
- * What a cabinet's score pays, as its own screen prints it under the team: the
- * rate card is the cabinet's, not the attendant's. Read out at the counter it
- * was nine lines of tables from a person, a spec sheet rather than somebody
- * talking (the AI playtests of 22 Nov 2026).
- */
-export function cabinetRates(game: 'pokemon-jump' | 'berry-picking'): string {
-  const tiers = game === 'pokemon-jump' ? JUMP_TICKET_TIERS : BERRY_TICKET_TIERS;
-  const berryFrom = game === 'pokemon-jump' ? POKEMON_JUMP_PRIZES[0].score : BERRY_PICKING_PRIZE_SCORE;
-  const card = tiers.map((tier) => `${number(tier.score)} pays ${tier.tickets}`).join(' · ');
-  return `Tickets, once a day: ${card}. From ${number(berryFrom)}, a BERRY too.`;
+  return [`TIME BOARD - FIELD-MOVE COURSE. ${chalked[0]}`, ...chalked.slice(1), 'KRABBY is chalked in the corner.'];
 }
 
 /** What the attendant says from behind the counter: how the place works, as she would put it. */
 export function attendantLines(progress: Pick<RaidProgress, 'gameCorner'>): readonly string[] {
   const record = progress.gameCorner ?? NO_GAME_CORNER;
   // Two boxes, where six were read on every visit (the harbour critic tour,
-  // 26 Nov 2026): what a cabinet pays is on its own screen, and its lamps.
+  // 26 Nov 2026): what a cabinet pays is on its result, and its lamps.
   const lines = [
     // Not "once a day a cabinet": a game pays once a day for its best score,
     // and a better score later pays the difference (`tickets.ts`, `payGame`; the re-critic).
     "Welcome to the GAME CORNER! Your best score each day wins TICKETS, to spend at the PRIZE WINDOW next door.",
-    "POKéMON JUMP's down the left, BERRY PICKING's down the right. Nobody to jump or pick? I'll lend you one of ours.",
+    "POKéMON JUMP's down the left, BERRY PICKING's down the right. Nobody who can jump or pick? The cabinets lend you one of ours.",
   ];
   if (record.tickets > 0) {
     lines.push(`You've got ${number(record.tickets)} tickets. They're kept at home, so a raid can't lose them.`);

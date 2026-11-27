@@ -146,9 +146,9 @@ try {
   await until(sceneIs('berry-picking'), 'the BERRY PICKING screen');
   await wait(300);
   await shoot(`${teamKind}-02-who-picks`);
-  await page.evaluate(`document.querySelector('[data-picker^="${team.picker}"]').click()`);
+  if (!(await page.evaluate(`${GAME}.scene.getScene('berry-picking').leadWith('${team.picker}')`))) fail(`no ${team.picker} to pick with`);
   await wait(200);
-  await page.evaluate(`document.querySelector('[data-play]').click()`);
+  await until(`${GAME}.scene.getScene('berry-picking').pressPlay()`, 'SPACE on the attract screen');
   await until(`${GAME}.scene.getScene('berry-picking').phaseKind === 'playing'`, 'the berries falling');
 
   // Reach by the screen, as a person does: for the berry lowest in the tree
@@ -180,7 +180,7 @@ try {
     await step(1);
   }
   await shoot(`${teamKind}-04-last-berries`);
-  await until(`${GAME}.scene.getScene('berry-picking').phaseKind === 'menu'`, 'the result');
+  await until(`${GAME}.scene.getScene('berry-picking').phaseKind === 'attract'`, 'the result');
   await wait(300);
   await shoot(`${teamKind}-05-berry-result`);
   const afterBerries = (await vault()).raidProgress.gameCorner;
@@ -212,19 +212,12 @@ try {
   await until(sceneIs('field-course'), 'the course screen');
   await wait(300);
   await shoot(`${teamKind}-08-who-runs`);
-  // The keeper picks a team first (whoever adds the most); set it to this one.
+  // The keeper fills the team round its lead (whoever adds the most); put this team's first at the front.
   const course = `${GAME}.scene.getScene('field-course')`;
-  for (let guard = 0; guard < 8; guard += 1) {
-    const chosen = await page.evaluate(`${course}.chosen.map((id) => id.replace(/-\\d+$/, ''))`);
-    const extra = chosen.find((species) => !team.runners.includes(species));
-    const missing = team.runners.find((species) => !chosen.includes(species));
-    const click = extra ?? missing;
-    if (!click) break;
-    await page.evaluate(`document.querySelector('[data-runner^="${click}-"]').click()`);
-    await wait(150);
-  }
+  if (!(await page.evaluate(`${course}.leadWith('${team.runners[0]}')`))) fail(`no ${team.runners[0]} to run with`);
+  console.log(`course team: ${await page.evaluate(`${course}.chosenTeam().map((player) => player.species).join(', ')`)}`);
   await shoot(`${teamKind}-09-team-chosen`);
-  await page.evaluate(`document.querySelector('[data-play]').click()`);
+  await until(`${GAME}.scene.getScene('field-course').pressPlay()`, 'SPACE on the attract screen');
   await until(`${GAME}.scene.getScene('field-course').phaseKind === 'running'`, 'the run');
   await wait(200);
   await shoot(`${teamKind}-10-start`);
@@ -266,7 +259,7 @@ try {
     if (index === Math.floor(line.length / 2)) await shoot(`${teamKind}-12-halfway`);
   }
   await shoot(`${teamKind}-13-finish`);
-  await until(`${scene}.phaseKind === 'menu'`, 'the course result');
+  await until(`${scene}.phaseKind === 'attract'`, 'the course result');
   await wait(300);
   await shoot(`${teamKind}-14-course-result`);
   const afterCourse = (await vault()).raidProgress.gameCorner;

@@ -241,16 +241,16 @@ export function digAt(game: DigGame, x: number, y: number): { readonly game: Dig
   };
 }
 
-/** What a digger is like, in a few words, for the choosing screen. */
-export function diggerNotes(digger: PokemonTraits): readonly string[] {
-  const notes: string[] = [];
-  if (digsAPlus(digger)) notes.push('Digs five squares');
-  if (knows(digger, 'dig')) notes.push(`Knows DIG: ${DIGS + DIG_MOVE_BONUS} digs`);
-  if (hasAbility(digger, 'pickup')) notes.push('Picks things up');
-  if (hasAbility(digger, 'keen-eye')) notes.push('Keen eye');
-  if (hasAbility(digger, 'sand-veil')) notes.push('Sand never caves in');
-  if (notes.length === 0) notes.push('One square a dig');
-  return notes;
+/** How well a digger suits the patch: a plus, DIG, Pickup and an eye and a veil for the sand, each worth something. */
+export function digFit(digger: PokemonTraits): number {
+  return (
+    1 +
+    (digsAPlus(digger) ? 2 : 0) +
+    (knows(digger, 'dig') ? 1 : 0) +
+    (hasAbility(digger, 'pickup') ? 1 : 0) +
+    (hasAbility(digger, 'keen-eye') ? 0.5 : 0) +
+    (hasAbility(digger, 'sand-veil') ? 0.5 : 0)
+  );
 }
 
 /** What the game found that goes home: the berries and the ornament, by item id. */

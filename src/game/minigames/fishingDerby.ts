@@ -89,13 +89,6 @@ export function secondsLeft(state: FishingDerbyState): number {
   return Math.max(0, Math.ceil((FISHING_DERBY_MS - state.elapsed) / 1000));
 }
 
-/** What a lead is like for the derby, in a few words. */
-export function leadNotes(lead: PokemonTraits): readonly string[] {
-  if (hasAbility(lead, 'illuminate')) return ['Illuminate: twice the bites'];
-  if (hasAbility(lead, 'stench')) return ['Stench: half the bites'];
-  return ['Plain bites'];
-}
-
 /**
  * A whole derby fished by a model angler, for the measuring tool and the
  * tests: a cast, the time it takes, and `overheadMs` to read a catch and cast

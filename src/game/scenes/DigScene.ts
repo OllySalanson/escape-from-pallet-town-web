@@ -1,16 +1,16 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { pokemonTextureKey } from '../pokemon/pokemonSprites';
-import type { StashedPokemon } from '../stash';
 import { iconTextureKey, itemIconName } from '../ui/icons';
 import { drawPixelWindow, WINDOW_PAPER } from '../ui/pixelWindow';
+import type { AttractPlayer } from '../minigames/attract';
+import { digDemoTargets, stepToward, type Square } from '../minigames/demoPlay';
 import {
   DIG_HEIGHT,
   DIG_WIDTH,
   digAt,
-  diggerNotes,
+  digFit,
   digItems,
-  digsAPlus,
   digShape,
   isDug,
   isLoose,
@@ -18,9 +18,9 @@ import {
   type DigGame,
   type Ping,
 } from '../minigames/dig';
-import { DIG_TICKET_TIERS } from '../minigames/tickets';
-import { hasAbility, knows, type PokemonTraits } from '../minigames/traits';
-import { OutdoorGameScene, type OutdoorFit } from './OutdoorGameScene';
+import type { PokemonTraits } from '../minigames/traits';
+import type { AttractLayout } from './attractScreen';
+import { OutdoorGameScene } from './OutdoorGameScene';
 
 /** A square of the patch, in game pixels. */
 const SQUARE = 24;
@@ -28,6 +28,14 @@ const SQUARE = 24;
 const END_PAUSE_MS = 1400;
 /** What a dig into a square already turned over says, in the ping's place. */
 export const DUG_ALREADY = 'DUG ALREADY!';
+/** The demo's patch: the same sand every time round. */
+const DEMO_SEED = 4242;
+/** The demo's spade: a square every so long, a beat on the square before it digs, a beat after to read the ping. */
+const DEMO_STEP_MS = 170;
+const DEMO_AIM_MS = 260;
+const DEMO_READ_MS = 700;
+/** How long the demo's last find is shown before the patch is laid again. */
+const DEMO_END_MS = 1500;
 
 const PING_WORDS: Readonly<Record<Ping, { readonly words: string; readonly colour: string }>> = {
   found: { words: 'FOUND IT!', colour: '#f8e070' },
@@ -36,24 +44,29 @@ const PING_WORDS: Readonly<Record<Ping, { readonly words: string; readonly colou
   cold: { words: 'COLD', colour: '#88c0f8' },
 };
 
+/** The house's spade on the attract screen: where it is going, and how long until it moves again. */
+interface DigDemo {
+  readonly targets: readonly Square[];
+  readonly next: number;
+  readonly waitMs: number;
+}
+
 /**
  * THE DIG, on the beach (`minigames/dig.ts`): a roped patch of sand eight
  * squares by five, ten digs, and after each a ping - HOT, WARM or COLD, as
  * FireRed's Itemfinder pings. Arrows move the spade, SPACE digs. Loose sand
- * is drawn darker; a Ground type turns over a plus; Keen Eye glints.
+ * is drawn darker; a Ground type turns over a plus; Keen Eye glints. Its
+ * attract screen is the house digging with the Pokémon on show: three digs
+ * that follow the pings in to a find (`demoPlay.ts`, `digDemoTargets`), with
+ * that Pokémon's own way of digging.
  */
 export class DigScene extends OutdoorGameScene {
   protected readonly source = 'dig' as const;
-  protected readonly words = {
-    title: 'THE DIG',
-    place: 'Beach · ',
-    heading: 'Who digs?',
-    doing: 'Digging',
-    rules: 'Ten digs, a ping after each. A GROUND type digs five squares; DIG the move is two more digs; darker sand caves in.',
-    playHelp: 'ARROWS move the spade, SPACE digs. HOT is a square away, WARM two.',
-  };
+  protected readonly attractGame = 'dig' as const;
+  protected readonly title = 'THE DIG';
 
   private dig_: DigGame | undefined;
+  private demo: DigDemo | null = null;
   private cursor = { x: 3, y: 2 };
   private endingFor: number | null = null;
   private patch: Phaser.GameObjects.Graphics | undefined;
@@ -65,7 +78,7 @@ export class DigScene extends OutdoorGameScene {
     super('dig');
   }
 
-  /** For a playtest driver: the dig in progress. */
+  /** For a playtest driver: the dig in progress (the house's, on the attract screen). */
   public get digGame(): DigGame | undefined {
     return this.dig_;
   }
@@ -77,29 +90,18 @@ export class DigScene extends OutdoorGameScene {
     this.dig();
   }
 
-  protected fitOf(traits: PokemonTraits): OutdoorFit {
-    const fit =
-      1 +
-      (digsAPlus(traits) ? 2 : 0) +
-      (knows(traits, 'dig') ? 1 : 0) +
-      (hasAbility(traits, 'pickup') ? 1 : 0) +
-      (hasAbility(traits, 'keen-eye') ? 0.5 : 0) +
-      (hasAbility(traits, 'sand-veil') ? 0.5 : 0);
-    return { fit, notes: diggerNotes(traits) };
+  protected fitOf(traits: PokemonTraits): number {
+    return digFit(traits);
   }
 
-  protected bestWords(best: number): string {
-    return `${best} points`;
+  protected attractLayout(): AttractLayout {
+    const { width, height } = this.scale;
+    return { area: { x: 0, y: 0, width, height }, plate: { x: width - 4, y: 40, from: 'right' }, titleAt: 0.1, pressAt: 0.86 };
   }
 
-  protected todayLine(): string {
-    const [first, second, third] = DIG_TICKET_TIERS;
-    return `Tickets at ${first.score}, ${second.score} and ${third.score} points; berries and a SAND ORNAMENT go home.`;
-  }
-
-  protected beginGame(chosen: StashedPokemon, traits: PokemonTraits): void {
-    const seed = Math.floor(Math.random() * 2 ** 31);
-    this.dig_ = startDig(traits, seed);
+  protected beginGame(player: AttractPlayer | undefined, traits: PokemonTraits, demo: boolean): void {
+    this.dig_ = startDig(traits, demo ? DEMO_SEED : Math.floor(Math.random() * 2 ** 31));
+    this.demo = demo ? { targets: digDemoTargets(this.dig_), next: 0, waitMs: DEMO_AIM_MS } : null;
     this.cursor = { x: 3, y: 2 };
     this.endingFor = null;
     this.finds = [];
@@ -130,7 +132,7 @@ export class DigScene extends OutdoorGameScene {
     }
     this.keep(
       this.add
-        .image(Math.max(36, left - 44), top + DIG_HEIGHT * SQUARE, pokemonTextureKey('front', chosen.pokemon.base.dexId, chosen.pokemon.shiny))
+        .image(Math.max(36, left - 44), top + DIG_HEIGHT * SQUARE, pokemonTextureKey('front', player?.dexId ?? traits.dexId, player?.shiny ?? false))
         .setOrigin(0.5, 1)
         .setDepth(3),
     );
@@ -138,8 +140,9 @@ export class DigScene extends OutdoorGameScene {
     const panel = this.keep(this.add.graphics().setDepth(10));
     drawPixelWindow(panel, { x: 4, y: 14, width: 108, height: 32 }, { fill: WINDOW_PAPER });
     this.hud = this.words_(9, 16, '', { colour: '#202030' }).setStroke('#202030', 0).setDepth(11);
-    this.ping = this.words_(width / 2, top - 22, 'DIG!', { big: true, origin: [0.5, 0.5] });
-    this.words_(width / 2, height - 3, 'ARROWS: move · SPACE: dig · ESC: stop', { origin: [0.5, 1] });
+    // The ping over the patch; on the attract screen it stands a little lower, under the game's name.
+    this.ping = this.words_(width / 2, top - (demo ? 12 : 22), demo ? '' : 'DIG!', { big: true, origin: [0.5, 0.5] });
+    if (!demo) this.words_(width / 2, height - 3, 'ARROWS: move · SPACE: dig · ESC: stop', { origin: [0.5, 1] });
     this.drawPatch();
   }
 
@@ -187,11 +190,12 @@ export class DigScene extends OutdoorGameScene {
 
   private dig(): void {
     if (!this.dig_) return;
+    const aloud = this.playing;
     if (isDug(this.dig_, this.cursor.x, this.cursor.y)) {
       // Said, not only buzzed: a Ground type turns over a plus, so the square
       // next to the last dig is often dug already, and with nothing on screen a
       // player took the dig for stuck with four digs left (AI playtest, 22 Nov 2026).
-      audioManager.play('denied');
+      if (aloud) audioManager.play('denied');
       this.ping?.setText(DUG_ALREADY).setColor('#c09048');
       return;
     }
@@ -199,20 +203,20 @@ export class DigScene extends OutdoorGameScene {
     this.dig_ = result.game;
     for (const event of result.events) {
       if (event.kind === 'found') {
-        audioManager.play(event.what.kind === 'ornament' ? 'itemObtained' : 'lootPickup');
+        if (aloud) audioManager.play(event.what.kind === 'ornament' ? 'itemObtained' : 'lootPickup');
         if (event.what.itemId) this.showFind(event.what.itemId);
       }
-      if (event.kind === 'caved') audioManager.play('bump');
+      if (event.kind === 'caved' && aloud) audioManager.play('bump');
       if (event.kind === 'ping') {
         const ping = PING_WORDS[event.ping];
         this.ping?.setText(ping.words).setColor(ping.colour);
-        if (event.ping !== 'found') audioManager.play(event.ping === 'hot' ? 'confirm' : 'select');
+        if (event.ping !== 'found' && aloud) audioManager.play(event.ping === 'hot' ? 'confirm' : 'select');
       }
     }
     if (result.events.some((event) => event.kind === 'caved')) {
       this.ping?.setText('CAVED IN!').setColor('#c09048');
     }
-    if (this.dig_.over) {
+    if (this.dig_.over && this.playing) {
       this.endingFor = END_PAUSE_MS;
     }
     this.drawPatch();
@@ -223,10 +227,40 @@ export class DigScene extends OutdoorGameScene {
     this.finds.push(this.keep(this.add.image(x, 30, iconTextureKey(itemIconName(itemId))).setDepth(11)));
   }
 
-  public update(_time: number, delta: number): void {
-    if (!this.playing || this.endingFor === null) return;
+  public update(time: number, delta: number): void {
+    if (!this.playing) {
+      this.tickAttract(time);
+      this.playDemo(delta);
+      return;
+    }
+    if (this.endingFor === null) return;
     this.endingFor -= delta;
     if (this.endingFor <= 0) this.finishDig();
+  }
+
+  /** The house's spade: a square at a time to the next of its three digs, a beat, the dig, a beat to read the ping. */
+  private playDemo(delta: number): void {
+    const demo = this.demo;
+    if (!demo || !this.dig_) return;
+    let waitMs = demo.waitMs - delta;
+    let next = demo.next;
+    while (waitMs <= 0) {
+      const target = demo.targets[next];
+      if (!target) {
+        this.restartDemo();
+        return;
+      }
+      if (this.cursor.x !== target.x || this.cursor.y !== target.y) {
+        this.cursor = stepToward(this.cursor, target);
+        waitMs += this.cursor.x === target.x && this.cursor.y === target.y ? DEMO_AIM_MS : DEMO_STEP_MS;
+      } else {
+        this.dig();
+        next += 1;
+        waitMs += next >= demo.targets.length ? DEMO_END_MS : DEMO_READ_MS;
+      }
+    }
+    this.demo = { ...demo, next, waitMs };
+    this.drawPatch();
   }
 
   private finishDig(): void {
@@ -235,7 +269,7 @@ export class DigScene extends OutdoorGameScene {
     this.dig_ = undefined;
     this.endingFor = null;
     const found = game.found.length;
-    this.endGame(game.score, `Dug up ${found} ${found === 1 ? 'thing' : 'things'}: ${game.score} points`, digItems(game));
+    this.endGame(game.score, `${game.score} POINTS · ${found} ${found === 1 ? 'FIND' : 'FINDS'}`, digItems(game));
   }
 
   private drawPatch(): void {
