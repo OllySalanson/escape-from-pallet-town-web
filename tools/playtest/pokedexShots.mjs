@@ -13,7 +13,7 @@
 //   - ENTER on an empty ball opens nothing and says why;
 //   - X closes it, and Oak's PC in his lab opens it too.
 //
-//   node tools/playtest/pokedexShots.mjs <test-mode build url> <out dir> [--window=WxH] [--before]
+//   node tools/playtest/pokedexShots.mjs <test-mode build url> <out dir> [--window=WxH] [--before] [--port=CDP port]
 //
 // `--before` drives a build from before the Pokédex had a screen: it shows that
 // X does nothing in the yard, photographs MY PC, whose title bar was the one
@@ -22,7 +22,7 @@
 // It steps a paused loop, so it wants a test-mode build (`?testmode=pixels`
 // for pictures worth judging; `tools/playtest/README.md`, "Memory").
 import { mkdirSync } from 'node:fs';
-import { launchBrowser, PIXEL_WINDOW } from './browser.mjs';
+import { attachBrowser, launchBrowser, PIXEL_WINDOW } from './browser.mjs';
 import { GAME, SAVE_KEY, sceneIs } from './deploy.mjs';
 
 const args = process.argv.slice(2);
@@ -49,7 +49,8 @@ const OWNED = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 20, 21
 const MET = [15, 18, 22, 24, 28, 30, 33, 42, 44, 48, 56, 58, 63, 66, 69, 72, 81, 92, 95, 130, 143];
 const SHINY = [16, 129];
 
-const browser = await launchBrowser({ window: WINDOW });
+// --port=N drives a browser already running on that CDP port (the machine's watched one) instead of launching its own.
+const browser = option('port') ? attachBrowser(Number(option('port')), { window: WINDOW }) : await launchBrowser({ window: WINDOW });
 try {
   const page = await browser.openPage('about:blank');
   await page.send('Page.navigate', { url });

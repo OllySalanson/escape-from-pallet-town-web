@@ -15,6 +15,7 @@ import {
   dexEntryBody,
   dexListBody,
   dexNumber,
+  DEX_CASING,
   dexPitch,
   kindAt,
   neighbourPage,
@@ -74,7 +75,7 @@ export class PokedexScene extends Phaser.Scene implements ProvidesFeedbackContex
   }
 
   public create(): void {
-    const overlay = new MenuOverlay(this, 'pokedex-menu pixel-ui', (event) => this.onKey(event));
+    const overlay = new MenuOverlay(this, 'pokedex-menu pixel-ui dex-floor', (event) => this.onKey(event));
     this.overlay = overlay;
     overlay.root.setAttribute('aria-label', 'Pokédex');
     overlay.onMeasure = (unit) => this.fitTiles(unit);
@@ -138,8 +139,8 @@ export class PokedexScene extends Phaser.Scene implements ProvidesFeedbackContex
     if (!root || !main || !tiles) {
       return;
     }
-    // The window's own frame and pixel of padding, above and below the tiles.
-    const pitch = dexPitch(Math.floor(tiles.clientWidth / unit), Math.floor(main.clientHeight / unit) - 2);
+    // The casing above and below the screen (`DEX_CASING`, the window's padding).
+    const pitch = dexPitch(Math.floor(tiles.clientWidth / unit), Math.floor(main.clientHeight / unit) - 2 * DEX_CASING);
     root.style.setProperty('--dex-pitch', String(pitch));
   }
 
