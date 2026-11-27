@@ -141,7 +141,7 @@ export function watchViewport(game: ScalableGame, touch?: TouchFit, parentId = '
     const placement = bar && !layout ? controlsBarPlacement(width, fullHeight, ratio) : null;
     const height = placement?.gameViewportHeight ?? fullHeight;
     const stage = applyStage(game, parent(), width, height, ratio, layout ? { stage: layout.stage, box: layout.canvas } : undefined);
-    applyMenuStage(menuLayer(), width, height, ratio, layout?.menus);
+    applyMenuStage(menuLayer(), width, height, ratio, layout?.menus, stage.zoom);
     touch?.place(layout);
     const box = parent()?.getBoundingClientRect();
     const canvas = box ? { x: box.left, y: box.top, width: stage.width * stage.zoom, height: stage.height * stage.zoom } : null;

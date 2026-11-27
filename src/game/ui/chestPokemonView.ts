@@ -137,7 +137,7 @@ const aThing = (thing: string): string => (/^[AEIOU]/.test(thing) ? `an ${thing}
  */
 export function chestAsk(item: ItemDefinition, pokemon: Pokemon, question: string): string {
   return '<div class="chest-ask" data-ask role="dialog" aria-modal="true">'
-    + '<section class="px-window px-plate chest-ask-window">'
+    + '<section class="px-window px-plate px-world chest-ask-window">'
     + `<div class="chest-ask-pics">${itemIcon(item.id, item.displayName)}<span class="chest-ask-arrow" aria-hidden="true"></span>${pixelPortrait(pokemon.base.dexId ?? 0, pokemon.name, pokemon.shiny)}</div>`
     + `<p class="chest-ask-words">${escapeAttribute(question)}</p>`
     + '<div class="chest-ask-buttons"><button type="button" class="px-window px-button is-primary" data-ask-yes>Yes</button><button type="button" class="px-window px-button" data-ask-no>No</button></div>'

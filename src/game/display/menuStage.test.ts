@@ -10,6 +10,7 @@ import {
   menuScaleFor,
   MENU_LAYER_ID,
   MENU_MAX_WIDTH,
+  worldUnitFor,
   MENU_MIN_HEIGHT,
   MENU_MIN_WIDTH,
   MIN_MENU_SCALE,
@@ -241,5 +242,48 @@ describe('the menu screens are laid out against the window', () => {
     // The tab is 30 wide with a 2-pixel shadow: the strip holds both.
     expect(css).toMatch(/\.feedback-tab \{[^}]*width: 30px;[^}]*box-shadow: 2px 0 0/);
     expect(FEEDBACK_TAB_STRIP).toBe(32);
+  });
+});
+
+describe("a screen drawn in the world's pixel", () => {
+  it('is the canvas\'s zoom wherever the window is an ordinary one: bigger than the menus\' own', () => {
+    for (const [width, height] of [[1280, 800], [1366, 768], [1440, 900], [1920, 1080], [2560, 1440], [3840, 2160]]) {
+      const canvas = computeStage(width, height);
+      const menu = computeMenuStage(width, height);
+      const world = worldUnitFor(menu, canvas.zoom);
+      const label = `${width}x${height}`;
+      expect(world, label).toBe(canvas.zoom);
+      expect(world, label).toBeGreaterThan(menu.scale);
+      // And the smallest screen every screen is authored against still fits at it.
+      expect((menu.width * menu.scale) / world, label).toBeGreaterThanOrEqual(MENU_MIN_WIDTH);
+      expect((menu.height * menu.scale) / world, label).toBeGreaterThanOrEqual(MENU_MIN_HEIGHT);
+    }
+  });
+
+  it('is the menus\' own pixel where the world\'s would not hold the smallest screen, is no bigger, or is not whole', () => {
+    expect(worldUnitFor({ width: 320, height: 240, scale: 2 }, 3)).toBe(2);
+    expect(worldUnitFor({ width: 600, height: 384, scale: 2 }, 2)).toBe(2);
+    expect(worldUnitFor({ width: 600, height: 384, scale: 2 }, 1)).toBe(2);
+    expect(worldUnitFor({ width: 600, height: 384, scale: 2 }, 2.5)).toBe(2);
+    expect(worldUnitFor({ width: 600, height: 384, scale: 2 }, undefined)).toBe(2);
+  });
+
+  it('is given to the layer beside its own pixel, for `px-world` to read', () => {
+    const canvas = computeStage(1280, 800);
+    const layer = fakeLayer();
+    applyMenuStage(layer as unknown as HTMLElement, 1280, 800, 1, undefined, canvas.zoom);
+    expect(layer.style['--px']).toBe('2px');
+    expect(layer.style['--world-px']).toBe('3px');
+    expect(layer.style['--world-zoom']).toBe('3');
+    const without = fakeLayer();
+    applyMenuStage(without as unknown as HTMLElement, 1280, 800);
+    expect(without.style['--world-px']).toBe('2px');
+  });
+
+  it('is what the stylesheet draws a `px-world` screen or window in', () => {
+    const stylesheet = readFileSync(new URL('../../style.css', import.meta.url), 'utf8');
+    const rule = /\.pixel-ui\.px-world,\s*\.pixel-ui \.px-world \{([^}]*)\}/.exec(stylesheet)?.[1] ?? '';
+    expect(rule).toContain('--u: var(--world-px, var(--px, 2px));');
+    expect(rule).toContain('font-size: calc(var(--u) * 12.5);');
   });
 });

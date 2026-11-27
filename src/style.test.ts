@@ -103,6 +103,8 @@ describe('the pixel-ui stylesheet', () => {
     const lengths = pixelUiRules
       // ...on a screen's root and on the controls bar's, which has a pixel of its own.
       .replaceAll('--u: var(--px, 2px);', '')
+      // ...and on one drawn in the world's pixel, which falls back the same way.
+      .replaceAll('--u: var(--world-px, var(--px, 2px));', '')
       .match(/\b\d*\.?\d+(?:px|vw|vh|cqw|cqh|em|rem|ch)\b/g);
     expect(lengths ?? []).toEqual([]);
   });

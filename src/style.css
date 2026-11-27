@@ -2287,6 +2287,20 @@ body.touch-play .feedback-tab {
   cursor: default;
   user-select: none;
 }
+/* A screen, or one window of a screen, drawn in the world's own pixel
+   (`worldUnitFor` in `display/menuStage.ts`; the menu study's third cause,
+   `docs/screens/wood-floor/`): its lines, its letters and its pictures are then
+   the size the world's are, not two thirds of it, and it holds as little as a
+   FireRed screen does. For a screen with few things on it - a setting, a
+   question, one Pokémon's page; a list keeps the finer pixel, which is what
+   buys its rows. Everything inside goes on measuring in `--u`. */
+.pixel-ui.px-world,
+.pixel-ui .px-world {
+  --u: var(--world-px, var(--px, 2px));
+  --zoom: var(--world-zoom, 2);
+  font-size: calc(var(--u) * 12.5);
+  line-height: calc(var(--u) * 12);
+}
 /* Resets are `:where()`, so they weigh nothing and any class below can undo one
    without an arms race of specificity. */
 .pixel-ui :where(h1, h2, h3, p, ol, ul, dl) {
@@ -8941,6 +8955,19 @@ body.touch-play .feedback-tab {
 .pixel-ui.pokedex-menu[data-room='wide'] .dex-entry-figure .px-portrait img {
   transform: scale(calc(var(--zoom, 2) * 3));
 }
+/* A small screen - one drawn in the world's pixel is always one - keeps its
+   room for the words: less casing round the screens, and the entry and the
+   family with no strip to say what they are, which each plainly is. */
+.pixel-ui:is([data-room='tight'], [data-short]) .dex-page {
+  gap: calc(var(--u) * 3);
+  padding: calc(var(--u) * 3);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .dex-entry-side {
+  gap: calc(var(--u) * 3);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) :is(.dex-entry-words, .dex-entry-family) > .px-heading {
+  display: none;
+}
 .pixel-ui:is([data-room='tight'], [data-short]) .px-window.dex-entry-figure {
   min-width: calc(var(--u) * 76);
   padding: calc(var(--u) * 4);
@@ -8970,6 +8997,10 @@ body.touch-play .feedback-tab {
   display: flex;
   flex-direction: column;
   min-height: calc(var(--u) * 30);
+}
+/* Its strip is never the part that gives way: the list under it scrolls. */
+.pixel-ui .px-window.dex-entry-where > .px-heading {
+  flex: none;
 }
 :where(.pixel-ui) .dex-where {
   flex: 0 1 auto;
