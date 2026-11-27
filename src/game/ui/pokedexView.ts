@@ -234,6 +234,8 @@ export const CARD_WHERE_LINES = 3;
 
 /** A tile's side in game pixels: the 32-pixel icon and a pixel of frame all round. */
 export const DEX_TILE = 34;
+/** How many game pixels of red casing stand above the screen and below it: `.dex-window`'s padding in `style.css`. */
+export const DEX_CASING = 1;
 /** The most room a tile is ever given: past this the grid reads as scattered. */
 export const DEX_TILE_MOST = 48;
 

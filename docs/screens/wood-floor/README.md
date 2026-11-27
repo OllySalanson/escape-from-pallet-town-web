@@ -51,6 +51,8 @@ Five causes, in the order they are being fixed:
 - **Three rules of light**: a card has a lit lip and a dark foot; an empty square is dark
   at its top left and lit at its bottom right, and a filled one the other way up; a
   shadow is drawn at full strength.
+- **A screen that is a thing is drawn as that thing**: THE POKéDEX is a red machine with a
+  screen of green glass, lit in three steps - never met, met, owned.
 - The five colours keep their jobs: red can be lost, gold is the chosen thing, green is
   safe. No navy, blue or cream, and nothing that looks military: it is a FireRed world.
 
@@ -70,6 +72,11 @@ and the commit of each change: `node tools/playtest/menusAudit.mjs <test-mode bu
 | THE CHEST: its Pokémon | ![](before/chest-pokemon.png) | ![](after/chest-pokemon.png) | 8 to 57 | 37% to 1% |
 | THE RAID ARENA's rack | ![](before/hall-rack.png) | ![](after/hall-rack.png) | 12 to 49 | 37% to 11% |
 | THE RAID ARENA's locker | ![](before/hall-locker.png) | ![](after/hall-locker.png) | 12 to 49 | 38% to 12% |
+| THE POKéDEX (X): the list | ![](before/pokedex-list.png) | ![](after/pokedex-list.png) | 3 to 51 | 82% to 0% |
+| THE POKéDEX: a page | ![](before/pokedex-page.png) | ![](after/pokedex-page.png) | 7 to 48 | 47% to 2% |
+| THE POKéDEX: a page of one only met | ![](before/pokedex-page-met.png) | ![](after/pokedex-page-met.png) | 7 to 31 | 15% to 1% |
+
+The Pokédex's pictures are `tools/playtest/pokedexShots.mjs`'s, which plays every key on it.
 
 The states a still cannot show were played with `tools/playtest/yourThings.mjs`,
 `chest.mjs` and `chestPokemon.mjs`, every check passing on the wood floor:

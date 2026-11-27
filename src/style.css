@@ -2094,7 +2094,7 @@ body.touch-play .feedback-tab {
    of paper standing on the wood floor (`.px-plate` and the row under the
    cursor, below) is this palette again, whatever the floor round it remapped. */
 .pixel-ui .px-plate,
-.pixel-ui.wood-floor .px-body :is(button.px-row:focus, .px-row.is-secured, .px-row.teach-pupil.is-selected, .px-chip:focus, .px-step:focus, .px-scroll[data-reads]:focus),
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body :is(button.px-row:focus, .px-row.is-secured, .px-row.teach-pupil.is-selected, .px-chip:focus, .px-step:focus, .px-scroll[data-reads]:focus),
 :root {
   /* The menus' palette (`src/game/ui/uiPalette.ts`): a Poke Ball, opened. Five
      colours, one job each (the captain, 25 Nov 2026: "It must be the new way of
@@ -2599,6 +2599,7 @@ body.touch-play .feedback-tab {
   --mist-2: #6b4424;
   --ink: #ffffff;
   --ink-soft: #f6ead8;
+  --floor-ink-soft: #f6ead8;
   --raised-ink: #2c1a0c;
   --raised-ink-soft: #4a2c14;
   --stat-fill: #f6ead8;
@@ -2618,18 +2619,21 @@ body.touch-play .feedback-tab {
   --px-more: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 3' shape-rendering='crispEdges'%3E%3Cpath fill='%23f6ead8' d='M0 0h5v1h-1v1h-1v1h-1v-1h-1v-1h-1z'/%3E%3C/svg%3E");
   color: var(--ink);
 }
-/* What stands on a raised plate is written in the plate's ink: a button's
+/* What follows holds on any floor that is not paper: wood, and the Pokédex's
+   glass (`.dex-floor`, with its own colours where the Pokédex's rules are).
+
+   What stands on a raised plate is written in the plate's ink: a button's
    words, a square's level, a count. */
-.pixel-ui.wood-floor .px-body :is(.px-button, .px-grid-block, .chest-mon, .chest-slot, .chest-key, .chest-gift, .things-member, .things-worn) {
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body :is(.px-button, .px-grid-block, .chest-mon, .chest-slot, .chest-key, .chest-gift, .things-member, .things-worn) {
   --ink: var(--raised-ink);
   --ink-soft: var(--raised-ink-soft);
 }
 /* Said again where it is a button that is the plate: a button's own colour is
    its parent's unless a rule this heavy says otherwise. */
-.pixel-ui.wood-floor .px-body :is(.chest-mon, .chest-slot, .chest-key) {
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body :is(.chest-mon, .chest-slot, .chest-key) {
   color: var(--ink);
 }
-.pixel-ui.wood-floor .px-body .chest-gift {
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body .chest-gift {
   color: var(--ink-soft);
 }
 /* A card is boards: a seam every sixteen pixels down it. A control is one
@@ -2637,16 +2641,16 @@ body.touch-play .feedback-tab {
 .pixel-ui.wood-floor .px-body .px-window {
   --grain: repeating-linear-gradient(180deg, var(--fill) 0 calc(var(--u) * 15), var(--seam) calc(var(--u) * 15) calc(var(--u) * 16));
 }
-.pixel-ui.wood-floor .px-body .px-window:is(button, .px-plate) {
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body .px-window:is(button, .px-plate) {
   --grain: initial;
 }
-/* A raised thing that cannot be pressed is sunk again, in the board's soft ink. */
-.pixel-ui.wood-floor .px-body .px-button:is(:disabled, [aria-disabled='true']) {
-  --ink-soft: #f6ead8;
+/* A raised thing that cannot be pressed is sunk again, in the floor's soft ink. */
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body .px-button:is(:disabled, [aria-disabled='true']) {
+  --ink-soft: var(--floor-ink-soft);
 }
 /* A card washed green or red - a thing held over a Pokémon it would or would
    not go to - is a plate for as long as it is. */
-.pixel-ui.wood-floor .px-body .chest-card:is(.is-gift-yes, .is-gift-no) {
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body .chest-card:is(.is-gift-yes, .is-gift-no) {
   --ink: var(--raised-ink);
   --ink-soft: var(--raised-ink-soft);
   --stat-fill: var(--raised-ink);
@@ -2656,7 +2660,7 @@ body.touch-play .feedback-tab {
    lit or washed with words on it - the row under the cursor, a row chosen.
    Its palette is the page's own again: the rule that names `:root` names it. */
 .pixel-ui .px-plate,
-.pixel-ui.wood-floor .px-body :is(button.px-row:focus, .px-row.is-secured, .px-row.teach-pupil.is-selected, .px-chip:focus, .px-step:focus, .px-scroll[data-reads]:focus) {
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body :is(button.px-row:focus, .px-row.is-secured, .px-row.teach-pupil.is-selected, .px-chip:focus, .px-step:focus, .px-scroll[data-reads]:focus) {
   color: var(--ink);
 }
 /* What kind of card it is, said by its heading strip's colour, never by a tint
@@ -8525,6 +8529,67 @@ body.touch-play .feedback-tab {
 .menu-overlay.pixel-ui.pokedex-menu[data-room='wide'] {
   --dex-step: 4;
 }
+/* The Pokédex is drawn as the thing it is: a red machine with a screen of
+   green glass (`docs/screens/wood-floor/`: a screen is wood, or it is its own
+   thing). Its floor is the glass - a window is a screen, lined like one - and
+   the red casing is what holds the count, the grid and a page. Words on the
+   glass and the casing are white; a key is a white plate lettered in ink; a
+   Pokémon stands on a lit panel, so one only met can be a dark shape on it. */
+.pixel-ui.dex-floor .px-body {
+  --paper: #1f4a33;
+  --paper-raised: #ffffff;
+  --paper-sunk: #173826;
+  --paper-lit: #ffd766;
+  --mist-2: #2f6b47;
+  --ink: #ffffff;
+  --ink-soft: #cfe8d2;
+  --floor-ink-soft: #cfe8d2;
+  --raised-ink: #221d1e;
+  --raised-ink-soft: #4f484a;
+  --stat-fill: #cfe8d2;
+  --line: #0f2a1c;
+  --gold-wash: #ffd766;
+  --gold-ink: #ffe27a;
+  --safe-wash: #a9d99a;
+  --safe-ink: #9ff0ae;
+  --risk-wash: #f2b3a2;
+  --red-ink: #ffb8a5;
+  --heading: #a32208;
+  --shade: rgb(0 0 0 / 70%);
+  --lip: rgb(255 255 255 / 18%);
+  --foot: rgb(0 0 0 / 28%);
+  --seam: #24523a;
+  --casing: #c22a08;
+  --casing-lit: #ef5a36;
+  --casing-foot: #7d1803;
+  --casing-line: #4a0f04;
+  --casing-soft: #ffe1d6;
+  --lcd: #a9d99a;
+  --lcd-dim: #5f9e6e;
+  --sunk: inset var(--u) var(--u) 0 #0f2a1c, inset calc(var(--u) * -1) calc(var(--u) * -1) 0 #24523a;
+  --raised: inset 0 var(--u) 0 rgb(255 255 255 / 30%), inset 0 calc(var(--u) * -1) 0 rgb(0 0 0 / 22%);
+  --px-more: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 3' shape-rendering='crispEdges'%3E%3Cpath fill='%23cfe8d2' d='M0 0h5v1h-1v1h-1v1h-1v-1h-1v-1h-1z'/%3E%3C/svg%3E");
+  color: var(--ink);
+}
+/* A screen: a lit line every third pixel down the glass. */
+.pixel-ui.dex-floor .px-body .px-window {
+  --grain: repeating-linear-gradient(180deg, var(--seam) 0 var(--u), var(--fill) var(--u) calc(var(--u) * 3));
+}
+/* The casing: red, a lit edge along its top and a dark one along its foot. */
+.pixel-ui.dex-floor .px-body .px-window:is(.dex-band, .dex-window) {
+  --fill: var(--casing);
+  --edge: var(--casing-line);
+  --lip: var(--casing-lit);
+  --foot: var(--casing-foot);
+  --grain: initial;
+  --ink-soft: var(--casing-soft);
+}
+/* The lit panel a Pokémon is shown on: the glass switched on. */
+.pixel-ui.dex-floor .dex-figures {
+  padding: calc(var(--u) * 3);
+  background: var(--lcd);
+  box-shadow: inset 0 0 0 var(--u) var(--line), inset var(--u) var(--u) 0 var(--u) rgb(255 255 255 / 30%);
+}
 /* The count in words gives way first: a small window keeps the band to one
    line, so the tiles keep a row, and the title bar says "37 of 151" instead. */
 .pixel-ui.pokedex-menu:is([data-room='tight'], [data-short]) .dex-count-words,
@@ -8559,7 +8624,7 @@ body.touch-play .feedback-tab {
   display: block;
   width: calc(var(--u) * 14 * var(--digits, 1));
   height: calc(var(--u) * 24);
-  color: var(--red);
+  color: var(--ink);
   white-space: nowrap;
 }
 :where(.pixel-ui) .dex-count-big > span {
@@ -8590,7 +8655,7 @@ body.touch-play .feedback-tab {
   top: var(--u);
   width: calc(var(--u) * var(--owned) * var(--dex-step));
   height: calc(var(--u) * 8);
-  background: var(--safe-ink);
+  background: var(--lcd);
 }
 :where(.pixel-ui) .dex-pip {
   position: absolute;
@@ -8652,14 +8717,15 @@ body.touch-play .feedback-tab {
   gap: calc(var(--u) * 4);
   min-height: 0;
 }
-/* A pixel of room round the tiles and no more: nine rows of them are 306
-   pixels, which is exactly what a 1280x800 window has left under the band. */
+/* The casing round the screen: three pixels at each side, and one above and
+   below and no more - seven rows of tiles and the MORE strip under them are
+   exactly what a 1280x800 window has left under the band (`DEX_CASING`). */
 .pixel-ui .px-window.dex-window {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   max-height: 100%;
-  padding: var(--u) calc(var(--u) * 3);
+  padding: calc(var(--u) * 1) calc(var(--u) * 3);
 }
 :where(.pixel-ui) .dex-tiles {
   flex: 0 1 auto;
@@ -8671,6 +8737,9 @@ body.touch-play .feedback-tab {
   /* The pane rests on a row's top, never between two: a tile is a tall row,
      and one cut at each end is hidden whole by the scroll cues. */
   scroll-snap-type: y mandatory;
+  /* The screen itself: unlit glass wherever no tile stands, and under MORE. */
+  --fill: var(--paper-sunk);
+  background-color: var(--paper-sunk);
 }
 .pixel-ui .dex-tile {
   --edge: transparent;
@@ -8689,10 +8758,24 @@ body.touch-play .feedback-tab {
     linear-gradient(var(--edge), var(--edge)) 0 var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat,
     linear-gradient(var(--edge), var(--edge)) 100% var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat;
 }
+/* Never met: the glass unlit. Met: lit low, its shape dark on it. Owned: lit. */
+.pixel-ui .dex-tile {
+  background-color: var(--paper-sunk);
+  box-shadow: var(--sunk);
+}
+.pixel-ui .dex-tile.is-seen {
+  background-color: var(--lcd-dim);
+  box-shadow: var(--raised);
+}
+.pixel-ui .dex-tile.is-owned {
+  background-color: var(--lcd);
+  box-shadow: var(--raised);
+}
 .pixel-ui .dex-tile:focus {
-  --edge: var(--red);
+  --edge: var(--gold);
   outline: none;
   background-color: var(--paper-lit);
+  box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--gold);
 }
 /* A hundred and fifty-one icons stand still; only the one under the cursor
    moves, as FireRed's chosen icon bounces. */
@@ -8705,7 +8788,7 @@ body.touch-play .feedback-tab {
 /* Met and not owned: its shape and nothing else. */
 .pixel-ui .dex-tile.is-seen > .px-mon-icon {
   filter: brightness(0);
-  opacity: 0.5;
+  opacity: 0.6;
 }
 /* A legend owned stands on gold. */
 .pixel-ui .dex-tile.is-legend.is-owned {
@@ -8721,8 +8804,7 @@ body.touch-play .feedback-tab {
   display: block;
   width: calc(var(--u) * 12);
   height: calc(var(--u) * 12);
-  background: var(--ink-soft);
-  opacity: 0.4;
+  background: var(--mist-2);
   mask: var(--dex-ball) center / 100% 100% no-repeat;
   -webkit-mask: var(--dex-ball) center / 100% 100% no-repeat;
 }
@@ -8810,6 +8892,14 @@ body.touch-play .feedback-tab {
   max-width: 100%;
   min-height: 0;
   max-height: 100%;
+  /* The machine's casing, round its screens. */
+  padding: calc(var(--u) * 5);
+  background: var(--casing);
+  box-shadow:
+    inset 0 0 0 var(--u) var(--casing-line),
+    inset 0 calc(var(--u) * 2) 0 0 var(--casing-lit),
+    inset 0 calc(var(--u) * -2) 0 0 var(--casing-foot),
+    0 calc(var(--u) * 3) 0 calc(var(--u) * -1) var(--shade);
 }
 .pixel-ui .px-window.dex-entry-figure {
   flex: none;
@@ -8821,7 +8911,10 @@ body.touch-play .feedback-tab {
   padding: calc(var(--u) * 6);
 }
 .pixel-ui .px-window.dex-entry-figure.is-legend {
-  --fill: var(--gold-wash);
+  --edge: var(--gold);
+}
+.pixel-ui .dex-entry-figure.is-legend .dex-figures {
+  background: var(--gold-wash);
 }
 .pixel-ui .dex-entry-figure .px-portrait {
   width: calc(var(--u) * 128);
@@ -8886,16 +8979,28 @@ body.touch-play .feedback-tab {
   width: calc(var(--u) * 34);
   height: calc(var(--u) * 34);
 }
+:where(.pixel-ui) .dex-kin {
+  background: var(--paper-sunk);
+  box-shadow: var(--sunk);
+}
+:where(.pixel-ui) .dex-kin.is-seen {
+  background: var(--lcd-dim);
+  box-shadow: var(--raised);
+}
+:where(.pixel-ui) .dex-kin.is-owned {
+  background: var(--lcd);
+  box-shadow: var(--raised);
+}
 :where(.pixel-ui) .dex-kin.is-here {
   background: var(--paper-lit);
-  box-shadow: inset 0 0 0 var(--u) var(--red);
+  box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--gold);
 }
 .pixel-ui .dex-kin > .px-mon-icon {
   animation: none;
 }
 .pixel-ui .dex-kin.is-seen > .px-mon-icon {
   filter: brightness(0);
-  opacity: 0.5;
+  opacity: 0.6;
 }
 /* The page's three buttons stand at its foot, under the words. */
 :where(.pixel-ui) .dex-entry-actions {

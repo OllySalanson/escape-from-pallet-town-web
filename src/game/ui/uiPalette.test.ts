@@ -104,3 +104,49 @@ describe('the wood floor', () => {
     expect(stylesheet).toMatch(/\.pixel-ui \.px-plate,[^{]*:root \{/);
   });
 });
+
+describe("the Pokédex's glass", () => {
+  // The Pokédex is drawn as the thing it is (`.dex-floor`): a red machine with
+  // a screen of green glass. Its words are held to WCAG AA on the glass, lit or
+  // not, and on the casing; a key is a white plate lettered in ink.
+  const stylesheet = readFileSync(new URL('../../style.css', import.meta.url), 'utf8');
+  const block = /\.pixel-ui\.dex-floor \.px-body \{([^}]*)\}/.exec(stylesheet)?.[1] ?? '';
+  const colour = (name: string): number => {
+    const found = new RegExp(`--${name}:\\s*#([0-9a-f]{6});`, 'i').exec(block);
+    if (!found) {
+      throw new Error(`the Pokédex does not set --${name}`);
+    }
+    return Number.parseInt(found[1], 16);
+  };
+  const channel = (value: number, shift: number): number => (value >> shift) & 0xff;
+
+  it.each(['ink', 'ink-soft', 'safe-ink', 'red-ink', 'gold-ink'])('writes --%s where it can be read on the glass', (ink) => {
+    for (const glass of ['paper', 'paper-sunk']) {
+      expect(contrast(colour(ink), colour(glass)), `--${ink} on --${glass}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('writes white and the casing\'s soft ink where they can be read on the casing', () => {
+    expect(contrast(colour('ink'), colour('casing'))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(colour('casing-soft'), colour('casing'))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(colour('ink'), colour('heading'))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each(['raised-ink', 'raised-ink-soft'])('writes --%s where it can be read on a key and on a lit panel', (ink) => {
+    for (const plate of ['paper-raised', 'paper-lit', 'lcd']) {
+      expect(contrast(colour(ink), colour(plate)), `--${ink} on --${plate}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('is a red machine with a green screen, lit in three steps: never met, met, owned', () => {
+    const casing = colour('casing');
+    expect(channel(casing, 16)).toBeGreaterThan(channel(casing, 8) * 3);
+    for (const glass of ['paper', 'paper-sunk', 'lcd-dim', 'lcd']) {
+      const value = colour(glass);
+      expect(channel(value, 8), `--${glass} is green`).toBeGreaterThan(channel(value, 16));
+      expect(channel(value, 8), `--${glass} is green`).toBeGreaterThan(channel(value, 0));
+    }
+    expect(luminance(colour('paper-sunk'))).toBeLessThan(luminance(colour('lcd-dim')));
+    expect(luminance(colour('lcd-dim'))).toBeLessThan(luminance(colour('lcd')));
+  });
+});

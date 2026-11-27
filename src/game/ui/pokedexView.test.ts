@@ -1,8 +1,10 @@
+import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { KANTO_POKEDEX_SIZE, POKEDEX_MILESTONES, type Pokedex } from '../hub/pokedex';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
 import {
   CARD_WHERE_LINES,
+  DEX_CASING,
   DEX_TILE,
   DEX_TILE_MOST,
   dexBand,
@@ -243,6 +245,14 @@ describe('the card beside the grid', () => {
     const lines = [...dexCard(DEX, 16).matchAll(/<small class="px-wrap">/g)];
     expect(lines.length).toBeGreaterThan(0);
     expect(lines.length).toBeLessThanOrEqual(CARD_WHERE_LINES);
+  });
+});
+
+describe('the casing round the screen', () => {
+  it('is as deep in the stylesheet as the tiles are fitted for', () => {
+    const stylesheet = readFileSync(new URL('../../style.css', import.meta.url), 'utf8');
+    const rule = /\.pixel-ui \.px-window\.dex-window \{([^}]*)\}/.exec(stylesheet)?.[1] ?? '';
+    expect(rule).toContain(`padding: calc(var(--u) * ${DEX_CASING}) `);
   });
 });
 
