@@ -26,6 +26,26 @@ import { GAME, jumpIn, sceneIs } from './deploy.mjs';
 
 const [port, url, savePath, out] = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
 const part = process.argv.find((arg) => arg.startsWith('--part='))?.slice(7) ?? 'all';
+// `--bare` takes every word off the harbour but its place-name board before each
+// frame: the plainest screen the harbour can show, a fixed point to judge others against.
+const BARE = process.argv.includes('--bare');
+// Hidden after every update, so the frame drawn is the bare one.
+const BARE_JS = `(() => {
+  const b = ${GAME}.scene.getScene('base');
+  if (!b || b.__bare) return;
+  b.__bare = true;
+  b.events.on('postupdate', () => {
+    const keep = new Set([b.placeSign?.frame, b.placeSign?.text].filter(Boolean));
+    for (const child of b.children.list) if (child.scrollFactorX === 0 && !keep.has(child)) child.setVisible(false);
+    for (const label of b.worldLabels ?? []) label.hide?.();
+  });
+})()`;
+/** A time zone where it is midday now, so every build's harbour is lit the same. */
+const middayZone = () => {
+  let offset = (12 - new Date().getUTCHours() + 24) % 24;
+  if (offset > 14) offset -= 24;
+  return offset === 0 ? 'Etc/UTC' : `Etc/GMT${offset > 0 ? '-' : '+'}${Math.abs(offset)}`;
+};
 if (!out) {
   console.error('usage: quietClip.mjs <cdp port> <build url> <save.json> <out dir> [--part=harbour|raid|all]');
   process.exit(2);
@@ -45,6 +65,7 @@ async function recorder(page, name) {
   const step = (frames) => page.evaluate(`${GAME}.stepFrames(${frames}, ${FRAME_MS})`);
   const shoot = async (frames = FRAMES_PER_SHOT) => {
     await step(frames);
+    if (BARE) await page.evaluate(BARE_JS);
     await page.screenshot(join(dir, 'frames', `${String(shots).padStart(4, '0')}.png`));
     shots += 1;
   };
@@ -87,6 +108,8 @@ async function recorder(page, name) {
 
 async function openGame() {
   const page = await browser.openPage(`${url}${url.includes('?') ? '&' : '?'}testmode=pixels&harbour=local`, { save });
+  await page.send('Emulation.setTimezoneOverride', { timezoneId: middayZone() });
+  await page.send('Page.reload');
   await page.waitFor(`typeof ${GAME}?.stepFrames === 'function'`, { what: 'the game', timeoutMs: 60_000 });
   await page.evaluate(`${GAME}.pauseLoop()`);
   return page;
