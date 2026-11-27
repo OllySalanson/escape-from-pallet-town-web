@@ -322,6 +322,14 @@ sea beside it (a cast), stands on the boutique's step (no WAREHOUSES), and on th
 smallest screen at 640x480 and 960x720 finds every arrival door on screen with its
 doorway clear of the FEEDBACK tab (`docs/screens/harbour-edges/`).
 
+`seaTelescope.mjs <test-mode build url> <dir> [--port=N] [--clock=day|dusk|night] [--clip]`
+looks through THE POINT's coin telescope from a new save: SPACE at it, the swoop
+down behind the player photographed as it goes, then the glass zoomed in with Z
+and steered with the arrow keys onto a near kind and a far one, each held until
+it is seen. It fails unless both are met and not owned in the save and ESC puts
+the harbour's camera back exactly as it was; `--clip` records it at the game's
+own pixels (`docs/screens/sea-telescope/`).
+
 `raid.mjs --exit=LABEL` (`--exit=ferry-dock`) leaves by a named exit rather than
 the nearest one open from the first second: it stands beside the exit until its
 caption reads `EXTRACT OPEN`, then steps on. A timed exit is never chosen

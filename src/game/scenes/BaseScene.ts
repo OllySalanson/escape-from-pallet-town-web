@@ -109,7 +109,7 @@ import {
 } from '../world/depths';
 import type { TileSource } from '../world/tileset/catalogue';
 import { brimRuns, type MapLayers } from '../world/tiles';
-import { BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, HOME_SIGN, MOORED_ROWING_BOATS, NOTICE_BOARD, getBaseMapFor } from '../base/baseMap';
+import { BASE_PLACE_NAME, BASE_SIGNS, BASE_SPAWN, COIN_TELESCOPE, HOME_SIGN, MOORED_ROWING_BOATS, NOTICE_BOARD, getBaseMapFor } from '../base/baseMap';
 import { noticeFor } from '../base/harbourNotices';
 import { dayNumber, rumourFrom, type RumourSource } from '../world/rumours';
 import { amberWeeps, fossilAwake, fossilMachineLines, fossilsForTheMachine } from '../hub/fossils';
@@ -294,6 +294,8 @@ import { COIN_EVERY_MS, COIN_HINT_AFTER_MS, COIN_PLINK_MS, COIN_PRICE, GIFT_FLIG
 import { ArenaView } from '../base/arenaView';
 import { roundTheYardStair, SLIDE_AFTER_MS, slideRound } from '../base/arenaWalk';
 import { ValeOverviewView } from '../base/valeOverviewView';
+import { SeaTelescopeView } from '../base/seaTelescopeView';
+import { turnBehind } from '../base/seaTelescope';
 import { wayInCards } from '../base/wayInCard';
 import { isNightRaid } from '../world/nightRaids';
 import { ArenaFurniture } from '../base/arenaFurniture';
@@ -886,6 +888,8 @@ export class BaseScene extends Phaser.Scene {
   private visits = 0;
   /** Somebody's eye to one of the hall's telescopes (`base/valeOverviewView.ts`). */
   private telescope: ValeOverviewView | null = null;
+  /** Somebody's eye to THE POINT's coin telescope, out over the sea (`base/seaTelescopeView.ts`). */
+  private seaGlass: SeaTelescopeView | null = null;
   /** The way in the player is stood over, or has under the cursor. */
   private aimed: RimLanding | null = null;
   /** The rail tile whose way in has had its say: a way in chosen from here stays chosen until a step is taken. */
@@ -1088,6 +1092,9 @@ export class BaseScene extends Phaser.Scene {
     if (this.telescope) {
       return asExtra(shortcutsInHint(this.telescope.padKeys()));
     }
+    if (this.seaGlass) {
+      return asExtra(shortcutsInHint(this.seaGlass.padKeys()));
+    }
     const moment = shortcutsInHint(this.hintText?.visible ? sourceText(this.hintText) : '');
     if (this.choosing || this.decor || this.phrasePicker) {
       return asExtra(moment);
@@ -1119,7 +1126,9 @@ export class BaseScene extends Phaser.Scene {
         ? 'leaving'
         : this.jump
           ? 'jumping'
-          : this.walkPlan
+          : this.seaGlass && !this.seaGlass.looking
+            ? 'telescope'
+            : this.walkPlan
             ? 'walking-on-its-own'
             : null;
     const stash = this.savedGame?.stash;
@@ -1144,6 +1153,8 @@ export class BaseScene extends Phaser.Scene {
       chart: this.mapScreen ? { known: this.mapScreen.knownTiles } : null,
       // THE RAID ARENA's telescope, while somebody is looking through it.
       telescope: this.telescope?.describeForTest() ?? null,
+      // THE POINT's coin telescope, while somebody is looking out to sea through it.
+      seaTelescope: this.seaGlass?.describeForTest() ?? null,
       // THE BOLTHOLE while it is being decorated: what is in hand, and why it will not go down.
       decorating: this.decor?.describeForTest() ?? null,
       near: {
@@ -1352,6 +1363,7 @@ export class BaseScene extends Phaser.Scene {
     this.furniture = null;
     this.arenaPanel = null;
     this.telescope = null;
+    this.seaGlass = null;
     this.aimed = null;
     this.portal = null;
     this.jumpScroll = null;
@@ -1569,6 +1581,8 @@ export class BaseScene extends Phaser.Scene {
       // The name screen is a page element, which outlives the scene too.
       this.namePrompt?.destroy();
       this.namePrompt = null;
+      this.seaGlass?.destroy();
+      this.seaGlass = null;
       // Through a door the harbour hears where the player is again in a moment;
       // to a menu or a raid, it says they are not standing anywhere.
       harbour()?.away();
@@ -1813,6 +1827,12 @@ export class BaseScene extends Phaser.Scene {
     if (this.telescope) {
       this.closePhrases();
       this.advanceTelescope(deltaMs);
+      return;
+    }
+
+    if (this.seaGlass) {
+      this.closePhrases();
+      this.advanceSeaGlass(deltaMs);
       return;
     }
 
@@ -2435,6 +2455,66 @@ export class BaseScene extends Phaser.Scene {
         headRows: TOWN_MAP_HEAD_ROWS,
       },
     });
+  }
+
+  /**
+   * An eye to THE POINT's coin telescope: the camera comes down behind the
+   * player and in through the eyepiece, out over the sea, where a kind held in
+   * the middle of the glass is SEEN in the Pokédex (`base/seaTelescope.ts`).
+   */
+  private lookOutToSea(): void {
+    if (this.seaGlass || this.leaving) {
+      return;
+    }
+    this.facing = facingTowards(this.currentTile, COIN_TELESCOPE);
+    this.walkPlan = null;
+    this.standStill();
+    this.showHint('');
+    audioManager.play('select');
+    this.seaGlass = new SeaTelescopeView(this, {
+      light: windowLight(new Date()),
+      turn: turnBehind(this.facing),
+      still: this.still,
+      figure: {
+        texture: this.playerTexture,
+        frame: getIdleFrame('up'),
+        headTop: CHARACTER_HEAD_PIXEL_Y + lookHeadDrop(this.playerTexture),
+      },
+      see: (dexId) => {
+        const fresh = this.saveManager.registerSeen([dexId]).length > 0;
+        this.savedGame = this.saveManager.load() ?? this.savedGame;
+        return fresh;
+      },
+    });
+  }
+
+  /** For a playtest driver: the coin telescope's glass while it is up (`tools/playtest/seaTelescope.mjs`). */
+  public get seaGlassForDriver(): SeaTelescopeView | null {
+    return this.seaGlass;
+  }
+
+  /** The keys while somebody is looking out to sea, and the harbour back once they step away. */
+  private advanceSeaGlass(deltaMs: number): void {
+    const glass = this.seaGlass;
+    if (!glass) {
+      return;
+    }
+    const { controls } = this;
+    glass.update(deltaMs, {
+      held: {
+        x: Number(controls.right.isDown || controls.d.isDown) - Number(controls.left.isDown || controls.a.isDown),
+        y: Number(controls.down.isDown || controls.s.isDown) - Number(controls.up.isDown || controls.w.isDown),
+      },
+      back: this.keyPresses.justPressed(controls.back),
+      zoom: this.keyPresses.justPressed(controls.closer),
+    });
+    if (!glass.finished) {
+      return;
+    }
+    glass.destroy();
+    this.seaGlass = null;
+    this.spentPresses.spendHeld(this.directionKeys());
+    this.showHint(this.hintHere());
   }
 
   private adjacent(tile: GridPosition): boolean {
@@ -4670,6 +4750,9 @@ export class BaseScene extends Phaser.Scene {
       if (landmark) {
         return landmark;
       }
+      if (!partner && sameTile(facing, COIN_TELESCOPE)) {
+        return '[SPACE] TELESCOPE';
+      }
       if (!partner && this.canFishAt(facing)) {
         return '[SPACE] FISH';
       }
@@ -6040,6 +6123,11 @@ export class BaseScene extends Phaser.Scene {
     // THE FIELD-MOVE COURSE's gate runs the course, and its TIME BOARD is read.
     if (COURSE_GATE_FRONT.some((tile) => sameTile(tile, target))) {
       this.say(courseKeeperLines(this.freshGame().raidProgress), [target], () => this.openMinigame('field-course'));
+      return;
+    }
+    // THE POINT's coin telescope is looked through, out to sea.
+    if (!this.place.room && sameTile(target, COIN_TELESCOPE)) {
+      this.lookOutToSea();
       return;
     }
     const landmark = HARBOUR_LANDMARKS.find((each) => landmarkFaced(each, target));

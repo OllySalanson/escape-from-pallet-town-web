@@ -28,9 +28,11 @@
 // to the snapshot beside them so that is a fact rather than a claim.
 //
 // Two files come out. `frlg-water.json` beside this script is the committed
-// snapshot of the source, surfing slots and the Super Rod included, for whoever
-// adds those next; `src/game/world/generated/fishingWaters.ts` is the part the
-// game reads.
+// snapshot of the source, both versions' rows; `src/game/world/generated/
+// fishingWaters.ts` is the part the game reads: the two lower rods' slots, which
+// a cast rolls, and every slot of the water - the Super Rod's and surfing's too
+// - which is what lives out there to be seen from a distance (THE POINT's coin
+// telescope, `src/game/base/seaTelescope.ts`).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -131,6 +133,15 @@ const rodSlots = (water) => {
   );
 };
 
+/** Every slot a water has, each rod's and surfing's, with its FireRed rate: what lives in it. */
+const everySlot = (water) => {
+  const fishing = water.FireRed.fishing;
+  return {
+    superRod: snapshot.rods.super_rod.map((slot) => ({ ...fishing[slot], weight: snapshot.fishingRates[slot] })),
+    surfing: water.FireRed.surfing.slots.map((slot, index) => ({ ...slot, weight: snapshot.surfingRates[index] })),
+  };
+};
+
 const slotLine = (slot) =>
   `    { speciesId: '${slot.speciesId}', minLevel: ${slot.minLevel}, maxLevel: ${slot.maxLevel}, weight: ${slot.weight} },`;
 
@@ -147,8 +158,8 @@ ${waters.map((water) => `  ${water.id}: '${water.FireRed.map}',`).join('\n')}
 
 /**
  * What each rod reads, slot for slot: the species and levels of the slot, and
- * its FireRed rate out of 100 as the weight. The Super Rod's five slots are in
- * \`tools/encounters/frlg-water.json\` and nowhere here.
+ * its FireRed rate out of 100 as the weight. The Super Rod's five slots and
+ * surfing's are \`DEEP_WATER_SLOTS\`, below.
  */
 export const FISHING_WATER_SLOTS: Readonly<
   Record<keyof typeof FISHING_WATER_SOURCES, Readonly<Record<'oldRod' | 'goodRod', readonly WildEncounterEntry[]>>>
@@ -157,6 +168,22 @@ ${waters
   .map((water) => {
     const rods = rodSlots(water);
     return `  ${water.id}: {\n    oldRod: [\n${rods.old_rod.map((slot) => `  ${slotLine(slot)}`).join('\n')}\n    ],\n    goodRod: [\n${rods.good_rod.map((slot) => `  ${slotLine(slot)}`).join('\n')}\n    ],\n  },`;
+  })
+  .join('\n')}
+};
+
+/**
+ * The rest of each water, slot for slot: the Super Rod's five, which no rod in
+ * this game reaches, and the five surfing rolls. Nothing is met from these;
+ * they are what is out there, at their FireRed rates.
+ */
+export const DEEP_WATER_SLOTS: Readonly<
+  Record<keyof typeof FISHING_WATER_SOURCES, Readonly<Record<'superRod' | 'surfing', readonly WildEncounterEntry[]>>>
+> = {
+${waters
+  .map((water) => {
+    const deep = everySlot(water);
+    return `  ${water.id}: {\n    superRod: [\n${deep.superRod.map((slot) => `  ${slotLine(slot)}`).join('\n')}\n    ],\n    surfing: [\n${deep.surfing.map((slot) => `  ${slotLine(slot)}`).join('\n')}\n    ],\n  },`;
   })
   .join('\n')}
 };
