@@ -92,11 +92,47 @@ And in any window:
 After it the check names two things at 800x600, both YOUR TEAM's, and none at
 1280x800. It was run on a new save, as before: the fifteen were looked at.
 
+## The third pass: YOUR TEAM, and the bench in the Raid Arena
+
+The last of the screens broken at 800x600, and the one that was also wrong at
+1280x800 once six were on the team.
+
+| | Before | After |
+|---|---|---|
+| 800x600, six on the team | ![](your-team-before.png) | ![](your-team-after.png) |
+| 1280x800, six on the team, the cursor on the second | ![](your-team-six-before-1280.png) | ![](your-team-six-after-1280.png) |
+
+At 800x600 a stage over a list had about a hundred game pixels for a card that needs
+more, and for six Pokémon at twice their size. There the team stands down the left,
+three abreast at the art's own size with a name under each, and the card stands over
+the chest's list on the right. One alone has the whole field and stands as big as in a
+fight. The card keeps HP and its bar, the five numbers two abreast, what it holds
+beside its speed, and its moves; the list is FIND and a row of tiles, without its
+heading.
+
+In any window, with four or more:
+
+- **The two rows are made on the mound.** The back row's places were lifted thirty,
+  which put heads out of the top of the stage and plates behind the front row's feet.
+  One at the back stands further up its mound, inside its place.
+- **The six stand inside the stage.** A place narrower than its picture let the first
+  hang out of the left edge and the last stand under the card.
+- **A plate at the back shows under the cursor.** Six plates do not fit under six
+  places; the front row's show, and one at the back shows its own, in front, when the
+  cursor is on it.
+
+And the card, in any window:
+
+- **It is wide enough for two long moves side by side**, so four moves are two rows.
+- **It no longer says what ENTER and L do.** The help line under the screen says it;
+  said again on the card, in keys too wide for it, two of them made the card wider
+  than its frame and taller than the stage.
+- **A number has the room it needs.** A way to the next level in the thousands ran out
+  of the card's side.
+
+After it `menusAudit.mjs --fit` names nothing at 800x600 and nothing at 1280x800.
+
 ## Still broken
 
-Not fixed in this change, and next:
-
-| | |
-|---|---|
-| YOUR TEAM, and the bench in the Raid Arena, at 800x600: the stat card is cut through its moves, the platform stands over its labels, and the chest's list has no row | ![](still-your-team.png) |
-| YOUR TEAM with six, in any window: the six stand over one another, the first one's plate is cut by the edge of the stage, the last stands under the card, and the card of anyone but the leader is wider than its frame | ![](still-your-team-six.png) |
+The map maker at 800x600: its zoom chips wrap down their column and the map is left a
+sliver (`docs/screens/wood-floor/README.md`).

@@ -10678,7 +10678,7 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .team-line {
   position: absolute;
   left: calc(var(--u) * 4);
-  right: calc(var(--u) * 164);
+  right: calc(var(--u) * 184);
   bottom: calc(var(--u) * 6);
   display: flex;
   justify-content: center;
@@ -10703,10 +10703,49 @@ body.touch-play .feedback-tab {
    that holds three abreast. */
 :where(.pixel-ui) .team-stand.is-back {
   z-index: 0;
-  transform: translateY(calc(var(--u) * -30));
 }
 :where(.pixel-ui) .team-stand:not(.is-back) {
   z-index: 1;
+}
+/* The two rows are made on the mound, not by lifting the back one's whole
+   place: lifted thirty, its head went out of the top of the stage, and its
+   plate rode up behind the front row's feet. One at the back stands twenty
+   further up its mound than one at the front, inside the place it has. */
+.pixel-ui .team-stand.is-back .px-portrait {
+  margin-bottom: calc(var(--u) * 48);
+}
+:where(.pixel-ui) .team-stand.is-back .team-platform {
+  bottom: calc(var(--u) * 14);
+}
+.pixel-ui .team-line:has(> .is-back) .team-stand:not(.is-back) .px-portrait {
+  margin-bottom: calc(var(--u) * 28);
+}
+/* Six plates do not fit under six places a third as wide as a plate: the
+   front row's show, and one at the back shows its own when the cursor (or the
+   pointer) is on it, which also brings it forward. */
+:where(.pixel-ui) .team-stand.is-back .team-plate {
+  visibility: hidden;
+}
+:where(.pixel-ui) .team-stand.is-back:focus .team-plate,
+:where(.pixel-ui[data-pointer='previews']) .team-stand.is-back:hover .team-plate {
+  visibility: visible;
+}
+.pixel-ui .team-stand:focus {
+  z-index: 2;
+}
+/* A place narrower than the picture in it lets the picture hang over both
+   sides, so the first of six hung out of the stage's left edge and the last
+   stood under the card: four or more stand in from the ends by a quarter of a
+   picture. */
+:where(.pixel-ui) .team-line:has(> .team-stand:nth-child(4)) {
+  padding: 0 calc(var(--u) * 32);
+}
+/* And the leader's plate, the longest (its rosette, LEAD, its name, its level,
+   its bar), starts near the stage's edge rather than centred on a place a
+   third its width, where its rosette went out of the side. */
+:where(.pixel-ui) .team-line:has(> .is-back) .team-stand:first-child .team-plate {
+  left: calc(var(--u) * -28);
+  transform: none;
 }
 :where(.pixel-ui) .team-platform {
   position: absolute;
@@ -10779,7 +10818,14 @@ body.touch-play .feedback-tab {
   position: absolute;
   top: calc(var(--u) * 6);
   right: calc(var(--u) * 4);
-  width: calc(var(--u) * 156);
+  /* Wide enough for two of the longest moves side by side (THUNDER WAVE beside
+     QUICK ATTACK): at 156 four moves were three rows, and the card ran out of
+     the foot of the stage. */
+  width: calc(var(--u) * 176);
+}
+:where(.pixel-ui) .team-cards .team-moves {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
 }
 .pixel-ui .team-card {
   display: grid;
@@ -10800,7 +10846,9 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .px-stat {
   display: grid;
-  grid-template-columns: calc(var(--u) * 40) minmax(0, 1fr) calc(var(--u) * 34);
+  /* The number has the room it needs and at least 34: a way to the next level
+     in the thousands (6,488/6,859) ran out of the card's side. */
+  grid-template-columns: calc(var(--u) * 40) minmax(0, 1fr) minmax(calc(var(--u) * 34), auto);
   align-items: center;
   gap: calc(var(--u) * 3);
   text-transform: uppercase;
@@ -10839,9 +10887,13 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .team-card-foot {
   display: flex;
+  /* Where it is, and what the keys do to it: on one line when they fit, the
+     keys under it when they do not (two keys did not, and made the card wider
+     than its frame). */
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: calc(var(--u) * 4);
+  gap: calc(var(--u) * 2) calc(var(--u) * 4);
   margin-top: calc(var(--u) * 2);
 }
 :where(.pixel-ui) .team-card-where {
@@ -10850,9 +10902,23 @@ body.touch-play .feedback-tab {
   gap: calc(var(--u) * 2);
   color: var(--ink-soft);
 }
+:where(.pixel-ui) .team-card-held {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  white-space: nowrap;
+}
+/* Where it is, a dot, what it holds: the dot is drawn, so a card with nothing held has none. */
+:where(.pixel-ui) .team-card-place + .team-card-held::before {
+  content: '';
+  width: calc(var(--u) * 2);
+  height: calc(var(--u) * 2);
+  background: currentColor;
+}
 :where(.pixel-ui) .team-keys {
   display: flex;
-  gap: calc(var(--u) * 3);
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 2) calc(var(--u) * 3);
 }
 :where(.pixel-ui) .team-key {
   display: inline-flex;
@@ -10867,7 +10933,7 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .team-key.is-go {
   background: var(--go);
-  color: var(--paper);
+  color: var(--bar-text);
 }
 :where(.pixel-ui) .team-key.is-go .px-keycap {
   background: var(--plate);
@@ -10917,6 +10983,135 @@ body.touch-play .feedback-tab {
   position: absolute;
   top: calc(var(--u) * 2);
   left: calc(var(--u) * 2);
+}
+
+/* YOUR TEAM in a small window (800x600: a body of 368 by 206 game pixels). A
+   stage over a list had 100 of them for a card that needs 110 and six
+   Pokémon at twice their size. There the team stands down the left, three
+   abreast at the art's own size with a name under each, and the card stands
+   over the chest's list on the right. */
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout {
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 184);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    'line cards'
+    'line boxes';
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout > .team-stage {
+  display: contents;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line {
+  grid-area: line;
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: end;
+  row-gap: calc(var(--u) * 6);
+  min-height: 0;
+  padding: calc(var(--u) * 6) calc(var(--u) * 2);
+  overflow: hidden;
+  background: url('/assets/battle/field-bands.png') left bottom / 100% calc(var(--u) * 258) no-repeat;
+  background-color: #40e8f8;
+  image-rendering: pixelated;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  height: calc(var(--u) * 84);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand .px-portrait {
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 64);
+  margin-bottom: calc(var(--u) * 18);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand .px-portrait img {
+  transform: scale(var(--zoom, 2));
+}
+/* One alone has the whole field, and stands as big as in a fight. */
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line:has(> .team-stand:only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand:only-child {
+  height: calc(var(--u) * 160);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand:only-child .px-portrait {
+  width: calc(var(--u) * 128);
+  height: calc(var(--u) * 128);
+  margin-bottom: calc(var(--u) * 24);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand:only-child .px-portrait img {
+  transform: scale(calc(var(--zoom, 2) * 2));
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-stand .team-platform {
+  display: none;
+}
+/* A name under each, and the rosette: the level and the health are on the card. */
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-stand.is-back .team-plate {
+  visibility: visible;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-plate {
+  gap: var(--u);
+  padding: 0 calc(var(--u) * 2);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand:first-child .team-plate {
+  left: 50%;
+  transform: translateX(-50%);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-plate > :is(.team-plate-level, .team-plate-lead, .px-hp) {
+  display: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-cards {
+  grid-area: cards;
+  position: static;
+  width: auto;
+}
+/* The card there: the five numbers two abreast under the HP and its bar, what
+   it holds beside its speed, its moves. Where it is, is where it stands. */
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--u) calc(var(--u) * 8);
+  padding-top: calc(var(--u) * 2);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card > :is(.px-heading, .team-moves),
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card > .px-stat:first-of-type {
+  grid-column: 1 / -1;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card > .px-stat:not(:first-of-type) {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card > .px-stat:not(:first-of-type) > .px-stat-bar,
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card > .px-stat:last-of-type,
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card .team-card-place,
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card .team-keys {
+  display: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card > .team-card-foot {
+  order: 1;
+  margin-top: 0;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card .team-card-held::before {
+  content: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card > .team-moves {
+  order: 2;
+  margin-top: 0;
+}
+/* And the chest's list under it: FIND and one row of tiles, without its heading. */
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-boxes {
+  grid-area: boxes;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  margin: 0;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-boxes > .px-heading {
+  display: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-boxes .px-mon-tiles {
+  max-height: none;
 }
 
 /* --- THE DAY-CARE in his own pen (`hub/dayCareView.ts`) ----------------- *
