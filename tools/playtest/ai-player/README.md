@@ -30,7 +30,7 @@ serves it, opens it in the machine's watched headless browser
 started instead) and pauses it. The game only moves when a command steps it.
 `start --resume=<run-id>` carries a run on in a new browser from the save its
 folder holds, and `start --save=<file>` starts from a save of your own (a
-seeded state, or one copied out of another run). `start --storage=<file>` starts from a whole page's storage instead (a save and the raid written down beside it, as `graveyardRaid.mjs` writes), so CONTINUE takes a raid up mid-raid; every action copies the run's storage out to `storage.json` beside `save.json`, and `--resume` takes that up first, so a lost tab keeps its raid. `--harbour=local` keeps the
+seeded state, or one copied out of another run). `start --storage=<file>` starts from a whole page's storage instead (a save and the raid written down beside it, as `graveyardRaid.mjs` writes), so CONTINUE takes a raid up mid-raid; every action copies the run's storage out to `storage.json` beside `save.json`, and `--resume` takes that up first, so a lost tab keeps its raid. `EPTW_WINDOW=1200x768` plays it in a laptop's window rather than the 400x256 logic window, and `EPTW_AI_BUILD=<dir>` plays a build made elsewhere (a branch's, served from `<dir>/escape-from-pallet-town-web/`). `--harbour=local` keeps the
 shared harbour and friend rooms on in that one browser, as a real player has them. One game is open at a time: a `start` stops the run that was
 current first (copying its save out, as `stop` does) and closes this run's own
 old tab, so a night of starts never leaves tabs and servers running behind it.

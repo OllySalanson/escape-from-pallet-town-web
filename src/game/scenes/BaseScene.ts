@@ -218,6 +218,7 @@ import { wallMapPoster } from '../base/wallMap';
 import type { PaintedPicture } from '../world/minimap';
 import {
   arrivalPlace,
+  throughTheDoorPlace,
   directionBetween,
   isPartnerSpecies,
   sameTile,
@@ -621,6 +622,12 @@ export interface BaseSceneData {
   readonly from?: string;
   /** The room the player is in: walked into, or backed out of a screen into. */
   readonly room?: string;
+  /**
+   * Walked through a door or down a flight of stairs, rather than put back
+   * after a screen, a fight or a raid: the partner comes through behind the
+   * player (`createPartner`).
+   */
+  readonly throughDoor?: boolean;
   /** Set by the result screen: a raid puts the player back on THE RAID ARENA's rim. */
   readonly arrival?: 'raid';
   /** What the crowd made of the raid that has just ended, handed over by the result screen. */
@@ -5329,13 +5336,21 @@ export class BaseScene extends Phaser.Scene {
    * in with a hop rather than standing there from the first frame, because it
    * has just come in after them - and coming home from a raid, or opening the
    * game, it says hello.
+   *
+   * Through a door it is not there yet: it comes through after the player, and
+   * steps out of the doorway onto the tile they leave with their first step,
+   * as a following Pokémon does in the games. Put anywhere at the moment of
+   * arrival, it stood in front of them on every mat - the tile behind is the
+   * door - and the first step walked through it (the harbour audit, 27 Nov 2026).
    */
   private createPartner(data: BaseSceneData): void {
     const partner = partnerOf(this.savedGame.stash);
     if (!partner) {
       return;
     }
-    const place = arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile));
+    const place = data.throughDoor
+      ? throughTheDoorPlace(this.currentTile, this.facing)
+      : arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile));
     const fromARaid = data.arrival === 'raid';
     const greeting: PartnerEmote | null =
       fromARaid || data.chose || (data.from === undefined && data.room === undefined && data.at === undefined)
@@ -6556,7 +6571,7 @@ export class BaseScene extends Phaser.Scene {
       this.openArenaIntro({ savedGame: this.savedGame, hall: { savedGame: this.savedGame, room: door.id } });
       return;
     }
-    this.goTo({ savedGame: this.savedGame, room: door.id }, 'interiorEnter');
+    this.goTo({ savedGame: this.savedGame, room: door.id, throughDoor: true }, 'interiorEnter');
   }
 
   /**
@@ -6587,7 +6602,7 @@ export class BaseScene extends Phaser.Scene {
   /** Onto a stair mat: the same scene, started again on the floor it leads to. */
   private climb(room: BaseRoom, to: string): void {
     this.goTo(
-      { savedGame: this.savedGame, room: to, stairsFrom: room.id, ...(this.visit ? { visit: this.visit } : {}) },
+      { savedGame: this.savedGame, room: to, stairsFrom: room.id, throughDoor: true, ...(this.visit ? { visit: this.visit } : {}) },
       'interiorEnter',
     );
   }
@@ -6933,7 +6948,7 @@ export class BaseScene extends Phaser.Scene {
     this.closePhrases();
     audioManager.play('cancel');
     this.say([visitEndedLine(ending, visit.ownerName)], [], () =>
-      this.goTo({ savedGame: this.savedGame, from: 'bolthole' }, 'interiorLeave'),
+      this.goTo({ savedGame: this.savedGame, from: 'bolthole', throughDoor: true }, 'interiorLeave'),
     );
   }
 
@@ -7051,7 +7066,7 @@ export class BaseScene extends Phaser.Scene {
     if (room.screen === 'arena') {
       hallDoorsOpen = false;
     }
-    this.goTo({ savedGame: this.savedGame, from: room.id }, 'interiorLeave');
+    this.goTo({ savedGame: this.savedGame, from: room.id, throughDoor: true }, 'interiorLeave');
   }
 
   private goTo(data: BaseSceneData, sound: 'interiorEnter' | 'interiorLeave' | 'heal' | 'confirm'): void {
