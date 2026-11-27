@@ -92,7 +92,7 @@ export class ObjectivesScene extends Phaser.Scene {
   }
 
   private createOverlay(guide: ReturnType<typeof buildObjectiveGuide>): void {
-    this.menuOverlay = new MenuOverlay(this, 'objectives-menu pixel-ui', (event) => {
+    this.menuOverlay = new MenuOverlay(this, 'objectives-menu pixel-ui wood-floor', (event) => {
       if (isOverlayDismissKey(event, 'o')) {
         event.preventDefault();
         this.close();

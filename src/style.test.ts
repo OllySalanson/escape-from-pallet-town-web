@@ -936,6 +936,10 @@ describe('the last white screens on the wood floor', () => {
     ['scenes/ConsoleScene', 'console-menu pixel-ui wood-floor'],
     ['ui/FavourListOverlay', 'favour-menu side-panel pixel-ui wood-floor'],
     ['ui/KnockOverlay', 'knock-menu side-panel pixel-ui wood-floor'],
+    // The raid's own panels, which the menu audit never opens.
+    ['scenes/BagScene', 'bag-menu side-panel pixel-ui wood-floor'],
+    ['scenes/PartyScene', 'party-menu side-panel pixel-ui wood-floor'],
+    ['scenes/ObjectivesScene', 'objectives-menu pixel-ui wood-floor'],
   ])('%s is made on it', async (file, classes) => {
     expect(await readFile(new URL(`./game/${file}.ts`, import.meta.url), 'utf8')).toContain(`'${classes}'`);
   });
@@ -953,6 +957,24 @@ describe('the last white screens on the wood floor', () => {
     expect(body('.pixel-ui.wood-floor .px-body .px-field:focus')).toContain('--ink: var(--raised-ink);');
     // And a field is one plank: a seam ran through what was typed.
     expect(body('.pixel-ui:is(.wood-floor, .dex-floor) .px-body .px-window:is(button, .px-plate, .px-field)')).toContain('--grain: initial;');
+  });
+
+  it('makes the move chooser on it wherever it opens, beside a raid or over the chest', async () => {
+    const chooser = await readFile(new URL('./game/ui/MoveChooserOverlay.ts', import.meta.url), 'utf8');
+    expect(chooser).toContain("`move-chooser-menu${view.beside ? ' side-panel' : ''} pixel-ui wood-floor`");
+  });
+
+  it("letters the raid panels' lit and washed parts as plates", () => {
+    // A slot under the cursor, the leader's, one picked up, and the pack's tile under the cursor: the plate's ink.
+    const slots = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.includes('.pixel-ui.wood-floor .px-body .px-party-slot:is(:focus, .is-lead, .is-holding)'));
+    expect(slots?.[1]).toContain('.pixel-ui.wood-floor .px-body .px-item-tile:is(:focus, .is-riding)');
+    expect(slots?.[2]).toContain('--ink: var(--raised-ink);');
+    // The move being learned, one marked to forget and a bar turned green carry coloured tags: whole plates of the page's palette.
+    const plates = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, selectors]) => selectors.includes('.move-chooser-new .px-row.move-card, button.px-row.move-card.is-forgetting, .confirm-bar.teach-bar.is-armed, .confirm-bar.move-chooser-actions.is-armed'));
+    expect(plates).toHaveLength(2);
+    expect(plates[0][1]).toContain(':root');
+    // And an empty place is ruled in the floor's line, not in soft ink, which is pale on wood.
+    expect(body('.pixel-ui.wood-floor .px-body .px-party-slot.is-empty')).toContain('--edge: var(--line);');
   });
 
   it("letters the Trader's gold heading in ink", () => {

@@ -545,6 +545,9 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
       settle(written !== undefined, message || this.heldByRaid(item.id, id) || `${pokemon.name.toUpperCase()} could not learn it.`);
       return;
     }
+    // The question is answered: it goes before the chooser comes up beside the
+    // chest, or its plate stood on under the chooser's edge, cut through YES and NO.
+    this.render([this.on(id)]);
     const move = machine.move;
     openMoveChooser(
       this,

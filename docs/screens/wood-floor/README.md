@@ -211,3 +211,30 @@ The states a still cannot show were played with `tools/playtest/yourThings.mjs`,
 | Teaching a disc at home | ![](before/teach-at-home.png) | ![](after/teach-at-home.png) |
 | A stone over a Pokémon it does nothing for | ![](before/stone-over-charmander.png) | ![](after/stone-over-charmander.png) |
 | The question before a stone is used: a plate of paper | ![](before/ask-stone.png) | ![](after/ask-stone.png) |
+
+## The raid's own panels
+
+The menu audit opens the harbour's screens and never a raid's, so these were not
+measured until every screen it does open was done. Each was a sheet of white paper
+beside the map. Scores are of the whole 1280x800 picture, the map included.
+
+| | Before | After | Colour | White |
+|---|---|---|---|---|
+| THE PACK | ![](before/raid-pack.png) | ![](after/raid-pack.png) | 15 to 27 | 19% to 3% |
+| THE PACK asking who a Potion is for | ![](before/raid-pack-who.png) | ![](after/raid-pack-who.png) | 17 to 29 | 18% to 3% |
+| A disc read in the pack, asking | ![](before/raid-teach-chosen.png) | ![](after/raid-teach-chosen.png) | 14 to 21 | 13% to 4% |
+| The move chooser | ![](before/raid-move-chooser.png) | ![](after/raid-move-chooser.png) | 14 to 27 | 10% to 4% |
+| THE PARTY | ![](before/raid-party.png) | ![](after/raid-party.png) | 12 to 32 | 26% to 3% |
+| The field guide (O, twice) | ![](before/raid-field-guide.png) | ![](after/raid-field-guide.png) | 17 to 27 | 15% to 1% |
+| The move chooser at THE CHEST | ![](before/chooser-at-the-chest.png) | ![](after/chooser-at-the-chest.png) | 27 to 54 | 25% to 1% |
+
+The last pair shows a fault found on the way: the question a disc asks at THE CHEST
+stood on under the move chooser it had opened, cut through YES and NO. It goes now
+before the chooser comes up.
+
+Oak on the radio (O, once) is the world's own white dialogue box, and is left.
+
+`tools/playtest/sidePanels.mjs` plays all of them in a real raid. It had gone stale
+(it walked a list down where the pack is a row of tiles now), and on main it did not
+pass at 800x600 either, where BLUE caught the player between two checks and the
+party's slots stand three abreast. It passes at both sizes now.

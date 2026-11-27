@@ -2227,7 +2227,7 @@ body.touch-play .feedback-tab {
    of paper standing on the wood floor (`.px-plate` and the row under the
    cursor, below) is this palette again, whatever the floor round it remapped. */
 .pixel-ui .px-plate,
-.pixel-ui:is(.wood-floor, .dex-floor) .px-body :is(button.px-row:focus, .px-row.is-secured, .px-row.teach-pupil.is-selected, .px-chip:focus, .px-step:focus, .px-scroll[data-reads]:focus),
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body :is(button.px-row:focus, .px-row.is-secured, .px-row.teach-pupil.is-selected, .px-chip:focus, .px-step:focus, .px-scroll[data-reads]:focus, .move-chooser-new .px-row.move-card, button.px-row.move-card.is-forgetting, .confirm-bar.teach-bar.is-armed, .confirm-bar.move-chooser-actions.is-armed),
 :root {
   /* The menus' palette (`src/game/ui/uiPalette.ts`): a Poke Ball, opened. Five
      colours, one job each (the captain, 25 Nov 2026: "It must be the new way of
@@ -2828,7 +2828,7 @@ body.touch-play .feedback-tab {
    lit or washed with words on it - the row under the cursor, a row chosen.
    Its palette is the page's own again: the rule that names `:root` names it. */
 .pixel-ui .px-plate,
-.pixel-ui:is(.wood-floor, .dex-floor) .px-body :is(button.px-row:focus, .px-row.is-secured, .px-row.teach-pupil.is-selected, .px-chip:focus, .px-step:focus, .px-scroll[data-reads]:focus) {
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body :is(button.px-row:focus, .px-row.is-secured, .px-row.teach-pupil.is-selected, .px-chip:focus, .px-step:focus, .px-scroll[data-reads]:focus, .move-chooser-new .px-row.move-card, button.px-row.move-card.is-forgetting, .confirm-bar.teach-bar.is-armed, .confirm-bar.move-chooser-actions.is-armed) {
   color: var(--ink);
 }
 /* What kind of card it is, said by its heading strip's colour, never by a tint
@@ -7450,6 +7450,22 @@ body.touch-play .feedback-tab {
   --ink: var(--raised-ink);
   --ink-soft: var(--raised-ink-soft);
   color: var(--ink);
+}
+/* The raid's own panels (the pack, the party): a slot under the cursor, the
+   leader's, one picked up, and the thing under the cursor in the pack are lit
+   or washed, so plates. (The move being learned, one marked to forget and a
+   bar turned green to ask carry coloured tags, and are whole plates of the
+   page's palette: the rule that names `:root`.) */
+.pixel-ui.wood-floor .px-body .px-party-slot:is(:focus, .is-lead, .is-holding),
+.pixel-ui.wood-floor .px-body .px-item-tile:is(:focus, .is-riding) {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
+/* An empty place in the party is a sunk square ruled in the floor's own line:
+   ruled in soft ink, which is pale here, it was the brightest thing in the panel. */
+.pixel-ui.wood-floor .px-body .px-party-slot.is-empty {
+  --edge: var(--line);
 }
 /* A part there is enough of is a tag washed green, and so a plate too. */
 .pixel-ui.wood-floor .px-body :is(.part-tag, .workshop-cost):not(.is-short) {

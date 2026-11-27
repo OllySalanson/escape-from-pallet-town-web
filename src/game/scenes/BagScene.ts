@@ -322,7 +322,7 @@ export class BagScene extends Phaser.Scene {
   }
 
   public create(): void {
-    this.menuOverlay = new MenuOverlay(this, 'bag-menu side-panel pixel-ui', (event) => this.handleKey(event));
+    this.menuOverlay = new MenuOverlay(this, 'bag-menu side-panel pixel-ui wood-floor', (event) => this.handleKey(event));
     this.menuOverlay.root.setAttribute('aria-label', 'Raid pack');
     dockSidePanel(this, this.menuOverlay, this.view);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.view?.covers(0));

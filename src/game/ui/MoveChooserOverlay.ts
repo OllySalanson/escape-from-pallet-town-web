@@ -49,7 +49,7 @@ export function openMoveChooser(
     chosen = index;
     render(`[data-forget="${index ?? was ?? 0}"]`);
   };
-  const overlay: MenuOverlay = new MenuOverlay(scene, `move-chooser-menu${view.beside ? ' side-panel' : ''} pixel-ui`, (event) => {
+  const overlay: MenuOverlay = new MenuOverlay(scene, `move-chooser-menu${view.beside ? ' side-panel' : ''} pixel-ui wood-floor`, (event) => {
     if (event.key === 'Escape') {
       event.preventDefault();
       if (chosen !== null) {

@@ -67,7 +67,7 @@ export class PartyScene extends Phaser.Scene {
   }
 
   public create(): void {
-    this.menuOverlay = new MenuOverlay(this, 'party-menu side-panel pixel-ui', (event) => this.handleKey(event));
+    this.menuOverlay = new MenuOverlay(this, 'party-menu side-panel pixel-ui wood-floor', (event) => this.handleKey(event));
     this.menuOverlay.root.setAttribute('aria-label', 'Raid party');
     dockSidePanel(this, this.menuOverlay, this.view);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.view?.covers(0));
