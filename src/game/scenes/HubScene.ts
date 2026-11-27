@@ -265,6 +265,14 @@ const ARENA_PANELS: readonly string[] = ['rim'] satisfies readonly HubPanel[];
 type HubView = HubPanel | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare' | 'trades' | 'friend';
 
 /**
+ * The keepers' screens that stand on the wood floor (`wood-floor` in
+ * `style.css`, `docs/screens/wood-floor/`): a shop of shelves and a workshop
+ * of benches, which were sheets of white paper. The others are drawn as places
+ * of their own already - the Trader's and the Day-Care's fields, Oak's map.
+ */
+const WOOD_FLOOR_VIEWS: readonly HubView[] = ['workshop', 'trader'];
+
+/**
  * How much of the menu layer a panel over the hall may take, in game pixels: as
  * little as the smallest screen every screen is authored against, or a little
  * over half of a big window, so the hall is always there beside it. The rim's
@@ -1390,6 +1398,8 @@ export class HubScene extends Phaser.Scene {
 
   private render(): void {
     const root = this.overlay.root;
+    // Bill's shelf and Brock's skyline stand on the wood floor (`WOOD_FLOOR_VIEWS`).
+    root.classList.toggle('wood-floor', WOOD_FLOOR_VIEWS.includes(this.view));
     // A redraw of the screen already showing keeps its lists where they were
     // scrolled (`MenuOverlay.redraw`); arriving at another screen starts it at
     // the top.

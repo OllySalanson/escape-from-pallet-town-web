@@ -89,7 +89,7 @@ function openCenter(storage: MemoryStorage): CenterInternals {
     counterCounts: new Map<string, number>(),
     time: { delayedCall: vi.fn() },
     overlay: {
-      root: { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] },
+      root: { innerHTML: '', querySelector: () => null, querySelectorAll: () => [], classList: { toggle: () => false } },
       focus: vi.fn(),
       refocus: vi.fn(),
       redraw(markup: string) {

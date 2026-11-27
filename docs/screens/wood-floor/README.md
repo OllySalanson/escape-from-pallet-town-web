@@ -163,6 +163,10 @@ and the commit of each change: `node tools/playtest/menusAudit.mjs <test-mode bu
 | THE FIELD-MOVE COURSE | ![](before/game-field-course.png) | ![](after/game-field-course.png) | 2 to 59 | 88% to 0% |
 | THE PROMENADE DERBY | ![](before/game-promenade-derby.png) | ![](after/game-promenade-derby.png) | 3 to 54 | 76% to 0% |
 | THE DIG | ![](before/game-the-dig.png) | ![](after/game-the-dig.png) | 2 to 58 | 87% to 0% |
+| BILL'S COTTAGE | ![](before/bills-cottage-shop.png) | ![](after/bills-cottage-shop.png) | 11 to 52 | 31% to 1% |
+| BILL'S COTTAGE: asked once more | ![](before/bills-cottage-asked.png) | ![](after/bills-cottage-asked.png) | | |
+| BROCK'S WORKSHOP | ![](before/brocks-workshop.png) | ![](after/brocks-workshop.png) | 16 to 40 | 27% to 2% |
+| HELP | ![](before/help.png) | ![](after/help.png) | 9 to 38 | 44% to 2% |
 | THE HARBOUR BOUTIQUE | ![](before/boutique-shop.png) | ![](after/boutique-shop.png) | 10 to 53 | 57% to 1% |
 | THE HARBOUR BOUTIQUE: trying a look on | ![](before/boutique-trying-on.png) | ![](after/boutique-trying-on.png) | 14 to 56 | 58% to 1% |
 | YOUR WARDROBE | ![](before/boutique-wardrobe.png) | ![](after/boutique-wardrobe.png) | 8 to 54 | 64% to 0% |
@@ -177,6 +181,13 @@ The games' screens were lists and nothing else, so the wood floor alone left eac
 | 800x600 | Before | After |
 |---|---|---|
 | POKéMON JUMP | ![](before/game-corner-jump-800x600.png) | ![](after/game-corner-jump-800x600.png) |
+
+Bill's and Brock's are `menusAudit.mjs`'s and `shopStates.mjs`'s; Brock's room keeps its own pale wall, which is the place and not paper. **Both shops were already broken in an 800x600 window before this**, and still are: Bill's second shelf is pushed off the screen and his standing cut, and Brock's row of builds wraps to two and leaves his room a sliver. They want a small-window pass of their own.
+
+| 800x600, as on main | |
+|---|---|
+| Bill's Cottage | ![](before/bills-cottage-shop-800x600.png) |
+| Brock's Workshop | ![](before/brocks-workshop-800x600.png) |
 
 The boutique's are `tools/playtest/boutique.mjs`'s, which tries a look on, buys it, walks out in it and changes back at the wardrobe. It also showed a fault older than the wood: in an 800x600 window the shelves' pager was drawn under the cards, because a small room gave that window two rows for three things.
 

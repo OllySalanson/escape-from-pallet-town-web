@@ -85,6 +85,11 @@ describe('the wood floor', () => {
     }
   });
 
+  it('writes a warning on the red wash in a red that can be read there', () => {
+    // The page's own red on that wash is under 3:1 (a question asked at Bill's and Brock's, 27 Nov 2026).
+    expect(contrast(colour('wash-red-ink'), colour('risk-wash'))).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('is warm brown wood: never white, never black, never grey', () => {
     for (const board of ['paper', 'paper-raised', 'paper-sunk']) {
       const value = colour(board);
