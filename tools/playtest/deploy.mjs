@@ -97,9 +97,22 @@ export async function walkIntoBase(page, door, options = {}) {
   // A keeper's screen is the hub; THE HARBOUR BOUTIQUE's and THE GAME CORNER's are screens of their own over the harbour.
   const opened = `${sceneIs('hub')} || ${sceneIs('boutique')} || ${sceneIs('game-corner')}`;
   const inHall = `(() => { const b = ${GAME}.scene.getScene('base'); return b.sys.isActive() && b.ready && !b.leaving && b.room?.id === 'raid-arena'; })()`;
-  for (let guard = 0; guard < 120; guard += 1) {
+  // The walk gives up after 120 presses that got it nowhere, not after 120
+  // presses: at real speed on a machine other workers are loading a press can
+  // take seconds to become a step, and counted flat the walk home from the
+  // Arena's rim to Oak's Lab ran out a third of the way there (27 Nov 2026,
+  // `raid.mjs` on a plain URL, twice running). A walk that keeps moving is
+  // still stopped in the end, so two tiles traded for ever is not a hang.
+  const whereabouts = `(() => { const b = ${GAME}.scene.getScene('base'); return b?.currentTile ? [b.room?.id ?? '', b.currentTile.x, b.currentTile.y, b.facing].join(':') : ''; })()`;
+  let lastSeen = '';
+  for (let guard = 0, presses = 0; guard < 120 && presses < 1500; guard += 1, presses += 1) {
     if (await page.evaluate(opened)) {
       return;
+    }
+    const seen = await page.evaluate(whereabouts);
+    if (seen !== lastSeen) {
+      lastSeen = seen;
+      guard = 0;
     }
     if (door === 'raid-arena' && (await page.evaluate(inHall))) {
       // `hallOnly` stops on the hall's floor, for a driver that came to talk

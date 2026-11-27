@@ -520,6 +520,19 @@ export const seatedSpriteY = (spot: SpotLayout, side: 'player' | 'enemy', dexId:
 };
 
 /**
+ * The same seating for a front picture drawn anywhere else at its own 64x64 -
+ * the stage a raid that got out opens on (`ExtractionScene`): how many rows
+ * the frame is moved down so the species stands on a ground line at the
+ * frame's foot, and how many rows of the moved frame are empty over its head.
+ * FireRed centres a picture in its frame, so the rows over it are the rows
+ * under it; one that flies or floats is lifted off the line by its elevation.
+ */
+export const frontPicSeat = (dexId: number): { readonly drop: number; readonly head: number } => {
+  const [front, , elevation] = BATTLE_PIC_COORDS[dexId] ?? [REFERENCE_PIC_OFFSET, REFERENCE_PIC_OFFSET, 0];
+  return { drop: front - elevation, head: Math.max(0, 2 * front - elevation) };
+};
+
+/**
  * Where a combatant stands. In a double battle all four are inside the band
  * between the two plate rows, at their own scale - the single battle's 1.45 and
  * 1.55 are 93 and 99 pixels tall, and two of either will not stand side by side

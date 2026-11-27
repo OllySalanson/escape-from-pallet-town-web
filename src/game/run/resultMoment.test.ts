@@ -38,7 +38,31 @@ describe('the moment a raid that got out opens on', () => {
       line: 'CHARMANDER grew to Lv 6!',
       money: 85,
       stow: null,
+      team: [],
+      packItemId: 'raid-pack',
     });
+  });
+
+  it('stands the team that walked out on the stage with the pack it carried, and then never says a new level in words', () => {
+    const charmander = { name: 'Charmander', dexId: 4, level: 6, currentHp: 12, maxHp: 21, fromLevel: 5, barFrom: 0, barTo: 0.25 };
+    const moment = resultMoment(
+      report({
+        saved: true,
+        ledger: { pokemon: [pidgey], items: [] },
+        ledgerFound: { pokemon: [pidgey], items: [] },
+        progress: [{ name: 'Charmander', dexId: 4, fromLevel: 5, toLevel: 6, experienceGained: 60, experienceToNextLevel: 40 }],
+        team: [charmander],
+        pack: { itemId: 'ranger-pack', name: 'Ranger pack', squares: 24, fate: 'kept' },
+      }),
+    );
+    expect(moment?.team).toEqual([charmander]);
+    expect(moment?.packItemId).toBe('ranger-pack');
+    // The level is called over CHARMANDER on the stage (`ExtractionScene.teamMarkup`).
+    expect(moment?.line).toBe('');
+    // And a raid that found nothing still says so, rather than nothing at all.
+    expect(resultMoment(report({ saved: true, ledger: EMPTY, progress: [{ name: 'Charmander', dexId: 4, fromLevel: 5, toLevel: 6, experienceGained: 60, experienceToNextLevel: 40 }], team: [charmander] }))?.line).toBe(
+      'Nothing found this time.',
+    );
   });
 
   it('names two catches, and counts more', () => {
@@ -47,7 +71,7 @@ describe('the moment a raid that got out opens on', () => {
     expect(resultMoment(report({ ledgerFound: { pokemon: [pidgey, meowth, pidgey], items: [] } }))?.headline).toBe('3 POKÉMON CAUGHT!');
   });
 
-  it('heads a banked job, its reward dropping into HOME with the rest', () => {
+  it('heads a banked job, its reward going into the chest with the rest', () => {
     const reward = [item('linen-roll')];
     const job = resultMoment(
       report({
@@ -70,6 +94,8 @@ describe('the moment a raid that got out opens on', () => {
       line: '',
       money: 10,
       stow: { things: [item('mooring-rope'), item('lamp-oil')], more: 0 },
+      team: [],
+      packItemId: 'raid-pack',
     });
     expect(resultMoment(banked([item('money', 110)]))).toMatchObject({ headline: 'YOU GOT OUT!', money: 110, stow: null, picture: null });
   });
