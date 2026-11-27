@@ -36,7 +36,6 @@ export interface TradeRow {
   readonly deal?: TradeDeal;
   /** Why not, when he will not. */
   readonly refusal?: string;
-  readonly box: string;
   readonly away: boolean;
   readonly partner: boolean;
 }
@@ -79,7 +78,7 @@ function tile(row: TradeRow, start: boolean): string {
     : `data-refused="${escapeAttribute(row.refusal ?? '')}" aria-disabled="true" data-help="${escapeAttribute(row.refusal ?? '')}"`;
   return pixelMonTile(row.pokemon, {
     classes: ['is-named', ...(row.away ? ['is-away'] : [])],
-    attributes: `${wiring} data-shows="${escapeAttribute(row.id)}" data-box-name="${escapeAttribute(row.box)}" aria-label="${escapeAttribute(`${row.pokemon.name}, level ${row.pokemon.level}, ${row.box}${row.refusal === undefined ? '' : `, ${row.refusal}`}`)}"${start ? ' data-cursor-start' : ''}`,
+    attributes: `${wiring} data-shows="${escapeAttribute(row.id)}" aria-label="${escapeAttribute(`${row.pokemon.name}, level ${row.pokemon.level}${row.refusal === undefined ? '' : `, ${row.refusal}`}`)}"${start ? ' data-cursor-start' : ''}`,
     line: `${row.partner ? ROSETTE : ''}<span class="dc-tile-name">${escapeAttribute(row.pokemon.name)}</span><span class="dc-tile-level">LV${row.pokemon.level}</span>`,
   });
 }

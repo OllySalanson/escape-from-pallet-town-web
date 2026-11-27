@@ -6,6 +6,8 @@ import { TILE_SIZE } from '../worldMap';
 import { BASE_DOORS, PLACES_TO_GO } from './doors';
 import {
   BASE_ROOMS,
+  BILLS_PC_LINES,
+  MY_PC_LINES,
   LIBRARY_CHART_STAIR,
   CENTER_DISPLAY,
   ERRAND_DISPLAY,
@@ -316,9 +318,16 @@ describe('the Pokémon Center, which shows who is being treated', () => {
     }
   });
 
+  it("has BILL'S PC say everything went home to THE CHEST, and open nothing", () => {
+    const pc = buildRoom(center, baseGame()).things.find((thing) => thing.name === "BILL'S PC")!;
+    expect(pc.opens).toBeUndefined();
+    expect(pc.lines).toEqual(BILLS_PC_LINES);
+    expect(pc.lines?.join(' ')).toContain('THE CHEST');
+  });
+
   it("keeps BILL'S PC where it can be walked up to from the door, in front of the machine that is drawn there", () => {
     const built = buildRoom(center, baseGame());
-    const pc = built.things.find((thing) => thing.opens === 'boxes')!;
+    const pc = built.things.find((thing) => thing.name === "BILL'S PC")!;
     const [tile] = pc.tiles;
     expect(built.collision[tile.y][tile.x]).toBe(true);
     const seen = new Set([`${center.mat!.x},${center.mat!.y}`]);
@@ -423,6 +432,12 @@ describe('the hooks the rooms leave for what comes next', () => {
 describe('THE BOLTHOLE, the player\'s own house', () => {
   const downstairs = room('bolthole');
   const upstairs = room('bolthole-upstairs');
+
+  it('has MY PC upstairs say everything is in THE CHEST downstairs, and open nothing', () => {
+    const pc = buildRoom(upstairs, baseGame()).things.find((thing) => thing.name === 'MY PC')!;
+    expect(pc.opens).toBeUndefined();
+    expect(pc.lines).toEqual(MY_PC_LINES);
+  });
 
   it('is nobody\'s counter: no keeper, no screen, the door mat downstairs', () => {
     for (const each of [downstairs, upstairs]) {

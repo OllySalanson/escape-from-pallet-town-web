@@ -8,7 +8,7 @@ const spearow: TradeRow['pokemon'] = { name: 'SPEAROW', level: 9, currentHp: 30,
 describe("THE TRADER's screen", () => {
   const trade = IN_GAME_TRADES.find((one) => one.wants === 'spearow')!;
   const gives = getSpeciesById(trade.gives)!;
-  const row: TradeRow = { id: 's', pokemon: spearow, deal: { kind: 'swap', trade, gives }, box: 'Box 1', away: false, partner: false };
+  const row: TradeRow = { id: 's', pokemon: spearow, deal: { kind: 'swap', trade, gives }, away: false, partner: false };
 
   it('stands what comes back opposite the one going, and says when the Pokédex has none', () => {
     const html = tradesBody([row], { browse: '', note: '', owned: new Set() });

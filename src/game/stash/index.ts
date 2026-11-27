@@ -1,7 +1,5 @@
 export {
   BASE_SECURE_SLOT_LIMITS,
-  BOX_CAPACITY,
-  MAX_BOX_NAME_LENGTH,
   createStartingStash,
   getStarterSpecies,
   MINIMUM_SUPPLIES,

@@ -42,6 +42,8 @@ export interface ChestPokemonSceneData {
   readonly chest?: boolean;
   /** Asked as the screen closes for the chest's THINGS tab: B, or a click on the tab. */
   readonly openThings?: () => void;
+  /** Asked as the screen closes to swap the only Pokémon for another starter: C, or its card's key. */
+  readonly openSwap?: () => void;
 }
 
 /** How far a pointer must move with a Pokémon held before it is carried rather than clicked. */
@@ -83,6 +85,7 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
   private status: string | undefined;
   private title = 'Your things';
   private toThings: (() => void) | undefined;
+  private toSwap: (() => void) | undefined;
   private carried: Carried | null = null;
   /** The Pokémon whose card is on show. */
   private shown: string | undefined;
@@ -105,6 +108,7 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
     this.view = data.view;
     this.title = data.chest ? 'The chest' : 'Your things';
     this.toThings = data.openThings;
+    this.toSwap = data.openSwap;
     this.status = undefined;
     this.carried = null;
     this.shown = undefined;
@@ -178,7 +182,9 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
     }
     const partnerId = game.stash.partner()?.id;
     const items = Object.keys(game.stash.listItems()).flatMap((id) => getItemById(id) ?? []);
+    const only = game.stash.canSwapStarter() ? game.stash.listPokemon()[0]?.id : undefined;
     return {
+      ...(only && this.toSwap ? { swappable: only } : {}),
       gifts: chestGifts(items, (id) => spareAtBase(game, id)),
       entries: pickerEntries(game.stash),
       team: flow.party.map((stored) => stored.id),
@@ -343,9 +349,11 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
       this.offer(this.armed, under);
       return;
     }
-    if (under && !event.repeat && (event.key === 'Enter' || event.key === ' ' || key === 'g' || key === 'l' || key === 't')) {
+    if (under && !event.repeat && (event.key === 'Enter' || event.key === ' ' || key === 'g' || key === 'l' || key === 't' || key === 'c')) {
       event.preventDefault();
-      this.act(event.key === 'Enter' || event.key === ' ' ? 'team' : key === 'g' ? 'garden' : key === 'l' ? 'lead' : 'take', under);
+      // C, not S: W, A, S and D are the arrows on every overlay.
+      const jobs: Record<string, string> = { g: 'garden', l: 'lead', t: 'take', c: 'swap' };
+      this.act(event.key === 'Enter' || event.key === ' ' ? 'team' : jobs[key], under);
       return;
     }
     if (this.overlay?.moveCursor(event.key)) {
@@ -359,6 +367,17 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
     else if (job === 'garden') this.toggleGardenFor(id);
     else if (job === 'lead') this.lead(id);
     else if (job === 'take') this.takeBack(id);
+    else if (job === 'swap') this.goToSwap(id);
+  }
+
+  /** The partner swap, on its own screen: only while this is the one Pokémon at base. */
+  private goToSwap(id: string): void {
+    const toSwap = this.toSwap;
+    if (!toSwap || this.state()?.swappable !== id) {
+      return;
+    }
+    toSwap();
+    this.close();
   }
 
   // --- giving things to a Pokémon ---------------------------------------------

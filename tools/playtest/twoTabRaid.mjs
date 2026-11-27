@@ -6,8 +6,8 @@
 // Tab A starts a new game with a Charmander holding Leftovers and a Pidgey
 // Lv 12 beside it, takes both to the Raid Arena's bench and jumps in. Tab B
 // opens the same save, walks up the lawn to the DAY-CARE man and chooses the
-// Pidgey, then walks into the Pokemon Center and asks BILL'S PC to take the
-// Charmander's Leftovers off. Tab A then runs out of clock - the real wipe -
+// Pidgey, then opens THE CHEST's POKéMON tab (B, then P) and asks for the
+// Charmander's Leftovers back (T). Tab A then runs out of clock - the real wipe -
 // and the save is read. Photographs each screen and prints what each tab was
 // told, so the same run against a build of main and of the fix is the before
 // and the after (`docs/screens/two-tab-raid/`).
@@ -215,16 +215,22 @@ const play = async () => {
   const afterDayCare = await saved(tabB);
   expect(before || afterDayCare.stash.dayCare === null || afterDayCare.stash.dayCare === undefined, 'the Day-Care holds nobody');
 
-  // BILL'S PC: the Leftovers on the Charmander that is out.
-  await walkIntoBase(tabB, 'pokemon-centre');
-  await sleep(1500);
-  await tabB.evaluate(`document.querySelector('button[data-shows="charmander-1"].px-row')?.focus()`);
+  // THE CHEST: the Leftovers on the Charmander that is out.
+  await tabB.tap('KeyB', 60);
+  await tabB.waitFor(sceneIs('things'));
+  await tabB.tap('KeyP', 60);
+  await tabB.waitFor(`${sceneIs('chest-pokemon')} && Boolean(document.querySelector('.chest-mon-grid'))`);
+  await sleep(800);
+  await tabB.evaluate(`document.querySelector('.chest-mons [data-mon="charmander-1"]')?.focus()`);
   await sleep(500);
-  await tabB.screenshot(`${out}/3-bills-pc.png`);
-  const take = await tabB.evaluate(`(() => { const b = document.querySelector('[data-gear-take="charmander-1"]'); if (!b) return false; b.click(); return true; })()`);
+  await tabB.screenshot(`${out}/3-the-chest.png`);
+  await tabB.tap('KeyT', 60);
   await sleep(700);
-  console.log(`Take Leftovers ${take ? 'pressed' : 'not offered'}: ${await status()}`);
-  await tabB.screenshot(`${out}/4-bills-pc-take-gear.png`);
+  const chestSays = await tabB.evaluate(`document.querySelector('#screens .px-status-line')?.textContent ?? ''`);
+  console.log(`T on Charmander: ${chestSays}`);
+  await tabB.screenshot(`${out}/4-the-chest-take-gear.png`);
+  await tabB.tap('Escape', 60);
+  await tabB.waitFor(sceneIs('base'));
   const afterGear = await saved(tabB);
   const charmander = afterGear.stash.pokemon.find((entry) => entry.id === 'charmander-1');
   console.log(`after tab B: Charmander holds ${charmander?.pokemon.heldItemId ?? 'nothing'}; Leftovers in storage: ${afterGear.stash.items.leftovers ?? 0}`);

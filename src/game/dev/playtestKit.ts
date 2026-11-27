@@ -235,20 +235,12 @@ export function addPlaytestKit(stash: Stash): boolean {
     if (missing.length === 0) {
       continue;
     }
-    let boxIndex = stash.listBoxes().findIndex((box) => box.name === row.box);
-    if (boxIndex < 0) {
-      boxIndex = stash.addBox();
-      stash.renameBox(boxIndex, row.box);
-    }
     for (const speciesId of missing) {
       const base = getSpeciesById(speciesId);
       if (!base) {
         throw new Error(`The playtest kit names ${speciesId}, which is not one of the 151.`);
       }
-      const id = stash.addPokemon(new Pokemon(base, row.level));
-      // Refused only into a box filled by hand, and then the newcomer stays
-      // wherever the vault put it, which every picker still reaches.
-      stash.movePokemon(id, boxIndex);
+      stash.addPokemon(new Pokemon(base, row.level));
       added = true;
     }
   }

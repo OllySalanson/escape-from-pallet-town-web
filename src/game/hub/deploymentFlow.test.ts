@@ -317,10 +317,8 @@ describe('deployment flow', () => {
     expect(flow.party.map(({ id }) => id)).toEqual([only.id]);
   });
 
-  it('deploys, and secures, a Pokemon kept in a later box exactly as one kept in the first', () => {
-    const { flow, stash } = seedFlow();
-    const shelf = stash.addBox();
-    stash.movePokemon('charmander-1', shelf);
+  it('deploys, and secures, a Pokemon kept last in THE CHEST exactly as one kept first', () => {
+    const { flow } = seedFlow();
 
     expect(flow.togglePokemon('charmander-1')).toBeUndefined();
     flow.advance();

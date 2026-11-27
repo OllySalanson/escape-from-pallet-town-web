@@ -26,10 +26,19 @@ const gridIds = (html: string): readonly string[] => {
 };
 
 describe("THE CHEST's POKéMON tab", () => {
-  it('stands every Pokémon in one grid in the order kept, box after box, and names no box', () => {
-    const stash = stashOf(['rattata', 5], ['pidgey', 9], ['mankey', 7]);
-    const second = stash.addBox();
-    stash.movePokemon('rattata-0', second);
+  it('stands every Pokémon in one grid in the order kept, and names no box', () => {
+    const stash = new Stash({
+      pokemon: [
+        { id: 'rattata-0', pokemon: new Pokemon(getSpeciesById('rattata')!, 5) },
+        { id: 'pidgey-1', pokemon: new Pokemon(getSpeciesById('pidgey')!, 9) },
+        { id: 'mankey-2', pokemon: new Pokemon(getSpeciesById('mankey')!, 7) },
+      ],
+      // A save from before THE CHEST: its boxes are read once, for the order.
+      boxes: [
+        { name: 'Box 1', pokemonIds: ['pidgey-1', 'mankey-2'] },
+        { name: 'Box 2', pokemonIds: ['rattata-0'] },
+      ],
+    });
     const html = chestPokemonBody(stateOf(stash));
     expect(gridIds(html)).toEqual(['pidgey-1', 'mankey-2', 'rattata-0']);
     expect(html).not.toMatch(/Box [0-9]/);
@@ -75,6 +84,13 @@ describe("THE CHEST's POKéMON tab", () => {
     expect(html.slice(html.indexOf('data-shown-by="pikachu-0"'), html.indexOf('data-shown-by="pidgey-1"'))).not.toContain('data-key="lead"');
     expect(whereItIs(state, 'pikachu-0')).toBe('Leads the next raid');
     expect(whereItIs(state, 'pidgey-1')).toBe('Next raid');
+  });
+
+  it("offers the partner swap BILL'S PC used to, on the only Pokémon's card and nobody else's", () => {
+    const stash = stashOf(['charmander', 5]);
+    const html = chestPokemonBody(stateOf(stash, { swappable: 'charmander-0' }));
+    expect(html).toMatch(/data-shown-by="charmander-0".*data-key="swap"[^>]*>.*Change partner/);
+    expect(chestPokemonBody(stateOf(stash))).not.toContain('data-key="swap"');
   });
 
   it('greys out and offers nothing for a Pokémon out on a raid in another window', () => {

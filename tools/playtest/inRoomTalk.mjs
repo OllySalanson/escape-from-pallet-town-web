@@ -33,6 +33,8 @@ const said = async () => {
  * always RESUPPLY.
  */
 const NOTICE = /^[A-Z][A-Z0-9'. -]+: /;
+/** Oak's one next thing: a job, a landing, a gym (`hub/nextStep.ts`). */
+const NEXT_THING = /^Next\b/;
 const expect = (what, ok, detail = '') => {
   if (!ok) throw new Error(`${what} ${detail}`);
   console.log(`ok - ${what}`);
@@ -114,15 +116,16 @@ try {
   const onward = (await base('Boolean(b.boxQuestion)')) ? 'a question' : await said();
   console.log(`after ESC: ${onward}`);
   await shot('03-oak-after-skip');
-  // Past his favour, if he asked, to the board.
-  for (let guard = 0; guard < 12 && !NOTICE.test(await said()); guard += 1) {
+  // Past his favour, if he asked, to the one next thing (`hub/nextStep.ts`):
+  // he never reads the board out any more, it is read off the wall below.
+  for (let guard = 0; guard < 12 && !NEXT_THING.test(await said()); guard += 1) {
     await press((await base('Boolean(b.boxQuestion)')) ? 'ArrowRight' : 'Escape', 300);
     if (await base('Boolean(b.boxQuestion)')) await press('Space', 300);
     if (!(await base('b.dialogBox.visible || Boolean(b.boxQuestion)'))) { await press('Space', 500); }
   }
-  console.log(`oak reads: ${await said()}`);
-  await shot('04-oak-reads-the-board');
-  expect('Oak reads a notice off the board', NOTICE.test(await said()), await said());
+  console.log(`oak says: ${await said()}`);
+  await shot('04-oak-next-thing');
+  expect('Oak says the one next thing', NEXT_THING.test(await said()), await said());
   await press('Escape', 400);
   for (let guard = 0; guard < 4 && (await base('Boolean(b.boxQuestion) || b.dialogBox.visible')); guard += 1) await press('Escape', 300);
   expect('still in the lab, on the mat', (await base('b.room?.id')) === 'oaks-lab' && !(await page.evaluate(sceneIs('hub'))));
@@ -184,19 +187,18 @@ try {
   expect('the team is healed and the clock is booked', healed.pendingRecoveryMs > 0 && healed.stash.pokemon[0].pokemon.currentHp > 3);
   await press('Space', 400);
 
-  // BILL'S PC, by the wall: the boxes, and back to where it was read from.
-  const pc = await base(`b.place.room.things.find((thing) => thing.opens === 'boxes').tiles[0]`);
+  // BILL'S PC, by the wall: it only says that everything went home to THE CHEST.
+  const pc = await base(`b.place.room.things.find((thing) => thing.name === "BILL'S PC").tiles[0]`);
   await walkUnder(pc);
   await sleep(400);
   expect('the hint names the PC', (await base('b.hintShown')) === "[SPACE] BILL'S PC", await base('b.hintShown'));
   await shot('15-pc');
   await press('Space', 900);
-  await until(sceneIs('hub'), 'the boxes');
-  await sleep(500);
-  await shot('16-boxes');
-  expect('no bill along the foot of the boxes', !(await page.evaluate(`Boolean(document.querySelector('.recovery-panel'))`)));
-  await press('Escape', 900);
-  await until(sceneIs('base'), 'the room again');
+  const pcSays = await said();
+  console.log(`BILL'S PC: ${pcSays}`);
+  await shot('16-pc-says');
+  expect("BILL'S PC sends the player home to THE CHEST", /THE CHEST/.test(pcSays) && !(await page.evaluate(sceneIs('hub'))), pcSays);
+  await press('Space', 600);
   await sleep(500);
   expect('back in front of the PC', (await base('b.currentTile.x')) === pc.x && (await base('b.currentTile.y')) === pc.y + 1);
   await outOfRoom();

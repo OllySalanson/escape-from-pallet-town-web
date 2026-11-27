@@ -3,7 +3,6 @@ import { readFile } from 'node:fs/promises';
 import { conditionLine, healthLine, teamConditionLine } from './condition';
 
 const partySceneSource = await readFile(new URL('../scenes/PartyScene.ts', import.meta.url), 'utf8');
-const hubSceneSource = await readFile(new URL('../scenes/HubScene.ts', import.meta.url), 'utf8');
 const dossierSource = await readFile(new URL('./pokemonDossier.ts', import.meta.url), 'utf8');
 
 const pokemon = (over: Partial<Parameters<typeof conditionLine>[0]> = {}) => ({
@@ -51,17 +50,14 @@ describe('the condition line a Pokemon carries', () => {
     );
   });
 
-  it('is the same line at base and mid-raid', () => {
-    // HP and status survive a raid, so the in-raid party screen is a preview of
-    // what the stash will hold. Two phrasings of that would be two answers.
-    // The party is FireRed's slots (a bar, no words), and the line is said by
-    // the pane under them - built for every member, so pointing at one shows it
-    // with no re-render - which is the same dossier the base's storage draws.
+  it('is said mid-raid by the one shared dossier', () => {
+    // The raid's party is FireRed's slots (a bar, no words), and the line is
+    // said by the pane under them - built for every member, so pointing at one
+    // shows it with no re-render. THE CHEST's card at home shows the same health
+    // as a bar and its figures (`ui/teamView.ts`).
     expect(partySceneSource).toContain('pokemonDossier({');
-    expect(hubSceneSource).toContain('pokemonDossier({');
-    // The pane under either list is one module, so the line under the health
-    // bar is the same sentence in a raid as it is at base - less the level,
-    // which the pane prints beside the name.
+    // The pane is one module, so the line under the health bar is one sentence
+    // wherever it is drawn - less the level, which the pane prints beside the name.
     expect(dossierSource).toContain('healthLine(pokemon)');
   });
 });

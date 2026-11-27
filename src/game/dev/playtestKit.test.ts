@@ -69,13 +69,11 @@ describe('the playtest kit', () => {
     expect(withEveryLeaderMet({ ...DEFAULT_RAID_PROGRESS, gymsMet: [] }).gymsMet).toHaveLength(valeGyms().length);
   });
 
-  it('puts each row in a box of its own name', () => {
+  it('puts every row in THE CHEST', () => {
     const stash = createPlaytestGame().stash!;
+    const kept = stash.listPokemon().map((stored) => stored.pokemon.base.id);
     for (const row of PLAYTEST_KIT_BOXES) {
-      const index = stash.listBoxes().findIndex((box) => box.name === row.box);
-      expect(index, row.box).toBeGreaterThanOrEqual(0);
-      const inBox = stash.listBoxPokemon(index).map((stored) => stored.pokemon.base.id);
-      expect(inBox).toEqual(expect.arrayContaining([...row.species]));
+      expect(kept, row.box).toEqual(expect.arrayContaining([...row.species]));
     }
   });
 

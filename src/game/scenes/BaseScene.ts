@@ -5806,7 +5806,6 @@ export class BaseScene extends Phaser.Scene {
         (thing.does !== undefined ||
           thing.opens === 'games' ||
           thing.opens === 'wardrobe' ||
-          thing.opens === 'boxes' ||
           thing.opens === 'chest')
       ) {
         this.say([notYoursLine(this.visit.ownerName)], [target]);
@@ -5829,10 +5828,6 @@ export class BaseScene extends Phaser.Scene {
       }
       if (thing?.opens === 'chest') {
         this.openChest();
-        return;
-      }
-      if (thing?.opens === 'boxes') {
-        this.openHub({ savedGame: this.savedGame, view: 'stash', from: room.id, at: { ...this.currentTile } });
         return;
       }
       if (thing?.reads === 'board') {
@@ -6401,14 +6396,24 @@ export class BaseScene extends Phaser.Scene {
       if (thenThings) {
         this.time.delayedCall(0, () => this.openThings(undefined, chest));
       }
+      // The partner swap BILL'S PC used to offer: on the hub's own screen for it.
+      if (thenSwap) {
+        this.time.delayedCall(0, () =>
+          this.openHub({ savedGame: this.savedGame, view: 'reselect', from: this.place.room?.room.id, at: { ...this.currentTile } }),
+        );
+      }
     });
     let thenThings = false;
+    let thenSwap = false;
     const pit = Boolean(this.place.room?.pit);
     this.scene.pause();
     this.scene.launch('chest-pokemon', {
       pausedBase: true,
       openThings: () => {
         thenThings = true;
+      },
+      openSwap: () => {
+        thenSwap = true;
       },
       ...(this.kit ? { flow: this.kit.flow } : {}),
       ...(chest ? { chest } : {}),
@@ -7326,9 +7331,7 @@ export class BaseScene extends Phaser.Scene {
     this.player.stop();
     this.player.setFrame(getIdleFrame(this.facing));
     this.garden?.cry(stored);
-    const game = this.freshGame();
-    const box = game.stash.listBoxes()[game.stash.boxIndexOf(stored.id)]?.name ?? 'a box';
-    this.say(gardenLines(stored, box), [at], () =>
+    this.say(gardenLines(stored), [at], () =>
       this.askInBox(gardenQuestion(stored.pokemon.name), (yes) => {
         if (!yes) return;
         const flow = flowForGame(this.freshGame());

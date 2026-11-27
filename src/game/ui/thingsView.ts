@@ -621,14 +621,14 @@ export function thingsScreen(view: ThingsScreen, hand: string): string {
 }
 
 /** Who a stone would go to: every Pokémon the player has, with whether it would work, best first. */
-export function stoneTargetsBody(item: ItemDefinition, pokemon: readonly { readonly pokemon: Pokemon; readonly box: string }[]): string {
+export function stoneTargetsBody(item: ItemDefinition, pokemon: readonly { readonly pokemon: Pokemon }[]): string {
   const rows = pokemon
-    .map(({ pokemon: one, box }, index) => {
+    .map(({ pokemon: one }, index) => {
       const species = evolutionByStone(one.base.id, item.id);
       const help = species
         ? `Use ${item.displayName} on ${one.name}: it would evolve into ${species.name}.`
         : `${one.name}: it won't have any effect.`;
-      return `<button class="px-row" data-target="${index}"${species ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${one.name}</strong><small>Lv${one.level}</small></span><small>${box}</small></span><span class="px-tag">${species ? 'Able' : 'Not able'}</span></button>`;
+      return `<button class="px-row" data-target="${index}"${species ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${one.name}</strong><small>Lv${one.level}</small></span></span><span class="px-tag">${species ? 'Able' : 'Not able'}</span></button>`;
     })
     .join('');
   const able = pokemon.filter(({ pokemon: one }) => evolutionByStone(one.base.id, item.id) !== undefined).length;

@@ -8,7 +8,6 @@ const candidate = (id: string, name: string, speciesId: string): JumpCandidate =
   dexId: 1,
   shiny: false,
   level: 9,
-  box: 'Box 1',
   find: name,
   jumpType: jumpTypeOf(speciesId),
 });

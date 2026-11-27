@@ -102,13 +102,10 @@ describe('the pack', () => {
 });
 
 describe('the raid party', () => {
-  it('draws one Pokemon through the same dossier the stash does', async () => {
+  it('draws one Pokemon through the shared dossier', async () => {
     const party = await read('./PartyScene.ts');
-    const hub = await read('./HubScene.ts');
-    for (const source of [party, hub]) {
-      expect(source).toContain("from '../ui/pokemonDossier'");
-      expect(source).toContain('pokemonDossier({');
-    }
+    expect(party).toContain("from '../ui/pokemonDossier'");
+    expect(party).toContain('pokemonDossier({');
     // And has no detail column, gear list or summary view of its own.
     expect(party).not.toMatch(/(?<![\w-])(party-detail|party-layout|party-list|detail-hero|stats-grid|move-list)(?![\w-])/);
   });

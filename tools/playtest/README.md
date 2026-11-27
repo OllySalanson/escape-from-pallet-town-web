@@ -636,11 +636,8 @@ the dossier to give and take gear, and ESC back to the raid.
 same for the raid's PACK with ten kinds in it: every tile by arrow key, a Potion
 used on the hurt one, a stone's ABLE and NOT ABLE, and X to drop one.
 
-`stashShots.mjs <test-mode build url> <dir> [--window=WxH] [--before]` does the
-same for Bill's PC on menuShots.mjs's save: the box bar, every Pokémon and every
-supply by arrow key, the dossier following the cursor, and ENTER treating a hurt
-one. (menuShots.mjs's own `--keys` walk no longer reopens the stash and stops at
-the bench; stashShots.mjs is the stash's walk.)
+(BILL'S PC's own walk, `stashShots.mjs`, went with its screen: everything it
+held is THE CHEST's, which `chest.mjs` and `chestPokemon.mjs` play.)
 
 `resultShots.mjs <test-mode build url> <dir> [--window=WxH] [--before]` opens
 the raid's result screen straight from the title on a report it makes (walked out

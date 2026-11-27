@@ -54,9 +54,6 @@ interface HubInternals {
   init(): void;
   startRun(): void;
   leaveAtDayCare(pokemonId: string): void;
-  takeGear(pokemonId: string): void;
-  giveGear(pokemonId: string, itemId: string): void;
-  recover(ids: readonly string[]): void;
   readonly flow: DeploymentFlow;
   readonly status: string | undefined;
 }
@@ -189,11 +186,10 @@ describe('a raid out in one tab, and the base open in another', () => {
     seedSave(storage);
     const raidId = deployFrom(storage);
 
-    const tabB = openBase(storage);
-    tabB.takeGear('charmander-1');
-    expect(tabB.status).toBe('Charmander is out on a raid in your other window. Finish it there first.');
-    tabB.giveGear('pidgey-1', 'focus-band');
-    expect(tabB.status).toBe('Pidgey is out on a raid in your other window. Finish it there first.');
+    // THE CHEST in tab B: giving and taking back go through the save, which refuses both.
+    const tabB = new SaveManager(storage);
+    expect(tabB.takeHeldAtHome('charmander-1')).toBeUndefined();
+    expect(tabB.giveHeldAtHome('pidgey-1', 'focus-band')).toBeUndefined();
     const game = new SaveManager(storage).load()!;
     game.stash.takeHeldItem('charmander-1');
     expect(new SaveManager(storage).save(game)).toBe(false);
@@ -240,11 +236,6 @@ describe('a raid out in one tab, and the base open in another', () => {
     expect(booked).toBeGreaterThan(0);
     const charmander = stashOf(storage).listPokemon().find((stored) => stored.id === 'charmander-1')!.pokemon;
     expect(charmander.currentHp).toBe(charmander.maxHp - 6);
-
-    // Tab B's own screen refuses the one that is out, and says why.
-    const tabB = openBase(storage);
-    tabB.recover(['charmander-1']);
-    expect(tabB.status).toBe('Charmander is out on a raid in your other window. Finish it there first.');
 
     // Tab A's raid deployed owing nothing, so its ending pays off nothing:
     // the heal booked in tab B is owed by the next raid.

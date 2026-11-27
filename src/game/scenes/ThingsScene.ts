@@ -75,11 +75,10 @@ export interface ThingsSceneData {
   readonly chest?: boolean;
 }
 
-/** One of the player's Pokémon, as a disc or a stone is offered to it: where it is kept, and its id to write back by. */
+/** One of the player's Pokémon, as a disc or a stone is offered to it, with its id to write back by. */
 interface HomePokemon {
   readonly id: string;
   readonly pokemon: Pokemon;
-  readonly box: string;
 }
 
 type Using =
@@ -255,16 +254,10 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     if (!stash) {
       return [];
     }
-    const byId = new Map(stash.listPokemon().map((entry) => [entry.id, entry.pokemon]));
-    return stash.listBoxes().flatMap((box) =>
-      box.pokemonIds.flatMap((id) => {
-        const pokemon = byId.get(id);
-        return pokemon ? [{ id, pokemon, box: box.name }] : [];
-      }),
-    );
+    return stash.listPokemon().map(({ id, pokemon }) => ({ id, pokemon }));
   }
 
-  /** Who a stone is offered to: those it would evolve first, then everybody else, each in box order. */
+  /** Who a stone is offered to: those it would evolve first, then everybody else, each in the order kept. */
   private stoneTargets(item: ItemDefinition): readonly HomePokemon[] {
     const all = this.homePokemon;
     const able = (one: HomePokemon): boolean => evolutionByStone(one.pokemon.base.id, item.id) !== undefined;
@@ -528,7 +521,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       back = { label: 'Things', attribute: 'data-stop' };
       body = stoneTargetsBody(
         item,
-        this.stoneTargets(item).map(({ pokemon, box }) => ({ pokemon, box })),
+        this.stoneTargets(item).map(({ pokemon }) => ({ pokemon })),
       );
       hints = 'ARROWS move · ENTER use it · ESC back';
     } else if (this.keepingRoom && this.flow) {

@@ -39,8 +39,6 @@ export interface DayCareRow {
   };
   /** Why he will not take it, or undefined when he will. */
   readonly refusal?: string;
-  /** The box it is kept in, said to a reader. */
-  readonly box: string;
   /** Out on a raid in another window. */
   readonly away: boolean;
   /** The player's partner, which wears the rosette. */
@@ -83,7 +81,7 @@ function strollTile(row: DayCareRow, first: boolean): string {
     : `data-refused="${escapeAttribute(row.refusal)}" aria-disabled="true" data-help="${escapeAttribute(row.refusal)}"`;
   return pixelMonTile(row.pokemon, {
     classes: ['dc-tile', ...(row.away ? ['is-away'] : [])],
-    attributes: `${wiring} data-shows="${escapeAttribute(row.id)}" data-box-name="${escapeAttribute(row.box)}" aria-label="${escapeAttribute(`${row.pokemon.name}, level ${row.pokemon.level}, ${row.box}${row.refusal === undefined ? '' : `, ${row.refusal}`}`)}"${first ? ' data-cursor-start' : ''}`,
+    attributes: `${wiring} data-shows="${escapeAttribute(row.id)}" aria-label="${escapeAttribute(`${row.pokemon.name}, level ${row.pokemon.level}${row.refusal === undefined ? '' : `, ${row.refusal}`}`)}"${first ? ' data-cursor-start' : ''}`,
     line: `${row.partner ? ROSETTE : ''}<span class="dc-tile-name">${name}</span><span class="dc-tile-level">LV${row.pokemon.level}</span>`,
   });
 }

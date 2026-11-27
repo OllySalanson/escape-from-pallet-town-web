@@ -624,7 +624,6 @@ export interface RoomThing {
     | 'wall-map'
     | 'games'
     | 'wardrobe'
-    | 'boxes'
     | 'ladder'
     | 'list'
     | 'telescope'
@@ -1230,6 +1229,14 @@ export const CHART_TABLE_TILES: readonly GridPosition[] = Array.from(
     y: OAK_CHART_TABLE.y + Math.floor(index / OAK_CHART_TABLE.width),
   }),
 );
+
+/** What BILL'S PC says now that everything is kept in THE CHEST at home. */
+export const BILLS_PC_LINES: readonly string[] = [
+  'BILL is on the screen. "I sent it all home! Your things and your Pokémon are in THE CHEST, downstairs in THE BOLTHOLE."',
+];
+
+/** What MY PC upstairs says now that THE CHEST downstairs keeps everything. */
+export const MY_PC_LINES: readonly string[] = ['Your things and your Pokémon are in THE CHEST now, downstairs by the stairs.'];
 
 /** The PC beside Joy's counter: its foot is the wall a player at (11, 3) faces. */
 export const CENTER_PC: GridPosition = { x: 11, y: 2 };
@@ -1889,7 +1896,10 @@ function drawCenter(room: BaseRoom, game: RestoredGame): Drawn {
     return thing;
   };
   const things: RoomThing[] = [
-    { name: "BILL'S PC", note: 'Your boxes and your banked goods', tiles: [CENTER_PC], opens: 'boxes' },
+    // BILL'S PC kept the player's things until THE CHEST (the captain, 26 Nov
+    // 2026: "your vault should be your storage chest in your house"). A
+    // player who walks up to it from habit is told where everything went.
+    { name: "BILL'S PC", note: 'Sent home to THE CHEST', tiles: [CENTER_PC], lines: BILLS_PC_LINES },
     ...thingsFor(displays).map(today),
   ];
   const sprites = [...restingBalls(waiting)];
@@ -2451,15 +2461,12 @@ function drawUpstairs(room: BaseRoom, game: RestoredGame): Drawn {
       lines: bedLines(game),
       does: 'sleep',
     },
-    // MY PC is where the player's own things are kept, as FireRed's PC in the
-    // player's house is: the same storage BILL'S PC opens at the Center, read
-    // at home - the Pokémon in their boxes, every thing in its pocket, and who
-    // walks about the garden (`homeGarden.ts`).
+    // MY PC kept the player's things until THE CHEST downstairs did.
     {
       name: 'MY PC',
-      note: 'Your things · your Pokémon',
+      note: 'Everything is in THE CHEST',
       tiles: [{ x: 0, y: 1 }],
-      opens: 'boxes',
+      lines: MY_PC_LINES,
     },
     {
       name: 'YOUR WARDROBE',

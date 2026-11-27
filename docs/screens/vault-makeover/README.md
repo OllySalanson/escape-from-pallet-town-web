@@ -61,3 +61,18 @@ Pokémon, and then it'll pop up being like, give Oran Berry".
 
 Made with `node tools/playtest/chestPokemon.mjs <test-mode build url>/?testmode=pixels <dir> --window=1280x800`;
 the real-speed picture against a plain build with a real mouse.
+
+# No boxes, and BILL'S PC sends you home (part 4)
+
+The captain's picks: boxes go, one grid in the order kept; the Center's PC
+says it is all at home.
+
+| Before | After |
+|---|---|
+| ![](before-bills-pc.png) BILL'S PC: boxes, PREV, NEXT, RENAME, NEW BOX. | ![](no-boxes-bills-pc-says.png) BILL'S PC opens nothing: BILL says everything went home to THE CHEST. |
+
+- ![](no-boxes-old-save-in-order.png) A save written in two boxes, its Pokémon stored in another order: THE CHEST stands them as the boxes kept them, Box 1 then Box 2, and writes no box again.
+- ![](no-boxes-swap-offered.png) The partner swap BILL'S PC used to offer is on the only Pokémon's card: C, Change partner...
+- ![](no-boxes-swap-screen.png) ... and it opens the swap screen it always did.
+
+Made with `tools/playtest/chest.mjs` and `tools/playtest/chestPokemon.mjs` (which seeds the old two-box save) at 1280x800.

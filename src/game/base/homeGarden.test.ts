@@ -140,12 +140,10 @@ describe("THE BOLTHOLE's garden", () => {
     expect(nextGardenTile({ x: 41, y: 7 }, 0, () => false)).toEqual({ x: 41, y: 7 });
   });
 
-  it('says who it is and where it is kept, and asks in one line', () => {
+  it('says who it is, and asks in one line', () => {
     const game = vault([5]);
     const stored = game.stash.listPokemon().find((one) => one.id === 'kept-1')!;
-    expect(gardenLines(stored, 'BOX 1')[0]).toBe(
-      'Rattata, Lv 5. It is kept in BOX 1, and potters about out here between raids.',
-    );
+    expect(gardenLines(stored)[0]).toBe('Rattata, Lv 5. It potters about out here between raids.');
     expect(gardenQuestion('WWWWWWWWWW').length).toBeLessThanOrEqual(40);
   });
 });

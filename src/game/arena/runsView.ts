@@ -74,7 +74,7 @@ function cupMemberHelp(entry: PickerEntry, inTeam: boolean, refusal: string | nu
     const moves = cupCopy(entry.pokemon, cup).moves.map((move) => move.base.name.toUpperCase());
     return `${entry.pokemon.name} fights at Lv ${cup.level} with ${moves.join(', ')}. ENTER leaves it out.`;
   }
-  return refusal ?? `${entry.pokemon.name} (from ${entry.box}) keeps the ${cup.name}'s rule. ENTER brings it.`;
+  return refusal ?? `${entry.pokemon.name} keeps the ${cup.name}'s rule. ENTER brings it.`;
 }
 
 /** The cup's page: the rule, who is next, and who to bring, the cup's refusals said on each row. */
