@@ -2,7 +2,7 @@
 // (`.arena-panel.is-rim`, `HubScene.setStatus`): two tabs of one browser on one
 // save, the way the bug hunt of 9 Nov found it.
 //
-//   node tools/playtest/rimRefusal.mjs <url> <out dir> [--window=800x512]
+//   node tools/playtest/rimRefusal.mjs <url> <out dir> [--window=800x512] [--port=N]
 //
 // OLLY starts a game and jumps into a raid. The second tab CONTINUEs the same
 // save, walks to the Raid Arena, takes a Pokémon and goes to the rim, and its
@@ -13,7 +13,7 @@
 // error - when any of that does not happen, and photographs the rim before the
 // check it shows.
 import { mkdirSync } from 'node:fs';
-import { launchBrowser, sleep } from './browser.mjs';
+import { attachBrowser, launchBrowser, sleep } from './browser.mjs';
 import { GAME, SAVE_KEY, jumpIn, openHallPanel, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
 import { continueGame, nameTab, page } from './friendTabs.mjs';
 
@@ -28,7 +28,7 @@ const statusLine = `(() => { const line = document.querySelector('.arena-panel.i
   if (!line) return null; const box = line.getBoundingClientRect();
   return { text: line.textContent.trim(), width: Math.round(box.width), height: Math.round(box.height) }; })()`;
 
-const browser = await launchBrowser({ window: { width, height } });
+const browser = option('port') ? attachBrowser(Number(option('port')), { window: { width, height } }) : await launchBrowser({ window: { width, height } });
 try {
   let front = null;
   const press = async (tab, code) => {
@@ -43,6 +43,10 @@ try {
 
   // OLLY: a new game, a starter, and over the rail into a raid.
   const olly = await browser.openPage(page(url), { init: nameTab('OLLY') });
+  await olly.waitFor(sceneIs('title'));
+  // An attached browser keeps the last driver's save: start from none.
+  await olly.evaluate('localStorage.clear()');
+  await olly.send('Page.navigate', { url: page(url) });
   await olly.waitFor(sceneIs('title'));
   await press(olly, 'Space');
   await olly.waitFor(sceneIs('base'), { what: 'NEW GAME, straight into the harbour' });

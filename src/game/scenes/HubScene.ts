@@ -269,10 +269,11 @@ type HubView = HubPanel | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'dayc
  * `style.css`, `docs/screens/wood-floor/`): a shop of shelves and a workshop
  * of benches, which were sheets of white paper, and the Day-Care's and the
  * Trader's, whose field is a place already and whose list under it was the
- * sheet, and the swap of a last Pokémon, three white cards on black. Oak's
- * screens and his map are not: they are drawn as his own.
+ * sheet, the swap of a last Pokémon, three white cards on black, and the
+ * rim's card, a white sheet beside the pit. Oak's screens and his map are
+ * not: they are drawn as his own.
  */
-const WOOD_FLOOR_VIEWS: readonly HubView[] = ['workshop', 'trader', 'daycare', 'trades', 'reselect'];
+const WOOD_FLOOR_VIEWS: readonly HubView[] = ['workshop', 'trader', 'daycare', 'trades', 'reselect', 'rim'];
 
 /**
  * How much of the menu layer a panel over the hall may take, in game pixels: as

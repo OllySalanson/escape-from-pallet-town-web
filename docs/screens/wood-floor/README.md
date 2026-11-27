@@ -249,6 +249,25 @@ white cards on black: they stand against a wall of darker boards now.
 The stats page signed in, with its numbers and its chart of a month, was not seen: it
 needs the owner's sign-in. Its rules name only the floor's own tokens.
 
+## The rim's card
+
+The card every raid is started from, down the side of the pit: a white sheet, a
+quarter of the picture. It was missed by the menu audit, which opens the hall's bench,
+rack and locker and not its rim, and by the first photographs.
+
+| | Before | After | Colour | White |
+|---|---|---|---|---|
+| Looking down from the rim | ![](before/the-rim.png) | ![](after/the-rim.png) | 25 to 44 | 25% to 0% |
+
+LAND, JOB and SKY are each a lit window beside their label, lettered in ink. A warning
+on the card's own boards (a hunter coming sooner, a walk the clock will not allow, a
+jump refused) is the light red the map maker's faults are:
+
+![](after/the-rim-refused.png)
+
+`rimCard.mjs`, `rimRefusal.mjs` and `portal.mjs` take `--port` now, to drive the one
+browser a worker is allowed, and start from no save when they do.
+
 ## The map maker and the PLAYTEST BOARD
 
 The whitest screen left: three sheets and a bar, 41% of the picture plain white.
