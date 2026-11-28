@@ -2403,7 +2403,8 @@ describe('HubScene - Bill', () => {
     vi.spyOn(performance, 'now').mockImplementation(() => now);
     hub.setView('trader');
     hub.render();
-    expect(markupOf(hub)).toMatch(/2 others till you raid/);
+    // The small counter prints no ration note; the rationed card carries it.
+    expect(markupOf(hub)).toContain('Buy 1 Super Potion for ₽260. Up to 2 till you raid.');
     // A Potion is off that ration, so buying one leaves it as it was.
 
     // ENTER twice on the row: the first asks, the second asks again, and
@@ -2439,7 +2440,7 @@ describe('HubScene - Bill', () => {
     expect(internals.traderArmed).toBeUndefined();
     const after = markupOf(hub);
     expect(after).toContain('Bought one for ₽120.');
-    expect(after).toMatch(/2 others till you raid/);
+    expect(after).toContain('Buy 1 Super Potion for ₽260. Up to 2 till you raid.');
     vi.restoreAllMocks();
   });
 
