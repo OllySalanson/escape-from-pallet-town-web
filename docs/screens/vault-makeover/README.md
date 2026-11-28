@@ -37,7 +37,7 @@ Pokemon, then you can see its stats and stuff. And put it in the garden."
 - ![](pokemon-tab-01-things-tab.png) THE CHEST has two tabs now: THINGS, and P for POKéMON.
 - ![](pokemon-tab-03-pikachu-leads.png) ENTER takes Pikachu on the next raid and L puts it in front; its berry shows in its corner and on its card.
 - ![](pokemon-tab-04-dragged.png) Machop dragged onto NEXT RAID, Rattata dragged out of the GARDEN back into the grid.
-- ![](pokemon-tab-05-clicked-geodude.png) A click is a look: Geodude's card, and nothing changed.
+- ![](pokemon-tab-05-clicked-geodude.png) A click was a look: Geodude's card, and nothing changed. Part 5 replaced it: a mouse now looks by hovering, and a click is nothing.
 
 Made with `node tools/playtest/chestPokemon.mjs <test-mode build url>/?testmode=pixels <dir> --window=1280x800`.
 
@@ -49,7 +49,7 @@ Pokémon, and then it'll pop up being like, give Oran Berry".
 
 | Before | After |
 |---|---|
-| ![](before-bills-pc.png) A stack of "Give ORAN BERRY ×3" buttons under each Pokémon. | ![](give-09-ask-berry.png) Click the berry, click Machop: one question. |
+| ![](before-bills-pc.png) A stack of "Give ORAN BERRY ×3" buttons under each Pokémon. | ![](give-09-ask-berry.png) Click the berry, click Machop: one question. (Part 5: with a mouse it is dragged instead.) |
 
 - ![](give-real-berry-over.png) At real speed: the berry carried over Pikachu, which lights green.
 - ![](give-06-stone-over-charmander.png) A Thunder Stone over Charmander: red and shaking, and nothing is asked.
@@ -76,3 +76,38 @@ says it is all at home.
 - ![](no-boxes-swap-screen.png) ... and it opens the swap screen it always did.
 
 Made with `tools/playtest/chest.mjs` and `tools/playtest/chestPokemon.mjs` (which seeds the old two-box save) at 1280x800.
+
+# Hover to look, drag to move (part 5)
+
+The captain, 28 Nov 2026, in place of his 26 Nov "click on a Pokemon to see
+its stats": with a mouse, THE CHEST is hover to inspect and drag to move, on
+both tabs, from B and from the chest in THE BOLTHOLE alike.
+
+The rule, for the mouse only:
+
+1. **Hovering is the look.** Resting on a Pokémon or a thing puts its card and
+   description in the card box; moving off puts back the card of the thing the
+   cursor is on.
+2. **Press, drag, release is the only move**: a Pokémon onto THE NEXT RAID, the
+   GARDEN or back into the grid; a thing into or out of the pack, onto the
+   locker or round the chest; a berry, stone, disc or held item onto a
+   Pokémon. Letting go finishes the drag wherever it is let go: where nothing
+   fits, or off every container, the thing goes back where it was. Nothing
+   stays carried or chosen, and the cursor stays where it was.
+3. **A click does nothing on its own.** No click-to-choose, no click-then-click
+   giving, no click to show a card, no right-click to take one out, and the
+   card's keys that act on a thing or a Pokémon (ENTER, G, L, T, U, R, BKSP)
+   are only the keys they name. The tabs, the doors to other screens, the X
+   and the give question's YES and NO still click.
+
+The keyboard is exactly as it was (the arrows, ENTER, SPACE, L, T and the rest),
+and so is touch. Giving still asks its one question.
+
+| | |
+|---|---|
+| ![](mouse-01-things-hovered.png) The mouse rests on the disc: its card, while the cursor stays on the Poké Balls. | ![](mouse-02-things-dragged.png) A Poké Ball dragged into the pack, and nothing left carried. |
+| ![](mouse-03-hovered-geodude.png) The mouse rests on Geodude: its card, while the cursor stays on Charmander. | ![](mouse-04-berry-dragged-asks.png) The Sitrus Berry dragged onto Machop: the one question. |
+
+Made with `node tools/playtest/chestPokemon.mjs <test-mode build url>/?testmode=pixels <dir> --window=1280x800`,
+which plays every rule above with a real mouse (CDP mouse events) and fails on a
+click that changes anything.
