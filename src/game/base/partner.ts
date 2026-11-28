@@ -241,6 +241,17 @@ export function arrivalPlace(
 }
 
 /**
+ * Where the partner is when the player has just come through a door or down
+ * a flight of stairs: not out yet. It is coming through behind them, and their
+ * first step is what brings it out, onto the tile they leave (`followStep`'s
+ * appearance) - so it is always behind them, never in front on the mat, and
+ * never walked through.
+ */
+export function throughTheDoorPlace(player: GridPosition, facing: Direction): PartnerPlace {
+  return { tile: { ...player }, facing, out: false };
+}
+
+/**
  * The way the partner turns to look at the player from a neighbouring tile,
  * or undefined when they are not neighbours (tucked away, or mid-swap).
  */

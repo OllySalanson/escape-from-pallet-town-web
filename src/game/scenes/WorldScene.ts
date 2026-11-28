@@ -31,7 +31,7 @@ import {
 import { KeyPresses } from '../input/KeyPresses';
 import { MUTE_KEY, RAID_KEY_LETTERS, RAID_KEY_WORDS, ROOM_KEY_LETTERS, phraseListLines, roomKeyHintLine, type LearnableKeyId } from '../input/keyBindings';
 import { letterShortcut, shortcutsInHint, withMoment, type TouchShortcut } from '../input/touchShortcuts';
-import { touchPlay } from '../input/touchPlay';
+import { mapTooltipsOn } from '../settings/mapTooltips';
 import { PressLatch } from '../input/pressLatch';
 import { STEP_DURATION_MS, advanceStepClock } from '../movement/stepClock';
 import { hunterComes, isPlaytestRun, PLAYTEST_RUN_DIVISOR } from '../dev/playtestMode';
@@ -363,11 +363,10 @@ import { SURVEY_RADIUS, tilesAround } from '../world/minimap';
 import { chartTileOf } from '../world/chart';
 import { knownOnChart } from '../world/chartKnown';
 import { PLACE_ON_MAP_HOLD_MS, placeOfLocal, taleLines } from '../world/locals';
-import { WINDOW_PAPER, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
+import { drawPixelWindow } from '../ui/pixelWindow';
 import { UI } from '../ui/uiPalette';
-import { HINT_MARGIN, HINT_PADDING_X, HINT_PADDING_Y, spaceHint } from '../ui/hintLine';
+import { spaceHint } from '../ui/hintLine';
 import {
-  OBJECTIVE_DETAIL_MS,
   PLACE_PLATE_MS,
   openRaidCue,
   HUNTER_SHOUT_MS,
@@ -658,8 +657,6 @@ const CHEVRON_HEIGHT = 6;
  */
 /** The way mark stands over the map and every figure, and under the chips. */
 const WAY_MARK_DEPTH = 90;
-/** The hint line stands with the raid's chips (`RaidHud`), over the map and under any box. */
-const HINT_DEPTH = 100;
 /** How many walks to a tile the way mark keeps at once: the stake, the money, a way out or two. */
 const WAY_FIELDS_KEPT = 6;
 
@@ -1141,8 +1138,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private panelCaptionsDue = false;
   /** The plate the raid stands under while the window is not in use (`world/windowPause.ts`). */
   private windowPausePlate: PausePlate | null = null;
-  /** The cue the objective chip is currently showing, so a change can be noticed. */
-  private objectiveCue = '';
   /** The nearest open exit the chip names, and what it was asked for (`nearestExitCue`). */
   private exitCue: { readonly label: string; readonly heading: string; readonly position: GridPosition } | undefined;
   private exitCueKey = '';
@@ -1163,8 +1158,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private readonly wayFields = new Map<string, readonly Int32Array[]>();
   /** The collision the cue was walked over: a door opened mid-raid rebuilds it. */
   private exitCueGrid: readonly (readonly boolean[])[] | undefined;
-  /** Counts down the window in which a changed objective shows its extra line. */
-  private objectiveDetailMs = 0;
   /** The district the player is standing in, and how long its arrival plate has left. */
   private districtId: string | null = null;
   /** The tile the survey was last taken from, so it is taken once a step. */
@@ -1207,12 +1200,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private readonly prizeLabels = new Map<string, WorldLabel>();
   private readonly prizeGleams = new Map<string, Phaser.GameObjects.Graphics>();
   private readonly activatedPoiIds = new Set<string>();
-  private hintFrame?: Phaser.GameObjects.Graphics;
-  /** Where the hint line's window is on the screen while it says something, for the captions to keep off. */
-  private hintRect: Rect | null = null;
-  private hintText?: Phaser.GameObjects.Text;
-  /** What the hint line says now: '' when it is hidden. */
-  private hintShown = '';
+  /**
+   * What SPACE works on the tile faced, now (`hintHere`): '' when nothing.
+   * Never written on the map - FireRed's overworld names no key - and offered
+   * on the controls bar beside the game instead (`touchShortcuts`).
+   */
+  private momentLine = '';
   /**
    * The cache being searched, while one is (`world/cacheSearch.ts`). Where the
    * search has got to is the raid's (`ActiveRunSession.cachesSearched`); this
@@ -6544,33 +6537,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
     );
     this.refreshRunTimerHud();
-    const hint = this.hintShown;
-    this.hintShown = '\u0000';
-    this.showHint(hint);
   }
 
   /**
    * The harbour's hint line, in the raid (`ui/hintLine.ts`): what the interact
-   * key works on the tile faced, said only while the player stands with nothing
-   * else on screen to read. A caption seen from beside a gate says what the gate
-   * is; this says which tile it answers SPACE from.
+   * key works on the tile faced, offered on the controls bar beside the game
+   * only while the player stands with nothing else on screen to read, and never
+   * written on the map itself, as FireRed's overworld names no key.
    */
-  private createHint(): void {
-    this.hintFrame = this.add.graphics().setScrollFactor(0).setDepth(HINT_DEPTH);
-    this.hintText = this.add
-      .text(0, 0, '', { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: WINDOW_INK })
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setDepth(HINT_DEPTH + 0.01);
-    this.hintShown = '\u0000';
-    this.showHint('');
-  }
-
-  /** The line for this frame: nothing while walking or while anything else is on screen. */
   private refreshHint(): void {
-    if (!this.hintText) {
-      return;
-    }
     const busy = Boolean(
       this.dialogBox.visible ||
         this.trainerPrompt ||
@@ -6581,7 +6556,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.arrival ||
         this.targetTile,
     );
-    this.showHint(busy ? '' : this.hintHere());
+    this.momentLine = busy ? '' : this.hintHere();
   }
 
   /**
@@ -6649,25 +6624,40 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     return guard ? guardHint(guard) : '';
   }
 
-  /** The hint centred along the foot of the screen, or hidden when there is nothing to say. */
-  private showHint(text: string): void {
-    if (!this.hintFrame || !this.hintText || text === this.hintShown) {
-      return;
+  /**
+   * Where the player, the people, the finds and the landmarks stand on the
+   * screen now, for the raid's chips to be seen through over them (`RaidHud`):
+   * a figure stood behind the clock showed only its feet under it.
+   */
+  private figuresOnScreen(): Rect[] {
+    const view = this.cameras.main.worldView;
+    const things: (Phaser.GameObjects.Sprite | Phaser.GameObjects.Image | Phaser.GameObjects.Container | undefined)[] = [
+      this.player,
+      this.raceGhostSprite,
+      ...this.npcSprites.values(),
+      ...this.lootSprites.values(),
+      ...this.poiSprites.values(),
+    ];
+    const seen: Rect[] = [];
+    for (const thing of things) {
+      // A tile's slack either way covers a figure's origin; anything further off is not on screen.
+      if (
+        !thing?.visible ||
+        typeof thing.getBounds !== 'function' ||
+        thing.x < view.left - TILE_SIZE * 2 ||
+        thing.x > view.right + TILE_SIZE * 2 ||
+        thing.y < view.top - TILE_SIZE * 2 ||
+        thing.y > view.bottom + TILE_SIZE * 2
+      ) {
+        continue;
+      }
+      const bounds = thing.getBounds();
+      const rect = { x: bounds.x - view.left, y: bounds.y - view.top, width: bounds.width, height: bounds.height };
+      if (rect.x + rect.width > 0 && rect.y + rect.height > 0 && rect.x < view.width && rect.y < view.height) {
+        seen.push(rect);
+      }
     }
-    this.hintShown = text;
-    this.hintFrame.clear();
-    this.hintText.setText(text).setVisible(text !== '');
-    this.hintRect = null;
-    if (text === '') {
-      return;
-    }
-    const width = Math.ceil(this.hintText.width) + HINT_PADDING_X * 2;
-    const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
-    const x = Math.round((this.scale.width - width) / 2);
-    const y = this.scale.height - height - HINT_MARGIN;
-    drawPixelWindow(this.hintFrame, { x, y, width, height }, { fill: WINDOW_PAPER });
-    this.hintRect = { x, y, width, height };
-    this.hintText.setPosition(x + HINT_PADDING_X, y + HINT_PADDING_Y);
+    return seen;
   }
 
   private createRunTimerHud(): void {
@@ -6676,13 +6666,10 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }
 
     this.raidHud = new RaidHud(this);
-    this.createHint();
     this.hunterGlow = new HunterEdgeGlow(this);
     this.searchPanel = new SearchPanel(this);
     // A scene under test has no textures to paint it with, and nothing to look at it.
     this.raidWayMark = typeof this.textures?.createCanvas === 'function' ? new RaidWayMark(this, WAY_MARK_DEPTH, prefersReducedMotion()) : undefined;
-    this.objectiveCue = '';
-    this.objectiveDetailMs = OBJECTIVE_DETAIL_MS;
     this.noteDistrict(this.arrivedFromBattle);
     this.surveyGround();
     this.refreshRunTimerHud();
@@ -6811,13 +6798,15 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     }));
     const rooms = friendRoom();
     const inRoom = Boolean(rooms?.room && rooms.room.mapId === this.currentMap?.id && this.runSession);
+    // What SPACE works on here is offered beside the game, since the map names no key.
+    const moment = shortcutsInHint(this.momentLine);
     if (!inRoom) {
-      return standing;
+      return withMoment(standing, moment);
     }
     if (this.talkOpenMs > 0) {
       return withMoment([letterShortcut(ROOM_KEY_LETTERS.talk, 'SHUT')], shortcutsInHint(phraseListLines(ROOM_PHRASES).join('\n')));
     }
-    return [...standing, letterShortcut(ROOM_KEY_LETTERS.talk, 'SAY'), letterShortcut(ROOM_KEY_LETTERS.ping, 'PING')];
+    return withMoment([...standing, letterShortcut(ROOM_KEY_LETTERS.talk, 'SAY'), letterShortcut(ROOM_KEY_LETTERS.ping, 'PING')], moment);
   }
 
   public describeForTest(): SceneDescription {
@@ -6884,8 +6873,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       tile: tileOf(this.currentTile),
       facing: this.facing,
       walking: this.targetTile !== null,
-      // The hint line at the foot: what SPACE works on the tile faced.
-      hint: this.hintShown || null,
+      // What SPACE works on the tile faced, as the controls bar offers it (never drawn on the map).
+      hint: this.momentLine || null,
       // THE MAP on M, while it is open: how many tiles it shows in colour, once drawn.
       chart: this.mapScreen ? { known: this.mapScreen.knownTiles } : null,
       dialogue: this.dialogBox.visible
@@ -7103,12 +7092,6 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         { items: snapshot.foundItems.length, pokemon: snapshot.caughtPokemon.length },
         this.nearestExitCue(),
       );
-    if (navigationCue !== this.objectiveCue) {
-      this.objectiveCue = navigationCue;
-      this.objectiveDetailMs = OBJECTIVE_DETAIL_MS;
-    } else {
-      this.objectiveDetailMs = Math.max(0, this.objectiveDetailMs - deltaMs);
-    }
     // The plate's time is reading time. A raid opens on its briefing, and a
     // plate that ran out behind that box had named the Landing to nobody.
     if (deltaMs > 0 && !this.dialogBox.visible) {
@@ -7138,6 +7121,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // stuck out either side of it half cut; while one is up they stand aside.
     // A question raised to the top is a box over them too: chips half under it
     // peeked out either side ("STAKE" and "THE LAS" round the race's stone choice).
+    const looking = isLooking(this.lookMs, this.controls.look.isDown);
     const dialogOver = this.dialogBox.visible
       ? { x: this.dialogBox.x, y: this.dialogBox.y, width: DIALOG_WIDTH, height: DIALOG_HEIGHT }
       : (this.trainerPrompt?.rects ?? null);
@@ -7153,23 +7137,21 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
             isDawn(new Date()),
           ),
         ),
-        // Beside a side panel the cue alone: the keys it teaches are the raid's,
-        // and the panel has its own. On the touch pad too: its tray already
-        // shows OAK, LOOK, PACK and TEAM under the thumb.
-        objectiveLines: objectiveChipLines(navigationCue, this.objectiveDetailMs > 0, isPlaytestRun(), this.keysLearned).slice(
-          0,
-          this.panelLean.covering > 0 || touchPlay() ? 1 : undefined,
-        ),
+        // The job and the find in mind are said only while the player looks
+        // (`objectiveChipLines`): the clock is the one chip always up.
+        objectiveLines: objectiveChipLines(navigationCue, looking),
         place: placePlateLine(this.placeName, this.placePlateMs),
         // Read off the tile rather than remembered with the district name: the
         // chip and the fight that is about to start have to be reading the same
-        // thing, and `transitionToBattle` reads the tile too.
-        weather: weatherChipLine(this.currentWeather()),
+        // thing, and `transitionToBattle` reads the tile too. Said while the
+        // player looks: rain is drawn falling (`ui/rainfall.ts`), and the fight says the rest.
+        weather: looking ? weatherChipLine(this.currentWeather()) : null,
         // What the raid could still be for. Null until something rare has
         // actually been laid eyes on, which is most raids.
-        prize: prizeChipView(this.prizeInMind()),
+        prize: looking ? prizeChipView(this.prizeInMind()) : null,
         friend: this.friendChip(),
         race: this.raceChip(),
+        behind: this.figuresOnScreen(),
         hunter: hunterChipView({
           who: this.hunterRival().name,
           shout: this.hunterShout(),
@@ -10172,6 +10154,8 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       player: this.currentTile,
       looking,
       raidRemainingMs: this.runSession?.manager.snapshot().remainingMs ?? Number.POSITIVE_INFINITY,
+      // The raid is FireRed's screen too: nothing on the map writes itself until L (`settings/mapTooltips.ts`).
+      quiet: !mapTooltipsOn(),
     };
     this.worldLabels.forEach((label) => label.describe(audience));
     const view = this.cameras.main.worldView;
@@ -10191,9 +10175,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     // So is a side panel: a caption half under it is half a caption.
     const covered = this.panelLean.covering;
     const panel = covered > 0 ? [{ x: this.scale.width - covered, y: 0, width: covered, height: this.scale.height }] : [];
-    // So is the hint line: a guarded cache's caption came out under it.
-    const hint = this.hintRect ? [this.hintRect] : [];
-    const furniture = [...(tab ? [tab] : []), ...(this.raidHud?.occupied ?? []), ...searching, ...panel, ...hint, ...dialog].map((chip) => ({
+    const furniture = [...(tab ? [tab] : []), ...(this.raidHud?.occupied ?? []), ...searching, ...panel, ...dialog].map((chip) => ({
       x: chip.x + view.left,
       y: chip.y + view.top,
       width: chip.width,

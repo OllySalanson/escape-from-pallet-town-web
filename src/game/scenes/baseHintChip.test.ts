@@ -14,66 +14,38 @@ vi.mock('phaser', () => ({
   },
 }));
 
-import { placeCaptions, type Rect } from '../ui/labelPlacement';
 import { BaseScene } from './BaseScene';
 
-const VIEW = { left: 700, top: 400, right: 1100, bottom: 656, width: 400, height: 256 };
-/** The harbour box as drawn in this view: the raid's width, centred. */
-const BOX = { x: 48, y: 192, width: 304, height: 56 };
-
-/** The real talk hint on a stand-in of a scene with more of a keeper's words to come. */
-function talking(): { hintRect: () => Rect; chip: () => Rect } {
+/**
+ * The real talk hint on a stand-in of a scene with `boxesLeft` of a keeper's
+ * words to come: what is drawn on the screen, and what the controls bar is
+ * handed (`momentLine`).
+ */
+function talking(boxesLeft: number): { drawn: string; offered: string } {
   const anything: unknown = new Proxy(() => anything, { get: () => anything });
   const text = { width: 46, height: 12, text: '', setText: () => text, setVisible: () => text, setPosition: () => text };
   const scene = Object.create(BaseScene.prototype) as Record<string, unknown>;
   Object.assign(scene, {
-    dialogBox: { boxesLeft: 3, x: BOX.x, y: BOX.y },
+    dialogBox: { boxesLeft, x: 48, y: 192 },
     afterSaid: null,
     hintText: text,
     hintFrame: anything,
     hintShown: '',
-    hintSeat: undefined,
-    scale: { width: VIEW.width, height: VIEW.height },
-    cameras: { main: { scrollY: VIEW.top } },
+    momentLine: '',
+    scale: { width: 400, height: 256 },
+    cameras: { main: { scrollY: 400 } },
     currentTile: { x: 50, y: 30 },
   });
-  const methods = scene as unknown as { showTalkHint(): void; hintRect(view: unknown): Rect };
-  methods.showTalkHint();
-  return {
-    hintRect: () => methods.hintRect(VIEW),
-    // Where the chip is drawn: the right of the box, just above it.
-    chip: () => ({ x: VIEW.left + BOX.x + BOX.width - 56, y: VIEW.top + BOX.y - 22, width: 56, height: 16 }),
-  };
+  (scene as unknown as { showTalkHint(): void }).showTalkHint();
+  return { drawn: scene.hintShown as string, offered: scene.momentLine as string };
 }
 
-const overlaps = (a: Rect, b: Rect): boolean =>
-  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
-
-describe('the [ESC] SKIP chip on a box', () => {
-  it('takes the ground it stands on from a caption, so no name is cut off under it', () => {
-    const { hintRect, chip } = talking();
-    const width = 138;
-    const height = 32;
-    // A thing just above the box, wanting its name underneath it: the telescope
-    // beside the rail while the marshal speaks, as played.
-    const [seat] = placeCaptions(
-      [{ subject: { x: VIEW.left + 220, y: VIEW.top + 102, width: 32, height: 48 }, width, height, preferred: 'below' }],
-      {
-        bounds: { x: VIEW.left, y: VIEW.top, width: VIEW.width, height: VIEW.height },
-        furniture: [hintRect(), { x: VIEW.left + BOX.x, y: VIEW.top + BOX.y, width: BOX.width, height: BOX.height }],
-        keepClear: [],
-        canopy: [],
-      },
-    );
-
-    expect(seat.visible).toBe(true);
-    expect(overlaps({ x: seat.x, y: seat.y, width, height }, chip())).toBe(false);
+describe('the [ESC] SKIP key while somebody talks', () => {
+  it('is offered on the controls bar and never written beside the box, as FireRed writes no key there', () => {
+    expect(talking(3)).toEqual({ drawn: '', offered: '[ESC] SKIP' });
   });
 
-  it('leaves the foot of the screen free, which a chip on a box is not standing on', () => {
-    const rect = talking().hintRect();
-
-    expect(rect.y + rect.height).toBeLessThanOrEqual(VIEW.top + BOX.y);
-    expect(rect.width).toBeLessThan(VIEW.width);
+  it('is not offered on the last box, where there is nothing left to skip', () => {
+    expect(talking(1)).toEqual({ drawn: '', offered: '' });
   });
 });

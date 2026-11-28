@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type Phaser from 'phaser';
-import { RaidHud, type RaidHudState } from './RaidHud';
+import { RaidHud, SEEN_THROUGH_ALPHA, type RaidHudState } from './RaidHud';
 import { overlaps, type Rect } from './labelPlacement';
 
 /**
@@ -8,8 +8,9 @@ import { overlaps, type Rect } from './labelPlacement';
  * windows they are asked to fill, and text that reports a size for its lines.
  */
 function stubScene(width: number) {
-  const fills: Rect[] = [];
-  const texts: { visible: boolean; lines: string[] }[] = [];
+  const fills: (Rect & { alpha: number })[] = [];
+  let fillAlpha = 1;
+  const texts: { visible: boolean; lines: string[]; alpha: number }[] = [];
   const graphics = {
     setScrollFactor: vi.fn(() => graphics),
     setDepth: vi.fn(() => graphics),
@@ -17,15 +18,18 @@ function stubScene(width: number) {
       fills.length = 0;
       return graphics;
     }),
-    fillStyle: vi.fn(() => graphics),
+    fillStyle: vi.fn((_colour: number, alpha: number = 1) => {
+      fillAlpha = alpha;
+      return graphics;
+    }),
     fillRect: vi.fn((x: number, y: number, w: number, h: number) => {
-      fills.push({ x, y, width: w, height: h });
+      fills.push({ x, y, width: w, height: h, alpha: fillAlpha });
       return graphics;
     }),
     destroy: vi.fn(),
   };
   const makeText = () => {
-    const record = { visible: true, lines: [] as string[] };
+    const record = { visible: true, lines: [] as string[], alpha: 1 };
     texts.push(record);
     const text = {
       get width() {
@@ -47,7 +51,10 @@ function stubScene(width: number) {
         return text;
       }),
       setPosition: vi.fn(() => text),
-      setAlpha: vi.fn(() => text),
+      setAlpha: vi.fn((alpha: number) => {
+        record.alpha = alpha;
+        return text;
+      }),
       getWrappedText: () => record.lines,
       destroy: vi.fn(),
     };
@@ -137,6 +144,40 @@ describe('RaidHud under a raised dialogue box', () => {
     hud.render(STATE, 0, { x: 48, y: 168, width: 304, height: 80 });
 
     expect(texts.filter((text) => text.visible)).toHaveLength(5);
+  });
+});
+
+describe('RaidHud over a figure', () => {
+  /** The opacity of every fill inside a chip: its paper and its line. */
+  const alphasIn = (fills: (Rect & { alpha: number })[], chip: Rect) =>
+    [...new Set(fills.filter((fill) => overlaps(fill, chip)).map((fill) => fill.alpha))];
+
+  it('draws the clock see-through while somebody stands behind it, and only the clock', () => {
+    // Contest quiet-1: a townsperson stood under the clock showed only their feet beneath it.
+    const { scene, fills, texts } = stubScene(400);
+    const hud = new RaidHud(scene);
+    hud.render(STATE, 0);
+    const clock = hud.occupied.find((chip) => chip.x > 200 && chip.y < 20)!;
+    const objective = hud.occupied.find((chip) => chip.x < 20 && chip.y < 20)!;
+    const before = [...hud.occupied];
+    hud.render({ ...STATE, behind: [{ x: clock.x + 4, y: clock.y + clock.height - 4, width: 16, height: 24 }] }, 0);
+
+    expect(alphasIn(fills, clock)).toEqual([SEEN_THROUGH_ALPHA]);
+    expect(alphasIn(fills, objective)).toEqual([1]);
+    // The words stay solid, so the time is still read at a glance.
+    expect(texts.find((text) => text.lines[0] === 'RAID 4:55')?.alpha).toBe(1);
+    // Seen through, not moved: nothing jumps in the corner of the eye.
+    expect(hud.occupied).toEqual(before);
+  });
+
+  it('draws it whole again once they have walked on', () => {
+    const { scene, fills } = stubScene(400);
+    const hud = new RaidHud(scene);
+    hud.render({ ...STATE, behind: [{ x: 380, y: 0, width: 16, height: 24 }] }, 0);
+    hud.render({ ...STATE, behind: [{ x: 10, y: 200, width: 16, height: 24 }] }, 0);
+    const clock = hud.occupied.find((chip) => chip.x > 200 && chip.y < 20)!;
+
+    expect(alphasIn(fills, clock)).toEqual([1]);
   });
 });
 

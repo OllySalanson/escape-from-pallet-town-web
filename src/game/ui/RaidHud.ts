@@ -35,8 +35,10 @@ const WINDOW_BORDER = UI.frameLine.value;
  * Chips pinned to the top corners of the screen, each no larger than the
  * words in it. The overworld in the games this one is dressed as had no
  * permanent HUD at all, so the design rule here is that the map wins: the raid
- * clock and the objective earn a corner each because they are load-bearing, and
- * everything else appears only while it is true.
+ * clock is the one chip that is always up, small, because running out of time
+ * loses the raid. The job and the find in mind are shown only while the look
+ * key is held (O and M answer them too), and everything else appears only
+ * while it is true.
  */
 
 const EDGE_MARGIN = 4;
@@ -121,7 +123,19 @@ export interface RaidHudState {
   readonly friend?: readonly string[] | null;
   /** A race under way (`raceChipLines`): the clock, the racer, the line. */
   readonly race?: readonly string[] | null;
+  /**
+   * Where figures, finds and landmarks stand on the screen this frame. A chip
+   * over one of them is drawn see-through (`SEEN_THROUGH_ALPHA`), so a figure
+   * standing behind the clock is a figure rather than two feet under a box.
+   */
+  readonly behind?: readonly Rect[];
 }
+
+/**
+ * How much of a chip's paper and line is drawn while something in the world
+ * stands behind it. Its words stay solid, so the time is still read at a glance.
+ */
+export const SEEN_THROUGH_ALPHA = 0.5;
 
 export class RaidHud {
   private readonly frames: Phaser.GameObjects.Graphics;
@@ -132,6 +146,8 @@ export class RaidHud {
   private covered: Rect[] = [];
   /** What this render is drawn under, if anything (see `render`). */
   private under: readonly Rect[] = [];
+  /** What stands in the world under the chips this render (`RaidHudState.behind`). */
+  private behind: readonly Rect[] = [];
   private readonly clockText: Phaser.GameObjects.Text;
   private readonly objectiveText: Phaser.GameObjects.Text;
   private readonly hunterText: Phaser.GameObjects.Text;
@@ -182,15 +198,20 @@ export class RaidHud {
     // A question is two boxes - its own and its answers' - and a chip is only
     // under it where it is under one of them.
     this.under = under === null ? [] : Array.isArray(under) ? under : [under as Rect];
+    this.behind = state.behind ?? [];
 
-    const objective = this.placeChip(
-      this.objectiveText,
-      state.objectiveLines,
-      { fill: WINDOW_PAPER, ink: WINDOW_INK_VALUE },
-      1,
-      () => ({ x: EDGE_MARGIN, y: EDGE_MARGIN }),
-      true,
-    );
+    // The job is said only while the player looks (`objectiveChipLines`): with
+    // no chip, the column under it starts at the very top, where it stood.
+    const objective = state.objectiveLines.length > 0
+      ? this.placeChip(
+        this.objectiveText,
+        state.objectiveLines,
+        { fill: WINDOW_PAPER, ink: WINDOW_INK_VALUE },
+        1,
+        () => ({ x: EDGE_MARGIN, y: EDGE_MARGIN }),
+        true,
+      )
+      : this.noChip(this.objectiveText);
 
     const clockStyle = CLOCK_STYLES[state.clock.tone];
     const clockAlpha = state.clock.pulses
@@ -310,6 +331,12 @@ export class RaidHud {
     this.raceText.destroy();
   }
 
+  /** A chip with nothing to say: hidden, and standing for no room at the top left. */
+  private noChip(text: Phaser.GameObjects.Text): PixelWindowRect {
+    text.setVisible(false);
+    return { x: EDGE_MARGIN, y: EDGE_MARGIN - CHIP_GAP, width: 0, height: 0 };
+  }
+
   private createText(fontSize: string): Phaser.GameObjects.Text {
     return this.scene.add
       .text(0, 0, '', {
@@ -331,7 +358,7 @@ export class RaidHud {
     text: Phaser.GameObjects.Text,
     lines: readonly string[],
     style: ChipStyle,
-    alpha: number,
+    chipAlpha: number,
     anchor: (width: number, height: number) => { readonly x: number; readonly y: number },
     withCursor = false,
   ): PixelWindowRect {
@@ -348,7 +375,10 @@ export class RaidHud {
       return rect;
     }
     this.covered.push(rect);
-    drawPixelWindow(this.frames, rect, { fill: style.fill, fillAlpha: alpha, border: WINDOW_BORDER });
+    // The paper and its line fade, so what stands behind reads whole; the words do not.
+    const seenThrough = this.behind.some((thing) => overlaps(rect, thing));
+    const alpha = seenThrough ? chipAlpha * SEEN_THROUGH_ALPHA : chipAlpha;
+    drawPixelWindow(this.frames, rect, { fill: style.fill, fillAlpha: alpha, border: WINDOW_BORDER, borderAlpha: seenThrough ? alpha : 1 });
     if (style.heavy) {
       this.frames.fillStyle(WINDOW_BORDER, alpha);
       this.frames.fillRect(rect.x + 2, rect.y + 1, rect.width - 4, 1);
@@ -366,7 +396,7 @@ export class RaidHud {
     }
     text
       .setPosition(rect.x + TEXT_PADDING_X + cursorInset, rect.y + TEXT_PADDING_Y)
-      .setAlpha(alpha);
+      .setAlpha(chipAlpha);
     return rect;
   }
 

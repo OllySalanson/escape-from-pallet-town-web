@@ -175,7 +175,7 @@ const RECOVER_LOST_FIELD_KIT: RaidContract = {
     'Step onto the lost field kit marker to retrieve it.',
   ],
   deploymentBriefing:
-    'ARROW KEYS / WASD: move. The field kit is SOUTH, in the reeds past the RANGER STATION. Press O to call Professor Oak.',
+    'The field kit is SOUTH, in the reeds past the RANGER STATION.',
 };
 
 /**
@@ -234,7 +234,7 @@ const SURVEY_THE_BRAID: RaidContract = {
     'Between ROUTE HEAD and THE OUTPOST every way across is tall grass, so each crossing of the braid is a fight you are choosing to take.',
   ],
   deploymentBriefing:
-    'Three survey stakes: WEST ROAD, MIDDLE FIELD, EAST ROAD. No one road passes two. Press O to call Professor Oak.',
+    'Three survey stakes: WEST ROAD, MIDDLE FIELD, EAST ROAD. No one road passes two.',
 };
 
 /**
@@ -281,7 +281,7 @@ const CORDON_LEDGER: RaidContract = {
     'The SOUTH GATE will still take you home. It will not take the ledger.',
   ],
   deploymentBriefing:
-    'Ledger in THE ALLOTMENTS, SLUICE WHEEL in the south-east, out through the WEST CULVERT. Press O to call Professor Oak.',
+    'Ledger in THE ALLOTMENTS, SLUICE WHEEL in the south-east, out through the WEST CULVERT.',
 };
 
 /**
@@ -333,7 +333,7 @@ const WARDENS_RESUPPLY: RaidContract = {
     'Light the FIRE TOWER on the way in - it is four steps out of your way - and the TOWER STEPS open twenty-one steps from the cache. Skip it and the only near exit is the FOREST CLEARING, which opens late; the BROOK FORD is the whole forest away.',
   ],
   deploymentBriefing:
-    'Two Potions to the warden’s cache at EAST RISE, in the east. Every trail is grass. Press O to call Professor Oak.',
+    'Two Potions to the warden’s cache at EAST RISE, in the east. Every trail is grass.',
 };
 
 export const RAID_CONTRACTS: readonly RaidContract[] = [

@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
-import { FIELD_GUIDE_HINT, objectiveChipLines } from './raidHud';
+import { objectiveChipLines } from './raidHud';
 
 const overlaySource = await readFile(new URL('./ObjectivesScene.ts', import.meta.url), 'utf8');
 const worldSource = await readFile(new URL('./WorldScene.ts', import.meta.url), 'utf8');
@@ -8,13 +8,11 @@ const menuOverlaySource = await readFile(new URL('../ui/MenuOverlay.ts', import.
 
 
 describe('raid objective overlay controls', () => {
-  it('opens through O and publishes the same shortcut in the raid HUD', () => {
+  it('opens through O, and the chip names no key', () => {
     expect(worldSource).toContain('KeyCodes[RAID_KEY_LETTERS.objectives]');
     expect(worldSource).toContain("this.scene.launch('objectives'");
-    // The chip only spends a second line on the shortcut while an objective is
-    // new, so the key it names has to be the key the world scene binds.
-    expect(FIELD_GUIDE_HINT).toContain('O');
-    expect(objectiveChipLines('LOST KIT: SW', true)[1]).toContain(FIELD_GUIDE_HINT);
+    // The overworld is FireRed's screen: O is named on the controls bar, never on the map.
+    expect(objectiveChipLines('LOST KIT: SW', true)).toEqual(['LOST KIT: SW']);
   });
 
   it('pauses the world and suppresses its update input while the field guide is open', () => {

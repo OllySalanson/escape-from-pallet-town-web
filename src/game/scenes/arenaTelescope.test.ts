@@ -132,7 +132,7 @@ describe("THE RAID ARENA's telescope keys", () => {
     // on the pad stood lit and did nothing when tapped.
     const keys = (scene: Record<string, unknown>) =>
       (BaseScene.prototype as unknown as { touchShortcuts(this: unknown): readonly { label: string; inert?: boolean }[] }).touchShortcuts
-        .call({ hintText: null, ...scene })
+        .call({ hintText: null, momentLine: '', ...scene })
         .map(({ label, inert }) => (inert ? `(${label})` : label));
     expect(keys({ dialogBox: { visible: false } })).toEqual(['LOOK', 'FAVOURS', 'THINGS', 'TEAM', 'DEX', 'MAP', 'SAY']);
     const dimmed = ['LOOK', '(FAVOURS)', '(THINGS)', '(TEAM)', '(DEX)', '(MAP)', '(SAY)'];

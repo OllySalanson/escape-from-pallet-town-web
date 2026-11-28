@@ -60,7 +60,7 @@ function trailer(startedAt: number, hall: BaseSceneData) {
 
 describe("THE RAID ARENA's door", () => {
   it('stands between nobody and their first raid: a new save goes straight in', () => {
-    expect(through('raid-arena')).toEqual([['room', { savedGame: game, room: 'raid-arena' }]]);
+    expect(through('raid-arena')).toEqual([['room', { savedGame: game, room: 'raid-arena', throughDoor: true }]]);
   });
 
   it('plays the trailer the first time through once a raid has been gone on, on the way into the great hall', () => {
@@ -72,7 +72,7 @@ describe("THE RAID ARENA's door", () => {
 
   it('is a door like any other once it has been seen', () => {
     const seen = { ...game, raidProgress: { ...game.raidProgress, arenaIntroSeen: true } };
-    expect(through('raid-arena', seen)).toEqual([['room', { savedGame: seen, room: 'raid-arena' }]]);
+    expect(through('raid-arena', seen)).toEqual([['room', { savedGame: seen, room: 'raid-arena', throughDoor: true }]]);
   });
 
   it('is the only door that plays anything: every other is a room', () => {

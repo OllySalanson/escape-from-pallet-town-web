@@ -39,6 +39,7 @@ import {
   PARTNER_SPECIES,
   arrivalPlace,
   followStep,
+  throughTheDoorPlace,
   hopLift,
   idleBeat,
   isNeighbour,
@@ -165,6 +166,17 @@ describe('the partner walks in the player’s footsteps', () => {
     const next = followStep({ tile: { x: 5, y: 5 }, facing: 'up', out: false }, { x: 5, y: 5 }, { x: 5, y: 4 });
     expect(next.move).toEqual({ kind: 'appear', at: { x: 5, y: 5 }, facing: 'up' });
     expect(next.place.out).toBe(true);
+  });
+
+  it('comes through a door behind the player: not out on the mat, and out behind them on their first step', () => {
+    // On a room's mat facing up, the tile behind the player is the door itself.
+    const mat = { x: 4, y: 9 };
+    const arrived = throughTheDoorPlace(mat, 'up');
+    expect(arrived.out).toBe(false);
+    const first = followStep(arrived, mat, { x: 4, y: 8 });
+    expect(first.move).toEqual({ kind: 'appear', at: mat, facing: 'up' });
+    // Behind the player, never on the tile they are walking onto.
+    expect(first.place.tile).toEqual(mat);
   });
 
   it('never crosses ground nobody walked: from anywhere but a neighbour it comes out behind the player', () => {
