@@ -347,6 +347,7 @@ import {
   type BillGood,
 } from '../hub/billTalk';
 import { roomPosterPicture } from '../base/roomPosters';
+import { goodsOnShelves } from '../base/billGoods';
 import { RELEASE_ARMING_MS } from '../ui/spatialFocus';
 import { dueMilestone, milestoneWords, pokedexLookLines, pokedexOwned } from '../hub/pokedex';
 import { boardLines } from '../base/labBoard';
@@ -7786,6 +7787,7 @@ export class BaseScene extends Phaser.Scene {
       this.say([NOT_DEALT_LINE], about);
       return;
     }
+    const shelvesBefore = JSON.stringify(goodsOnShelves(traderCounterFor(this.freshGame())));
     const struck =
       good.kind === 'stock'
         ? this.saveManager.buyTraderStock(good.itemId)
@@ -7800,7 +7802,9 @@ export class BaseScene extends Phaser.Scene {
       this.say([DEAL_NOT_SAVED_LINE], about);
       return;
     }
-    if (good.kind === 'barter') {
+    // A deal that changes what is on his shelves - a trade struck, the last of a
+    // ration, the berth taken - has the room drawn again for it.
+    if (good.kind === 'barter' || JSON.stringify(goodsOnShelves(traderCounterFor(this.freshGame()))) !== shelvesBefore) {
       this.goTo(
         {
           savedGame: this.saveManager.load() ?? this.savedGame,
