@@ -13,8 +13,10 @@
  *
  * Every job has more than one way in (the captain: "all these cool, intuitive
  * ways of doing things that people might work out"): a Pokémon is dragged onto
- * a place, or its card's key is clicked, or its key is pressed. ENTER is the
- * team, G the garden, L the lead.
+ * a place, or its card's key is tapped, or its key is pressed. ENTER is the
+ * team, G the garden, L the lead. To a mouse the card is what it hovers and a
+ * drag the only move, and a click is nothing (the captain, 28 Nov 2026, in
+ * place of the click that showed a card: `scenes/ChestPokemonScene.ts`).
  *
  * Phaser-free, so the order and the words are tested without a browser.
  */
@@ -250,7 +252,7 @@ function card(state: ChestPokemonState, entry: PickerEntry): string {
     + '</section>';
 }
 
-/** THE CHEST's things that can be given, a bag square each: dragged onto a Pokémon, or ENTER and then a Pokémon. */
+/** THE CHEST's things that can be given, a bag square each: dragged onto a Pokémon, or ENTER (or a tap) and then a Pokémon. */
 function giftStrip(gifts: readonly Gift[]): string {
   const squares = gifts
     .map(

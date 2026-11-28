@@ -25,6 +25,7 @@ import { EVOLVE_MOMENT_ARMING_MS, evolveMomentBody, type EvolveMomentView } from
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { pupilVerdict } from '../ui/teachScreen';
+import { fromMouse } from '../ui/gridArranging';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { pixelScreen } from '../ui/pixelUi';
@@ -46,6 +47,9 @@ export interface ChestPokemonSceneData {
   readonly openSwap?: () => void;
 }
 
+/** Where a carried thing can be let go: a place, the grid, or TO GIVE. */
+type DropPlace = 'chest' | 'team' | 'garden' | 'gifts';
+
 /** How far a pointer must move with a Pokémon held before it is carried rather than clicked. */
 const DRAG_START_PX = 6;
 
@@ -62,6 +66,8 @@ interface Carried {
   readonly from: 'chest' | 'team' | 'garden' | 'gifts' | 'held';
   readonly x: number;
   readonly y: number;
+  /** Picked up by a mouse, which only drags: let go without moving, it is nothing. */
+  readonly mouse: boolean;
   ghost: HTMLElement | null;
 }
 
@@ -91,8 +97,14 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
   private shown: string | undefined;
   /** A thing chosen to give with a click or ENTER, waiting for a Pokémon to be chosen. */
   private armed: string | null = null;
-  /** The question on screen: give this to that Pokémon? */
-  private asking: { readonly itemId: string; readonly pokemonId: string } | null = null;
+  /** The question on screen: give this to that Pokémon? Asked of a mouse's drag, the answer leaves the cursor where it was. */
+  private asking: { readonly itemId: string; readonly pokemonId: string; readonly byMouse: boolean } | null = null;
+  /**
+   * The deed being drawn was a mouse's drag, so the redraw leaves the cursor
+   * where it was rather than on the Pokémon moved: a drag let go leaves
+   * nothing chosen (the captain, 28 Nov 2026).
+   */
+  private mouseDeed = false;
   /** A stone has just evolved one: the moment is the screen until it has been seen. */
   private moment: (EvolveMomentView & { readonly openedAt: number; readonly pokemonId: string }) | undefined;
   private readonly saveManager = new SaveManager();
@@ -114,6 +126,7 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
     this.shown = undefined;
     this.armed = null;
     this.asking = null;
+    this.mouseDeed = false;
     this.moment = undefined;
     this.reload();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -132,6 +145,9 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
     this.overlay.root.addEventListener('pointermove', (event) => this.pointerMove(event));
     this.overlay.root.addEventListener('pointerup', (event) => this.pointerUp(event));
     this.overlay.root.addEventListener('pointercancel', () => this.dropCarried());
+    // A mouse looks by hovering: the card is the Pokémon it rests on, and the
+    // cursor's again once it moves off.
+    this.overlay.onPointed = (control) => this.answerPointed(control);
     // The card stays on the last Pokémon looked at while the cursor is elsewhere -
     // on TO GIVE, a key or the question - so its place is never a hole.
     this.overlay.root.addEventListener('focusin', (event) => {
@@ -232,7 +248,14 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
       button.onclick = () => this.goToThings();
     });
     overlay.root.querySelectorAll<HTMLButtonElement>('[data-mon-key]').forEach((button) => {
-      button.onclick = () => this.act(button.dataset.key, button.dataset.monKey!);
+      // To a mouse a card's keys are the keys they name: a Pokémon is moved by
+      // dragging it, never by a click. C goes to another screen, so it opens.
+      button.onclick = (event) => {
+        if (fromMouse(event) && button.dataset.key !== 'swap') {
+          return;
+        }
+        this.act(button.dataset.key, button.dataset.monKey!);
+      };
     });
     if (this.armed) {
       overlay.root.querySelector(`[data-gift="${CSS.escape(this.armed)}"]`)?.classList.add('is-armed');
@@ -255,14 +278,32 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
     }
     this.asking = null;
     // A press names where the cursor goes next (the Pokémon it was done to);
-    // a plain redraw puts it back where it was.
-    if (prefer.length > 0) {
+    // a plain redraw, or a mouse's drag, puts it back where it was.
+    const byMouse = this.mouseDeed;
+    this.mouseDeed = false;
+    if (prefer.length > 0 && !byMouse) {
       overlay.focus(...prefer, '.chest-mons [data-cursor-start]', '[data-close]');
     } else {
       overlay.refocus('.chest-mons [data-cursor-start]', '[data-close]');
     }
     // After the cursor is placed, which is the next frame.
     requestAnimationFrame(() => requestAnimationFrame(() => this.keepACardShown()));
+  }
+
+  /** The card for the Pokémon the mouse rests on, or for the cursor's once it has moved off. */
+  private answerPointed(control: HTMLElement | null): void {
+    const root = this.overlay?.root;
+    if (!root || this.asking || this.moment || control?.closest('[data-shown-by]')) {
+      return;
+    }
+    const cursor = this.underCursor() ?? (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('[data-shows]')?.dataset.shows;
+    const id = control?.closest<HTMLElement>('[data-shows]')?.dataset.shows ?? cursor ?? this.shown;
+    if (!id || !root.querySelector(`.chest-card[data-shown-by="${CSS.escape(id)}"]`)) {
+      return;
+    }
+    root.querySelectorAll<HTMLElement>('.chest-card').forEach((card) => {
+      card.hidden = card.dataset.shownBy !== id;
+    });
   }
 
   /** Shows the card of the Pokémon last looked at when the cursor's own control shows none. */
@@ -416,7 +457,8 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
       return;
     }
     audioManager.play('select');
-    this.asking = { itemId, pokemonId };
+    this.asking = { itemId, pokemonId, byMouse: this.mouseDeed };
+    this.mouseDeed = false;
     this.render();
   }
 
@@ -426,6 +468,7 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
     if (!asking) {
       return;
     }
+    this.mouseDeed = asking.byMouse;
     if (!yes) {
       audioManager.play('cancel');
       this.render([this.on(asking.pokemonId)]);
@@ -719,14 +762,21 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
       return;
     }
     const target = event.target as HTMLElement | null;
+    const mouse = fromMouse(event);
+    // A mouse's press takes neither the cursor nor the browser's own picture
+    // drag: only moving it carries anything.
+    if (mouse && target?.closest('[data-gift], [data-held], [data-mon]')) {
+      event.preventDefault();
+    }
+    const at = { x: event.clientX, y: event.clientY, mouse, ghost: null };
     const gift = target?.closest<HTMLElement>('[data-gift]');
     if (gift) {
-      this.carried = { kind: 'gift', id: gift.dataset.gift!, from: 'gifts', x: event.clientX, y: event.clientY, ghost: null };
+      this.carried = { kind: 'gift', id: gift.dataset.gift!, from: 'gifts', ...at };
       return;
     }
     const held = target?.closest<HTMLElement>('[data-held]');
     if (held) {
-      this.carried = { kind: 'held', id: held.dataset.held!, from: 'held', x: event.clientX, y: event.clientY, ghost: null };
+      this.carried = { kind: 'held', id: held.dataset.held!, from: 'held', ...at };
       return;
     }
     const piece = target?.closest<HTMLElement>('[data-mon]');
@@ -734,7 +784,7 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
       return;
     }
     const from = (piece.dataset.place as 'team' | 'garden' | undefined) ?? 'chest';
-    this.carried = { kind: 'mon', id: piece.dataset.mon!, from, x: event.clientX, y: event.clientY, ghost: null };
+    this.carried = { kind: 'mon', id: piece.dataset.mon!, from, ...at };
   }
 
   private pointerMove(event: PointerEvent): void {
@@ -805,6 +855,20 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
     const over = dragged ? this.monAt(event.clientX, event.clientY) : undefined;
     const drop = dragged ? this.dropAt(event.clientX, event.clientY) : undefined;
     this.dropCarried();
+    if (carried.mouse) {
+      // A mouse click is nothing here (hovering is the look); a drag is the deed.
+      if (!dragged) {
+        return;
+      }
+      this.mouseDeed = true;
+    }
+    this.letGo(carried, dragged, over, drop);
+    // Spent by the deed's own redraw, if it drew one; never left for a key's.
+    this.mouseDeed = false;
+  }
+
+  /** What letting go of a carried thing does, where it was let go. */
+  private letGo(carried: Carried, dragged: boolean, over: string | undefined, drop: DropPlace | undefined): void {
     if (carried.kind === 'gift') {
       if (!dragged) {
         this.arm(carried.id);
@@ -820,7 +884,8 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
       return;
     }
     if (!dragged) {
-      // A click: with a thing chosen to give, the question; otherwise the Pokémon is chosen and its card shown.
+      // A tap (touch or a pen; a mouse's click is nothing): with a thing chosen
+      // to give, the question; otherwise the Pokémon is chosen and its card shown.
       if (this.armed) {
         this.offer(this.armed, carried.id);
         return;
@@ -843,7 +908,7 @@ export class ChestPokemonScene extends Phaser.Scene implements ProvidesFeedbackC
   }
 
   /** Which place the pointer is over: THE NEXT RAID, the GARDEN, or back in the chest's grid. */
-  private dropAt(x: number, y: number): 'chest' | 'team' | 'garden' | 'gifts' | undefined {
+  private dropAt(x: number, y: number): DropPlace | undefined {
     const zone = document.elementsFromPoint(x, y).map((node) => (node as HTMLElement).closest?.<HTMLElement>('[data-drop]')).find(Boolean);
     const place = zone?.dataset.drop;
     return place === 'team' || place === 'garden' || place === 'chest' || place === 'gifts' ? place : undefined;

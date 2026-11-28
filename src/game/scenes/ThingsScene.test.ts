@@ -67,7 +67,7 @@ function thingsOver(items: Record<string, number>, level: number, partner: boole
     saveManager,
     time: { now: 0, delayedCall: vi.fn() },
     overlay: {
-      root: { innerHTML: '', dataset: {}, querySelector: () => null, querySelectorAll: () => [] },
+      root: { innerHTML: '', dataset: {}, querySelector: () => null, querySelectorAll: () => [], addEventListener: () => undefined },
       refocus: vi.fn(),
       moveCursor: () => false,
       remeasure: vi.fn(),

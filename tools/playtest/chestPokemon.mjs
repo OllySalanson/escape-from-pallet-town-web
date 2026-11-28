@@ -1,6 +1,12 @@
 // Plays THE CHEST's POKéMON tab (`scenes/ChestPokemonScene.ts`): a new game is
 // given fourteen Pokémon in two boxes and a held item, then at THE CHEST:
 //
+//   - on THINGS, with a real mouse (the captain, 28 Nov 2026: hover to look,
+//     drag to move, a click nothing): the card answers for the thing hovered
+//     and the cursor's again once the mouse is off it; a click on a thing and
+//     on the card's ENTER key changes nothing and moves no cursor; a thing
+//     dragged into the pack is packed, and one let go off every container is
+//     put back, with nothing left carried either way;
 //   - P on the chest's THINGS goes to its POKéMON tab: every Pokémon in one
 //     grid in the order an old save's boxes kept them, no boxes named, the
 //     card following the cursor;
@@ -9,9 +15,12 @@
 //   - a Pokémon dragged from the grid onto THE NEXT RAID joins the team (and
 //     leaves the garden), and one dragged from the GARDEN back onto the grid
 //     comes in;
+//   - hovering a Pokémon shows its card and moving off brings the cursor's
+//     back; a click on one is nothing - no card, no cursor, no change;
 //   - things are given: a stone over a Pokémon it does nothing for goes red and
 //     asks nothing, dropped on Eevee it asks and evolves it; a berry clicked and
-//     then a Pokémon clicked asks and is held; a disc chosen with ENTER and a
+//     then a Pokémon clicked asks nothing, and the berry dragged onto Machop
+//     asks and is held; a disc chosen with ENTER and a
 //     Pokémon with ENTER asks, N says no and YES teaches; T and a drag off the
 //     card take what is held back into the chest;
 //   - B goes back to THINGS, and every change is in the save.
@@ -70,7 +79,7 @@ try {
   const centre = (selector) =>
     page.evaluate(`(() => { const r = document.querySelector(${JSON.stringify(selector)})?.getBoundingClientRect(); return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null; })()`);
   const mouse = (type, at) =>
-    page.send('Input.dispatchMouseEvent', { type, x: at.x, y: at.y, button: 'left', buttons: type === 'mousePressed' || type === 'mouseMoved' ? 1 : 0, clickCount: type === 'mouseMoved' ? 0 : 1 });
+    page.send('Input.dispatchMouseEvent', { type, x: at.x, y: at.y, button: at.buttons === 0 ? 'none' : 'left', buttons: at.buttons ?? (type === 'mousePressed' || type === 'mouseMoved' ? 1 : 0), clickCount: type === 'mouseMoved' ? 0 : 1 });
   /** Presses on one thing, carries it in steps to another, and lets go. */
   const drag = async (fromSelector, toSelector) => {
     // In view first, as a player would have it before picking it up: the
@@ -127,6 +136,76 @@ try {
   await until(`${sceneIs('things')} && Boolean(document.querySelector('#screens [data-chest-tab="pokemon"]'))`, 'the chest with its tabs');
   await wait(400);
   await shoot('01-things-tab');
+
+  // THINGS with a real mouse: hovering is the look, a click nothing, a drag the move.
+  {
+    const things = `#screens [data-grid="stash"]`;
+    const cardName = () => page.evaluate(`document.querySelector('#screens [data-hand-card] .things-hand-words')?.textContent?.trim() ?? ''`);
+    const cursorAt = () => page.evaluate(`document.activeElement?.dataset?.gridPiece ?? document.activeElement?.className ?? null`);
+    const pieces = await page.evaluate(`[...document.querySelectorAll('${things} [data-grid-piece]')].map((piece) => piece.dataset.gridPiece)`);
+    if (pieces.length < 2) fail(`the stash has ${pieces.length} things to look at`);
+    const cursor = await cursorAt();
+    const restingCard = await cardName();
+    const other = pieces.find((piece) => piece !== cursor);
+    const otherAt = await centre(`${things} [data-grid-piece="${other}"]`);
+    await mouse('mouseMoved', { ...otherAt, buttons: 0 });
+    await step(3);
+    const hoveredCard = await cardName();
+    if (hoveredCard === restingCard) fail(`hovering ${other} left the card on "${restingCard}"`);
+    await shoot('things-01-hovered');
+    const away = await centre('#screens .px-title');
+    await mouse('mouseMoved', { ...away, buttons: 0 });
+    await step(3);
+    if ((await cardName()) !== restingCard) fail(`off the stash the card says "${await cardName()}", not the cursor's "${restingCard}"`);
+    const savedBefore = JSON.stringify((await saved()).raidProgress);
+    await mouse('mouseMoved', otherAt);
+    await mouse('mousePressed', otherAt);
+    await mouse('mouseReleased', otherAt);
+    await wait(200);
+    if ((await cursorAt()) !== cursor) fail(`a click on ${other} moved the cursor to ${await cursorAt()}`);
+    if (await page.evaluate(`Boolean(document.querySelector('#screens .px-grid-ghost, #screens .is-carried'))`)) fail('a click picked a thing up');
+    const putIn = await centre('#screens [data-hand-card] [data-hand="pack"]');
+    if (putIn) {
+      await mouse('mouseMoved', putIn);
+      await mouse('mousePressed', putIn);
+      await mouse('mouseReleased', putIn);
+      await wait(200);
+    }
+    if (JSON.stringify((await saved()).raidProgress) !== savedBefore) fail('a mouse click changed the save');
+    // Dragged into the pack: packed, and nothing carried after.
+    const berry = pieces.find((piece) => piece !== 'cargo:thunder-stone' && piece.startsWith('cargo:'));
+    const kind = berry?.slice('cargo:'.length);
+    const packedBerries = () => page.evaluate(`document.querySelectorAll('#screens [data-grid="pack"] [data-grid-piece$=":${kind}"]').length`);
+    const packedBefore = await packedBerries();
+    const berryAt = await centre(`${things} [data-grid-piece="${berry}"]`);
+    const packAt = await page.evaluate(`(() => { const cells = [...document.querySelectorAll('#screens [data-grid="pack"] .px-grid-cells > i')]; const r = cells[cells.length - 1].getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+    if (!berryAt) fail('nothing in the stash to drag');
+    await mouse('mouseMoved', berryAt);
+    await mouse('mousePressed', berryAt);
+    for (let i = 1; i <= 8; i += 1) {
+      await mouse('mouseMoved', { x: berryAt.x + ((packAt.x - berryAt.x) * i) / 8, y: berryAt.y + ((packAt.y - berryAt.y) * i) / 8 });
+      await step(1);
+    }
+    await mouse('mouseReleased', packAt);
+    await wait(200);
+    if ((await packedBerries()) !== packedBefore + 1) fail(`dragging ${kind} into the pack left ${await packedBerries()} there`);
+    if (await page.evaluate(`Boolean(document.querySelector('#screens .px-grid-ghost, #screens .is-carried'))`)) fail('a thing is still carried after the drag');
+    await shoot('things-02-dragged-into-pack');
+    // Let go off every container: put back, nothing carried.
+    const stoneAt = await centre(`${things} [data-grid-piece="cargo:thunder-stone"]`);
+    await mouse('mouseMoved', stoneAt);
+    await mouse('mousePressed', stoneAt);
+    for (let i = 1; i <= 8; i += 1) {
+      await mouse('mouseMoved', { x: stoneAt.x + ((away.x - stoneAt.x) * i) / 8, y: stoneAt.y + ((away.y - stoneAt.y) * i) / 8 });
+      await step(1);
+    }
+    await mouse('mouseReleased', away);
+    await wait(200);
+    if (await page.evaluate(`Boolean(document.querySelector('#screens .px-grid-ghost, #screens .is-carried'))`)) fail('a drag let go off the containers left the thing carried');
+    if (!(await centre(`${things} [data-grid-piece="cargo:thunder-stone"]`))) fail('the Thunder Stone let go off the containers is not back in the stash');
+    console.log(`chestPokemon: THINGS hovers, ignores clicks, and drags ${kind} into the pack`);
+  }
+
   await press('KeyP');
   await until(`${sceneIs('chest-pokemon')} && Boolean(document.querySelector('#screens .chest-mon-grid'))`, 'the POKéMON tab');
   await wait(400);
@@ -171,18 +250,39 @@ try {
   await drag('#screens .chest-garden [data-mon="rattata-102"]', '#screens .chest-mon-scroll');
   if (await page.evaluate(`${tab}.gardenIds.includes('rattata-102')`)) fail('dragging Rattata back to the grid left it in the garden');
   await shoot('04-dragged');
-  // A click is a look, never a change.
+  // Hovering is the look, and a click is nothing: no card, no cursor, no change.
   const before = await page.evaluate(`${tab}.teamIds.join()`);
+  const cursorBefore = await focused();
+  const shownCard = () => page.evaluate(`[...document.querySelectorAll('#screens .chest-card')].filter((c) => !c.hidden).map((c) => c.dataset.shownBy).join()`);
+  const restingCard = await shownCard();
   await page.evaluate(`document.querySelector('#screens .chest-mons [data-mon="geodude-98"]').scrollIntoView({ block: 'nearest' })`);
   await step(2);
   const geodude = await centre('#screens .chest-mons [data-mon="geodude-98"]');
+  await mouse('mouseMoved', { ...geodude, buttons: 0 });
+  await step(3);
+  if ((await shownCard()) !== 'geodude-98') fail(`hovering Geodude shows ${await shownCard()}`);
+  await shoot('05-hovered-geodude');
+  const off = await centre('#screens .px-title');
+  await mouse('mouseMoved', { ...off, buttons: 0 });
+  await step(3);
+  if ((await shownCard()) !== restingCard) fail(`off Geodude the card is ${await shownCard()}, not the cursor's ${restingCard}`);
   await mouse('mouseMoved', geodude);
   await mouse('mousePressed', geodude);
   await mouse('mouseReleased', geodude);
+  await mouse('mouseMoved', { ...off, buttons: 0 });
   await wait(200);
   if ((await page.evaluate(`${tab}.teamIds.join()`)) !== before) fail('a click on Geodude changed the team');
-  if ((await focused()) !== 'geodude-98') fail('a click on Geodude did not show it');
-  await shoot('05-clicked-geodude');
+  if ((await focused()) !== cursorBefore) fail(`a click on Geodude moved the cursor to ${await focused()}`);
+  if ((await shownCard()) !== restingCard) fail(`a click on Geodude left its card up: ${await shownCard()}`);
+  // The card's ENTER key, clicked, is nothing too: a Pokémon is moved by dragging it.
+  const cardEnter = await centre('#screens .chest-card:not([hidden]) [data-key="team"]');
+  if (cardEnter) {
+    await mouse('mouseMoved', cardEnter);
+    await mouse('mousePressed', cardEnter);
+    await mouse('mouseReleased', cardEnter);
+    await wait(200);
+    if ((await page.evaluate(`${tab}.teamIds.join()`)) !== before) fail("a click on the card's ENTER key changed the team");
+  }
 
   const save = await saved();
   const bench = save.raidProgress.lastBench ?? [];
@@ -226,7 +326,7 @@ try {
   const eevee = (await saved()).stash.pokemon.find((one) => one.id === 'eevee-95')?.pokemon.speciesId;
   if (eevee !== 'jolteon') fail(`Eevee became ${eevee}`);
   if ((await count('thunder-stone')) !== 0) fail('the stone was not spent');
-  // Click the Sitrus Berry, click Machop, click YES.
+  // Click the Sitrus Berry, click Machop: nothing. Drag it onto Machop: the question, and YES.
   const sitrus = await centre('#screens [data-gift="sitrus-berry"]');
   await mouse('mouseMoved', sitrus); await mouse('mousePressed', sitrus); await mouse('mouseReleased', sitrus);
   await wait(150);
@@ -235,7 +335,10 @@ try {
   const machop = await centre('#screens .chest-mons [data-mon="machop-91"]');
   await mouse('mouseMoved', machop); await mouse('mousePressed', machop); await mouse('mouseReleased', machop);
   await wait(150);
-  if (!(await asking())) fail('click, click asked nothing');
+  if (await asking()) fail('click, click asked a question: a click is nothing');
+  if (await page.evaluate(`Boolean(document.querySelector('#screens .is-armed'))`)) fail('a click on the berry left it chosen');
+  await drag('#screens [data-gift="sitrus-berry"]', '#screens .chest-mons [data-mon="machop-91"]');
+  if (!(await asking())) fail('the berry dragged onto Machop asked nothing');
   await shoot('09-ask-berry');
   const yes = await centre('#screens [data-ask-yes]');
   await mouse('mouseMoved', yes); await mouse('mousePressed', yes); await mouse('mouseReleased', yes);

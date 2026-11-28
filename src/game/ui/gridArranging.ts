@@ -122,6 +122,20 @@ export interface GridArrangingHost {
    * without it keeps every piece in the container it came from.
    */
   transfer?(from: string, to: string, ref: GridPieceRef, x: number, y: number, rotated: boolean): boolean;
+  /**
+   * THE CHEST's rule for a mouse (the captain, 28 Nov 2026): hovering is the
+   * look and press, drag, release is the only move. A mouse press neither takes
+   * the cursor nor picks anything up, a mouse click or right-click does
+   * nothing, and a drag let go anywhere - over a square nothing fits on, or
+   * off every container - is finished, the piece back where it was, so nothing
+   * is ever left carried. Touch and the keyboard keep their own gestures.
+   */
+  readonly mouseDragOnly?: boolean;
+}
+
+/** Whether a pointer or click event came from a mouse, rather than touch, a pen or a key. */
+export function fromMouse(event: Event): boolean {
+  return (event as PointerEvent).pointerType === 'mouse';
 }
 
 /** How far a pointer must travel before a press counts as a drag. */
@@ -141,6 +155,10 @@ export class GridArranging {
   private swallowClick = false;
   /** The other container the carried piece is over, and the square it would stand on there. */
   private foreign: { readonly grid: HTMLElement; readonly x: number; readonly y: number } | undefined;
+  /** The press under way is a mouse's, on a screen where a mouse only drags. */
+  private mousePress = false;
+  /** Screens whose release anywhere has been wired, so a re-render wires none twice. */
+  private readonly wiredRoots = new WeakSet<object>();
 
   public constructor(host: GridArrangingHost) {
     this.host = host;
@@ -188,6 +206,12 @@ export class GridArranging {
 
   /** Wires every arrangeable container in a freshly rendered screen. */
   public attach(root: ParentNode): void {
+    if (this.host.mouseDragOnly && !this.wiredRoots.has(root)) {
+      // A drag let go off every container lands on nothing: it is finished
+      // there too. The containers' own `pointerup` runs first and clears it.
+      this.wiredRoots.add(root);
+      root.addEventListener('pointerup', (event) => this.onReleasedElsewhere(event as PointerEvent));
+    }
     root.querySelectorAll<HTMLElement>('[data-grid]').forEach((grid) => {
       grid.addEventListener('pointerdown', (event) => this.onPointerDown(grid, event));
       grid.addEventListener('pointermove', (event) => this.onPointerMove(grid, event));
@@ -269,6 +293,9 @@ export class GridArranging {
       return;
     }
     event.preventDefault();
+    if (this.host.mouseDragOnly) {
+      return;
+    }
     if (this.heldPiece) {
       this.release();
       this.host.redraw();
@@ -297,7 +324,10 @@ export class GridArranging {
     // that; the focus it would also have moved is taken by hand, because the
     // cursor has to end up on the block the player is holding.
     event.preventDefault();
-    (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-grid-piece]')?.focus();
+    this.mousePress = this.host.mouseDragOnly === true && fromMouse(event);
+    if (!this.mousePress) {
+      (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-grid-piece]')?.focus();
+    }
     this.pressedAt = { x: event.clientX, y: event.clientY };
     this.dragging = false;
     const held = this.heldPiece;
@@ -372,22 +402,48 @@ export class GridArranging {
 
   private onPointerUp(): void {
     const dragged = this.dragging;
+    const mouse = this.mousePress;
     this.pressedAt = undefined;
     this.pressedCell = undefined;
     this.dragging = false;
+    this.mousePress = false;
     if (dragged && this.heldPiece) {
-      this.swallowClick = true;
+      // A mouse's click is nothing on a drag-only screen, so there is none to swallow.
+      this.swallowClick = !mouse;
       const foreign = this.foreign;
       if (foreign && this.transferTo(foreign.grid, foreign.x, foreign.y)) {
         return;
       }
       this.putDown();
+      if (mouse && this.heldPiece) {
+        // Nothing fits there: the drag is over all the same, the piece back where it was.
+        this.release();
+        this.host.redraw();
+      }
+    }
+  }
+
+  /** A mouse drag let go outside every container: put back, never left carried. */
+  private onReleasedElsewhere(event: PointerEvent): void {
+    if (!this.mousePress && !(this.dragging && fromMouse(event))) {
+      return;
+    }
+    const carried = this.dragging && this.heldPiece !== undefined;
+    this.release();
+    this.mousePress = false;
+    this.pressedCell = undefined;
+    if (carried) {
+      this.host.sound('refused');
+      this.host.redraw();
     }
   }
 
   private onClick(grid: HTMLElement, event: MouseEvent): void {
     if (this.swallowClick) {
       this.swallowClick = false;
+      return;
+    }
+    if (this.host.mouseDragOnly && fromMouse(event)) {
       return;
     }
     const name = gridName(grid);

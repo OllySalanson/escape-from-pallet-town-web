@@ -33,7 +33,7 @@ import { moveChoiceMessage } from '../ui/moveChooser';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { chestTabs } from '../ui/chestPokemonView';
 import { MenuOverlay } from '../ui/MenuOverlay';
-import { GridArranging } from '../ui/gridArranging';
+import { fromMouse, GridArranging } from '../ui/gridArranging';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { takeDownPixelStatus, pixelScreen } from '../ui/pixelUi';
 import type { SidePanelView } from '../ui/sidePanel';
@@ -103,6 +103,12 @@ export function withinGrid(
     y: Math.max(0, Math.min(at.y, size.height - height)),
   };
 }
+
+/** What the card under the stash answers for: a thing in a container, one of the team, or a door. */
+const HAND_PIECES = '[data-grid-piece], [data-team-member], [data-team-open], [data-find-open]';
+
+/** The card's keys a mouse click presses: its doors to other screens, never a deed done to a thing. */
+const MOUSE_DEEDS: ReadonlySet<string> = new Set(['team', 'finds']);
 
 /** The control a kind of thing in the stash is, by its id. */
 export function stashPieceSelector(itemId: string): string {
@@ -197,7 +203,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     // into its own card, never a redraw of the screen under the cursor.
     this.overlay.root.addEventListener('focusin', (event) => {
       const piece =
-        event.target instanceof Element ? event.target.closest<HTMLElement>('[data-grid-piece], [data-team-member], [data-team-open], [data-find-open]') : null;
+        event.target instanceof Element ? event.target.closest<HTMLElement>(HAND_PIECES) : null;
       if (!piece) {
         return;
       }
@@ -208,6 +214,15 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       }
       this.showHand(piece);
     });
+    // A mouse looks by hovering and moves by dragging (the captain, 28 Nov
+    // 2026): its press never takes the cursor, so a click on a thing does
+    // nothing, and the card answers for whatever it rests on until it moves off.
+    this.overlay.root.addEventListener('pointerdown', (event) => {
+      if (fromMouse(event) && (event.target as Element | null)?.closest?.(`${HAND_PIECES}, [data-hand-card]`)) {
+        event.preventDefault();
+      }
+    });
+    this.overlay.onPointed = (control) => this.answerPointed(control);
     this.render(this.startAt === 'locker' ? ['.things-locker .px-grid-block', '.things-pack .px-grid-block'] : []);
   }
 
@@ -335,6 +350,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       transfer: (from, to, ref, x, y, rotated) => this.transfer(from, to, ref, x, y, rotated),
       say: (message) => this.say(message),
       sound: (kind) => audioManager.play(kind === 'refused' ? 'denied' : kind === 'take' ? 'menuOpen' : 'haulDrop'),
+      mouseDragOnly: true,
     });
     return this.arrangingValue;
   }
@@ -384,6 +400,19 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
   }
 
   /** The in-hand card for a piece, written into its own card. */
+  /** The card answers for the thing the mouse rests on, and for the cursor's again once it moves off. */
+  private answerPointed(control: HTMLElement | null): void {
+    if (this.using || this.keepingRoom || this.moment || this.arranging.held) {
+      return;
+    }
+    if (control?.closest('[data-hand-card]')) {
+      return;
+    }
+    const piece = control?.closest<HTMLElement>(HAND_PIECES) ?? null;
+    const focused = document.activeElement instanceof HTMLElement ? document.activeElement.closest<HTMLElement>(HAND_PIECES) : null;
+    this.showHand(piece ?? focused);
+  }
+
   private showHand(piece: HTMLElement | null): void {
     const card = this.overlay?.root.querySelector<HTMLElement>('[data-hand-card]');
     if (!card) {
@@ -562,6 +591,11 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
     card?.addEventListener('mousedown', (event) => event.preventDefault());
     card?.addEventListener('click', (event) => {
       const button = (event.target as Element | null)?.closest<HTMLElement>('[data-hand]');
+      // To a mouse the card's keys are what they say, keys: the card is what it
+      // hovers, and a click moves nothing - only a drag does. Its doors open.
+      if (fromMouse(event) && !MOUSE_DEEDS.has(button?.dataset.hand ?? '')) {
+        return;
+      }
       if (button && button.getAttribute('aria-disabled') !== 'true') {
         this.handDeed(button.dataset.hand ?? '');
       }
@@ -585,7 +619,7 @@ export class ThingsScene extends Phaser.Scene implements ProvidesFeedbackContext
       '[data-close]',
     );
     const focused = typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null);
-    this.showHand(focused?.closest<HTMLElement>('[data-grid-piece], [data-team-member], [data-team-open], [data-find-open]') ?? null);
+    this.showHand(focused?.closest<HTMLElement>(HAND_PIECES) ?? null);
   }
 
   /** A pocket tab: its things lit and the rest stood back, the cursor on its first. */
