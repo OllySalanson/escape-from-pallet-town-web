@@ -35,42 +35,24 @@ import { iconMarkup, itemIcon } from './icons';
 import { pixelMonIcon } from './monIcon';
 import { escapeAttribute, pixelColumns, pixelGrid, pixelWindow, COLUMN_MEASURES, type PixelGridGhost } from './pixelUi';
 
-/** The pockets storage is read in, in the order they are read. */
-export const THINGS_POCKETS = [
-  'medicine',
-  'balls',
-  'discs',
-  'stones',
-  'held',
-  'tools',
-  'packs',
-  'found',
-  'furniture',
-  'clothes',
-] as const;
+/**
+ * The pockets storage is read in, in the order they are read. Each is named by
+ * one word a new player knows at a glance (the captain, 28 Nov 2026: "Held"
+ * and "Found" meant nothing), and there are seven, near FireRed's handful,
+ * where there were ten: a disc and a stone are both used on a Pokémon here, so
+ * they share TRAINING; a pack is raid kit, so it is with the TOOLS; and
+ * furniture and clothes are both for looking good at home, so they are STYLE.
+ */
+export const THINGS_POCKETS = ['medicine', 'balls', 'training', 'gear', 'tools', 'salvage', 'style'] as const;
 
 export type ThingsPocket = (typeof THINGS_POCKETS)[number];
 
-export const THINGS_POCKET_LABELS: Readonly<Record<ThingsPocket, string>> = {
-  medicine: 'Medicine',
-  balls: 'Poké Balls',
-  discs: 'Discs',
-  stones: 'Stones',
-  held: 'Held items',
-  tools: 'Tools',
-  packs: 'Packs',
-  found: 'Found goods',
-  furniture: 'Furniture',
-  clothes: 'Clothes',
-};
-
-/** Tools are things a raid is worked with by facing something: they are not found goods. */
+/** Tools are things a raid is worked with by facing something, and a pack is worn on it: they are not salvage. */
 const TOOL_EFFECTS = new Set(['rod', 'pickaxe', 'lockpick', 'bike', 'key']);
 
-/** Which pocket a thing is kept in. A disc and a stone are pockets of their own: they are the two used here. */
+/** Which pocket a thing is kept in. A disc and a stone share one: they are the two used here. */
 export function pocketOf(item: ItemDefinition): ThingsPocket {
-  if (item.effect.type === 'machine') return 'discs';
-  if (item.effect.type === 'evolution-stone') return 'stones';
+  if (item.effect.type === 'machine' || item.effect.type === 'evolution-stone') return 'training';
   if (TOOL_EFFECTS.has(item.effect.type)) return 'tools';
   switch (item.category) {
     case ItemCategory.Medicine:
@@ -78,15 +60,14 @@ export function pocketOf(item: ItemDefinition): ThingsPocket {
     case ItemCategory.PokeBall:
       return 'balls';
     case ItemCategory.Held:
-      return 'held';
+      return 'gear';
     case ItemCategory.Pack:
-      return 'packs';
+      return 'tools';
     case ItemCategory.Furniture:
-      return 'furniture';
     case ItemCategory.Wearable:
-      return 'clothes';
+      return 'style';
     default:
-      return 'found';
+      return 'salvage';
   }
 }
 
@@ -207,14 +188,11 @@ export const POCKET_TAB_WORDS: Readonly<Record<PocketTab, string>> = {
   all: 'All',
   medicine: 'Medicine',
   balls: 'Balls',
-  discs: 'Discs',
-  stones: 'Stones',
-  held: 'Held',
+  training: 'Training',
+  gear: 'Gear',
   tools: 'Tools',
-  packs: 'Packs',
-  found: 'Found',
-  furniture: 'Furniture',
-  clothes: 'Clothes',
+  salvage: 'Salvage',
+  style: 'Style',
 };
 
 /**
