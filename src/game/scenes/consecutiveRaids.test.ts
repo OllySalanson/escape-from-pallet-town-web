@@ -128,7 +128,6 @@ import { isTouching } from '../world/hunterPack';
 import { stepDistances } from '../world/mapStructure';
 import { isTallGrassInMap, type WorldMapDefinition } from '../worldMap';
 import { BattleScene, type BattleSceneData } from './BattleScene';
-import { objectiveChipLines } from './raidHud';
 import { WorldScene } from './WorldScene';
 
 /** A display object that answers every chainable setter with itself. */
@@ -461,9 +460,10 @@ describe('two raids in a row on one WorldScene instance', () => {
    * written, so a reload handed the lost raid back. The run session is given
    * the lobby's own slot exactly as `HubScene.startRun` gives it.
    */
-  it('names the bag on the chip until B is pressed once, and not after', () => {
+  it('opens the pack on B and writes down that B has been used', () => {
     // Playtest 43: a newcomer never learned B opens the pack, and lost a raid
-    // with three Potions in it. The chip names a key until it has been used.
+    // with three Potions in it. The controls bar names it; the save still
+    // remembers it has been pressed (`raidProgress.keysLearned`).
     const controls = makeControls();
     controls['66'] = new FakeKey();
     const scene = new WorldScene();
@@ -471,7 +471,7 @@ describe('two raids in a row on one WorldScene instance', () => {
     const manager = new RunManager();
     startRaid(scene, manager, 'floodplain-relay', 1);
     const internals = scene as unknown as { keysLearned: ReadonlySet<string>; dialogBox: { visible: boolean } };
-    expect(objectiveChipLines('KIT: S', false, false, internals.keysLearned)[1]).toContain('[B] PACK');
+    expect(internals.keysLearned.has('bag')).toBe(false);
 
     internals.dialogBox.visible = false;
     controls['66'].justDown = true;
@@ -480,8 +480,8 @@ describe('two raids in a row on one WorldScene instance', () => {
 
     const launch = (scene as unknown as { scene: { launch: ReturnType<typeof vi.fn> } }).scene.launch;
     expect(launch).toHaveBeenCalledWith('bag', expect.anything());
-    expect(objectiveChipLines('KIT: S', false, false, internals.keysLearned)[1]).not.toContain('[B] PACK');
-    expect(objectiveChipLines('KIT: S', false, false, internals.keysLearned)[1]).toContain('[P] TEAM');
+    expect(internals.keysLearned.has('bag')).toBe(true);
+    expect(internals.keysLearned.has('party')).toBe(false);
   });
 
   it('ends a raid lost to the clock when the Pokemon it secured has evolved', () => {

@@ -6,8 +6,8 @@ import { describe, expect, it, vi } from 'vitest';
  * A hint that names the wrong key is worse than no hint: it is the one sentence
  * a newcomer believes. So this asks the scenes themselves - their real
  * `bindControls`, against Phaser's own key-code table - which key each named
- * action is bound to, and reads every letter the yard and the raid chip print
- * back against it.
+ * action is bound to, and reads every letter the yard and the raid name on the
+ * controls bar back against it.
  */
 
 vi.mock('phaser', async () => {
@@ -29,7 +29,6 @@ vi.mock('phaser', async () => {
 
 import { SaveManager, type StorageLike } from '../save/SaveManager';
 import { BaseScene } from '../scenes/BaseScene';
-import { objectiveChipLines } from '../scenes/raidHud';
 import { WorldScene } from '../scenes/WorldScene';
 import { Bag } from '../items';
 import { PokemonParty } from '../pokemon';
@@ -37,6 +36,9 @@ import { createStartingStash } from '../stash';
 import { lootRefusalLine } from '../world/loot';
 import {
   HOME_KEY_LETTERS,
+  RAID_KEY_LETTERS,
+  RAID_KEY_WORDS,
+  keyHint,
   TELESCOPE_KEY_LETTERS,
   decorateKeyHintLine,
   houseKeyHintLine,
@@ -79,6 +81,11 @@ function controlsOf(scene: object): Record<string, BoundKey | readonly BoundKey[
   return (scene as unknown as { controls: Record<string, BoundKey | readonly BoundKey[]> }).controls;
 }
 
+/** The raid's keys as the controls bar names them (`WorldScene.touchShortcuts`), written as a hint line. */
+function raidKeysLine(): string {
+  return RAID_KEY_WORDS.map(([id, word]) => keyHint(RAID_KEY_LETTERS[id], word)).join('  ');
+}
+
 /** Every `[KEY] WORD` a hint line names. */
 function namedKeys(line: string): readonly (readonly [string, string])[] {
   return [...line.matchAll(/\[([A-Z]+)\] ([A-Z]+)/g)].map((match) => [match[1], match[2]] as const);
@@ -94,10 +101,9 @@ const RAID_WORD_CONTROLS: Readonly<Record<string, string>> = {
 };
 
 describe('the keys a HUD names', () => {
-  it('are the keys the raid binds, every one of them, for a save that has pressed none', () => {
+  it('are the keys the raid binds, every one of them', () => {
     const controls = controlsOf(new WorldScene());
-    const line = objectiveChipLines('LOST KIT: SW', false, false, new Set())[1];
-    const named = namedKeys(line);
+    const named = namedKeys(raidKeysLine());
 
     expect(named.map(([, word]) => word)).toEqual(['OAK', 'LOOK', 'PACK', 'TEAM', 'MAP']);
     for (const [key, word] of named) {
@@ -136,8 +142,7 @@ describe('the keys a HUD names', () => {
     // A find refused for room sends the player to the screen B opens; the hint
     // that teaches B has to call it the same thing, or "drop something from
     // the PACK" points at a key the HUD calls something else.
-    const line = objectiveChipLines('LOST KIT: SW', false, false, new Set())[1];
-    const word = namedKeys(line).find(([key]) => key === 'B')?.[1];
+    const word = namedKeys(raidKeysLine()).find(([key]) => key === 'B')?.[1];
     const refusal = lootRefusalLine('potion', 1, 0);
 
     expect(word).toBe('PACK');
@@ -219,19 +224,6 @@ describe('the keys the house names', () => {
 });
 
 describe('a key is named until it has been used once', () => {
-  it('drops each key from the chip as it is learned, and the chip is one line once all are', () => {
-    const learned = new Set<string>();
-    expect(objectiveChipLines('KIT: S', false, false, learned)[1]).toBe('[O] OAK  [L] LOOK  [B] PACK  [P] TEAM  [M] MAP');
-
-    learned.add('bag');
-    expect(objectiveChipLines('KIT: S', false, false, learned)[1]).toBe('[O] OAK  [L] LOOK  [P] TEAM  [M] MAP');
-
-    learned.add('party').add('look').add('objectives').add('map');
-    expect(objectiveChipLines('KIT: S', false, false, learned)).toEqual(['KIT: S']);
-    // A new objective still names the two keys the raid is read with.
-    expect(objectiveChipLines('KIT: S', true, false, learned)).toEqual(['KIT: S', '[O] OAK  [L] LOOK']);
-  });
-
   it('empties the yard line as the yard is learned', () => {
     expect(yardKeyHintLine(new Set(['walk']))).toBe('[L] LOOK   [O] FAVOURS   [B] THINGS   [P] TEAM   [X] DEX   [M] MAP   [T] SAY');
     expect(yardKeyHintLine(new Set(['walk', 'look']))).toBe('[O] FAVOURS   [B] THINGS   [P] TEAM   [X] DEX   [M] MAP   [T] SAY');

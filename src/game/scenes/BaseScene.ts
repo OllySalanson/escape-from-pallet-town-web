@@ -745,8 +745,12 @@ export class BaseScene extends Phaser.Scene {
   private hintFrame!: Phaser.GameObjects.Graphics;
   private hintText!: Phaser.GameObjects.Text;
   private hintShown = '';
-  /** Where the hint stands when not along the foot of the screen (`showTalkHint`). */
-  private hintSeat: { readonly right: number; readonly y: number } | undefined;
+  /**
+   * What the keys do here and now (`hintHere`), whether or not it is drawn. The
+   * harbour is FireRed's screen and writes no key on it (`showMoment`), so this
+   * is what the controls bar beside the game offers instead (`touchShortcuts`).
+   */
+  private momentLine = '';
   private controls!: BaseControls;
   private readonly keyPresses = new KeyPresses(() => this.currentFrame());
   private readonly directionPresses = new PressLatch<Direction>();
@@ -1091,7 +1095,7 @@ export class BaseScene extends Phaser.Scene {
     if (this.telescope) {
       return asExtra(shortcutsInHint(this.telescope.padKeys()));
     }
-    const moment = shortcutsInHint(this.hintText?.visible ? sourceText(this.hintText) : '');
+    const moment = shortcutsInHint(this.hintText?.visible ? sourceText(this.hintText) : this.momentLine);
     if (this.choosing || this.decor || this.phrasePicker) {
       return asExtra(moment);
     }
@@ -1142,7 +1146,9 @@ export class BaseScene extends Phaser.Scene {
           }
         : null,
       choice: question ? { question: question.question.join(' '), options: question.optionLabels, selected: question.selected } : null,
-      hint: this.hintText?.visible ? this.hintText.text.replace(/\s+/g, ' ').trim() : null,
+      // What the keys do here, drawn or not: the harbour draws it only for a newcomer (`showMoment`).
+      hint: this.momentLine ? this.momentLine.replace(/\s+/g, ' ').trim() : null,
+      hintDrawn: this.hintText?.visible === true,
       // THE MAP on M, while it is open: how many tiles it shows in colour, once drawn.
       chart: this.mapScreen ? { known: this.mapScreen.knownTiles } : null,
       // THE RAID ARENA's telescope, while somebody is looking through it.
@@ -1315,7 +1321,7 @@ export class BaseScene extends Phaser.Scene {
     this.pushingAgainst = null;
     this.lookMs = 0;
     this.hintShown = '';
-    this.hintSeat = undefined;
+    this.momentLine = '';
     this.figures.clear();
     this.worldLabels = [];
     this.inspecting = null;
@@ -1736,6 +1742,9 @@ export class BaseScene extends Phaser.Scene {
     // After the walk, so every figure and name is seated against where this
     // player is this frame rather than where they were last frame.
     if (shared || regulars) {
+      if (this.harbourFigures) {
+        this.harbourFigures.namesShown = mapTooltipsOn() || isLooking(this.lookMs, this.controls.look.isDown);
+      }
       this.harbourFigures?.update(
         [
           ...(shared?.figuresHere() ?? []),
@@ -1905,7 +1914,7 @@ export class BaseScene extends Phaser.Scene {
       frameLeftMs = 0;
     }
 
-    this.showHint(this.hintHere());
+    this.showMoment();
 
     if (this.isInteractionPressed()) {
       this.tryInteract();
@@ -3137,7 +3146,7 @@ export class BaseScene extends Phaser.Scene {
     if (!before && giftWaiting(game.raidProgress.pit)) {
       this.pitGiftDueMs = COIN_PLINK_MS + PIT_GIFT_WAIT_MS;
     }
-    this.showHint(this.hintHere());
+    this.showMoment();
   }
 
   /** The thing that has come back, on its way up or lying by the runner, and picking it up. */
@@ -4825,25 +4834,32 @@ export class BaseScene extends Phaser.Scene {
    * for a player who only came for the keeper's screen.
    */
   private showTalkHint(): void {
-    if (this.dialogBox.boxesLeft <= 1 && !this.afterSaid) {
-      this.showHint('');
-      return;
-    }
-    const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
-    const above = this.dialogBox.y - height - HINT_MARGIN;
-    this.showHint(TALK_SKIP_HINT, {
-      right: this.dialogBox.x + DIALOG_WIDTH,
-      y: above >= 0 ? above : this.dialogBox.y + DIALOG_HEIGHT + HINT_MARGIN,
-    });
+    // Offered on the controls bar, never written beside the box: FireRed's
+    // dialogue has no key under it, and neither has this one.
+    this.showHint(this.dialogBox.boxesLeft <= 1 && !this.afterSaid ? '' : TALK_SKIP_HINT, false);
   }
 
-  /** The hint centred along the foot of the screen, or at `seat` - the corner of a box - when that is in use. */
-  private showHint(text: string, seat?: { readonly right: number; readonly y: number }): void {
-    if (text === this.hintShown && seat?.y === this.hintSeat?.y && seat?.right === this.hintSeat?.right) {
+  /**
+   * What the keys do where the player stands, offered on the controls bar and
+   * not written on the screen. FireRed's overworld names no key: a sign is read
+   * by walking up to it and pressing A, and a keeper is spoken to the same way.
+   * The one exception is a newcomer's: the starter table's line while choosing,
+   * and [ARROWS] WALK until the first door has been walked through.
+   */
+  private showMoment(): void {
+    const line = this.hintHere();
+    const newcomer = this.choosing || line === yardKeyHintLine(new Set(), true);
+    this.showHint(line, newcomer);
+  }
+
+  /** The hint centred along the foot of the screen; `drawn` false keeps it for the controls bar only (`momentLine`). */
+  private showHint(said: string, drawn = true): void {
+    this.momentLine = said;
+    const text = drawn ? said : '';
+    if (text === this.hintShown) {
       return;
     }
     this.hintShown = text;
-    this.hintSeat = seat;
     this.hintFrame.clear();
     this.hintText.setText(text).setVisible(text !== '');
     if (text === '') {
@@ -4851,8 +4867,7 @@ export class BaseScene extends Phaser.Scene {
     }
     const width = Math.ceil(this.hintText.width) + HINT_PADDING_X * 2;
     const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
-    const placed = seat ? { x: seat.right - width, y: seat.y } : this.hintPlace(width, height);
-    const { x, y } = placed;
+    const { x, y } = this.hintPlace(width, height);
     drawPixelWindow(this.hintFrame, { x, y, width, height }, { fill: WINDOW_PAPER });
     this.hintText.setPosition(x + HINT_PADDING_X, y + HINT_PADDING_Y);
   }
@@ -4891,8 +4906,10 @@ export class BaseScene extends Phaser.Scene {
       this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
     );
     const hint = this.hintShown;
+    const moment = this.momentLine;
     this.hintShown = '\u0000';
-    this.showHint(hint, this.hintSeat);
+    this.showHint(hint);
+    this.momentLine = moment;
     this.configureCamera();
   }
 
@@ -5080,11 +5097,6 @@ export class BaseScene extends Phaser.Scene {
 
   private hintRect(view: Phaser.Geom.Rectangle): Rect {
     const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
-    if (this.hintSeat) {
-      // At the corner of a box it is only as wide as its words, and not at the foot at all.
-      const width = Math.ceil(this.hintText.width) + HINT_PADDING_X * 2;
-      return { x: view.left + this.hintSeat.right - width, y: view.top + this.hintSeat.y, width, height };
-    }
     const width = Math.ceil(this.hintText.width) + HINT_PADDING_X * 2;
     const at = this.hintPlace(width, height);
     return {
@@ -5529,7 +5541,7 @@ export class BaseScene extends Phaser.Scene {
       this.decor = null;
       // A direction still held from moving the cursor is not a step.
       this.spentPresses.spendHeld(this.directionKeys());
-      this.showHint(this.hintHere());
+      this.showMoment();
     }
   }
 
@@ -5650,7 +5662,7 @@ export class BaseScene extends Phaser.Scene {
     }
     audioManager.play('confirm');
     this.closePhrases();
-    this.showHint(this.hintHere());
+    this.showMoment();
   }
 
   /**
@@ -6195,7 +6207,7 @@ export class BaseScene extends Phaser.Scene {
         this.input.keyboard?.resetKeys();
         this.spentPresses.spendHeld(this.directionKeys());
         audioManager.play('menuClose');
-        this.showHint(this.hintHere());
+        this.showMoment();
       },
       // This scene goes on running under it, so its own frame moves the view.
       { covers: (gamePixels) => this.panelLean.setCover(gamePixels), frame: () => undefined },
@@ -6240,7 +6252,7 @@ export class BaseScene extends Phaser.Scene {
         this.input.keyboard?.resetKeys();
         this.spentPresses.spendHeld(this.directionKeys());
         audioManager.play('menuClose');
-        this.showHint(this.hintHere());
+        this.showMoment();
       },
       { covers: (gamePixels) => this.panelLean.setCover(gamePixels), frame: () => undefined },
     );
@@ -6345,7 +6357,7 @@ export class BaseScene extends Phaser.Scene {
         this.dressPlayer();
         this.sayStationNotes();
       }
-      this.showHint(this.hintHere());
+      this.showMoment();
       // P on the chest's THINGS, or a click on its POKéMON tab or its team,
       // goes on to the POKéMON tab.
       if (thenTeam) {
@@ -6407,7 +6419,7 @@ export class BaseScene extends Phaser.Scene {
       if (this.garden) {
         this.plantGarden();
       }
-      this.showHint(this.hintHere());
+      this.showMoment();
       if (thenThings) {
         this.time.delayedCall(0, () => this.openThings(undefined, chest));
       }
@@ -6468,7 +6480,7 @@ export class BaseScene extends Phaser.Scene {
         // named the old team after YOUR TEAM closed (the harbour critic tour).
         this.sayStationNotes();
       }
-      this.showHint(this.hintHere());
+      this.showMoment();
     });
     const pit = Boolean(this.place.room?.pit);
     this.scene.pause();
@@ -6527,7 +6539,7 @@ export class BaseScene extends Phaser.Scene {
         this.scene.resume();
         this.input.keyboard?.resetKeys();
         this.spentPresses.spendHeld(this.directionKeys());
-        this.showHint(this.hintHere());
+        this.showMoment();
       },
     );
   }
@@ -6549,7 +6561,7 @@ export class BaseScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.RESUME, () => {
       this.input.keyboard?.resetKeys();
       this.spentPresses.spendHeld(this.directionKeys());
-      this.showHint(this.hintHere());
+      this.showMoment();
     });
     this.scene.pause();
     this.scene.launch('pokedex', { pausedBase: true } satisfies PokedexSceneData);
@@ -6690,7 +6702,7 @@ export class BaseScene extends Phaser.Scene {
       if (typeof end === 'object') {
         this.takeTheName(end.name);
       }
-      this.showHint(this.hintHere());
+      this.showMoment();
     });
   }
 
@@ -7005,7 +7017,7 @@ export class BaseScene extends Phaser.Scene {
             if (typeof end === 'object') {
               this.takeTheName(end.name);
             }
-            this.showHint(this.hintHere());
+            this.showMoment();
           });
         }),
       );
@@ -7109,7 +7121,7 @@ export class BaseScene extends Phaser.Scene {
       // The menu and the game kept every key to themselves, so a key the
       // house saw go down before it paused never came back up here.
       this.input.keyboard?.resetKeys();
-      this.showHint(this.hintHere());
+      this.showMoment();
       // The console can change the player's name: the harbour hears it now,
       // not at the next door.
       harbour()?.stand(
@@ -8116,7 +8128,7 @@ export class BaseScene extends Phaser.Scene {
         this.startDojoBout(chosen);
         return;
       }
-      this.showHint(this.hintHere());
+      this.showMoment();
     });
     this.scene.pause();
     this.scene.launch('dojo-counter', {
@@ -8197,7 +8209,7 @@ export class BaseScene extends Phaser.Scene {
       this.input.keyboard?.resetKeys();
       this.savedGame = this.saveManager.load() ?? this.savedGame;
       this.redrawRoom(this.savedGame);
-      this.showHint(this.hintHere());
+      this.showMoment();
     });
     this.scene.pause();
     this.scene.launch('game-corner', { mode, pausedBase: true } satisfies GameCornerSceneData);
@@ -8229,7 +8241,7 @@ export class BaseScene extends Phaser.Scene {
         this.worldLabels = [];
         this.createCaptions();
       }
-      this.showHint(this.hintHere());
+      this.showMoment();
     });
     this.scene.pause();
     this.scene.launch(scene, { pausedBase: true });
@@ -8249,7 +8261,7 @@ export class BaseScene extends Phaser.Scene {
     this.showHint('');
     this.events.once(Phaser.Scenes.Events.RESUME, () => {
       this.input.keyboard?.resetKeys();
-      this.showHint(this.hintHere());
+      this.showMoment();
     });
     this.scene.pause();
     this.scene.launch('library-book', { bookId, pausedBase: true } satisfies LibraryBookSceneData);
@@ -8272,7 +8284,7 @@ export class BaseScene extends Phaser.Scene {
       this.input.keyboard?.resetKeys();
       this.savedGame = this.saveManager.load() ?? this.savedGame;
       this.dressPlayer();
-      this.showHint(this.hintHere());
+      this.showMoment();
     });
     this.scene.pause();
     this.scene.launch('boutique', { mode, pausedBase: true } satisfies BoutiqueSceneData);
@@ -8441,7 +8453,7 @@ function insideThePit(x: number, y: number): boolean {
   return acrossOval(PIT_RIM, x, y) < 1;
 }
 
-/** Named clear of a box with more to come. */
+/** Offered on the controls bar while somebody has more to say (`showTalkHint`). */
 const TALK_SKIP_HINT = '[ESC] SKIP';
 
 /**

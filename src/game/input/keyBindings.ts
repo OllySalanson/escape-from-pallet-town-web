@@ -6,9 +6,12 @@
  * Playtest 43 (a player who knew neither Pokemon nor extraction games) walked
  * the base with no hint at all about which keys to press, and never learned
  * that B opens the pack - so the raid in which a Potion would have saved the
- * team was lost with three in it. A key nothing on the screen names is a key
- * nobody presses, so a key is named until it has been used once
- * (`raidProgress.keysLearned`), and then gets out of the way.
+ * team was lost with three in it. A key nothing names is a key nobody presses.
+ * The overworld is FireRed's screen and names no key on it (the harbour audit,
+ * 27 Nov 2026), so the keys are named on the controls bar beside the game
+ * (`ui/controlsBar.ts`), always, read off these tables. A key used once is
+ * still written down (`raidProgress.keysLearned`): a newcomer's one line on
+ * the screen, `[ARROWS] WALK`, goes once it has been done.
  */
 
 /** The raid's letter keys, by what they do. `WorldScene.bindControls` binds these. */
@@ -22,7 +25,7 @@ export const RAID_KEY_LETTERS = {
 
 export type RaidKeyId = keyof typeof RAID_KEY_LETTERS;
 
-/** What each raid key is called on the HUD, in the order the hint row lists them. */
+/** What each raid key is called on the controls bar, in the order it lists them. */
 export const RAID_KEY_WORDS: readonly (readonly [RaidKeyId, string])[] = [
   ['objectives', 'OAK'],
   ['look', 'LOOK'],
@@ -33,9 +36,6 @@ export const RAID_KEY_WORDS: readonly (readonly [RaidKeyId, string])[] = [
   // THE MAP (`ui/MapScreen.ts`): the whole of the place, fog where nobody has walked.
   ['map', 'MAP'],
 ];
-
-/** The two keys the raid screen is *read* with, named whenever the objective is news. */
-export const READING_KEYS: readonly RaidKeyId[] = ['objectives', 'look'];
 
 /**
  * A raid room's keys (`raidRoom/roomTalk.ts`): T opens the list of phrases, the
@@ -164,25 +164,10 @@ export function keyHint(key: string, word: string): string {
 }
 
 /**
- * The raid keys to name: the reading pair while the objective is news, and
- * every key not yet used, in the table's order and each once.
+ * What the yard would say while nothing else is to be said: the keys not yet
+ * used. It is offered on the controls bar beside the game rather than written
+ * on the harbour (`BaseScene.showMoment`), except a newcomer's `[ARROWS] WALK`.
  */
-export function raidKeysToName(
-  showDetail: boolean,
-  learned: ReadonlySet<string>,
-): readonly RaidKeyId[] {
-  return RAID_KEY_WORDS.map(([id]) => id).filter(
-    (id) => (showDetail && READING_KEYS.includes(id)) || !learned.has(id),
-  );
-}
-
-export function raidKeyHintLine(keys: readonly RaidKeyId[]): string {
-  return RAID_KEY_WORDS.filter(([id]) => keys.includes(id))
-    .map(([id, word]) => keyHint(RAID_KEY_LETTERS[id], word))
-    .join('  ');
-}
-
-/** What the yard says while nothing else is to be said: the keys not yet used. */
 export function yardKeyHintLine(learned: ReadonlySet<string>, walkingOnly = false): string {
   return YARD_KEY_WORDS.filter(([id]) => !learned.has(id) && (!walkingOnly || id === 'walk'))
     .map(([, key, word]) => keyHint(key, word))

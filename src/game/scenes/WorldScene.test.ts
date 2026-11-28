@@ -65,21 +65,18 @@ describe('the map speaks only when asked', () => {
     expect(sceneSource).toContain('label.setOpen(isOpen);');
   });
 
-  it('teaches the look on the chip, because a key nothing names is a key nobody presses', () => {
-    expect(objectiveChipLines('LOST KIT: SW', true)[1]).toContain('[L] LOOK');
+  it('shows the job on the chip only while the player looks', () => {
+    expect(objectiveChipLines('LOST KIT: SW', true)).toEqual(['LOST KIT: SW']);
+    expect(objectiveChipLines('LOST KIT: SW', false)).toEqual([]);
   });
 });
 
 describe('in-run objective HUD layout', () => {
-  it('feeds the chip from the raid, and only lets it grow while the objective is new', () => {
+  it('feeds the chip from the raid, and only while the look is held', () => {
     // The panel this replaced was a fixed 164x37 slab over the top-left of the
-    // map. The chip is one line unless what it says has just changed.
-    expect(objectiveChipLines('LOST KIT: SW', false)).toEqual(['LOST KIT: SW']);
-    expect(objectiveChipLines('LOST KIT: SW', true)).toHaveLength(2);
-    expect(sceneSource).toContain('this.objectiveDetailMs = OBJECTIVE_DETAIL_MS;');
-    expect(sceneSource).toContain(
-      'objectiveChipLines(navigationCue, this.objectiveDetailMs > 0, isPlaytestRun(), this.keysLearned)',
-    );
+    // map. Now the clock is the one chip always up (the harbour audit, 27 Nov 2026).
+    expect(sceneSource).toContain('objectiveChipLines(navigationCue, looking)');
+    expect(sceneSource).toContain('prize: looking ? prizeChipView(this.prizeInMind()) : null');
   });
 
   it('keeps the active contract destination visible and direction-aware', () => {
@@ -426,7 +423,7 @@ describe('raid resolution hand-off', () => {
 describe('the raid clock chip', () => {
   it('stays quiet for most of the raid and escalates as it runs out', () => {
     expect(raidClockView(RAID_DURATION_MS, false, ENRAGE_GRACE_MS)).toEqual({
-      label: 'RAID 5:00',
+      label: '5:00',
       tone: 'calm',
       pulses: false,
     });
@@ -449,7 +446,7 @@ describe('the raid clock chip', () => {
 
   it('says a night raid is one on the clock, and nowhere else', () => {
     expect(raidClockView(RAID_DURATION_MS, false, ENRAGE_GRACE_MS, false, 'night')).toEqual({
-      label: 'NIGHT RAID 5:00',
+      label: 'NIGHT 5:00',
       tone: 'calm',
       pulses: false,
     });
@@ -459,7 +456,7 @@ describe('the raid clock chip', () => {
   });
 
   it('says a dusk raid is one, for the secrets that wait on dusk (playtest 51, finding 11)', () => {
-    expect(raidClockView(RAID_DURATION_MS, false, ENRAGE_GRACE_MS, false, 'dusk').label).toBe('DUSK RAID 5:00');
+    expect(raidClockView(RAID_DURATION_MS, false, ENRAGE_GRACE_MS, false, 'dusk').label).toBe('DUSK 5:00');
     expect(raidLight({ night: false, conditions: { hour: 'dusk' } })).toBe('dusk');
     expect(raidLight({ night: true, conditions: { hour: 'night' } })).toBe('night');
     expect(raidLight({ night: false, conditions: { hour: 'day' } })).toBe('day');
