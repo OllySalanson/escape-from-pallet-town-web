@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getItemById, ITEMS, packContents } from '../items';
+import { getItemById, ItemCategory, ITEMS, packContents } from '../items';
 import { Pokemon, getSpeciesById } from '../pokemon';
 import {
   ALL_POCKETS,
@@ -11,6 +11,7 @@ import {
   teamDoorCard,
   pocketOf,
   pocketTabs,
+  POCKET_TAB_WORDS,
   stashCargo,
   stashLayout,
   STASH_COLUMNS,
@@ -33,26 +34,48 @@ describe('YOUR THINGS sorts storage into pockets', () => {
     }
   });
 
-  it('keeps discs and stones in pockets of their own, the two things used at home', () => {
-    expect(pocketOf(item('tm40-aerial-ace'))).toBe('discs');
-    expect(pocketOf(item('hm01-cut'))).toBe('discs');
-    expect(pocketOf(item('fire-stone'))).toBe('stones');
+  it('keeps discs and stones together under TRAINING, the two things used at home', () => {
+    expect(pocketOf(item('tm40-aerial-ace'))).toBe('training');
+    expect(pocketOf(item('hm01-cut'))).toBe('training');
+    expect(pocketOf(item('fire-stone'))).toBe('training');
     expect(homeUseOf(item('tm40-aerial-ace'))).toBe('teach');
     expect(homeUseOf(item('fire-stone'))).toBe('evolve');
     expect(homeUseOf(item('potion'))).toBeNull();
     expect(homeUseOf(item('money'))).toBeNull();
   });
 
-  it('files medicine, balls, found goods and money where a player would look', () => {
+  it('names every tab in one word, seven pockets near FireRed\'s handful', () => {
+    expect(THINGS_POCKETS).toHaveLength(7);
+    for (const word of Object.values(POCKET_TAB_WORDS)) expect(word).toMatch(/^[A-Z][a-z]+$/);
+    expect(THINGS_POCKETS.map((pocket) => POCKET_TAB_WORDS[pocket])).toEqual([
+      'Medicine',
+      'Balls',
+      'Training',
+      'Gear',
+      'Tools',
+      'Salvage',
+      'Style',
+    ]);
+  });
+
+  it('files held items as GEAR, packs with the TOOLS, and furniture and clothes as STYLE', () => {
+    const byCategory = (category: ItemCategory) => Object.values(ITEMS).find((definition) => definition.category === category)!;
+    expect(pocketOf(byCategory(ItemCategory.Held))).toBe('gear');
+    expect(pocketOf(byCategory(ItemCategory.Pack))).toBe('tools');
+    expect(pocketOf(byCategory(ItemCategory.Furniture))).toBe('style');
+    expect(pocketOf(byCategory(ItemCategory.Wearable))).toBe('style');
+  });
+
+  it('files medicine, balls, salvage and money where a player would look', () => {
     expect(pocketOf(item('potion'))).toBe('medicine');
     expect(pocketOf(item('poke-ball'))).toBe('balls');
-    expect(pocketOf(item('money'))).toBe('found');
-    expect(pocketOf(item('cable-coil'))).toBe('found');
+    expect(pocketOf(item('money'))).toBe('salvage');
+    expect(pocketOf(item('cable-coil'))).toBe('salvage');
   });
 
   it('reads the pockets in their own order, empty ones left out', () => {
     const pockets = storedPockets({ 'fire-stone': 1, potion: 3, money: 120, 'poke-ball': 0, 'no-such-thing': 4 });
-    expect(pockets.map(({ pocket }) => pocket)).toEqual(['medicine', 'stones', 'found']);
+    expect(pockets.map(({ pocket }) => pocket)).toEqual(['medicine', 'training', 'salvage']);
   });
 });
 
@@ -127,7 +150,7 @@ describe('the stash as squares', () => {
   });
 
   it('offers a tab for every pocket it has something in, after ALL', () => {
-    expect(pocketTabs({ potion: 1, 'fire-stone': 1 })).toEqual(['all', 'medicine', 'stones']);
+    expect(pocketTabs({ potion: 1, 'fire-stone': 1 })).toEqual(['all', 'medicine', 'training']);
   });
 });
 
