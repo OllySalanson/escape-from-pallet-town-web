@@ -18,14 +18,14 @@ import { BaseScene } from './BaseScene';
 import { raidHeartbeat } from '../run/raidInFlight';
 import { roomNamed } from '../base/rooms';
 import { retireMapsForTests, RETIRED_MAPS } from '../world/mapRoster';
-import { BARE_BOARD_LINE, boardLines, boardPointer } from '../base/labBoard';
-import { nextStepLines } from '../hub/nextStep';
+import { BARE_BOARD_LINE, boardLines } from '../base/labBoard';
 import { CHARMANDER, PIDGEY, Pokemon, PokemonParty } from '../pokemon';
 import { ALL_SPECIES } from '../pokemon/species';
 import { Bag } from '../items';
 import { FIRST_WORDS } from '../hub/firstWords';
+import { KEEPER_GREETINGS, OAK_POKEDEX_QUESTION } from '../hub/keeperGreetings';
+import { SEE_THE_LIST_QUESTION, type BillGood } from '../hub/billTalk';
 import { healDayOf } from '../hub/recovery';
-import type { BillGood } from '../hub/billTalk';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type RaidProgress, type StorageLike } from '../save/SaveManager';
 import { createStartingStash, type Stash } from '../stash';
 
@@ -74,8 +74,9 @@ function room(manager: SaveManager, answers: readonly boolean[] = []) {
     savedGame: manager.load()!,
     currentTile: { x: 7, y: 8 },
     facing: 'up',
+    visit: null,
     player: { stop: () => undefined, setFrame: () => undefined },
-    place: { room: { room: { id: 'pokemon-centre' } } },
+    place: { room: { room: roomNamed('pokemon-centre') } },
     showHint: () => undefined,
     clearKeeperMark: () => undefined,
     openScreen: (_room: unknown, screen: string) => opened.push(screen),
@@ -90,21 +91,21 @@ function room(manager: SaveManager, answers: readonly boolean[] = []) {
       answer(left.shift() ?? false);
     },
     favourHere: scene.favourHere,
+    sayFavourIfAny: scene.sayFavourIfAny,
+    oweFavour: scene.oweFavour,
     sayFavour: scene.sayFavour,
     askFavour: scene.askFavour,
     answerFavour: scene.answerFavour,
     sayFirstWords: scene.sayFirstWords,
     hearFirstWords: scene.hearFirstWords,
+    oakAsksAfterThePokedex: scene.oakAsksAfterThePokedex,
     oakGives: scene.oakGives,
     dressPlayer: () => undefined,
     readTheBoard: scene.readTheBoard,
-    oakSaysWhatIsNext: scene.oakSaysWhatIsNext,
-    offerFriendRoom: scene.offerFriendRoom,
     joyOffers: scene.joyOffers,
     freshGame: scene.freshGame,
-    brockQuotes: scene.brockQuotes,
     openWorkshop: scene.openWorkshop,
-    billReadsYou: scene.billReadsYou,
+    billOffersHisList: scene.billOffersHisList,
     billNames: scene.billNames,
     billStrikes: scene.billStrikes,
     // The vale's rumours are their own test's (`world/secrets.test.ts`).
@@ -119,42 +120,43 @@ function room(manager: SaveManager, answers: readonly boolean[] = []) {
   return { said, asked, opened, went, speak, dayCare, stand };
 }
 
-const NOTHING_NEW: Partial<RaidProgress> = { firstWordsHeard: ['lab', 'loadout', 'center'] };
+const NOTHING_NEW: Partial<RaidProgress> = { firstWordsHeard: ['lab'] };
 
 describe('Professor Oak, from the mat', () => {
-  it('tells a newcomer what a raid is in the room, once, and never reads the board out: nothing opens', () => {
+  it('greets and asks after the Pokédex, the same on every visit, and never reads the board out: nothing opens', () => {
     const manager = saved();
     const first = room(manager, [false]);
     first.speak('oaks-lab', 'lab');
 
+    expect(first.said).toEqual([KEEPER_GREETINGS.lab]);
+    expect(first.asked).toEqual([OAK_POKEDEX_QUESTION]);
     expect(first.opened).toEqual([]);
-    for (const line of FIRST_WORDS.lab.lines.slice(1)) {
-      expect(first.said).toContain(line);
-    }
-    const game = manager.load()!;
-    expect(game.raidProgress.firstWordsHeard).toEqual(['lab']);
     expect(first.said).not.toContain(BARE_BOARD_LINE);
+    // Nothing of his is heard once and never again.
+    expect(manager.load()!.raidProgress.firstWordsHeard ?? []).toEqual([]);
 
     const again = room(manager, [false]);
     again.speak('oaks-lab', 'lab');
-    expect(again.said).not.toContain(FIRST_WORDS.lab.lines[1]);
+    expect(again.said).toEqual(first.said);
+    expect(again.asked).toEqual(first.asked);
   });
 
   /**
    * The critic heard thirteen boxes of job, favours and rumours every time he
-   * spoke to Oak (problem 8): now Oak says the one next thing and where the
-   * rest is pinned, and the board is read off the wall.
+   * spoke to Oak (problem 8): the board is read off the wall, and the next job
+   * is on the result screen's card (`hub/nextStep.ts`).
    */
-  it('says the one next thing and points at his board, rather than reading it out', () => {
+  it('says nothing of the board, the next job or who is hurt', () => {
     retireMapsForTests(RETIRED_MAPS);
     try {
-      const manager = saved({ ...NOTHING_NEW, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } });
+      const manager = saved({ ...NOTHING_NEW, raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } } }, (stash) => {
+        stash.listPokemon()[0].pokemon.takeDamage(5);
+      });
       const game = manager.load()!;
       const oak = room(manager, [false]);
       oak.speak('oaks-lab', 'lab');
 
-      expect(oak.said).toEqual([...nextStepLines(game.raidProgress), ...boardPointer(game, 1)]);
-      expect(oak.said.join(' ')).toMatch(/^Next, a job: /);
+      expect(oak.said).toEqual([KEEPER_GREETINGS.lab]);
       for (const line of boardLines(game)) {
         expect(oak.said).not.toContain(line);
       }
@@ -163,50 +165,29 @@ describe('Professor Oak, from the mat', () => {
     }
   });
 
-  it('marks the end of the near jobs once, then names what is next', () => {
-    retireMapsForTests(RETIRED_MAPS);
-    try {
-      const manager = saved({ ...NOTHING_NEW, raidRecord: { 'greystone-vale': { deployed: 4, extracted: 4, wiped: 0 } }, standingContractsBanked: 2 });
-      const first = room(manager, [false]);
-      first.speak('oaks-lab', 'lab');
-      const done = first.said.indexOf(FIRST_WORDS.nearWork.lines[0]);
-      expect(done).toBeGreaterThanOrEqual(0);
-      expect(first.said.findIndex((line) => line.includes('MISTY'))).toBeGreaterThan(done);
-
-      const again = room(manager, [false]);
-      again.speak('oaks-lab', 'lab');
-      expect(again.said).not.toContain(FIRST_WORDS.nearWork.lines[0]);
-    } finally {
-      retireMapsForTests([]);
-    }
-  });
-
-  it('says who is hurt and what the clock has lost before anything else', () => {
-    const manager = saved(NOTHING_NEW, (stash) => {
-      stash.listPokemon()[0].pokemon.takeDamage(5);
-    });
-    const game = manager.load()!;
-    manager.save({ ...game, pendingRecoveryMs: 45_000 });
-    const oak = room(manager);
+  it('on YES with nothing due, counts the kinds and names the next milestone', () => {
+    const oak = room(saved(NOTHING_NEW), [true]);
     oak.speak('oaks-lab', 'lab');
-
-    expect(oak.said[0]).toContain('came home hurt. NURSE JOY is across the yard.');
-    expect(oak.said[1]).toBe('Your next raid runs 4:15: 0:45 went on recovery.');
+    expect(oak.said).toEqual([
+      KEEPER_GREETINGS.lab,
+      'Let me take a look… 1 kind of Pokémon caught!',
+      'When you have 10 kinds of Pokémon, come back and see me.',
+    ]);
   });
 
-  it('asks his favour after his first words and before what is next', () => {
+  it('asks his favour after his question is answered, never before it', () => {
     // His parcel lies on Greystone Vale, which is the map a save is offered.
     retireMapsForTests(RETIRED_MAPS);
     try {
       // A favour is asked once a job has been banked (`mayAskAFavour`).
       const manager = saved({ raidRecord: { 'greystone-vale': { deployed: 1, extracted: 1, wiped: 0 } }, standingContractsBanked: 1 });
-      const oak = room(manager, [true]);
+      const oak = room(manager, [false, true]);
       oak.speak('oaks-lab', 'lab');
 
-      expect(oak.asked).toHaveLength(1);
-      const favour = oak.said.findIndex((line) => line.includes('Before you go!'));
-      expect(favour).toBeGreaterThan(oak.said.indexOf(FIRST_WORDS.lab.lines[1]));
-      expect(favour).toBeLessThan(oak.said.findIndex((line) => line.includes('Next, your second job')));
+      expect(oak.asked[0]).toBe(OAK_POKEDEX_QUESTION);
+      expect(oak.asked).toHaveLength(2);
+      expect(oak.said[0]).toBe(KEEPER_GREETINGS.lab);
+      expect(oak.said.findIndex((line) => line.includes('Before you go!'))).toBe(1);
     } finally {
       retireMapsForTests([]);
     }
@@ -221,13 +202,14 @@ describe('the Pokédex: Professor Oak rewards each milestone in his lab, once', 
       }
     });
 
-  it('hands over the reward for ten kinds in his own words, into the vault before he says so', () => {
+  it('hands over the reward for ten kinds in his own words on YES, into the vault before he says so', () => {
     const manager = withKinds(10);
     const balls = manager.load()!.stash.itemCount('great-ball');
-    const oak = room(manager);
+    const oak = room(manager, [true]);
     oak.speak('oaks-lab', 'lab');
 
     const words = oak.said.join(' ');
+    expect(oak.said[0]).toBe(KEEPER_GREETINGS.lab);
     expect(words).toContain('kinds of Pokémon caught!');
     expect(words).toContain('It looks as if you’re getting on the right track!');
     expect(words).toContain('Here, take 5 Great Balls.');
@@ -237,37 +219,37 @@ describe('the Pokédex: Professor Oak rewards each milestone in his lab, once', 
     expect(after.raidProgress.pokedexRewards).toEqual([10]);
   });
 
-  it('never gives the same milestone twice, and says nothing short of one', () => {
+  it('keeps a reward due on NOT NOW, and pays it the next time he is asked', () => {
     const manager = withKinds(10);
-    room(manager).speak('oaks-lab', 'lab');
+    room(manager, [false]).speak('oaks-lab', 'lab');
+    expect(manager.load()!.raidProgress.pokedexRewards).toBeUndefined();
+    room(manager, [true]).speak('oaks-lab', 'lab');
+    expect(manager.load()!.raidProgress.pokedexRewards).toEqual([10]);
+  });
+
+  it('never gives the same milestone twice, and gives nothing short of one', () => {
+    const manager = withKinds(10);
+    room(manager, [true]).speak('oaks-lab', 'lab');
     const balls = manager.load()!.stash.itemCount('great-ball');
-    const again = room(manager);
+    const again = room(manager, [true]);
     again.speak('oaks-lab', 'lab');
-    expect(again.said.join(' ')).not.toContain('kinds of Pokémon caught!');
+    expect(again.said.join(' ')).not.toContain('Here, take');
     expect(manager.load()!.stash.itemCount('great-ball')).toBe(balls);
 
     const short = withKinds(8);
-    const none = room(short);
+    const none = room(short, [true]);
     none.speak('oaks-lab', 'lab');
-    expect(none.said.join(' ')).not.toContain('kinds of Pokémon caught!');
+    expect(none.said.join(' ')).not.toContain('Here, take');
     expect(short.load()!.raidProgress.pokedexRewards).toBeUndefined();
   });
 
-  it('lets Oak finish his first words before he hands anything over', () => {
-    const oak = room(withKinds(10, {}), [false]);
-    oak.speak('oaks-lab', 'lab');
-    expect(oak.said.indexOf(FIRST_WORDS.lab.lines[3])).toBeLessThan(
-      oak.said.findIndex((line) => line.includes('Here, take 5 Great Balls.')),
-    );
-  });
-
-  it('gives two milestones crossed at once one after the other, greeting only the once', () => {
+  it('gives two milestones crossed at once one after the other, counting only the once', () => {
     const manager = withKinds(26);
-    const oak = room(manager);
+    const oak = room(manager, [true]);
     oak.speak('oaks-lab', 'lab');
 
     const words = oak.said.join(' ');
-    expect(words.match(/Good to see you/g)).toHaveLength(1);
+    expect(words.match(/Let me take a look/g)).toHaveLength(1);
     expect(words).toContain('And that’s not all!');
     expect(words).toContain('5 Super Potions and 5 Great Balls');
     expect(manager.load()!.raidProgress.pokedexRewards).toEqual([10, 25]);
@@ -302,16 +284,17 @@ describe('Nurse Joy, at her counter', () => {
     return manager;
   };
 
-  it('welcomes a newcomer, once, then says the price: moving boxes is not her job', () => {
-    const manager = hurt({ firstWordsHeard: ['lab', 'loadout'] });
-    const joy = room(manager, [false]);
-    joy.speak('pokemon-centre', 'stash');
-
-    expect(joy.said.slice(0, FIRST_WORDS.center.lines.length)).toEqual(FIRST_WORDS.center.lines);
-    expect(joy.said.join(' ')).toContain('off your next raid');
-    expect(joy.asked).toHaveLength(1);
-    expect(joy.opened).toEqual([]);
-    expect(manager.load()!.raidProgress.firstWordsHeard).toContain('center');
+  it('greets, then asks with the price in the question: one box, every visit', () => {
+    const manager = fainted();
+    for (const visit of [0, 1]) {
+      const joy = room(manager, [false]);
+      joy.speak('pokemon-centre', 'stash');
+      expect(joy.said[0], `visit ${visit}`).toBe(KEEPER_GREETINGS.stash);
+      expect(joy.asked).toHaveLength(1);
+      expect(joy.asked[0]).toMatch(/^Shall I heal Charmander\? It takes \d:\d\d off your next raid\.$/);
+      expect(joy.said).toEqual([KEEPER_GREETINGS.stash, 'Of course. I’ll be right here.']);
+      expect(joy.opened).toEqual([]);
+    }
   });
 
   it('spends nothing on NOT NOW', () => {
@@ -340,50 +323,46 @@ describe('Nurse Joy, at her counter', () => {
     expect(joy.went[0].said?.[0]).toContain('fit to raid');
   });
 
-  it('heals free the first time each day, and says so once in the whole visit', () => {
+  it('heals free the first time each day, and the question is the one place that says what it costs', () => {
     const manager = fainted(false);
     const joy = room(manager, [true]);
     joy.speak('pokemon-centre', 'stash');
-    expect(joy.said.join(' ')).toContain('Your first heal today is free');
-    // Three times in one visit read as rules text (retest, 22 Nov 2026).
-    expect([...joy.said, ...(joy.went[0].said ?? [])].join(' ').match(/free/g)).toHaveLength(1);
+    expect(joy.asked[0]).toBe("Shall I heal Charmander? It won't cost your next raid a second.");
+    expect([...joy.said, ...(joy.went[0].said ?? [])].join(' ')).not.toMatch(/free|Only a faint/);
     const after = manager.load()!;
     expect(after.pendingRecoveryMs).toBe(0);
     expect(after.freeHealDay).toBe(healDayOf(new Date()));
   });
 
-  it("says the rule with a price: only a faint costs, and tomorrow's first is free", () => {
-    const joy = room(fainted(), [false]);
+  it('asks a fit team too, and says so on YES', () => {
+    const joy = room(saved(NOTHING_NEW), [true]);
     joy.speak('pokemon-centre', 'stash');
-    expect(joy.said.join(' ')).toContain(
-      "Only a faint costs. Your free heal today's been used; you get another tomorrow.",
-    );
+    expect(joy.asked).toEqual(['Shall I heal your Pokémon?']);
+    expect(joy.said).toEqual([KEEPER_GREETINGS.stash, 'Your Pokémon are all fit to raid.']);
+    expect(joy.went).toEqual([]);
   });
 
-  it('asks nothing of a fit team', () => {
-    const joy = room(saved(NOTHING_NEW));
+  it('greets first even with everybody fainted, and then asks on YES', () => {
+    const manager = saved(NOTHING_NEW, (stash) => {
+      const [first] = stash.listPokemon();
+      first.pokemon.takeDamage(first.pokemon.maxHp);
+    });
+    const joy = room(manager, [true]);
     joy.speak('pokemon-centre', 'stash');
-    expect(joy.asked).toEqual([]);
-    expect(joy.said).toEqual(['Your Pokémon are all fit to raid.']);
+    expect(joy.said[0]).toBe(KEEPER_GREETINGS.stash);
+    expect(joy.went).toHaveLength(1);
   });
 });
 
 describe('Brock, from the mat', () => {
-  const HEARD: Partial<RaidProgress> = { firstWordsHeard: ['workshop'] };
-  const stocked = (progress: Partial<RaidProgress> = HEARD): SaveManager =>
+  const stocked = (progress: Partial<RaidProgress> = {}): SaveManager =>
     saved(progress, (stash) => stash.addItem('linen-roll', 4));
 
-  it('says what his chalk is once, then what the vault can pay for, and opens his screen on it', () => {
-    const manager = stocked({});
-    const brock = room(manager);
+  it('greets and opens his screen on what the vault can pay for', () => {
+    const brock = room(stocked());
     brock.speak('brocks-workshop', 'workshop');
-    expect(brock.said.slice(0, FIRST_WORDS.workshop.lines.length)).toEqual(FIRST_WORDS.workshop.lines);
-    expect(brock.said.join(' ')).toContain('Healing machine I.');
+    expect(brock.said).toEqual([KEEPER_GREETINGS.workshop]);
     expect(brock.opened).toEqual([expect.objectContaining({ view: 'workshop', build: 'recovery-bay-1' })]);
-
-    const again = room(manager);
-    again.speak('brocks-workshop', 'workshop');
-    expect(again.said).not.toContain(FIRST_WORDS.workshop.lines[0]);
   });
 
   it('never asks a question or builds from the dialogue box: the screen is the one way to build (the owner, 26 Nov 2026)', () => {
@@ -397,30 +376,38 @@ describe('Brock, from the mat', () => {
     expect(brock.went).toEqual([]);
   });
 
-  it('with nothing he can afford, still says what is next and opens the screen on it', () => {
-    const manager = saved(HEARD);
-    const brock = room(manager);
+  it('with nothing he can afford, still opens the screen on what is next', () => {
+    const brock = room(saved());
     brock.speak('brocks-workshop', 'workshop');
-    expect(brock.said.join(' ')).toContain('Radio mast.');
+    expect(brock.said).toEqual([KEEPER_GREETINGS.workshop]);
     expect(brock.opened).toEqual([expect.objectContaining({ view: 'workshop', build: 'radio-mast' })]);
   });
 });
 
 describe('Bill, at his cottage', () => {
-  const HEARD: Partial<RaidProgress> = { firstWordsHeard: ['cottage'], traderMoneySpent: 5200 };
+  const HEARD: Partial<RaidProgress> = { traderMoneySpent: 5200 };
   const names = (stand: ReturnType<typeof room>['stand'], good: BillGood): void => {
     (BaseScene.prototype as unknown as { billNames: (this: unknown, good: BillGood, about: unknown) => void }).billNames.call(stand, good, []);
   };
 
-  it('reads the player from the mat and offers the list, which is a screen only on YES', () => {
-    const bill = room(saved({ firstWordsHeard: ['cottage'] }), [false]);
+  it('greets and offers the list, which is a screen only on YES', () => {
+    const bill = room(saved(), [false]);
     bill.speak('bills-cottage', 'trader');
-    expect(bill.said[0]).toContain("I don't know you");
+    expect(bill.said).toEqual([KEEPER_GREETINGS.trader]);
+    expect(bill.asked).toEqual([SEE_THE_LIST_QUESTION]);
     expect(bill.opened).toEqual([]);
 
-    const yes = room(saved({ firstWordsHeard: ['cottage'] }), [true]);
+    const yes = room(saved(), [true]);
     yes.speak('bills-cottage', 'trader');
     expect(yes.opened[0]).toMatchObject({ view: 'trader', from: 'bills-cottage' });
+  });
+
+  it('never reads the player out or counts what they need for more', () => {
+    for (const progress of [{}, { standingContractsBanked: 2 }, { defeatedBosses: ['vale-gym-misty'], standingContractsBanked: 3 }]) {
+      const bill = room(saved(progress), [false]);
+      bill.speak('bills-cottage', 'trader');
+      expect(bill.said.join(' ')).not.toMatch(/know you|Bank|points|job/);
+    }
   });
 
   it('sells a Potion on YES with no fade: he can sell another at once', () => {

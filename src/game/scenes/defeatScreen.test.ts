@@ -60,7 +60,7 @@ import { Bag } from '../items';
 import { BULBASAUR, CHARMANDER, Pokemon } from '../pokemon';
 import { RunManager } from '../run/RunManager';
 import { buildExtractionReport, type ExtractionReport } from '../run/extractionReport';
-import { ExtractionScene } from './ExtractionScene';
+import { ExtractionScene, matesOverlap } from './ExtractionScene';
 
 /**
  * Just enough DOM for the scene's own reads. The project runs its tests without
@@ -103,6 +103,7 @@ class FakeRoot {
   public readonly classes = new Set<string>();
   public readonly classList = {
     add: (name: string) => this.classes.add(name),
+    toggle: (name: string, on: boolean) => (on ? this.classes.add(name) : this.classes.delete(name)),
   };
   public readonly stage = new FakeElement();
   public readonly continueButton = new FakeElement();
@@ -294,6 +295,16 @@ function open(report: ExtractionReport, full = false): Harness {
 }
 
 describe('the result screen on a defeat', () => {
+  it('accounts for a lost raid on the wood floor, never on a sheet of white', () => {
+    const { root, advance } = open(defeatReport());
+    readThrough(advance);
+
+    expect(root.html).toContain('extraction-lost');
+    expect(root.classes.has('wood-floor')).toBe(true);
+    expect(root.classes.has('px-world')).toBe(false);
+    expect(root.html).toContain('class="px-window extraction-verdict px-plate px-tone-risk"');
+  });
+
   it('opens on the fallen party rather than straight on the ledger', () => {
     const { root } = open(defeatReport());
 
@@ -627,6 +638,83 @@ describe('the defeat sequence across raids', () => {
     expect(root.html).toContain('data-moment-headline');
     expect(root.html).toContain('data-full-report');
     expect(open(escapeReport(), true).root.html).toContain('extraction-won');
+  });
+
+  /**
+   * The captain, 26 Nov 2026, of the dark stage a raid opened on: "I do like
+   * that animation ... We still need to improve on the overall screen". The
+   * moment is a scene: the team that walked out stands on it, and what the raid
+   * found goes from the pack to the chest at home.
+   */
+  it("stands the team on the moment's stage beside the pack and the chest, in the world's pixel on the wood floor's colours", () => {
+    const manager = new RunManager();
+    manager.startRun({ party: [new Pokemon(CHARMANDER, 12)], items: [], packItemId: 'raid-pack' }, { mapId: 'floodplain-relay', durationMs: DURATION_MS });
+    manager.registerFoundItem('lamp-oil', 2);
+    const result = manager.resolveEscape();
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: DURATION_MS,
+      banked: { pokemon: result.bankedPokemon, items: result.bankedItems },
+      saved: true,
+    });
+    const { root } = open(report);
+
+    // Who walked out, by their own picture, seated by FireRed's own rows.
+    expect(root.html).toMatch(/class="moment-mate" style="--at: 0; --drop: \d+; --head: \d+" role="img" aria-label="Charmander, level 12"/);
+    expect(root.html).toContain('/assets/pokemon/front/4.png');
+    // The pack it was carried in and the chest at home, and the find going from one to the other.
+    expect(root.html).toContain('class="moment-pack"><img src="/assets/icons/raid-pack.png"');
+    expect(root.html).toContain('class="moment-chest"');
+    expect(root.html).toMatch(/class="moment-flight" data-stow-thing style="--at: 0"><i><img src="\/assets\/icons\/lamp-oil.png"/);
+    expect(root.html).toContain('<span class="moment-plus" style="--at: 0">+2</span>');
+    expect(root.html).toContain('out of your pack and into THE CHEST');
+    // No white bar under it: the way on stands on the stage.
+    expect(root.html).not.toContain('confirm-bar');
+    expect(root.html).toContain('class="moment-actions"');
+    expect([...root.classes]).toEqual(expect.arrayContaining(['pixel-ui', 'px-world', 'wood-floor']));
+
+    // The full report is a list: it keeps the finer pixel, and stands on the wood floor too,
+    // with what happened said on a plate of paper, as every sentence on that floor is.
+    const full = open(report, true).root;
+    expect(full.classes.has('px-world')).toBe(false);
+    expect(full.classes.has('wood-floor')).toBe(true);
+    expect(full.html).toContain('class="px-window extraction-verdict px-plate px-tone-primary"');
+  });
+
+  it('closes a long team up by whole game pixels, and never stands one wholly behind another', () => {
+    // Three stand side by side in the room a 1280x800 window has beside the pack and the chest.
+    expect(matesOverlap(236, 3)).toBe(0);
+    expect(matesOverlap(236, 1)).toBe(0);
+    // Four are seven pixels too many each; six stand at a pitch of 34.
+    expect(matesOverlap(236, 4)).toBe(7);
+    expect(matesOverlap(236, 6)).toBe(30);
+    // A whole number whatever the room, so nobody lands between two pixels.
+    for (const room of [150.5, 199.33, 236.67, 320]) {
+      for (const mates of [2, 3, 4, 5, 6]) {
+        const overlap = matesOverlap(room, mates);
+        expect(Number.isInteger(overlap)).toBe(true);
+        // In the room, unless that would hide one behind the next: 24 of every frame stays in view.
+        expect(overlap).toBeLessThanOrEqual(40);
+        if (overlap < 40) expect(64 + (mates - 1) * (64 - overlap)).toBeLessThanOrEqual(room);
+      }
+    }
+  });
+
+  it('draws no chest for a raid the browser could not save: nothing went into it', () => {
+    const manager = new RunManager();
+    manager.startRun({ party: [new Pokemon(CHARMANDER, 12)], items: [] }, { mapId: 'floodplain-relay', durationMs: DURATION_MS });
+    manager.registerFoundItem('lamp-oil', 1);
+    const result = manager.resolveEscape();
+    const { root } = open(
+      buildExtractionReport({ outcome: 'ESCAPED', snapshot: manager.snapshot(), durationMs: DURATION_MS, banked: { pokemon: result.bankedPokemon, items: result.bankedItems }, saved: false }),
+    );
+
+    expect(root.html).toContain('moment-haul is-unsaved');
+    expect(root.html).not.toContain('moment-chest');
+    expect(root.html).not.toContain('data-stow-thing');
+    // What went wrong is said over the buttons, where the bar said it.
+    expect(root.html).toContain('moment-warning');
   });
 });
 

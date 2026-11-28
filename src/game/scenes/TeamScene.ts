@@ -73,7 +73,7 @@ export class TeamScene extends Phaser.Scene implements ProvidesFeedbackContext {
   public create(): void {
     // The whole screen, over the paused harbour: the team stands on the
     // battle field's grass, big, as it does in a fight (the round-3 look).
-    this.overlay = new MenuOverlay(this, 'team-menu pixel-ui', (event) => this.onKey(event));
+    this.overlay = new MenuOverlay(this, 'team-menu pixel-ui wood-floor', (event) => this.onKey(event));
     this.overlay.root.setAttribute('aria-label', 'Your team');
     // The help line names L only where L would put somebody in front.
     this.overlay.root.addEventListener('focusin', () => this.teachLeadWhereItWorks());

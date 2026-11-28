@@ -4,7 +4,7 @@
 // run and the machine pays only for the frames asked for.
 //
 //   node tools/playtest/portal.mjs <test-mode build url> <out dir> [--fresh] [--window=1280x800 | --device=landscape]
-//     [--tz=Asia/Tokyo] [--eval=<expression>]
+//     [--tz=Asia/Tokyo] [--eval=<expression>] [--port=N]
 //
 // --tz sees the pit at another clock's hour (it keeps the player's own), and
 // --eval prints an expression once the portal is up and stops there.
@@ -13,7 +13,7 @@
 // walked to, jobs banked. With --fresh it is a new save's first raid, which goes
 // over at the rail without the card (`hub/firstRaid.ts`).
 import { mkdirSync } from 'node:fs';
-import { launchBrowser, sleep } from './browser.mjs';
+import { attachBrowser, launchBrowser, sleep } from './browser.mjs';
 import { GAME, SAVE_KEY, sceneIs, takePokemon, walkIntoBase } from './deploy.mjs';
 import { DEVICES, emulateDevice } from './phone.mjs';
 
@@ -36,7 +36,8 @@ const LANDINGS = [
 ];
 const FRAME_MS = 1000 / 30;
 
-const browser = await launchBrowser({ window: { width, height } });
+// `--port` drives a browser already running on that CDP port, which keeps the last driver's save: it starts from none.
+const browser = option('port') ? attachBrowser(Number(option('port')), { window: { width, height } }) : await launchBrowser({ window: { width, height } });
 try {
   const page = await browser.openPage('about:blank');
   if (device) await emulateDevice(page, device);
@@ -44,6 +45,11 @@ try {
   if (option('tz')) await page.send('Emulation.setTimezoneOverride', { timezoneId: option('tz') });
   await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
   const until = (expression, what, timeoutMs = 60_000) => page.waitFor(expression, { what, timeoutMs });
+  if (option('port')) {
+    await until(`Boolean(${GAME}?.scene)`, 'the game');
+    await page.evaluate('localStorage.clear()');
+    await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
+  }
   const live = async (code) => { await page.tap(code); await sleep(250); };
   const step = (frames) => page.evaluate(`${GAME}.stepFrames(${frames}, ${FRAME_MS})`);
   // A press on the stepped loop: down for a frame, up for a frame.

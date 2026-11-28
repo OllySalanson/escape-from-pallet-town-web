@@ -1,0 +1,112 @@
+{
+ "version": 7,
+ "party": [],
+ "mapId": "pallet-town",
+ "position": {
+  "x": 6,
+  "y": 8
+ },
+ "items": [],
+ "bag": {},
+ "stash": {
+  "pokemon": [
+   {
+    "id": "charmander-1",
+    "pokemon": {
+     "speciesId": "charmander",
+     "level": 5,
+     "currentHp": 12,
+     "xp": 150,
+     "moves": [
+      "Scratch",
+      "Growl"
+     ],
+     "pendingMoves": [],
+     "primaryStatus": null,
+     "heldItemId": null
+    }
+   }
+  ],
+  "items": {
+   "raid-pack": 1,
+   "poke-ball": 5,
+   "potion": 3
+  },
+  "boxes": [
+   {
+    "name": "Box 1",
+    "pokemonIds": [
+     "charmander-1"
+    ]
+   }
+  ],
+  "partnerId": "charmander-1",
+  "dayCare": null
+ },
+ "raidProgress": {
+  "firstContractExtracted": false,
+  "completedContracts": [],
+  "defeatedBosses": [],
+  "openedGates": [],
+  "trainersPaid": [],
+  "reachedInsertions": [],
+  "workshopUpgrades": [],
+  "giftsReceived": [],
+  "outRun": {
+   "now": 1,
+   "broke": 0
+  },
+  "firstWordsHeard": [
+   "lab"
+  ],
+  "keysLearned": [
+   "walk"
+  ],
+  "pokedexOwned": [
+   4
+  ],
+  "pokedexSeen": [
+   16
+  ],
+  "standingContractsBanked": 0,
+  "traderMoneySpent": 0,
+  "traderBarters": [],
+  "traderCabinet": [],
+  "securePreference": {
+   "pokemon": true,
+   "items": []
+  },
+  "lastBench": [
+   "charmander-1"
+  ],
+  "lastPack": {
+   "potion": 3,
+   "poke-ball": 3
+  },
+  "benchRaids": 1,
+  "shortRaids": 1,
+  "packArrangement": {
+   "items": [],
+   "cargo": []
+  },
+  "secureArrangement": {
+   "items": [],
+   "cargo": []
+  },
+  "raidRecord": {
+   "greystone-vale": {
+    "deployed": 1,
+    "extracted": 1,
+    "wiped": 0
+   }
+  },
+  "unlockedInsertions": [
+   "floodplain-relay"
+  ]
+ },
+ "starterSpeciesId": "charmander",
+ "pendingRecoveryMs": 0,
+ "wardTreatmentsUsed": 0,
+ "traderRationUsed": 0,
+ "traderBerthPaid": false
+}

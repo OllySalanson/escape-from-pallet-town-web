@@ -2,11 +2,11 @@
 // them in - opened, the cursor moved along the cards, a deal asked again - on a
 // save with money and a few parts, for `docs/screens/menu-look/shops/`.
 //
-//   node tools/playtest/shopStates.mjs <test-mode build url> <out dir> [--window=1280x800] [--rich]
+//   node tools/playtest/shopStates.mjs <test-mode build url> <out dir> [--window=1280x800] [--rich] [--port=CDP port]
 //
 // `--rich` gives the save every part Brock asks for, so his builds read ready.
 import { mkdirSync } from 'node:fs';
-import { launchBrowser, sleep } from './browser.mjs';
+import { attachBrowser, launchBrowser, sleep } from './browser.mjs';
 import { GAME, SAVE_KEY, sceneIs } from './deploy.mjs';
 
 const args = process.argv.slice(2);
@@ -17,10 +17,14 @@ const rich = args.includes('--rich');
 mkdirSync(out, { recursive: true });
 
 const BASE = `${GAME}.scene.getScene('base')`;
-const browser = await launchBrowser({ window: { width, height } });
+const browser = option('port') ? attachBrowser(Number(option('port')), { window: { width, height } }) : await launchBrowser({ window: { width, height } });
 try {
   const page = await browser.openPage(`${url}?testmode=pixels`);
   const until = (expression, what) => page.waitFor(expression, { what, timeoutMs: 60_000 });
+  // An attached browser keeps the last driver's save, and a save with a partner has no starter to take: start from none.
+  await until(sceneIs('title'), 'the title');
+  await page.evaluate('localStorage.clear()');
+  await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
   await until(sceneIs('title'), 'the title');
   await page.tap('Space');
   await until(sceneIs('base'), 'the harbour');

@@ -42,7 +42,7 @@ export class StarterScene extends Phaser.Scene {
 
   /** Said plainly instead of starting a game. */
   private renderCannotSave(): void {
-    this.overlay = new MenuOverlay(this, 'starter-menu pixel-ui', (event) => {
+    this.overlay = new MenuOverlay(this, 'starter-menu pixel-ui wood-floor', (event) => {
       if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
         this.scene.start('title');

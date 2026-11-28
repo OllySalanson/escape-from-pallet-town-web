@@ -117,7 +117,9 @@ describe('a menu\'s help line on the touch pad', () => {
 describe('a screen named by its key in a sentence, on the touch pad', () => {
   it('drops the key aside, because the tray\'s button is the screen\'s own name', () => {
     // A phone playtest (26 Nov 2026): the raid's result told a thumb to find
-    // its haul in "YOUR THINGS (B at base)", a letter there is no key for.
+    // its haul in "YOUR THINGS (B at base)", a letter there is no key for. The
+    // result names no key at all now (27 Nov), and an aside is still dropped
+    // from any sentence that writes one.
     expect(touchWording('The things are in YOUR THINGS (B at base) and the Pokémon on YOUR TEAM (P at base), ready for your next raid.')).toBe(
       'The things are in YOUR THINGS and the Pokémon on YOUR TEAM, ready for your next raid.',
     );

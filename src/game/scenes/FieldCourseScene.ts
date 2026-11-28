@@ -212,7 +212,7 @@ export class FieldCourseScene extends Phaser.Scene implements ProvidesFeedbackCo
 
   private showMenu(focusOn?: string): void {
     if (!this.overlay) {
-      this.overlay = new MenuOverlay(this, 'game-corner-screen pixel-ui', (event) => this.onMenuKey(event));
+      this.overlay = new MenuOverlay(this, 'game-corner-screen pixel-ui wood-floor', (event) => this.onMenuKey(event));
     }
     const record = this.record();
     const team = this.teamOf(this.chosen);

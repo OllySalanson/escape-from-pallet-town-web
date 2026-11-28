@@ -1,6 +1,5 @@
 import type { RaidProgress } from '../save/SaveManager';
 import {
-  DAILY_TICKET_CEILING,
   BERRY_TICKET_TIERS,
   COURSE_TICKET_TIERS,
   JUMP_TICKET_TIERS,
@@ -11,9 +10,10 @@ import { POKEMON_JUMP_PRIZES } from './generated/pokemonJump';
 import { BERRY_PICKING_PRIZE_SCORE } from './generated/berryPicking';
 
 /**
- * What THE GAME CORNER says: its attendant, its prize clerk and the POKéMON
- * JUMP cabinet's caption. Phaser-free, so the words are held by the tests in
- * the manner of `base/gymGuide.ts`. Every line fits the dialogue box's one
+ * What THE GAME CORNER says: its cabinets' captions, the course and its time
+ * board (its attendant and prize clerk only greet, `hub/keeperGreetings.ts`).
+ * Phaser-free, so the words are held by the tests in the manner of
+ * `base/gymGuide.ts`. Every line fits the dialogue box's one
  * line of 68 characters or is said in two.
  */
 
@@ -124,34 +124,3 @@ export function cabinetRates(game: 'pokemon-jump' | 'berry-picking'): string {
   const card = tiers.map((tier) => `${number(tier.score)} pays ${tier.tickets}`).join(' · ');
   return `Tickets, once a day: ${card}. From ${number(berryFrom)}, a BERRY too.`;
 }
-
-/** What the attendant says from behind the counter: how the place works, as she would put it. */
-export function attendantLines(progress: Pick<RaidProgress, 'gameCorner'>): readonly string[] {
-  const record = progress.gameCorner ?? NO_GAME_CORNER;
-  // Two boxes, where six were read on every visit (the harbour critic tour,
-  // 26 Nov 2026): what a cabinet pays is on its own screen, and its lamps.
-  const lines = [
-    // Not "once a day a cabinet": a game pays once a day for its best score,
-    // and a better score later pays the difference (`tickets.ts`, `payGame`; the re-critic).
-    "Welcome to the GAME CORNER! Your best score each day wins TICKETS, to spend at the PRIZE WINDOW next door.",
-    "POKéMON JUMP's down the left, BERRY PICKING's down the right. Nobody to jump or pick? I'll lend you one of ours.",
-  ];
-  if (record.tickets > 0) {
-    lines.push(`You've got ${number(record.tickets)} tickets. They're kept at home, so a raid can't lose them.`);
-  }
-  return lines;
-}
-
-/** What the prize clerk says before the window opens. */
-export function prizeClerkLines(progress: Pick<RaidProgress, 'gameCorner'>): readonly string[] {
-  const tickets = (progress.gameCorner ?? NO_GAME_CORNER).tickets;
-  // Every way to tickets named, and the day's cap: she named two of eleven
-  // (the harbour critic tour, 26 Nov 2026).
-  return tickets === 0
-    ? [
-        'Welcome to the PRIZE WINDOW! No tickets yet? Have a look anyway.',
-        `The cabinets next door pay them. So does every game out on the front, up to ${number(DAILY_TICKET_CEILING)} a day.`,
-      ]
-    : [`Welcome to the PRIZE WINDOW! You have ${number(tickets)} tickets. What will it be?`];
-}
-

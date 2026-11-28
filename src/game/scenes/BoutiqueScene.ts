@@ -123,7 +123,7 @@ export class BoutiqueScene extends Phaser.Scene implements ProvidesFeedbackConte
 
   private show(): void {
     if (!this.overlay) {
-      this.overlay = new MenuOverlay(this, 'boutique-screen pixel-ui', (event) => this.onKey(event));
+      this.overlay = new MenuOverlay(this, 'boutique-screen pixel-ui wood-floor', (event) => this.onKey(event));
       // The mirror answers whatever the cursor is on, and commits nothing.
       this.overlay.root.addEventListener('focusin', (event) => this.cursorOn(event.target));
     }

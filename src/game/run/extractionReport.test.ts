@@ -992,6 +992,51 @@ describe('what the party earned', () => {
     expect(report.progress.map((entry) => entry.name)).toEqual(['Charmander']);
   });
 
+  it('names the team that walked out in the order it went in, with how far each bar moved', () => {
+    const grew = new Pokemon(BULBASAUR, 5);
+    const earned = new Pokemon(CHARMANDER, 5);
+    const idle = new Pokemon(CHARMANDER, 8);
+    const manager = startedRun({ party: [grew, earned, idle], items: [] });
+    manager.tick(90_000);
+    const levelSix = experienceForLevel(6, STARTER_CURVE);
+    const levelSeven = experienceForLevel(7, STARTER_CURVE);
+    // Into level 6 and a quarter of the way through it; and half way through level 5.
+    grew.gainExperience(levelSix - experienceForLevel(5, STARTER_CURVE) + Math.round((levelSeven - levelSix) / 4));
+    earned.gainExperience(Math.round((levelSix - experienceForLevel(5, STARTER_CURVE)) / 2));
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({ outcome: 'ESCAPED', snapshot: manager.snapshot(), durationMs: RAID_DURATION_MS, carriedOut: {}, saved: true });
+
+    // Every one of them, the one that earned nothing too: `progress` lists only who earned.
+    expect(report.team?.map((mate) => [mate.name, mate.fromLevel, mate.level])).toEqual([
+      ['Bulbasaur', 5, 6],
+      ['Charmander', 5, 5],
+      ['Charmander', 8, 8],
+    ]);
+    const [first, second, third] = report.team ?? [];
+    // A bar that crossed a level starts again from empty.
+    expect(first.barFrom).toBe(0);
+    expect(first.barTo).toBeCloseTo(0.25, 1);
+    expect(second.barFrom).toBe(0);
+    expect(second.barTo).toBeCloseTo(0.5, 1);
+    // One that earned nothing stands where it stood.
+    expect(third.barTo).toBe(third.barFrom);
+    for (const mate of report.team ?? []) {
+      expect(mate.barFrom).toBeGreaterThanOrEqual(0);
+      expect(mate.barTo).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('names no team on a raid that was lost: its own sequence stands the fallen', () => {
+    const manager = startedRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] });
+    manager.tick(40_000);
+    manager.resolveWipe();
+
+    const report = buildExtractionReport({ outcome: 'WIPED', cause: 'defeated', snapshot: manager.snapshot(), durationMs: RAID_DURATION_MS, saved: true });
+
+    expect(report.team).toBeUndefined();
+  });
+
   it('says a protected material never turned up, rather than that it was used up', () => {
     const manager = startedRun({
       party: [new Pokemon(BULBASAUR, 5)],

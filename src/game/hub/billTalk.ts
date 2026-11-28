@@ -1,9 +1,6 @@
 import { formatMoney, getItemById, itemAmountsFor } from '../items';
 import {
   TRADER_BERTH_PRICE,
-  STANDING_PER_CONTRACT,
-  STANDING_PER_BOSS,
-  POKEDOLLARS_PER_STANDING,
   TRADER_BERTH_STANDING,
   barterShortfall,
   checkBerth,
@@ -11,12 +8,8 @@ import {
   checkBarter,
   checkPurchase,
   standingWithArticle,
-  meetsStanding,
   moneyHeld,
-  nextTraderStanding,
   rationLeft,
-  traderStanding,
-  traderStandingPoints,
   type TraderCounter,
   type TraderStandingId,
 } from './trader';
@@ -57,68 +50,19 @@ function keptBack(name: string, required: TraderStandingId): string {
   return `Under the sheet? ${name}. I'm keeping that back till you're ${standingWithArticle(required)}.`;
 }
 
-/**
- * How he reads the player, by tier: `TRADER_STANDINGS`'s note, said to their face
- * rather than about them.
- */
-const READS_YOU: Readonly<Record<TraderStandingId, string>> = {
-  // Not "bring things home": a raid's haul earns no standing (`traderStandingPoints`),
-  // and a player who banked twenty hauls on that word was still a stranger to him.
-  // No count here: the next line says how many jobs, and 'Bank a job and I
-  // might' over 'Bank 3 jobs' read as two rules (AI playtest, 22 Nov 2026).
-  stranger: "I don't know you yet.",
-  // Not "You keep coming home": raids earn no standing. And not "the first of
-  // the barters": a regular opens eight of them (the harbour critic tour,
-  // 26 Nov 2026).
-  regular: "You've done some good jobs. One other thing a raid, and most of my tools, for parts.",
-  trusted: 'I trust you. Two other things a raid, the good medicine, and most of the hold.',
-  partner: 'Partner! Three other things a raid, and nothing on the boat is held back.',
-};
-
-/**
- * How he reads a stranger who has made a start: jobs banked but not yet enough.
- * "I do not know you" to somebody who has banked two of Oak's jobs reads as if
- * he had not counted them (the overnight playtest of 20 Nov 2026).
- */
-export const STRANGER_STARTED = "I've heard of you. Not enough yet.";
-
-/**
- * How a stranger gets on his books, counted. It is said as jobs, the one quick
- * way in a newcomer has (`STANDING_PER_CONTRACT`), with a beaten boss as the
- * other: Potions and Poke Balls bought count too, but slowly
- * (`POKEDOLLARS_PER_STANDING`).
- */
-export function strangerWayIn(pointsShort: number, started = false): string {
-  const jobs = Math.ceil(pointsShort / STANDING_PER_CONTRACT);
-  const more = started ? ' more' : '';
-  // In the list's own unit too: its header counts points ('0 POINTS · 6 MORE FOR
-  // REGULAR'), and a friend could not tell whether 3 jobs was 6 points or a
-  // second rule (AI playtest, 23 Nov 2026).
-  // "Or beat a boss" was untrue: a boss is three points and a stranger needs
-  // six (the harbour critic tour, 26 Nov 2026). So the bosses are counted the
-  // way the jobs are, and the points are left to the list's own header.
-  const bosses = Math.ceil(pointsShort / STANDING_PER_BOSS);
-  return `Bank ${jobs}${more} ${jobs === 1 ? 'job' : 'jobs'} off Oak's board, or beat ${bosses}${more} ${bosses === 1 ? 'boss' : 'bosses'}, and I'll sell you more.`;
-}
-
-/**
- * How a regular gets further on his books, counted: 'beat a boss and I show
- * you more' was said to a player who had just beaten MISTY and found every
- * locked row still locked, because a boss is three points and the next tier
- * was five away (AI playtest, 22 Nov 2026). So he says how far, and what each
- * thing is worth to him.
- */
-export function standingWayOn(pointsShort: number): string {
-  return `${pointsShort} more ${pointsShort === 1 ? 'point' : 'points'} and I'll show you more. A job's worth ${STANDING_PER_CONTRACT}, a boss ${STANDING_PER_BOSS}, and every ${formatMoney(POKEDOLLARS_PER_STANDING)} you spend with me 1.`;
-}
-
 /** What he says to NOT NOW. */
 export const NOT_DEALT_LINE = "It'll be here. Most things are.";
 
 /** What he says when the save would not take it. */
 export const DEAL_NOT_SAVED_LINE = "It wouldn't save, so the deal's off and you've lost nothing.";
 
-/** The question on the mat: his whole list is the PC's. */
+/**
+ * The question on the mat, straight after his greeting (`hub/keeperGreetings.ts`):
+ * his whole list is the PC's. How he reads the player and what they would need
+ * to do for more used to come first, three boxes of tiers and points (the
+ * harbour audit, 27 Nov 2026); the list's own header counts the points, and a
+ * thing he keeps back is under a sheet on his shelf.
+ */
 export const SEE_THE_LIST_QUESTION = 'See my whole list?';
 
 /** What he says about one thing on his shelves, against this counter. */
@@ -206,42 +150,6 @@ function berthQuote(counter: TraderCounter): BillQuote {
         spendsForGood: true,
       };
   }
-}
-
-/**
- * The key on the mat: how he reads the player and what is left this trip, then
- * whether they want his whole list. Whatever is on the shelves is said from the
- * shelf.
- */
-export function billFromTheMat(counter: TraderCounter): BillQuote {
-  const tier = traderStanding(counter.progress);
-  const left = rationLeft(counter);
-  const next = nextTraderStanding(counter.progress);
-  const started = tier.id === 'stranger' && traderStandingPoints(counter.progress) > 0;
-  const trip =
-    tier.ration === 0
-      ? `You have ${formatMoney(moneyHeld(counter.stash))}. Potions and Poké Balls I sell anybody, the rest once I know you.`
-      : // A raid, not a trip or the deck: 'one thing off the deck a trip' was read
-        // twice and still not understood (AI playtest, 22 Nov 2026).
-        `You have ${formatMoney(moneyHeld(counter.stash))}. ${
-          left === 0
-            ? // Swaps are never rationed (`traderBarterLimit`): "the rest waits"
-              // sent a player away from eight open barters (the critic tour).
-              'Potions and Poké Balls any time, and swaps for parts. Nothing else till you raid again.'
-            : `Potions and Poké Balls any time, and ${left} other ${left === 1 ? 'thing' : 'things'} till you raid again.`
-        }`;
-  return {
-    lines: [
-      started ? STRANGER_STARTED : READS_YOU[tier.id],
-      trip,
-      ...(next && tier.ration === 0
-        ? [strangerWayIn(next.pointsShort, started)]
-        : next && !meetsStanding(counter.progress, 'trusted')
-          ? [standingWayOn(next.pointsShort)]
-          : []),
-    ],
-    question: SEE_THE_LIST_QUESTION,
-  };
 }
 
 /** Said once a deal is struck: `SaveManager`'s own message is written for a status bar. */

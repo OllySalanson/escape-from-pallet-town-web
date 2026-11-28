@@ -69,7 +69,7 @@ might lose instead. The pack is a grid of squares, not a list, so a Super Potion
 parts are fighting for the same space. Whatever you can't bear to lose goes in the locker, if it fits.
 
 <p align="center">
-  <img src="docs/readme/the-bench.png" width="800" alt="The player standing at the red bench in the torchlit room at the end of the Raid Arena's tunnel, the great doors behind a panel listing who can come on the raid.">
+  <img src="docs/readme/the-bench.png" width="800" alt="YOUR TEAM, the screen the red bench opens: three Pokémon standing on the grass with their names under them, the leader's numbers and moves beside them, and under those the chest's list of who else could come.">
 </p>
 
 ### 2. Jump in, and the clock starts
@@ -160,8 +160,8 @@ partner is the one exception: it has its own spot beside the container, fully ev
 no wipe can touch it. The result screen is very polite about it either way.
 
 <p align="center">
-  <img src="docs/readme/extracted.png" width="400" alt="Extracted along the Mere Path: &quot;You walked out loaded.&quot; Two Mooring ropes and two Super Potions banked.">
-  <img src="docs/readme/raid-lost.png" width="400" alt="Raid lost: &quot;You went down.&quot; Three Potions, two Mooring ropes, a Super Potion, 45 Pokedollars, a Parts crate and the Raid pack gone for good; the secure slot held Bulbasaur.">
+  <img src="docs/readme/extracted.png" width="400" alt="Extracted at Millbrook: JOB DONE!, out with a hunter on your tail. Bulbasaur, Pikachu and Pidgey stand in the place they got out of, beside the raid pack and the chest at home; 260 Pokedollars and six finds are in, with 0:59 left.">
+  <img src="docs/readme/raid-lost.png" width="400" alt="Raid lost: &quot;The clock ran out.&quot; A Pidgey heads the list of what is gone for good; Bulbasaur, the partner, is safe; Oak keeps a starter kit waiting at base.">
 </p>
 
 <p align="center"><sub>You'll never be left with nothing, mind. Lose everything and the base quietly tops you back up to a kit you can raid with.</sub></p>

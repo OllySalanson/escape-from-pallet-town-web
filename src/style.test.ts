@@ -293,7 +293,8 @@ describe('the pixel-ui stylesheet', () => {
     // Pairs side by side read `Defense7 Sp. Atk 8` when their gaps were too
     // tight; a row each, with the bar between name and number, cannot.
     const stat = /:where\(\.pixel-ui\) \.px-stat \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '';
-    expect(stat).toMatch(/grid-template-columns:\s*calc\(var\(--u\) \* \d+\) minmax\(0, 1fr\) calc\(var\(--u\) \* \d+\);/);
+    // The number has what it needs and no less than its column: a way to the next level in the thousands ran out of the card.
+    expect(stat).toMatch(/grid-template-columns:\s*calc\(var\(--u\) \* \d+\) minmax\(0, 1fr\) minmax\(calc\(var\(--u\) \* \d+\), auto\);/);
     expect(pixelUiRules).toMatch(/:where\(\.pixel-ui\) \.px-stats \{/);
   });
 });
@@ -727,5 +728,323 @@ describe('a refused button', () => {
       );
       expect(stylesheet, `a refused ${kind || 'plain'} button with the cursor on it`).toMatch(refused);
     }
+  });
+});
+
+/**
+ * THE HARBOUR BOUTIQUE and the wardrobe went onto the wood floor on 27 Nov
+ * 2026 (`docs/screens/wood-floor/`), and three things that were only right on
+ * paper went with them.
+ */
+describe('the boutique on the wood floor', () => {
+  const plain = stylesheet.replace(/\/\*[\s\S]*?\*\//g, '');
+  const body = (selector: string): string => {
+    const found = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.trim() === selector);
+    if (!found) throw new Error(`no rule for ${selector}`);
+    return found[2];
+  };
+
+  it('is made on it', async () => {
+    const scene = await readFile(new URL('./game/scenes/BoutiqueScene.ts', import.meta.url), 'utf8');
+    expect(scene).toContain("'boutique-screen pixel-ui wood-floor'");
+  });
+
+  it("draws a key's cap and a slot's head in what no floor remaps", () => {
+    // `--ink` and `--paper` are white and wood on that floor: a cap lettered in them was brown on brown.
+    expect(body(':where(.pixel-ui) .px-keycap')).toMatch(/background: var\(--plate-ink\);\s*color: var\(--plate\);/);
+    expect(body(':where(.pixel-ui) .bq-slot-head')).toMatch(/background: var\(--bar\);\s*color: var\(--bar-text\);/);
+  });
+
+  it('letters a lit card, a worn honour and a HAVE tag in the ink of the plate they are', () => {
+    expect(body('.pixel-ui.wood-floor .px-body .boutique-card:is(:focus, .is-honour)')).toContain('--ink: var(--raised-ink);');
+    expect(body('.pixel-ui.wood-floor .px-body .bq-take.is-enough .bq-have')).toContain('color: var(--raised-ink);');
+  });
+
+  it('gives the shelves their pager a row of its own in every room', () => {
+    // A tight room gave the window two rows for three things, and the cards were drawn over the pager.
+    expect(body(':where(.pixel-ui) .boutique-panes > .boutique-shelves-window')).toContain('grid-template-rows: auto auto minmax(0, 1fr);');
+    expect(plain).not.toMatch(/data-room='tight'\]\) \.boutique-panes > \.boutique-shelves-window/);
+  });
+});
+
+/**
+ * The cabinets' and the promenade games' screens went onto the wood floor with
+ * their line-ups on 27 Nov 2026 (`ui/pickerLineUp.ts`).
+ */
+describe("the games' screens on the wood floor", () => {
+  it.each(['BerryPickingScene', 'FieldCourseScene', 'OutdoorGameScene'])('%s is made on it', async (scene) => {
+    expect(await readFile(new URL(`./game/scenes/${scene}.ts`, import.meta.url), 'utf8')).toContain("'game-corner-screen pixel-ui wood-floor'");
+  });
+
+  it('has no line-up in a small room, where the window is the list it was', () => {
+    // 800x600: a line-up left the list no row at all.
+    const plain = stylesheet.replace(/\/\*[\s\S]*?\*\//g, '');
+    const body = (selector: string): string => {
+      const found = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.trim() === selector);
+      if (!found) throw new Error(`no rule for ${selector}`);
+      return found[2];
+    };
+    const small = ".pixel-ui:is([data-room='tight'], [data-short])";
+    expect(body(`${small} .game-corner-layout .lineup-places`)).toContain('display: none;');
+    expect(body(`${small} .game-corner-layout > .px-window.has-lineup`)).toContain('grid-template-rows: auto minmax(0, 1fr);');
+    // And everywhere, a row keeps its two lines under its icon.
+    expect(body(':where(.pixel-ui) .game-corner-layout .px-row.has-icon > .px-mon-icon')).toMatch(/margin: calc\(var\(--u\) \* -4\) 0;/);
+  });
+
+  it('THE GAME CORNER is on it at its cabinet and not at its prize window, which is drawn as shelves of its own', async () => {
+    const scene = await readFile(new URL('./game/scenes/GameCornerScene.ts', import.meta.url), 'utf8');
+    expect(scene).toContain("this.overlay.root.classList.toggle('wood-floor', this.mode === 'jump');");
+  });
+});
+
+/**
+ * Bill's Cottage, Brock's Workshop and HELP went onto the wood floor on 27 Nov
+ * 2026. Their blocks of ink lettered in white were drawn in `--ink` and
+ * `--paper`, which that floor remaps, and came out white lettered in brown.
+ */
+describe('the shops and HELP on the wood floor', () => {
+  const plain = stylesheet.replace(/\/\*[\s\S]*?\*\//g, '');
+  const body = (selector: string): string => {
+    const found = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.trim() === selector);
+    if (!found) throw new Error(`no rule for ${selector}`);
+    return found[2];
+  };
+
+  it.each(['.shop-pick .px-count > b', '.shop-head', '.shop-count', '.ws-picture', '.trader-rank'])('draws %s as a strip no floor remaps', (selector) => {
+    expect(body(`:where(.pixel-ui) ${selector}`)).toMatch(/background: var\(--bar\);\s*color: var\(--bar-text\);/);
+  });
+
+  it("draws a key's cap as ink lettered in white, and the key on a green button as white lettered in ink", () => {
+    expect(body(':where(.pixel-ui) .cs-cap')).toMatch(/background: var\(--plate-ink\);\s*color: var\(--plate\);/);
+    expect(body(':where(.pixel-ui) .shop-key')).toMatch(/background: var\(--plate\);\s*color: var\(--plate-ink\);/);
+  });
+
+  it('letters gold in ink: a price and a gold head strip', () => {
+    expect(body(':where(.pixel-ui) .price-tag')).toContain('color: var(--plate-ink);');
+    expect(body(':where(.pixel-ui) .shop-head.is-gold')).toContain('color: var(--plate-ink);');
+  });
+
+  it('letters whatever is lit or washed on that floor in the ink of the plate it is', () => {
+    expect(body('.pixel-ui.wood-floor .px-body :is(.trader-card, .workshop-card):is(:focus, .is-secured)')).toContain('--ink: var(--raised-ink);');
+    expect(body('.pixel-ui.wood-floor .px-body :is(.part-tag, .workshop-cost):not(.is-short)')).toContain('color: var(--raised-ink);');
+    expect(body('.pixel-ui.wood-floor .px-body .px-arming')).toContain('--ink: var(--raised-ink);');
+    expect(body('.pixel-ui.wood-floor .px-body .px-arming .px-warning')).toContain('color: var(--wash-red-ink);');
+  });
+
+  it('HELP and SETTINGS are both on it, and a switch that is on is lettered in white', async () => {
+    // SETTINGS was left on paper at first; drawn in the world's pixel, its one sheet was 16% of the screen.
+    const scene = await readFile(new URL('./game/scenes/ControlsScene.ts', import.meta.url), 'utf8');
+    expect(scene).toContain("overlay.root.classList.add('wood-floor');");
+    expect(body(':where(.pixel-ui) .cs-switch.is-on')).toContain('color: var(--bar-text);');
+  });
+});
+
+/**
+ * The small-window pass of 27 Nov 2026 (`docs/screens/small-window/`): four
+ * screens were broken in an 800x600 window, whose body is about 400x210 game
+ * pixels. What each gets there is held here, because nothing else in the suite
+ * opens a screen at a size.
+ */
+describe('a small window', () => {
+  const plain = stylesheet.replace(/\/\*[\s\S]*?\*\//g, '');
+  const body = (selector: string): string => {
+    const found = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.trim() === selector);
+    if (!found) throw new Error(`no rule for ${selector}`);
+    return found[2];
+  };
+  const small = ".pixel-ui:is([data-room='tight'], [data-short])";
+
+  it("gives Bill's two shelves half the height each, so the second is never pushed off the screen", () => {
+    expect(body(`${small} .trader-goods`)).toContain('grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);');
+    expect(body(`${small} .trader-standing > .room-pic`)).toContain('display: none;');
+  });
+
+  it("stands Brock's builds in one row, without their pictures", () => {
+    expect(body(`${small} .workshop-skyline`)).toContain('grid-auto-flow: column;');
+    expect(body(`${small} .workshop-skyline .workshop-stage`)).toContain('display: none;');
+  });
+
+  it("gives the chest its eight squares across: the locker stands beside the team, over the pack", () => {
+    // The chest does not scroll sideways, so what was past its third square could not be seen at all.
+    const areas = body(".pixel-ui.things-menu[data-room='tight'] .things-layout").replace(/\s+/g, ' ');
+    expect(areas).toContain("grid-template-areas: 'team team locker' 'stash pack pack' 'hand hand hand';");
+  });
+
+  it("stands ROOM FOR A FIND beside the locker's squares, and says KEPT in its heading", () => {
+    const tight = ".pixel-ui.things-menu[data-room='tight']";
+    expect(body(`${tight} .things-locker-body`)).toContain('grid-template-columns: auto minmax(0, 1fr);');
+    expect(body(`${tight} .things-kept-note`)).toContain('display: flex;');
+    expect(body(`${tight} .things-kept-words`)).toContain('display: none;');
+    expect(body(':where(.pixel-ui) .things-kept-note')).toContain('display: none;');
+  });
+
+  it('keeps every card of HELP whole inside its pane, which scrolls', () => {
+    expect(body(':where(.pixel-ui) .cs-help')).toContain('grid-auto-rows: max-content;');
+    expect(body(':where(.pixel-ui) .cs-help-layout')).toContain('grid-template-rows: minmax(0, 1fr);');
+  });
+
+  // The second pass, the same day: the Day-Care, the Trader and THE CHEST's POKéMON.
+  it("gives the Day-Care's and the Trader's list the height it asks for, and the stage the rest", () => {
+    // A stage that kept 150 left the tiles standing out of their pane, over the help line.
+    expect(body(`${small} :is(.dc-layout, .tr-layout)`)).toContain('grid-template-rows: minmax(0, 1fr) auto;');
+    expect(body(':where(.pixel-ui) .dc-layout')).toContain('grid-template-rows: minmax(calc(var(--u) * 150), 1fr) auto;');
+  });
+
+  it('gives that list room for its bar and one row of tiles, in any window', () => {
+    // 18 and 58: at 62 a list of one row scrolled for nothing, and the MORE strip pushed the row under the cursor out of the top.
+    for (const who of ['dc', 'tr']) expect(body(`:where(.pixel-ui) .${who}-who .px-mon-tiles`)).toContain('max-height: calc(var(--u) * 76);');
+    expect(body('.pixel-ui .px-mon-tile:is(.team-box-tile, .dc-tile, .is-named)')).toMatch(/width: calc\(var\(--u\) \* 58\);\s*height: calc\(var\(--u\) \* 58\);/);
+  });
+
+  it("stands who the Trader shows at the art's own size, and NEW IN THE POKéDEX on top of its plate", () => {
+    expect(body(`${small} .tr-stand .px-portrait img`)).toContain('transform: scale(var(--zoom, 2));');
+    expect(body(`${small} .tr-stand .tr-new`)).toContain('bottom: calc(100% + var(--u));');
+  });
+
+  it("draws THE CHEST's Pokémon three across, the garden under them, and the card as tall as the next raid and the grid", () => {
+    const areas = body(`${small} .chest-mons-layout`).replace(/\s+/g, ' ');
+    expect(areas).toContain("grid-template-areas: 'team card' 'mons card' 'garden give';");
+    expect(body(`${small} .chest-mon-grid`)).toContain('grid-template-columns: repeat(3, calc(var(--u) * 65));');
+  });
+
+  // The third pass: YOUR TEAM and the hall's bench.
+  it('stands YOUR TEAM beside its list, not over it: the team down the left, the card over the chest on the right', () => {
+    const areas = body(`${small} .team-layout`).replace(/\s+/g, ' ');
+    expect(areas).toContain("grid-template-areas: 'line cards' 'line boxes';");
+    expect(body(`${small} .team-layout > .team-stage`)).toContain('display: contents;');
+    expect(body(`${small} .team-layout .team-line`)).toContain('grid-template-columns: repeat(3, minmax(0, 1fr));');
+    // At the art's own size, a name under each; one alone as big as in a fight.
+    expect(body(`${small} .team-layout .team-line .team-stand .px-portrait img`)).toContain('transform: scale(var(--zoom, 2));');
+    expect(body(`${small} .team-layout .team-line .team-stand:only-child .px-portrait img`)).toContain('transform: scale(calc(var(--zoom, 2) * 2));');
+  });
+
+  it('makes the two rows of a big team on the mound, in any window, and keeps six inside the stage', () => {
+    // Lifted thirty, the back row's heads went out of the top of the stage.
+    expect(body(':where(.pixel-ui) .team-stand.is-back')).not.toContain('translateY');
+    expect(body('.pixel-ui .team-stand.is-back .px-portrait')).toContain('margin-bottom: calc(var(--u) * 48);');
+    expect(body(':where(.pixel-ui) .team-line:has(> .team-stand:nth-child(4))')).toContain('padding: 0 calc(var(--u) * 32);');
+    // A plate at the back shows under the cursor only.
+    expect(body(':where(.pixel-ui) .team-stand.is-back .team-plate')).toContain('visibility: hidden;');
+  });
+
+  it("gives YOUR TEAM's card two long moves side by side, and a number the room it needs", () => {
+    expect(body(':where(.pixel-ui) .team-cards .team-moves')).toContain('grid-template-columns: repeat(2, max-content);');
+    // Over the mounds: the last one's ran in over the card's first letters.
+    expect(body(':where(.pixel-ui) .team-cards')).toContain('z-index: 3;');
+    expect(body(':where(.pixel-ui) .team-card-foot')).toContain('flex-wrap: wrap;');
+    expect(body(':where(.pixel-ui) .px-stat')).toContain('minmax(calc(var(--u) * 34), auto);');
+  });
+
+  it("keeps on that card what choosing needs: no picture, no keys, numbers two abreast, what it holds beside its speed", () => {
+    const gone = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.includes(`${small} .chest-card-foot`));
+    expect(gone?.[1]).toContain(`${small} .chest-card-side > .px-portrait`);
+    expect(gone?.[1]).toContain(`${small} .chest-card-figures > .px-stat:last-of-type`);
+    expect(gone?.[2]).toContain('display: none;');
+    expect(body(`${small} .chest-card-figures`)).toContain('display: contents;');
+    expect(body(`${small} .chest-card-side`)).toContain('order: 2;');
+  });
+});
+
+/**
+ * The last of the white screens went onto the wood floor on 27 Nov 2026:
+ * YOUR TEAM, the favours and the knock at a door, the Battle Arena's counter,
+ * the feedback panel and the console's games.
+ */
+describe('the last white screens on the wood floor', () => {
+  const plain = stylesheet.replace(/\/\*[\s\S]*?\*\//g, '');
+  const body = (selector: string): string => {
+    const found = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.trim() === selector);
+    if (!found) throw new Error(`no rule for ${selector}`);
+    return found[2];
+  };
+
+  it.each([
+    ['scenes/TeamScene', 'team-menu pixel-ui wood-floor'],
+    ['scenes/DojoCounterScene', 'dojo-counter side-panel pixel-ui wood-floor'],
+    ['scenes/FeedbackScene', 'feedback-panel side-panel pixel-ui wood-floor'],
+    ['scenes/ConsoleScene', 'console-menu pixel-ui wood-floor'],
+    ['ui/FavourListOverlay', 'favour-menu side-panel pixel-ui wood-floor'],
+    ['ui/KnockOverlay', 'knock-menu side-panel pixel-ui wood-floor'],
+    // The raid's own panels, which the menu audit never opens.
+    ['scenes/BagScene', 'bag-menu side-panel pixel-ui wood-floor'],
+    ['scenes/PartyScene', 'party-menu side-panel pixel-ui wood-floor'],
+    ['scenes/ObjectivesScene', 'objectives-menu pixel-ui wood-floor'],
+  ])('%s is made on it', async (file, classes) => {
+    expect(await readFile(new URL(`./game/${file}.ts`, import.meta.url), 'utf8')).toContain(`'${classes}'`);
+  });
+
+  it("draws the key on a green button as white lettered in ink, at the Day-Care, the Trader and YOUR TEAM", () => {
+    for (const selector of ['.pixel-ui .dc-leave .px-keycap', '.pixel-ui .tr-go .px-keycap', ':where(.pixel-ui) .team-key.is-go .px-keycap']) {
+      expect(body(selector)).toMatch(/background: var\(--plate\);\s*color: var\(--plate-ink\);/);
+    }
+  });
+
+  it('letters a lit tile, a chosen one, a lit name plate and a field being typed in with the ink of the plate they are', () => {
+    const tiles = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.includes('.pixel-ui.wood-floor .px-body .px-mon-tile:is(:focus, .is-selected)'));
+    expect(tiles?.[1]).toContain('.team-stand:focus .team-plate');
+    expect(tiles?.[2]).toContain('--ink: var(--raised-ink);');
+    expect(body('.pixel-ui.wood-floor .px-body .px-field:focus')).toContain('--ink: var(--raised-ink);');
+    // And a field is one plank: a seam ran through what was typed.
+    expect(body('.pixel-ui:is(.wood-floor, .dex-floor) .px-body .px-window:is(button, .px-plate, .px-field)')).toContain('--grain: initial;');
+  });
+
+  it.each([
+    ['ui/PlayerNameOverlay', 'naming-menu player-name-menu pixel-ui wood-floor'],
+    ['ui/NamingScreenOverlay', 'naming-menu pixel-ui wood-floor'],
+    ['scenes/StatsScene', 'stats-menu pixel-ui wood-floor'],
+    ['scenes/StarterScene', 'starter-menu pixel-ui wood-floor'],
+  ])('%s, found by photographing what the audit never opens, is made on it', async (file, classes) => {
+    expect(await readFile(new URL(`./game/${file}.ts`, import.meta.url), 'utf8')).toContain(`'${classes}'`);
+  });
+
+  it('stands a screen with no place behind it against a wall of darker boards, not on black', async () => {
+    // The swap of a last Pokémon and the stats page: the hub and the stats scene have nothing under them.
+    const wall = body('.pixel-ui.wood-floor .px-body:is(.starter-shell, .stats-layout, .stats-message-layout)');
+    expect(wall).toContain('background: repeating-linear-gradient(180deg, var(--paper-sunk) 0 calc(var(--u) * 15), var(--line) calc(var(--u) * 15) calc(var(--u) * 16));');
+    expect(await readFile(new URL('./game/scenes/HubScene.ts', import.meta.url), 'utf8')).toContain("const WOOD_FLOOR_VIEWS: readonly HubView[] = ['workshop', 'trader', 'daycare', 'trades', 'reselect', 'rim'];");
+    // And the starter under the cursor or the pointer is lit: lettered in the plate's ink.
+    expect(body('.pixel-ui.wood-floor .px-body .starter-card:is(.is-selected, :hover)')).toContain('--ink: var(--raised-ink);');
+  });
+
+  it('makes the map maker and the PLAYTEST BOARD on it, and says what is wrong in a red that reads on boards', async () => {
+    expect(await readFile(new URL('./game/scenes/MapMakerScene.ts', import.meta.url), 'utf8')).toContain("'map-maker pixel-ui wood-floor'");
+    expect(await readFile(new URL('./game/dev/PlaytestBoardOverlay.ts', import.meta.url), 'utf8')).toContain("'playtest-board favour-menu side-panel pixel-ui wood-floor'");
+    // The page's red is dark on dark there: a fault is the light red of a title strip's warning.
+    expect(body('.pixel-ui.wood-floor .px-body :is(.maker-check small, .px-row.maker-fault, .maker-fault-text)')).toContain('color: #ffa090;');
+    expect(body(':where(.pixel-ui) .px-heading .px-tag-risk')).toContain('color: #ffa090;');
+    // The tool in hand is a chip washed green: lettered in the plate's ink.
+    expect(body('.pixel-ui.wood-floor .px-body .px-chip:is(.maker-tool, .maker-area).is-selected')).toContain('--ink: var(--raised-ink);');
+  });
+
+  it("letters the rim card's lit windows in ink, and its warnings on the boards in a red that reads", () => {
+    // The card every raid starts from: LAND, JOB and SKY are lit windows beside their labels.
+    expect(body('.pixel-ui.wood-floor .px-body .rim-choice > :not(.rim-choice-label)')).toContain('--ink: var(--raised-ink);');
+    const warnings = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.includes('.pixel-ui.wood-floor .px-body .rim-card .px-warning,'));
+    expect(warnings?.[1]).toContain('.rim-walk.is-warn .rim-walk-time');
+    expect(warnings?.[2]).toContain('color: #ffa090;');
+    // One inside a lit window is on a plate, and keeps the page's red.
+    expect(body('.pixel-ui.wood-floor .px-body .rim-card .rim-choice .px-warning')).toContain('color: var(--red);');
+  });
+
+  it('makes the move chooser on it wherever it opens, beside a raid or over the chest', async () => {
+    const chooser = await readFile(new URL('./game/ui/MoveChooserOverlay.ts', import.meta.url), 'utf8');
+    expect(chooser).toContain("`move-chooser-menu${view.beside ? ' side-panel' : ''} pixel-ui wood-floor`");
+  });
+
+  it("letters the raid panels' lit and washed parts as plates", () => {
+    // A slot under the cursor, the leader's, one picked up, and the pack's tile under the cursor: the plate's ink.
+    const slots = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selectors]) => selectors.includes('.pixel-ui.wood-floor .px-body .px-party-slot:is(:focus, .is-lead, .is-holding)'));
+    expect(slots?.[1]).toContain('.pixel-ui.wood-floor .px-body .px-item-tile:is(:focus, .is-riding)');
+    expect(slots?.[2]).toContain('--ink: var(--raised-ink);');
+    // The move being learned, one marked to forget and a bar turned green carry coloured tags: whole plates of the page's palette.
+    const plates = [...plain.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, selectors]) => selectors.includes('.move-chooser-new .px-row.move-card, button.px-row.move-card.is-forgetting, .confirm-bar.teach-bar.is-armed, .confirm-bar.move-chooser-actions.is-armed'));
+    expect(plates).toHaveLength(2);
+    expect(plates[0][1]).toContain(':root');
+    // And an empty place is ruled in the floor's line, not in soft ink, which is pale on wood.
+    expect(body('.pixel-ui.wood-floor .px-body .px-party-slot.is-empty')).toContain('--edge: var(--line);');
+  });
+
+  it("letters the Trader's gold heading in ink", () => {
+    expect(body(':where(.pixel-ui) .tr-card > .px-heading')).toContain('color: var(--plate-ink);');
   });
 });

@@ -242,9 +242,10 @@ export function rewardList(reward: readonly PokedexRewardStack[]): string {
  * What Oak says as he hands a milestone's reward over: he looks at the
  * Pokédex, counts, gives his FireRed rating and hands the reward over. Then he
  * names the next milestone - the aide's "come back" - so the player knows there
- * is one, unless the next is already reached and he has more to give now.
- * `continuing` is the second of two given in one visit, which has no need to
- * say hello again.
+ * is one, unless the next is already reached and he has more to give now. He
+ * has said hello already, and asked whether to look
+ * (`hub/keeperGreetings.ts`). `continuing` is the second of two given in one
+ * visit, which has no need to count again.
  */
 export function milestoneWords(
   milestone: PokedexMilestone,
@@ -265,11 +266,24 @@ export function milestoneWords(
       ...(continuing
         ? []
         : [
-            `Good to see you! Let me take a look at your Pokédex… ${owned} kinds of Pokémon caught!`,
+            `Let me take a look… ${owned} kinds of Pokémon caught!`,
           ]),
       milestone.rating.join(' '),
       `Here, take ${rewardList(milestone.reward)}. I’ve put ${one ? 'it' : 'them'} on BILL’S PC.`,
       ...closing,
     ],
   };
+}
+
+/**
+ * What Oak says when he looks at the Pokédex and has nothing to hand over: the
+ * count, and the next milestone to come back at, as FireRed's Oak rates a
+ * Pokédex he has no reward for.
+ */
+export function pokedexLookLines(owned: number): readonly string[] {
+  const next = nextMilestone(owned);
+  return [
+    `Let me take a look… ${owned} ${owned === 1 ? 'kind' : 'kinds'} of Pokémon caught!`,
+    next ? `When you have ${next.kinds} kinds of Pokémon, come back and see me.` : 'Every kind there is. I could not be prouder!',
+  ];
 }

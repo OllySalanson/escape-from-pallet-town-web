@@ -99,6 +99,8 @@ Enter works a focused DOM control, so a driver can play the lobby's screens the
 way a player does rather than calling `.click()`: `keyDescription` gives Enter a
 `text`, which is what makes Chromium run a key's default action.
 
+`keeperClip.mjs <cdp port> <test-mode build url> <save.json> <room id> <out dir> [--twice]` records a keeper spoken to from their room's mat to the menu or question they open, read at a fixed pace, as `clip.webm`, `clip.gif` and `talk.json` (every box, the presses, the game time to act); `--twice` speaks again after backing out, for the visit a player has every session (`docs/screens/keepers-one-box/`).
+
 `firstRaid.mjs <test-mode build url> <dir> [--shots]` plays a brand new save from
 the title until the first raid is the player's, as somebody who does not read, and
 prints every barrier in order with its presses and seconds.
@@ -173,9 +175,9 @@ press used not to (`--no-keys` is the control).
 
 `menuMotion.mjs <test-mode build url> <out dir> [--port=CDP port]` plays how a screen arrives and leaves (`src/game/ui/menuMotion.ts`): YOUR THINGS, THE POKéDEX, FAVOURS and THE CHEST's tabs, failing unless every move is stepped and over in 260ms, a closed screen is out of the menu layer at once with nothing left behind, and reduced motion moves nothing; it records the move as animated pictures, slowed (`docs/screens/wood-floor/motion/`). `apng.mjs`'s `animatedPng(frames, frameMs)` holds each frame for a time of its own.
 
-`colourScore.mjs <picture.png | folder>... [--box=x0,y0,x1,y1]` reads pictures a driver already took and prints how colourful each is (mean saturation, 0 to 100), how much of it is plain white and how bright it is, inside the game's stage: the world scores 27 to 35, a menu that reads as part of the game 16 or more, and the white sheets were 13 or less (`docs/screens/wood-floor/`). `menusAudit.mjs <test-mode build url> <out dir> [--only=name,..] [--port=CDP port]` is what takes a menu's picture the same way before and after.
+`colourScore.mjs <picture.png | folder>... [--box=x0,y0,x1,y1]` reads pictures a driver already took and prints how colourful each is (mean saturation, 0 to 100), how much of it is plain white and how bright it is, inside the game's stage: the world scores 27 to 35, a menu that reads as part of the game 16 or more, and the white sheets were 13 or less (`docs/screens/wood-floor/`). `menusAudit.mjs <test-mode build url> <out dir> [--only=name,..] [--window=WxH] [--port=CDP port] [--fit]` is what takes a menu's picture the same way before and after. With `--fit` it also names anything on a screen that is not inside it - a card drawn past the body's edge, or one that is not a list and holds more than it shows - which is the check for a small window (`--window=800x600`; `docs/screens/small-window/`).
 
-`resultMoment.mjs <test-mode build dir> <out dir> [--window=WxH] [--clip]` photographs the stage a raid that got out opens on for a haul, a catch, a job and an empty raid, on a save one raid in so Oak's next job is on its card, and fails any part drawn off the stage; `--clip` records the haul playing in (`docs/screens/result-stage/`).
+`resultMoment.mjs <test-mode build dir> <out dir> [--window=WxH] [--clip] [--port=CDP port]` photographs the stage a raid that got out opens on for a haul, a catch, a job, an empty raid, a team of six and a raid the browser could not save, on a save one raid in so Oak's next job is on its card. It deploys into the vale and ends the raid there on a report of its own through the world's own hand-over, so the stage stands in the place the raid got out of, and it fails any part drawn off the stage, a stage with no place behind it or not in the world's pixel, a find that did not reach the chest and a lid left open; `--clip` records the haul playing, slowed for the camera and played back at the game's speed (`docs/screens/wood-floor/`, 'After a raid'; `docs/screens/result-stage/` is the stage before it).
 
 `menuSprites.mjs <test-mode build dir> [--latency=80] [--cpu=4] [--stale] [--shot=dir]` serves a build as Pages does and times every picture of Bill's shelf (first and second open) and the raid's result from being put on screen to being drawn; `--stale` serves every file as past Pages' ten minutes (`docs/screens/menu-sprites/`).
 
@@ -320,6 +322,14 @@ sea beside it (a cast), stands on the boutique's step (no WAREHOUSES), and on th
 smallest screen at 640x480 and 960x720 finds every arrival door on screen with its
 doorway clear of the FEEDBACK tab (`docs/screens/harbour-edges/`).
 
+`seaTelescope.mjs <test-mode build url> <dir> [--port=N] [--clock=day|dusk|night] [--clip]`
+looks through THE POINT's coin telescope from a new save: SPACE at it, the swoop
+down behind the player photographed as it goes, then the glass zoomed in with Z
+and steered with the arrow keys onto a near kind and a far one, each held until
+it is seen. It fails unless both are met and not owned in the save and ESC puts
+the harbour's camera back exactly as it was; `--clip` records it at the game's
+own pixels (`docs/screens/sea-telescope/`).
+
 `raid.mjs --exit=LABEL` (`--exit=ferry-dock`) leaves by a named exit rather than
 the nearest one open from the first second: it stands beside the exit until its
 caption reads `EXTRACT OPEN`, then steps on. A timed exit is never chosen
@@ -362,7 +372,7 @@ tiles copied in here would not. Most keepers have no screen behind the mat: for
 to the tally on his wall, which is the whole ladder, for `bills-cottage` to his PC,
 which is the whole list, and for `oaks-lab` it stops on the mat with nothing said.
 `raid-arena` with `{ hallOnly: true }` stops on the hall's floor, and
-`openFriendRoom` walks to the marshal and answers her friend question. `inRoomTalk.mjs` plays all of that
+`openFriendRoom` walks to the WITH A FRIEND board by the rack and answers its question. `inRoomTalk.mjs` plays all of that
 talk, and the radio, as a player meets it; `workshopBill.mjs` plays Brock's chalk
 and Bill's shelves, by keys and by mouse; `billShelf.mjs <url> <dir> [--port=N]
 [--before]` presses twice, three frames apart, at both of Bill's shelves - his
@@ -650,10 +660,12 @@ used on the hurt one, a stone's ABLE and NOT ABLE, and X to drop one.
 (BILL'S PC's own walk, `stashShots.mjs`, went with its screen: everything it
 held is THE CHEST's, which `chest.mjs` and `chestPokemon.mjs` play.)
 
-`resultShots.mjs <test-mode build url> <dir> [--window=WxH] [--before]` opens
+`resultShots.mjs <test-mode build url> <dir> [--window=WxH] [--before] [--port=CDP port]` opens
 the raid's result screen straight from the title on a report it makes (walked out
-with a haul, and lost), photographs both and prints the glance measure: a raid
-played to its end only to photograph its last screen is minutes of a loaded box.
+with a haul, lost, and settled in another window), photographs each and prints the
+glance measure: a raid played to its end only to photograph its last screen is minutes
+of a loaded box. A raid that got out opens on its stage, so its full report is opened
+from there with L, as a player opens it.
 
 `menuShots.mjs <url> <dir> [--window=1920x950] [--raid] [--resize] [--scrollbars]`
 photographs every DOM screen at a real window size and prints, per scrolling

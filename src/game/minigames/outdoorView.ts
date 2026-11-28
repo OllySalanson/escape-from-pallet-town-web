@@ -1,5 +1,6 @@
 import { getItemById } from '../items/items';
 import { basicsRowAttributes, pickerFindField, type PickerBasics } from '../ui/boxPicker';
+import { lineUpWindowClass, pickerLineUp, pickerRowIcon } from '../ui/pickerLineUp';
 import {
   COLUMN_MEASURES,
   escapeAttribute,
@@ -109,7 +110,7 @@ export function outdoorPickMarkup(state: OutdoorPickState): string {
     const notes = candidate.notes.join(', ');
     const help = chosen ? `${candidate.name} is ${state.doing.toLowerCase()}.` : `${candidate.name}: ${notes}.`;
     const tag = pixelTag(chosen ? state.doing : candidate.suits ? 'Suits it' : 'Plain', chosen || candidate.suits ? 'good' : 'plain', chosen);
-    return `<button class="px-row${chosen ? ' is-selected' : ''}" data-player-pick="${candidate.id}" ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level} · ${escapeAttribute(notes)}</small></span>${tag}</button>`;
+    return `<button class="px-row has-icon${chosen ? ' is-selected' : ''}" data-player-pick="${candidate.id}" ${basicsRowAttributes(candidate)}${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(help)}">${pickerRowIcon(candidate)}<span class="px-row-main"><span class="px-row-line">${pixelPokemonName(candidate)}</span><small>Lv ${candidate.level} · ${escapeAttribute(notes)}</small></span>${tag}</button>`;
   };
   const list =
     state.candidates.length > 0
@@ -117,9 +118,10 @@ export function outdoorPickMarkup(state: OutdoorPickState): string {
       : '<p class="px-empty px-wrap">Nobody to play with: everybody you keep is somewhere else.</p>';
   const ready = state.chosen !== null;
   const play = `<button class="px-window px-button is-primary" data-play${ready ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(ready ? state.playHelp : 'Choose who plays first.')}">${escapeAttribute(state.last ? (state.again ?? 'Again') : 'Play')}</button>`;
+  const playing = state.candidates.filter((candidate) => candidate.id === state.chosen);
   const body = `<main class="px-body game-corner-layout${state.course ? ' has-course' : ''}">${state.course ? courseMarkup(state.course) : ''}${pixelWindow(
-    `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${pickerFindField()}${list}</div>`,
-    { heading: state.heading, note: ready ? '1 of 1' : '0 of 1' },
+    `${pickerLineUp(playing, { places: 1, doing: state.doing.toLowerCase() })}<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${pickerFindField()}${list}</div>`,
+    { heading: state.heading, note: ready ? '1 of 1' : '0 of 1', className: lineUpWindowClass(1) },
   )}${pixelCommitBar({
     title: state.last ? state.last.headline : state.title,
     lines: [

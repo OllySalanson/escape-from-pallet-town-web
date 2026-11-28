@@ -41,7 +41,7 @@ export class StatsScene extends Phaser.Scene {
   public create(data: StatsSceneData = {}): void {
     this.state = { step: 'checking' };
     this.status = undefined;
-    const overlay = new MenuOverlay(this, 'stats-menu pixel-ui', (event) => this.handleKey(event));
+    const overlay = new MenuOverlay(this, 'stats-menu pixel-ui wood-floor', (event) => this.handleKey(event));
     overlay.root.setAttribute('aria-label', 'Play stats');
     overlay.root.addEventListener('click', (event) => this.handleClick(event));
     this.overlay = overlay;

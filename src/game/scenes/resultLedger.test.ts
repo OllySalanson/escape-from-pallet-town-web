@@ -28,8 +28,7 @@ import {
   scrollEntries,
   scrollPastTopCutBy,
   scrollTopCoverHeight,
-  settledScrollTop,
-} from '../ui/MenuOverlay';
+  settledScrollTop, standsOnARowOf } from '../ui/MenuOverlay';
 import { pokemonDossier } from '../ui/pokemonDossier';
 import { KOGA_BOSS_ID } from '../world/valeQuarters';
 import { ExtractionScene } from './ExtractionScene';
@@ -640,5 +639,56 @@ describe("the moment's note", () => {
     const pidgey = { name: 'Pidgey', dexId: 16, level: 3, currentHp: 5, maxHp: 15 };
     Object.assign(scene as object, { report: { saved: true, ledger: { pokemon: [pidgey], items: [] } } });
     expect((scene as unknown as { momentNote(): string }).momentNote()).toBe('PIDGEY is waiting at base for your next raid.');
+  });
+});
+
+/**
+ * The captain, 26 Nov 2026, of the result: "and then the sentence 'in your
+ * things, B at base'". The full report's last line names where the haul is by
+ * the place's own name and no key: this screen answers to neither B nor P.
+ */
+describe("the full report's last line", () => {
+  const note = (ledger: { pokemon: readonly object[]; items: readonly object[] }): string => {
+    const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
+    Object.assign(scene as object, { report: { saved: true, baseNote: null, haulTier: 'light', progress: [], ledger } });
+    return (scene as unknown as { footerNote(): string }).footerNote();
+  };
+  const pidgey = { name: 'Pidgey', dexId: 16, level: 3, currentHp: 5, maxHp: 15 };
+  const rope = { itemId: 'mooring-rope', label: 'Mooring rope', quantity: 1 };
+
+  it('says where the haul is without naming a key', () => {
+    expect(note({ pokemon: [], items: [rope] })).toBe('Everything above is in YOUR THINGS, ready for your next raid.');
+    expect(note({ pokemon: [pidgey], items: [] })).toBe('Everything above is on YOUR TEAM, ready for your next raid.');
+    expect(note({ pokemon: [pidgey], items: [rope] })).toBe('The things are in YOUR THINGS and the Pokémon on YOUR TEAM, ready for your next raid.');
+    for (const ledger of [{ pokemon: [], items: [rope] }, { pokemon: [pidgey], items: [rope] }]) {
+      expect(note(ledger)).not.toMatch(/\(|at base/);
+    }
+  });
+});
+
+/**
+ * A pane of words is read on through with the arrows, and holds the focus
+ * itself while it is. It could be read down and never back up: every scroll
+ * that left more below pushed it on again, because the pane was taken for a
+ * row standing under its own MORE strip (HELP at 800x600, 27 Nov 2026).
+ */
+describe('a pane that is read on through', () => {
+  const node = (inside: readonly object[] = []) => {
+    const self = { contains: (other: object): boolean => other === self || inside.includes(other) };
+    return self;
+  };
+
+  it('is not a row of itself, so it is never pushed on to clear its own strip', () => {
+    const pane = node();
+    // `Node.contains` counts a node as inside itself.
+    expect(pane.contains(pane)).toBe(true);
+    expect(standsOnARowOf(pane, pane)).toBe(false);
+  });
+
+  it('still keeps the row under the cursor clear of the strip', () => {
+    const row = node();
+    const pane = node([row]);
+    expect(standsOnARowOf(pane, row)).toBe(true);
+    expect(standsOnARowOf(pane, node())).toBe(false);
   });
 });

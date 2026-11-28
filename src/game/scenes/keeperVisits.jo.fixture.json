@@ -1,0 +1,178 @@
+{
+ "version": 7,
+ "party": [],
+ "mapId": "pallet-town",
+ "position": {
+  "x": 6,
+  "y": 8
+ },
+ "items": [],
+ "bag": {},
+ "stash": {
+  "pokemon": [
+   {
+    "id": "bulbasaur-1",
+    "pokemon": {
+     "speciesId": "ivysaur",
+     "level": 17,
+     "currentHp": 47,
+     "xp": 3310,
+     "moves": [
+      "Tackle",
+      "Poison Powder",
+      "Sleep Powder",
+      "Vine Whip"
+     ],
+     "pendingMoves": [],
+     "primaryStatus": null,
+     "heldItemId": null
+    }
+   },
+   {
+    "id": "diglett-1",
+    "pokemon": {
+     "speciesId": "diglett",
+     "level": 3,
+     "currentHp": 13,
+     "xp": 27,
+     "moves": [
+      "Sand Attack",
+      "Scratch"
+     ],
+     "pendingMoves": [],
+     "primaryStatus": null,
+     "heldItemId": null
+    }
+   }
+  ],
+  "items": {
+   "poke-ball": 12,
+   "potion": 3,
+   "money": 4000,
+   "radio-valve": 2,
+   "parts-crate": 5,
+   "lamp-oil": 2,
+   "satchel": 1
+  },
+  "boxes": [
+   {
+    "name": "Box 1",
+    "pokemonIds": [
+     "bulbasaur-1",
+     "diglett-1"
+    ]
+   }
+  ],
+  "partnerId": "bulbasaur-1",
+  "dayCare": null
+ },
+ "raidProgress": {
+  "firstContractExtracted": false,
+  "completedContracts": [],
+  "defeatedBosses": [
+   "vale-gym-misty"
+  ],
+  "openedGates": [],
+  "reachedInsertions": [],
+  "workshopUpgrades": [],
+  "giftsReceived": [],
+  "arenaIntroSeen": true,
+  "outRun": {
+   "now": 2,
+   "broke": 0
+  },
+  "gymsMet": [
+   "vale-gym-misty",
+   "vale-gym-koga"
+  ],
+  "firstWordsHeard": [
+   "lab",
+   "center"
+  ],
+  "keysLearned": [
+   "walk",
+   "bag",
+   "objectives",
+   "look"
+  ],
+  "pokedexOwned": [
+   1,
+   2,
+   50
+  ],
+  "pokedexSeen": [
+   7,
+   16,
+   21,
+   23,
+   27,
+   41,
+   50,
+   54,
+   96,
+   100,
+   109,
+   116,
+   120,
+   121,
+   129,
+   133
+  ],
+  "errands": [
+   {
+    "id": "medicine-bag",
+    "status": "started",
+    "found": 0,
+    "lossesHeard": 0
+   },
+   {
+    "id": "oaks-parcel",
+    "status": "completed",
+    "found": 1,
+    "lossesHeard": 1
+   }
+  ],
+  "standingContractsBanked": 3,
+  "traderMoneySpent": 0,
+  "traderBarters": [],
+  "traderCabinet": [],
+  "securePreference": {
+   "pokemon": true,
+   "items": []
+  },
+  "lastBench": [
+   "bulbasaur-1"
+  ],
+  "lastPack": {
+   "potion": 3
+  },
+  "packLeftOut": [
+   "poke-ball"
+  ],
+  "benchRaids": 10,
+  "shortRaids": 1,
+  "packArrangement": {
+   "items": [],
+   "cargo": []
+  },
+  "secureArrangement": {
+   "items": [],
+   "cargo": []
+  },
+  "raidRecord": {
+   "greystone-vale": {
+    "deployed": 10,
+    "extracted": 7,
+    "wiped": 3
+   }
+  },
+  "unlockedInsertions": [
+   "floodplain-relay"
+  ]
+ },
+ "starterSpeciesId": "bulbasaur",
+ "pendingRecoveryMs": 0,
+ "wardTreatmentsUsed": 0,
+ "traderRationUsed": 0,
+ "traderBerthPaid": false
+}

@@ -16,8 +16,10 @@ const FRAME_MS = 100;
 /** How long a doorway takes to open onto its room, in game time. */
 const ROOM_ARRIVES_MS = 300;
 
-function pausedBase() {
+function pausedBase({ pressesAStep = 1 } = {}) {
   const clock = { ms: 0 };
+  // On a loaded machine a press can take many tries to become a step: only every `pressesAStep`-th arrow is taken.
+  let arrows = 0;
   let pending = null;
   let roomAt = null;
   let hubAt = null;
@@ -57,6 +59,10 @@ function pausedBase() {
       if (mat && base.currentTile.x === mat.x && base.currentTile.y === mat.y) {
         hubAt = clock.ms + FRAME_MS;
       }
+      return;
+    }
+    arrows += 1;
+    if (arrows % pressesAStep !== 0) {
       return;
     }
     const [dx, dy] = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[key];
@@ -112,6 +118,23 @@ describe('walking into the base under a paused loop', () => {
     globalThis.window.__escapeFromPalletTownGame__ = game;
     await walkIntoBase(page, 'boutique', { press, until, wait, settleMs: 0 });
     expect(game.scene.getScenes(true).map((s) => s.scene.key)).toEqual(['hub']);
+  });
+
+  // 27 Nov 2026: at real speed on a loaded machine the walk home from the
+  // Arena's rim to Oak's Lab was given up on a third of the way there, because
+  // it was allowed 120 presses however little each one did.
+  it('keeps walking for as long as it is getting somewhere, however many presses a step takes', async () => {
+    const { game, page, press, until, wait } = pausedBase({ pressesAStep: 90 });
+    globalThis.window.__escapeFromPalletTownGame__ = game;
+    // Two steps to the door at ninety presses a step: 180 presses, past the 120 it used to be allowed.
+    await walkIntoBase(page, 'boutique', { press, until, wait, settleMs: 0 });
+    expect(game.scene.getScenes(true).map((s) => s.scene.key)).toEqual(['hub']);
+  });
+
+  it('still gives up on a walk that gets nowhere', async () => {
+    const { game, page, press, until, wait } = pausedBase({ pressesAStep: Number.POSITIVE_INFINITY });
+    globalThis.window.__escapeFromPalletTownGame__ = game;
+    await expect(walkIntoBase(page, 'boutique', { press, until, wait, settleMs: 0 })).rejects.toThrow(/never saw the boutique/);
   });
 
   it('refuses a paused loop it was not handed a wait for', async () => {

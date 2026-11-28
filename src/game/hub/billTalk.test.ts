@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { CHARMANDER } from '../pokemon';
 import { createStartingStash } from '../stash';
 import { GOODS_ON_SHELVES, goodName, shelfState } from '../base/billGoods';
-import { STANDING_PER_BOSS, TRADER_BARTERS, TRADER_STOCK, type TraderCounter } from './trader';
-import { billFromTheMat, billQuote, strangerWayIn, type BillGood } from './billTalk';
+import { TRADER_BARTERS, TRADER_STOCK, type TraderCounter } from './trader';
+import { billQuote, type BillGood } from './billTalk';
 
 const counter = (
   items: Readonly<Record<string, number>> = {},
@@ -128,49 +128,6 @@ describe('Bill on a thing on his shelves', () => {
       const { question } = billQuote(counter(rich, PARTNER), good);
       expect(question, goodName(good)).toBeDefined();
       expect(question?.length ?? 0, question).toBeLessThanOrEqual(34);
-    }
-  });
-});
-
-describe('Bill from the mat', () => {
-  it('reads the player, says what is left till the next raid, and offers the whole list', () => {
-    const stranger = billFromTheMat(counter({ money: 40 }));
-    expect(stranger.lines[0]).toContain("I don't know you");
-    expect(stranger.lines[1]).toBe('You have ₽40. Potions and Poké Balls I sell anybody, the rest once I know you.');
-    // What gets him to sell more, counted.
-    expect(stranger.lines[2]).toBe("Bank 3 jobs off Oak's board, or beat 2 bosses, and I'll sell you more.");
-    expect(stranger.question).toBe('See my whole list?');
-    // One count of jobs, not 'a job' and then '3 jobs' (AI playtest, 22 Nov 2026).
-    expect(stranger.lines.join(' ').match(/\bjobs?\b/g)).toHaveLength(1);
-
-    // Two jobs banked is not yet a regular, and he says he has counted them.
-    const started = billFromTheMat(counter({ money: 40 }, { standingContractsBanked: 2 }));
-    expect(started.lines[0]).not.toContain("I don't know you");
-    expect(started.lines[2]).toBe("Bank 1 more job off Oak's board, or beat 1 more boss, and I'll sell you more.");
-
-    const partner = billFromTheMat(counter({ money: 40 }, PARTNER, { rationUsed: 1 }));
-    expect(partner.lines).toHaveLength(2);
-    expect(partner.lines[1]).toBe('You have ₽40. Potions and Poké Balls any time, and 2 other things till you raid again.');
-    // Never 'I'll sell you 0 more things' (AI playtest, 22 Nov 2026).
-    const spent = billFromTheMat(counter({ money: 0 }, PARTNER, { rationUsed: 3 }));
-    expect(spent.lines[1]).toBe('You have ₽0. Potions and Poké Balls any time, and swaps for parts. Nothing else till you raid again.');
-  });
-
-  // AI playtest, 22 Nov 2026: a regular who had just beaten MISTY heard 'beat a
-  // boss and I show you more' and found every locked row still locked.
-  it('tells a regular how far it is to his trust, and what a job, a boss and money are worth', () => {
-    // A boss (3) and three contracts banked (6): 9 points, 5 short of trusted.
-    const regular = billFromTheMat(counter({ money: 40 }, { defeatedBosses: ['vale-gym-misty'], standingContractsBanked: 3 }));
-    expect(regular.lines[2]).toBe("5 more points and I'll show you more. A job's worth 2, a boss 3, and every ₽200 you spend with me 1.");
-  });
-
-  /** "Or beat a boss" was said to a stranger a boss alone could not move (the harbour critic tour, 26 Nov 2026). */
-  it('counts the bosses a stranger needs as it counts the jobs, by the points each is worth', () => {
-    for (const short of [1, 2, 3, 4, 5, 6]) {
-      const line = strangerWayIn(short);
-      const bosses = Number(/beat (\d+)/.exec(line)?.[1]);
-      expect(bosses * STANDING_PER_BOSS).toBeGreaterThanOrEqual(short);
-      expect((bosses - 1) * STANDING_PER_BOSS).toBeLessThan(short);
     }
   });
 });

@@ -197,7 +197,7 @@ const PROMENADE_PROPS: Readonly<Record<PromenadePropName, PropDefinition>> = {
   bandstand: promenadeProp('bandstand', 'bandstand', ['.##.', '####', '####', '####']),
   // 5 wide, on its two posts, its crown over the gate walked under (`promenadeArch`).
   pierArch: promenadeArch('pierArch', 'pier arch'),
-  // On its post alone, its brass tube drawn above it (`promenadePost`).
+  // On its post alone, its head drawn above it (`promenadePost`).
   coinTelescope: promenadePost('coinTelescope', 'telescope'),
   // Brock's builds (`base/fixtures.ts`), solid: the harbour light 2x4, the
   // radio mast, the treatment tent and the ward's cabin 2x3.

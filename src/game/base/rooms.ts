@@ -55,6 +55,7 @@ import {
   typeWords,
 } from './starterTable';
 import {
+  ARENA_FRIEND_BOARD,
   ARENA_HALL_HEIGHT,
   ARENA_HALL_WIDTH,
   ARENA_KEEPER_TILE,
@@ -619,6 +620,7 @@ export interface RoomThing {
    * console upstairs opens its GAMES menu (`scenes/ConsoleScene.ts`), the
    * Center's PC opens the boxes, and Brock's tally and Bill's PC open the whole
    * ladder and the whole list, for reading them side by side and counting.
+   * THE RAID ARENA's `friend` board asks about raiding with a friend instead.
    */
   readonly opens?:
     | 'wall-map'
@@ -632,6 +634,7 @@ export interface RoomThing {
     | 'book'
     | 'pokedex'
     | 'chest'
+    | 'friend'
     | ArenaStationId;
   /** The book lying open on it, in THE GREAT LIBRARY: faced and asked, it is read full screen (`library/books.ts`). */
   readonly book?: string;
@@ -2568,6 +2571,7 @@ export function buildRoom(
 
 /** What the hall's furniture is called, on its caption and in the hint at its foot. */
 export const ARENA_TELESCOPE_NAME = 'THE TELESCOPE';
+export const ARENA_FRIEND_BOARD_NAME = 'WITH A FRIEND';
 
 export const ARENA_STATION_NAMES: Readonly<Record<ArenaStationId, string>> = {
   bench: 'THE BENCH',
@@ -2631,6 +2635,9 @@ function buildArenaHall(room: BaseRoom, game: RestoredGame): BuiltRoom {
         tiles: [telescope.tile],
         opens: 'telescope' as const,
       })),
+      // Raiding with a friend is asked here, by whoever walks up to it
+      // (`BaseScene.askAtTheFriendBoard`), not glued onto the marshal's words.
+      { name: ARENA_FRIEND_BOARD_NAME, note: 'Raid in a room together', tiles: [ARENA_FRIEND_BOARD], opens: 'friend' as const },
       ...shown.things,
     ],
     sprites: [],

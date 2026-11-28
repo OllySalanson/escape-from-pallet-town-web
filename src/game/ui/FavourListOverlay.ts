@@ -26,7 +26,7 @@ export function openFavourList(
     view?.covers(0);
     onClose();
   };
-  const overlay: MenuOverlay = new MenuOverlay(scene, 'favour-menu side-panel pixel-ui', (event) => {
+  const overlay: MenuOverlay = new MenuOverlay(scene, 'favour-menu side-panel pixel-ui wood-floor', (event) => {
     // The O that opened it, still held, repeats: it must not close it again.
     if (event.repeat && event.key.toLowerCase() === 'o') {
       event.preventDefault();

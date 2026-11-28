@@ -92,6 +92,58 @@ Still in the finer pixel, because they are lists or grids and would lose their r
 THINGS and THE CHEST, the Pokédex's list, the shops, HELP, and the panels that stand
 beside the map on a raid, where a wider column would cover the map.
 
+## After a raid
+
+The screen a raid that got out opens on was the last cause of the study by another
+name: a card about the raid, in a black room, with a white bar under it. It is a scene now,
+as the study's animated mock drew it (the captain, 26 Nov 2026: "I do like that
+animation ... We still need to improve on the overall screen"):
+
+- **the place is still there.** The world's last frame is handed to the result and stands
+  behind it, dimmed, so nothing cuts to black and a night raid's result is as dark as its
+  night;
+- **the team that walked out stands on it**, each as big as it stands in a fight, its
+  bar filling with what it earned and its new level called over its head; a catch comes
+  on last, marked NEW!;
+- **the finds fly out of the raid pack into the chest at home**, one by one, and fill
+  the squares under it; then the lid shuts;
+- no white bar: the two buttons stand on the stage, and the help strip is one line.
+
+It is drawn in the world's pixel, on the wood floor's colours.
+
+| A raid | Before | After | Colour (world 27-35) | White |
+|---|---|---|---|---|
+| A haul, out with 0:22 left | ![](after-raid/haul-before.png) | ![](after-raid/haul-after.png) | 15 to 34 | 11% to 4% |
+| A catch | ![](after-raid/catch-before.png) | ![](after-raid/catch-after.png) | 15 to 33 | 11% to 4% |
+| A job done, six finds | ![](after-raid/job-before.png) | ![](after-raid/job-after.png) | 16 to 36 | 12% to 4% |
+| Nothing found | ![](after-raid/empty-before.png) | ![](after-raid/empty-after.png) | 14 to 32 | 11% to 4% |
+
+| | |
+|---|---|
+| The haul playing, at the game's own speed | ![](after-raid/haul-playing.png) |
+| A team of six closes up to stand in the room there is | ![](after-raid/six-after.png) |
+| A raid the browser could not save: nothing went into the chest, so none is drawn | ![](after-raid/unsaved-after.png) |
+
+Made with `node tools/playtest/resultMoment.mjs <test-mode build dir> <dir> --clip`, which
+deploys into the vale, ends the raid there on a report of its own through the world's
+own hand-over, and fails a part drawn off the stage, a stage with no place behind it, a
+find that did not reach the chest or a lid left open. It passes at 1280x800, 1920x1080,
+800x600 and 800x512. With no picture of the place (a stopped render loop never hands one
+over) the stage is a floor of dark wood; with reduced motion it is drawn as it ends.
+
+The full report behind L, a lost raid's account and a raid another window settled are
+lists, so they keep the finer pixel, and they stand on the wood floor: what happened is
+on a plate of paper, a tile washed by what became of its thing is a plate lettered in
+dark ink, and the last line names where the haul is and no key ("in YOUR THINGS", never
+"(B at base)"). `node tools/playtest/resultShots.mjs <test-mode build url> <dir>` takes
+them, at 1280x800, 1920x1080, 1600x1024, 800x600 and 800x512.
+
+| The account | Before | After | Colour | White |
+|---|---|---|---|---|
+| The full report (L) | ![](before/result-full-report.png) | ![](after/result-full-report.png) | 5 to 45 | 61% to 13% |
+| A lost raid | ![](before/result-lost.png) | ![](after/result-lost.png) | 3 to 48 | 68% to 10% |
+| A raid settled in another window | ![](before/result-settled.png) | ![](after/result-settled.png) | 2 to 50 | 84% to 9% |
+
 ## Every screen, as it is moved
 
 `before/` and `after/` are the same save photographed the same way on the commit before
@@ -106,11 +158,50 @@ and the commit of each change: `node tools/playtest/menusAudit.mjs <test-mode bu
 | THE CHEST: its Pokémon | ![](before/chest-pokemon.png) | ![](after/chest-pokemon.png) | 8 to 57 | 37% to 1% |
 | THE RAID ARENA's rack | ![](before/hall-rack.png) | ![](after/hall-rack.png) | 12 to 49 | 37% to 11% |
 | THE RAID ARENA's locker | ![](before/hall-locker.png) | ![](after/hall-locker.png) | 12 to 49 | 38% to 12% |
+| THE GAME CORNER: POKéMON JUMP | ![](before/game-corner-jump.png) | ![](after/game-corner-jump.png) | 3 to 59 | 86% to 0% |
+| BERRY PICKING | ![](before/game-berry-picking.png) | ![](after/game-berry-picking.png) | 3 to 59 | 82% to 0% |
+| THE FIELD-MOVE COURSE | ![](before/game-field-course.png) | ![](after/game-field-course.png) | 2 to 59 | 88% to 0% |
+| THE PROMENADE DERBY | ![](before/game-promenade-derby.png) | ![](after/game-promenade-derby.png) | 3 to 54 | 76% to 0% |
+| THE DIG | ![](before/game-the-dig.png) | ![](after/game-the-dig.png) | 2 to 58 | 87% to 0% |
+| YOUR TEAM (P), and the bench in the Raid Arena | ![](before/your-team.png) | ![](after/your-team.png) | 25 to 51 | 37% to 1% |
+| THE DAY-CARE | ![](before/day-care.png) | ![](after/day-care.png) | 30 to 47 | 25% to 0% |
+| THE TRADER | ![](before/trades.png) | ![](after/trades.png) | 32 to 48 | 23% to 0% |
+| FAVOURS (O) | ![](before/favours.png) | ![](after/favours.png) | 21 to 32 | 17% to 2% |
+| The feedback panel (F) | ![](before/feedback.png) | ![](after/feedback.png) | 20 to 37 | 26% to 3% |
+| THE BATTLE ARENA's counter | ![](before/dojo-counter.png) | ![](after/dojo-counter.png) | 21 to 28 | 15% to 5% |
+| THE CONSOLE's games | ![](before/console-games.png) | ![](after/console-games.png) | 16 to 29 | 17% to 0% |
+| BILL'S COTTAGE | ![](before/bills-cottage-shop.png) | ![](after/bills-cottage-shop.png) | 11 to 52 | 31% to 1% |
+| BILL'S COTTAGE: asked once more | ![](before/bills-cottage-asked.png) | ![](after/bills-cottage-asked.png) | | |
+| BROCK'S WORKSHOP | ![](before/brocks-workshop.png) | ![](after/brocks-workshop.png) | 16 to 40 | 27% to 2% |
+| HELP | ![](before/help.png) | ![](after/help.png) | 9 to 38 | 44% to 2% |
+| SETTINGS | ![](before/settings.png) | ![](after/settings.png) | 18 to 28 | 16% to 1% |
+| THE HARBOUR BOUTIQUE | ![](before/boutique-shop.png) | ![](after/boutique-shop.png) | 10 to 53 | 57% to 1% |
+| THE HARBOUR BOUTIQUE: trying a look on | ![](before/boutique-trying-on.png) | ![](after/boutique-trying-on.png) | 14 to 56 | 58% to 1% |
+| YOUR WARDROBE | ![](before/boutique-wardrobe.png) | ![](after/boutique-wardrobe.png) | 8 to 54 | 64% to 0% |
 | THE POKéDEX (X): the list | ![](before/pokedex-list.png) | ![](after/pokedex-list.png) | 3 to 51 | 82% to 0% |
 | THE POKéDEX: a page | ![](before/pokedex-page.png) | ![](after/pokedex-page.png) | 7 to 48 | 47% to 2% |
 | THE POKéDEX: a page of one only met | ![](before/pokedex-page-met.png) | ![](after/pokedex-page-met.png) | 7 to 31 | 15% to 1% |
 
 The Pokédex's pictures are `tools/playtest/pokedexShots.mjs`'s, which plays every key on it.
+
+The games' screens were lists and nothing else, so the wood floor alone left each a big empty board with three lines on it. Whoever is chosen now stands over the list (`ui/pickerLineUp.ts`): as big as in a fight, with an empty square for each place still free, and a line of one beside the list rather than over it. Their pictures are `tools/playtest/gameCorner.mjs`, `berryCourse.mjs` and `outdoorGames.mjs`'s, which play each game through, at 1200x768 (scored inside `--box=20,50,1150,670`); POKéMON JUMP's is `menusAudit.mjs`'s at 1280x800. A small window has no line-up and is the list it was:
+
+| 800x600 | Before | After |
+|---|---|---|
+| POKéMON JUMP | ![](before/game-corner-jump-800x600.png) | ![](after/game-corner-jump-800x600.png) |
+
+Bill's and Brock's are `menusAudit.mjs`'s and `shopStates.mjs`'s; Brock's room keeps its own pale wall, which is the place and not paper. **Both shops were already broken in an 800x600 window before this**, and still are: Bill's second shelf is pushed off the screen and his standing cut, and Brock's row of builds wraps to two and leaves his room a sliver. They want a small-window pass of their own.
+
+| 800x600, as on main | |
+|---|---|
+| Bill's Cottage | ![](before/bills-cottage-shop-800x600.png) |
+| Brock's Workshop | ![](before/brocks-workshop-800x600.png) |
+
+The boutique's are `tools/playtest/boutique.mjs`'s, which tries a look on, buys it, walks out in it and changes back at the wardrobe. It also showed a fault older than the wood: in an 800x600 window the shelves' pager was drawn under the cards, because a small room gave that window two rows for three things.
+
+| 800x600, trying a look on | Before | After |
+|---|---|---|
+| The pager (Q, LOOKS 1 OF 8, E) | ![](before/boutique-trying-on-800x600.png) | ![](after/boutique-trying-on-800x600.png) |
 
 The states a still cannot show were played with `tools/playtest/yourThings.mjs`,
 `chest.mjs` and `chestPokemon.mjs`, every check passing on the wood floor:
@@ -120,3 +211,88 @@ The states a still cannot show were played with `tools/playtest/yourThings.mjs`,
 | Teaching a disc at home | ![](before/teach-at-home.png) | ![](after/teach-at-home.png) |
 | A stone over a Pokémon it does nothing for | ![](before/stone-over-charmander.png) | ![](after/stone-over-charmander.png) |
 | The question before a stone is used: a plate of paper | ![](before/ask-stone.png) | ![](after/ask-stone.png) |
+
+## The raid's own panels
+
+The menu audit opens the harbour's screens and never a raid's, so these were not
+measured until every screen it does open was done. Each was a sheet of white paper
+beside the map. Scores are of the whole 1280x800 picture, the map included.
+
+| | Before | After | Colour | White |
+|---|---|---|---|---|
+| THE PACK | ![](before/raid-pack.png) | ![](after/raid-pack.png) | 15 to 27 | 19% to 3% |
+| THE PACK asking who a Potion is for | ![](before/raid-pack-who.png) | ![](after/raid-pack-who.png) | 17 to 29 | 18% to 3% |
+| A disc read in the pack, asking | ![](before/raid-teach-chosen.png) | ![](after/raid-teach-chosen.png) | 14 to 21 | 13% to 4% |
+| The move chooser | ![](before/raid-move-chooser.png) | ![](after/raid-move-chooser.png) | 14 to 27 | 10% to 4% |
+| THE PARTY | ![](before/raid-party.png) | ![](after/raid-party.png) | 12 to 32 | 26% to 3% |
+| The field guide (O, twice) | ![](before/raid-field-guide.png) | ![](after/raid-field-guide.png) | 17 to 27 | 15% to 1% |
+| The move chooser at THE CHEST | ![](before/chooser-at-the-chest.png) | ![](after/chooser-at-the-chest.png) | 27 to 54 | 25% to 1% |
+
+The last pair shows a fault found on the way: the question a disc asks at THE CHEST
+stood on under the move chooser it had opened, cut through YES and NO. It goes now
+before the chooser comes up.
+
+Oak on the radio (O, once) is the world's own white dialogue box, and is left.
+
+## The naming screens, the swap and the stats page
+
+Found by the same photographs. Two of them had no place behind them, and stood their
+white cards on black: they stand against a wall of darker boards now.
+
+| | Before | After | Colour | White |
+|---|---|---|---|---|
+| SWAP YOUR PARTNER (the Pokémon Center, with one Pokémon left) | ![](before/swap-partner.png) | ![](after/swap-partner.png) | 9 to 63 | 26% to 1% |
+| YOUR NAME? (over the title) | ![](before/your-name.png) | ![](after/your-name.png) | 21 to 32 | 16% to 1% |
+| A Pokémon's NICKNAME? (over the raid) | ![](before/nickname.png) | ![](after/nickname.png) | 19 to 30 | 15% to 0% |
+| PLAY STATS, the owner's page, before signing in | ![](before/stats.png) | ![](after/stats.png) | 8 to 65 | 9% to 0% |
+
+The stats page signed in, with its numbers and its chart of a month, was not seen: it
+needs the owner's sign-in. Its rules name only the floor's own tokens.
+
+## The rim's card
+
+The card every raid is started from, down the side of the pit: a white sheet, a
+quarter of the picture. It was missed by the menu audit, which opens the hall's bench,
+rack and locker and not its rim, and by the first photographs.
+
+| | Before | After | Colour | White |
+|---|---|---|---|---|
+| Looking down from the rim | ![](before/the-rim.png) | ![](after/the-rim.png) | 25 to 44 | 25% to 0% |
+
+LAND, JOB and SKY are each a lit window beside their label, lettered in ink. A warning
+on the card's own boards (a hunter coming sooner, a walk the clock will not allow, a
+jump refused) is the light red the map maker's faults are:
+
+![](after/the-rim-refused.png)
+
+`rimCard.mjs`, `rimRefusal.mjs` and `portal.mjs` take `--port` now, to drive the one
+browser a worker is allowed, and start from no save when they do.
+
+## The map maker and the PLAYTEST BOARD
+
+The whitest screen left: three sheets and a bar, 41% of the picture plain white.
+
+| | Before | After | Colour | White |
+|---|---|---|---|---|
+| The map maker, the sample map open | ![](before/map-maker.png) | ![](after/map-maker.png) | 19 to 49 | 42% to 2% |
+| The map maker, a new map, with what is still wrong | ![](before/map-maker-new.png) | ![](after/map-maker-new.png) | 18 to 49 | 41% to 2% |
+| The explorer run's PLAYTEST BOARD | ![](before/playtest-board.png) | ![](after/playtest-board.png) | 20 to 39 | 27% to 1% |
+
+What a check found wrong was said in the page's red, which is dark on dark on wood:
+it is the light red a title strip's warning is. The tool in hand is a chip washed
+green, lettered in ink.
+
+Not fixed, and older than this: in an 800x600 window the maker's zoom chips wrap
+down their column and the map is left a sliver. And `makerFixes50.mjs` fails one of
+its fourteen checks on main and here alike ("outdoors again, no overview over a map
+a row too tall"): the overview is shown there, as its own rule says it should be for
+a map a quarter hidden.
+
+`tools/playtest/starterBalls.mjs` plays the swap. Its check there still asked for the
+pointer to move the cursor, from before the pointer only previewed; it asks for what
+the game does now, and passes.
+
+`tools/playtest/sidePanels.mjs` plays all of them in a real raid. It had gone stale
+(it walked a list down where the pack is a row of tiles now), and on main it did not
+pass at 800x600 either, where BLUE caught the player between two checks and the
+party's slots stand three abreast. It passes at both sizes now.

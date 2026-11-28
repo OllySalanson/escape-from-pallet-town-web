@@ -1429,33 +1429,61 @@ function pierArch() {
 }
 
 /**
- * A coin telescope on its post, 1x2, at THE POINT's lookout: a brass tube on a
- * swivel over an iron post - put a coin in and look at the bay.
+ * A coin telescope, 1x2, at THE POINT's lookout: the seaside viewer every pier
+ * has - a chunky two-eyed head on a swivel, its eyepieces at the back and its
+ * two lenses turned out to sea, over a coin box on a stout post with a foot
+ * bolted to the paving. It faces the sea, which is the way the camera looks
+ * from, so it shows its lenses; whoever looks through it stands behind it
+ * (the owner, 27 Nov 2026: the thin tube on a pole that stood in the rail's
+ * line "looks a bit peculiar").
  */
 function coinTelescope() {
   const image = canvas(TILE, 2 * TILE);
   draw(
     image,
     0,
-    4,
+    6,
     [
-      '..........kkk...',
-      '.......kkkGGGk..',
-      '....kkkGGGGggk..',
-      '..kkGGGGGggkk...',
-      '.kGGGGggkkk.....',
-      '.kgGggkk........',
-      '..kkkkk.........',
-      '.....kk.........',
-      '....kssk........',
-      '....kssk........',
-      '....kwwk........',
-      '...kkkkkk.......',
+      '...kkkk..kkkk...',
+      '...kiik..kiik...',
+      '..kkkkkkkkkkkk..',
+      '.kLLLLLLLLLLLLk.',
+      'kBBBBBBBBBBBBBBk',
+      'kBkkkkkBBkkkkkBk',
+      'kBkHgGkBBkHgGkBk',
+      'kBkgGGkBBkgGGkBk',
+      'kBkkkkkBBkkkkkBk',
+      '.kDDDDDDDDDDDDk.',
+      '..kkkkkkkkkkkk..',
+      '......kiik......',
+      '....kkkkkkkk....',
+      '....kLLLLLLk....',
+      '....kBYYYYBk....',
+      '....kBYkkYBk....',
+      '....kBYYYYBk....',
+      '....kDDDDDDk....',
+      '....kkkkkkkk....',
+      '......kBDk......',
+      '......kBDk......',
+      '......kBDk......',
+      '...kkkkkkkkkk...',
+      '...kssssssssk...',
+      '...kiiiiiiiik...',
+      '....kkkkkkkk....',
     ],
-    { k: INK.outline, G: INK.gold, g: INK.goldDark, s: INK.iron, w: INK.ironLight },
+    {
+      k: INK.outline,
+      i: INK.iron,
+      s: INK.ironLight,
+      L: '#78d0b8',
+      B: '#389880',
+      D: '#206858',
+      H: '#d8f0f8',
+      g: '#284878',
+      G: '#5888c0',
+      Y: INK.gold,
+    },
   );
-  for (let y = 16; y < 30; y += 1) draw(image, 5, y, ['kssk'], { k: INK.outline, s: INK.iron });
-  draw(image, 3, 29, ['kkkkkkkk', 'kwwwwwwk', 'kkkkkkkk'], { k: INK.outline, w: INK.ironLight });
   return image;
 }
 

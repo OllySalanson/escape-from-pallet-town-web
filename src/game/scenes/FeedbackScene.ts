@@ -102,7 +102,7 @@ export class FeedbackScene extends Phaser.Scene {
     this.playback = null;
     this.playbackUrls = [];
     this.talkPending = false;
-    this.overlay = new MenuOverlay(this, 'feedback-panel side-panel pixel-ui', (event) => this.onKey(event));
+    this.overlay = new MenuOverlay(this, 'feedback-panel side-panel pixel-ui wood-floor', (event) => this.onKey(event));
     this.overlay.root.setAttribute('aria-label', 'Send feedback');
     this.fitToWindow();
     window.addEventListener('resize', this.onResize);

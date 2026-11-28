@@ -641,6 +641,8 @@ const figureRect = (tile: GridPosition): Rect => ({
   width: TILE_SIZE,
   height: FIGURE_HEIGHT,
 });
+/** How long the hand-over to the result waits for the world's last frame, in game time, before it goes without it. */
+const PLACE_PICTURE_WAIT_MS = 300;
 /** Long enough for the extraction flash and shake to read before the result screen. */
 const RUN_RESULT_DELAY_MS = 700;
 /** How long the player takes to get on an exit's ride: inside the flash. */
@@ -11307,6 +11309,11 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     this.dialogBox.setVisible(false);
     this.time.delayedCall(RUN_RESULT_DELAY_MS, () => {
       if (this.scene.manager.keys.extraction) {
+        // A raid that got out takes the place with it (`handOverWithThePlace`).
+        if (report.outcome === 'ESCAPED') {
+          this.handOverWithThePlace(report);
+          return;
+        }
         this.scene.start('extraction', { report });
         return;
       }
@@ -11315,6 +11322,35 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         this.scene.manager.keys.base ? { arrival: 'raid', room: 'raid-arena' } : undefined,
       );
     });
+  }
+
+  /**
+   * Hands a raid that got out to its result with a picture of where it got
+   * out: the stage it opens on stands in that place, gone dim, rather than in
+   * a black room (the captain, 26 Nov 2026: "We still need to improve on the
+   * overall screen"; `ExtractionScene`). The picture is the frame the world
+   * draws next, with everything pinned to the screen - the clock, the chips, a
+   * line of dialogue - left out of it, since none of that is the place. A
+   * render loop that is stopped never answers, so the hand-over does not wait
+   * on it for long, and goes without the place rather than not at all.
+   */
+  private handOverWithThePlace(report: ExtractionReport): void {
+    let handed = false;
+    const hand = (place?: HTMLImageElement): void => {
+      if (handed) {
+        return;
+      }
+      handed = true;
+      this.scene.start('extraction', place ? { report, place } : { report });
+    };
+    try {
+      this.cameras.main.ignore(this.children.list.filter((child) => (child as { scrollFactorX?: number }).scrollFactorX === 0));
+      this.game.renderer.snapshot((image) => hand(image instanceof HTMLImageElement ? image : undefined));
+    } catch {
+      hand();
+      return;
+    }
+    this.time.delayedCall(PLACE_PICTURE_WAIT_MS, () => hand());
   }
 
   private advanceRunClock(deltaMs: number): void {

@@ -195,6 +195,9 @@ export class GameCornerScene extends Phaser.Scene implements ProvidesFeedbackCon
     if (!this.overlay) {
       this.overlay = new MenuOverlay(this, 'game-corner-screen pixel-ui', (event) => this.onMenuKey(event));
     }
+    // The cabinet's screen stands on the wood floor; the prize window is drawn
+    // as shelves of its own already, and the floor's colours are not its.
+    this.overlay.root.classList.toggle('wood-floor', this.mode === 'jump');
     const record = this.record();
     const markup =
       this.mode === 'jump'

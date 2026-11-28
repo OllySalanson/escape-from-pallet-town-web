@@ -105,7 +105,9 @@ try {
   };
 
   if (wanted('marshal')) {
-    // Finding 1: no balls at all, and Bill still sees a stranger.
+    // Finding 1 was her sending a stranger with no balls to Bill. She only
+    // greets now (`hub/keeperGreetings.ts`), and the rim's card says where
+    // balls come from (the 'noballs' check below).
     await gameWith(`(save) => { ${hasBeenOut} ${noBalls} }`);
     await walkIntoBase(page, 'raid-arena', { press, until, wait });
     // The walk in leaves the bench open: put the Charmander on it and step back into the hall.
@@ -117,12 +119,10 @@ try {
     await until(`${base}.ready && !${sceneIs('hub')}`, 'the hall');
     const said = await speakToMarshal();
     await shot('marshal-no-balls');
-    check('the marshal does not send a stranger to Bill', !/Bill sells them/.test(said) && /stranger/.test(said), said);
+    check('the marshal greets, and says nothing about the raid being got ready', /^Welcome to the RAID ARENA!/.test(said) && !/Bill|ball/i.test(said), said);
     await press('Space');
     await wait(1500);
-    const then = String(await page.evaluate(`${base}.dialogBox?.visible ? ${base}.dialogBox.textObject?.text : ''`)).replace(/\s+/g, ' ');
-    await shot('marshal-no-balls-then');
-    check('and says where balls come from instead', /out there/.test(then) && /jobs/.test(then), then);
+    check('and says nothing more', !(await page.evaluate(`${base}.dialogBox?.visible`)));
   }
 
   if (wanted('noballs')) {

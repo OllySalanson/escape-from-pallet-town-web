@@ -227,8 +227,9 @@ body {
   80% { background-position: 100% 0; }
 }
 /* The stage a raid that got out opens on (`.moment-stage`): the headline
-   lands, the clock and money come up, each thing drops into HOME and bounces
-   once, and the next thing rises in under it. */
+   lands, the pack and the team come on, the chest drops and its lid opens,
+   each thing flies from the pack into it, and as the last is in the lid shuts,
+   the bars fill and the next thing rises in. */
 @keyframes moment-land {
   0% {
     opacity: 0;
@@ -253,29 +254,151 @@ body {
     transform: none;
   }
 }
-@keyframes moment-drop {
+/* The chest comes down from above and sits. */
+@keyframes moment-chest-drop {
   0% {
-    opacity: 0;
-    transform: translateY(calc(var(--u) * -40));
-  }
-  15% {
     opacity: 1;
-  }
-  65% {
-    opacity: 1;
-    transform: none;
+    transform: translateY(calc(var(--u) * -90));
   }
   80% {
     opacity: 1;
-    transform: translateY(calc(var(--u) * -6));
+    transform: scale(1.08, 0.86);
   }
   100% {
     opacity: 1;
     transform: none;
   }
 }
-/* The moment a stone evolves a Pokemon (`evolveMomentBody`): the two pictures
-   trade places faster and faster, then the new one stays, as FireRed's does. */
+@keyframes moment-lid-open {
+  to {
+    background-position: 100% 0;
+  }
+}
+@keyframes moment-chest-shut {
+  0% {
+    transform: scale(1.1, 0.84);
+  }
+  100% {
+    transform: none;
+  }
+}
+/* One of the team hopping on from above. It starts clear and is in sight a
+   moment later, so filled backwards it is out of sight until its turn, and
+   once it has landed nothing of the move is left on it: a move still filled
+   is a layer of its own, and a level called over its head (`.moment-grew`)
+   was drawn under the next one in the line. */
+@keyframes moment-hop {
+  0% {
+    opacity: 0;
+    transform: translateY(calc(var(--u) * -20));
+  }
+  1% {
+    opacity: 1;
+    transform: translateY(calc(var(--u) * -20));
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(calc(var(--u) * 2));
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* A thing going from the pack to the chest: across at one speed, and up and
+   down on its own picture, a frame at a time, so the two make an arc. It
+   shrinks as it drops into the chest and is gone as it lands. */
+@keyframes moment-across {
+  0% {
+    opacity: 1;
+    transform: none;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(var(--flight));
+  }
+}
+@keyframes moment-arc {
+  0% {
+    transform: translateY(calc(var(--u) * 0)) scale(1);
+  }
+  10% {
+    transform: translateY(calc(var(--u) * -14)) scale(1);
+  }
+  20% {
+    transform: translateY(calc(var(--u) * -25)) scale(1);
+  }
+  30% {
+    transform: translateY(calc(var(--u) * -34)) scale(1);
+  }
+  40% {
+    transform: translateY(calc(var(--u) * -39)) scale(1);
+  }
+  50% {
+    transform: translateY(calc(var(--u) * -42)) scale(1);
+  }
+  60% {
+    transform: translateY(calc(var(--u) * -42)) scale(1);
+  }
+  70% {
+    transform: translateY(calc(var(--u) * -39)) scale(0.9);
+  }
+  80% {
+    transform: translateY(calc(var(--u) * -33)) scale(0.75);
+  }
+  90% {
+    transform: translateY(calc(var(--u) * -24)) scale(0.6);
+  }
+  100% {
+    transform: translateY(calc(var(--u) * -12)) scale(0.5);
+  }
+}
+/* How many went in, lifting off the lid. */
+@keyframes moment-plus {
+  0% {
+    opacity: 1;
+    transform: none;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(calc(var(--u) * -14));
+  }
+}
+@keyframes moment-ring {
+  0% {
+    opacity: 1;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}
+/* A thing arriving in its square as it lands in the chest. */
+@keyframes moment-in {
+  0% {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes moment-bar {
+  from {
+    width: var(--from);
+  }
+  to {
+    width: var(--to);
+  }
+}
 @keyframes evolve-moment-out {
   0%, 18%, 36%, 52%, 66%, 78%, 88% {
     opacity: 1;
@@ -2104,7 +2227,7 @@ body.touch-play .feedback-tab {
    of paper standing on the wood floor (`.px-plate` and the row under the
    cursor, below) is this palette again, whatever the floor round it remapped. */
 .pixel-ui .px-plate,
-.pixel-ui:is(.wood-floor, .dex-floor) .px-body :is(button.px-row:focus, .px-row.is-secured, .px-row.teach-pupil.is-selected, .px-chip:focus, .px-step:focus, .px-scroll[data-reads]:focus),
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body :is(button.px-row:focus, .px-row.is-secured, .px-row.teach-pupil.is-selected, .px-chip:focus, .px-step:focus, .px-scroll[data-reads]:focus, .move-chooser-new .px-row.move-card, button.px-row.move-card.is-forgetting, .confirm-bar.teach-bar.is-armed, .confirm-bar.move-chooser-actions.is-armed),
 :root {
   /* The menus' palette (`src/game/ui/uiPalette.ts`): a Poke Ball, opened. Five
      colours, one job each (the captain, 25 Nov 2026: "It must be the new way of
@@ -2634,6 +2757,8 @@ body.touch-play .feedback-tab {
   --safe-ink: #d2f9d7;
   --risk-wash: #f2b3a2;
   --red-ink: #ffe4dc;
+  /* A warning written on the red wash itself, where the page's red is too close to it. */
+  --wash-red-ink: #8a1c06;
   --shade: rgb(0 0 0 / 70%);
   --lip: rgb(255 255 255 / 18%);
   --foot: rgb(0 0 0 / 28%);
@@ -2648,9 +2773,16 @@ body.touch-play .feedback-tab {
 
    What stands on a raised plate is written in the plate's ink: a button's
    words, a square's level, a count. */
-.pixel-ui:is(.wood-floor, .dex-floor) .px-body :is(.px-button, .px-grid-block, .chest-mon, .chest-slot, .chest-key, .chest-gift, .things-member, .things-worn) {
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body :is(.px-button, .px-grid-block, .chest-mon, .chest-slot, .chest-key, .chest-gift, .things-member, .things-worn, .result-tile) {
   --ink: var(--raised-ink);
   --ink-soft: var(--raised-ink-soft);
+}
+/* A tile of the raid's result is washed by what became of its thing, which
+   makes it a plate: its count is the plate's ink (above), and so is its tick -
+   the floor's own green and gold are pale, for writing on a board. A lost
+   thing's cross stays the page's red. */
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body .result-tile:not(.is-lost)::after {
+  background: var(--raised-ink);
 }
 /* Said again where it is a button that is the plate: a button's own colour is
    its parent's unless a rule this heavy says otherwise. */
@@ -2665,7 +2797,19 @@ body.touch-play .feedback-tab {
 .pixel-ui.wood-floor .px-body .px-window {
   --grain: repeating-linear-gradient(180deg, var(--fill) 0 calc(var(--u) * 15), var(--seam) calc(var(--u) * 15) calc(var(--u) * 16));
 }
-.pixel-ui:is(.wood-floor, .dex-floor) .px-body .px-window:is(button, .px-plate) {
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body .px-window:is(button, .px-plate, .px-field) {
+  --grain: initial;
+}
+/* A field that is being typed in is lit, and so lettered in the plate's ink:
+   the feedback panel's was white words on gold with a seam through them. */
+.pixel-ui.wood-floor .px-body .px-field:focus {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
+/* The bar a screen's way on stands on is one plank: it is two lines of words
+   tall, and a seam every sixteen pixels ran through the feet of its title. */
+.pixel-ui.wood-floor .px-body .px-window.confirm-bar {
   --grain: initial;
 }
 /* A raised thing that cannot be pressed is sunk again, in the floor's soft ink. */
@@ -2684,7 +2828,7 @@ body.touch-play .feedback-tab {
    lit or washed with words on it - the row under the cursor, a row chosen.
    Its palette is the page's own again: the rule that names `:root` names it. */
 .pixel-ui .px-plate,
-.pixel-ui:is(.wood-floor, .dex-floor) .px-body :is(button.px-row:focus, .px-row.is-secured, .px-row.teach-pupil.is-selected, .px-chip:focus, .px-step:focus, .px-scroll[data-reads]:focus) {
+.pixel-ui:is(.wood-floor, .dex-floor) .px-body :is(button.px-row:focus, .px-row.is-secured, .px-row.teach-pupil.is-selected, .px-chip:focus, .px-step:focus, .px-scroll[data-reads]:focus, .move-chooser-new .px-row.move-card, button.px-row.move-card.is-forgetting, .confirm-bar.teach-bar.is-armed, .confirm-bar.move-chooser-actions.is-armed) {
   color: var(--ink);
 }
 /* What kind of card it is, said by its heading strip's colour, never by a tint
@@ -4052,16 +4196,24 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .extraction-verdict {
   display: grid;
 }
-/* The moment a raid that got out opens on (`run/resultMoment.ts`): a dark
-   stage under the menus' own title strip, so leaving the raid feels like a win
-   rather than a white page (the captain, 26 Nov 2026: "It's so white after
-   you come out of the game ... it's just ugly and not in theme"). The deed in
-   big gold words, the money counting up and the clock it beat, each thing
-   dropping into HOME, and the next thing as a card. The ledger is one key away. */
+/* The moment a raid that got out opens on (`run/resultMoment.ts`) is a scene,
+   not a card: the place the raid got out of is still there behind it, gone dim
+   (`ExtractionScene.standInThePlace`), and on it stand the team that walked
+   out, the raid pack and the chest at home. The deed is in big gold words; the
+   finds fly from the pack into the chest one by one and fill the squares under
+   it; the money counts up; each of the team's bars fills with what it earned;
+   and the next thing comes in as a card beside the way on. It is drawn in the
+   world's own pixel (`px-world`) on the wood floor's colours, so a Pokémon on
+   it is the size one stands in a fight and nothing on it is white but a plate
+   of words. The captain, 26 Nov 2026, of the white card and then of the dark
+   stage that replaced it: "It's so white after you come out of the game", and
+   "I do like that animation ... We still need to improve on the overall
+   screen". The ledger is one key away. */
 :where(.pixel-ui) .extraction-moment-layout {
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
   height: 100%;
+  padding: 0;
 }
 :where(.pixel-ui) .moment-stage {
   position: relative;
@@ -4070,116 +4222,265 @@ body.touch-play .feedback-tab {
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: calc(var(--u) * 8);
+  gap: calc(var(--u) * 6);
   min-height: 0;
-  padding: calc(var(--u) * 8);
-  border: calc(var(--u) * 2) solid var(--ink);
-  background: var(--ink);
-  color: var(--paper);
+  padding: calc(var(--u) * 4) calc(var(--u) * 6);
+  /* With no picture of the place to stand in, the stage is a floor of dark wood, never black. */
+  background: var(--paper-sunk);
+  color: var(--ink);
   text-align: center;
 }
-/* A burst of the ink's own two shades behind the deed, as THE BATTLE ARENA's
-   red one stands behind its hero. */
-:where(.pixel-ui) .moment-stage::before {
+/* Standing in the place, the stage dims it a little further than a screen's
+   own backdrop does, so what stands on it is the brightest thing there. */
+:where(.pixel-ui) .moment-stage.is-in-place {
+  background: rgb(18 16 17 / 40%);
+}
+/* Its help strip is as tall as what it says: the keys, and a note over them
+   only when there is one. The two lines every other screen keeps empty for the
+   thing under the cursor are a fifth of this one, and nothing here is asked. */
+.menu-overlay.pixel-ui.extraction-menu.px-world .px-help.has-keys {
+  height: auto;
+  padding-bottom: var(--u);
+}
+/* The ground under whatever stands on the stage: a flat shadow, drawn in rows. */
+:where(.pixel-ui) :is(.moment-pack, .moment-chest, .moment-mate)::before {
+  --ground: rgb(0 0 0 / 45%);
   content: '';
   position: absolute;
   z-index: -1;
   left: 50%;
-  top: calc(var(--u) * -170);
-  width: calc(var(--u) * 480);
-  height: calc(var(--u) * 480);
+  bottom: calc(var(--u) * -2);
+  width: calc(var(--u) * 36);
+  height: calc(var(--u) * 6);
   translate: -50% 0;
-  clip-path: circle(50%);
-  background: repeating-conic-gradient(from 0deg at 50% 50%, var(--ink-2) 0 8deg, var(--ink) 8deg 16deg);
+  background:
+    linear-gradient(var(--ground), var(--ground)) 50% 0 / calc(100% - var(--u) * 8) var(--u) no-repeat,
+    linear-gradient(var(--ground), var(--ground)) 50% var(--u) / calc(100% - var(--u) * 4) var(--u) no-repeat,
+    linear-gradient(var(--ground), var(--ground)) 50% calc(var(--u) * 2) / 100% calc(var(--u) * 2) no-repeat,
+    linear-gradient(var(--ground), var(--ground)) 50% calc(var(--u) * 4) / calc(100% - var(--u) * 4) var(--u) no-repeat,
+    linear-gradient(var(--ground), var(--ground)) 50% calc(var(--u) * 5) / calc(100% - var(--u) * 8) var(--u) no-repeat;
 }
-/* A picture - the catch, the player in a won honour - stands beside the deed
-   rather than over it, so the stage fits an 800x600 window. */
-:where(.pixel-ui) .moment-hero {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: calc(var(--u) * 8);
+:where(.pixel-ui) .moment-chest::before {
+  width: calc(var(--u) * 68);
+}
+:where(.pixel-ui) .moment-mate::before {
+  top: calc(var(--u) * 61);
+  bottom: auto;
+  width: calc(var(--u) * 44);
 }
 :where(.pixel-ui) .moment-deed {
   display: grid;
   justify-items: center;
-  gap: calc(var(--u) * 4);
+  gap: calc(var(--u) * 3);
 }
-:where(.pixel-ui) .moment-picture {
-  image-rendering: pixelated;
-}
-:where(.pixel-ui) .moment-picture.is-pokemon {
-  width: calc(var(--u) * 64);
-  height: calc(var(--u) * 64);
-}
-/* Under 300 game pixels down, the picture is drawn at its own size, so the
-   rest of the stage fits under it. */
-:where(.pixel-ui[data-short]) .moment-picture.is-pokemon {
-  width: calc(var(--u) * 48);
-  height: calc(var(--u) * 48);
-}
-:where(.pixel-ui) .moment-picture.is-item {
-  width: calc(var(--u) * 48);
-  height: calc(var(--u) * 48);
-}
-:where(.pixel-ui) .moment-picture.is-honour {
-  /* The player's own figure, 16x32, turning round once in what they just won:
-     facing you, a side, the back - held there longest - and the other side. */
-  display: block;
-  width: calc(var(--u) * 48);
-  height: calc(var(--u) * 96);
-  background-image: var(--honour-strip);
-  background-size: 400% 100%;
-  background-repeat: no-repeat;
-  image-rendering: pixelated;
-  animation: honour-turn 3.6s steps(1, end) infinite;
-}
-:where(.pixel-ui[data-short]) .moment-picture.is-honour {
-  width: calc(var(--u) * 32);
-  height: calc(var(--u) * 64);
-}
-/* The deed: the one size twice over, leaning, gold on the ink with a hard
-   red shadow - THE BATTLE ARENA's Big and Bold look (`.bold-title`). */
+/* The deed: the one size twice over, leaning, gold with a dark edge and a
+   hard red shadow - THE BATTLE ARENA's Big and Bold look (`.bold-title`). */
 :where(.pixel-ui) .bold-moment-headline {
   font-size: calc(var(--u) * 25);
   line-height: calc(var(--u) * 24);
   font-style: italic;
   color: var(--gold);
   text-transform: uppercase;
-  -webkit-text-stroke: calc(var(--u) * 2) var(--ink);
+  -webkit-text-stroke: calc(var(--u) * 2) var(--bar);
   paint-order: stroke fill;
-  text-shadow: calc(var(--u) * 2) calc(var(--u) * 2) 0 var(--red-ink);
-  max-width: calc(var(--u) * 300);
+  text-shadow: calc(var(--u) * 2) calc(var(--u) * 2) 0 var(--red);
+  max-width: calc(var(--u) * 360);
 }
 :where(.pixel-ui) .moment-line {
-  color: var(--bar-muted);
-  max-width: calc(var(--u) * 280);
+  max-width: calc(var(--u) * 300);
+  color: var(--ink-soft);
+  -webkit-text-stroke: calc(var(--u) * 2) var(--bar);
+  paint-order: stroke fill;
 }
 :where(.pixel-ui) .moment-sticker {
   padding: 0 calc(var(--u) * 6);
   background: var(--red);
-  color: var(--paper);
+  color: var(--plate);
   transform: skewX(-12deg);
-  box-shadow: calc(var(--u) * 2) calc(var(--u) * 2) 0 var(--paper);
+  box-shadow: calc(var(--u) * 2) calc(var(--u) * 2) 0 var(--plate);
 }
-/* The money, HOME and the clock in one row: the two numbers on chips of the
-   ink's lighter shade either side of what came home. */
+/* The pack and the chest on the left, the team on the right, all standing on
+   one line. */
+:where(.pixel-ui) .moment-scene {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: calc(var(--u) * 16);
+  width: 100%;
+  min-width: 0;
+}
+/* The pack, a gap for a thing to cross, and the chest: both twice the world's
+   size, as a thing in hand is drawn. */
+:where(.pixel-ui) .moment-haul {
+  --flight: calc(var(--u) * 88);
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  gap: calc(var(--u) * 40);
+}
+:where(.pixel-ui) .moment-pack,
+:where(.pixel-ui) .moment-chest,
+:where(.pixel-ui) .moment-mate {
+  position: relative;
+  opacity: 0;
+}
+:where(.pixel-ui) .moment-pack img,
+:where(.pixel-ui) .moment-held {
+  display: block;
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+  image-rendering: pixelated;
+}
+/* THE CHEST's own picture (`home/furniture.ts`): shut, and open beside it. */
+:where(.pixel-ui) .moment-chest {
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 48);
+  background: url('/assets/storage-chest.png') 0 0 / 200% 100% no-repeat;
+  image-rendering: pixelated;
+  transform-origin: 50% 100%;
+}
+:where(.pixel-ui) .moment-flight {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+  opacity: 0;
+}
+:where(.pixel-ui) .moment-flight i {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-style: normal;
+  color: var(--gold);
+  -webkit-text-stroke: calc(var(--u) * 2) var(--bar);
+  paint-order: stroke fill;
+}
+:where(.pixel-ui) .moment-flight img {
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+  image-rendering: pixelated;
+}
+:where(.pixel-ui) .moment-plus {
+  position: absolute;
+  right: 0;
+  bottom: calc(var(--u) * 44);
+  width: calc(var(--u) * 64);
+  color: var(--gold);
+  -webkit-text-stroke: calc(var(--u) * 2) var(--bar);
+  paint-order: stroke fill;
+  opacity: 0;
+}
+:where(.pixel-ui) .moment-ring {
+  position: absolute;
+  right: calc(var(--u) * -4);
+  bottom: calc(var(--u) * -4);
+  width: calc(var(--u) * 72);
+  height: calc(var(--u) * 56);
+  border: calc(var(--u) * 2) solid var(--gold);
+  opacity: 0;
+}
+/* The team: each as big as it stands in a fight. A line too long for the room
+   closes up, one standing a little in front of the next: every frame keeps its
+   whole width, and each after the first is pulled back over the one before by
+   `--close` game pixels, a whole number the stage's fit works out from the
+   room there is (`matesOverlap`, `fitMomentStage`). */
+:where(.pixel-ui) .moment-team {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+:where(.pixel-ui) .moment-mate {
+  position: relative;
+  flex: none;
+  width: calc(var(--u) * 64);
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--u) * 5);
+}
+:where(.pixel-ui) .moment-mate + .moment-mate {
+  margin-left: calc(var(--u) * var(--close, 0) * -1);
+}
+/* Its picture is moved down by its own empty rows (`--drop`, FireRed's own
+   number), so every one of them has its feet on the one line at the foot of
+   the frame, where its shadow is. */
+:where(.pixel-ui) .moment-mate img {
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 64);
+  max-width: none;
+  image-rendering: pixelated;
+  translate: 0 calc(var(--u) * var(--drop, 0));
+}
+/* What it earned: its bar, from where it stood as it went in to where it stands now. */
+:where(.pixel-ui) .moment-xp {
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 4);
+  padding: var(--u);
+  background: var(--bar);
+}
+:where(.pixel-ui) .moment-xp i {
+  display: block;
+  width: var(--from);
+  height: 100%;
+  background: #4a86c8;
+}
+:where(.pixel-ui) .moment-mate.is-new::after {
+  content: '';
+  height: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .moment-grew {
+  position: absolute;
+  /* Just over its head: the frame's empty rows over it, less a line of letters.
+     Over the next one in a line that has closed up, too. */
+  z-index: 1;
+  top: calc(var(--u) * (var(--head, 12) - 12));
+  left: 50%;
+  translate: -50% 0;
+  white-space: nowrap;
+  color: var(--gold);
+  text-transform: uppercase;
+  -webkit-text-stroke: calc(var(--u) * 2) var(--bar);
+  paint-order: stroke fill;
+  opacity: 0;
+}
+/* The player in a gym honour just won, at the head of the line: their own
+   figure, 16x32, turning round once - facing you, a side, the back, held
+   there longest, and the other side. */
+:where(.pixel-ui) .moment-picture.is-honour {
+  flex: none;
+  display: block;
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 64);
+  margin-bottom: calc(var(--u) * 8);
+  background-image: var(--honour-strip);
+  background-size: 400% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  animation: honour-turn 3.6s steps(1, end) infinite;
+}
+/* The money, what is in the chest now and the clock, in one row. */
 :where(.pixel-ui) .moment-stats {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  gap: calc(var(--u) * 8);
+  gap: calc(var(--u) * 6);
+  opacity: 0;
 }
+/* A number is on a plate of the lighter wood, in its dark ink. */
 :where(.pixel-ui) .moment-stat {
   display: inline-flex;
   align-items: center;
-  gap: calc(var(--u) * 4);
-  min-height: calc(var(--u) * 28);
-  padding: 0 calc(var(--u) * 8) 0 calc(var(--u) * 4);
-  border: calc(var(--u) * 2) solid var(--paper);
-  background: var(--ink-2);
-  color: var(--paper);
+  gap: calc(var(--u) * 3);
+  min-height: calc(var(--u) * 20);
+  padding: 0 calc(var(--u) * 5) 0 calc(var(--u) * 3);
+  border: var(--u) solid var(--line);
+  background: var(--paper-raised);
+  box-shadow: var(--raised);
+  color: var(--raised-ink);
   text-transform: uppercase;
 }
 :where(.pixel-ui) .moment-stat img {
@@ -4187,50 +4488,32 @@ body.touch-play .feedback-tab {
   height: calc(var(--u) * 16);
   image-rendering: pixelated;
 }
+/* The money is sunk into dark wood, so its gold reads as gold. */
 :where(.pixel-ui) .moment-stat.is-money {
-  border-color: var(--gold);
+  background: var(--paper-sunk);
+  box-shadow: var(--sunk);
 }
 :where(.pixel-ui) .bold-moment-money {
   font-size: calc(var(--u) * 25);
   line-height: calc(var(--u) * 24);
-  color: var(--gold);
-  /* The digits never shove the chip about as they count. */
+  color: var(--paper-lit);
+  /* The digits never shove the plate about as they count. */
   font-variant-numeric: tabular-nums;
 }
 :where(.pixel-ui) .moment-stat.is-clock.is-close {
-  border-color: var(--red);
-  background: var(--red-ink);
+  background: var(--red);
+  box-shadow: none;
+  color: var(--plate);
 }
-/* HOME, the pane YOUR THINGS keeps what is safe in: its green strip and house,
-   and a cell a thing, drawn at twice its size as YOUR THINGS draws it. */
+/* What is in the chest now: a board with a sunk square a thing, each drawn
+   at twice its size as YOUR THINGS draws it. */
 :where(.pixel-ui) .moment-home {
   --cell: calc(var(--u) * 34);
-  display: grid;
-  border: calc(var(--u) * 2) solid var(--paper);
-  background: var(--paper);
-  box-shadow: calc(var(--u) * 3) calc(var(--u) * 3) 0 var(--shade);
-}
-:where(.pixel-ui) .moment-home-head {
   display: flex;
-  align-items: center;
-  gap: calc(var(--u) * 3);
-  padding: 0 calc(var(--u) * 4);
-  background: var(--go);
-  color: var(--paper);
-  text-align: left;
-  text-transform: uppercase;
-}
-:where(.pixel-ui) .moment-home-head::before {
-  content: '';
-  width: calc(var(--u) * 9);
-  height: calc(var(--u) * 9);
-  background: var(--px-house) center / 100% 100% no-repeat;
-  image-rendering: pixelated;
-}
-:where(.pixel-ui) .moment-home-cells {
-  display: flex;
-  gap: calc(var(--u) * 2);
+  gap: var(--u);
   padding: calc(var(--u) * 2);
+  border: var(--u) solid var(--line);
+  background: var(--paper);
 }
 :where(.pixel-ui) .moment-home-cell {
   position: relative;
@@ -4239,6 +4522,7 @@ body.touch-play .feedback-tab {
   width: var(--cell);
   height: var(--cell);
   background: var(--paper-sunk);
+  box-shadow: var(--sunk);
 }
 :where(.pixel-ui) .moment-home-thing {
   display: grid;
@@ -4257,95 +4541,183 @@ body.touch-play .feedback-tab {
   right: 0;
   bottom: 0;
   padding: 0 calc(var(--u) * 1);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bar);
+  color: var(--bar-text);
+  line-height: calc(var(--u) * 10);
   opacity: 0;
 }
-:where(.pixel-ui) .moment-home-cell.is-in .moment-home-count {
-  opacity: 1;
+/* Oak's next thing and the way on, on one line: the card to the left, the
+   buttons to the right. */
+:where(.pixel-ui) .moment-way {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: calc(var(--u) * 6);
+  width: 100%;
+  min-width: 0;
 }
-/* Oak's next thing, as a card: a gold strip says what kind, then its name. */
+/* The next thing, as a card: a plate of paper, a gold strip that says what
+   kind, then its name. */
 :where(.pixel-ui) .moment-next {
+  flex: 0 1 auto;
   display: grid;
   justify-items: start;
-  min-width: calc(var(--u) * 180);
-  max-width: calc(var(--u) * 300);
-  border: calc(var(--u) * 2) solid var(--paper);
-  background: var(--paper);
-  color: var(--ink);
+  min-width: 0;
+  max-width: calc(var(--u) * 220);
+  border: var(--u) solid var(--plate-ink);
+  background: var(--plate);
+  color: var(--plate-ink);
   text-align: left;
-  box-shadow: calc(var(--u) * 3) calc(var(--u) * 3) 0 var(--gold);
+  box-shadow: calc(var(--u) * 2) calc(var(--u) * 2) 0 var(--gold);
   opacity: 0;
 }
 :where(.pixel-ui) .moment-next-head {
   justify-self: stretch;
   padding: 0 calc(var(--u) * 4);
   background: var(--gold);
-  color: var(--ink);
+  color: var(--plate-ink);
   text-transform: uppercase;
 }
 :where(.pixel-ui) .bold-moment-next-name {
-  padding: calc(var(--u) * 3) calc(var(--u) * 4) 0;
+  padding: calc(var(--u) * 2) calc(var(--u) * 4) 0;
   font-size: calc(var(--u) * 25);
   line-height: calc(var(--u) * 24);
   font-style: italic;
-  color: var(--ink);
+  color: var(--plate-ink);
 }
 :where(.pixel-ui) .moment-next-where {
-  padding: 0 calc(var(--u) * 4) calc(var(--u) * 2);
-  color: var(--ink-soft);
+  padding: 0 calc(var(--u) * 4) calc(var(--u) * 1);
+  color: var(--ink-2);
 }
-:where(.pixel-ui) .moment-stage.is-tight,
-:where(.pixel-ui) .moment-stage.is-tight .moment-stats {
+:where(.pixel-ui) .moment-actions {
+  flex: none;
+  display: grid;
+  justify-items: end;
+  gap: calc(var(--u) * 3);
+  margin-left: auto;
+}
+:where(.pixel-ui) .moment-buttons {
+  display: flex;
+  align-items: center;
   gap: calc(var(--u) * 4);
 }
+/* What went wrong with the save, over the buttons: a red plate, as wide as its words. */
+:where(.pixel-ui) .moment-warning {
+  padding: 0 calc(var(--u) * 4);
+  background: var(--red);
+  color: var(--plate);
+}
+/* A stage too short for all of it gives way in three steps, the loot last:
+   first it closes up and writes the next thing's name in one size of letter;
+   then it draws what is in the chest at the world's own size; then it says
+   less (`fitMomentStage`). */
+:where(.pixel-ui) .moment-stage.is-tight,
+:where(.pixel-ui) .moment-stage.is-tight .moment-stats {
+  gap: calc(var(--u) * 2);
+}
 :where(.pixel-ui) .moment-stage.is-tight {
-  padding: calc(var(--u) * 4);
+  padding: calc(var(--u) * 2) calc(var(--u) * 4);
+}
+:where(.pixel-ui) .moment-stage.is-tight .moment-deed {
+  gap: var(--u);
 }
 :where(.pixel-ui) .moment-stage.is-tight .moment-home {
-  --cell: calc(var(--u) * 26);
+  padding: var(--u);
 }
-:where(.pixel-ui) .moment-stage.is-tight .moment-home-thing img {
+:where(.pixel-ui) .moment-stage.is-tight .bold-moment-next-name {
+  padding-top: 0;
+  font-size: inherit;
+  line-height: inherit;
+  font-style: normal;
+}
+:where(.pixel-ui) .moment-stage.is-tighter .moment-home {
+  --cell: calc(var(--u) * 20);
+}
+:where(.pixel-ui) .moment-stage.is-tighter .moment-home-thing img {
   width: calc(var(--u) * 16);
   height: calc(var(--u) * 16);
 }
-:where(.pixel-ui) .moment-stage.is-tight .moment-picture.is-pokemon {
-  width: calc(var(--u) * 48);
-  height: calc(var(--u) * 48);
+:where(.pixel-ui) .moment-stage.is-tighter .moment-home-count {
+  right: calc(var(--u) * -2);
+  bottom: calc(var(--u) * -2);
 }
-:where(.pixel-ui) .moment-stage.is-tight .bold-moment-next-name {
-  font-size: inherit;
-  line-height: inherit;
-}
-:where(.pixel-ui) .moment-stage.is-tighter .moment-line,
-:where(.pixel-ui) .moment-stage.is-tighter .moment-next-where {
+:where(.pixel-ui) .moment-stage.is-tightest .moment-line,
+:where(.pixel-ui) .moment-stage.is-tightest .moment-next-where {
   display: none;
 }
 /* Before its pictures are drawn the stage holds still, then plays in order:
-   the deed, the money and clock, a drop a fifth of a second apart, the card. */
-:where(.pixel-ui) .moment-hero,
-:where(.pixel-ui) .moment-stats {
+   the deed; the pack, the team and the numbers; the chest and its lid; a
+   flight every three tenths of a second. A part whose move starts in sight -
+   a hop, a drop, a flight - keeps only where the move ends (`forwards`), never
+   where it starts: filled backwards it stood there, in sight, until its turn. */
+:where(.pixel-ui) .moment-deed {
   opacity: 0;
 }
-:where(.pixel-ui) .moment-stage.is-playing .moment-hero {
+:where(.pixel-ui) .moment-stage.is-playing .moment-deed {
   animation: moment-land 0.3s steps(6, end) both;
 }
+:where(.pixel-ui) .moment-stage.is-playing .moment-pack,
 :where(.pixel-ui) .moment-stage.is-playing .moment-stats {
   animation: moment-rise 0.2s steps(4, end) 0.3s both;
 }
-:where(.pixel-ui) .moment-stage.is-playing .moment-home-thing {
-  animation: moment-drop 0.45s steps(12, end) calc(0.7s + var(--at) * 0.2s) both;
+:where(.pixel-ui) .moment-stage.is-playing .moment-mate {
+  opacity: 1;
+  animation: moment-hop 0.25s steps(5, end) calc(0.3s + var(--at) * 0.08s) backwards;
 }
-:where(.pixel-ui) .moment-stage.is-playing .moment-next {
-  animation: moment-rise 0.25s steps(5, end) calc(0.9s + var(--drops) * 0.2s) both;
+:where(.pixel-ui) .moment-stage.is-playing .moment-mate.is-new .moment-grew {
+  animation: moment-in 0.2s steps(3, end) calc(0.6s + var(--at) * 0.08s) forwards;
 }
-:where(.pixel-ui) .moment-stage.is-still .moment-hero,
-:where(.pixel-ui) .moment-stage.is-still .moment-stats,
-:where(.pixel-ui) .moment-stage.is-still .moment-home-thing,
-:where(.pixel-ui) .moment-stage.is-still .moment-home-count,
-:where(.pixel-ui) .moment-stage.is-still .moment-next {
+:where(.pixel-ui) .moment-stage.is-playing .moment-chest {
+  animation:
+    moment-chest-drop 0.3s steps(6, end) 0.35s forwards,
+    moment-lid-open 0.01s linear 0.7s forwards;
+}
+:where(.pixel-ui) .moment-stage.is-playing .moment-flight {
+  animation: moment-across 0.45s steps(10, end) calc(0.9s + var(--at) * 0.3s) forwards;
+}
+:where(.pixel-ui) .moment-stage.is-playing .moment-flight i {
+  animation: moment-arc 0.45s steps(1, end) calc(0.9s + var(--at) * 0.3s) forwards;
+}
+:where(.pixel-ui) .moment-stage.is-playing .moment-plus {
+  animation: moment-plus 0.4s steps(5, end) calc(1.35s + var(--at) * 0.3s) forwards;
+}
+:where(.pixel-ui) .moment-home-cell.is-in .moment-home-thing {
+  animation: moment-in 0.15s steps(3, end) both;
+}
+:where(.pixel-ui) .moment-home-cell.is-in .moment-home-count {
+  opacity: 1;
+}
+/* The last thing is in: the lid shuts with a ring of gold, each bar fills
+   with what its Pokémon earned, a new level is called, and the next thing
+   comes in. */
+:where(.pixel-ui) .moment-stage.is-playing.is-stowed .moment-chest {
+  opacity: 1;
+  animation: moment-chest-shut 0.15s steps(3, end) both;
+}
+:where(.pixel-ui) .moment-stage.is-playing.is-stowed .moment-ring {
+  animation: moment-ring 0.4s steps(5, end) both;
+}
+:where(.pixel-ui) .moment-stage.is-playing.is-stowed .moment-xp i {
+  animation: moment-bar 0.6s steps(12, end) 0.15s both;
+}
+:where(.pixel-ui) .moment-stage.is-playing.is-stowed .moment-mate.is-grown .moment-grew {
+  animation: moment-in 0.2s steps(3, end) 0.75s forwards;
+}
+:where(.pixel-ui) .moment-stage.is-playing.is-stowed .moment-next {
+  animation: moment-rise 0.25s steps(5, end) 0.4s both;
+}
+/* Reduced motion: all of it already there, as it ends, and nothing plays
+   (`is-still` alone: every move above hangs off `is-playing`). */
+:where(.pixel-ui) .moment-stage.is-still :is(.moment-deed, .moment-pack, .moment-chest, .moment-mate, .moment-grew, .moment-stats, .moment-home-thing, .moment-home-count, .moment-next) {
   animation: none;
   opacity: 1;
+}
+:where(.pixel-ui) .moment-stage.is-still :is(.moment-flight, .moment-flight i, .moment-plus, .moment-ring) {
+  animation: none;
+}
+:where(.pixel-ui) .moment-stage.is-still .moment-xp i {
+  animation: none;
+  width: var(--to);
 }
 @media (prefers-reduced-motion: reduce) {
   :where(.pixel-ui) .moment-picture.is-honour {
@@ -5794,6 +6166,102 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .game-corner-layout.has-course {
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
+/* A cabinet's window with its line-up in it (`ui/pickerLineUp.ts`): its
+   heading, who is going in, then the list they are chosen from. */
+:where(.pixel-ui) .game-corner-layout > .px-window.has-lineup {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+/* A game one Pokémon plays stands it beside the list, not over it: a line of
+   one is a narrow thing, and stacked it cost the list half its rows - under
+   THE PROMENADE DERBY's row of courses, all but one. */
+:where(.pixel-ui) .game-corner-layout > .px-window.has-lineup.is-one {
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  column-gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .game-corner-layout > .px-window.has-lineup.is-one > .px-heading {
+  grid-column: 1 / -1;
+}
+/* The line-up: everyone chosen standing as big as in a fight, each moved down
+   by its own empty rows (`--drop`, FireRed's own number) so all their feet are
+   on one line, on a shadow drawn in rows; and a sunk square for each place
+   still free. They stand on a strip sunk into the window, which is what parts
+   them from the list under it. */
+:where(.pixel-ui) .lineup-places {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: calc(var(--u) * 12);
+  padding: 0 calc(var(--u) * 4) calc(var(--u) * 1);
+  margin-bottom: calc(var(--u) * 3);
+  background: var(--paper-sunk);
+  box-shadow: var(--sunk);
+}
+:where(.pixel-ui) .is-one > .lineup-places {
+  align-self: start;
+  width: calc(var(--u) * 88);
+  margin-bottom: 0;
+}
+:where(.pixel-ui) .lineup-place {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  width: calc(var(--u) * 64);
+}
+:where(.pixel-ui) .lineup-place img {
+  position: relative;
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 64);
+  image-rendering: pixelated;
+  translate: 0 calc(var(--u) * var(--drop, 0));
+}
+:where(.pixel-ui) .lineup-place:not(.is-free)::before {
+  --ground: rgb(0 0 0 / 40%);
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: calc(var(--u) * 61);
+  width: calc(var(--u) * 44);
+  height: calc(var(--u) * 6);
+  translate: -50% 0;
+  background:
+    linear-gradient(var(--ground), var(--ground)) 50% 0 / calc(100% - var(--u) * 8) var(--u) no-repeat,
+    linear-gradient(var(--ground), var(--ground)) 50% var(--u) / calc(100% - var(--u) * 4) var(--u) no-repeat,
+    linear-gradient(var(--ground), var(--ground)) 50% calc(var(--u) * 2) / 100% calc(var(--u) * 2) no-repeat,
+    linear-gradient(var(--ground), var(--ground)) 50% calc(var(--u) * 4) / calc(100% - var(--u) * 4) var(--u) no-repeat,
+    linear-gradient(var(--ground), var(--ground)) 50% calc(var(--u) * 5) / calc(100% - var(--u) * 8) var(--u) no-repeat;
+}
+:where(.pixel-ui) .lineup-name {
+  margin-top: calc(var(--u) * 4);
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+/* A place still free: an empty square let into the strip, standing where a
+   Pokémon's feet would. */
+:where(.pixel-ui) .lineup-place.is-free::after {
+  content: '';
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+  margin-top: calc(var(--u) * 32);
+  margin-bottom: calc(var(--u) * 16);
+  box-shadow: inset 0 0 0 var(--u) var(--line);
+}
+/* A row of the list is headed by its Pokémon's icon, which overhangs it as
+   FireRed's party icons overhang their boxes: the row stays the two lines it
+   was, so the list shows as many as it did. */
+:where(.pixel-ui) .game-corner-layout .px-row.has-icon > .px-mon-icon {
+  margin: calc(var(--u) * -4) 0;
+}
+/* A small room has no room to stand anyone: it has no line-up, and is the
+   list it was, under the heading that says how many are in. At 800x600 a
+   line-up left the list no row at all. */
+.pixel-ui:is([data-room='tight'], [data-short]) .game-corner-layout .lineup-places {
+  display: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .game-corner-layout > .px-window.has-lineup {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
 /* THE PROMENADE DERBY's courses: a row of levels over the list of who races. */
 :where(.pixel-ui) .outdoor-course-levels {
   display: flex;
@@ -6905,12 +7373,12 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui[data-room='tight']) .boutique-card .look-figure {
   --figure-scale: 1;
 }
-/* The shelves' own window: its heading, a row of jump chips, then the list. */
+/* The shelves' own window: its heading, the pager, then the list - in a
+   tight room too. It was given two rows there, from when the row between was
+   hidden at that size, so the pager took the list's row and the cards were
+   drawn over it (800x600, 27 Nov 2026). */
 :where(.pixel-ui) .boutique-panes > .boutique-shelves-window {
   grid-template-rows: auto auto minmax(0, 1fr);
-}
-:where(.pixel-ui[data-room='tight']) .boutique-panes > .boutique-shelves-window {
-  grid-template-rows: auto minmax(0, 1fr);
 }
 /* A look's figure is the whole point of this screen, so unlike a keeper's it
    stays at the smallest stage too. */
@@ -6953,6 +7421,123 @@ body.touch-play .feedback-tab {
 }
 .pixel-ui .boutique-card > strong {
   text-transform: none;
+}
+/* On the wood floor (`BoutiqueScene`) a shelf is boards and a card on it a
+   board of its own; the card under the cursor that is on in the mirror, and a
+   gym honour worn, are lit - light plates, lettered in the plate's ink. The
+   glass is a plate of the lighter wood in its gold frame: lit, it was a slab
+   of gold a third of the screen wide. */
+.pixel-ui.wood-floor .px-body .boutique-card:is(:focus, .is-honour) {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
+/* A question asked before something is spent for good (`.px-arming`) is washed
+   red, which makes it a plate: its name is the plate's ink, and its warning a
+   red dark enough to read on the wash. */
+.pixel-ui.wood-floor .px-body .px-arming {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
+.pixel-ui.wood-floor .px-body .px-arming .px-warning {
+  color: var(--wash-red-ink);
+}
+/* A Pokémon's tile under the cursor is lit, one chosen is washed green, and
+   the plate a Pokémon on a stage stands over is lit under the cursor: plates. */
+.pixel-ui.wood-floor .px-body .px-mon-tile:is(:focus, .is-selected),
+.pixel-ui.wood-floor .px-body .team-stand:focus .team-plate {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
+/* The raid's own panels (the pack, the party): a slot under the cursor, the
+   leader's, one picked up, and the thing under the cursor in the pack are lit
+   or washed, so plates. (The move being learned, one marked to forget and a
+   bar turned green to ask carry coloured tags, and are whole plates of the
+   page's palette: the rule that names `:root`.) */
+.pixel-ui.wood-floor .px-body .px-party-slot:is(:focus, .is-lead, .is-holding),
+.pixel-ui.wood-floor .px-body .px-item-tile:is(:focus, .is-riding) {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
+/* An empty place in the party is a sunk square ruled in the floor's own line:
+   ruled in soft ink, which is pale here, it was the brightest thing in the panel. */
+.pixel-ui.wood-floor .px-body .px-party-slot.is-empty {
+  --edge: var(--line);
+}
+/* A screen with no place behind it - the swap of a last Pokémon, the page of
+   play stats, a game that cannot be saved - stood its boards on black. It
+   stands them against a wall of darker boards: the sunk wood, ruled in the
+   floor's line at a plank's height. */
+.pixel-ui.wood-floor .px-body:is(.starter-shell, .stats-layout, .stats-message-layout) {
+  background: repeating-linear-gradient(180deg, var(--paper-sunk) 0 calc(var(--u) * 15), var(--line) calc(var(--u) * 15) calc(var(--u) * 16));
+}
+/* The starter under the cursor is lit, and the one that is yours washed green: plates. */
+.pixel-ui.wood-floor .px-body .starter-card:is(.is-selected, :hover) {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
+/* The map maker: the tool and the place in hand are chips washed green, so
+   lettered in the plate's ink; and what a check found wrong is said on the
+   boards themselves, in the light red a title strip's warning is (the page's
+   red is dark on dark there, and the floor's own red ink too pale to read as
+   one). A fault's tile is a raised chip, and keeps the page's. */
+.pixel-ui.wood-floor .px-body .px-chip:is(.maker-tool, .maker-area).is-selected {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
+.pixel-ui.wood-floor .px-body :is(.maker-check small, .px-row.maker-fault, .maker-fault-text) {
+  color: #ffa090;
+}
+.pixel-ui.wood-floor .px-body .maker-check.is-failed .maker-check-mark {
+  background: #ffa090;
+}
+/* Under the cursor a fault is a plate of paper again, and said in the page's red. */
+.pixel-ui.wood-floor .px-body .px-row.maker-fault:focus {
+  color: var(--red);
+}
+/* The rim's card: LAND, JOB and SKY are each a lit window beside their label,
+   white under the cursor - what stands in one is on a plate. */
+.pixel-ui.wood-floor .px-body .rim-choice > :not(.rim-choice-label) {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
+/* And a warning on the card's own boards - a hunter coming sooner, a walk the
+   clock will not allow, a jump refused - is the light red of a title strip's
+   warning: the page's red is dark on dark there. One in a lit window keeps it. */
+.pixel-ui.wood-floor .px-body .rim-card .px-warning,
+.pixel-ui.wood-floor .px-body .rim-card .rim-walk.is-warn .rim-walk-time {
+  color: #ffa090;
+}
+.pixel-ui.wood-floor .px-body .rim-card .rim-choice .px-warning {
+  color: var(--red);
+}
+/* A part there is enough of is a tag washed green, and so a plate too. */
+.pixel-ui.wood-floor .px-body :is(.part-tag, .workshop-cost):not(.is-short) {
+  color: var(--raised-ink);
+}
+/* The same for a card on Bill's shelf and in Brock's row of builds: under the
+   cursor it is lit, and one kept safe is washed green. */
+.pixel-ui.wood-floor .px-body :is(.trader-card, .workshop-card):is(:focus, .is-secured) {
+  --ink: var(--raised-ink);
+  --ink-soft: var(--raised-ink-soft);
+  color: var(--ink);
+}
+/* What it takes: the gold strip's small word and a HAVE tag are written on
+   gold and on a green wash, so in the plate's ink, not the floor's pale ones. */
+.pixel-ui.wood-floor .px-body .bq-takes.is-gold .px-heading small {
+  color: var(--raised-ink-soft);
+}
+.pixel-ui.wood-floor .px-body .bq-take.is-enough .bq-have {
+  color: var(--raised-ink);
+}
+.pixel-ui.wood-floor .px-body .bq-glass {
+  background: var(--paper-raised);
 }
 
 /* The bench is one list, the whole width of its panel. */
@@ -8052,6 +8637,20 @@ body.touch-play .feedback-tab {
   column-gap: calc(var(--u) * 3);
   row-gap: calc(var(--u) * 6);
 }
+/* A small window: beside the team, the pack and the locker the chest had room
+   for three and a half of its eight squares across, and it does not scroll
+   sideways - whatever was kept in the rest could not be seen at all (800x600;
+   `yourThings.mjs` calls it "the stash is cut off at the side"). There the
+   locker stands beside the team, over the pack, and the chest has the width
+   that leaves beside the pack: all eight across, fewer down, and down is what
+   scrolls. */
+.pixel-ui.things-menu[data-room='tight'] .things-layout {
+  grid-template-areas:
+    'team team locker'
+    'stash pack pack'
+    'hand hand hand';
+  row-gap: calc(var(--u) * 3);
+}
 .pixel-ui .things-layout > .things-stash {
   grid-area: stash;
   min-height: 0;
@@ -8454,9 +9053,45 @@ body.touch-play .feedback-tab {
   text-transform: uppercase;
   color: var(--safe-ink);
 }
-/* A small window's locker is two of the raid's squares wide, and the words keep to them. */
+/* The locker's heading says KEPT only where its body has no room to (below). */
+:where(.pixel-ui) .things-kept-note {
+  display: none;
+}
+/* A small window's locker card is as short as the pack's beside it, three
+   squares deep, and its squares, its count, KEPT ON A WIPE and ROOM FOR A FIND
+   stacked were twice that: the button stood out of the card's foot, over the
+   bar under it (800x600). There the heading says KEPT, as the chest's says
+   SAFE and the pack's LOST ON A WIPE; the count is under the squares; and the
+   button stands beside them. */
+.pixel-ui.things-menu[data-room='tight'] .things-kept-note {
+  display: flex;
+}
+.pixel-ui.things-menu[data-room='tight'] .things-locker-body {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  column-gap: calc(var(--u) * 3);
+  row-gap: calc(var(--u) * 2);
+}
 .pixel-ui.things-menu[data-room='tight'] .things-kept {
+  grid-column: 1;
+  width: auto;
+}
+/* The count alone: the words are the heading's. */
+.pixel-ui.things-menu[data-room='tight'] .things-kept-words {
+  display: none;
+}
+.pixel-ui.things-menu[data-room='tight'] .things-kept > .things-count {
+  margin: 0 auto;
+}
+.pixel-ui.things-menu[data-room='tight'] .px-button.things-find-open {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  /* As narrow as its words allow, on two or three lines: the team beside the
+     locker needs the width for its six places and the pack worn. */
+  justify-self: start;
   width: min-content;
+  min-width: calc(var(--u) * 52);
+  padding: var(--u) calc(var(--u) * 2);
 }
 .pixel-ui.things-menu .things-locker-grid .px-grid-block {
   background: var(--safe-wash);
@@ -9121,6 +9756,35 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .trader-cards > .px-arming {
   grid-column: 1 / -1;
 }
+/* A small window: the shelf for money took the height it wanted and pushed
+   the shelf for parts off the screen, and Bill's room under the card was cut
+   through his name (800x600). There each shelf has half the height and
+   scrolls under its own MORE; a card is as tall as what is on it; and Bill's
+   standing is his name, his rank and his bar, without the picture of his room. */
+.pixel-ui:is([data-room='tight'], [data-short]) .trader-goods {
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .trader-side {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .px-card.trader-card {
+  min-height: 0;
+  padding-top: calc(var(--u) * 2);
+  padding-bottom: calc(var(--u) * 2);
+  row-gap: var(--u);
+}
+/* ...and its thing at the icon's own size, so a card for money is whole in half the height. */
+.pixel-ui:is([data-room='tight'], [data-short]) .trader-art .item-icon,
+.pixel-ui:is([data-room='tight'], [data-short]) .trader-art .item-icon img {
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .trader-standing {
+  grid-template-rows: auto;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .trader-standing > .room-pic {
+  display: none;
+}
 :where(.pixel-ui) .trader-slot {
   display: grid;
   gap: calc(var(--u) * 2);
@@ -9165,7 +9829,7 @@ body.touch-play .feedback-tab {
   margin-top: auto;
   padding: 0 calc(var(--u) * 3);
   background: var(--gold);
-  color: var(--ink);
+  color: var(--plate-ink);
   box-shadow: 0 0 0 var(--u) var(--line);
 }
 :where(.pixel-ui) .price-tag.is-off {
@@ -9281,11 +9945,15 @@ body.touch-play .feedback-tab {
 .pixel-ui .shop-pick .px-step:focus::after {
   background: var(--cursor);
 }
+/* The shop card's blocks of ink lettered in white - a count, its head strip,
+   a key's cap - are drawn in what no floor remaps (`--bar`, `--bar-text`,
+   `--plate`, `--plate-ink`): on the wood floor `--ink` is white and `--paper`
+   is wood, and each of them came out a white block lettered in brown. */
 :where(.pixel-ui) .shop-pick .px-count > b {
   min-width: calc(var(--u) * 12);
   padding: 0 calc(var(--u) * 2);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bar);
+  color: var(--bar-text);
 }
 :where(.pixel-ui) .shop-head {
   display: flex;
@@ -9295,19 +9963,19 @@ body.touch-play .feedback-tab {
   height: calc(var(--u) * 14);
   margin: calc(var(--u) * -3) calc(var(--u) * -3) 0;
   padding: 0 calc(var(--u) * 3);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bar);
+  color: var(--bar-text);
   text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
 }
 :where(.pixel-ui) .shop-head.is-gold {
   background: var(--gold);
-  color: var(--ink);
+  color: var(--plate-ink);
 }
 :where(.pixel-ui) .shop-head.is-green {
   background: var(--go);
-  color: var(--paper);
+  color: var(--bar-text);
 }
 :where(.pixel-ui) .shop-show {
   display: flex;
@@ -9326,8 +9994,8 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .shop-count {
   padding: 0 calc(var(--u) * 3);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bar);
+  color: var(--bar-text);
 }
 :where(.pixel-ui) .shop-roll {
   display: flex;
@@ -9359,7 +10027,7 @@ body.touch-play .feedback-tab {
   height: calc(var(--u) * 14);
   padding: 0 calc(var(--u) * 5) 0 calc(var(--u) * 2);
   background: var(--go);
-  color: var(--paper);
+  color: var(--bar-text);
   text-transform: uppercase;
   box-shadow:
     0 0 0 var(--u) var(--line),
@@ -9367,8 +10035,8 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .shop-key {
   padding: 0 calc(var(--u) * 2);
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--plate);
+  color: var(--plate-ink);
 }
 
 /* Bill in his room, and his trust: one bar, a stretch a standing. */
@@ -9391,8 +10059,8 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .trader-rank {
   padding: 0 calc(var(--u) * 3);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bar);
+  color: var(--bar-text);
   text-transform: uppercase;
 }
 :where(.pixel-ui) .trader-trust-bar {
@@ -9500,6 +10168,42 @@ body.touch-play .feedback-tab {
 .pixel-ui .workshop-card > .px-name {
   min-height: calc(var(--u) * 12);
 }
+/* A small window: seventy-six a card, the builds wrapped to two rows and took
+   the screen, leaving Brock's room and what a build does as slivers over them
+   (800x600). There they stand in one row, as narrow as it takes: a card is
+   its name and what it is built with, without its picture, which is wider
+   than the card and is chalked in the room above anyway; and the card beside
+   the room gives up its tally of how many are built. */
+.pixel-ui:is([data-room='tight'], [data-short]) .workshop-skyline {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .ws-tally {
+  display: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .workshop-skyline .workshop-stage {
+  display: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .workshop-skyline .workshop-card > .px-name {
+  white-space: normal;
+  text-align: center;
+}
+/* What a build waits on is two words under a padlock there, not a line beside it. */
+.pixel-ui:is([data-room='tight'], [data-short]) .workshop-skyline .workshop-after {
+  flex-direction: column;
+  gap: 0;
+  padding: var(--u) calc(var(--u) * 2);
+  white-space: normal;
+  text-align: center;
+}
+/* And the card beside the room closes up, so the key that builds is whole. */
+.pixel-ui:is([data-room='tight'], [data-short]) :is(.trader-detail-card, .workshop-info) {
+  padding: calc(var(--u) * 3);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .shop-card {
+  gap: calc(var(--u) * 2);
+}
 .pixel-ui .workshop-card.is-built {
   --fill: var(--paper);
 }
@@ -9519,8 +10223,8 @@ body.touch-play .feedback-tab {
   justify-content: center;
   min-height: calc(var(--u) * 40);
   padding: calc(var(--u) * 3);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bar);
+  color: var(--bar-text);
 }
 :where(.pixel-ui) .ws-chip,
 :where(.pixel-ui) .ws-becomes {
@@ -9859,9 +10563,24 @@ body.touch-play .feedback-tab {
 }
 
 /* --- HELP and SETTINGS (`scenes/ControlsScene.ts`) ------------------------ */
+/* HELP is one pane of cards, read on with the arrows where a window is too
+   short for all of them. */
+:where(.pixel-ui) .cs-help-layout {
+  height: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-content: stretch;
+}
 :where(.pixel-ui) .cs-help {
+  display: grid;
   grid-template-columns: repeat(auto-fit, minmax(calc(var(--u) * 150), 1fr));
   align-items: start;
+  align-content: start;
+  /* As tall as its keys, whatever the pane: an `auto` row gave a card that
+     clips its own overflow no height it had to keep, and squeezed it. */
+  grid-auto-rows: max-content;
+  gap: calc(var(--u) * 4);
+  min-height: 0;
 }
 :where(.pixel-ui) .cs-keys {
   display: grid;
@@ -9879,8 +10598,8 @@ body.touch-play .feedback-tab {
   min-width: calc(var(--u) * 12);
   height: calc(var(--u) * 12);
   padding: 0 calc(var(--u) * 2);
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--plate-ink);
+  color: var(--plate);
   text-transform: uppercase;
 }
 :where(.pixel-ui) .cs-does {
@@ -9904,7 +10623,7 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .cs-switch.is-on {
   background: var(--go);
-  color: var(--paper);
+  color: var(--bar-text);
 }
 :where(.pixel-ui) .cs-switch.is-off {
   background: var(--paper-sunk);
@@ -9919,8 +10638,9 @@ body.touch-play .feedback-tab {
   min-width: calc(var(--u) * 12);
   height: calc(var(--u) * 12);
   padding: 0 calc(var(--u) * 2);
-  background: var(--ink);
-  color: var(--paper);
+  /* A key's cap is ink lettered in white on any floor (`--plate-ink`, `--plate`). */
+  background: var(--plate-ink);
+  color: var(--plate);
   text-transform: uppercase;
 }
 :where(.pixel-ui) .px-rosette {
@@ -9958,7 +10678,7 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .team-line {
   position: absolute;
   left: calc(var(--u) * 4);
-  right: calc(var(--u) * 164);
+  right: calc(var(--u) * 184);
   bottom: calc(var(--u) * 6);
   display: flex;
   justify-content: center;
@@ -9983,10 +10703,49 @@ body.touch-play .feedback-tab {
    that holds three abreast. */
 :where(.pixel-ui) .team-stand.is-back {
   z-index: 0;
-  transform: translateY(calc(var(--u) * -30));
 }
 :where(.pixel-ui) .team-stand:not(.is-back) {
   z-index: 1;
+}
+/* The two rows are made on the mound, not by lifting the back one's whole
+   place: lifted thirty, its head went out of the top of the stage, and its
+   plate rode up behind the front row's feet. One at the back stands twenty
+   further up its mound than one at the front, inside the place it has. */
+.pixel-ui .team-stand.is-back .px-portrait {
+  margin-bottom: calc(var(--u) * 48);
+}
+:where(.pixel-ui) .team-stand.is-back .team-platform {
+  bottom: calc(var(--u) * 14);
+}
+.pixel-ui .team-line:has(> .is-back) .team-stand:not(.is-back) .px-portrait {
+  margin-bottom: calc(var(--u) * 28);
+}
+/* Six plates do not fit under six places a third as wide as a plate: the
+   front row's show, and one at the back shows its own when the cursor (or the
+   pointer) is on it, which also brings it forward. */
+:where(.pixel-ui) .team-stand.is-back .team-plate {
+  visibility: hidden;
+}
+:where(.pixel-ui) .team-stand.is-back:focus .team-plate,
+:where(.pixel-ui[data-pointer='previews']) .team-stand.is-back:hover .team-plate {
+  visibility: visible;
+}
+.pixel-ui .team-stand:focus {
+  z-index: 2;
+}
+/* A place narrower than the picture in it lets the picture hang over both
+   sides, so the first of six hung out of the stage's left edge and the last
+   stood under the card: four or more stand in from the ends by a quarter of a
+   picture. */
+:where(.pixel-ui) .team-line:has(> .team-stand:nth-child(4)) {
+  padding: 0 calc(var(--u) * 32);
+}
+/* And the leader's plate, the longest (its rosette, LEAD, its name, its level,
+   its bar), starts near the stage's edge rather than centred on a place a
+   third its width, where its rosette went out of the side. */
+:where(.pixel-ui) .team-line:has(> .is-back) .team-stand:first-child .team-plate {
+  left: calc(var(--u) * -28);
+  transform: none;
 }
 :where(.pixel-ui) .team-platform {
   position: absolute;
@@ -10059,7 +10818,18 @@ body.touch-play .feedback-tab {
   position: absolute;
   top: calc(var(--u) * 6);
   right: calc(var(--u) * 4);
-  width: calc(var(--u) * 156);
+  /* Wide enough for two of the longest moves side by side (THUNDER WAVE beside
+     QUICK ATTACK): at 156 four moves were three rows, and the card ran out of
+     the foot of the stage. */
+  width: calc(var(--u) * 176);
+  /* Over whoever stands nearest: a mound is wider than its place, and the last
+     one's ran in under the card's edge and over its words (the first letters
+     of NEXT LV and of a move were grass). */
+  z-index: 3;
+}
+:where(.pixel-ui) .team-cards .team-moves {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
 }
 .pixel-ui .team-card {
   display: grid;
@@ -10080,7 +10850,9 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .px-stat {
   display: grid;
-  grid-template-columns: calc(var(--u) * 40) minmax(0, 1fr) calc(var(--u) * 34);
+  /* The number has the room it needs and at least 34: a way to the next level
+     in the thousands (6,488/6,859) ran out of the card's side. */
+  grid-template-columns: calc(var(--u) * 40) minmax(0, 1fr) minmax(calc(var(--u) * 34), auto);
   align-items: center;
   gap: calc(var(--u) * 3);
   text-transform: uppercase;
@@ -10119,9 +10891,13 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .team-card-foot {
   display: flex;
+  /* Where it is, and what the keys do to it: on one line when they fit, the
+     keys under it when they do not (two keys did not, and made the card wider
+     than its frame). */
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: calc(var(--u) * 4);
+  gap: calc(var(--u) * 2) calc(var(--u) * 4);
   margin-top: calc(var(--u) * 2);
 }
 :where(.pixel-ui) .team-card-where {
@@ -10130,9 +10906,23 @@ body.touch-play .feedback-tab {
   gap: calc(var(--u) * 2);
   color: var(--ink-soft);
 }
+:where(.pixel-ui) .team-card-held {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  white-space: nowrap;
+}
+/* Where it is, a dot, what it holds: the dot is drawn, so a card with nothing held has none. */
+:where(.pixel-ui) .team-card-place + .team-card-held::before {
+  content: '';
+  width: calc(var(--u) * 2);
+  height: calc(var(--u) * 2);
+  background: currentColor;
+}
 :where(.pixel-ui) .team-keys {
   display: flex;
-  gap: calc(var(--u) * 3);
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 2) calc(var(--u) * 3);
 }
 :where(.pixel-ui) .team-key {
   display: inline-flex;
@@ -10147,11 +10937,11 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .team-key.is-go {
   background: var(--go);
-  color: var(--paper);
+  color: var(--bar-text);
 }
 :where(.pixel-ui) .team-key.is-go .px-keycap {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--plate);
+  color: var(--plate-ink);
 }
 :where(.pixel-ui) .team-key.is-off {
   background: var(--paper-sunk);
@@ -10183,19 +10973,166 @@ body.touch-play .feedback-tab {
 }
 /* A tile that names its Pokémon under the icon - YOUR TEAM's boxes - is wide
    enough for a ten-letter name and tall enough for its level under it. The
-   partner's rosette stands on its corner, clear of the name. */
+   partner's rosette stands on its corner, clear of the name. (Fifty-two was
+   not enough for the widest ten: KANGASKHAN lost its N.) */
 :where(.pixel-ui) .px-mon-tiles:has(> .team-box-tile, > .dc-tile, > .is-named) {
-  grid-template-columns: repeat(auto-fill, calc(var(--u) * 52));
+  grid-template-columns: repeat(auto-fill, calc(var(--u) * 58));
 }
 .pixel-ui .px-mon-tile:is(.team-box-tile, .dc-tile, .is-named) {
   position: relative;
-  width: calc(var(--u) * 52);
+  width: calc(var(--u) * 58);
   height: calc(var(--u) * 58);
 }
 .pixel-ui .px-mon-tile .px-rosette {
   position: absolute;
   top: calc(var(--u) * 2);
   left: calc(var(--u) * 2);
+}
+
+/* YOUR TEAM in a small window (800x600: a body of 368 by 206 game pixels). A
+   stage over a list had 100 of them for a card that needs 110 and six
+   Pokémon at twice their size. There the team stands down the left, three
+   abreast at the art's own size with a name under each, and the card stands
+   over the chest's list on the right. */
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout {
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 184);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    'line cards'
+    'line boxes';
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout > .team-stage {
+  display: contents;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line {
+  grid-area: line;
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: end;
+  row-gap: calc(var(--u) * 6);
+  min-height: 0;
+  padding: calc(var(--u) * 6) calc(var(--u) * 2);
+  overflow: hidden;
+  background: url('/assets/battle/field-bands.png') left bottom / 100% calc(var(--u) * 258) no-repeat;
+  background-color: #40e8f8;
+  image-rendering: pixelated;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  height: calc(var(--u) * 84);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand .px-portrait {
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 64);
+  margin-bottom: calc(var(--u) * 18);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand .px-portrait img {
+  transform: scale(var(--zoom, 2));
+}
+/* One alone has the whole field, and stands as big as in a fight. */
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line:has(> .team-stand:only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand:only-child {
+  height: calc(var(--u) * 160);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand:only-child .px-portrait {
+  width: calc(var(--u) * 128);
+  height: calc(var(--u) * 128);
+  margin-bottom: calc(var(--u) * 24);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand:only-child .px-portrait img {
+  transform: scale(calc(var(--zoom, 2) * 2));
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-stand .team-platform {
+  display: none;
+}
+/* A name under each, and the rosette: the level and the health are on the card. */
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-stand.is-back .team-plate {
+  visibility: visible;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-plate {
+  gap: var(--u);
+  padding: 0 calc(var(--u) * 2);
+}
+/* A plate is wider than a place when the name is long or the rosette is on
+   it: the first of a row starts at its place's edge and the last ends at
+   its, so none goes out of the side of the field. */
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand:nth-child(3n + 1) .team-plate {
+  left: 0;
+  transform: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand:nth-child(3n + 2) .team-plate {
+  left: 50%;
+  transform: translateX(-50%);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand:nth-child(3n) .team-plate {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-line .team-stand:only-child .team-plate {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-plate > :is(.team-plate-level, .team-plate-lead, .px-hp) {
+  display: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-cards {
+  grid-area: cards;
+  position: static;
+  width: auto;
+}
+/* The card there: the five numbers two abreast under the HP and its bar, what
+   it holds beside its speed, its moves. Where it is, is where it stands. */
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--u) calc(var(--u) * 8);
+  padding-top: calc(var(--u) * 2);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card > :is(.px-heading, .team-moves),
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card > .px-stat:first-of-type {
+  grid-column: 1 / -1;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card > .px-stat:not(:first-of-type) {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card > .px-stat:not(:first-of-type) > .px-stat-bar,
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card > .px-stat:last-of-type,
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card .team-card-place,
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card .team-keys {
+  display: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card > .team-card-foot {
+  order: 1;
+  margin-top: 0;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card .team-card-held::before {
+  content: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-card > .team-moves {
+  order: 2;
+  margin-top: 0;
+}
+/* And the chest's list under it: FIND and one row of tiles, without its heading. */
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-boxes {
+  grid-area: boxes;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  margin: 0;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-boxes > .px-heading {
+  display: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .team-layout .team-boxes .px-mon-tiles {
+  max-height: none;
 }
 
 /* --- THE DAY-CARE in his own pen (`hub/dayCareView.ts`) ----------------- *
@@ -10302,8 +11239,8 @@ body.touch-play .feedback-tab {
   padding-left: calc(var(--u) * 3);
 }
 .pixel-ui .dc-leave .px-keycap {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--plate);
+  color: var(--plate-ink);
 }
 :where(.pixel-ui) .dc-refused {
   padding: 0 calc(var(--u) * 4) calc(var(--u) * 2);
@@ -10313,8 +11250,13 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .dc-who {
   margin: calc(var(--u) * 4);
 }
+/* The bar that sorts and finds, and one row of tiles under it: 18 and 58. At
+   62 a list of one row scrolled, for nothing, and rested with a sliver of its
+   bar showing; and in a longer one the MORE strip took the foot of the row
+   under the cursor, which was pushed up out of the pane's top to clear it,
+   cutting the partner's rosette. */
 :where(.pixel-ui) .dc-who .px-mon-tiles {
-  max-height: calc(var(--u) * 62);
+  max-height: calc(var(--u) * 76);
 }
 :where(.pixel-ui) :is(.dc-tile, .is-named) .px-mon-tile-line {
   display: flex;
@@ -10432,7 +11374,7 @@ body.touch-play .feedback-tab {
 :where(.pixel-ui) .tr-card > .px-heading {
   margin-bottom: 0;
   background: var(--gold);
-  color: var(--ink);
+  color: var(--plate-ink);
 }
 :where(.pixel-ui) .tr-name {
   text-transform: uppercase;
@@ -10453,8 +11395,8 @@ body.touch-play .feedback-tab {
   padding-left: calc(var(--u) * 3);
 }
 .pixel-ui .tr-go .px-keycap {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--plate);
+  color: var(--plate-ink);
 }
 :where(.pixel-ui) .tr-refused {
   color: var(--ink-soft);
@@ -10463,7 +11405,62 @@ body.touch-play .feedback-tab {
   margin: calc(var(--u) * 4);
 }
 :where(.pixel-ui) .tr-who .px-mon-tiles {
-  max-height: calc(var(--u) * 62);
+  max-height: calc(var(--u) * 76);
+}
+/* A small window (800x600, a body about 206 game pixels tall): a stage that
+   kept 150 of them for itself left the list under it too little for one row of
+   tiles, which stood out of their pane over the help line. There the list has
+   the height it asks for and the stage has the rest. */
+.pixel-ui:is([data-room='tight'], [data-short]) :is(.dc-layout, .tr-layout) {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) :is(.dc-who, .tr-who) {
+  margin: 0 calc(var(--u) * 2);
+}
+/* And who the Trader is shown stands at the art's own size there, not twice
+   it, on a mound half as wide: at twice, a stage of a hundred and twenty game
+   pixels cut their heads off. */
+.pixel-ui:is([data-room='tight'], [data-short]) .tr-stand {
+  width: calc(var(--u) * 68);
+  height: calc(var(--u) * 100);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .tr-stand .px-portrait {
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 64);
+  margin-bottom: calc(var(--u) * 30);
+}
+/* Two plates side by side have 116 between their middles there, and NEW IN
+   THE POKéDEX made his 150 wide: it stands on top of his plate instead. */
+.pixel-ui:is([data-room='tight'], [data-short]) .tr-stand .tr-new {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + var(--u));
+  transform: translateX(-50%);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .tr-stand .px-portrait img {
+  transform: scale(var(--zoom, 2));
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .tr-stand + .tr-swap + .tr-stand .px-portrait img {
+  transform: scale(calc(var(--zoom, 2) * -1), var(--zoom, 2));
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .tr-stand .team-platform {
+  bottom: calc(var(--u) * 4);
+  width: calc(var(--u) * 131);
+  height: calc(var(--u) * 42);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .tr-field {
+  bottom: calc(var(--u) * 4);
+}
+/* The Day-Care's paddock is drawn about its middle, and the man stands under
+   it: on a shorter stage the whole scene is twenty higher, so his feet are on it. */
+.pixel-ui:is([data-room='tight'], [data-short]) .dc-stage {
+  background-position: center calc(50% - var(--u) * 20);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .dc-keeper {
+  top: calc(50% + var(--u) * 12);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .dc-in-pen {
+  top: calc(50% - var(--u) * 28);
 }
 
 /* --- THE HARBOUR BOUTIQUE in the round-3 look (`look/boutiqueView.ts`) ---- *
@@ -10494,9 +11491,11 @@ body.touch-play .feedback-tab {
   background: var(--paper-sunk);
   color: var(--ink-soft);
 }
+/* A slot's head is a strip, the same on any floor (`--bar`): what it is drawn
+   in is never the floor's own ink. */
 :where(.pixel-ui) .bq-slot-head {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--bar);
+  color: var(--bar-text);
 }
 :where(.pixel-ui) .bq-slot.is-kit .bq-slot-head {
   background: var(--ink-2);
@@ -10600,7 +11599,7 @@ body.touch-play .feedback-tab {
   --heading: var(--gold);
 }
 :where(.pixel-ui) .bq-takes.is-gold .px-heading {
-  color: var(--ink);
+  color: var(--plate-ink);
 }
 :where(.pixel-ui) .bq-takes.is-gold .px-heading small {
   color: var(--gold-ink);
@@ -10649,8 +11648,8 @@ body.touch-play .feedback-tab {
   padding-left: calc(var(--u) * 3);
 }
 .pixel-ui .bq-key.is-primary .px-keycap {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--plate);
+  color: var(--plate-ink);
 }
 /* A button with its key inside says it is the one under the cursor with a gold
    ring, not the drawn arrow, which would stand over its keycap. */
@@ -10684,7 +11683,7 @@ body.touch-play .feedback-tab {
 }
 :where(.pixel-ui) .bq-slot.is-new .bq-slot-head {
   background: var(--gold);
-  color: var(--ink);
+  color: var(--plate-ink);
 }
 :where(.pixel-ui) .bq-slot-head {
   grid-column: 1 / -1;
@@ -10812,6 +11811,74 @@ body.touch-play .feedback-tab {
 }
 .pixel-ui .chest-mons-layout > .chest-give {
   grid-area: give;
+}
+/* A small window (800x600) has about 368 game pixels across and 206 down, and
+   the grid's four took 270 of them: the card beside it was too narrow for its
+   own numbers, and its keys stood under the screen's foot. There the grid is
+   three across, the garden goes under it, and the card has the height of the
+   next raid and the grid together. */
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-mons-layout {
+  grid-template-areas:
+    'team card'
+    'mons card'
+    'garden give';
+  row-gap: calc(var(--u) * 2);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-mon-grid {
+  grid-template-columns: repeat(3, calc(var(--u) * 65));
+}
+/* A row of the grid is 67 tall and the MORE strip 12 over its foot: the two
+   rows of six give up their own padding so the pane has the 79, and the row
+   under the cursor is whole above the strip. */
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-mons-layout > .px-window > .px-heading {
+  margin-bottom: calc(var(--u) * 2);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-slots {
+  padding: 0 var(--u);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-mons-layout > :is(.chest-team, .chest-garden) > .px-heading {
+  margin-bottom: var(--u);
+}
+/* The card there is what choosing needs and no more. Its picture is the square
+   the cursor is on, two columns to the left. Its numbers stand two abreast
+   under the HP and its bar, with what it holds where the way to the next
+   level was. Its keys are on the keys line, and where it is on the line above
+   that: four moves with long names take four rows, and all of it is inside. */
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-body {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--u) calc(var(--u) * 6);
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-figures {
+  display: contents;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-figures > .px-stat:first-of-type,
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-figures > .team-moves {
+  grid-column: 1 / -1;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-figures > .px-stat:not(:first-of-type) {
+  order: 1;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-figures > .px-stat:not(:first-of-type) > .px-stat-bar,
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-figures > .px-stat:last-of-type,
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-side > .px-portrait,
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-foot {
+  display: none;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-side {
+  order: 2;
+  justify-items: start;
+  align-content: center;
+}
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-card-figures > .team-moves {
+  order: 3;
+  margin-top: 0;
+}
+/* What there is to give is one row of squares there, and the rest is scrolled to. */
+.pixel-ui:is([data-room='tight'], [data-short]) .chest-gifts {
+  max-height: calc(var(--u) * 34);
+  overflow-y: auto;
+  scrollbar-width: none;
 }
 :where(.pixel-ui) .chest-mon-scroll {
   min-height: 0;

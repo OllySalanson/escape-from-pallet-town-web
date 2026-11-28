@@ -30,8 +30,10 @@ describe('YOUR TEAM', () => {
     expect(html).toContain('data-picker-find');
     expect(html).toContain('data-member="pidgey-1"');
     // Where each is, in its card: going on the next raid, or in the chest.
-    expect(html).toMatch(/team-card-where">Next raid/);
-    expect(html).toMatch(/team-card-where">In the chest/);
+    expect(html).toMatch(/team-card-place">Next raid/);
+    expect(html).toMatch(/team-card-place">In the chest/);
+    // What ENTER and L do is on the help line, not on the card: the keys made it wider than its frame.
+    expect(html).not.toMatch(/Leave at home|Put in front|Take on the raid/);
     // A fainted Pokémon's icon stands still.
     expect(html).toMatch(/data-member="pidgey-1"[^>]*>.*?px-mon-icon is-still/);
   });

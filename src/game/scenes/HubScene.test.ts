@@ -131,7 +131,7 @@ interface WorldSceneData {
 
 interface HubInternals {
   init(data?: HubSceneData): void;
-  setView(view: 'summary' | 'bench' | 'rack' | 'locker' | 'rim' | 'reselect' | 'workshop' | 'trader' | 'wallmap'): void;
+  setView(view: 'summary' | 'bench' | 'rack' | 'locker' | 'rim' | 'reselect' | 'workshop' | 'trader' | 'wallmap' | 'daycare' | 'trades'): void;
   goBack(): void;
   wallMapInspect: string | undefined;
   startRun(): void;
@@ -206,6 +206,8 @@ function createHub(
         innerHTML: '',
         querySelector: () => null,
         querySelectorAll: () => [],
+        // Which floor the screen stands on is a class on its root (`WOOD_FLOOR_VIEWS`).
+        classList: { toggle: vi.fn() },
       },
       focus: vi.fn(),
       refocus: vi.fn(),
@@ -1781,6 +1783,26 @@ describe('Brock', () => {
     expect(plain.filter((card) => card.includes('data-cursor-start'))).toEqual([expect.stringContaining('data-shows="radio-mast"')]);
   });
 
+  it("stands Brock's Workshop, Bill's Cottage, the Day-Care and the Trader on the wood floor, and not Oak's own screens", () => {
+    // 27 Nov 2026: the two shops were sheets of white paper (`docs/screens/wood-floor/`).
+    const { hub } = createWorkshopHub();
+    const floor = (hub as unknown as { overlay: { root: { classList: { toggle: ReturnType<typeof vi.fn> } } } }).overlay.root.classList.toggle;
+    hub.init({ view: 'workshop' });
+    markupOf(hub);
+    expect(floor).toHaveBeenLastCalledWith('wood-floor', true);
+    hub.setView('trader');
+    markupOf(hub);
+    expect(floor).toHaveBeenLastCalledWith('wood-floor', true);
+    for (const view of ['daycare', 'trades'] as const) {
+      hub.setView(view);
+      markupOf(hub);
+      expect(floor).toHaveBeenLastCalledWith('wood-floor', true);
+    }
+    hub.setView('summary');
+    markupOf(hub);
+    expect(floor).toHaveBeenLastCalledWith('wood-floor', false);
+  });
+
   it('says ALL HERE only of a build still to pay for, never of one that stands', () => {
     const { hub } = createWorkshopHub(['secure-locker-1']);
     hub.init({ view: 'workshop', build: 'secure-locker-1' });
@@ -2060,6 +2082,7 @@ describe('taking a status line down', () => {
       set innerHTML(value: string) { html = value; renders += 1; },
       querySelector: (selector: string) => (selector === PIXEL_STATUS_SELECTOR ? { remove: removed } : null),
       querySelectorAll: () => [],
+      classList: { toggle: () => false },
     };
     const timers: { callback: () => void; remove: ReturnType<typeof vi.fn> }[] = [];
     Object.assign(hub as unknown as Record<string, unknown>, {
