@@ -97,9 +97,12 @@ try {
   await press('Escape');
   await wait(300);
 
-  // THE GAME CORNER: its mat opens POKéMON JUMP, which lists everybody kept.
+  // THE GAME CORNER: its mat opens POKéMON JUMP on the game itself, and P there lists everybody kept.
   await walkIntoBase(page, 'game-corner', { press, until, wait, settleMs: 150 });
-  await until(`${sceneIs('game-corner')} && Boolean(document.querySelector('#screens .game-corner-screen [data-find]'))`, 'POKéMON JUMP');
+  await until(`${sceneIs('game-corner')} && ${GAME}.scene.getScene('game-corner').phaseKind === 'ready'`, 'POKéMON JUMP');
+  await wait(300);
+  await press('KeyP');
+  await until(`Boolean(document.querySelector('#screens .game-corner-screen [data-find]'))`, 'who jumps');
   await wait(300);
   const jumpRows = await rows('.game-corner-screen');
   console.log(`jump: ${jumpRows.join(', ')}`);
@@ -114,6 +117,9 @@ try {
   if (ratRows.length !== 1 || !/RATTATA/i.test(ratRows[0])) fail(`FIND "rat" left ${ratRows.join(', ')}`);
   await shoot('02-jump-find');
   await page.evaluate(`document.querySelector('#screens .game-corner-screen [data-picker-find]')?.blur()`);
+  // ESC on the list is back to the game, standing ready; ESC there leaves.
+  await press('Escape');
+  await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'ready' && !document.querySelector('#screens .game-corner-screen')`, 'POKéMON JUMP again');
   await press('Escape');
   await until(`${baseReady} && !${sceneIs('game-corner')}`, 'the arcade');
   await wait(300);

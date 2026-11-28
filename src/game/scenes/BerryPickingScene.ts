@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { RESULT_HOLD_MS } from '../ui/spatialFocus';
+import { RELEASE_ARMING_MS, RESULT_HOLD_MS } from '../ui/spatialFocus';
 import { audioManager } from '../audio/AudioManager';
 import { recordAction } from '../feedback/actionLog';
 import type { FeedbackDetail, ProvidesFeedbackContext } from '../feedback/feedbackContext';
@@ -9,18 +9,18 @@ import { GAME_FONT } from '../ui/gameFont';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { pickerBasics, pickerEntries, pickerOrder, wirePickerFind } from '../ui/boxPicker';
 import { HOUSE_PICKER, loanBasics } from '../minigames/houseLoans';
+import { berryTeamMarkup, type BerryCandidate, type BerryTeamState } from '../minigames/gameCornerView';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { drawPixelWindow, WINDOW_PAPER, WINDOW_INK } from '../ui/pixelWindow';
-import { berryTeamMarkup, type BerryCandidate, type BerryTeamState } from '../minigames/gameCornerView';
 import {
   advanceBerryPicking,
   BERRY_PICKING_EAT_FALL,
   BERRY_PICKING_MAX_FALL,
   BERRY_PICKING_STATUS_SQUARES,
   berryScore,
-  COLUMNS,
   headsOf,
+  COLUMNS,
   LEFT,
   MIDDLE,
   reachable,
@@ -30,15 +30,19 @@ import {
   type BerryPickingGame,
   type Column,
 } from '../minigames/berryPicking';
-import { NO_GAME_CORNER, type GameCornerRecord } from '../minigames/tickets';
+import { NO_GAME_CORNER, today, type GameCornerRecord } from '../minigames/tickets';
+import { berryLineups, type Lineup } from '../minigames/whoPlays';
+import { FIRST_PACE, learnt, paceAfter, paceScale, READY_MS, readyBeat, readyKey, tickReady, type Pace, type ReadyBeat } from '../minigames/readyBeat';
+import { payLadder, wonLine, wonThings } from '../minigames/payLadder';
+import { drawKeyArrow, drawResultCard, ReadyPlate, takeDown } from './minigameCards';
 
 export interface BerryPickingSceneData {
   /** Only resume the harbour when this screen paused it. */
   readonly pausedBase: boolean;
 }
 
-/** How long the cabinet counts down before the first berry drops. */
-const COUNTDOWN_MS = 2400;
+/** Berries on the ground that bring the first-berry slowing to an end even with none eaten. */
+const FIRST_MISSES_TAUGHT = 3;
 /** How long the last berry landing is shown before the result. */
 const END_PAUSE_MS = 1100;
 /** How long a word over the columns stays up: a score, FASTER. */
@@ -57,15 +61,26 @@ const BERRY_INK: Readonly<Record<BerryKind, { readonly c: number; readonly d: nu
 };
 
 type Phase =
-  | { readonly kind: 'menu' }
-  | { readonly kind: 'countdown'; readonly elapsed: number }
+  | { readonly kind: 'ready' }
   | { readonly kind: 'playing' }
-  | { readonly kind: 'ending'; readonly elapsed: number };
+  | { readonly kind: 'ending'; readonly elapsed: number }
+  | { readonly kind: 'result' }
+  | { readonly kind: 'choosing' };
 
 /**
  * THE GAME CORNER's BERRY PICKING cabinet over the paused harbour, as the
- * POKéMON JUMP one is (`GameCornerScene`): who picks, the game itself, and
- * what it paid.
+ * POKéMON JUMP one is (`GameCornerScene`): the game itself, from the press
+ * that opens it, and what it paid.
+ *
+ * SPACE at the cabinet starts the game. A DODRIO or DODUO of the player's
+ * own picks if there is one, the partner first, the house DODUO if not
+ * (`minigames/whoPlays.ts`); it stands ready under the tree a moment, a plate
+ * over it, and P there (or on the result card) opens the list of who picks,
+ * from every box (`minigames/gameCornerView.ts`). The first berry is the
+ * lesson: the berries fall slowed, and the column a berry can be eaten in
+ * lights up with the arrow that reaches it, until one is eaten; then it plays
+ * at full speed (`minigames/readyBeat.ts`). What it paid, and the ladder of
+ * what it pays, are on the result card after (`minigameCards.ts`).
  *
  * The rules are `minigames/berryPicking.ts` and nothing here decides
  * anything: the scene hands the game each frame's milliseconds and which way
@@ -78,20 +93,33 @@ type Phase =
 export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackContext {
   /** When the last game ended: AGAIN takes no press for `RESULT_HOLD_MS` after. */
   private finishedAt = Number.NEGATIVE_INFINITY;
-  private overlay: MenuOverlay | undefined;
   private pausedBase = false;
   private game_: RestoredGame | undefined;
+  /** Who may pick, best first (`whoPlays.ts`), and which stands ready. */
+  private lineups: Lineup[] = [];
+  private lineupAt = 0;
+  private beat: ReadyBeat = readyBeat();
+  /** The list of who picks, while it is open, and who it has chosen. */
+  private overlay: MenuOverlay | undefined;
   private chosen: string | null = null;
   private status: string | undefined;
   /** What the list's find field held (`ui/boxPicker.ts`). */
   private find = '';
+  /** What the last game paid, for the list's bar. */
   private last: BerryTeamState['last'];
-  private phase: Phase = { kind: 'menu' };
+  /** When the list opened, so the press that opened it cannot also play. */
+  private pickerOpenedAt = Number.NEGATIVE_INFINITY;
+  private pace: Pace = FIRST_PACE;
+  private plate: ReadyPlate | undefined;
+  private card: Phaser.GameObjects.GameObject[] = [];
+  private phase: Phase = { kind: 'ready' };
   private picking: BerryPickingGame | undefined;
   private pressed: Column | null = null;
   private stage: Phaser.GameObjects.Container | undefined;
   private stageOver: Phaser.GameObjects.Container | undefined;
   private berries: Phaser.GameObjects.Graphics | undefined;
+  /** The arrow under a column a berry can be eaten in, while the first berry is slowed. */
+  private hints: Phaser.GameObjects.Graphics | undefined;
   private bird: Phaser.GameObjects.Image | undefined;
   private squares: Phaser.GameObjects.Graphics | undefined;
   private scoreText: Phaser.GameObjects.Text | undefined;
@@ -104,16 +132,23 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
   }
 
   public init(data: BerryPickingSceneData): void {
-    this.overlay = undefined;
     this.pausedBase = data.pausedBase;
-    this.status = undefined;
-    this.last = undefined;
-    this.phase = { kind: 'menu' };
+    this.finishedAt = Number.NEGATIVE_INFINITY;
+    this.phase = { kind: 'ready' };
     this.picking = undefined;
     this.pressed = null;
     this.callouts = [];
+    this.card = [];
+    this.plate = undefined;
+    this.pace = FIRST_PACE;
     this.game_ = this.saveManager.load() ?? undefined;
-    this.chosen = this.defaultBird();
+    this.lineups = this.game_ ? berryLineups(this.game_.stash) : [];
+    this.lineupAt = 0;
+    this.overlay = undefined;
+    this.chosen = null;
+    this.status = undefined;
+    this.last = undefined;
+    this.pickerOpenedAt = Number.NEGATIVE_INFINITY;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.overlay?.destroy();
       this.overlay = undefined;
@@ -124,13 +159,15 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
 
   public create(): void {
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => this.onGameKey(event));
-    this.showMenu();
+    if (this.lineups.length > 0) this.standReady();
+    else this.time.delayedCall(0, () => this.close());
   }
 
   public feedbackContext(): readonly FeedbackDetail[] {
     return [
       { label: 'Screen', value: 'BERRY PICKING' },
       { label: 'Phase', value: this.phase.kind },
+      { label: 'Picking', value: this.lineup().map((player) => player.species).join(', ') },
       ...(this.picking ? [{ label: 'Score', value: String(berryScore(this.picking)) }] : []),
     ];
   }
@@ -140,19 +177,190 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
     return this.picking;
   }
 
-  /** For a playtest driver: where the screen is. */
+  /** For a playtest driver: where the screen is - `ready`, `playing`, `ending`, `result` or `choosing`. */
   public get phaseKind(): Phase['kind'] {
     return this.phase.kind;
   }
 
+  /** For a playtest driver: every lineup on offer, by ids. */
+  public get lineupIds(): readonly (readonly string[])[] {
+    return this.lineups.map((lineup) => lineup.map((player) => player.id));
+  }
+
+  /** For a playtest driver: play now with this bird (a stored id, or `house:doduo`). Whether it is on offer. */
+  public playWith(id: string): boolean {
+    const index = this.lineups.findIndex((lineup) => lineup[0]?.id === id);
+    if (index < 0) return false;
+    this.takeDownCard();
+    this.lineupAt = index;
+    this.standReady();
+    this.play();
+    return true;
+  }
+
   /** For a playtest driver: reach for a column, as the arrow keys do. */
   public reachFor(column: Column): void {
-    if (this.phase.kind === 'playing' || this.phase.kind === 'countdown') this.pressed = column;
+    if (this.phase.kind === 'playing') this.pressed = column;
   }
 
   private record(): GameCornerRecord {
     return this.game_?.raidProgress.gameCorner ?? NO_GAME_CORNER;
   }
+
+  private lineup(): Lineup {
+    return this.lineups[this.lineupAt] ?? [];
+  }
+
+  // --- the game -------------------------------------------------------------------
+
+  /** The bird standing ready under the tree: a game made for it, drawn, the plate over it. */
+  private standReady(): void {
+    const bird = this.lineup()[0];
+    if (!bird) return;
+    this.picking = startBerryPicking(bird.species);
+    this.pressed = null;
+    this.pace = FIRST_PACE;
+    this.phase = { kind: 'ready' };
+    this.beat = readyBeat();
+    this.buildStage(bird.dexId, bird.shiny);
+    this.plate = new ReadyPlate(this, Math.round(this.scale.height * 0.17));
+    this.plate.show({ lineup: this.lineup(), canPick: this.lineups.length > 1 });
+  }
+
+  /** Play starts: the plate goes, and the first berries fall, slowed. */
+  private play(): void {
+    if (this.phase.kind !== 'ready' || !this.picking) return;
+    this.plate?.destroy();
+    this.plate = undefined;
+    this.bigText?.setText('');
+    audioManager.play('confirm');
+    recordAction(`Played BERRY PICKING with ${this.lineup()[0]?.species ?? 'nobody'}`);
+    this.phase = { kind: 'playing' };
+  }
+
+  /** The result is read and SPACE is pressed: the same bird stands ready again. */
+  private again(): void {
+    if (this.phase.kind !== 'result' || this.time.now - this.finishedAt < RESULT_HOLD_MS) return;
+    this.takeDownCard();
+    this.standReady();
+  }
+
+  private takeDownCard(): void {
+    takeDown(this.card);
+    this.card = [];
+  }
+
+  private onGameKey(event: KeyboardEvent): void {
+    if (event.repeat) return;
+    const phase = this.phase.kind;
+    // The list of who picks has its own keys (`onMenuKey`).
+    if (phase === 'choosing') return;
+    if (phase === 'ready' || phase === 'result') {
+      const action = readyKey(event.key);
+      if (!action) return;
+      event.preventDefault();
+      if (action.kind === 'leave') this.close();
+      else if (action.kind === 'pick') {
+        if (this.lineups.length > 1) this.openPicker();
+      } else if (phase === 'ready') this.play();
+      else this.again();
+      return;
+    }
+    if (event.key === 'Escape') {
+      if (phase === 'playing') this.finish();
+      return;
+    }
+    const column: Column | null = ['ArrowLeft', 'a', 'A'].includes(event.key)
+      ? LEFT
+      : ['ArrowUp', 'w', 'W', ' ', 'Enter'].includes(event.key)
+        ? MIDDLE
+        : ['ArrowRight', 'd', 'D'].includes(event.key)
+          ? RIGHT
+          : null;
+    if (column !== null) {
+      event.preventDefault();
+      if (phase === 'playing') this.pressed = column;
+    }
+  }
+
+  public update(_time: number, delta: number): void {
+    const phase = this.phase;
+    if (phase.kind === 'result' || phase.kind === 'choosing' || !this.picking) return;
+    if (phase.kind === 'ready') {
+      const ticked = tickReady(this.beat, delta);
+      this.beat = ticked.beat;
+      this.bigText?.setText(String(Math.max(1, Math.ceil(this.beat.leftMs / (READY_MS / 3)))));
+      this.plate?.tick(this.beat.leftMs / READY_MS, this.time.now);
+      this.drawStage();
+      if (ticked.go) this.play();
+      return;
+    }
+    if (phase.kind === 'ending') {
+      const elapsed = phase.elapsed + delta;
+      this.phase = { kind: 'ending', elapsed };
+      this.drawStage();
+      if (elapsed >= END_PAUSE_MS) this.finish();
+      return;
+    }
+    const press = this.pressed;
+    this.pressed = null;
+    // Slowed until the first berry is eaten, then up to full speed: the same
+    // FireRed frames either way (`readyBeat.ts`). Three on the ground and it
+    // is up to speed regardless, so nobody is left playing it slowed.
+    this.picking = advanceBerryPicking(this.picking, delta * paceScale(this.pace), press);
+    this.pace = paceAfter(this.pace, delta);
+    for (const event of this.picking.events) {
+      if (event.kind === 'reach') audioManager.play('select');
+      if (event.kind === 'turn') audioManager.play('ledgeHop');
+      if (event.kind === 'eaten') {
+        this.pace = learnt(this.pace);
+        audioManager.play(event.berry === 'gold' ? 'confirm' : 'lootPickup');
+        this.shout(`+${event.points}`, event.berry === 'gold' ? '#f8e070' : event.berry === 'green' ? '#a0e890' : '#90c0f8', event.column);
+      }
+      if (event.kind === 'peck') audioManager.play('denied');
+      if (event.kind === 'squished') {
+        audioManager.play('bump');
+        if (this.picking.greySquares >= FIRST_MISSES_TAUGHT) this.pace = learnt(this.pace);
+      }
+      if (event.kind === 'faster') {
+        this.shout('FASTER!', '#f860b0', MIDDLE, -26);
+      }
+    }
+    if (this.picking.over) {
+      this.phase = { kind: 'ending', elapsed: 0 };
+      this.bigText?.setText('GAME OVER');
+    }
+    this.drawStage();
+  }
+
+  /** The game is over: its score written and paid, and the result card over the orchard. */
+  private finish(): void {
+    const picking = this.picking;
+    if (!picking || (this.phase.kind !== 'playing' && this.phase.kind !== 'ending')) return;
+    const score = berryScore(picking);
+    const written = this.saveManager.playGame('berry-picking', score);
+    recordAction(`BERRY PICKING scored ${score}`);
+    this.phase = { kind: 'result' };
+    this.finishedAt = this.time.now;
+    this.bigText?.setText('');
+    this.hints?.clear();
+    if (written) this.game_ = written.game;
+    this.last = written ? { score, payout: written.payout, berries: written.berries } : undefined;
+    const won = written ? wonThings(written.payout.tickets, written.berries) : [];
+    if (won.length > 0) audioManager.play('itemObtained');
+    const record = written?.payout.record ?? this.record();
+    this.card = drawResultCard(this, {
+      title: 'BERRY PICKING',
+      headline: `SCORE ${score.toLocaleString('en-GB')}`,
+      won: written ? wonLine(written.payout, won) : 'The cabinet could not write that down. Nothing was paid.',
+      good: won.length > 0,
+      ladder: payLadder({ kind: 'berry-picking' }, today(record, new Date()).best['berry-picking']),
+      tickets: record.tickets,
+      canPick: this.lineups.length > 1,
+    });
+  }
+
+  // --- the list of who picks --------------------------------------------------------
 
   private candidates(): BerryCandidate[] {
     const stash = this.game_?.stash;
@@ -168,12 +376,19 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
     ];
   }
 
-  /** Who picks if nobody is chosen: the bird with the most heads. */
-  private defaultBird(): string | null {
-    return this.candidates().find((candidate) => candidate.heads !== undefined)?.id ?? null;
+  /** P: the orchard taken down and the list of who picks up, the bird that stood ready chosen on it. */
+  private openPicker(): void {
+    if (this.phase.kind !== 'ready' && this.phase.kind !== 'result') return;
+    this.tearDownStage();
+    this.picking = undefined;
+    this.phase = { kind: 'choosing' };
+    this.chosen = this.lineup()[0]?.id ?? null;
+    this.status = undefined;
+    this.pickerOpenedAt = this.time.now;
+    audioManager.play('menuOpen');
+    recordAction('Opened who picks BERRY PICKING');
+    this.showMenu();
   }
-
-  // --- the screen ------------------------------------------------------------------
 
   private showMenu(focusOn?: string): void {
     if (!this.overlay) {
@@ -193,7 +408,7 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
     const root = this.overlay.root;
     root.setAttribute('aria-label', 'BERRY PICKING');
     root.querySelectorAll<HTMLButtonElement>('[data-close]').forEach((button) => {
-      button.onclick = () => this.close();
+      button.onclick = () => this.closePicker();
     });
     root.querySelectorAll<HTMLButtonElement>('[data-picker]').forEach((button) => {
       button.onclick = () => {
@@ -210,11 +425,14 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
           audioManager.play('denied');
           return;
         }
-        // The score is seen before AGAIN takes a press: SPACE jumps, and the
-        // press still going at the end started the next game over the result
-        // (the harbour re-critic, 26 Nov 2026).
-        if (this.time.now - this.finishedAt < RESULT_HOLD_MS) return;
-        this.startGame();
+        if (this.time.now - this.pickerOpenedAt < RELEASE_ARMING_MS) return;
+        const index = this.lineups.findIndex((lineup) => lineup[0]?.id === this.chosen);
+        if (index < 0) {
+          audioManager.play('denied');
+          return;
+        }
+        this.lineupAt = index;
+        this.closePicker();
       };
     }
     // The find over the list narrows it in place, and is kept over a redraw.
@@ -228,7 +446,7 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
   private onMenuKey(event: KeyboardEvent): void {
     if (isOverlayDismissKey(event)) {
       event.preventDefault();
-      this.close();
+      this.closePicker();
       return;
     }
     if (this.overlay?.moveCursor(event.key)) {
@@ -236,117 +454,15 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
     }
   }
 
-  // --- the game -------------------------------------------------------------------
-
-  private chosenBird(): { species: string; dexId: number } | undefined {
-    if (this.chosen === HOUSE_PICKER.id) return { species: HOUSE_PICKER.species, dexId: HOUSE_PICKER.dexId };
-    const stored = this.game_?.stash.listPokemon().find((candidate) => candidate.id === this.chosen);
-    return stored ? { species: stored.pokemon.base.id, dexId: stored.pokemon.base.dexId } : undefined;
-  }
-
-  private startGame(): void {
-    const bird = this.chosenBird();
-    if (!bird) return;
+  /** The list down, and the orchard back, whoever the list left chosen standing ready. */
+  private closePicker(): void {
+    if (this.phase.kind !== 'choosing') return;
     this.overlay?.destroy();
     this.overlay = undefined;
     this.status = undefined;
-    audioManager.play('confirm');
-    recordAction(`Played BERRY PICKING with ${bird.species}`);
-    this.picking = startBerryPicking(bird.species);
-    this.pressed = null;
-    this.phase = { kind: 'countdown', elapsed: 0 };
-    this.buildStage(bird.dexId);
+    audioManager.play('menuClose');
+    this.standReady();
   }
-
-  private onGameKey(event: KeyboardEvent): void {
-    if (this.phase.kind === 'menu' || event.repeat) return;
-    if (event.key === 'Escape') {
-      if (this.phase.kind === 'playing' || this.phase.kind === 'countdown') this.finish();
-      return;
-    }
-    const column: Column | null = ['ArrowLeft', 'a', 'A'].includes(event.key)
-      ? LEFT
-      : ['ArrowUp', 'w', 'W', ' ', 'Enter'].includes(event.key)
-        ? MIDDLE
-        : ['ArrowRight', 'd', 'D'].includes(event.key)
-          ? RIGHT
-          : null;
-    if (column !== null) {
-      event.preventDefault();
-      // A reach in the count is lost, as FireRed reads no key before the start.
-      if (this.phase.kind === 'playing') this.pressed = column;
-    }
-  }
-
-  public update(_time: number, delta: number): void {
-    const phase = this.phase;
-    if (phase.kind === 'menu' || !this.picking) return;
-    if (phase.kind === 'countdown') {
-      const elapsed = phase.elapsed + delta;
-      this.phase = { kind: 'countdown', elapsed };
-      const left = Math.ceil((COUNTDOWN_MS - elapsed) / (COUNTDOWN_MS / 3));
-      this.bigText?.setText(left > 0 ? String(left) : 'START!');
-      if (elapsed >= COUNTDOWN_MS) {
-        this.phase = { kind: 'playing' };
-        this.bigText?.setText('');
-      }
-      this.drawStage();
-      return;
-    }
-    if (phase.kind === 'ending') {
-      const elapsed = phase.elapsed + delta;
-      this.phase = { kind: 'ending', elapsed };
-      this.drawStage();
-      if (elapsed >= END_PAUSE_MS) this.finish();
-      return;
-    }
-    const press = this.pressed;
-    this.pressed = null;
-    this.picking = advanceBerryPicking(this.picking, delta, press);
-    for (const event of this.picking.events) {
-      if (event.kind === 'reach') audioManager.play('select');
-      if (event.kind === 'turn') audioManager.play('ledgeHop');
-      if (event.kind === 'eaten') {
-        audioManager.play(event.berry === 'gold' ? 'confirm' : 'lootPickup');
-        this.shout(`+${event.points}`, event.berry === 'gold' ? '#f8e070' : event.berry === 'green' ? '#a0e890' : '#90c0f8', event.column);
-      }
-      if (event.kind === 'peck') audioManager.play('denied');
-      if (event.kind === 'squished') {
-        audioManager.play('bump');
-      }
-      if (event.kind === 'faster') {
-        this.shout('FASTER!', '#f860b0', MIDDLE, -26);
-      }
-    }
-    if (this.picking.over) {
-      this.phase = { kind: 'ending', elapsed: 0 };
-      this.bigText?.setText('GAME OVER');
-    }
-    this.drawStage();
-  }
-
-  /** The game is over: its score written and paid, and the cabinet's screen back up. */
-  private finish(): void {
-    const picking = this.picking;
-    if (!picking) return;
-    const score = berryScore(picking);
-    const written = this.saveManager.playGame('berry-picking', score);
-    if (written) {
-      this.game_ = written.game;
-      this.last = { score, payout: written.payout, berries: written.berries };
-      if (written.payout.tickets > 0 || written.berries.length > 0) audioManager.play('itemObtained');
-    } else {
-      this.last = undefined;
-      this.status = 'The cabinet could not write that down. Nothing was paid.';
-    }
-    recordAction(`BERRY PICKING scored ${score}`);
-    this.tearDownStage();
-    this.picking = undefined;
-    this.phase = { kind: 'menu' };
-    this.finishedAt = this.time.now;
-    this.showMenu('[data-play]');
-  }
-
   private columnX(column: Column): number {
     return Math.round(this.scale.width / 2 + (column - 1) * COLUMN_GAP);
   }
@@ -377,7 +493,7 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
 
   // --- drawing -------------------------------------------------------------------
 
-  private buildStage(dexId: number): void {
+  private buildStage(dexId: number, shiny: boolean): void {
     this.tearDownStage();
     const { width, height } = this.scale;
     const back = this.add.graphics().setDepth(0);
@@ -440,8 +556,9 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
       }
     }
     this.berries = this.add.graphics().setDepth(4);
+    this.hints = this.add.graphics().setDepth(5);
     this.bird = this.add
-      .image(Math.round(width / 2), height - 8, pokemonTextureKey('back', dexId))
+      .image(Math.round(width / 2), height - 8, pokemonTextureKey('back', dexId, shiny))
       .setOrigin(0.5, 1)
       .setDepth(3);
     this.squares = this.add.graphics().setDepth(11);
@@ -494,14 +611,18 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
     this.stage = undefined;
     this.stageOver?.destroy(true);
     this.stageOver = undefined;
-    for (const part of [this.berries, this.bird, this.squares, this.scoreText, this.bigText]) part?.destroy();
+    for (const part of [this.berries, this.hints, this.bird, this.squares, this.scoreText, this.bigText]) part?.destroy();
     this.berries = undefined;
+    this.hints = undefined;
     this.bird = undefined;
     this.squares = undefined;
     this.scoreText = undefined;
     this.bigText = undefined;
     for (const callout of this.callouts) callout.text.destroy();
     this.callouts = [];
+    this.plate?.destroy();
+    this.plate = undefined;
+    this.takeDownCard();
   }
 
   private drawStage(): void {
@@ -509,6 +630,7 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
     if (!picking || !this.berries || !this.bird || !this.squares) return;
     const { width } = this.scale;
     const berries = this.berries.clear();
+    this.drawHints(picking);
     for (let index = 0; index < COLUMNS; index += 1) {
       const column = index as Column;
       const berry = picking.columns[column];
@@ -571,6 +693,28 @@ export class BerryPickingScene extends Phaser.Scene implements ProvidesFeedbackC
       callout.text.destroy();
       return false;
     });
+  }
+
+  /**
+   * The first berry's lesson: while the game is slowed, a column whose berry
+   * is in the beaks' reach - the two drops it can be eaten on - is framed in
+   * gold and has the arrow that reaches it over it, pulsing. Gone once one is
+   * eaten.
+   */
+  private drawHints(picking: BerryPickingGame): void {
+    const hints = this.hints?.clear();
+    if (!hints || this.phase.kind !== 'playing' || this.pace.learnt) return;
+    const glow = 0.55 + 0.45 * Math.abs(Math.sin(this.time.now / 140));
+    const top = this.berryY(BERRY_PICKING_EAT_FALL - 1) - 6;
+    const bottom = this.berryY(BERRY_PICKING_EAT_FALL) + 6;
+    const ways = ['left', 'up', 'right'] as const;
+    for (let index = 0; index < COLUMNS; index += 1) {
+      const berry = picking.columns[index];
+      if (!berry || berry.state !== 'falling' || berry.fall < BERRY_PICKING_EAT_FALL - 1 || berry.fall > BERRY_PICKING_EAT_FALL) continue;
+      const x = this.columnX(index as Column);
+      hints.lineStyle(2, 0xf8d040, glow).strokeRect(x - 15, top - 1, 30, bottom - top + 2);
+      drawKeyArrow(hints, x, top - 11, ways[index] ?? 'up', 5, glow);
+    }
   }
 
   private close(): void {

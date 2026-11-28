@@ -122,8 +122,14 @@ try {
   };
   /** POKéMON JUMP played by the screen, as a person does, until the score passes `target`. */
   const playJump = async (target) => {
-    await until(`${GAME}.scene.getScene('game-corner')?.phaseKind === 'menu'`, 'the cabinet');
-    await page.evaluate(`document.querySelector('[data-play]').click()`);
+    // The cabinet stands its jumpers ready at once; a game just played is AGAIN on SPACE once its result has been seen.
+    await until(`['ready', 'result'].includes(${GAME}.scene.getScene('game-corner')?.phaseKind)`, 'the cabinet');
+    if (await page.evaluate(`${GAME}.scene.getScene('game-corner').phaseKind === 'result'`)) {
+      await wait(1600);
+      await press('Space');
+      await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'ready'`, 'the jumpers ready again');
+    }
+    await press('Space');
     await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'playing'`, 'the vine');
     for (let frame = 0; frame < 60 * 120; frame += 1) {
       const state = await page.evaluate(`(() => { const j = ${GAME}.scene.getScene('game-corner').jumpGame; return j ? { over: j.over, state: j.vineState, timer: j.vineTimer, speed: j.vineSpeed, score: j.score, grounded: j.jumpers.every((p) => p.jumpStart === null) } : null; })()`);
@@ -144,7 +150,7 @@ try {
       }
       await step(1);
     }
-    await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'menu'`, 'the result');
+    await until(`${GAME}.scene.getScene('game-corner').phaseKind === 'result'`, 'the result');
     await wait(300);
   };
 
@@ -165,9 +171,9 @@ try {
   await until(`${baseReady} && !${BASE}.place.room`, 'the yard again');
   await readBoard();
   await choose('game-pokemon-jump');
-  await until(`${sceneIs('game-corner')} && ${GAME}.scene.getScene('game-corner').phaseKind === 'menu'`, 'POKéMON JUMP');
+  await until(`${sceneIs('game-corner')} && ${GAME}.scene.getScene('game-corner').phaseKind === 'ready'`, 'POKéMON JUMP');
   await wait(400);
-  await shoot('04-who-jumps');
+  await shoot('04-jump-ready');
   const picked = await page.evaluate(`document.querySelector('.game-corner-screen')?.textContent ?? ''`);
   if (/Nobody here can jump/i.test(picked)) fail('the cabinet says nobody can jump');
   const before = (await save()).raidProgress.gameCorner.tickets;

@@ -272,7 +272,7 @@ try {
   await page.evaluate(`void ${BASE}.openMinigame('field-course')`);
   await until(sceneIs('field-course'), 'the course screen');
   await wait(500);
-  await page.evaluate(`document.querySelector('[data-play]').click()`);
+  await press('Space');
   await until(`${GAME}.scene.getScene('field-course').phaseKind === 'running'`, 'the run');
   const course = `${GAME}.scene.getScene('field-course')`;
   const look = () => page.evaluate(`(() => { const s = ${course}; const v = s.cameras.main.worldView; const r = s.courseRun; const f = r.course.finish[Math.floor(r.course.finish.length / 2)];

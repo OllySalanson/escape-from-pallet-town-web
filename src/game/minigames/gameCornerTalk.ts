@@ -1,7 +1,6 @@
 import type { RaidProgress } from '../save/SaveManager';
 import {
   BERRY_TICKET_TIERS,
-  COURSE_TICKET_TIERS,
   JUMP_TICKET_TIERS,
   today,
   NO_GAME_CORNER,
@@ -78,20 +77,11 @@ export function courseTime(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}.${String(hundredths % 100).padStart(2, '0')}`;
 }
 
-/** What the course keeper says at his gate, before the course opens. */
-export function courseKeeperLines(progress: Pick<RaidProgress, 'gameCorner'>): readonly string[] {
-  const best = (progress.gameCorner ?? NO_GAME_CORNER).best['field-course'] ?? 0;
-  const [first, second, third] = COURSE_TICKET_TIERS;
-  return best === 0
-    ? [
-        'The FIELD-MOVE COURSE! Start to finish past a tree, a rock, a boulder and a pond.',
-        'I lend the HMs. A POKéMON that could learn CUT cuts; one that could learn SURF swims.',
-        `Under ${courseTime(first.ms)} pays ${first.tickets} tickets, ${courseTime(second.ms)} ${second.tickets}, ${courseTime(third.ms)} ${third.tickets}. Once a day.`,
-      ]
-    : [`Back for another go? Your best round is ${courseTime(best)}. The HMs are in the box.`];
-}
-
-/** What the TIME BOARD says: today's best and the best ever, and what each ticket line asks. */
+/**
+ * What the TIME BOARD says: today's best and the best ever. What a time pays
+ * is on the course's result card, the one place it is shown (the harbour
+ * audit, 27 Nov 2026, fault 3).
+ */
 export function timeBoardLines(progress: Pick<RaidProgress, 'gameCorner'>, now: Date): readonly string[] {
   const record = progress.gameCorner ?? NO_GAME_CORNER;
   const best = record.best['field-course'] ?? 0;
@@ -108,7 +98,7 @@ export function timeBoardLines(progress: Pick<RaidProgress, 'gameCorner'>, now: 
   return [
     `TIME BOARD - FIELD-MOVE COURSE. ${chalked[0]}`,
     ...chalked.slice(1),
-    `TICKETS: ${COURSE_TICKET_TIERS.map((tier) => `${courseTime(tier.ms)} ${tier.tickets}`).join(' · ')}. KRABBY is chalked in the corner.`,
+    'KRABBY is chalked in the corner.',
   ];
 }
 

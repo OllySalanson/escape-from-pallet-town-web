@@ -443,6 +443,18 @@ SPACE throws its lid back and opens the things screen headed THE CHEST, B opens
 the same screen as YOUR THINGS, and decorating moves it while X is refused -
 `docs/screens/vault-makeover/`.
 
+`gameClip.mjs <cdp port> <url> <save.json> <dir> --room=game-corner --opens=pokemon-jump`
+(or `--at=x:y --facing=dir` for a yard game: THE DIG, a board on THE PROMENADE)
+records a harbour minigame from the thing that opens it - walks up, presses SPACE,
+and keeps pressing at a reader's pace on a stepped loop - as `clip.webm`, its
+frames and `play.json`, which says how long the press took to
+reach the game with nothing over it. It is what the games contest's clips were
+made with. `gamesStraightIn.mjs <cdp port> <url> <save.json> <dir> <scene key>` (the same
+`--room`/`--opens` or `--at=x:y --facing=`) plays one from SPACE and holds each step: the
+game standing ready with no list over it, P opening the list of who plays only when it has
+another choice, ESC back to the game, the beat running out into play, the result card, and
+PLAY on the list standing somebody else ready - `docs/screens/games-straight-in/`.
+
 A raid ends back on the base's quay, not on a screen, so a driver that plays
 two raids walks into Oak's Lab between them - `raid.mjs` does.
 

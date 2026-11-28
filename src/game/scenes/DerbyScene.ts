@@ -27,10 +27,10 @@ import {
   mayTake,
   nextFork,
   PLACE_WORDS,
+  PODIUM,
   plainLapMs,
   playerPlace,
   pointOnLeg,
-  PODIUM,
   progressOf,
   racerNotes,
   raceTime,
@@ -49,10 +49,16 @@ import {
 } from '../minigames/derby';
 import type { OutdoorCourse } from '../minigames/outdoorView';
 import { derbySource, derbyTiers, type GamePayout } from '../minigames/tickets';
+import type { LadderGame } from '../minigames/payLadder';
+import { FIRST_PACE, learnt, paceAfter, paceScale, type Pace } from '../minigames/readyBeat';
 import { traits, type PokemonTraits } from '../minigames/traits';
 import type { RestoredGame } from '../save/SaveManager';
 import { OutdoorGameScene, type OutdoorFit, type OutdoorGameSceneData, type OutdoorSource } from './OutdoorGameScene';
 
+/** How long after the gun the race runs slowed if no sprint has been tapped. */
+const SLOWED_START_MS = 4000;
+/** How near a tight corner is, in tiles, when it is marked on the stone. */
+const CORNER_MARK_TILES = 7;
 /** How long the finish is shown before the screen comes back. */
 const END_PAUSE_MS = 1800;
 
@@ -116,20 +122,29 @@ export function arrowOf(key: string): 'up' | 'down' | 'left' | 'right' | null {
  * on the later levels along the sand and out round the breakwater. SPACE taps
  * a sprint while the bar lasts (never into a tight corner, always into a
  * crate), and the arrows choose the line at each fork.
+ *
+ * The runners stand on the grid through the starter's count, which is the
+ * ready beat, and P in it opens the list where another racer, or another
+ * open course, is chosen. What a sprint is for is shown, not told (the harbour audit, 27 Nov
+ * 2026, fault 3): after the gun the race runs slowed and the sprint bar
+ * flashes until the first tap, then comes up to speed, and the next tight
+ * corner on the player's line is marked on the stone as it comes.
  */
 export class DerbyScene extends OutdoorGameScene {
   /** Each level pays from its own source, on its own tiers, once a day (`derbySource`). */
   protected get source(): OutdoorSource {
     return derbySource(this.level.number);
   }
+  protected readonly title = 'PROMENADE DERBY';
   protected readonly words = {
-    title: 'PROMENADE DERBY',
     place: 'Promenade · ',
     heading: 'Who races?',
     doing: 'Racing',
     rules: 'Speed is pace, HP is the sprint, and a big one loses time at every tight corner. A WATER type may swim the bay home; a FLYING type may fly it.',
     playHelp: 'SPACE taps a sprint (never into a tight corner, always into a crate). The arrows choose the line at each fork.',
   };
+  /** The gun is the gun: SPACE in the count does not start the race early. */
+  protected readonly goesOnSpace = false;
 
   private race: DerbyRace | undefined;
   /** The level chosen on the screen, and raced. */
@@ -140,8 +155,12 @@ export class DerbyScene extends OutdoorGameScene {
   private endingFor: number | null = null;
   /** Where the last race finished, for the write. */
   private lastPlace: number | null = null;
-  /** The level the last race was run on: a podium moves the chosen level on past it. */
+  /** The level a podium just opened, which the next race is run on. */
+  private opened: DerbyLevel | null = null;
+  /** The level the last race was run on: the list's PLAY names a level moved on past it. */
   private racedOn: DerbyLevel | null = null;
+  /** Slowed from the gun until the first sprint (`readyBeat.ts`). */
+  private pace: Pace = FIRST_PACE;
   private tilemap: Phaser.Tilemaps.Tilemap | undefined;
   private hudCamera: Phaser.Cameras.Scene2D.Camera | undefined;
   /** What is drawn on the course, which the side and foot leave alone. */
@@ -170,8 +189,10 @@ export class DerbyScene extends OutdoorGameScene {
     // The newest level this save has open: the one there is still to finish.
     const cleared = this.cleared();
     this.level = [...DERBY_LEVELS].reverse().find((level) => derbyLevelOpen(level, cleared)) ?? THE_FRONT;
+    this.wet = derbyGoing(localDay(new Date())) === 'wet';
     this.choice = {};
     this.lastPlace = null;
+    this.opened = null;
     this.racedOn = null;
   }
 
@@ -216,10 +237,13 @@ export class DerbyScene extends OutdoorGameScene {
     return waves.some((wave) => wave.inMs <= WAVE_WARN_MS) ? 'warning' : null;
   }
 
-  /** For a playtest driver: choose a level, as the screen's buttons do. */
-  public raceOn(level: number): boolean {
-    if (this.playing || !this.chooseLevel(level)) return false;
-    this.showMenu();
+  /** For a playtest driver: put a level on the grid, as the list's courses do. Whether it is open. */
+  public raceOn(number: number): boolean {
+    const level = DERBY_LEVELS[number - 1];
+    if (this.playing || !level || !derbyLevelOpen(level, this.cleared())) return false;
+    this.level = level;
+    this.opened = null;
+    this.standReady();
     return true;
   }
 
@@ -240,19 +264,31 @@ export class DerbyScene extends OutdoorGameScene {
     return { fit: Math.max(0.1, (17_000 - ms) / 1000), notes: racerNotes(traits, this.wet, this.level) };
   }
 
+  protected ladderGame(): LadderGame {
+    return { kind: 'derby', level: this.level.number };
+  }
+
+  /** Under the starter's count, which stands over the middle of the track. */
+  protected plateTop(): number {
+    return Math.round(this.scale.height * 0.42);
+  }
+
+  protected plateLevel(): { readonly name: string } {
+    return { name: this.level.name };
+  }
+
   /** Today's best on the chosen course, named by it: a best on another course is no yardstick. */
   protected bestWords(best: number): string {
     return `on ${this.level.name} ${PLACE_WORDS[Math.max(0, 6 - best)] ?? `${best}`}`;
   }
 
-  /** AGAIN only when it is: a podium that opened the next course races that one, and says so. */
+  /** The list's PLAY names the course when it is not the one just raced. */
   protected playLabel(): string | undefined {
     return this.racedOn && this.racedOn !== this.level ? `Race ${this.level.name}` : undefined;
   }
 
   protected todayLine(): string {
     const day = localDay(new Date());
-    this.wet = derbyGoing(day) === 'wet';
     const field = derbyField(this.level, day)
       .map((entrant) => entrant.handle)
       .join(', ');
@@ -292,17 +328,40 @@ export class DerbyScene extends OutdoorGameScene {
     const level = DERBY_LEVELS[number - 1];
     if (!level || !derbyLevelOpen(level, this.cleared())) return false;
     this.level = level;
-    this.last = undefined;
+    this.opened = null;
     return true;
+  }
+
+  /** A level a podium just opened is the one the list has chosen. */
+  protected openPicker(): void {
+    if (this.opened) this.level = this.opened;
+    this.opened = null;
+    super.openPicker();
+  }
+
+  /** A podium that opened the next level races that one next, and SPACE on the result says so. */
+  protected againLabel(): string | undefined {
+    return this.opened ? `race ${this.opened.name}` : undefined;
+  }
+
+  protected standReady(): void {
+    if (this.opened) this.level = this.opened;
+    this.opened = null;
+    super.standReady();
   }
 
   protected writeResult(): { readonly game: RestoredGame; readonly payout: GamePayout; readonly kept: readonly string[] } | null {
     const written = this.saveManager.playDerby(this.level, this.lastPlace);
     if (!written) return null;
     const opened = DERBY_LEVELS[written.cleared];
-    // A level just opened is the one chosen next.
-    if (opened && opened.number > this.level.number && derbyLevelOpen(opened, written.cleared)) this.level = opened;
+    // A level just opened is the one raced next.
+    if (opened && opened.number > this.level.number && derbyLevelOpen(opened, written.cleared)) this.opened = opened;
     return { game: written.game, payout: written.payout, kept: [] };
+  }
+
+  /** The plate and the card are the side camera's, never drawn again by the track's. */
+  protected overTheGame(parts: readonly Phaser.GameObjects.GameObject[]): void {
+    this.cameras.main.ignore([...parts]);
   }
 
   protected beginGame(chosen: StashedPokemon, traits: PokemonTraits): void {
@@ -314,8 +373,9 @@ export class DerbyScene extends OutdoorGameScene {
     this.tap = false;
     this.endingFor = null;
     this.lastPlace = null;
-    this.racedOn = level;
     this.warnedFor = -1;
+    this.racedOn = level;
+    this.pace = FIRST_PACE;
     const { width, height } = this.scale;
     // The FEEDBACK tab stands over the right of the screen on a window the game
     // fills, so the side column steps in by it and nothing in it goes under.
@@ -482,7 +542,10 @@ export class DerbyScene extends OutdoorGameScene {
     }
     if (event.key === ' ' || event.key === 'Enter') {
       event.preventDefault();
-      if (!event.repeat) this.tap = true;
+      if (!event.repeat && race.clock >= COUNTDOWN_MS) {
+        this.tap = true;
+        this.pace = learnt(this.pace);
+      }
       return;
     }
     const arrow = arrowOf(event.key);
@@ -498,15 +561,22 @@ export class DerbyScene extends OutdoorGameScene {
   }
 
   public update(_time: number, delta: number): void {
+    // The starter's count is the ready beat: the race's own clock runs through it.
+    this.readyFrame(delta);
     const race = this.race;
-    if (!this.playing || !race) return;
+    if ((this.phase !== 'playing' && this.phase !== 'ready') || !race) return;
     if (this.endingFor !== null) {
       this.endingFor -= delta;
       if (this.endingFor <= 0) this.finishRace();
       return;
     }
     const before = race.clock;
-    this.race = advanceDerby(race, delta, { tap: this.tap, lines: this.choice });
+    // Slowed from the gun until the first sprint, or a few seconds in, then up
+    // to full speed: the same frames either way (`readyBeat.ts`).
+    const away = race.clock >= COUNTDOWN_MS;
+    if (away && race.clock >= COUNTDOWN_MS + SLOWED_START_MS) this.pace = learnt(this.pace);
+    this.race = advanceDerby(race, away ? delta * paceScale(this.pace) : delta, { tap: this.tap, lines: this.choice });
+    if (away) this.pace = paceAfter(this.pace, delta);
     this.tap = false;
     for (const event of this.race.events) {
       if (event.kind === 'go') audioManager.play('confirm');
@@ -542,7 +612,7 @@ export class DerbyScene extends OutdoorGameScene {
     // The count before the gun, with the course's name over it.
     if (this.race.clock < COUNTDOWN_MS) {
       const left = Math.ceil((COUNTDOWN_MS - this.race.clock) / (COUNTDOWN_MS / 3));
-      this.callout?.setText([this.level.name, String(left)]).setColor('#f8f8f8');
+      this.callout?.setText(String(left)).setColor('#f8f8f8');
     } else if (before < COUNTDOWN_MS) {
       this.callout?.setText('GO!').setColor('#f8e070');
       this.time.delayedCall(600, () => {
@@ -569,16 +639,32 @@ export class DerbyScene extends OutdoorGameScene {
   private finishRace(): void {
     const race = this.race;
     if (!race || !this.playing) return;
-    this.race = undefined;
     this.endingFor = null;
     const place = playerPlace(race);
     this.lastPlace = place;
     const me = race.runners[0];
     const opened = derbyLevelOpened(race.level, place, this.cleared());
     const result = place === null ? 'Did not finish' : `${PLACE_WORDS[place - 1]} of ${race.runners.length} in ${raceTime(me.finishedMs ?? 0)}`;
-    const headline = `${race.level.name}: ${result}${opened ? ` · ${opened.name} is open!` : ''}`;
-    this.runners = [];
-    this.endGame(derbyScore(place), headline);
+    this.endGame(derbyScore(place), `${race.level.name}: ${result}`, [], opened ? `${opened.name} is open!` : undefined);
+  }
+
+  /**
+   * The next tight corner on the player's line, marked on the stone as it
+   * comes within a few tiles: a red and white board flashing on it, where a
+   * sprint costs time rather than gains it.
+   */
+  private markCorner(marks: Phaser.GameObjects.Graphics, race: DerbyRace): void {
+    const me = race.runners[0];
+    if (!me || me.finishedMs !== null) return;
+    const ahead = toNextCorner(race.level, me);
+    if (!Number.isFinite(ahead) || ahead > CORNER_MARK_TILES) return;
+    const point = pointOnLeg(legOf(race.level, me), me.along + ahead);
+    const x = Math.round((point.x + 0.5) * TILE);
+    const y = Math.round((point.y + 0.5) * TILE);
+    const beat = Math.floor(this.time.now / 260) % 2 === 0;
+    marks.fillStyle(0x202030, 1).fillRect(x - 7, y - 7, 14, 14);
+    marks.fillStyle(beat ? 0xf05050 : 0xf8f8f8, 1).fillRect(x - 6, y - 6, 12, 12);
+    marks.fillStyle(beat ? 0xf8f8f8 : 0xf05050, 1).fillTriangle(x - 3, y - 4, x - 3, y + 4, x + 3, y);
   }
 
   /** The waves over the breakwater: a warning line along the stone, then the foam. */
@@ -646,6 +732,7 @@ export class DerbyScene extends OutdoorGameScene {
       }
     });
     const me = race.runners[0];
+    this.markCorner(marks, race);
     const order = [...race.runners].sort((a, b) => progressOf(level, b) - progressOf(level, a) || (a.finishedMs ?? Infinity) - (b.finishedMs ?? Infinity));
     const place = playerPlace(race) ?? order.findIndex((runner) => runner.index === 0) + 1;
     const bar = Math.round((me.stamina / staminaMs(me.racer)) * 10);
@@ -655,8 +742,10 @@ export class DerbyScene extends OutdoorGameScene {
       // The sprint left, as a bar of ten pips under its word.
       const left = this.hud.x;
       const top = this.hud.y + this.hud.height + 1;
+      // Until the first sprint the bar flashes gold after the gun: SPACE spends it.
+      const flash = race.clock >= COUNTDOWN_MS && !this.pace.learnt && Math.floor(this.time.now / 220) % 2 === 0;
       for (let pip = 0; pip < 10; pip += 1) {
-        sprint.fillStyle(pip < bar ? 0x48a058 : 0xc8c0a0, 1).fillRect(left + pip * 6, top, 5, 6);
+        sprint.fillStyle(pip < bar ? (flash ? 0xf8d040 : 0x48a058) : 0xc8c0a0, 1).fillRect(left + pip * 6, top, 5, 6);
       }
     }
     this.board?.setText(order.map((runner, index) => `${index + 1} ${runner.index === 0 ? 'YOU' : runner.name}`));
