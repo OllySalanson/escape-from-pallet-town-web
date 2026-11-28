@@ -101,6 +101,8 @@ way a player does rather than calling `.click()`: `keyDescription` gives Enter a
 
 `keeperClip.mjs <cdp port> <test-mode build url> <save.json> <room id> <out dir> [--twice]` records a keeper spoken to from their room's mat to the menu or question they open, read at a fixed pace, as `clip.webm`, `clip.gif` and `talk.json` (every box, the presses, the game time to act); `--twice` speaks again after backing out, for the visit a player has every session (`docs/screens/keepers-one-box/`).
 
+`billShopClip.mjs <cdp port> <test-mode build url> <save.json> <out dir>` records a visit to Bill's cottage the same way - the room from the mat, a word with Bill, YES to his list and the cursor walked along it - as `frames/*.png` and `visit.json` (the boxes, the question, every card's words and how many carry a padlock); `encodeClip.mjs <out> <visit dir>...` lays such visits end to end as one looping `<out>.webm` and a poster (`docs/screens/bill-small-counter/`).
+
 `firstRaid.mjs <test-mode build url> <dir> [--shots]` plays a brand new save from
 the title until the first raid is the player's, as somebody who does not read, and
 prints every barrier in order with its presses and seconds.

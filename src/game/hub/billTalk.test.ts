@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CHARMANDER } from '../pokemon';
 import { createStartingStash } from '../stash';
-import { GOODS_ON_SHELVES, goodName, shelfState } from '../base/billGoods';
+import { EVERY_GOOD, ON_SHOW_AT_MOST, SHELF_TILES, goodName, goodsOnShelves, goodsOnShow, isOnShow } from '../base/billGoods';
 import { TRADER_BARTERS, TRADER_STOCK, type TraderCounter } from './trader';
 import { billQuote, type BillGood } from './billTalk';
 
@@ -37,32 +37,57 @@ const antidote: BillGood = { kind: 'stock', itemId: 'antidote' };
 const fire: BillGood = { kind: 'barter', barterId: 'barter-fire-stone' };
 const claw: BillGood = { kind: 'barter', barterId: 'barter-quick-claw' };
 
-describe("everything Bill deals in stands on his shelves", () => {
-  it('has a seat for every deal, and one only', () => {
-    const named = GOODS_ON_SHELVES.map(({ good }) =>
+describe("Bill's small counter", () => {
+  it('knows every deal he has, once each', () => {
+    const named = EVERY_GOOD.map((good) =>
       good.kind === 'stock' ? good.itemId : good.kind === 'barter' ? good.barterId : 'berth',
     );
     expect(named).toHaveLength(new Set(named).size);
     expect([...named].sort()).toEqual(
       ['berth', ...TRADER_STOCK.map((item) => item.itemId), ...TRADER_BARTERS.map((barter) => barter.id)].sort(),
     );
-    expect(new Set(GOODS_ON_SHELVES.map(({ tile }) => `${tile.x},${tile.y}`)).size).toBe(named.length);
   });
 
-  it('keeps under a sheet what the player has not earned, and leaves a gap for what he only had one of', () => {
-    expect(shelfState(counter(), antidote)).toBe('sheeted');
-    expect(shelfState(counter({}, REGULAR), antidote)).toBe('out');
-    // Potions and Poké Balls are out for anybody (AI playtest 3, 22 Nov 2026).
-    expect(shelfState(counter(), potion)).toBe('out');
-    expect(shelfState(counter({}, { ...REGULAR, traderBarters: ['barter-quick-claw'] }), claw)).toBe('gone');
-    // An HM comes back while the vault holds none: it is out again, not a gap.
-    const hm: BillGood = { kind: 'barter', barterId: 'barter-hm01' };
-    expect(shelfState(counter({}, { ...REGULAR, traderBarters: ['barter-hm01'] }), hm)).toBe('out');
-    expect(shelfState(counter({ 'hm01-cut': 1 }, { ...REGULAR, traderBarters: ['barter-hm01'] }), hm)).toBe('gone');
+  it('shows a newcomer a Poké Ball and a Potion, and nothing else', () => {
+    expect(goodsOnShow(counter())).toEqual([
+      { kind: 'stock', itemId: 'poke-ball' },
+      { kind: 'stock', itemId: 'potion' },
+    ]);
+  });
+
+  it('shows only what he sells this player, and a trade only once a part of it is brought home', () => {
+    expect(isOnShow(counter(), antidote)).toBe(false);
+    expect(isOnShow(counter({}, REGULAR), antidote)).toBe(true);
+    // The ration spent, the Antidote is off the counter till the next raid.
+    expect(isOnShow(counter({}, REGULAR, { rationUsed: 1 }), antidote)).toBe(false);
+    expect(isOnShow(counter({}, REGULAR), claw)).toBe(false);
+    expect(isOnShow(counter({ 'cable-coil': 1 }, REGULAR), claw)).toBe(true);
+    expect(isOnShow(counter({ 'cable-coil': 1 }, { ...REGULAR, traderBarters: ['barter-quick-claw'] }), claw)).toBe(false);
+    // Parts in hand do not open a deal his standing keeps back.
+    expect(isOnShow(counter({ 'lamp-oil': 2 }, REGULAR), fire)).toBe(false);
+  });
+
+  it('never has more than a handful out, the trades that can be struck first', () => {
+    const rich = Object.fromEntries(
+      ['money', 'lamp-oil', 'radio-valve', 'mooring-rope', 'linen-roll', 'cable-coil'].map((id) => [id, 99]),
+    );
+    // Everything but parts crates: the deals that want none can be struck, and come first.
+    const shown = goodsOnShow(counter(rich, PARTNER));
+    expect(shown.length).toBeLessThanOrEqual(ON_SHOW_AT_MOST);
+    const firstTrade = shown.find((good) => good.kind === 'barter');
+    expect(firstTrade?.kind === 'barter' && TRADER_BARTERS.find((each) => each.id === firstTrade.barterId)?.takes.every(({ itemId }) => itemId !== 'parts-crate')).toBe(true);
+  });
+
+  it('stands each thing on show on its own shelf tile', () => {
+    const seats = goodsOnShelves(counter({ 'cable-coil': 3, 'parts-crate': 3 }, PARTNER));
+    expect(new Set(seats.map(({ tile }) => `${tile.x},${tile.y}`)).size).toBe(seats.length);
+    for (const { tile } of seats) {
+      expect(SHELF_TILES.some((shelf) => shelf.x === tile.x && shelf.y === tile.y)).toBe(true);
+    }
   });
 
   it('names every one', () => {
-    for (const { good } of GOODS_ON_SHELVES) {
+    for (const good of EVERY_GOOD) {
       expect(goodName(good).length).toBeGreaterThan(0);
     }
   });
@@ -89,9 +114,9 @@ describe('Bill on a thing on his shelves', () => {
     expect(spent.lines[1]).toContain('your lot till you raid again');
   });
 
-  it('says what is under a sheet and what would take it off', () => {
+  it('names no tier for a thing he keeps back', () => {
     const quote = billQuote(counter(), antidote);
-    expect(quote.lines[0]).toBe("Under the sheet? Antidote. I'm keeping that back till you're a regular.");
+    expect(quote.lines[0]).toBe("Antidote? I've none of that for you.");
     expect(quote.question).toBeUndefined();
   });
 
@@ -121,7 +146,7 @@ describe('Bill on a thing on his shelves', () => {
   });
 
   it('asks in one row of the box, or the question runs into YES and NOT NOW', () => {
-    for (const { good } of GOODS_ON_SHELVES) {
+    for (const good of EVERY_GOOD) {
       const rich = Object.fromEntries(
         ['money', 'lamp-oil', 'parts-crate', 'radio-valve', 'mooring-rope', 'linen-roll', 'cable-coil'].map((id) => [id, 99999]),
       );
