@@ -6624,6 +6624,42 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
     return guard ? guardHint(guard) : '';
   }
 
+  /**
+   * Where the player, the people, the finds and the landmarks stand on the
+   * screen now, for the raid's chips to be seen through over them (`RaidHud`):
+   * a figure stood behind the clock showed only its feet under it.
+   */
+  private figuresOnScreen(): Rect[] {
+    const view = this.cameras.main.worldView;
+    const things: (Phaser.GameObjects.Sprite | Phaser.GameObjects.Image | Phaser.GameObjects.Container | undefined)[] = [
+      this.player,
+      this.raceGhostSprite,
+      ...this.npcSprites.values(),
+      ...this.lootSprites.values(),
+      ...this.poiSprites.values(),
+    ];
+    const seen: Rect[] = [];
+    for (const thing of things) {
+      // A tile's slack either way covers a figure's origin; anything further off is not on screen.
+      if (
+        !thing?.visible ||
+        typeof thing.getBounds !== 'function' ||
+        thing.x < view.left - TILE_SIZE * 2 ||
+        thing.x > view.right + TILE_SIZE * 2 ||
+        thing.y < view.top - TILE_SIZE * 2 ||
+        thing.y > view.bottom + TILE_SIZE * 2
+      ) {
+        continue;
+      }
+      const bounds = thing.getBounds();
+      const rect = { x: bounds.x - view.left, y: bounds.y - view.top, width: bounds.width, height: bounds.height };
+      if (rect.x + rect.width > 0 && rect.y + rect.height > 0 && rect.x < view.width && rect.y < view.height) {
+        seen.push(rect);
+      }
+    }
+    return seen;
+  }
+
   private createRunTimerHud(): void {
     if (!this.runSession || this.runSession.manager.phase !== RunPhase.InRun) {
       return;
@@ -7115,6 +7151,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         prize: looking ? prizeChipView(this.prizeInMind()) : null,
         friend: this.friendChip(),
         race: this.raceChip(),
+        behind: this.figuresOnScreen(),
         hunter: hunterChipView({
           who: this.hunterRival().name,
           shout: this.hunterShout(),

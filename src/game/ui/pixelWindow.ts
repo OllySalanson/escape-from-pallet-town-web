@@ -26,6 +26,8 @@ export interface PixelWindowStyle {
   readonly fill: number;
   readonly border?: number;
   readonly fillAlpha?: number;
+  /** The frame line's own opacity: a chip seen through (`RaidHud`) fades its line with its paper. */
+  readonly borderAlpha?: number;
 }
 
 export interface PixelWindowRect {
@@ -50,7 +52,7 @@ export function drawPixelWindow(
 
   // Four edges rather than a stroked rectangle, so the corner pixels stay clear
   // and the frame reads as a chamfered window instead of a hard box.
-  graphics.fillStyle(style.border ?? WINDOW_BORDER, 1);
+  graphics.fillStyle(style.border ?? WINDOW_BORDER, style.borderAlpha ?? 1);
   graphics.fillRect(x + 1, y, width - 2, 1);
   graphics.fillRect(x + 1, y + height - 1, width - 2, 1);
   graphics.fillRect(x, y + 1, 1, height - 2);
