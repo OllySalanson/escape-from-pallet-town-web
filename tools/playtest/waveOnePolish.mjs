@@ -132,7 +132,7 @@ try {
   await until(sceneIs('berry-picking'), 'BERRY PICKING');
   await wait(600);
   await shoot('03-berry-picking');
-  await page.evaluate(`document.querySelector('[data-play]')?.click()`);
+  await press('Space');
   await wait(4500);
   await shoot('03b-berry-picking-playing');
   await press('Escape');
@@ -145,7 +145,7 @@ try {
   await until(sceneIs('field-course'), 'THE FIELD-MOVE COURSE');
   await wait(600);
   await shoot('04-field-course');
-  await page.evaluate(`document.querySelector('[data-play]')?.click()`);
+  await press('Space');
   await wait(1200);
   await shoot('04b-field-course-start');
   await press('Escape');
